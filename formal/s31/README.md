@@ -69,9 +69,16 @@ The hand-written `capturedSquare` term models
 value for every M31 input. `FunctionalGraph` lowers every residual polynomial
 through the generic graph builder. `Poly.emit_valid` proves by induction that
 emission preserves a valid builder, keeps the input prefix fixed, returns a
-live wire, and never removes gates. `Poly.code_valid` therefore proves
-**every** emitted polynomial graph has valid wire indices and exact primitive
-arities. For the worked example, the checked circuit is:
+live wire, and never removes gates. `Poly.emit_prefix` proves emitted gates
+append to the old graph, and `Poly.emit_value` proves the returned wire
+evaluates to the polynomial on every input assignment. Thus `Poly.code_valid`
+proves every emitted graph has valid wire indices and arities, while
+`Poly.code_eval` proves its output value equals polynomial evaluation.
+`Poly.code_accepts` applies the independent strict graph constraint theorem
+to arbitrary intermediate witnesses. `program_graph_accepts` composes these
+results with typed source specialization: for **every** program in the small
+total field/function core, strict graph acceptance is equivalent to its
+source result. For the worked example, the checked circuit is:
 
 | Wire | Meaning | Local equation |
 | --- | --- | --- |
@@ -85,9 +92,8 @@ well-formed indices and arities. `capturedSquareCode_accepts` proves strict
 acceptance is equivalent to the source result for **every** intermediate
 witness. These are kernel-checked statements about the
 small formal core. The Python parser, S31's wider type set, library calls,
-assertions, partial operations, a universal semantic equivalence theorem
-between polynomial evaluation and the emitted graph evaluator, and the
-production AIR lowering are outside this theorem. The formal
+assertions, partial operations, and production AIR lowering are outside this
+theorem. The formal
 source identity inventory now includes the Python
 syntax, parser, specializer and libraries so changes there force a reviewed
 binding update; the source digests themselves do not prove compiler correspondence.
