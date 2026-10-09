@@ -43,7 +43,8 @@ SOURCE_MUTATIONS = (
      "| .add a b => a.eval inputs + b.eval inputs",
      "| .add a b => a.eval inputs * b.eval inputs"),
     ("functional_graph_add", "S31/Gadgets/FunctionalGraph.lean",
-     "Graph.binary .add left right", "Graph.binary .mul left right"),
+     "| .add lhs rhs => do\n      let left ← lhs.emit\n      let right ← rhs.emit\n      Graph.binary .add left right",
+     "| .add lhs rhs => do\n      let left ← lhs.emit\n      let right ← rhs.emit\n      Graph.binary .mul left right"),
 )
 
 
