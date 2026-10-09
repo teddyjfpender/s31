@@ -81,6 +81,9 @@ Packed inversion now has a matching row theorem too: the pointwise product,
 active-lane mask subtraction, and zero assertion admit a witness exactly
 when every active M31 input is nonzero; each claimed lane is the field
 inverse. This holds for arbitrary array lengths and final-word padding.
+Packed lane extraction has a matching one- or two-row theorem: the
+pointwise unit mask and optional basis-inverse multiply return precisely
+the chosen base-field value, even with arbitrary unused packed coordinates.
 The `mix4` diffusion step now composes the proved `sum_lanes` rows with a
 QM31 broadcast multiply and a packed add. Its local rows agree with the
 executable normalized repeat-body step for all four-lane inputs.

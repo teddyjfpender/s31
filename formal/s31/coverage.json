@@ -154,7 +154,8 @@
         "S31.Functional.u16_wire_vector_matches_source",
         "S31.Gadgets.Air.SelectRows.untrusted_selector_self_product_iff",
         "S31.Gadgets.Air.SelectRows.untrusted_self_product_select_iff_evaluateNode",
-        "S31.Gadgets.Air.BitRows.acceptsBit_iff"
+        "S31.Gadgets.Air.BitRows.acceptsBit_iff",
+        "S31.Gadgets.Air.UnpackRows.packedUnpack_iff"
       ],
       "source": {
         "path": "src/frontends/s31/language/relation_compiler.zig",
@@ -342,7 +343,8 @@
         "S31.Gadgets.is_zero_sound_complete",
         "S31.Gadgets.zero_anchor_sound_complete",
         "S31.Gadgets.Air.ZeroRows.acceptsZeroTest_iff",
-        "S31.Gadgets.Air.ZeroRows.base_zero_test_iff_evaluateNode"
+        "S31.Gadgets.Air.ZeroRows.base_zero_test_iff_evaluateNode",
+        "S31.Gadgets.Air.UnpackRows.packedUnpack_iff"
       ],
       "source": {
         "path": "src/frontends/s31/language/relation_compiler.zig",
@@ -415,7 +417,8 @@
         "S31.Gadgets.bit_sound_complete",
         "S31.Gadgets.not_sound_complete",
         "S31.Gadgets.Air.BooleanRows.not_iff",
-        "S31.Gadgets.Air.BitRows.acceptsBit_iff"
+        "S31.Gadgets.Air.BitRows.acceptsBit_iff",
+        "S31.Gadgets.Air.UnpackRows.packedUnpack_iff"
       ],
       "source": {
         "path": "src/frontends/s31/language/relation_compiler.zig",
@@ -429,7 +432,8 @@
         "S31.Gadgets.bit_sound_complete",
         "S31.Gadgets.and_sound_complete",
         "S31.Gadgets.Air.BooleanRows.and_iff",
-        "S31.Gadgets.Air.BitRows.acceptsBit_iff"
+        "S31.Gadgets.Air.BitRows.acceptsBit_iff",
+        "S31.Gadgets.Air.UnpackRows.packedUnpack_iff"
       ],
       "source": {
         "path": "src/frontends/s31/language/relation_compiler.zig",
@@ -443,7 +447,8 @@
         "S31.Gadgets.bit_sound_complete",
         "S31.Gadgets.or_sound_complete",
         "S31.Gadgets.Air.BooleanRows.or_iff",
-        "S31.Gadgets.Air.BitRows.acceptsBit_iff"
+        "S31.Gadgets.Air.BitRows.acceptsBit_iff",
+        "S31.Gadgets.Air.UnpackRows.packedUnpack_iff"
       ],
       "source": {
         "path": "src/frontends/s31/language/relation_compiler.zig",
@@ -457,7 +462,8 @@
         "S31.Gadgets.bit_sound_complete",
         "S31.Gadgets.xor_sound_complete",
         "S31.Gadgets.Air.BooleanRows.xor_iff",
-        "S31.Gadgets.Air.BitRows.acceptsBit_iff"
+        "S31.Gadgets.Air.BitRows.acceptsBit_iff",
+        "S31.Gadgets.Air.UnpackRows.packedUnpack_iff"
       ],
       "source": {
         "path": "src/frontends/s31/language/relation_compiler.zig",
@@ -471,7 +477,8 @@
         "S31.Gadgets.bit_sound_complete",
         "S31.Gadgets.boolean_select_sound_complete",
         "S31.Gadgets.Air.BooleanRows.select_iff",
-        "S31.Gadgets.Air.BitRows.acceptsBit_iff"
+        "S31.Gadgets.Air.BitRows.acceptsBit_iff",
+        "S31.Gadgets.Air.UnpackRows.packedUnpack_iff"
       ],
       "source": {
         "path": "src/frontends/s31/language/relation_compiler.zig",

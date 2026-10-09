@@ -212,6 +212,10 @@ and for every array length. Its `packedInverseRows_iff` gives the exact
 nonzero precondition and M31 inverse result for every active lane, even with
 arbitrary padding in the final source word. A zero active lane cannot satisfy
 the rows.
+`UnpackRows` proves the one- or two-row SIMD lane extraction used when a
+packed scalar enters a zero test, Boolean operation, or array selection.
+For any active array index, the extracted base-field word is exactly that
+lane, independently of padding in the packed source word.
 `MixRows` composes the sum projection, broadcast multiplication, and packed
 addition used by four-lane `mix4`. Its result is proved equivalent to the
 executable `mix4` step inside normalized repeat bodies.

@@ -139,6 +139,17 @@ of a short final word. A regression feeds it nonzero padding, checks the
 inverse values and unchanged row count, and compares value-carrying and
 witness-free circuit topology.
 
+`UnpackRows.lean` models the `unpackIdx` path when an operation needs one
+scalar from a packed word. The circuit first multiplies pointwise by a unit
+vector. For coordinate zero, that masked wire is already the answer; for
+coordinates one through three, one QM31 multiply by the unit vector's
+inverse moves the chosen lane into the base coordinate. The row theorem
+proves the output is exactly `(chosen value, 0, 0, 0)` for any packed input.
+For example, extracting coordinate two from `(8, 13, 21, 34)` starts with
+`(0, 0, 21, 0)` and finishes at `(21, 0, 0, 0)`. The array theorem covers any
+active index and arbitrary final-word padding. Gate address joins remain a
+separate obligation.
+
 `SumRows.lean` models `sum_lanes`: the optional final-word pointwise mask,
 left-to-right pairwise add rows with odd-width carry rounds, QM31 multiplication
 by the dual projection constant, and a final pointwise base-coordinate mask.
