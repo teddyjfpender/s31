@@ -49,8 +49,15 @@ and a unique produced value per address, `addressed_row_sound` proves that
 the row operands must equal the values produced at those addresses, then uses
 the nine AIR equations to determine the output. `forged_input_rejected`
 proves a differing input trace cannot balance the relation. For example, a
-row that locally checks `5 + 3 = 8` cannot claim its first operand came from
-address 7 when address 7 produced 4.
+row that locally checks `4 + 3 = 7` cannot claim its first operand came from
+address 7 when address 7 produced 5.
+
+The kernel-checked `honest_example_local` and `honest_example_balanced` show a
+nonempty row with sources `(7,5)` and `(8,3)`, result `(9,8)`, and a public use
+of `(9,8)`. `forged_example_local` instead computes `4 + 3 = 7`, with a public
+use of `(9,7)`; `forged_example_rejected` proves exact Gate balance fails
+because address 7 still produced 5. The output claim was changed to 7 too, so
+the rejection isolates the forged input-address binding.
 
 Exact multiset balance is a **premise** here. Production uses compressed
 LogUp over a random challenge; this module does not bound collision

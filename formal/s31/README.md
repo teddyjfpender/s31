@@ -194,6 +194,9 @@ row that computes correctly from an input value different from its claimed
 producer. The exact-multiset premise is stronger than the production LogUp
 check; its probabilistic reduction, interaction trace, compiler producer
 uniqueness, and public boundary are not proved here.
+The checked nonempty example includes a balanced honest row and a locally
+valid forged row whose public output claim has been changed consistently;
+the forged row still fails exact Gate balance at its input address.
 
 `Functional/Assertions` adds a separate source contract with any number of
 `assert_eq` pairs. It compiles each side to an output wire and checks the

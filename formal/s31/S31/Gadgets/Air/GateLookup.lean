@@ -119,4 +119,50 @@ theorem addressed_row_sound (rows : List Row)
   obtain ⟨op, hflags, hout⟩ := (accepts_iff _ _ _ _).mp hair
   exact ⟨op, hflags, by simpa [h0, h1] using hout⟩
 
+/-- A nonempty closed circuit fragment: addresses 7 and 8 yield 5 and 3;
+the row yields 8 at address 9, which the public boundary consumes. -/
+def honestExample : Row :=
+  { in0Address := 7, in1Address := 8, outAddress := 9,
+    flags := encode .add,
+    in0 := base 5, in1 := base 3, output := base 8,
+    multiplicity := 1 }
+
+def exampleExternalUses : List Event := [(9, base 8)]
+def exampleExternalYields : List Event := [(7, base 5), (8, base 3)]
+
+theorem honest_example_local :
+    accepts honestExample.flags honestExample.in0
+      honestExample.in1 honestExample.output := by
+  have h : evaluate .add (base 5) (base 3) = base 8 := by decide
+  simpa [honestExample, h] using honest_row .add (base 5) (base 3)
+
+theorem honest_example_balanced :
+    balanced [honestExample] exampleExternalUses exampleExternalYields := by
+  change ([(7, base 5), (8, base 3)] ++ [(9, base 8)] : List Event).Perm
+    ([(9, base 8)] ++ [(7, base 5), (8, base 3)])
+  exact List.perm_append_comm
+
+/-- Local arithmetic remains correct, but the row falsely reads 4 from
+address 7, whose produced value is 5. -/
+def forgedExample : Row :=
+  { honestExample with in0 := base 4, output := base 7 }
+
+def forgedExternalUses : List Event := [(9, base 7)]
+
+theorem forged_example_local :
+    accepts forgedExample.flags forgedExample.in0
+      forgedExample.in1 forgedExample.output := by
+  have h : evaluate .add (base 4) (base 3) = base 7 := by decide
+  simpa [forgedExample, honestExample, h] using
+    honest_row .add (base 4) (base 3)
+
+theorem forged_example_rejected :
+    ¬ balanced [forgedExample] forgedExternalUses exampleExternalYields := by
+  intro hbalance
+  have huse : (7, base 4) ∈
+      allUses [forgedExample] forgedExternalUses := by decide
+  have hnoYield : (7, base 4) ∉
+      allYields [forgedExample] exampleExternalYields := by decide
+  exact hnoYield (hbalance.mem_iff.mp huse)
+
 end S31.Gadgets.Air.GateLookup
