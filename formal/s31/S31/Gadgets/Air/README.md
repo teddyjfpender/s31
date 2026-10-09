@@ -225,8 +225,27 @@ A Zig regression confirms the short-word compiler path uses two arithmetic
 rows and one Eq row, accepts differing inactive padding, and rejects a
 changed active lane.
 
+`GateChallenge.lean` proves the six-element Gate tuple compressor used by
+`combineTerm`. For tuple `t`, it evaluates
+`H_t(α) = t₀ + t₁α + t₂α² + t₃α³ + t₄α⁴ + t₅α⁵`, then subtracts `z` to
+form the lookup denominator. Coefficient extraction proves different tuples
+give different polynomials. A nonzero degree-at-most-five difference can
+vanish at no more than five choices of `α`. The proof maps canonical Gate
+events to the actual tuple order: relation id `378353459`, address, then
+four M31 limbs embedded in QM31. It also proves the challenge field has
+`2147483647⁴` elements, giving at most `5 / 2147483647⁴` of uniform `α`
+choices for a collision between two distinct canonical events. For example,
+events `(7, (5,0,0,0))` and `(7, (4,0,0,0))` differ by `α²`, so only
+`α = 0` collides. For fixed `α` and tuple, exactly one `z` makes its
+denominator zero.
+
+This bound concerns one pair of tuple encodings and a uniform `α` after the
+events are fixed. It does not establish transcript challenge independence,
+sum-of-inverses multiset soundness, interaction trace correctness, or the
+whole STARK verification theorem.
+
 Exact multiset balance is a **premise** here. Production uses compressed
-LogUp over a random challenge; this module does not bound collision
-probability, prove trace-to-interaction correctness, or prove the compiler
+LogUp over a random challenge; the pairwise tuple bound above does not prove
+full multiset soundness, trace-to-interaction correctness, or that the compiler
 assigns one producer per address. Addresses and multiplicities are modeled
 as natural numbers after their canonical M31 encoding checks.

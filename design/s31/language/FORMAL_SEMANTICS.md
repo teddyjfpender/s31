@@ -89,6 +89,10 @@ closed events and unique values at produced addresses, its two lookups
 force equality of their addressed operands. This composes with the masked
 short-word arithmetic rows to prove every active lane of a partial-word
 assertion agrees. The resulting post-lookup array theorem covers any length.
+The Gate tuple compressor has a separate Lean collision bound: two distinct
+canonical events agree under at most five QM31 `alpha` values among
+`2147483647⁴` choices. The proof matches Zig's six-element Horner ordering
+and fixed relation id. Full LogUp multiset soundness is a further obligation.
 The `mix4` diffusion step now composes the proved `sum_lanes` rows with a
 QM31 broadcast multiply and a packed add. Its local rows agree with the
 executable normalized repeat-body step for all four-lane inputs.

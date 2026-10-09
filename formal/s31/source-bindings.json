@@ -58,6 +58,8 @@
     "src/frontends/circuit/builder/simd.zig": "4a0f480064056a7c7a87110666fce4d93a3d147d72dd7e6be8de184b75d78220",
     "src/frontends/circuit/builder/context.zig": "efe7f2bd64402ebd3983d025fbaf6301ae2004e6739bf04f753db3d0191142ef",
     "src/frontends/circuit/air_eval/manual/circuit.zig": "d0249cf6765b0698343470654fbb047b0cec54847d4998c57f0d221cb9c80827",
+    "src/frontends/circuit/stark_verifier/logup.zig": "ffc89d899656da42a1aa60bb8cfb59934a1966cdcb5ed5e0136c8205d14c70f3",
+    "src/frontends/circuit/common/component_list.zig": "d2f1e8facad581464f365958fb8e9fb9270fb28c09363b8361898df4136ceb2b",
     "src/frontends/circuit/common/direct_arithmetic.zig": "b5628d69be50115501d693cfd4269fb54096ae76a9e2bea9ee1f94c9d2a0b1f0",
     "src/frontends/circuit/common/preprocessed.zig": "03f975098a2fb8e951605dc2ee5f0a64d9d58aa4903132a498145237154b47ec",
     "src/frontends/circuit/witness/components.zig": "a4688a35c119aca27d2e6685aae6fcf76899715cc3bef4febe3154b81c4b11b2",

@@ -239,7 +239,7 @@ operands equal the values produced at its preprocessed addresses. The local
 AIR theorem then fixes the row output. `forged_input_rejected` rules out a
 row that computes correctly from an input value different from its claimed
 producer. The exact-multiset premise is stronger than the production LogUp
-check; its probabilistic reduction, interaction trace, compiler producer
+check; the full probabilistic multiset reduction, interaction trace, compiler producer
 uniqueness, and public boundary are not proved here.
 The checked nonempty example includes a balanced honest row and a locally
 valid forged row whose public output claim has been changed consistently;
@@ -261,6 +261,15 @@ the equality lookup and proves every active lane agrees.
 length, including lengths divisible by four and arbitrary unused padding.
 The converse constructs local rows when all active lanes agree; concrete
 accepted and forged two-lane examples are kernel checked.
+
+`GateChallenge` proves a quantitative part of lookup compression soundness.
+The six-element Gate tuple is encoded by the same Horner polynomial and
+relation id as Zig. Two distinct canonical Gate events collide for at most
+five of the `2147483647⁴` QM31 choices of `alpha`; fixed `alpha` and tuple
+have exactly one bad `z` that zeros the denominator. This is a pairwise
+challenge bound. Proving that the production sum-of-inverses check implies
+exact multiset balance, and that transcript challenges are sampled after the
+committed events, remains open.
 
 `Functional/Assertions` adds a separate source contract with any number of
 `assert_eq` pairs. It compiles each side to an output wire and checks the

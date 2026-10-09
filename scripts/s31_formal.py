@@ -43,6 +43,8 @@ BINDINGS = [
     "src/frontends/circuit/builder/simd.zig",
     "src/frontends/circuit/builder/context.zig",
     "src/frontends/circuit/air_eval/manual/circuit.zig",
+    "src/frontends/circuit/stark_verifier/logup.zig",
+    "src/frontends/circuit/common/component_list.zig",
     "src/frontends/circuit/common/direct_arithmetic.zig",
     "src/frontends/circuit/common/preprocessed.zig",
     "src/frontends/circuit/witness/components.zig",
