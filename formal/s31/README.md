@@ -95,7 +95,7 @@ small formal core. The Python parser, S31's wider type set, library calls,
 assertions, partial operations, and production AIR lowering are outside this
 theorem. The formal
 source identity inventory now includes the Python
-syntax, parser, specializer and libraries so changes there force a reviewed
+syntax, parser, elaborator, specializer and libraries so changes there force a reviewed
 binding update; the source digests themselves do not prove compiler correspondence.
 
 Soundness quantifies over every satisfying auxiliary witness. Completeness

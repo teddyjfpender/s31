@@ -94,21 +94,25 @@ tools for a larger typed core, as described by
 
 ## Exact safety boundary
 
-Circuit inputs and outputs reject `Fn` types. A function applied at a call
-site is checked against its declared parameter and result types; an unused
-function body is not yet independently elaborated. Recursion is rejected
-during specialization. Source-level assertions remain confined to circuit
-blocks, and functions that are called cannot contain them. There is no
-witness-dependent branch in this core. This avoids silently treating a
+Circuit inputs and outputs reject `Fn` types. A pure elaboration pass checks
+every function and lambda body, including unused ones, before specialization
+emits relation nodes. It checks source types, lexical scopes, builtin
+signatures, static array shapes, and the whole-program function call graph.
+Recursive or over-depth call chains are rejected even when unused.
+Source-level assertions remain confined to circuit blocks. Specialization
+then checks value-dependent facts such as constant inverse failures,
+constrained-bit provenance, and the restricted `iterate` step form. There is
+no witness-dependent branch in this core. This avoids silently treating a
 partial operation such as checked inversion in an inactive branch as though
 it need not be proved.
 
 This is a usable **functional subset**, not a completed v0.1.0 language
-release. Before a release claim, S31 still needs a separate typed elaboration
-pass that validates unused declarations, a defined conditional/effect model,
-broader parser diagnostics and adversarial grammar tests, a general
-semantics-preservation argument for specialization, and a release gate that
+release. Before a release claim, S31 still needs a defined
+conditional/effect model, broader parser diagnostics and adversarial grammar
+tests, a correspondence proof for the production Python elaborator and
+specializer, and a release gate that
 compares generated AIR geometry with equivalent first-order sources across
 all supported profiles. The [Lean package](../../../../formal/s31/README.md)
-currently proves normalized operation and local gadget properties; it does
-not yet prove this text parser or its higher-order specialization correct.
+proves semantic preservation for a small typed field/function core and its
+strict graph constraints; it does not prove this Python parser or all builtin
+typing/lowering rules correct.

@@ -13,6 +13,7 @@ S31_SOURCE_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(S31_SOURCE_ROOT / "python"))
 
 from language.parser import Parser, lex
+from language.elaborate import Elaborator
 from language.specialize import Compiler
 from language.syntax import (Circuit, Expr, Function, FunctionType, SourceError,
                              StaticClosure, Statement, Token)
@@ -23,6 +24,7 @@ def compile_text(source: str, filename: str = "<source>") -> tuple[dict[str, Any
         functions, circuit = Parser(source, filename).parse()
         if circuit.name in functions:
             raise SourceError(f"{filename}: circuit name conflicts with a function")
+        Elaborator(functions, circuit, filename).check()
         return Compiler(functions, circuit, filename).compile()
     except RecursionError as exc:
         raise SourceError(f"{filename}: expression nesting limit exceeded") from exc
