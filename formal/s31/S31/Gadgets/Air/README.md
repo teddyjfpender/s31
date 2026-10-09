@@ -401,6 +401,15 @@ to the fixed-list LogUp soundness result. This models the arithmetic of
 Zig's counter; matching its actual component traversal to the event list
 remains a compiler/source correspondence task.
 
+`GateCounterCircuit.lean` connects the compact output count to the
+repeated events of `GateLookup.Row.yields`. For an output at address `9`
+used three times, the counter takes one step `(9,3)`, while the ideal
+multiset contains three `(9,output)` events; both have address count `3`
+at address `9` and `0` elsewhere. `compressed_yields_match_events` proves
+this for arbitrary row lists and external yields. The
+`closed_gate_of_checked_counters` theorem uses successful checked input
+and compact output counts to discharge the bounds in whole-Gate closure.
+
 `GateFinal.lean` composes that conditional multiset theorem with the
 arithmetic row theorem. If each addressed input has a unique producer, a
 locally accepted row can only output the operation applied to those

@@ -315,6 +315,15 @@ theorem. The `p−1` count is accepted, while incrementing it to `p` and
 adding `p` at once are rejected. Connecting the actual Zig traversal of
 every circuit component to those exact modeled event lists is still open.
 
+`GateCounterCircuit` proves the compact yield representation used by the
+circuit agrees with that expanded event histogram: a row output at address
+`a` with multiplicity `m` contributes one checked increment `(a,m)`, while
+the ideal Gate list contains `m` copies of its output event. The theorem
+holds for every address and arbitrary rows and external yields. Successful
+checked use and compressed-yield walks, together with closed Gate fractions
+and good challenges, now imply exact circuit Gate balance without assuming
+the address histogram bounds separately.
+
 `LogUpInteraction` models the other side of the reduction. Its single and
 paired residuals use the formulas in the Zig verifier. Given nonzero
 denominators, a vanishing residual fixes the exact reciprocal term or
