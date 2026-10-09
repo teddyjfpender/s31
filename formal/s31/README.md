@@ -59,6 +59,7 @@ premises. Honest-witness evaluation alone is insufficient for soundness.
 | Bitcoin division/work | Nontruncated schoolbook product, terminal carry, strict remainder, unique quotient/remainder and the exact block-work formula. |
 | Wires and public bindings | Constant/alias/get/concat/slice identities, assertion residuals, fixed-width segment/padding binding, proof-mode independence; a successful evaluator returns exactly the declared claim **and every declared output equals its computed value**, including kind and width. Changing only a private witness cannot change the claim. |
 | Graph wiring | `Code.WellFormedFor` requires that every gate reads an input or earlier wire, every output index exists, and each primitive has its exact operand count. `Code.check_sound` proves that the executable checker implies this proposition; `strict_code_sound_complete` combines it with arbitrary-witness primitive soundness. |
+| Builder composition | `emit_valid` and `build_valid` prove that valid emitted gates and live outputs produce a valid circuit. The actual Poseidon2 fifth-power and SHA sigma builders preserve this invariant, and their strict circuit relations are proved equivalent to their mathematical outputs. |
 
 Range premises are explicit. A modular equation alone cannot imply an integer
 equation: the bridge needs both sides below M31. For the Bitcoin multiplication
@@ -87,6 +88,31 @@ that a `true` checker result implies `WellFormedFor`. The 57 executable results
 are **regression evidence, not kernel-checked proofs that every parameterized
 hash schedule is valid**. Fixed schedule certificates for all parameters and
 the correspondence to production AIR emission remain obligations.
+
+### Two kernel-certified subcircuits
+
+The builder proof works gate by gate, so Lean does not need to normalize a
+whole hash permutation. For the Poseidon2 fifth-power routine, input `x` is
+wire 0 and the generated circuit is:
+
+| New wire | Constraint |
+| --- | --- |
+| 1 | `w₁ = x · x` |
+| 2 | `w₂ = w₁ · w₁` |
+| 3 | `w₃ = x · w₂` |
+
+`Poseidon2.fifth_valid` proves that these gates preserve valid wiring in any
+already-valid builder state. `Poseidon2.fifthCircuit_valid` proves the complete
+one-input circuit is well formed. `Poseidon2.fifthCircuit_correct` then proves,
+for **every** satisfying intermediate witness, that the only accepted output
+is the canonical M31 value of `x⁵`.
+
+For SHA sigma, the one-input circuit emits `rotr(x,a)`, `rotr(x,b)`, their XOR,
+then either `shr(x,c)` or `rotr(x,c)`, then one final XOR. The
+`Sha256.sigmaCircuit_correct` theorem covers either choice and arbitrary shift
+amounts. These are proofs of the generated subcircuits used by the hash
+schedules; the complete Poseidon2, SHA-256 and BLAKE2s schedules still need
+compositional builder invariants for their rounds, loops and state indexing.
 
 ## Scope of the claim
 

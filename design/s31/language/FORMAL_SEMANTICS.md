@@ -48,6 +48,13 @@ non-vacuity witnesses, invalid-boundary cases and mutation controls.
 Use semantic parity cases against the existing independent Python oracle,
 covering all operations and each checked arithmetic failure. Parity tests
 are regression evidence, not a compiler-correctness theorem.
+
+For generated hash circuits, prove a reusable builder invariant: a gate may
+read only existing wires, its primitive has the required arity, and each
+returned wire exists in the resulting state. Compose this invariant through
+the hash's actual builder functions and prove the accepted output relation
+for complete subcircuits before extending it through rounds and loops.
+
 Prove that an executable schedule checker implies well-formed gate indices,
 output indices and primitive arities. Run it on every supported fixed hash
 profile in CI, with malformed-circuit rejection controls. Keep executable
