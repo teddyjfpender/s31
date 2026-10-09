@@ -3,6 +3,7 @@ import S31.Gadgets.Air.Qm31Ops
 import S31.Gadgets.Air.SimdChunks
 import S31.Gadgets.Air.FunctionalBridge
 import S31.Gadgets.Air.SelectRows
+import S31.Gadgets.Air.SumRows
 import S31.Gadgets.Air.GateLookup
 import S31.Gadgets.Bindings
 import S31.Gadgets.BuilderValidity

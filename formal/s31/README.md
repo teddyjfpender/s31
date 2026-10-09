@@ -185,6 +185,10 @@ premise, all packed rows agree
 with the source conditional, strict graph relation and executable normalized
 `select` node for any array length. A kernel-checked selector-`2` control
 demonstrates that the Boolean premise cannot be dropped.
+`SumRows` proves that the direct `sum_lanes` mask, pairwise reduction, and
+projection rows accept exactly the normalized node's M31 result for every
+nonempty array length. The theorem permits arbitrary unused coordinates in
+the final input word and models the one-lane alias separately.
 The [AIR model README](S31/Gadgets/Air/README.md) works through a two-lane
 example.
 

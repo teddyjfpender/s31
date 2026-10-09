@@ -58,6 +58,13 @@ normalized `select` node across all array words, provided its selector is
 constrained to zero or one.
 Lean also checks that selector `2` can satisfy those arithmetic rows with an
 interpolated output, so the Boolean premise is indispensable.
+The direct selector self-product row proves that premise when the selector
+wire is base-field encoded. A formal proof that all satisfying QM31 selector
+wires have that encoding remains open; a prover hint is insufficient.
+For `sum_lanes`, Lean models the final-word mask, pairwise packed addition
+passes, QM31 dual projection and base-coordinate extraction. The resulting
+row relation is sound and complete against the normalized `sum_lanes` node
+for any nonempty array, including the compiler's one-lane alias path.
 An abstract Gate relation model now proves that exact multiset balance plus
 unique produced values per address forces row operands to equal their
 preprocessed-address producers. The production compressed LogUp argument is

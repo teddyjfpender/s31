@@ -61,6 +61,22 @@ check. The concrete `nonbit_interpolation_rows` control shows why: selector
 `2`, false arm `3`, and true arm `5` satisfy all four arithmetic row equations
 with output `7`. That output is neither branch. The source-to-row theorems
 include the Boolean premise; they do not assume it follows from arithmetic.
+`base_selector_self_product_iff` proves that the direct selector's QM31
+self-product row supplies this premise **when its wire is base-field encoded**.
+The proof that any satisfying direct-selector wire has that encoding remains
+open; the compiler's `QM31.fromBase` witness hint alone does not prove it.
+
+`SumRows.lean` models `sum_lanes`: the optional final-word pointwise mask,
+left-to-right pairwise add rows with odd-width carry rounds, QM31 multiplication
+by the dual projection constant, and a final pointwise base-coordinate mask.
+`projection_literal_rows_iff` uses the exact four-coordinate constant emitted
+by Zig and proves it equals the algebraic dual projection word.
+For `[3,5,7,11,13]`, the first packed word contributes `26`; the second
+contributes `13` even if its three unused input coordinates contain arbitrary
+values. One accepted add row combines them, and the projection rows bind the
+single M31 result to `39`. `compiledSumLanesRows_iff_evaluateNode` proves that
+all accepted row witnesses give exactly the normalized `sum_lanes` value for
+every nonempty array; it models Zig's one-lane alias as a separate case.
 
 S31 array addition uses the `add` opcode. S31 pointwise array multiplication
 uses `pointwiseMul`; `mul` denotes multiplication in the QM31 extension field.

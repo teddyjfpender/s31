@@ -26,6 +26,33 @@ def acceptsSelect (selector : S31.M31)
       (base (S31.Field.toZMod selector)) truePart ∧
     accepts (encode .add) falsePart truePart output
 
+/-- A direct self-product row forces a *base-field encoded* selector to be
+zero or one. Proving that an arbitrary QM31 witness is base encoded is a
+separate representation obligation for the direct selector producer. -/
+theorem base_selector_self_product_iff (selector : S31.M31) :
+    accepts (encode .mul)
+      (base (S31.Field.toZMod selector))
+      (base (S31.Field.toZMod selector))
+      (base (S31.Field.toZMod selector)) ↔
+    selector = 0 ∨ selector = 1 := by
+  rw [accepts_encoded]
+  constructor
+  · intro h
+    have ha := congrArg Quad.a h
+    have hbit : S31.Gadgets.bit (S31.Field.toZMod selector) := by
+      unfold S31.Gadgets.bit
+      simpa [evaluate, base, Packed.mul] using ha.symm
+    rcases (S31.Gadgets.bit_sound_complete _).mp hbit with hz | ho
+    · left
+      exact S31.Field.toZMod_injective
+        (by simpa [S31.Field.toZMod_zero] using hz)
+    · right
+      exact S31.Field.toZMod_injective
+        (by simpa [S31.Field.toZMod_one] using ho)
+  · rintro (rfl | rfl) <;>
+      simp [evaluate, base, Packed.mul,
+        S31.Field.toZMod_zero, S31.Field.toZMod_one]
+
 /-- If the selector is a constrained bit, every satisfying assignment of
 the four row outputs gives exactly the chosen packed word. Both bit cases
 also have honest row witnesses. -/
@@ -328,6 +355,27 @@ theorem packedSelectRowsShared_iff_evaluateNode {n : Nat}
   rw [packedSelectRowsShared_iff]
   exact packedSelectRows_iff_evaluateNode selector onFalse onTrue claimed
     tailFalse tailTrue
+
+/-- The direct selector's self-product row discharges the Boolean premise
+for a base-field encoded input, then the shared-complement rows bind every
+selected output lane to the executable normalized relation. -/
+theorem base_self_product_select_iff_evaluateNode {n : Nat}
+    (selector : S31.M31)
+    (onFalse onTrue claimed : Fin n → S31.M31)
+    (tailFalse tailTrue : Nat → Fin 4 → S31.M31) :
+    (accepts (encode .mul)
+      (base (S31.Field.toZMod selector))
+      (base (S31.Field.toZMod selector))
+      (base (S31.Field.toZMod selector)) ∧
+      packedSelectRowsShared selector onFalse onTrue claimed
+        tailFalse tailTrue) ↔
+      S31.evaluateNode
+        (S31.Functional.normalizedSelectEnv selector onFalse onTrue)
+        S31.Functional.normalizedSelectNode =
+          .ok ⟨.m31, List.ofFn claimed⟩ := by
+  rw [base_selector_self_product_iff]
+  exact packedSelectRowsShared_iff_evaluateNode selector onFalse onTrue
+    claimed tailFalse tailTrue
 
 /-- The typed source conditional, its strict graph and the compiler-shaped
 shared-complement AIR row relation admit precisely the same array outputs. -/
