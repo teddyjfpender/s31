@@ -120,6 +120,18 @@ class FunctionalCoreTests(unittest.TestCase):
                 }}""")
                 self.assertEqual(self.operation_graph(functional), self.operation_graph(manual))
 
+    def test_formal_captured_square_example_matches_text_lowering(self) -> None:
+        functional, _ = compile_text("""circuit captured(public x: [m31; 1]) -> public [m31; 1] {
+            let saved = x in
+            let f = fun(y: [m31; 1]) -> [m31; 1] => y .* y + saved in
+            f(saved)
+        }""")
+        manual, _ = compile_text("""circuit captured(public x: [m31; 1]) -> public [m31; 1] {
+            x .* x + x
+        }""")
+        self.assertEqual(self.operation_graph(functional), self.operation_graph(manual))
+        self.assertEqual([node["op"] for node in functional["nodes"]], ["mul", "add"])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -32,13 +32,16 @@ WITNESSES = (
 )
 
 SOURCE_MUTATIONS = (
-    ("byte_range", "Radix.lean", "word < 65536 ∧ scaled < 65536",
+    ("byte_range", "S31/Gadgets/Radix.lean", "word < 65536 ∧ scaled < 65536",
      "word < 65536 ∧ scaled < 16777216"),
-    ("carry_base", "Radix.lean", "digit + (base : Field.F) * cout",
+    ("carry_base", "S31/Gadgets/Radix.lean", "digit + (base : Field.F) * cout",
      "digit + ((base - 1 : Nat) : Field.F) * cout"),
-    ("signed_guard", "Signed.lean",
+    ("signed_guard", "S31/Gadgets/Signed.lean",
      "def addOverflow (sa sb sr : Field.F) : Prop := (1 - (sa - sb)^2) * (sa - sr)^2 = 0",
      "def addOverflow (sa sb sr : Field.F) : Prop := (1 - (sa - sb)^2) * (sa - sr)^2 = 1"),
+    ("functional_add", "S31/Semantics/Functional.lean",
+     "| .add a b => a.eval inputs + b.eval inputs",
+     "| .add a b => a.eval inputs * b.eval inputs"),
 )
 
 
@@ -73,7 +76,7 @@ def run(root: Path, lake: str) -> dict:
             if result.returncode != 1 or "is false" not in output:
                 raise FormalError(f"{name}: Lean did not reject the false proposition as expected:\n{output}")
         for name, module, before, after in SOURCE_MUTATIONS:
-            original = (project / "S31/Gadgets" / module).read_text()
+            original = (project / module).read_text()
             if original.count(before) != 1:
                 raise FormalError(f"{name}: source mutation anchor changed")
             source.write_text(original)

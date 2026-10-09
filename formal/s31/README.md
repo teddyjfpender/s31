@@ -23,6 +23,7 @@ theorem does not establish zero knowledge.
 | `S31/Semantics/Types`, `Validation`, `Node`, `Program`, `Json` | Typed IR, complete operation dispatch, validation, assignment and public ABI. `Json` is an executable adapter, not a parser-correctness proof. |
 | `S31/Semantics/Words`, `Integers`, `Bitcoin` | Little-endian limbs, five signed/unsigned widths, checked/wrapping operations, compact target and block work. |
 | `S31/Semantics/Graph`, `Poseidon2`, `Blake2s`, `Sha256` | Explicit straight-line gate schedules and exact hash encodings. No uninterpreted hash callback is used. |
+| `S31/Semantics/Functional` | Intrinsically typed `let`/lambda/application core, static specialization into first-order field polynomials, and an arbitrary-witness local constraint relation. |
 | `S31/Gadgets/` | Primitive residual proofs, arbitrary auxiliary witnesses, constructive completeness and composition. |
 | `S31/Evidence/` | Checked operation coverage, non-vacuity/invalid-boundary theorems and live axiom enumeration. |
 | `coverage.json` | Reviewed mapping of every operation to semantics, local gadget theorems and production source functions. |
@@ -40,6 +41,36 @@ primality with Mathlib's Lucas–Lehmer certificate for `2^31-1`. The generic
 recursion limit on some hosts.
 
 ## Proven local obligations
+
+### Typed functional core
+
+`Functional.Expr Γ τ` can be constructed only with well-typed variables,
+field addition/multiplication, `let`, lambdas and application. `Meaning` gives
+these expressions their ordinary field/function meaning. `specialize` maps
+field values to polynomial expressions and functions to compile-time Lean
+functions, so the residual `Poly` syntax has only inputs, literals, adds and
+multiplies. `specialize_correct` proves by induction that specialization
+preserves meaning for **all** well-typed core expressions, environments and
+input assignments. `program_correct` specializes the theorem to first-order
+field inputs and output.
+
+`Poly.Accepts` independently checks local add/multiply residuals and
+existential intermediate values. `Poly.accepts_sound_complete` proves that
+every satisfying witness yields exactly the polynomial evaluation, and that
+an honest witness exists. `program_accepts_iff` composes this with the source
+theorem. `specialize_beta` proves that static function application has the
+same residual result as binding the argument in a `let`.
+
+The hand-written `capturedSquare` term models
+`let saved = x in let f = fun(y : m31) -> m31 => y * y + saved in f(saved)`.
+`capturedSquare_zero_cost` reduces its residual tree to `x*x+x`, and
+`capturedSquare_accepts` proves its local constraints accept exactly that
+value for every M31 input. These are kernel-checked statements about the
+small formal core. The Python parser, S31's wider type set, library calls,
+assertions, partial operations, and the production AIR lowering are outside
+this theorem. The formal source identity inventory now includes the Python
+syntax, parser, specializer and libraries so changes there force a reviewed
+binding update; the source digests themselves do not prove compiler correspondence.
 
 Soundness quantifies over every satisfying auxiliary witness. Completeness
 constructs witnesses for every input within the stated range and shape
@@ -203,6 +234,9 @@ source, rejects missing evidence, and compiles valid controls before requiring
 invalid controls to fail. It also alters actual byte-range, carry-base and
 signed-overflow definitions and requires their original proofs to fail.
 Temporary mutations never alter repository sources.
+The mutation set includes polynomial addition in the functional core; changing
+its evaluation to multiplication must make the new specialization/constraint
+proofs fail to compile.
 
 The dedicated [CI workflow](../../.github/workflows/s31-formal.yml) runs these
 steps without a skip path and preserves live evidence. Caches, binaries and

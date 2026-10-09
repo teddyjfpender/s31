@@ -54,6 +54,13 @@ BINDINGS = [
     "formal/s31/lean-toolchain",
     "src/frontends/s31/python/oracle.py",
     "src/frontends/s31/python/poseidon2_oracle.py",
+    "src/frontends/s31/python/s31.py",
+    "src/frontends/s31/python/s31_stdlib.py",
+    "src/frontends/s31/python/s31_mathlib.py",
+    "src/frontends/s31/python/language/syntax.py",
+    "src/frontends/s31/python/language/parser.py",
+    "src/frontends/s31/python/language/specialize.py",
+    "src/frontends/s31/python/language/builtins.py",
     POSEIDON, SHA, SIGMA,
 ]
 
