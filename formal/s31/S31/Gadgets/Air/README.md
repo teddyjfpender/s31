@@ -410,6 +410,15 @@ this for arbitrary row lists and external yields. The
 `closed_gate_of_checked_counters` theorem uses successful checked input
 and compact output counts to discharge the bounds in whole-Gate closure.
 
+`GateProducerCheck.lean` models the other preprocessed invariant: its
+bitmap scan rejects an output address outside `n_vars` or any address
+already seen. `scan_sound` proves successful scans have no repeated
+addresses. Mapping a produced Gate event to its address then proves
+`uniqueProduced`, which `addressed_row_sound_of_scan` feeds directly to
+the arithmetic row's Gate join. This matches the engine's fail-closed
+duplicate-producer check, subject to the remaining source-to-model
+traversal correspondence.
+
 `GateFinal.lean` composes that conditional multiset theorem with the
 arithmetic row theorem. If each addressed input has a unique producer, a
 locally accepted row can only output the operation applied to those

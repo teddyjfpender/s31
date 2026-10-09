@@ -324,6 +324,16 @@ checked use and compressed-yield walks, together with closed Gate fractions
 and good challenges, now imply exact circuit Gate balance without assuming
 the address histogram bounds separately.
 
+`GateProducerCheck` models the engine's new producer-address bitmap scan.
+If the scan accepts, the produced addresses are distinct and below the
+declared variable bound. A proved corollary supplies `uniqueProduced` for
+the Gate address join, and an addressed arithmetic row consequently reads
+the values of its sole producers. A repeated address is rejected by an
+explicit control. The engine now rejects duplicate producers in supplied
+`CircuitView` gate lists before preprocessing; native tests cover duplicates
+across arithmetic, Blake, and permutation outputs. The correspondence of
+the complete Zig output traversal to the Lean list is still an open step.
+
 `LogUpInteraction` models the other side of the reduction. Its single and
 paired residuals use the formulas in the Zig verifier. Given nonzero
 denominators, a vanishing residual fixes the exact reciprocal term or
