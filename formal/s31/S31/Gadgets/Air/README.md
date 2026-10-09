@@ -21,6 +21,18 @@ not assume that unused trace limbs are zero.
 `partial_row_iff_normalized_node` composes this with the executable normalized
 relation evaluator, including its output length, for every `n ≤ 4`.
 
+`FunctionalBridge.array_graph_iff_air_row` composes four modeled boundaries
+for a typed pointwise expression: functional source meaning, strict scalar
+graph constraints, the executable normalized node, and the packed AIR row for
+the **final operation**.
+For `x + x` with `x = [3, 5]`, the scalar graph has two addition gates. The
+packed row has `add = 1`, active operands `[3, 5]` and `[3, 5]`, and active
+output `[6, 10]`. Its two unused lanes may start with arbitrary M31 values;
+the row equation constrains their output limbs, and the S31 array result
+still has length two. The theorem covers any typed source operands in this
+total array core and both pointwise operations, not just this example. It
+does not model the AIR rows needed to compute nontrivial operand expressions.
+
 S31 array addition uses the `add` opcode. S31 pointwise array multiplication
 uses `pointwiseMul`; `mul` denotes multiplication in the QM31 extension field.
 

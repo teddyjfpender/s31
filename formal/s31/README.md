@@ -169,6 +169,16 @@ limbs; only the active output lanes appear in the normalized array result.
 This covers the local equation for short arrays without assuming zero-filled
 padding.
 
+`FunctionalBridge.array_graph_iff_air_row` composes the typed functional
+array expression, its strict scalar graph, the normalized arithmetic node,
+and one packed AIR row model for the final operation. It applies to arbitrary
+source operand expressions in the formal total core, for either pointwise
+operation and any result length at most four. The theorem evaluates operand
+subexpressions through the source graph model; it does not supply AIR rows
+for those operand computations.
+The [AIR model README](S31/Gadgets/Air/README.md) works through a two-lane
+example.
+
 These theorems do not prove that Zig emits the modeled rows or that the Gate
 lookup connects row operands and outputs to the compiled circuit. Short-chunk
 emission, preprocessed address/multiplicity construction, lookup/LogUp
