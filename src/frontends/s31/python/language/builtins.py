@@ -30,6 +30,8 @@ BINARY_POWER = {"+": 10, "-": 10, ".*": 20}
 UNARY_POWER = 30
 MAX_TOKENS = 100_000
 MAX_CALL_DEPTH = 32
+MAX_EXPRESSION_DEPTH = 128
+MAX_TYPE_DEPTH = 32
 BUILTINS = {
     "splat", "iterate", "m31_from_u16", "select", "poseidon2_leaf",
     "std::array::get", "std::array::concat", "std::array::take",

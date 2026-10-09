@@ -5,7 +5,8 @@ from __future__ import annotations
 from typing import Any
 
 from s31_stdlib import INT_TYPES, P, STDLIB_ABI_VERSION, Type, TypeErrorS31
-from language.builtins import (BUILTINS, BINARY_POWER, INT_SOURCE_TYPES, MAX_TOKENS,
+from language.builtins import (BUILTINS, BINARY_POWER, INT_SOURCE_TYPES,
+                               MAX_EXPRESSION_DEPTH, MAX_TOKENS, MAX_TYPE_DEPTH,
                                TOKEN_RE, UNARY_POWER)
 from language.syntax import Circuit, Expr, Function, FunctionType, SourceError, Statement, Token
 
@@ -39,6 +40,8 @@ class Parser:
         self.filename = filename
         self.at = 0
         self.stdlib_explicit = False
+        self.expression_depth = 0
+        self.type_depth = 0
 
     def peek(self) -> Token:
         return self.tokens[self.at]
@@ -78,6 +81,15 @@ class Parser:
         return int(token.text)
 
     def parse_type(self) -> Type | FunctionType:
+        if self.type_depth >= MAX_TYPE_DEPTH:
+            raise self.error("type nesting limit exceeded")
+        self.type_depth += 1
+        try:
+            return self._parse_type()
+        finally:
+            self.type_depth -= 1
+
+    def _parse_type(self) -> Type | FunctionType:
         token = self.peek()
         if self.accept("Fn"):
             self.expect("(")
@@ -208,6 +220,15 @@ class Parser:
         return Circuit(name, params, result, statements, body, proof_mode)
 
     def expression(self, min_power: int = 0) -> Expr:
+        if self.expression_depth >= MAX_EXPRESSION_DEPTH:
+            raise self.error("expression nesting limit exceeded")
+        self.expression_depth += 1
+        try:
+            return self._expression(min_power)
+        finally:
+            self.expression_depth -= 1
+
+    def _expression(self, min_power: int = 0) -> Expr:
         token = self.peek()
         if self.accept("let"):
             name = self.identifier()
@@ -292,6 +313,15 @@ class Parser:
                 lhs = Expr("binary", operator.text, (lhs, rhs), operator)
         return lhs
 
+    def check_expression_tree(self, root: Expr) -> None:
+        """Bound left-associated ASTs as well as recursive parser nesting."""
+        pending = [(root, 1)]
+        while pending:
+            expression, depth = pending.pop()
+            if depth > MAX_EXPRESSION_DEPTH:
+                raise self.error("expression tree depth limit exceeded", expression.token)
+            pending.extend((child, depth + 1) for child in expression.args)
+
     def parse(self) -> tuple[dict[str, Function], Circuit]:
         if self.accept("use"):
             package = self.identifier()
@@ -313,4 +343,9 @@ class Parser:
             raise self.error("expected one circuit")
         if self.peek().kind != "eof":
             raise self.error("expected end of file after circuit")
+        for declaration in (*functions.values(), circuit):
+            for statement in declaration.statements:
+                for operand in statement.args:
+                    self.check_expression_tree(operand)
+            self.check_expression_tree(declaration.body)
         return functions, circuit

@@ -140,6 +140,37 @@ The compiler rejects recursion and caps expansion depth at 32 so circuit
 shape remains statically finite. `iterate` retains its restricted named-step
 recognizer and its existing chip selection rules.
 
+The [functional recurrence example](../examples/recurrence/functional_step16.s31)
+passes a closure through a source function before calling `iterate<16>`:
+
+```s31
+fn step(v: [m31; 4]) -> [m31; 4] { v .* v + splat<4>(7_m31) }
+fn apply(f: Fn([m31; 4]) -> [m31; 4], x: [m31; 4]) -> [m31; 4] { f(x) }
+circuit functional_step16(public x: [m31; 4]) -> public [m31; 4] {
+    let run = fun(initial: [m31; 4]) -> [m31; 4] => iterate<16>(step, initial);
+    let result = apply(run, x);
+    result
+}
+```
+
+After specialization, the entire circuit is one `repeat` node with the
+body `square; add_const 7`. Under `direct-chip`, that node selects the
+four-lane repeated-step chip. The
+[first-order version](../examples/recurrence/functional_step16_manual.s31)
+calls `iterate` directly and emits the same normalized relation. The native
+acceptance gate compares their chip and AIR cost reports and proves the
+functional form.
+
+The [wide-integer example](../examples/wide/functional_u256_sum.s31) passes a
+three-argument `UInt256` closure through `apply3`, then hashes the checked
+sum of its private inputs. Its
+[direct form](../examples/wide/functional_u256_sum_manual.s31) emits the
+same two `u256_add_checked` nodes, one limb cast and one Poseidon2 leaf.
+Under `sparse-wide-gate` the source abstraction retains the same canonical
+IR and AIR geometry: 7,888 raw and 8,192 padded QM31 rows, with 131,584
+preprocessed cells. Checked overflow remains a real precondition; the
+closure erases but does not change that proof obligation.
+
 This design uses the **static/dynamic separation** of partial evaluation:
 functions, closures and source scopes are static; field words, bits and
 relation nodes are dynamic. The implementation specializes directly into the
@@ -164,11 +195,10 @@ effect pass checks that inactive conditional arms cannot introduce
 data-dependent failure.
 
 This is a usable **functional subset**, not a completed v0.1.0 language
-release. Before a release claim, S31 still needs broader parser diagnostics
-and adversarial grammar tests, a correspondence proof for the Python elaborator and
-specializer, and a release gate that
-compares generated AIR geometry with equivalent first-order sources across
-all supported profiles. The [Lean package](../../../../formal/s31/README.md)
+release. Before a release claim, S31 still needs broader grammar and library
+fuzzing, a correspondence proof for the Python elaborator and specializer,
+and AIR-cost comparisons with equivalent first-order sources across all
+supported profiles. The [Lean package](../../../../formal/s31/README.md)
 proves semantic preservation for a small typed field/function core and its
 strict graph constraints; it does not prove this Python parser or all builtin
 typing/lowering rules correct.

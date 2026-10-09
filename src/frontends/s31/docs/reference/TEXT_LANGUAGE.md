@@ -42,6 +42,10 @@ proof byte strings.
 
 ## Syntax and staging
 
+The exact accepted token, declaration, type and expression forms are in the
+[versioned text grammar](GRAMMAR_V1.md). Parser nesting and token limits are
+documented there alongside the located diagnostic contract.
+
 ```text
 fn step(v: [m31; 4]) -> [m31; 4] {
     v .* v + splat<4>(7_m31)

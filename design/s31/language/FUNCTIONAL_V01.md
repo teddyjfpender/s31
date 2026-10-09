@@ -63,8 +63,10 @@ public bindings and the chosen chip-recognizable recurrence. A mechanical
 release gate must compare canonical IR, AIR components, raw and padded rows,
 preprocessing, and FRI parameters for representative direct, sparse and chip
 profiles. The [functional acceptance gate](../../../src/frontends/s31/tests/acceptance/acceptance_functional_core.py)
-currently checks one four-lane direct-gate example and a native proof. This
-is evidence for that program, not a theorem for all S31 sources.
+checks four-lane direct-gate arithmetic, a `direct-chip` recurrence and a
+`sparse-wide-gate` checked 256-bit reduction,
+including native proofs and exact AIR-cost equality with first-order forms.
+These are program-specific evidence, not a theorem for all S31 sources.
 
 An explicit typed ANF or SSA-like residual core would make this invariant
 easier to audit and optimize. ANF's role in simplifying functional compilation
@@ -104,11 +106,11 @@ The following are required for a v0.1.0 claim:
 
 | Requirement | Evidence required | Current state |
 | --- | --- | --- |
-| Grammar and diagnostics | Versioned grammar, location-precise errors, malformed and fuzzed input corpus, bounded parse and specialization resources | Handwritten parser and bounded token/call depth; grammar/fuzz gate missing. |
+| Grammar and diagnostics | Versioned grammar, location-precise errors, malformed and fuzzed input corpus, bounded parse and specialization resources | The v1 grammar documents exact source forms. The parser bounds tokens, recursive expression/type descent and final AST depth with located errors; static call and effect analysis have separate limits. A pinned 96-program generated corpus checks semantics and zero-cost IR equivalence, with malformed mutations. Wider grammar and library fuzzing remain. |
 | Type soundness | Separate typed elaboration of **all** declarations, no function values at circuit boundary, well-defined static/dynamic effects | Pure elaboration checks every function and lambda body, source types, lexical scopes and call-graph bounds before emission. An exhaustive conservative effect pass rejects potentially partial inactive `if` arms. Value-dependent checks still run during specialization; a machine-checked effect soundness proof remains missing. |
 | Semantic preservation | Proof or independently checked translation for typed source → normalized relation, including closure capture, shadowing, arrays and library calls | Lean proves source evaluation agrees with strict graph acceptance for every typed program in its total field/function core, including lexical capture, beta erasure, field outputs and source-level equality assertions. It also proves a total-branch field conditional over that graph for both selector values, and proves that a small conservative effect check safely lowers partial-field syntax into that graph. Python text compilation, arrays, library calls, the full effect checker and production AIR correspondence remain unproved. |
-| Zero-cost abstractions | Canonical graph and AIR geometry equivalence across arithmetic, hashes, arrays and chip extraction, plus regression ceilings | Functional arithmetic and conditional gates compare canonical IR and direct-gate AIR geometry with explicit equivalents; broader sparse and chip gates remain. |
-| Build and native verification | Build, prove, verify, changed-statement rejection, independent oracle, reproducible source/key/IR identity | Functional arithmetic and conditional native trials pass, including both selector values and changed-claim rejection; a complete supported-profile release matrix remains. |
+| Zero-cost abstractions | Canonical graph and AIR geometry equivalence across arithmetic, hashes, arrays and chip extraction, plus regression ceilings | Functional arithmetic and conditional gates compare canonical IR and direct-gate AIR geometry with explicit equivalents. A functional recurrence matches direct `iterate` in normalized IR, selected chip, AIR geometry and FRI settings under `direct-chip`; a functional checked `UInt256` sum matches its direct form under `sparse-wide-gate`. Wider hash and array gates remain. |
+| Build and native verification | Build, prove, verify, changed-statement rejection, independent oracle, reproducible source/key/IR identity | Functional arithmetic, conditional, recurrence-chip and sparse-wide native trials pass, including both selector values and changed-claim rejection; a complete supported-profile release matrix remains. |
 | Repository hygiene | Parser, AST, elaborator, specialization, library and CLI isolated by directory, module READMEs and pinned dependency versions | Syntax, parser, builtin typing, elaboration and specialization now live under `python/language/`; further library/CLI separation remains. |
 | Release artifact | Tagged source, lockfile, supported-profile matrix, signed or otherwise authenticated distribution process, changelog and exact test commands | No v0.1.0 tag or release audit yet. |
 
