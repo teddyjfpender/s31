@@ -57,7 +57,8 @@ premises. Honest-witness evaluation alone is insufficient for soundness.
 | Hashes | Arbitrary intermediate gate witnesses iff the full Poseidon2 leaf/pair, personalized terminal BLAKE2s and header double SHA-256 results, including packing and digest reduction. |
 | Bitcoin target | One-hot exponent range, byte placement, nonzero byte-sum inverse and high-zero bytes iff a positive target within mainnet's `2^224-1` limit. |
 | Bitcoin division/work | Nontruncated schoolbook product, terminal carry, strict remainder, unique quotient/remainder and the exact block-work formula. |
-| Wires and public bindings | Constant/alias/get/concat/slice identities, assertion residuals, fixed-width segment/padding binding, proof-mode independence; a successful evaluator returns exactly the declared claim, and changing only a private witness cannot change that claim. |
+| Wires and public bindings | Constant/alias/get/concat/slice identities, assertion residuals, fixed-width segment/padding binding, proof-mode independence; a successful evaluator returns exactly the declared claim **and every declared output equals its computed value**, including kind and width. Changing only a private witness cannot change the claim. |
+| Graph wiring | `Code.WellFormedFor` checks that every gate reads an input or earlier wire, every output index exists, and each primitive has its exact operand count. `strict_code_sound_complete` combines this with arbitrary-witness primitive soundness; an out-of-range gate or missing operand is rejected. |
 
 Range premises are explicit. A modular equation alone cannot imply an integer
 equation: the bridge needs both sides below M31. For the Bitcoin multiplication
@@ -74,6 +75,14 @@ hash schedules are marked `irreducible` to keep elaboration from repeatedly
 expanding thousands of gates; they remain explicit, executable definitions
 and introduce no axiom.
 
+`Graph.Accepts` on its own has the historical `getD` fallback for malformed
+indices or missing primitive operands. Use `Code.strictAccepts` when making a
+statement about a valid circuit: its `WellFormedFor` premise rules out these
+fallbacks. The formal package proves the generic rule and small valid/invalid
+schedule examples. It does **not yet certify `WellFormedFor` for every generated
+Poseidon2, SHA-256 or BLAKE2s schedule**; those fixed schedule certificates
+and the correspondence to production AIR emission are additional obligations.
+
 ## Scope of the claim
 
 **The local mathematical constraint models are proved. Production compiler
@@ -85,8 +94,10 @@ AIR correspondence, lookup/LogUp composition over arbitrary traces, Zig
 machine code, STARK soundness and zero knowledge remain separate obligations.
 The typed model constrains private values mathematically; visibility affects
 the public ABI and does not itself imply witness privacy.
-The new claim theorem concerns accepted executions under the *same declared*
-public inputs and outputs. It does not assert that private inputs are hidden,
+The public binding theorems concern accepted executions under the *same declared*
+public inputs and outputs. They prove agreement for every output, including
+the second output of a two-output example, but do not assert that private
+inputs are hidden,
 or that a circuit is bound to the claim: production AIR correspondence remains
 an explicit separate obligation. Lean also checks one honest private binding,
 a changed private witness, and a forged public output claim.

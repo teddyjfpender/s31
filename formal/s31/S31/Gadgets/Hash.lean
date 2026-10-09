@@ -7,6 +7,13 @@ import S31.Semantics.Sha256
 namespace S31.Gadgets.Hash
 open Graph
 
+def fieldArity : FieldOp → Nat
+  | .add | .mul => 2
+
+def wordArity : WordOp → Nat
+  | .add | .xor | .and => 2
+  | .not | .rotr _ | .shr _ => 1
+
 def fieldPrimitive (op : FieldOp) (args : List M31) (y : M31) : Prop :=
   match op with
   | .add => y - (args.getD 0 0 + args.getD 1 0) = 0
@@ -34,10 +41,24 @@ theorem field_schedule_sound_complete (code : Code M31 FieldOp) (inputs output :
     code.accepts fieldPrimitive inputs output ↔ output = code.eval fieldEval inputs :=
   code_sound_complete code fieldEval fieldPrimitive field_primitive_sound_complete inputs output
 
+theorem field_schedule_strict_sound_complete (code : Code M31 FieldOp)
+    (inputs output : List M31) :
+    code.strictAccepts fieldArity fieldPrimitive inputs output ↔
+      code.WellFormedFor fieldArity inputs.length ∧ output = code.eval fieldEval inputs :=
+  strict_code_sound_complete code fieldEval fieldArity fieldPrimitive
+    field_primitive_sound_complete inputs output
+
 theorem word_schedule_sound_complete (code : Code Words.Word WordOp)
     (inputs output : List Words.Word) :
     code.accepts Word.primitive inputs output ↔ output = code.eval wordEval inputs :=
   code_sound_complete code wordEval Word.primitive Word.primitive_sound_complete inputs output
+
+theorem word_schedule_strict_sound_complete (code : Code Words.Word WordOp)
+    (inputs output : List Words.Word) :
+    code.strictAccepts wordArity Word.primitive inputs output ↔
+      code.WellFormedFor wordArity inputs.length ∧ output = code.eval wordEval inputs :=
+  strict_code_sound_complete code wordEval wordArity Word.primitive
+    Word.primitive_sound_complete inputs output
 
 theorem poseidon_leaf_sound_complete (inputs output : List M31) :
     (Poseidon2.leafCode inputs.length).accepts fieldPrimitive inputs output ↔

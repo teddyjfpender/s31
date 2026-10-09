@@ -52,6 +52,51 @@ def Code.eval [Inhabited α] (code : Code α Op)
   let values := run interpret code.gates inputs
   code.outputs.map (values.getD · default)
 
+/-- Each gate may read inputs or previously emitted gates only. -/
+def Gate.ValidAt (bound : Nat) : Gate α Op → Prop
+  | .constant _ => True
+  | .apply _ args => ∀ index ∈ args, index < bound
+
+inductive GatesValid : Nat → List (Gate α Op) → Prop where
+  | nil (bound : Nat) : GatesValid bound []
+  | cons {bound gate gates} :
+      gate.ValidAt bound → GatesValid (bound + 1) gates →
+      GatesValid bound (gate :: gates)
+
+/-- The complete schedule has no out-of-range wire reads, including outputs. -/
+def Code.WellFormed (code : Code α Op) (inputCount : Nat) : Prop :=
+  GatesValid inputCount code.gates ∧
+    ∀ index ∈ code.outputs, index < inputCount + code.gates.length
+
+/-- Primitive semantics may also read a default operand if called with too few
+arguments. A valid circuit must supply the primitive's exact arity. -/
+def Gate.ArityValid (arity : Op → Nat) : Gate α Op → Prop
+  | .constant _ => True
+  | .apply op args => args.length = arity op
+
+def Code.WellFormedFor (code : Code α Op) (arity : Op → Nat)
+    (inputCount : Nat) : Prop :=
+  code.WellFormed inputCount ∧
+    ∀ gate ∈ code.gates, gate.ArityValid arity
+
+theorem run_length [Inhabited α] (interpret : Op → List α → α)
+    (gates : List (Gate α Op)) (inputs : List α) :
+    (run interpret gates inputs).length = inputs.length + gates.length := by
+  induction gates generalizing inputs with
+  | nil => simp [run]
+  | cons gate gates ih =>
+    simp only [run]
+    rw [ih]
+    simp [Nat.add_assoc, Nat.add_comm]
+
+theorem Code.output_in_run [Inhabited α] (code : Code α Op)
+    (interpret : Op → List α → α) (inputs : List α)
+    (valid : code.WellFormed inputs.length)
+    (index : Nat) (member : index ∈ code.outputs) :
+    index < (run interpret code.gates inputs).length := by
+  rw [run_length]
+  exact valid.2 index member
+
 inductive FieldOp where | add | mul
 deriving DecidableEq, Repr
 

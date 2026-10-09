@@ -78,6 +78,56 @@ theorem claims_private_independent (p : Program) (a : Assignment) (privateValues
 theorem environment_claims_independent (p : Program) (a : Assignment) (outputs : RawValues) :
     p.environment {a with publicOutputs := outputs} = p.environment a := rfl
 
+/-- The derived `BEq` on `Value` compares both the kind and every M31 word.
+Making this implication explicit avoids silently treating a Boolean comparison
+as mathematical equality in the public output theorem. -/
+private theorem value_beq_eq (x y : Value) (h : (x == y) = true) : x = y := by
+  cases x with
+  | mk xk xw =>
+    cases y with
+    | mk yk yw =>
+      change (xk == yk && xw == yw) = true at h
+      have hp : (xk == yk) = true ∧ (xw == yw) = true := by
+        simpa only [Bool.and_eq_true] using h
+      rcases hp with ⟨hkbool, hwbool⟩
+      have hw : xw = yw := (beq_iff_eq).mp hwbool
+      have hk : xk = yk := by
+        cases xk <;> cases yk
+        · rfl
+        · change false = true at hkbool; cases hkbool
+        · change false = true at hkbool; cases hkbool
+        · rfl
+      simp [hk, hw]
+
+/-- The claimed output parses to precisely the computed value, including its
+kind and full width. -/
+def OutputBound (a : Assignment) (values : Env) (name : String) : Prop :=
+  ∃ actual, lookup values name = some actual ∧
+    assigned a.publicOutputs name actual.shape = .ok actual
+
+theorem outputsAgreeNames_sound (a : Assignment) (values : Env) (names : List String)
+    (h : outputsAgreeNames a values names = .ok ()) :
+    ∀ name ∈ names, OutputBound a values name := by
+  induction names with
+  | nil => simp
+  | cons first rest ih =>
+    cases hlookup : lookup values first with
+    | none => simp [outputsAgreeNames, hlookup] at h
+    | some actual =>
+      cases hassigned : assigned a.publicOutputs first actual.shape with
+      | error err => simp [outputsAgreeNames, hlookup, hassigned] at h
+      | ok expected =>
+        cases hbeq : actual == expected with
+        | false => simp [outputsAgreeNames, hlookup, hassigned, hbeq] at h
+        | true =>
+          have htail : outputsAgreeNames a values rest = .ok () := by
+            simpa [outputsAgreeNames, hlookup, hassigned, hbeq] using h
+          intro name hmem
+          rcases List.mem_cons.mp hmem with rfl | hrest
+          · refine ⟨actual, hlookup, ?_⟩
+            simpa [value_beq_eq actual expected hbeq] using hassigned
+          · exact ih htail name hrest
+
 /-- A successful evaluation returns precisely the statement checked by the
 assignment parser. The output comparison may reject a claim, but cannot
 replace it with another value. -/
@@ -111,6 +161,40 @@ theorem evaluate_ok_claimed (p : Program) (a : Assignment) (words : List M31)
         change Except.bind (Except.ok claimed : Result (List M31)) _ = .ok words at h
         simp [Except.bind, ho] at h
         simp [h]
+
+/-- A successful program run binds *each* declared public output to its
+computed value; the claim list alone is not used as evidence of this fact. -/
+theorem evaluate_ok_output_binding (p : Program) (a : Assignment) (words : List M31)
+    (h : p.evaluate a = .ok words) :
+    ∃ values, p.environment a = .ok values ∧
+      ∀ name ∈ p.outputs, OutputBound a values name := by
+  cases henv : p.environment a with
+  | error err =>
+    simp only [Program.evaluate, henv] at h
+    change Except.bind (Except.error err : Result Env) _ = .ok words at h
+    simp [Except.bind] at h
+  | ok values =>
+    cases hc : p.claimedWords a with
+    | error err =>
+      simp only [Program.evaluate, henv, hc] at h
+      change Except.bind (Except.ok values : Result Env) _ = .ok words at h
+      simp [Except.bind] at h
+      change Except.bind (Except.error err : Result (List M31)) _ = .ok words at h
+      simp [Except.bind] at h
+    | ok claimed =>
+      cases ho : p.outputsAgree a values with
+      | error err =>
+        simp only [Program.evaluate, henv, hc] at h
+        change Except.bind (Except.ok values : Result Env) _ = .ok words at h
+        simp [Except.bind] at h
+        change Except.bind (Except.ok claimed : Result (List M31)) _ = .ok words at h
+        simp [Except.bind, ho] at h
+      | ok checked =>
+        refine ⟨values, rfl, ?_⟩
+        have hu : checked = () := Subsingleton.elim _ _
+        rw [hu] at ho
+        exact outputsAgreeNames_sound a values p.outputs
+          (by simpa only [Program.outputsAgree] using ho)
 
 /-- Two accepted private witnesses for the same public assignment have the
 same public statement, even if they compute through different environments. -/

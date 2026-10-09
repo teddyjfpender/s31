@@ -63,4 +63,19 @@ theorem code_sound_complete (code : Code α Op) (interpret : Op → List α → 
     exact ⟨_, accepts_complete interpret constraint
       (fun op args => (correct op args _).mpr rfl) code.gates inputs, rfl⟩
 
+/-- Circuit acceptance requires valid indices and exact primitive arities as
+well as correct primitive constraints. -/
+def Code.strictAccepts (code : Code α Op)
+    (arity : Op → Nat) (constraint : Op → List α → α → Prop)
+    (inputs output : List α) : Prop :=
+  code.WellFormedFor arity inputs.length ∧ code.accepts constraint inputs output
+
+theorem strict_code_sound_complete (code : Code α Op) (interpret : Op → List α → α)
+    (arity : Op → Nat) (constraint : Op → List α → α → Prop)
+    (correct : ∀ op args y, constraint op args y ↔ y = interpret op args)
+    (inputs output : List α) :
+    code.strictAccepts arity constraint inputs output ↔
+      code.WellFormedFor arity inputs.length ∧ output = code.eval interpret inputs := by
+  simp only [Code.strictAccepts, code_sound_complete code interpret constraint correct]
+
 end S31.Graph

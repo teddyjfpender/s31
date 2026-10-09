@@ -47,13 +47,21 @@ def Program.environment (p : Program) (a : Assignment) : Result Env := do
     require (x == y) .assertionFailed
   return values
 
-/-- Check the declared public outputs against the computed environment. Keeping
-this check separate makes the statement binding explicit in the semantics. -/
-def Program.outputsAgree (p : Program) (a : Assignment) (values : Env) : Result Unit := do
-  for name in p.outputs do
-    let actual ← need (lookup values name) .unknownOperand
-    let expected ← assigned a.publicOutputs name actual.shape
-    require (actual == expected) .publicMismatch
+/-- Check every declared public output against the computed environment. -/
+def outputsAgreeNames (a : Assignment) (values : Env) : List String → Result Unit
+  | [] => .ok ()
+  | name :: names =>
+    match lookup values name with
+    | none => .error .unknownOperand
+    | some actual =>
+      match assigned a.publicOutputs name actual.shape with
+      | .error err => .error err
+      | .ok expected =>
+        if actual == expected then outputsAgreeNames a values names
+        else .error .publicMismatch
+
+def Program.outputsAgree (p : Program) (a : Assignment) (values : Env) : Result Unit :=
+  outputsAgreeNames a values p.outputs
 
 def Program.evaluate (p : Program) (a : Assignment) : Result (List M31) := do
   let values ← p.environment a

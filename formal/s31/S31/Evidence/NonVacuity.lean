@@ -86,6 +86,40 @@ theorem forged_field_hash_gate :
   rw [Hash.field_schedule_sound_complete]
   decide
 
+/-- Valid schedules read only declared inputs or previously emitted gates. -/
+theorem one_add_wires_valid :
+    Graph.Code.WellFormedFor
+      (⟨[.apply .add [0, 1]], [2]⟩ : Graph.Code M31 Graph.FieldOp)
+      Hash.fieldArity 2 := by
+  constructor
+  · constructor
+    · exact .cons (by simp [Graph.Gate.ValidAt]) (.nil 3)
+    · simp
+  · intro gate hgate
+    simp only [List.mem_singleton] at hgate
+    subst gate
+    rfl
+
+theorem missing_add_operand_rejected :
+    ¬Graph.Code.WellFormedFor
+      (⟨[.apply .add [0]], [1]⟩ : Graph.Code M31 Graph.FieldOp)
+      Hash.fieldArity 1 := by
+  intro h
+  have hgate := h.2 (Graph.Gate.apply Graph.FieldOp.add [0]) (by simp)
+  simp [Graph.Gate.ArityValid, Hash.fieldArity] at hgate
+
+/-- The old fallback interpreter can evaluate this schedule, but strict
+acceptance rejects its out-of-range operand at wire 7. -/
+theorem forward_wire_rejected :
+    ¬Graph.Code.WellFormed
+      (⟨[.apply .add [0, 7]], [1]⟩ : Graph.Code M31 Graph.FieldOp) 1 := by
+  intro h
+  rcases h with ⟨hg, _⟩
+  cases hg with
+  | cons hgate _ =>
+    have hbad := hgate 7 (by decide)
+    omega
+
 /-- This counterexample documents why source-bound widths are a premise of
 the public padding theorem. The assignment checker rejects a width change. -/
 theorem padding_requires_widths : Bindings.pad8 [1] = Bindings.pad8 [1,0] := by decide
@@ -116,6 +150,40 @@ theorem private_binding_forged_witness :
 
 theorem private_binding_forged_output :
     privateBinding.evaluate {honestPrivate with publicOutputs := [("x", [4])]} =
+      .error .publicMismatch := by decide
+
+/-- The second output is checked independently; matching the first does not
+allow a false value for a later declared output. -/
+def twoPrivateOutputs : Program := {
+  name := "two_private_outputs"
+  inputs := [
+    { name := "x", shape := ⟨.m31, 1⟩, visibility := .private },
+    { name := "y", shape := ⟨.m31, 1⟩, visibility := .private }]
+  nodes := []
+  assertions := []
+  outputs := ["x", "y"]
+}
+
+def honestTwoOutputs : Assignment := {
+  publicInputs := []
+  privateInputs := [("x", [3]), ("y", [4])]
+  publicOutputs := [("x", [3]), ("y", [4])]
+}
+
+theorem two_outputs_honest :
+    twoPrivateOutputs.evaluate honestTwoOutputs =
+      .ok [RiscvRefinement.M31.reduce 3, RiscvRefinement.M31.reduce 4,
+        0, 0, 0, 0, 0, 0] := by decide
+
+theorem two_outputs_each_bound :
+    ∃ values, twoPrivateOutputs.environment honestTwoOutputs = .ok values ∧
+      ∀ name ∈ twoPrivateOutputs.outputs,
+        Bindings.OutputBound honestTwoOutputs values name :=
+  Bindings.evaluate_ok_output_binding _ _ _ two_outputs_honest
+
+theorem second_output_forged :
+    twoPrivateOutputs.evaluate
+      {honestTwoOutputs with publicOutputs := [("x", [3]), ("y", [5])]} =
       .error .publicMismatch := by decide
 
 end S31.Evidence
