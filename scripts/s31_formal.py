@@ -43,6 +43,7 @@ BINDINGS = [
     "src/frontends/circuit/builder/simd.zig",
     "src/frontends/circuit/builder/context.zig",
     "src/frontends/circuit/air_eval/manual/circuit.zig",
+    "src/frontends/circuit/common/direct_arithmetic.zig",
     "src/core/fields/m31.zig",
     "src/core/fields/cm31.zig",
     "src/core/fields/qm31.zig",

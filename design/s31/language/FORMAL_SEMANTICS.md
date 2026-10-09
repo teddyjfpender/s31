@@ -40,6 +40,14 @@ theorems; arbitrary-trace LogUp composition, alternative AIR lowerings,
 Zig machine-code correctness, STARK soundness and zero knowledge remain
 separate obligations.
 
+The QM31 operation AIR row is modeled by its nine literal polynomial residuals
+in `formal/s31/S31/Gadgets/Air/Qm31Ops.lean`. Its row theorem proves one-hot
+opcode selection and exact packed outputs for arbitrary row values. A separate
+theorem relates the add and pointwise-multiply rows to S31's normalized
+four-lane M31 evaluator. This is local AIR correspondence, not a proof of
+trace construction, Gate lookup/LogUp consistency, compiler emission, or the
+STARK verification protocol.
+
 ## Evidence and hygiene
 
 Build every S31 Lean source, audit theorem axioms, reject proof escapes and

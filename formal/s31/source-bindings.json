@@ -58,6 +58,7 @@
     "src/frontends/circuit/builder/simd.zig": "4a0f480064056a7c7a87110666fce4d93a3d147d72dd7e6be8de184b75d78220",
     "src/frontends/circuit/builder/context.zig": "efe7f2bd64402ebd3983d025fbaf6301ae2004e6739bf04f753db3d0191142ef",
     "src/frontends/circuit/air_eval/manual/circuit.zig": "d0249cf6765b0698343470654fbb047b0cec54847d4998c57f0d221cb9c80827",
+    "src/frontends/circuit/common/direct_arithmetic.zig": "b5628d69be50115501d693cfd4269fb54096ae76a9e2bea9ee1f94c9d2a0b1f0",
     "src/core/fields/m31.zig": "a5d47cc1a8c57a858b943c25e63eb1561b9f994fdff36ea38517bc166ea66d73",
     "src/core/fields/cm31.zig": "4b7a14c91fba7c467f92e924ce90c7230a22d08329591e3d5b8874d862b31288",
     "src/core/fields/qm31.zig": "a60c2a5a6f10bf91b1bfab41a526e41b589d0d1d83275e0516cf68b7228be931",

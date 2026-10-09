@@ -25,6 +25,7 @@ theorem does not establish zero knowledge.
 | `S31/Semantics/Graph`, `Poseidon2`, `Blake2s`, `Sha256` | Explicit straight-line gate schedules and exact hash encodings. No uninterpreted hash callback is used. |
 | `S31/Semantics/Functional` | Intrinsically typed field and fixed-length field-array `let`/lambda/application core, static specialization into first-order field polynomials, and an arbitrary-witness local constraint relation. |
 | `S31/Gadgets/` | Primitive residual proofs, arbitrary auxiliary witnesses, constructive completeness and composition. |
+| [`S31/Gadgets/Air/`](S31/Gadgets/Air/README.md) | The nine production QM31 operation AIR row polynomials, opcode soundness, and a four-lane normalized-node bridge. |
 | [`S31/Gadgets/Functional/`](S31/Gadgets/Functional/README.md) | Typed source specialization, strict graphs, assertions, conditionals, effects, arrays and agreement with executable normalized relation nodes. |
 | `S31/Gadgets/U16Selection` | Pointwise bit-constrained selection of u16-backed vectors, including proof that selected limbs inherit the input range bound. |
 | `S31/Evidence/` | Checked operation coverage, non-vacuity/invalid-boundary theorems and live axiom enumeration. |
@@ -147,6 +148,23 @@ Lean proves the zipped list is exactly the source's indexed pointwise result.
 The strict graph side includes arbitrary intermediate gate witnesses, so this
 is an equivalence of acceptance, not merely an honest-value example. Python
 emission and production AIR correspondence remain outside the proof.
+
+`Gadgets/Air/Qm31Ops` formalizes all nine residuals of the production circuit
+AIR's QM31 operation row: one one-hot equation, four Boolean flag equations,
+and four output-limb equations. `accepts_iff` proves that **every** accepted
+row has exactly one of the add, subtract, QM31 multiply, or pointwise multiply
+flags and the corresponding output. `honest_row` constructs an accepted row;
+`all_flags_zero_rejected` and `two_flags_rejected` check malformed flag
+patterns. `s31_row_iff` specializes the add and pointwise multiply opcodes to
+four M31 lanes using the proved M31-to-ZMod map.
+`row_iff_normalized_node` then proves the row model accepts precisely the
+outputs of the executable normalized `add` and `mul` relation nodes for one
+full four-lane chunk. The proof models the production equations and the
+`simd.mul` opcode choice; source hashes pin the reviewed Zig files. It does
+not prove that Zig emits the modeled rows or that the Gate lookup connects
+row operands and outputs to the compiled circuit. Short final chunks,
+preprocessed address/multiplicity construction, lookup/LogUp composition,
+whole-trace AIR, and the STARK verifier remain separate obligations.
 
 `Functional/Assertions` adds a separate source contract with any number of
 `assert_eq` pairs. It compiles each side to an output wire and checks the
