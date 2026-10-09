@@ -130,6 +130,14 @@ expanded words as inputs. The theorem covers every satisfying witness for
 those rounds. It does not yet certify that the 48 expanded message words are
 the correct SHA-256 schedule of a 16-word block.
 
+`Sha256.sha64Circuit_valid` specializes this to the generated table of 64
+SHA-256 round constants. Its 72 inputs are eight state words followed by 64
+already-expanded message words. `sha64Circuit_strict_sound_complete` proves
+that the 64-round core accepts exactly the circuit's computed eight-word
+state for every input and every auxiliary witness. The round invariant gives
+`64 × 27 = 1728` gates in this core; it excludes message expansion and the
+final eight feed-forward additions.
+
 These are proofs of generated subcircuits used by the hash schedules. The
 complete Poseidon2, SHA-256 and BLAKE2s schedules still need compositional
 builder invariants for message expansion, state indexing and final

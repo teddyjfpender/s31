@@ -58,8 +58,9 @@ Poseidon2 fifth-power, SHA sigma and complete SHA-256 compression round are
 proved by this method. The SHA round proof also composes over an arbitrary
 `foldlM` list of live message wires, with exactly 27 gates per round. A
 parameterized multi-round circuit is proved strictly sound for any number of
-rounds with message words supplied as inputs; message expansion, full
-schedule wiring and final feed-forward remain open.
+rounds with message words supplied as inputs. The concrete 64-round core
+using the generated SHA constants is also certified; message expansion,
+full schedule wiring and final feed-forward remain open.
 
 Prove that an executable schedule checker implies well-formed gate indices,
 output indices and primitive arities. Run it on every supported fixed hash

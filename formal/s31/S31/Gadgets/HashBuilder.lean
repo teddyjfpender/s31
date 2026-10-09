@@ -318,6 +318,37 @@ theorem roundsCircuit_strict_sound_complete (inputCount : Nat) (pairs : List (Na
   rw [Gadgets.Hash.word_schedule_strict_sound_complete]
   simp [hinputs, roundsCircuit_valid inputCount pairs hinput hpairs]
 
+/-- The concrete 64-round SHA core. Inputs 0–7 are the state and inputs 8–71
+are the already-expanded message words. Round constants are drawn from the
+same generated table used by the SHA compression semantics. -/
+def sha64Pairs : List (Nat × Nat) :=
+  (List.range 64).map (fun i => (8 + i, Constants.shaRound.getD i 0))
+
+def sha64Circuit : Code Words.Word WordOp := roundsCircuit 72 sha64Pairs
+
+theorem shaRound_length : Constants.shaRound.length = 64 := by rfl
+
+theorem sha64Pairs_length : sha64Pairs.length = 64 := by simp [sha64Pairs]
+
+theorem sha64Pairs_bound : ∀ pair ∈ sha64Pairs, pair.1 < 72 := by
+  intro pair member
+  obtain ⟨i, hi, rfl⟩ := List.mem_map.mp member
+  have hibound : i < 64 := List.mem_range.mp hi
+  simp
+  omega
+
+theorem sha64Circuit_valid : sha64Circuit.WellFormedFor wordArity 72 := by
+  exact roundsCircuit_valid 72 sha64Pairs (by omega) sha64Pairs_bound
+
+/-- The fixed 64-round circuit accepts exactly its computed eight-word state
+for every 72-word input and every auxiliary gate assignment. -/
+theorem sha64Circuit_strict_sound_complete
+    (inputs output : List Words.Word) (hinputs : inputs.length = 72) :
+    sha64Circuit.strictAccepts wordArity Gadgets.Word.primitive inputs output ↔
+      output = sha64Circuit.eval wordEval inputs := by
+  exact roundsCircuit_strict_sound_complete 72 sha64Pairs inputs output
+    (by omega) sha64Pairs_bound hinputs
+
 /-- A family of SHA sigma circuits, for arbitrary rotation amounts and either
 choice of logical shift or rotation in the third term. -/
 def sigmaCircuit (a b c : Nat) (logical : Bool) : Code Words.Word WordOp := build 1 do
