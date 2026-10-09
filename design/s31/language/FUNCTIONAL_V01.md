@@ -94,6 +94,9 @@ formal correspondence from source conditionals through effect analysis to
 the generated AIR. Lean composes total source branches with the local
 selector relation and proves soundness for both bit values; it does not
 verify the Python effect pass or the complete production AIR emission.
+Lean also proves that a conservative totality check makes eager and lazy
+conditionals agree in a small language with checked inversion, and exhibits
+the inactive inverse-of-zero counterexample when that premise is dropped.
 
 ## Release evidence, not release intentions
 
@@ -103,7 +106,7 @@ The following are required for a v0.1.0 claim:
 | --- | --- | --- |
 | Grammar and diagnostics | Versioned grammar, location-precise errors, malformed and fuzzed input corpus, bounded parse and specialization resources | Handwritten parser and bounded token/call depth; grammar/fuzz gate missing. |
 | Type soundness | Separate typed elaboration of **all** declarations, no function values at circuit boundary, well-defined static/dynamic effects | Pure elaboration checks every function and lambda body, source types, lexical scopes and call-graph bounds before emission. An exhaustive conservative effect pass rejects potentially partial inactive `if` arms. Value-dependent checks still run during specialization; a machine-checked effect soundness proof remains missing. |
-| Semantic preservation | Proof or independently checked translation for typed source → normalized relation, including closure capture, shadowing, arrays and library calls | Lean proves source evaluation agrees with strict graph acceptance for every typed program in its total field/function core, including lexical capture, beta erasure, field outputs and source-level equality assertions. It also proves a total-branch field conditional over that graph for both selector values. Python text compilation, arrays, library calls, effects and production AIR correspondence remain unproved. |
+| Semantic preservation | Proof or independently checked translation for typed source → normalized relation, including closure capture, shadowing, arrays and library calls | Lean proves source evaluation agrees with strict graph acceptance for every typed program in its total field/function core, including lexical capture, beta erasure, field outputs and source-level equality assertions. It also proves a total-branch field conditional over that graph for both selector values, and proves that a small conservative effect check safely lowers partial-field syntax into that graph. Python text compilation, arrays, library calls, the full effect checker and production AIR correspondence remain unproved. |
 | Zero-cost abstractions | Canonical graph and AIR geometry equivalence across arithmetic, hashes, arrays and chip extraction, plus regression ceilings | Functional arithmetic and conditional gates compare canonical IR and direct-gate AIR geometry with explicit equivalents; broader sparse and chip gates remain. |
 | Build and native verification | Build, prove, verify, changed-statement rejection, independent oracle, reproducible source/key/IR identity | Functional arithmetic and conditional native trials pass, including both selector values and changed-claim rejection; a complete supported-profile release matrix remains. |
 | Repository hygiene | Parser, AST, elaborator, specialization, library and CLI isolated by directory, module READMEs and pinned dependency versions | Syntax, parser, builtin typing, elaboration and specialization now live under `python/language/`; further library/CLI separation remains. |

@@ -29,6 +29,7 @@ theorem does not establish zero knowledge.
 | `S31/Gadgets/FunctionalOutputs` | One graph for multiple functional results; every output wire and claimed value is bound, including an aliased second output. |
 | `S31/Gadgets/FunctionalAssertions` | Source-level `assert_eq` pairs checked against separately witnessed graph outputs, with universal contract soundness and completeness. |
 | `S31/Gadgets/FunctionalConditional` | Both total source branches in one graph, a bit-constrained selection relation, and soundness/completeness for either choice. |
+| `S31/Gadgets/FunctionalEffects` | A computable conservative effect check for a small partial field language, proof that total branches agree under eager and lazy conditional evaluation, and an inactive inverse counterexample. |
 | `S31/Evidence/` | Checked operation coverage, non-vacuity/invalid-boundary theorems and live axiom enumeration. |
 | `coverage.json` | Reviewed mapping of every operation to semantics, local gadget theorems and production source functions. |
 | `source-bindings.json`, `proof-inventory.json` | Generated exact source identities and the complete theorem inventory, including the reused modules and three source-derived proof declarations. |
@@ -140,6 +141,23 @@ to the matching source arm; honest witnesses exist for both values. The
 selector is represented by an M31 expression in this small model and its
 bitness is imposed by the select constraint. The theorem does not verify
 the Python effect checker or the production `select` AIR emission.
+
+`FunctionalEffects` makes the totality premise concrete in a smaller
+expression language with checked inversion. Its computable `isTotal` check
+accepts inputs, literals, addition and multiplication, and rejects every
+inverse. `total_has_value` proves that an accepted expression produces a
+value for every input. `total_to_poly` lowers exactly those accepted
+expressions into the existing residual polynomial core, and
+`total_graph_accepts` composes that lowering with arbitrary-witness strict
+graph soundness. `eager_if_iff_lazy_if` proves that evaluating both
+arms and constraining the selector agrees with ordinary conditional
+evaluation whenever both arms pass this check. `eager_graph_iff_lazy_if`
+places the two emitted arms in one strict graph, then joins their witnessed
+outputs with the select equation and proves the same equivalence. The counterexample
+`if false then inverse(0) else x` evaluates to `x` lazily but has no eager
+witness. This formal check models the rule's rationale; the Python effect
+pass, higher-order call analysis and all builtin classifications still need
+a verified connection to this model.
 
 Soundness quantifies over every satisfying auxiliary witness. Completeness
 constructs witnesses for every input within the stated range and shape
