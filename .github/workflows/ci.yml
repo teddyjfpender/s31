@@ -9,6 +9,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: s31-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   language-and-proof:
     runs-on: ubuntu-latest
