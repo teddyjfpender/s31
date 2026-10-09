@@ -201,6 +201,12 @@ self-loop enforces a zero arithmetic value, and multiply/subtract/zero rows
 enforce `q² = q` for every QM31 witness. The tower proof therefore gives a
 canonical bit even when the input witness hint is untrusted. A concrete
 selector `2` is rejected.
+`ZeroRows` proves the full `isZeroWord` arithmetic row schedule sound and
+complete over arbitrary QM31 witnesses, including both zero-assertion
+self-loops and the unconstrained inverse value when the input is zero.
+`base_zero_test_iff_evaluateNode` connects its canonical scalar restriction
+to the executable normalized `is_zero` operation. A forged zero indicator
+is rejected by a kernel-checked control.
 `SumRows` proves that the direct `sum_lanes` mask, pairwise reduction, and
 projection rows accept exactly the normalized node's M31 result for every
 nonempty array length. The theorem permits arbitrary unused coordinates in

@@ -73,6 +73,10 @@ The ordinary `checkedBitWord` path is modeled too: Lean proves that the
 compiler's `anchor + value = anchor` row enforces zero for an arbitrary
 anchor, and that its multiply/subtract/zero row sequence accepts exactly
 canonical QM31 bits. A bound source M31 value is consequently Boolean.
+The `is_zero` gadget has a separate exact row proof: for any QM31 input,
+the two zero assertions and inverse equation bind its indicator to one
+exactly for zero, with honest witnesses in both cases. Restricting those
+rows to canonical M31 values agrees with the normalized `is_zero` node.
 For `sum_lanes`, Lean models the final-word mask, pairwise packed addition
 passes, QM31 dual projection and base-coordinate extraction. The resulting
 row relation is sound and complete against the normalized `sum_lanes` node

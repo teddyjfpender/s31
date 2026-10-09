@@ -6,6 +6,7 @@ import S31.Gadgets.Air.FunctionalBridge
 import S31.Gadgets.Air.SelectRows
 import S31.Gadgets.Air.BooleanRows
 import S31.Gadgets.Air.BitRows
+import S31.Gadgets.Air.ZeroRows
 import S31.Gadgets.Air.SumRows
 import S31.Gadgets.Air.GateLookup
 import S31.Gadgets.Bindings

@@ -97,6 +97,18 @@ four-coordinate wire is canonical zero or one, while constructing honest
 rows for both bits. `acceptsBit_bound_iff` connects a bound source M31 value;
 `nonbit_two_rejected` checks a concrete forged scalar is excluded.
 
+`ZeroRows.lean` models every arithmetic row in `isZeroWord`: multiply by an
+inverse witness, subtract the indicator from one, assert the difference is
+zero with an anchor self-loop, and assert `input * indicator = 0` with another
+anchor self-loop. The field-tower bridge makes the proof apply to arbitrary
+QM31 witness values. `acceptsZeroTest_iff` proves that all satisfying rows
+force the indicator to one exactly for a zero input, and that an honest
+inverse and indicator can always satisfy the rows. A base-field restriction
+is proved equivalent to the executable normalized `is_zero` node.
+`zero_input_forged_indicator_rejected` rules out the wrong claim for zero;
+`seven_input_honest_indicator` supplies a nonzero control. This is a local
+row theorem; actual witness generation and address joins are separate.
+
 `SumRows.lean` models `sum_lanes`: the optional final-word pointwise mask,
 left-to-right pairwise add rows with odd-width carry rounds, QM31 multiplication
 by the dual projection constant, and a final pointwise base-coordinate mask.
