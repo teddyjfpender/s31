@@ -247,4 +247,61 @@ theorem example_zero_alpha_collision (z : GateSecure) :
       combineTerm (gateTuple 7 (base 4)) 0 z := by
   simp [combineTerm, tupleHorner, gateTuple]
 
+/-- A union bound over a finite list of distinct tuple pairs. -/
+noncomputable def collisionUnion [Fintype K] [DecidableEq K] :
+    List ((Fin 6 → K) × (Fin 6 → K)) → Finset K
+  | [] => ∅
+  | pair :: rest =>
+      collisionChallenges pair.1 pair.2 ∪ collisionUnion rest
+
+theorem collisionUnion_card_le [Fintype K] [DecidableEq K]
+    (pairs : List ((Fin 6 → K) × (Fin 6 → K)))
+    (hne : ∀ pair ∈ pairs, pair.1 ≠ pair.2) :
+    (collisionUnion pairs).card ≤ 5 * pairs.length := by
+  induction pairs with
+  | nil => simp [collisionUnion]
+  | cons pair rest ih =>
+      have hp : pair.1 ≠ pair.2 := hne pair (by simp)
+      have hrest : ∀ p ∈ rest, p.1 ≠ p.2 := by
+        intro p hmem
+        exact hne p (by simp [hmem])
+      calc
+        (collisionUnion (pair :: rest)).card ≤
+            (collisionChallenges pair.1 pair.2).card +
+              (collisionUnion rest).card := by
+          simpa [collisionUnion] using
+            Finset.card_union_le
+              (collisionChallenges pair.1 pair.2)
+              (collisionUnion rest)
+        _ ≤ 5 + 5 * rest.length :=
+          Nat.add_le_add (collisionChallenges_card_le pair.1 pair.2 hp)
+            (ih hrest)
+        _ = 5 * (pair :: rest).length := by simp; omega
+
+/-- At a fixed tuple-compression challenge, these are precisely the second
+challenges that zero at least one reciprocal denominator. -/
+noncomputable def badDenominatorZ [DecidableEq K]
+    (tuples : List (Fin 6 → K)) (alpha : K) : Finset K :=
+  (tuples.map fun tuple => tupleHorner tuple alpha).toFinset
+
+theorem badDenominatorZ_card_le [DecidableEq K]
+    (tuples : List (Fin 6 → K)) (alpha : K) :
+    (badDenominatorZ tuples alpha).card ≤ tuples.length := by
+  simpa [badDenominatorZ] using
+    (List.toFinset_card_le
+      (tuples.map fun tuple => tupleHorner tuple alpha))
+
+theorem denominator_zero_iff_mem_badZ [DecidableEq K]
+    (tuples : List (Fin 6 → K)) (alpha z : K) :
+    z ∈ badDenominatorZ tuples alpha ↔
+      ∃ tuple ∈ tuples, combineTerm tuple alpha z = 0 := by
+  simp only [badDenominatorZ, List.mem_toFinset, List.mem_map]
+  constructor
+  · rintro ⟨tuple, hmem, hvalue⟩
+    exact ⟨tuple, hmem,
+      (combineTerm_zero_iff tuple alpha z).mpr hvalue.symm⟩
+  · rintro ⟨tuple, hmem, hzero⟩
+    exact ⟨tuple, hmem,
+      ((combineTerm_zero_iff tuple alpha z).mp hzero).symm⟩
+
 end S31.Gadgets.Air.GateChallenge

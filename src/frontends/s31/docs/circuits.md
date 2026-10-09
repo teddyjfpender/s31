@@ -170,6 +170,13 @@ contributes the semantic LogUp terms:
 - m · (GATE, c, C0, C1, C2, C3)
 ```
 
+The address and multiplicity must each fit canonically in M31. In particular,
+the preprocessed builder rejects a use counter before it reaches
+`p = 2147483647`; otherwise `p` copies of one wire would become a zero
+field numerator and disappear from the lookup check. A Lean lemma proves
+that bounded **modeled** address counters bound every event count; matching
+those modeled counters to every compiler output remains a proof obligation.
+
 The verifier draws random lookup-compression challenges after the base trace
 commitment. Interaction columns turn matching tuples into cancelling field
 fractions. Public-output terms and finalization rows close the relation.

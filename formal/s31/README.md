@@ -228,9 +228,9 @@ example.
 
 These theorems do not prove that Zig emits the modeled rows or that the Gate
 lookup connects row operands and outputs to the compiled circuit. Short-chunk
-emission, preprocessed address/multiplicity construction, lookup/LogUp
-composition, whole-trace AIR, and the STARK verifier remain separate
-obligations.
+emission, preprocessed address/multiplicity construction, correspondence
+to production lookup/LogUp columns, whole-trace AIR, and the STARK verifier
+remain separate obligations.
 
 `GateLookup.addressed_row_sound` adds a conditional address join: if the
 positive input events and multiplicity-weighted output events balance as an
@@ -267,9 +267,88 @@ The six-element Gate tuple is encoded by the same Horner polynomial and
 relation id as Zig. Two distinct canonical Gate events collide for at most
 five of the `2147483647⁴` QM31 choices of `alpha`; fixed `alpha` and tuple
 have exactly one bad `z` that zeros the denominator. This is a pairwise
-challenge bound. Proving that the production sum-of-inverses check implies
-exact multiset balance, and that transcript challenges are sampled after the
-committed events, remains open.
+challenge bound. `collisionUnion_card_le` extends it to a list of distinct
+tuple pairs: at most five bad `alpha` choices per pair. For a fixed `alpha`,
+at most one `z` per tuple zeros a denominator.
+
+`LogUpNumerator` proves the algebraic second half of the lookup reduction.
+For distinct compressed values `a` with net field multiplicities `w(a)`, it
+forms the numerator of `Σ w(a)/(z-a)`. If one weight is nonzero, that
+numerator is nonzero and has degree at most `support size - 1`; thus the
+reciprocal sum can hide the discrepancy for at most that many eligible `z`
+values. `LogUpCount` proves that an unequal pair of compressed event lists
+has a nonzero field weight when **each list length is below M31's modulus**.
+It also proves that its weighted reciprocal sum equals the difference of
+the two actual list sums. The length premise matters: at least `p` copies
+of one event have zero field multiplicity in characteristic `p`.
+`LogUpCount.unequal_lists_have_nonzero_weight_of_counts` proves the sharper
+condition: each individual compressed event occurs fewer than `p` times
+on both sides. The total relation may contain more than `p` events.
+
+`GateLogUpBridge.fixed_gate_multiset_sound` composes the two bounds for
+**fixed canonical Gate event lists**. If the lists differ as multisets and
+each has fewer than `p` events, an exceptional set of at most `5s²`
+`alpha` values can collide distinct tuples, where `s` is the number of
+distinct Gate events. For every other `alpha`, an exceptional set of at
+most `t + (t - 1)` `z` values covers zero denominators and accidental
+reciprocal-sum cancellation, where `t` is the number of distinct compressed
+values. Outside those sets, the two sums of production-order
+`1/(H(tuple) - z)` terms differ. This is the algebraic reduction needed
+by Gate LogUp; it handles repeated events and the characteristic bound.
+`GateLocalCounts.fixed_gate_multiset_sound_of_counts` transfers the sharper
+per-event count premise through collision-free tuple compression, retaining
+the same exceptional-set bounds for arbitrarily large total event lists.
+`GateAddressCounts` proves a practical sufficient condition: if the integer
+use and yield histograms are below `p` at every address, every event count
+is below `p`. The Zig preprocessed builder now rejects a multiplicity as
+soon as an increment would reach `p`, including permutation and private
+SHA boundary uses. A native boundary test checks the `p-1` and `p` cases.
+The exact correspondence between those Zig counters and the modeled
+Gate event lists remains a separate proof obligation.
+
+`LogUpInteraction` models the other side of the reduction. Its single and
+paired residuals use the formulas in the Zig verifier. Given nonzero
+denominators, a vanishing residual fixes the exact reciprocal term or
+pair sum. It models the non-final interaction columns as cumulative sums
+within each row and the last column as a shifted running sum across rows.
+`claimed_sum_of_checked_power_two_interaction` proves that these row
+constraints force the claimed sum to equal the sum of all row fractions
+for any power-of-two row count and any permutation of predecessor rows.
+The proof establishes that the row-count cast is nonzero in QM31. A
+kernel-checked zero-denominator control shows why the nonzero premise is
+essential: a pair constraint can vanish for any running-sum difference
+when both denominators are zero.
+
+`GateContributions` connects the exact Gate event lists to the row terms.
+For each arithmetic row it proves that two input uses contribute two
+positive reciprocals and an output repeated `multiplicity` times contributes
+the negative field multiplicity times its reciprocal. It aggregates those
+terms over all rows and external Gate uses/yields. Consequently,
+`closed_gate_contribution_balanced` proves that a closed reciprocal sum
+forces exact Gate multiset balance under the canonical-address, event-count,
+and good-challenge premises above. This is a conditional composition
+theorem; its closed-sum premise is not yet discharged from the compiled
+interaction columns.
+`closed_gate_contribution_balanced_of_counts` uses the per-event version,
+so the proof has no artificial total-trace-length limit.
+`closed_gate_contribution_balanced_of_address_counts` accepts the modeled
+address histogram bounds directly.
+
+`GateFinal.lean`'s `addressed_row_sound_of_closed_gate` composes this conditional
+closure with `GateLookup.addressed_row_sound`: every addressed row operand
+equals its unique producer value, and the arithmetic AIR fixes the result.
+`addressed_row_sound_of_closed_gate_counts` carries the stronger per-event
+count premise through the same conclusion.
+The honest 5+3=8 fragment closes for every field challenge. The locally
+valid forged 4+3=7 fragment, which falsely reads an address that produced
+5, cannot close for challenges outside the bounded exceptional sets.
+
+The theorem concerns fixed event lists. Proving that the production
+interaction columns and their verifier expressions correspond to the
+Lean model over every row and component, proving the compiler emits the
+modeled events with canonical addresses and bounded per-event counts, and showing
+Fiat–Shamir challenges follow commitments remain open. The core STARK
+verifier's cryptographic soundness is separate.
 
 `Functional/Assertions` adds a separate source contract with any number of
 `assert_eq` pairs. It compiles each side to an output wire and checks the

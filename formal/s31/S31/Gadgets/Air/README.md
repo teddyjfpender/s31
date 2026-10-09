@@ -239,13 +239,129 @@ events `(7, (5,0,0,0))` and `(7, (4,0,0,0))` differ by `α²`, so only
 `α = 0` collides. For fixed `α` and tuple, exactly one `z` makes its
 denominator zero.
 
-This bound concerns one pair of tuple encodings and a uniform `α` after the
-events are fixed. It does not establish transcript challenge independence,
-sum-of-inverses multiset soundness, interaction trace correctness, or the
-whole STARK verification theorem.
+`LogUpNumerator.lean` formalizes the next lookup equation after tuple
+compression. Let the distinct compressed values be `a₁,…,aₛ` and let
+`w(a)` be uses minus yields, counted in QM31. For a verifier challenge `z`
+outside this set, the checked sum is
 
-Exact multiset balance is a **premise** here. Production uses compressed
-LogUp over a random challenge; the pairwise tuple bound above does not prove
-full multiset soundness, trace-to-interaction correctness, or that the compiler
-assigns one producer per address. Addresses and multiplicities are modeled
-as natural numbers after their canonical M31 encoding checks.
+```text
+R(z) = Σₐ w(a)/(z-a).
+```
+
+Multiplying by `D(z) = ∏ₐ(z-a)` gives a polynomial
+
+```text
+N(z) = Σₐ w(a) ∏_{b≠a}(z-b).
+```
+
+At `z=a`, every term but one vanishes and
+`N(a)=w(a)∏_{b≠a}(a-b)`. Distinctness makes the product nonzero, so any
+nonzero weight makes `N` a nonzero polynomial of degree at most `s-1`.
+Consequently, an unbalanced fixed lookup can pass `R(z)=0` at no more
+than `s-1` eligible challenges. The Lean theorems prove each equality,
+the degree bound, and the root count without an assumed polynomial identity.
+
+`LogUpCount.lean` relates those weights to actual event lists. If the two
+lists are unequal as multisets and each has fewer than `p=2147483647`
+elements, some count differs after conversion to QM31. It proves
+`Σₐ w(a)/(z-a)` equals the difference between summing the two lists of
+reciprocals, including repeated events. The explicit length bound prevents
+field-characteristic wraparound: `p` copies of one tuple contribute weight
+zero. `characteristic_wrap_example` is a kernel-checked symbolic control
+for that failure mode; it never materializes a billion-element list.
+The sharper `unequal_lists_have_nonzero_weight_of_counts` only requires
+each distinct compressed event's count to be below `p`. Many different
+events can make the total trace longer than `p` without this wraparound.
+
+`GateLogUpBridge.lean` composes these results for the actual Gate tuple
+layout. Given fixed event lists, it enumerates distinct event pairs and
+maps each to its two six-element tuples. Canonical addresses make the tuple
+map injective. At most `5s²` choices of `alpha` collide one of the pairs,
+where `s` counts distinct events across both lists. For every other
+`alpha`, an unequal pair of event multisets stays unequal after
+compression. If each original list length is below `p`, the weighted
+reciprocal polynomial then bounds the bad `z` choices by `t-1`, where `t`
+counts distinct compressed values. Another `t` choices are excluded because
+they zero a denominator. `fixed_gate_multiset_sound` packages these
+cardinality bounds and proves that all other challenges distinguish the
+two sums using Zig's sign convention `1/(H(tuple)-z)`.
+`GateLocalCounts.lean` transfers each original event count through
+collision-free compression, so
+`fixed_gate_multiset_sound_of_counts` needs no total-length bound. It keeps
+the same `5s²` and `t+(t-1)` exceptional-set bounds.
+`GateAddressCounts.lean` further proves that an individual event cannot
+occur more often than its address occurs in the integer histogram.
+Consequently, per-address histogram bounds below `p` suffice for the
+per-event premise. This is the closest formal condition to the native
+preprocessed builder's checked use counters; the builder now rejects a
+counter increment that would reach `p` rather than allowing field wrap.
+
+This is a theorem about **fixed lists and field challenges**, not the
+production STARK. The remaining obligations are to connect committed Gate
+columns and the interaction AIR to those lists and sums, prove their
+compiler-side address and event-count premises, and justify the transcript's
+challenge distribution after commitments.
+
+`LogUpInteraction.lean` separately models the interaction AIR. For one
+lookup term with numerator `n` and denominator `d`, its residual is
+`Δ·d-n`. For a pair `(n₀,d₀),(n₁,d₁)`, the residual is
+`Δ·d₀·d₁-(n₁·d₀+n₀·d₁)`. If the denominators are nonzero, zero residual
+means `Δ=n/d` or `Δ=n₀/d₀+n₁/d₁` respectively. The theorem covers both
+the odd final singleton and paired terms in `finalizeLogupInPairs`.
+
+Within a row, every non-final secure column adds its term pair to the
+preceding column. The final column also subtracts its previous-row value
+and adds `claimed_sum / n_rows`. Summing this final equation over all
+rows cancels the running column against its predecessor permutation;
+the shift adds back `claimed_sum`. The checked theorem concludes that
+the claimed sum is exactly the total of the row fractions. It proves
+`n_rows=2^log_size` remains nonzero in QM31. A concrete control proves
+the pair residual vanishes for **any** `Δ` when both denominators are
+zero, even with numerators one. Thus the bad-`z` exclusion above is
+necessary.
+
+This interaction theorem is a mathematical model of Zig's formulas and
+column schedule. Its premises still need a machine-checked correspondence
+to the committed columns, the circle-domain predecessor relation, and
+the actual verifier's AIR evaluation on those columns.
+
+`GateContributions.lean` relates the ideal `GateLookup.Row` event lists to
+the production sign and multiplicity convention. A row reading two wires
+and yielding one result `m` times contributes
+
+```text
+1/H(input₀) + 1/H(input₁) - m/H(output).
+```
+
+The proof converts the list of `m` repeated output events into the single
+field numerator `-m`, then sums row and external contributions over an
+arbitrary trace. Under exact closure of this sum, canonical addresses,
+both event-list lengths below `p`, and challenges outside the bounded bad
+sets, `closed_gate_contribution_balanced` recovers the exact multiset
+premise used by `GateLookup.addressed_row_sound`. The compiler's event
+emission and the actual interaction AIR still need correspondence proofs
+to supply that closure premise.
+
+`closed_gate_contribution_balanced_of_counts` replaces the total-length
+condition with an upper bound on each individual event count.
+`closed_gate_contribution_balanced_of_address_counts` consumes integer
+address-histogram bounds directly.
+
+`GateFinal.lean` composes that conditional multiset theorem with the
+arithmetic row theorem. If each addressed input has a unique producer, a
+locally accepted row can only output the operation applied to those
+producer values. `addressed_row_sound_of_closed_gate_counts` handles
+relations with more than `p` total events under per-event count bounds.
+Two concrete controls make the statement testable: the honest row reading
+`5` and `3` from addresses 7 and 8, producing `8` at
+address 9, has a zero Gate contribution for every `alpha,z` in field
+arithmetic; the forged row reading `4` from address 7 cannot close outside
+the explicit bad-challenge sets even though its local equation `4+3=7`
+is valid.
+
+The fixed-list algebraic theorems establish a bounded-error reduction from
+closed Gate reciprocals to exact multiset balance. The address-join theorem
+still needs unique producers, and the reduction still needs correspondence
+between Zig's committed columns, emitted Gate events, verifier equations,
+and the Lean model. The transcript's challenge distribution and the STARK
+verifier's cryptographic soundness are separate obligations.

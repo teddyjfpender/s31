@@ -13,6 +13,14 @@ import S31.Gadgets.Air.SumRows
 import S31.Gadgets.Air.MixRows
 import S31.Gadgets.Air.GateLookup
 import S31.Gadgets.Air.GateChallenge
+import S31.Gadgets.Air.LogUpNumerator
+import S31.Gadgets.Air.LogUpCount
+import S31.Gadgets.Air.GateLogUpBridge
+import S31.Gadgets.Air.GateLocalCounts
+import S31.Gadgets.Air.GateAddressCounts
+import S31.Gadgets.Air.LogUpInteraction
+import S31.Gadgets.Air.GateContributions
+import S31.Gadgets.Air.GateFinal
 import S31.Gadgets.Air.EqRows
 import S31.Gadgets.Bindings
 import S31.Gadgets.BuilderValidity
