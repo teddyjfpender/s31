@@ -58,7 +58,7 @@ premises. Honest-witness evaluation alone is insufficient for soundness.
 | Bitcoin target | One-hot exponent range, byte placement, nonzero byte-sum inverse and high-zero bytes iff a positive target within mainnet's `2^224-1` limit. |
 | Bitcoin division/work | Nontruncated schoolbook product, terminal carry, strict remainder, unique quotient/remainder and the exact block-work formula. |
 | Wires and public bindings | Constant/alias/get/concat/slice identities, assertion residuals, fixed-width segment/padding binding, proof-mode independence; a successful evaluator returns exactly the declared claim **and every declared output equals its computed value**, including kind and width. Changing only a private witness cannot change the claim. |
-| Graph wiring | `Code.WellFormedFor` checks that every gate reads an input or earlier wire, every output index exists, and each primitive has its exact operand count. `strict_code_sound_complete` combines this with arbitrary-witness primitive soundness; an out-of-range gate or missing operand is rejected. |
+| Graph wiring | `Code.WellFormedFor` requires that every gate reads an input or earlier wire, every output index exists, and each primitive has its exact operand count. `Code.check_sound` proves that the executable checker implies this proposition; `strict_code_sound_complete` combines it with arbitrary-witness primitive soundness. |
 
 Range premises are explicit. A modular equation alone cannot imply an integer
 equation: the bridge needs both sides below M31. For the Bitcoin multiplication
@@ -79,9 +79,14 @@ and introduce no axiom.
 indices or missing primitive operands. Use `Code.strictAccepts` when making a
 statement about a valid circuit: its `WellFormedFor` premise rules out these
 fallbacks. The formal package proves the generic rule and small valid/invalid
-schedule examples. It does **not yet certify `WellFormedFor` for every generated
-Poseidon2, SHA-256 or BLAKE2s schedule**; those fixed schedule certificates
-and the correspondence to production AIR emission are additional obligations.
+schedule examples. The CI gate runs `s31-check --schedule-check` over 57
+generated hash profiles: Poseidon2 pair and four leaf sizes, SHA-256
+compression, and BLAKE2s word counts 0–16 with three personalization values.
+It also demands rejection of an invalid wire and a missing operand. Lean proves
+that a `true` checker result implies `WellFormedFor`. The 57 executable results
+are **regression evidence, not kernel-checked proofs that every parameterized
+hash schedule is valid**. Fixed schedule certificates for all parameters and
+the correspondence to production AIR emission remain obligations.
 
 ## Scope of the claim
 
@@ -97,8 +102,7 @@ the public ABI and does not itself imply witness privacy.
 The public binding theorems concern accepted executions under the *same declared*
 public inputs and outputs. They prove agreement for every output, including
 the second output of a two-output example, but do not assert that private
-inputs are hidden,
-or that a circuit is bound to the claim: production AIR correspondence remains
+inputs are hidden or that a circuit is bound to the claim: production AIR correspondence remains
 an explicit separate obligation. Lean also checks one honest private binding,
 a changed private witness, and a forged public output claim.
 
@@ -129,6 +133,9 @@ python3 scripts/s31_formal.py \
   --kernel-log zig-out/s31/formal/kernel.log \
   --parity formal/s31/.lake/build/bin/s31-check \
   --controls --report zig-out/s31/formal/evidence.json
+
+# The same executable can run the schedule gate by itself:
+formal/s31/.lake/build/bin/s31-check --schedule-check
 ```
 
 `leanchecker` replays declarations with Lean's kernel; it is not a separate

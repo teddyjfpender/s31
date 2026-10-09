@@ -79,6 +79,60 @@ def Code.WellFormedFor (code : Code α Op) (arity : Op → Nat)
   code.WellFormed inputCount ∧
     ∀ gate ∈ code.gates, gate.ArityValid arity
 
+/-- Executable certificate checker for a gate schedule. The theorem below
+connects its Boolean result to the logical circuit validity condition. -/
+def Gate.check (arity : Op → Nat) (bound : Nat) : Gate α Op → Bool
+  | .constant _ => true
+  | .apply op args =>
+      decide (args.length = arity op) && args.all (fun index => decide (index < bound))
+
+def gatesCheck (arity : Op → Nat) : Nat → List (Gate α Op) → Bool
+  | _, [] => true
+  | bound, gate :: gates => gate.check arity bound && gatesCheck arity (bound + 1) gates
+
+def Code.check (code : Code α Op) (arity : Op → Nat) (inputCount : Nat) : Bool :=
+  gatesCheck arity inputCount code.gates &&
+    code.outputs.all (fun index => decide (index < inputCount + code.gates.length))
+
+theorem Gate.check_sound (arity : Op → Nat) (bound : Nat) (gate : Gate α Op)
+    (h : gate.check arity bound = true) :
+    gate.ValidAt bound ∧ gate.ArityValid arity := by
+  cases gate with
+  | constant _ => exact ⟨trivial, trivial⟩
+  | apply op args =>
+    simp only [Gate.check, Bool.and_eq_true, decide_eq_true_eq, List.all_eq_true] at h
+    exact ⟨(by simpa only [Gate.ValidAt, decide_eq_true_eq] using h.2),
+      (by simpa only [Gate.ArityValid] using h.1)⟩
+
+theorem gatesCheck_sound (arity : Op → Nat) (bound : Nat)
+    (gates : List (Gate α Op)) (h : gatesCheck arity bound gates = true) :
+    GatesValid bound gates ∧ ∀ gate ∈ gates, gate.ArityValid arity := by
+  induction gates generalizing bound with
+  | nil => exact ⟨.nil bound, by simp⟩
+  | cons gate gates ih =>
+    have hparts : gate.check arity bound = true ∧
+        gatesCheck arity (bound + 1) gates = true := by
+      simpa only [gatesCheck, Bool.and_eq_true] using h
+    obtain ⟨hgate, harity⟩ := gate.check_sound arity bound hparts.1
+    obtain ⟨htail, htailArity⟩ := ih (bound + 1) hparts.2
+    constructor
+    · exact .cons hgate htail
+    · intro item member
+      rcases List.mem_cons.mp member with rfl | hmember
+      · exact harity
+      · exact htailArity item hmember
+
+theorem Code.check_sound (code : Code α Op) (arity : Op → Nat) (inputCount : Nat)
+    (h : code.check arity inputCount = true) :
+    code.WellFormedFor arity inputCount := by
+  have hparts : gatesCheck arity inputCount code.gates = true ∧
+      code.outputs.all (fun index => decide (index < inputCount + code.gates.length)) = true := by
+    simpa only [Code.check, Bool.and_eq_true] using h
+  obtain ⟨hgates, harity⟩ := gatesCheck_sound arity inputCount code.gates hparts.1
+  refine ⟨⟨hgates, ?_⟩, harity⟩
+  intro index member
+  exact of_decide_eq_true ((List.all_eq_true.mp hparts.2) index member)
+
 theorem run_length [Inhabited α] (interpret : Op → List α → α)
     (gates : List (Gate α Op)) (inputs : List α) :
     (run interpret gates inputs).length = inputs.length + gates.length := by
@@ -100,6 +154,9 @@ theorem Code.output_in_run [Inhabited α] (code : Code α Op)
 inductive FieldOp where | add | mul
 deriving DecidableEq, Repr
 
+def fieldArity : FieldOp → Nat
+  | .add | .mul => 2
+
 instance : Inhabited M31 := ⟨RiscvRefinement.M31.zero⟩
 
 def fieldEval (op : FieldOp) (args : List M31) : M31 :=
@@ -114,6 +171,10 @@ inductive WordOp where
   | rotr (amount : Nat)
   | shr (amount : Nat)
 deriving DecidableEq, Repr
+
+def wordArity : WordOp → Nat
+  | .add | .xor | .and => 2
+  | .not | .rotr _ | .shr _ => 1
 
 def wordEval (op : WordOp) (args : List Words.Word) : Words.Word :=
   let a := args.getD 0 0

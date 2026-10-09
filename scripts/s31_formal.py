@@ -10,6 +10,7 @@ import argparse
 import hashlib
 import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -19,7 +20,8 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ENGINE_ROOT))
 from scripts.s31_formal_lib.checks import (
-    FormalError, check_audit, check_coverage, check_kernel_log, inventory, render_coverage,
+    FormalError, check_audit, check_coverage, check_kernel_log, check_schedule_report,
+    inventory, render_coverage,
 )
 from scripts.riscv_refinement import _skip_lean_string, _strip_lean_comments
 from scripts.riscv_refinement_lib.model import RefinementError
@@ -192,6 +194,15 @@ def main() -> None:
         from scripts.s31_formal_lib.parity import run
         evidence["semantic_parity"] = run(args.parity.resolve())
         print("S31 independent semantic parity: " + json.dumps(evidence["semantic_parity"], sort_keys=True))
+        try:
+            schedule = subprocess.run([str(args.parity.resolve()), "--schedule-check"],
+                                      capture_output=True, text=True, timeout=120, check=False)
+        except subprocess.TimeoutExpired as error:
+            raise FormalError("Lean schedule checker timed out") from error
+        if schedule.returncode != 0:
+            raise FormalError("Lean schedule checker failed: " + schedule.stdout + schedule.stderr)
+        evidence["schedule_validity"] = check_schedule_report(schedule.stdout)
+        print("S31 hash schedule validity: 57 profiles and 2 malformed controls")
     if args.controls:
         from scripts.s31_formal_lib.controls import run
         evidence["controls"] = run(ROOT, args.lake)

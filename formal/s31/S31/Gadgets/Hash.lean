@@ -7,13 +7,6 @@ import S31.Semantics.Sha256
 namespace S31.Gadgets.Hash
 open Graph
 
-def fieldArity : FieldOp → Nat
-  | .add | .mul => 2
-
-def wordArity : WordOp → Nat
-  | .add | .xor | .and => 2
-  | .not | .rotr _ | .shr _ => 1
-
 def fieldPrimitive (op : FieldOp) (args : List M31) (y : M31) : Prop :=
   match op with
   | .add => y - (args.getD 0 0 + args.getD 1 0) = 0

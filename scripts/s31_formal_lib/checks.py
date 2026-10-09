@@ -186,3 +186,20 @@ def check_kernel_log(output: str, files: dict[str, str]) -> dict:
     if any(marker in output for marker in ("error", "exception", "found a problem")):
         raise FormalError("kernel replay reported a failure")
     return {"replayed_modules": len(actual)}
+
+
+def check_schedule_report(output: str) -> dict:
+    """Require every supported hash schedule and both malformed controls."""
+    expected_profiles = ["poseidon_pair", *(f"poseidon_leaf_{n}" for n in (4, 8, 12, 16)),
+                         "sha256_compression",
+                         *(f"blake2s_{n}_{kind}" for n in range(17)
+                           for kind in ("plain", "leaf", "pair"))]
+    try:
+        report = json.loads(output)
+    except json.JSONDecodeError as error:
+        raise FormalError("invalid Lean schedule report") from error
+    expected = {"all_valid": True, "checked": len(expected_profiles), "failed": [],
+                "malformed_rejected": 2, "profiles": expected_profiles}
+    if report != expected:
+        raise FormalError("Lean schedule validity report differs from the required profiles")
+    return report

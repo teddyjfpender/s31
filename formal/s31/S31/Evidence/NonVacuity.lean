@@ -90,23 +90,25 @@ theorem forged_field_hash_gate :
 theorem one_add_wires_valid :
     Graph.Code.WellFormedFor
       (⟨[.apply .add [0, 1]], [2]⟩ : Graph.Code M31 Graph.FieldOp)
-      Hash.fieldArity 2 := by
-  constructor
-  · constructor
-    · exact .cons (by simp [Graph.Gate.ValidAt]) (.nil 3)
-    · simp
-  · intro gate hgate
-    simp only [List.mem_singleton] at hgate
-    subst gate
-    rfl
+      Graph.fieldArity 2 := by
+  apply Graph.Code.check_sound
+  decide
+
+theorem forward_wire_check_rejects :
+    (⟨[.apply .add [0, 7]], [1]⟩ : Graph.Code M31 Graph.FieldOp).check
+      Graph.fieldArity 1 = false := by decide
+
+theorem missing_operand_check_rejects :
+    (⟨[.apply .add [0]], [1]⟩ : Graph.Code M31 Graph.FieldOp).check
+      Graph.fieldArity 1 = false := by decide
 
 theorem missing_add_operand_rejected :
     ¬Graph.Code.WellFormedFor
       (⟨[.apply .add [0]], [1]⟩ : Graph.Code M31 Graph.FieldOp)
-      Hash.fieldArity 1 := by
+      Graph.fieldArity 1 := by
   intro h
   have hgate := h.2 (Graph.Gate.apply Graph.FieldOp.add [0]) (by simp)
-  simp [Graph.Gate.ArityValid, Hash.fieldArity] at hgate
+  simp [Graph.Gate.ArityValid, Graph.fieldArity] at hgate
 
 /-- The old fallback interpreter can evaluate this schedule, but strict
 acceptance rejects its out-of-range operand at wire 7. -/

@@ -110,6 +110,20 @@ class FormalGateTests(unittest.TestCase):
             with self.subTest(bad=bad), self.assertRaises(checks.FormalError):
                 checks.check_kernel_log(bad, files)
 
+    def test_schedule_report_is_fail_closed(self) -> None:
+        valid = {"all_valid": True, "checked": 57, "failed": [],
+                 "malformed_rejected": 2,
+                 "profiles": ["poseidon_pair", *(f"poseidon_leaf_{n}" for n in (4, 8, 12, 16)),
+                              "sha256_compression",
+                              *(f"blake2s_{n}_{kind}" for n in range(17)
+                                for kind in ("plain", "leaf", "pair"))]}
+        self.assertEqual(checks.check_schedule_report(json.dumps(valid)), valid)
+        for mutation in ("bad JSON", json.dumps({**valid, "all_valid": False}),
+                         json.dumps({**valid, "malformed_rejected": 1}),
+                         json.dumps({**valid, "profiles": valid["profiles"][:-1]})):
+            with self.subTest(mutation=mutation), self.assertRaises(checks.FormalError):
+                checks.check_schedule_report(mutation)
+
     def test_deleted_or_symlinked_source_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

@@ -48,6 +48,11 @@ non-vacuity witnesses, invalid-boundary cases and mutation controls.
 Use semantic parity cases against the existing independent Python oracle,
 covering all operations and each checked arithmetic failure. Parity tests
 are regression evidence, not a compiler-correctness theorem.
+Prove that an executable schedule checker implies well-formed gate indices,
+output indices and primitive arities. Run it on every supported fixed hash
+profile in CI, with malformed-circuit rejection controls. Keep executable
+profile checks separate from kernel-checked certificates for an entire
+parameterized schedule family.
 
 Keep generated constants/fixtures identifiable with a deterministic generator;
 keep caches, Lean binaries and raw build logs outside tracked sources.
