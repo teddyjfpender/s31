@@ -34,6 +34,7 @@
         "S31.Gadgets.Air.Qm31Ops.row_iff_normalized_node",
         "S31.Gadgets.Air.SimdChunks.partial_row_iff_normalized_node",
         "S31.Gadgets.Air.FunctionalBridge.array_graph_iff_air_row",
+        "S31.Gadgets.Air.GateLookup.addressed_row_sound",
         "S31.Gadgets.Sequence.pointwise_sound_complete",
         "S31.Functional.arrayCode_accepts"
       ],
@@ -51,6 +52,7 @@
         "S31.Gadgets.Air.Qm31Ops.row_iff_normalized_node",
         "S31.Gadgets.Air.SimdChunks.partial_row_iff_normalized_node",
         "S31.Gadgets.Air.FunctionalBridge.array_graph_iff_air_row",
+        "S31.Gadgets.Air.GateLookup.addressed_row_sound",
         "S31.Gadgets.Sequence.pointwise_sound_complete",
         "S31.Functional.arrayCode_accepts"
       ],

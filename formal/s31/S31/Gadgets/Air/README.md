@@ -40,3 +40,20 @@ The preprocessed gate addresses and multiplicities, the Gate lookup relation,
 trace-wide consistency, and the STARK verifier are outside this local row
 theorem. See the [formal proof scope](../../../README.md) for the remaining
 compiler and proof-system obligations.
+
+`GateLookup.lean` adds an **ideal exact-multiset** model of the Gate relation.
+Each arithmetic row uses `(address, packed value)` for its two inputs and
+yields its output tuple with the preprocessed multiplicity. Other circuit
+components and public claims contribute external events. Given exact balance
+and a unique produced value per address, `addressed_row_sound` proves that
+the row operands must equal the values produced at those addresses, then uses
+the nine AIR equations to determine the output. `forged_input_rejected`
+proves a differing input trace cannot balance the relation. For example, a
+row that locally checks `5 + 3 = 8` cannot claim its first operand came from
+address 7 when address 7 produced 4.
+
+Exact multiset balance is a **premise** here. Production uses compressed
+LogUp over a random challenge; this module does not bound collision
+probability, prove trace-to-interaction correctness, or prove the compiler
+assigns one producer per address. Addresses and multiplicities are modeled
+as natural numbers after their canonical M31 encoding checks.

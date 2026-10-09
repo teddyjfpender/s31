@@ -44,6 +44,8 @@ BINDINGS = [
     "src/frontends/circuit/builder/context.zig",
     "src/frontends/circuit/air_eval/manual/circuit.zig",
     "src/frontends/circuit/common/direct_arithmetic.zig",
+    "src/frontends/circuit/common/preprocessed.zig",
+    "src/frontends/circuit/witness/components.zig",
     "src/core/fields/m31.zig",
     "src/core/fields/cm31.zig",
     "src/core/fields/qm31.zig",

@@ -52,6 +52,10 @@ expressions up to four lanes, including a short final chunk with arbitrary
 unused input-lane values; it equates strict graph acceptance with existence
 of a packed AIR row witness carrying the same active result for the final
 arithmetic operation. AIR rows for operand subexpressions are separate.
+An abstract Gate relation model now proves that exact multiset balance plus
+unique produced values per address forces row operands to equal their
+preprocessed-address producers. The production compressed LogUp argument is
+still an explicit assumption, not a theorem of this package.
 
 ## Evidence and hygiene
 

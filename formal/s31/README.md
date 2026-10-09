@@ -185,6 +185,16 @@ emission, preprocessed address/multiplicity construction, lookup/LogUp
 composition, whole-trace AIR, and the STARK verifier remain separate
 obligations.
 
+`GateLookup.addressed_row_sound` adds a conditional address join: if the
+positive input events and multiplicity-weighted output events balance as an
+**exact multiset**, and every address has one produced value, each row's
+operands equal the values produced at its preprocessed addresses. The local
+AIR theorem then fixes the row output. `forged_input_rejected` rules out a
+row that computes correctly from an input value different from its claimed
+producer. The exact-multiset premise is stronger than the production LogUp
+check; its probabilistic reduction, interaction trace, compiler producer
+uniqueness, and public boundary are not proved here.
+
 `Functional/Assertions` adds a separate source contract with any number of
 `assert_eq` pairs. It compiles each side to an output wire and checks the
 paired values for equality. `Contract.accepts_iff` proves that strict graph
