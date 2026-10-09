@@ -28,6 +28,7 @@ theorem does not establish zero knowledge.
 | `S31/Gadgets/FunctionalGraph` | Executable polynomial-to-graph lowering and strict circuit soundness for every core field program. |
 | `S31/Gadgets/FunctionalOutputs` | One graph for multiple functional results; every output wire and claimed value is bound, including an aliased second output. |
 | `S31/Gadgets/FunctionalArrays` | Shape-indexed arrays specialize pointwise, then enter one strict field graph that binds every output lane. |
+| `S31/Gadgets/FunctionalArrayNodes` | Typed array concat, indexed read, take and drop views agree with executable normalized relation nodes, including slice bounds and lane order. |
 | `S31/Gadgets/FunctionalAssertions` | Source-level `assert_eq` pairs checked against separately witnessed graph outputs, with universal contract soundness and completeness. |
 | `S31/Gadgets/FunctionalConditional` | Both total source branches in one graph, a bit-constrained selection relation, and soundness/completeness for either choice. |
 | `S31/Gadgets/FunctionalArrayConditional` | One graph contains the selector and both fixed-length array branches; a shared bit and pointwise select equations bind every output lane and agree with a concrete normalized `select` node. |
@@ -133,6 +134,18 @@ prehash array view in the production example: `[a,b,c,d]` becomes
 `[c+7,d+7,a+7,b+7]`. These are scalar gate models of source semantics;
 production SIMD packing and AIR geometry are checked separately. Hashes and
 the Python implementation are not covered by this theorem.
+
+`FunctionalArrayNodes` takes the next step from the abstract graph to actual
+normalized relation nodes. It proves `array_concat`, `array_get`, and
+`array_slice` evaluate to the same values as the typed source views. For
+`take<k>`, the slice starts at zero; for `drop<k>`, it starts at `k` and keeps
+`N-k` lanes. Each theorem includes the normalized node's shape and bounds
+checks. `rotateFourView_code_shape` proves that
+`concat(drop<2>(x), take<2>(x))` emits **zero arithmetic gates** in the formal
+field graph and exposes input wires `[2,3,0,1]`; its strict acceptance theorem
+binds the four output lanes to `[c,d,a,b]` for input `[a,b,c,d]`. These proofs
+do not establish that Python emits the matching nodes or that Zig performs
+the same wiring without extra AIR rows.
 
 `FunctionalAssertions` adds a separate source contract with any number of
 `assert_eq` pairs. It compiles each side to an output wire and checks the
