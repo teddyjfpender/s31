@@ -30,7 +30,7 @@ theorem does not establish zero knowledge.
 | `S31/Gadgets/FunctionalArrays` | Shape-indexed arrays specialize pointwise, then enter one strict field graph that binds every output lane. |
 | `S31/Gadgets/FunctionalAssertions` | Source-level `assert_eq` pairs checked against separately witnessed graph outputs, with universal contract soundness and completeness. |
 | `S31/Gadgets/FunctionalConditional` | Both total source branches in one graph, a bit-constrained selection relation, and soundness/completeness for either choice. |
-| `S31/Gadgets/FunctionalArrayConditional` | One graph contains the selector and both fixed-length array branches; a shared bit and pointwise select equations bind every output lane. |
+| `S31/Gadgets/FunctionalArrayConditional` | One graph contains the selector and both fixed-length array branches; a shared bit and pointwise select equations bind every output lane and agree with a concrete normalized `select` node. |
 | `S31/Gadgets/FunctionalEffects` | A computable conservative effect check for a small partial field language, proof that total branches agree under eager and lazy conditional evaluation, and an inactive inverse counterexample. |
 | `S31/Gadgets/U16Selection` | Pointwise bit-constrained selection of u16-backed vectors, including proof that selected limbs inherit the input range bound. |
 | `S31/Evidence/` | Checked operation coverage, non-vacuity/invalid-boundary theorems and live axiom enumeration. |
@@ -174,10 +174,14 @@ its converse supplies honest witnesses. `chooseOrSeven_accepts` instantiates
 the theorem with a two-word input `[bit, value]`: both output lanes must be
 seven when `bit=0`, or `value` when `bit=1`. As with scalar conditionals, the
 production compiler and AIR correspondence remain separate obligations.
-`array_if_accepts_iff_normalized` additionally matches the normalized
-relation evaluator's canonical `selector ≤ 1` check and its exact false/true
-operand order in a separate mathematical predicate. A theorem about the full
-`evaluateNode` function and the emitted AIR constraints is still needed.
+`array_select_iff_evaluateNode` proves the pointwise selector predicate is
+equivalent to the executable normalized `evaluateNode` result for a concrete
+`select` node with equally shaped M31-array operands. It covers both the
+canonical `selector ≤ 1` check and the exact false/true operand order;
+selectors outside the bit range are rejected. `array_if_accepts_iff_evaluateNode`
+composes that result with source specialization and the strict graph theorem.
+It does not prove that Python emits that normalized node or that Zig emits its
+modeled AIR constraints.
 
 `FunctionalEffects` makes the totality premise concrete in a smaller
 expression language with checked inversion. Its computable `isTotal` check

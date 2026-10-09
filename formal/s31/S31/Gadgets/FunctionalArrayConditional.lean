@@ -1,5 +1,6 @@
 import S31.Gadgets.FunctionalArrays
 import S31.Gadgets.FunctionalConditional
+import S31.Semantics.Node
 
 /-!
 An eager, array-valued conditional in the total functional core. The selector
@@ -102,6 +103,97 @@ theorem array_select_iff_normalized {m : Nat} (selector : M31)
       have hs : selector = 1 := RiscvRefinement.M31.ext (by simpa using hone)
       exact ⟨hs, by simpa [normalizedArraySelect, hone] using houtput⟩
 
+/-- A concrete normalized-IR select node and its three already validated
+operands. This names false, true and selector separately so their order is
+visible in the evaluator statement. -/
+def normalizedSelectNode : Node :=
+  { name := "out", op := .select, lhs := some "false_arm",
+    rhs := some "true_arm", selector := some "selector" }
+
+def normalizedSelectEnv {m : Nat} (selector : M31)
+    (onFalse onTrue : Fin m → M31) : S31.Env :=
+  [("false_arm", ⟨.m31, List.ofFn onFalse⟩),
+   ("true_arm", ⟨.m31, List.ofFn onTrue⟩),
+   ("selector", ⟨.m31, [selector]⟩)]
+
+theorem normalizedSelectNode_shape {m : Nat} (selector : M31)
+    (onFalse onTrue : Fin m → M31) :
+    inferNode ((normalizedSelectEnv selector onFalse onTrue).map
+      (fun (name, value) => (name, value.shape))) normalizedSelectNode =
+      .ok ⟨.m31, m⟩ := by
+  have hshape : ((⟨.m31, m⟩ : Shape) == ⟨.m31, m⟩) = true := by
+    change ((Kind.m31 == Kind.m31) && (m == m)) = true
+    simp [show (Kind.m31 == Kind.m31) = true by rfl]
+  have hkind : (Kind.m31 == Kind.m31) = true := by rfl
+  simp [normalizedSelectNode, normalizedSelectEnv, inferNode,
+    Node.metadataValid, Node.fields, shapeOperand, expectShape,
+    lookup, Value.shape, need, require, Except.map, Bind.bind, Except.bind,
+    hshape, hkind]
+  rfl
+
+theorem normalizedSelectNode_eval {m : Nat} (selector : M31)
+    (onFalse onTrue : Fin m → M31) (hbit : selector.val ≤ 1) :
+    evaluateNode (normalizedSelectEnv selector onFalse onTrue)
+      normalizedSelectNode =
+      .ok ⟨.m31, List.ofFn
+        (if selector.val == 0 then onFalse else onTrue)⟩ := by
+  unfold evaluateNode
+  rw [normalizedSelectNode_shape selector onFalse onTrue]
+  have hshape : ((⟨.m31, m⟩ : Shape) == ⟨.m31, m⟩) = true := by
+    change ((Kind.m31 == Kind.m31) && (m == m)) = true
+    simp [show (Kind.m31 == Kind.m31) = true by rfl]
+  by_cases hzero : selector.val = 0
+  · simp [normalizedSelectNode, normalizedSelectEnv, valueOperand, lookup,
+      require, hzero, Value.shape, Value.valid, Bind.bind, Except.bind]
+    have hpure : (pure (List.ofFn onFalse) : Result (List M31)) =
+        .ok (List.ofFn onFalse) := rfl
+    rw [hpure]
+    simp [hshape]
+    rfl
+  · simp [normalizedSelectNode, normalizedSelectEnv, valueOperand, lookup,
+      require, hzero, Value.shape, Value.valid, Bind.bind, Except.bind]
+    have hpure : (pure (List.ofFn onTrue) : Result (List M31)) =
+        .ok (List.ofFn onTrue) := rfl
+    rw [hpure]
+    simp [hbit, hshape]
+    rfl
+
+theorem normalizedSelectNode_rejects_invalid {m : Nat} (selector : M31)
+    (onFalse onTrue : Fin m → M31) (hbit : ¬ selector.val ≤ 1) :
+    evaluateNode (normalizedSelectEnv selector onFalse onTrue)
+      normalizedSelectNode = .error .invalidValue := by
+  unfold evaluateNode
+  rw [normalizedSelectNode_shape selector onFalse onTrue]
+  simp [normalizedSelectNode, normalizedSelectEnv, valueOperand, lookup,
+    require, hbit, Bind.bind, Except.bind]
+
+/-- The actual normalized relation evaluator accepts exactly the pointwise
+selection constraint for these M31-array operands, including rejection of a
+selector outside `{0,1}`. -/
+theorem array_select_iff_evaluateNode {m : Nat} (selector : M31)
+    (onFalse onTrue output : Fin m → M31) :
+    arraySelect selector onFalse onTrue output ↔
+      evaluateNode (normalizedSelectEnv selector onFalse onTrue)
+        normalizedSelectNode = .ok ⟨.m31, List.ofFn output⟩ := by
+  constructor
+  · intro accepted
+    obtain ⟨hbit, hout⟩ :=
+      (array_select_iff_normalized selector onFalse onTrue output).mp accepted
+    rw [normalizedSelectNode_eval selector onFalse onTrue hbit]
+    simp [hout]
+  · intro accepted
+    by_cases hbit : selector.val ≤ 1
+    · rw [normalizedSelectNode_eval selector onFalse onTrue hbit] at accepted
+      have hwords : List.ofFn (if selector.val == 0 then onFalse else onTrue) =
+          List.ofFn output := congrArg Value.words (Except.ok.inj accepted)
+      have hout : output = if selector.val == 0 then onFalse else onTrue :=
+        ((List.ofFn_inj).mp hwords).symm
+      exact (array_select_iff_normalized selector onFalse onTrue output).mpr
+        ⟨hbit, hout⟩
+    · rw [normalizedSelectNode_rejects_invalid selector onFalse onTrue hbit]
+        at accepted
+      cases accepted
+
 def arrayIfTerm {n m : Nat}
     (selector : Expr [.array n] .field)
     (onTrue onFalse : Expr [.array n] (.array m)) :
@@ -179,6 +271,29 @@ theorem array_if_accepts_iff_normalized {n m : Nat}
       (denote onTrue env) output).symm).trans
       (array_select_iff_normalized (denote selector env)
         (denote onFalse env) (denote onTrue env) output))
+
+/-- The source conditional's one-graph constraint model agrees with the
+executable normalized `select` node on the denoted operands, for every input
+assignment and every candidate output. -/
+theorem array_if_accepts_iff_evaluateNode {n m : Nat}
+    (selector : Expr [.array n] .field)
+    (onTrue onFalse : Expr [.array n] (.array m))
+    (inputs : List M31) (output : Fin m → M31)
+    (hinputs : inputs.length = n) :
+    ArrayIfAccepts selector onTrue onFalse inputs output ↔
+      evaluateNode
+        (normalizedSelectEnv
+          (denote selector (arrayInputSource (fun i => inputs.getD i.val 0)))
+          (denote onFalse (arrayInputSource (fun i => inputs.getD i.val 0)))
+          (denote onTrue (arrayInputSource (fun i => inputs.getD i.val 0))))
+        normalizedSelectNode = .ok ⟨.m31, List.ofFn output⟩ := by
+  let env := arrayInputSource (n := n) (fun i => inputs.getD i.val 0)
+  exact (array_if_accepts_iff_normalized selector onTrue onFalse
+    inputs output hinputs).trans
+      ((array_select_iff_normalized (denote selector env)
+        (denote onFalse env) (denote onTrue env) output).symm.trans
+        (array_select_iff_evaluateNode (denote selector env)
+          (denote onFalse env) (denote onTrue env) output))
 
 /-- A two-lane worked example. The first input is the selector; the second
 is copied to both output lanes when selected, otherwise both lanes are seven. -/
