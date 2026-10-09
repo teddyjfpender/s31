@@ -137,7 +137,10 @@
         "S31.Functional.u16_vector_select_iff",
         "S31.Functional.u16_vector_select_bounded",
         "S31.Functional.u16_wire_vector_select_iff",
-        "S31.Functional.u16_wire_vector_select_bounded"
+        "S31.Functional.u16_wire_vector_select_bounded",
+        "S31.Functional.u16_value_valid_iff",
+        "S31.Functional.u16_wire_vector_value_valid",
+        "S31.Functional.u16_wire_vector_matches_source"
       ],
       "source": {
         "path": "src/frontends/s31/language/relation_compiler.zig",

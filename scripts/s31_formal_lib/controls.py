@@ -48,6 +48,9 @@ SOURCE_MUTATIONS = (
     ("u16_selector_complement", "S31/Gadgets/U16Selection.lean",
      "complement + Field.toZMod selector = 1 ∧",
      "complement + Field.toZMod selector = 0 ∧"),
+    ("u16_value_kind", "S31/Gadgets/U16Selection.lean",
+     "⟨.u16, List.ofFn words⟩",
+     "⟨.m31, List.ofFn words⟩"),
 )
 
 

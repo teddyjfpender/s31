@@ -181,6 +181,11 @@ For one limb with false input 7 and true input 9, the witnessed equations are
 | 1 | 0 | 0 | 9 | 9 |
 
 The separate Boolean equation `s² = s` rules out every other field value.
+`u16_value_valid_iff` derives the range premises from normalized relation
+values, and `u16_wire_vector_matches_source` proves that the selected value
+uses the same canonical zero test and arm order as relation IR's `select`
+evaluator. This still does not prove that the Zig compiler emits the modeled
+constraints or that the Stwo AIR enforces every builder operation.
 
 Soundness quantifies over every satisfying auxiliary witness. Completeness
 constructs witnesses for every input within the stated range and shape

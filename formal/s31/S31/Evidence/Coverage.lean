@@ -2,10 +2,13 @@
 import S31.Gadgets
 
 #check S31.Field.inverse_sound_complete
+#check S31.Functional.u16_value_valid_iff
 #check S31.Functional.u16_vector_select_bounded
 #check S31.Functional.u16_vector_select_iff
+#check S31.Functional.u16_wire_vector_matches_source
 #check S31.Functional.u16_wire_vector_select_bounded
 #check S31.Functional.u16_wire_vector_select_iff
+#check S31.Functional.u16_wire_vector_value_valid
 #check S31.Gadgets.Arithmetic.comparison_sound_complete
 #check S31.Gadgets.Arithmetic.signed_add_sound_complete
 #check S31.Gadgets.Arithmetic.signed_sub_sound_complete
@@ -97,7 +100,7 @@ def operationCoverage : List (Op × List String) := [
   (.hash_blake2s, ["S31.Gadgets.HashEncoding.blake_hash_sound_complete", "S31.Gadgets.Word.primitive_sound_complete", "S31.Gadgets.Packing.digest_reduction_sound_complete"]),
   (.hash_blake2s_leaf, ["S31.Gadgets.HashEncoding.blake_hash_sound_complete", "S31.Gadgets.Word.primitive_sound_complete", "S31.Gadgets.Packing.digest_reduction_sound_complete"]),
   (.hash_blake2s_pair, ["S31.Gadgets.HashEncoding.blake_hash_sound_complete", "S31.Gadgets.Bindings.array_concat_wires"]),
-  (.select, ["S31.Gadgets.bit_sound_complete", "S31.Gadgets.select_sound_complete", "S31.Gadgets.Sequence.pointwise_sound_complete", "S31.Functional.u16_vector_select_iff", "S31.Functional.u16_vector_select_bounded", "S31.Functional.u16_wire_vector_select_iff", "S31.Functional.u16_wire_vector_select_bounded"]),
+  (.select, ["S31.Gadgets.bit_sound_complete", "S31.Gadgets.select_sound_complete", "S31.Gadgets.Sequence.pointwise_sound_complete", "S31.Functional.u16_vector_select_iff", "S31.Functional.u16_vector_select_bounded", "S31.Functional.u16_wire_vector_select_iff", "S31.Functional.u16_wire_vector_select_bounded", "S31.Functional.u16_value_valid_iff", "S31.Functional.u16_wire_vector_value_valid", "S31.Functional.u16_wire_vector_matches_source"]),
   (.hash_poseidon2_leaf, ["S31.Gadgets.Hash.poseidon_leaf_sound_complete", "S31.Gadgets.Hash.sbox_sound_complete"]),
   (.hash_poseidon2_pair, ["S31.Gadgets.Hash.poseidon_pair_sound_complete", "S31.Gadgets.Hash.sbox_sound_complete"]),
   (.sum_lanes, ["S31.Gadgets.Sequence.sum_sound_complete", "S31.Gadgets.Packed.mask_active_lanes", "S31.Gadgets.Packed.sum_projection", "S31.Gadgets.Packed.dual_literal"]),

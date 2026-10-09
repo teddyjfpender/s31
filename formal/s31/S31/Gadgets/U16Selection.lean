@@ -129,4 +129,46 @@ theorem u16_wire_vector_select_bounded {n : Nat} (selector : M31)
   u16_vector_select_bounded selector onFalse onTrue output hfalse htrue
     ((u16_wire_vector_select_iff selector onFalse onTrue output).mp accepted)
 
+/-! Relate the gadget premises to the normalized source value model. A u16
+value in relation IR is a list of canonical limbs; `Value.valid` checks each
+limb. The source evaluator chooses the false arm exactly when the selector's
+canonical value is zero. -/
+
+def U16Value {n : Nat} (words : Fin n → M31) : Value :=
+  ⟨.u16, List.ofFn words⟩
+
+theorem u16_value_valid_iff {n : Nat} (words : Fin n → M31) :
+    (U16Value words).valid = true ↔ ∀ i, (words i).val < 65536 := by
+  simp [U16Value, Value.valid, List.all_eq_true, List.mem_ofFn]
+
+/-- The range premises of the witness theorem follow from the relation IR's
+own validation predicate; the selected output also satisfies it. -/
+theorem u16_wire_vector_value_valid {n : Nat} (selector : M31)
+    (onFalse onTrue output : Fin n → M31)
+    (hfalse : (U16Value onFalse).valid = true)
+    (htrue : (U16Value onTrue).valid = true)
+    (accepted : U16WireVectorSelect selector onFalse onTrue output) :
+    (U16Value output).valid = true := by
+  apply (u16_value_valid_iff output).mpr
+  exact u16_wire_vector_select_bounded selector onFalse onTrue output
+    ((u16_value_valid_iff onFalse).mp hfalse)
+    ((u16_value_valid_iff onTrue).mp htrue) accepted
+
+/-- This uses the same canonical zero test and arm order as `evaluateNode`'s
+normalized `select` case, for every satisfying intermediate witness. -/
+theorem u16_wire_vector_matches_source {n : Nat} (selector : M31)
+    (onFalse onTrue output : Fin n → M31)
+    (accepted : U16WireVectorSelect selector onFalse onTrue output) :
+    U16Value output =
+      if selector.val == 0 then U16Value onFalse else U16Value onTrue := by
+  rcases (u16_vector_select_iff selector onFalse onTrue output).mp
+    ((u16_wire_vector_select_iff selector onFalse onTrue output).mp accepted) with
+    ⟨hzero, hout⟩ | ⟨hone, hout⟩
+  · subst selector
+    subst output
+    rfl
+  · subst selector
+    subst output
+    rfl
+
 end S31.Functional
