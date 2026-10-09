@@ -28,7 +28,8 @@ CONTROLS = frozenset("S31.Evidence." + name for name in (
     "honest_division", "wrong_quotient_rejected", "oversized_remainder_rejected",
     "high_product_not_truncated", "terminal_carry_is_necessary", "invalid_exponent_rejected",
     "honest_exponent", "digest_last_word", "honest_field_hash_gate", "forged_field_hash_gate",
-    "padding_requires_widths",
+    "padding_requires_widths", "private_binding_honest", "private_binding_forged_witness",
+    "private_binding_forged_output",
 ))
 
 

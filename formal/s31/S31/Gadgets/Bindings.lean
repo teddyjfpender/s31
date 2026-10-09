@@ -69,4 +69,60 @@ theorem proof_mode_environment (p : Program) (mode : ProofMode) (a : Assignment)
 theorem proof_mode_semantics (p : Program) (mode : ProofMode) (a : Assignment) :
     {p with proofMode := mode}.evaluate a = p.evaluate a := rfl
 
+/-- A private witness cannot change the eight-word public statement assembled
+from the declared public inputs and outputs. -/
+theorem claims_private_independent (p : Program) (a : Assignment) (privateValues : RawValues) :
+    p.claimedWords {a with privateInputs := privateValues} = p.claimedWords a := rfl
+
+/-- Changing the claimed outputs cannot change execution or its assertions. -/
+theorem environment_claims_independent (p : Program) (a : Assignment) (outputs : RawValues) :
+    p.environment {a with publicOutputs := outputs} = p.environment a := rfl
+
+/-- A successful evaluation returns precisely the statement checked by the
+assignment parser. The output comparison may reject a claim, but cannot
+replace it with another value. -/
+theorem evaluate_ok_claimed (p : Program) (a : Assignment) (words : List M31)
+    (h : p.evaluate a = .ok words) : p.claimedWords a = .ok words := by
+  cases henv : p.environment a with
+  | error e =>
+    simp only [Program.evaluate, henv] at h
+    change Except.bind (Except.error e : Result Env) _ = .ok words at h
+    simp [Except.bind] at h
+  | ok env =>
+    cases hc : p.claimedWords a with
+    | error e =>
+      simp only [Program.evaluate, henv, hc] at h
+      change Except.bind (Except.ok env : Result Env) _ = .ok words at h
+      simp [Except.bind] at h
+      change Except.bind (Except.error e : Result (List M31)) _ = .ok words at h
+      simp [Except.bind] at h
+    | ok claimed =>
+      cases ho : p.outputsAgree a env with
+      | error e =>
+        simp only [Program.evaluate, henv, hc] at h
+        change Except.bind (Except.ok env : Result Env) _ = .ok words at h
+        simp [Except.bind] at h
+        change Except.bind (Except.ok claimed : Result (List M31)) _ = .ok words at h
+        simp [Except.bind, ho] at h
+      | ok u =>
+        simp only [Program.evaluate, henv, hc] at h
+        change Except.bind (Except.ok env : Result Env) _ = .ok words at h
+        simp [Except.bind] at h
+        change Except.bind (Except.ok claimed : Result (List M31)) _ = .ok words at h
+        simp [Except.bind, ho] at h
+        simp [h]
+
+/-- Two accepted private witnesses for the same public assignment have the
+same public statement, even if they compute through different environments. -/
+theorem successful_private_assignments_same_claim (p : Program) (a : Assignment)
+    (privateValues : RawValues) (left right : List M31)
+    (hl : p.evaluate a = .ok left)
+    (hr : p.evaluate {a with privateInputs := privateValues} = .ok right) :
+    left = right := by
+  have hlc := evaluate_ok_claimed p a left hl
+  have hrc := evaluate_ok_claimed p {a with privateInputs := privateValues} right hr
+  rw [claims_private_independent] at hrc
+  rw [hlc] at hrc
+  exact Except.ok.inj hrc
+
 end S31.Gadgets.Bindings

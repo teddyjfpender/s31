@@ -35,7 +35,9 @@ transitive dependencies. Generated hash constants come directly from the
 repository's Poseidon2, SHA-256, BLAKE2s and genesis assets. S31 uses the
 existing canonical M31 implementation rather than copying field arithmetic;
 `Gadgets/Field` proves its bridge to `ZMod 2147483647` and kernel-checks
-primality.
+primality with Mathlib's Lucas–Lehmer certificate for `2^31-1`. The generic
+`norm_num` primality proof for a 31-bit number can exceed the kernel's
+recursion limit on some hosts.
 
 ## Proven local obligations
 
@@ -55,7 +57,7 @@ premises. Honest-witness evaluation alone is insufficient for soundness.
 | Hashes | Arbitrary intermediate gate witnesses iff the full Poseidon2 leaf/pair, personalized terminal BLAKE2s and header double SHA-256 results, including packing and digest reduction. |
 | Bitcoin target | One-hot exponent range, byte placement, nonzero byte-sum inverse and high-zero bytes iff a positive target within mainnet's `2^224-1` limit. |
 | Bitcoin division/work | Nontruncated schoolbook product, terminal carry, strict remainder, unique quotient/remainder and the exact block-work formula. |
-| Wires and public bindings | Constant/alias/get/concat/slice identities, assertion residuals, fixed-width segment/padding binding, proof-mode independence. |
+| Wires and public bindings | Constant/alias/get/concat/slice identities, assertion residuals, fixed-width segment/padding binding, proof-mode independence; a successful evaluator returns exactly the declared claim, and changing only a private witness cannot change that claim. |
 
 Range premises are explicit. A modular equation alone cannot imply an integer
 equation: the bridge needs both sides below M31. For the Bitcoin multiplication
@@ -83,6 +85,11 @@ AIR correspondence, lookup/LogUp composition over arbitrary traces, Zig
 machine code, STARK soundness and zero knowledge remain separate obligations.
 The typed model constrains private values mathematically; visibility affects
 the public ABI and does not itself imply witness privacy.
+The new claim theorem concerns accepted executions under the *same declared*
+public inputs and outputs. It does not assert that private inputs are hidden,
+or that a circuit is bound to the claim: production AIR correspondence remains
+an explicit separate obligation. Lean also checks one honest private binding,
+a changed private witness, and a forged public output claim.
 
 The Python parity corpus is regression evidence for the executable semantics,
 not a proof of compiler or cryptographic correctness. Hash parity includes
@@ -101,7 +108,7 @@ python3 scripts/s31_formal.py
 python3 -m unittest scripts.tests.test_s31_formal
 mkdir -p zig-out/s31/formal
 cd formal/s31
-lake exe cache get Mathlib.Data.ZMod.Basic Mathlib.Tactic
+lake exe cache get Mathlib.Data.ZMod.Basic Mathlib.Tactic Mathlib.NumberTheory.LucasLehmer
 lake build S31 s31-check
 lake env lean S31/Evidence/AxiomAudit.lean > ../../zig-out/s31/formal/axioms.log
 LEAN_NUM_THREADS=1 lake env leanchecker -v S31 RiscvRefinement.Field.M31 RiscvRefinement.Recursion.CompactPoseidon > ../../zig-out/s31/formal/kernel.log

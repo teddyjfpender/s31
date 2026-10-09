@@ -1,9 +1,14 @@
 import S31.Semantics.Field
 import Mathlib.Tactic
+import Mathlib.NumberTheory.LucasLehmer
 
 namespace S31.Field
 
-instance : Fact (Nat.Prime 2147483647) := ⟨by norm_num⟩
+/-- A short Lucas–Lehmer certificate avoids the kernel-depth problem in
+`norm_num`'s generic proof for this 31-bit prime. -/
+instance : Fact (Nat.Prime 2147483647) := ⟨by
+  change Nat.Prime (mersenne 31)
+  exact lucas_lehmer_sufficiency _ (by simp) (by norm_num)⟩
 
 theorem toZMod_val (x : M31) : (toZMod x).val = x.val := by
   change x.val % 2147483647 = x.val

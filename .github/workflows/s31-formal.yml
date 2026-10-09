@@ -11,7 +11,7 @@ on:
       - 'scripts/tests/test_s31_formal.py'
       - '.github/workflows/s31-formal.yml'
   push:
-    branches: [main, feat/hash-payment-prototype]
+    branches: [main]
     paths:
       - 'formal/**'
       - 'src/frontends/s31/**'
@@ -64,7 +64,7 @@ jobs:
           set -euo pipefail
           test "$(cat lean-toolchain)" = 'leanprover/lean4:v4.29.0'
           lake env lean --version | grep -E '^Lean \(version 4\.29\.0,'
-          lake exe cache get Mathlib.Data.ZMod.Basic Mathlib.Tactic
+          lake exe cache get Mathlib.Data.ZMod.Basic Mathlib.Tactic Mathlib.NumberTheory.LucasLehmer
       - name: Build every proof source and executable semantics
         working-directory: formal/s31
         run: lake build S31 s31-check

@@ -90,4 +90,32 @@ theorem forged_field_hash_gate :
 the public padding theorem. The assignment checker rejects a width change. -/
 theorem padding_requires_widths : Bindings.pad8 [1] = Bindings.pad8 [1,0] := by decide
 
+/-- A one-word private input is published only through the explicitly claimed
+output. Both a changed witness and a changed output claim are rejected. -/
+def privateBinding : Program := {
+  name := "private_binding"
+  inputs := [{ name := "x", shape := ⟨.m31, 1⟩, visibility := .private }]
+  nodes := []
+  assertions := []
+  outputs := ["x"]
+}
+
+def honestPrivate : Assignment := {
+  publicInputs := []
+  privateInputs := [("x", [3])]
+  publicOutputs := [("x", [3])]
+}
+
+theorem private_binding_honest :
+    privateBinding.evaluate honestPrivate =
+      .ok [RiscvRefinement.M31.reduce 3, 0, 0, 0, 0, 0, 0, 0] := by decide
+
+theorem private_binding_forged_witness :
+    privateBinding.evaluate {honestPrivate with privateInputs := [("x", [4])]} =
+      .error .publicMismatch := by decide
+
+theorem private_binding_forged_output :
+    privateBinding.evaluate {honestPrivate with publicOutputs := [("x", [4])]} =
+      .error .publicMismatch := by decide
+
 end S31.Evidence

@@ -47,13 +47,18 @@ def Program.environment (p : Program) (a : Assignment) : Result Env := do
     require (x == y) .assertionFailed
   return values
 
-def Program.evaluate (p : Program) (a : Assignment) : Result (List M31) := do
-  let values ← p.environment a
-  let claimed ← p.claimedWords a
+/-- Check the declared public outputs against the computed environment. Keeping
+this check separate makes the statement binding explicit in the semantics. -/
+def Program.outputsAgree (p : Program) (a : Assignment) (values : Env) : Result Unit := do
   for name in p.outputs do
     let actual ← need (lookup values name) .unknownOperand
     let expected ← assigned a.publicOutputs name actual.shape
     require (actual == expected) .publicMismatch
+
+def Program.evaluate (p : Program) (a : Assignment) : Result (List M31) := do
+  let values ← p.environment a
+  let claimed ← p.claimedWords a
+  p.outputsAgree a values
   return claimed
 
 end S31
