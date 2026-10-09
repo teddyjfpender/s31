@@ -97,15 +97,15 @@ The following are required for a v0.1.0 claim:
 | --- | --- | --- |
 | Grammar and diagnostics | Versioned grammar, location-precise errors, malformed and fuzzed input corpus, bounded parse and specialization resources | Handwritten parser and bounded token/call depth; grammar/fuzz gate missing. |
 | Type soundness | Separate typed elaboration of **all** declarations, no function values at circuit boundary, well-defined static/dynamic effects | Pure elaboration now checks every function and lambda body, source types, lexical scopes and call-graph bounds before emission. Value-dependent checks still run during specialization; an explicit effect system remains missing. |
-| Semantic preservation | Proof or independently checked translation for typed source → normalized relation, including closure capture, shadowing, arrays and library calls | Lean proves source evaluation agrees with strict graph acceptance for every typed program in its total field/function core, including lexical capture, beta erasure and any number of field outputs. Python text compilation, arrays, library calls, effects and production AIR correspondence remain unproved. |
+| Semantic preservation | Proof or independently checked translation for typed source → normalized relation, including closure capture, shadowing, arrays and library calls | Lean proves source evaluation agrees with strict graph acceptance for every typed program in its total field/function core, including lexical capture, beta erasure, field outputs and source-level equality assertions. Python text compilation, arrays, library calls, effects and production AIR correspondence remain unproved. |
 | Zero-cost abstractions | Canonical graph and AIR geometry equivalence across arithmetic, hashes, arrays and chip extraction, plus regression ceilings | One functional arithmetic gate exists; broader gate missing. |
 | Build and native verification | Build, prove, verify, changed-statement rejection, independent oracle, reproducible source/key/IR identity | Existing package path and one functional native trial pass. |
 | Repository hygiene | Parser, AST, elaborator, specialization, library and CLI isolated by directory, module READMEs and pinned dependency versions | Syntax, parser, builtin typing, elaboration and specialization now live under `python/language/`; further library/CLI separation remains. |
 | Release artifact | Tagged source, lockfile, supported-profile matrix, signed or otherwise authenticated distribution process, changelog and exact test commands | No v0.1.0 tag or release audit yet. |
 
 The Lean package now has an intrinsically typed total field/function core,
-a semantic simulation theorem for specialization, and a strict graph theorem
-that binds every field output. The remaining work is
+a semantic simulation theorem for specialization, and strict graph theorems
+that bind every field output and check field equality assertions. The remaining work is
 to connect the Python parser and specializer to this core, extend the theorem
 to arrays, effects and libraries, and connect the resulting first-order graph
 to the production AIR. This follows the style

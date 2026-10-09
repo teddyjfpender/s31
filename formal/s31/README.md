@@ -27,6 +27,7 @@ theorem does not establish zero knowledge.
 | `S31/Gadgets/` | Primitive residual proofs, arbitrary auxiliary witnesses, constructive completeness and composition. |
 | `S31/Gadgets/FunctionalGraph` | Executable polynomial-to-graph lowering and strict circuit soundness for every core field program. |
 | `S31/Gadgets/FunctionalOutputs` | One graph for multiple functional results; every output wire and claimed value is bound, including an aliased second output. |
+| `S31/Gadgets/FunctionalAssertions` | Source-level `assert_eq` pairs checked against separately witnessed graph outputs, with universal contract soundness and completeness. |
 | `S31/Evidence/` | Checked operation coverage, non-vacuity/invalid-boundary theorems and live axiom enumeration. |
 | `coverage.json` | Reviewed mapping of every operation to semantics, local gadget theorems and production source functions. |
 | `source-bindings.json`, `proof-inventory.json` | Generated exact source identities and the complete theorem inventory, including the reused modules and three source-derived proof declarations. |
@@ -102,11 +103,33 @@ two gates; its output indices are `[2, 0]`. The second result aliases the input
 wire without adding a gate. `capturedSquarePair_rejects_forged_second` proves
 that changing this second claimed value causes strict acceptance to fail.
 These are kernel-checked statements about the small formal core. The Python
-parser, S31's wider type set, library calls, assertions, partial operations,
-and production AIR lowering are outside these theorems. The formal source
+parser, S31's wider type set, library calls, partial operations, and
+production AIR lowering are outside these theorems. The formal source
 identity inventory now includes the Python
 syntax, parser, elaborator, specializer and libraries so changes there force a reviewed
 binding update; the source digests themselves do not prove compiler correspondence.
+
+`FunctionalAssertions` adds a separate source contract with any number of
+`assert_eq` pairs. It compiles each side to an output wire and checks the
+paired values for equality. `Contract.accepts_iff` proves that strict graph
+acceptance plus these equality checks is equivalent to all claimed outputs
+matching their source expressions **and** every assertion holding. The
+modeled example corresponds to this one-lane S31 program:
+
+```s31
+use std@1;
+circuit square_fixed(public x: [m31; 1]) -> public [m31; 1] {
+    assert_eq(x .* x, x);
+    x
+}
+```
+
+Its formal graph has one multiplication gate and graph outputs
+`[0, 1, 0]`: output `x`, then the two asserted sides `x*x` and `x`.
+`squareFixedPoint_rejects_nonfixed` rules out every input where `x*x ≠ x`.
+The equality check is part of the formal acceptance relation here; a proof
+that the production compiler emits the corresponding AIR assertion remains
+an explicit obligation.
 
 Soundness quantifies over every satisfying auxiliary witness. Completeness
 constructs witnesses for every input within the stated range and shape
