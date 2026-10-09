@@ -18,6 +18,7 @@ import S31.Gadgets.Air.LogUpCount
 import S31.Gadgets.Air.GateLogUpBridge
 import S31.Gadgets.Air.GateLocalCounts
 import S31.Gadgets.Air.GateAddressCounts
+import S31.Gadgets.Air.GateCounter
 import S31.Gadgets.Air.LogUpInteraction
 import S31.Gadgets.Air.Qm31GateInteraction
 import S31.Gadgets.Air.EqGateInteraction

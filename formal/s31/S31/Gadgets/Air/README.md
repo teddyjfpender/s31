@@ -391,6 +391,16 @@ condition with an upper bound on each individual event count.
 `closed_gate_contribution_balanced_of_address_counts` consumes integer
 address-histogram bounds directly.
 
+`GateCounter.lean` proves a checked-count implementation of those bounds.
+Its `checkedIncrement(current, increment)` has Zig's `increment < p` and
+`current < p - increment` guards. A successful fold over address/increment
+pairs computes each address's exact integer total and keeps it below `p`.
+For a list of Gate events, mapping each event to one increment produces
+the `addressCount` histogram. The theorem then feeds these proved counts
+to the fixed-list LogUp soundness result. This models the arithmetic of
+Zig's counter; matching its actual component traversal to the event list
+remains a compiler/source correspondence task.
+
 `GateFinal.lean` composes that conditional multiset theorem with the
 arithmetic row theorem. If each addressed input has a unique producer, a
 locally accepted row can only output the operation applied to those

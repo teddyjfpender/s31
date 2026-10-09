@@ -306,6 +306,15 @@ SHA boundary uses. A native boundary test checks the `p-1` and `p` cases.
 The exact correspondence between those Zig counters and the modeled
 Gate event lists remains a separate proof obligation.
 
+`GateCounter` now models Zig's checked increment rule and proves the
+successful result equals the integer sum of all increments at each
+address while remaining below `p`. For unit increments over a supplied
+Gate event list, it proves the resulting counts equal that list's address
+histogram and discharges the histogram premise of the fixed-list LogUp
+theorem. The `p−1` count is accepted, while incrementing it to `p` and
+adding `p` at once are rejected. Connecting the actual Zig traversal of
+every circuit component to those exact modeled event lists is still open.
+
 `LogUpInteraction` models the other side of the reduction. Its single and
 paired residuals use the formulas in the Zig verifier. Given nonzero
 denominators, a vanishing residual fixes the exact reciprocal term or
