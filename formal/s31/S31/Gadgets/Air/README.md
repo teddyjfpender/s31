@@ -12,6 +12,15 @@ M31-to-ZMod field map, so it relates the AIR's packed field values to native
 M31 arithmetic. `honest_row`, `output_unique`, `all_flags_zero_rejected`, and
 `two_flags_rejected` provide concrete non-vacuity and malformed-row controls.
 
+`SimdChunks.partial_row_iff` covers the short final chunk of an array. For
+any `n ≤ 4`, arbitrary M31 values may fill the unused input lanes. An accepted
+full row with claimed active output lanes exists exactly when every active
+claim is the native `add` or `mul` result. The proof includes `n = 0`; it does
+not assume that unused trace limbs are zero.
+
+`partial_row_iff_normalized_node` composes this with the executable normalized
+relation evaluator, including its output length, for every `n ≤ 4`.
+
 S31 array addition uses the `add` opcode. S31 pointwise array multiplication
 uses `pointwiseMul`; `mul` denotes multiplication in the QM31 extension field.
 

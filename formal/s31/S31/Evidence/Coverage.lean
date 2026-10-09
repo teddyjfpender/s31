@@ -11,6 +11,7 @@ import S31.Gadgets
 #check S31.Functional.u16_wire_vector_select_iff
 #check S31.Functional.u16_wire_vector_value_valid
 #check S31.Gadgets.Air.Qm31Ops.row_iff_normalized_node
+#check S31.Gadgets.Air.SimdChunks.partial_row_iff_normalized_node
 #check S31.Gadgets.Arithmetic.comparison_sound_complete
 #check S31.Gadgets.Arithmetic.signed_add_sound_complete
 #check S31.Gadgets.Arithmetic.signed_sub_sound_complete
@@ -94,8 +95,8 @@ namespace S31.Evidence
 def operationCoverage : List (Op × List String) := [
   (.constant, ["S31.Gadgets.Bindings.constant_wires"]),
   (.cast_m31, ["S31.Gadgets.Bindings.cast_wire_identity"]),
-  (.add, ["S31.Gadgets.add_sound_complete", "S31.Gadgets.Packed.add_sound_complete", "S31.Gadgets.Air.Qm31Ops.row_iff_normalized_node", "S31.Gadgets.Sequence.pointwise_sound_complete", "S31.Functional.arrayCode_accepts"]),
-  (.mul, ["S31.Gadgets.mul_sound_complete", "S31.Gadgets.Packed.pointwise_sound_complete", "S31.Gadgets.Air.Qm31Ops.row_iff_normalized_node", "S31.Gadgets.Sequence.pointwise_sound_complete", "S31.Functional.arrayCode_accepts"]),
+  (.add, ["S31.Gadgets.add_sound_complete", "S31.Gadgets.Packed.add_sound_complete", "S31.Gadgets.Air.Qm31Ops.row_iff_normalized_node", "S31.Gadgets.Air.SimdChunks.partial_row_iff_normalized_node", "S31.Gadgets.Sequence.pointwise_sound_complete", "S31.Functional.arrayCode_accepts"]),
+  (.mul, ["S31.Gadgets.mul_sound_complete", "S31.Gadgets.Packed.pointwise_sound_complete", "S31.Gadgets.Air.Qm31Ops.row_iff_normalized_node", "S31.Gadgets.Air.SimdChunks.partial_row_iff_normalized_node", "S31.Gadgets.Sequence.pointwise_sound_complete", "S31.Functional.arrayCode_accepts"]),
   (.add_const, ["S31.Gadgets.add_sound_complete", "S31.Gadgets.Sequence.step_sound_complete"]),
   (.mul_const, ["S31.Gadgets.mul_sound_complete", "S31.Gadgets.Packed.scalar_mul", "S31.Gadgets.Sequence.step_sound_complete"]),
   (.repeat, ["S31.Gadgets.Sequence.repeat_sound_complete", "S31.Gadgets.Sequence.step_sound_complete", "S31.Gadgets.Packed.mix4_broadcast"]),

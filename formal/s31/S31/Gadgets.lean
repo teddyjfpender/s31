@@ -1,5 +1,6 @@
 import S31.Gadgets.Arithmetic
 import S31.Gadgets.Air.Qm31Ops
+import S31.Gadgets.Air.SimdChunks
 import S31.Gadgets.Bindings
 import S31.Gadgets.BuilderValidity
 import S31.Gadgets.CompactTarget

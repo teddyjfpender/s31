@@ -160,11 +160,20 @@ four M31 lanes using the proved M31-to-ZMod map.
 `row_iff_normalized_node` then proves the row model accepts precisely the
 outputs of the executable normalized `add` and `mul` relation nodes for one
 full four-lane chunk. The proof models the production equations and the
-`simd.mul` opcode choice; source hashes pin the reviewed Zig files. It does
-not prove that Zig emits the modeled rows or that the Gate lookup connects
-row operands and outputs to the compiled circuit. Short final chunks,
-preprocessed address/multiplicity construction, lookup/LogUp composition,
-whole-trace AIR, and the STARK verifier remain separate obligations.
+`simd.mul` opcode choice; source hashes pin the reviewed Zig files.
+
+`SimdChunks.partial_row_iff_normalized_node` extends the same result to final
+chunks with zero to four active lanes. It quantifies over arbitrary M31 values
+in the unused input positions and existentially constructs the unused output
+limbs; only the active output lanes appear in the normalized array result.
+This covers the local equation for short arrays without assuming zero-filled
+padding.
+
+These theorems do not prove that Zig emits the modeled rows or that the Gate
+lookup connects row operands and outputs to the compiled circuit. Short-chunk
+emission, preprocessed address/multiplicity construction, lookup/LogUp
+composition, whole-trace AIR, and the STARK verifier remain separate
+obligations.
 
 `Functional/Assertions` adds a separate source contract with any number of
 `assert_eq` pairs. It compiles each side to an output wire and checks the
