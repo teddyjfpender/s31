@@ -3,22 +3,22 @@ import S31.Gadgets.Hash
 import S31.Gadgets.BuilderValidity
 
 /-!
-An executable lowering of the functional core's residual polynomial into the
-same straight-line graph model used by the S31 hash-circuit proofs. The exact
-worked example is proved below. A universal compiler-correctness theorem for
-this lowering and correspondence to production Zig AIR remain open.
+An executable lowering of every functional-core residual polynomial into the
+same straight-line graph model used by the S31 hash-circuit proofs. Universal
+soundness and completeness hold for this model. Correspondence to Python
+specialization and production Zig AIR emission remains open.
 -/
 
 namespace S31.Functional
 
 open Graph
 
-private theorem stateBindRun {σ α β : Type} (action : StateM σ α)
+theorem stateBindRun {σ α β : Type} (action : StateM σ α)
     (next : α → StateM σ β) (state : σ) :
     (action >>= next).run state =
       (next (action.run state).1).run (action.run state).2 := rfl
 
-private theorem runAppend (first second : List (Gate M31 FieldOp))
+theorem runAppend (first second : List (Gate M31 FieldOp))
     (values : List M31) :
     Graph.run fieldEval (first ++ second) values =
       Graph.run fieldEval second (Graph.run fieldEval first values) := by
@@ -28,7 +28,7 @@ private theorem runAppend (first second : List (Gate M31 FieldOp))
       simp only [List.cons_append, Graph.run]
       exact ih (values ++ [gate.eval fieldEval values])
 
-private theorem runPreserves (gates : List (Gate M31 FieldOp))
+theorem runPreserves (gates : List (Gate M31 FieldOp))
     (values : List M31) (index : Nat) (hindex : index < values.length) :
     (Graph.run fieldEval gates values).getD index 0 = values.getD index 0 := by
   induction gates generalizing values with
@@ -42,7 +42,7 @@ private theorem getD_append_singleton (values : List M31) (x : M31) :
     (values ++ [x]).getD values.length 0 = x := by
   simp [List.getD_eq_getElem?_getD]
 
-private theorem runPreservesPrefix (first second : List (Gate M31 FieldOp))
+theorem runPreservesPrefix (first second : List (Gate M31 FieldOp))
     (inputs : List M31) (index : Nat)
     (hindex : index < (Graph.run fieldEval first inputs).length) :
     (Graph.run fieldEval (first ++ second) inputs).getD index 0 =

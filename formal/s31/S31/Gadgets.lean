@@ -5,6 +5,7 @@ import S31.Gadgets.CompactTarget
 import S31.Gadgets.HashEncoding
 import S31.Gadgets.HashBuilder
 import S31.Gadgets.FunctionalGraph
+import S31.Gadgets.FunctionalOutputs
 import S31.Gadgets.Packed
 
 /-! Local constraint relations, with arbitrary-witness soundness and honest

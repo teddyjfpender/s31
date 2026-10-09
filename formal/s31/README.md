@@ -25,7 +25,8 @@ theorem does not establish zero knowledge.
 | `S31/Semantics/Graph`, `Poseidon2`, `Blake2s`, `Sha256` | Explicit straight-line gate schedules and exact hash encodings. No uninterpreted hash callback is used. |
 | `S31/Semantics/Functional` | Intrinsically typed `let`/lambda/application core, static specialization into first-order field polynomials, and an arbitrary-witness local constraint relation. |
 | `S31/Gadgets/` | Primitive residual proofs, arbitrary auxiliary witnesses, constructive completeness and composition. |
-| `S31/Gadgets/FunctionalGraph` | Executable polynomial-to-graph lowering and a kernel-checked strict circuit proof for the captured-square example. |
+| `S31/Gadgets/FunctionalGraph` | Executable polynomial-to-graph lowering and strict circuit soundness for every core field program. |
+| `S31/Gadgets/FunctionalOutputs` | One graph for multiple functional results; every output wire and claimed value is bound, including an aliased second output. |
 | `S31/Evidence/` | Checked operation coverage, non-vacuity/invalid-boundary theorems and live axiom enumeration. |
 | `coverage.json` | Reviewed mapping of every operation to semantics, local gadget theorems and production source functions. |
 | `source-bindings.json`, `proof-inventory.json` | Generated exact source identities and the complete theorem inventory, including the reused modules and three source-derived proof declarations. |
@@ -90,11 +91,20 @@ The graph output is wire `2`. `capturedSquareCode_shape` proves the executable
 lowering produces exactly those two gates; `capturedSquareCode_valid` proves
 well-formed indices and arities. `capturedSquareCode_accepts` proves strict
 acceptance is equivalent to the source result for **every** intermediate
-witness. These are kernel-checked statements about the
-small formal core. The Python parser, S31's wider type set, library calls,
-assertions, partial operations, and production AIR lowering are outside this
-theorem. The formal
-source identity inventory now includes the Python
+witness.
+
+`FunctionalOutputs` extends this argument from one result to any list of
+first-order field results. It emits all residual trees into one graph,
+proves every returned wire is live, and proves that arbitrary satisfying gate
+witnesses bind **every** output to its own source expression. In the worked
+two-output circuit, `capturedSquarePair = [x*x+x, x]`, the graph still has only
+two gates; its output indices are `[2, 0]`. The second result aliases the input
+wire without adding a gate. `capturedSquarePair_rejects_forged_second` proves
+that changing this second claimed value causes strict acceptance to fail.
+These are kernel-checked statements about the small formal core. The Python
+parser, S31's wider type set, library calls, assertions, partial operations,
+and production AIR lowering are outside these theorems. The formal source
+identity inventory now includes the Python
 syntax, parser, elaborator, specializer and libraries so changes there force a reviewed
 binding update; the source digests themselves do not prove compiler correspondence.
 
