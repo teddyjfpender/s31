@@ -319,6 +319,30 @@ kernel-checked zero-denominator control shows why the nonzero premise is
 essential: a pair constraint can vanish for any running-sum difference
 when both denominators are zero.
 
+`Qm31GateInteraction.qm31_ops_claimed_sum` specializes that argument to
+the circuit's `qm31_ops` component: each row contributes exactly three
+Gate lookups, with the two input uses paired in the first secure column
+and the multiplicity-weighted output yield as the final singleton. Under
+the two AIR residual equations and nonzero denominators, the component's
+claimed sum is exactly the sum of the `rowContribution`
+values. This discharges the component-level fraction algebra, while the
+actual column emission and verifier evaluation still need correspondence.
+
+`qm31_ops_closed_gate_balanced` adds the verifier's closed global claim and
+modeled external Gate terms, then derives exact Gate multiset balance from
+those checked `qm31_ops` residuals under canonical-address, histogram, and
+good-challenge premises.
+
+`EqGateInteraction` does the same for `assert_eq`'s two Gate reads, which
+form a single paired interaction column. `eq_claimed_sum_eq_event_sum`
+derives its exact component claim from its AIR residuals. The
+`qm31_and_eq_closed_gate_balanced` theorem combines the arithmetic and
+equality claims with the remaining modeled Gate events and the global
+closed claim to recover exact multiset balance. With a unique producer
+per address, `eq_row_sound_of_shared_gate` then proves the two produced
+values read by an equality row are equal. Other components and the actual
+Zig-to-Lean column correspondence remain open.
+
 `GateContributions` connects the exact Gate event lists to the row terms.
 For each arithmetic row it proves that two input uses contribute two
 positive reciprocals and an output repeated `multiplicity` times contributes
@@ -329,6 +353,7 @@ forces exact Gate multiset balance under the canonical-address, event-count,
 and good-challenge premises above. This is a conditional composition
 theorem; its closed-sum premise is not yet discharged from the compiled
 interaction columns.
+
 `closed_gate_contribution_balanced_of_counts` uses the per-event version,
 so the proof has no artificial total-trace-length limit.
 `closed_gate_contribution_balanced_of_address_counts` accepts the modeled
@@ -584,9 +609,9 @@ python3 -m unittest scripts.tests.test_s31_formal
 mkdir -p zig-out/s31/formal
 cd formal/s31
 lake exe cache get Mathlib.Data.ZMod.Basic Mathlib.Tactic Mathlib.NumberTheory.LucasLehmer
-lake build S31 s31-check
+lake build S31 S31.Evidence.AxiomAudit s31-check
 lake env lean S31/Evidence/AxiomAudit.lean > ../../zig-out/s31/formal/axioms.log
-LEAN_NUM_THREADS=1 lake env leanchecker -v S31 RiscvRefinement.Field.M31 RiscvRefinement.Recursion.CompactPoseidon > ../../zig-out/s31/formal/kernel.log
+LEAN_NUM_THREADS=1 lake env leanchecker -v S31 S31.Evidence.AxiomAudit RiscvRefinement.Field.M31 RiscvRefinement.Recursion.CompactPoseidon > ../../zig-out/s31/formal/kernel.log
 cd ../..
 python3 scripts/s31_formal.py \
   --audit zig-out/s31/formal/axioms.log \

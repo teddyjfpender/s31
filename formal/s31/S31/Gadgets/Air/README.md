@@ -325,6 +325,50 @@ column schedule. Its premises still need a machine-checked correspondence
 to the committed columns, the circle-domain predecessor relation, and
 the actual verifier's AIR evaluation on those columns.
 
+`Qm31GateInteraction.lean` instantiates the interaction proof for the
+actual `qm31_ops` lookup order. Every row has three Gate terms: input 0,
+input 1, then `-multiplicity` times its output. The input pair's secure
+column is checked by the paired residual; the final secure column is
+checked by the singleton residual with the previous-row subtraction and
+claimed-sum shift. Assuming these residuals vanish and their denominators
+are nonzero, `qm31_ops_claimed_sum` proves that the component claim equals
+the sum of `rowContribution` over all `2^log_size` rows. This is a local
+semantic theorem for the exact column schedule, including padding rows;
+it still relies on a source-to-AIR correspondence for the real Zig
+evaluator and committed trace.
+
+`qm31_ops_closed_gate_balanced` combines this component-level result with
+the modeled external Gate terms and a closed verifier claim to derive exact
+multiset balance. The other components' claimed sums must still be shown to
+match those external terms in the production verifier.
+
+`EqGateInteraction.lean` models `assert_eq`'s two Gate uses as one paired
+term per row. The paired residual and cyclic last-column shift force the
+Eq component's claim to equal the sum of those two read reciprocals across
+all rows. `qm31_and_eq_closed_gate_balanced` adds this checked claim to the
+checked `qm31_ops` claim, keeps other Gate users as explicit event lists,
+and derives exact shared Gate balance. Under a unique producer per address,
+`eq_row_sound_of_shared_gate` turns that balance into equality of the
+values produced at the row's two input addresses. The Eq component has no
+local arithmetic equation that could enforce this by itself.
+
+As a one-row hand calculation, suppose the two input denominators are `2`
+and `3`, the output denominator is `5`, and its multiplicity is `1`.
+The first secure column must hold `1/2+1/3=5/6`. The final singleton is
+`-1/5`, so the row contributes `5/6-1/5=19/30`. With one row, the final
+column's previous-row value is itself and the shift is the claimed sum.
+Its AIR equation reads `0 - 5/6 + claimed = -1/5`, which forces
+`claimed=19/30` in QM31. These fractions mean field inverses; the
+calculation is valid because `2`, `3`, and `5` are nonzero modulo `p`.
+
+For an Eq row, suppose the two address lookup denominators are `2` and
+`3`. Its only secure column has `current - previous + claimed`, because
+the row count is one. The previous value equals the current value, so
+the paired equation forces `claimed = 1/2 + 1/3 = 5/6`. This only accounts
+for the row's two reads. The shared Gate closure must match both reads to
+their producer events; when each address has one produced value, the Eq
+row's common trace word forces those two produced values to be equal.
+
 `GateContributions.lean` relates the ideal `GateLookup.Row` event lists to
 the production sign and multiplicity convention. A row reading two wires
 and yielding one result `m` times contributes

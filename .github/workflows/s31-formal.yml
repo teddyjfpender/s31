@@ -67,14 +67,14 @@ jobs:
           lake exe cache get Mathlib.Data.ZMod.Basic Mathlib.Tactic Mathlib.NumberTheory.LucasLehmer
       - name: Build every proof source and executable semantics
         working-directory: formal/s31
-        run: lake build S31 s31-check
+        run: lake build S31 S31.Evidence.AxiomAudit s31-check
       - name: Audit all theorem axioms and replay all package modules in the kernel
         working-directory: formal/s31
         run: |
           set -euo pipefail
           mkdir -p ../../zig-out/s31/formal
           lake env lean S31/Evidence/AxiomAudit.lean > ../../zig-out/s31/formal/axioms.log
-          lake env leanchecker -v S31 RiscvRefinement.Field.M31 RiscvRefinement.Recursion.CompactPoseidon > ../../zig-out/s31/formal/kernel.log
+          lake env leanchecker -v S31 S31.Evidence.AxiomAudit RiscvRefinement.Field.M31 RiscvRefinement.Recursion.CompactPoseidon > ../../zig-out/s31/formal/kernel.log
       - name: Independent semantics, false witnesses, and real gadget mutations
         run: |
           python3 scripts/s31_formal.py \
