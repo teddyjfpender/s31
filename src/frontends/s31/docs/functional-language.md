@@ -89,6 +89,9 @@ proves pointwise field-array specialization and strict graph soundness for
 arbitrary intermediate witnesses, including statically bounded views and the
 prehash rotation/salt. It does not prove Python lowering or the production
 hash AIR.
+The [generated array corpus](../tests/python/generated/README.md) checks 64
+more closure programs against independent array arithmetic and their direct
+first-order forms, including lexical shadowing and nested conditionals.
 
 ## Witness-dependent conditionals
 

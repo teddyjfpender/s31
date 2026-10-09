@@ -63,6 +63,7 @@ class Circuit:
     result: Type
     statements: tuple[Statement, ...]
     body: Expr
+    token: Token
     proof_mode: str = "transparent"
 
 

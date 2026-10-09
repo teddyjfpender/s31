@@ -243,3 +243,10 @@ class Elaborator:
         if result != self.circuit.result and not bit_as_field:
             raise self.error(self.circuit.body,
                              "circuit result does not match declared public output type")
+        public_words = sum(typ.length for _, typ, visibility in self.circuit.params
+                           if visibility == "public") + self.circuit.result.length
+        if public_words > 8:
+            token = self.circuit.token
+            raise SourceError(f"{self.filename}:{token.line}:{token.column}: "
+                              f"current public ABI allows at most eight words; "
+                              f"signature declares {public_words}")

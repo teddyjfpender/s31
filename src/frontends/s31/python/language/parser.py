@@ -208,6 +208,7 @@ class Parser:
             statements, body = self.block()
             return Function(name, params, result, statements, body)
         proof_mode = "blinded" if self.accept("blinded") else "transparent"
+        token = self.peek()
         self.expect("circuit")
         name = self.identifier()
         params = self.parameters(True)
@@ -217,7 +218,7 @@ class Parser:
         if isinstance(result, FunctionType):
             raise self.error("circuit output must be a first-order value")
         statements, body = self.block()
-        return Circuit(name, params, result, statements, body, proof_mode)
+        return Circuit(name, params, result, statements, body, token, proof_mode)
 
     def expression(self, min_power: int = 0) -> Expr:
         if self.expression_depth >= MAX_EXPRESSION_DEPTH:

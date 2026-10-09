@@ -84,6 +84,23 @@ class ElaborationTests(unittest.TestCase):
         relation, _ = compile_text(source)
         self.assertEqual(relation["nodes"], [])
 
+    def test_public_abi_limit_is_a_located_source_error(self) -> None:
+        cases = (
+            ("circuit wide(public x: [m31; 8]) -> public [m31; 1] { splat<1>(0_m31) }",
+             "abi.s31:1:1: current public ABI allows at most eight words; signature declares 9"),
+            ("blinded circuit wide(public x: [m31; 1]) -> public [m31; 8] { splat<8>(0_m31) }",
+             "abi.s31:1:9: current public ABI allows at most eight words; signature declares 9"),
+        )
+        for source, message in cases:
+            with self.subTest(source=source), self.assertRaises(SourceError) as raised:
+                compile_text(source, "abi.s31")
+            self.assertEqual(str(raised.exception), message)
+
+        relation, _ = compile_text(
+            "circuit limit(public x: [m31; 7]) -> public [m31; 1] { std::math::sum_lanes(x) }")
+        self.assertEqual(relation["inputs"][0]["length"], 7)
+        self.assertEqual(len(relation["public_outputs"]), 1)
+
 
 if __name__ == "__main__":
     unittest.main()
