@@ -30,8 +30,9 @@ source-core theorem does not yet prove this Python elaborator or all builtin
 rules correct; those remain in the
 [v0.1.0 release contract](../../../../../design/s31/language/FUNCTIONAL_V01.md).
 
-The parser bounds both recursive descent and the final AST depth, so a long
-left-associated expression cannot bypass the source nesting limit. The
+The parser bounds numeric tokens to 64 decimal digits, recursive descent,
+and the final AST depth, so a long left-associated expression cannot bypass
+the source nesting limit. The
 [v1 grammar](../../docs/reference/GRAMMAR_V1.md) records its tokens and
 precedence; the [generated source corpus](../../tests/python/generated/README.md)
 checks direct and functional lowering against independent modular arithmetic.

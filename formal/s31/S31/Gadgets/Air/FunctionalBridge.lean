@@ -46,4 +46,47 @@ theorem array_graph_iff_air_row {n length : Nat} (hlen : length ≤ 4)
     (denote b (arrayInputSource (fun i => inputs.getD i.val 0)))
     claimed tailA tailB).symm
 
+/-- Source, strict graph, normalized arithmetic and every packed AIR row
+agree for arrays of any length. Operand computations are still treated as
+source values here; their preceding AIR rows require graph-wide composition. -/
+theorem array_graph_iff_packed_rows {n length : Nat}
+    (multiply : Bool)
+    (a b : Expr [.array n] (.array length))
+    (inputs : List S31.M31) (claimed : Fin length → S31.M31)
+    (tailA tailB : Nat → Fin 4 → S31.M31)
+    (hinputs : inputs.length = n) :
+    (arrayCode (arithmeticExpr multiply a b)).strictAccepts
+      fieldArity S31.Gadgets.Hash.fieldPrimitive inputs
+      (List.ofFn claimed) ↔
+    packedRows multiply
+      (denote a (arrayInputSource (fun i => inputs.getD i.val 0)))
+      (denote b (arrayInputSource (fun i => inputs.getD i.val 0)))
+      claimed tailA tailB := by
+  rw [arithmetic_graph_iff_node multiply a b inputs (List.ofFn claimed) hinputs]
+  rw [S31.Functional.arithmeticNode_eval, packedRows_iff]
+  constructor
+  · intro h
+    have hlist : List.ofFn
+        (fun i : Fin length => if multiply then
+          denote a (arrayInputSource (fun j => inputs.getD j.val 0)) i *
+            denote b (arrayInputSource (fun j => inputs.getD j.val 0)) i else
+          denote a (arrayInputSource (fun j => inputs.getD j.val 0)) i +
+            denote b (arrayInputSource (fun j => inputs.getD j.val 0)) i) =
+        List.ofFn claimed := by
+      injection h with hvalue
+      exact congrArg S31.Value.words hvalue
+    have heq := List.ofFn_injective hlist
+    intro i
+    exact (congrFun heq i).symm
+  · intro h
+    have heq : (fun i : Fin length => if multiply then
+          denote a (arrayInputSource (fun j => inputs.getD j.val 0)) i *
+            denote b (arrayInputSource (fun j => inputs.getD j.val 0)) i else
+          denote a (arrayInputSource (fun j => inputs.getD j.val 0)) i +
+            denote b (arrayInputSource (fun j => inputs.getD j.val 0)) i) =
+        claimed := by
+      funext i
+      exact (h i).symm
+    rw [heq]
+
 end S31.Gadgets.Air.FunctionalBridge

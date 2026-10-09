@@ -87,4 +87,71 @@ theorem partial_row_iff_normalized_node {n : Nat} (hn : n ≤ 4)
     intro i
     exact (congrFun heq i).symm
 
+/-- Read one packed circuit wire from an arbitrary-length source array.
+Inactive positions in the last wire receive explicit arbitrary padding. -/
+def chunk4 {n : Nat} (values : Fin n → S31.M31) (block : Nat)
+    (tail : Fin 4 → S31.M31) : Fin 4 → S31.M31 :=
+  fun i => if h : block * 4 + i.val < n then
+    values ⟨block * 4 + i.val, h⟩ else tail i
+
+theorem chunk4_active {n : Nat} (values : Fin n → S31.M31)
+    (block : Nat) (tail : Fin 4 → S31.M31) (i : Fin 4)
+    (h : block * 4 + i.val < n) :
+    chunk4 values block tail i = values ⟨block * 4 + i.val, h⟩ := by
+  simp [chunk4, h]
+
+/-- Exactly `ceil(n/4)` arithmetic rows constrain every active lane.
+The unused limbs of a final short row are existential output witnesses. -/
+def packedRows {n : Nat} (multiply : Bool)
+    (a b claimed : Fin n → S31.M31)
+    (tailA tailB : Nat → Fin 4 → S31.M31) : Prop :=
+  ∀ block : Fin ((n + 3) / 4), ∃ packedOutput : Quad,
+    accepts (encode (s31Op multiply))
+      (packM31 (chunk4 a block.val (tailA block.val)))
+      (packM31 (chunk4 b block.val (tailB block.val))) packedOutput ∧
+    ∀ (i : Fin 4) (h : block.val * 4 + i.val < n),
+      coord packedOutput i =
+        S31.Field.toZMod (claimed ⟨block.val * 4 + i.val, h⟩)
+
+/-- Every active lane in an arbitrary-length normalized arithmetic node is
+equivalent to a witness satisfying all of its packed AIR rows. No active
+lane can be omitted at a four-lane boundary, and arbitrary inactive padding
+cannot alter a claimed result. -/
+theorem packedRows_iff {n : Nat} (multiply : Bool)
+    (a b claimed : Fin n → S31.M31)
+    (tailA tailB : Nat → Fin 4 → S31.M31) :
+    packedRows multiply a b claimed tailA tailB ↔
+      ∀ i : Fin n,
+        claimed i = if multiply then a i * b i else a i + b i := by
+  constructor
+  · intro rows j
+    have hblock : j.val / 4 < (n + 3) / 4 := by omega
+    let block : Fin ((n + 3) / 4) := ⟨j.val / 4, hblock⟩
+    have hlimb : j.val % 4 < 4 := by omega
+    let limb : Fin 4 := ⟨j.val % 4, hlimb⟩
+    have hindex : block.val * 4 + limb.val < n := by
+      dsimp [block, limb]
+      omega
+    obtain ⟨output, hrow, hclaim⟩ := rows block
+    have hvalue := (s31_row_iff multiply
+      (chunk4 a block.val (tailA block.val))
+      (chunk4 b block.val (tailB block.val)) output).mp hrow limb
+    rw [chunk4_active a block.val (tailA block.val) limb hindex,
+      chunk4_active b block.val (tailB block.val) limb hindex] at hvalue
+    have hsource := S31.Field.toZMod_injective
+      ((hclaim limb hindex).symm.trans hvalue)
+    have hsame : (⟨block.val * 4 + limb.val, hindex⟩ : Fin n) = j := by
+      apply Fin.ext
+      dsimp [block, limb]
+      omega
+    simpa [hsame] using hsource
+  · intro h block
+    refine ⟨evaluate (s31Op multiply)
+      (packM31 (chunk4 a block.val (tailA block.val)))
+      (packM31 (chunk4 b block.val (tailB block.val))),
+      honest_row _ _ _, ?_⟩
+    intro i hi
+    rw [s31Op_coord, chunk4_active a block.val (tailA block.val) i hi,
+      chunk4_active b block.val (tailB block.val) i hi, h]
+
 end S31.Gadgets.Air.SimdChunks

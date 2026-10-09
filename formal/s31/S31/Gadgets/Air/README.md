@@ -21,6 +21,16 @@ not assume that unused trace limbs are zero.
 `partial_row_iff_normalized_node` composes this with the executable normalized
 relation evaluator, including its output length, for every `n ≤ 4`.
 
+`packedRows_iff` covers arrays of **any** length. It creates exactly
+`ceil(n/4)` rows, maps source lane `j` to row `j/4` and limb `j%4`, and proves
+that every active claimed lane equals source arithmetic if and only if all
+row witnesses exist. It permits arbitrary inactive values in the final row.
+For a five-lane addition, take `a = [3,5,7,11,13]` and
+`b = [2,4,6,8,10]`. Row 0 constrains outputs `[5,9,13,19]`. Row 1
+constrains its first output limb to `23`; its remaining three input limbs
+may contain arbitrary M31 values. Their output limbs must satisfy the row
+equation, but they cannot change the fifth source result.
+
 `FunctionalBridge.array_graph_iff_air_row` composes four modeled boundaries
 for a typed pointwise expression: functional source meaning, strict scalar
 graph constraints, the executable normalized node, and the packed AIR row for
@@ -32,6 +42,25 @@ the row equation constrains their output limbs, and the S31 array result
 still has length two. The theorem covers any typed source operands in this
 total array core and both pointwise operations, not just this example. It
 does not model the AIR rows needed to compute nontrivial operand expressions.
+`array_graph_iff_packed_rows` extends that composition to any array length
+and all rows of its final pointwise arithmetic operation. It retains the
+same operand-subexpression boundary.
+
+`SelectRows.lean` models the compiler's array choice as one shared `1 - bit`
+row, then two scalar products and an addition per packed word. It first proves
+the four local equations in `acceptsSelect_iff`; arbitrary intermediate row
+witnesses cannot change the selected word when the selector is Boolean.
+`packedSelectRowsShared_iff` proves that sharing the complement preserves the
+accepted claims. `packedSelectRowsShared_iff_evaluateNode` covers every packed
+word, including short final words, and matches the executable normalized
+`select` node. `source_array_if_iff_shared_rows` composes that exact row
+topology with the typed source conditional and its strict graph relation.
+
+The selector's Boolean constraint must come from its producer or an explicit
+check. The concrete `nonbit_interpolation_rows` control shows why: selector
+`2`, false arm `3`, and true arm `5` satisfy all four arithmetic row equations
+with output `7`. That output is neither branch. The source-to-row theorems
+include the Boolean premise; they do not assume it follows from arithmetic.
 
 S31 array addition uses the `add` opcode. S31 pointwise array multiplication
 uses `pointwiseMul`; `mul` denotes multiplication in the QM31 extension field.

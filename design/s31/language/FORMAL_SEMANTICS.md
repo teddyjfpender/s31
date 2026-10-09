@@ -48,10 +48,16 @@ four-lane M31 evaluator. This is local AIR correspondence, not a proof of
 trace construction, Gate lookup/LogUp consistency, compiler emission, or the
 STARK verification protocol.
 The source-to-row composition theorem covers typed functional pointwise
-expressions up to four lanes, including a short final chunk with arbitrary
-unused input-lane values; it equates strict graph acceptance with existence
-of a packed AIR row witness carrying the same active result for the final
-arithmetic operation. AIR rows for operand subexpressions are separate.
+expressions of any array length. It equates strict graph acceptance with
+existence of every packed AIR row witness carrying the same active result for
+the final arithmetic operation, including a short final chunk with arbitrary
+unused input-lane values. AIR rows for operand subexpressions are separate.
+The direct conditional has a separate row theorem: one shared complement row,
+then two scalar products and an addition per packed word, agree with the
+normalized `select` node across all array words, provided its selector is
+constrained to zero or one.
+Lean also checks that selector `2` can satisfy those arithmetic rows with an
+interpolated output, so the Boolean premise is indispensable.
 An abstract Gate relation model now proves that exact multiset balance plus
 unique produced values per address forces row operands to equal their
 preprocessed-address producers. The production compressed LogUp argument is

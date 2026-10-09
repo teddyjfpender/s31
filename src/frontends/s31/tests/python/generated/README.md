@@ -17,13 +17,21 @@ closure form and an explicit first-order form; the gate compares their entire
 normalized relations and checks six concrete assignments plus forged outputs.
 The array corpus has its own pinned SHA-256 identity and seed.
 
+`test_functional_packing_generated.py` exercises array lengths 1, 2, 3, 4,
+5, 7, 8, 9 and 15. Each program uses a capturing closure, a static higher-order
+call, pointwise arithmetic and a total witness-dependent conditional. The
+functional and first-order forms must emit identical normalized IR, while an
+independent integer evaluator checks both selector values, field wrap and
+forged-output rejection. A separate native gate builds both forms at lengths
+3, 5 and 9, compares circuit/AIR geometry, and verifies two proofs per length.
+
 A second gate perturbs valid source text and requires located diagnostics for
 rejected mutations. Deep expressions and function types must hit explicit,
 located nesting limits. The scalar corpus is deterministic (`SEED = 0x531F00D`);
-its two-source SHA-256 identity is pinned in the test. Neither corpus has
-no third-party fuzzing dependency. It covers this small functional subset,
-not the full standard library or production AIR emission. Native proof and
-AIR geometry gates live in `tests/acceptance/`.
+its two-source SHA-256 identity is pinned in the test. The corpora need no
+third-party fuzzing dependency. They cover this functional subset, not the
+full standard library or production AIR emission. Native proof and AIR
+geometry gates live in `tests/acceptance/` and run in CI.
 
 Run with the normal Python suite:
 

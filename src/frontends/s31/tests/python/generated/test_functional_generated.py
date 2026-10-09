@@ -213,6 +213,29 @@ class GeneratedFunctionalTests(unittest.TestCase):
                                     r"<deep-type>:1:[0-9]+: type nesting limit exceeded"):
             compile_text(source, "<deep-type>")
 
+    def test_oversized_numeric_tokens_stop_at_located_limit(self) -> None:
+        accepted = "0" * 64
+        compile_text(f"circuit edge() -> public [m31; 1] "
+                     f"{{ splat<1>({accepted}_m31) }}", "<edge>")
+        rejected = "0" * 65
+        with self.assertRaisesRegex(
+            SourceError, r"^<edge>:1:[0-9]+: numeric literal exceeds 64 decimal digits"
+        ):
+            compile_text(f"circuit edge() -> public [m31; 1] "
+                         f"{{ splat<1>({rejected}_m31) }}", "<edge>")
+        huge = "9" * 5000
+        sources = (
+            f"circuit big() -> public [m31; 1] {{ splat<1>({huge}_m31) }}",
+            f"circuit big() -> public [m31; 1] {{ splat<{huge}>(0_m31) }}",
+            f"circuit big(public x: [m31; {huge}]) -> public [m31; 1] {{ splat<1>(0_m31) }}",
+        )
+        for source in sources:
+            with self.subTest(source=source[:80]):
+                with self.assertRaisesRegex(
+                    SourceError, r"^<huge>:1:[0-9]+: numeric literal exceeds 64 decimal digits"
+                ):
+                    compile_text(source, "<huge>")
+
 
 if __name__ == "__main__":
     unittest.main()

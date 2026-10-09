@@ -20,7 +20,9 @@ comment       = "//", any characters through the end of the line
 
 Whitespace and comments separate tokens and otherwise have no meaning.
 `field_literal` is one token and must denote a canonical integer in
-`0..2147483646`. The lexer recognizes `->`, `=>`, `::`, and `.*` before
+`0..2147483646`. Numeric tokens have at most 64 decimal digits, including
+leading zeroes; the lexer reports the source location when that limit is
+exceeded. The lexer recognizes `->`, `=>`, `::`, and `.*` before
 their one-character prefixes. The reserved words are `use`, `let`, `in`,
 `if`, `then`, `else`, `fun`, `Fn`, `fn`, `circuit`, `blinded`, `public`,
 `private`, and `assert_eq`.

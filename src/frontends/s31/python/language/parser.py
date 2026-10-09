@@ -6,7 +6,8 @@ from typing import Any
 
 from s31_stdlib import INT_TYPES, P, STDLIB_ABI_VERSION, Type, TypeErrorS31
 from language.builtins import (BUILTINS, BINARY_POWER, INT_SOURCE_TYPES,
-                               MAX_EXPRESSION_DEPTH, MAX_TOKENS, MAX_TYPE_DEPTH,
+                               MAX_EXPRESSION_DEPTH, MAX_NUMBER_DIGITS,
+                               MAX_TOKENS, MAX_TYPE_DEPTH,
                                TOKEN_RE, UNARY_POWER)
 from language.syntax import Circuit, Expr, Function, FunctionType, SourceError, Statement, Token
 
@@ -20,6 +21,11 @@ def lex(source: str, filename: str = "<source>") -> list[Token]:
             raise SourceError(f"{filename}:{line}:{column}: unexpected character {source[position]!r}")
         kind = match.lastgroup or ""
         chunk = match.group()
+        if kind in {"number", "field"}:
+            digits = len(chunk) - (4 if kind == "field" else 0)
+            if digits > MAX_NUMBER_DIGITS:
+                raise SourceError(f"{filename}:{line}:{column}: "
+                                  f"numeric literal exceeds {MAX_NUMBER_DIGITS} decimal digits")
         if kind not in {"space", "comment"}:
             tokens.append(Token(kind, chunk, line, column))
             if len(tokens) > MAX_TOKENS:

@@ -25,7 +25,7 @@ theorem does not establish zero knowledge.
 | `S31/Semantics/Graph`, `Poseidon2`, `Blake2s`, `Sha256` | Explicit straight-line gate schedules and exact hash encodings. No uninterpreted hash callback is used. |
 | `S31/Semantics/Functional` | Intrinsically typed field and fixed-length field-array `let`/lambda/application core, static specialization into first-order field polynomials, and an arbitrary-witness local constraint relation. |
 | `S31/Gadgets/` | Primitive residual proofs, arbitrary auxiliary witnesses, constructive completeness and composition. |
-| [`S31/Gadgets/Air/`](S31/Gadgets/Air/README.md) | The nine production QM31 operation AIR row polynomials, opcode soundness, and a four-lane normalized-node bridge. |
+| [`S31/Gadgets/Air/`](S31/Gadgets/Air/README.md) | The nine QM31 operation AIR row polynomials, opcode soundness, arbitrary-length packed arithmetic and conditional bridges, and an exact Gate multiset model. |
 | [`S31/Gadgets/Functional/`](S31/Gadgets/Functional/README.md) | Typed source specialization, strict graphs, assertions, conditionals, effects, arrays and agreement with executable normalized relation nodes. |
 | `S31/Gadgets/U16Selection` | Pointwise bit-constrained selection of u16-backed vectors, including proof that selected limbs inherit the input range bound. |
 | `S31/Evidence/` | Checked operation coverage, non-vacuity/invalid-boundary theorems and live axiom enumeration. |
@@ -163,19 +163,28 @@ full four-lane chunk. The proof models the production equations and the
 `simd.mul` opcode choice; source hashes pin the reviewed Zig files.
 
 `SimdChunks.partial_row_iff_normalized_node` extends the same result to final
-chunks with zero to four active lanes. It quantifies over arbitrary M31 values
-in the unused input positions and existentially constructs the unused output
-limbs; only the active output lanes appear in the normalized array result.
-This covers the local equation for short arrays without assuming zero-filled
-padding.
+chunks with zero to four active lanes. `SimdChunks.packedRows_iff` covers
+arrays of any length, showing that exactly `ceil(n/4)` row witnesses bind all
+active lanes, including positions on both sides of a four-lane boundary.
+These results quantify over arbitrary M31 values in unused input positions
+and existentially construct the unused output limbs; only active output lanes
+appear in the normalized array result.
 
 `FunctionalBridge.array_graph_iff_air_row` composes the typed functional
 array expression, its strict scalar graph, the normalized arithmetic node,
 and one packed AIR row model for the final operation. It applies to arbitrary
 source operand expressions in the formal total core, for either pointwise
-operation and any result length at most four. The theorem evaluates operand
-subexpressions through the source graph model; it does not supply AIR rows
-for those operand computations.
+operation and any result length at most four. The stronger
+`array_graph_iff_packed_rows` covers any result length and every packed row
+of the final operation. Both theorems evaluate operand subexpressions through
+the source graph model; they do not supply AIR rows for those operand
+computations.
+`SelectRows` models the direct array conditional's one shared complement row
+and three arithmetic rows per packed word. With an explicit Boolean selector
+premise, all packed rows agree
+with the source conditional, strict graph relation and executable normalized
+`select` node for any array length. A kernel-checked selector-`2` control
+demonstrates that the Boolean premise cannot be dropped.
 The [AIR model README](S31/Gadgets/Air/README.md) works through a two-lane
 example.
 
