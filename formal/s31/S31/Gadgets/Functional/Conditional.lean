@@ -1,4 +1,4 @@
-import S31.Gadgets.FunctionalOutputs
+import S31.Gadgets.Functional.Outputs
 import S31.Gadgets.Boolean
 
 /-!

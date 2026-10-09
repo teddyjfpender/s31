@@ -1,4 +1,4 @@
-import S31.Gadgets.FunctionalConditional
+import S31.Gadgets.Functional.Conditional
 
 /-!
 Why an eager fixed circuit needs total conditional branches. This small

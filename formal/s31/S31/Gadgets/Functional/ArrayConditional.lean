@@ -1,5 +1,5 @@
-import S31.Gadgets.FunctionalArrays
-import S31.Gadgets.FunctionalConditional
+import S31.Gadgets.Functional.Arrays
+import S31.Gadgets.Functional.Conditional
 import S31.Semantics.Node
 
 /-!

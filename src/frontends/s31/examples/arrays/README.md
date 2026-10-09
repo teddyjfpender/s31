@@ -16,7 +16,7 @@ input is `[9,10,7,8]`. The functional acceptance gate checks that arithmetic
 against an independent Poseidon2 oracle, builds both native packages, proves
 the fixture and rejects a changed public digest.
 
-Lean's [array core](../../../../../formal/s31/S31/Gadgets/FunctionalArrays.lean)
+Lean's [array core](../../../../../formal/s31/S31/Gadgets/Functional/Arrays.lean)
 proves source-level specialization and strict graph soundness for fixed-length
 field-array arithmetic and views, including the exact `[9,10,7,8]` prehash
 transform. The hash and array-view compiler paths are exercised by the native

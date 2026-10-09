@@ -25,15 +25,7 @@ theorem does not establish zero knowledge.
 | `S31/Semantics/Graph`, `Poseidon2`, `Blake2s`, `Sha256` | Explicit straight-line gate schedules and exact hash encodings. No uninterpreted hash callback is used. |
 | `S31/Semantics/Functional` | Intrinsically typed field and fixed-length field-array `let`/lambda/application core, static specialization into first-order field polynomials, and an arbitrary-witness local constraint relation. |
 | `S31/Gadgets/` | Primitive residual proofs, arbitrary auxiliary witnesses, constructive completeness and composition. |
-| `S31/Gadgets/FunctionalGraph` | Executable polynomial-to-graph lowering and strict circuit soundness for every core field program. |
-| `S31/Gadgets/FunctionalOutputs` | One graph for multiple functional results; every output wire and claimed value is bound, including an aliased second output. |
-| `S31/Gadgets/FunctionalArrays` | Shape-indexed arrays specialize pointwise, then enter one strict field graph that binds every output lane. |
-| `S31/Gadgets/FunctionalArrayNodes` | Typed array concat, indexed read, take and drop views agree with executable normalized relation nodes, including slice bounds and lane order. |
-| `S31/Gadgets/FunctionalArithmeticNodes` | Typed pointwise M31 array addition and multiplication agree with executable normalized `add`/`mul` nodes for every lane and every accepted graph witness. |
-| `S31/Gadgets/FunctionalAssertions` | Source-level `assert_eq` pairs checked against separately witnessed graph outputs, with universal contract soundness and completeness. |
-| `S31/Gadgets/FunctionalConditional` | Both total source branches in one graph, a bit-constrained selection relation, and soundness/completeness for either choice. |
-| `S31/Gadgets/FunctionalArrayConditional` | One graph contains the selector and both fixed-length array branches; a shared bit and pointwise select equations bind every output lane and agree with a concrete normalized `select` node. |
-| `S31/Gadgets/FunctionalEffects` | A computable conservative effect check for a small partial field language, proof that total branches agree under eager and lazy conditional evaluation, and an inactive inverse counterexample. |
+| [`S31/Gadgets/Functional/`](S31/Gadgets/Functional/README.md) | Typed source specialization, strict graphs, assertions, conditionals, effects, arrays and agreement with executable normalized relation nodes. |
 | `S31/Gadgets/U16Selection` | Pointwise bit-constrained selection of u16-backed vectors, including proof that selected limbs inherit the input range bound. |
 | `S31/Evidence/` | Checked operation coverage, non-vacuity/invalid-boundary theorems and live axiom enumeration. |
 | `coverage.json` | Reviewed mapping of every operation to semantics, local gadget theorems and production source functions. |
@@ -75,7 +67,7 @@ The hand-written `capturedSquare` term models
 `let saved = x in let f = fun(y : m31) -> m31 => y * y + saved in f(saved)`.
 `capturedSquare_zero_cost` reduces its residual tree to `x*x+x`, and
 `capturedSquare_accepts` proves its local constraints accept exactly that
-value for every M31 input. `FunctionalGraph` lowers every residual polynomial
+value for every M31 input. `Functional/Graph` lowers every residual polynomial
 through the generic graph builder. `Poly.emit_valid` proves by induction that
 emission preserves a valid builder, keeps the input prefix fixed, returns a
 live wire, and never removes gates. `Poly.emit_prefix` proves emitted gates
@@ -101,7 +93,7 @@ well-formed indices and arities. `capturedSquareCode_accepts` proves strict
 acceptance is equivalent to the source result for **every** intermediate
 witness.
 
-`FunctionalOutputs` extends this argument from one result to any list of
+`Functional/Outputs` extends this argument from one result to any list of
 first-order field results. It emits all residual trees into one graph,
 proves every returned wire is live, and proves that arbitrary satisfying gate
 witnesses bind **every** output to its own source expression. In the worked
@@ -116,7 +108,7 @@ identity inventory now includes the Python
 syntax, parser, elaborator, specializer and libraries so changes there force a reviewed
 binding update; the source digests themselves do not prove compiler correspondence.
 
-`FunctionalArrays` extends the typed source core with `[m31; N]` values,
+`Functional/Arrays` extends the typed source core with `[m31; N]` values,
 pointwise addition and multiplication, static splats, indexed reads and
 statically bounded `take`, `drop` and `concat` views.
 Length is part of the type: indexing needs a `Fin N`, so the formal term
@@ -136,7 +128,7 @@ prehash array view in the production example: `[a,b,c,d]` becomes
 production SIMD packing and AIR geometry are checked separately. Hashes and
 the Python implementation are not covered by this theorem.
 
-`FunctionalArrayNodes` takes the next step from the abstract graph to actual
+`Functional/ArrayNodes` takes the next step from the abstract graph to actual
 normalized relation nodes. It proves `array_concat`, `array_get`, and
 `array_slice` evaluate to the same values as the typed source views. For
 `take<k>`, the slice starts at zero; for `drop<k>`, it starts at `k` and keeps
@@ -148,7 +140,7 @@ binds the four output lanes to `[c,d,a,b]` for input `[a,b,c,d]`. These proofs
 do not establish that Python emits the matching nodes or that Zig performs
 the same wiring without extra AIR rows.
 
-`FunctionalArithmeticNodes.arithmetic_graph_iff_node` makes the same
+`Functional/ArithmeticNodes.arithmetic_graph_iff_node` makes the same
 source-to-normalized-value comparison for pointwise M31 `+` and `.*`. The
 normalized evaluator's `add` and `mul` nodes zip equal-length operand arrays;
 Lean proves the zipped list is exactly the source's indexed pointwise result.
@@ -156,7 +148,7 @@ The strict graph side includes arbitrary intermediate gate witnesses, so this
 is an equivalence of acceptance, not merely an honest-value example. Python
 emission and production AIR correspondence remain outside the proof.
 
-`FunctionalAssertions` adds a separate source contract with any number of
+`Functional/Assertions` adds a separate source contract with any number of
 `assert_eq` pairs. It compiles each side to an output wire and checks the
 paired values for equality. `Contract.accepts_iff` proves that strict graph
 acceptance plus these equality checks is equivalent to all claimed outputs
@@ -178,7 +170,7 @@ The equality check is part of the formal acceptance relation here; a proof
 that the production compiler emits the corresponding AIR assertion remains
 an explicit obligation.
 
-`FunctionalConditional.if_accepts_iff` composes three total functional
+`Functional/Conditional.if_accepts_iff` composes three total functional
 expressions (selector, true arm, false arm) in one strict graph with the
 independent polynomial select relation. It proves that every satisfying
 auxiliary witness has a selector of exactly `0` or `1` and an output equal
@@ -187,7 +179,7 @@ selector is represented by an M31 expression in this small model and its
 bitness is imposed by the select constraint. The theorem does not verify
 the Python effect checker or the production `select` AIR emission.
 
-`FunctionalArrayConditional.array_if_accepts_iff` extends that statement to
+`Functional/ArrayConditional.array_if_accepts_iff` extends that statement to
 any fixed array length. It emits the selector and both complete branches into
 one strict graph. The separate selection relation constrains the shared
 selector to zero or one and every output lane to the matching branch. The
@@ -205,7 +197,7 @@ composes that result with source specialization and the strict graph theorem.
 It does not prove that Python emits that normalized node or that Zig emits its
 modeled AIR constraints.
 
-`FunctionalEffects` makes the totality premise concrete in a smaller
+`Functional/Effects` makes the totality premise concrete in a smaller
 expression language with checked inversion. Its computable `isTotal` check
 accepts inputs, literals, addition and multiplication, and rejects every
 inverse. `total_has_value` proves that an accepted expression produces a

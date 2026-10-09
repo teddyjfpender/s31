@@ -4,15 +4,15 @@ import S31.Gadgets.BuilderValidity
 import S31.Gadgets.CompactTarget
 import S31.Gadgets.HashEncoding
 import S31.Gadgets.HashBuilder
-import S31.Gadgets.FunctionalGraph
-import S31.Gadgets.FunctionalOutputs
-import S31.Gadgets.FunctionalArrays
-import S31.Gadgets.FunctionalArrayNodes
-import S31.Gadgets.FunctionalArithmeticNodes
-import S31.Gadgets.FunctionalAssertions
-import S31.Gadgets.FunctionalConditional
-import S31.Gadgets.FunctionalArrayConditional
-import S31.Gadgets.FunctionalEffects
+import S31.Gadgets.Functional.Graph
+import S31.Gadgets.Functional.Outputs
+import S31.Gadgets.Functional.Arrays
+import S31.Gadgets.Functional.ArrayNodes
+import S31.Gadgets.Functional.ArithmeticNodes
+import S31.Gadgets.Functional.Assertions
+import S31.Gadgets.Functional.Conditional
+import S31.Gadgets.Functional.ArrayConditional
+import S31.Gadgets.Functional.Effects
 import S31.Gadgets.U16Selection
 import S31.Gadgets.Packed
 

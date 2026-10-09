@@ -1,4 +1,4 @@
-import S31.Gadgets.FunctionalOutputs
+import S31.Gadgets.Functional.Outputs
 
 /-!
 Source-level field assertions over the typed functional core. The graph emits

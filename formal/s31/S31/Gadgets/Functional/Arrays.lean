@@ -1,4 +1,4 @@
-import S31.Gadgets.FunctionalOutputs
+import S31.Gadgets.Functional.Outputs
 
 /-!
 Homogeneous fixed-length field arrays in the total functional core. Array

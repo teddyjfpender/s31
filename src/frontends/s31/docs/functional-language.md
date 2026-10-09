@@ -84,7 +84,7 @@ capture emit no nodes. For the fixture `[0,1,2,3]`, the hash receives
 padded QM31 operation rows. The functional acceptance gate pins the complete
 AIR cost and checks a native proof against an independent Poseidon2 oracle.
 
-The [Lean array theorem](../../../../formal/s31/S31/Gadgets/FunctionalArrays.lean)
+The [Lean array theorem](../../../../formal/s31/S31/Gadgets/Functional/Arrays.lean)
 proves pointwise field-array specialization and strict graph soundness for
 arbitrary intermediate witnesses, including statically bounded views and the
 prehash rotation/salt. It does not prove Python lowering or the production

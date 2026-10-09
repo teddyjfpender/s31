@@ -1,4 +1,4 @@
-import S31.Gadgets.FunctionalGraph
+import S31.Gadgets.Functional.Graph
 
 /-!
 Multiple first-order field outputs of the typed functional core. Each output

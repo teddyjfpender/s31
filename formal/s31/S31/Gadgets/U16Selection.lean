@@ -1,4 +1,4 @@
-import S31.Gadgets.FunctionalConditional
+import S31.Gadgets.Functional.Conditional
 
 /-!
 Vector selection for the u16-backed nominal source types. The backend's
