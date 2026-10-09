@@ -1,0 +1,8 @@
+use std@1;
+
+// Both arms are total; one constrained select chooses their result.
+circuit total_if(public choice: bit, private x: [m31; 1], public y: [m31; 1])
+    -> public [m31; 1] {
+    let result = if choice then x .* x else y + splat<1>(1_m31);
+    result
+}

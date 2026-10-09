@@ -28,6 +28,7 @@ theorem does not establish zero knowledge.
 | `S31/Gadgets/FunctionalGraph` | Executable polynomial-to-graph lowering and strict circuit soundness for every core field program. |
 | `S31/Gadgets/FunctionalOutputs` | One graph for multiple functional results; every output wire and claimed value is bound, including an aliased second output. |
 | `S31/Gadgets/FunctionalAssertions` | Source-level `assert_eq` pairs checked against separately witnessed graph outputs, with universal contract soundness and completeness. |
+| `S31/Gadgets/FunctionalConditional` | Both total source branches in one graph, a bit-constrained selection relation, and soundness/completeness for either choice. |
 | `S31/Evidence/` | Checked operation coverage, non-vacuity/invalid-boundary theorems and live axiom enumeration. |
 | `coverage.json` | Reviewed mapping of every operation to semantics, local gadget theorems and production source functions. |
 | `source-bindings.json`, `proof-inventory.json` | Generated exact source identities and the complete theorem inventory, including the reused modules and three source-derived proof declarations. |
@@ -130,6 +131,15 @@ Its formal graph has one multiplication gate and graph outputs
 The equality check is part of the formal acceptance relation here; a proof
 that the production compiler emits the corresponding AIR assertion remains
 an explicit obligation.
+
+`FunctionalConditional.if_accepts_iff` composes three total functional
+expressions (selector, true arm, false arm) in one strict graph with the
+independent polynomial select relation. It proves that every satisfying
+auxiliary witness has a selector of exactly `0` or `1` and an output equal
+to the matching source arm; honest witnesses exist for both values. The
+selector is represented by an M31 expression in this small model and its
+bitness is imposed by the select constraint. The theorem does not verify
+the Python effect checker or the production `select` AIR emission.
 
 Soundness quantifies over every satisfying auxiliary witness. Completeness
 constructs witnesses for every input within the stated range and shape

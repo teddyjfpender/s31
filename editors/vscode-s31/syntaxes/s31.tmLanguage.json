@@ -69,6 +69,7 @@
         { "name": "keyword.declaration.function.s31", "match": "\\b(?:fn|fun|circuit)\\b" },
         { "name": "keyword.declaration.variable.s31", "match": "\\blet\\b" },
         { "name": "keyword.control.binding.s31", "match": "\\bin\\b" },
+        { "name": "keyword.control.conditional.s31", "match": "\\b(?:if|then|else)\\b" },
         { "name": "storage.modifier.visibility.s31", "match": "\\b(?:public|private)\\b" },
         { "name": "keyword.other.assertion.s31", "match": "\\bassert_eq(?=\\s*\\()" }
       ]

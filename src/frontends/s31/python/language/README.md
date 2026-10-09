@@ -11,6 +11,7 @@ CLI and existing tests. Implementation files are grouped by compiler phase:
 | `parser.py` | Lexing, declaration and expression parsing, and first-order circuit boundary checks. |
 | `types.py`, `builtin_types.py` | Source-only static array/literal types and pure builtin typing rules. |
 | `elaborate.py` | Whole-program type checking, lexical scopes and call-graph bounds before emission. |
+| `effects.py` | Exhaustive builtin totality inventory and transitive effect check for eager conditional arms. |
 | `specialize.py` | Lexical environments, typed function application, source specialization, and normalized relation emission. |
 
 `Fn` values never enter normalized relation JSON. Function application
@@ -20,8 +21,11 @@ file in this directory into its compiler fingerprint, so changing parser or
 specializer semantics invalidates cached packages and native verifier builds.
 
 The elaborator checks unused declarations and lambda bodies without emitting
-relation nodes. Specialization repeats value-level checks, including bit
-provenance, constant partial operations, and static repeat shape. The Lean
+relation nodes. The effect pass rejects `if` arms that could fail even when
+inactive. Opaque function parameters carry deferred effect obligations,
+resolved when concrete static closures are supplied. Both arms specialize
+into one fixed circuit. Specialization repeats value-level checks, including
+bit provenance, constant partial operations, and static repeat shape. The Lean
 source-core theorem does not yet prove this Python elaborator or all builtin
 rules correct; those remain in the
 [v0.1.0 release contract](../../../../../design/s31/language/FUNCTIONAL_V01.md).

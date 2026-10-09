@@ -9,7 +9,7 @@ bit provenance, static repeat shape, partial constants and resource limits.
 from __future__ import annotations
 
 from s31_stdlib import P, Type, TypeErrorS31
-from language.builtin_types import BIT, M31_ONE, circuit, infer_builtin
+from language.builtin_types import BIT, M31_ONE, SELECTABLE_KINDS, circuit, infer_builtin
 from language.builtins import MAX_CALL_DEPTH, STANDARD_ALIASES
 from language.syntax import Circuit, Expr, Function, FunctionType, SourceError, Statement
 from language.types import FieldLiteral, SourceType, StaticArray
@@ -153,6 +153,19 @@ class Elaborator:
                 local = env.copy()
                 local[expr.value] = bound
                 return self.expr(expr.args[1], local, step_mode=step_mode)
+            if expr.kind == "if":
+                if step_mode:
+                    raise TypeErrorS31("iterate steps cannot contain witness-dependent if expressions")
+                condition = self.expr(expr.args[0], env)
+                on_true = self.expr(expr.args[1], env)
+                on_false = self.expr(expr.args[2], env)
+                if condition != BIT:
+                    raise TypeErrorS31("if condition must have type bit")
+                if on_true != on_false or not isinstance(on_true, Type):
+                    raise TypeErrorS31("if branches must have the same first-order circuit type")
+                if on_true != BIT and on_true.kind not in SELECTABLE_KINDS:
+                    raise TypeErrorS31("if result type cannot be selected by the circuit")
+                return on_true
             if expr.kind == "lambda":
                 if expr.result_type is None:
                     raise TypeErrorS31("lambda requires a declared result type")

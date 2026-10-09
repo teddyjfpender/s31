@@ -72,22 +72,28 @@ is described in [The Essence of Compiling with Continuations](https://felleisen.
 The current Zig relation is already first-order and topologically ordered;
 the Python frontend still interleaves specialization with node emission.
 
-## Conditional semantics must be decided before syntax
+## Witness-dependent conditional rule
 
 A witness-dependent `if` cannot discard an inactive branch from a fixed AIR.
 Eagerly compiling both branches and selecting their values is sound only for
 operations that are total on both paths. An inactive checked inverse or
 overflow can otherwise make an apparently valid conditional unprovable.
-The v0.1 language must therefore either:
+The v0.1 subset uses `if bit then a else b` only when both branches have the
+same selectable first-order type and are total on well-typed values. The
+compiler emits both branches followed by the existing constrained selection;
+`bit` results use `bool_select`. An exhaustive effect inventory classifies
+all current builtins, and transitive analysis includes named functions and
+known closures. An opaque function parameter carries a deferred effect
+obligation; each concrete static call resolves it, and no unresolved effect
+may reach the circuit boundary. A partial condition remains a precondition
+of the whole expression. The source `if` adds no relation node beyond the
+equivalent explicit selector.
 
-- give dynamic `if` a typed, total-branch effect rule and lower it to
-  constrained selection, or
-- expose only an explicit strict selector and reserve `if` for static
-  conditions.
-
-The release specification must state the rule, prove bitness of the selector,
-type-check both dynamic branches, and test zero, nonzero and partial-operation
-cases. The current subset deliberately has no general `if` expression.
+The release gate still needs broader geometry equivalence checks and a
+formal correspondence from source conditionals through effect analysis to
+the generated AIR. Lean composes total source branches with the local
+selector relation and proves soundness for both bit values; it does not
+verify the Python effect pass or the complete production AIR emission.
 
 ## Release evidence, not release intentions
 
@@ -96,10 +102,10 @@ The following are required for a v0.1.0 claim:
 | Requirement | Evidence required | Current state |
 | --- | --- | --- |
 | Grammar and diagnostics | Versioned grammar, location-precise errors, malformed and fuzzed input corpus, bounded parse and specialization resources | Handwritten parser and bounded token/call depth; grammar/fuzz gate missing. |
-| Type soundness | Separate typed elaboration of **all** declarations, no function values at circuit boundary, well-defined static/dynamic effects | Pure elaboration now checks every function and lambda body, source types, lexical scopes and call-graph bounds before emission. Value-dependent checks still run during specialization; an explicit effect system remains missing. |
-| Semantic preservation | Proof or independently checked translation for typed source → normalized relation, including closure capture, shadowing, arrays and library calls | Lean proves source evaluation agrees with strict graph acceptance for every typed program in its total field/function core, including lexical capture, beta erasure, field outputs and source-level equality assertions. Python text compilation, arrays, library calls, effects and production AIR correspondence remain unproved. |
-| Zero-cost abstractions | Canonical graph and AIR geometry equivalence across arithmetic, hashes, arrays and chip extraction, plus regression ceilings | One functional arithmetic gate exists; broader gate missing. |
-| Build and native verification | Build, prove, verify, changed-statement rejection, independent oracle, reproducible source/key/IR identity | Existing package path and one functional native trial pass. |
+| Type soundness | Separate typed elaboration of **all** declarations, no function values at circuit boundary, well-defined static/dynamic effects | Pure elaboration checks every function and lambda body, source types, lexical scopes and call-graph bounds before emission. An exhaustive conservative effect pass rejects potentially partial inactive `if` arms. Value-dependent checks still run during specialization; a machine-checked effect soundness proof remains missing. |
+| Semantic preservation | Proof or independently checked translation for typed source → normalized relation, including closure capture, shadowing, arrays and library calls | Lean proves source evaluation agrees with strict graph acceptance for every typed program in its total field/function core, including lexical capture, beta erasure, field outputs and source-level equality assertions. It also proves a total-branch field conditional over that graph for both selector values. Python text compilation, arrays, library calls, effects and production AIR correspondence remain unproved. |
+| Zero-cost abstractions | Canonical graph and AIR geometry equivalence across arithmetic, hashes, arrays and chip extraction, plus regression ceilings | Functional arithmetic and conditional gates compare canonical IR and direct-gate AIR geometry with explicit equivalents; broader sparse and chip gates remain. |
+| Build and native verification | Build, prove, verify, changed-statement rejection, independent oracle, reproducible source/key/IR identity | Functional arithmetic and conditional native trials pass, including both selector values and changed-claim rejection; a complete supported-profile release matrix remains. |
 | Repository hygiene | Parser, AST, elaborator, specialization, library and CLI isolated by directory, module READMEs and pinned dependency versions | Syntax, parser, builtin typing, elaboration and specialization now live under `python/language/`; further library/CLI separation remains. |
 | Release artifact | Tagged source, lockfile, supported-profile matrix, signed or otherwise authenticated distribution process, changelog and exact test commands | No v0.1.0 tag or release audit yet. |
 

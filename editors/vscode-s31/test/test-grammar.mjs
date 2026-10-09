@@ -72,6 +72,9 @@ expectScope('fn step(v: [m31; 4]) -> [m31; 4] {', '->', 'keyword.operator.return
 expectScope('let f = fun(v: [m31; 4]) -> [m31; 4] => v .* v;', 'fun', 'keyword.declaration.function.s31');
 expectScope('let f = fun(v: [m31; 4]) -> [m31; 4] => v .* v;', '=>', 'keyword.operator.return.s31');
 expectScope('let y = x in f(y)', 'in', 'keyword.control.binding.s31');
+for (const keyword of ['if', 'then', 'else']) {
+  expectScope('if b then x else y', keyword, 'keyword.control.conditional.s31');
+}
 expectScope('fn apply(f: Fn([m31; 4]) -> [m31; 4])', 'Fn', 'support.type.primitive.s31');
 expectScope('assert_eq(a, b);', 'assert_eq', 'keyword.other.assertion.s31');
 expectScope('// private is only a comment', '// private is only a comment', 'comment.line.double-slash.s31');

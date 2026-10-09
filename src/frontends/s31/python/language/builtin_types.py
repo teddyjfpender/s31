@@ -17,6 +17,7 @@ M31_ONE = Type("m31", 1)
 U256 = Type("uint256", 16)
 BYTES32 = Type("bytes32", 16)
 BYTES80 = Type("bytes80", 40)
+SELECTABLE_KINDS = frozenset({"m31", "digest", "uint256", "target", "work", "chainwork"} | INT_TYPES.keys())
 
 
 def require(condition: bool, message: str) -> None:
@@ -325,8 +326,7 @@ def infer_builtin(name: str, generic: int | None, args: tuple[SourceType, ...],
         arity(name, args, 3)
         selector, lhs, rhs = args
         require(selector == BIT, "select requires a bit selector")
-        require(lhs == rhs and isinstance(lhs, Type) and
-                lhs.kind in {"m31", "digest", "uint256", "target", "work", "chainwork"} | INT_TYPES.keys(),
+        require(lhs == rhs and isinstance(lhs, Type) and lhs.kind in SELECTABLE_KINDS,
                 "select requires a bit and two equally typed field or 256-bit or fixed-width integer values")
         return lhs
     if name in {"bool_and", "bool_or", "bool_xor", "bool_select"}:

@@ -63,7 +63,7 @@ class Parser:
     def identifier(self) -> str:
         token = self.peek()
         if token.kind != "ident" or token.text in {
-            "use", "let", "in", "fun", "Fn", "fn", "circuit", "blinded",
+            "use", "let", "in", "if", "then", "else", "fun", "Fn", "fn", "circuit", "blinded",
             "public", "private", "assert_eq",
         }:
             raise self.error("expected identifier")
@@ -216,6 +216,13 @@ class Parser:
             self.expect("in")
             body = self.expression()
             lhs = Expr("let", name, (bound, body), token)
+        elif self.accept("if"):
+            condition = self.expression()
+            self.expect("then")
+            on_true = self.expression()
+            self.expect("else")
+            on_false = self.expression()
+            lhs = Expr("if", "", (condition, on_true, on_false), token)
         elif self.accept("fun"):
             params = self.parameters(False)
             self.expect("->")

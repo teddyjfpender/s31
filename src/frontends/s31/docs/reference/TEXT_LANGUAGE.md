@@ -59,7 +59,8 @@ the same compiler-owned standard library version implicitly. Other packages
 and versions are rejected.
 Functions and circuit bodies contain immutable `let` statements, optional
 `assert_eq(a, b);` statements, and a final expression. Supported expressions
-are names, `_m31` field literals, `+`, `-`, unary `-`, lane-wise `.*`, calls, parentheses, and
+are names, `_m31` field literals, `+`, `-`, unary `-`, lane-wise `.*`, calls,
+`if bit then value else value`, parentheses, and
 static array literals such as `[sibling_0, sibling_1]` and nested fixed
 reference arrays such as `[[a, b], [c, d]]`. A `let` can bind a static array;
 it becomes a compile-time reference group, not a witness array. Comments start with
@@ -72,8 +73,15 @@ The [functional core](../functional-language.md) adds expression-level
 `fun(name: Type) -> Type => expression`, and static function types
 `Fn(Type) -> Type`. Function values are specialized away at calls, cannot
 cross circuit inputs or outputs, and add no relation nodes by themselves.
-Recursive calls are rejected. A function body is type checked when
-specialized; unused declarations do not yet have a separate elaboration pass.
+Recursive calls are rejected. Whole-program elaboration type checks every
+function and lambda body, including unused ones.
+For a witness-dependent `if`, both arms must have the same selectable
+first-order type and be total on well-typed values. Both arms are emitted,
+followed by one constrained `select` or `bool_select` node. The compiler
+rejects partial inverse, division, checked arithmetic and other potentially
+failing operations transitively through function calls in either arm. See
+the [functional language guide](../functional-language.md#witness-dependent-conditionals)
+for a worked example and the exact effect rule.
 Unary `-` binds tighter than `.*`, which binds tighter than `+` and `-`; binary
 operators associate left, so `-a .* b - c - d` is `((-a) .* b - c) - d`.
 `a - b` and `-a` are spellings of `std::math::sub(a, b)` and

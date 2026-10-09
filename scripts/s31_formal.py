@@ -63,6 +63,7 @@ BINDINGS = [
     "src/frontends/s31/python/language/parser.py",
     "src/frontends/s31/python/language/builtin_types.py",
     "src/frontends/s31/python/language/elaborate.py",
+    "src/frontends/s31/python/language/effects.py",
     "src/frontends/s31/python/language/specialize.py",
     "src/frontends/s31/python/language/builtins.py",
     POSEIDON, SHA, SIGMA,

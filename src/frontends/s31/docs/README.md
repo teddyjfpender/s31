@@ -114,6 +114,7 @@ The worked examples use checked-in sources under [`../examples`](../examples):
 | [`bitcoin_chainwork_step.s31`](../examples/bitcoin/bitcoin_chainwork_step.s31) | Header proof of work, checked block work, and a committed ChainWork transition | `sparse-wide-gate` |
 | [`private_step16.s31`](../examples/boundary/private_step16.s31) | Private chip endpoints and one public aggregate | `direct-chip` |
 | [`computed_choice.s31`](../examples/control/computed_choice.s31) | Computed zero bit, two algebraic constraints, and conditional selection | `direct-gate` |
+| [`total_if.s31`](../examples/control/total_if.s31) | Typed witness-dependent `if`, total-branch effect check, and one strict selector | `direct-gate` |
 | [`arith4_m31.s31`](../examples/arithmetic/arith4_m31.s31) | `iterate`, gate unrolling versus one linked AIR chip | `direct-chip` |
 | [`merkle_path1_poseidon.s31`](../examples/hashes/merkle_path1_poseidon.s31) | Private leaf, constrained bit, ordered hashing, public root | `direct-gate` |
 | [`preimage4.s31`](../examples/hashes/preimage4.s31) | Private `u16` witness and an equality assertion | `gate` |

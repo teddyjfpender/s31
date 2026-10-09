@@ -156,6 +156,15 @@ class Compiler:
                 if not all(isinstance(value, (Value, StaticGroup)) for value in values):
                     raise TypeErrorS31("static array elements must be circuit values or static arrays")
                 return StaticGroup(values)
+            if expr.kind == "if":
+                condition = self.expect_value(self.eval_expr(expr.args[0], env), expr.args[0])
+                on_true = self.expect_value(self.eval_expr(expr.args[1], env), expr.args[1])
+                on_false = self.expect_value(self.eval_expr(expr.args[2], env), expr.args[2])
+                if on_true.typ == Type("bit", 1):
+                    return self.builder.boolean("bool_select", on_false, on_true, condition,
+                                                wanted=wanted, span=self.span(expr))
+                return self.builder.select(condition, on_false, on_true,
+                                           wanted=wanted, span=self.span(expr))
             if expr.kind == "binary":
                 lhs = self.expect_value(self.eval_expr(expr.args[0], env), expr.args[0])
                 rhs = self.expect_value(self.eval_expr(expr.args[1], env), expr.args[1])
