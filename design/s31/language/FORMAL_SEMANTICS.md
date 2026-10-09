@@ -69,6 +69,10 @@ Lean separately proves the five compiler-shaped Boolean operation row
 schedules sound and complete for base-field encoded Boolean inputs. All
 intermediate row witnesses are quantified. Their operand producers and Gate
 address wiring remain separate global obligations.
+The ordinary `checkedBitWord` path is modeled too: Lean proves that the
+compiler's `anchor + value = anchor` row enforces zero for an arbitrary
+anchor, and that its multiply/subtract/zero row sequence accepts exactly
+canonical QM31 bits. A bound source M31 value is consequently Boolean.
 For `sum_lanes`, Lean models the final-word mask, pairwise packed addition
 passes, QM31 dual projection and base-coordinate extraction. The resulting
 row relation is sound and complete against the normalized `sum_lanes` node

@@ -196,6 +196,11 @@ schedule.
 base-field encoded bit operands, including all OR, XOR and select
 intermediates. Arbitrary satisfying row witnesses have exactly the Boolean
 result; the converse constructs honest witnesses.
+`BitRows` proves the ordinary `checkedBitWord` path: an arbitrary anchor
+self-loop enforces a zero arithmetic value, and multiply/subtract/zero rows
+enforce `q² = q` for every QM31 witness. The tower proof therefore gives a
+canonical bit even when the input witness hint is untrusted. A concrete
+selector `2` is rejected.
 `SumRows` proves that the direct `sum_lanes` mask, pairwise reduction, and
 projection rows accept exactly the normalized node's M31 result for every
 nonempty array length. The theorem permits arbitrary unused coordinates in

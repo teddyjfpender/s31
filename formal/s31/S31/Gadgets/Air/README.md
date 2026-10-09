@@ -88,6 +88,15 @@ witnesses exist. The premises are base-field encoded Boolean operands, as
 provided by a proved bit producer. `QuadField.self_product_iff` also handles
 arbitrary untrusted QM31 self-product operands.
 
+`BitRows.lean` proves the other Boolean input path. Its `acceptsZero` is the
+compiler's `anchor + value = anchor` self-loop assertion with an arbitrary
+anchor witness. `acceptsZero_iff` shows that row accepts precisely the zero
+QM31 value. `acceptsBit` then models the ordinary scalar check as multiply,
+subtract, and zero assertion rows. `acceptsBit_iff` proves that any satisfying
+four-coordinate wire is canonical zero or one, while constructing honest
+rows for both bits. `acceptsBit_bound_iff` connects a bound source M31 value;
+`nonbit_two_rejected` checks a concrete forged scalar is excluded.
+
 `SumRows.lean` models `sum_lanes`: the optional final-word pointwise mask,
 left-to-right pairwise add rows with odd-width carry rounds, QM31 multiplication
 by the dual projection constant, and a final pointwise base-coordinate mask.
