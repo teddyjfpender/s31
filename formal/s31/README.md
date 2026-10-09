@@ -174,6 +174,10 @@ its converse supplies honest witnesses. `chooseOrSeven_accepts` instantiates
 the theorem with a two-word input `[bit, value]`: both output lanes must be
 seven when `bit=0`, or `value` when `bit=1`. As with scalar conditionals, the
 production compiler and AIR correspondence remain separate obligations.
+`array_if_accepts_iff_normalized` additionally matches the normalized
+relation evaluator's canonical `selector ≤ 1` check and its exact false/true
+operand order in a separate mathematical predicate. A theorem about the full
+`evaluateNode` function and the emitted AIR constraints is still needed.
 
 `FunctionalEffects` makes the totality premise concrete in a smaller
 expression language with checked inversion. Its computable `isTotal` check

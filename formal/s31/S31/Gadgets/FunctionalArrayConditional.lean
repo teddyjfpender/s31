@@ -74,6 +74,34 @@ theorem array_select_iff {m : Nat} (selector : M31)
     · exact ⟨Or.inr hone, fun i => (field_select_iff _ _ _ _).mpr
         (Or.inr ⟨hone, rfl⟩)⟩
 
+/-- This is exactly the validity check and branch order of the normalized
+relation IR's `select` evaluator for M31 arrays. -/
+def normalizedArraySelect {m : Nat} (selector : M31)
+    (onFalse onTrue output : Fin m → M31) : Prop :=
+  selector.val ≤ 1 ∧
+    output = if selector.val == 0 then onFalse else onTrue
+
+theorem array_select_iff_normalized {m : Nat} (selector : M31)
+    (onFalse onTrue output : Fin m → M31) :
+    arraySelect selector onFalse onTrue output ↔
+      normalizedArraySelect selector onFalse onTrue output := by
+  rw [array_select_iff]
+  constructor
+  · rintro (⟨rfl, rfl⟩ | ⟨rfl, rfl⟩)
+    · have hz : (0 : M31).val = 0 := rfl
+      simp [normalizedArraySelect, hz]
+    · have ho : (1 : M31).val = 1 := rfl
+      simp [normalizedArraySelect, ho]
+  · rintro ⟨hbit, houtput⟩
+    have hcases : selector.val = 0 ∨ selector.val = 1 := by omega
+    rcases hcases with hzero | hone
+    · left
+      have hs : selector = 0 := RiscvRefinement.M31.ext (by simpa using hzero)
+      exact ⟨hs, by simpa [normalizedArraySelect, hzero] using houtput⟩
+    · right
+      have hs : selector = 1 := RiscvRefinement.M31.ext (by simpa using hone)
+      exact ⟨hs, by simpa [normalizedArraySelect, hone] using houtput⟩
+
 def arrayIfTerm {n m : Nat}
     (selector : Expr [.array n] .field)
     (onTrue onFalse : Expr [.array n] (.array m)) :
@@ -131,6 +159,26 @@ theorem array_if_accepts_iff {n m : Nat}
     refine ⟨denote selector env, denote onTrue env, denote onFalse env, ?_, ?_⟩
     · exact (hgraph _ _ _).mpr ⟨rfl, rfl, rfl⟩
     · exact (array_select_iff _ _ _ _).mpr selected
+
+/-- Source conditional acceptance agrees with the normalized IR `select`
+rule, including its canonical selector check and false/true operand order. -/
+theorem array_if_accepts_iff_normalized {n m : Nat}
+    (selector : Expr [.array n] .field)
+    (onTrue onFalse : Expr [.array n] (.array m))
+    (inputs : List M31) (output : Fin m → M31)
+    (hinputs : inputs.length = n) :
+    ArrayIfAccepts selector onTrue onFalse inputs output ↔
+      normalizedArraySelect
+        (denote selector (arrayInputSource (fun i => inputs.getD i.val 0)))
+        (denote onFalse (arrayInputSource (fun i => inputs.getD i.val 0)))
+        (denote onTrue (arrayInputSource (fun i => inputs.getD i.val 0)))
+        output := by
+  let env := arrayInputSource (n := n) (fun i => inputs.getD i.val 0)
+  exact (array_if_accepts_iff selector onTrue onFalse inputs output hinputs).trans
+    (((array_select_iff (denote selector env) (denote onFalse env)
+      (denote onTrue env) output).symm).trans
+      (array_select_iff_normalized (denote selector env)
+        (denote onFalse env) (denote onTrue env) output))
 
 /-- A two-lane worked example. The first input is the selector; the second
 is copied to both output lanes when selected, otherwise both lanes are seven. -/
