@@ -51,6 +51,69 @@ def uniqueProduced (produced : List Event) : Prop :=
     (address, left) ∈ produced →
     (address, right) ∈ produced → left = right
 
+private theorem row_yield_member (rows : List Row) (address : Nat)
+    (value : Quad) (h : (address, value) ∈ rows.flatMap Row.yields) :
+    ∃ r ∈ rows, address = r.outAddress ∧ value = r.output := by
+  obtain ⟨r, hr, hvalue⟩ := List.mem_flatMap.mp h
+  have hpair : (address, value) = (r.outAddress, r.output) := by
+    exact List.eq_of_mem_replicate (show (address, value) ∈
+      List.replicate r.multiplicity (r.outAddress, r.output) from hvalue)
+  exact ⟨r, hr, congrArg Prod.fst hpair, congrArg Prod.snd hpair⟩
+
+/-- Fresh row output addresses plus disjoint external producer addresses
+discharge the uniqueness premise used by the Gate join theorem. The proof
+allows a row's single output event to be replicated by its multiplicity. -/
+theorem unique_produced_of_fresh_outputs
+    (rows : List Row) (external : List Event)
+    (hfresh : ∀ r ∈ rows, ∀ s ∈ rows,
+      r.outAddress = s.outAddress → r = s)
+    (hexternal : uniqueProduced external)
+    (hdisjoint : ∀ r ∈ rows, ∀ address value,
+      (address, value) ∈ external → r.outAddress ≠ address) :
+    uniqueProduced (allYields rows external) := by
+  intro address left right hleft hright
+  rcases List.mem_append.mp hleft with hleft | hleft <;>
+    rcases List.mem_append.mp hright with hright | hright
+  · obtain ⟨r, hr, har, hvl⟩ := row_yield_member rows address left hleft
+    obtain ⟨s, hs, has, hvr⟩ := row_yield_member rows address right hright
+    have hrs : r = s := hfresh r hr s hs (har.symm.trans has)
+    simp [hvl, hvr, hrs]
+  · obtain ⟨r, hr, har, _⟩ := row_yield_member rows address left hleft
+    exact False.elim ((hdisjoint r hr address right hright) har.symm)
+  · obtain ⟨r, hr, har, _⟩ := row_yield_member rows address right hright
+    exact False.elim ((hdisjoint r hr address left hleft) har.symm)
+  · exact hexternal address left right hleft hright
+
+theorem unique_produced_of_nodup_outputs
+    (rows : List Row) (external : List Event)
+    (hnodup : (rows.map Row.outAddress).Nodup)
+    (hexternal : uniqueProduced external)
+    (hdisjoint : ∀ r ∈ rows, ∀ address value,
+      (address, value) ∈ external → r.outAddress ≠ address) :
+    uniqueProduced (allYields rows external) := by
+  exact unique_produced_of_fresh_outputs rows external
+    (fun r hr s hs heq =>
+      (List.inj_on_of_nodup_map hnodup) hr hs heq)
+    hexternal hdisjoint
+
+/-- The straight-line builder's fresh `start + index` output-address pattern
+has no duplicate row producers. This is a model of the address pattern, not
+a proof that the Zig compiler always emits it. -/
+theorem indexed_outputs_nodup {n : Nat} (start : Nat)
+    (rows : Fin n → Row)
+    (haddress : ∀ i, (rows i).outAddress = start + i.val) :
+    ((List.ofFn rows).map Row.outAddress).Nodup := by
+  have hinjective : Function.Injective
+      (fun i : Fin n => start + i.val) := by
+    intro i j h
+    exact Fin.ext (Nat.add_left_cancel h)
+  have hfun : Row.outAddress ∘ rows =
+      (fun i : Fin n => start + i.val) := by
+    funext i
+    exact haddress i
+  simpa only [List.map_ofFn, hfun] using
+    (List.nodup_ofFn_ofInjective hinjective)
+
 theorem balanced_read_matches (reads produced : List Event)
     (hbalance : reads.Perm produced)
     (hunique : uniqueProduced produced)

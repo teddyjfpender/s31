@@ -56,6 +56,11 @@ An abstract Gate relation model now proves that exact multiset balance plus
 unique produced values per address forces row operands to equal their
 preprocessed-address producers. The production compressed LogUp argument is
 still an explicit assumption, not a theorem of this package.
+The unique-producer premise follows in the Lean model from distinct row output
+addresses and disjoint external producers; the abstract straight-line
+`start + index` address pattern is proved distinct. A proof that the Zig
+builder follows this allocation pattern for each compiled S31 program is
+still required.
 
 ## Evidence and hygiene
 

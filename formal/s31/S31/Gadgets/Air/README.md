@@ -59,6 +59,13 @@ use of `(9,7)`; `forged_example_rejected` proves exact Gate balance fails
 because address 7 still produced 5. The output claim was changed to 7 too, so
 the rejection isolates the forged input-address binding.
 
+`unique_produced_of_nodup_outputs` derives the row-side uniqueness premise
+when output addresses are distinct, external producer events are consistent,
+and row outputs have addresses disjoint from those external events.
+`indexed_outputs_nodup` proves the abstract straight-line address layout
+`start + gate_index` has distinct outputs. A correspondence proof for the
+actual Zig allocator and any aliasing or `*Into` call sites remains open.
+
 Exact multiset balance is a **premise** here. Production uses compressed
 LogUp over a random challenge; this module does not bound collision
 probability, prove trace-to-interaction correctness, or prove the compiler

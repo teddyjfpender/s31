@@ -197,6 +197,11 @@ uniqueness, and public boundary are not proved here.
 The checked nonempty example includes a balanced honest row and a locally
 valid forged row whose public output claim has been changed consistently;
 the forged row still fails exact Gate balance at its input address.
+`unique_produced_of_nodup_outputs` proves the needed uniqueness from distinct
+row output addresses and disjoint, consistent external producers. The
+`indexed_outputs_nodup` lemma handles the abstract `start + gate_index`
+layout. Matching this premise to all production Zig allocation paths remains
+an open compiler-correctness step.
 
 `Functional/Assertions` adds a separate source contract with any number of
 `assert_eq` pairs. It compiles each side to an output wire and checks the
