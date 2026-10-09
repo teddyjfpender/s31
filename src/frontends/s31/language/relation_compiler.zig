@@ -1710,6 +1710,41 @@ test "inverse_lanes masks nonzero inactive padding without extra gates" {
     }
 }
 
+test "SIMD extraction produces the modeled scalar in one or two arithmetic rows" {
+    const words = [_]u32{ 8, 13, 21, 34 };
+    for (0..4) |lane| {
+        var ctx = try circuit.builder.Context(QM31).init(std.testing.allocator, 0);
+        defer ctx.deinit();
+        const packed_word = try ctx.guess(QM31.fromU32Unchecked(words[0], words[1], words[2], words[3]));
+        const data = [_]Var{packed_word};
+        const before = ctx.circuit.nQm31OpsRows();
+        const scalar = try circuit.builder.simd.unpackIdx(QM31, &ctx, Simd.fromPacked(&data, 4), lane);
+        try std.testing.expectEqual(@as(usize, if (lane == 0) 1 else 2), ctx.circuit.nQm31OpsRows() - before);
+        const actual = ctx.get(scalar).toM31Array();
+        try std.testing.expectEqual(words[lane], actual[0].v);
+        for (actual[1..]) |coordinate| try std.testing.expect(coordinate.isZero());
+        try ctx.finalize(false);
+        try std.testing.expect(try ctx.isCircuitValid());
+    }
+}
+
+test "short SIMD equality ignores inactive padding and rejects a forged active lane" {
+    for ([_]bool{ false, true }) |forged| {
+        var ctx = try circuit.builder.Context(QM31).init(std.testing.allocator, 0);
+        defer ctx.deinit();
+        const left = try ctx.guess(QM31.fromU32Unchecked(2, 3, 71, 99));
+        const right = try ctx.guess(QM31.fromU32Unchecked(2, if (forged) 4 else 3, 5, 6));
+        const lhs = [_]Var{left};
+        const rhs = [_]Var{right};
+        const before = ctx.circuit.nQm31OpsRows();
+        try circuit.builder.simd.eq(QM31, &ctx, Simd.fromPacked(&lhs, 2), Simd.fromPacked(&rhs, 2));
+        try std.testing.expectEqual(@as(usize, 2), ctx.circuit.nQm31OpsRows() - before);
+        try std.testing.expectEqual(@as(usize, 1), ctx.circuit.eq.items.len);
+        try ctx.finalize(false);
+        try std.testing.expectEqual(!forged, try ctx.isCircuitValid());
+    }
+}
+
 test "mix4 packed diffusion matches scalar M31 at field boundaries" {
     const p = core.fields.m31.Modulus;
     for ([_][4]u32{

@@ -250,6 +250,18 @@ row output addresses and disjoint, consistent external producers. The
 layout. Matching this premise to all production Zig allocation paths remains
 an open compiler-correctness step.
 
+`EqRows` models the equality component's two Gate uses, which carry one
+shared trace word. Under exact Gate balance and one produced value per
+address, `eq_row_sound` forces the values at both source addresses to agree.
+For a short final SIMD word, the compiler subtracts the two packed words,
+masks unused lanes with a pointwise multiplication, and compares the result
+with zero. `partial_eq_sound_of_lookup` composes those arithmetic rows with
+the equality lookup and proves every active lane agrees.
+`packedEqRows_iff` extends this post-lookup relation to arrays of every
+length, including lengths divisible by four and arbitrary unused padding.
+The converse constructs local rows when all active lanes agree; concrete
+accepted and forged two-lane examples are kernel checked.
+
 `Functional/Assertions` adds a separate source contract with any number of
 `assert_eq` pairs. It compiles each side to an output wire and checks the
 paired values for equality. `Contract.accepts_iff` proves that strict graph

@@ -84,6 +84,11 @@ inverse. This holds for arbitrary array lengths and final-word padding.
 Packed lane extraction has a matching one- or two-row theorem: the
 pointwise unit mask and optional basis-inverse multiply return precisely
 the chosen base-field value, even with arbitrary unused packed coordinates.
+The equality component now has a separate exact Gate-event model. Given
+closed events and unique values at produced addresses, its two lookups
+force equality of their addressed operands. This composes with the masked
+short-word arithmetic rows to prove every active lane of a partial-word
+assertion agrees. The resulting post-lookup array theorem covers any length.
 The `mix4` diffusion step now composes the proved `sum_lanes` rows with a
 QM31 broadcast multiply and a packed add. Its local rows agree with the
 executable normalized repeat-body step for all four-lane inputs.

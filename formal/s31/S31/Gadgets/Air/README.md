@@ -149,6 +149,8 @@ For example, extracting coordinate two from `(8, 13, 21, 34)` starts with
 `(0, 0, 21, 0)` and finishes at `(21, 0, 0, 0)`. The array theorem covers any
 active index and arbitrary final-word padding. Gate address joins remain a
 separate obligation.
+The Zig regression checks all four coordinates, including the one-row
+coordinate-zero path and the two-row paths for the other coordinates.
 
 `SumRows.lean` models `sum_lanes`: the optional final-word pointwise mask,
 left-to-right pairwise add rows with odd-width carry rounds, QM31 multiplication
@@ -203,6 +205,25 @@ and row outputs have addresses disjoint from those external events.
 `indexed_outputs_nodup` proves the abstract straight-line address layout
 `start + gate_index` has distinct outputs. A correspondence proof for the
 actual Zig allocator and any aliasing or `*Into` call sites remains open.
+
+`EqRows.lean` models the equality component, which has no independent
+arithmetic polynomial: its two Gate lookups use the same committed trace
+value. Under exact Gate balance and one produced value per address, the two
+addressed inputs must agree. For a short final packed word, S31 emits
+`difference = left - right`, then `masked = difference .* activeMask`, then
+an equality lookup between `masked` and zero. The row theorem proves this
+accepts precisely when active coordinates match. For example, with two
+active lanes, `(2, 3, 71, 99)` equals `(2, 3, 5, 6)` because the masked
+difference is `(0, 0, 0, 0)`. Changing the second active value to `4` gives
+masked difference `(0, p-1, 0, 0)`, so lookup closure rejects it.
+Separate nonempty Eq-event controls accept two addresses that both produce
+`5` and reject a trace that reads `5` from an address producing `6`.
+`packedEqRows_iff` repeats the joined full-word or short-word relation over
+any number of packed words and proves it equivalent to equality of every
+active source lane, regardless of unused padding.
+A Zig regression confirms the short-word compiler path uses two arithmetic
+rows and one Eq row, accepts differing inactive padding, and rejects a
+changed active lane.
 
 Exact multiset balance is a **premise** here. Production uses compressed
 LogUp over a random challenge; this module does not bound collision
