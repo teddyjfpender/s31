@@ -1,0 +1,3 @@
+[submodule "deps/stwo-zig"]
+	path = deps/stwo-zig
+	url = https://github.com/teddyjfpender/stwo-zig.git

@@ -1,0 +1,2 @@
+# Until GitHub Linguist registers S31, use Cairo's closest built-in grammar.
+*.s31 linguist-language=Cairo

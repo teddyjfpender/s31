@@ -1,0 +1,41 @@
+name: S31
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  language-and-proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          submodules: recursive
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.13"
+      - uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2
+        with:
+          version: 0.15.2
+      - name: Verify pinned engine
+        run: |
+          test -z "$(git submodule status | grep '^[-+]')"
+          test -z "$(git -C deps/stwo-zig status --porcelain --untracked-files=no)"
+      - name: Zig compiler and proof tests
+        run: cd src/frontends/s31 && zig build test -Doptimize=ReleaseSafe -j2
+      - name: Text frontend and oracle tests
+        run: python3 -m unittest discover -s src/frontends/s31/tests/python -p 'test_*.py' -q
+      - name: Documentation consistency
+        run: python3 src/frontends/s31/docs/check.py
+      - name: Native proof smoke
+        run: |
+          python3 src/frontends/s31/python/s31.py trial \
+            src/frontends/s31/examples/hashes/preimage4.s31 \
+            src/frontends/s31/examples/hashes/preimage4.valid.json \
+            --lowering gate --out zig-out/s31/ci-preimage-trial

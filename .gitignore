@@ -1,0 +1,8 @@
+**/.zig-cache/
+**/zig-out/
+**/__pycache__/
+*.pyc
+.lake/
+formal/s31/.lake/
+formal/s31/lake-packages/
+formal/s31/lakefile.olean
