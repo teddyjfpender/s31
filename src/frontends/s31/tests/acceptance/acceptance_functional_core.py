@@ -48,6 +48,16 @@ EXPECTED_WIDE_GEOMETRY = {
                "qm31_ops": 8192, "triple_xor": 0},
     "preprocessed_cells": 131584,
 }
+EXPECTED_ARRAY_HASH_GEOMETRY = {
+    "canonical_ir_sha256": "99ece52057950a12b578f45a9d1e77529b633c7acc1d9e13598b010e610ddfe7",
+    "profile": "direct-m31-v4",
+    "chip": None,
+    "raw": {"blake_g": 0, "eq": 0, "m31_to_u32": 0,
+            "qm31_ops": 3300, "triple_xor": 0},
+    "padded": {"blake_g": 0, "eq": 0, "m31_to_u32": 0,
+               "qm31_ops": 4096, "triple_xor": 0},
+    "preprocessed_cells": 32768,
+}
 
 
 def compare_cost(functional_cost: dict, manual_cost: dict,
@@ -142,6 +152,43 @@ def check_sparse_wide(work: Path) -> dict:
             "changed_public_statement_rejected": trial["changed_public_statement_rejected"]}
 
 
+def check_array_hash(work: Path) -> dict:
+    example = S31 / "examples/arrays/functional_rotate_hash"
+    functional = example.with_suffix(".s31")
+    manual = example.with_name("functional_rotate_hash_manual.s31")
+    assignment_path = example.with_suffix(".valid.json")
+    relation, _ = compile_file(functional)
+    direct_relation, _ = compile_file(manual)
+    if relation != direct_relation:
+        raise AssertionError("functional array/hash changed normalized relation")
+    if [node["op"] for node in relation["nodes"]] != [
+        "array_slice", "array_slice", "array_concat", "add_const", "hash_poseidon2_leaf"
+    ]:
+        raise AssertionError("array/hash program did not emit expected views and hash")
+    assignment = json.loads(assignment_path.read_text())
+    source = assignment["private_inputs"]["x"]
+    rotated = source[2:] + source[:2]
+    expected = leaf([(value + 7) % ((1 << 31) - 1) for value in rotated])
+    if assignment["public_outputs"] != {"result": expected}:
+        raise AssertionError("array/hash fixture differs from independent view and hash")
+
+    functional_package = s31.build(functional, work / "functional-array-hash", "direct-gate")
+    manual_package = s31.build(manual, work / "manual-array-hash", "direct-gate")
+    cost = json.loads((functional_package / "cost-report.json").read_text())
+    manual_cost = json.loads((manual_package / "cost-report.json").read_text())
+    compare_cost(cost, manual_cost, EXPECTED_ARRAY_HASH_GEOMETRY, "functional array/hash")
+    trial = s31.trial(functional_package, assignment_path, work / "array-hash-trial")
+    if (not trial["native_verifier_accepted"] or
+            not trial["changed_public_statement_rejected"] or
+            trial["independent_value_oracle"]["status"] != "passed"):
+        raise AssertionError("functional array/hash verifier or oracle failed")
+    return {"canonical_ir_sha256": cost["canonical_ir_sha256"],
+            "raw": cost["raw"], "padded": cost["padded"],
+            "preprocessed_cells": cost["preprocessed_cells"],
+            "native_verifier_accepted": True,
+            "changed_public_statement_rejected": trial["changed_public_statement_rejected"]}
+
+
 def main() -> None:
     example = S31 / "examples/arithmetic/functional_square4"
     functional = example.with_suffix(".s31")
@@ -171,8 +218,9 @@ def main() -> None:
             raise AssertionError("native verifier acceptance or claim rejection missing")
         chip_report = check_chip(work)
         wide_report = check_sparse_wide(work)
+        array_hash_report = check_array_hash(work)
         print(json.dumps({
-            "schema": "s31-functional-core-acceptance-v3",
+            "schema": "s31-functional-core-acceptance-v4",
             "arithmetic": {
                 "canonical_ir_sha256": functional_cost["canonical_ir_sha256"],
                 "raw": functional_cost["raw"],
@@ -183,6 +231,7 @@ def main() -> None:
             },
             "recurrence_chip": chip_report,
             "sparse_wide": wide_report,
+            "array_hash": array_hash_report,
         }, indent=2, sort_keys=True))
 
 

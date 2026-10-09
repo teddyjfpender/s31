@@ -64,6 +64,32 @@ python3 src/frontends/s31/tests/acceptance/acceptance_functional_core.py
 The trial checks the independent oracle, creates a native proof, runs the
 generated verifier, and confirms that a changed public result is rejected.
 
+## Arrays and captured hash closures
+
+The [four-lane array/hash example](../examples/arrays/functional_rotate_hash.s31)
+rotates an array with `drop<2>`, `take<2>` and `concat`, then passes it into a
+closure that captures a field salt:
+
+```s31
+let salt = splat<4>(7_m31);
+let hash = fun(v: [m31; 4]) -> Digest<Poseidon2> => poseidon2_leaf(v + salt);
+let result = apply_hash(hash, rotated);
+```
+
+Its [direct form](../examples/arrays/functional_rotate_hash_manual.s31)
+emits the identical normalized relation: `array_slice`, `array_slice`,
+`array_concat`, `add_const`, `hash_poseidon2_leaf`. The function, closure and
+capture emit no nodes. For the fixture `[0,1,2,3]`, the hash receives
+`[9,10,7,8]`. On `direct-gate`, the full circuit measures 3,300 raw and 4,096
+padded QM31 operation rows. The functional acceptance gate pins the complete
+AIR cost and checks a native proof against an independent Poseidon2 oracle.
+
+The [Lean array theorem](../../../../formal/s31/S31/Gadgets/FunctionalArrays.lean)
+proves pointwise field-array specialization and strict graph soundness for
+arbitrary intermediate witnesses, including statically bounded views and the
+prehash rotation/salt. It does not prove Python lowering or the production
+hash AIR.
+
 ## Witness-dependent conditionals
 
 `if condition then on_true else on_false` accepts a constrained `bit`

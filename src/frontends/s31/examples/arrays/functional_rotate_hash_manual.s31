@@ -1,0 +1,9 @@
+use std@1;
+
+circuit functional_rotate_hash(private x: [m31; 4]) -> public Digest<Poseidon2> {
+    let right = std::array::drop<2>(x);
+    let left = std::array::take<2>(x);
+    let rotated = std::array::concat(right, left);
+    let result = poseidon2_leaf(rotated + splat<4>(7_m31));
+    result
+}

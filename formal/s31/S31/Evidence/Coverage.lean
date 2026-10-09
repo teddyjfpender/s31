@@ -2,6 +2,7 @@
 import S31.Gadgets
 
 #check S31.Field.inverse_sound_complete
+#check S31.Functional.arrayCode_accepts
 #check S31.Functional.u16_value_valid_iff
 #check S31.Functional.u16_vector_select_bounded
 #check S31.Functional.u16_vector_select_iff
@@ -92,8 +93,8 @@ namespace S31.Evidence
 def operationCoverage : List (Op × List String) := [
   (.constant, ["S31.Gadgets.Bindings.constant_wires"]),
   (.cast_m31, ["S31.Gadgets.Bindings.cast_wire_identity"]),
-  (.add, ["S31.Gadgets.add_sound_complete", "S31.Gadgets.Packed.add_sound_complete", "S31.Gadgets.Sequence.pointwise_sound_complete"]),
-  (.mul, ["S31.Gadgets.mul_sound_complete", "S31.Gadgets.Packed.pointwise_sound_complete", "S31.Gadgets.Sequence.pointwise_sound_complete"]),
+  (.add, ["S31.Gadgets.add_sound_complete", "S31.Gadgets.Packed.add_sound_complete", "S31.Gadgets.Sequence.pointwise_sound_complete", "S31.Functional.arrayCode_accepts"]),
+  (.mul, ["S31.Gadgets.mul_sound_complete", "S31.Gadgets.Packed.pointwise_sound_complete", "S31.Gadgets.Sequence.pointwise_sound_complete", "S31.Functional.arrayCode_accepts"]),
   (.add_const, ["S31.Gadgets.add_sound_complete", "S31.Gadgets.Sequence.step_sound_complete"]),
   (.mul_const, ["S31.Gadgets.mul_sound_complete", "S31.Gadgets.Packed.scalar_mul", "S31.Gadgets.Sequence.step_sound_complete"]),
   (.repeat, ["S31.Gadgets.Sequence.repeat_sound_complete", "S31.Gadgets.Sequence.step_sound_complete", "S31.Gadgets.Packed.mix4_broadcast"]),
@@ -118,9 +119,9 @@ def operationCoverage : List (Op × List String) := [
   (.is_zero, ["S31.Gadgets.is_zero_sound_complete", "S31.Gadgets.zero_anchor_sound_complete"]),
   (.u256_sub, ["S31.Gadgets.Radix.sub_chain_wrapping_sound_complete"]),
   (.u256_sub_checked, ["S31.Gadgets.Radix.sub_chain_checked_sound_complete"]),
-  (.array_get, ["S31.Gadgets.Bindings.array_get_wire", "S31.Gadgets.Packed.unpack_coordinate"]),
-  (.array_concat, ["S31.Gadgets.Bindings.array_concat_wires"]),
-  (.array_slice, ["S31.Gadgets.Bindings.array_slice_wires"]),
+  (.array_get, ["S31.Gadgets.Bindings.array_get_wire", "S31.Gadgets.Packed.unpack_coordinate", "S31.Functional.arrayCode_accepts"]),
+  (.array_concat, ["S31.Gadgets.Bindings.array_concat_wires", "S31.Functional.arrayCode_accepts"]),
+  (.array_slice, ["S31.Gadgets.Bindings.array_slice_wires", "S31.Functional.arrayCode_accepts"]),
   (.bool_not, ["S31.Gadgets.bit_sound_complete", "S31.Gadgets.not_sound_complete"]),
   (.bool_and, ["S31.Gadgets.bit_sound_complete", "S31.Gadgets.and_sound_complete"]),
   (.bool_or, ["S31.Gadgets.bit_sound_complete", "S31.Gadgets.or_sound_complete"]),

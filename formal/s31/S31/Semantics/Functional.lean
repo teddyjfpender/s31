@@ -11,6 +11,7 @@ namespace S31.Functional
 
 inductive Ty where
   | field
+  | array (length : Nat)
   | arrow (domain codomain : Ty)
 deriving DecidableEq, Repr
 
@@ -23,6 +24,16 @@ inductive Expr : List Ty → Ty → Type where
   | literal : M31 → Expr Γ .field
   | add : Expr Γ .field → Expr Γ .field → Expr Γ .field
   | mul : Expr Γ .field → Expr Γ .field → Expr Γ .field
+  | arraySplat : Expr Γ .field → Expr Γ (.array length)
+  | arrayGet : Expr Γ (.array length) → Fin length → Expr Γ .field
+  | arrayAdd : Expr Γ (.array length) → Expr Γ (.array length) → Expr Γ (.array length)
+  | arrayMul : Expr Γ (.array length) → Expr Γ (.array length) → Expr Γ (.array length)
+  | arrayTake (count : Nat) (h : count ≤ length) :
+      Expr Γ (.array length) → Expr Γ (.array count)
+  | arrayDrop (count : Nat) (h : count ≤ length) :
+      Expr Γ (.array length) → Expr Γ (.array (length - count))
+  | arrayConcat : Expr Γ (.array left) → Expr Γ (.array right) →
+      Expr Γ (.array (left + right))
   | letValue : Expr Γ a → Expr (a :: Γ) b → Expr Γ b
   | lambda : Expr (a :: Γ) b → Expr Γ (.arrow a b)
   | apply : Expr Γ (.arrow a b) → Expr Γ a → Expr Γ b
@@ -42,10 +53,12 @@ def Poly.eval {n : Nat} (inputs : Fin n → M31) : Poly n → M31
 
 @[reducible] def Meaning : Ty → Type
   | .field => M31
+  | .array length => Fin length → M31
   | .arrow a b => Meaning a → Meaning b
 
 @[reducible] def Residual (n : Nat) : Ty → Type
   | .field => Poly n
+  | .array length => Fin length → Poly n
   | .arrow a b => Residual n a → Residual n b
 
 inductive Env (F : Ty → Type) : List Ty → Type where
@@ -56,11 +69,26 @@ def Env.get {F : Ty → Type} : Env F Γ → Var Γ t → F t
   | .cons x _, .here => x
   | .cons _ xs, .there v => xs.get v
 
+def arrayTakeFn {α : Type} {length count : Nat} (h : count ≤ length)
+    (words : Fin length → α) : Fin count → α :=
+  fun i => words (Fin.castLE h i)
+
+def arrayDropFn {α : Type} {length count : Nat} (h : count ≤ length)
+    (words : Fin length → α) : Fin (length - count) → α :=
+  fun i => words (Fin.cast (Nat.add_sub_of_le h) (Fin.natAdd count i))
+
 def denote : Expr Γ t → Env Meaning Γ → Meaning t
   | .var v, env => env.get v
   | .literal x, _ => x
   | .add a b, env => denote a env + denote b env
   | .mul a b, env => denote a env * denote b env
+  | .arraySplat value, env => fun _ => denote value env
+  | .arrayGet value index, env => denote value env index
+  | .arrayAdd a b, env => fun i => denote a env i + denote b env i
+  | .arrayMul a b, env => fun i => denote a env i * denote b env i
+  | .arrayTake _ h value, env => arrayTakeFn h (denote value env)
+  | .arrayDrop _ h value, env => arrayDropFn h (denote value env)
+  | .arrayConcat a b, env => Fin.append (denote a env) (denote b env)
   | .letValue value body, env => denote body (.cons (denote value env) env)
   | .lambda body, env => fun value => denote body (.cons value env)
   | .apply fn arg, env => (denote fn env) (denote arg env)
@@ -71,6 +99,13 @@ def specialize {n : Nat} : Expr Γ t → Env (Residual n) Γ → Residual n t
   | .literal x, _ => .literal x
   | .add a b, env => .add (specialize a env) (specialize b env)
   | .mul a b, env => .mul (specialize a env) (specialize b env)
+  | .arraySplat value, env => fun _ => specialize value env
+  | .arrayGet value index, env => specialize value env index
+  | .arrayAdd a b, env => fun i => .add (specialize a env i) (specialize b env i)
+  | .arrayMul a b, env => fun i => .mul (specialize a env i) (specialize b env i)
+  | .arrayTake _ h value, env => arrayTakeFn h (specialize value env)
+  | .arrayDrop _ h value, env => arrayDropFn h (specialize value env)
+  | .arrayConcat a b, env => Fin.append (specialize a env) (specialize b env)
   | .letValue value body, env => specialize body (.cons (specialize value env) env)
   | .lambda body, env => fun value => specialize body (.cons value env)
   | .apply fn arg, env => (specialize fn env) (specialize arg env)
@@ -79,6 +114,7 @@ def specialize {n : Nat} : Expr Γ t → Env (Residual n) Γ → Residual n t
 def Related {n : Nat} (inputs : Fin n → M31) :
     (t : Ty) → Meaning t → Residual n t → Prop
   | .field, value, poly => poly.eval inputs = value
+  | .array _, value, polys => ∀ i, (polys i).eval inputs = value i
   | .arrow a b, fn, closure =>
       ∀ value poly, Related inputs a value poly →
         Related inputs b (fn value) (closure poly)
@@ -122,6 +158,37 @@ theorem specialize_correct {n : Nat} (inputs : Fin n → M31)
       change (specialize a residual).eval inputs * (specialize b residual).eval inputs =
         denote a source * denote b source
       rw [iha source residual h, ihb source residual h]
+  | arraySplat value ih =>
+      intro i
+      exact ih source residual h
+  | arrayGet value index ih =>
+      exact ih source residual h index
+  | arrayAdd a b iha ihb =>
+      intro i
+      change (specialize a residual i).eval inputs + (specialize b residual i).eval inputs =
+        denote a source i + denote b source i
+      rw [iha source residual h i, ihb source residual h i]
+  | arrayMul a b iha ihb =>
+      intro i
+      change (specialize a residual i).eval inputs * (specialize b residual i).eval inputs =
+        denote a source i * denote b source i
+      rw [iha source residual h i, ihb source residual h i]
+  | arrayTake count hbound value ih =>
+      intro i
+      exact ih source residual h (Fin.castLE hbound i)
+  | arrayDrop count hbound value ih =>
+      intro i
+      exact ih source residual h
+        (Fin.cast (Nat.add_sub_of_le hbound) (Fin.natAdd count i))
+  | arrayConcat a b iha ihb =>
+      intro i
+      refine Fin.addCases (motive := fun i =>
+        (Fin.append (specialize a residual) (specialize b residual) i).eval inputs =
+          Fin.append (denote a source) (denote b source) i) ?_ ?_ i
+      · intro j
+        simpa [Fin.append] using iha source residual h j
+      · intro j
+        simpa [Fin.append] using ihb source residual h j
   | letValue value body ihValue ihBody =>
       exact ihBody (.cons (denote value source) source)
         (.cons (specialize value residual) residual)

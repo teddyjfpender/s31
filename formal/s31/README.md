@@ -23,10 +23,11 @@ theorem does not establish zero knowledge.
 | `S31/Semantics/Types`, `Validation`, `Node`, `Program`, `Json` | Typed IR, complete operation dispatch, validation, assignment and public ABI. `Json` is an executable adapter, not a parser-correctness proof. |
 | `S31/Semantics/Words`, `Integers`, `Bitcoin` | Little-endian limbs, five signed/unsigned widths, checked/wrapping operations, compact target and block work. |
 | `S31/Semantics/Graph`, `Poseidon2`, `Blake2s`, `Sha256` | Explicit straight-line gate schedules and exact hash encodings. No uninterpreted hash callback is used. |
-| `S31/Semantics/Functional` | Intrinsically typed `let`/lambda/application core, static specialization into first-order field polynomials, and an arbitrary-witness local constraint relation. |
+| `S31/Semantics/Functional` | Intrinsically typed field and fixed-length field-array `let`/lambda/application core, static specialization into first-order field polynomials, and an arbitrary-witness local constraint relation. |
 | `S31/Gadgets/` | Primitive residual proofs, arbitrary auxiliary witnesses, constructive completeness and composition. |
 | `S31/Gadgets/FunctionalGraph` | Executable polynomial-to-graph lowering and strict circuit soundness for every core field program. |
 | `S31/Gadgets/FunctionalOutputs` | One graph for multiple functional results; every output wire and claimed value is bound, including an aliased second output. |
+| `S31/Gadgets/FunctionalArrays` | Shape-indexed arrays specialize pointwise, then enter one strict field graph that binds every output lane. |
 | `S31/Gadgets/FunctionalAssertions` | Source-level `assert_eq` pairs checked against separately witnessed graph outputs, with universal contract soundness and completeness. |
 | `S31/Gadgets/FunctionalConditional` | Both total source branches in one graph, a bit-constrained selection relation, and soundness/completeness for either choice. |
 | `S31/Gadgets/FunctionalEffects` | A computable conservative effect check for a small partial field language, proof that total branches agree under eager and lazy conditional evaluation, and an inactive inverse counterexample. |
@@ -111,6 +112,26 @@ production AIR lowering are outside these theorems. The formal source
 identity inventory now includes the Python
 syntax, parser, elaborator, specializer and libraries so changes there force a reviewed
 binding update; the source digests themselves do not prove compiler correspondence.
+
+`FunctionalArrays` extends the typed source core with `[m31; N]` values,
+pointwise addition and multiplication, static splats, indexed reads and
+statically bounded `take`, `drop` and `concat` views.
+Length is part of the type: indexing needs a `Fin N`, so the formal term
+cannot address a missing lane. Residual arrays are `Fin N → Poly inputs`;
+the closure and `let` constructors still disappear during specialization.
+`arrayCode_accepts` proves that every satisfying gate witness binds every
+output lane to the source value for **any** typed array-to-array term in this
+core. Its converse constructs honest witnesses.
+
+The hand-written `capturedArrayDouble` models `let saved = x in let double =
+fun y => y + saved in double saved` for four lanes. Lean reduces its residual
+expression to four pointwise additions and proves that the strict graph has
+four add gates, outputs `[4,5,6,7]`, and accepts exactly
+`[a+a,b+b,c+c,d+d]`. `rotateAndSaltCode_accepts` also proves the exact
+prehash array view in the production example: `[a,b,c,d]` becomes
+`[c+7,d+7,a+7,b+7]`. These are scalar gate models of source semantics;
+production SIMD packing and AIR geometry are checked separately. Hashes and
+the Python implementation are not covered by this theorem.
 
 `FunctionalAssertions` adds a separate source contract with any number of
 `assert_eq` pairs. It compiles each side to an output wire and checks the
