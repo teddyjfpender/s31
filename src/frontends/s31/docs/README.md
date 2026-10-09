@@ -82,6 +82,9 @@ text .s31 ──parse/typecheck/specialize──▶ normalized relation JSON
    the same key, with hand-worked field arithmetic and circuit equations.
 - [Source language and relation](source.md): syntax, types, field semantics,
    static shapes, normalized JSON, and the public statement.
+- [Static functional core](functional-language.md): typed lambdas,
+   higher-order calls, lexical capture, and the exact zero-gate staging
+   boundary, with a four-lane proof example.
 - [Standard and math library](library.md): the pinned `std@1` package,
    typed operations, static reductions, Horner evaluation, and a proof example.
 - [Circuit lowering](circuits.md): a hand-drawn gate graph, packed M31 lanes,
@@ -104,6 +107,7 @@ The worked examples use checked-in sources under [`../examples`](../examples):
 | Program | What it teaches | Recommended profile |
 | --- | --- | --- |
 | [`math_polynomial4.s31`](../examples/arithmetic/math_polynomial4.s31) | Static power, constants, four M31 lanes, circuit gates | `direct-gate` |
+| [`functional_square4.s31`](../examples/arithmetic/functional_square4.s31) | A higher-order function and closure erased to two multiplication nodes | `direct-gate` |
 | [`mathlib4.s31`](../examples/arithmetic/mathlib4.s31) | `use std@1`, Horner polynomial, static dot/sum, library lock | `direct-gate` |
 | [`lane_stats4.s31`](../examples/arithmetic/lane_stats4.s31) | Private arrays, lane sum and dot, one public result | `direct-gate` |
 | [`field_div4.s31`](../examples/arithmetic/field_div4.s31) | Checked inverse and division, one inverse witness shared across calls | `direct-gate` |

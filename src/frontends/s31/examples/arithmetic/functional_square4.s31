@@ -1,0 +1,13 @@
+use std@1;
+
+// `Fn` values are static. Applying one emits only its arithmetic body.
+fn apply_twice(f: Fn([m31; 4]) -> [m31; 4], x: [m31; 4]) -> [m31; 4] {
+    let once = f(x);
+    f(once)
+}
+
+circuit functional_square4(public x: [m31; 4]) -> public [m31; 4] {
+    let square = fun(v: [m31; 4]) -> [m31; 4] => v .* v;
+    let result = apply_twice(square, x);
+    result
+}

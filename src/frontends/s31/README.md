@@ -14,7 +14,7 @@ The root contains the package build files and [`mod.zig`](mod.zig), the Zig modu
 | [`bitcoin/`](bitcoin/) | Consensus arithmetic, recursive chain folds, CLI, verifiers, and tests. |
 | [`recursion/`](recursion/) | Generic state-fold and recursive proof relations. |
 | [`runtime/`](runtime/) | Package runtime, prover and verifier entry points. |
-| [`python/`](python/) | Text frontend, oracle, and standard/math library implementation; invoke `python/s31.py`. |
+| [`python/`](python/) | CLI, independent oracle, and standard/math library; [`python/language/`](python/language/README.md) separates text syntax, parsing and specialization. Invoke `python/s31.py`. |
 | [`tests/`](tests/) | Acceptance, Python unit, and cross-component proof tests. |
 | [`benchmarks/`](benchmarks/) | Repeatable comparison and measurement drivers. |
 | [`tools/`](tools/) | Source generators, inspectors, and record utilities. |
@@ -36,7 +36,7 @@ For `.s31` editor support, see the [S31 TextMate grammar and neon theme](../../.
 
 The earlier [source-to-AIR implementation guide](docs/reference/LANGUAGE_AND_AIR.md) remains available for backend detail.
 
-The compiler accepts normalized JSON and a [limited typed `.s31` text language](docs/reference/TEXT_LANGUAGE.md) that lowers to the same relation. Inputs have `u16` or `m31` relation type, fixed length, and public or private visibility. The text language has nominal `Bytes32`, `UInt256`, `BlockHash`, `Target`, `Work`, and `ChainWork` values backed by sixteen `u16` limbs and `Bytes80` backed by forty. Nodes are topologically ordered. Supported normalized operations include arithmetic, constrained 256-bit addition/subtraction/comparison, static repeats, selection, BLAKE2s and Poseidon2 hashes, byte-exact Bitcoin header SHA256d, and mainnet compact-target decoding. BLAKE2s hash inputs are canonical M31 words encoded little endian as 32-bit words; its eight digest words are reduced modulo M31. Poseidon2 outputs eight canonical M31 state words directly. Assertions constrain equal arrays. Public inputs and outputs occupy at most eight direct words: `u32` in the original profile, canonical M31 in direct-v4. Witnesses cannot change graph shape.
+The compiler accepts normalized JSON and a [typed `.s31` text language](docs/reference/TEXT_LANGUAGE.md) that lowers to the same relation. Its [static functional core](docs/functional-language.md) specializes typed lambdas, closures, and higher-order calls without representing function values in the circuit. Inputs have `u16` or `m31` relation type, fixed length, and public or private visibility. The text language has nominal `Bytes32`, `UInt256`, `BlockHash`, `Target`, `Work`, and `ChainWork` values backed by sixteen `u16` limbs and `Bytes80` backed by forty. Nodes are topologically ordered. Supported normalized operations include arithmetic, constrained 256-bit addition/subtraction/comparison, static repeats, selection, BLAKE2s and Poseidon2 hashes, byte-exact Bitcoin header SHA256d, and mainnet compact-target decoding. BLAKE2s hash inputs are canonical M31 words encoded little endian as 32-bit words; its eight digest words are reduced modulo M31. Poseidon2 outputs eight canonical M31 state words directly. Assertions constrain equal arrays. Public inputs and outputs occupy at most eight direct words: `u32` in the original profile, canonical M31 in direct-v4. Witnesses cannot change graph shape.
 
 To use the text frontend and inspect its exact lowering:
 

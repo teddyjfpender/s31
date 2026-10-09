@@ -35,6 +35,7 @@ PINNED_ASSETS = (
 )
 TEXT_FRONTEND_SOURCES = (
     S31_DIR / "python/text_frontend.py",
+    *sorted((S31_DIR / "python/language").glob("*.py")),
     S31_DIR / "python/s31_stdlib.py",
     S31_DIR / "python/s31_mathlib.py",
     S31_DIR / "python/proof_privacy.py",

@@ -1,0 +1,6 @@
+// First-order reference for the higher-order `functional_square4.s31`.
+circuit functional_square4(public x: [m31; 4]) -> public [m31; 4] {
+    let once = x .* x;
+    let result = once .* once;
+    result
+}

@@ -95,8 +95,13 @@ def main() -> None:
             run(verifier, damaged, trial / "statement.json",
                 package / "verification-key.json", accept=False)
 
+    language_sources = tuple(
+        f"python/language/{path.name}"
+        for path in sorted((S31 / "python/language").glob("*.py"))
+    )
     sources = ("relation.zig", "canonical.zig", "relation_compiler.zig",
-               "python/s31_mathlib.py", "python/s31_stdlib.py", "python/text_frontend.py", "python/oracle.py",
+               "python/s31_mathlib.py", "python/s31_stdlib.py", "python/text_frontend.py",
+               *language_sources, "python/oracle.py",
                "python/s31.py", "tests/acceptance/acceptance_u256_sub.py")
     record = {
         "schema": "s31-u256-subtraction-v1",

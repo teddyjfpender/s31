@@ -67,6 +67,13 @@ it becomes a compile-time reference group, not a witness array. Comments start w
 integers are used only as the compile-time `N` in `splat<N>`, `iterate<N>`,
 and `std::math::pow<N>`;
 circuit arithmetic uses canonical field literals.
+The [functional core](../functional-language.md) adds expression-level
+`let name = expression in expression`, typed
+`fun(name: Type) -> Type => expression`, and static function types
+`Fn(Type) -> Type`. Function values are specialized away at calls, cannot
+cross circuit inputs or outputs, and add no relation nodes by themselves.
+Recursive calls are rejected. A function body is type checked when
+specialized; unused declarations do not yet have a separate elaboration pass.
 Unary `-` binds tighter than `.*`, which binds tighter than `+` and `-`; binary
 operators associate left, so `-a .* b - c - d` is `((-a) .* b - c) - d`.
 `a - b` and `-a` are spellings of `std::math::sub(a, b)` and
