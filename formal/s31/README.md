@@ -185,6 +185,17 @@ premise, all packed rows agree
 with the source conditional, strict graph relation and executable normalized
 `select` node for any array length. A kernel-checked selector-`2` control
 demonstrates that the Boolean premise cannot be dropped.
+`QuadField` proves the AIR's four-coordinate multiplication is the field
+product in a two-stage quadratic tower. Its checked nonsquare lemmas for
+`-1` and `5` imply that an arbitrary QM31 self-product selector wire is
+canonical zero or one; no base-encoding assumption is needed.
+`untrusted_self_product_select_iff_evaluateNode` composes that row with the
+source M31 selector coordinate binding and the full direct selection row
+schedule.
+`BooleanRows` proves the compiler's five scalar Boolean row schedules for
+base-field encoded bit operands, including all OR, XOR and select
+intermediates. Arbitrary satisfying row witnesses have exactly the Boolean
+result; the converse constructs honest witnesses.
 `SumRows` proves that the direct `sum_lanes` mask, pairwise reduction, and
 projection rows accept exactly the normalized node's M31 result for every
 nonempty array length. The theorem permits arbitrary unused coordinates in

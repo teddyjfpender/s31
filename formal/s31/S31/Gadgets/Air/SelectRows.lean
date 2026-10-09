@@ -1,4 +1,5 @@
 import S31.Gadgets.Air.SimdChunks
+import S31.Gadgets.Air.QuadField
 import S31.Gadgets.Functional.ArrayConditional
 
 /-!
@@ -26,9 +27,50 @@ def acceptsSelect (selector : S31.M31)
       (base (S31.Field.toZMod selector)) truePart ∧
     accepts (encode .add) falsePart truePart output
 
-/-- A direct self-product row forces a *base-field encoded* selector to be
-zero or one. Proving that an arbitrary QM31 witness is base encoded is a
-separate representation obligation for the direct selector producer. -/
+/-- The direct selector self-product row forces any four-coordinate QM31
+witness to be canonical zero or one. The tower-field argument uses the
+nonsquareness of minus one and five in M31. -/
+theorem untrusted_selector_self_product_iff (selector : Quad) :
+    accepts (encode .mul) selector selector selector ↔
+      selector = base 0 ∨ selector = base 1 := by
+  rw [accepts_encoded]
+  constructor
+  · exact fun h => (QuadField.self_product_iff selector).mp h.symm
+  · exact fun h => ((QuadField.self_product_iff selector).mpr h).symm
+
+/-- Binding the base coordinate of an arbitrary selector witness to a source
+M31 value, then imposing the self-product row, gives the canonical QM31
+encoding of that source bit. No representation premise is assumed. -/
+theorem untrusted_selector_bound_iff (selector : S31.M31)
+    (wire : Quad) (hcoord : wire.a = S31.Field.toZMod selector) :
+    accepts (encode .mul) wire wire wire ↔
+      wire = base (S31.Field.toZMod selector) ∧
+        (selector = 0 ∨ selector = 1) := by
+  rw [untrusted_selector_self_product_iff]
+  constructor
+  · rintro (hzero | hone)
+    · have hz : selector = 0 :=
+        S31.Field.toZMod_injective
+          (by simpa [hzero, base, S31.Field.toZMod_zero] using hcoord.symm)
+      subst selector
+      exact ⟨by simpa [S31.Field.toZMod_zero] using hzero,
+        Or.inl rfl⟩
+    · have ho : selector = 1 :=
+        S31.Field.toZMod_injective
+          (by simpa [hone, base, S31.Field.toZMod_one] using hcoord.symm)
+      subst selector
+      exact ⟨by simpa [S31.Field.toZMod_one] using hone,
+        Or.inr rfl⟩
+  · rintro ⟨hwire, hbit⟩
+    rw [hwire]
+    rcases hbit with hzero | hone
+    · subst selector
+      simp [S31.Field.toZMod_zero]
+    · subst selector
+      simp [S31.Field.toZMod_one]
+
+/-- For a base-field encoded source selector, the same row is equivalent to
+Booleanity of the source M31 value. -/
 theorem base_selector_self_product_iff (selector : S31.M31) :
     accepts (encode .mul)
       (base (S31.Field.toZMod selector))
@@ -376,6 +418,34 @@ theorem base_self_product_select_iff_evaluateNode {n : Nat}
   rw [base_selector_self_product_iff]
   exact packedSelectRowsShared_iff_evaluateNode selector onFalse onTrue
     claimed tailFalse tailTrue
+
+/-- The source-to-row selection bridge also holds with an arbitrary QM31
+selector witness. Its base coordinate is bound to the source M31 value; the
+self-product row proves the remaining coordinates vanish and the value is a
+bit. Gate address wiring is a separate global obligation. -/
+theorem untrusted_self_product_select_iff_evaluateNode {n : Nat}
+    (selector : S31.M31)
+    (onFalse onTrue claimed : Fin n → S31.M31)
+    (tailFalse tailTrue : Nat → Fin 4 → S31.M31) :
+    (∃ wire : Quad,
+      wire.a = S31.Field.toZMod selector ∧
+      accepts (encode .mul) wire wire wire ∧
+      packedSelectRowsShared selector onFalse onTrue claimed
+        tailFalse tailTrue) ↔
+      S31.evaluateNode
+        (S31.Functional.normalizedSelectEnv selector onFalse onTrue)
+        S31.Functional.normalizedSelectNode =
+          .ok ⟨.m31, List.ofFn claimed⟩ := by
+  constructor
+  · rintro ⟨wire, hcoord, hself, hrows⟩
+    have hbit := (untrusted_selector_bound_iff selector wire hcoord).mp hself
+    exact (base_self_product_select_iff_evaluateNode selector onFalse
+      onTrue claimed tailFalse tailTrue).mp
+        ⟨(base_selector_self_product_iff selector).mpr hbit.2, hrows⟩
+  · intro hsource
+    have hrows := (base_self_product_select_iff_evaluateNode selector onFalse
+      onTrue claimed tailFalse tailTrue).mpr hsource
+    refine ⟨base (S31.Field.toZMod selector), rfl, hrows.1, hrows.2⟩
 
 /-- The typed source conditional, its strict graph and the compiler-shaped
 shared-complement AIR row relation admit precisely the same array outputs. -/

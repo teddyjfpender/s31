@@ -58,9 +58,17 @@ normalized `select` node across all array words, provided its selector is
 constrained to zero or one.
 Lean also checks that selector `2` can satisfy those arithmetic rows with an
 interpolated output, so the Boolean premise is indispensable.
-The direct selector self-product row proves that premise when the selector
-wire is base-field encoded. A formal proof that all satisfying QM31 selector
-wires have that encoding remains open; a prover hint is insufficient.
+The direct selector self-product row now proves that premise for **every**
+four-coordinate QM31 witness. Lean builds the quadratic field tower,
+including the nonsquare facts for `-1` and `5`, and proves its multiplication
+agrees with the AIR's four-coordinate formula. Binding the selector wire's
+base coordinate to the source M31 input gives the exact normalized `select`
+result for the compiler-shaped row schedule. Actual Gate address wiring
+remains a separate global obligation.
+Lean separately proves the five compiler-shaped Boolean operation row
+schedules sound and complete for base-field encoded Boolean inputs. All
+intermediate row witnesses are quantified. Their operand producers and Gate
+address wiring remain separate global obligations.
 For `sum_lanes`, Lean models the final-word mask, pairwise packed addition
 passes, QM31 dual projection and base-coordinate extraction. The resulting
 row relation is sound and complete against the normalized `sum_lanes` node

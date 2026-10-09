@@ -61,10 +61,32 @@ check. The concrete `nonbit_interpolation_rows` control shows why: selector
 `2`, false arm `3`, and true arm `5` satisfy all four arithmetic row equations
 with output `7`. That output is neither branch. The source-to-row theorems
 include the Boolean premise; they do not assume it follows from arithmetic.
-`base_selector_self_product_iff` proves that the direct selector's QM31
-self-product row supplies this premise **when its wire is base-field encoded**.
-The proof that any satisfying direct-selector wire has that encoding remains
-open; the compiler's `QM31.fromBase` witness hint alone does not prove it.
+`QuadField.lean` constructs QM31 as two quadratic extensions of M31. Lean
+proves that `-1` and `5` are nonsquares in M31 and uses the second extension's
+norm, `5`, to establish both field instances. A four-coordinate bridge
+matches the AIR multiplication formula to this field.
+In symbols, a witness is `q = (a + bi) + (c + di)u`, with `i² = -1` and
+`u² = 2 + i`. Since M31's prime is `3 mod 4`, `-1` has no square root there.
+The norm of `2 + i` is `2² + 1² = 5`; quadratic reciprocity shows `5` has no
+square root in M31 either. Both extensions are therefore fields, so
+`q² = q` implies `q(q - 1) = 0`, hence `q = 0` or `q = 1`.
+`untrusted_selector_self_product_iff` proves that **any** QM31 wire satisfying
+the self-product row is exactly canonical zero or one. This proof does not use
+the compiler's `QM31.fromBase` witness hint.
+`untrusted_self_product_select_iff_evaluateNode` combines an arbitrary
+selector witness, its bound base coordinate, the self-product row, and every
+shared selection row to recover the normalized `select` result. Binding
+actual circuit addresses to these modeled rows remains a separate Gate
+lookup obligation.
+
+`BooleanRows.lean` gives the exact ordinary QM31 row schedules for `not`,
+`and`, `or`, `xor`, and Boolean `select`. The OR proof covers a sum, product,
+and subtraction; XOR also includes multiplication of the product by two.
+`not_iff`, `and_iff`, `or_iff`, `xor_iff`, and `select_iff` show that arbitrary
+intermediate witnesses give the expected Boolean result and that honest row
+witnesses exist. The premises are base-field encoded Boolean operands, as
+provided by a proved bit producer. `QuadField.self_product_iff` also handles
+arbitrary untrusted QM31 self-product operands.
 
 `SumRows.lean` models `sum_lanes`: the optional final-word pointwise mask,
 left-to-right pairwise add rows with odd-width carry rounds, QM31 multiplication
