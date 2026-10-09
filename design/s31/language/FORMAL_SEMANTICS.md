@@ -53,7 +53,13 @@ For generated hash circuits, prove a reusable builder invariant: a gate may
 read only existing wires, its primitive has the required arity, and each
 returned wire exists in the resulting state. Compose this invariant through
 the hash's actual builder functions and prove the accepted output relation
-for complete subcircuits before extending it through rounds and loops.
+for complete subcircuits, then extend it through rounds and loops. The
+Poseidon2 fifth-power, SHA sigma and complete SHA-256 compression round are
+proved by this method. The SHA round proof also composes over an arbitrary
+`foldlM` list of live message wires, with exactly 27 gates per round. A
+parameterized multi-round circuit is proved strictly sound for any number of
+rounds with message words supplied as inputs; message expansion, full
+schedule wiring and final feed-forward remain open.
 
 Prove that an executable schedule checker implies well-formed gate indices,
 output indices and primitive arities. Run it on every supported fixed hash
