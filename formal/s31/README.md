@@ -29,6 +29,7 @@ theorem does not establish zero knowledge.
 | `S31/Gadgets/FunctionalOutputs` | One graph for multiple functional results; every output wire and claimed value is bound, including an aliased second output. |
 | `S31/Gadgets/FunctionalArrays` | Shape-indexed arrays specialize pointwise, then enter one strict field graph that binds every output lane. |
 | `S31/Gadgets/FunctionalArrayNodes` | Typed array concat, indexed read, take and drop views agree with executable normalized relation nodes, including slice bounds and lane order. |
+| `S31/Gadgets/FunctionalArithmeticNodes` | Typed pointwise M31 array addition and multiplication agree with executable normalized `add`/`mul` nodes for every lane and every accepted graph witness. |
 | `S31/Gadgets/FunctionalAssertions` | Source-level `assert_eq` pairs checked against separately witnessed graph outputs, with universal contract soundness and completeness. |
 | `S31/Gadgets/FunctionalConditional` | Both total source branches in one graph, a bit-constrained selection relation, and soundness/completeness for either choice. |
 | `S31/Gadgets/FunctionalArrayConditional` | One graph contains the selector and both fixed-length array branches; a shared bit and pointwise select equations bind every output lane and agree with a concrete normalized `select` node. |
@@ -146,6 +147,14 @@ field graph and exposes input wires `[2,3,0,1]`; its strict acceptance theorem
 binds the four output lanes to `[c,d,a,b]` for input `[a,b,c,d]`. These proofs
 do not establish that Python emits the matching nodes or that Zig performs
 the same wiring without extra AIR rows.
+
+`FunctionalArithmeticNodes.arithmetic_graph_iff_node` makes the same
+source-to-normalized-value comparison for pointwise M31 `+` and `.*`. The
+normalized evaluator's `add` and `mul` nodes zip equal-length operand arrays;
+Lean proves the zipped list is exactly the source's indexed pointwise result.
+The strict graph side includes arbitrary intermediate gate witnesses, so this
+is an equivalence of acceptance, not merely an honest-value example. Python
+emission and production AIR correspondence remain outside the proof.
 
 `FunctionalAssertions` adds a separate source contract with any number of
 `assert_eq` pairs. It compiles each side to an output wire and checks the
