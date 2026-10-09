@@ -207,6 +207,14 @@ self-loops and the unconstrained inverse value when the input is zero.
 `base_zero_test_iff_evaluateNode` connects its canonical scalar restriction
 to the executable normalized `is_zero` operation. A forged zero indicator
 is rejected by a kernel-checked control.
+`InverseRows` proves the direct inversion row topology for each packed word
+and for every array length. Its `packedInverseRows_iff` gives the exact
+nonzero precondition and M31 inverse result for every active lane, even with
+arbitrary padding in the final source word. A zero active lane cannot satisfy
+the rows.
+`MixRows` composes the sum projection, broadcast multiplication, and packed
+addition used by four-lane `mix4`. Its result is proved equivalent to the
+executable `mix4` step inside normalized repeat bodies.
 `SumRows` proves that the direct `sum_lanes` mask, pairwise reduction, and
 projection rows accept exactly the normalized node's M31 result for every
 nonempty array length. The theorem permits arbitrary unused coordinates in

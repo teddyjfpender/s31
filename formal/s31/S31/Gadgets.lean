@@ -7,7 +7,9 @@ import S31.Gadgets.Air.SelectRows
 import S31.Gadgets.Air.BooleanRows
 import S31.Gadgets.Air.BitRows
 import S31.Gadgets.Air.ZeroRows
+import S31.Gadgets.Air.InverseRows
 import S31.Gadgets.Air.SumRows
+import S31.Gadgets.Air.MixRows
 import S31.Gadgets.Air.GateLookup
 import S31.Gadgets.Bindings
 import S31.Gadgets.BuilderValidity

@@ -92,7 +92,8 @@
       "gadget_theorems": [
         "S31.Gadgets.Sequence.repeat_sound_complete",
         "S31.Gadgets.Sequence.step_sound_complete",
-        "S31.Gadgets.Packed.mix4_broadcast"
+        "S31.Gadgets.Packed.mix4_broadcast",
+        "S31.Gadgets.Air.MixRows.mix4Rows_iff_applyStep"
       ],
       "source": {
         "path": "src/frontends/s31/language/relation_compiler.zig",
@@ -150,7 +151,10 @@
         "S31.Functional.u16_wire_vector_select_bounded",
         "S31.Functional.u16_value_valid_iff",
         "S31.Functional.u16_wire_vector_value_valid",
-        "S31.Functional.u16_wire_vector_matches_source"
+        "S31.Functional.u16_wire_vector_matches_source",
+        "S31.Gadgets.Air.SelectRows.untrusted_selector_self_product_iff",
+        "S31.Gadgets.Air.SelectRows.untrusted_self_product_select_iff_evaluateNode",
+        "S31.Gadgets.Air.BitRows.acceptsBit_iff"
       ],
       "source": {
         "path": "src/frontends/s31/language/relation_compiler.zig",
@@ -188,7 +192,8 @@
         "S31.Gadgets.Sequence.sum_sound_complete",
         "S31.Gadgets.Packed.mask_active_lanes",
         "S31.Gadgets.Packed.sum_projection",
-        "S31.Gadgets.Packed.dual_literal"
+        "S31.Gadgets.Packed.dual_literal",
+        "S31.Gadgets.Air.SumRows.compiledSumLanesRows_iff_evaluateNode"
       ],
       "source": {
         "path": "src/frontends/s31/language/relation_compiler.zig",
@@ -321,7 +326,9 @@
       "gadget_theorems": [
         "S31.Gadgets.Packed.inverse_sound_complete",
         "S31.Field.inverse_sound_complete",
-        "S31.Gadgets.inverse_sound_complete"
+        "S31.Gadgets.inverse_sound_complete",
+        "S31.Gadgets.Air.InverseRows.packedInverseRows_iff",
+        "S31.Gadgets.Air.InverseRows.zero_active_lane_rejected"
       ],
       "source": {
         "path": "src/frontends/s31/language/relation_compiler.zig",
@@ -333,7 +340,9 @@
       "semantics": "S31.evaluateNode",
       "gadget_theorems": [
         "S31.Gadgets.is_zero_sound_complete",
-        "S31.Gadgets.zero_anchor_sound_complete"
+        "S31.Gadgets.zero_anchor_sound_complete",
+        "S31.Gadgets.Air.ZeroRows.acceptsZeroTest_iff",
+        "S31.Gadgets.Air.ZeroRows.base_zero_test_iff_evaluateNode"
       ],
       "source": {
         "path": "src/frontends/s31/language/relation_compiler.zig",
@@ -404,7 +413,9 @@
       "semantics": "S31.evaluateNode",
       "gadget_theorems": [
         "S31.Gadgets.bit_sound_complete",
-        "S31.Gadgets.not_sound_complete"
+        "S31.Gadgets.not_sound_complete",
+        "S31.Gadgets.Air.BooleanRows.not_iff",
+        "S31.Gadgets.Air.BitRows.acceptsBit_iff"
       ],
       "source": {
         "path": "src/frontends/s31/language/relation_compiler.zig",
@@ -416,7 +427,9 @@
       "semantics": "S31.evaluateNode",
       "gadget_theorems": [
         "S31.Gadgets.bit_sound_complete",
-        "S31.Gadgets.and_sound_complete"
+        "S31.Gadgets.and_sound_complete",
+        "S31.Gadgets.Air.BooleanRows.and_iff",
+        "S31.Gadgets.Air.BitRows.acceptsBit_iff"
       ],
       "source": {
         "path": "src/frontends/s31/language/relation_compiler.zig",
@@ -428,7 +441,9 @@
       "semantics": "S31.evaluateNode",
       "gadget_theorems": [
         "S31.Gadgets.bit_sound_complete",
-        "S31.Gadgets.or_sound_complete"
+        "S31.Gadgets.or_sound_complete",
+        "S31.Gadgets.Air.BooleanRows.or_iff",
+        "S31.Gadgets.Air.BitRows.acceptsBit_iff"
       ],
       "source": {
         "path": "src/frontends/s31/language/relation_compiler.zig",
@@ -440,7 +455,9 @@
       "semantics": "S31.evaluateNode",
       "gadget_theorems": [
         "S31.Gadgets.bit_sound_complete",
-        "S31.Gadgets.xor_sound_complete"
+        "S31.Gadgets.xor_sound_complete",
+        "S31.Gadgets.Air.BooleanRows.xor_iff",
+        "S31.Gadgets.Air.BitRows.acceptsBit_iff"
       ],
       "source": {
         "path": "src/frontends/s31/language/relation_compiler.zig",
@@ -452,7 +469,9 @@
       "semantics": "S31.evaluateNode",
       "gadget_theorems": [
         "S31.Gadgets.bit_sound_complete",
-        "S31.Gadgets.boolean_select_sound_complete"
+        "S31.Gadgets.boolean_select_sound_complete",
+        "S31.Gadgets.Air.BooleanRows.select_iff",
+        "S31.Gadgets.Air.BitRows.acceptsBit_iff"
       ],
       "source": {
         "path": "src/frontends/s31/language/relation_compiler.zig",

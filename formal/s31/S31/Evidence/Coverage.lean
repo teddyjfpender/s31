@@ -10,10 +10,24 @@ import S31.Gadgets
 #check S31.Functional.u16_wire_vector_select_bounded
 #check S31.Functional.u16_wire_vector_select_iff
 #check S31.Functional.u16_wire_vector_value_valid
+#check S31.Gadgets.Air.BitRows.acceptsBit_iff
+#check S31.Gadgets.Air.BooleanRows.and_iff
+#check S31.Gadgets.Air.BooleanRows.not_iff
+#check S31.Gadgets.Air.BooleanRows.or_iff
+#check S31.Gadgets.Air.BooleanRows.select_iff
+#check S31.Gadgets.Air.BooleanRows.xor_iff
 #check S31.Gadgets.Air.FunctionalBridge.array_graph_iff_air_row
 #check S31.Gadgets.Air.GateLookup.addressed_row_sound
+#check S31.Gadgets.Air.InverseRows.packedInverseRows_iff
+#check S31.Gadgets.Air.InverseRows.zero_active_lane_rejected
+#check S31.Gadgets.Air.MixRows.mix4Rows_iff_applyStep
 #check S31.Gadgets.Air.Qm31Ops.row_iff_normalized_node
+#check S31.Gadgets.Air.SelectRows.untrusted_selector_self_product_iff
+#check S31.Gadgets.Air.SelectRows.untrusted_self_product_select_iff_evaluateNode
 #check S31.Gadgets.Air.SimdChunks.partial_row_iff_normalized_node
+#check S31.Gadgets.Air.SumRows.compiledSumLanesRows_iff_evaluateNode
+#check S31.Gadgets.Air.ZeroRows.acceptsZeroTest_iff
+#check S31.Gadgets.Air.ZeroRows.base_zero_test_iff_evaluateNode
 #check S31.Gadgets.Arithmetic.comparison_sound_complete
 #check S31.Gadgets.Arithmetic.signed_add_sound_complete
 #check S31.Gadgets.Arithmetic.signed_sub_sound_complete
@@ -101,14 +115,14 @@ def operationCoverage : List (Op × List String) := [
   (.mul, ["S31.Gadgets.mul_sound_complete", "S31.Gadgets.Packed.pointwise_sound_complete", "S31.Gadgets.Air.Qm31Ops.row_iff_normalized_node", "S31.Gadgets.Air.SimdChunks.partial_row_iff_normalized_node", "S31.Gadgets.Air.FunctionalBridge.array_graph_iff_air_row", "S31.Gadgets.Air.GateLookup.addressed_row_sound", "S31.Gadgets.Sequence.pointwise_sound_complete", "S31.Functional.arrayCode_accepts"]),
   (.add_const, ["S31.Gadgets.add_sound_complete", "S31.Gadgets.Sequence.step_sound_complete"]),
   (.mul_const, ["S31.Gadgets.mul_sound_complete", "S31.Gadgets.Packed.scalar_mul", "S31.Gadgets.Sequence.step_sound_complete"]),
-  (.repeat, ["S31.Gadgets.Sequence.repeat_sound_complete", "S31.Gadgets.Sequence.step_sound_complete", "S31.Gadgets.Packed.mix4_broadcast"]),
+  (.repeat, ["S31.Gadgets.Sequence.repeat_sound_complete", "S31.Gadgets.Sequence.step_sound_complete", "S31.Gadgets.Packed.mix4_broadcast", "S31.Gadgets.Air.MixRows.mix4Rows_iff_applyStep"]),
   (.hash_blake2s, ["S31.Gadgets.HashEncoding.blake_hash_sound_complete", "S31.Gadgets.Word.primitive_sound_complete", "S31.Gadgets.Packing.digest_reduction_sound_complete"]),
   (.hash_blake2s_leaf, ["S31.Gadgets.HashEncoding.blake_hash_sound_complete", "S31.Gadgets.Word.primitive_sound_complete", "S31.Gadgets.Packing.digest_reduction_sound_complete"]),
   (.hash_blake2s_pair, ["S31.Gadgets.HashEncoding.blake_hash_sound_complete", "S31.Gadgets.Bindings.array_concat_wires"]),
-  (.select, ["S31.Gadgets.bit_sound_complete", "S31.Gadgets.select_sound_complete", "S31.Gadgets.Sequence.pointwise_sound_complete", "S31.Functional.u16_vector_select_iff", "S31.Functional.u16_vector_select_bounded", "S31.Functional.u16_wire_vector_select_iff", "S31.Functional.u16_wire_vector_select_bounded", "S31.Functional.u16_value_valid_iff", "S31.Functional.u16_wire_vector_value_valid", "S31.Functional.u16_wire_vector_matches_source"]),
+  (.select, ["S31.Gadgets.bit_sound_complete", "S31.Gadgets.select_sound_complete", "S31.Gadgets.Sequence.pointwise_sound_complete", "S31.Functional.u16_vector_select_iff", "S31.Functional.u16_vector_select_bounded", "S31.Functional.u16_wire_vector_select_iff", "S31.Functional.u16_wire_vector_select_bounded", "S31.Functional.u16_value_valid_iff", "S31.Functional.u16_wire_vector_value_valid", "S31.Functional.u16_wire_vector_matches_source", "S31.Gadgets.Air.SelectRows.untrusted_selector_self_product_iff", "S31.Gadgets.Air.SelectRows.untrusted_self_product_select_iff_evaluateNode", "S31.Gadgets.Air.BitRows.acceptsBit_iff"]),
   (.hash_poseidon2_leaf, ["S31.Gadgets.Hash.poseidon_leaf_sound_complete", "S31.Gadgets.Hash.sbox_sound_complete"]),
   (.hash_poseidon2_pair, ["S31.Gadgets.Hash.poseidon_pair_sound_complete", "S31.Gadgets.Hash.sbox_sound_complete"]),
-  (.sum_lanes, ["S31.Gadgets.Sequence.sum_sound_complete", "S31.Gadgets.Packed.mask_active_lanes", "S31.Gadgets.Packed.sum_projection", "S31.Gadgets.Packed.dual_literal"]),
+  (.sum_lanes, ["S31.Gadgets.Sequence.sum_sound_complete", "S31.Gadgets.Packed.mask_active_lanes", "S31.Gadgets.Packed.sum_projection", "S31.Gadgets.Packed.dual_literal", "S31.Gadgets.Air.SumRows.compiledSumLanesRows_iff_evaluateNode"]),
   (.u256_add, ["S31.Gadgets.Radix.add_chain_wrapping_sound_complete"]),
   (.u256_le, ["S31.Gadgets.Arithmetic.comparison_sound_complete", "S31.Gadgets.Radix.sub_chain_comparison", "S31.Gadgets.not_sound_complete"]),
   (.u256_add_checked, ["S31.Gadgets.Radix.add_chain_checked_sound_complete"]),
@@ -119,18 +133,18 @@ def operationCoverage : List (Op × List String) := [
   (.bitcoin_genesis_hash_mainnet, ["S31.Gadgets.Bindings.constant_wires", "S31.Gadgets.Packing.bytes_le_roundtrip"]),
   (.bitcoin_header_time, ["S31.Gadgets.Bindings.array_slice_wires"]),
   (.u32_lt, ["S31.Gadgets.Arithmetic.comparison_sound_complete", "S31.Gadgets.Radix.sub_chain_comparison"]),
-  (.inv, ["S31.Gadgets.Packed.inverse_sound_complete", "S31.Field.inverse_sound_complete", "S31.Gadgets.inverse_sound_complete"]),
-  (.is_zero, ["S31.Gadgets.is_zero_sound_complete", "S31.Gadgets.zero_anchor_sound_complete"]),
+  (.inv, ["S31.Gadgets.Packed.inverse_sound_complete", "S31.Field.inverse_sound_complete", "S31.Gadgets.inverse_sound_complete", "S31.Gadgets.Air.InverseRows.packedInverseRows_iff", "S31.Gadgets.Air.InverseRows.zero_active_lane_rejected"]),
+  (.is_zero, ["S31.Gadgets.is_zero_sound_complete", "S31.Gadgets.zero_anchor_sound_complete", "S31.Gadgets.Air.ZeroRows.acceptsZeroTest_iff", "S31.Gadgets.Air.ZeroRows.base_zero_test_iff_evaluateNode"]),
   (.u256_sub, ["S31.Gadgets.Radix.sub_chain_wrapping_sound_complete"]),
   (.u256_sub_checked, ["S31.Gadgets.Radix.sub_chain_checked_sound_complete"]),
   (.array_get, ["S31.Gadgets.Bindings.array_get_wire", "S31.Gadgets.Packed.unpack_coordinate", "S31.Functional.arrayCode_accepts"]),
   (.array_concat, ["S31.Gadgets.Bindings.array_concat_wires", "S31.Functional.arrayCode_accepts"]),
   (.array_slice, ["S31.Gadgets.Bindings.array_slice_wires", "S31.Functional.arrayCode_accepts"]),
-  (.bool_not, ["S31.Gadgets.bit_sound_complete", "S31.Gadgets.not_sound_complete"]),
-  (.bool_and, ["S31.Gadgets.bit_sound_complete", "S31.Gadgets.and_sound_complete"]),
-  (.bool_or, ["S31.Gadgets.bit_sound_complete", "S31.Gadgets.or_sound_complete"]),
-  (.bool_xor, ["S31.Gadgets.bit_sound_complete", "S31.Gadgets.xor_sound_complete"]),
-  (.bool_select, ["S31.Gadgets.bit_sound_complete", "S31.Gadgets.boolean_select_sound_complete"]),
+  (.bool_not, ["S31.Gadgets.bit_sound_complete", "S31.Gadgets.not_sound_complete", "S31.Gadgets.Air.BooleanRows.not_iff", "S31.Gadgets.Air.BitRows.acceptsBit_iff"]),
+  (.bool_and, ["S31.Gadgets.bit_sound_complete", "S31.Gadgets.and_sound_complete", "S31.Gadgets.Air.BooleanRows.and_iff", "S31.Gadgets.Air.BitRows.acceptsBit_iff"]),
+  (.bool_or, ["S31.Gadgets.bit_sound_complete", "S31.Gadgets.or_sound_complete", "S31.Gadgets.Air.BooleanRows.or_iff", "S31.Gadgets.Air.BitRows.acceptsBit_iff"]),
+  (.bool_xor, ["S31.Gadgets.bit_sound_complete", "S31.Gadgets.xor_sound_complete", "S31.Gadgets.Air.BooleanRows.xor_iff", "S31.Gadgets.Air.BitRows.acceptsBit_iff"]),
+  (.bool_select, ["S31.Gadgets.bit_sound_complete", "S31.Gadgets.boolean_select_sound_complete", "S31.Gadgets.Air.BooleanRows.select_iff", "S31.Gadgets.Air.BitRows.acceptsBit_iff"]),
   (.bitcoin_block_work, ["S31.Gadgets.Bitcoin.work_sound_complete", "S31.Gadgets.Bitcoin.division_sound_complete", "S31.Gadgets.Schoolbook.schoolbook_product_sound_complete", "S31.Gadgets.Schoolbook.product_coefficients_bounded", "S31.Gadgets.Arithmetic.comparison_sound_complete"]),
   (.int_view, ["S31.Gadgets.Bindings.cast_wire_identity", "S31.Gadgets.Radix.byte_sound_complete", "S31.Gadgets.Packing.integer_layout"]),
   (.int_add_checked, ["S31.Gadgets.Radix.add_chain_checked_sound_complete", "S31.Gadgets.Arithmetic.signed_add_sound_complete", "S31.Gadgets.Signed.sign_sound_complete", "S31.Gadgets.Packing.top_limb_sign"]),

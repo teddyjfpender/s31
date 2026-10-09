@@ -109,6 +109,36 @@ is proved equivalent to the executable normalized `is_zero` node.
 `seven_input_honest_indicator` supplies a nonzero control. This is a local
 row theorem; actual witness generation and address joins are separate.
 
+For `x = 7`, take `z = 0` and inverse `7⁻¹` in QM31. The first product is
+`7 · 7⁻¹ = 1`, while `1 - z = 1`, so their difference is zero. The second
+product is `7 · z = 0`. Both anchor rows accept. For `x = 0`, take `z = 1`:
+both products and `1 - z` are zero, and the inverse witness can be anything.
+Trying `x = 0, z = 0` makes the first equation read `0 = 1`, so no witness
+can satisfy it.
+
+`InverseRows.lean` models `inverseLanes` for every packed word: one
+pointwise product row, subtraction of the active-lane mask, and the same
+anchor zero assertion. `acceptsInverse_iff` proves the row schedule imposes
+the exact four-coordinate mask equation. Every active lane must be nonzero
+and its inverse coordinate is uniquely fixed. `packedInverseRows_iff`
+extends this to arrays of any length and arbitrary final-word input padding:
+the rows exist exactly when every source lane is nonzero and every claimed
+lane equals its M31 inverse. A zero active lane is rejected by an explicit
+control theorem. Output wire and Gate address joins remain global obligations.
+
+For a two-lane inverse of packed input `(2, 3, 71, 99)`, the active mask is
+`(1, 1, 0, 0)`. Since `p = 2147483647`, an honest inverse word is
+`(1073741824, 1431655765, 0, 0)`: multiplying its first two coordinates
+by `2` and `3` gives `1 mod p` in each case. The pointwise product is
+`(1, 1, 0, 0)`; subtracting the mask gives zero for the anchor assertion.
+The values `71` and `99` are arbitrary inactive padding. If lane two were
+active with input zero, its required product would be `0 · y = 1`, which is
+impossible.
+The Zig witness builder now writes zero inverse hints in the inactive lanes
+of a short final word. A regression feeds it nonzero padding, checks the
+inverse values and unchanged row count, and compares value-carrying and
+witness-free circuit topology.
+
 `SumRows.lean` models `sum_lanes`: the optional final-word pointwise mask,
 left-to-right pairwise add rows with odd-width carry rounds, QM31 multiplication
 by the dual projection constant, and a final pointwise base-coordinate mask.
@@ -120,6 +150,15 @@ values. One accepted add row combines them, and the projection rows bind the
 single M31 result to `39`. `compiledSumLanesRows_iff_evaluateNode` proves that
 all accepted row witnesses give exactly the normalized `sum_lanes` value for
 every nonempty array; it models Zig's one-lane alias as a separate case.
+
+`MixRows.lean` composes the four-lane `sumLanes` reduction with multiplication
+by the literal broadcast word `(1, 1, 1, 1)` and one packed addition row.
+`mix4Rows_iff_applyStep` proves these rows give exactly the executable
+`mix4` step used by repeat bodies, for every M31 input and arbitrary
+intermediate row witnesses. For input `(1, 2, 3, 4)`, the sum wire is `10`,
+the broadcast word is `(10, 10, 10, 10)`, and the output is
+`(11, 12, 13, 14)` modulo M31. This local proof does not establish the
+address joins from the sum output to the broadcast input.
 
 S31 array addition uses the `add` opcode. S31 pointwise array multiplication
 uses `pointwiseMul`; `mul` denotes multiplication in the QM31 extension field.

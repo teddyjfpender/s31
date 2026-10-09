@@ -939,7 +939,31 @@ fn booleanNode(comptime V: type, ctx: *circuit.builder.Context(V), kind: Boolean
 /// profile's lookup closure; writing into the constant mask would give that
 /// variable two producers and would not safely constrain the product.
 fn inverseLanes(comptime V: type, ctx: *circuit.builder.Context(V), input: Simd) !Simd {
-    const inverse = try circuit.builder.simd.guessInvOrZero(V, ctx, input);
+    // The generic hint inverts all four coordinates, including inactive
+    // padding. Our AIR mask requires their products to be zero. Keep the
+    // generic fast path for complete words and zero the inverse hint only in
+    // the short final word; this adds no gates.
+    const inverse = if (input.len % 4 == 0) try circuit.builder.simd.guessInvOrZero(V, ctx, input) else blk: {
+        const full_words = input.data.len - 1;
+        const wires = try ctx.scratch().alloc(Var, input.data.len);
+        if (full_words > 0) {
+            const prefix = try circuit.builder.simd.guessInvOrZero(
+                V,
+                ctx,
+                Simd.fromPacked(input.data[0..full_words], full_words * 4),
+            );
+            @memcpy(wires[0..full_words], prefix.data);
+        }
+        var coordinates = [_]M31{M31.zero()} ** 4;
+        if (comptime V == QM31) {
+            const source = ctx.get(input.data[full_words]).toM31Array();
+            for (0..input.len % 4) |i| {
+                if (!source[i].isZero()) coordinates[i] = try source[i].inv();
+            }
+        }
+        wires[full_words] = try ctx.guess(circuit.builder.ivalue.fromQm31(V, QM31.fromM31Array(coordinates)));
+        break :blk Simd.fromPacked(wires, input.len);
+    };
     for (input.data, inverse.data, 0..) |x, inv, group| {
         const active = @min(@as(usize, 4), input.len - 4 * group);
         const expected = try ctx.constant(QM31.fromU32Unchecked(
@@ -1645,6 +1669,44 @@ test "sum_lanes packed linear functional masks unused coordinates and reduces ga
         try std.testing.expectEqual(case.expected, ctx.get(reduced.data[0]).toM31Array()[0].v);
         try ctx.finalize(false);
         try std.testing.expect(try ctx.isCircuitValid());
+    }
+}
+
+test "inverse_lanes masks nonzero inactive padding without extra gates" {
+    for ([_]usize{ 1, 2, 3, 4, 5 }) |len| {
+        var ctx = try circuit.builder.Context(QM31).init(std.testing.allocator, 0);
+        defer ctx.deinit();
+        const first = try ctx.guess(QM31.fromU32Unchecked(2, 3, 5, 7));
+        const second = try ctx.guess(QM31.fromU32Unchecked(11, 13, 17, 19));
+        const data = [_]Var{ first, second };
+        const before = ctx.circuit.nQm31OpsRows();
+        const inverse = try inverseLanes(QM31, &ctx, Simd.fromPacked(data[0 .. (len + 3) / 4], len));
+        try std.testing.expectEqual(3 * inverse.data.len, ctx.circuit.nQm31OpsRows() - before);
+        for (inverse.data, 0..) |wire, group| {
+            const actual = ctx.get(wire).toM31Array();
+            const source = ctx.get(data[group]).toM31Array();
+            const active = @min(@as(usize, 4), len - 4 * group);
+            for (actual, 0..) |coordinate, lane| {
+                const expected = if (lane < active) try source[lane].inv() else M31.zero();
+                try std.testing.expectEqual(expected.v, coordinate.v);
+            }
+        }
+        try ctx.finalize(false);
+        try std.testing.expect(try ctx.isCircuitValid());
+
+        var topology = try circuit.builder.Context(circuit.builder.NoValue).init(std.testing.allocator, 0);
+        defer topology.deinit();
+        const topology_data = [_]Var{ try topology.guess(.{}), try topology.guess(.{}) };
+        _ = try inverseLanes(circuit.builder.NoValue, &topology, Simd.fromPacked(topology_data[0 .. (len + 3) / 4], len));
+        try topology.finalize(false);
+        try std.testing.expectEqual(ctx.circuit.n_vars, topology.circuit.n_vars);
+        inline for (.{ "pointwise_mul", "sub", "add" }) |field| {
+            try std.testing.expectEqualSlices(
+                @TypeOf(@field(ctx.circuit, field).items[0]),
+                @field(ctx.circuit, field).items,
+                @field(topology.circuit, field).items,
+            );
+        }
     }
 }
 
