@@ -9,6 +9,7 @@ import S31.Gadgets.FunctionalOutputs
 import S31.Gadgets.FunctionalArrays
 import S31.Gadgets.FunctionalAssertions
 import S31.Gadgets.FunctionalConditional
+import S31.Gadgets.FunctionalArrayConditional
 import S31.Gadgets.FunctionalEffects
 import S31.Gadgets.U16Selection
 import S31.Gadgets.Packed

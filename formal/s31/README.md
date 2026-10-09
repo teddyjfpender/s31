@@ -30,6 +30,7 @@ theorem does not establish zero knowledge.
 | `S31/Gadgets/FunctionalArrays` | Shape-indexed arrays specialize pointwise, then enter one strict field graph that binds every output lane. |
 | `S31/Gadgets/FunctionalAssertions` | Source-level `assert_eq` pairs checked against separately witnessed graph outputs, with universal contract soundness and completeness. |
 | `S31/Gadgets/FunctionalConditional` | Both total source branches in one graph, a bit-constrained selection relation, and soundness/completeness for either choice. |
+| `S31/Gadgets/FunctionalArrayConditional` | One graph contains the selector and both fixed-length array branches; a shared bit and pointwise select equations bind every output lane. |
 | `S31/Gadgets/FunctionalEffects` | A computable conservative effect check for a small partial field language, proof that total branches agree under eager and lazy conditional evaluation, and an inactive inverse counterexample. |
 | `S31/Gadgets/U16Selection` | Pointwise bit-constrained selection of u16-backed vectors, including proof that selected limbs inherit the input range bound. |
 | `S31/Evidence/` | Checked operation coverage, non-vacuity/invalid-boundary theorems and live axiom enumeration. |
@@ -163,6 +164,16 @@ to the matching source arm; honest witnesses exist for both values. The
 selector is represented by an M31 expression in this small model and its
 bitness is imposed by the select constraint. The theorem does not verify
 the Python effect checker or the production `select` AIR emission.
+
+`FunctionalArrayConditional.array_if_accepts_iff` extends that statement to
+any fixed array length. It emits the selector and both complete branches into
+one strict graph. The separate selection relation constrains the shared
+selector to zero or one and every output lane to the matching branch. The
+theorem quantifies over arbitrary intermediate gate and selection witnesses;
+its converse supplies honest witnesses. `chooseOrSeven_accepts` instantiates
+the theorem with a two-word input `[bit, value]`: both output lanes must be
+seven when `bit=0`, or `value` when `bit=1`. As with scalar conditionals, the
+production compiler and AIR correspondence remain separate obligations.
 
 `FunctionalEffects` makes the totality premise concrete in a smaller
 expression language with checked inversion. Its computable `isTotal` check
