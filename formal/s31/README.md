@@ -25,6 +25,7 @@ theorem does not establish zero knowledge.
 | `S31/Semantics/Graph`, `Poseidon2`, `Blake2s`, `Sha256` | Explicit straight-line gate schedules and exact hash encodings. No uninterpreted hash callback is used. |
 | `S31/Semantics/Functional` | Intrinsically typed `let`/lambda/application core, static specialization into first-order field polynomials, and an arbitrary-witness local constraint relation. |
 | `S31/Gadgets/` | Primitive residual proofs, arbitrary auxiliary witnesses, constructive completeness and composition. |
+| `S31/Gadgets/FunctionalGraph` | Executable polynomial-to-graph lowering and a kernel-checked strict circuit proof for the captured-square example. |
 | `S31/Evidence/` | Checked operation coverage, non-vacuity/invalid-boundary theorems and live axiom enumeration. |
 | `coverage.json` | Reviewed mapping of every operation to semantics, local gadget theorems and production source functions. |
 | `source-bindings.json`, `proof-inventory.json` | Generated exact source identities and the complete theorem inventory, including the reused modules and three source-derived proof declarations. |
@@ -65,10 +66,24 @@ The hand-written `capturedSquare` term models
 `let saved = x in let f = fun(y : m31) -> m31 => y * y + saved in f(saved)`.
 `capturedSquare_zero_cost` reduces its residual tree to `x*x+x`, and
 `capturedSquare_accepts` proves its local constraints accept exactly that
-value for every M31 input. These are kernel-checked statements about the
+value for every M31 input. `FunctionalGraph` lowers this residual expression
+through the generic graph builder. Its checked circuit is:
+
+| Wire | Meaning | Local equation |
+| --- | --- | --- |
+| `0` | input `x` | supplied graph input |
+| `1` | `x*x` | `w₁ - x*x = 0` |
+| `2` | `w₁+x` | `w₂ - (w₁+x) = 0` |
+
+The graph output is wire `2`. `capturedSquareCode_shape` proves the executable
+lowering produces exactly those two gates; `capturedSquareCode_valid` proves
+well-formed indices and arities. `capturedSquareCode_accepts` proves strict
+acceptance is equivalent to the source result for **every** intermediate
+witness. These are kernel-checked statements about the
 small formal core. The Python parser, S31's wider type set, library calls,
-assertions, partial operations, and the production AIR lowering are outside
-this theorem. The formal source identity inventory now includes the Python
+assertions, partial operations, a universal polynomial-to-graph refinement
+theorem, and the production AIR lowering are outside this theorem. The formal
+source identity inventory now includes the Python
 syntax, parser, specializer and libraries so changes there force a reviewed
 binding update; the source digests themselves do not prove compiler correspondence.
 
@@ -234,8 +249,8 @@ source, rejects missing evidence, and compiles valid controls before requiring
 invalid controls to fail. It also alters actual byte-range, carry-base and
 signed-overflow definitions and requires their original proofs to fail.
 Temporary mutations never alter repository sources.
-The mutation set includes polynomial addition in the functional core; changing
-its evaluation to multiplication must make the new specialization/constraint
+The mutation set includes polynomial addition and graph emission in the
+functional core; changing either addition to multiplication must make the new
 proofs fail to compile.
 
 The dedicated [CI workflow](../../.github/workflows/s31-formal.yml) runs these

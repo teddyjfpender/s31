@@ -42,6 +42,8 @@ SOURCE_MUTATIONS = (
     ("functional_add", "S31/Semantics/Functional.lean",
      "| .add a b => a.eval inputs + b.eval inputs",
      "| .add a b => a.eval inputs * b.eval inputs"),
+    ("functional_graph_add", "S31/Gadgets/FunctionalGraph.lean",
+     "Graph.binary .add left right", "Graph.binary .mul left right"),
 )
 
 

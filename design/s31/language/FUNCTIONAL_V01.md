@@ -97,7 +97,7 @@ The following are required for a v0.1.0 claim:
 | --- | --- | --- |
 | Grammar and diagnostics | Versioned grammar, location-precise errors, malformed and fuzzed input corpus, bounded parse and specialization resources | Handwritten parser and bounded token/call depth; grammar/fuzz gate missing. |
 | Type soundness | Separate typed elaboration of **all** declarations, no function values at circuit boundary, well-defined static/dynamic effects | Boundary and applied-function checks exist; unused bodies and full effects remain unchecked. |
-| Semantic preservation | Proof or independently checked translation for typed source → normalized relation, including closure capture, shadowing, arrays and library calls | Lean now proves specialization, beta erasure and arbitrary-witness constraint agreement for a small typed field/function core; Python text compilation, arrays and library calls remain unproved. |
+| Semantic preservation | Proof or independently checked translation for typed source → normalized relation, including closure capture, shadowing, arrays and library calls | Lean proves specialization, beta erasure and arbitrary-witness constraint agreement for a small typed field/function core; one captured-closure example also has a strict two-gate graph proof. Python text compilation, general graph lowering, arrays and library calls remain unproved. |
 | Zero-cost abstractions | Canonical graph and AIR geometry equivalence across arithmetic, hashes, arrays and chip extraction, plus regression ceilings | One functional arithmetic gate exists; broader gate missing. |
 | Build and native verification | Build, prove, verify, changed-statement rejection, independent oracle, reproducible source/key/IR identity | Existing package path and one functional native trial pass. |
 | Repository hygiene | Parser, AST, elaborator, specialization, library and CLI isolated by directory, module READMEs and pinned dependency versions | Syntax, parser, builtins and specialization now live under `python/language/`; a separate elaborator and further library/CLI separation remain. |
@@ -106,8 +106,9 @@ The following are required for a v0.1.0 claim:
 The Lean package now has an intrinsically typed total field/function core
 and a semantic simulation theorem for specialization. The remaining work is
 to connect the Python parser and specializer to this core, extend the theorem
-to arrays, effects and libraries, and prove the resulting first-order graph
-corresponds to the production AIR. This follows the style
+to arrays, effects and libraries, prove graph lowering correct for every
+polynomial, and connect the resulting first-order graph to the production
+AIR. This follows the style
 of [Wright and Felleisen's syntactic type-soundness work](https://felleisen.org/matthias/papers.html).
 That theorem must be separate from the existing local AIR gadget proofs and
 from probabilistic STARK soundness. Until all rows above have adequate
