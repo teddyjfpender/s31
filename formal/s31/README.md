@@ -30,6 +30,7 @@ theorem does not establish zero knowledge.
 | `S31/Gadgets/FunctionalAssertions` | Source-level `assert_eq` pairs checked against separately witnessed graph outputs, with universal contract soundness and completeness. |
 | `S31/Gadgets/FunctionalConditional` | Both total source branches in one graph, a bit-constrained selection relation, and soundness/completeness for either choice. |
 | `S31/Gadgets/FunctionalEffects` | A computable conservative effect check for a small partial field language, proof that total branches agree under eager and lazy conditional evaluation, and an inactive inverse counterexample. |
+| `S31/Gadgets/U16Selection` | Pointwise bit-constrained selection of u16-backed vectors, including proof that selected limbs inherit the input range bound. |
 | `S31/Evidence/` | Checked operation coverage, non-vacuity/invalid-boundary theorems and live axiom enumeration. |
 | `coverage.json` | Reviewed mapping of every operation to semantics, local gadget theorems and production source functions. |
 | `source-bindings.json`, `proof-inventory.json` | Generated exact source identities and the complete theorem inventory, including the reused modules and three source-derived proof declarations. |
@@ -158,6 +159,28 @@ outputs with the select equation and proves the same equivalence. The counterexa
 witness. This formal check models the rule's rationale; the Python effect
 pass, higher-order call analysis and all builtin classifications still need
 a verified connection to this model.
+
+`U16Selection.u16_vector_select_iff` lifts the field selector equation to
+every limb of a fixed-width vector. Its output is exactly the selected input
+vector for either Boolean value, including an explicit selector constraint
+for the mathematical zero-length case. The production-shaped
+`u16_wire_vector_select_iff` also treats the complement, two products, and
+sum as arbitrary intermediate witnesses; it proves that those four
+operations and the Boolean selector give the same result. Both versions prove
+that canonical u16 input limbs yield output limbs below 65,536. This supports
+source-level byte and wide nominal selectors without adding a fresh range
+witness. It remains a local constraint theorem until correspondence with each
+production Zig profile is proved.
+
+For one limb with false input 7 and true input 9, the witnessed equations are
+`c + s = 1`, `l = c·7`, `r = s·9`, and `out = l + r`:
+
+| Selector `s` | Complement `c` | Left product `l` | Right product `r` | Output |
+| ---: | ---: | ---: | ---: | ---: |
+| 0 | 1 | 7 | 0 | 7 |
+| 1 | 0 | 0 | 9 | 9 |
+
+The separate Boolean equation `s² = s` rules out every other field value.
 
 Soundness quantifies over every satisfying auxiliary witness. Completeness
 constructs witnesses for every input within the stated range and shape

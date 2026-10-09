@@ -1,0 +1,10 @@
+use std@1;
+
+circuit byte_choice(
+    public choice: bit, private left: Bytes32, private right: Bytes32
+) -> public [m31; 1] {
+    let chosen = select(choice, right, left);
+    let words = std::bytes::limbs_m31(chosen);
+    let result = std::math::sum_lanes(words);
+    result
+}

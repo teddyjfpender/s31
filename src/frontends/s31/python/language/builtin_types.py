@@ -7,7 +7,7 @@ The acceptance corpus compares both phases on every shipped example.
 
 from __future__ import annotations
 
-from s31_stdlib import INT_TYPES, P, Type, TypeErrorS31
+from s31_stdlib import INT_TYPES, P, SELECTABLE_KINDS, Type, TypeErrorS31
 from language.builtins import INT_BINARY_CALLS, INT_CAST_CALLS, INT_COMPARE_CALLS
 from language.types import FieldLiteral, SourceType, StaticArray
 
@@ -17,7 +17,6 @@ M31_ONE = Type("m31", 1)
 U256 = Type("uint256", 16)
 BYTES32 = Type("bytes32", 16)
 BYTES80 = Type("bytes80", 40)
-SELECTABLE_KINDS = frozenset({"m31", "digest", "uint256", "target", "work", "chainwork"} | INT_TYPES.keys())
 
 
 def require(condition: bool, message: str) -> None:
@@ -327,7 +326,7 @@ def infer_builtin(name: str, generic: int | None, args: tuple[SourceType, ...],
         selector, lhs, rhs = args
         require(selector == BIT, "select requires a bit selector")
         require(lhs == rhs and isinstance(lhs, Type) and lhs.kind in SELECTABLE_KINDS,
-                "select requires a bit and two equally typed field or 256-bit or fixed-width integer values")
+                "select requires a bit and two equally typed circuit values")
         return lhs
     if name in {"bool_and", "bool_or", "bool_xor", "bool_select"}:
         static_parameter(name, generic)

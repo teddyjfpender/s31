@@ -135,7 +135,7 @@ The hash functions operate on canonical M31 arrays. Each input element is encode
 | `hash_blake2s_pair` | ordered `lhs`, `rhs`: each `m31[8]` | ASCII `S31PAIR1` | `m31[8]` |
 | `hash_poseidon2_leaf` | `lhs`: `m31[4/8/12/16]` | capacity word 15 = 1; marker 1 | `m31[8]` |
 | `hash_poseidon2_pair` | ordered `lhs`, `rhs`: each `m31[8]` | direct permutation of `lhs || rhs` | `m31[8]` |
-| `select` | `lhs`, `rhs`: equal-length M31 arrays; `selector`: `m31[1]` | — | `lhs` for 0, `rhs` for 1 |
+| `select` | `lhs`, `rhs`: equal-length, same-kind M31 or u16 arrays; `selector`: `m31[1]` | — | `lhs` for 0, `rhs` for 1; a selected u16 limb retains its range |
 
 The two eight-byte BLAKE2s personalization values enter the [BLAKE2s parameter block](https://www.blake2.net/blake2_20130129.pdf), so a 16-word parent input still uses one compression block. The parent order matters: `pair(left,right)` and `pair(right,left)` are different statements. The circuit's Blake-G, XOR, conversion and range components constrain all BLAKE2s rounds. `select` adds `b²-b=0` for its selector and constrains every output lane to `(1-b)·lhs+b·rhs`. BLAKE2s uses the full `gate` profile. Poseidon2 uses the arithmetic-only `direct-gate` profile when all inputs are M31.
 

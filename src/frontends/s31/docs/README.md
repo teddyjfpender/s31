@@ -112,6 +112,7 @@ The worked examples use checked-in sources under [`../examples`](../examples):
 | [`functional_square4.s31`](../examples/arithmetic/functional_square4.s31) | A higher-order function and closure erased to two multiplication nodes | `direct-gate` |
 | [`functional_step16.s31`](../examples/recurrence/functional_step16.s31) | A closure around `iterate<16>` erased to the same one-node recurrence and chip | `direct-chip` |
 | [`functional_u256_sum.s31`](../examples/wide/functional_u256_sum.s31) | A higher-order checked 256-bit reduction with the same sparse-wide AIR cost as its direct form | `sparse-wide-gate` |
+| [`byte_choice.s31`](../examples/control/byte_choice.s31) | A witness-dependent choice of two `Bytes32` values, with all sixteen u16 limbs contributing to one public result | `sparse-wide-gate` |
 | [`mathlib4.s31`](../examples/arithmetic/mathlib4.s31) | `use std@1`, Horner polynomial, static dot/sum, library lock | `direct-gate` |
 | [`lane_stats4.s31`](../examples/arithmetic/lane_stats4.s31) | Private arrays, lane sum and dot, one public result | `direct-gate` |
 | [`field_div4.s31`](../examples/arithmetic/field_div4.s31) | Checked inverse and division, one inverse witness shared across calls | `direct-gate` |

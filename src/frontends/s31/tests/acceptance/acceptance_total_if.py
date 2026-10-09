@@ -28,6 +28,62 @@ EXPECTED_GEOMETRY = {
                "qm31_ops": 512, "triple_xor": 0},
     "preprocessed_cells": 4096,
 }
+EXPECTED_BYTE_GEOMETRY = {
+    "canonical_ir_sha256": "206e99f113cb1e6d5ecf55c7c0ae2f42aae634418ea445a5325918ac7e4a45ba",
+    "profile": "sparse-wide-v5",
+    "chip": None,
+    "raw": {"blake_g": 0, "eq": 0, "m31_to_u32": 34,
+            "qm31_ops": 427, "triple_xor": 0},
+    "padded": {"blake_g": 0, "eq": 16, "m31_to_u32": 64,
+               "qm31_ops": 512, "triple_xor": 0},
+    "preprocessed_cells": 69856,
+}
+
+
+def check_byte_choice(work: Path) -> dict:
+    example = S31 / "examples/control/byte_choice"
+    conditional = example.with_suffix(".s31")
+    manual = example.with_name("byte_choice_manual.s31")
+    assignments = (example.with_suffix(".valid.json"),
+                   example.with_suffix(".alternate.valid.json"))
+    source_relation, _ = compile_file(conditional)
+    manual_relation, _ = compile_file(manual)
+    if source_relation != manual_relation:
+        raise AssertionError("byte conditional differs from explicit selector relation")
+    if [node["op"] for node in source_relation["nodes"]] != [
+        "select", "cast_m31", "sum_lanes"
+    ]:
+        raise AssertionError("byte conditional did not constrain and consume all limbs")
+
+    conditional_package = s31.build(conditional, work / "conditional-bytes", "sparse-wide-gate")
+    manual_package = s31.build(manual, work / "manual-bytes", "sparse-wide-gate")
+    cost = json.loads((conditional_package / "cost-report.json").read_text())
+    manual_cost = json.loads((manual_package / "cost-report.json").read_text())
+    different = [key for key in MATCHED_COST if cost[key] != manual_cost[key]]
+    if different:
+        raise AssertionError(f"byte if syntax changed circuit/AIR geometry: {different}")
+    changed = [key for key, expected in EXPECTED_BYTE_GEOMETRY.items()
+               if cost[key] != expected]
+    if changed:
+        raise AssertionError(f"byte selector baseline geometry changed: {changed}")
+
+    for bit, assignment_path in ((1, assignments[0]), (0, assignments[1])):
+        assignment = json.loads(assignment_path.read_text())
+        chosen = assignment["private_inputs"]["left" if bit else "right"]
+        expected = sum(chosen) % ((1 << 31) - 1)
+        if assignment["public_inputs"]["choice"] != [bit] or assignment["public_outputs"] != {"result": [expected]}:
+            raise AssertionError("byte selector fixture differs from independent limb arithmetic")
+        trial = s31.trial(conditional_package, assignment_path, work / f"byte-trial-{bit}")
+        if (not trial["native_verifier_accepted"] or
+                not trial["changed_public_statement_rejected"] or
+                trial["independent_value_oracle"]["status"] != "passed"):
+            raise AssertionError(f"byte selector native proof or oracle failed for choice={bit}")
+
+    return {"canonical_ir_sha256": cost["canonical_ir_sha256"],
+            "raw": cost["raw"], "padded": cost["padded"],
+            "preprocessed_cells": cost["preprocessed_cells"],
+            "both_choices_verified": True,
+            "changed_public_statements_rejected": True}
 
 
 def main() -> None:
@@ -63,16 +119,21 @@ def main() -> None:
             if assignment["public_inputs"]["choice"] != [bit] or assignment["public_outputs"] != {"result": [expected]}:
                 raise AssertionError("conditional fixture differs from independent arithmetic")
             trial = s31.trial(conditional_package, assignment_path, work / f"trial-{bit}")
-            if not trial["native_verifier_accepted"] or not trial["changed_public_statement_rejected"]:
+            if (not trial["native_verifier_accepted"] or
+                    not trial["changed_public_statement_rejected"] or
+                    trial["independent_value_oracle"]["status"] != "passed"):
                 raise AssertionError(f"native verifier did not enforce choice={bit} statement")
 
+        byte_choice = check_byte_choice(work)
+
         print(json.dumps({
-            "schema": "s31-total-if-acceptance-v1",
+            "schema": "s31-total-if-acceptance-v2",
             "canonical_ir_sha256": cost["canonical_ir_sha256"],
             "raw": cost["raw"], "padded": cost["padded"],
             "preprocessed_cells": cost["preprocessed_cells"],
             "both_choices_verified": True,
             "changed_public_statements_rejected": True,
+            "byte_choice": byte_choice,
         }, indent=2, sort_keys=True))
 
 

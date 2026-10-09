@@ -99,6 +99,10 @@ verify the Python effect pass or the complete production AIR emission.
 Lean also proves that a conservative totality check makes eager and lazy
 conditionals agree in a small language with checked inversion, and exhibits
 the inactive inverse-of-zero counterexample when that premise is dropped.
+The local u16-vector selector theorem further proves that byte and wide
+nominal selections preserve the selected input and its limb range, including
+arbitrary intermediate witnesses for the compiler's complement, products and
+sum. The production profile correspondence remains a separate obligation.
 
 ## Release evidence, not release intentions
 

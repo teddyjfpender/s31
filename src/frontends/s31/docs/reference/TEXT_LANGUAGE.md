@@ -86,6 +86,8 @@ rejects partial inverse, division, checked arithmetic and other potentially
 failing operations transitively through function calls in either arm. See
 the [functional language guide](../functional-language.md#witness-dependent-conditionals)
 for a worked example and the exact effect rule.
+Selecting u16-backed values such as `Bytes32` requires a u16-capable proving
+profile such as `sparse-wide-gate`; `direct-gate` accepts only M31 inputs.
 Unary `-` binds tighter than `.*`, which binds tighter than `+` and `-`; binary
 operators associate left, so `-a .* b - c - d` is `((-a) .* b - c) - d`.
 `a - b` and `-a` are spellings of `std::math::sub(a, b)` and
@@ -146,11 +148,11 @@ zero-row view for byte and integer operations.
 | `a - b`, `-a` | Same as `std::math::sub(a, b)` and `std::math::neg(a)` | `[m31; N]`; binary form needs equal shapes. |
 | `splat<N>(c_m31)` | Compile-time uniform constant | Canonical M31 literal; materialized only if needed. |
 | `m31_from_u16(x)` | `cast_m31` | Explicit value-preserving conversion. |
-| `select(bit, a, b)` | `select` | Same M31 array, digest, or `UInt256` type; bit is a constrained input or computed bit. |
+| `select(bit, a, b)` | `select` | Same selectable type: M31/u16 array, digest, `Bytes32`, `BlockHash`, `Bytes80`, `UInt256`, `Target`, `Work`, `ChainWork`, or fixed-width integer. Bit is a constrained input or computed bit. |
 | `std::field::is_zero(x)` | `is_zero` | Scalar `[m31; 1]`; two equations force the bit to be one exactly at zero. |
 | `std::bool::not(a)`, `and(a,b)`, `or(a,b)`, `xor(a,b)` | `bool_not`, `bool_and`, `bool_or`, `bool_xor` | Typed `bit` operands and result; every operand is Boolean-constrained. |
 | `std::bool::select(s,a,b)` | `bool_select` | Three typed bits; returns `a` at `s=0` and `b` at `s=1`. |
-| `std::field::select(s,a,b)` | `select` | Scalar typed bit `s`; equal M31 array, digest, or `UInt256` operands; chooses `b` at `s=1`. Selected `UInt256` limbs equal range-checked input limbs. |
+| `std::field::select(s,a,b)` | `select` | Scalar typed bit `s`; equally typed selectable operands; chooses `b` at `s=1`. A selected u16 limb equals one of two range-checked input limbs, including nominal byte and wide values. |
 | `poseidon2_leaf(x)`, `blake2s_leaf(x)` | Corresponding leaf hash node | 4, 8, 12, or 16 M31 words. |
 | `poseidon2_pair(a,b)`, `blake2s_pair(a,b)` | Ordered-pair hash node | Two digests of the selected family. |
 | `merkle_path_poseidon2(leaf, siblings, directions)` and `merkle_path_blake2s(...)` | Optional leaf hash, then two selects and one ordered pair per level | Raw M31 leaf or same-family digest; static arrays of 1–16 digest and bit inputs. |

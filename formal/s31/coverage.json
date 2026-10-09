@@ -133,7 +133,11 @@
       "gadget_theorems": [
         "S31.Gadgets.bit_sound_complete",
         "S31.Gadgets.select_sound_complete",
-        "S31.Gadgets.Sequence.pointwise_sound_complete"
+        "S31.Gadgets.Sequence.pointwise_sound_complete",
+        "S31.Functional.u16_vector_select_iff",
+        "S31.Functional.u16_vector_select_bounded",
+        "S31.Functional.u16_wire_vector_select_iff",
+        "S31.Functional.u16_wire_vector_select_bounded"
       ],
       "source": {
         "path": "src/frontends/s31/language/relation_compiler.zig",

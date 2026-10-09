@@ -69,6 +69,10 @@ generated verifier, and confirms that a changed public result is rejected.
 `if condition then on_true else on_false` accepts a constrained `bit`
 condition and two values of the same selectable circuit type. It evaluates
 both arms when constructing the fixed circuit, then emits one `select` node.
+Selectable values include M31 and u16 arrays, digests, `Bytes32`,
+`BlockHash`, `Bytes80`, `UInt256`, the Bitcoin target/work types, and the
+fixed-width integers. Nominal byte and wide values use the same u16-limb
+selector relation; its output limbs are constrained to equal a chosen input.
 For a `bit` result it emits one `bool_select` node. Its ordering matches the
 existing strict selector:
 
@@ -105,6 +109,20 @@ both forms, verifies identical canonical IR and AIR geometry, proves both
 assignments, and rejects changed public results. Its current `direct-gate`
 baseline has 282 raw QM31 rows, 512 padded rows, and 4,096 preprocessed
 cells for the complete circuit and public binding.
+
+The [byte-choice example](../examples/control/byte_choice.s31) selects all
+sixteen limbs of one `Bytes32` input, casts them to M31 words and sums them.
+The two fixtures select `[1,…,16]` or `[101,…,116]`, yielding 136 or 1,736.
+Its [manual selector](../examples/control/byte_choice_manual.s31) emits the
+same relation. Because its inputs are u16-backed, build it with
+`sparse-wide-gate`; `direct-gate` accepts only M31 inputs. The local
+[Lean u16 selection theorem](../../../../formal/s31/S31/Gadgets/U16Selection.lean)
+proves that a bit-constrained limb selector returns exactly the chosen input
+and preserves the u16 range, under the stated input bounds.
+The complete byte-choice circuit measures 427 raw QM31 operation rows and 34
+M31-to-u32 rows, padded to 512 and 64 respectively, with 69,856 preprocessed
+cells. The [native acceptance gate](../tests/acceptance/acceptance_total_if.py)
+pins those counts and proves both choices.
 
 Since both arms occupy the circuit, each arm must be *total* on well-typed
 values. The compiler's effect pass rejects an arm containing inversion,

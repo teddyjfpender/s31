@@ -45,6 +45,9 @@ SOURCE_MUTATIONS = (
     ("functional_graph_add", "S31/Gadgets/FunctionalGraph.lean",
      "| .add lhs rhs => do\n      let left ← lhs.emit\n      let right ← rhs.emit\n      Graph.binary .add left right",
      "| .add lhs rhs => do\n      let left ← lhs.emit\n      let right ← rhs.emit\n      Graph.binary .mul left right"),
+    ("u16_selector_complement", "S31/Gadgets/U16Selection.lean",
+     "complement + Field.toZMod selector = 1 ∧",
+     "complement + Field.toZMod selector = 0 ∧"),
 )
 
 

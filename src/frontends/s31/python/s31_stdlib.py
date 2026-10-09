@@ -24,6 +24,10 @@ STDLIB_ABI_VERSION = 1
 MAX_NODES = 100_000
 INT_TYPES = {f"int_{sign}{width}": (width, sign == "i")
              for sign in ("u", "i") for width in (8, 16, 32, 64, 128)}
+SELECTABLE_KINDS = frozenset({
+    "m31", "u16", "digest", "uint256", "bytes32", "bytes80", "blockhash",
+    "target", "work", "chainwork",
+} | INT_TYPES.keys())
 
 
 def int_spec(typ: "Type") -> int:
@@ -556,8 +560,8 @@ class Builder:
 
     def select(self, bit: Value, lhs: Value, rhs: Value, *, wanted: str | None = None,
                span: dict[str, int] | None = None) -> Value:
-        if bit.typ != Type("bit", 1) or lhs.typ != rhs.typ or lhs.typ.kind not in {"m31", "digest", "uint256", "target", "work", "chainwork"} | INT_TYPES.keys():
-            raise TypeErrorS31("select requires a bit and two equally typed field or 256-bit or fixed-width integer values")
+        if bit.typ != Type("bit", 1) or lhs.typ != rhs.typ or lhs.typ.kind not in SELECTABLE_KINDS:
+            raise TypeErrorS31("select requires a bit and two equally typed circuit values")
         selector = self.bit_operand(bit)
         return self.emit("select", lhs.typ, wanted=wanted, span=span,
                          lhs=self.realize(lhs).ref, rhs=self.realize(rhs).ref, selector=selector)

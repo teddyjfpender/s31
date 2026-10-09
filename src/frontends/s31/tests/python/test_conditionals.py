@@ -43,6 +43,42 @@ class ConditionalTests(unittest.TestCase):
         self.assertEqual([node["op"] for node in relation["nodes"]], ["bool_select"])
         self.assertEqual(relation["nodes"][0]["selector"], "b")
 
+    def test_u16_and_byte_nominal_choices_use_the_same_strict_selector(self) -> None:
+        header_true = [0] * 40
+        header_false = [0] * 40
+        header_true[34:36] = [123, 456]
+        header_false[34:36] = [789, 321]
+        cases = (
+            ("[u16; 2]", "[u16; 2]", "chosen", [11, 12], [21, 22],
+             [11, 12], [21, 22]),
+            ("Bytes32", "[m31; 1]",
+             "std::array::get<0>(std::bytes::limbs_m31(chosen))",
+             [11] + [0] * 15, [21] + [0] * 15, [11], [21]),
+            ("BlockHash", "[m31; 1]",
+             "std::array::get<0>(std::bytes::limbs_m31(std::bitcoin::hash_bytes(chosen)))",
+             [11] + [0] * 15, [21] + [0] * 15, [11], [21]),
+            ("Bytes80", "[u16; 2]", "std::bitcoin::header_time(chosen)",
+             header_true, header_false, [123, 456], [789, 321]),
+        )
+        for kind, result_type, body, x, y, true_result, false_result in cases:
+            with self.subTest(kind=kind):
+                template = (f"circuit choose(public b: bit, private x: {kind}, private y: {kind}) "
+                            f"-> public {result_type} {{ let chosen = CHOICE; {body} }}")
+                conditional, _ = compile_text(template.replace("CHOICE", "if b then x else y"))
+                explicit, _ = compile_text(template.replace("CHOICE", "select(b, y, x)"))
+                self.assertEqual(conditional, explicit)
+                self.assertEqual([node["op"] for node in conditional["nodes"]].count("select"), 1)
+                output = conditional["public_outputs"][0]
+                for bit, expected in ((0, false_result), (1, true_result)):
+                    assignment = {"public_inputs": {"b": [bit]},
+                                  "private_inputs": {"x": x, "y": y},
+                                  "public_outputs": {output: expected[:]}}
+                    self.assertEqual(evaluate_relation(conditional, assignment),
+                                     assignment["public_outputs"])
+                    assignment["public_outputs"][output][0] += 1
+                    with self.assertRaises(OracleError):
+                        evaluate_relation(conditional, assignment)
+
     def test_total_function_and_closure_calls_in_arms(self) -> None:
         relation, _ = compile_text("""fn plus_one(x: [m31; 1]) -> [m31; 1] {
             x + splat<1>(1_m31)
