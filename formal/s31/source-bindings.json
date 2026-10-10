@@ -49,6 +49,8 @@
   "sources": {
     "src/frontends/s31/language/relation.zig": "aa0c107e173cb7566e4c3961f5a0c4134ca059e3890816ca53573123612826c9",
     "src/frontends/s31/examples/arithmetic/functional_square4.s31": "d2bffe38fa1a470a8c01a82a4c2e6a611f3607b06251c1fca1cf3448aa1a13b6",
+    "src/frontends/s31/examples/arithmetic/functional_poly4.s31": "58352e452faa1c85b494ddb6d1b627c206a061333c5c28c3afefcc699370ad9e",
+    "src/frontends/s31/examples/arithmetic/functional_poly4_manual.s31": "e6e0d7ce473d6074396ee15d4c956948f0e8fd770a040a02aa09cc50c5cc2ee0",
     "src/frontends/s31/build.zig": "123b8e4a6f2b8fd6ef2fd70743f2c991468b131e5d698d0ce23008661fa0442e",
     "src/frontends/s31/entry/export_square4_topology.zig": "3e9266bdc4dc323162098dee218d77de0cd993d1a2da3d214a0e63e8e4c43306",
     "src/frontends/s31/tools/formal/export_square4_topology.zig": "13929f4b1e40621f4c735f8e2955dc6670951907b6d26936c5b42a86f8e2ac86",

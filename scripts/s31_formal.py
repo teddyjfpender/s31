@@ -36,9 +36,13 @@ SIGMA = "src/core/crypto/blake_sigma.zig"
 GATE_WITNESS = "src/frontends/circuit/witness/components.zig"
 QM31_EVALUATOR = "src/frontends/circuit/air_eval/manual/circuit.zig"
 TEXT_SQUARE4 = "src/frontends/s31/examples/arithmetic/functional_square4.s31"
+TEXT_POLY4 = "src/frontends/s31/examples/arithmetic/functional_poly4.s31"
+TEXT_POLY4_DIRECT = "src/frontends/s31/examples/arithmetic/functional_poly4_manual.s31"
 BINDINGS = [
     RELATION,
     TEXT_SQUARE4,
+    TEXT_POLY4,
+    TEXT_POLY4_DIRECT,
     "src/frontends/s31/build.zig",
     "src/frontends/s31/entry/export_square4_topology.zig",
     "src/frontends/s31/tools/formal/export_square4_topology.zig",

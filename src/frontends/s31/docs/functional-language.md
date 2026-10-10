@@ -64,6 +64,16 @@ python3 src/frontends/s31/tests/acceptance/acceptance_functional_core.py
 The trial checks the independent oracle, creates a native proof, runs the
 generated verifier, and confirms that a changed public result is rejected.
 
+The [worked quadratic](worked-functional-polynomial.md) shows a higher-order
+`poly_eval` program with its full four-lane arithmetic table, normalized
+relation and AIR equations. Its direct source has exactly the same relation.
+The [functional library native gate](../tests/acceptance/functional/library.py)
+also compares complete AIR costs and proves the quadratic, a static matrix
+product and a Poseidon2 two-leaf parent. Their raw QM31 row counts are 318,
+326 and 11,840 respectively, equal to their direct forms. These totals include
+the complete circuit boundary, not only source arithmetic nodes. Each native
+proof verifies, and a changed public result is rejected.
+
 ## Arrays and captured hash closures
 
 The [four-lane array/hash example](../examples/arrays/functional_rotate_hash.s31)

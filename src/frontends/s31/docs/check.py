@@ -105,6 +105,30 @@ def check_examples() -> None:
         (2 * x + 3 * (2 * x**3 + 3 * x**2 + 5 * x + 7) + 11) % P
         for x in library_assignment["public_inputs"]["x"]
     ]
+    worked_poly, _ = compile_text(
+        text_block_containing(DOCS / "worked-functional-polynomial.md",
+                              "circuit functional_poly4"),
+        "worked-functional-polynomial.md",
+    )
+    poly_source = S31 / "examples/arithmetic/functional_poly4.s31"
+    poly_direct = S31 / "examples/arithmetic/functional_poly4_manual.s31"
+    assert worked_poly == compile_text(poly_source.read_text())[0]
+    assert worked_poly == compile_text(poly_direct.read_text())[0]
+    assert [node["op"] for node in worked_poly["nodes"]] == [
+        "mul_const", "add_const", "mul", "add_const"]
+    poly_assignment = json.loads(poly_source.with_suffix(".valid.json").read_text())
+    x_words = poly_assignment["private_inputs"]["x"]
+    expected = [(2 * x * x + 3 * x + 7) % P for x in x_words]
+    assert expected == [7, 12, 21, 126]
+    assert poly_assignment["public_outputs"] == {"result": expected}
+    assert evaluate_relation(worked_poly, poly_assignment) == {"result": expected}
+    poly_assignment["public_outputs"]["result"][0] += 1
+    try:
+        evaluate_relation(worked_poly, poly_assignment)
+    except OracleError:
+        pass
+    else:
+        raise AssertionError("worked functional polynomial accepted a false public claim")
     matrix_source = text_block_containing(DOCS / "library.md", "circuit static_matvec")
     matrix_relation, _ = compile_text(matrix_source, "library.md")
     assert matrix_relation == json.loads((S31 / "examples/arrays/static_matvec.s31.json").read_text())

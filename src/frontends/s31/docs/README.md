@@ -36,6 +36,9 @@ text .s31 ──parse/typecheck/specialize──▶ normalized relation JSON
 - [Two proofs worked by hand](worked-proofs.md): a private cross-lane sum
     and dot product from source through gate equations and public binding,
     followed by a 16-round recurrence with actual transition rows.
+- [One functional polynomial worked by hand](worked-functional-polynomial.md):
+    a typed closure, `poly_eval`, four named lanes, exact retained relation
+    nodes, and the AIR equations that bind the public result.
 - [One program's Lean proof ladder](formal/README.md): the real functional
    `x⁴` source, generated wire IDs, local AIR rows, Gate address joins,
    LogUp closure, an explicit forged-witness bound, and remaining premises.
