@@ -12,7 +12,11 @@ import hashlib
 import hmac
 import json
 import re
+import shutil
+import tempfile
+from contextlib import contextmanager
 from pathlib import Path
+from typing import Iterator
 
 from package.verify import verify_package
 
@@ -85,3 +89,15 @@ def check_pinned_package(package: Path, pins: dict[str, str]) -> dict[str, str]:
     """Return the checked digests for callers that do not need the manifest."""
     actual, _ = admit_pinned_package(package, pins)
     return actual
+
+
+@contextmanager
+def admitted_snapshot(package: Path, pins: dict[str, str]) -> Iterator[tuple[Path, dict]]:
+    """Verify and execute from private copied bytes, not the mutable input tree."""
+    with tempfile.TemporaryDirectory(prefix="s31-pinned-package-") as temporary:
+        snapshot = Path(temporary) / "package"
+        shutil.copytree(package, snapshot, symlinks=True)
+        if any(path.is_symlink() for path in snapshot.rglob("*")):
+            raise ValueError("pinned package snapshot contains a symlink")
+        _, manifest = admit_pinned_package(snapshot, pins)
+        yield snapshot, manifest

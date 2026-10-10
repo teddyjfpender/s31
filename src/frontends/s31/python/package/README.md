@@ -19,9 +19,9 @@ a proof check: the installed native verifier checks a proof and public claim.
 `trust.py` checks externally supplied SHA-256 pins for the normalized source,
 key, prover and verifier before full package validation; a text package also requires
 the exact `.s31` source pin. The `verify-pinned` CLI command uses this admission
-immediately before native verification. Pins obtained from the package itself
-provide no authentication. A trusted release channel must supply them, and
-the admitted package directory must stay unchanged until verification ends.
+on a private package snapshot immediately before native verification. Pins
+obtained from the package itself provide no authentication. A trusted release
+channel must supply them; the verifier executes from the checked snapshot.
 
 `correspondence.py` independently reparses the exact source bytes for a bounded
 public four-lane add/multiply/static-let fragment. For direct-gate text packages

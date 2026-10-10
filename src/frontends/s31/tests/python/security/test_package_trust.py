@@ -106,23 +106,49 @@ class PinnedPackageTests(unittest.TestCase):
             validate.assert_not_called()
             invoke.assert_not_called()
 
+    def test_cli_snapshot_rejects_an_unpinned_sidecar_symlink(self) -> None:
+        (self.package / "public-abi.json").symlink_to("verification-key.json")
+        proof = self.package / "proof.bin"
+        args = ["verify-pinned", str(self.package), str(proof)]
+        for kind, value in self.pins.items():
+            args.extend((f"--{kind}-sha256", value))
+        with patch("package.trust.verify_package") as validate, \
+                patch("cli.commands.invoke") as invoke:
+            with self.assertRaisesRegex(ValueError, "snapshot contains a symlink"):
+                dispatch(make_parser().parse_args(args))
+            validate.assert_not_called()
+            invoke.assert_not_called()
+
     def test_cli_admits_before_invoking_native_verifier(self) -> None:
         proof = self.package / "proof.bin"
         args = ["verify-pinned", str(self.package), str(proof)]
         for kind, value in self.pins.items():
             args.extend((f"--{kind}-sha256", value))
         parsed = make_parser().parse_args(args)
+        captured_snapshot: list[Path] = []
+
+        def inspect_execution(executable: str, proof_arg: str, statement: str,
+                              key: str) -> str:
+            binary = Path(executable)
+            snapshot = binary.parents[1]
+            captured_snapshot.append(snapshot)
+            self.assertNotEqual(snapshot, self.package.resolve())
+            self.assertEqual(digest(binary), self.pins["verifier"])
+            self.assertEqual(digest(Path(key)), self.pins["key"])
+            self.assertEqual(proof_arg, str(proof.resolve()))
+            self.assertEqual(statement, str(Path(str(proof) + ".statement.json").resolve()))
+            (self.package / "bin/s31-unit-native-verifier").write_bytes(b"mutated original")
+            self.assertEqual(digest(binary), self.pins["verifier"])
+            return "accepted"
+
         with patch("package.trust.verify_package", return_value={"name": "unit"}) as validate, \
-                patch("cli.commands.invoke", return_value="accepted") as invoke, \
+                patch("cli.commands.invoke", side_effect=inspect_execution) as invoke, \
                 contextlib.redirect_stdout(io.StringIO()) as output:
             dispatch(parsed)
-        validate.assert_called_once_with(self.package.resolve())
-        package = self.package.resolve()
-        invoke.assert_called_once_with(
-            str(package / "bin/s31-unit-native-verifier"),
-            str(proof.resolve()), str(Path(str(proof) + ".statement.json").resolve()),
-            str(package / "verification-key.json"),
-        )
+        validate.assert_called_once()
+        self.assertEqual(validate.call_args.args[0], captured_snapshot[0])
+        invoke.assert_called_once()
+        self.assertFalse(captured_snapshot[0].exists())
         self.assertEqual(output.getvalue(), "accepted")
 
 

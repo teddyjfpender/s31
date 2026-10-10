@@ -10,8 +10,8 @@ before rendering reports.
 `verify-pinned` additionally checks exact source, key, prover and verifier
 digests supplied from outside the package; text packages require a fifth
 digest for `source.s31`. It performs that check in the same invocation as
-native proof verification, before executing the packaged verifier. The caller
-must keep the package directory immutable during the command. This command
+native proof verification, after copying the package to a private temporary
+directory. The verifier runs from that checked snapshot. This command
 currently covers base `verify`; recursive and fold commands still require an
 independently trusted package or installed verifier.
 

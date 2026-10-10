@@ -91,8 +91,8 @@ source with the semantics the programmer intended.
 For an untrusted package, `s31 verify-pinned` requires SHA-256 digests of the
 normalized source, verification key, native prover, and native verifier from
 a separate trusted channel. A text package also requires the exact `.s31`
-source digest. It checks these bytes and package consistency immediately
-before running the native verifier:
+source digest. It copies the package to a private temporary directory, then
+checks and executes that snapshot:
 
 ```sh
 python3 src/frontends/s31/python/s31.py verify-pinned PACKAGE PROOF \
@@ -103,8 +103,8 @@ python3 src/frontends/s31/python/s31.py verify-pinned PACKAGE PROOF \
 
 Omit `--text-sha256` only for a normalized-JSON package with no `source.s31`.
 Pins copied from the package's own manifest provide no external
-authentication. The package directory must remain unchanged during this
-command; pinning does not sandbox its executable or sign a release. The
+authentication. Snapshotting fixes the checked bytes for this invocation;
+pinning does not sandbox its executable or sign a release. The
 `verify-pinned` command covers base proofs; recursive and fold verification
 still require an independently trusted package or installed verifier. The
 [standalone control](../../../../design/s31/security/controls/pinned_package.py)
