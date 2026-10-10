@@ -14,11 +14,12 @@ pub fn build(b: *std.Build) void {
         b.path("examples/arithmetic/affine4.s31.json");
     const program_name = b.option([]const u8, "s31-name", "Build artifact name for the selected program") orelse "affine4";
     const source_version = b.option(u32, "s31-version", "Normalized source version (0 or 1)") orelse 0;
-    const lowering = b.option([]const u8, "s31-lowering", "gate, chip, sparse-gate, sparse-chip, sparse-wide-gate, direct-gate, direct-chip, sha-joint, sha-shift, or sha-fused proof lowering") orelse "gate";
+    const lowering = b.option([]const u8, "s31-lowering", "gate, chip, sparse-gate, sparse-chip, sparse-wide-gate, direct-gate, direct-chip, experimental direct-pair, sha-joint, sha-shift, or sha-fused proof lowering") orelse "gate";
     if (!std.mem.eql(u8, lowering, "gate") and !std.mem.eql(u8, lowering, "chip") and
         !std.mem.eql(u8, lowering, "sparse-gate") and !std.mem.eql(u8, lowering, "sparse-chip") and
         !std.mem.eql(u8, lowering, "sparse-wide-gate") and
         !std.mem.eql(u8, lowering, "direct-gate") and !std.mem.eql(u8, lowering, "direct-chip") and
+        !std.mem.eql(u8, lowering, "direct-pair") and
         !std.mem.eql(u8, lowering, "sha-joint") and !std.mem.eql(u8, lowering, "sha-shift") and
         !std.mem.eql(u8, lowering, "sha-fused"))
         @panic("invalid s31-lowering");
@@ -27,7 +28,7 @@ pub fn build(b: *std.Build) void {
         (fri_fold_step != 1 and !std.mem.eql(u8, lowering, "gate") and !std.mem.eql(u8, lowering, "sparse-wide-gate")))
         @panic("FRI fold step 4 requires gate or sparse-wide-gate lowering; supported steps are 1 and 4");
     const s31_options = b.addOptions();
-    s31_options.addOption(bool, "chip_mode", std.mem.eql(u8, lowering, "chip") or std.mem.eql(u8, lowering, "sparse-chip") or std.mem.eql(u8, lowering, "direct-chip"));
+    s31_options.addOption(bool, "chip_mode", std.mem.eql(u8, lowering, "chip") or std.mem.eql(u8, lowering, "sparse-chip") or std.mem.eql(u8, lowering, "direct-chip") or std.mem.eql(u8, lowering, "direct-pair"));
     s31_options.addOption(bool, "sparse_mode", std.mem.startsWith(u8, lowering, "sparse-"));
     s31_options.addOption(bool, "wide_mode", std.mem.eql(u8, lowering, "sparse-wide-gate"));
     s31_options.addOption(bool, "direct_mode", std.mem.startsWith(u8, lowering, "direct-"));
@@ -632,6 +633,48 @@ pub fn build(b: *std.Build) void {
     }));
     b.step("test-sha-batch", "Prove and verify a six-call SHA256d AIR batch").dependOn(&sha_batch_tests.step);
 
+    if (source_version == 1 and std.mem.eql(u8, lowering, "direct-pair")) {
+        const pair_prover_root = localEntry(b, "runtime/pair_prover_main.zig", target, optimize);
+        pair_prover_root.addImport("stwo_core", core);
+        pair_prover_root.addImport("stwo_circuit_frontend", circuit);
+        pair_prover_root.addImport("stwo_circuit_cpu_integration", cpu);
+        pair_prover_root.addImport("stwo_s31_prototype", frontend);
+        pair_prover_root.addImport("stwo_cairo_frontend", cpu.import_table.get("stwo_cairo_frontend") orelse @panic("missing Cairo frontend"));
+        pair_prover_root.addImport("interop_postcard", sha_postcard);
+        pair_prover_root.addImport("s31_air_programs", official_air);
+        pair_prover_root.addImport("s31_sha_provider", sha_provider);
+        pair_prover_root.addImport("s31_poseidon_ref", sha_provider);
+        pair_prover_root.addAnonymousImport("s31_program_source", .{ .root_source_file = source_asset });
+        pair_prover_root.addAnonymousImport("s31_chip_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/repeated_step_chip.zig") } });
+        pair_prover_root.addAnonymousImport("s31_pair_boundary_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/private_pair_boundary.zig") } });
+        pair_prover_root.addAnonymousImport("s31_tagged_pair_chip_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/tagged_pair_chip.zig") } });
+        pair_prover_root.addAnonymousImport("s31_tagged_pair_bridge_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/tagged_pair_bridge.zig") } });
+        pair_prover_root.addAnonymousImport("s31_pair_proof_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/direct_pair_arithmetic.zig") } });
+        const pair_prover = b.addExecutable(.{ .name = b.fmt("s31-{s}-pair-prover", .{program_name}), .root_module = pair_prover_root });
+        b.installArtifact(pair_prover);
+        const pair_verifier_root = localEntry(b, "runtime/pair_verifier_main.zig", target, optimize);
+        pair_verifier_root.addImport("stwo_core", core);
+        pair_verifier_root.addImport("stwo_circuit_frontend", circuit);
+        pair_verifier_root.addImport("stwo_circuit_cpu_integration", cpu);
+        pair_verifier_root.addImport("stwo_s31_prototype", frontend);
+        pair_verifier_root.addImport("stwo_cairo_frontend", cpu.import_table.get("stwo_cairo_frontend") orelse @panic("missing Cairo frontend"));
+        pair_verifier_root.addImport("interop_postcard", sha_postcard);
+        pair_verifier_root.addImport("s31_air_programs", official_air);
+        pair_verifier_root.addImport("s31_sha_provider", sha_provider);
+        pair_verifier_root.addImport("s31_poseidon_ref", sha_provider);
+        pair_verifier_root.addAnonymousImport("s31_program_source", .{ .root_source_file = source_asset });
+        pair_verifier_root.addAnonymousImport("s31_chip_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/repeated_step_chip.zig") } });
+        pair_verifier_root.addAnonymousImport("s31_pair_boundary_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/private_pair_boundary.zig") } });
+        pair_verifier_root.addAnonymousImport("s31_tagged_pair_chip_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/tagged_pair_chip.zig") } });
+        pair_verifier_root.addAnonymousImport("s31_tagged_pair_bridge_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/tagged_pair_bridge.zig") } });
+        pair_verifier_root.addAnonymousImport("s31_pair_proof_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/direct_pair_arithmetic.zig") } });
+        const pair_verifier = b.addExecutable(.{ .name = b.fmt("s31-{s}-pair-native-verifier", .{program_name}), .root_module = pair_verifier_root });
+        b.installArtifact(pair_verifier);
+        const pair_programs = b.step("pair-programs", "Build the experimental source-pinned two-call prover and verifier");
+        pair_programs.dependOn(&pair_prover.step);
+        pair_programs.dependOn(&pair_verifier.step);
+        return;
+    }
     if (source_version == 1) {
         const cairo = cpu.import_table.get("stwo_cairo_frontend") orelse @panic("circuit CPU module is missing Cairo AIR runtime");
         const key_asset: std.Build.LazyPath = if (b.option([]const u8, "s31-key", "Absolute path to the sealed verification key")) |path|

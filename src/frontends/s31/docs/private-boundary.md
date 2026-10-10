@@ -77,9 +77,11 @@ wire address; two appearances of one address still read one coherent circuit
 variable.
 In the current direct manifest, `source_index=1` names the official
 `qm31_ops` bundle component while `source_index=0` is a sentinel for each
-native chip or bridge, whose Zig source hash is stored separately. The numeric
-field is not a general bundle index; a variable-component scheduler needs an
-explicit source-kind field before it can use this schema.
+native chip or bridge, whose Zig source hash is stored separately. The
+fail-closed `ComponentSource` interpretation checks the exact pair roles and
+native program names, including the two canonical call IDs. The numeric wire
+field remains versioned legacy syntax; a variable-component scheduler needs
+a first-class serialized source kind.
 As in the one-call profile, “private” means absent from the eight public
 output words. The bridge commits endpoint values and trace openings can
 reveal them; this profile makes no witness-secrecy claim.
@@ -95,15 +97,36 @@ Rebuilding from sealed source rejects a resealed but changed in-memory plan.
 The focused source test also changes only a component's metadata, recomputes
 the precommitment, and shows why compiling the witness alone is insufficient:
 the Plan and root still match, but full manifest reconstruction rejects it.
-The eventual native `prove` and `verify` entrypoints must call that full
-source-binding check before parsing proof bytes or committing trace data.
-They must check the circuit identity hash separately, since it is purposely
-outside the precommitment.
+The staged `proveSealed` and `verifySealed` paths perform that source-binding
+check before writing or decoding proof bytes. The circuit identity is checked
+separately because it is purposely outside the manifest precommitment.
 
-**Release status:** the five-component engine proof and in-memory verifier are
-experimental. A feature-disabled package draft now emits an exact source-
-derived key and a `S31NAT8P` proof envelope and verifies it with the engine's
-host STARK verifier. Native compile, honest proof acceptance, proof-byte
-mutation tests, and independent review are still gates before enabling that
-entrypoint. S31's native CLI does not accept this profile. The existing
-one-call source/key/proof format is unchanged.
+The experimental source-pinned command-line pair is built directly from the
+normalized source:
+
+```sh
+cd src/frontends/s31
+zig build install -Doptimize=ReleaseFast -Ds31-version=1 \
+  -Ds31-lowering=direct-pair \
+  -Ds31-source="$PWD/examples/boundary/private_pair16_32.s31.json" \
+  -Ds31-name=private_pair16_32
+zig-out/bin/s31-private_pair16_32-pair-prover \
+  examples/boundary/private_pair16_32.valid.json /tmp/pair.proof /tmp/pair.statement.json
+zig-out/bin/s31-private_pair16_32-pair-native-verifier \
+  /tmp/pair.proof /tmp/pair.statement.json
+```
+
+The verifier executable embeds the source and official AIR bytes. Its caller
+supplies only the proof and a JSON statement with schema
+`s31-pair-public-words-v1` and eight `public_words`; it cannot supply a
+different source or key at verification time. The internal `verifySealed`
+helper still accepts explicit source/key bytes for testing and package
+assembly. A 16+32-step native proof and a 1024+4096-step trace-lifting proof
+pass; malformed envelopes, source/key/manifest mutations, changed public
+words, noncanonical proof varints, and changed proof bytes are rejected.
+
+**Release status:** this remains an experimental fixed two-call profile. The
+AIR/LogUp/PCS verifier has not been reduced to the exact tagged event-balance
+premise used by the Lean path theorem, and no witness-secrecy claim is made.
+The 1–8 call source-admission prototype does not yet produce dynamic circuit
+addresses, component manifests, or native proofs.

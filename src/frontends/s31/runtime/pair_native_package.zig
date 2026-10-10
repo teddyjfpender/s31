@@ -1,6 +1,7 @@
-//! Experimental sealed two-call package. It is intentionally absent from the
-//! S31 CLI and public frontend facade until byte-level native tests pass.
-//! Source/Plan/manifest/key checks precede proof-envelope decoding.
+//! Experimental sealed two-call proof package. The dedicated pair CLI embeds
+//! source and AIR; this module remains absent from the general S31 package
+//! facade while AIR/LogUp/PCS correspondence is incomplete.
+//! Source/Plan/manifest checks precede proof-envelope decoding.
 const std = @import("std");
 const core = @import("stwo_core");
 const cpu = @import("stwo_circuit_cpu_integration");
@@ -168,6 +169,16 @@ pub fn proveSealed(allocator: std.mem.Allocator, source: []const u8, air_bytes: 
 /// manifest and byte-exact key are then checked before proof decoding. This
 /// host STARK verifier does not recompute the result from private input.
 pub fn verifySealed(allocator: std.mem.Allocator, source: []const u8, air_bytes: []const u8, sealed_key: []const u8, public_words: [8]u32, raw: []const u8) !void {
+    return verifySourceBound(allocator, source, air_bytes, sealed_key, public_words, raw);
+}
+
+/// Entrypoints with compile-time embedded source and AIR derive all verifier
+/// geometry directly from those bytes. No caller-selected key is accepted.
+pub fn verifyEmbedded(comptime source: []const u8, comptime air_bytes: []const u8, allocator: std.mem.Allocator, public_words: [8]u32, raw: []const u8) !void {
+    return verifySourceBound(allocator, source, air_bytes, null, public_words, raw);
+}
+
+fn verifySourceBound(allocator: std.mem.Allocator, source: []const u8, air_bytes: []const u8, sealed_key: ?[]const u8, public_words: [8]u32, raw: []const u8) !void {
     // Reject trivially invalid byte inputs before either source compilation.
     // The full source-shaped postcard preflight still runs before decoding.
     if (raw.len < header_len or raw.len > (16 << 20) or !std.mem.eql(u8, raw[0..magic.len], magic))
@@ -176,7 +187,7 @@ pub fn verifySealed(allocator: std.mem.Allocator, source: []const u8, air_bytes:
     defer binding.deinit();
     try source_binding.verifySourceBinding(allocator, source, air_bytes, &binding);
     const pcs = try pcsFor(&binding);
-    try checkKey(allocator, &binding, pcs, sealed_key);
+    if (sealed_key) |key| try checkKey(allocator, &binding, pcs, key);
     const outputs = try publicValues(public_words);
     var topology = try source_binding.compileTopology(allocator, source, &binding);
     defer topology.deinit();
