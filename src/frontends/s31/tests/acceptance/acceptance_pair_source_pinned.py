@@ -50,14 +50,15 @@ def main() -> None:
         value = json.loads(statement.read_text())
         assert value["schema"] == "s31-pair-public-words-v1"
         assert len(value["public_words"]) == 8
-        value["public_words"][5] = (value["public_words"][5] + 1) % 2147483647
+        wrong_words = {**value, "public_words": value["public_words"].copy()}
+        wrong_words["public_words"][5] = (wrong_words["public_words"][5] + 1) % 2147483647
         wrong_claim = work / "wrong-claim.json"
-        wrong_claim.write_text(json.dumps(value))
+        wrong_claim.write_text(json.dumps(wrong_words))
         run(str(verifier), str(proof), str(wrong_claim), accept=False)
 
-        value["schema"] = "s31-pair-public-words-v0"
+        wrong_version = {**value, "schema": "s31-pair-public-words-v0"}
         wrong_schema = work / "wrong-schema.json"
-        wrong_schema.write_text(json.dumps(value))
+        wrong_schema.write_text(json.dumps(wrong_version))
         run(str(verifier), str(proof), str(wrong_schema), accept=False)
 
         changed_proof = bytearray(proof.read_bytes())
