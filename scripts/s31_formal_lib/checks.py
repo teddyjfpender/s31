@@ -21,6 +21,19 @@ DERIVED_THEOREMS = {
     "formal/s31/S31/Gadgets/Packed.lean": ("S31.Gadgets.Packed.Quad.ext_iff",),
     "formal/s31/S31/Gadgets/Functional/SSATextBytes.lean": (
         "S31.Functional.SSATextBytes.Parsed.checked",),
+    "formal/s31/S31/Gadgets/Air/TaggedPairSourceComposition.lean": (
+        "S31.Gadgets.Air.TaggedPairSourceComposition.BridgeRows.interactionAccepted",
+        "S31.Gadgets.Air.TaggedPairSourceComposition.BridgeRows.mainAccepted",
+        "S31.Gadgets.Air.TaggedPairSourceComposition.BridgeRows.nonzeroD0",
+        "S31.Gadgets.Air.TaggedPairSourceComposition.BridgeRows.nonzeroD1",
+        "S31.Gadgets.Air.TaggedPairSourceComposition.BridgeRows.nonzeroFirst",
+        "S31.Gadgets.Air.TaggedPairSourceComposition.BridgeRows.nonzeroLast",
+        "S31.Gadgets.Air.TaggedPairSourceComposition.BridgeRows.sixteenNonzero",
+        "S31.Gadgets.Air.TaggedPairSourceComposition.ChipRows.arithmeticAccepted",
+        "S31.Gadgets.Air.TaggedPairSourceComposition.ChipRows.bitReverseInvolutive",
+        "S31.Gadgets.Air.TaggedPairSourceComposition.ChipRows.interactionAccepted",
+        "S31.Gadgets.Air.TaggedPairSourceComposition.ChipRows.rowCountNonzero",
+    ),
 }
 CONTROLS = frozenset("S31.Evidence." + name for name in (
     "honest_byte_boundary", "byte_out_of_range", "honest_carry", "honest_borrow",
