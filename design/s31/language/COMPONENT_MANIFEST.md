@@ -274,6 +274,66 @@ it does not take a caller-supplied manifest or endpoint map. Proof tests now
 cover all admitted counts 1–8; no general package verifier admits V4. The
 source-pinned package checks the PCS geometry before bounded proof decoding.
 
+### Versioned descriptor check at the V4 adapter
+
+`runtime/component_descriptor_contract.zig` defines a small version-1,
+ordered identity roster. Every entry carries a proof index, claimed-sum
+index, optional call ID, and a **tagged** bundled or native AIR source. A
+bundled source has a bundle index, bundle digest, and selected-program digest.
+A native source has a profile-owned program ID and version plus its program
+binding digest. The V4 adapter assigns ID 1 to the tagged chip and ID 2 to
+the tagged bridge, both at program version 4. The contract rejects unknown
+schema versions, noncanonical positions, source-kind substitutions, program
+substitutions, and changed roster order. Its diagnostic SHA-256 uses a
+separate domain and fixed-width little-endian fields; JSON field order and
+Zig struct padding are not hash inputs. The encoded order is domain,
+`u32` version, 32-byte source and manifest digests, `u32` entry count, then
+for each entry `u32` proof and sum positions, one-byte call-presence tag
+and optional `u32` call ID, one-byte source-kind tag, and that source's
+bundle index and two digests or native program ID, version and digest.
+A fixed golden digest test pins this byte order.
+
+Immediately before the source-pinned prover or verifier passes descriptors
+to the engine, `bounded_compiled_binding.manyProvenance` projects the
+regenerated V4 manifest and the selected schedule into these rosters and
+requires exact typed equality. It also recomputes the existing V4 manifest
+precommitment. In particular, changing the circuit component's program
+binding in a mutable selected schedule now fails at this adapter, as does
+changing the selected manifest digest. The verifier obtains the expected
+manifest from embedded source, pinned AIR, compiled topology, and live
+preflight; a candidate roster or its hash cannot nominate a new trust root.
+
+This extra contract changes **no V4 key, proof envelope, transcript input,
+or proof byte**. Its own digest is diagnostic; the established typed V4
+manifest precommitment remains the transcript binding. The generic contract
+only covers source identity, order, call ID and sum position. The V4-specific
+code still checks geometry, PCS settings, endpoints, fixed columns, and
+lookup relations against live handles. The public engine
+`SelectedSchedule` remains mutable and is not independently authenticated
+outside the sealed S31 wrapper.
+
+The fixed cases to remove for a general chip API are concrete:
+
+1. `bounded_call_admission.zig` admits only the current repeated
+   square/add-constant call shape and at most eight calls.
+2. `bounded_component_manifest.zig` constructs exactly circuit, all chips,
+   then all bridges, uses an eight-column direct circuit and fixed PCS
+   profile, and hashes an explicit list of native source files.
+3. `bounded_compiled_binding.zig` maps only those roles into engine slots and
+   obtains the selected circuit program from the direct AIR bundle.
+4. Engine `private_many_boundary.zig` and `direct_many_schedule.zig` retain a
+   fixed roster constructor; `direct_many_provenance.zig` checks native
+   program bindings but relies on the S31 wrapper to authenticate the
+   selected circuit program and full manifest digest.
+5. `many_native_package.zig` has a source-embedded V4 verifier, not a
+   portable authenticated component registry or general verification key.
+
+A general version needs a verifier-owned registry of component constructors
+and versions, explicit digest binding of every selected program, generated
+geometry for heterogeneous chip sets, and a key/transcript version that
+binds that registry and roster. This version-1 descriptor is a checked
+identity projection for V4, not that general scheduler.
+
 ## Remaining work
 
 - Extend to sparse, wide, full circuit, SHA and recursive profiles. These need

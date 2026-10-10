@@ -105,8 +105,11 @@ pub fn build(b: *std.Build) void {
     bounded_manifest_root.addAnonymousImport("s31_tagged_many_chip_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/tagged_many_chip.zig") } });
     bounded_manifest_root.addAnonymousImport("s31_tagged_many_bridge_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/tagged_many_bridge.zig") } });
     const bounded_manifest_tests = b.addRunArtifact(b.addTest(.{ .root_module = bounded_manifest_root }));
-    b.step("test-bounded-component-manifest", "Test source-derived 1..8-call V4 roster blueprint")
-        .dependOn(&bounded_manifest_tests.step);
+    const descriptor_contract_root = localEntry(b, "runtime/component_descriptor_contract.zig", target, optimize);
+    const descriptor_contract_tests = b.addRunArtifact(b.addTest(.{ .root_module = descriptor_contract_root }));
+    const bounded_manifest_step = b.step("test-bounded-component-manifest", "Test source-derived 1..8-call V4 roster and descriptor contract");
+    bounded_manifest_step.dependOn(&bounded_manifest_tests.step);
+    bounded_manifest_step.dependOn(&descriptor_contract_tests.step);
     const bounded_binding_root = localEntry(b, "entry/bounded_compiled_binding.zig", target, optimize);
     bounded_binding_root.addImport("stwo_core", core);
     bounded_binding_root.addImport("stwo_circuit_frontend", circuit);

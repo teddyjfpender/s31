@@ -12,6 +12,7 @@ const relation = @import("../language/relation.zig");
 const compiler = @import("../language/relation_compiler.zig");
 const admission = @import("../language/bounded_call_admission.zig");
 const v4 = @import("bounded_component_manifest.zig");
+const descriptor_contract = @import("component_descriptor_contract.zig");
 const sealed = @import("component_manifest.zig");
 const live_pair = @import("pair_source_binding.zig");
 const M31 = core.fields.m31.M31;
@@ -247,6 +248,7 @@ pub const ManyProvenance = struct {
 };
 
 pub fn manyProvenance(inspection: *const ManyInspection) !ManyProvenance {
+    try validateManyDescriptorContract(inspection);
     const value = inspection.generated.value;
     if (value.components.len != inspection.selected_schedule.geometry.slot_count or
         value.calls.len != inspection.selected_schedule.geometry.call_count or
@@ -282,6 +284,78 @@ pub fn manyProvenance(inspection: *const ManyInspection) !ManyProvenance {
         }
     }
     return result;
+}
+
+/// Recheck the V4 manifest's source identities against the selected schedule
+/// immediately before handing descriptors to the engine. The expected side is
+/// reconstructed from the source-derived manifest; the selected side cannot
+/// nominate a replacement circuit program, manifest digest, order or version.
+/// This does not make the public engine SelectedSchedule a trust root.
+fn validateManyDescriptorContract(inspection: *const ManyInspection) !void {
+    const value = inspection.generated.value;
+    const selected = &inspection.selected_schedule;
+    try selected.validateShape();
+    const precommitment = v4.precommitmentDigest(value);
+    if (value.components.len != selected.geometry.slot_count or
+        value.components.len > v4.max_components or
+        value.calls.len != selected.geometry.call_count or
+        !std.meta.eql(value.source_sha256, inspection.topology.source_sha256) or
+        !std.meta.eql(value.preprocessed_root, selected.geometry.fixed_root) or
+        !std.meta.eql(inspection.topology.fixed_root, selected.geometry.fixed_root) or
+        !std.meta.eql(precommitment, selected.manifest_digest) or
+        !std.meta.eql(inspection.manifest_precommitment, selected.manifest_digest))
+        return error.InvalidComponentDescriptorContract;
+
+    var expected_entries: [v4.max_components]descriptor_contract.Entry = undefined;
+    var selected_entries: [v4.max_components]descriptor_contract.Entry = undefined;
+    for (value.components, selected.slotSlice(), expected_entries[0..value.components.len], selected_entries[0..value.components.len]) |component, slot, *expected, *actual| {
+        expected.* = .{
+            .proof_index = component.proof_index,
+            .claimed_sum_index = component.claimed_sum_index,
+            .call_id = component.call_id,
+            .source = switch (component.source) {
+                .bundled_air => |source| .{ .bundled_air = .{
+                    .bundle_index = source.index,
+                    .bundle_sha256 = source.bundle_sha256,
+                    .program_binding_sha256 = source.selected_program_sha256,
+                } },
+                .native_air => |source| .{ .native_air = .{
+                    .program_id = switch (source.kind) {
+                        .tagged_chip => 1,
+                        .tagged_bridge => 2,
+                    },
+                    .program_version = 4,
+                    .program_binding_sha256 = source.program_binding_sha256,
+                } },
+            },
+        };
+        actual.* = .{
+            .proof_index = slot.proof_index,
+            .claimed_sum_index = slot.claimed_sum_index,
+            .call_id = slot.call_id,
+            .source = switch (slot.source_kind) {
+                .bundled_circuit => .{ .bundled_air = .{
+                    .bundle_index = slot.bundle_index orelse return error.InvalidComponentDescriptorContract,
+                    .bundle_sha256 = slot.bundle_sha256,
+                    .program_binding_sha256 = slot.program_binding_sha256,
+                } },
+                .tagged_chip, .tagged_bridge => .{ .native_air = .{
+                    .program_id = if (slot.source_kind == .tagged_chip) 1 else 2,
+                    .program_version = 4,
+                    .program_binding_sha256 = slot.program_binding_sha256,
+                } },
+            },
+        };
+    }
+    try descriptor_contract.requireExact(.{
+        .source_sha256 = value.source_sha256,
+        .manifest_sha256 = precommitment,
+        .entries = expected_entries[0..value.components.len],
+    }, .{
+        .source_sha256 = selected.geometry.source_digest,
+        .manifest_sha256 = selected.manifest_digest,
+        .entries = selected_entries[0..value.components.len],
+    });
 }
 
 /// The returned request has no authority by itself. Proof admission must
@@ -1127,6 +1201,21 @@ test "bounded V4 guarded adapter rejects source and versioned program provenance
     var descriptors = try manyProvenance(&inspection);
     const selected = &inspection.selected_schedule;
     try cpu.direct_many_provenance.validate(selected, descriptors.pin(source, air_bytes));
+    var changed_inspection = inspection;
+    changed_inspection.selected_schedule.geometry.slots[0].program_binding_sha256[0] ^= 1;
+    try std.testing.expectError(error.InvalidComponentDescriptorContract, manyProvenance(&changed_inspection));
+    changed_inspection = inspection;
+    changed_inspection.selected_schedule.manifest_digest[0] ^= 1;
+    try std.testing.expectError(error.InvalidComponentDescriptorContract, manyProvenance(&changed_inspection));
+    changed_inspection = inspection;
+    changed_inspection.selected_schedule.geometry.slots[1].proof_index = 2;
+    try std.testing.expectError(error.InvalidComponentDescriptorContract, manyProvenance(&changed_inspection));
+    changed_inspection = inspection;
+    changed_inspection.selected_schedule.geometry.slots[1].source_kind = .tagged_bridge;
+    try std.testing.expectError(error.InvalidComponentDescriptorContract, manyProvenance(&changed_inspection));
+    changed_inspection = inspection;
+    changed_inspection.selected_schedule.geometry.source_digest[0] ^= 1;
+    try std.testing.expectError(error.InvalidComponentDescriptorContract, manyProvenance(&changed_inspection));
     try std.testing.expectError(error.InvalidManyProvenance, cpu.direct_many_provenance.validate(selected, descriptors.pin(source ++ " ", air_bytes)));
     try std.testing.expectError(error.InvalidManyProvenance, cpu.direct_many_provenance.validate(selected, descriptors.pin(source, air_bytes[0 .. air_bytes.len - 1])));
     var wrong_direct_source = descriptors.pin(source, air_bytes);
