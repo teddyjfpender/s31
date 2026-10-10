@@ -16,9 +16,10 @@ def file_hash(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def audit_corpus(path: Path, expected_split: str) -> tuple[dict, dict]:
+def audit_corpus(path: Path, expected_split: str,
+                 expected_schema: str = "s31-stage-aware-cost-corpus-v1") -> tuple[dict, dict]:
     corpus = json.loads(path.read_text())
-    if corpus.get("schema") != "s31-stage-aware-cost-corpus-v1" or corpus.get("split") != expected_split:
+    if corpus.get("schema") != expected_schema or corpus.get("split") != expected_split:
         raise ValueError(f"{path}: wrong stage-aware corpus split")
     base = path.parent
     controls = {"native_accepted": 0, "changed_claim_rejected": 0,

@@ -37,3 +37,36 @@ as raw telemetry, but **only prover peak RSS** enters this v2 accuracy gate.
 Even a local pass cannot enable automatic lowering: other families, hosts,
 full-process latency, proof bytes, cached setup and proof-profile soundness
 still need independent validation.
+
+## Reproduce after source freeze
+
+Run from the repository root. The build and proof phases are separate so the
+compiler digest and package cache state can be checked before timed proofs.
+
+```sh
+python3 src/frontends/s31/benchmarks/benchmark_arithmetic_rss_v2.py \
+  --split train --phase build --out zig-out/s31/arithmetic-rss-v2-train
+python3 src/frontends/s31/benchmarks/benchmark_arithmetic_rss_v2.py \
+  --split train --phase prove --out zig-out/s31/arithmetic-rss-v2-train
+python3 src/frontends/s31/benchmarks/arithmetic_rss_predictor_v2.py fit \
+  zig-out/s31/arithmetic-rss-v2-train/arithmetic-rss-corpus.json \
+  --out zig-out/s31/arithmetic-rss-v2-model.json
+python3 src/frontends/s31/benchmarks/benchmark_arithmetic_rss_v2.py \
+  --split validation --phase build \
+  --model zig-out/s31/arithmetic-rss-v2-model.json \
+  --out zig-out/s31/arithmetic-rss-v2-validation
+python3 src/frontends/s31/benchmarks/benchmark_arithmetic_rss_v2.py \
+  --split validation --phase prove \
+  --model zig-out/s31/arithmetic-rss-v2-model.json \
+  --out zig-out/s31/arithmetic-rss-v2-validation
+python3 src/frontends/s31/benchmarks/arithmetic_rss_predictor_v2.py evaluate \
+  zig-out/s31/arithmetic-rss-v2-model.json \
+  zig-out/s31/arithmetic-rss-v2-validation/arithmetic-rss-corpus.json \
+  --out zig-out/s31/arithmetic-rss-v2-evaluation.json
+python3 src/frontends/s31/benchmarks/publish_arithmetic_rss_v2.py \
+  zig-out/s31/arithmetic-rss-v2-train/arithmetic-rss-corpus.json \
+  zig-out/s31/arithmetic-rss-v2-model.json \
+  zig-out/s31/arithmetic-rss-v2-validation/arithmetic-rss-corpus.json \
+  zig-out/s31/arithmetic-rss-v2-evaluation.json \
+  --out design/s31/measurements/language/arithmetic-rss-v2-audit.json
+```
