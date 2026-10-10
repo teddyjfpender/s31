@@ -11,6 +11,7 @@ from arithmetic_rss_predictor_v2 import PROTOCOL, evaluate, fit_model
 from publish_stage_aware_cost_v1 import audit_corpus, file_hash
 
 SCHEMA = "s31-arithmetic-rss-corpus-v2"
+V1_AUDIT = PROTOCOL.parent / "language/stage-aware-cost-v1-audit.json"
 
 
 def publish(train_path: Path, model_path: Path, validation_path: Path,
@@ -20,6 +21,7 @@ def publish(train_path: Path, model_path: Path, validation_path: Path,
     model = json.loads(model_path.read_text())
     evaluation = json.loads(evaluation_path.read_text())
     protocol = json.loads(PROTOCOL.read_text())
+    v1_audit = json.loads(V1_AUDIT.read_text())
     protocol_sha = file_hash(PROTOCOL)
     if train["protocol_sha256"] != protocol_sha or validation["protocol_sha256"] != protocol_sha:
         raise ValueError("protocol digest mismatch")
@@ -38,6 +40,8 @@ def publish(train_path: Path, model_path: Path, validation_path: Path,
         raise ValueError("saved held-out evaluation differs from independent replay")
     if model["automatic_lowering_selection_enabled"] is not False or evaluation["automatic_lowering_selection_enabled"] is not False:
         raise ValueError("RSS follow-up must not enable automatic lowering")
+    if v1_audit["compiler_sha256"] == model["compiler_sha256"]:
+        raise ValueError("v2 audit expects a distinct historical v1 compiler fingerprint")
     inventory = {}
     for split, corpus in (("train", train), ("validation", validation)):
         inventory[split] = {name: {
@@ -64,8 +68,16 @@ def publish(train_path: Path, model_path: Path, validation_path: Path,
         "program_inventory": inventory,
         "model": model,
         "accuracy": evaluation["accuracy"],
+        "accuracy_gate": protocol["accuracy_gate"],
         "programs": evaluation["programs"],
         "targeted_rss_accuracy_gate_pass": evaluation["targeted_rss_accuracy_gate_pass"],
+        "claim_scope": "arithmetic direct-gate prover peak RSS only, on this compiler and host",
+        "historical_v1": {
+            "audit_sha256": file_hash(V1_AUDIT),
+            "compiler_sha256": v1_audit["compiler_sha256"],
+            "whole_prover_gate_reusable_for_current_compiler": False,
+        },
+        "current_compiler_whole_prover_gate_evaluated": False,
         "automatic_lowering_selection_enabled": False,
         "limitations": evaluation["limitations"],
     }

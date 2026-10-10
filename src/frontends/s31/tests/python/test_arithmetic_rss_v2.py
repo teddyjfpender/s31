@@ -130,6 +130,11 @@ class ArithmeticRssV2Tests(unittest.TestCase):
             report = publish(train_path, model_path, validation_path, evaluation_path)
             self.assertEqual(report["training_controls"]["saved_proof_digest_matched"], 100)
             self.assertEqual(report["validation_controls"]["saved_proof_digest_matched"], 160)
+            self.assertEqual(report["accuracy_gate"], self.protocol["accuracy_gate"])
+            self.assertTrue(report["targeted_rss_accuracy_gate_pass"])
+            self.assertFalse(report["current_compiler_whole_prover_gate_evaluated"])
+            self.assertFalse(report["historical_v1"]["whole_prover_gate_reusable_for_current_compiler"])
+            self.assertNotEqual(report["historical_v1"]["compiler_sha256"], report["compiler_sha256"])
             proof = root / "validation" / "arith_rss_pair_48" / "trials" / "00" / "proof.bin"
             proof.write_bytes(b"tampered")
             with self.assertRaisesRegex(ValueError, "saved proof bytes"):

@@ -168,3 +168,8 @@ padded-tier feature, validate it on **new** programs and witnesses, and repeat
 the whole experiment on another host. It should also expose PoW timers for the
 generic hash prover if that profile is to receive a stage-specific model.
 Neither change should be tuned against the twelve held-out outcomes above.
+The [prospective arithmetic RSS follow-up](ARITHMETIC_RSS_V2.md) passed its
+targeted gate on eight new programs under a different compiler fingerprint.
+It does not retroactively pass this v1 whole-prover gate, and its RSS result
+cannot be combined with the v1 wall-time and proof-byte results as a
+current-version whole-prover validation.
