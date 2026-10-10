@@ -666,3 +666,37 @@ exact-event premise, plus the stated random-challenge and PCS assumptions.
 The source-pinned CLI addresses source/key selection, not those cryptographic
 or confidentiality obligations. No broad pair or full-language release claim
 follows from this checkpoint.
+
+## V4 bounded-call native scheduler review: `c109a17`, engine `20e25894`
+
+This pass read the integrated source-derived V4 inspection and the engine's
+in-memory `direct_many_arithmetic` prover/verifier. It did not run a new
+independent native proof. The integration owner's ReleaseFast checks accepted
+one- and three-call proofs; the focused S31 check accepted a one-call source
+proof and rejected changed public words and changed source bytes. These are
+implementation observations, not a cryptographic soundness theorem.
+
+The verifier rebuilds the preprocessed circuit from a caller-supplied
+`CircuitView` and Plan, checks the four proof commitments and fixed root,
+reconstructs the PCS settings and ordered `1+2N` roster, and checks the eight
+public words. It derives the effective source/manifest digest, circuit
+identity, lookup challenge, and claimed-sum closure before handing live
+component handles to the native PCS verifier. The prover and verifier have
+the same explicit transcript phase order. The S31 `inspectMany` path derives
+the Plan and typed manifest from literal source, compiled endpoint addresses,
+the pinned AIR bundle and live verifier-handle geometry. The engine API itself
+accepts caller-provided source and manifest digests, so the S31 source
+reconstruction remains a necessary admission step.
+
+| ID | Release consequence | Evidence and remaining obligation |
+| --- | --- | --- |
+| S31-V4-01 | **P1, no public proof admission yet.** | `direct_many_arithmetic.verifyBorrowed` accepts an in-memory borrowed proof and a caller-owned `Request`; V4 has no canonical byte envelope, capped decoder or source-pinned verifier entrypoint. Build a distinct V4 wire format and verifier that reconstructs `inspectMany` from authenticated source before decoding, then reject malformed and resealed inputs. The existing V3 pair envelope cannot be silently reused. |
+| S31-V4-02 | **P1, admitted count matrix incomplete.** | The manifest and AIR handles are bounded to 1–8 calls, but native proofs currently cover only counts 1 and 3. Prove and verify representative 2, 4 and 8 call programs under the exact source-derived roster. For each supported count, mutate every claimed-sum position, call order/tag/constant, public words and all four commitments. |
+| S31-V4-03 | **P1, argument remains conditional.** | The native chip constrains each local affine-square transition and uses tagged indexed lookup fractions; the bridge connects circuit Gate values to indexed chip endpoints. The Lean exact-event path theorem applies once the compressed lookup identity is lifted to exact tagged-event balance and committed AIR/PCS acceptance. That lifting and the all-profile compiler refinement are still unproved. No false claim was found by this source read. |
+| S31-V4-04 | **P1 for confidentiality.** | Bridge endpoint values occupy committed main columns. V4's `private` source visibility does not establish witness secrecy; blinding and an opening analysis are required before a confidentiality claim. |
+
+The source-derived typed manifest is useful audit evidence, but it is not an
+external trust root. A relying party must authenticate the intended source,
+AIR and installed verifier, and independently fix the expected public words.
+The V4 byte-entry implementation and independent mutation run should be
+reviewed again before any release status changes.

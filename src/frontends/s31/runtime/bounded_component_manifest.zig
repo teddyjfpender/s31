@@ -3,8 +3,8 @@
 //! This is deliberately separate from the sealed V3 pair manifest. It does
 //! not authorize a proof: source admission has no compiled endpoint addresses,
 //! and no native prover/verifier checks this roster against component handles.
-//! The tagged chip and bridge sources are templates: their current pair AIR
-//! caps call IDs below two and is not an eight-call proof engine.
+//! The V4 tagged chip and bridge templates support IDs 0..7. The separate
+//! in-memory scheduler uses them, but this plan alone is not proof admission.
 const std = @import("std");
 const admission = @import("../language/bounded_call_admission.zig");
 const relation = @import("../language/relation.zig");
