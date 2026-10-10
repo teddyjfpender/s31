@@ -224,6 +224,66 @@ pub const ManyInspection = struct {
     }
 };
 
+/// In-process versioned descriptors for the guarded engine adapter. The
+/// source-pinned caller obtains these only from a regenerated typed manifest.
+pub const ManyProvenance = struct {
+    descriptors: [v4.max_components]cpu.direct_many_provenance.ComponentDescriptor = undefined,
+    count: usize,
+    native_template_sha256: v4.Digest,
+
+    pub fn pin(
+        self: *const ManyProvenance,
+        source_bytes: []const u8,
+        air_bundle_bytes: []const u8,
+    ) cpu.direct_many_provenance.SourcePin {
+        return .{
+            .source_bytes = source_bytes,
+            .air_bundle_bytes = air_bundle_bytes,
+            .direct_circuit_source_bytes = @embedFile("s31_many_direct_circuit_source"),
+            .native_template_sha256 = self.native_template_sha256,
+            .descriptors = self.descriptors[0..self.count],
+        };
+    }
+};
+
+pub fn manyProvenance(inspection: *const ManyInspection) !ManyProvenance {
+    const value = inspection.generated.value;
+    if (value.components.len != inspection.selected_schedule.geometry.slot_count or
+        value.calls.len != inspection.selected_schedule.geometry.call_count or
+        value.components.len > v4.max_components)
+        return error.BoundedManyRosterMismatch;
+    var result: ManyProvenance = .{
+        .count = value.components.len,
+        .native_template_sha256 = value.native_template_sha256,
+    };
+    for (value.components, result.descriptors[0..result.count]) |component, *descriptor| {
+        descriptor.* = .{
+            .source_kind = undefined,
+            .call_id = component.call_id,
+            .program_binding_sha256 = undefined,
+        };
+        switch (component.source) {
+            .bundled_air => |source| {
+                descriptor.source_kind = .bundled_circuit;
+                descriptor.program_binding_sha256 = source.selected_program_sha256;
+            },
+            .native_air => |source| {
+                const id: usize = @intCast(component.call_id orelse return error.BoundedManyRosterMismatch);
+                if (id >= value.calls.len or value.calls[id].endpoints == null)
+                    return error.BoundedManyRosterMismatch;
+                descriptor.source_kind = switch (source.kind) {
+                    .tagged_chip => .tagged_chip,
+                    .tagged_bridge => .tagged_bridge,
+                };
+                descriptor.program_binding_sha256 = source.program_binding_sha256;
+                descriptor.source_node_id = value.calls[id].source_node_id;
+                descriptor.input_node_id = value.calls[id].input_node_id;
+            },
+        }
+    }
+    return result;
+}
+
 /// The returned request has no authority by itself. Proof admission must
 /// reconstruct `inspection` from authenticated source in the same call.
 pub fn nativeManyRequest(inspection: *const ManyInspection) !cpu.experimental_direct_many_arithmetic.Request {
@@ -1056,6 +1116,65 @@ test "bounded V4 selected geometry rejects reordered and altered manifest slots"
     changed_inspection = inspection;
     changed_inspection.selected_schedule.geometry.call_count = 9;
     try std.testing.expectError(error.InvalidManySchedule, changed_inspection.selected_schedule.validateShape());
+}
+
+test "bounded V4 guarded adapter rejects source and versioned program provenance mutations" {
+    const allocator = std.testing.allocator;
+    const source = @embedFile("../examples/boundary/private_many1.s31.json");
+    const air_bytes = @embedFile("s31_air_programs");
+    var inspection = try inspectMany(allocator, source, air_bytes);
+    defer inspection.deinit();
+    var descriptors = try manyProvenance(&inspection);
+    const selected = &inspection.selected_schedule;
+    try cpu.direct_many_provenance.validate(selected, descriptors.pin(source, air_bytes));
+    try std.testing.expectError(error.InvalidManyProvenance, cpu.direct_many_provenance.validate(selected, descriptors.pin(source ++ " ", air_bytes)));
+    try std.testing.expectError(error.InvalidManyProvenance, cpu.direct_many_provenance.validate(selected, descriptors.pin(source, air_bytes[0 .. air_bytes.len - 1])));
+    var wrong_direct_source = descriptors.pin(source, air_bytes);
+    wrong_direct_source.direct_circuit_source_bytes = "changed direct circuit source";
+    try std.testing.expectError(error.InvalidManyProvenance, cpu.direct_many_provenance.validate(selected, wrong_direct_source));
+
+    const original_template = descriptors.native_template_sha256;
+    descriptors.native_template_sha256[0] ^= 1;
+    try std.testing.expectError(error.InvalidManyProvenance, cpu.direct_many_provenance.validate(selected, descriptors.pin(source, air_bytes)));
+    descriptors.native_template_sha256 = original_template;
+
+    const original_circuit = descriptors.descriptors[0];
+    descriptors.descriptors[0].program_binding_sha256[0] ^= 1;
+    try std.testing.expectError(error.InvalidManyProvenance, cpu.direct_many_provenance.validate(selected, descriptors.pin(source, air_bytes)));
+    descriptors.descriptors[0] = original_circuit;
+
+    const original_chip = descriptors.descriptors[1];
+    descriptors.descriptors[1].version += 1;
+    try std.testing.expectError(error.InvalidManyProvenance, cpu.direct_many_provenance.validate(selected, descriptors.pin(source, air_bytes)));
+    descriptors.descriptors[1] = original_chip;
+    descriptors.descriptors[1].source_kind = .tagged_bridge;
+    try std.testing.expectError(error.InvalidManyProvenance, cpu.direct_many_provenance.validate(selected, descriptors.pin(source, air_bytes)));
+    descriptors.descriptors[1] = original_chip;
+    descriptors.descriptors[1].call_id = 7;
+    try std.testing.expectError(error.InvalidManyProvenance, cpu.direct_many_provenance.validate(selected, descriptors.pin(source, air_bytes)));
+    descriptors.descriptors[1] = original_chip;
+    descriptors.descriptors[1].source_node_id.? += 1;
+    try std.testing.expectError(error.InvalidManyProvenance, cpu.direct_many_provenance.validate(selected, descriptors.pin(source, air_bytes)));
+    descriptors.descriptors[1] = original_chip;
+    descriptors.descriptors[1].input_node_id.? += 1;
+    try std.testing.expectError(error.InvalidManyProvenance, cpu.direct_many_provenance.validate(selected, descriptors.pin(source, air_bytes)));
+    descriptors.descriptors[1] = original_chip;
+    descriptors.descriptors[1].program_binding_sha256[0] ^= 1;
+    try std.testing.expectError(error.InvalidManyProvenance, cpu.direct_many_provenance.validate(selected, descriptors.pin(source, air_bytes)));
+    descriptors.descriptors[1] = original_chip;
+
+    descriptors.count -= 1;
+    try std.testing.expectError(error.InvalidManyProvenance, cpu.direct_many_provenance.validate(selected, descriptors.pin(source, air_bytes)));
+    descriptors.count += 1;
+    var changed = inspection.selected_schedule;
+    changed.geometry.slots[1].program_binding_sha256[0] ^= 1;
+    try std.testing.expectError(error.InvalidManyProvenance, cpu.direct_many_provenance.validate(&changed, descriptors.pin(source, air_bytes)));
+    descriptors.descriptors[1].program_binding_sha256[0] ^= 1;
+    try std.testing.expectError(error.InvalidManyProvenance, cpu.direct_many_provenance.validate(&changed, descriptors.pin(source, air_bytes)));
+    descriptors.descriptors[1] = original_chip;
+    changed = inspection.selected_schedule;
+    changed.geometry.calls[0].output[0] += 1;
+    try std.testing.expectError(error.InvalidManyProvenance, cpu.direct_many_provenance.validate(&changed, descriptors.pin(source, air_bytes)));
 }
 
 test "bounded V4 source-derived one-call native proof verifies a public statement" {

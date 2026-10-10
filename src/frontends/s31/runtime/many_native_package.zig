@@ -50,14 +50,13 @@ pub fn proveSealed(
     const public_values = try publicValues(words);
     var witness = try binding.compileManyWitness(allocator, source, assignment, inspected.topology);
     defer witness.deinit();
-    var air = try engine.parseBundle(allocator, air_bytes);
-    defer air.deinit();
-    var proof = try engine.proveSelected(
+    const descriptors = try binding.manyProvenance(&inspected);
+    var proof = try engine.proveSelectedSourceBound(
         allocator,
         circuit.common.preprocessed.CircuitView.fromBuilder(&witness.circuit),
         witness.values(),
-        &air,
         &inspected.selected_schedule,
+        descriptors.pin(source, air_bytes),
     );
     defer proof.deinit();
     if (proof.sum_count != inspected.selected_schedule.geometry.live.count or
@@ -153,8 +152,9 @@ fn verifySourceBound(
     if (at != headerLen(sum_count)) return error.InvalidManyNativeEnvelope;
     var topology = try binding.compileManyTopology(allocator, source, inspected.topology);
     defer topology.deinit();
-    var air = try engine.parseBundle(allocator, air_bytes);
-    defer air.deinit();
+    const descriptors = try binding.manyProvenance(&inspected);
+    const pin = descriptors.pin(source, air_bytes);
+    try cpu.direct_many_provenance.validate(&inspected.selected_schedule, pin);
     const pcs = inspected.selected_schedule.geometry.live.pcs;
     const geometry = inspected.selected_schedule.geometry.live;
     // The roster and PCS shape are derived before any proof allocation.
@@ -181,11 +181,11 @@ fn verifySourceBound(
     var stark = try postcard.deserializeProof(H, bounded.allocator(), stream.reader());
     defer stark.deinit(bounded.allocator());
     if (stream.pos != raw.len - at) return error.InvalidManyNativeEnvelope;
-    try engine.verifySelectedBorrowed(
+    try engine.verifySelectedSourceBoundBorrowed(
         allocator,
         circuit.common.preprocessed.CircuitView.fromBuilder(&topology.circuit),
-        &air,
         &inspected.selected_schedule,
+        pin,
         public_words,
         .{
             .output_values = &outputs,
