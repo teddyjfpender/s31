@@ -20,8 +20,8 @@ fn square_and_sum(v: [m31; 4]) -> ([m31; 4], [m31; 4]) {
 }
 
 circuit tuple_square_sum(private x: [m31; 4]) -> public [m31; 4] {
-    let pair = square_and_sum(x);
-    let result = pair.0 + pair.1;
+    let (square, double) = square_and_sum(x);
+    let result = square + double;
     result
 }
 ```
@@ -30,7 +30,7 @@ For each array position, a **lane** is one M31 field element. The prover
 computes the following values. The `x` column is private, while `result` is
 the claimed public array; all four positions are checked by one proof.
 
-| Position (lane) | Private `x` | `pair.0 = x²` | `pair.1 = x+x` | Public `result` |
+| Position (lane) | Private `x` | `square = x²` | `double = x+x` | Public `result` |
 | --- | ---: | ---: | ---: | ---: |
 | 0 | 0 | 0 | 0 | 0 |
 | 1 | 1 | 1 | 2 | 3 |
@@ -38,7 +38,22 @@ the claimed public array; all four positions are checked by one proof.
 | 3 | 7 | 49 | 14 | 63 |
 
 Specialization replaces the pair with references to its two component
-values. The residual relation has exactly three nodes, `square = mul(x,x)`,
+values. `let (square, double) = ...` is hygienic sugar for binding the pair
+once and projecting `.0` and `.1`; the pair itself has no circuit value.
+An equivalent handwritten source fragment is:
+
+```s31
+let pair = square_and_sum(x);
+let square = pair.0;
+let double = pair.1;
+```
+
+Nested patterns also work, as in `let ((left, right), saved) = nested;`.
+`let (left, right) = pair in body` provides the expression form. Duplicate
+names within one tuple pattern are rejected, and the parser uses a hidden
+name that source text cannot capture. The pair expression runs once in both
+forms, including every component's effects.
+The residual relation has exactly three nodes, `square = mul(x,x)`,
 `double = add(x,x)`, and `result = add(square,double)`. At the gate relation
 level, each lane has the equations `square[i] - x[i]² = 0`,
 `double[i] - 2·x[i] = 0`, and

@@ -32,4 +32,33 @@ theorem tupleSquareSum_accepts (x output : M31) :
   simpa [tupleSquareSum, inputSource, inputResidual, denote] using
     (program_accepts_iff [0] tupleSquareSum (fun _ : Fin 1 => x) output)
 
+/-- Nested destructuring lowers to projections of one static binding. -/
+def nestedTupleSum : Expr [.field] .field :=
+  .letValue
+    (.pair
+      (.pair (.mul (.var .here) (.var .here))
+             (.add (.var .here) (.var .here)))
+      (.var .here))
+    (.add
+      (.add (.fst (.fst (.var .here)))
+            (.snd (.fst (.var .here))))
+      (.snd (.var .here)))
+
+def directNestedTupleSum : Expr [.field] .field :=
+  .add
+    (.add (.mul (.var .here) (.var .here))
+          (.add (.var .here) (.var .here)))
+    (.var .here)
+
+theorem nestedTupleSum_zero_cost {n : Nat} (x : Poly n) :
+    specialize nestedTupleSum (.cons x .nil) =
+      specialize directNestedTupleSum (.cons x .nil) := rfl
+
+theorem nestedTupleSum_accepts (x output : M31) :
+    Poly.Accepts (fun _ : Fin 1 => x)
+      (specialize nestedTupleSum (inputResidual [0])) output ↔
+      output = x * x + (x + x) + x := by
+  simpa [nestedTupleSum, inputSource, inputResidual, denote] using
+    (program_accepts_iff [0] nestedTupleSum (fun _ : Fin 1 => x) output)
+
 end S31.Functional

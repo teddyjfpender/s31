@@ -26,6 +26,15 @@ projection cannot hide a partial operation in an inactive conditional arm.
 Circuit inputs and outputs reject tuple types; helper functions may accept or
 return them. The [worked product](../../docs/functional-language.md#static-tuples-two-results-from-one-helper)
 shows the resulting arithmetic equations and exact direct-form relation.
+Tuple binders such as `let (a, b) = pair;` are lowered in the parser to one
+hygienic hidden binding followed by static projections. The hidden name
+contains a character source identifiers cannot contain, so user code cannot
+capture it. The lowering preserves one evaluation of the pair expression,
+eager component effects and zero tuple-specific AIR work. Nested patterns
+and expression-level `let … in` use the same lowering.
+Pattern nesting stops at 32 levels, and generated binder/projection AST nodes
+are capped at 100,000 per file so compact deep patterns cannot expand without
+bound.
 Postfix application allows `(fun(...) -> ... => body)(value)` and
 `factory(value)(next)`. An unshadowed top-level `fn` name is also a static
 function value, so `apply(square, x)` and `(square)(x)` emit only the

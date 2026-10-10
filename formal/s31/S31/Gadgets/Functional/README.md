@@ -15,7 +15,7 @@ Lean module names follow the directory, for example
 | `MathLibrary.lean` | Nonempty sum and dot, plus Horner polynomial evaluation: source denotations and arbitrary-witness strict field-graph acceptance. This models mathematical meaning, not Python's balanced reduction schedule. |
 | `WorkedQuadratic.lean` | A captured, four-lane Horner closure specializes to the same residual polynomial as its direct form; strict graph acceptance binds all four outputs. The checked `.s31` example and native compiler remain separate evidence. |
 | `CurriedApplication.lean` | A function returning a function specializes through two applications to one field addition; the one-gate strict graph binds its claimed output. |
-| `TupleValues.lean` | A typed product, projections, and a strict graph for one lane of `tuple_square_sum.s31`; static pair structure erases and arbitrary accepted witnesses bind the claimed sum. |
+| `TupleValues.lean` | Typed products, projections and nested destructuring models; static pair structure erases and arbitrary accepted witnesses bind the claimed sums. |
 | `ArrayNodes.lean` | `get`, `concat`, `take` and `drop` agree with normalized array nodes and bounds. |
 | `Assertions.lean` | Source equality assertions checked against independently witnessed graph outputs. |
 | `Conditional.lean` | Total scalar branches share a graph and a bit-constrained selector. |

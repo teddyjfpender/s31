@@ -124,7 +124,8 @@ The following are required for a v0.1.0 claim:
 
 The typed product extension adds `(A, B)` and `(a, b)` with statically checked
 `.0`/`.1` projections. A tuple is evaluated eagerly and erased before relation
-emission. The `tuple_square_sum.s31` example compiles to the exact normalized
+emission. Tuple patterns are parser sugar over one hygienic binding and static
+projections; their depth is bounded. The `tuple_square_sum.s31` example compiles to the exact normalized
 three-node relation of its handwritten form. The Lean source core has product
 semantics and a general specialization theorem covering pairs and projections;
 its worked scalar theorem binds arbitrary satisfying local graph witnesses.

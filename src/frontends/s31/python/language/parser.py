@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any
 
 from s31_stdlib import INT_TYPES, P, STDLIB_ABI_VERSION, Type, TypeErrorS31
@@ -10,6 +11,15 @@ from language.builtins import (BUILTINS, BINARY_POWER, INT_SOURCE_TYPES,
                                MAX_TOKENS, MAX_TYPE_DEPTH,
                                TOKEN_RE, UNARY_POWER)
 from language.syntax import Circuit, Expr, Function, FunctionType, SourceError, Statement, Token, TupleType
+
+
+@dataclass(frozen=True)
+class Pattern:
+    """Parser-only binder; tuple patterns desugar before type elaboration."""
+
+    name: str | None
+    elements: tuple[Pattern, ...]
+    token: Token
 
 
 def lex(source: str, filename: str = "<source>") -> list[Token]:
@@ -48,6 +58,9 @@ class Parser:
         self.stdlib_explicit = False
         self.expression_depth = 0
         self.type_depth = 0
+        self.pattern_depth = 0
+        self.pattern_serial = 0
+        self.pattern_expansion = 0
 
     def peek(self) -> Token:
         return self.tokens[self.at]
@@ -85,6 +98,57 @@ class Parser:
             raise self.error("expected a compile-time natural number")
         self.at += 1
         return int(token.text)
+
+    def pattern(self) -> Pattern:
+        if self.pattern_depth >= MAX_TYPE_DEPTH:
+            raise self.error("tuple pattern nesting limit exceeded")
+        self.pattern_depth += 1
+        try:
+            token = self.peek()
+            if not self.accept("("):
+                return Pattern(self.identifier(), (), token)
+            first = self.pattern()
+            if not self.accept(","):
+                self.expect(")")
+                return first
+            elements = [first, self.pattern()]
+            while self.accept(","):
+                elements.append(self.pattern())
+            self.expect(")")
+            return Pattern(None, tuple(elements), token)
+        finally:
+            self.pattern_depth -= 1
+
+    def pattern_bindings(self, pattern: Pattern, bound: Expr) -> list[tuple[str, Expr, Token]]:
+        """Bind the scrutinee once; projections of its static value are free."""
+        if pattern.name is not None:
+            return [(pattern.name, bound, pattern.token)]
+        serial = self.pattern_serial
+        self.pattern_serial += 1
+        hidden = f"$s31_pattern_{serial}"  # '$' is excluded from source identifiers.
+        self.pattern_expansion += 1
+        bindings = [(hidden, bound, pattern.token)]
+
+        def collect(current: Pattern, indices: tuple[int, ...]) -> None:
+            if current.name is None:
+                for index, child in enumerate(current.elements):
+                    collect(child, indices + (index,))
+                return
+            # One name, one binding and one projection per path element.
+            # Count the lowered tree, not only the shorter surface pattern.
+            self.pattern_expansion += len(indices) + 2
+            if self.pattern_expansion > MAX_TOKENS:
+                raise self.error("tuple pattern expansion limit exceeded", current.token)
+            value = Expr("name", hidden, (), current.token)
+            for index in indices:
+                value = Expr("project", str(index), (value,), current.token)
+            bindings.append((current.name, value, current.token))
+
+        collect(pattern, ())
+        names = [name for name, _, _ in bindings[1:]]
+        if len(names) != len(set(names)):
+            raise self.error("duplicate tuple binding", pattern.token)
+        return bindings
 
     def parse_type(self) -> Type | FunctionType | TupleType:
         if self.type_depth >= MAX_TYPE_DEPTH:
@@ -204,7 +268,7 @@ class Parser:
             token = self.peek()
             if self.accept("let"):
                 start = self.at - 1
-                name = self.identifier()
+                pattern = self.pattern()
                 self.expect("=")
                 expression = self.expression()
                 if self.peek().text == "in":
@@ -212,7 +276,8 @@ class Parser:
                     self.at = start
                     break
                 self.expect(";")
-                statements.append(Statement("let", name, (expression,), token))
+                statements.extend(Statement("let", name, (value,), location)
+                                  for name, value, location in self.pattern_bindings(pattern, expression))
             else:
                 self.expect("assert_eq")
                 self.expect("(")
@@ -260,12 +325,14 @@ class Parser:
     def _expression(self, min_power: int = 0) -> Expr:
         token = self.peek()
         if self.accept("let"):
-            name = self.identifier()
+            pattern = self.pattern()
             self.expect("=")
             bound = self.expression()
             self.expect("in")
             body = self.expression()
-            lhs = Expr("let", name, (bound, body), token)
+            for name, value, location in reversed(self.pattern_bindings(pattern, bound)):
+                body = Expr("let", name, (value, body), location)
+            lhs = body
         elif self.accept("if"):
             condition = self.expression()
             self.expect("then")

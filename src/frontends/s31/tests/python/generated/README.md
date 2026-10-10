@@ -41,10 +41,11 @@ compare native AIR geometry and proofs.
 `test_tuple_generated.py` adds 40 deterministic source products, including
 nested pairs and chained projections. Each program computes two independently
 generated scalar terms and selects a projected component with a constrained
-public bit. The source evaluator computes the expected value without reading
-compiler internals. Functional and first-order sources must emit identical
+public bit. A third source form destructures the tuple with a pattern and
+must emit the same relation. The source evaluator computes the expected value
+without reading compiler internals. Functional and first-order sources must emit identical
 relation IR; both bit values, field boundaries, random inputs and false public
-claims are checked. The two-source corpus has a pinned SHA-256 identity.
+claims are checked. The three-source corpus has a pinned SHA-256 identity.
 
 A second gate perturbs valid source text and requires located diagnostics for
 rejected mutations. Deep expressions and function types must hit explicit,

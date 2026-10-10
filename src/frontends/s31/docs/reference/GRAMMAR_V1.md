@@ -64,12 +64,16 @@ families and the fixed-width integer names are exact and case sensitive.
 
 ```text
 block         = "{", {statement}, expression, [";"], "}"
-statement     = "let", identifier, "=", expression, ";"
+statement     = "let", binding_pattern, "=", expression, ";"
               | "assert_eq", "(", expression, ",", expression, ")", ";"
+binding_pattern = identifier
+              | "(", binding_pattern, ")"
+              | "(", binding_pattern, ",", binding_pattern,
+                {",", binding_pattern}, ")"
 expression    = prefix, {postfix_call | postfix_projection | binary_operator, prefix}
 postfix_call  = "(", [expression, {",", expression}], ")"
 postfix_projection = ".", natural
-prefix        = "let", identifier, "=", expression, "in", expression
+prefix        = "let", binding_pattern, "=", expression, "in", expression
               | "if", expression, "then", expression, "else", expression
               | "fun", function_parameters, "->", type, "=>", expression
               | "-", expression
@@ -96,6 +100,13 @@ grouping; `(x, y)` is a tuple; `pair.0` selects its first element. Indexing is
 zero-based and statically checked. Tuple construction evaluates every
 component, even if a later projection selects only one. Tuples add no relation
 node of their own, but their component computations are retained.
+Tuple patterns destructure a source tuple in a block or `let … in`, for
+example `let (square, double) = powers(x);` or
+`let ((a, b), c) = nested in a + b + c`. The bound expression is evaluated
+once. The parser uses a source-inaccessible temporary name and lowers the
+pattern to ordinary `let` bindings and static projections. A repeated name
+within one tuple pattern is rejected. No pattern node reaches elaboration,
+relation JSON or AIR.
 
 The parser uses left-associative Pratt binding powers: unary `-` is 30,
 lane-wise `.*` is 20, and `+` and `-` are 10. Postfix application binds more
@@ -124,10 +135,12 @@ type/effect checks. `assert_eq` is allowed only in circuit blocks.
 
 The lexer accepts at most **100,000 tokens**. Recursive expression parsing
 and the resulting expression tree each have a **128-level** limit; recursive
-type parsing has a **32-level** limit. Static function expansion has a
+type parsing and tuple patterns each have a **32-level** limit. Static function expansion has a
 **32-call** limit, and effect analysis has a **200,000-expression-visit**
 limit. Each parser limit reports the file, line and column at the offending
-token. They bound parser work and reject deep source trees before later
+token. Tuple-pattern lowering is capped at **100,000 generated AST nodes**
+across the source file, including hidden bindings and projection paths. These
+limits bound parser work and reject deep source trees before later
 recursive compiler passes.
 
 The grammar does not assert that all well-typed programs are cheap to prove.

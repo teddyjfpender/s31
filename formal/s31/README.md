@@ -68,6 +68,9 @@ projections leave exactly the same residual arithmetic as its direct source
 expression. `tupleSquareSum_accepts` binds any accepted local witness to
 `x*x+(x+x)` for one M31 lane. The four-lane `.s31` source and native cost
 comparison are separate executable evidence.
+`nestedTupleSum_zero_cost` and `nestedTupleSum_accepts` repeat the argument
+for a nested product and chained projections, modeling the compiler's tuple
+pattern desugaring without claiming a proof of the Python parser.
 
 The hand-written `capturedSquare` term models
 `let saved = x in let f = fun(y : m31) -> m31 => y * y + saved in f(saved)`.

@@ -53,6 +53,36 @@ class TupleValuesTests(unittest.TestCase):
             "public_inputs": {"x": [7]}, "private_inputs": {},
             "public_outputs": {result: [49]}}), {result: [49]})
 
+    def test_expression_and_nested_pattern_destructuring(self) -> None:
+        header = "circuit p(public x: [m31; 1]) -> public [m31; 1] { "
+        block = header + "let ((a, b), c) = ((x .* x, x + x), x); let result = a + b + c; result }"
+        expression = (header + "let result = let ((a, b), c) = ((x .* x, x + x), x) "
+                      "in a + b + c; result }")
+        direct = header + "let result = (x .* x) + (x + x) + x; result }"
+        reference, _ = compile_text(direct)
+        for source in (block, expression):
+            with self.subTest(source=source):
+                relation, _ = compile_text(source)
+                self.assertEqual(relation, reference)
+                self.assertEqual(evaluate_relation(relation, {
+                    "public_inputs": {"x": [7]}, "private_inputs": {},
+                    "public_outputs": {"result": [70]}}), {"result": [70]})
+
+    def test_destructuring_preserves_function_and_eager_effects(self) -> None:
+        source = """circuit p(public x: [m31; 1]) -> public [m31; 1] {
+          let (f, v) = (fun(y: [m31; 1]) -> [m31; 1] => y .* y, x);
+          f(v)
+        }"""
+        relation, _ = compile_text(source)
+        direct, _ = compile_text("circuit p(public x: [m31; 1]) -> public [m31; 1] { x .* x }")
+        self.assertEqual([node["op"] for node in relation["nodes"]],
+                         [node["op"] for node in direct["nodes"]])
+        partial = """circuit p(public b: bit, private x: [m31; 1]) -> public [m31; 1] {
+          if b then (let (kept, ignored) = (x, std::math::inv(x)) in kept) else x
+        }"""
+        with self.assertRaisesRegex(SourceError, "if branch may fail when inactive: std::math::inv"):
+            compile_text(partial)
+
     def test_bad_projection_and_boundary_are_rejected(self) -> None:
         invalid = (
             ("circuit p(public x: [m31; 1]) -> public [m31; 1] { (x, x).2 }",
@@ -67,6 +97,10 @@ class TupleValuesTests(unittest.TestCase):
              "expected expression"),
             ("circuit p(public x: [m31; 1]) -> public [m31; 1] { (x,x).field }",
              "expected a compile-time natural number"),
+            ("circuit p(public x: [m31; 1]) -> public [m31; 1] { "
+             "let (a,a) = (x,x) in a }", "duplicate tuple binding"),
+            ("circuit p(public x: [m31; 1]) -> public [m31; 1] { "
+             "let (a,b) = x in a }", "tuple projection index is out of range"),
         )
         for source, message in invalid:
             with self.subTest(source=source), self.assertRaisesRegex(SourceError, message):
@@ -84,6 +118,28 @@ class TupleValuesTests(unittest.TestCase):
           (b, x).1
         }"""
         with self.assertRaisesRegex(TypeErrorS31, "every bit input must be constrained"):
+            compile_text(source)
+
+    def test_pattern_nesting_is_bounded_with_location(self) -> None:
+        pattern = "x"
+        for index in range(33):
+            pattern = f"({pattern}, other_{index})"
+        source = ("circuit p(public x: [m31; 1]) -> public [m31; 1] { "
+                  f"let {pattern} = x in x }}")
+        with self.assertRaisesRegex(
+            SourceError, r"^<source>:[0-9]+:[0-9]+: tuple pattern nesting limit exceeded"
+        ):
+            compile_text(source)
+
+    def test_pattern_expansion_is_bounded_with_location(self) -> None:
+        pattern = "(" + ", ".join(f"item_{index}" for index in range(4200)) + ")"
+        for index in range(24):
+            pattern = f"({pattern}, tail_{index})"
+        source = ("circuit p(public x: [m31; 1]) -> public [m31; 1] { "
+                  f"let {pattern} = x in x }}")
+        with self.assertRaisesRegex(
+            SourceError, r"^<source>:[0-9]+:[0-9]+: tuple pattern expansion limit exceeded"
+        ):
             compile_text(source)
 
     def test_returned_tuple_can_supply_restricted_recurrence_step(self) -> None:
@@ -114,6 +170,9 @@ class TupleValuesTests(unittest.TestCase):
         }"""
         relation, _ = compile_text(source)
         self.assertEqual(relation["nodes"][0]["body"], [{"op": "mix4"}])
+        destructured = source.replace("iterate<3>(relay(mix).0, x)",
+                                      "let (selected, unused) = relay(mix); iterate<3>(selected, x)")
+        self.assertEqual(compile_text(destructured)[0], relation)
         with self.assertRaisesRegex(SourceError, r"requires an \[m31; 4\] iterate state"):
             compile_text(source.replace("iterate<3>(relay(mix).0, x)", "mix(x)"))
 

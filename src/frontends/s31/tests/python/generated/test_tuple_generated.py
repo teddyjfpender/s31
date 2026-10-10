@@ -25,7 +25,7 @@ from text_frontend import compile_text
 
 SEED = 0x5317A1E
 CASES = 40
-CORPUS_SHA256 = "f872ca5191da1dcf52d30d30fcaba1918e2530e6ff6df43f0c6a157f7077ff0a"
+CORPUS_SHA256 = "394c411b0016650726277a80416b9de7b32b8b0863f9c991c1dc0c81513f1cc0"
 T = "[m31; 1]"
 HEADER = f"""circuit generated_tuple(public b: bit, private x: {T},
     private y: {T}) -> public {T} {{
@@ -61,10 +61,24 @@ def sources(first: Term, second: Term, nested: bool) -> tuple[str, str]:
     return functional, direct
 
 
+def pattern_source(first: Term, second: Term, nested: bool) -> str:
+    shared = (HEADER + f"    let first = {first.source()};\n"
+              f"    let second = {second.source()};\n")
+    if nested:
+        return NESTED + shared + (
+            "    let ((left, right), again) = make_nested(first, second);\n"
+            "    let result = if b then right else again;\n"
+            "    result\n}\n")
+    return PAIR + shared + (
+        "    let (left, right) = make_pair(first, second);\n"
+        "    let result = if b then left else right;\n"
+        "    result\n}\n")
+
+
 class GeneratedTupleTests(unittest.TestCase):
     def test_corpus_identity(self) -> None:
         samples = cases()
-        corpus = "\n===CASE===\n".join("\n===SOURCE===\n".join(sources(*case))
+        corpus = "\n===CASE===\n".join("\n===SOURCE===\n".join((*sources(*case), pattern_source(*case)))
                                           for case in samples)
         self.assertEqual(len(samples), CASES)
         self.assertEqual(hashlib.sha256(corpus.encode()).hexdigest(), CORPUS_SHA256)
@@ -77,7 +91,9 @@ class GeneratedTupleTests(unittest.TestCase):
                 functional, direct = sources(first, second, nested)
                 relation, _ = compile_text(functional)
                 reference, _ = compile_text(direct)
+                destructured, _ = compile_text(pattern_source(first, second, nested))
                 self.assertEqual(relation, reference)
+                self.assertEqual(destructured, reference)
                 self.assertFalse(any(node["op"] in {"tuple", "project", "call"}
                                      for node in relation["nodes"]))
                 for bit in (0, 1):
