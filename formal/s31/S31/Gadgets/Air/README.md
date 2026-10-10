@@ -640,6 +640,12 @@ the first fifteen of the sixteen logical rows. The actual AIR checks the
 cyclic edge too. [The boundary audit](TAGGED_PAIR_BOUNDARY_AUDIT.md) maps
 these conditional Lean premises to the staged engine and gives the missing
 arbitrary-step coverage argument and a local-row malformed trace.
+`RawChipIndexCoverage.lean` starts that arbitrary-step argument. It models
+exact full index/state event balance for one call, projects to index balance,
+and proves every `0 ≤ i < R` has a distinct native row when `0 < R < p`.
+The Lean conclusion is an injective selection of rows by canonical index;
+the finite-cardinality bijection, value-bearing joins, and composition with
+`IndexedChipPath` are not yet formalized.
 `PrivateBridgeChallenge.lean` specializes the Gate exceptional-challenge
 bound to one addressed endpoint whose sixteen bridge rows vary. It also
 proves a joint eight-address Gate bound: if repeated addresses have coherent

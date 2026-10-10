@@ -53,6 +53,14 @@ witness M31 steps, derive the unique reindexing, then reuse the path theorem.
 It must also account for the actual seven-coordinate call/step/state tuple,
 not only the projected step count.
 
+`RawChipIndexCoverage.lean` now proves the first half with arbitrary native
+row indices: exact event balance projects to index balance, every canonical
+index has a row, and those chosen rows are injective. Its Lean theorem does
+not yet turn that injection into a finite bijection or derive the adjacent
+**state-value** joins. The proof uses exact integer multiset balance, not a
+random-compressed lookup identity. The full seven-coordinate/tagged
+compression reduction remains open.
+
 The desired Lean conclusion can be stated as an equivalence of finite row
 sets for `R > 0`: for each call, there exists a bijection `order : Fin R ≃ Fin R` such
 that native row `order(i)` has witness step `i`, its input equals the previous
@@ -86,6 +94,17 @@ closure to reject; it must not rely on the honest `writeBase` helper.
 An even smaller abstract example shows why full index keys matter: with the
 identity step, start/end `0`, and rows `0→0`, `1→1`, unindexed value multisets
 balance while row 1 is an orphan. Indexed balance fails at state index 1.
+The modulus bound is also necessary when interpreting both endpoint indices
+inside the field. At `p = R = 2`, start/end state `0` use the same index
+`0 mod p`, and rows
+`(step 0, 1→1)` and `(step 1, 1→1)` form a detached modular cycle. The full
+field-valued index/state event multiset balances, yet neither row is attached
+to the authenticated start. `RawChipIndexCoverage` deliberately represents
+the terminal index by natural `R` and is applied only under `R < p`; native
+M31 admission likewise excludes this case.
+Finally, projecting away values is safe only for the *index coverage* lemma:
+with `R = 1 < p`, one row at step 0 with input `7`, output `8`, and claimed
+start/end `3,9` has balanced indices but mismatched full state events.
 
 ## Remaining proof chain
 
