@@ -91,6 +91,16 @@ def expectedOutputCells (certificate : Certificate) (totalAddRows : Nat) :
     (List.range 3).map (expectedInverseCell certificate totalAddRows) ++
     (List.range 4).map (expectedCopyCell certificate)
 
+/-- Native direct-gate output slot zero is reserved. The next four addresses
+are public input words and the last four are public result words. -/
+def expectedPublicAddresses : List Nat :=
+  [2, 3, 4, 5, 6, 7, 8, 9, 10]
+
+theorem copy_rows_write_public_result_slots (certificate : Certificate) :
+    (List.range 4).map (fun lane => (expectedCopyCell certificate lane).out) =
+      expectedPublicAddresses.drop 5 := by
+  rfl
+
 /-- For any byte-admitted certificate and exact exported output-cell match,
 the projected row roster and source semantics agree. Authenticity and value
 lookup remain separate premises of the full prover theorem. -/

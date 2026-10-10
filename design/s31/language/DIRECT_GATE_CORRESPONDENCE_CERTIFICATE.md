@@ -149,6 +149,11 @@ then the copy at add row `8` writes public output wire `8`. The exact
 selector, all three addresses, and output use count of every one of these
 eleven rows are checked. Mutations to a mask selector/source/basis/row/use
 count, an inverse basis address, and a public copy output address are rejected.
+The fixture also checks that the exported public address vector is exactly
+`[2,3,4,5,6,7,8,9,10]`: slot zero is reserved, four input words follow,
+and output copy wires `7`–`10` occupy the final four slots. Swapping two
+public output slots fails the Lean check. This is a topology/ABI comparison;
+the native verifier's use of that vector remains an external premise.
 The basis constants' actual field values and the lookup join remain separate
 package/native premises.
 

@@ -65,6 +65,10 @@ def _byte_list(data: bytes) -> str:
         ", ".join(str(value) for value in row) for row in rows) + "\n  ]"
 
 
+def _nat_list(values: list[int]) -> str:
+    return "[" + ", ".join(str(value) for value in values) + "]"
+
+
 def _source_term(instructions: list[dict], index: int = 0) -> str:
     if index == len(instructions):
         return "(.var ⟨0, by decide⟩)"
@@ -216,6 +220,12 @@ def render_bridge(package: Path) -> str:
     topology = parse_canonical_json(topology_bytes, "gate-topology.json")
     if topology["n_vars"] != 512:
         raise ValueError("Lean bridge only covers 512 direct variables")
+    public_addresses = topology["output"]
+    if public_addresses != list(range(2, 11)):
+        raise ValueError("Lean bridge requires exact direct public address order")
+    changed_public_addresses = public_addresses.copy()
+    changed_public_addresses[5], changed_public_addresses[6] = (
+        changed_public_addresses[6], changed_public_addresses[5])
     instructions = checked["source_ssa"]["instructions"]
     if not instructions or checked["source_ssa"]["output"] != instructions[-1]["id"]:
         raise ValueError("Lean bridge requires final SSA output")
@@ -318,6 +328,8 @@ def changedOutputInverseBasis : List ColumnCell :=
   {_output_air_rows(checked, topology, mutation="inverse_basis")}
 def changedOutputCopyAddress : List ColumnCell :=
   {_output_air_rows(checked, topology, mutation="copy_output")}
+def observedPublicAddresses : List Nat := {_nat_list(public_addresses)}
+def changedPublicAddressOrder : List Nat := {_nat_list(changed_public_addresses)}
 
 def observedAddRows : Nat := {counts['add']}
 def observedGateRows : Nat := {sum(counts.values())}
@@ -372,6 +384,10 @@ theorem changed_output_inverse_basis_rejected :
     changedOutputInverseBasis ≠ expectedOutputCells certificate observedAddRows := by decide
 theorem changed_output_copy_address_rejected :
     changedOutputCopyAddress ≠ expectedOutputCells certificate observedAddRows := by decide
+theorem observed_public_addresses_match :
+    observedPublicAddresses = expectedPublicAddresses := by decide
+theorem changed_public_address_order_rejected :
+    changedPublicAddressOrder ≠ expectedPublicAddresses := by decide
 theorem complete_native_shape :
     observedGateRows = 512 ∧ observedVariables = 512 := by decide
 
@@ -440,13 +456,14 @@ theorem checked_instance_air_claim (input claimed : Lanes)
     observedRows = expectedRows certificate observedAddRows ∧
       observedColumnCells = expectedCells certificate observedAddRows ∧
       observedOutputCells = expectedOutputCells certificate observedAddRows ∧
+      observedPublicAddresses = expectedPublicAddresses ∧
       denotation sourceBytes input = some claimed := by
   have hrun := accepted_trace_executes hrows
   have hbytes := checked_bytes_sound input
   rw [execute_normalized_eq_execute] at hbytes
   simp [execute, hrun, hclaim] at hbytes
   exact ⟨source_native_rows_match, observed_source_columns_match,
-    observed_output_cells_match, hbytes.symm⟩
+    observed_output_cells_match, observed_public_addresses_match, hbytes.symm⟩
 
 end S31.Functional.GeneratedDirectGateBridge
 '''

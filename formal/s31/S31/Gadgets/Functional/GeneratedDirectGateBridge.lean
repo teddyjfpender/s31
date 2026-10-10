@@ -297,6 +297,8 @@ def changedOutputCopyAddress : List ColumnCell :=
     { traceRow := 9, addFlag := 1, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 0, in0 := 31, in1 := 0, out := 9, mults := 1 },
     { traceRow := 10, addFlag := 1, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 0, in0 := 34, in1 := 0, out := 10, mults := 1 }
   ]
+def observedPublicAddresses : List Nat := [2, 3, 4, 5, 6, 7, 8, 9, 10]
+def changedPublicAddressOrder : List Nat := [2, 3, 4, 5, 6, 8, 7, 9, 10]
 
 def observedAddRows : Nat := 474
 def observedGateRows : Nat := 512
@@ -351,6 +353,10 @@ theorem changed_output_inverse_basis_rejected :
     changedOutputInverseBasis ≠ expectedOutputCells certificate observedAddRows := by decide
 theorem changed_output_copy_address_rejected :
     changedOutputCopyAddress ≠ expectedOutputCells certificate observedAddRows := by decide
+theorem observed_public_addresses_match :
+    observedPublicAddresses = expectedPublicAddresses := by decide
+theorem changed_public_address_order_rejected :
+    changedPublicAddressOrder ≠ expectedPublicAddresses := by decide
 theorem complete_native_shape :
     observedGateRows = 512 ∧ observedVariables = 512 := by decide
 
@@ -425,12 +431,13 @@ theorem checked_instance_air_claim (input claimed : Lanes)
     observedRows = expectedRows certificate observedAddRows ∧
       observedColumnCells = expectedCells certificate observedAddRows ∧
       observedOutputCells = expectedOutputCells certificate observedAddRows ∧
+      observedPublicAddresses = expectedPublicAddresses ∧
       denotation sourceBytes input = some claimed := by
   have hrun := accepted_trace_executes hrows
   have hbytes := checked_bytes_sound input
   rw [execute_normalized_eq_execute] at hbytes
   simp [execute, hrun, hclaim] at hbytes
   exact ⟨source_native_rows_match, observed_source_columns_match,
-    observed_output_cells_match, hbytes.symm⟩
+    observed_output_cells_match, observed_public_addresses_match, hbytes.symm⟩
 
 end S31.Functional.GeneratedDirectGateBridge

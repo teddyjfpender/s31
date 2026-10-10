@@ -120,7 +120,8 @@ the last result; selector, address, sampled-row, and multiplicity mutations
 fail by kernel reduction. `SSAOutputAirCells` then checks eleven exported
 cells for all four public-output masks, three inverse multiplications, and
 four ABI copies against the same source-selected output and native allocation
-formula. The fixture still relies on the outer exporter to
+formula. It also compares the exported nine-address public vector with the
+expected order and rejects a swapped result slot. The fixture still relies on the outer exporter to
 bind the embedded arrays to the package, and Lean does not compute the
 displayed SHA-256 digests. The total add-row count and source-independent
 rows remain package-checker premises, and committed-column authenticity is
