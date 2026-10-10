@@ -714,10 +714,15 @@ They require explicit Gate-only circuit event lists, bridge/chip call-ID
 agreement, and distinct call IDs. The source definitions themselves prove
 that public outputs and bridge Gate events have Gate tags and that chip and
 bridge endpoint events have their stated call tags.
-`chip_complete_path_of_exact_balance` applies the arbitrary-row path theorem
-once each call's event tuples are decoded into indexed four-lane states.
-That tuple-to-row correspondence, including the fixed round-count encoding,
-is the next formal step; native proof acceptance remains an explicit premise.
+`TaggedPairEventDecode.lean` reads the canonical M31 step and four state
+lanes from each chip tuple. With bridge round count fixed to the chip row
+count and `R < p`, it converts each projected seven-word event permutation
+into the exact natural-indexed event permutation used by
+`chip_complete_path_of_exact_balance`. The module composes both calls into
+complete affine-square endpoint paths, and also gives a source-shaped
+corollary from the modeled five-claim verifier fold plus an explicit good
+challenge. Native PCS/FRI proof acceptance, Fiat–Shamir challenge goodness,
+and compiler/manifest correspondence remain separate premises.
 `PrivateBridgeChallenge.lean` specializes the Gate exceptional-challenge
 bound to one addressed endpoint whose sixteen bridge rows vary. It also
 proves a joint eight-address Gate bound: if repeated addresses have coherent

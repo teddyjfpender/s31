@@ -119,9 +119,12 @@ chip/bridge call tags are proved from the modeled source constructors.
 `chip_complete_path_of_exact_balance` gives the next bridge: after a
 value-bearing per-call event permutation has been extracted, canonical M31
 step values, `R < p`, and the source chip's four lane equations prove the
-entire `R`-step endpoint path. The tuple-to-indexed-row decoding that
-connects those seven-word permutations to this path theorem is still open.
-The source manifest's fixed call IDs and round counts, compiler Gate-event
+entire `R`-step endpoint path. `TaggedPairEventDecode.lean` now proves the
+tuple-to-indexed-row decoding, including M31 `step + 1` wrap and fixed
+round-count conversion for `R < p`. It composes the joint permutation into
+two complete paths. Its final source-shaped theorem starts from the modeled
+five-claim verifier fold and a challenge outside `badPairs7`. The source
+manifest's fixed call IDs and round counts, compiler Gate-event
 classification, accepted native rows, and Fiat–Shamir challenge
 distribution are separate obligations; none follows from event filtering.
 
