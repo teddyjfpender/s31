@@ -149,6 +149,11 @@ jobs:
           set -euo pipefail
           python3 src/frontends/s31/tests/acceptance/math/bitwise.py |
             tee zig-out/s31/acceptance/fixed-width-bitwise.json
+      - name: Fixed-width static shift native proofs
+        run: |
+          set -euo pipefail
+          python3 src/frontends/s31/tests/acceptance/math/shifts.py |
+            tee zig-out/s31/acceptance/fixed-width-shifts.json
       - name: Preserve library proof evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -159,4 +164,5 @@ jobs:
             zig-out/s31/acceptance/fixed-width-multiplication.json
             zig-out/s31/acceptance/fixed-width-casts.json
             zig-out/s31/acceptance/fixed-width-bitwise.json
+            zig-out/s31/acceptance/fixed-width-shifts.json
           if-no-files-found: warn

@@ -677,6 +677,36 @@
         "path": "src/frontends/s31/language/relation_compiler.zig",
         "function": "intBitwise"
       }
+    },
+    {
+      "op": "int_shl",
+      "semantics": "S31.Integers.staticShift",
+      "gadget_theorems": ["S31.Gadgets.IntegerShift.shl_sound_complete"],
+      "source": {"path": "src/frontends/s31/language/relation_compiler.zig", "function": "intStaticShift"}
+    },
+    {
+      "op": "int_shr_logical",
+      "semantics": "S31.Integers.staticShift",
+      "gadget_theorems": ["S31.Gadgets.IntegerShift.shr_logical_sound_complete"],
+      "source": {"path": "src/frontends/s31/language/relation_compiler.zig", "function": "intStaticShift"}
+    },
+    {
+      "op": "int_shr_arithmetic",
+      "semantics": "S31.Integers.staticShift",
+      "gadget_theorems": ["S31.Gadgets.IntegerShift.shr_arithmetic_sound_complete", "S31.Gadgets.IntegerShift.repeated_fill_pack"],
+      "source": {"path": "src/frontends/s31/language/relation_compiler.zig", "function": "intStaticShift"}
+    },
+    {
+      "op": "int_rotl",
+      "semantics": "S31.Integers.staticShift",
+      "gadget_theorems": ["S31.Gadgets.IntegerShift.rotl_sound_complete"],
+      "source": {"path": "src/frontends/s31/language/relation_compiler.zig", "function": "intStaticShift"}
+    },
+    {
+      "op": "int_rotr",
+      "semantics": "S31.Integers.staticShift",
+      "gadget_theorems": ["S31.Gadgets.IntegerShift.rotr_sound_complete"],
+      "source": {"path": "src/frontends/s31/language/relation_compiler.zig", "function": "intStaticShift"}
     }
   ]
 }

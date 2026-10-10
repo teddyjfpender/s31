@@ -68,6 +68,12 @@ import S31.Gadgets
 #check S31.Gadgets.IntegerMultiply.unsigned_checked_complete
 #check S31.Gadgets.IntegerMultiply.unsigned_checked_sound
 #check S31.Gadgets.IntegerMultiply.wrapping_product_sound
+#check S31.Gadgets.IntegerShift.repeated_fill_pack
+#check S31.Gadgets.IntegerShift.rotl_sound_complete
+#check S31.Gadgets.IntegerShift.rotr_sound_complete
+#check S31.Gadgets.IntegerShift.shl_sound_complete
+#check S31.Gadgets.IntegerShift.shr_arithmetic_sound_complete
+#check S31.Gadgets.IntegerShift.shr_logical_sound_complete
 #check S31.Gadgets.Packed.add_sound_complete
 #check S31.Gadgets.Packed.dual_literal
 #check S31.Gadgets.Packed.inverse_sound_complete
@@ -120,6 +126,7 @@ import S31.Gadgets
 #check S31.Field.inverse
 #check S31.Integers.castChecked
 #check S31.Integers.evaluate
+#check S31.Integers.staticShift
 #check S31.Integers.u256
 #check S31.Poseidon2.leaf
 #check S31.Poseidon2.pair
@@ -179,13 +186,18 @@ def operationCoverage : List (Op × List String) := [
   (.int_bit_and, ["S31.Gadgets.Packing.bits_sound_complete", "S31.Gadgets.IntegerBits.and_sound_complete"]),
   (.int_bit_or, ["S31.Gadgets.Packing.bits_sound_complete", "S31.Gadgets.IntegerBits.or_sound_complete"]),
   (.int_bit_xor, ["S31.Gadgets.Packing.bits_sound_complete", "S31.Gadgets.IntegerBits.xor_sound_complete"]),
-  (.int_bit_not, ["S31.Gadgets.Packing.bits_sound_complete", "S31.Gadgets.IntegerBits.not_sound_complete"])]
+  (.int_bit_not, ["S31.Gadgets.Packing.bits_sound_complete", "S31.Gadgets.IntegerBits.not_sound_complete"]),
+  (.int_shl, ["S31.Gadgets.IntegerShift.shl_sound_complete"]),
+  (.int_shr_logical, ["S31.Gadgets.IntegerShift.shr_logical_sound_complete"]),
+  (.int_shr_arithmetic, ["S31.Gadgets.IntegerShift.shr_arithmetic_sound_complete", "S31.Gadgets.IntegerShift.repeated_fill_pack"]),
+  (.int_rotl, ["S31.Gadgets.IntegerShift.rotl_sound_complete"]),
+  (.int_rotr, ["S31.Gadgets.IntegerShift.rotr_sound_complete"])]
 
 theorem operation_inventory_exact : operationCoverage.map Prod.fst = allOps := rfl
 
 theorem operation_inventory_complete (op : Op) :
     op ∈ operationCoverage.map Prod.fst := by cases op <;> simp [operationCoverage]
 
-theorem operation_inventory_size : operationCoverage.length = 50 := rfl
+theorem operation_inventory_size : operationCoverage.length = 55 := rfl
 
 end S31.Evidence

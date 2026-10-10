@@ -75,6 +75,8 @@ def evaluateNode (env : Env) (n : Node) : Result Value := do
   | .int_add_checked | .int_add_wrapping | .int_sub_checked | .int_sub_wrapping | .int_le | .int_mul_wrapping | .int_mul_checked | .int_bit_and | .int_bit_or | .int_bit_xor | .int_bit_not =>
     Integers.evaluate n.op (← need (n.constant.bind IntegerSpec.decode)) a.words b.words
   | .int_cast_checked => Integers.castChecked (← need (n.constant.bind IntegerCastSpec.decode)) a.words
+  | .int_shl | .int_shr_logical | .int_shr_arithmetic | .int_rotl | .int_rotr =>
+    Integers.staticShift n.op (← need (n.constant.bind IntegerSpec.decode)) (← need n.index) a.words
   | .bitcoin_target_mainnet => Bitcoin.headerTarget a.words
   | .bitcoin_block_work => Bitcoin.blockWork a.words
   | .bitcoin_genesis_hash_mainnet => pure Bitcoin.genesis

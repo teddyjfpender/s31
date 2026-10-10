@@ -45,12 +45,22 @@ const BitCache = struct {
         self.entries.deinit(allocator);
     }
 
+    fn rememberRepeated(self: *BitCache, allocator: std.mem.Allocator, word: Var, bit: Var, per_limb: usize) !void {
+        const bits = try allocator.alloc(Var, per_limb);
+        for (bits) |*slot| slot.* = bit;
+        try self.entries.put(allocator, key(word, per_limb), bits);
+    }
+
     fn get(self: *BitCache, comptime V: type, ctx: *circuit.builder.Context(V), words: []const Var, width: u32) ![]Var {
         const per_limb: usize = if (width == 8) 8 else 16;
         if (words.len * per_limb != @as(usize, @intCast(width))) return error.InvalidIntegerBits;
         const bits = try ctx.scratch().alloc(Var, @intCast(width));
         for (words, 0..) |word, i| {
             const chunk = self.entries.get(key(word, per_limb)) orelse blk: {
+                if (word.idx == ctx.zero().idx) {
+                    try self.rememberRepeated(ctx.scratch(), word, ctx.zero(), per_limb);
+                    break :blk self.entries.get(key(word, per_limb)).?;
+                }
                 const fresh = try integer_bits.decomposeWord(V, ctx, word, per_limb);
                 try self.entries.put(ctx.scratch(), key(word, per_limb), fresh);
                 break :blk fresh;
@@ -148,6 +158,11 @@ pub fn compileRaw(comptime V: type, allocator: std.mem.Allocator, program: relat
             .int_bit_or => try intBitwise(V, &ctx, &bit_cache, lhs.?, rhs.?, node.constant.?, .or_),
             .int_bit_xor => try intBitwise(V, &ctx, &bit_cache, lhs.?, rhs.?, node.constant.?, .xor_),
             .int_bit_not => try intBitwise(V, &ctx, &bit_cache, lhs.?, null, node.constant.?, .not_),
+            .int_shl => try intStaticShift(V, &ctx, &bit_cache, lhs.?, node.constant.?, node.index.?, .shl),
+            .int_shr_logical => try intStaticShift(V, &ctx, &bit_cache, lhs.?, node.constant.?, node.index.?, .shr_logical),
+            .int_shr_arithmetic => try intStaticShift(V, &ctx, &bit_cache, lhs.?, node.constant.?, node.index.?, .shr_arithmetic),
+            .int_rotl => try intStaticShift(V, &ctx, &bit_cache, lhs.?, node.constant.?, node.index.?, .rotl),
+            .int_rotr => try intStaticShift(V, &ctx, &bit_cache, lhs.?, node.constant.?, node.index.?, .rotr),
             .hash_sha256d_header => try sha256dHeader(V, &ctx, lhs.?),
             .bitcoin_target_mainnet => try mainnetTarget(V, &ctx, lhs.?),
             .bitcoin_block_work => try blockWorkEntry(V, &ctx, lhs.?),
@@ -412,6 +427,11 @@ fn compileWithSpansMode(comptime V: type, allocator: std.mem.Allocator, program:
             .int_bit_or => try intBitwise(V, &ctx, &bit_cache, entries[node.lhs.?], entries[node.rhs.?], node.constant.?, .or_),
             .int_bit_xor => try intBitwise(V, &ctx, &bit_cache, entries[node.lhs.?], entries[node.rhs.?], node.constant.?, .xor_),
             .int_bit_not => try intBitwise(V, &ctx, &bit_cache, entries[node.lhs.?], null, node.constant.?, .not_),
+            .int_shl => try intStaticShift(V, &ctx, &bit_cache, entries[node.lhs.?], node.constant.?, node.index.?, .shl),
+            .int_shr_logical => try intStaticShift(V, &ctx, &bit_cache, entries[node.lhs.?], node.constant.?, node.index.?, .shr_logical),
+            .int_shr_arithmetic => try intStaticShift(V, &ctx, &bit_cache, entries[node.lhs.?], node.constant.?, node.index.?, .shr_arithmetic),
+            .int_rotl => try intStaticShift(V, &ctx, &bit_cache, entries[node.lhs.?], node.constant.?, node.index.?, .rotl),
+            .int_rotr => try intStaticShift(V, &ctx, &bit_cache, entries[node.lhs.?], node.constant.?, node.index.?, .rotr),
             .hash_sha256d_header => blk: {
                 if (!sha_chip_mode) break :blk try sha256dHeader(V, &ctx, entries[node.lhs.?]);
                 const input = entries[node.lhs.?];
@@ -845,6 +865,55 @@ fn intCastChecked(comptime V: type, ctx: *circuit.builder.Context(V), input: Ent
     const wrappers = try ctx.scratch().alloc(circuit.builder.wrappers.M31Wrapper(Var), target.len);
     for (wrappers, target) |*wrapped, digit| wrapped.* = .newUnsafe(digit);
     return .{ .shape = .{ .kind = .u16, .length = target.len }, .lanes = try circuit.builder.simd.pack(V, ctx, wrappers), .raw = target, .integer_spec = (if (spec.target.signed) @as(u32, 256) else 0) + spec.target.width };
+}
+
+/// A static multiple-of-limb shift is a wire permutation plus zero/sign-fill
+/// wires. Other counts select proved Boolean bits and pack them once. The
+/// source count has already been normalized and is committed in node.index.
+fn intStaticShift(comptime V: type, ctx: *circuit.builder.Context(V), cache: *BitCache, lhs: Entry, encoded: u32, count: u32, mode: integer_bits.ShiftMode) !Entry {
+    const spec = relation.IntegerSpec.decode(encoded) orelse return error.InvalidIntegerSpec;
+    const source = lhs.raw orelse return error.InvalidIntegerOperand;
+    if (lhs.shape.kind != .u16 or source.len != spec.limbCount()) return error.InvalidIntegerOperand;
+    if (count > spec.width or ((mode == .rotl or mode == .rotr) and count >= spec.width) or
+        (mode == .shr_arithmetic and !spec.signed)) return error.InvalidIntegerShift;
+    if (spec.width == 8 and (lhs.integer_spec == null or (lhs.integer_spec.? & 0xff) != 8))
+        try constrainByte(V, ctx, source[0]);
+    if (count == 0) {
+        var same = lhs;
+        same.integer_spec = encoded;
+        return same;
+    }
+
+    const per_limb: u32 = if (spec.width == 8) 8 else 16;
+    var raw: []Var = undefined;
+    if (count % per_limb == 0) {
+        raw = try ctx.scratch().alloc(Var, source.len);
+        const moved: usize = @intCast(count / per_limb);
+        const fill: Var = if (mode == .shr_arithmetic) blk: {
+            const sign = try integerSign(V, ctx, source[source.len - 1], spec.width);
+            const top = try ctx.constant(QM31.fromBase(M31.fromCanonical(if (spec.width == 8) 255 else 65535)));
+            const word = try ctx.mul(sign, top);
+            try cache.rememberRepeated(ctx.scratch(), word, sign, @intCast(per_limb));
+            break :blk word;
+        } else ctx.zero();
+        for (raw, 0..) |*word, j| {
+            word.* = switch (mode) {
+                .shl => if (j < moved) ctx.zero() else source[j - moved],
+                .shr_logical => if (j + moved >= source.len) ctx.zero() else source[j + moved],
+                .shr_arithmetic => if (j + moved >= source.len) fill else source[j + moved],
+                .rotl => source[(j + source.len - moved) % source.len],
+                .rotr => source[(j + moved) % source.len],
+            };
+        }
+    } else {
+        const source_bits = try cache.get(V, ctx, source, spec.width);
+        const shifted = try integer_bits.shiftedBits(V, ctx, source_bits, @intCast(count), mode);
+        raw = try integer_bits.pack(V, ctx, shifted, spec.width);
+        try cache.remember(ctx.scratch(), raw, shifted, spec.width);
+    }
+    const wrappers = try ctx.scratch().alloc(circuit.builder.wrappers.M31Wrapper(Var), raw.len);
+    for (wrappers, raw) |*wrapped, word| wrapped.* = .newUnsafe(word);
+    return .{ .shape = .{ .kind = .u16, .length = raw.len }, .lanes = try circuit.builder.simd.pack(V, ctx, wrappers), .raw = raw, .integer_spec = encoded };
 }
 
 fn intBitwise(comptime V: type, ctx: *circuit.builder.Context(V), cache: *BitCache, lhs: Entry, rhs: ?Entry, encoded: u32, mode: integer_bits.Mode) !Entry {
@@ -2303,6 +2372,104 @@ test "bitwise integer chain constrains bits and reuses input decomposition" {
     // Two input bytes account for sixteen Boolean checks and two
     // reconstruction equalities. The chain should not decompose them again.
     try std.testing.expect(values.circuit.eq.items.len < 40);
+}
+
+test "aligned static rotation rewires limbs while unaligned rotation proves bits" {
+    const allocator = std.testing.allocator;
+    const aligned_source =
+        \\{"version":1,"name":"aligned_rotate","inputs":[{"name":"a","kind":"u16","length":2,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":32},{"name":"result","op":"int_rotl","lhs":"av","constant":32,"index":16}],"assertions":[],"public_outputs":["result"]}
+    ;
+    const unaligned_source =
+        \\{"version":1,"name":"unaligned_rotate","inputs":[{"name":"a","kind":"u16","length":2,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":32},{"name":"result","op":"int_rotr","lhs":"av","constant":32,"index":4}],"assertions":[],"public_outputs":["result"]}
+    ;
+    const aligned_text =
+        \\{"public_inputs":{},"private_inputs":{"a":[22136,4660]},"public_outputs":{"result":[4660,22136]}}
+    ;
+    const unaligned_text =
+        \\{"public_inputs":{},"private_inputs":{"a":[22136,4660]},"public_outputs":{"result":[17767,33059]}}
+    ;
+    var aligned_program = try relation.parseProgram(allocator, aligned_source);
+    defer aligned_program.deinit();
+    var unaligned_program = try relation.parseProgram(allocator, unaligned_source);
+    defer unaligned_program.deinit();
+    var aligned_input = try relation.parseAssignment(allocator, aligned_text);
+    defer aligned_input.deinit();
+    var unaligned_input = try relation.parseAssignment(allocator, unaligned_text);
+    defer unaligned_input.deinit();
+    _ = try relation.evaluate(allocator, aligned_program.value, aligned_input.value);
+    _ = try relation.evaluate(allocator, unaligned_program.value, unaligned_input.value);
+    var aligned = try compile(QM31, allocator, aligned_program.value, aligned_input.value);
+    defer aligned.deinit();
+    var unaligned = try compile(QM31, allocator, unaligned_program.value, unaligned_input.value);
+    defer unaligned.deinit();
+    try std.testing.expect(try aligned.isCircuitValid());
+    try std.testing.expect(try unaligned.isCircuitValid());
+    try std.testing.expect(aligned.circuit.eq.items.len + 24 < unaligned.circuit.eq.items.len);
+    var topology = try compile(circuit.builder.NoValue, allocator, unaligned_program.value, null);
+    defer topology.deinit();
+    try std.testing.expectEqual(unaligned.circuit.n_vars, topology.circuit.n_vars);
+}
+
+test "arithmetic right shift binds the signed fill bit" {
+    const allocator = std.testing.allocator;
+    const source =
+        \\{"version":1,"name":"signed_shift","inputs":[{"name":"a","kind":"u16","length":1,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":264},{"name":"result","op":"int_shr_arithmetic","lhs":"av","constant":264,"index":8}],"assertions":[],"public_outputs":["result"]}
+    ;
+    const valid_text =
+        \\{"public_inputs":{},"private_inputs":{"a":[253]},"public_outputs":{"result":[255]}}
+    ;
+    const false_text =
+        \\{"public_inputs":{},"private_inputs":{"a":[253]},"public_outputs":{"result":[0]}}
+    ;
+    var program = try relation.parseProgram(allocator, source);
+    defer program.deinit();
+    var valid = try relation.parseAssignment(allocator, valid_text);
+    defer valid.deinit();
+    var false_claim = try relation.parseAssignment(allocator, false_text);
+    defer false_claim.deinit();
+    _ = try relation.evaluate(allocator, program.value, valid.value);
+    try std.testing.expectError(error.PublicOutputMismatch, relation.evaluate(allocator, program.value, false_claim.value));
+    var circuit_values = try compile(QM31, allocator, program.value, valid.value);
+    defer circuit_values.deinit();
+    try std.testing.expect(try circuit_values.isCircuitValid());
+}
+
+test "shift chains reuse constant zero and sign-fill bit wires" {
+    const allocator = std.testing.allocator;
+    const zero_chain =
+        \\{"version":1,"name":"zero_chain","inputs":[{"name":"a","kind":"u16","length":2,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":32},{"name":"moved","op":"int_shl","lhs":"av","constant":32,"index":16},{"name":"result","op":"int_rotr","lhs":"moved","constant":32,"index":4}],"assertions":[],"public_outputs":["result"]}
+    ;
+    const zero_input =
+        \\{"public_inputs":{},"private_inputs":{"a":[22136,4660]},"public_outputs":{"result":[32768,1383]}}
+    ;
+    const sign_chain =
+        \\{"version":1,"name":"sign_chain","inputs":[{"name":"a","kind":"u16","length":1,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":264},{"name":"filled","op":"int_shr_arithmetic","lhs":"av","constant":264,"index":8},{"name":"result","op":"int_bit_not","lhs":"filled","constant":264}],"assertions":[],"public_outputs":["result"]}
+    ;
+    const sign_input =
+        \\{"public_inputs":{},"private_inputs":{"a":[253]},"public_outputs":{"result":[0]}}
+    ;
+    var zero_program = try relation.parseProgram(allocator, zero_chain);
+    defer zero_program.deinit();
+    var zero_assignment = try relation.parseAssignment(allocator, zero_input);
+    defer zero_assignment.deinit();
+    _ = try relation.evaluate(allocator, zero_program.value, zero_assignment.value);
+    var zero_circuit = try compile(QM31, allocator, zero_program.value, zero_assignment.value);
+    defer zero_circuit.deinit();
+    try std.testing.expect(try zero_circuit.isCircuitValid());
+    // Only the surviving 16-bit input word needs decomposition; the zero
+    // limb is a proven constant and contributes no Boolean checks.
+    try std.testing.expect(zero_circuit.circuit.eq.items.len < 24);
+
+    var sign_program = try relation.parseProgram(allocator, sign_chain);
+    defer sign_program.deinit();
+    var sign_assignment = try relation.parseAssignment(allocator, sign_input);
+    defer sign_assignment.deinit();
+    _ = try relation.evaluate(allocator, sign_program.value, sign_assignment.value);
+    var sign_circuit = try compile(QM31, allocator, sign_program.value, sign_assignment.value);
+    defer sign_circuit.deinit();
+    try std.testing.expect(try sign_circuit.isCircuitValid());
+    // The repeated fill bits come from the already proved sign wire.
+    try std.testing.expect(sign_circuit.circuit.eq.items.len < 10);
 }
 
 test "signed i128 full carry is valid and signed overflow is rejected" {

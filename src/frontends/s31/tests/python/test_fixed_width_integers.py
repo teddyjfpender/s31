@@ -273,6 +273,49 @@ class FixedWidthIntegerTests(unittest.TestCase):
         with self.assertRaises(OracleError):
             evaluate_relation(relation, assignment)
 
+    def test_static_shifts_and_rotations_at_boundaries(self) -> None:
+        cases = [
+            ("u8", "shl", 1, 128, 0, 1),
+            ("u8", "shr_logical", 8, 255, 0, 8),
+            ("i8", "shr_arithmetic", 1, 253, 254, 1),
+            ("i8", "shr_arithmetic", 80, 253, 255, 8),
+            ("u32", "rotl", 16, 0x12345678, 0x56781234, 16),
+            ("u32", "rotr", 4, 0x12345678, 0x81234567, 4),
+            ("u32", "shl", 16, 0x12345678, 0x56780000, 16),
+            ("u32", "shr_logical", 16, 0x12345678, 0x1234, 16),
+            ("i128", "shr_arithmetic", 127, (1 << 128) - 2, (1 << 128) - 1, 127),
+            ("u128", "rotl", 128, 1 << 127, 1 << 127, 0),
+            ("u128", "rotr", 129, 1, 1 << 127, 1),
+        ]
+        for kind, operation, source_count, pattern, expected, normalized in cases:
+            with self.subTest(kind=kind, operation=operation, count=source_count):
+                width = int(kind[1:])
+                relation, _ = compile_text(
+                    f"circuit shift(private a: {kind}) -> public {kind} "
+                    f"{{ let result = std::int::{operation}<{source_count}>(a); result }}")
+                self.assertEqual(relation["nodes"][-1]["op"], f"int_{operation}")
+                self.assertEqual(relation["nodes"][-1]["index"], normalized)
+                assignment = {"public_inputs": {}, "private_inputs": {"a": limbs(pattern, width)},
+                              "public_outputs": {"result": limbs(expected, width)}}
+                self.assertEqual(evaluate_relation(relation, assignment), assignment["public_outputs"])
+                assignment["public_outputs"]["result"][0] ^= 1
+                with self.assertRaises(OracleError):
+                    evaluate_relation(relation, assignment)
+
+    def test_static_shift_rejects_invalid_metadata_and_unsigned_arithmetic(self) -> None:
+        with self.assertRaisesRegex(SourceError, "requires a signed"):
+            compile_text("circuit bad(private a: u8) -> public u8 "
+                         "{ std::int::shr_arithmetic<1>(a) }")
+        with self.assertRaises(SourceError):
+            compile_text("circuit bad(private a: u8) -> public u8 { std::int::shl(a) }")
+        relation, _ = compile_text("circuit shift(private a: i16) -> public i16 "
+                                   "{ std::int::rotr<1>(a) }")
+        relation["nodes"][-1]["index"] = 16
+        assignment = {"public_inputs": {}, "private_inputs": {"a": [1]},
+                      "public_outputs": {relation["public_outputs"][0]: [32768]}}
+        with self.assertRaises(OracleError):
+            evaluate_relation(relation, assignment)
+
 
 if __name__ == "__main__":
     unittest.main()

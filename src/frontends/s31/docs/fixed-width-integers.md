@@ -69,10 +69,12 @@ two operands of the same nominal type. Neither field arithmetic nor
 | `reinterpret_u8(x)` through `reinterpret_i128(x)` | Reinterpret the same bits at the **same width** with the named signedness; no numeric conversion. |
 | `cast_checked_u8(x)` through `cast_checked_i128(x)` | Preserve the numeric value in the named target type; reject values outside its range. |
 | `bit_and(a,b)`, `bit_or(a,b)`, `bit_xor(a,b)`, `bit_not(a)` | Operate on the exact $W$-bit patterns; signed and unsigned inputs have the same Boolean equations. |
+| `shl<N>(a)`, `shr_logical<N>(a)`, `shr_arithmetic<N>(a)` | Fixed-count shift with zero fill, or sign fill for signed arithmetic right shift. Counts at or above $W$ have defined full-width behavior. |
+| `rotl<N>(a)`, `rotr<N>(a)` | Rotate the $W$-bit pattern by compile-time $N\bmod W$. |
 
 There is no integer `+` or `-` operator yet: call `std::int` to choose checked
 or wrapping semantics. `std::math::sub` and source `-` remain M31 operations.
-There are no fixed-width division or shift operations yet.
+There is no fixed-width division operation yet.
 Reinterpreting `i8` to `u8` maps $-1$ to
 255; it does not reject or change the bits.
 
@@ -247,6 +249,69 @@ and a 236,298-byte proof. The
 [measurement record](../../../../design/s31/measurements/language/fixed-width-bitwise-2026-10-10.json)
 includes padded rows and fixed preprocessing. The shared range table still
 dominates fixed work, and these single-run sizes are not speed benchmarks.
+
+## Static shifts and rotations by hand
+
+The count is a source-time integer in angle brackets. It becomes the `index`
+field of a width-tagged `int_*` relation node, so the compiled circuit and
+verifier key fix it. There is no witness-controlled shift count. For example,
+the [right-rotation source](../examples/math/shifts/u32_rotr4.s31) uses
+`std::int::rotr<4>(a)` on `a = 0x12345678`:
+
+| Hex nibble, high to low | 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Input | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+| Output after rotate right 4 | 8 | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
+
+Thus the public result is `0x81234567`, stored as little-endian `u16` limbs
+`[17767, 33059]`. At bit position $i$, the output wire is the proved input
+bit at $(i+4)\bmod32$. A 4-bit rotation crosses limb boundaries, so the
+compiler decomposes the two input limbs, checks each of their 32 Boolean
+bits, and reconstructs the limbs. It then selects existing bit wires and
+packs the two result limbs. Selecting a bit wire needs no new bit equation;
+the pack and public-output binding still add arithmetic gates.
+
+The [left-rotation source](../examples/math/shifts/u32_rotl16.s31) applies
+`rotl<16>` to the same input. Its result `0x56781234` has limbs
+`[4660, 22136]`: the circuit can swap the two already range-checked input
+limb wires. No bit decomposition is needed. `shl<16>` similarly moves the
+low limb upward and inserts zero. The actual AIR rows for these programs are
+pinned by the [native shift gate](../tests/acceptance/math/shifts.py).
+If a later operation needs individual bits, the compiler reuses any proved
+input decomposition. It treats an inserted zero limb as sixteen constant
+zero bits and a sign-fill limb as sixteen copies of the constrained sign bit.
+
+| Program | Raw Eq rows | Raw QM31 rows | Why |
+| --- | ---: | ---: | --- |
+| `u32_shl16` | 0 | 35 | One limb moved, one zero inserted. |
+| `u32_rotl16` | 0 | 36 | Two limbs swapped. |
+| `u32_shr_logical4` | 34 | 212 | Two limbs decomposed, bit wires selected and repacked. |
+| `u32_rotr4` | 34 | 220 | Two limbs decomposed, bit wires selected and repacked. |
+| `i8_sar8` | 4 | 45 | Byte sign extracted and repeated. |
+| `i128_sar128` | 3 | 71 | Top-limb sign extracted and repeated across eight limbs. |
+
+These are deterministic AIR rows for the checked-in sources under the
+`sparse-wide-v5` profile. Padded rows and fixed preprocessing appear in the
+[measurement record](../../../../design/s31/measurements/language/static-integer-shifts-2026-10-10.json).
+The 65,536-cell range table dominates fixed preprocessing, and these row
+counts alone do not establish an end-to-end speedup.
+
+Logical shifts insert zero bits. `shl<N>` discards high bits beyond the type
+width. `shr_arithmetic<N>` is restricted to signed types and repeats the
+proved sign bit. In the [signed byte source](../examples/math/shifts/i8_sar8.s31),
+`a=[253]` represents $-3$, with high bit $s=1$. Shifting by the full byte
+width gives eight one bits and result `[255]`, representing $-1$. The
+aligned circuit proves the sign bit and computes the fill byte as $255s$.
+If the source count reaches or exceeds the width, logical shifts produce
+zero, while arithmetic right shift produces all zero or all one bits by
+sign. Rotations use the source count modulo the width. These rules are
+checked when the source is lowered; the relation carries the canonical count.
+
+The [Lean shift model](../../../../formal/s31/S31/Gadgets/IntegerShift.lean)
+proves the five pointwise bit wiring relations equivalent to standard
+fixed-width bit-vector operations for any width. The native gate checks the
+production circuit and public statement separately; a full Lean proof of
+the Zig lowering is still future work.
 
 ## Wrapping multiplication by hand
 

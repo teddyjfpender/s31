@@ -20,6 +20,13 @@ INT_BINARY_CALLS = {
     "std::int::le": "int_le",
 }
 INT_COMPARE_CALLS = {"std::int::lt", "std::int::ge", "std::int::gt", "std::int::eq", "std::int::ne"}
+INT_STATIC_SHIFT_CALLS = {
+    "std::int::shl": "int_shl",
+    "std::int::shr_logical": "int_shr_logical",
+    "std::int::shr_arithmetic": "int_shr_arithmetic",
+    "std::int::rotl": "int_rotl",
+    "std::int::rotr": "int_rotr",
+}
 INT_CAST_CALLS = {f"std::int::from_limbs_{kind}" for kind in INT_SOURCE_TYPES} | {
     f"std::int::reinterpret_{kind}" for kind in INT_SOURCE_TYPES
 } | {
@@ -90,4 +97,4 @@ STANDARD_ALIASES = {
     "std::merkle::path_blake2s": "merkle_path_blake2s",
 }
 BUILTINS |= STANDARD_ALIASES.keys()
-BUILTINS |= INT_BINARY_CALLS.keys() | INT_COMPARE_CALLS | INT_CAST_CALLS | {"std::int::limbs", "std::int::bit_not"}
+BUILTINS |= INT_BINARY_CALLS.keys() | INT_COMPARE_CALLS | INT_STATIC_SHIFT_CALLS.keys() | INT_CAST_CALLS | {"std::int::limbs", "std::int::bit_not"}

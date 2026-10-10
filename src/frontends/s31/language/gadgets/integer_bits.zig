@@ -13,6 +13,26 @@ const QM31 = core.fields.qm31.QM31;
 const Var = circuit.builder.Var;
 
 pub const Mode = enum { and_, or_, xor_, not_ };
+pub const ShiftMode = enum { shl, shr_logical, shr_arithmetic, rotl, rotr };
+
+/// Static shifts only select already proved Boolean wires or the constant
+/// zero. Packing those wires proves the new word without another bit check.
+pub fn shiftedBits(comptime V: type, ctx: *circuit.builder.Context(V), bits: []const Var, count: usize, mode: ShiftMode) ![]Var {
+    const width = bits.len;
+    if (width == 0 or count > width or
+        ((mode == .rotl or mode == .rotr) and count >= width)) return error.InvalidIntegerBits;
+    const result = try ctx.scratch().alloc(Var, width);
+    for (result, 0..) |*out, i| {
+        out.* = switch (mode) {
+            .shl => if (i < count) ctx.zero() else bits[i - count],
+            .shr_logical => if (i + count >= width) ctx.zero() else bits[i + count],
+            .shr_arithmetic => if (i + count >= width) bits[width - 1] else bits[i + count],
+            .rotl => bits[(i + width - count) % width],
+            .rotr => bits[(i + count) % width],
+        };
+    }
+    return result;
+}
 
 pub fn decomposeWord(comptime V: type, ctx: *circuit.builder.Context(V), word: Var, per_limb: usize) ![]Var {
     if (per_limb != 8 and per_limb != 16) return error.InvalidIntegerBits;

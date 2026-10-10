@@ -52,6 +52,11 @@ inductive Op where
   | int_bit_or
   | int_bit_xor
   | int_bit_not
+  | int_shl
+  | int_shr_logical
+  | int_shr_arithmetic
+  | int_rotl
+  | int_rotr
 deriving DecidableEq, Repr, BEq
 
 def Op.wireName : Op → String
@@ -105,6 +110,11 @@ def Op.wireName : Op → String
   | .int_bit_or => "int_bit_or"
   | .int_bit_xor => "int_bit_xor"
   | .int_bit_not => "int_bit_not"
+  | .int_shl => "int_shl"
+  | .int_shr_logical => "int_shr_logical"
+  | .int_shr_arithmetic => "int_shr_arithmetic"
+  | .int_rotl => "int_rotl"
+  | .int_rotr => "int_rotr"
 
 def Op.ofWireName : String → Option Op
   | "constant" => some .constant
@@ -157,6 +167,11 @@ def Op.ofWireName : String → Option Op
   | "int_bit_or" => some .int_bit_or
   | "int_bit_xor" => some .int_bit_xor
   | "int_bit_not" => some .int_bit_not
+  | "int_shl" => some .int_shl
+  | "int_shr_logical" => some .int_shr_logical
+  | "int_shr_arithmetic" => some .int_shr_arithmetic
+  | "int_rotl" => some .int_rotl
+  | "int_rotr" => some .int_rotr
   | _ => none
 
 def allOps : List Op := [
@@ -209,6 +224,11 @@ def allOps : List Op := [
   .int_bit_and,
   .int_bit_or,
   .int_bit_xor,
-  .int_bit_not]
+  .int_bit_not,
+  .int_shl,
+  .int_shr_logical,
+  .int_shr_arithmetic,
+  .int_rotl,
+  .int_rotr]
 
 end S31

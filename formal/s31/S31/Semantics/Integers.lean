@@ -48,6 +48,20 @@ def castChecked (spec : IntegerCastSpec) (lhs : List M31) : Result (List M31) :=
   require (lower spec.target ≤ value && value ≤ upper spec.target) .overflow
   return encode spec.target.limbs (value % (spec.target.limit : Int)).toNat
 
+def staticShift (op : Op) (spec : IntegerSpec) (count : Nat)
+    (lhs : List M31) : Result (List M31) := do
+  let base := if spec.width == 8 then 256 else 65536
+  require (lhs.all (fun x => x.val < base)) .invalidValue
+  require (count ≤ spec.width &&
+    (if op == .int_rotl || op == .int_rotr then count < spec.width else true) &&
+    (if op == .int_shr_arithmetic then spec.signed else true)) .invalidValue
+  let a : BitVec spec.width := BitVec.ofNat spec.width (unsigned lhs)
+  let output := if op == .int_shl then a <<< count
+    else if op == .int_shr_logical then a >>> count
+    else if op == .int_shr_arithmetic then a.sshiftRight count
+    else if op == .int_rotl then a.rotateLeft count else a.rotateRight count
+  return encode spec.limbs output.toNat
+
 def u256 (op : Op) (lhs rhs : List M31) : Result (List M31) := do
   let a := unsigned lhs
   let b := unsigned rhs

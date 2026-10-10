@@ -8,7 +8,7 @@ The acceptance corpus compares both phases on every shipped example.
 from __future__ import annotations
 
 from s31_stdlib import INT_TYPES, P, SELECTABLE_KINDS, Type, TypeErrorS31
-from language.builtins import INT_BINARY_CALLS, INT_CAST_CALLS, INT_COMPARE_CALLS
+from language.builtins import INT_BINARY_CALLS, INT_CAST_CALLS, INT_COMPARE_CALLS, INT_STATIC_SHIFT_CALLS
 from language.types import FieldLiteral, SourceType, StaticArray
 
 
@@ -75,6 +75,14 @@ def infer_builtin(name: str, generic: int | None, args: tuple[SourceType, ...],
         arity(name, args, 1)
         require(isinstance(args[0], FieldLiteral), "splat<N>(constant_m31) expected")
         return Type("m31", length)
+    if name in INT_STATIC_SHIFT_CALLS:
+        static_parameter(name, generic, required=True)
+        arity(name, args, 1)
+        value = circuit(args[0])
+        require(value.kind in INT_TYPES, f"{name} requires a fixed-width scalar")
+        require(name != "std::int::shr_arithmetic" or INT_TYPES[value.kind][1],
+                "arithmetic right shift requires a signed fixed-width scalar")
+        return value
     if name in INT_BINARY_CALLS.keys() | INT_COMPARE_CALLS:
         static_parameter(name, generic)
         arity(name, args, 2)

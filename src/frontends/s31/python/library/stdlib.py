@@ -182,6 +182,19 @@ class Builder:
         return self.emit("int_bit_not", value.typ, wanted=wanted, span=span,
                          lhs=self.realize(value).ref, constant=int_spec(value.typ))
 
+    def int_static_shift(self, op: str, value: Value, count: int, *, wanted: str | None = None,
+                         span: dict[str, int] | None = None) -> Value:
+        if value.typ.kind not in INT_TYPES or op not in {
+            "int_shl", "int_shr_logical", "int_shr_arithmetic", "int_rotl", "int_rotr"
+        } or count < 0:
+            raise TypeErrorS31("static integer shift requires a fixed-width scalar and nonnegative count")
+        width, signed = INT_TYPES[value.typ.kind]
+        if op == "int_shr_arithmetic" and not signed:
+            raise TypeErrorS31("arithmetic right shift requires a signed fixed-width scalar")
+        normalized = count % width if op in {"int_rotl", "int_rotr"} else min(count, width)
+        return self.emit(op, value.typ, wanted=wanted, span=span,
+                         lhs=self.realize(value).ref, constant=int_spec(value.typ), index=normalized)
+
     def emit(self, op: str, typ: Type, *, wanted: str | None = None,
              span: dict[str, int] | None = None, **fields: Any) -> Value:
         if len(self.nodes) >= MAX_NODES:

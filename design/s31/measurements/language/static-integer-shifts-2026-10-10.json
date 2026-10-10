@@ -1,0 +1,165 @@
+{
+  "cases": [
+    {
+      "canonical_ir_sha256": "4fd4b4a1bb6f33070dffa14ee806d66240cf046515164eac3d14d1a317707f03",
+      "changed_public_statement_rejected": true,
+      "false_output_rejected": true,
+      "index": 128,
+      "name": "i128_sar128",
+      "native_verifier_accepted": true,
+      "op": "int_shr_arithmetic",
+      "padded": {
+        "blake_g": 0,
+        "eq": 16,
+        "m31_to_u32": 16,
+        "qm31_ops": 128,
+        "triple_xor": 0
+      },
+      "preprocessed_cells": 66640,
+      "proof_bytes": 229268,
+      "raw": {
+        "blake_g": 0,
+        "eq": 3,
+        "m31_to_u32": 10,
+        "qm31_ops": 71,
+        "triple_xor": 0
+      },
+      "spec": 384
+    },
+    {
+      "canonical_ir_sha256": "0b58959847fd077f423601d92d5f0891357c053a393a9b86d757dbeb5ece9dd0",
+      "changed_public_statement_rejected": true,
+      "false_output_rejected": true,
+      "index": 8,
+      "name": "i8_sar8",
+      "native_verifier_accepted": true,
+      "op": "int_shr_arithmetic",
+      "padded": {
+        "blake_g": 0,
+        "eq": 16,
+        "m31_to_u32": 16,
+        "qm31_ops": 64,
+        "triple_xor": 0
+      },
+      "preprocessed_cells": 66128,
+      "proof_bytes": 238913,
+      "raw": {
+        "blake_g": 0,
+        "eq": 4,
+        "m31_to_u32": 4,
+        "qm31_ops": 45,
+        "triple_xor": 0
+      },
+      "spec": 264
+    },
+    {
+      "canonical_ir_sha256": "16a87cdf2710caeb467c52cfde1af4292ae6b0e39a22e1550c150ff1c3127973",
+      "changed_public_statement_rejected": true,
+      "false_output_rejected": true,
+      "index": 16,
+      "name": "u32_rotl16",
+      "native_verifier_accepted": true,
+      "op": "int_rotl",
+      "padded": {
+        "blake_g": 0,
+        "eq": 16,
+        "m31_to_u32": 16,
+        "qm31_ops": 64,
+        "triple_xor": 0
+      },
+      "preprocessed_cells": 66128,
+      "proof_bytes": 235050,
+      "raw": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 2,
+        "qm31_ops": 36,
+        "triple_xor": 0
+      },
+      "spec": 32
+    },
+    {
+      "canonical_ir_sha256": "ab937b70de109aca38eeff9d69b0a754c63bdfb1d1a2f9c6521d5950fd493096",
+      "changed_public_statement_rejected": true,
+      "false_output_rejected": true,
+      "index": 4,
+      "name": "u32_rotr4",
+      "native_verifier_accepted": true,
+      "op": "int_rotr",
+      "padded": {
+        "blake_g": 0,
+        "eq": 64,
+        "m31_to_u32": 16,
+        "qm31_ops": 256,
+        "triple_xor": 0
+      },
+      "preprocessed_cells": 67760,
+      "proof_bytes": 232341,
+      "raw": {
+        "blake_g": 0,
+        "eq": 34,
+        "m31_to_u32": 2,
+        "qm31_ops": 220,
+        "triple_xor": 0
+      },
+      "spec": 32
+    },
+    {
+      "canonical_ir_sha256": "ed5ce7fa20e0f528a464001b3086e1d3dd55b1eeb34e86c7d8564ce99028ff72",
+      "changed_public_statement_rejected": true,
+      "false_output_rejected": true,
+      "index": 16,
+      "name": "u32_shl16",
+      "native_verifier_accepted": true,
+      "op": "int_shl",
+      "padded": {
+        "blake_g": 0,
+        "eq": 16,
+        "m31_to_u32": 16,
+        "qm31_ops": 64,
+        "triple_xor": 0
+      },
+      "preprocessed_cells": 66128,
+      "proof_bytes": 236507,
+      "raw": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 2,
+        "qm31_ops": 35,
+        "triple_xor": 0
+      },
+      "spec": 32
+    },
+    {
+      "canonical_ir_sha256": "92c4cc6e608b16df4c6422fc1e87f8faea7a276948130bc2abfe315f87c327e1",
+      "changed_public_statement_rejected": true,
+      "false_output_rejected": true,
+      "index": 4,
+      "name": "u32_shr_logical4",
+      "native_verifier_accepted": true,
+      "op": "int_shr_logical",
+      "padded": {
+        "blake_g": 0,
+        "eq": 64,
+        "m31_to_u32": 16,
+        "qm31_ops": 256,
+        "triple_xor": 0
+      },
+      "preprocessed_cells": 67760,
+      "proof_bytes": 236264,
+      "raw": {
+        "blake_g": 0,
+        "eq": 34,
+        "m31_to_u32": 2,
+        "qm31_ops": 212,
+        "triple_xor": 0
+      },
+      "spec": 32
+    }
+  ],
+  "constant_min_base": 16,
+  "date": "2026-10-10",
+  "measurement_limits": "Canonical IR hashes, AIR rows, and fixed cells are deterministic for these sources. Proof sizes are one local run each. The shared 65536-cell seq_16 range table dominates fixed preprocessing; these data do not establish a proving-time advantage.",
+  "profile": "sparse-wide-v5",
+  "schema": "s31-static-integer-shifts-v1"
+}

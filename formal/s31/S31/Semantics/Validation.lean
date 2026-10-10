@@ -18,6 +18,8 @@ def Node.metadataValid (n : Node) : Bool :=
   | .select | .bool_select => n.fields true true true false false false false false
   | .repeat => n.fields true false false false false false true true
   | .add_const | .mul_const | .int_view | .int_cast_checked | .int_bit_not => n.fields true false false false true false false false
+  | .int_shl | .int_shr_logical | .int_shr_arithmetic | .int_rotl | .int_rotr =>
+    n.fields true false false true true false false false
   | .int_add_checked | .int_add_wrapping | .int_sub_checked | .int_sub_wrapping | .int_le | .int_mul_wrapping | .int_mul_checked | .int_bit_and | .int_bit_or | .int_bit_xor =>
     n.fields true true false false true false false false
   | .add | .mul | .array_concat | .u256_add | .u256_add_checked | .u256_le |
@@ -129,6 +131,13 @@ def inferNode (shapes : Shapes) (node : Node) : Result Shape := do
     let spec ← need (node.constant.bind IntegerCastSpec.decode)
     let _ ← expectShape lhs .u16 spec.source.limbs
     return ⟨.u16, spec.target.limbs⟩
+  | .int_shl | .int_shr_logical | .int_shr_arithmetic | .int_rotl | .int_rotr =>
+    let spec ← need (node.constant.bind IntegerSpec.decode)
+    let count ← need node.index
+    require (count ≤ spec.width &&
+      (if node.op == .int_rotl || node.op == .int_rotr then count < spec.width else true) &&
+      (if node.op == .int_shr_arithmetic then spec.signed else true)) .invalidShape
+    expectShape lhs .u16 spec.limbs
   | .bitcoin_block_work => expectShape lhs .u16 (some 16)
   | .hash_sha256d_header | .bitcoin_target_mainnet | .bitcoin_prev_hash |
       .bitcoin_header_bits | .bitcoin_header_time =>

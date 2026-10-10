@@ -226,6 +226,7 @@ There is no general module loader or third-party package system yet.
 | `std::int::reinterpret_u8` through `reinterpret_i128` | Width-tagged `int_view` | Same width; changes signed interpretation, not bits. |
 | `std::int::cast_checked_u8` through `cast_checked_i128` | `int_cast_checked` with source and target tags | Numeric widening or narrowing; sign extension and discarded bits are constrained, and out-of-range values reject. |
 | `std::int::bit_and`, `bit_or`, `bit_xor`, `bit_not` | Width-tagged `int_bit_*` with Boolean bit decomposition and packing | Exact bit-pattern operation at the nominal width; binary calls require equal nominal types. |
+| `std::int::{shl,shr_logical,shr_arithmetic,rotl,rotr}<N>` | Width-tagged static integer shift or rotation with canonical `index=N` | One fixed-width operand; arithmetic right shift requires a signed type; count is source-time only. |
 
 The [wide-value worked example](../wide-values.md) gives the exact integer
 equations, source, assignment, and current Bitcoin boundary. Its `u16`

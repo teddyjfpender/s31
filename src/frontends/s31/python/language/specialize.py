@@ -6,7 +6,7 @@ from typing import Any
 
 import s31_mathlib as mathlib
 from s31_stdlib import Builder, INT_TYPES, P, StaticGroup, StepState, Type, TypeErrorS31, Value
-from language.builtins import (INT_BINARY_CALLS, INT_CAST_CALLS, INT_COMPARE_CALLS,
+from language.builtins import (INT_BINARY_CALLS, INT_CAST_CALLS, INT_COMPARE_CALLS, INT_STATIC_SHIFT_CALLS,
                                MAX_CALL_DEPTH, STANDARD_ALIASES)
 from language.syntax import Circuit, Expr, Function, FunctionType, SourceError, StaticClosure, StaticNamedFunction, StaticTuple, Statement, TupleType
 
@@ -209,6 +209,12 @@ class Compiler:
                     return self.call_function(callee.name, args, wanted, expr)
                 return self.call_closure(callee, args, wanted, expr)
             name = STANDARD_ALIASES.get(expr.value, expr.value)
+            if name in INT_STATIC_SHIFT_CALLS:
+                if expr.generic is None or len(expr.args) != 1:
+                    raise TypeErrorS31(f"{name}<COUNT>(value) expected")
+                value = self.expect_value(self.eval_expr(expr.args[0], env), expr.args[0])
+                return self.builder.int_static_shift(INT_STATIC_SHIFT_CALLS[name], value,
+                                                     expr.generic, wanted=wanted, span=self.span(expr))
             if name in INT_BINARY_CALLS or name in INT_COMPARE_CALLS or name in INT_CAST_CALLS or name in {"std::int::limbs", "std::int::bit_not"}:
                 if expr.generic is not None:
                     raise TypeErrorS31(f"{name} does not accept a static parameter")

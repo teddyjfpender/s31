@@ -1,0 +1,6 @@
+use std@1;
+
+circuit i8_sar8(private a: i8) -> public i8 {
+    let result = std::int::shr_arithmetic<8>(a);
+    result
+}

@@ -135,6 +135,23 @@ def expected(node: dict, args: list[tuple[str, list[int]]]) -> list[int]:
             raw = (number(a) & number(b)) if op == "int_bit_and" else (
                 (number(a) | number(b)) if op == "int_bit_or" else (number(a) ^ number(b)))
             return limbs(raw, max(1, width // 16))
+        if op in {"int_shl", "int_shr_logical", "int_shr_arithmetic", "int_rotl", "int_rotr"}:
+            amount = node["index"]
+            if amount > width or (op in {"int_rotl", "int_rotr"} and amount >= width) or (
+                op == "int_shr_arithmetic" and not signed):
+                raise ValueError("invalid static shift")
+            raw = number(a)
+            if op == "int_shl":
+                result = raw << amount
+            elif op == "int_shr_logical":
+                result = raw >> amount
+            elif op == "int_shr_arithmetic":
+                result = x >> amount
+            elif op == "int_rotl":
+                result = raw if amount == 0 else (raw << amount) | (raw >> (width - amount))
+            else:
+                result = raw if amount == 0 else (raw >> amount) | (raw << (width - amount))
+            return limbs(result % limit, max(1, width // 16))
         if op == "int_le":
             return [int(x <= y)]
         if op == "int_mul_wrapping":
@@ -264,6 +281,19 @@ def corpus() -> list[Case]:
                     args = [u16(limbs(x, count))] + ([] if op in {"int_view", "int_bit_not"} else [u16(limbs(y, count))])
                     cases.append(operation_case(op, args, constant=spec))
     cases.append(operation_case("int_view", [u16([256])], constant=8))
+    for width in [8, 16, 32, 64, 128]:
+        limb_count, limit = max(1, width // 16), 2**width
+        for signed in [False, True]:
+            spec = width + 256 * signed
+            for op in ["int_shl", "int_shr_logical", "int_shr_arithmetic", "int_rotl", "int_rotr"]:
+                if op == "int_shr_arithmetic" and not signed:
+                    continue
+                for amount in sorted({0, 1, width // 2, width - 1, width}):
+                    if op in {"int_rotl", "int_rotr"} and amount == width:
+                        continue
+                    for pattern in [0, limit // 2, limit - 1]:
+                        cases.append(operation_case(op, [u16(limbs(pattern, limb_count))],
+                                                    constant=spec, index=amount))
     for source, target, pattern in [
         (264, 272, 255), (272, 264, 65408), (272, 264, 65407),
         (16, 264, 127), (16, 264, 128), (272, 32, 65535),

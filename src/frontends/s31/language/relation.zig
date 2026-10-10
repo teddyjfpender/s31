@@ -55,7 +55,7 @@ pub fn applyStep(values: []M31, step: Step) !void {
         },
     }
 }
-pub const Op = enum { constant, cast_m31, add, mul, add_const, mul_const, repeat, hash_blake2s, hash_blake2s_leaf, hash_blake2s_pair, select, hash_poseidon2_leaf, hash_poseidon2_pair, sum_lanes, u256_add, u256_le, u256_add_checked, hash_sha256d_header, bitcoin_target_mainnet, bitcoin_prev_hash, bitcoin_header_bits, bitcoin_genesis_hash_mainnet, bitcoin_header_time, u32_lt, inv, is_zero, u256_sub, u256_sub_checked, array_get, array_concat, array_slice, bool_not, bool_and, bool_or, bool_xor, bool_select, bitcoin_block_work, int_view, int_add_checked, int_add_wrapping, int_sub_checked, int_sub_wrapping, int_le, int_mul_wrapping, int_mul_checked, int_cast_checked, int_bit_and, int_bit_or, int_bit_xor, int_bit_not };
+pub const Op = enum { constant, cast_m31, add, mul, add_const, mul_const, repeat, hash_blake2s, hash_blake2s_leaf, hash_blake2s_pair, select, hash_poseidon2_leaf, hash_poseidon2_pair, sum_lanes, u256_add, u256_le, u256_add_checked, hash_sha256d_header, bitcoin_target_mainnet, bitcoin_prev_hash, bitcoin_header_bits, bitcoin_genesis_hash_mainnet, bitcoin_header_time, u32_lt, inv, is_zero, u256_sub, u256_sub_checked, array_get, array_concat, array_slice, bool_not, bool_and, bool_or, bool_xor, bool_select, bitcoin_block_work, int_view, int_add_checked, int_add_wrapping, int_sub_checked, int_sub_wrapping, int_le, int_mul_wrapping, int_mul_checked, int_cast_checked, int_bit_and, int_bit_or, int_bit_xor, int_bit_not, int_shl, int_shr_logical, int_shr_arithmetic, int_rotl, int_rotr };
 /// The node constant binds an integer's width and signedness into canonical IR.
 /// The source-level scalar is carried as little-endian u16 words; an 8-bit
 /// scalar uses one u16 word with an additional circuit-enforced byte bound.
@@ -215,7 +215,9 @@ pub const Program = struct {
             const rhs: ?Shape = if (node.rhs) |name| shapes.get(name) orelse return error.UnknownOperand else null;
             const selector: ?Shape = if (node.selector) |name| shapes.get(name) orelse return error.UnknownOperand else null;
             if (node.op != .select and node.op != .bool_select and selector != null) return error.InvalidNode;
-            if (node.op != .array_get and node.op != .array_slice and node.index != null) return error.InvalidNode;
+            if (node.op != .array_get and node.op != .array_slice and node.op != .int_shl and
+                node.op != .int_shr_logical and node.op != .int_shr_arithmetic and
+                node.op != .int_rotl and node.op != .int_rotr and node.index != null) return error.InvalidNode;
             var result: Shape = undefined;
             switch (node.op) {
                 .array_get => {
@@ -300,6 +302,17 @@ pub const Program = struct {
                         return error.InvalidNode;
                     }
                     result = if (node.op == .int_le) .{ .kind = .m31, .length = 1 } else lhs.?;
+                },
+                .int_shl, .int_shr_logical, .int_shr_arithmetic, .int_rotl, .int_rotr => {
+                    const spec = IntegerSpec.decode(node.constant) orelse return error.InvalidIntegerSpec;
+                    const count = node.index orelse return error.InvalidNode;
+                    if (lhs == null or lhs.?.kind != .u16 or lhs.?.length != spec.limbCount() or
+                        rhs != null or node.selector != null or node.length != null or
+                        node.rounds != null or node.body != null or
+                        (node.op == .int_shr_arithmetic and !spec.signed) or
+                        (if (node.op == .int_rotl or node.op == .int_rotr) count >= spec.width else count > spec.width))
+                        return error.InvalidNode;
+                    result = lhs.?;
                 },
                 .int_cast_checked => {
                     const spec = IntegerCastSpec.decode(node.constant) orelse return error.InvalidIntegerSpec;
@@ -405,7 +418,7 @@ pub const Program = struct {
             };
             const shape: Shape = .{ .kind = if (node.op == .array_get or node.op == .array_concat or node.op == .array_slice or node.op == .select)
                 (shapes.get(node.lhs.?) orelse return error.UnknownOperand).kind
-            else if (node.op == .int_view or node.op == .int_add_checked or node.op == .int_add_wrapping or node.op == .int_sub_checked or node.op == .int_sub_wrapping or node.op == .int_mul_wrapping or node.op == .int_mul_checked or node.op == .int_cast_checked or node.op == .int_bit_and or node.op == .int_bit_or or node.op == .int_bit_xor or node.op == .int_bit_not or node.op == .u256_add or node.op == .u256_add_checked or node.op == .u256_sub or node.op == .u256_sub_checked or node.op == .hash_sha256d_header or node.op == .bitcoin_target_mainnet or node.op == .bitcoin_prev_hash or node.op == .bitcoin_header_bits or node.op == .bitcoin_header_time or node.op == .bitcoin_genesis_hash_mainnet or node.op == .bitcoin_block_work) .u16 else .m31, .length = length };
+            else if (node.op == .int_view or node.op == .int_add_checked or node.op == .int_add_wrapping or node.op == .int_sub_checked or node.op == .int_sub_wrapping or node.op == .int_mul_wrapping or node.op == .int_mul_checked or node.op == .int_cast_checked or node.op == .int_bit_and or node.op == .int_bit_or or node.op == .int_bit_xor or node.op == .int_bit_not or node.op == .int_shl or node.op == .int_shr_logical or node.op == .int_shr_arithmetic or node.op == .int_rotl or node.op == .int_rotr or node.op == .u256_add or node.op == .u256_add_checked or node.op == .u256_sub or node.op == .u256_sub_checked or node.op == .hash_sha256d_header or node.op == .bitcoin_target_mainnet or node.op == .bitcoin_prev_hash or node.op == .bitcoin_header_bits or node.op == .bitcoin_header_time or node.op == .bitcoin_genesis_hash_mainnet or node.op == .bitcoin_block_work) .u16 else .m31, .length = length };
             if (std.mem.eql(u8, node.name, name)) return shape;
             try shapes.put(allocator, node.name, shape);
         }
@@ -575,7 +588,9 @@ pub fn evaluate(allocator: std.mem.Allocator, program: Program, assignment: Assi
             continue;
         }
         if (node.op == .int_view or node.op == .int_bit_and or node.op == .int_bit_or or
-            node.op == .int_bit_xor or node.op == .int_bit_not or
+            node.op == .int_bit_xor or node.op == .int_bit_not or node.op == .int_shl or
+            node.op == .int_shr_logical or node.op == .int_shr_arithmetic or
+            node.op == .int_rotl or node.op == .int_rotr or
             node.op == .int_add_checked or node.op == .int_add_wrapping or
             node.op == .int_sub_checked or node.op == .int_sub_wrapping or node.op == .int_le or
             node.op == .int_mul_wrapping or node.op == .int_mul_checked)
@@ -589,7 +604,9 @@ pub fn evaluate(allocator: std.mem.Allocator, program: Program, assignment: Assi
             if (node.op == .int_view) {
                 @memcpy(out, lhs.?);
             } else if (node.op == .int_bit_and or node.op == .int_bit_or or
-                node.op == .int_bit_xor or node.op == .int_bit_not)
+                node.op == .int_bit_xor or node.op == .int_bit_not or node.op == .int_shl or
+                node.op == .int_shr_logical or node.op == .int_shr_arithmetic or
+                node.op == .int_rotl or node.op == .int_rotr)
             {
                 var left_pattern: u128 = 0;
                 var right_pattern: u128 = 0;
@@ -598,11 +615,24 @@ pub fn evaluate(allocator: std.mem.Allocator, program: Program, assignment: Assi
                     right_pattern |= @as(u128, word.v) << @as(u7, @intCast(16 * index));
                 };
                 const mask: u128 = if (spec.width == 128) std.math.maxInt(u128) else (@as(u128, 1) << @as(u7, @intCast(spec.width))) - 1;
+                const count = node.index orelse 0;
                 const result_bits: u128 = switch (node.op) {
                     .int_bit_and => left_pattern & right_pattern,
                     .int_bit_or => left_pattern | right_pattern,
                     .int_bit_xor => left_pattern ^ right_pattern,
                     .int_bit_not => ~left_pattern & mask,
+                    .int_shl => if (count >= spec.width) 0 else (left_pattern << @as(u7, @intCast(count))) & mask,
+                    .int_shr_logical => if (count >= spec.width) 0 else left_pattern >> @as(u7, @intCast(count)),
+                    .int_shr_arithmetic => blk: {
+                        const sign = left_pattern & (@as(u128, 1) << @as(u7, @intCast(spec.width - 1))) != 0;
+                        if (count >= spec.width) break :blk if (sign) mask else 0;
+                        const shifted = left_pattern >> @as(u7, @intCast(count));
+                        break :blk if (sign and count != 0) shifted | (mask ^ (mask >> @as(u7, @intCast(count)))) else shifted;
+                    },
+                    .int_rotl => if (count == 0) left_pattern else ((left_pattern << @as(u7, @intCast(count))) |
+                        (left_pattern >> @as(u7, @intCast(spec.width - count)))) & mask,
+                    .int_rotr => if (count == 0) left_pattern else ((left_pattern >> @as(u7, @intCast(count))) |
+                        (left_pattern << @as(u7, @intCast(spec.width - count)))) & mask,
                     else => unreachable,
                 };
                 for (out, 0..) |*slot, index| slot.* = M31.fromCanonical(@intCast((result_bits >> @as(u7, @intCast(16 * index))) & (base - 1)));
@@ -783,7 +813,7 @@ pub fn evaluate(allocator: std.mem.Allocator, program: Program, assignment: Assi
                 if (bit > 1) return error.InvalidSelector;
                 break :blk if (bit == 0) lhs.?[i] else rhs.?[i];
             },
-            .hash_blake2s, .hash_blake2s_leaf, .hash_blake2s_pair, .hash_poseidon2_leaf, .hash_poseidon2_pair, .u256_add, .u256_le, .u256_add_checked, .u256_sub, .u256_sub_checked, .u32_lt, .hash_sha256d_header, .bitcoin_target_mainnet, .bitcoin_block_work, .bitcoin_prev_hash, .bitcoin_header_bits, .bitcoin_header_time, .bitcoin_genesis_hash_mainnet, .array_get, .array_concat, .array_slice, .int_view, .int_add_checked, .int_add_wrapping, .int_sub_checked, .int_sub_wrapping, .int_le, .int_mul_wrapping, .int_mul_checked, .int_cast_checked, .int_bit_and, .int_bit_or, .int_bit_xor, .int_bit_not => unreachable,
+            .hash_blake2s, .hash_blake2s_leaf, .hash_blake2s_pair, .hash_poseidon2_leaf, .hash_poseidon2_pair, .u256_add, .u256_le, .u256_add_checked, .u256_sub, .u256_sub_checked, .u32_lt, .hash_sha256d_header, .bitcoin_target_mainnet, .bitcoin_block_work, .bitcoin_prev_hash, .bitcoin_header_bits, .bitcoin_header_time, .bitcoin_genesis_hash_mainnet, .array_get, .array_concat, .array_slice, .int_view, .int_add_checked, .int_add_wrapping, .int_sub_checked, .int_sub_wrapping, .int_le, .int_mul_wrapping, .int_mul_checked, .int_cast_checked, .int_bit_and, .int_bit_or, .int_bit_xor, .int_bit_not, .int_shl, .int_shr_logical, .int_shr_arithmetic, .int_rotl, .int_rotr => unreachable,
         };
         try values.put(allocator, node.name, out);
     }
