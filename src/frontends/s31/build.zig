@@ -68,6 +68,7 @@ pub fn build(b: *std.Build) void {
     const square_export_root = localEntry(b, "tools/formal/export_square4_topology.zig", target, optimize);
     square_export_root.addImport("stwo_s31_prototype", frontend);
     square_export_root.addImport("stwo_circuit_frontend", circuit);
+    square_export_root.addImport("stwo_core", core);
     const square_export = b.addRunArtifact(b.addExecutable(.{
         .name = "s31-export-square4-topology-lean",
         .root_module = square_export_root,

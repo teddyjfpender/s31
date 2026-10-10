@@ -30,6 +30,14 @@ M31-to-ZMod field map, so it relates the AIR's packed field values to native
 M31 arithmetic. `honest_row`, `output_unique`, `all_flags_zero_rejected`, and
 `two_flags_rejected` provide concrete non-vacuity and malformed-row controls.
 
+`PackRows.lean` models the three basis multiplications and three additions
+that pack four scalar M31 input wires into one QM31 wire. Its soundness
+theorem quantifies over all six intermediate row witnesses; they force the
+packed result, and the companion theorem constructs honest witnesses. The
+source-generated `TextSquare4Native` module records the actual six gate IDs
+emitted for the worked program. Its proof applies `PackRows` to derive the
+arithmetic circuit's input wire from those gate constraints.
+
 `SimdChunks.partial_row_iff` covers the short final chunk of an array. For
 any `n ≤ 4`, arbitrary M31 values may fill the unused input lanes. An accepted
 full row with claimed active output lanes exists exactly when every active

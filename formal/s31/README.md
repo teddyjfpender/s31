@@ -135,7 +135,9 @@ when a canonical public `result` differs from the computed fourth powers.
 The generated `TextSquare4Native` module records the gate IDs and row spans
 returned by the production Zig direct compiler for this same normalized IR.
 Lean checks the concrete gate chain and interprets its arbitrary wire values
-with the two packed AIR row constraints. Source regeneration detects drift in
+with the two packed AIR row constraints. It also checks the six native input
+packing rows and proves that their arbitrary witnesses produce the packed
+public input before the first square. Source regeneration detects drift in
 the Python frontend or native compiler; the proof itself covers the emitted
 topology instance and local row semantics.
 

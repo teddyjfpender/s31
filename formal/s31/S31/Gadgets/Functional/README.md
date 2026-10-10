@@ -67,7 +67,10 @@ recorded pointwise-multiply gates form the same wire chain. The current
 compiler emits gate `22 .* 22 = 23`, followed by `23 .* 23 = 24`.
 `TextSquare4NativeProof.native_rows_sound` proves that any packed field
 assignment satisfying those two local row constraints makes wire `24` the
-four-lane fourth power, provided wire `22` is the correctly packed input.
+four-lane fourth power. The same native certificate now includes the three
+basis multiplications and three additions that produce wire `22`; the Lean
+proof derives its packed value from their local constraints and the four
+canonical scalar input values.
 The source binding regenerates the native artifact on every formal audit;
 there is still no machine-checked proof of the whole Zig compiler or STARK
 protocol.

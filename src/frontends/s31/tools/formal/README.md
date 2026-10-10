@@ -3,8 +3,10 @@
 `export_square4_topology.zig` compiles normalized IR using the production
 `relation_compiler.compileDirectWithSpans` path in topology mode. It checks
 that `functional_square4.s31` lowers to two adjacent pointwise multiplication
-rows whose gate IDs form a self-square chain, then prints a Lean module with
-the observed gate IDs and row spans.
+rows whose gate IDs form a self-square chain. It also checks the input pack's
+three basis multiplications and three additions against the compiler's pinned
+QM31 basis constants, then prints their observed gate IDs and row spans as a
+Lean module.
 
 `scripts/s31_formal.py` runs the Python text compiler on the checked-in
 `.s31` source, passes that fresh IR to this executable, and compares the

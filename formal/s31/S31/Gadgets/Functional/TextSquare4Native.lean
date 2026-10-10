@@ -7,10 +7,14 @@ structure Gate where
   input0 : Nat
   input1 : Nat
   output : Nat
-deriving DecidableEq, Repr
+deriving DecidableEq, Repr, Inhabited
 
 def first : Gate := ⟨22, 22, 23⟩
 def second : Gate := ⟨23, 23, 24⟩
 def nodeRowSpans : List (Nat × Nat) := [(6, 7), (7, 8)]
+def inputWires : List Nat := [11, 12, 13, 14]
+def inputBasisWires : List Nat := [15, 2, 16]
+def inputPackMul : List Gate := [⟨15, 12, 17⟩, ⟨2, 13, 19⟩, ⟨16, 14, 21⟩]
+def inputPackAdd : List Gate := [⟨11, 17, 18⟩, ⟨18, 19, 20⟩, ⟨20, 21, 22⟩]
 
 end S31.Functional.TextSquare4Native
