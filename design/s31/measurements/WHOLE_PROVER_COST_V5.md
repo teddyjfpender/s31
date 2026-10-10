@@ -1,11 +1,51 @@
 # Whole-prover cost model V5: prospective RSS interval study
 
-**Status: static protocol and tooling only. No V5 package or native proof has
-been built or timed.** The [V4 audit](language/whole-prover-cost-v4-audit.json)
+**Status: prospective native run complete; the predeclared local accuracy gate
+failed. Automatic lowering remains disabled.** The
+[V4 audit](language/whole-prover-cost-v4-audit.json)
 is immutable and failed its predeclared local gate: hash prover-RSS trial
 interval coverage was 72% against an 80% threshold. V5 is a new prospective
 study. V4 held-out values motivated the interval design but cannot enter V5
 fitting, calibration, or gate changes.
+
+## Measured result
+
+The [pinned V5 audit](language/whole-prover-cost-v5-audit.json) records 23
+fresh training packages and 20 source-disjoint held-out packages on one
+Apple M5 Max host. All 2,300 training and 2,000 held-out native proofs were
+accepted; their changed-public-claim controls rejected, independent value
+oracles passed, and saved proof and assignment digests matched. The publisher
+replayed the frozen fit and evaluation and checked the saved artifacts. It did
+not rerun native verification or the oracles.
+
+The frozen protocol SHA-256 is
+`da91662ca90a22f26d7c87908d5a650d107d1d4f84fbc5530f69a14713f968d3`,
+anchored in commit `5e9e879c60b092a5a26482e18f31d52d404af559` before
+the first build. The frozen model SHA-256 is
+`609b7104c6dca9a16e7cac989e32d2313286d046edd2f98b5c97909971cbea85`,
+anchored in commit `3f2da0b45d0ec706b9f3651c1d9ff107b0ab8b7b` before
+the first held-out build. Both full hashes and commits were separately
+timestamped in the parent task conversation before their respective native
+phases. The pinned compiler digest is
+`904dbbb429d705c0788779842bb6f92734f30446a67a023183348e97d8612a25`.
+
+| Family | Wall p90 error / coverage | Proof bytes p90 error / coverage | Prover RSS p90 error / coverage |
+| --- | ---: | ---: | ---: |
+| Arithmetic | 10.7% / 88.6% | 5.4% / 100% | 2.6% / 100% |
+| Direct chip | 6.9% / 91.8% | 3.4% / 100% | 2.9% / **78.2%** |
+| Fixed width | 16.5% / 88.8% | 3.0% / 100% | 8.6% / 100% |
+| Hash | 1.6% / 89.8% | 0.15% / 92.0% | 0.03% / 98.2% |
+
+The gate required at least 80% RSS trial coverage in every family and 70%
+for every held-out program. Direct chip reached 78.2%; `chip_16384` covered
+0/100 trials. Its predicted RSS upper bound was 24,685,335 bytes, below the
+measured median of 24,920,064 bytes, despite a 2.9% point error. This case
+has 288,768 chip trace cells, beyond the training maximum of 149,504; that
+extrapolation is a plausible contributor, not an established cause. Every
+other predeclared family gate passed. The model and gate were not changed
+after validation. Package-build wall time was measured separately for every
+fresh package, with uncontrolled Zig compiler cache, and is excluded from the
+predicted prove-plus-verify wall time.
 
 The machine-readable [V5 protocol](whole-prover-cost-v5.json) pins the
 integrated S31 source, engine gitlink, compiler digest, measurement-tool
@@ -25,7 +65,7 @@ V5 has **23 training programs**: six direct-gate arithmetic, six generated
 direct-chip, six Blake hash, and five signed fixed-width division programs.
 It has **20 held-out programs**, five per family. Each program uses 100
 distinct fresh assignments, giving 2,300 training and 2,000 held-out native
-proof trials if the study runs. Generated source bytes and assignment values
+proof trials. Generated source bytes and assignment values
 are disjoint within V5 and from V4; the unit test checks this before any
 native observation. Training and held-out cases use different recurrence
 constants, assignment ranges, hash depths, chip rounds, and signed public
@@ -130,6 +170,6 @@ newer checkout could miss code introduced through imports, so this inventory
 does not authorize replay on an arbitrary newer tree. Use an isolated
 worktree at the pinned commit and engine gitlink to reproduce the audit.
 
-This one-host check, even if successful, will not measure cached setup,
-predict compile-to-proof latency, establish cross-host transfer, or license
+This one-host check does not measure cached setup, predict compile-to-proof
+latency, establish cross-host transfer, or license
 automatic lowering. Those require separate prospective studies.
