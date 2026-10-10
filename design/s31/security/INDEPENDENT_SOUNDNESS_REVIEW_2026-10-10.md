@@ -586,3 +586,51 @@ while retaining source and exact-key checks before proof decoding. Resealed
 wrong-name and role-swap controls were added. These are static implementation
 observations; the native proof and mutation runs remain pending, and the
 caller-supplied source/key trust root is still a release gate.
+
+## Integrated adversarial review: `d6a42b0`, engine `7638a3f8`
+
+This checkpoint reviews the integrated S31 tree and its exact engine gitlink.
+It includes the bounded direct-gate correspondence checker, five-role pair
+manifest, source-derived pair key/envelope, native proof-wire preflight, raw
+indexed-path Lean theorem, and the frozen v3.1 whole-prover cost audit. I read
+the production admission and verifier paths; I did **not** independently
+reproduce the long native proof or rerun the full formal build in this review.
+The integration owner's focused 16+32 honest native proof and mutation suite
+passed before this checkpoint; the 1024+4096 lifting proof was still running.
+Neither observation alone establishes cryptographic soundness.
+
+| ID | Severity and scope | Integrated evidence | Remaining action |
+| --- | --- | --- | --- |
+| S31-SEC-06 | **P1 before a released pair verifier:** program trust root | [`verifySealed`](../../../src/frontends/s31/runtime/pair_native_package.zig) accepts `source`, `air_bytes`, and `sealed_key` from its caller. It independently rederives source Plan, typed manifest, effective digest, exact serialized key, witness-free topology and preprocessed root. The supplied AIR bundle is checked against the compiled official bundle digest in `component_manifest.directGate`. This prevents a self-resealed altered key for the *supplied* source, but does not choose an intended source or key for a relying party. The pair adapter remains outside the public CLI. | Generate a verifier that embeds the intended normalized source and exact key, or require external source/key pins checked by trusted code. Keep the adapter experimental until this is true. This is the same trust-root class as S31-SEC-01, not a demonstrated false claim under a pinned verifier. |
+| S31-SEC-07 | **P1 before general component admission:** fixed pair roster only | [`directPair`](../../../src/frontends/s31/runtime/component_manifest.zig) constructs the circuit, chip 0, chip 1, bridge 0, bridge 1; `validatePairSourceRoster` rejects a wrong source kind, role, claim position or call ID. The native verifier reconstructs the same five component handles and ordered sums from a source-owned Plan, then checks joint lookup closure and the STARK proof. This is strong for the one admitted shape. The serialized `source_index=0` still identifies native AIRs by name through a schema-specific interpretation, and no arbitrary chip scheduler or variable-call proof path is admitted. | Version an explicit source-kind field and make the manifest authoritative, or retain an independently reconstructed closed roster for each new profile. For variable calls, test omission, duplication, reordering, aliases, heterogeneous relation IDs and all claim positions. |
+| S31-SEC-08 | **P1 for a full compiler-soundness claim:** refinement remains conditional | The [independent checker](../../../src/frontends/s31/python/package/correspondence.py) reparses exact text bytes for one public four-lane input/output and 1–16 fresh `+`/`.*` lets, predicts the full direct-gate row/allocation schedule, and compares emitted topology and eight fixed columns. Its certificate explicitly says `preprocessed-root-binding-assumed`, `AIR/PCS-assumed`, and `python-package-only`. The new [raw index theorem](../../../formal/s31/S31/Gadgets/Air/RawChipIndexCoverage.lean) proves arbitrary chip rows form a complete path **if** the exact value-bearing tagged-event multiset balances; it does not derive that premise from the production compressed LogUp, quotient checks, committed columns or PCS. | Prove or independently certify text/normalized semantics through all compiler operations, committed AIR column mapping, lookup rational identity and PCS acceptance. Do not turn passing test or Lean module counts into a full-language proof percentage. |
+| S31-SEC-09 | **P1 if witness secrecy is claimed:** endpoints are visible | The tagged bridge commits each of eight endpoint values in 16 rows and constrains adjacent rows equal. Openings may expose them. The current pair guide correctly says “private” means omitted from public outputs. | Keep the current API/documentation explicit; a confidential boundary requires blinding and an opening analysis. |
+| S31-COST-01 | **P1 for automatic cost-based lowering:** prospective local gate failed | The [v3.1 audit](../measurements/language/whole-prover-cost-v3-audit.json) pins the pre-validation frozen model and records 18 training/16 validation packages with 360/320 accepted native proofs. Arithmetic paired-wall p90 error was 56.11% against the 25% gate; arithmetic/chip/fixed-width median interval upper ratios were 11.14×/8.46×/26.10× against 8×; chip RSS coverage was 78.75% against 80%. The tracked audit does not contain the raw proof artifacts, and its compiler fingerprint predates this integrated tree. | Keep automatic lowering disabled. Use this as a failed, reproducible single-host validation, then run a new frozen cohort after revising training-only model features and timing policy. No efficiency claim follows from these prediction results. |
+
+### Checks that improved the pair boundary
+
+The first fixed envelope length and magic check now precedes source
+recompilation. [`proof_preflight.validateFor`](../../../deps/stwo-zig/src/interop/postcard/proof_preflight.zig)
+uses tree counts, FRI height and sampled mask-width bounds reconstructed from
+the same five verifier component handles, then rejects overlong postcard
+varints before decoder allocation. `verifySealed` caps the wire at 16 MiB and
+the decode arena at 64 MiB; after parsing it requires full payload consumption.
+The native suite's `0x9a 0x00` encoding of 26 is a focused regression for the
+previously identified malleability path. These checks bound and canonicalize
+the current proof format; a future changed proof schema needs its own
+source-shaped preflight and mutation suite.
+
+The chip AIR uses a witness step column rather than a local range or sorted
+index constraint. Under exact tagged-event balance, exactly `R` rows and
+`0 < R < p`, the new Lean theorem proves every index `0..R-1` occurs exactly
+once, reindexes all raw rows, and connects the authenticated start to the end
+through every local transition. The two call tags separate the ideal event
+multisets. The unproved step is deriving that exact balance from **one random
+compressed** Gate-plus-chip closure and the actual committed AIR/LogUp/PCS
+verification. Call this a conditional path theorem, not a proof that the
+native verifier enforces every source result.
+
+No false public claim accepted by a trusted native verifier was found in this
+static review. The current two-call implementation is a useful experimental
+soundness target, with a precisely bounded source grammar and proof roster;
+its trust root, confidentiality and full refinement gates remain open.
