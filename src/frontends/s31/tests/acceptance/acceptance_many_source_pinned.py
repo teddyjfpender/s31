@@ -26,7 +26,7 @@ def run(*args: str, accept: bool) -> subprocess.CompletedProcess[str]:
     return result
 
 
-def build(source: Path, prefix: Path) -> tuple[Path, Path]:
+def build(source: Path, prefix: Path) -> tuple[Path, Path, Path]:
     run(
         "zig", "build", "--build-file", str(S31 / "build.zig"), "install",
         "-Doptimize=ReleaseFast", "-Ds31-version=1", "-Ds31-lowering=direct-many",
@@ -34,13 +34,17 @@ def build(source: Path, prefix: Path) -> tuple[Path, Path]:
         "--prefix", str(prefix), accept=True,
     )
     root = prefix / "bin"
-    return root / "s31-private_many1-many-prover", root / "s31-private_many1-many-native-verifier"
+    return (
+        root / "s31-private_many1-many-prover",
+        root / "s31-private_many1-many-native-verifier",
+        root / "s31-private_many1-many-manifest",
+    )
 
 
 def main() -> None:
     with tempfile.TemporaryDirectory(prefix="s31-many-pinned-") as directory:
         work = Path(directory)
-        prover, verifier = build(SOURCE, work / "original")
+        prover, verifier, inspector = build(SOURCE, work / "original")
         proof = work / "proof.bin"
         statement = work / "statement.json"
         run(str(prover), str(ASSIGNMENT), str(proof), str(statement), accept=True)
@@ -61,6 +65,15 @@ def main() -> None:
 
         raw = proof.read_bytes()
         assert raw.startswith(MAGIC) and raw[len(MAGIC):len(MAGIC) + 2] == bytes((1, 3))
+        inspected = json.loads(run(str(inspector), accept=True).stdout)
+        assert inspected["schema"] == "s31-many-component-inspection-v4"
+        assert [item["role"] for item in inspected["manifest"]["components"]] == [
+            "circuit", "chip", "bridge",
+        ]
+        assert inspected["manifest"]["calls"][0]["endpoints"] is not None
+        assert inspected["manifest"]["native_preflight"] is not None
+        assert bytes.fromhex(inspected["manifest_precommitment_sha256"]) == raw[len(MAGIC) + 36:len(MAGIC) + 68]
+        assert bytes.fromhex(inspected["circuit_identity_sha256"]) == raw[len(MAGIC) + 68:len(MAGIC) + 100]
         for name, offset in (
             ("magic", 0), ("count", len(MAGIC)),
             ("roster", len(MAGIC) + 1), ("reserved", len(MAGIC) + 2),
@@ -84,8 +97,9 @@ def main() -> None:
 
         changed_source = work / "changed-source.s31.json"
         changed_source.write_bytes(SOURCE.read_bytes() + b" ")
-        _, other_verifier = build(changed_source, work / "changed-source")
+        _, other_verifier, other_inspector = build(changed_source, work / "changed-source")
         run(str(other_verifier), str(proof), str(statement), accept=False)
+        assert json.loads(run(str(other_inspector), accept=True).stdout)["manifest_precommitment_sha256"] != inspected["manifest_precommitment_sha256"]
 
         print(json.dumps({
             "schema": "s31-many-source-pinned-acceptance-v4",

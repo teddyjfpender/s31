@@ -4,8 +4,8 @@
 //! source-only form has no compiled endpoint addresses and cannot authorize a
 //! proof. `bounded_compiled_binding.inspectMany` attaches those addresses and
 //! checks the roster against live V4 handles. The tagged chip and bridge
-//! templates support IDs 0..7; the in-memory scheduler uses them, but V4 has
-//! no released proof-byte admission yet.
+//! templates support IDs 0..7; the experimental source-pinned native verifier
+//! admits V4 proof bytes, while the general package profile is not released.
 const std = @import("std");
 const admission = @import("../language/bounded_call_admission.zig");
 const relation = @import("../language/relation.zig");
@@ -339,9 +339,9 @@ pub fn matchesSource(
     return std.mem.eql(u8, left, right);
 }
 
-/// Typed, length-delimited V4 commitment. The experimental in-memory native
-/// transcript mixes it after source inspection; no released verification key
-/// or proof-byte entrypoint admits this schema yet.
+/// Typed, length-delimited V4 commitment. The experimental source-pinned
+/// verifier reconstructs and mixes it before proof commitments. There is no
+/// released general verification-key or package profile for this schema.
 pub fn precommitmentDigest(value: Manifest) Digest {
     var h = Sha256.init(.{});
     h.update("S31-BOUNDED-COMPONENT-MANIFEST-V4\x00");

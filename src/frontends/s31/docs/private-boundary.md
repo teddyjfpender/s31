@@ -171,12 +171,24 @@ zig-out/bin/s31-private_many1-many-prover \
   examples/boundary/private_many1.valid.json /tmp/many.proof /tmp/many.statement.json
 zig-out/bin/s31-private_many1-many-native-verifier \
   /tmp/many.proof /tmp/many.statement.json
+zig-out/bin/s31-private_many1-many-manifest > /tmp/many.manifest.json
 ```
+
+The manifest inspector embeds the same source and official AIR as the
+verifier. It recompiles the source without a witness and prints the complete
+ordered component roster, compiled endpoint addresses, public output layout,
+lookup relation IDs, PCS geometry, and the typed precommitment digest. The
+`manifest_precommitment_sha256` and `circuit_identity_sha256` report fields
+must match the two corresponding 32-byte fields in the proof envelope. The
+JSON is an audit view; changing it cannot change the verifier's embedded
+source or reconstructed roster. For example, the one-call report has roles
+`["circuit", "chip", "bridge"]` and exactly three claimed sums.
 
 The [black-box acceptance script](../tests/acceptance/acceptance_many_source_pinned.py)
 runs these binaries and checks a changed public word, statement schema,
-every header digest, each claimed sum, proof bytes, and changed embedded
-source. Run it with `python3 src/frontends/s31/tests/acceptance/acceptance_many_source_pinned.py`
+every header digest, each claimed sum, proof bytes, changed embedded source,
+and the inspector's agreement with the proof header. Run it with
+`python3 src/frontends/s31/tests/acceptance/acceptance_many_source_pinned.py`
 from the repository root.
 
 The verifier binary embeds source and official AIR bytes. A caller choosing

@@ -675,7 +675,8 @@ pub fn build(b: *std.Build) void {
     if (source_version == 1 and std.mem.eql(u8, lowering, "direct-many")) {
         const many_prover_root = localEntry(b, "runtime/many_prover_main.zig", target, optimize);
         const many_verifier_root = localEntry(b, "runtime/many_verifier_main.zig", target, optimize);
-        for ([_]*std.Build.Module{ many_prover_root, many_verifier_root }) |root| {
+        const many_manifest_root = localEntry(b, "runtime/many_manifest_main.zig", target, optimize);
+        for ([_]*std.Build.Module{ many_prover_root, many_verifier_root, many_manifest_root }) |root| {
             root.addImport("stwo_core", core);
             root.addImport("stwo_circuit_frontend", circuit);
             root.addImport("stwo_circuit_cpu_integration", cpu);
@@ -701,9 +702,12 @@ pub fn build(b: *std.Build) void {
         b.installArtifact(many_prover);
         const many_verifier = b.addExecutable(.{ .name = b.fmt("s31-{s}-many-native-verifier", .{program_name}), .root_module = many_verifier_root });
         b.installArtifact(many_verifier);
-        const many_programs = b.step("many-programs", "Build experimental source-pinned V4 bounded prover and verifier");
+        const many_manifest = b.addExecutable(.{ .name = b.fmt("s31-{s}-many-manifest", .{program_name}), .root_module = many_manifest_root });
+        b.installArtifact(many_manifest);
+        const many_programs = b.step("many-programs", "Build experimental source-pinned V4 bounded prover, verifier, and component inspector");
         many_programs.dependOn(&many_prover.step);
         many_programs.dependOn(&many_verifier.step);
+        many_programs.dependOn(&many_manifest.step);
         return;
     }
     if (source_version == 1 and std.mem.eql(u8, lowering, "direct-pair")) {
