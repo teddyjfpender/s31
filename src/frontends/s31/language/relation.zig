@@ -264,6 +264,46 @@ pub const Program = struct {
         return affineOneSquareChip(body, rounds);
     }
 
+    /// Initial source profile for the authenticated two-call direct chip.
+    /// Two distinct private four-lane inputs feed the first two source nodes;
+    /// each node is exactly `square; add_const`. The final nodes publish the
+    /// lane-wise sum and product of both chip outputs. The public ABI has
+    /// exactly these two four-word results and no public inputs.
+    /// This deliberately excludes affine conjugation until pair lowering has
+    /// the same endpoint correspondence checks as the one-call profile.
+    pub fn privateRepeatedStepPair(self: Program) ?[2]ChipSpec {
+        if (self.version != 1 or self.proof_mode != .transparent or
+            self.inputs.len != 2 or self.nodes.len != 4 or self.assertions.len != 0 or self.public_outputs.len != 2)
+            return null;
+        var result: [2]ChipSpec = undefined;
+        for (self.inputs, 0..) |input, id| {
+            if (input.visibility != .private or input.kind != .m31 or input.length != 4)
+                return null;
+            const node = self.nodes[id];
+            if (node.op != .repeat or !std.mem.eql(u8, node.lhs orelse return null, input.name))
+                return null;
+            const rounds = node.rounds orelse return null;
+            if (rounds < 16 or rounds > 32768 or !std.math.isPowerOfTwo(rounds))
+                return null;
+            const body = node.body orelse return null;
+            if (body.len != 2 or body[0].op != .square or body[0].constant != null or
+                body[1].op != .add_const or body[1].constant == null or body[1].constant.? >= P)
+                return null;
+            result[id] = .{ .rounds = rounds, .constant = body[1].constant.? };
+        }
+        for (self.nodes[2..], 0..) |node, index| {
+            if (node.op != (if (index == 0) Op.add else Op.mul) or
+                !std.mem.eql(u8, node.name, self.public_outputs[index])) return null;
+            const lhs = node.lhs orelse return null;
+            const rhs = node.rhs orelse return null;
+            const left = self.nodes[0].name;
+            const right = self.nodes[1].name;
+            if (!((std.mem.eql(u8, lhs, left) and std.mem.eql(u8, rhs, right)) or
+                (std.mem.eql(u8, lhs, right) and std.mem.eql(u8, rhs, left)))) return null;
+        }
+        return result;
+    }
+
     pub fn validate(self: Program, allocator: std.mem.Allocator) !void {
         if (self.version != 1 and self.version != 2) return error.UnsupportedVersion;
         if (self.version == 1 and self.public_abi != null) return error.InvalidRecordAbi;
@@ -980,6 +1020,29 @@ fn validName(name: []const u8) bool {
     if (name.len == 0 or name.len > 128) return false;
     for (name) |char| if (!std.ascii.isAlphanumeric(char) and char != '_') return false;
     return true;
+}
+
+test "two-call source profile rejects changed call shape and public endpoint" {
+    var parsed = try parseProgram(std.testing.allocator, @embedFile("../examples/boundary/private_pair16_32.s31.json"));
+    defer parsed.deinit();
+    const program = &parsed.value;
+    const admitted = program.privateRepeatedStepPair() orelse return error.TestUnexpectedResult;
+    try std.testing.expectEqual(@as(u32, 16), admitted[0].rounds);
+    try std.testing.expectEqual(@as(u32, 32), admitted[1].rounds);
+    const original_rounds = program.nodes[1].rounds;
+    program.nodes[1].rounds = 24;
+    try std.testing.expect(program.privateRepeatedStepPair() == null);
+    program.nodes[1].rounds = original_rounds;
+    const original_output = program.public_outputs[0];
+    program.public_outputs[0] = program.nodes[0].name;
+    try std.testing.expect(program.privateRepeatedStepPair() == null);
+    program.public_outputs[0] = original_output;
+    const original_op = program.nodes[3].op;
+    program.nodes[3].op = .add;
+    try std.testing.expect(program.privateRepeatedStepPair() == null);
+    program.nodes[3].op = original_op;
+    program.proof_mode = .blinded;
+    try std.testing.expect(program.privateRepeatedStepPair() == null);
 }
 
 test "state fold extracts the source body but refuses private or side relations" {

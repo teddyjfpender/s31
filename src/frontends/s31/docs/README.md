@@ -102,7 +102,8 @@ text .s31 ──parse/typecheck/specialize──▶ normalized relation JSON
    fixed/witness columns, address lookups, and the six proof profiles.
 - [Private circuit-to-chip boundary](private-boundary.md): eight source-derived
    wire addresses, authenticated Gate and chip lookup closure, affine
-   one-square steps, and the public ABI and confidentiality limits.
+   one-square steps, an experimental two-call source binding, and the public
+   ABI and confidentiality limits.
 - [AIR and polynomials](air.md): a hand-filled trace, the **actual six
    repeated-step chip constraints**, lookup closure, quotient, and FRI.
 - [Direct SHA AIR by hand](sha-direct-air.md): trace one padded block word

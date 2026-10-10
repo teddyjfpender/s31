@@ -4,6 +4,7 @@
 const std = @import("std");
 const core = @import("stwo_core");
 const circuit = @import("stwo_circuit_frontend");
+const cpu = @import("stwo_circuit_cpu_integration");
 const relation = @import("relation.zig");
 const canonical = @import("canonical.zig");
 const poseidon2 = @import("../library/hash/poseidon2.zig");
@@ -318,6 +319,9 @@ pub const Maps = struct {
     bindings: std.ArrayListUnmanaged(BindingSpan) = .empty,
     sha_boundaries: std.ArrayListUnmanaged(ShaBoundaryMap) = .empty,
     private_boundary: ?circuit.common.direct_arithmetic.PrivateBoundary = null,
+    /// Source-derived only. The pair prover must never accept guessed call
+    /// addresses in place of this compiler map.
+    private_pair_plan: ?cpu.private_pair_boundary.Plan = null,
     finalization: ?FinalizationSpan = null,
 
     pub fn deinit(self: *Maps, allocator: std.mem.Allocator) void {
@@ -334,35 +338,104 @@ pub fn compile(comptime V: type, allocator: std.mem.Allocator, program: relation
 }
 
 pub fn compileWithSpans(comptime V: type, allocator: std.mem.Allocator, program: relation.Program, assignment: ?relation.Assignment, maps: ?*Maps) !circuit.builder.Context(V) {
-    return compileWithSpansMode(V, allocator, program, assignment, maps, false, false, false);
+    return compileWithSpansMode(V, allocator, program, assignment, maps, false, false, false, false);
 }
 
 pub fn compileChip(comptime V: type, allocator: std.mem.Allocator, program: relation.Program, assignment: ?relation.Assignment) !circuit.builder.Context(V) {
-    return compileWithSpansMode(V, allocator, program, assignment, null, true, false, false);
+    return compileWithSpansMode(V, allocator, program, assignment, null, true, false, false, false);
 }
 
 pub fn compileChipWithSpans(comptime V: type, allocator: std.mem.Allocator, program: relation.Program, assignment: ?relation.Assignment, maps: ?*Maps) !circuit.builder.Context(V) {
-    return compileWithSpansMode(V, allocator, program, assignment, maps, true, false, false);
+    return compileWithSpansMode(V, allocator, program, assignment, maps, true, false, false, false);
 }
 
 pub fn compileDirect(comptime V: type, allocator: std.mem.Allocator, program: relation.Program, assignment: ?relation.Assignment, chip_mode: bool) !circuit.builder.Context(V) {
-    return compileWithSpansMode(V, allocator, program, assignment, null, chip_mode, true, false);
+    return compileWithSpansMode(V, allocator, program, assignment, null, chip_mode, true, false, false);
 }
 
 pub fn compileDirectWithSpans(comptime V: type, allocator: std.mem.Allocator, program: relation.Program, assignment: ?relation.Assignment, maps: ?*Maps, chip_mode: bool) !circuit.builder.Context(V) {
-    return compileWithSpansMode(V, allocator, program, assignment, maps, chip_mode, true, false);
+    return compileWithSpansMode(V, allocator, program, assignment, maps, chip_mode, true, false, false);
+}
+
+pub fn compileDirectPairWithSpans(comptime V: type, allocator: std.mem.Allocator, program: relation.Program, assignment: ?relation.Assignment, maps: *Maps) !circuit.builder.Context(V) {
+    return compileWithSpansMode(V, allocator, program, assignment, maps, false, true, false, true);
+}
+
+fn sourceId(ir: *const canonical.IR, name: []const u8) ?u32 {
+    for (ir.source_map) |entry| if (std.mem.eql(u8, entry.name, name)) return entry.id;
+    return null;
+}
+
+fn padPairTest(comptime V: type, ctx: *circuit.builder.Context(V)) !void {
+    const raw = circuit.common.finalize.rawComponentSizes(circuit.common.preprocessed.CircuitView.fromBuilder(&ctx.circuit));
+    try std.testing.expectEqual(@as(usize, 0), raw.eq + raw.triple_xor + raw.m31_to_u32 + raw.blake_g_gate);
+    try circuit.common.finalize.padToTargets(V, ctx, .{
+        .eq = 0,
+        .qm31_ops = circuit.common.finalize.paddedSize(raw.qm31_ops),
+        .m31_to_u32 = 0,
+        .triple_xor = 0,
+        .blake_g_gate = 0,
+    });
+}
+
+test "direct pair derives one canonical plan from witness and witness-free compilation" {
+    const a = std.testing.allocator;
+    var parsed = try relation.parseProgram(a, @embedFile("../examples/boundary/private_pair16_32.s31.json"));
+    defer parsed.deinit();
+    var assignment = try relation.parseAssignment(a, @embedFile("../examples/boundary/private_pair16_32.valid.json"));
+    defer assignment.deinit();
+    const specs = parsed.value.privateRepeatedStepPair() orelse return error.TestUnexpectedResult;
+    try std.testing.expectEqual(@as(u32, 16), specs[0].rounds);
+    try std.testing.expectEqual(@as(u32, 32), specs[1].rounds);
+    var value_maps = Maps{};
+    defer value_maps.deinit(a);
+    var value_ctx = try compileDirectPairWithSpans(QM31, a, parsed.value, assignment.value, &value_maps);
+    defer value_ctx.deinit();
+    var topology_maps = Maps{};
+    defer topology_maps.deinit(a);
+    var topology_ctx = try compileDirectPairWithSpans(circuit.builder.NoValue, a, parsed.value, null, &topology_maps);
+    defer topology_ctx.deinit();
+    const value_plan = value_maps.private_pair_plan orelse return error.MissingPairPlan;
+    const topology_plan = topology_maps.private_pair_plan orelse return error.MissingPairPlan;
+    try std.testing.expect(std.meta.eql(value_plan, topology_plan));
+    try std.testing.expectEqual(@as(u32, 0), value_plan.calls[0].call_id);
+    try std.testing.expectEqual(@as(u32, 1), value_plan.calls[1].call_id);
+    try std.testing.expect(value_plan.calls[0].input[0] != value_plan.calls[0].input[1]);
+
+    try padPairTest(QM31, &value_ctx);
+    try padPairTest(circuit.builder.NoValue, &topology_ctx);
+    var value_pp = try value_plan.preprocessed(a, circuit.common.preprocessed.CircuitView.fromBuilder(&value_ctx.circuit));
+    defer value_pp.deinit(a);
+    var topology_pp = try topology_plan.preprocessed(a, circuit.common.preprocessed.CircuitView.fromBuilder(&topology_ctx.circuit));
+    defer topology_pp.deinit(a);
+    try std.testing.expectEqual(value_pp.columns.len, topology_pp.columns.len);
+    for (value_pp.columns, topology_pp.columns) |left, right| {
+        try std.testing.expectEqualStrings(left.id, right.id);
+        try std.testing.expectEqualSlices(M31, left.values, right.values);
+    }
+
+    const original = parsed.value.nodes[3];
+    parsed.value.nodes[3].lhs = parsed.value.nodes[0].name;
+    parsed.value.nodes[3].rhs = parsed.value.nodes[0].name;
+    try std.testing.expect(parsed.value.privateRepeatedStepPair() == null);
+    try std.testing.expectError(error.UnsupportedPairRelation, compileDirectPairWithSpans(circuit.builder.NoValue, a, parsed.value, null, &topology_maps));
+    parsed.value.nodes[3] = original;
 }
 
 /// Replace generic SHA gates with 16 range-constrained digest witnesses and
 /// report the exact private circuit addresses for an external SHA caller AIR.
 /// This circuit is sound only as one component of the joint SHA proof.
 pub fn compileShaChipWithSpans(comptime V: type, allocator: std.mem.Allocator, program: relation.Program, assignment: ?relation.Assignment, maps: *Maps) !circuit.builder.Context(V) {
-    return compileWithSpansMode(V, allocator, program, assignment, maps, false, false, true);
+    return compileWithSpansMode(V, allocator, program, assignment, maps, false, false, true, false);
 }
 
-fn compileWithSpansMode(comptime V: type, allocator: std.mem.Allocator, program: relation.Program, assignment: ?relation.Assignment, maps: ?*Maps, chip_mode: bool, direct_output: bool, sha_chip_mode: bool) !circuit.builder.Context(V) {
+fn compileWithSpansMode(comptime V: type, allocator: std.mem.Allocator, program: relation.Program, assignment: ?relation.Assignment, maps: ?*Maps, chip_mode: bool, direct_output: bool, sha_chip_mode: bool, pair_mode: bool) !circuit.builder.Context(V) {
     const private_chip = chip_mode and direct_output and program.privateRepeatedStepChip() != null;
+    const pair_specs: ?[2]relation.ChipSpec = if (pair_mode) blk: {
+        break :blk program.privateRepeatedStepPair() orelse return error.UnsupportedPairRelation;
+    } else null;
     if (chip_mode and program.repeatedStepChip() == null and !private_chip) return error.UnsupportedChipRelation;
+    if (pair_mode and (chip_mode or sha_chip_mode or !direct_output or maps == null)) return error.InvalidPairCompilerMode;
     if (sha_chip_mode and (chip_mode or direct_output or maps == null)) return error.InvalidShaChipCompilerMode;
     if (direct_output) for (program.inputs) |input| {
         if (input.kind != .m31 and arithmeticInputWidth(program, input, true) == null) return error.UnsupportedDirectRelation;
@@ -372,6 +445,15 @@ fn compileWithSpansMode(comptime V: type, allocator: std.mem.Allocator, program:
     }
     var ir = try canonical.build(allocator, program);
     defer ir.deinit();
+    var pair_ids: [2]u32 = undefined;
+    var pair_seen = [_]bool{false} ** 2;
+    if (pair_mode) {
+        for (program.nodes[0..2], 0..) |source_node, call_id| {
+            pair_ids[call_id] = sourceId(&ir, source_node.name) orelse return error.UnsupportedPairRelation;
+            if (ir.nodes[pair_ids[call_id]].tag != .repeat) return error.UnsupportedPairRelation;
+        }
+        if (pair_ids[0] == pair_ids[1]) return error.UnsupportedPairRelation;
+    }
     var ctx = try circuit.builder.Context(V).init(allocator, N_RESERVED);
     errdefer ctx.deinit();
     const scratch = ctx.scratch();
@@ -410,7 +492,7 @@ fn compileWithSpansMode(comptime V: type, allocator: std.mem.Allocator, program:
                 // four scalar guesses and their six packing gates. Public
                 // inputs retain scalar wires for their ABI bindings; direct
                 // selectors retain the self-product that proves b² = b.
-                if (node.kind == .m31 and node.visibility.? == .private and !boolean and !private_chip) {
+                if (node.kind == .m31 and node.visibility.? == .private and !boolean and !private_chip and !pair_mode) {
                     const packed_wires = try scratch.alloc(Var, (node.length + 3) / 4);
                     for (packed_wires, 0..) |*wire, chunk| {
                         var coordinates = [_]M31{M31.zero()} ** 4;
@@ -515,8 +597,9 @@ fn compileWithSpansMode(comptime V: type, allocator: std.mem.Allocator, program:
             .bitcoin_header_bits => try headerSlice(V, &ctx, entries[node.lhs.?], 36, 2),
             .bitcoin_header_time => try headerSlice(V, &ctx, entries[node.lhs.?], 34, 2),
             .repeat => blk: {
-                if (chip_mode) {
-                    const spec = if (private_chip) program.privateRepeatedStepChip().? else program.repeatedStepChip().?;
+                if (chip_mode or pair_mode) {
+                    const pair_call_id: ?usize = if (!pair_mode) null else if (id == pair_ids[0]) 0 else if (id == pair_ids[1]) 1 else return error.UnsupportedPairRelation;
+                    const spec = if (pair_mode) pair_specs.?[pair_call_id.?] else if (private_chip) program.privateRepeatedStepChip().? else program.repeatedStepChip().?;
                     const input_raw = entries[node.lhs.?].raw orelse return error.UnsupportedChipRelation;
                     if (node.length != 4 or input_raw.len != 4) return error.UnsupportedChipRelation;
                     const scaled = private_chip and spec.input_scale != 1;
@@ -563,6 +646,23 @@ fn compileWithSpansMode(comptime V: type, allocator: std.mem.Allocator, program:
                         }
                         out.private_boundary = boundary;
                     };
+                    if (pair_call_id) |call_id| {
+                        const out = maps.?;
+                        if (out.private_pair_plan == null) out.private_pair_plan = .{ .calls = undefined };
+                        var call: cpu.private_pair_boundary.Call = .{
+                            .call_id = @intCast(call_id),
+                            .rounds = spec.rounds,
+                            .constant = M31.fromCanonical(spec.constant),
+                            .input = undefined,
+                            .output = undefined,
+                        };
+                        for (0..4) |lane| {
+                            call.input[lane] = chip_input[lane].idx;
+                            call.output[lane] = chip_output[lane].idx;
+                        }
+                        out.private_pair_plan.?.calls[call_id] = call;
+                        pair_seen[call_id] = true;
+                    }
                     break :blk .{ .shape = .{ .kind = .m31, .length = 4 }, .lanes = try circuit.builder.simd.pack(V, &ctx, wrappers), .raw = raw };
                 }
                 const constants = try scratch.alloc(?Simd, node.body.?.len);
@@ -679,6 +779,8 @@ fn compileWithSpansMode(comptime V: type, allocator: std.mem.Allocator, program:
     const finalize_qm31_start = ctx.circuit.nQm31OpsRows();
     const finalize_m31_start = ctx.circuit.m31_to_u32.items.len;
     try constant_base.finish(V, &ctx, program);
+    if (pair_mode and (!pair_seen[0] or !pair_seen[1] or maps.?.private_pair_plan == null))
+        return error.UnsupportedPairRelation;
     if (sha_chip_mode and (maps.?.sha_boundaries.items.len == 0 or maps.?.sha_boundaries.items.len > 2))
         return error.UnsupportedShaChipRelation;
     if (direct_output and try ctx.circuit.firstYieldViolation(allocator) != null)
@@ -1140,8 +1242,7 @@ fn intConditionalNegateWideArithmetic(comptime V: type, ctx: *circuit.builder.Co
         try assertZeroArithmetic(V, ctx, try ctx.sub(try ctx.mul(outgoing, outgoing), outgoing));
         const complemented = try ctx.sub(maximum, word);
         const selected = try ctx.add(word, try ctx.mul(sign, try ctx.sub(complemented, word)));
-        try assertZeroArithmetic(V, ctx, try ctx.sub(try ctx.add(selected, incoming),
-            try ctx.add(digit.*, try ctx.mul(outgoing, base))));
+        try assertZeroArithmetic(V, ctx, try ctx.sub(try ctx.add(selected, incoming), try ctx.add(digit.*, try ctx.mul(outgoing, base))));
         incoming = outgoing;
         carry_value = next_value;
     }
@@ -1947,7 +2048,7 @@ test "runtime slices borrow aligned packed words and constrain shifted words" {
         var maps = Maps{};
         defer maps.deinit(std.testing.allocator);
         var ctx = if (std.mem.eql(u8, case[0], "array_slice_u16"))
-            try compileWithSpansMode(QM31, std.testing.allocator, program.value, assignment.value, &maps, false, false, false)
+            try compileWithSpansMode(QM31, std.testing.allocator, program.value, assignment.value, &maps, false, false, false, false)
         else
             try compileDirectWithSpans(QM31, std.testing.allocator, program.value, assignment.value, &maps, false);
         defer ctx.deinit();
@@ -2844,24 +2945,24 @@ test "direct signed wide division rejects MIN over negative one in circuit const
     const cases = [_]struct { source: []const u8, valid: []const u8, overflow: []const u8 }{
         .{
             .source =
-                \\{"version":1,"name":"direct_i32","inputs":[{"name":"a","kind":"u16","length":2,"visibility":"private"},{"name":"b","kind":"u16","length":2,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":288},{"name":"bv","op":"int_view","lhs":"b","constant":288},{"name":"pair","op":"int_div_rem","lhs":"av","rhs":"bv","constant":288}],"assertions":[],"public_outputs":["pair"]}
+            \\{"version":1,"name":"direct_i32","inputs":[{"name":"a","kind":"u16","length":2,"visibility":"private"},{"name":"b","kind":"u16","length":2,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":288},{"name":"bv","op":"int_view","lhs":"b","constant":288},{"name":"pair","op":"int_div_rem","lhs":"av","rhs":"bv","constant":288}],"assertions":[],"public_outputs":["pair"]}
             ,
             .valid =
-                \\{"public_inputs":{},"private_inputs":{"a":[7616,65534],"b":[300,0]},"public_outputs":{"pair":[65125,65535,65380,65535]}}
+            \\{"public_inputs":{},"private_inputs":{"a":[7616,65534],"b":[300,0]},"public_outputs":{"pair":[65125,65535,65380,65535]}}
             ,
             .overflow =
-                \\{"public_inputs":{},"private_inputs":{"a":[0,32768],"b":[65535,65535]},"public_outputs":{"pair":[0,32768,0,0]}}
+            \\{"public_inputs":{},"private_inputs":{"a":[0,32768],"b":[65535,65535]},"public_outputs":{"pair":[0,32768,0,0]}}
             ,
         },
         .{
             .source =
-                \\{"version":1,"name":"direct_i128","inputs":[{"name":"a","kind":"u16","length":8,"visibility":"private"},{"name":"b","kind":"u16","length":8,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":384},{"name":"bv","op":"int_view","lhs":"b","constant":384},{"name":"pair","op":"int_div_rem","lhs":"av","rhs":"bv","constant":384},{"name":"quotient","op":"array_slice","lhs":"pair","index":0,"length":8}],"assertions":[],"public_outputs":["quotient"]}
+            \\{"version":1,"name":"direct_i128","inputs":[{"name":"a","kind":"u16","length":8,"visibility":"private"},{"name":"b","kind":"u16","length":8,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":384},{"name":"bv","op":"int_view","lhs":"b","constant":384},{"name":"pair","op":"int_div_rem","lhs":"av","rhs":"bv","constant":384},{"name":"quotient","op":"array_slice","lhs":"pair","index":0,"length":8}],"assertions":[],"public_outputs":["quotient"]}
             ,
             .valid =
-                \\{"public_inputs":{},"private_inputs":{"a":[0,0,0,0,0,0,0,32768],"b":[2,0,0,0,0,0,0,0]},"public_outputs":{"quotient":[0,0,0,0,0,0,0,49152]}}
+            \\{"public_inputs":{},"private_inputs":{"a":[0,0,0,0,0,0,0,32768],"b":[2,0,0,0,0,0,0,0]},"public_outputs":{"quotient":[0,0,0,0,0,0,0,49152]}}
             ,
             .overflow =
-                \\{"public_inputs":{},"private_inputs":{"a":[0,0,0,0,0,0,0,32768],"b":[65535,65535,65535,65535,65535,65535,65535,65535]},"public_outputs":{"quotient":[0,0,0,0,0,0,0,32768]}}
+            \\{"public_inputs":{},"private_inputs":{"a":[0,0,0,0,0,0,0,32768],"b":[65535,65535,65535,65535,65535,65535,65535,65535]},"public_outputs":{"quotient":[0,0,0,0,0,0,0,32768]}}
             ,
         },
     };

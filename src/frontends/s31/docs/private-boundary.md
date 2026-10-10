@@ -14,4 +14,68 @@ This private source shape currently requires exactly one private `m31[4]` input;
 
 The focused [proof test](../tests/proofs/private_boundary_proof_test.zig) verifies the square-then-add source proof natively, checks transformed endpoint values for both other examples, and rejects changed public words, source digest, and boundary addresses. The [package acceptance test](../tests/acceptance/acceptance_private_boundary.py) runs all three examples through sealed package builds and native verification. It rejects changed private inputs, public aggregates, source files, input and output key addresses, chip constants, and proof bytes. It also rejects a degenerate affine body before packaging.
 
-The next boundary abstraction needs a compiler-owned list of chip calls with explicit relation IDs, endpoint tuples, wire addresses and multiplicities. The generated manifest must bind that list and its ordered component/lookup-sum roster to the key and transcript. A chip for each new step body needs a separate AIR transition and degree/mask review; multiple calls need per-instance row domains or an indexed shared chip, complete multiset closure, and adversarial omission/duplication tests. The current bridge has eight fixed columns and one chip endpoint pair.
+The next boundary abstraction needs a compiler-owned list of chip calls with explicit relation IDs, endpoint tuples, wire addresses and multiplicities. The generated manifest must bind that list and its ordered component/lookup-sum roster to the key and transcript. A chip for each new step body needs a separate AIR transition and degree/mask review; multiple calls need per-instance row domains or an indexed shared chip, complete multiset closure, and adversarial omission/duplication tests. The released one-call bridge has eight fixed columns and one chip endpoint pair.
+
+## Experimental two-call source binding
+
+The [two-call normalized example](../examples/boundary/private_pair16_32.s31.json)
+has two private `m31[4]` inputs. Call 0 performs `x²+13` for 16 rounds; call 1
+performs `x²+17` for 32 rounds. Two ordinary circuit nodes publish the
+lane-wise **sum and product of the final states**. The first row of lane 0 is
+easy to check by hand: `3²+13=22` for call 0 and `2²+17=21` for call 1. The
+last rows, rather than the first rows, feed the two public four-word arrays.
+The [assignment](../examples/boundary/private_pair16_32.valid.json) gives
+the eight resulting public words.
+
+This is an intentionally narrow initial source profile: exactly two private
+four-lane inputs; exactly two `square; add_const` repeats with power-of-two
+lengths 16–32768; then exactly the sum and product nodes. It excludes affine
+changes of variables, extra repeat calls, assertions, public inputs, and
+blinded proof mode. Unsupported shapes fail at source admission. The compiler
+assigns call IDs 0 and 1 in source order and records each call's eight actual
+circuit wire addresses. Value and witness-free compilation must produce the
+same Plan and preprocessed root. This is tested without accepting caller
+supplied addresses.
+
+The corresponding native proof experiment has five AIR components:
+
+| Proof index | Component | Raw rows here | Main columns | Interaction columns | What it proves |
+| --- | --- | ---: | ---: | ---: | --- |
+| 0 | direct circuit | source-dependent | 12 | 8 | Circuit arithmetic, eight public words, and Gate yields at each endpoint address |
+| 1 | chip 0 | 16 | 9 | 8 | 16 rows of `out=in²+13` and indexed state links tagged call 0 |
+| 2 | chip 1 | 32 | 9 | 8 | 32 rows of `out=in²+17` and indexed state links tagged call 1 |
+| 3 | bridge 0 | 16 | 8 | 20 | Circuit endpoints equal chip 0's first and last states |
+| 4 | bridge 1 | 16 | 8 | 20 | Circuit endpoints equal chip 1's first and last states |
+
+The circuit still compresses its six-field `(Gate,address,value,0,0,0)`
+tuple. Each chip uses a seven-field
+`(Chip,call_id,step,lane0,lane1,lane2,lane3)` tuple. Both tuple types use the
+same Fiat–Shamir pair `(z,α)`. Each bridge is a constant row table: eight
+cyclic equalities require its endpoint values to stay the same in all 16
+rows, while five LogUp fractions consume eight Gate endpoints and return the
+opposite chip endpoint terms. All five claimed sums must close to zero.
+The preprocessed Gate multiplicity counts **each occurrence** of a repeated
+wire address; two appearances of one address still read one coherent circuit
+variable.
+
+[`pair_source_binding.zig`](../runtime/pair_source_binding.zig) now derives
+the Plan, preprocessed root, exact five-component roster, and typed V3
+manifest precommitment from source alone. The manifest commits ordered call
+IDs, rounds, constants, endpoints, offsets, columns, AIR source bindings, and
+lookup relation IDs. Its circuit hash is excluded from the precommitment to
+avoid a hash cycle; the engine's pair-specific effective digest includes the
+true source hash and this precommitment before the first trace commitment.
+Rebuilding from sealed source rejects a resealed but changed in-memory plan.
+The focused source test also changes only a component's metadata, recomputes
+the precommitment, and shows why compiling the witness alone is insufficient:
+the Plan and root still match, but full manifest reconstruction rejects it.
+The eventual native `prove` and `verify` entrypoints must call that full
+source-binding check before parsing proof bytes or committing trace data.
+They must check the circuit identity hash separately, since it is purposely
+outside the precommitment.
+
+**Release status:** the five-component engine proof and in-memory verifier are
+experimental. S31 does not yet package this profile, emit a sealed pair key,
+decode a `S31NAT8P` proof envelope, or accept a pair proof through its native
+CLI. Those pieces and proof-byte mutation tests are required before enabling
+the profile. The existing one-call source/key/proof format is unchanged.

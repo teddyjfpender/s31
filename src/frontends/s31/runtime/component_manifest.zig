@@ -10,6 +10,9 @@ const direct_trace = circuit.witness.direct_arithmetic;
 const Sha256 = std.crypto.hash.sha2.Sha256;
 const chip = cpu.repeated_step_chip;
 const bridge = cpu.private_boundary_bridge;
+const pair = cpu.private_pair_boundary;
+const pair_chip = cpu.tagged_pair_chip;
+const pair_bridge = cpu.tagged_pair_bridge;
 const M31 = core.fields.m31.M31;
 const QM31 = core.fields.qm31.QM31;
 
@@ -137,6 +140,42 @@ pub const Manifest = struct {
     components: []const Component,
     preprocessed_columns: []const Column,
     chip_call: ?ChipCall = null,
+};
+
+/// Separate schema: adding pair fields to Manifest would alter the JSON of
+/// sealed one-call keys. Call IDs and endpoints are mandatory in this type.
+pub const PairCall = struct {
+    call_id: u32,
+    relation_id: u32,
+    rounds: u32,
+    constant: u32,
+    input: [4]u32,
+    output: [4]u32,
+};
+
+pub const PairManifest = struct {
+    schema: []const u8,
+    profile: []const u8,
+    program_sha256: []const u8,
+    canonical_ir_sha256: []const u8,
+    air_bundle_sha256: []const u8,
+    preprocessed_root: []const u8,
+    circuit_hash: []const u8,
+    composition_plan_hash: u64,
+    claimed_sums: u32,
+    components: []const Component,
+    preprocessed_columns: []const Column,
+    pair_calls: [2]PairCall,
+};
+
+pub const PairGenerated = struct {
+    arena: std.heap.ArenaAllocator,
+    value: PairManifest,
+
+    pub fn deinit(self: *PairGenerated) void {
+        self.arena.deinit();
+        self.* = undefined;
+    }
 };
 
 pub const Generated = struct {
@@ -388,6 +427,216 @@ pub fn directChip(
     };
     try validateDirectSourceRoster(generated.value);
     return generated;
+}
+
+/// Rebuild the exact five-role native pair roster from the source-derived
+/// circuit and Plan. The caller supplies no component offsets or call IDs.
+/// The S31 proof path remains disabled until a sealed verifier and byte
+/// envelope reconstruct this value independently from source.
+pub fn directPair(
+    backing: std.mem.Allocator,
+    pp: *const direct.Circuit,
+    plan: pair.Plan,
+    air_bytes: []const u8,
+    program_digest: [32]u8,
+    ir_digest: [32]u8,
+    preprocessed_root: [32]u8,
+    circuit_hash: [32]u8,
+) !PairGenerated {
+    if (pp.private_pair_boundary == null or !std.meta.eql(pp.private_pair_boundary.?, plan.boundary()))
+        return error.InvalidPairComponentManifest;
+    for (plan.calls, 0..) |call, id|
+        if (call.call_id != id) return error.NonCanonicalPairCallId;
+    var generated = try directGate(backing, pp, air_bytes, program_digest, ir_digest, preprocessed_root, circuit_hash);
+    errdefer generated.deinit();
+    const a = generated.arena.allocator();
+    const circuit_component = generated.value.components[0];
+    const specs = try pair.expectedSpecs(plan, pp.traceLogSize(), @intCast(circuit_component.n_constraints));
+    const components = try a.alloc(Component, pair.roster.len);
+    components[0] = circuit_component;
+    components[0].claimed_sum_index = 0;
+    components[0].main_trace_span = .{ .tree = 1, .start = 0, .end = @intCast(pair.circuit_main_width) };
+    components[0].interaction_trace_span = .{ .tree = 2, .start = 0, .end = @intCast(pair.circuit_interaction_width) };
+    components[0].max_constraint_log_degree_bound = components[0].evaluation_log_size;
+    components[0].lookup_relation_ids = try a.dupe(u32, &.{circuit.common.component_list.GATE_RELATION_ID});
+    for (plan.calls, 0..) |call, id| {
+        const chip_spec = specs[1 + id];
+        const chip_air: pair_chip.Component = .{
+            .log_size = chip_spec.log_size,
+            .call_id = call.call_id,
+            .constant = call.constant,
+            .main_offset = chip_spec.main_offset,
+            .interaction_offset = chip_spec.interaction_offset,
+            .elements = .init(QM31.zero(), QM31.zero()),
+            .claimed_sum = QM31.zero(),
+        };
+        if (chip_air.nConstraints() != chip_spec.constraint_count or
+            chip_air.maxConstraintLogDegreeBound() != chip_spec.log_size + 1)
+            return error.InvalidPairComponentManifest;
+        components[1 + id] = try pairComponent(a, chip_spec, "tagged_pair_chip", chip_air.maxConstraintLogDegreeBound(), try pairNativeBinding(a, "S31-TAGGED-PAIR-CHIP-AIR-V1\x00", &.{ call.call_id, call.rounds, call.constant.toU32(), pair.relation_id }), &.{pair.relation_id});
+
+        const bridge_spec = specs[3 + id];
+        const bridge_air: pair_bridge.Component = .{
+            .main_offset = bridge_spec.main_offset,
+            .interaction_offset = bridge_spec.interaction_offset,
+            .boundary = call,
+            .elements = .init(QM31.zero(), QM31.zero()),
+            .claimed_sum = QM31.zero(),
+        };
+        if (bridge_air.nConstraints() != bridge_spec.constraint_count or
+            bridge_air.maxConstraintLogDegreeBound() != bridge_spec.log_size + 2)
+            return error.InvalidPairComponentManifest;
+        const params = [_]u32{ call.call_id, call.rounds, call.constant.toU32(), pair.relation_id } ++ call.input ++ call.output;
+        components[3 + id] = try pairComponent(a, bridge_spec, "tagged_pair_bridge", bridge_air.maxConstraintLogDegreeBound(), try pairNativeBinding(a, "S31-TAGGED-PAIR-BRIDGE-AIR-V1\x00", &params), &.{ circuit.common.component_list.GATE_RELATION_ID, pair.relation_id });
+    }
+    var calls: [2]PairCall = undefined;
+    for (plan.calls, &calls) |call, *entry| entry.* = .{
+        .call_id = call.call_id,
+        .relation_id = pair.relation_id,
+        .rounds = call.rounds,
+        .constant = call.constant.toU32(),
+        .input = call.input,
+        .output = call.output,
+    };
+    const value: PairManifest = .{
+        .schema = "s31-component-manifest-direct-pair-v1",
+        .profile = "direct-m31-private-pair-v1",
+        .program_sha256 = generated.value.program_sha256,
+        .canonical_ir_sha256 = generated.value.canonical_ir_sha256,
+        .air_bundle_sha256 = generated.value.air_bundle_sha256,
+        .preprocessed_root = generated.value.preprocessed_root,
+        .circuit_hash = generated.value.circuit_hash,
+        .composition_plan_hash = generated.value.composition_plan_hash,
+        .claimed_sums = @intCast(pair.roster.len),
+        .components = components,
+        .preprocessed_columns = generated.value.preprocessed_columns,
+        .pair_calls = calls,
+    };
+    return .{ .arena = generated.arena, .value = value };
+}
+
+fn pairComponent(a: std.mem.Allocator, spec: pair.ComponentSpec, name: []const u8, max_degree: u32, binding: []const u8, relation_ids: []const u32) !Component {
+    const main_span = TraceSpan{ .tree = 1, .start = @intCast(spec.main_offset), .end = @intCast(spec.main_offset + spec.main_columns) };
+    const interaction_span = TraceSpan{ .tree = 2, .start = @intCast(spec.interaction_offset), .end = @intCast(spec.interaction_offset + spec.interaction_columns) };
+    return .{
+        .name = name,
+        .source_index = 0,
+        .proof_index = @intFromEnum(spec.role),
+        .trace_log_size = spec.log_size,
+        .evaluation_log_size = max_degree,
+        .base_trace_columns = spec.main_columns,
+        .interaction_trace_columns = spec.interaction_columns,
+        .n_constraints = @intCast(spec.constraint_count),
+        .random_coefficient_offset = @intCast(spec.constraint_offset),
+        .trace_spans = try a.dupe(TraceSpan, &.{ main_span, interaction_span }),
+        .preprocessed_indices = &.{},
+        .program_binding_sha256 = binding,
+        .claimed_sum_index = @intFromEnum(spec.role),
+        .main_trace_span = main_span,
+        .interaction_trace_span = interaction_span,
+        .max_constraint_log_degree_bound = max_degree,
+        .lookup_relation_ids = try a.dupe(u32, relation_ids),
+    };
+}
+
+fn pairNativeBinding(a: std.mem.Allocator, domain: []const u8, parameters: []const u32) ![]const u8 {
+    var h = Sha256.init(.{});
+    h.update(domain);
+    // Both native components depend on these modules for tuple arity, row
+    // placement, transition semantics and interaction construction. Bind the
+    // complete pinned source set, not only the immediately named AIR file.
+    inline for (.{
+        @embedFile("s31_pair_boundary_source"),
+        @embedFile("s31_chip_air_source"),
+        @embedFile("s31_tagged_pair_chip_air_source"),
+        @embedFile("s31_tagged_pair_bridge_air_source"),
+    }) |source| hashBytes(&h, source);
+    for (parameters) |parameter| hashInt(&h, parameter);
+    var digest: [32]u8 = undefined;
+    h.final(&digest);
+    return hex(a, digest);
+}
+
+/// Typed V3 commitment. It includes every generated field except the circuit
+/// hash (which depends on it) and separates this profile from one-call V2.
+pub fn pairPrecommitmentDigest(manifest: PairManifest) [32]u8 {
+    var h = Sha256.init(.{});
+    h.update("S31-COMPONENT-MANIFEST-PRECOMMIT-V3\x00");
+    hashManifestCore(&h, manifest);
+    hashInt(&h, @as(u64, manifest.pair_calls.len));
+    for (manifest.pair_calls) |call| {
+        hashInt(&h, call.call_id);
+        hashInt(&h, call.relation_id);
+        hashInt(&h, call.rounds);
+        hashInt(&h, call.constant);
+        for (call.input) |address| hashInt(&h, address);
+        for (call.output) |address| hashInt(&h, address);
+    }
+    var digest: [32]u8 = undefined;
+    h.final(&digest);
+    return digest;
+}
+
+fn hashManifestCore(h: *Sha256, manifest: PairManifest) void {
+    hashBytes(h, manifest.schema);
+    hashBytes(h, manifest.profile);
+    hashBytes(h, manifest.program_sha256);
+    hashBytes(h, manifest.canonical_ir_sha256);
+    hashBytes(h, manifest.air_bundle_sha256);
+    hashBytes(h, manifest.preprocessed_root);
+    // circuit_hash is excluded because it depends on the precommitment.
+    hashInt(h, manifest.composition_plan_hash);
+    hashInt(h, manifest.claimed_sums);
+    hashInt(h, @as(u64, @intCast(manifest.components.len)));
+    for (manifest.components) |c| {
+        hashBytes(h, c.name);
+        hashInt(h, c.source_index);
+        hashInt(h, c.proof_index);
+        hashInt(h, c.trace_log_size);
+        hashInt(h, c.evaluation_log_size);
+        hashInt(h, @as(u64, @intCast(c.base_trace_columns)));
+        hashInt(h, @as(u64, @intCast(c.interaction_trace_columns)));
+        hashInt(h, c.n_constraints);
+        hashInt(h, c.random_coefficient_offset);
+        hashInt(h, @as(u64, @intCast(c.trace_spans.len)));
+        for (c.trace_spans) |span| hashSpan(h, span);
+        hashInt(h, @as(u64, @intCast(c.preprocessed_indices.len)));
+        for (c.preprocessed_indices) |index| hashInt(h, index);
+        hashBytes(h, c.program_binding_sha256);
+        hashOptionalInt(h, c.claimed_sum_index);
+        hashOptionalSpan(h, c.main_trace_span);
+        hashOptionalSpan(h, c.interaction_trace_span);
+        hashOptionalInt(h, c.max_constraint_log_degree_bound);
+        if (c.lookup_relation_ids) |ids| {
+            hashInt(h, @as(u8, 1));
+            hashInt(h, @as(u64, @intCast(ids.len)));
+            for (ids) |id| hashInt(h, id);
+        } else hashInt(h, @as(u8, 0));
+    }
+    hashInt(h, @as(u64, @intCast(manifest.preprocessed_columns.len)));
+    for (manifest.preprocessed_columns) |column| {
+        hashBytes(h, column.id);
+        hashInt(h, @as(u64, @intCast(column.commitment_index)));
+        hashInt(h, column.log_size);
+        hashInt(h, @as(u64, @intCast(column.rows)));
+        hashBytes(h, column.values_sha256);
+    }
+}
+
+pub fn pairEffectiveSourceDigest(source_digest: [32]u8, manifest: PairManifest) [32]u8 {
+    return pair.effectiveDigest(source_digest, pairPrecommitmentDigest(manifest));
+}
+
+pub fn setPairCircuitHash(generated: *PairGenerated, circuit_hash: [32]u8) !void {
+    generated.value.circuit_hash = try hex(generated.arena.allocator(), circuit_hash);
+}
+
+pub fn matchesPair(a: std.mem.Allocator, sealed: PairManifest, generated: PairManifest) !bool {
+    const left = try std.json.Stringify.valueAlloc(a, sealed, .{});
+    defer a.free(left);
+    const right = try std.json.Stringify.valueAlloc(a, generated, .{});
+    defer a.free(right);
+    return std.mem.eql(u8, left, right);
 }
 
 /// The v2 precommitment is a typed, length-delimited serialization of every
