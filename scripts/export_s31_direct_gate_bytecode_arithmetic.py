@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Export the pinned STWZEVA/1 Gate arithmetic prefix into checked Lean.
 
-This decoder intentionally supports one bounded native program. The Lean
-artifact proves a universal identity for its nine arithmetic roots. The two
-LogUp roots, OODS mask selection, committed openings and PCS/FRI are outside
-this exporter and remain explicit correspondence obligations.
+This decoder intentionally supports one bounded native program. Its generated
+Lean artifacts prove identities for all eleven roots at arbitrary QM31 cells
+and record the exact interaction offset order. Authentication of OODS samples,
+composition folding, and PCS/FRI remain explicit correspondence obligations.
 """
 
 from __future__ import annotations
@@ -279,19 +279,153 @@ def render(package: Path) -> str:
     return "\n".join(lines)
 
 
+def render_logup(package: Path) -> str:
+    """Emit the selected two QM31 LogUp roots from the same pinned program."""
+    checked = check_package(package)
+    require(checked["air_profile"]["component_manifest_sha256"] and
+            checked["source_sha256"], "missing checked package identity")
+    base, extension, roots = decoded_program(gate_program(BUNDLE.read_bytes()))
+    require(roots[-2:] == (88, 96), "selected LogUp root order changed")
+    used_base = sorted({slot for op, _, _, a, b, c, d in extension[9:]
+                        if op == 0 for slot in (a, b, c, d)})
+    require(used_base == [*range(4, 20), 25, *range(122, 134)],
+            "selected LogUp base register dependencies changed")
+    for index in range(122, 126):
+        require(base[index] == (0, 2, index, index - 122, 0, 0),
+                "selected current interaction read changed")
+    for index in range(126, 134):
+        expected_column = 4 + (index - 126) // 2
+        expected_offset = -1 if index % 2 == 0 else 0
+        require(base[index] == (0, 2, index, expected_column, 0, expected_offset),
+                "selected previous/current interaction read changed")
+    offset_order: list[list[int]] = [[] for _ in range(8)]
+    for op, tree, _dst, column, _b, offset in base:
+        if op == 0 and tree == 2 and offset not in offset_order[column]:
+            offset_order[column].append(offset)
+    require(offset_order == [[0]] * 4 + [[-1, 0]] * 4,
+            "selected interaction offset order changed")
+    lines = [
+        "-- Generated from checked STWZEVA/1 qm31_ops LogUp roots 9–10.",
+        f"-- Bundle SHA-256: {AIR_BUNDLE_SHA256}",
+        f"-- Gate program SHA-256: {GATE_PROGRAM_SHA256}",
+        f"-- Source SHA-256: {checked['source_sha256']}",
+        "-- Sample authentication and OODS shift provenance remain separate.",
+        "import S31.Gadgets.Air.DirectGateOodsLogUp", "",
+        "namespace S31.Gadgets.Air.GeneratedDirectGateBytecodeLogUp", "",
+        "open S31.Gadgets.Air.DirectGateOodsArithmetic",
+        "open S31.Gadgets.Air.DirectGateOodsLogUp", "",
+        "set_option linter.unusedVariables false", "",
+        "/-- Unique offsets in bytecode instruction order, as used by native",
+        "`resident_geometry.componentOffsets` and `traceValue`. -/",
+        "def interactionOffsets (column : Fin 8) : List Int :=",
+        "  match column.val with",
+    ]
+    for column, offsets in enumerate(offset_order):
+        lines.append(f"  | {column} => [{', '.join(map(str, offsets))}]")
+    lines += ["  | _ => []", "",
+              "/-- Native `offsetIndex` returns the first matching sample slot. -/",
+              "def offsetIndex : List Int → Int → Option Nat",
+              "  | [], _ => none",
+              "  | first :: rest, wanted =>",
+              "      if first == wanted then some 0 else (offsetIndex rest wanted).map (· + 1)", "",
+              "def interactionMaskRead (samples : Fin 8 → List QM)",
+              "    (column : Fin 8) (offset : Int) : Option QM :=",
+              "  (offsetIndex (interactionOffsets column) offset).bind fun index =>",
+              "    (samples column)[index]?", "",
+              "/-- For columns 4–7, native `at_prev` is sample slot zero and",
+              "`at_oods` is sample slot one; columns 0–3 have only `at_oods`. -/",
+              "theorem mask_slots (column : Fin 8) :",
+              "    (if column.val < 4 then",
+              "      interactionOffsets column = [0] ∧",
+              "        offsetIndex (interactionOffsets column) 0 = some 0 ∧",
+              "        offsetIndex (interactionOffsets column) (-1) = none",
+              "    else",
+              "      interactionOffsets column = [-1, 0] ∧",
+              "        offsetIndex (interactionOffsets column) (-1) = some 0 ∧",
+              "        offsetIndex (interactionOffsets column) 0 = some 1) := by",
+              "  fin_cases column <;> decide", "",
+              "/-- The selected previous/current roots use precisely these two",
+              "sample positions for each last-column limb. -/",
+              "theorem last_mask_reads (samples : Fin 8 → List QM)",
+              "    (column : Fin 8) (h : 4 ≤ column.val) :",
+              "    interactionMaskRead samples column (-1) = (samples column)[0]? ∧",
+              "      interactionMaskRead samples column 0 = (samples column)[1]? := by",
+              "  fin_cases column <;> simp_all [interactionMaskRead, interactionOffsets, offsetIndex]", "",
+        "/-- Native base registers execute in QM31 at an OODS point. The",
+        "seven extension parameters are `[α, α², α³, α⁴, α⁵, z, claimedScaled]`. -/",
+        "def bytecodeLogup (cells : Cells) (alpha z claimedScaled : QM) :",
+        "    QM × QM := Id.run do",
+    ]
+    for index in used_base:
+        op, tree, dst, a, _b, imm = base[index]
+        require(dst == index, "selected LogUp base register order changed")
+        if op == 0:
+            if tree == 0:
+                require(imm == 0, "shifted fixed-column read")
+                expression = f"cells.localFixed {a}"
+            elif tree == 1:
+                require(imm == 0, "shifted main-column read")
+                expression = f"cells.main {a}"
+            else:
+                expression = (f"cells.previousInteraction {a}" if imm == -1
+                              else f"cells.interaction {a}")
+        else:
+            require(index == 25 and op == 3 and a == 0,
+                    "selected LogUp zero register changed")
+            expression = "0"
+        lines.append(f"  let r{index} : QM := {expression}")
+    for op, _reserved, dst, a, b, c, d in extension[9:]:
+        if op == 0:
+            expression = f"fromPartialEvals r{a} r{b} r{c} r{d}"
+        elif op == 1:
+            expression = f"alpha ^ {a + 1}" if a < 5 else ("z" if a == 5 else "claimedScaled")
+        elif op == 2:
+            require(b == c == d == 0, "unsupported nonbase selected constant")
+            expression = str(a)
+        elif op in (3, 4, 5):
+            expression = f"e{a} { {3: '+', 4: '-', 5: '*'}[op] } e{b}"
+        elif op == 6:
+            expression = f"-e{a}"
+        else:
+            raise ValueError("unsupported selected LogUp opcode")
+        lines.append(f"  let e{dst} : QM := {expression}")
+    lines += ["  return (e88, e96)", "",
+              "/-- Polynomial equality of the installed LogUp root pair over",
+              "arbitrary QM31 fixed, main, and interaction samples. -/",
+              "theorem bytecode_logup_eq (cells : Cells) (alpha z claimedScaled : QM) :",
+              "    bytecodeLogup cells alpha z claimedScaled =",
+              "      (pair cells alpha z, last cells alpha z claimedScaled) := by",
+              "  dsimp [bytecodeLogup, pair, last, inputZeroDenominator,",
+              "    inputOneDenominator, outputDenominator, denominator,",
+              "    firstColumn, lastColumn, previousLastColumn]",
+              "  simp only [fromPartialEvals_three_zero, pow_succ, Prod.mk.injEq]",
+              "  constructor <;> ring", "",
+              "end S31.Gadgets.Air.GeneratedDirectGateBytecodeLogUp", ""]
+    return "\n".join(lines)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("package", type=Path)
     parser.add_argument("output", type=Path)
+    parser.add_argument("--logup-output", type=Path,
+                        help="also regenerate the selected two-root QM31 LogUp theorem")
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
     result = render(args.package)
+    logup = render_logup(args.package) if args.logup_output is not None else None
     if args.check:
         if not args.output.is_file() or args.output.read_text() != result:
             raise SystemExit("installed Gate bytecode Lean export changed")
+        if logup is not None and (not args.logup_output.is_file() or
+                                  args.logup_output.read_text() != logup):
+            raise SystemExit("installed Gate LogUp bytecode Lean export changed")
     else:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(result)
+        if logup is not None:
+            args.logup_output.parent.mkdir(parents=True, exist_ok=True)
+            args.logup_output.write_text(logup)
 
 
 if __name__ == "__main__":

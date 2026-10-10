@@ -33,6 +33,55 @@ def second_row() -> tuple[tuple[int, ...], ...]:
             (25, 26, 27, 28, 29, 30, 31, 32))
 
 
+def combine(parts: tuple[tuple[int, ...], ...]) -> tuple[int, ...]:
+    """Native secure_col basis (1, i, u, iu), for arbitrary QM31 parts."""
+    result = base(0)
+    for value, basis in zip(parts, (base(1), (0, 1, 0, 0),
+                                    (0, 0, 1, 0), (0, 0, 0, 1)), strict=True):
+        result = add(result, mul(value, basis))
+    return result
+
+
+def replay_oods(program, fixed, main, current, previous, alpha, z, scaled):
+    """Independent opcode replay with nonbase QM31 trace-mask samples."""
+    base_insts, ext_insts, roots = program
+    registers = [base(0)] * len(base_insts)
+    for op, tree, dst, a, b, imm in base_insts:
+        if op == 0:
+            registers[dst] = ((fixed, main, previous if imm == -1 else current)
+                              [tree][a])
+        elif op == 3:
+            registers[dst] = base(a)
+        else:
+            registers[dst] = {4: add, 5: sub, 6: mul}[op](registers[a], registers[b])
+    powers = []
+    power = base(1)
+    for _ in range(5):
+        power = mul(power, alpha)
+        powers.append(power)
+    params = (*powers, z, scaled)
+    extension = [base(0)] * len(ext_insts)
+    for op, _reserved, dst, a, b, c, d in ext_insts:
+        if op == 0:
+            extension[dst] = combine(tuple(registers[index] for index in (a, b, c, d)))
+        elif op == 1:
+            extension[dst] = params[a]
+        elif op == 2:
+            extension[dst] = combine(tuple(map(base, (a, b, c, d))))
+        elif op == 6:
+            extension[dst] = sub(base(0), extension[a])
+        else:
+            extension[dst] = {3: add, 4: sub, 5: mul}[op](extension[a], extension[b])
+    return tuple(extension[root] for root in roots)
+
+
+def oods_denominator(address, limbs, alpha, z):
+    result = limbs[3]
+    for word in (limbs[2], limbs[1], limbs[0], address, base(378353459)):
+        result = add(mul(result, alpha), word)
+    return sub(result, z)
+
+
 class GateBytecodeArithmeticTest(unittest.TestCase):
     def setUp(self) -> None:
         self.bundle = BUNDLE.read_bytes()
@@ -142,6 +191,35 @@ class GateBytecodeArithmeticTest(unittest.TestCase):
                 expected += (sub(output[i], weighted),)
             self.assertEqual(roots, expected)
 
+    def test_logup_roots_over_nonbase_oods_cells(self) -> None:
+        """All sampled columns may be nonbase at the verifier's OODS point."""
+        for seed in (3, 211, 104729):
+            groups = tuple(tuple(tuple((seed + 17 * group + 31 * index +
+                                      7 * limb * (group + 1)) % ((1 << 31) - 1)
+                                     for limb in range(4))
+                                 for index in range(size))
+                           for group, size in enumerate((8, 12, 8, 8)))
+            fixed, main, current, previous = groups
+            alpha, z, scaled = (2, 3, 5, 7), (11, 13, 17, 19), (23, 29, 31, 37)
+            actual = replay_oods(self.program, *groups, alpha, z, scaled)
+            d0 = oods_denominator(fixed[4], main[:4], alpha, z)
+            d1 = oods_denominator(fixed[5], main[4:8], alpha, z)
+            dout = oods_denominator(fixed[6], main[8:12], alpha, z)
+            first = combine(current[:4])
+            last = combine(current[4:])
+            prev = combine(previous[4:])
+            expected_pair = sub(mul(first, mul(d0, d1)), add(d0, d1))
+            expected_last = add(mul(add(sub(sub(last, prev), first), scaled), dout),
+                                fixed[7])
+            self.assertEqual(actual[9:], (expected_pair, expected_last))
+
+    def test_interaction_mask_order(self) -> None:
+        offsets = [[] for _ in range(8)]
+        for op, tree, _dst, a, _b, imm in self.program[0]:
+            if op == 0 and tree == 2 and imm not in offsets[a]:
+                offsets[a].append(imm)
+        self.assertEqual(offsets, [[0]] * 4 + [[-1, 0]] * 4)
+
     def test_changed_installed_bundle_is_rejected(self) -> None:
         mutation = bytearray(self.bundle)
         mutation[-32] ^= 1
@@ -154,6 +232,18 @@ class GateBytecodeArithmeticTest(unittest.TestCase):
         mutation = bytearray(gate_program(self.bundle))
         # Root section is the last 44 bytes of the fixed selected program.
         mutation[-44], mutation[-40] = mutation[-40], mutation[-44]
+        semantic = 0xCBF29CE484222325
+        for byte in mutation[216:]:
+            semantic ^= byte
+            semantic = (semantic * 0x100000001B3) & ((1 << 64) - 1)
+        struct.pack_into("<Q", mutation, 16, semantic)
+        with self.assertRaisesRegex(ValueError, "selected Gate semantic identity changed"):
+            decoded_program(bytes(mutation))
+
+    def test_rehashed_previous_mask_read_is_rejected(self) -> None:
+        mutation = bytearray(gate_program(self.bundle))
+        # Base instruction 126 is column 4 at offset -1. Replace with 0.
+        struct.pack_into("<i", mutation, 216 + 126 * 16 + 12, 0)
         semantic = 0xCBF29CE484222325
         for byte in mutation[216:]:
             semantic ^= byte

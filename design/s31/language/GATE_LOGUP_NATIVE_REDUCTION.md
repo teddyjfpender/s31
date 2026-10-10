@@ -271,12 +271,10 @@ python3 scripts/export_s31_direct_gate_evaluator_fixture.py PACKAGE \
 (cd formal/s31 && lake build S31.Gadgets.Air.GeneratedDirectGateEvaluatorFixture)
 ```
 
-The remaining evaluator obligation is to show that the exact selected
-`STWZEVA/1` bytecode, bound by the installed key and bundle hash, computes
-this pure 11-residual function at the stated local positions. The fixture
-checks the manifest's exact index vector and three trace spans, but does not
-independently interpret that bytecode. The next section closes the nine
-arithmetic roots of this obligation. Authentication of full committed
+The fixture checks the manifest's exact index vector and three trace spans,
+but does not independently interpret the installed bytecode. The following
+sections give checked bytecode extractions and Lean polynomial identities for
+all eleven roots at supplied OODS samples. Authentication of full committed
 columns, random composition, PCS/FRI, and Fiat–Shamir remain separate.
 
 ## Installed Gate bytecode: arithmetic correspondence
@@ -331,21 +329,50 @@ rejected before export. The formal source inventory also binds the exporter,
 native bundle parser/interpreter, and official bundle asset. The proof relies
 on that extraction and on the native interpreter following its documented
 opcode semantics. The standalone scalar replay interprets all 11 bytecode
-roots on two source rows and fixed/main/current/previous-cell mutations,
-including changed-bundle and rehashed-root-order rejection controls.
+roots on two source rows, three nonbase QM31 OODS sample sets, and changed-cell
+controls. It also rejects changed-bundle and rehashed-root-order controls.
 
-This increment does **not** universally prove that extension roots 9 and 10
-equal `pair` and `last`. The scalar replay checks them on concrete rows only.
-It also does not connect the previous-row mask to `directPrevious`, show that
-the proof commits/opens these exact cells, or prove the random-composition,
-Fiat–Shamir, PCS, and FRI arguments. Those remain premises of the whole
-compiler correspondence theorem.
+## Installed Gate bytecode: LogUp roots and mask slots
+
+[`GeneratedDirectGateBytecodeLogUp.lean`](../../../formal/s31/S31/Gadgets/Air/GeneratedDirectGateBytecodeLogUp.lean)
+is extracted from extension registers 9–96 of the same pinned program. Lean
+proves that roots 9 and 10 equal the pair and running-sum equations in
+[`DirectGateOodsLogUp.lean`](../../../formal/s31/S31/Gadgets/Air/DirectGateOodsLogUp.lean)
+for **arbitrary QM31** fixed, main, current, and previous interaction samples.
+The first equation is
+`first · d₀ · d₁ − (d₀ + d₁) = 0`, where each denominator is the six-word
+Gate tuple compressed with `α`, minus `z`. The second is
+`(last − previousLast − first + claimedScaled) · dOut + fixed[7] = 0`.
+Lean separately proves that when `d₀` and `d₁` are nonzero, the first equation
+is equivalent to `first = 1/d₀ + 1/d₁`; when `dOut` is nonzero, the second
+equation specifies the running-sum increment. The polynomial identities
+themselves hold even at zero denominators; the reciprocal interpretation
+requires these nonzero premises.
+
+The exporter checks all selected interaction reads and the unique offset list
+derived by native `resident_geometry.componentOffsets`: columns 0–3 use
+`[0]`, while columns 4–7 use `[-1, 0]`. Its generated Lean `mask_slots` and
+`last_mask_reads` theorems prove the local `traceValue` slot mapping: for each
+last-column limb, offset `-1` reads sample slot 0 and offset `0` reads slot 1.
+Native `verifier_proof.zig` assigns those same two slots to `at_prev` and
+`at_oods`. Native `pointsFromOffsets` places the first sample at the OODS
+point plus negative trace step. This is an exact shape and read-order result,
+subject to the checked exporter/native-source binding. The source row-index
+permutation for a 512-row trace is modeled generically in
+`DirectGateNativeIndices.lean`; the machine-word bit reversal and proof-opening
+provenance remain explicit premises.
+
+The theorem does not authenticate the supplied samples as openings of
+committed columns or prove random composition, Fiat–Shamir, PCS, or FRI. Nor
+does a zero value at one OODS point by itself imply zero constraints on every
+M31 row. Those are separate obligations in a whole-prover soundness proof.
 
 Recheck the bounded export and theorem with:
 
 ```sh
 python3 scripts/export_s31_direct_gate_bytecode_arithmetic.py PACKAGE \
-  formal/s31/S31/Gadgets/Air/GeneratedDirectGateBytecodeArithmetic.lean --check
+  formal/s31/S31/Gadgets/Air/GeneratedDirectGateBytecodeArithmetic.lean \
+  --logup-output formal/s31/S31/Gadgets/Air/GeneratedDirectGateBytecodeLogUp.lean --check
 python3 -m unittest src/frontends/s31/tests/python/test_gate_bytecode_arithmetic.py
-(cd formal/s31 && lake build S31.Gadgets.Air.DirectGateOodsArithmetic)
+(cd formal/s31 && lake build S31.Gadgets.Air.GeneratedDirectGateBytecodeLogUp)
 ```
