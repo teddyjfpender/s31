@@ -1,9 +1,11 @@
 # One selected schedule for the bounded V4 proof
 
-Status: architecture review and implementation plan. This file changes no
-proof protocol or native API. The current source-pinned V4 profile proves and
-verifies 1–8 calls; its manifest is checked against live AIR/PCS geometry,
-but it does not yet construct the engine's component schedule.
+Status: implementation in progress. The source-pinned V4 profile proves and
+verifies 1–8 calls. `direct_many_schedule.selectGeometry` now selects typed
+manifest slots against the live verifier handles, fixed circuit root, and PCS
+profile; S31 subsequently binds the unchanged V4 manifest digest. The native
+prover and verifier still consume the legacy Plan and hardcoded component
+passes, so this selected geometry is not yet the sole proof scheduler.
 
 ## The authority split today
 
@@ -74,17 +76,23 @@ dummy-challenge handles for preflight and later instantiate challenged
 handles from the same slot constructors. The later handles must repeat
 geometry and observable call, endpoint, and AIR-source checks. A selected
 schedule cannot reuse a handle built for a different challenge, claim, or
-witness.
+witness. The V4 manifest digest includes live preflight geometry, so selection
+has two phases: `selectGeometry` first supplies that geometry; S31 inserts it
+into its regenerated manifest and hashes the existing typed precommitment;
+`bindManifestDigest` then produces the transcript-ready selected value. This
+preserves the V4 digest and proof bytes. Binding the digest is only sound in
+the source-pinned caller, which checks the regenerated manifest and selected
+geometry; the engine cannot authenticate arbitrary source bytes on its own.
 
 ## Minimal code change sequence
 
 1. In the engine, add `CandidateSchedule` and `SelectedSchedule` beside
    `direct_many_preflight.zig`. Make a single bounded kind factory return
    chip/bridge dimensions and construct their handles. Move the current
-   live geometry checks into `select`, derive checked prefix sums from those
-   factories, and compare every candidate entry. Keep V3 untouched.
+   live geometry checks into `selectGeometry`, derive checked prefix sums
+   from those factories, and compare every candidate entry. Keep V3 untouched.
 2. In S31, make `inspectMany` map its generated manifest to the candidate
-   and call `select`. Store the resulting selected value in `ManyInspection`.
+   and call `selectGeometry`, then bind the digest. Store the result in `ManyInspection`.
    Build it only after source lowering, endpoint rebinding, selected AIR
    binding, and fixed-root comparison. Retain the independent manifest
    equality check as a review guard.

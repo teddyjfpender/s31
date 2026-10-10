@@ -212,7 +212,7 @@ pub const TwoCallInspection = struct {
 pub const ManyInspection = struct {
     topology: Topology,
     generated: v4.Generated,
-    live_preflight: cpu.direct_many_preflight.Inspection,
+    selected_schedule: cpu.direct_many_schedule.SelectedSchedule,
     preprocessed_root: v4.Digest,
     manifest_precommitment: v4.Digest,
     effective_source_digest: v4.Digest,
@@ -228,10 +228,91 @@ pub const ManyInspection = struct {
 /// reconstruct `inspection` from authenticated source in the same call.
 pub fn nativeManyRequest(inspection: *const ManyInspection) !cpu.experimental_direct_many_arithmetic.Request {
     return .{
-        .source_digest = inspection.topology.source_sha256,
-        .manifest_digest = inspection.manifest_precommitment,
-        .plan = try manyPlan(inspection.topology.callSlice()),
+        .source_digest = inspection.selected_schedule.geometry.source_digest,
+        .manifest_digest = inspection.selected_schedule.manifest_digest,
+        .plan = inspection.selected_schedule.fixedCircuitPlan(),
     };
+}
+
+/// This is an exact typed projection of the regenerated S31 manifest. The
+/// engine treats its dimensions as assertions against live AIR handles, never
+/// as instructions for constructing a trace or choosing PCS parameters.
+fn candidateManySchedule(
+    value: v4.Manifest,
+    topology: Topology,
+) !cpu.direct_many_schedule.CandidateSchedule {
+    if (value.calls.len != topology.call_count or value.components.len != 1 + 2 * topology.call_count or
+        value.components.len > cpu.private_many_boundary.max_components or
+        !std.meta.eql(value.source_sha256, topology.source_sha256) or
+        !std.meta.eql(value.preprocessed_root, topology.fixed_root))
+        return error.BoundedManyRosterMismatch;
+    const plan = try manyPlan(topology.callSlice());
+    var result: cpu.direct_many_schedule.CandidateSchedule = .{
+        .source_digest = topology.source_sha256,
+        .fixed_root = topology.fixed_root,
+        .calls = plan.calls,
+        .call_count = plan.count,
+        .slots = undefined,
+        .slot_count = value.components.len,
+        .pcs_profile = .{
+            .pow_bits = value.pcs.pow_bits,
+            .log_blowup_factor = value.pcs.log_blowup_factor,
+            .last_layer_degree_bound = value.pcs.last_layer_degree_bound,
+            .queries = value.pcs.queries,
+            .fold_step = value.pcs.fold_step,
+        },
+    };
+    for (value.components, result.slots[0..value.components.len]) |component, *slot| {
+        if (component.preprocessed_indices.len > circuit.common.direct_arithmetic.N_COLUMNS or
+            component.lookup_relation_ids.len > 2 or
+            component.main.tree != 1 or component.interaction.tree != 2)
+            return error.BoundedManyRosterMismatch;
+        const main_width = std.math.sub(u32, component.main.end, component.main.start) catch
+            return error.BoundedManyRosterMismatch;
+        const interaction_width = std.math.sub(u32, component.interaction.end, component.interaction.start) catch
+            return error.BoundedManyRosterMismatch;
+        const kind: cpu.private_many_boundary.ComponentKind = switch (component.role) {
+            .circuit => .circuit,
+            .chip => .chip,
+            .bridge => .bridge,
+        };
+        slot.* = .{
+            .kind = kind,
+            .source_kind = undefined,
+            .call_id = component.call_id,
+            .proof_index = component.proof_index,
+            .claimed_sum_index = component.claimed_sum_index,
+            .trace_log_size = component.trace_log_size,
+            .evaluation_log_size = component.evaluation_log_size,
+            .main_offset = component.main.start,
+            .main_columns = main_width,
+            .interaction_offset = component.interaction.start,
+            .interaction_columns = interaction_width,
+            .constraint_offset = component.random_coefficient_offset,
+            .n_constraints = component.n_constraints,
+            .preprocessed_count = component.preprocessed_indices.len,
+            .relation_count = component.lookup_relation_ids.len,
+            .program_binding_sha256 = undefined,
+        };
+        @memcpy(slot.preprocessed_indices[0..component.preprocessed_indices.len], component.preprocessed_indices);
+        @memcpy(slot.relation_ids[0..component.lookup_relation_ids.len], component.lookup_relation_ids);
+        switch (component.source) {
+            .bundled_air => |source| {
+                slot.source_kind = .bundled_circuit;
+                slot.bundle_index = source.index;
+                slot.bundle_sha256 = source.bundle_sha256;
+                slot.program_binding_sha256 = source.selected_program_sha256;
+            },
+            .native_air => |source| {
+                slot.source_kind = switch (source.kind) {
+                    .tagged_chip => .tagged_chip,
+                    .tagged_bridge => .tagged_bridge,
+                };
+                slot.program_binding_sha256 = source.program_binding_sha256;
+            },
+        }
+    }
+    return result;
 }
 
 /// Witness-free V4 source inspection for N=1..8. The official direct circuit
@@ -302,7 +383,9 @@ pub fn inspectMany(
     try attachCompiledEndpoints(&generated, topology.callSlice());
     var template = try cpu.air.parse(allocator, air_bundle_bytes);
     defer template.deinit();
-    const live = try cpu.direct_many_preflight.inspect(allocator, &pp, &template, plan);
+    const candidate = try candidateManySchedule(generated.value, topology);
+    const selected_geometry = try cpu.direct_many_schedule.selectGeometry(allocator, &pp, &template, candidate);
+    const live = selected_geometry.live;
     try compareManyRoster(generated.value, try cpu.private_many_boundary.expectedRoster(
         plan,
         pp.traceLogSize(),
@@ -316,15 +399,15 @@ pub fn inspectMany(
         .composition_split = live.composition_split,
     };
     const precommitment = v4.precommitmentDigest(generated.value);
-    const effective = cpu.private_many_boundary.effectiveDigest(topology.source_sha256, precommitment);
+    const selected_schedule = selected_geometry.bindManifestDigest(precommitment);
     return .{
         .topology = topology,
         .generated = generated,
-        .live_preflight = live,
+        .selected_schedule = selected_schedule,
         .preprocessed_root = root,
         .manifest_precommitment = precommitment,
-        .effective_source_digest = effective,
-        .circuit_identity = cpu.private_many_boundary.identityHash(effective, root, pp.traceLogSize(), 1, plan),
+        .effective_source_digest = selected_schedule.effectiveDigest(),
+        .circuit_identity = selected_schedule.circuitIdentity(),
     };
 }
 
@@ -343,17 +426,26 @@ pub fn matchesManyInspection(
     if (!std.meta.eql(candidate.topology, expected.topology) or
         !std.meta.eql(candidate.preprocessed_root, expected.preprocessed_root) or
         !std.meta.eql(candidate.manifest_precommitment, expected.manifest_precommitment) or
+        !std.meta.eql(candidate.selected_schedule.manifest_digest, expected.selected_schedule.manifest_digest) or
+        !std.meta.eql(candidate.selected_schedule.geometry.source_digest, expected.selected_schedule.geometry.source_digest) or
+        !std.meta.eql(candidate.selected_schedule.geometry.fixed_root, expected.selected_schedule.geometry.fixed_root) or
+        candidate.selected_schedule.geometry.call_count != expected.selected_schedule.geometry.call_count or
+        candidate.selected_schedule.geometry.slot_count != expected.selected_schedule.geometry.slot_count or
         !std.meta.eql(candidate.effective_source_digest, expected.effective_source_digest) or
         !std.meta.eql(candidate.circuit_identity, expected.circuit_identity) or
-        !std.meta.eql(candidate.live_preflight.pcs, expected.live_preflight.pcs) or
-        !std.meta.eql(candidate.live_preflight.tree_columns, expected.live_preflight.tree_columns) or
-        !std.meta.eql(candidate.live_preflight.sample_width_limits, expected.live_preflight.sample_width_limits) or
-        candidate.live_preflight.count != expected.live_preflight.count or
-        candidate.live_preflight.max_column_log_size != expected.live_preflight.max_column_log_size or
-        candidate.live_preflight.composition_log_size != expected.live_preflight.composition_log_size or
-        candidate.live_preflight.composition_split != expected.live_preflight.composition_split)
+        !std.meta.eql(candidate.selected_schedule.geometry.live.pcs, expected.selected_schedule.geometry.live.pcs) or
+        !std.meta.eql(candidate.selected_schedule.geometry.live.tree_columns, expected.selected_schedule.geometry.live.tree_columns) or
+        !std.meta.eql(candidate.selected_schedule.geometry.live.sample_width_limits, expected.selected_schedule.geometry.live.sample_width_limits) or
+        candidate.selected_schedule.geometry.live.count != expected.selected_schedule.geometry.live.count or
+        candidate.selected_schedule.geometry.live.max_column_log_size != expected.selected_schedule.geometry.live.max_column_log_size or
+        candidate.selected_schedule.geometry.live.composition_log_size != expected.selected_schedule.geometry.live.composition_log_size or
+        candidate.selected_schedule.geometry.live.composition_split != expected.selected_schedule.geometry.live.composition_split)
         return false;
-    for (candidate.live_preflight.factSlice(), expected.live_preflight.factSlice()) |actual, wanted|
+    for (candidate.selected_schedule.callSlice(), expected.selected_schedule.callSlice()) |actual, wanted|
+        if (!std.meta.eql(actual, wanted)) return false;
+    for (candidate.selected_schedule.slotSlice(), expected.selected_schedule.slotSlice()) |actual, wanted|
+        if (!std.meta.eql(actual, wanted)) return false;
+    for (candidate.selected_schedule.geometry.live.factSlice(), expected.selected_schedule.geometry.live.factSlice()) |actual, wanted|
         if (!std.meta.eql(actual, wanted)) return false;
     const left = try std.json.Stringify.valueAlloc(allocator, candidate.generated.value, .{});
     defer allocator.free(left);
@@ -878,16 +970,16 @@ test "bounded native inspection fails closed outside exact two-call schedule" {
             inspection.generated.value.components[0].trace_log_size,
             inspection.generated.value.components[0].n_constraints,
         );
-        var forged_live = inspection.live_preflight;
+        var forged_live = inspection.selected_schedule.geometry.live;
         forged_live.facts[1].evaluation_log_size += 1;
         try std.testing.expectError(error.BoundedManyRosterMismatch, compareManyRoster(inspection.generated.value, roster, forged_live, plan));
-        forged_live = inspection.live_preflight;
+        forged_live = inspection.selected_schedule.geometry.live;
         forged_live.facts[1].relation_ids[0] ^= 1;
         try std.testing.expectError(error.BoundedManyRosterMismatch, compareManyRoster(inspection.generated.value, roster, forged_live, plan));
-        forged_live = inspection.live_preflight;
+        forged_live = inspection.selected_schedule.geometry.live;
         forged_live.facts[1].air_source_sha256[0] ^= 1;
         try std.testing.expectError(error.BoundedManyRosterMismatch, compareManyRoster(inspection.generated.value, roster, forged_live, plan));
-        forged_live = inspection.live_preflight;
+        forged_live = inspection.selected_schedule.geometry.live;
         forged_live.sample_width_limits[1] = 3;
         try std.testing.expectError(error.BoundedManyRosterMismatch, compareManyRoster(inspection.generated.value, roster, forged_live, plan));
         const original_components = inspection.generated.value.components;
@@ -905,6 +997,50 @@ test "bounded native inspection fails closed outside exact two-call schedule" {
         inspection.manifest_precommitment = v4.precommitmentDigest(inspection.generated.value);
         try std.testing.expect(!try matchesManyInspection(std.testing.allocator, &inspection, source, @embedFile("s31_air_programs")));
     }
+}
+
+test "V4 selected geometry rejects reordered and altered manifest slots" {
+    const allocator = std.testing.allocator;
+    const source = @embedFile("../examples/boundary/private_many1.s31.json");
+    const air_bytes = @embedFile("s31_air_programs");
+    var inspection = try inspectMany(allocator, source, air_bytes);
+    defer inspection.deinit();
+    var topology_ctx = try compileManyTopology(allocator, source, inspection.topology);
+    defer topology_ctx.deinit();
+    const plan = inspection.selected_schedule.fixedCircuitPlan();
+    var pp = try plan.preprocessed(allocator, circuit.common.preprocessed.CircuitView.fromBuilder(&topology_ctx.circuit));
+    defer pp.deinit(allocator);
+    var template = try cpu.air.parse(allocator, air_bytes);
+    defer template.deinit();
+    const original = try candidateManySchedule(inspection.generated.value, inspection.topology);
+    const selected = try cpu.direct_many_schedule.selectGeometry(allocator, &pp, &template, original);
+    try std.testing.expectEqual(@as(usize, 3), selected.slot_count);
+    try std.testing.expectEqual(@as(u8, 1), selected.call_count);
+
+    var changed = original;
+    changed.slots[1].proof_index = 2;
+    try std.testing.expectError(error.InvalidManySchedule, cpu.direct_many_schedule.selectGeometry(allocator, &pp, &template, changed));
+    changed = original;
+    changed.slots[1].claimed_sum_index = 0;
+    try std.testing.expectError(error.InvalidManySchedule, cpu.direct_many_schedule.selectGeometry(allocator, &pp, &template, changed));
+    changed = original;
+    changed.slots[1].source_kind = .tagged_bridge;
+    try std.testing.expectError(error.InvalidManySchedule, cpu.direct_many_schedule.selectGeometry(allocator, &pp, &template, changed));
+    changed = original;
+    changed.slots[1].main_columns += 1;
+    try std.testing.expectError(error.InvalidManySchedule, cpu.direct_many_schedule.selectGeometry(allocator, &pp, &template, changed));
+    changed = original;
+    changed.slots[1].relation_ids[0] ^= 1;
+    try std.testing.expectError(error.InvalidManySchedule, cpu.direct_many_schedule.selectGeometry(allocator, &pp, &template, changed));
+    changed = original;
+    changed.slots[0].preprocessed_indices[0] ^= 1;
+    try std.testing.expectError(error.InvalidManySchedule, cpu.direct_many_schedule.selectGeometry(allocator, &pp, &template, changed));
+    changed = original;
+    changed.fixed_root[0] ^= 1;
+    try std.testing.expectError(error.InvalidManySchedule, cpu.direct_many_schedule.selectGeometry(allocator, &pp, &template, changed));
+    changed = original;
+    changed.pcs_profile.queries += 1;
+    try std.testing.expectError(error.InvalidManySchedule, cpu.direct_many_schedule.selectGeometry(allocator, &pp, &template, changed));
 }
 
 test "bounded V4 source-derived one-call native proof verifies a public statement" {
@@ -937,7 +1073,7 @@ test "bounded V4 source-derived one-call native proof verifies a public statemen
         circuit.common.preprocessed.CircuitView.fromBuilder(&witness.circuit),
         witness.values(),
         &bundle,
-        inspection.live_preflight.pcs,
+        inspection.selected_schedule.geometry.live.pcs,
         request,
     );
     defer proof.deinit();
@@ -951,7 +1087,7 @@ test "bounded V4 source-derived one-call native proof verifies a public statemen
         allocator,
         circuit.common.preprocessed.CircuitView.fromBuilder(&topology_ctx.circuit),
         &bundle,
-        inspection.live_preflight.pcs,
+        inspection.selected_schedule.geometry.live.pcs,
         request,
         words,
         &proof,
@@ -964,7 +1100,7 @@ test "bounded V4 source-derived one-call native proof verifies a public statemen
             allocator,
             circuit.common.preprocessed.CircuitView.fromBuilder(&topology_ctx.circuit),
             &bundle,
-            inspection.live_preflight.pcs,
+            inspection.selected_schedule.geometry.live.pcs,
             request,
             changed_words,
             &proof,
@@ -981,7 +1117,7 @@ test "bounded V4 source-derived one-call native proof verifies a public statemen
             allocator,
             circuit.common.preprocessed.CircuitView.fromBuilder(&topology_ctx.circuit),
             &bundle,
-            changed_inspection.live_preflight.pcs,
+            changed_inspection.selected_schedule.geometry.live.pcs,
             changed_request,
             words,
             &proof,

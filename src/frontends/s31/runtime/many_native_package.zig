@@ -44,6 +44,7 @@ pub fn proveSealed(
     var inspected = try binding.inspectMany(allocator, source, air_bytes);
     defer inspected.deinit();
     const request = try binding.nativeManyRequest(&inspected);
+    const identity = inspected.selected_schedule.circuitIdentity();
     var parsed = try relation.parseProgram(allocator, source);
     defer parsed.deinit();
     const words = try relation.evaluate(allocator, parsed.value, assignment);
@@ -57,13 +58,13 @@ pub fn proveSealed(
         circuit.common.preprocessed.CircuitView.fromBuilder(&witness.circuit),
         witness.values(),
         &air,
-        inspected.live_preflight.pcs,
+        inspected.selected_schedule.geometry.live.pcs,
         request,
     );
     defer proof.deinit();
-    if (proof.sum_count != inspected.live_preflight.count or
+    if (proof.sum_count != inspected.selected_schedule.geometry.live.count or
         proof.output_values.len != public_values.len or
-        !std.meta.eql(proof.circuit_hash, inspected.circuit_identity))
+        !std.meta.eql(proof.circuit_hash, identity))
         return error.InvalidManyProofIdentity;
     for (proof.output_values, &public_values) |actual, expected|
         if (!actual.eql(expected)) return error.InvalidManyPublicStatement;
@@ -71,12 +72,12 @@ pub fn proveSealed(
     var bytes: std.ArrayList(u8) = .empty;
     errdefer bytes.deinit(allocator);
     try bytes.appendSlice(allocator, magic);
-    try bytes.append(allocator, request.plan.count);
+    try bytes.append(allocator, inspected.selected_schedule.geometry.call_count);
     try bytes.append(allocator, @intCast(proof.sum_count));
     try bytes.appendSlice(allocator, &.{ 0, 0 });
-    try bytes.appendSlice(allocator, &inspected.topology.source_sha256);
-    try bytes.appendSlice(allocator, &inspected.manifest_precommitment);
-    try bytes.appendSlice(allocator, &inspected.circuit_identity);
+    try bytes.appendSlice(allocator, &inspected.selected_schedule.geometry.source_digest);
+    try bytes.appendSlice(allocator, &inspected.selected_schedule.manifest_digest);
+    try bytes.appendSlice(allocator, &identity);
     var nonce: [8]u8 = undefined;
     std.mem.writeInt(u64, &nonce, proof.interaction_pow_nonce, .little);
     try bytes.appendSlice(allocator, &nonce);
@@ -124,16 +125,19 @@ fn verifySourceBound(
     var inspected = try binding.inspectMany(allocator, source, air_bytes);
     defer inspected.deinit();
     const request = try binding.nativeManyRequest(&inspected);
-    if (request.plan.count != n_calls or inspected.live_preflight.count != sum_count)
+    const identity = inspected.selected_schedule.circuitIdentity();
+    if (inspected.selected_schedule.geometry.call_count != n_calls or
+        inspected.selected_schedule.geometry.slot_count != sum_count or
+        inspected.selected_schedule.geometry.live.count != sum_count)
         return error.InvalidManyNativeEnvelope;
     var at: usize = magic.len + 4;
-    if (!std.mem.eql(u8, raw[at..][0..32], &inspected.topology.source_sha256))
+    if (!std.mem.eql(u8, raw[at..][0..32], &inspected.selected_schedule.geometry.source_digest))
         return error.InvalidManyNativeEnvelope;
     at += 32;
-    if (!std.mem.eql(u8, raw[at..][0..32], &inspected.manifest_precommitment))
+    if (!std.mem.eql(u8, raw[at..][0..32], &inspected.selected_schedule.manifest_digest))
         return error.InvalidManyNativeEnvelope;
     at += 32;
-    if (!std.mem.eql(u8, raw[at..][0..32], &inspected.circuit_identity))
+    if (!std.mem.eql(u8, raw[at..][0..32], &identity))
         return error.InvalidManyNativeEnvelope;
     at += 32;
     const nonce = std.mem.readInt(u64, raw[at..][0..8], .little);
@@ -154,8 +158,8 @@ fn verifySourceBound(
     defer topology.deinit();
     var air = try engine.parseBundle(allocator, air_bytes);
     defer air.deinit();
-    const pcs = inspected.live_preflight.pcs;
-    const geometry = inspected.live_preflight;
+    const pcs = inspected.selected_schedule.geometry.live.pcs;
+    const geometry = inspected.selected_schedule.geometry.live;
     // The roster and PCS shape are derived before any proof allocation.
     try postcard.proof_preflight.validateFor(4, raw[at..], .{
         .config = .{
@@ -193,7 +197,7 @@ fn verifySourceBound(
             .claimed_sums = sums,
             .sum_count = sum_count,
             .stark_proof = &stark,
-            .circuit_hash = inspected.circuit_identity,
+            .circuit_hash = identity,
         },
     );
 }
