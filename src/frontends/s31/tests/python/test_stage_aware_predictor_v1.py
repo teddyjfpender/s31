@@ -9,7 +9,7 @@ from pathlib import Path
 
 S31_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(S31_ROOT / "benchmarks"))
-from benchmark_whole_prover_stage_v1 import signed_assignment, signed_words, workload_cases
+from benchmark_whole_prover_stage_v1 import quotient_source, signed_assignment, signed_words, workload_cases
 from stage_aware_predictor_v1 import PROTOCOL, evaluate, fit_model, predict_case
 
 
@@ -125,6 +125,18 @@ class StageAwareModelTests(unittest.TestCase):
             words = assignment["public_outputs"]["result"]
             self.assertEqual(len(words), (width + 15) // 16)
             self.assertEqual(signed_words(-2, width)[0], (1 << min(width, 16)) - 2)
+            self.assertIn("let result = std::int::limbs(quotient);", quotient_source(width))
+        sys.path.insert(0, str(S31_ROOT / "python"))
+        from package.context import lower_text
+        with TemporaryDirectory() as directory:
+            for width in (8, 16, 32, 64):
+                source = Path(directory) / f"i{width}.s31"
+                source.write_text(quotient_source(width))
+                relation, _, _ = lower_text(source)
+                self.assertEqual(len(relation["public_outputs"]), 1)
+                output = relation["public_outputs"][0]
+                self.assertEqual(len(signed_assignment(width, 50001, True, output)
+                                     ["public_outputs"][output]), (width + 15) // 16)
 
 
 if __name__ == "__main__":

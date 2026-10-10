@@ -38,7 +38,8 @@ def signed_words(value: int, width: int) -> list[int]:
             for offset in range((width + 15) // 16)]
 
 
-def signed_assignment(width: int, index: int, quotient_only: bool) -> dict:
+def signed_assignment(width: int, index: int, quotient_only: bool,
+                      output_name: str = "result") -> dict:
     rng = random.Random(0x531C057 + width * 1_000_003 + index)
     limit = 1 << (width - 1)
     numerator = rng.randrange(-limit + 1, limit)
@@ -56,7 +57,7 @@ def signed_assignment(width: int, index: int, quotient_only: bool) -> dict:
         "public_inputs": {},
         "private_inputs": {"numerator": signed_words(numerator, width),
                            "divisor": signed_words(divisor, width)},
-        "public_outputs": {"result": expected},
+        "public_outputs": {output_name: expected},
     }
 
 
@@ -66,7 +67,8 @@ def quotient_source(width: int) -> str:
             f"circuit i{width}_quotient_cost_v1(private numerator: i{width}, "
             f"private divisor: i{width}) -> public [u16; {count}] {{\n"
             f"    let (quotient, remainder) = std::int::div_rem(numerator, divisor);\n"
-            f"    std::int::limbs(quotient)\n"
+            f"    let result = std::int::limbs(quotient);\n"
+            f"    result\n"
             f"}}\n")
 
 
@@ -100,9 +102,15 @@ def workload_cases(split: str, output: Path, samples: int, protocol: dict) -> li
             source.write_text(quotient_source(width))
         else:
             source = HERE / f"examples/math/division/i{width}_div_rem.s31"
+        from package.context import lower_text
+        relation, _, _ = lower_text(source)
+        if len(relation["public_outputs"]) != 1:
+            raise ValueError(f"{name}: expected one public output")
+        output_name = relation["public_outputs"][0]
         workloads.append({"name": name, "family": "fixed_width", "source": source,
                           "lowering": "direct-gate",
-                          "assignments": [signed_assignment(width, seed + i, quotient_only)
+                          "assignments": [signed_assignment(width, seed + i, quotient_only,
+                                                            output_name)
                                           for i in range(samples)]})
     return workloads
 
