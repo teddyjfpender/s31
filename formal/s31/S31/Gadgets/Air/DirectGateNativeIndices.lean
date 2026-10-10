@@ -18,7 +18,7 @@ open S31.Gadgets.Air.DecodedDirectGateTrace
 open S31.Gadgets.Air.TaggedPairSourceCorrespondence
 
 /-- Position in the selected AIR's local fixed-column list to semantic
-position in `DecodedDirectGateTrace.fixed`. -/
+position in `DecodedDirectGateTrace.Trace.fixed`. -/
 def airLocalToSemantic (i : Fin 8) : Fin 8 :=
   match i.val with
   | 0 => 0
@@ -60,13 +60,13 @@ def fixedReadOrder : Fin 8 ≃ Fin 8 where
 /-- A local captured-AIR fixed-column read, assuming the manifest's local
 index list is exactly `fixedReadOrder`. -/
 def airLocalFixed {logSize : Nat}
-    (trace : DecodedDirectGateTrace logSize)
-    (row : Fin (2 ^ logSize)) (local : Fin 8) :
+    (trace : Trace logSize)
+    (row : Fin (2 ^ logSize)) (localIndex : Fin 8) :
     S31.Gadgets.Packed.F :=
-  trace.fixed row (fixedReadOrder local)
+  trace.fixed row (fixedReadOrder localIndex)
 
 theorem local_fixed_at_semantic {logSize : Nat}
-    (trace : DecodedDirectGateTrace logSize)
+    (trace : Trace logSize)
     (row : Fin (2 ^ logSize)) (semantic : Fin 8) :
     airLocalFixed trace row (fixedReadOrder.symm semantic) =
       trace.fixed row semantic := by
@@ -111,11 +111,11 @@ theorem direct_previous16_bijective :
 
 /-- This premise must come from the selected native mask and trace order;
 it is not inferred from an arbitrary decoded trace. -/
-def PreviousMaskMatches (trace : DecodedDirectGateTrace 4) : Prop :=
+def PreviousMaskMatches (trace : Trace 4) : Prop :=
   trace.prev = directPrevious16
 
 theorem decoded_last_at_previous16
-    (trace : DecodedDirectGateTrace 4)
+    (trace : Trace 4)
     (hmask : PreviousMaskMatches trace) (row : Fin 16) :
     lastColumn trace (trace.prev row) =
       lastColumn trace (directPrevious16 row) := by

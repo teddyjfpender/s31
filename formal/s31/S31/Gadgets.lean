@@ -37,6 +37,7 @@ import S31.Gadgets.Air.TaggedPairBridgeRows
 import S31.Gadgets.Air.TaggedPairChallenge
 import S31.Gadgets.Air.TaggedPairAirClosure
 import S31.Gadgets.Air.TaggedPairSourceCorrespondence
+import S31.Gadgets.Air.DirectGateNativeIndices
 import S31.Gadgets.Air.TaggedPairSourceComposition
 import S31.Gadgets.Air.TaggedPairEventProjection
 import S31.Gadgets.Air.TaggedPairEventDecode

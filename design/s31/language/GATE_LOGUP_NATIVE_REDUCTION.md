@@ -88,7 +88,7 @@ be split so the desired conclusion is not assumed:
    interaction PoW nonce. The interaction claim and commitment follow the
    challenge. The modeled external lists must reproduce these native terms.
 
-One useful Lean interface is a pure `DecodedDirectGateTrace` carrying the
+One useful Lean interface is a pure `DecodedDirectGateTrace.Trace` carrying the
 three column groups, `prev`, and claimed sum. First prove an equation between
 the production AIR evaluator's two symbolic outputs and the model's paired
 and singleton residuals **for arbitrary decoded cells**. Then a small theorem
@@ -128,7 +128,7 @@ logical wire values. It is **not** a deterministic `verified → balanced`
 theorem and does not cover parser correctness, other components, or a full
 source-to-PCS correspondence.
 
-## Focused implementation checks after the timing window
+## Remaining native controls
 
 1. Export one direct proof's fixed/main/interaction row cells and the bound
    evaluator program digest; independently reconstruct both native row
@@ -138,8 +138,7 @@ source-to-PCS correspondence.
    columns for the mutated row values, and show the reconstructed event lists
    or residuals change. Reseal package metadata for topology mutations.
 3. Change only the proof envelope's Gate claimed sum and require
-   `InvalidLookupSum`; this existing native control is still pending a run
-   after the V6 timed proof phase.
+   `InvalidLookupSum`; this existing native control is still pending a run.
 4. Build a Lean module for the decoded-cell evaluator identity and a native
    exporter fixture. Keep the cryptographic row-satisfaction statement as a
    named, documented premise until an independent PCS/FRI review discharges
@@ -209,14 +208,18 @@ the supplied bit-reversal involution, and specializes it to sixteen rows.
 the trace. This module proves index algebra only: neither the manifest bytes
 nor the installed `at_prev` mask are authenticated by these lemmas.
 
-After V6 timing clears, the targeted checks are:
+The two modules and the `S31.Gadgets` umbrella compiled successfully with the
+pinned Lean toolchain. The source bindings and inventory regenerated and
+passed the plain formal source check (56 operations, 1,266 theorem names).
+The reproducible commands are:
 
 ```sh
 (cd formal/s31 && lake build S31.Gadgets.Air.DecodedDirectGateTrace S31.Gadgets.Air.DirectGateNativeIndices)
+(cd formal/s31 && lake build S31.Gadgets)
 python3 scripts/s31_formal.py --write
 python3 scripts/s31_formal.py
 ```
 
-Run the latter two commands from the repository root **after** the targeted
-Lean build succeeds. Native acceptance and row-index mutation controls are
-separate follow-ups; this source-only increment adds no native exporter.
+Run the latter two commands from the repository root. Native acceptance and
+row-index mutation controls are separate follow-ups; this increment adds no
+native exporter, and the conditional Lean bridge does not prove PCS/FRI.

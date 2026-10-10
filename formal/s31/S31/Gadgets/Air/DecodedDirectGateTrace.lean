@@ -23,7 +23,7 @@ abbrev Event := GateLookup.Event
 /-- An abstract view of the exact direct-profile column geometry. The row
 permutation, selected evaluator outputs, and external event lists must be
 bound to the installed key and proof by a separate native/PCS argument. -/
-structure DecodedDirectGateTrace (logSize : Nat) where
+structure Trace (logSize : Nat) where
   fixed : Fin (2 ^ logSize) → Fin 8 → F
   main : Fin (2 ^ logSize) → Fin 12 → F
   interaction : Fin (2 ^ logSize) → Fin 8 → F
@@ -34,7 +34,7 @@ structure DecodedDirectGateTrace (logSize : Nat) where
   externalUses : List Event
   externalYields : List Event
 
-def row {logSize : Nat} (trace : DecodedDirectGateTrace logSize)
+def row {logSize : Nat} (trace : Trace logSize)
     (i : Fin (2 ^ logSize)) : Row :=
   { in0Address := (trace.fixed i 4).val,
     in1Address := (trace.fixed i 5).val,
@@ -49,12 +49,12 @@ def row {logSize : Nat} (trace : DecodedDirectGateTrace logSize)
       trace.main i 10, trace.main i 11⟩,
     multiplicity := (trace.fixed i 7).val }
 
-def firstColumn {logSize : Nat} (trace : DecodedDirectGateTrace logSize)
+def firstColumn {logSize : Nat} (trace : Trace logSize)
     (i : Fin (2 ^ logSize)) : GateSecure :=
   ⟨⟨trace.interaction i 0, trace.interaction i 1⟩,
     ⟨trace.interaction i 2, trace.interaction i 3⟩⟩
 
-def lastColumn {logSize : Nat} (trace : DecodedDirectGateTrace logSize)
+def lastColumn {logSize : Nat} (trace : Trace logSize)
     (i : Fin (2 ^ logSize)) : GateSecure :=
   ⟨⟨trace.interaction i 4, trace.interaction i 5⟩,
     ⟨trace.interaction i 6, trace.interaction i 7⟩⟩
@@ -70,7 +70,7 @@ the three commitments, except with the separately quantified PCS/FRI error.
 matching its public tuples and signs to these external lists. None of these
 three links follows merely from this structure's existence. -/
 theorem decoded_cells_to_raw_accepts {logSize : Nat}
-    (trace : DecodedDirectGateTrace logSize)
+    (trace : Trace logSize)
     (alpha z : GateSecure)
     (hPairEvaluator : ∀ i,
       trace.airPair i = NativeLogUpAir.pair
