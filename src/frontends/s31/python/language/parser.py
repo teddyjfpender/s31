@@ -425,7 +425,7 @@ class Parser:
         self.expect("->")
         self.expect("public")
         result = self.parse_type()
-        if not isinstance(result, Type):
+        if not isinstance(result, (Type, RecordType)):
             raise self.error("circuit output must be a first-order value")
         statements, body = self.block()
         return Circuit(name, params, result, statements, body, token, proof_mode)

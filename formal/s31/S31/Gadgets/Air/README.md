@@ -600,3 +600,18 @@ still needs unique producers, and the reduction still needs correspondence
 between Zig's committed columns, emitted Gate events, verifier equations,
 and the Lean model. The transcript's challenge distribution and the STARK
 verifier's cryptographic soundness are separate obligations.
+
+`AffineChipBoundary.lean` proves the nondegenerate affine-square source step
+is conjugate to the repeated-square chip for every round, with an inverse
+endpoint map. `GenericChipBoundary.lean` proves an ideal exact-multiset join
+for arbitrarily many tagged chip calls; it also shows exact balance would
+force the current sixteen bridge rows to share an endpoint value.
+`PrivateBridgeChallenge.lean` specializes the Gate exceptional-challenge
+bound to one addressed endpoint whose sixteen bridge rows vary. It also
+proves a joint eight-address Gate bound: with distinct canonical addresses,
+one incorrect row makes the whole ideal event multiset unequal, so its
+reciprocal closure can hold only in the stated finite exceptional set. These
+are scoped algebra and ideal-lookup results. The native bridge's weighted
+paired-fraction AIR must still be connected to that ideal reciprocal equation;
+the chip endpoint relation and shared transcript need their own joint
+probabilistic soundness proof.

@@ -8,6 +8,7 @@ import sys
 import tempfile
 from pathlib import Path
 
+from abi.binding_v2 import statement_from_assignment
 from cli.parser import make_parser
 from inspection.reports import equations as report_equations, explain as report_explain
 from inspection.source_layout import source_layout
@@ -103,7 +104,11 @@ def dispatch(args: argparse.Namespace) -> None:
         executable = package / "bin" / f"s31-{manifest['name']}-prover"
         print(invoke(str(executable), "prove", str(args.assignment.resolve()), str(proof)), end="")
         statement_path = Path(str(proof) + ".statement.json")
-        write_json(statement_path, statement)
+        relation = json.loads((package / "source.s31.json").read_text())
+        if relation["version"] == 2:
+            statement_path.write_bytes(statement_from_assignment(relation, assignment))
+        else:
+            write_json(statement_path, statement)
         print(f"public statement: {statement_path}")
     elif args.command == "wrap":
         if manifest["lowering"] not in {"gate", "sparse-wide-gate"}:

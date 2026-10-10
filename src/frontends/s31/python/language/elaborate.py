@@ -430,12 +430,31 @@ class Elaborator:
                 raise self.error(fn.body, f"{name} result does not match its declared type")
         env = {name: typ for name, typ, _ in self.circuit.params}
         result = self.block(self.circuit.statements, self.circuit.body, env, allow_assert=True)
-        bit_as_field = result == BIT and self.circuit.result == M31_ONE
+        bit_as_field = isinstance(self.circuit.result, Type) and result == BIT and self.circuit.result == M31_ONE
         if result != self.circuit.result and not bit_as_field:
             raise self.error(self.circuit.body,
                              "circuit result does not match declared public output type")
+        if isinstance(self.circuit.result, RecordType) and any(
+                typ.kind != "m31" for _, typ, _ in self.circuit.params):
+            raise self.error(self.circuit.body,
+                             "public record v2 currently supports only m31 circuit inputs")
+        def result_words(typ: Type | RecordType | TupleType) -> int:
+            if isinstance(typ, Type):
+                if isinstance(self.circuit.result, RecordType) and typ.kind != "m31":
+                    raise self.error(self.circuit.body,
+                                     "public record v2 currently supports only m31 leaves")
+                return typ.length
+            if isinstance(typ, RecordType):
+                return sum(result_words(field) for _, field in typ.fields)
+            return sum(result_words(item) for item in typ.elements)
+
+        result_leaf_words = result_words(self.circuit.result)
         public_words = sum(typ.length for _, typ, visibility in self.circuit.params
-                           if visibility == "public") + self.circuit.result.length
+                           if visibility == "public")
+        # Record leaves may alias one relation wire. The specialist counts
+        # distinct realized result wires against the eight proof-word budget.
+        if isinstance(self.circuit.result, Type):
+            public_words += result_leaf_words
         if public_words > 8:
             token = self.circuit.token
             raise SourceError(f"{self.filename}:{token.line}:{token.column}: "

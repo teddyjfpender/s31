@@ -13,6 +13,7 @@ const fixed_fold = @import("../recursion/fixed_fold.zig");
 const state_fold = @import("../recursion/state_fold.zig");
 const recursion_sparse_wide = @import("../recursion/recursion_sparse_wide.zig");
 const relation = s31.relation;
+const record_abi = @import("../language/record_abi.zig");
 const privacy = s31.proof_privacy;
 
 const QM31 = core.fields.qm31.QM31;
@@ -50,6 +51,7 @@ const Key = struct {
     chip: ?ChipKey = null,
     private_boundary: ?circuit.common.direct_arithmetic.PrivateBoundary = null,
     component_manifest: ?component_manifest.Manifest = null,
+    public_abi_sha256: ?[]const u8 = null,
     name: []const u8,
     program_sha256: []const u8,
     canonical_ir_sha256: []const u8,
@@ -206,6 +208,7 @@ const Report = struct {
     chip: ?ChipKey,
     private_boundary: ?circuit.common.direct_arithmetic.PrivateBoundary,
     component_manifest: ?component_manifest.Manifest,
+    public_abi_sha256: ?[]const u8,
     repeated_step: ?relation.ChipSpec,
     state_fold_step: ?relation.StateFoldSpec,
     program_sha256: []const u8,
@@ -413,6 +416,8 @@ fn parsedProgram(allocator: std.mem.Allocator) !relation.ParsedProgram {
     var parsed = try relation.parseProgram(allocator, embedded_source);
     errdefer parsed.deinit();
     _ = try proofPrivacy(parsed.value);
+    if (parsed.value.version == 2 and (!direct_mode or chip_mode or
+        parsed.value.proof_mode != .transparent)) return error.UnsupportedRecordBoundaryProfile;
     return parsed;
 }
 
@@ -582,7 +587,13 @@ fn inspect(allocator: std.mem.Allocator, source: relation.Program) !void {
             chip_request,
             boundary,
         );
-        if (!chip_mode) generated_manifest = try component_manifest.directGate(
+        generated_manifest = if (chip_mode) blk: {
+            const spec = sourceChipSpec(source) orelse return error.UnsupportedChipRelation;
+            break :blk try component_manifest.directChip(
+                allocator, &pp, air_program_bytes, source_digest, ir.sha256, root, circuit_hash,
+                spec.rounds, spec.constant, boundary,
+            );
+        } else try component_manifest.directGate(
             allocator, &pp, air_program_bytes, source_digest, ir.sha256, root, circuit_hash,
         );
         trace_log = @max(pp.traceLogSize(), if (chip_mode)
@@ -689,6 +700,10 @@ fn inspect(allocator: std.mem.Allocator, source: relation.Program) !void {
         } else null,
         .private_boundary = if (privateChip(source)) maps.private_boundary else null,
         .component_manifest = if (generated_manifest) |owned| owned.value else null,
+        .public_abi_sha256 = if (source.version == 2) blk: {
+            const abi_digest = try record_abi.digest(allocator, source);
+            break :blk try std.fmt.allocPrint(allocator, "{s}", .{std.fmt.bytesToHex(abi_digest, .lower)});
+        } else null,
         .repeated_step = sourceChipSpec(source),
         .state_fold_step = source.stateFoldStep(),
         .program_sha256 = &source_hex,
@@ -3326,9 +3341,6 @@ fn auditSparseWide(allocator: std.mem.Allocator, source: relation.Program, proof
 fn verify(allocator: std.mem.Allocator, path: []const u8, statement_path: []const u8, key_path: []const u8, embedded_key: []const u8) !void {
     var parsed = try parsedProgram(allocator);
     defer parsed.deinit();
-    var statement = try readAssignment(allocator, statement_path);
-    defer statement.deinit();
-    if (statement.value.private_inputs != null) return error.InvalidPublicStatement;
     // The direct-gate manifest adds eight column digests to the sealed key.
     const external_key = try std.fs.cwd().readFileAlloc(allocator, key_path, 16 << 10);
     defer allocator.free(external_key);
@@ -3343,7 +3355,16 @@ fn verify(allocator: std.mem.Allocator, path: []const u8, statement_path: []cons
     _ = try std.fmt.hexToBytes(&hash, key.circuit_hash);
     const encoded = try std.fs.cwd().readFileAlloc(allocator, path, 16 << 20);
     defer allocator.free(encoded);
-    const public_words = try relation.claimedWords(allocator, parsed.value, statement.value);
+    const public_words = if (parsed.value.version == 2) blk: {
+        const statement_bytes = try std.fs.cwd().readFileAlloc(allocator, statement_path, 1 << 20);
+        defer allocator.free(statement_bytes);
+        break :blk try record_abi.claimedWords(allocator, parsed.value, statement_bytes);
+    } else blk: {
+        var statement = try readAssignment(allocator, statement_path);
+        defer statement.deinit();
+        if (statement.value.private_inputs != null) return error.InvalidPublicStatement;
+        break :blk try relation.claimedWords(allocator, parsed.value, statement.value);
+    };
     var bundle = try parseAirBundle(allocator);
     defer bundle.deinit();
     if (direct_mode) {
@@ -3458,6 +3479,12 @@ fn verify(allocator: std.mem.Allocator, path: []const u8, statement_path: []cons
 }
 
 fn validateKey(allocator: std.mem.Allocator, source: relation.Program, key: Key) !void {
+    if (source.version == 2) {
+        const actual = key.public_abi_sha256 orelse return error.InvalidVerificationKey;
+        const expected = try record_abi.digest(allocator, source);
+        if (!std.mem.eql(u8, actual, &std.fmt.bytesToHex(expected, .lower)))
+            return error.InvalidVerificationKey;
+    } else if (key.public_abi_sha256 != null) return error.InvalidVerificationKey;
     if (!std.meta.eql(try proofPrivacy(source), key.proof_privacy)) return error.InvalidVerificationKey;
     const expected_stdlib = @import("s31_options").stdlib_lock_sha256;
     if (expected_stdlib.len == 0) {
@@ -3466,7 +3493,7 @@ fn validateKey(allocator: std.mem.Allocator, source: relation.Program, key: Key)
         const pinned_stdlib = key.stdlib_lock_sha256 orelse return error.InvalidVerificationKey;
         if (!std.mem.eql(u8, pinned_stdlib, expected_stdlib)) return error.InvalidVerificationKey;
     }
-    if (!std.mem.eql(u8, key.schema, if (source.proof_mode == .blinded) "s31-verification-key-blinded-v1" else if (privateChip(source)) "s31-verification-key-v5p" else if (direct_mode and !chip_mode) "s31-verification-key-direct-manifest-v1" else if (direct_mode) "s31-verification-key-v4" else if (wide_mode) "s31-verification-key-v5" else if (sparse_mode) "s31-verification-key-v3" else if (chip_mode) "s31-verification-key-v2" else "s31-verification-key-v1") or
+    if (!std.mem.eql(u8, key.schema, if (source.version == 2) "s31-verification-key-direct-record-v2" else if (source.proof_mode == .blinded) "s31-verification-key-blinded-v1" else if (direct_mode and chip_mode) "s31-verification-key-direct-chip-manifest-v1" else if (direct_mode) "s31-verification-key-direct-manifest-v1" else if (wide_mode) "s31-verification-key-v5" else if (sparse_mode) "s31-verification-key-v3" else if (chip_mode) "s31-verification-key-v2" else "s31-verification-key-v1") or
         !std.mem.eql(u8, key.profile, if (source.proof_mode == .blinded) "circuit-blinded-v1" else if (privateChip(source)) "direct-m31-private-v5" else if (direct_mode) "direct-m31-v4" else if (wide_mode) "sparse-wide-v5" else if (sparse_mode) "sparse-v3" else if (chip_mode) "hybrid-step-v2" else "circuit-v1") or
         !std.mem.eql(u8, key.name, source.name))
         return error.InvalidVerificationKey;
@@ -3478,7 +3505,7 @@ fn validateKey(allocator: std.mem.Allocator, source: relation.Program, key: Key)
             return error.InvalidVerificationKey;
     } else if (key.chip != null) return error.InvalidVerificationKey;
     if ((key.private_boundary == null) != !privateChip(source)) return error.InvalidVerificationKey;
-    if ((!direct_mode or chip_mode) and key.component_manifest != null) return error.InvalidVerificationKey;
+    if (!direct_mode and key.component_manifest != null) return error.InvalidVerificationKey;
     var program_digest: [32]u8 = undefined;
     std.crypto.hash.sha2.Sha256.hash(embedded_source, &program_digest, .{});
     if (!std.mem.eql(u8, key.program_sha256, &std.fmt.bytesToHex(program_digest, .lower))) return error.InvalidVerificationKey;
@@ -3549,9 +3576,15 @@ fn validateCompiledKey(allocator: std.mem.Allocator, source: relation.Program, k
             chip_request,
             boundary,
         );
-        if (!chip_mode) {
+        {
             const sealed = key.component_manifest orelse return error.InvalidVerificationKey;
-            var generated = try component_manifest.directGate(
+            var generated = if (chip_mode) blk: {
+                const spec = sourceChipSpec(source) orelse return error.UnsupportedChipRelation;
+                break :blk try component_manifest.directChip(
+                    allocator, &pp, air_program_bytes, source_digest, ir_digest, expected_root, expected_hash,
+                    spec.rounds, spec.constant, boundary,
+                );
+            } else try component_manifest.directGate(
                 allocator, &pp, air_program_bytes, source_digest, ir_digest, expected_root, expected_hash,
             );
             defer generated.deinit();

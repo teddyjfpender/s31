@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from abi.binding_v2 import make_binding
 import s31_mathlib as mathlib
 from s31_stdlib import Builder, INT_TYPES, P, StaticGroup, StepState, Type, TypeErrorS31, Value
 from language.builtins import (INT_BINARY_CALLS, INT_CAST_CALLS, INT_COMPARE_CALLS, INT_STATIC_SHIFT_CALLS,
@@ -654,10 +655,40 @@ class Compiler:
     def compile(self) -> tuple[dict[str, Any], dict[str, dict[str, int]]]:
         env = {name: self.builder.input(name, typ, visibility)
                for name, typ, visibility in self.circuit.params}
-        result = self.expect_value(
-            self.eval_block(self.circuit.statements, self.circuit.body, env), self.circuit.body)
-        relation = self.builder.finish(result, self.circuit.result,
-                                       span=self.span(self.circuit.body))
+        result = self.eval_block(self.circuit.statements, self.circuit.body, env)
+        if isinstance(self.circuit.result, RecordType):
+            if not isinstance(result, StaticRecord) or result.signature != self.circuit.result:
+                raise self.located(self.circuit.body, "circuit record result has the wrong nominal type")
+
+            def collect(typ: Type | TupleType | RecordType, value: Any) -> list[Value]:
+                if isinstance(typ, Type):
+                    if not isinstance(value, Value) or value.typ != typ:
+                        raise self.located(self.circuit.body, "circuit record leaf has the wrong type")
+                    return [value]
+                if isinstance(typ, RecordType):
+                    if not isinstance(value, StaticRecord) or value.signature != typ:
+                        raise self.located(self.circuit.body, "circuit record field has the wrong nominal type")
+                    return [leaf for (_, child), item in zip(typ.fields, value.elements)
+                            for leaf in collect(child, item)]
+                if not isinstance(value, StaticTuple) or value.signature != typ:
+                    raise self.located(self.circuit.body, "circuit tuple field has the wrong type")
+                return [leaf for child, item in zip(typ.elements, value.elements)
+                        for leaf in collect(child, item)]
+
+            leaves = collect(self.circuit.result, result)
+            if any(leaf.typ.kind != "m31" for leaf in leaves):
+                raise self.located(self.circuit.body, "public record v2 currently supports only m31 leaves")
+            relation, refs = self.builder.finish_record_outputs(leaves, self.span(self.circuit.body))
+            binding = make_binding(relation,
+                                   [(name, typ, visibility, [name])
+                                    for name, typ, visibility in self.circuit.params],
+                                   ("result", self.circuit.result, refs))
+            relation["version"] = 2
+            relation["public_abi"] = binding
+        else:
+            result = self.expect_value(result, self.circuit.body)
+            relation = self.builder.finish(result, self.circuit.result,
+                                           span=self.span(self.circuit.body))
         if self.circuit.proof_mode == "blinded":
             relation["proof_mode"] = "blinded"
         return relation, self.builder.source_map

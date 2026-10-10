@@ -114,6 +114,10 @@ class StageAwareModelTests(unittest.TestCase):
         first["visible_fri"] = {"pow_bits": 27}
         with self.assertRaisesRegex(ValueError, "mixed visible_fri|profile/FRI policy changed"):
             evaluate(model, validation, self.protocol)
+        first["visible_fri"] = {"pow_bits": 26}
+        first["trials"][0]["changed_public_statement_rejected"] = "false"
+        with self.assertRaisesRegex(ValueError, "changed-claim control"):
+            evaluate(model, validation, self.protocol)
 
     def test_generator_has_disjoint_programs_and_signed_oracle_values(self) -> None:
         from tempfile import TemporaryDirectory

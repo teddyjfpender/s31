@@ -34,6 +34,32 @@ authenticate that same manifest. Before the ABI fix, both fields were `true`
 on `record_square_sum`. An optional `--observe` prints the pre-fix behavior
 without enforcing ABI rejection.
 
+### External pin admission control
+
+The new [pin checker](controls/pinned_package.py) requires exact SHA-256 pins
+for the relation source, verification key, native prover, and native verifier. Those four
+digests must come from a trusted release or another channel independent of the
+package. After checking the pins, it checks the package's internal consistency.
+
+```sh
+python3 design/s31/security/controls/pinned_package.py PACKAGE \
+  --source-sha256 SOURCE_DIGEST_FROM_TRUSTED_RELEASE \
+  --key-sha256 KEY_DIGEST_FROM_TRUSTED_RELEASE \
+  --prover-sha256 PROVER_DIGEST_FROM_TRUSTED_RELEASE \
+  --verifier-sha256 VERIFIER_DIGEST_FROM_TRUSTED_RELEASE
+```
+
+The adversarial package control now records
+`pinned_replaced_prover_accepted=false` and
+`pinned_replaced_verifier_accepted=false` alongside the observation that an
+attacker-controlled manifest accepts either replaced executable. On the
+existing valid record package, the control returned
+`forged_abi_accepted=false`, both unpinned replacement results `true`, both
+pinned replacement results `false`, and all four wrong-pin results `false`.
+This is a point-in-time admission
+check, not a signed publication protocol or an execution sandbox. The trusted
+channel and installed checker remain outside the package.
+
 ## Checks that held in the reviewed code
 
 - The installed native verifier compares an externally supplied key's **exact
@@ -168,3 +194,102 @@ source-derived constants and `q` is invertible. The revised
 [private-boundary guide](../../../src/frontends/s31/docs/private-boundary.md)
 states this explicitly. No claim of zero knowledge follows from omission of
 the input from the public statement.
+
+### Formal ideal-boundary increment
+
+The new [affine boundary module](../../../formal/s31/S31/Gadgets/Air/AffineChipBoundary.lean)
+proves, over an arbitrary field, that the compiler's coordinate transform
+`s = (c a²)x + (c a b)` conjugates every iteration of
+`x ↦ c(ax+b)²+d` to `s ↦ s² + ((c a²)d + c a b)`. It also proves
+decoding is inverse when `a` and `c` are nonzero. These are algebraic facts;
+they do not say the emitted gates enforce the transform.
+
+The [generic boundary module](../../../formal/s31/S31/Gadgets/Air/GenericChipBoundary.lean)
+states an ideal multi-call invariant: if circuit Gate events and tagged chip
+endpoint events each have exact multiset balance against a bridge, and each
+address or call tag has a unique producer, then every four-lane circuit
+endpoint equals its corresponding chip endpoint. A separate lemma shows that
+sixteen bridge rows must carry one common value **if** their exact event
+multiset equals sixteen copies of that value. The production bridge presently
+supports one call; the model's call tag is a requirement for future multiple
+calls, not a property claimed of today's AIR. The actual LogUp challenge
+argument, row-to-event mapping and compiler correspondence still need proofs.
+
+The [bridge challenge lemmas](../../../formal/s31/S31/Gadgets/Air/PrivateBridgeChallenge.lean)
+instantiate the existing finite-field Gate challenge bound for sixteen
+potentially different bridge row values against sixteen copies of one circuit
+value. If any row differs, exact event balance is impossible; a false
+reciprocal closure lies in the bounded exceptional set of challenge pairs,
+assuming a canonical address and multiplicities below the field
+characteristic. Multiplying the bridge's `1/16` contribution by 16 motivates
+this model. For eight distinct canonical addresses, the new joint Gate lemma
+shows that a wrong row at any address makes the combined ideal event multiset
+unequal and inherits the exceptional-pair bound. The native paired-fraction
+AIR-to-reciprocal derivation and the joint Gate-plus-chip probability bound
+remain unproved.
+
+### 2026-10-10 follow-up: direct-chip roster and record ABI v2
+
+The current one-call direct-chip manifest is regenerated inside the sealed
+verifier from its source, compiled direct circuit, pinned AIR bundle and
+native component parameters. Its two-component public roster and
+three-component private roster follow the engine's circuit, chip, then bridge
+order, with claimed sums at the same positions. The key's exact bytes must
+match the embedded key before any proof is read. The manifest remains checked
+metadata: it is not itself a new transcript message or proof of the chip AIR.
+The native controls test rehashed sidecar and report mutations and re-sealed
+key mutations, including component order, sum position, chip constant and
+private bridge address. Source inspection found no proof forgery through this
+binding in the current one-call profile; it does not establish an arbitrary
+multi-call component scheduler. The manifest label lifetime defect below was
+fixed and the cross-optimization key check passed afterward.
+
+The output-only record ABI v2 binds a canonical typed descriptor digest to
+the sealed key and source-derived IR. The native statement decoder requires
+the matching ABI digest, exact canonical JSON bytes, ordered named paths,
+canonical M31 words, and equal values for repeated wire aliases before it
+projects to the eight public proof words. Ten focused Python record tests
+passed. The native acceptance script covers an honest proof, changed claim,
+field name/order, alias mismatch, digest, noncanonical word/JSON, duplicate
+JSON key and re-sealed wrong key digest. After the label fix, the ReleaseSafe
+verifier accepted the honest ReleaseFast key and proof, then rejected the
+alias mismatch with a structured error. The independent source read found
+no record-statement bypass. These controls do not prove parser-to-AIR
+correspondence or cryptographic soundness of the production verifier.
+
+An adversarial probe exposed a narrower trust-root gap in the first version
+of the external pin checker: replacing the package's prover executable and
+rehashing only its manifest entry passed a source/key/verifier three-pin
+check. This is a private-witness execution risk if users run an admitted
+package's prover, although a trusted native verifier still rejects invalid
+proofs. The checker now requires the prover's externally supplied digest as
+a fourth pin. Re-running the lightweight package control on the existing
+valid record package showed `replaced_prover_accepted=true` under the
+self-hashed package check, `pinned_replaced_prover_accepted=false`, and
+wrong source/key/prover/verifier pins all rejected. A trusted channel for
+these pins and the local checker remain external assumptions.
+
+### 2026-10-10 follow-up: dangling component label (fixed)
+
+The record acceptance run exposed a direct-gate manifest integrity defect:
+a cached v2 prover's `inspect` emitted eight component-name bytes `0xaa`
+instead of `qm31_ops`, and a key generated in ReleaseFast did not match the
+ReleaseSafe rederived manifest. The same direct-gate component forms the
+first entry of the new direct-chip manifest. This is an observed key
+reproducibility and availability failure; it is **not** evidence that an
+invalid STARK proof was accepted.
+
+The lifetime path is concrete. `air.bindComponent` allocates `selected.label`;
+`component_manifest.directGate` places that slice directly in the returned
+manifest's `components[0].name`; its deferred `bound.deinit()` then calls
+`deinitComponent`, which frees the label before the manifest is serialized.
+Zig's allocator interface poisons freed slices with undefined bytes even
+when an arena's underlying free cannot reclaim the allocation. The observed
+`0xaa` bytes are consistent with that poisoning. The preprocessed column IDs
+are static identifiers and are a separate field. The fix duplicates the
+validated label into manifest-owned arena storage before `bound.deinit()`
+frees its source allocation. The rerun emitted the literal `qm31_ops`, kept
+raw/padded AIR geometry and the ABI digest unchanged, and passed ReleaseFast
+proof verification with the ReleaseSafe verifier plus the alias and re-sealed
+key rejection controls. This closes the observed reproducibility defect for
+this profile, not the broader compiler or STARK proof obligations.

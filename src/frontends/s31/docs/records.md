@@ -1,10 +1,10 @@
 # Nominal records: names for values, zero proof work for grouping
 
 S31's `struct` is a **static record type**. It gives names to fields that
-already hold circuit values. The frontend checks the names and types, then
-specialization removes the record before the normalized relation is built.
-No record object, field label, record row, or record polynomial reaches the
-prover or native verifier.
+already hold circuit values. Inside a program, specialization removes the
+record before the arithmetic relation is built. When a circuit returns a
+public record, relation v2 also carries its nominal layout and field paths
+to the native verifier. That metadata adds no arithmetic gate or AIR row.
 
 ## A complete example
 
@@ -104,12 +104,12 @@ rejects this expression in either arm of a witness-dependent `if`. The
 record does not hide proof obligations in an unused field.
 
 Records may be passed to and returned from pure `fn` helpers and stored in
-`let` bindings. Circuit parameters and the public result still have the
-existing first-order ABI. To prove a statement about several fields, declare
-the first-order inputs and output, group them into a record inside the
-circuit, then assert or return the required first-order fields. Whole-record
-`if` and `assert_eq` are not part of this version; select or assert the
-individual circuit fields explicitly.
+`let` bindings. Circuit parameters remain first-order. A circuit may now
+return a public record of M31 leaves under the `direct-gate` profile. The
+native verifier accepts one canonical typed v2 statement with named field
+paths. Other leaf types and record-valued inputs remain outside this boundary.
+Whole-record `if` and `assert_eq` are not part of this version; select or
+assert the individual circuit fields explicitly.
 
 ## A fixed-width integer use
 
@@ -137,6 +137,10 @@ the current Python compiler erases the example to the same normalized
 relation as a tuple. Native verification checks the resulting proof and
 changed-public-statement rejection. As with the rest of S31, a machine-checked
 refinement of the entire Python parser and Zig AIR emitter remains open.
+The separate [public boundary model](../../../../formal/s31/S31/Gadgets/Functional/RecordBoundary.lean)
+proves typed flatten/reconstruct, distinct tagged positions, alias equality,
+and that private input roots contribute no public statement words. It models
+the validated layout and does not claim to verify the production parsers.
 
 Run `s31 lower`, `s31 explain`, and `s31 equations` on the source to inspect
 the exact normalized nodes, gate spans, AIR geometry, and source positions.
@@ -163,11 +167,48 @@ versions all report normalized relation digest
 This digest identifies the source-stage relation; the package's canonical IR
 digest is a separate value computed after Zig lowering.
 
-The proposed public-record ABI now has a standalone
-[canonical typed codec](../python/abi/record_v2.py)
-for nested paths, nominal layout digests, and eight-word public statement
-limits. It rejects reordered or duplicate leaves and noncanonical values.
-It is not connected to the relation, verification key, or native verifier yet;
-record-valued circuit parameters and results remain unavailable. The
-[boundary design](../../../../design/s31/language/RECORD_BOUNDARY_ABI.md)
-lists the remaining proof and binding gates.
+## A public record result
+
+```s31
+struct Pair { square: [m31; 1], again: [m31; 1] }
+circuit pair(public x: [m31; 1]) -> public Pair {
+    let square = x .* x;
+    Pair { square: square, again: square }
+}
+```
+
+For `x=7`, the relation has one `mul(x, x)` node and one distinct public
+result wire, `square=49`. The two named result fields point to that same
+wire. The proof binds two public words: input `x=7` and output `square=49`.
+The v2 statement shows the alias explicitly:
+
+| Layer | What it carries | Cost or check |
+| --- | --- | --- |
+| Arithmetic relation | `square = mul(x, x)` | One multiplication; no copy for `again` |
+| Public ABI v2 | `Pair`, field order, and both field paths pointing to `square` | Hashed into the relation identity and sealed key |
+| Typed statement | `x=7`, `square=49`, `again=49` | Verifier checks both alias claims agree |
+| Proof word vector | `[7, 49, 0, 0, 0, 0, 0, 0]` | Two distinct public words |
+| AIR | Direct-gate constraints for the same arithmetic graph as the flat form | Zero added arithmetic rows for record grouping |
+
+```json
+{"abi_sha256":"<digest of the validated layout>","leaves":[
+  {"path":[{"root":"x"}],"words":[7]},
+  {"path":[{"root":"result"},{"field":"square"}],"words":[49]},
+  {"path":[{"root":"result"},{"field":"again"}],"words":[49]}
+],"version":2}
+```
+
+The displayed JSON is line-broken for reading. An actual statement is one
+canonical line with sorted keys and a final newline. The native verifier
+rebuilds the paths from the sealed relation, checks the ABI digest in the
+sealed key, and requires both `square` and `again` to claim `49`. Changing
+either name or one aliased value rejects verification. The relation's `mul`
+gate contributes the same AIR rows as a hand-flattened `x .* x` circuit;
+record metadata changes the relation/key/statement bytes instead.
+
+The [boundary implementation contract](../../../../design/s31/language/RECORD_PUBLIC_ABI_V2_IMPLEMENTATION.md)
+and [canonical codec](../python/abi/binding_v2.py) specify tagged paths,
+nominal layouts, alias checks, and the eight-word proof budget. The
+[native acceptance control](../tests/acceptance/acceptance_public_record_v2.py)
+compares AIR geometry with a flat relation and mutates field paths, aliases,
+digest, JSON encoding, and M31 words.

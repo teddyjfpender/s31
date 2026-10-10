@@ -113,6 +113,11 @@ jobs:
           set -euo pipefail
           python3 src/frontends/s31/tests/acceptance/acceptance_component_manifest.py |
             tee zig-out/s31/acceptance/component-manifest.log
+      - name: Direct-chip component roster and sealed-key controls
+        run: |
+          set -euo pipefail
+          python3 src/frontends/s31/tests/acceptance/acceptance_component_manifest_chip.py |
+            tee zig-out/s31/acceptance/component-manifest-chip.json
       - name: Preserve private boundary evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

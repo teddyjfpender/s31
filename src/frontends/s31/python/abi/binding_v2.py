@@ -1,8 +1,7 @@
-"""Inactive reference validator for the proposed public record boundary v2.
+"""Reference validator and canonical statement encoder for public record ABI v2.
 
-This is a specification aid, not a proof path. Current S31 relation v1 and its
-native verifier do not parse this descriptor. Enabling circuit signatures must
-wait for native relation, key, and statement binding.
+The native verifier independently binds the relation, key digest, named paths,
+and aliased values before admitting the proof statement.
 """
 
 from __future__ import annotations
@@ -253,3 +252,19 @@ def encode_public_statement(relation: Mapping[str, Any], binding: dict[str, Any]
                                       for leaf, value in zip(expected, words)]})
     decode_public_statement(relation, binding, encoded)
     return encoded
+
+
+def statement_from_assignment(source: Mapping[str, Any], assignment: Mapping[str, Any]) -> bytes:
+    """Derive the only v2 verifier statement from a prover's flat assignment."""
+    if source.get("version") != 2 or type(source.get("public_abi")) is not dict:
+        raise AbiError("expected a version 2 relation with a public record boundary")
+    base = {**source, "version": 1}
+    binding = base.pop("public_abi")
+    words: list[list[int]] = []
+    for root in binding["inputs"]:
+        if root["visibility"] == "public":
+            words.extend(assignment["public_inputs"][leaf["wire"]]
+                         for leaf in root["leaves"])
+    words.extend(assignment["public_outputs"][leaf["wire"]]
+                 for leaf in binding["result"]["leaves"])
+    return encode_public_statement(base, binding, words)

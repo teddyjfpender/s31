@@ -84,7 +84,7 @@ class Function:
 class Circuit:
     name: str
     params: tuple[tuple[str, Type, str], ...]
-    result: Type
+    result: Type | RecordType
     statements: tuple[Statement, ...]
     body: Expr
     token: Token

@@ -190,16 +190,25 @@ circuit p(private x: [m31; 1]) -> public [m31; 1] {
             evaluate_relation(relation, {"public_inputs": {}, "private_inputs": {"x": [0]},
                                          "public_outputs": {"x": [0]}})
 
-    def test_structs_do_not_cross_the_current_circuit_abi(self) -> None:
+    def test_record_inputs_remain_rejected_but_public_record_outputs_bind_names(self) -> None:
         prelude = "struct A { value: [m31; 1] }\n"
-        for source, message in (
-            ("circuit p(private x: A) -> public [m31; 1] { x.value }",
-             "circuit inputs must be first-order values"),
-            ("circuit p(private x: [m31; 1]) -> public A { A { value: x } }",
-             "circuit output must be a first-order value"),
-        ):
-            with self.subTest(source=source), self.assertRaisesRegex(SourceError, message):
-                compile_text(prelude + source)
+        with self.assertRaisesRegex(SourceError, "circuit inputs must be first-order values"):
+            compile_text(prelude + "circuit p(private x: A) -> public [m31; 1] { x.value }")
+        relation, _ = compile_text(prelude +
+            "circuit p(private x: [m31; 1]) -> public A { A { value: x } }")
+        self.assertEqual(relation["version"], 2)
+        self.assertEqual(relation["public_outputs"], ["x"])
+        self.assertEqual(relation["public_abi"]["result"]["leaves"][0]["path"],
+                         [{"root": "result"}, {"field": "value"}])
+
+    def test_repeated_result_fields_count_one_distinct_proof_word(self) -> None:
+        fields = ", ".join(f"f{i}: [m31; 1]" for i in range(9))
+        values = ", ".join(f"f{i}: x" for i in range(9))
+        source = (f"struct Many {{ {fields} }}\n"
+                  f"circuit many(private x: [m31; 1]) -> public Many {{ Many {{ {values} }} }}")
+        relation, _ = compile_text(source)
+        self.assertEqual(relation["public_outputs"], ["x"])
+        self.assertEqual(len(relation["public_abi"]["result"]["leaves"]), 9)
 
 
 if __name__ == "__main__":

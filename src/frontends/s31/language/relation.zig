@@ -7,6 +7,7 @@ const core = @import("stwo_core");
 const M31 = core.fields.m31.M31;
 const P = core.fields.m31.Modulus;
 const poseidon2 = @import("../library/hash/poseidon2.zig");
+const record_abi = @import("record_abi.zig");
 
 pub const Kind = enum { u16, m31 };
 pub const Visibility = enum { public, private };
@@ -183,6 +184,7 @@ pub const Program = struct {
     version: u32,
     name: []const u8,
     proof_mode: ProofMode = .transparent,
+    public_abi: ?std.json.Value = null,
     inputs: []Input,
     nodes: []Node,
     assertions: []Assertion,
@@ -263,7 +265,9 @@ pub const Program = struct {
     }
 
     pub fn validate(self: Program, allocator: std.mem.Allocator) !void {
-        if (self.version != 1) return error.UnsupportedVersion;
+        if (self.version != 1 and self.version != 2) return error.UnsupportedVersion;
+        if (self.version == 1 and self.public_abi != null) return error.InvalidRecordAbi;
+        if (self.version == 2 and self.public_abi == null) return error.InvalidRecordAbi;
         if (!validName(self.name)) return error.InvalidProgramName;
         var shapes = std.StringHashMapUnmanaged(Shape){};
         defer shapes.deinit(allocator);
@@ -456,6 +460,7 @@ pub const Program = struct {
             public_words += shape.length;
         }
         if (public_words == 0 or public_words > 8) return error.PublicAbiTooWide;
+        if (self.version == 2) try record_abi.validate(allocator, self);
     }
 
     pub fn shapeOf(self: Program, allocator: std.mem.Allocator, name: []const u8) !?Shape {

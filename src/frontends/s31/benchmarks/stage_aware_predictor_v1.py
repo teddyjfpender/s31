@@ -7,6 +7,7 @@ import argparse
 import hashlib
 import json
 import math
+import re
 import statistics
 from pathlib import Path
 
@@ -23,6 +24,13 @@ OPAQUE_STAGES = (
     "prover_process_unattributed_seconds", "native_verify_process_wall_seconds",
 )
 TARGETS = ("paired_prove_and_verify_wall_seconds", "proof_bytes", "prover_peak_rss_bytes")
+CHANGED_FIELD = re.compile(r"^(public_inputs|public_outputs)\.([A-Za-z_][A-Za-z0-9_]*)\[0\]$")
+
+
+def changed_claim_field(value: object) -> tuple[str, str]:
+    if not isinstance(value, str) or (match := CHANGED_FIELD.fullmatch(value)) is None:
+        raise ValueError("changed-claim control must name the changed public field word")
+    return match.group(1), match.group(2)
 
 
 def positive(value: object, label: str) -> float:
@@ -121,8 +129,9 @@ def checked_cases(corpus: dict, split: str, protocol: dict) -> list[dict]:
             if not isinstance(digest, str) or len(digest) != 64 or digest in assignments:
                 raise ValueError(f"{name}: duplicate or invalid assignment digest")
             assignments.add(digest)
-            if trial["native_verifier_accepted"] is not True or not trial["changed_public_statement_rejected"]:
-                raise ValueError(f"{name}: native proof or changed-claim control failed")
+            if trial["native_verifier_accepted"] is not True:
+                raise ValueError(f"{name}: native proof failed")
+            changed_claim_field(trial["changed_public_statement_rejected"])
             if trial["independent_value_oracle"]["status"] != "passed":
                 raise ValueError(f"{name}: independent value oracle failed")
             for stage in (*stages_for_family(family), "proof_bytes", "prover_peak_rss_bytes"):

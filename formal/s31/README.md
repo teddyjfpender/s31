@@ -129,9 +129,18 @@ reconstructs the source term from fresh, backward-referencing positional SSA
 instructions. Every accepted certificate evaluates to the source result on
 all inputs, including when each instruction runs through `evaluateNode`.
 The worked `square` then `square .* square` certificate uses two multiplication
-instructions; five malformed-certificate controls are rejected. These theorems
-do not establish Python parser/emitter correctness, named serialized node
-equivalence, Zig AIR emission, or verifier transcript binding.
+instructions; five malformed-certificate controls are rejected.
+`Functional/SSAEmitterProof` proves the emitter passes that checker for every
+source in the four-lane add/mul/static-let fragment, including shared lets.
+`Functional/SSANamedProgram` maps checked SSA to a canonical real
+`Program.nodes` list and checks exact structure with `Program.validate`; the
+shared-square named node list runs through actual name lookup and
+`evaluateNode` for arbitrary inputs. `Functional/SSAAirRows` then proves
+soundness and honest completeness for every packed arithmetic AIR row in the
+emitted instruction trace, assuming each row operand is authenticated to its
+addressed prior wire. These theorems do not establish Python
+parser/emitter correctness, a generic named-environment equivalence theorem,
+Zig AIR emission, or verifier transcript binding.
 `Functional/TextSquare4` is a narrower executable bridge: the formal gate
 runs the Python text compiler on the actual `functional_square4.s31` file and
 commits its normalized two-node program as Lean source. `TextSquare4Proof`

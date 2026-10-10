@@ -116,6 +116,9 @@ text .s31 ──parse/typecheck/specialize──▶ normalized relation JSON
 - [Generated component manifest](../../../../design/s31/language/COMPONENT_MANIFEST.md):
    the direct-gate AIR component and fixed-column roster, native rederivation,
    and the exact direct-chip extension still required.
+- [General authenticated chip boundary](../../../../design/s31/language/GENERAL_AUTHENTICATED_CHIP_BOUNDARY.md):
+   the proposed tagged multi-call contract, lookup joins, manifest roster,
+   soundness premises and native delivery gates.
 - [Compiler correspondence](../../../../design/s31/language/COMPILER_CORRESPONDENCE.md):
    the checked Lean arithmetic and SSA fragment and the production boundaries
    still requiring a refinement proof.

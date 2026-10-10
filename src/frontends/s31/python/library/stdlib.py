@@ -653,6 +653,25 @@ class Builder:
         return {"version": 1, "name": self.name, "inputs": self.inputs, "nodes": self.nodes,
                 "assertions": self.assertions, "public_outputs": [value.ref]}
 
+    def finish_record_outputs(self, leaves: list[Value],
+                              span: dict[str, int] | None = None) -> tuple[dict[str, Any], list[str]]:
+        """Realize record leaves, preserving aliases without adding copy gates."""
+        if self.bit_inputs != self.constrained_bits:
+            raise TypeErrorS31("every bit input must be constrained by a Boolean operation or select")
+        refs = [self.realize(value, span=span).ref for value in leaves]
+        if any(ref is None for ref in refs):
+            raise TypeErrorS31("record output leaf has no relation wire")
+        outputs = list(dict.fromkeys(refs))
+        shapes = {item["name"]: item["length"] for item in self.inputs}
+        for value, ref in zip(leaves, refs):
+            shapes[ref] = value.typ.length
+        public_words = sum(item["length"] for item in self.inputs if item["visibility"] == "public")
+        public_words += sum(shapes[ref] for ref in outputs)
+        if not 1 <= public_words <= 8:
+            raise TypeErrorS31("current public ABI allows at most eight distinct words")
+        return ({"version": 1, "name": self.name, "inputs": self.inputs, "nodes": self.nodes,
+                 "assertions": self.assertions, "public_outputs": outputs}, refs)
+
 
 # Independent value semantics used by library tests; no relation nodes are involved.
 def encode_m31_words_le(words: list[int]) -> bytes:

@@ -36,6 +36,10 @@ def materialize_corpus(root: Path, corpus: dict) -> Path:
             trial["proof_bytes"] = len(proof)
             trial["proof_sha256"] = hashlib.sha256(proof).hexdigest()
             write_json(directory / "trial-report.json", trial)
+            write_json(directory / "statement.json", {
+                "public_inputs": {}, "public_outputs": {"result": [0]}})
+            write_json(directory / "changed-statement.json", {
+                "public_inputs": {}, "public_outputs": {"result": [1]}})
     path = root / "stage-aware-corpus.json"
     write_json(path, corpus)
     return path
@@ -67,6 +71,11 @@ class PublishStageAwareTests(unittest.TestCase):
             proof = root / "validation" / "arithmetic_32" / "trials" / "00" / "proof.bin"
             proof.write_bytes(b"tampered")
             with self.assertRaisesRegex(ValueError, "saved proof bytes"):
+                publish(train_path, model_path, validation_path, evaluation_path)
+            proof.write_bytes(bytes([0]) * 32)
+            changed = root / "validation" / "arithmetic_32" / "trials" / "00" / "changed-statement.json"
+            write_json(changed, {"public_inputs": {}, "public_outputs": {"result": [0]}})
+            with self.assertRaisesRegex(ValueError, "saved changed statement"):
                 publish(train_path, model_path, validation_path, evaluation_path)
 
 

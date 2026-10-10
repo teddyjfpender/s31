@@ -28,6 +28,9 @@ import S31.Gadgets.Functional.TextSquare4RawSoundness
 import S31.Gadgets.Air.QuadField
 import S31.Gadgets.Air.SimdChunks
 import S31.Gadgets.Air.FunctionalBridge
+import S31.Gadgets.Air.AffineChipBoundary
+import S31.Gadgets.Air.GenericChipBoundary
+import S31.Gadgets.Air.PrivateBridgeChallenge
 import S31.Gadgets.Air.SelectRows
 import S31.Gadgets.Air.BooleanRows
 import S31.Gadgets.Air.BitRows
@@ -77,6 +80,9 @@ import S31.Gadgets.Functional.ArrayNodes
 import S31.Gadgets.Functional.ArithmeticNodes
 import S31.Gadgets.Functional.CompilerCorrespondence
 import S31.Gadgets.Functional.SSACertificate
+import S31.Gadgets.Functional.SSAEmitterProof
+import S31.Gadgets.Functional.SSANamedProgram
+import S31.Gadgets.Functional.SSAAirRows
 import S31.Gadgets.Functional.MathLibrary
 import S31.Gadgets.Functional.WorkedQuadratic
 import S31.Gadgets.Functional.CurriedApplication

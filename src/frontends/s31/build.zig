@@ -643,6 +643,8 @@ pub fn build(b: *std.Build) void {
         const projection_asset: std.Build.LazyPath = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/vectors/circuit/official/compiled_air_constraints_v1.bin") };
         prover_root.addAnonymousImport("s31_air_projection", .{ .root_source_file = projection_asset });
         prover_root.addImport("s31_air_programs", official_air);
+        prover_root.addAnonymousImport("s31_chip_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/repeated_step_chip.zig") } });
+        prover_root.addAnonymousImport("s31_bridge_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/private_boundary_bridge.zig") } });
         prover_root.addAnonymousImport("s31_verification_key", .{ .root_source_file = key_asset });
         prover_root.addAnonymousImport("s31_recursive_key", .{ .root_source_file = recursive_key_asset });
         prover_root.addAnonymousImport("s31_recursive_next_key", .{ .root_source_file = recursive_next_key_asset });
@@ -665,6 +667,8 @@ pub fn build(b: *std.Build) void {
         native_root.addAnonymousImport("s31_program_source", .{ .root_source_file = source_asset });
         native_root.addAnonymousImport("s31_air_projection", .{ .root_source_file = projection_asset });
         native_root.addImport("s31_air_programs", official_air);
+        native_root.addAnonymousImport("s31_chip_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/repeated_step_chip.zig") } });
+        native_root.addAnonymousImport("s31_bridge_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/private_boundary_bridge.zig") } });
         native_root.addAnonymousImport("s31_verification_key", .{ .root_source_file = key_asset });
         native_root.addAnonymousImport("s31_recursive_key", .{ .root_source_file = recursive_key_asset });
         native_root.addAnonymousImport("s31_recursive_next_key", .{ .root_source_file = recursive_next_key_asset });

@@ -88,6 +88,13 @@ verification key through a trusted distribution path and check their
 identity. Re-lowering also does not prove that the compiler translated the
 source with the semantics the programmer intended.
 
+For an untrusted package, the [external-pin checker](../../../../design/s31/security/controls/pinned_package.py)
+can require SHA-256 digests of the normalized source, verification key, native
+prover, and native verifier supplied by a separate trusted channel. It checks those exact
+bytes before the package consistency checks. Pins copied from the package's
+own manifest provide no external authentication. The checker admits files at
+one point in time; it does not sandbox execution or sign a release.
+
 ## What the verifier checks
 
 The verifier is built with the source relation and sealed key. It checks the
@@ -176,8 +183,9 @@ gives the exact specialized-chip row constraints; the generic AIR bundle
 remains a pinned build asset. A symbolic exporter with an identity check
 against that asset is still needed for term-by-term audit.
 
-S31 also lacks a private circuit-to-chip boundary for mixed programs,
-automatic chip selection, a dedicated Poseidon2 batch chip, and recursive
-verifier generation. Current performance records apply to their specified
-programs, host, and protocol configurations; row counts alone do not prove
-an end-to-end speedup over Cairo.
+S31 has an authenticated direct-chip boundary for one supported private
+four-lane recurrence. It does not yet admit arbitrary mixed programs or
+multiple chip calls through that boundary. Automatic chip selection and a
+dedicated Poseidon2 batch chip remain open. Current performance records apply
+to their specified programs, host, and protocol configurations; row counts
+alone do not prove an end-to-end speedup over Cairo.

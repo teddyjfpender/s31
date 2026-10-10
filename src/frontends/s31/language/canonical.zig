@@ -5,6 +5,7 @@
 const std = @import("std");
 const core = @import("stwo_core");
 const relation = @import("relation.zig");
+const record_abi = @import("record_abi.zig");
 const M31 = core.fields.m31.M31;
 
 pub const Tag = enum { input, constant, cast_m31, add, mul, add_const, mul_const, repeat, hash_blake2s, hash_blake2s_leaf, hash_blake2s_pair, select, hash_poseidon2_leaf, hash_poseidon2_pair, sum_lanes, u256_add, u256_le, u256_add_checked, hash_sha256d_header, bitcoin_target_mainnet, bitcoin_prev_hash, bitcoin_header_bits, bitcoin_genesis_hash_mainnet, bitcoin_header_time, u32_lt, inv, is_zero, u256_sub, u256_sub_checked, array_get, array_concat, array_slice, bool_not, bool_and, bool_or, bool_xor, bool_select, bitcoin_block_work, int_view, int_add_checked, int_add_wrapping, int_sub_checked, int_sub_wrapping, int_le, int_mul_wrapping, int_mul_checked, int_cast_checked, int_bit_and, int_bit_or, int_bit_xor, int_bit_not, int_shl, int_shr_logical, int_shr_arithmetic, int_rotl, int_rotr, int_div_rem };
@@ -222,6 +223,11 @@ pub fn build(allocator: std.mem.Allocator, program: relation.Program) !IR {
     // Keep legacy transparent digests byte-for-byte stable. A privacy request
     // must change the verifier identity even when the arithmetic graph agrees.
     if (program.proof_mode == .blinded) hasher.update("S31-PROOF-MODE:blinded-v1\x00");
+    if (program.version == 2) {
+        hasher.update("S31-RECORD-ABI-V2\x00");
+        const abi_digest = try record_abi.digest(allocator, program);
+        hasher.update(&abi_digest);
+    }
     hasher.update(encoded);
     hasher.final(&digest);
     const owned_nodes = try nodes.toOwnedSlice(allocator);

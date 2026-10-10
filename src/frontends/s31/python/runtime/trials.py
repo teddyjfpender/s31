@@ -11,6 +11,7 @@ import tempfile
 import time
 from pathlib import Path
 
+from abi.binding_v2 import statement_from_assignment
 from inspection.reports import equations as report_equations, explain as report_explain
 from package.build import build
 from package.context import ENGINE_ROOT, ROOT, S31_DIR, file_hash, invoke, sha256, write_json
@@ -31,7 +32,10 @@ def independent_value_check(relation: dict, assignment: dict) -> dict:
     from oracle import UnsupportedOperation, evaluate_relation
 
     try:
-        computed = evaluate_relation(relation, assignment)
+        semantic = {**relation, "version": 1} if relation.get("version") == 2 else relation
+        if semantic is not relation:
+            semantic.pop("public_abi")
+        computed = evaluate_relation(semantic, assignment)
     except UnsupportedOperation as exc:
         return {"status": "unsupported", "reason": str(exc)}
     return {"status": "passed", "computed_public_outputs": computed}
@@ -123,27 +127,39 @@ def trial(source_or_package: Path, assignment_path: Path, output: Path,
         proof = staging / "proof.bin"
         statement_path = staging / "statement.json"
         wrong_path = staging / "changed-statement.json"
-        write_json(statement_path, statement)
+        if relation["version"] == 2:
+            statement_path.write_bytes(statement_from_assignment(relation, assignment))
+        else:
+            write_json(statement_path, statement)
         prove_measurement = measured_invoke(str(prover), "prove", str(assignment_path), str(proof))
         prover_log = prove_measurement["output"]
         prove_seconds = prove_measurement["wall_seconds"]
         verify_measurement = measured_invoke(str(verifier), str(proof), str(statement_path), str(key))
         verify_seconds = verify_measurement["wall_seconds"]
-        changed = copy.deepcopy(statement)
+        changed = (json.loads(statement_path.read_text()) if relation["version"] == 2
+                   else copy.deepcopy(statement))
         changed_field = None
-        for category in ("public_outputs", "public_inputs"):
-            for field in abi_data[category]:
-                values = changed[category][field["name"]]
-                if values:
-                    bound = 65536 if field["kind"] == "u16" else (1 << 31) - 1
-                    values[0] = (values[0] + 1) % bound
-                    changed_field = f"{category}.{field['name']}[0]"
+        if relation["version"] == 2:
+            leaf = changed["leaves"][0]
+            leaf["words"][0] = (leaf["words"][0] + 1) % ((1 << 31) - 1)
+            changed_field = "leaves[0].words[0]"
+        else:
+            for category in ("public_outputs", "public_inputs"):
+                for field in abi_data[category]:
+                    values = changed[category][field["name"]]
+                    if values:
+                        bound = 65536 if field["kind"] == "u16" else (1 << 31) - 1
+                        values[0] = (values[0] + 1) % bound
+                        changed_field = f"{category}.{field['name']}[0]"
+                        break
+                if changed_field is not None:
                     break
-            if changed_field is not None:
-                break
         if changed_field is None:
             raise ValueError("trial needs at least one public word to test statement binding")
-        write_json(wrong_path, changed)
+        if relation["version"] == 2:
+            wrong_path.write_text(json.dumps(changed, sort_keys=True, separators=(",", ":"), ensure_ascii=True) + "\n")
+        else:
+            write_json(wrong_path, changed)
         try:
             invoke(str(verifier), str(proof), str(wrong_path), str(key))
         except RuntimeError:
@@ -152,8 +168,8 @@ def trial(source_or_package: Path, assignment_path: Path, output: Path,
             raise RuntimeError(f"native verifier accepted changed {changed_field}")
         proof_data = proof.read_bytes()
         (output / "proof.bin").write_bytes(proof_data)
-        write_json(output / "statement.json", statement)
-        write_json(output / "changed-statement.json", changed)
+        (output / "statement.json").write_bytes(statement_path.read_bytes())
+        (output / "changed-statement.json").write_bytes(wrong_path.read_bytes())
     source_equations = equations(package)
     write_json(output / "equations.json", source_equations)
     write_json(output / "explain.json", explain(package))

@@ -1,6 +1,6 @@
-# Generated component manifest: direct gate slice
+# Generated component manifests: direct M31 profiles
 
-The first generated manifest covers `direct-gate` (`direct-m31-v4`) only. It is
+The first generated manifest covered `direct-gate` (`direct-m31-v4`). It is
 derived from the sealed relation after topology compilation and padding, the
 actual direct preprocessed circuit, and the rebound AIR program. A package
 contains the manifest as `component-manifest.json`; the same typed value is
@@ -39,11 +39,44 @@ checks the manifest against the sealed source and pinned AIR rather than
 trusting a package-provided digest. Its existing key equality check prevents
 substituting a different external key for the embedded one.
 
+## One-call direct-chip roster
+
+The next schema, `s31-component-manifest-direct-chip-v1`, describes the
+existing one-call `direct-chip` proof. The public variant has two components
+in proof and claimed-sum order: `qm31_ops`, `repeated_step_chip`. The private
+variant adds `private_boundary_bridge` as component and sum index 2. The
+bridge's eight endpoint addresses come from compiler topology and are
+included in the manifest; proof bytes cannot choose them. The call ID is
+fixed at zero because the current six-field chip lookup tuple has no call ID.
+Consequently this schema permits exactly one call.
+
+| Component | Main columns | Interaction columns | Log size | Constraints | Lookup relations |
+| --- | ---: | ---: | --- | ---: | --- |
+| `qm31_ops` | `[0,12)` | `[0,8)` | circuit log | selected AIR count | circuit Gate |
+| `repeated_step_chip` | `[12,21)` | `[8,16)` | `log2(rounds)` | 6 | chip state |
+| `private_boundary_bridge` | `[21,29)` | `[16,36)` | 4 | 5 | circuit Gate, chip state |
+
+These are offsets in commitment trees 1 and 2. Tree 0 still contains the
+eight fixed QM31 circuit columns; the chip and bridge have no fixed columns.
+Each roster row records its ordered claimed-sum index, degree bound, trace
+spans, source index, and a SHA-256 binding of the selected AIR source and
+parameters. The circuit row retains the pinned AIR bundle binding. The
+verifier recomputes the manifest from sealed source and AIR before it reads
+proof bytes. The native prover and verifier still construct the selected
+components with their existing explicit code; manifest equality checks that
+the key describes that code's layout. This is a checked schedule, not yet a
+manifest-driven scheduler.
+
+The new key schema is `s31-verification-key-direct-chip-manifest-v1`. Its
+proof envelope and transcript remain the existing direct-chip profile. The
+source digest, chip parameters, and private addresses already enter that
+transcript. The manifest itself is checked against sealed compiler output and
+native AIR source before proof deserialization, but its JSON digest is not
+mixed as an additional transcript element. A future multi-call profile needs
+a new chip tuple with call ID and a separately versioned transcript.
+
 ## Remaining work
 
-- Extend generation to `direct-chip` and the private bridge. Include the chip
-  component and its separate claimed sum, preprocessed geometry, relation
-  domain and constraint identity.
 - Extend to sparse, wide, full circuit, SHA and recursive profiles. These need
   explicit lookup dependency closure, fixed-table digests, all selected
   component orders, and the exact composition coefficient schedule.
@@ -52,33 +85,14 @@ substituting a different external key for the embedded one.
 - Version the key and transcript if the manifest ever changes proof semantics;
   a package-only metadata change must not silently redefine an old profile.
 
-This slice proves manifest generation and independent reconstruction for one
-existing arithmetic profile. It is not a general component selector.
+These slices establish manifest generation and independent reconstruction for
+the direct arithmetic profiles. They do not yet provide a general component
+selector or a multi-call chip boundary.
 
-## Next profile: one private direct-chip call
+## Single-call security boundary
 
-The existing private proof commits three AIR components in this exact order:
-`qm31_ops`, `repeated_step_chip`, `private_boundary_bridge`. Its claimed sums
-follow the same order. The main trace columns are laid out as 12 circuit, 9
-chip, then 8 bridge columns; the interaction trace uses 8, 8, then 20. The
-chip's trace log size is derived from the source round count; the bridge uses
-log size 4. The bridge has five constraints and the chip has six. The circuit
-has the same eight ordered preprocessed columns as direct-gate; the chip and
-bridge consume no additional preprocessed columns.
-
-A direct-chip manifest must bind the chip relation ID, round count and
-compiler-derived constant, then bind the eight transformed boundary wire
-addresses in input/output order. It must derive all three component offsets,
-trace logs, evaluation bounds, constraint counts, lookup relation IDs, and
-claimed-sum positions from the compiled topology and selected native AIR.
-The verifier should reconstruct this entire roster before reading proof bytes
-and compare it to the sealed key. Tamper controls need to re-seal changed
-component order, chip constant, bridge address, log size, and claimed-sum
-position; a rehashed package sidecar alone is a weaker control. The key
-schema needs its own version so direct-gate and old private keys cannot
-silently acquire a different roster.
-
-This is an implementation plan, not a claim that the current direct-chip key
-already carries such a manifest. For multiple chip calls, the roster also
-needs an instance index and explicit multiset multiplicities; the current
-single-call bridge cannot supply that information.
+For multiple chip calls, the roster needs an instance index and explicit
+multiset multiplicities; the current single-call bridge cannot supply that
+information. The private bridge authenticates a private endpoint but its
+opened columns can reveal that value. No secrecy guarantee follows from this
+manifest.

@@ -4,11 +4,12 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import hashlib
 import json
 from pathlib import Path
 
-from stage_aware_predictor_v1 import PROTOCOL, evaluate, fit_model
+from stage_aware_predictor_v1 import PROTOCOL, changed_claim_field, evaluate, fit_model
 
 
 def file_hash(path: Path) -> str:
@@ -40,8 +41,18 @@ def audit_corpus(path: Path, expected_split: str) -> tuple[dict, dict]:
             if compact["native_verifier_accepted"] is not True:
                 raise ValueError(f"{name}[{index}]: native verifier rejected")
             controls["native_accepted"] += 1
-            if not compact["changed_public_statement_rejected"]:
-                raise ValueError(f"{name}[{index}]: changed public claim was not rejected")
+            category, field = changed_claim_field(compact["changed_public_statement_rejected"])
+            statement = json.loads((directory / "statement.json").read_text())
+            changed = json.loads((directory / "changed-statement.json").read_text())
+            try:
+                original_value = statement[category][field][0]
+                changed_value = changed[category][field][0]
+            except (KeyError, IndexError, TypeError) as exc:
+                raise ValueError(f"{name}[{index}]: changed public field is absent") from exc
+            expected_changed = copy.deepcopy(statement)
+            expected_changed[category][field][0] = changed_value
+            if changed_value == original_value or changed != expected_changed:
+                raise ValueError(f"{name}[{index}]: saved changed statement does not match control")
             controls["changed_claim_rejected"] += 1
             if compact["independent_value_oracle"]["status"] != "passed":
                 raise ValueError(f"{name}[{index}]: independent oracle failed")

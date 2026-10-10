@@ -24,6 +24,7 @@ LIBRARY_SOURCE_FILES = (
 )
 TEXT_FRONTEND_SOURCES = (
     S31_DIR / "python/text_frontend.py",
+    *sorted((S31_DIR / "python/abi").glob("*.py")),
     *sorted((S31_DIR / "python/language").glob("*.py")),
     *sorted((S31_DIR / "python/library").glob("*.py")),
     *sorted((S31_DIR / "python/inspection").glob("*.py")),
@@ -80,12 +81,22 @@ def invoke(*args: str) -> str:
 def load_source(path: Path) -> tuple[dict, bytes]:
     data = path.read_bytes()
     source = json.loads(data)
-    if source.get("version") != 1 or not isinstance(source.get("name"), str):
-        raise ValueError("S31 v0.1 requires a version 1 relation source")
+    if source.get("version") not in (1, 2) or not isinstance(source.get("name"), str):
+        raise ValueError("S31 requires a version 1 or 2 relation source")
     return source, data
 
 
 def abi(source: dict, lowering: str) -> dict:
+    if source.get("version") == 2:
+        from abi.binding_v2 import binding_digest
+
+        if lowering != "direct-gate":
+            raise ValueError("public record ABI v2 requires direct-gate lowering")
+        base = {**source, "version": 1}
+        boundary = base.pop("public_abi")
+        return {"schema": "s31-public-abi-v2", "boundary": boundary,
+                "boundary_sha256": binding_digest(base, boundary),
+                "encoding": "canonical typed-only JSON statement with named paths and aliased M31 leaves"}
     shapes = {item["name"]: {"kind": item["kind"], "length": item["length"]} for item in source["inputs"]}
     for node in source["nodes"]:
         op = node["op"]
@@ -148,12 +159,19 @@ def lower_text(source_path: Path) -> tuple[dict, bytes, dict]:
 
 def text_interface(circuit: object, explicit_import: bool) -> dict:
     def type_entry(typ: object) -> dict:
+        from language.syntax import RecordType, TupleType
+
+        if isinstance(typ, RecordType):
+            return {"record": typ.name, "fields": [
+                {"name": name, "type": type_entry(field)} for name, field in typ.fields]}
+        if isinstance(typ, TupleType):
+            return {"tuple": [type_entry(item) for item in typ.elements]}
         kind = typ.kind[4:] if typ.kind.startswith("int_") else typ.kind
         return {"kind": kind, "length": typ.length,
                 **({"family": typ.family} if typ.family else {})}
 
     return {
-        "schema": "s31-text-interface-v1",
+        "schema": "s31-text-interface-v2" if getattr(circuit.result, "fields", None) is not None else "s31-text-interface-v1",
         "inputs": [{"name": name, "visibility": visibility, "type": type_entry(typ)}
                    for name, typ, visibility in circuit.params],
         "output": type_entry(circuit.result),

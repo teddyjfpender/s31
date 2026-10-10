@@ -36,6 +36,10 @@ def verify_package(package: Path) -> dict:
     if not required_artifacts.issubset(artifacts):
         raise ValueError("S31 package is missing required artifacts")
     source = json.loads((package / "source.s31.json").read_text())
+    if source.get("version") not in (1, 2):
+        raise ValueError("unsupported S31 relation version")
+    if source["version"] == 2 and manifest.get("lowering") != "direct-gate":
+        raise ValueError("record ABI v2 requires direct-gate lowering")
     privacy = proof_privacy.policy_for(source, manifest.get("lowering"), manifest.get("fri_fold_step", 1))
     fri_fold_step = manifest.get("fri_fold_step", 1)
     if (type(fri_fold_step) is not int or fri_fold_step not in (1, 4) or
@@ -145,8 +149,16 @@ def verify_package(package: Path) -> dict:
     )
     if any(report.get(field) != key.get(field) for field in inspected_key_fields):
         raise ValueError("S31 package cost report does not match key")
+    if source["version"] == 2:
+        expected_abi = abi(source, manifest["lowering"])["boundary_sha256"]
+        if (key.get("schema") != "s31-verification-key-direct-record-v2" or
+                key.get("public_abi_sha256") != expected_abi or
+                report.get("public_abi_sha256") != expected_abi):
+            raise ValueError("record ABI v2 key or cost report differs from source")
+    elif key.get("public_abi_sha256") is not None or report.get("public_abi_sha256") is not None:
+        raise ValueError("version 1 key cannot carry a record ABI digest")
     if manifest.get("lowering") == "direct-gate":
-        if key.get("schema") == "s31-verification-key-v4":
+        if source["version"] == 1 and key.get("schema") == "s31-verification-key-v4":
             # Existing sealed verifiers still accept their own v4 keys. Keep
             # those packages readable, but never interpret a partial v1
             # component manifest as an optional extension to the old schema.
@@ -158,7 +170,7 @@ def verify_package(package: Path) -> dict:
         else:
             declared = key.get("component_manifest")
             if ("component-manifest.json" not in artifacts or
-                    key.get("schema") != "s31-verification-key-direct-manifest-v1" or
+                    key.get("schema") != ("s31-verification-key-direct-record-v2" if source["version"] == 2 else "s31-verification-key-direct-manifest-v1") or
                     key.get("profile") != "direct-m31-v4" or
                     not isinstance(declared, dict) or
                     declared.get("schema") != "s31-component-manifest-direct-gate-v1" or
@@ -169,13 +181,50 @@ def verify_package(package: Path) -> dict:
                     report.get("component_manifest") != declared or
                     json.loads((package / "component-manifest.json").read_text()) != declared):
                 raise ValueError("S31 direct-gate component manifest does not match sealed key")
+    elif manifest.get("lowering") == "direct-chip":
+        legacy_schema = ("s31-verification-key-v5p" if key.get("profile") == "direct-m31-private-v5"
+                         else "s31-verification-key-v4")
+        if key.get("schema") == legacy_schema:
+            if (key.get("profile") not in {"direct-m31-v4", "direct-m31-private-v5"} or
+                    "component-manifest.json" in artifacts or
+                    (package / "component-manifest.json").exists() or
+                    key.get("component_manifest") is not None or
+                    report.get("component_manifest") is not None):
+                raise ValueError("invalid legacy S31 direct-chip component manifest")
+        else:
+            declared = key.get("component_manifest")
+            chip_call = declared.get("chip_call") if isinstance(declared, dict) else None
+            expected_components = (3 if key.get("profile") == "direct-m31-private-v5" else 2)
+            if ("component-manifest.json" not in artifacts or
+                    key.get("schema") != "s31-verification-key-direct-chip-manifest-v1" or
+                    key.get("profile") not in {"direct-m31-v4", "direct-m31-private-v5"} or
+                    not isinstance(key.get("chip"), dict) or
+                    not isinstance(declared, dict) or
+                    declared.get("schema") != "s31-component-manifest-direct-chip-v1" or
+                    declared.get("profile") != key["profile"] or
+                    any(declared.get(field) != key.get(field) for field in (
+                        "program_sha256", "canonical_ir_sha256", "preprocessed_root", "circuit_hash",
+                        "air_bundle_sha256")) or
+                    not isinstance(chip_call, dict) or chip_call.get("call_id") != 0 or
+                    any(chip_call.get(field) != key["chip"].get(field) for field in
+                        ("relation_id", "rounds", "constant")) or
+                    chip_call.get("private_boundary") != key.get("private_boundary") or
+                    declared.get("claimed_sums") != expected_components or
+                    not isinstance(declared.get("components"), list) or
+                    len(declared["components"]) != expected_components or
+                    any(not isinstance(row, dict) for row in declared["components"]) or
+                    [row.get("claimed_sum_index") for row in declared["components"]] !=
+                    list(range(expected_components)) or
+                    report.get("component_manifest") != declared or
+                    json.loads((package / "component-manifest.json").read_text()) != declared):
+                raise ValueError("S31 direct-chip component manifest does not match sealed key")
     elif ("component-manifest.json" in artifacts or key.get("component_manifest") is not None or
           report.get("component_manifest") is not None):
         raise ValueError("unexpected S31 component manifest")
     if key.get("profile") == "direct-m31-private-v5":
         boundary = key.get("private_boundary")
         if (manifest.get("lowering") != "direct-chip" or
-                key.get("schema") != "s31-verification-key-v5p" or
+                key.get("schema") not in {"s31-verification-key-v5p", "s31-verification-key-direct-chip-manifest-v1"} or
                 not isinstance(boundary, dict) or
                 set(boundary) != {"input", "output"} or
                 any(not isinstance(boundary[name], list) or len(boundary[name]) != 4 or

@@ -32,9 +32,10 @@ def check_case(source: Path) -> None:
         key_path = package / "verification-key.json"
         key = json.loads(key_path.read_text())
         report = json.loads((package / "cost-report.json").read_text())
-        if (key["schema"] != "s31-verification-key-v5p" or
+        if (key["schema"] != "s31-verification-key-direct-chip-manifest-v1" or
                 key["profile"] != "direct-m31-private-v5" or
-                key["private_boundary"] != report["private_boundary"]):
+                key["private_boundary"] != report["private_boundary"] or
+                key["component_manifest"] != report["component_manifest"]):
             raise AssertionError("private source boundary was not sealed into the key")
         if len(set(key["private_boundary"]["input"] + key["private_boundary"]["output"])) != 8:
             raise AssertionError("private endpoint addresses are not disjoint")

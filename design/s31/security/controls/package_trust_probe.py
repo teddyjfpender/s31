@@ -2,8 +2,9 @@
 """Independent package trust-boundary control; never edits the input package.
 
 Run with an existing, valid S31 package. The regression gate requires the
-forged public ABI to be rejected. The replaced executable is observational:
-an untrusted package manifest cannot authenticate its own binaries.
+forged public ABI and both externally pinned executable replacements to be
+rejected. The self-hashed replacement observations remain true: an untrusted
+package manifest cannot authenticate its own binaries.
 """
 
 from __future__ import annotations
@@ -20,6 +21,7 @@ sys.path.insert(0, str(REPO / "src/frontends/s31/python"))
 
 from package.context import file_hash  # noqa: E402
 from package.verify import verify_package  # noqa: E402
+from pinned_package import check_pinned_package, pinned_paths  # noqa: E402
 
 
 def accepted(package: Path) -> bool:
@@ -62,6 +64,28 @@ def probe_binary(source: Path, work: Path) -> bool:
     return accepted(package)
 
 
+def probe_prover(source: Path, work: Path) -> bool:
+    package = work / "forged-prover"
+    shutil.copytree(source, package)
+    manifest = json.loads((package / "manifest.json").read_text())
+    artifact = f"bin/s31-{manifest['name']}-prover"
+    path = package / artifact
+    path.write_text("#!/bin/sh\necho altered-prover\n")
+    path.chmod(0o755)
+    rewrite_manifest_hash(package, artifact)
+    return accepted(package)
+
+
+def wrong_pin_accepted(package: Path, pins: dict[str, str], kind: str) -> bool:
+    changed = dict(pins)
+    changed[kind] = ("0" if pins[kind][0] != "0" else "1") + pins[kind][1:]
+    try:
+        check_pinned_package(package, changed)
+    except ValueError:
+        return False
+    return True
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("package", type=Path, help="existing valid S31 package")
@@ -69,13 +93,41 @@ def main() -> int:
     args = parser.parse_args()
     package = args.package.resolve()
     verify_package(package)
+    pins = {kind: file_hash(path) for kind, path in pinned_paths(package).items()}
+    check_pinned_package(package, pins)
+    wrong_pins = {kind: wrong_pin_accepted(package, pins, kind) for kind in pins}
     with tempfile.TemporaryDirectory(prefix="s31-package-trust-probe-") as temporary:
         work = Path(temporary)
         abi = probe_abi(package, work)
         binary = probe_binary(package, work)
-    print(json.dumps({"forged_abi_accepted": abi, "replaced_verifier_accepted": binary}, sort_keys=True))
+        prover = probe_prover(package, work)
+        try:
+            check_pinned_package(work / "forged-verifier", pins)
+            pinned_binary_accepted = True
+        except ValueError:
+            pinned_binary_accepted = False
+        try:
+            check_pinned_package(work / "forged-prover", pins)
+            pinned_prover_accepted = True
+        except ValueError:
+            pinned_prover_accepted = False
+    print(json.dumps({"forged_abi_accepted": abi,
+                      "replaced_verifier_accepted": binary,
+                      "replaced_prover_accepted": prover,
+                      "pinned_replaced_verifier_accepted": pinned_binary_accepted,
+                      "pinned_replaced_prover_accepted": pinned_prover_accepted,
+                      "wrong_pin_accepted": wrong_pins}, sort_keys=True))
     if not args.observe and abi:
         print("public ABI was not derived from the sealed source", file=sys.stderr)
+        return 1
+    if pinned_binary_accepted:
+        print("externally pinned verifier was replaced", file=sys.stderr)
+        return 1
+    if pinned_prover_accepted:
+        print("externally pinned prover was replaced", file=sys.stderr)
+        return 1
+    if any(wrong_pins.values()):
+        print("incorrect external digest was accepted", file=sys.stderr)
         return 1
     return 0
 

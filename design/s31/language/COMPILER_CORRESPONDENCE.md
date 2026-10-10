@@ -25,8 +25,8 @@ proves:
    same four-lane result. A forged result cannot pass this local model.
 
 The induction works at any expression depth. It deliberately duplicates a
-repeated subtree: a DAG with shared `let` values needs a separate wire-sharing
-theorem. The normalized relation here is a compositional tree of actual
+repeated subtree; the positional SSA theorem below handles `let` sharing.
+The normalized relation here is a compositional tree of actual
 `evaluateNode` calls, not a proof that the production Python compiler emitted
 a correct flattened `Program.nodes` list. The AIR relation covers local packed
 arithmetic rows; lookup balance, trace scheduling, public pins, and STARK
@@ -44,11 +44,10 @@ modules go deeper into those boundaries for one source-bound example.
 | Circuit plan to AIR columns | Every committed row and preprocessed column corresponds to the chosen plan; all reads have authenticated producers, and selectors/multiplicities are fixed or constrained. |
 | AIR to verifier statement | The generated manifest, verifying key, public inputs/outputs, ABI version, and transcript bind the same program. A malicious prover can choose arbitrary committed columns, so honest trace-generation checks are insufficient. |
 
-The next boundary is connecting a checked flattened SSA certificate to the
-exact serialized normalized `Program` and generated component manifest. A
-checker may consume a certificate emitted by Python/Zig, but it must validate
-the translation against source bytes and IR; replaying generated claims or
-hashes alone is insufficient.
+The next boundary is connecting actual source bytes and Python's parser,
+elaborator, and serializer to these checked Lean models, then connecting the
+normalized `Program` to Zig's circuit/chip plan and generated component
+manifest. Source hashes trigger review but do not establish correspondence.
 
 ### Checked positional SSA increment
 
@@ -73,7 +72,52 @@ For `let square = x .* x; square .* square`, the accepted certificate is:
 
 The selected output is wire `2`. Lean checks this certificate and rejects
 mutations with a wrong operand, wrong output wire, duplicate name, forward
-read, or missing output. The emitter's output is checked for this example;
-emitter acceptance for every source, conversion of numeric IDs to production
-string names, parser-to-source correspondence, and serialized `Program`/Zig
-correspondence remain open.
+read, or missing output.
+
+[`SSAEmitterProof.lean`](../../../formal/s31/S31/Gadgets/Functional/SSAEmitterProof.lean)
+proves that the deterministic emitter produces an accepted positional
+certificate for **every** source in the four-lane add/multiply/static-let
+fragment. The induction carries a checked prefix, the next fresh ID, valid
+references, and the returned source term. Combined with the certificate
+soundness theorem, every emitted instruction trace evaluates to the source
+result for all inputs, including through the actual normalized
+`evaluateNode` used by the positional interpreter. This theorem covers shared
+`let` wires and shadowed de Bruijn variables.
+
+[`SSANamedProgram.lean`](../../../formal/s31/S31/Gadgets/Functional/SSANamedProgram.lean)
+models a canonical named serialization into real `S31.Program.nodes`: input
+`x`, wire `1` as `w1`, wire `2` as `w2`, and output `w2`. Its static checker
+accepts only an exact encoding of an accepted positional certificate and
+requires the real `Program.validate` to succeed. Validation enforces unique
+names, backward operand resolution, four-lane shapes, and the eight-word
+public statement limit. The accepted named checker implies exact node and
+output lists plus source-correct positional normalized execution. For the
+shared-square program, a separate arbitrary-input theorem evaluates the
+actual named `Program.nodes` list with real name lookup and `evaluateNode`;
+it computes `x⁴` in all four lanes. Reordered, duplicate, unbound, and
+malformed-output examples are rejected by the static checker and by
+`Program.validate`.
+
+The generic theorem does **not** yet prove that every canonical named program
+executes identically through `Program.environment`; the arbitrary-input
+named-execution theorem currently covers the shared-square instance. More
+importantly, the model does not prove that Python emits these names or nodes
+from arbitrary `.s31` source bytes, that JSON parsing preserves them, or that
+Zig lowers them to the corresponding AIR and verifier. Those are explicit
+production correspondence obligations, not consequences of source bindings.
+The positional emitter is total for all formal source trees; named-program
+acceptance also depends on the normalized validator's 128-character name
+limit, so a universal named theorem needs an explicit program-size bound or a
+different bounded naming scheme.
+
+[`SSAAirRows.lean`](../../../formal/s31/S31/Gadgets/Functional/SSAAirRows.lean)
+extends this fragment from one final arithmetic row to the complete emitted
+instruction trace. Each instruction carries its fixed add or pointwise-mul
+opcode, resolved earlier-wire operands, and all nine packed QM31 operation
+residuals. Lean proves an accepted row yields exactly the normalized SSA
+value, every valid deterministic step has an honest row, and the result of
+**all** accepted rows for any compiled source equals that source's result.
+This is a full local arithmetic-row refinement for the four-lane fragment.
+Its premise that row operands are the values of earlier addressed wires is
+where the native Gate lookup join must be connected; it is not yet a proof of
+the production row writer or verifier.

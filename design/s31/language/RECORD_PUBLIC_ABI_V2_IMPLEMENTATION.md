@@ -1,9 +1,9 @@
 # Public record ABI v2: implementation contract
 
-Status: design and standalone Python conformance model. **No proof profile admits
-this boundary yet.** The current native verifier accepts only relation v1's flat
-statement. An implementation must pass every gate below before enabling record
-types in a circuit signature.
+Status: an output-only, M31-leaf v2 direct-gate slice is implemented. The
+native verifier checks the typed statement, embedded relation descriptor, and
+sealed key digest. Record inputs and other proof profiles remain disabled.
+The acceptance controls below are the release gate for this slice.
 
 ## Minimal first release
 
@@ -30,8 +30,8 @@ separately.
 For example:
 
 ```s31
-struct Pair { first: m31, again: m31 }
-circuit echo(public x: m31) -> public Pair {
+struct Pair { first: [m31; 1], again: [m31; 1] }
+circuit echo(public x: [m31; 1]) -> public Pair {
     Pair { first: x, again: x }
 }
 ```
@@ -81,8 +81,9 @@ claim identical compiler identity. Existing v1 IR hashes stay unchanged.
 The public v2 statement is a canonical JSON envelope containing `version: 2`,
 the ABI digest, and ordered leaves for public input roots and the result root.
 Each leaf carries its tagged path and canonical words. Private leaves are
-present only in a prover assignment, never in the public statement. Both
-prover and verifier decode the same v2 envelope. The verifier constructs its
+present only in a prover assignment, never in the public statement. The
+prover takes a flat witness assignment and the CLI derives the single
+canonical typed statement; the verifier admits only that v2 envelope. It constructs its
 existing eight-word vector from relation input order followed by ordered
 **distinct** public result wires, comparing every alias leaf against the first
 claim for that wire. It rejects missing, extra, reordered, duplicated,
@@ -116,6 +117,49 @@ digest with the sealed key, and rejects version/profile mismatches. Native
 proof verification is the final authority; Python package checks cannot
 substitute for native ABI validation.
 
+## Next increment: record-valued inputs
+
+Keep the output-only profile independently releasable. Record input support
+extends relation v2, rather than introducing an unbound source-only sugar.
+For example, the planned source form is:
+
+```s31
+struct Amounts { left: [m31; 1], right: [m31; 1] }
+circuit add_secret(public request: Amounts, private mask: Amounts)
+    -> public [m31; 1] {
+    request.left + request.right + mask.left + mask.right
+}
+```
+
+The relation should contain four M31 input leaves, with paths
+`request.left`, `request.right`, `mask.left`, and `mask.right`. The public
+statement claims only the two `request` leaves and the scalar `result`.
+The private `mask` leaves enter the proved computation; their names,
+layout, and private visibility remain bound in the
+v2 relation and key.
+
+Each circuit input root has one visibility, `public` or `private`, inherited
+by every M31 leaf. Traverse fields in declaration order and tuple elements
+by increasing index; allocate a fresh relation input wire for every leaf.
+Record construction in the expression environment is static and adds no
+arithmetic node. Bind the root name, nominal type tree, tagged path, leaf
+wire, type, width, and inherited visibility in the embedded `public_abi`.
+The native validator checks that these leaves cover the relation inputs
+exactly once and in the same order. Public leaves appear in the sole typed
+verifier statement; private leaves appear only in the prover assignment.
+Here `private` means absent from the declared public statement. This
+transparent direct-gate v2 slice does not add zero-knowledge blinding.
+
+For a source-level typed assignment, lower every root to the ordered flat
+wire assignment before calling the native prover. Reject absent or extra
+fields, wrong tuple length, noncanonical M31 words, and two names that
+claim different values for one output wire. The typed public statement is
+derived from that checked assignment and is checked independently by the
+native verifier. The output may be a scalar or record; both use one v2 key
+and statement schema. Compare a record-input circuit with an identical
+manually flattened relation under the direct-gate AIR profile; input
+packing, raw and padded AIR rows, and preprocessing cells must match.
+
 ## Required acceptance controls
 
 - Honest nested record outputs accepted by independent oracle and generated
@@ -123,7 +167,7 @@ substitute for native ABI validation.
   test public/private visibility for nested input fields.
 - A named-field program and manually flattened program have the same
   arithmetic rows, padded rows, witness columns, and preprocessing cells.
-  Compare under **the same v2 proof profile**; the relation/key bytes may
+  Compare under **the same direct-gate AIR profile**; the relation/key bytes may
   differ because names are intentionally authenticated.
 - Two fields sharing one wire cost no extra arithmetic and both must match.
 - Change one claimed leaf, swap two same-typed fields, change nominal type,

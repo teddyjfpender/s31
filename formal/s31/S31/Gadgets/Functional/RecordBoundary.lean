@@ -111,4 +111,73 @@ theorem repeated_wire_claims_identical {α : Type} {n : Nat}
     (projectAliases wires [wire, wire]).head? =
       (List.drop 1 (projectAliases wires [wire, wire])).head? := rfl
 
+/-- A verifier checks every named leaf, even when two leaves name the same
+wire. The two claims are accepted exactly when both equal that wire's value. -/
+def acceptsClaims {α : Type} {n : Nat} (wires : Fin n → α)
+    (paths : List (Fin n)) (claims : List α) : Prop :=
+  claims = projectAliases wires paths
+
+theorem repeated_wire_claims_sound {α : Type} {n : Nat}
+    (wires : Fin n → α) (wire : Fin n) (first second : α) :
+    acceptsClaims wires [wire, wire] [first, second] ↔
+      first = wires wire ∧ second = wires wire := by
+  simp [acceptsClaims, projectAliases, List.cons.injEq]
+
+/-- Distinct proof words are computed after wire-reference deduplication;
+a repeated named field does not consume another proof word. -/
+def distinctProofWords {α : Type} {n : Nat} (wires : Fin n → α)
+    (paths : List (Fin n)) : List α :=
+  paths.eraseDups.map wires
+
+theorem repeated_wire_one_proof_word {α : Type} {n : Nat}
+    (wires : Fin n → α) (wire : Fin n) :
+    distinctProofWords wires [wire, wire] = [wires wire] := by
+  simp [distinctProofWords, List.eraseDups_cons]
+
+/-- A record input has one root visibility; every flattened leaf inherits it.
+This models the proposed input-side extension before any relation wire is
+allocated. The production binding must separately validate nominal names. -/
+inductive Visibility where
+  | visible
+  | secret
+deriving Repr, DecidableEq
+
+structure InputRoot (α : Type) where
+  layout : Layout
+  visibility : Visibility
+  value : Value α layout
+
+def publicInputWords {α : Type} : List (InputRoot α) → List α
+  | [] => []
+  | root :: rest =>
+      (match root.visibility with
+       | .visible => flatten root.layout root.value
+       | .secret => []) ++ publicInputWords rest
+
+/-- A public record contributes its declaration-ordered leaves. -/
+theorem public_root_contributes {α : Type} (layout : Layout)
+    (value : Value α layout) (rest : List (InputRoot α)) :
+    publicInputWords (⟨layout, .visible, value⟩ :: rest) =
+      flatten layout value ++ publicInputWords rest := rfl
+
+/-- A private record contributes no words to the verifier statement. -/
+theorem private_root_contributes_none {α : Type} (layout : Layout)
+    (value : Value α layout) (rest : List (InputRoot α)) :
+    publicInputWords (⟨layout, .secret, value⟩ :: rest) =
+      publicInputWords rest := rfl
+
+/-- Replacing a private record's value cannot change public input words. -/
+theorem private_input_value_irrelevant {α : Type} (layout : Layout)
+    (first second : Value α layout) (rest : List (InputRoot α)) :
+    publicInputWords (⟨layout, .secret, first⟩ :: rest) =
+      publicInputWords (⟨layout, .secret, second⟩ :: rest) := rfl
+
+/-- Mixed roots preserve public declaration order and exclude private leaves. -/
+theorem public_private_public_order {α : Type}
+    (a b c : Layout) (first : Value α a) (secret : Value α b)
+    (last : Value α c) :
+    publicInputWords [⟨a, .visible, first⟩, ⟨b, .secret, secret⟩,
+      ⟨c, .visible, last⟩] = flatten a first ++ flatten c last := by
+  simp [publicInputWords]
+
 end S31.Functional.RecordBoundary
