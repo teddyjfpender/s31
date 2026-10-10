@@ -57,6 +57,14 @@ outputs are checked. A partial inverse carried through each route must be
 rejected in an inactive conditional arm. The corpus seed and SHA-256 identity
 are pinned in the test.
 
+`test_product_control_generated.py` adds 48 nested nominal-record programs.
+Each selects three M31 leaves with a computed Boolean value. Whole-record and
+handwritten fieldwise sources must have identical complete relation JSON. A
+separate modular-integer evaluator checks three assignments per source,
+including both selector values and field wrap; the strict typed public ABI is
+flattened independently and a forged result must fail. The seed and
+two-source corpus SHA-256 are pinned in the test.
+
 A second gate perturbs valid source text and requires located diagnostics for
 rejected mutations. Deep expressions and function types must hit explicit,
 located nesting limits. The scalar corpus is deterministic (`SEED = 0x531F00D`);
