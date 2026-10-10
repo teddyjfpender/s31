@@ -1,9 +1,9 @@
 //! Compiled endpoint inspection for the bounded-call V4 plan.
 //!
-//! No function in this module parses or accepts a proof. `inspectMany` binds
-//! every admitted count to source-compiled endpoints and the actual circuit
-//! AIR, then checks a V4 geometry plan. The only live native proof path still
-//! has two calls; planned V4 geometry is not a verifier component handle.
+//! No function in this module parses or accepts proof bytes. `inspectMany`
+//! binds every admitted count to source-compiled endpoints and the actual
+//! circuit AIR, then checks live V4 component geometry. Its source-derived
+//! request and witness helpers serve the experimental in-memory V4 scheduler.
 const std = @import("std");
 const core = @import("stwo_core");
 const circuit = @import("stwo_circuit_frontend");
@@ -108,6 +108,19 @@ pub fn checkWitnessTopology(
     assignment: relation.Assignment,
     expected: Topology,
 ) !void {
+    var witness = try compileManyWitness(allocator, source_bytes, assignment, expected);
+    defer witness.deinit();
+}
+
+/// Compile a value-carrying circuit only after checking the exact source,
+/// canonical calls, compiled endpoint addresses, circuit shape and fixed root
+/// against an independently compiled witness-free topology.
+pub fn compileManyWitness(
+    allocator: std.mem.Allocator,
+    source_bytes: []const u8,
+    assignment: relation.Assignment,
+    expected: Topology,
+) !circuit.builder.Context(QM31) {
     const source_hash = digest(source_bytes);
     if (!std.mem.eql(u8, &source_hash, &expected.source_sha256)) return error.BoundedSourceMismatch;
     var parsed = try relation.parseProgram(allocator, source_bytes);
@@ -126,7 +139,7 @@ pub fn checkWitnessTopology(
     var maps = compiler.Maps{};
     defer maps.deinit(allocator);
     var ctx = try compiler.compileDirectBoundedWithSpans(QM31, allocator, parsed.value, assignment, &maps);
-    defer ctx.deinit();
+    errdefer ctx.deinit();
     try padDirect(allocator, QM31, &ctx);
     const view = circuit.common.preprocessed.CircuitView.fromBuilder(&ctx.circuit);
     try validateEndpoints(allocator, view, maps.bounded_calls.items);
@@ -145,6 +158,7 @@ pub fn checkWitnessTopology(
     defer pp.deinit(allocator);
     const root = try pp.preprocessedRoot(allocator, 1);
     if (!std.meta.eql(root, expected.fixed_root)) return error.BoundedWitnessTopologyMismatch;
+    return ctx;
 }
 
 pub const TwoCallInspection = struct {
@@ -173,11 +187,23 @@ pub const ManyInspection = struct {
     }
 };
 
+/// Internal adapter for the experimental in-memory native test. A future
+/// public proof path must reconstruct `inspection` from sealed source rather
+/// than accept a caller-supplied candidate with matching digest fields.
+fn nativeManyRequest(inspection: *const ManyInspection) !cpu.experimental_direct_many_arithmetic.Request {
+    return .{
+        .source_digest = inspection.topology.source_sha256,
+        .manifest_digest = inspection.manifest_precommitment,
+        .plan = try manyPlan(inspection.topology.callSlice()),
+    };
+}
+
 /// Witness-free V4 source inspection for N=1..8. The official direct circuit
 /// AIR is rebound to the exact selected fixed circuit; the tagged chip and
 /// bridge slots are checked against the engine's source-owned roster geometry.
-/// Native proof admission still requires V4 component handles, a PCS schedule
-/// and a verifier embedding or otherwise authenticating `source_bytes`.
+/// The experimental in-memory engine uses the live handles and PCS schedule;
+/// release proof admission still needs a canonical V4 envelope and a verifier
+/// embedding or otherwise authenticating `source_bytes`.
 pub fn inspectMany(
     allocator: std.mem.Allocator,
     source_bytes: []const u8,
@@ -843,4 +869,86 @@ test "bounded native inspection fails closed outside exact two-call schedule" {
         inspection.manifest_precommitment = v4.precommitmentDigest(inspection.generated.value);
         try std.testing.expect(!try matchesManyInspection(std.testing.allocator, &inspection, source, @embedFile("s31_air_programs")));
     }
+}
+
+test "bounded V4 source-derived one-call native proof verifies a public statement" {
+    // This exercises the source-owned in-memory adapter. It is deliberately
+    // absent from the S31 proof-byte API until a source-pinned V4 envelope
+    // and cross-count release matrix exist.
+    const allocator = std.heap.smp_allocator;
+    const source =
+        \\{"version":1,"name":"one_call_native","inputs":[{"name":"x","kind":"m31","length":4,"visibility":"private"}],"nodes":[{"name":"r","op":"repeat","lhs":"x","rounds":16,"body":[{"op":"square"},{"op":"add_const","constant":13}]},{"name":"sum","op":"add","lhs":"r","rhs":"x"},{"name":"product","op":"mul","lhs":"r","rhs":"x"}],"assertions":[],"public_outputs":["sum","product"]}
+    ;
+    const assignment_json =
+        \\{"public_inputs":{},"private_inputs":{"x":[3,5,7,11]},"public_outputs":{"sum":[532178715,836413119,2108197393,1611365786],"product":[1596536136,2034581923,1872479820,545154349]}}
+    ;
+    const air_bytes = @embedFile("s31_air_programs");
+    var inspection = try inspectMany(allocator, source, air_bytes);
+    defer inspection.deinit();
+    const request = try nativeManyRequest(&inspection);
+    try std.testing.expectEqual(@as(u8, 1), request.plan.count);
+    var assignment = try relation.parseAssignment(allocator, assignment_json);
+    defer assignment.deinit();
+    var witness = try compileManyWitness(allocator, source, assignment.value, inspection.topology);
+    defer witness.deinit();
+    var parsed = try relation.parseProgram(allocator, source);
+    defer parsed.deinit();
+    const words = try relation.evaluate(allocator, parsed.value, assignment.value);
+    var bundle = try cpu.experimental_direct_many_arithmetic.parseBundle(allocator, air_bytes);
+    defer bundle.deinit();
+    var proof = try cpu.experimental_direct_many_arithmetic.prove(
+        allocator,
+        circuit.common.preprocessed.CircuitView.fromBuilder(&witness.circuit),
+        witness.values(),
+        &bundle,
+        inspection.live_preflight.pcs,
+        request,
+    );
+    defer proof.deinit();
+    try std.testing.expectEqual(@as(usize, 3), proof.sum_count);
+    var topology_maps = compiler.Maps{};
+    defer topology_maps.deinit(allocator);
+    var topology_ctx = try compiler.compileDirectBoundedWithSpans(circuit.builder.NoValue, allocator, parsed.value, null, &topology_maps);
+    defer topology_ctx.deinit();
+    try padDirect(allocator, circuit.builder.NoValue, &topology_ctx);
+    try cpu.experimental_direct_many_arithmetic.verify(
+        allocator,
+        circuit.common.preprocessed.CircuitView.fromBuilder(&topology_ctx.circuit),
+        &bundle,
+        inspection.live_preflight.pcs,
+        request,
+        words,
+        &proof,
+    );
+    var changed_words = words;
+    changed_words[0] += 1;
+    try std.testing.expectError(
+        error.InvalidManyPublicStatement,
+        cpu.experimental_direct_many_arithmetic.verify(
+            allocator,
+            circuit.common.preprocessed.CircuitView.fromBuilder(&topology_ctx.circuit),
+            &bundle,
+            inspection.live_preflight.pcs,
+            request,
+            changed_words,
+            &proof,
+        ),
+    );
+    const changed_source = try std.fmt.allocPrint(allocator, "{s} ", .{source});
+    defer allocator.free(changed_source);
+    var changed_inspection = try inspectMany(allocator, changed_source, air_bytes);
+    defer changed_inspection.deinit();
+    const changed_request = try nativeManyRequest(&changed_inspection);
+    try std.testing.expectError(
+        error.InvalidManyCircuitHash,
+        cpu.experimental_direct_many_arithmetic.verify(
+            allocator,
+            circuit.common.preprocessed.CircuitView.fromBuilder(&topology_ctx.circuit),
+            &bundle,
+            changed_inspection.live_preflight.pcs,
+            changed_request,
+            words,
+            &proof,
+        ),
+    );
 }
