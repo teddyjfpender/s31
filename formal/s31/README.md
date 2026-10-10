@@ -329,7 +329,10 @@ modeled Gate interaction only on that exceptional set.
 The formal source-binding command also checks the reviewed transcript order
 in the core circuit prover, S31 native verifier, and direct SHA prover and
 verifier: main trace commitment precedes Gate challenge drawing, which
-precedes interaction commitment. This is a source-order regression check;
+precedes interaction commitment. It also checks that the interaction
+commitment precedes the composition-coefficient draw on the core prover,
+native verifier, and recursive circuit verifier paths. This is a source-order
+regression check;
 commitment binding, hash-derived challenge distribution, and source-to-Lean
 column equivalence remain open proof obligations.
 `NativeGateRosterProof` checks a generated extraction of the native
@@ -344,6 +347,45 @@ proves their residual list equals `Qm31Ops.residuals` for every field input.
 This removes manual transcription of the arithmetic polynomials from the
 trusted boundary. The Zig-to-Lean base-field representation and committed
 AIR column mapping still need their own correspondence proofs.
+`NativeLogUpAirProof` runs the production LogUp builder over a symbolic Zig
+context, then proves that its six-element Gate key and both single and paired
+fraction residuals equal the Lean formulas for every QM31 input. The generated
+Lean file is compared byte-for-byte with fresh Zig output by the formal gate.
+`NativeGateRawSoundness` uses those source-extracted residuals in the raw Gate
+acceptance statement and proves that acceptance of a fixed invalid multiset
+requires one of the previously bounded collision or zero-denominator challenge
+pairs. Its external Gate contribution remains modeled; native column layout,
+batching, and commitment binding still require correspondence proofs.
+`NativeLogUpBatchesProof` symbolically executes the verifier's actual
+`finalizeLogupInPairs` function on the arithmetic component's three ordered
+Gate terms. Lean proves the resulting composition expression is exactly the
+first-column pair residual times the composition coefficient plus the final
+column singleton residual, with the previous-row sample and claimed-sum shift
+in their source order **when the batch finalizer starts from zero**. The
+production component adds nine arithmetic residuals before this batch;
+the second generated equation captures the same batch after an arbitrary
+preceding accumulator, as a `ρ²·prior + ρ·pair + final` fold. The preceding
+arithmetic fold still needs a separate source bridge. A source check pins the arithmetic evaluator's two
+input uses followed by its negative-multiplicity output yield. For fixed
+term and column samples in the isolated batch, zero at two distinct
+composition coefficients forces both residuals to zero. This local algebra does not establish the PCS/OODS
+sampling argument or commit-and-open binding for those samples.
+The same symbolic exporter runs the two-term `assert_eq` batch. Lean proves
+its final-column expression is `ρ·prior + pairResidual`, including the
+previous-row sample and claimed-sum shift. A second source check pins the two
+Eq Gate reads and their order. `NativeEqRawSoundness` then rewrites the
+combined arithmetic-plus-Eq raw interaction statement using the native key
+and residual formulas and transfers the shared exceptional-pair result.
+`CompositionFold` proves the generic Horner-fold polynomial is nonzero if any
+fixed residual is nonzero and has fewer roots than residuals. The arithmetic
+row has nine source-extracted local residuals and two LogUp residuals, so an
+invalid local arithmetic row has at most ten cancelling composition
+coefficients in the **modeled fixed eleven-value sequence**. It also proves
+that appending the two LogUp terms to an arbitrary prior accumulator matches
+the source-extracted finalizer. This fixed-value root bound is not a claim
+about a full STARK proof: the OODS values, base-field to extension-field
+evaluation, all components' constraint folds, and commitment soundness remain
+outside it.
 `NativeEqRosterProof` performs the same extraction and event equality proof
 for the two Eq Gate reads. `GateEqRawSoundness` then composes raw Eq and
 arithmetic interaction residuals under one shared Gate claim. For fixed
@@ -725,8 +767,9 @@ also included in the live axiom audit. Only Lean's standard `propext`,
 ## Reproduce the gate
 
 Run from the repository root with Zig 0.15.2 and the pinned Lean toolchain
-available. The first command regenerates the native arithmetic AIR tree in
-memory and checks it against the committed Lean source:
+available. The first command regenerates the native arithmetic AIR, LogUp
+residuals, and three-term batch expression in memory and checks them against
+the committed Lean source:
 
 ```sh
 python3 scripts/s31_formal.py

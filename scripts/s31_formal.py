@@ -33,6 +33,7 @@ POSEIDON = "src/frontends/riscv/air/memory_commitment/poseidon2_constants.zig"
 SHA = "src/frontends/riscv/air/guest_precompile/sha256_compression.zig"
 SIGMA = "src/core/crypto/blake_sigma.zig"
 GATE_WITNESS = "src/frontends/circuit/witness/components.zig"
+QM31_EVALUATOR = "src/frontends/circuit/air_eval/manual/circuit.zig"
 BINDINGS = [
     RELATION,
     "src/frontends/s31/language/relation_compiler.zig",
@@ -46,6 +47,8 @@ BINDINGS = [
     "src/frontends/circuit/builder/context.zig",
     "src/frontends/circuit/air_eval/manual/circuit.zig",
     "src/frontends/circuit/export_qm31_ops.zig",
+    "src/frontends/circuit/export_logup_air.zig",
+    "src/frontends/circuit/export_logup_batches.zig",
     "src/frontends/circuit/build.zig",
     "src/frontends/circuit/stark_verifier/logup.zig",
     "src/frontends/circuit/stark_verifier/constraint_eval.zig",
@@ -56,6 +59,9 @@ BINDINGS = [
     "src/frontends/circuit/common/preprocessed.zig",
     GATE_WITNESS,
     "deps/stwo-zig/src/integrations/circuit_cpu/prove.zig",
+    "deps/stwo-zig/src/prover/prove.zig",
+    "deps/stwo-zig/src/core/verifier.zig",
+    "src/frontends/circuit/stark_verifier/verify.zig",
     "src/frontends/s31/runtime/native_verifier.zig",
     "src/frontends/s31/sha/proving/sha_direct_circuit_prover.zig",
     "src/frontends/s31/sha/verification/sha_direct_circuit_native_verifier.zig",
@@ -188,25 +194,88 @@ def generated_gate_roster() -> str:
     )
 
 
-def generated_native_qm31_air() -> str:
-    """Ask Zig to print the comptime trees consumed by the native AIR."""
+def generated_native_air(step: str, imported: str) -> str:
+    """Execute a pinned Zig exporter over production AIR builder code."""
     try:
         result = subprocess.run(
             ["zig", "build", "--build-file", "src/frontends/circuit/build.zig",
-             "export-qm31-air-lean", "-Doptimize=ReleaseFast"],
+             step, "-Doptimize=ReleaseFast"],
             cwd=ENGINE_ROOT, capture_output=True, text=True, timeout=300,
             check=False,
         )
     except subprocess.TimeoutExpired as error:
-        raise FormalError("native qm31_ops AIR export timed out") from error
+        raise FormalError(f"native AIR export {step} timed out") from error
     if result.returncode != 0:
-        raise FormalError("native qm31_ops AIR export failed: " + result.stderr[-4000:])
-    if not result.stdout.startswith("import S31.Gadgets.Air.Qm31Ops\n"):
-        raise FormalError("native qm31_ops AIR export returned unexpected output")
+        raise FormalError(f"native AIR export {step} failed: " + result.stderr[-4000:])
+    if not result.stdout.startswith(f"import S31.Gadgets.Air.{imported}\n"):
+        raise FormalError(f"native AIR export {step} returned unexpected output")
     return result.stdout
 
 
+def check_native_qm31_relation_schedule() -> None:
+    """Check the native caller supplies the three terms modeled by the batch proof."""
+    source = (ROOT / QM31_EVALUATOR).read_text()
+    body = source.split("pub fn evaluateQm31Ops(", 1)[1].split(
+        "pub fn evaluateVerifyBitwiseXor12(", 1)[0]
+    arithmetic_fold = (
+        "inline for (qm31_ops_constraints) |constraint| {\n"
+        "        try acc.addConstraint(ctx, try tree.emit(constraint, ctx, &operands));\n"
+        "    }"
+    )
+    first_relation = body.find("try acc.addToRelation(")
+    if arithmetic_fold not in body or first_relation < 0 or \
+            body.index(arithmetic_fold) >= first_relation:
+        raise FormalError(f"{QM31_EVALUATOR}: arithmetic constraints moved after Gate terms")
+    if "const relation = try constantM31(ctx, component_list.GATE_RELATION_ID);" not in body:
+        raise FormalError(f"{QM31_EVALUATOR}: qm31_ops Gate relation changed")
+    if "const neg_mults = try ctx.sub(ctx.zero(), multiplicity);" not in body:
+        raise FormalError(f"{QM31_EVALUATOR}: qm31_ops yield sign changed")
+    calls = re.findall(
+        r"acc\.addToRelation\(ctx,\s*([^,]+),\s*&\.\{\s*relation,\s*"
+        r"([^,]+),\s*([^}]+)\}\);", body)
+    expected = [
+        ("ctx.one()", "op0_addr", ",".join(f"cols[{i}]" for i in range(0, 4))),
+        ("ctx.one()", "op1_addr", ",".join(f"cols[{i}]" for i in range(4, 8))),
+        ("neg_mults", "dst_addr", ",".join(f"cols[{i}]" for i in range(8, 12))),
+    ]
+    actual = [(weight.strip(), addr.strip(),
+               re.sub(r"\s+", "", limbs))
+              for weight, addr, limbs in calls]
+    if actual != expected or len(re.findall(r"\baddToRelation(?:WithElements)?\(", body)) != 3:
+        raise FormalError(f"{QM31_EVALUATOR}: qm31_ops lookup order/layout changed")
+    evaluator = (ROOT / "src/frontends/circuit/stark_verifier/constraint_eval.zig").read_text()
+    if ("const shifted = try ctx.mul(self.accumulation, self.composition_polynomial_coeff);\n"
+        "            self.accumulation = try ctx.add(shifted, constraint_eval_at_oods);"
+            not in evaluator or
+        "try statement.evaluateComponent(index, ctx, &data, &acc);\n"
+        "        try acc.finalizeLogupInPairs(ctx, data.interaction, &data, claimed_sum);"
+            not in evaluator):
+        raise FormalError("circuit LogUp/constraint fold order changed")
+
+
+def check_native_eq_relation_schedule() -> None:
+    """Check that the source Eq caller supplies one paired Gate final batch."""
+    source = (ROOT / QM31_EVALUATOR).read_text()
+    body = source.split("pub fn evaluateEq(", 1)[1].split(
+        "// Operand indices of the qm31_ops constraint trees.", 1)[0]
+    if "const relation = try constantM31(ctx, component_list.GATE_RELATION_ID);" not in body:
+        raise FormalError(f"{QM31_EVALUATOR}: Eq Gate relation changed")
+    calls = re.findall(
+        r"interp\.acc\.addToRelation\(ctx,\s*([^,]+),\s*&\.\{\s*relation,\s*"
+        r"([^,]+),\s*([^}]+)\}\);", body)
+    limb_names = ",".join(f"cols[{i}]" for i in range(4))
+    actual = [(weight.strip(), addr.strip(), re.sub(r"\s+", "", limbs))
+              for weight, addr, limbs in calls]
+    if (actual != [("ctx.one()", "in0_address", limb_names),
+                   ("ctx.one()", "in1_address", limb_names)] or
+            len(re.findall(r"\baddToRelation(?:WithElements)?\(", body)) != 2 or
+            "addConstraint" in body):
+        raise FormalError(f"{QM31_EVALUATOR}: Eq Gate lookup schedule changed")
+
+
 def generated() -> dict[Path, str]:
+    check_native_qm31_relation_schedule()
+    check_native_eq_relation_schedule()
     source = (ROOT / RELATION).read_text()
     ops = [op.strip() for op in re.search(
         r"pub const Op = enum \{([^}]+)\};", source).group(1).split(",")]
@@ -249,7 +318,12 @@ def generated() -> dict[Path, str]:
         FORMAL / "S31/Semantics/Op.lean": op,
         FORMAL / "S31/Semantics/Constants.lean": constants,
         FORMAL / "S31/Gadgets/Air/NativeGateRoster.lean": generated_gate_roster(),
-        FORMAL / "S31/Gadgets/Air/NativeQm31Air.lean": generated_native_qm31_air(),
+        FORMAL / "S31/Gadgets/Air/NativeQm31Air.lean": generated_native_air(
+            "export-qm31-air-lean", "Qm31Ops"),
+        FORMAL / "S31/Gadgets/Air/NativeLogUpAir.lean": generated_native_air(
+            "export-logup-air-lean", "LogUpInteraction"),
+        FORMAL / "S31/Gadgets/Air/NativeLogUpBatches.lean": generated_native_air(
+            "export-logup-batches-lean", "NativeLogUpAir"),
         FORMAL / "S31/Evidence/Coverage.lean": render_coverage(
             json.loads((FORMAL / "coverage.json").read_text())),
         FORMAL / "source-bindings.json": json.dumps(identity, indent=2) + "\n",
@@ -269,7 +343,7 @@ def main() -> None:
     if args.report and (args.write or not all((args.audit, args.parity, args.controls, args.kernel_log))):
         parser.error("--report requires --audit, --kernel-log, --parity and --controls; exclude --write")
     check_protocol_order(ROOT)
-    print("S31 protocol order: main commitment precedes lookup draws")
+    print("S31 protocol order: main and interaction commitments precede their challenge draws")
     failures = []
     for path, expected in generated().items():
         if args.write:

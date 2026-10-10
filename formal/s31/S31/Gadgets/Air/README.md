@@ -1,5 +1,23 @@
 # Circuit AIR row models
 
+The source-generated `NativeQm31Air.lean`, `NativeLogUpAir.lean`, and
+`NativeLogUpBatches.lean` capture the production arithmetic residual trees,
+LogUp builder equations, and the verifier's three-term arithmetic batch.
+Their adjacent `*Proof.lean` modules prove equality to the hand-readable row
+and interaction models. `NativeGateRawSoundness.lean` transfers the raw Gate
+exceptional-set statement to the source-extracted residuals;
+`NativeEqRawSoundness.lean` does so for the shared arithmetic and Eq Gate
+statement. These bridges
+cover local equations and batch placement; they do not prove that committed
+trace columns are opened faithfully or that the STARK transcript is sound.
+`CompositionFold.lean` proves a fixed nonzero sequence of eleven modeled
+arithmetic and Gate residuals has at most ten cancelling composition
+coefficients. It models the row-level fold and leaves the OODS/PCS bridge open.
+For a tiny example, folding residuals `[1, -1]` gives `ρ - 1`. Both residuals
+are nonzero, but the fold is zero at `ρ = 1`. The polynomial proof counts such
+exceptional coefficients; it does not assume a zero fold means every
+individual residual is zero.
+
 `Qm31Ops.lean` models the nine local polynomial residuals emitted by the
 production circuit AIR's `evaluateQm31Ops`. A row is accepted exactly when its
 four flags encode one opcode and its output is that opcode's result for the

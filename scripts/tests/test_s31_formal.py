@@ -11,6 +11,7 @@ from unittest.mock import patch
 
 from scripts import s31_formal
 from scripts.s31_formal_lib import checks
+from scripts.s31_formal_lib.protocol_order import check_stage_after
 
 ROOT = Path(__file__).resolve().parents[2]
 FORMAL = ROOT / "formal/s31"
@@ -176,6 +177,53 @@ class FormalGateTests(unittest.TestCase):
                 source.write_text(source.read_text() + "\n# changed specialization identity\n")
                 after = s31_formal.generated()[root / "formal/s31/source-bindings.json"]
                 self.assertNotEqual(before, after)
+
+    def test_native_logup_caller_order_mutation_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            relative = s31_formal.QM31_EVALUATOR
+            target = root / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            source = (ROOT / relative).read_text()
+            target.write_text(source)
+            evaluator = Path("src/frontends/circuit/stark_verifier/constraint_eval.zig")
+            (root / evaluator).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(ROOT / evaluator, root / evaluator)
+            with patch.object(s31_formal, "ROOT", root):
+                s31_formal.check_native_qm31_relation_schedule()
+                target.write_text(source.replace(
+                    "ctx.one(), &.{ relation, op0_addr, cols[0]",
+                    "ctx.one(), &.{ relation, op1_addr, cols[0]", 1))
+                with self.assertRaises(checks.FormalError):
+                    s31_formal.check_native_qm31_relation_schedule()
+                target.write_text(source.replace(
+                    "inline for (qm31_ops_constraints) |constraint|",
+                    "inline for (qm31_ops_constraints[1..]) |constraint|", 1))
+                with self.assertRaises(checks.FormalError):
+                    s31_formal.check_native_qm31_relation_schedule()
+
+    def test_native_eq_logup_caller_mutation_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            relative = s31_formal.QM31_EVALUATOR
+            target = root / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            source = (ROOT / relative).read_text()
+            target.write_text(source)
+            with patch.object(s31_formal, "ROOT", root):
+                s31_formal.check_native_eq_relation_schedule()
+                target.write_text(source.replace(
+                    "ctx.one(), &.{ relation, in1_address, cols[0]",
+                    "ctx.one(), &.{ relation, in0_address, cols[0]", 1))
+                with self.assertRaises(checks.FormalError):
+                    s31_formal.check_native_eq_relation_schedule()
+
+    def test_composition_draw_before_interaction_commit_is_rejected(self) -> None:
+        check_stage_after("commit draw", before="commit", after="draw",
+                          count=1, label="control")
+        with self.assertRaises(ValueError):
+            check_stage_after("draw commit", before="commit", after="draw",
+                              count=1, label="control")
 
 
 if __name__ == "__main__":

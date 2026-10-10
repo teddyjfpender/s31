@@ -1,6 +1,11 @@
 import S31.Gadgets.Arithmetic
 import S31.Gadgets.Air.Qm31Ops
 import S31.Gadgets.Air.NativeQm31AirProof
+import S31.Gadgets.Air.NativeLogUpAirProof
+import S31.Gadgets.Air.NativeGateRawSoundness
+import S31.Gadgets.Air.NativeEqRawSoundness
+import S31.Gadgets.Air.NativeLogUpBatchesProof
+import S31.Gadgets.Air.CompositionFold
 import S31.Gadgets.Air.QuadField
 import S31.Gadgets.Air.SimdChunks
 import S31.Gadgets.Air.FunctionalBridge

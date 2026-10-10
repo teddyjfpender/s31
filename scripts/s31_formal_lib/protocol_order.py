@@ -33,6 +33,17 @@ def check_windows(
             raise ValueError(f"{label}: lookup draw moved outside its committed-main window")
 
 
+def check_stage_after(source: str, *, before: str, after: str,
+                      count: int, label: str) -> None:
+    starts = [i for i in range(len(source)) if source.startswith(before, i)]
+    ends = [i for i in range(len(source)) if source.startswith(after, i)]
+    if len(starts) != count or len(ends) != count or any(
+        start >= end or (index + 1 < count and end >= starts[index + 1])
+        for index, (start, end) in enumerate(zip(starts, ends))
+    ):
+        raise ValueError(f"{label}: composition coefficient path moved before interaction commitment")
+
+
 def check_protocol_order(root: Path) -> None:
     contracts = [
         (
@@ -70,3 +81,23 @@ def check_protocol_order(root: Path) -> None:
             interaction_commit=interaction, windows=windows,
             draws_per_window=draws_per_window, label=path,
         )
+    composition_contracts = [
+        ("deps/stwo-zig/src/integrations/circuit_cpu/prove.zig",
+         "step(observer, .commit_interaction_trace, &channel);",
+         "var stark_proof = try Engine.prove(", 1),
+        ("src/frontends/s31/runtime/native_verifier.zig",
+         "try scheme.commit(allocator, roots[2]",
+         "try core.verifier.verifyBorrowedExWithProofCapture(", 4),
+        ("deps/stwo-zig/src/frontends/circuit/stark_verifier/verify.zig",
+         "try channel.mixCommitment(V, ctx, proof.interaction_root);",
+         "const composition_polynomial_coeff = try channel.drawQm31(V, ctx);", 1),
+    ]
+    for path, before, after, count in composition_contracts:
+        check_stage_after((root / path).read_text(), before=before,
+                          after=after, count=count, label=path)
+    core_prover = (root / "deps/stwo-zig/src/prover/prove.zig").read_text()
+    core_verifier = (root / "deps/stwo-zig/src/core/verifier.zig").read_text()
+    if core_prover.count("const random_coeff = blk: {") != 1 or \
+            "break :blk channel.drawSecureFelt();" not in core_prover or \
+            core_verifier.count("const composition_randomness = channel.drawSecureFelt();") != 1:
+        raise ValueError("core STARK composition coefficient draw changed")
