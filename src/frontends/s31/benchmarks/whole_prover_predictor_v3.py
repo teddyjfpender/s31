@@ -25,10 +25,14 @@ STOCHASTIC_STAGES = {
 
 def expected_names(split: str, protocol: dict) -> set[str]:
     spec = protocol["splits"][split]
+    def signed_kind(width: int) -> str:
+        if width == 128 and "signed_128_output" in spec:
+            return spec["signed_128_output"]
+        return "quotient" if split == "validation" else "div_rem"
     return ({f"arithmetic_{rounds}" for rounds in spec["arithmetic_rounds"]} |
             {f"chip_{rounds}" for rounds in spec["chip_rounds"]} |
             {f"hash_{depth}" for depth in spec["hash_depths"]} |
-            {f"signed_{'quotient' if split == 'validation' else 'div_rem'}_{width}"
+            {f"signed_{signed_kind(width)}_{width}"
              for width in spec["signed_widths"]})
 
 
