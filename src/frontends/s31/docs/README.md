@@ -94,8 +94,8 @@ text .s31 ──parse/typecheck/specialize──▶ normalized relation JSON
    higher-order calls, lexical capture, and the exact zero-gate staging
    boundary, with a four-lane proof example.
 - [Nominal records](records.md): named struct fields, eager evaluation,
-   static type checks, exact tuple-equivalent AIR cost, and a four-lane
-   hand calculation.
+   static type checks, whole-record selection, exact fieldwise AIR cost,
+   and handwritten calculations.
 - [Standard and math library](library.md): the pinned `std@1` package,
    typed operations, static reductions, Horner evaluation, and a proof example.
 - [Circuit lowering](circuits.md): a hand-drawn gate graph, packed M31 lanes,
@@ -115,8 +115,8 @@ text .s31 ──parse/typecheck/specialize──▶ normalized relation JSON
 - [Packages, verification, and audit](proofs.md): build/prove/verify commands,
    what the key binds, artifact names, cost report fields, and current limits.
 - [Generated component manifest](../../../../design/s31/language/COMPONENT_MANIFEST.md):
-   the direct-gate AIR component and fixed-column roster, native rederivation,
-   and the exact direct-chip extension still required.
+   the direct-gate and one-call direct-chip rosters, native rederivation,
+   and the bounded multi-call plan that still lacks proof admission.
 - [General authenticated chip boundary](../../../../design/s31/language/GENERAL_AUTHENTICATED_CHIP_BOUNDARY.md):
    the proposed tagged multi-call contract, lookup joins, manifest roster,
    soundness premises and native delivery gates.
@@ -133,6 +133,7 @@ The worked examples use checked-in sources under [`../examples`](../examples):
 | [`u8_wrapping.s31`](../examples/math/multiplication/u8_wrapping.s31) | Fixed-width multiplication with range-checked byte inputs, output, and carry | `sparse-wide-gate` |
 | [`functional_square4.s31`](../examples/arithmetic/functional_square4.s31) | A higher-order function and closure erased to two multiplication nodes | `direct-gate` |
 | [`record_square_sum.s31`](../examples/arithmetic/record_square_sum.s31) | A named `Powers` record erased to the same three-node relation as a positional tuple | `direct-gate` |
+| [`record_choice.s31`](../examples/control/record_choice.s31) | A computed bit selects every field of a nested record; the AIR geometry matches explicit fieldwise selectors | `direct-gate` |
 | [`record_i32_division.s31`](../examples/math/division/record_i32_division.s31) | A typed quotient/remainder record around one proved signed division | `direct-gate` |
 | [`functional_step16.s31`](../examples/recurrence/functional_step16.s31) | A closure around `iterate<16>` erased to the same one-node recurrence and chip | `direct-chip` |
 | [`functional_u256_sum.s31`](../examples/wide/functional_u256_sum.s31) | A higher-order checked 256-bit reduction with the same sparse-wide AIR cost as its direct form | `sparse-wide-gate` |

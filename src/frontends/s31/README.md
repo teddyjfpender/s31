@@ -23,12 +23,12 @@ The root contains the package build files and [`mod.zig`](mod.zig), the Zig modu
 
 The matching [design dossier](../../../design/s31/README.md) keeps proposals and measurements separate from maintained source. Historical measurements remain pinned records; moved records retain their original contents.
 
-The [Lean package](../../../formal/s31/README.md) provides executable semantics
-for all 46 normalized operations and soundness/completeness proofs for their
-local constraint models, reusing the repository's M31 and Poseidon S-box
-semantics. Its operation map, source bindings and CI audit keep the claim
-bounded: production compiler/AIR correspondence and zero knowledge remain
-separate formal obligations.
+The [Lean package](../../../formal/s31/README.md) tracks 56 normalized
+operation families and proves local semantic and constraint properties for
+reviewed fragments, reusing the repository's M31 and Poseidon S-box semantics.
+Its operation map, source bindings and CI audit keep the claim bounded:
+production compiler/AIR correspondence, STARK soundness and zero knowledge
+remain separate obligations.
 
 **Start with the [S31 documentation](docs/README.md).** It follows handwritten programs through typed source, normalized relations, circuit gates, AIR rows and polynomials, hashes, proof artifacts, and native verification. Its examples and local links are checked by `python3 src/frontends/s31/docs/check.py`.
 

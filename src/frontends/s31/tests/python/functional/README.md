@@ -22,6 +22,14 @@ against the binary fallback. It compares `pow<15>` with a handwritten
 five-gate graph, then evaluates honest and false field claims across small,
 boundary, and large exponents.
 
+`test_product_control.py` checks whole-product `if` and `assert_eq` against
+explicit fieldwise source. It covers nested nominal records, a mixed bit/u16/M31
+record, projection after selection, strict typed public ABI flattening,
+inactive partial-operation rejection and nominal type mismatches. The native
+gate under `tests/acceptance/functional/product_control.py` proves both
+selector values and pins equal complete AIR geometry at 299 raw and 512
+padded QM31 rows.
+
 Run through the repository's Python discovery command:
 
 ```sh

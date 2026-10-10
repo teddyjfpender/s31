@@ -426,7 +426,7 @@ class Parser:
         self.expect("public")
         result = self.parse_type()
         if not isinstance(result, (Type, RecordType)):
-            raise self.error("circuit output must be a first-order value")
+            raise self.error("circuit output must be a first-order value or nominal record")
         statements, body = self.block()
         return Circuit(name, params, result, statements, body, token, proof_mode)
 
@@ -575,8 +575,9 @@ class Parser:
         circuit = self.declaration()
         if not isinstance(circuit, Circuit):
             raise self.error("expected one circuit")
-        if circuit.name in self.records:
-            raise self.error(f"circuit name conflicts with struct type {circuit.name}", circuit.token)
+        if circuit.name in self.records or circuit.name in functions or circuit.name in BUILTINS:
+            raise self.error(f"circuit name conflicts with an existing declaration {circuit.name}",
+                             circuit.token)
         if self.peek().kind != "eof":
             raise self.error("expected end of file after circuit")
         for declaration in (*functions.values(), circuit):

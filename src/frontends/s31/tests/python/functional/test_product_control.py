@@ -74,6 +74,24 @@ circuit eq(private x: [m31; 1], private y: [m31; 1]) -> public [m31; 1] {
         self.assertEqual([node["op"] for node in product["nodes"]],
                          ["select", "bool_select"])
 
+    def test_record_selection_erases_mixed_bit_u16_and_field_leaves(self) -> None:
+        common = """struct Mixed { flag: bit, word: [u16; 1], field: [m31; 1] }
+circuit choose(public b: bit, private x: [u16; 1], private y: [u16; 1],
+    private z: [m31; 1]) -> public [m31; 1] {
+    let a = Mixed { flag: b, word: x, field: z };
+    let c = Mixed { flag: b, word: y, field: z + z };
+"""
+        product, _ = compile_text(common +
+                                  "let picked = if b then a else c; picked.field }")
+        fieldwise, _ = compile_text(common + """let picked = Mixed {
+    flag: if b then a.flag else c.flag,
+    word: if b then a.word else c.word,
+    field: if b then a.field else c.field,
+}; picked.field }""")
+        self.assertEqual(product, fieldwise)
+        self.assertEqual([node["op"] for node in product["nodes"]],
+                         ["add", "bool_select", "select", "select"])
+
     def test_product_control_rejects_partial_and_static_function_leaves(self) -> None:
         record = """struct Pair { first: [m31; 1], second: [m31; 1] }
 circuit pick(public b: bit, private x: [m31; 1]) -> public [m31; 1] {

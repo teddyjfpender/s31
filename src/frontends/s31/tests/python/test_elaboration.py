@@ -60,6 +60,12 @@ class ElaborationTests(unittest.TestCase):
         with self.assertRaisesRegex(SourceError, "recursive"):
             compile_text(source)
 
+    def test_circuit_name_cannot_reuse_a_function_declaration(self) -> None:
+        source = """fn main(x: [m31; 1]) -> [m31; 1] { x }
+circuit main(public x: [m31; 1]) -> public [m31; 1] { x }"""
+        with self.assertRaisesRegex(SourceError, "circuit name conflicts with an existing declaration main"):
+            compile_text(source)
+
     def test_shared_call_graph_still_rejects_deep_path(self) -> None:
         functions = [f"fn f{i}(x: [m31; 1]) -> [m31; 1] {{ f{i + 1}(x) }}"
                      for i in range(33)]

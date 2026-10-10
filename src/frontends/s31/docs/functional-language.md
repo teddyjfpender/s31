@@ -2,9 +2,13 @@
 
 S31 now has a small functional source core: lexical `let … in` expressions,
 typed `fun` values, closures, tuples, nominal records, and functions that take or return functions.
-Function, tuple, and record values exist **only in the compiler**. A circuit input or output must
-still have a first-order S31 value type. Application specializes the function
-at the call site and emits only the underlying relation operations.
+Function, tuple, and record values are represented **only in the compiler**.
+Their fields may refer to circuit wires, but no tuple or record value becomes
+a relation node. The `direct-gate` v2 boundary also accepts nominal records
+whose leaves are M31 values: it flattens them into ordered first-order wires
+and preserves their names in the typed public ABI. Other circuit boundaries
+still require first-order types. Application specializes the function at the
+call site and emits only the underlying relation operations.
 The [record guide](records.md) shows named fields with the same static-product
 erasure and a separate nominal type check.
 
@@ -264,8 +268,9 @@ first-order forms, including lexical shadowing and nested conditionals.
 ## Witness-dependent conditionals
 
 `if condition then on_true else on_false` accepts a constrained `bit`
-condition and two values of the same selectable circuit type. It evaluates
-both arms when constructing the fixed circuit, then emits one `select` node.
+condition and two values of the same selectable circuit type or static
+product of selectable types. It evaluates both arms when constructing the
+fixed circuit, then emits one selection operation per first-order leaf.
 Selectable values include M31 and u16 arrays, digests, `Bytes32`,
 `BlockHash`, `Bytes80`, `UInt256`, the Bitcoin target/work types, and the
 fixed-width integers. Nominal byte and wide values use the same u16-limb
@@ -276,6 +281,17 @@ existing strict selector:
 ```text
 if b then t else f  ↦  select(b, f, t)
 ```
+
+For a tuple or nominal record, the compiler applies this same rule to each
+leaf in declaration order. The [nested record example](../examples/control/record_choice.s31)
+has three M31 leaves, so it emits three existing `select` nodes and no record
+AIR component. Its normalized relation and complete native AIR geometry match
+the [fieldwise spelling](../examples/control/record_choice_manual.s31): 299
+raw QM31 rows and 512 padded rows. The native acceptance gate proves both
+selector values and rejects a changed public record claim. The [Lean product
+theorem](../../../../formal/s31/S31/Gadgets/Functional/ProductControl.lean)
+proves the leafwise selector equation for arbitrarily nested M31 products;
+it is a local model, with production compiler correspondence still open.
 
 The checked-in [example](../examples/control/total_if.s31) is:
 
