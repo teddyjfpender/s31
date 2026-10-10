@@ -1,0 +1,34 @@
+{
+  "schema": "s31-arithmetic-rss-protocol-v2",
+  "status": "predeclared-before-native-measurement",
+  "scope": "direct-gate arithmetic recurrence prover peak RSS on one named host; no whole-prover or other-family reliability claim",
+  "samples_per_program": 20,
+  "compiler_policy": "one unchanged compiler digest across both splits; fresh sealed packages; no concurrent CPU-heavy jobs during timed proofs",
+  "train": {
+    "rounds": [24, 96, 384, 1536, 6144],
+    "body": [{"op": "square"}, {"op": "add_const", "constant": 7}],
+    "assignment_index_base": 110000
+  },
+  "validation": {
+    "rounds": [48, 192, 768, 3072],
+    "bodies": {
+      "pair": [{"op": "square"}, {"op": "add_const", "constant": 11}],
+      "triple": [{"op": "square"}, {"op": "mul_const", "constant": 3}, {"op": "add_const", "constant": 11}]
+    },
+    "assignment_index_base": 210000
+  },
+  "feature": "sum of padded component rows from sealed package cost-report.json",
+  "candidate": "ordinary least squares of training program median prover peak RSS bytes = nonnegative intercept + nonnegative slope × padded rows; reject a negative fitted coefficient",
+  "reference": "training-only OLS log median RSS versus log padded rows, frozen before validation, reported for comparison only",
+  "interval": "candidate center plus/minus maximum leave-one-training-program-out absolute RSS error in bytes, then add pooled training trial-minus-own-program-median p05/p95 residuals; clamp lower to zero; empirical diagnostic interval only",
+  "accuracy_gate": {
+    "validation_programs": 8,
+    "trials_per_program": 20,
+    "overall_program_median_p90_relative_error_max": 0.10,
+    "overall_program_median_max_relative_error_max": 0.15,
+    "each_body_program_median_p90_relative_error_max": 0.12,
+    "each_body_trial_interval_coverage_min": 0.80,
+    "each_body_median_interval_upper_to_measured_median_max": 1.50
+  },
+  "selection_policy": "automatic lowering remains disabled regardless of this targeted RSS gate; full wall/bytes/RSS, other families, cross-host evidence, and profile soundness equivalence remain necessary"
+}
