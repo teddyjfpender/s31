@@ -512,7 +512,7 @@ run. No false public claim accepted by a trusted native verifier was found.
 
 | Priority | Finding | Release action |
 | --- | --- | --- |
-| P1 for pair release | The staged pair verifier accepts `source`, `air_bytes`, and `sealed_key` as arguments, then derives and checks their internal consistency ([`verifySealed`](../../../src/frontends/s31/runtime/pair_native_package.zig)). The AIR bundle is pinned by SHA-256, but a caller can select a different valid source and generate its matching key. This API is suitable for an internal adapter; it is not a deployed verifier with a fixed program identity. | Generate a verifier that embeds the intended source and exact key bytes, or require an independently authenticated source/key digest. Keep the pair path out of the public facade until that trust root and native byte tests exist. |
+| P1 for pair release | The staged pair verifier accepts `source`, `air_bytes`, and `sealed_key` as arguments, then derives and checks their internal consistency ([`verifySealed`](../../../src/frontends/s31/runtime/pair_native_package.zig)). The AIR bundle input passes the compiled SHA-256 check in `component_manifest.directGate`, reached through `directPair`; a caller can still select a different valid source and generate its matching key. This API is suitable for an internal adapter; it is not a deployed verifier with a fixed program identity. | Generate a verifier that embeds the intended source and exact key bytes, or require an independently authenticated source/key digest. Keep the pair path out of the public facade until that trust root and native byte tests exist. |
 | P2 for canonical proof IDs | The pair encoder describes a canonical postcard proof, but its decoder uses [`readVarint`](../../../deps/stwo-zig/src/interop/postcard.zig) through `deserializeProof`. `readVarint` accepts overlong LEB128 encodings. By source inspection, replacing the first payload byte `0x1a` (PoW bits 26) with `0x9a 0x00` should decode to the same proof and pass the full-consumption test; this exact mutation still needs a native regression run. This is proof-byte malleability, not a forged claim. | Add allocation-free canonical proof-wire preflight, or reserialize the decoded proof and require byte equality; test the overlong varint and nested length bombs. The existing 16 MiB wire cap and 64 MiB decode cap bound memory, but do not enforce a unique encoding. |
 | P1 if secrecy is promised | The new tagged bridge writes each private input and output endpoint to all sixteen committed rows ([`writeBase`](../../../deps/stwo-zig/src/integrations/circuit_cpu/tagged_pair_bridge.zig)). | State that “private” excludes a public-input field but does not imply zero knowledge. A confidentiality claim needs a blinded construction and opening analysis. |
 | P1 for full correspondence claim | The independent checker admits only one public four-lane M31 input, one public four-lane output, and 1–16 fresh add/pointwise-multiply lets ([grammar](../../../src/frontends/s31/python/package/correspondence.py)). Its gate replay checks exact selectors, addresses, multiplicities, operation order, public lane masks, and the constant/padding island for that fragment. Its own certificate marks root binding and AIR/PCS as assumptions and admission as Python-package-only. The installed native verifier does not independently parse the original text bytes. | Call this a bounded, package-level correspondence certificate. Extend the refinement to all admitted operations and the native verifier, then prove the circuit-to-AIR and lookup/PCS steps separately. Unit test counts are not a theorem coverage percentage. |
@@ -526,3 +526,19 @@ the verifier checks the ordered five lookup sums before the shared STARK proof.
 These observations still depend on the challenge collision bound, LogUp
 rational identity, correct quotient masks and degree declarations, and PCS/FRI
 soundness. The staged source check and tests do not discharge those assumptions.
+
+### Static re-review after canonical preflight patch
+
+Engine `197291cb` and S31 `8d17edf` add a proof-wire preflight before
+postcard decode allocation. The shape is reconstructed from the source-derived
+Plan, pinned and rebound AIR, the same five verifier component types, their
+column log sizes, and their sampled mask widths. It has four fixed tree counts;
+the composition count follows the verifier's split calculation, and its
+one-point mask width matches the core composition mask. The parser's canonical
+varint reader rejects the `0x9a 0x00` overlong encoding described above.
+Five claimed sums still occupy fixed header positions, pass canonical M31
+limb checks, and enter the ordered lookup closure and transcript before STARK
+verification. This closes the identified byte-malleability path by source
+inspection. Honest pair proof decoding and the new mutation control remain
+pending native execution at this review checkpoint; the embedded-key release
+gate remains open.
