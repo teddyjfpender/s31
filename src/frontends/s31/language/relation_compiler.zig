@@ -11,12 +11,17 @@ const sha256d = @import("../library/hash/sha256d.zig");
 const bitcoin_target = @import("../bitcoin/consensus/bitcoin_target.zig");
 const bitcoin_work = @import("../bitcoin/consensus/bitcoin_work.zig");
 const integer_multiply = @import("gadgets/integer_multiply.zig");
+const constant_base = @import("finalization/constant_base.zig");
 
 const M31 = core.fields.m31.M31;
 const QM31 = core.fields.qm31.QM31;
 const Var = circuit.builder.Var;
 const Simd = circuit.builder.simd.Simd;
 const N_RESERVED = circuit.common.component_list.N_RESERVED;
+
+pub fn selectedConstantMinBase(program: relation.Program) u32 {
+    return constant_base.selectedBase(program) orelse circuit.builder.finalize_constants.default_min_base;
+}
 
 const Entry = struct {
     shape: relation.Shape,
@@ -157,7 +162,7 @@ pub fn compileRaw(comptime V: type, allocator: std.mem.Allocator, program: relat
         }
     }
     try ctx.setOutputs(&outputs);
-    try ctx.finalize(false);
+    try constant_base.finish(V, &ctx, program);
     return ctx;
 }
 
@@ -515,7 +520,7 @@ fn compileWithSpansMode(comptime V: type, allocator: std.mem.Allocator, program:
     };
     const finalize_qm31_start = ctx.circuit.nQm31OpsRows();
     const finalize_m31_start = ctx.circuit.m31_to_u32.items.len;
-    try ctx.finalize(false);
+    try constant_base.finish(V, &ctx, program);
     if (sha_chip_mode and (maps.?.sha_boundaries.items.len == 0 or maps.?.sha_boundaries.items.len > 2))
         return error.UnsupportedShaChipRelation;
     if (direct_output and try ctx.circuit.firstYieldViolation(allocator) != null)

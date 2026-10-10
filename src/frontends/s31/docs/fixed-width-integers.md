@@ -61,6 +61,7 @@ two operands of the same nominal type. Neither field arithmetic nor
 | `add_checked(a,b)`, `sub_checked(a,b)` | Exact integer result in the type's signed or unsigned range; overflow or underflow has no valid witness. |
 | `add_wrapping(a,b)`, `sub_wrapping(a,b)` | Low $W$ bits of the result, interpreted according to the result type. |
 | `mul_wrapping(a,b)` | Low $W$ product bits, using constrained base-256 columns. |
+| `mul_checked(a,b)` | Exact product in the type's range; proves the full product and rejects overflow. |
 | `le(a,b)`, `lt(a,b)`, `ge(a,b)`, `gt(a,b)` | Signed ordering for `iW`, unsigned ordering for `uW`; constrained `bit` result. |
 | `eq(a,b)`, `ne(a,b)` | Bit-pattern equality or inequality; constrained `bit` result. |
 | `from_limbs_u8(raw)` through `from_limbs_i128(raw)` | Turn an exactly sized `[u16; L]` into the named scalar; the `u8` and `i8` forms prove the extra byte bound. |
@@ -69,8 +70,8 @@ two operands of the same nominal type. Neither field arithmetic nor
 
 There is no integer `+` or `-` operator yet: call `std::int` to choose checked
 or wrapping semantics. `std::math::sub` and source `-` remain M31 operations.
-There are no fixed-width checked multiplication, division, shifts, bitwise
-operations, or cross-width numeric casts yet. Reinterpreting `i8` to `u8` maps $-1$ to
+There are no fixed-width division, shifts, bitwise operations, or cross-width
+numeric casts yet. Reinterpreting `i8` to `u8` maps $-1$ to
 255; it does not reject or change the bits.
 
 ## The one-byte circuit by hand
@@ -256,21 +257,25 @@ representative operation and width:
 
 | Program | Raw QM31 rows | Padded QM31 rows | Raw range rows (`m31_to_u32`) | Raw Eq rows |
 | --- | ---: | ---: | ---: | ---: |
-| `u8_wrapping` | 278 | 512 | 7 | 4 |
-| `u32_wrapping` | 325 | 512 | 28 | 16 |
-| `i128_wrapping` | 691 | 1024 | 112 | 64 |
-| `u8_checked` | 282 | 512 | 10 | 7 |
-| `i8_checked` | 313 | 512 | 16 | 19 |
-| `u32_checked` | 355 | 512 | 40 | 25 |
-| `i128_checked` | 1,135 | 2,048 | 166 | 123 |
+| `u8_wrapping` | 39 | 64 | 7 | 4 |
+| `u32_wrapping` | 86 | 128 | 28 | 16 |
+| `i128_wrapping` | 452 | 512 | 112 | 64 |
+| `u8_checked` | 43 | 64 | 10 | 7 |
+| `i8_checked` | 78 | 128 | 16 | 19 |
+| `u32_checked` | 116 | 128 | 40 | 25 |
+| `i128_checked` | 903 | 1,024 | 166 | 123 |
 
 These totals include input, output, lookup, and proof-profile overhead. The
 128-bit wrapping circuit has 16 output-byte columns, with 136 byte-product
 terms in total. The checked circuit computes all 32 product columns and
-proves the signed correction. Raw QM31 rows grow with the work; power-of-two
-padding means the small examples share the 512-row QM31 table. The local
-proofs were roughly 230–238 KB each. These are one-run measurements, not a
-throughput claim.
+proves the signed correction. Small integer relations use minimum constant
+radix 16 instead of the generic radix 256: for `i8_checked`,
+finalization fell from 269 to 34 QM31 rows. Its complete circuit fell from
+313 to 78 raw QM31 rows, but the fixed `seq_16` range table still contributes
+65,536 preprocessed cells. The local proofs remained around 230–239 KB and
+the one-run prover timings did not establish an end-to-end speedup. The
+[measurement record](../../../../design/s31/measurements/language/compact-integer-constants-2026-10-10.json)
+separates rows, fixed cells, and proof observations.
 
 ## Where the AIR and proof enter
 

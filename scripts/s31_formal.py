@@ -72,6 +72,8 @@ BINDINGS = [
     "src/frontends/s31/tools/formal/export_square4_topology.zig",
     "src/frontends/s31/language/relation_compiler.zig",
     "src/frontends/s31/language/gadgets/integer_multiply.zig",
+    "src/frontends/s31/language/finalization/constant_base.zig",
+    "src/frontends/s31/runtime/mvp_runtime.zig",
     "src/frontends/s31/library/hash/poseidon2.zig",
     "src/core/crypto/blake2s_terminal_parallel.zig",
     "src/frontends/s31/library/hash/sha256d.zig",

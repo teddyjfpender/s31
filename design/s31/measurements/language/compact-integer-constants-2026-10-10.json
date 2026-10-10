@@ -1,0 +1,21 @@
+{
+  "schema": "s31-compact-integer-constants-v1",
+  "date": "2026-10-10",
+  "baseline_commit": "67ddd00",
+  "profile": "sparse-wide-gate",
+  "change": "Small normalized fixed-width relations use minimum constant radix 16 instead of the engine default 256; arithmetic and range constraints are unchanged.",
+  "cases": [
+    {"program": "u8_wrapping", "raw_qm31_rows": [278, 39], "padded_qm31_rows": [512, 64], "preprocessed_cells": [69712, 66128]},
+    {"program": "u32_wrapping", "raw_qm31_rows": [325, 86], "padded_qm31_rows": [512, 128], "preprocessed_cells": [69760, 66688]},
+    {"program": "i128_wrapping", "raw_qm31_rows": [691, 452], "padded_qm31_rows": [1024, 512], "preprocessed_cells": [74240, 70144]},
+    {"program": "u8_checked", "raw_qm31_rows": [282, 43], "padded_qm31_rows": [512, 64], "preprocessed_cells": [69712, 66128]},
+    {"program": "i8_checked", "raw_qm31_rows": [313, 78], "padded_qm31_rows": [512, 128], "preprocessed_cells": [69744, 66672]},
+    {"program": "u32_checked", "raw_qm31_rows": [355, 116], "padded_qm31_rows": [512, 128], "preprocessed_cells": [69888, 66816]},
+    {"program": "i128_checked", "raw_qm31_rows": [1135, 903], "padded_qm31_rows": [2048, 1024], "preprocessed_cells": [82944, 74752]}
+  ],
+  "single_native_proof_observations": [
+    {"program": "i8_checked", "proof_bytes": [238192, 239135], "prove_excluding_pow_seconds": [0.023912, 0.022851]},
+    {"program": "i128_checked", "proof_bytes": [233133, 233603], "prove_excluding_pow_seconds": [0.017714, 0.024574]}
+  ],
+  "measurement_limits": "Rows and fixed cells are deterministic for these programs. Each proof observation is one local run; FRI proof-of-work and process startup vary. The fixed 65536-cell seq_16 range table still dominates the small cases, so this record does not establish an end-to-end proving speedup."
+}
