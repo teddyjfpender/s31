@@ -167,6 +167,33 @@ jobs:
           path: zig-out/s31/acceptance/
           if-no-files-found: warn
 
+  experimental-pair-boundary-native-proofs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          submodules: recursive
+      - uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2
+        with:
+          version: 0.15.2
+      - name: Verify pinned engine
+        run: |
+          test -z "$(git submodule status | grep '^[-+]')"
+          test -z "$(git -C deps/stwo-zig status --porcelain --untracked-files=no)"
+      - name: Bounded multi-call source admission
+        working-directory: src/frontends/s31
+        run: zig build test-bounded-call-source --summary all
+      - name: Source-derived pair manifest and plan
+        working-directory: src/frontends/s31
+        run: zig build test-pair-source --summary all
+      - name: Native pair proof and adversarial controls
+        working-directory: src/frontends/s31
+        run: zig build test-pair-native --summary all
+      - name: Long pair trace lifting
+        working-directory: src/frontends/s31
+        run: zig build test-pair-native-long --summary all
+
   functional-packed-native-proofs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
