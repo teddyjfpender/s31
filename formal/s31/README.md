@@ -124,6 +124,14 @@ The proof equates this two-row relation with execution of the generated
 normalized nodes for arbitrary inputs and output claims. Gate lookup,
 address consistency, trace scheduling and proof-protocol soundness are
 covered only by their separate models and assumptions.
+`TextSquare4Statement` also unfolds the generated program's assignment and
+output path. Any successful evaluation with a canonical four-word public
+input requires its claimed `result` to parse as those same fourth powers.
+Together with the generic `evaluate_ok_claimed` theorem, the result is bound
+to the public statement returned by the executable model. This is a concrete
+program instance, not a full formal verification of the Python parser or
+native STARK verifier. A separate theorem rules out successful evaluation
+when a canonical public `result` differs from the computed fourth powers.
 
 `Functional/Arrays` extends the typed source core with `[m31; N]` values,
 pointwise addition and multiplication, static splats, indexed reads and

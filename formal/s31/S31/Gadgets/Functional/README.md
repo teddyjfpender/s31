@@ -19,6 +19,7 @@ Lean module names follow the directory, for example
 | `Effects.lean` | A conservative totality rule and the inactive partial-branch counterexample. |
 | `TextSquare4.lean` and `TextSquare4Proof.lean` | Compiler-generated IR for the real `functional_square4.s31` source, checked for shape, validation and all-input node semantics. |
 | `TextSquare4Air.lean` | Both packed multiplication AIR rows for that source, including arbitrary intermediate and result row witnesses. |
+| `TextSquare4Statement.lean` | The generated program's assignment parser and public-output comparison bind an accepted claim to the computed fourth powers. |
 
 The dependency order starts with `Graph`, then `Outputs`, then `Arrays`.
 Arithmetic and array-node bridges depend on `Arrays`; conditionals depend on
@@ -48,3 +49,12 @@ both row witnesses. `compiled_nodes_iff_two_rows` connects those two rows to
 the generated normalized node execution for every input and every claimed
 result. This proves local row constraints for the whole arithmetic sample;
 the Gate lookup and STARK protocol still have separate proof obligations.
+
+`TextSquare4Statement.successful_output_is_fourth` adds the public statement
+boundary. For any canonical four-word input accepted by the assignment parser,
+successful evaluation of the generated program implies that its claimed
+`result` parses as the exact four fourth powers. This uses the real normalized
+program evaluator and the general output-binding theorem. It does not assume
+the claimed output is honest. `forged_output_rejected` states the negative
+case explicitly: if a canonical claim differs from the fourth powers, no
+successful evaluation exists.
