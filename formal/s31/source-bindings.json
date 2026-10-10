@@ -94,7 +94,7 @@
     "src/frontends/s31/language/finalization/constant_base.zig": "354f3e5a25b42d4dec1ded5f721805c2cb69543c4f671d43c4861bfda084a0ca",
     "src/frontends/s31/runtime/mvp_runtime.zig": "3043f72d86942dd7f16f9782435fb8b2183d9bfc59f5ee99fa8a47ee4c1b59ed",
     "src/frontends/s31/runtime/component_manifest.zig": "4720040bf3dcf34951328f435bdfa0fa8543accd57b7333fdec05392c09aa56c",
-    "src/frontends/s31/runtime/bounded_component_manifest.zig": "8692212f8755a7e8cacc3e887bacade7ffe0bec844af05ac53aecade037b074b",
+    "src/frontends/s31/runtime/bounded_component_manifest.zig": "5a0eeb2bcf1d32f553a14a1e43c4f76c27b19a63a4bf52f4acce96797423a451",
     "src/frontends/s31/entry/bounded_component_manifest.zig": "6ed4b4a254ac24d031a1eb4afbca5927c129511b04f201921ce859b41a074b7e",
     "src/frontends/s31/runtime/bounded_compiled_binding.zig": "351b3151203d4d1072fa1693b80b4b0f54111739e13b71bed434d54c7fb02639",
     "src/frontends/s31/entry/bounded_compiled_binding.zig": "fd98bf163b4917463d0256d38f187d2d994cc8fc8d23a9325706655d82a4adbb",
