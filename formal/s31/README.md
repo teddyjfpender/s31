@@ -116,6 +116,14 @@ nodes compute the fourth power on every one of four arbitrary M31 inputs.
 The hand-written typed source expression has the same lane-wise meaning.
 This proves one compiler output instance, while the general parser and
 specializer correspondence remains open.
+`TextSquare4Air` follows both normalized multiplications through packed
+four-lane AIR rows. The first row's output is an arbitrary `Quad` witness;
+the second row consumes that exact witness. Their local constraints accept a
+claimed output exactly when every lane is the fourth power of its input.
+The proof equates this two-row relation with execution of the generated
+normalized nodes for arbitrary inputs and output claims. Gate lookup,
+address consistency, trace scheduling and proof-protocol soundness are
+covered only by their separate models and assumptions.
 
 `Functional/Arrays` extends the typed source core with `[m31; N]` values,
 pointwise addition and multiplication, static splats, indexed reads and

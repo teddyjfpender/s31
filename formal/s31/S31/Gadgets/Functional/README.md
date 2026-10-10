@@ -18,6 +18,7 @@ Lean module names follow the directory, for example
 | `ArrayConditional.lean` | Total array branches share a graph; the selected value agrees with a normalized `select` node. |
 | `Effects.lean` | A conservative totality rule and the inactive partial-branch counterexample. |
 | `TextSquare4.lean` and `TextSquare4Proof.lean` | Compiler-generated IR for the real `functional_square4.s31` source, checked for shape, validation and all-input node semantics. |
+| `TextSquare4Air.lean` | Both packed multiplication AIR rows for that source, including arbitrary intermediate and result row witnesses. |
 
 The dependency order starts with `Graph`, then `Outputs`, then `Arrays`.
 Arithmetic and array-node bridges depend on `Arrays`; conditionals depend on
@@ -39,3 +40,11 @@ by itself. Lean validates the resulting program and proves the nodes compute
 has the same denotation. This is a concrete compiler-output certificate for
 one source file; it does not prove the parser or specializer correct for every
 S31 program.
+
+`TextSquare4Air.two_rows_iff` proves that two accepted pointwise multiply
+rows force the final packed output to be the fourth power of all four input
+lanes, regardless of the intermediate row witness. Its converse constructs
+both row witnesses. `compiled_nodes_iff_two_rows` connects those two rows to
+the generated normalized node execution for every input and every claimed
+result. This proves local row constraints for the whole arithmetic sample;
+the Gate lookup and STARK protocol still have separate proof obligations.
