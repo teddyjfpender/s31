@@ -87,6 +87,7 @@ import S31.Gadgets.Functional.SSANamedProgram
 import S31.Gadgets.Functional.SSANamedExecution
 import S31.Gadgets.Functional.SSANamedPublicClaim
 import S31.Gadgets.Functional.SSAAirRows
+import S31.Gadgets.Functional.SSAConcreteGateSchedule
 import S31.Gadgets.Functional.SSALocalPipeline
 import S31.Gadgets.Functional.MathLibrary
 import S31.Gadgets.Functional.WorkedQuadratic

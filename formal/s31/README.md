@@ -152,6 +152,13 @@ transcript binding.
 accepted bounded certificate: an arbitrary accepted complete row trace, the
 actual named environment, and the accepted public claim all equal source
 semantics; an honest row trace exists for every accepted certificate.
+`Functional/SSAConcreteGateSchedule` adds an exact address-bearing semantic
+row roster. It consumes exactly one native row per checked SSA instruction,
+requires the selected opcode and source-derived operand addresses, checks a
+fresh output address, and states the lookup-authenticated value premise.
+Under that premise, the native roster's accepted public result equals source
+denotation. This does not itself show that Python or Zig emit that roster or
+that the proof system establishes the address/value premise.
 `Functional/TextSquare4` is a narrower executable bridge: the formal gate
 runs the Python text compiler on the actual `functional_square4.s31` file and
 commits its normalized two-node program as Lean source. `TextSquare4Proof`
