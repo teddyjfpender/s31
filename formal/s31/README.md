@@ -1,6 +1,6 @@
 # S31 normalized semantics and local constraint proofs
 
-This package gives executable Lean semantics for **all 55 operations in S31
+This package gives executable Lean semantics for **all 56 operations in S31
 relation IR v1** and proves the local constraint models sound and complete.
 It reuses `RiscvRefinement.Field.M31` and the existing
 `RiscvRefinement.Recursion.CompactPoseidon` S-box proofs through a local Lake
