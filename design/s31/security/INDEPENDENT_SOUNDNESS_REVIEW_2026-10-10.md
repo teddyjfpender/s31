@@ -634,3 +634,35 @@ No false public claim accepted by a trusted native verifier was found in this
 static review. The current two-call implementation is a useful experimental
 soundness target, with a precisely bounded source grammar and proof roster;
 its trust root, confidentiality and full refinement gates remain open.
+
+## Source-pinned pair verifier and direct-gate Lean bridge: `fe05a62`
+
+This pass independently read the integrated S31 commit `fe05a6206264c0313764132b4c67190ee25a6b06`
+with engine gitlink `7638a3f8`. It focused on the dedicated experimental pair
+CLI, `verifyEmbedded`, expanded pair-roster validation and the generated
+direct-gate Lean instance. I did not run another expensive native proof during
+the cost measurement window. No adversarial false public-claim acceptance or
+source/key substitution path was found in the **dedicated embedded verifier**
+by source inspection.
+
+| ID | Status at this checkpoint | Evidence and remaining premise |
+| --- | --- | --- |
+| S31-SEC-06 | **Closed for the dedicated binary; open for caller-selected adapter and distribution.** | [`pair_verifier_main`](../../../src/frontends/s31/runtime/pair_verifier_main.zig) accepts exactly a proof path and public-statement path, embeds `s31_program_source` and the official AIR bytes, and calls [`verifyEmbedded`](../../../src/frontends/s31/runtime/pair_native_package.zig). That routine derives its Plan, full typed manifest, effective source digest, witness-free topology and preprocessed root from those embedded bytes. It takes no caller key, and the engine reconstructs the circuit identity and Fiat–Shamir transcript before native proof verification. The older `verifySealed` adapter still takes source/key arguments and remains an experimental internal API. A relying party must authenticate the executable/build inputs and fix the **expected public words** independently of the prover-produced statement file; accepting a prover-selected statement is not a false-claim verifier bypass. |
+| S31-SEC-07 | **Improved fixed-roster validation; general admission remains open.** | [`validatePairSourceRoster`](../../../src/frontends/s31/runtime/component_manifest.zig) now reconstructs the two canonical calls and expected five component specs, rejecting wrong proof/sum order, trace and interaction spans, column widths, degree bounds for native components, constraint offsets, and Gate/chip lookup-relation dependencies. A separate focused control changes a chip span, degree and bridge relation list. The full sealed key is still compared against a freshly generated manifest, which checks fields not independently fixed by this roster validator. In particular, component 0's constraint count is passed into `expectedSpecs`; the validator alone is not an independent proof of its bundled AIR constraint count. The current path checks it through pinned AIR rebinding and full source regeneration. Arbitrary native AIR source kinds and a variable-call scheduler are still outside this profile. |
+| S31-SEC-08 | **Concrete direct-gate formal bridge added; full correspondence still open.** | [`GeneratedDirectGateBridge.lean`](../../../formal/s31/S31/Gadgets/Functional/GeneratedDirectGateBridge.lean) contains `by decide` checks that one two-operation source term and certificate agree with two observed source-gate rows, plus a theorem that the modeled accepted local trace gives the source value for all four-lane inputs. Its [generator](../../../scripts/export_s31_direct_gate_bridge.py) first runs the independent package checker and emits exact source bytes, a displayed SHA-256 string, SSA and row data. Lean does not parse or hash those bytes, prove the Python checker/exporter faithful, authenticate the preprocessed root/committed columns, or derive the exact-row premise from native Gate lookup, AIR and PCS. This review did not rerun Lean. The documentation states these limits. This is an auditable instance bridge, not a full compiler theorem. |
+
+The source-pinned [acceptance control](../../../src/frontends/s31/tests/acceptance/acceptance_pair_source_pinned.py)
+is designed to accept one honest proof and reject a changed public word,
+statement schema, proof byte, unexpected caller key argument, and a proof
+checked by a separately built binary with changed embedded source. These are
+the right trust-root mutations for the new entrypoint. Their existence in the
+tree is not an independent execution result from this review; the native
+proof, long-round and full formal gates must be reported by their runners.
+
+The pair bridge still exposes endpoint values in committed rows. The raw
+indexed-path and tagged challenge lemmas need the production correspondence
+from committed AIR rows through quotient checks and LogUp closure to their
+exact-event premise, plus the stated random-challenge and PCS assumptions.
+The source-pinned CLI addresses source/key selection, not those cryptographic
+or confidentiality obligations. No broad pair or full-language release claim
+follows from this checkpoint.
