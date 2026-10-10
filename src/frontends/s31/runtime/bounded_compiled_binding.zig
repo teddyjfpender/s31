@@ -1,8 +1,9 @@
 //! Compiled endpoint inspection for the bounded-call V4 plan.
 //!
-//! No function in this module parses or accepts a proof. The pinned engine has
-//! a two-call native schedule; only that count can be rebound to actual native
-//! component handles. All counts can be compiled to circuit endpoint wires.
+//! No function in this module parses or accepts a proof. `inspectMany` binds
+//! every admitted count to source-compiled endpoints and the actual circuit
+//! AIR, then checks a V4 geometry plan. The only live native proof path still
+//! has two calls; planned V4 geometry is not a verifier component handle.
 const std = @import("std");
 const core = @import("stwo_core");
 const circuit = @import("stwo_circuit_frontend");
@@ -139,6 +140,171 @@ pub const TwoCallInspection = struct {
         self.* = undefined;
     }
 };
+
+pub const ManyInspection = struct {
+    topology: Topology,
+    generated: v4.Generated,
+    preprocessed_root: v4.Digest,
+    manifest_precommitment: v4.Digest,
+    effective_source_digest: v4.Digest,
+    circuit_identity: v4.Digest,
+
+    pub fn deinit(self: *ManyInspection) void {
+        self.generated.deinit();
+        self.* = undefined;
+    }
+};
+
+/// Witness-free V4 source inspection for N=1..8. The official direct circuit
+/// AIR is rebound to the exact selected fixed circuit; the tagged chip and
+/// bridge slots are checked against the engine's source-owned roster geometry.
+/// Native proof admission still requires V4 component handles, a PCS schedule
+/// and a verifier embedding or otherwise authenticating `source_bytes`.
+pub fn inspectMany(
+    allocator: std.mem.Allocator,
+    source_bytes: []const u8,
+    air_bundle_bytes: []const u8,
+) !ManyInspection {
+    const topology = try compileSourceTopology(allocator, source_bytes);
+    var parsed = try relation.parseProgram(allocator, source_bytes);
+    defer parsed.deinit();
+    var maps = compiler.Maps{};
+    defer maps.deinit(allocator);
+    var ctx = try compiler.compileDirectBoundedWithSpans(circuit.builder.NoValue, allocator, parsed.value, null, &maps);
+    defer ctx.deinit();
+    try padDirect(allocator, circuit.builder.NoValue, &ctx);
+    const view = circuit.common.preprocessed.CircuitView.fromBuilder(&ctx.circuit);
+    try validateEndpoints(allocator, view, maps.bounded_calls.items);
+    if (maps.bounded_calls.items.len != topology.call_count or
+        view.n_vars != topology.circuit_variables or view.nQm31OpsRows() != topology.circuit_rows)
+        return error.BoundedTopologyMismatch;
+    for (maps.bounded_calls.items, topology.callSlice()) |actual, wanted| {
+        if (actual.call_id != wanted.call_id or actual.source_node_id != wanted.source_node_id or
+            actual.input_node_id != wanted.input_node_id or
+            !std.meta.eql(actual.input, wanted.input) or !std.meta.eql(actual.output, wanted.output))
+            return error.BoundedTopologyMismatch;
+    }
+    const plan = try manyPlan(topology.callSlice());
+    var pp = try plan.preprocessed(allocator, view);
+    defer pp.deinit(allocator);
+    const root = try pp.preprocessedRoot(allocator, 1);
+    var gate = try sealed.directGate(
+        allocator,
+        &pp,
+        air_bundle_bytes,
+        topology.source_sha256,
+        topology.canonical_ir_sha256,
+        root,
+        [_]u8{0} ** 32,
+    );
+    defer gate.deinit();
+    if (gate.value.components.len != 1) return error.BoundedCircuitAirMismatch;
+    const selected = gate.value.components[0];
+    if (selected.program_binding_sha256.len != 64 or selected.preprocessed_indices.len != 8)
+        return error.BoundedCircuitAirMismatch;
+    var selected_hash: v4.Digest = undefined;
+    _ = try std.fmt.hexToBytes(&selected_hash, selected.program_binding_sha256);
+    var selected_indices: [8]u32 = undefined;
+    @memcpy(&selected_indices, selected.preprocessed_indices);
+    const facts: v4.CircuitFacts = .{
+        .trace_log_size = selected.trace_log_size,
+        .evaluation_log_size = selected.evaluation_log_size,
+        .main_columns = @intCast(selected.base_trace_columns),
+        .interaction_columns = @intCast(selected.interaction_trace_columns),
+        .preprocessed_indices = selected_indices,
+        .n_constraints = selected.n_constraints,
+        .selected_program_sha256 = selected_hash,
+        .preprocessed_root = root,
+    };
+    var generated = try v4.fromSource(allocator, source_bytes, air_bundle_bytes, facts);
+    errdefer generated.deinit();
+    try attachCompiledEndpoints(&generated, topology.callSlice());
+    try compareManyRoster(generated.value, try cpu.private_many_boundary.expectedRoster(
+        plan,
+        pp.traceLogSize(),
+        selected.n_constraints,
+    ));
+    const precommitment = v4.precommitmentDigest(generated.value);
+    const effective = cpu.private_many_boundary.effectiveDigest(topology.source_sha256, precommitment);
+    return .{
+        .topology = topology,
+        .generated = generated,
+        .preprocessed_root = root,
+        .manifest_precommitment = precommitment,
+        .effective_source_digest = effective,
+        .circuit_identity = cpu.private_many_boundary.identityHash(effective, root, pp.traceLogSize(), 1, plan),
+    };
+}
+
+/// Rebuild the source-owned inspection. A digest updated to match altered
+/// candidate metadata is insufficient: the independent source recompilation
+/// must reproduce the exact roster, fixed root, endpoints and identities.
+/// This remains an inspection check, not a native proof verifier.
+pub fn matchesManyInspection(
+    allocator: std.mem.Allocator,
+    candidate: *const ManyInspection,
+    source_bytes: []const u8,
+    air_bundle_bytes: []const u8,
+) !bool {
+    var expected = try inspectMany(allocator, source_bytes, air_bundle_bytes);
+    defer expected.deinit();
+    if (!std.meta.eql(candidate.topology, expected.topology) or
+        !std.meta.eql(candidate.preprocessed_root, expected.preprocessed_root) or
+        !std.meta.eql(candidate.manifest_precommitment, expected.manifest_precommitment) or
+        !std.meta.eql(candidate.effective_source_digest, expected.effective_source_digest) or
+        !std.meta.eql(candidate.circuit_identity, expected.circuit_identity)) return false;
+    const left = try std.json.Stringify.valueAlloc(allocator, candidate.generated.value, .{});
+    defer allocator.free(left);
+    const right = try std.json.Stringify.valueAlloc(allocator, expected.generated.value, .{});
+    defer allocator.free(right);
+    return std.mem.eql(u8, left, right);
+}
+
+fn manyPlan(calls: []const EndpointCall) !cpu.private_many_boundary.Plan {
+    if (calls.len == 0 or calls.len > admission.max_calls) return error.BoundedCallCountMismatch;
+    var plan: cpu.private_many_boundary.Plan = .{ .count = @intCast(calls.len) };
+    for (calls, plan.calls[0..calls.len], 0..) |call, *slot, id| {
+        if (call.call_id != id or call.constant >= core.fields.m31.Modulus)
+            return error.InvalidBoundedCall;
+        slot.* = .{
+            .call_id = call.call_id,
+            .rounds = call.rounds,
+            .constant = M31.fromCanonical(call.constant),
+            .input = call.input,
+            .output = call.output,
+        };
+    }
+    return plan;
+}
+
+fn compareManyRoster(value: v4.Manifest, planned: cpu.private_many_boundary.Roster) !void {
+    if (!std.meta.eql(value.pcs, v4.fixed_pcs)) return error.BoundedManyRosterMismatch;
+    if (value.components.len != planned.count or value.claimed_sums != planned.count or
+        value.main_columns != planned.main_width or
+        value.interaction_columns != planned.interaction_width or
+        value.total_constraints != planned.constraint_count)
+        return error.BoundedManyRosterMismatch;
+    var max_log: u32 = 0;
+    for (value.components, planned.slice(), 0..) |component, spec, index| {
+        max_log = @max(max_log, spec.log_size);
+        const wanted_role: v4.Role = switch (spec.kind) {
+            .circuit => .circuit,
+            .chip => .chip,
+            .bridge => .bridge,
+        };
+        if (component.role != wanted_role or component.call_id != spec.call_id or
+            component.proof_index != index or component.claimed_sum_index != index or
+            component.trace_log_size != spec.log_size or
+            component.main.tree != 1 or component.main.start != spec.main_offset or
+            component.main.end != spec.main_offset + spec.main_columns or
+            component.interaction.tree != 2 or component.interaction.start != spec.interaction_offset or
+            component.interaction.end != spec.interaction_offset + spec.interaction_columns or
+            component.n_constraints != spec.constraint_count or
+            component.random_coefficient_offset != spec.constraint_offset)
+            return error.BoundedManyRosterMismatch;
+    }
+    if (value.max_component_trace_log_size != max_log) return error.BoundedManyRosterMismatch;
+}
 
 /// Recompile and inspect the exact selected bundled AIR and both native chip
 /// and bridge handles. This returns metadata, never a key or proof verifier.
@@ -542,5 +708,20 @@ test "bounded native inspection fails closed outside exact two-call schedule" {
         const topology = try compileSourceTopology(std.testing.allocator, source);
         try std.testing.expect(topology.call_count == 1 or topology.call_count == 3);
         try std.testing.expectError(error.NativeHandleCountUnsupported, inspectTwoCall(std.testing.allocator, source, @embedFile("s31_air_programs")));
+        var inspection = try inspectMany(std.testing.allocator, source, @embedFile("s31_air_programs"));
+        defer inspection.deinit();
+        try std.testing.expectEqual(topology.call_count, inspection.generated.value.calls.len);
+        try std.testing.expectEqual(@as(usize, 1 + 2 * topology.call_count), inspection.generated.value.components.len);
+        try std.testing.expectEqual(@as(u32, @intCast(12 + 17 * topology.call_count)), inspection.generated.value.main_columns);
+        try std.testing.expectEqual(@as(u32, @intCast(8 + 28 * topology.call_count)), inspection.generated.value.interaction_columns);
+        try std.testing.expect(try matchesManyInspection(std.testing.allocator, &inspection, source, @embedFile("s31_air_programs")));
+        const original_calls = inspection.generated.value.calls;
+        const changed = try std.testing.allocator.dupe(v4.Call, inspection.generated.value.calls);
+        defer std.testing.allocator.free(changed);
+        inspection.generated.value.calls = changed;
+        defer inspection.generated.value.calls = original_calls;
+        changed[0].endpoints.?.input[0] += 1;
+        inspection.manifest_precommitment = v4.precommitmentDigest(inspection.generated.value);
+        try std.testing.expect(!try matchesManyInspection(std.testing.allocator, &inspection, source, @embedFile("s31_air_programs")));
     }
 }

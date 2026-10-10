@@ -105,6 +105,13 @@ pub fn extract(allocator: std.mem.Allocator, program: relation.Program) !Plan {
             const input_id = node.lhs orelse return error.UnsupportedChipInput;
             if (input_id >= index or ir.nodes[input_id].kind != .m31 or ir.nodes[input_id].length != 4)
                 return error.UnsupportedChipInput;
+            // The current direct compiler records scalar endpoint addresses
+            // only for private inputs and earlier chip outputs. Arithmetic
+            // nodes have packed lanes but no `raw` scalar address array.
+            // Admit those inputs only after a constrained unpacking path is
+            // implemented and the value/topology maps are checked again.
+            if (ir.nodes[input_id].tag != .input and ir.nodes[input_id].tag != .repeat)
+                return error.UnsupportedChipInput;
             const source_id = sourceId(&ir, source_repeat_names[plan.call_count]) orelse
                 return error.NoncanonicalChipCalls;
             if (source_id != index) return error.NoncanonicalChipCalls;
@@ -237,6 +244,22 @@ test "unsupported chip bodies, rounds, and public inputs fail closed" {
     one.nodes[0].body = &steps;
     one.inputs[0].visibility = .public;
     try std.testing.expectError(error.UnsupportedManyCallSource, extract(a, one));
+}
+
+test "repeat after arithmetic is rejected until scalar endpoints are materialized" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+    var steps = [_]relation.Step{ .{ .op = .square }, .{ .op = .add_const, .constant = 13 } };
+    var two = try chainProgram(a, 2, &steps);
+    const widened = try a.alloc(relation.Node, 4);
+    widened[0] = two.nodes[0];
+    widened[1] = .{ .name = "shifted", .op = .add_const, .lhs = "r0", .constant = 3 };
+    widened[2] = two.nodes[1];
+    widened[2].lhs = "shifted";
+    widened[3] = two.nodes[2];
+    two.nodes = widened;
+    try std.testing.expectError(error.UnsupportedChipInput, extract(a, two));
 }
 
 test "source byte cap rejects before JSON parsing" {

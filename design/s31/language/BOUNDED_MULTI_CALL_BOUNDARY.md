@@ -1,10 +1,16 @@
 # Bounded multi-call authenticated circuit-to-chip boundary
 
-Status: **source-only admission implemented; native proof profile not
-implemented**. The unexported
+Status: **source admission, compiler endpoint maps, and a source-derived
+V4 roster inspection are implemented; native V4 proving and verification are
+not implemented**. The unexported
 [`bounded_call_admission.zig`](../../../src/frontends/s31/language/bounded_call_admission.zig)
-extracts canonical, live calls and enforces the initial source bounds. It
-does not derive circuit addresses or accept proofs. This is the successor to
+extracts canonical, live calls and enforces the initial source bounds. The
+[`bounded_compiled_binding.zig`](../../../src/frontends/s31/runtime/bounded_compiled_binding.zig)
+inspection recompiles 1–8 source calls without witness values, attaches their
+compiler-owned addresses, builds a separately counted Gate preprocessed
+circuit, and checks the generated V4 roster against engine prefix sums. It
+does not accept proof bytes or instantiate V4 native chip/bridge handles.
+This is the successor to
 the experimental, fixed two-call `direct-m31-private-pair-v1` profile. It must not
 replace or reinterpret any existing one-call or pair proof. The first v4
 implementation admits 1–8 instances of the existing four-lane tagged
@@ -22,6 +28,15 @@ dead calls are rejected. `private` means absent from the public ABI, **not**
 confidential: the present bridge commits each endpoint as a constant column
 and proof openings can reveal it. A zero-knowledge boundary is a separate
 profile and requires a new privacy argument.
+
+The adversary may choose witness values, proof bytes, and every package file.
+The verifier must obtain source and key identity from its embedded binary or
+an authenticated caller, then reconstruct the Plan and fixed circuit before
+accepting a proof. The target claim is that accepted public outputs are
+consistent with *some* private witness under that pinned source, subject to
+the AIR, lookup, and PCS soundness assumptions. It does not assert where the
+witness came from, prevent a prover from choosing a different valid witness,
+or hide endpoint values from someone who sees the proof.
 
 Compile the normalized source twice, without values and with values, using
 the same canonical IR traversal. The witness-free pass is authoritative:
@@ -42,7 +57,10 @@ private `[m31; 4]` inputs, `N` four-lane repeats whose body is exactly
 `square; add_const`, and ordinary `add`, `mul`, and lane-reduction nodes that
 connect all repeat results to public outputs. A call may consume an earlier
 call's output; the compiler must record that actual circuit address, rather
-than assuming independent inputs. Public inputs and non-direct circuit
+than assuming independent inputs. Initially, each repeat input is a private
+input or the output of an earlier repeat. Arithmetic immediately before a
+repeat requires constrained scalar endpoint materialization and is rejected
+until that compiler path exists. Public inputs and non-direct circuit
 components are outside this initial profile. All rounds are powers of two
 in `[16, 32768]`; constants are canonical M31 words. No source or proof field
 may assign an ID or an endpoint address. Reject unused repeats, unsupported

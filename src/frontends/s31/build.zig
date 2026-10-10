@@ -97,6 +97,8 @@ pub fn build(b: *std.Build) void {
     bounded_manifest_root.addImport("stwo_circuit_frontend", circuit);
     bounded_manifest_root.addImport("stwo_circuit_cpu_integration", cpu);
     bounded_manifest_root.addAnonymousImport("s31_pair_boundary_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/private_pair_boundary.zig") } });
+    bounded_manifest_root.addAnonymousImport("s31_many_boundary_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/private_many_boundary.zig") } });
+    bounded_manifest_root.addAnonymousImport("s31_many_direct_circuit_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/frontends/circuit/common/direct_arithmetic.zig") } });
     bounded_manifest_root.addAnonymousImport("s31_tagged_pair_chip_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/tagged_pair_chip.zig") } });
     bounded_manifest_root.addAnonymousImport("s31_tagged_pair_bridge_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/tagged_pair_bridge.zig") } });
     const bounded_manifest_tests = b.addRunArtifact(b.addTest(.{ .root_module = bounded_manifest_root }));
@@ -110,6 +112,8 @@ pub fn build(b: *std.Build) void {
     bounded_binding_root.addImport("s31_poseidon_ref", sha_provider);
     bounded_binding_root.addAnonymousImport("s31_chip_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/repeated_step_chip.zig") } });
     bounded_binding_root.addAnonymousImport("s31_pair_boundary_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/private_pair_boundary.zig") } });
+    bounded_binding_root.addAnonymousImport("s31_many_boundary_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/private_many_boundary.zig") } });
+    bounded_binding_root.addAnonymousImport("s31_many_direct_circuit_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/frontends/circuit/common/direct_arithmetic.zig") } });
     bounded_binding_root.addAnonymousImport("s31_tagged_pair_chip_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/tagged_pair_chip.zig") } });
     bounded_binding_root.addAnonymousImport("s31_tagged_pair_bridge_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/tagged_pair_bridge.zig") } });
     bounded_binding_root.addAnonymousImport("s31_pair_proof_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/direct_pair_arithmetic.zig") } });

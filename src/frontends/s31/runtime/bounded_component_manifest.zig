@@ -3,8 +3,8 @@
 //! This is deliberately separate from the sealed V3 pair manifest. It does
 //! not authorize a proof: source admission has no compiled endpoint addresses,
 //! and no native prover/verifier checks this roster against component handles.
-//! The pinned native AIR sources are identified as templates: their current
-//! pair implementation caps call IDs below two and is not an eight-call engine.
+//! The tagged chip and bridge sources are templates: their current pair AIR
+//! caps call IDs below two and is not an eight-call proof engine.
 const std = @import("std");
 const admission = @import("../language/bounded_call_admission.zig");
 const relation = @import("../language/relation.zig");
@@ -56,7 +56,7 @@ pub const Call = struct {
     rounds: u32,
     constant: u32,
     /// Absent in the source-only blueprint. The compiled inspection attaches
-    /// canonical circuit addresses after comparing them with the live V3 Plan.
+    /// canonical circuit addresses after comparing the source and compiler plans.
     endpoints: ?Endpoints = null,
 };
 
@@ -71,6 +71,22 @@ pub const PublicOutput = struct {
     kind: relation.Kind,
     length: u32,
     word_offset: u32,
+};
+
+pub const PcsProfile = struct {
+    pow_bits: u32,
+    log_blowup_factor: u32,
+    last_layer_degree_bound: u32,
+    queries: u32,
+    fold_step: u32,
+};
+
+pub const fixed_pcs: PcsProfile = .{
+    .pow_bits = 26,
+    .log_blowup_factor = 1,
+    .last_layer_degree_bound = 1,
+    .queries = 70,
+    .fold_step = 1,
 };
 
 /// These facts must eventually come from a rebound AIR and a compiled direct
@@ -97,6 +113,8 @@ pub const Manifest = struct {
     calls: []const Call,
     public_outputs: []const PublicOutput,
     public_word_count: u32,
+    pcs: PcsProfile,
+    max_component_trace_log_size: u32,
     components: []const Component,
     claimed_sums: u32,
     total_constraints: u32,
@@ -180,6 +198,7 @@ fn fromPlan(
     var main_end = facts.main_columns;
     var interaction_end = facts.interaction_columns;
     var constraint_end = facts.n_constraints;
+    var max_trace_log = facts.trace_log_size;
     components[0] = .{
         .role = .circuit,
         .call_id = null,
@@ -216,6 +235,7 @@ fn fromPlan(
             .constant = source_call.constant,
         };
         const log_size = try chip.validateRounds(source_call.rounds);
+        max_trace_log = @max(max_trace_log, log_size);
         const next_main = try std.math.add(u32, main_end, @intCast(chip.main_width));
         const next_interaction = try std.math.add(u32, interaction_end, @intCast(chip.interaction_width));
         const index: u32 = @intCast(1 + id);
@@ -278,6 +298,8 @@ fn fromPlan(
         .calls = calls,
         .public_outputs = public_outputs,
         .public_word_count = public_word_count,
+        .pcs = fixed_pcs,
+        .max_component_trace_log_size = max_trace_log,
         .components = components,
         .claimed_sums = @intCast(components.len),
         .total_constraints = constraint_end,
@@ -339,6 +361,12 @@ pub fn precommitmentDigest(value: Manifest) Digest {
         hashInt(&h, output.word_offset);
     }
     hashInt(&h, value.public_word_count);
+    hashInt(&h, value.pcs.pow_bits);
+    hashInt(&h, value.pcs.log_blowup_factor);
+    hashInt(&h, value.pcs.last_layer_degree_bound);
+    hashInt(&h, value.pcs.queries);
+    hashInt(&h, value.pcs.fold_step);
+    hashInt(&h, value.max_component_trace_log_size);
     hashInt(&h, @as(u32, @intCast(value.components.len)));
     for (value.components) |component| {
         hashInt(&h, @as(u8, @intFromEnum(component.role)));
@@ -386,6 +414,8 @@ fn nativeTemplateDigest() Digest {
     h.update("S31-BOUNDED-NATIVE-AIR-TEMPLATE-V4\x00");
     inline for (.{
         @embedFile("s31_pair_boundary_source"),
+        @embedFile("s31_many_boundary_source"),
+        @embedFile("s31_many_direct_circuit_source"),
         @embedFile("s31_tagged_pair_chip_air_source"),
         @embedFile("s31_tagged_pair_bridge_air_source"),
     }) |source| hashBytes(&h, source);
