@@ -130,7 +130,9 @@ rejected a changed quotient claim.
 The [Lean record model](../../../../formal/s31/S31/Gadgets/Functional/RecordValues.lean)
 models named construction, projection, and pattern desugaring as typed product
 operations and proves specialization has the same residual polynomial as the
-direct three-operation program. The executable source-to-source comparison checks
+direct three-operation program. A separate generic `Except` theorem proves
+that failure in an unused field survives projection and the first declared
+failure wins if both fields fail. The executable source-to-source comparison checks
 the current Python compiler erases the example to the same normalized
 relation as a tuple. Native verification checks the resulting proof and
 changed-public-statement rejection. As with the rest of S31, a machine-checked

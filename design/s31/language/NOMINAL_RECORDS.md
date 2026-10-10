@@ -84,7 +84,9 @@ are byte-for-byte equal at that boundary.
 - [Lean's erasure model](../../../formal/s31/S31/Gadgets/Functional/RecordValues.lean)
   proves that typed named construction and projection specialize to the
   direct residual polynomial and that accepted graph outputs have the
-  specified value. The formal source-binding gate also recompiles the field
+  specified value. Its generic eager-effect model proves an unused field's
+  failure survives projection and the first declared failure wins. The formal
+  source-binding gate also recompiles the field
   access, destructuring, and division examples against their positional
   versions and requires exact normalized relation equality.
 - The [native acceptance gate](../../../src/frontends/s31/tests/acceptance/acceptance_records.py)
