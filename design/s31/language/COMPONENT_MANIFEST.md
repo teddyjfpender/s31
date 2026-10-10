@@ -161,8 +161,10 @@ chips in canonical call-ID order, then all `N` tagged bridges in that order.
 Each entry has its own proof and claimed-sum index; main and interaction spans
 are disjoint, contiguous, and computed with checked `u32` addition. The
 coefficient offsets are checked the same way. For a circuit with `C`
-constraints, total constraints are `C + 19N`; main and interaction widths are
-`12 + 17N` and `8 + 28N` respectively. A bridge depends on both the circuit
+constraints, total constraints are `C + 19N`; with circuit widths `M` and
+`I`, main and interaction widths are `M + 17N` and `I + 28N`. The current
+direct circuit has `M=12`, `I=8`, but V4 takes those as circuit facts until
+the selected AIR handle is rebound. A bridge depends on both the circuit
 Gate relation and the tagged Chip relation; the circuit and each chip list
 their own relation dependencies.
 
@@ -177,7 +179,8 @@ field. No V1/V2 or pair V3 JSON field, digest, key, or proof byte is changed.
 
 The ordered public output ABI records each name, canonical node ID, M31 kind,
 length and word offset. Admission caps eight output names and the manifest
-caps 32 words. A two-output four-lane program therefore records offsets 0 and
+caps eight words, matching the circuit's fixed public output slots. A
+two-output four-lane program therefore records offsets 0 and
 4, rather than treating two names as two scalar words. Source regeneration
 compares the complete V4 artifact, so rehashing altered call order, source
 kind, native identity, lookup dependencies, spans, output shape, or sum count
@@ -188,16 +191,49 @@ without building proofs.
 
 **This is a source-plan blueprint, not a verification key or admitted proof
 profile.** `CircuitFacts` (selected AIR identity, circuit trace and evaluation
-logs, constraint count, preprocessed root) are supplied inputs, not yet checked
-against actual rebound AIR handles or a compiled multi-call circuit. The
-source admission plan has no circuit endpoint addresses or committed Gate
-multiplicities. The pinned tagged native AIR template still limits call IDs
-to the existing two-call implementation, and there is no native 1–8-call
-schedule, key schema, transcript, or verifier. Before proof admission, the
-compiler must produce exact endpoint addresses in value and topology modes;
-the verifier must rederive fixed columns and geometry, compare every manifest
-span/width/relation/sum with actual native component handles, and bind the
-result into a new transcript before commitments.
+logs, widths, constraint count, ordered fixed-column indices, preprocessed
+root) are supplied inputs to the plan API. A package cannot make those facts
+authoritative by providing them or their digest. The pinned tagged native AIR
+template still limits call IDs to the existing two-call implementation, and
+there is no native 1–8-call schedule, key schema, transcript, or verifier.
+
+### Compiled endpoints and the executable two-call inspection
+
+`runtime/bounded_compiled_binding.zig` adds a separate inspection path. It
+compiles an admitted one- through eight-call source in circuit topology mode
+and extracts each chip input and output as four **actual circuit variable
+addresses**, in canonical call order. It checks that each address is in the
+field range, is not a reserved public slot, has exactly one circuit producer,
+and is counted with checked multiplicity even if an address occurs in more
+than one endpoint. A witness compilation can be compared with the topology
+compilation for the same source, addresses, variable count, and padded row
+count. Thus an address is not taken from user-supplied manifest JSON.
+
+For **exactly two calls**, `inspectTwoCall` additionally constructs the
+existing native pair plan from those addresses, computes its preprocessed
+root, selects AIR bundle component 1, and constructs both tagged chip and
+bridge handles. It derives the V4 circuit facts from that selected AIR and
+compares all five roster entries against the actual native handle geometry:
+proof and claimed-sum order, trace logs, spans, constraint and coefficient
+offsets, ordered fixed-column indices, and lookup relation IDs. The selected
+AIR's fixed-column order is `[0, 2, 3, 1, 4, 5, 6, 7]` for the pinned
+bundle; assuming numerical order would incorrectly pass a plan-level check.
+`matchesTwoCallInspection` regenerates these facts from the source and pinned
+AIR, so changing two fixed-column indices and recomputing the candidate V4
+digest still fails. A malformed AIR bundle, altered endpoint address, or
+altered component offset also fails the focused tests.
+
+This inspection API accepts **no proof bytes** and issues no key. It refuses
+one-call and three- through eight-call native handle rebinding. The current
+native pair schedule has hardcoded two-call component arrays and PCS order;
+its tagged chip and bridge reject call IDs 2 through 7. The one- through
+eight-call topology extractor is therefore useful for checking lowering and
+planning, but it is not a proof admission path. A future verifier must
+derive circuit facts from its selected AIR and native handles for every
+admitted call, bind the resulting versioned manifest into its transcript
+before witness commitments, and check source, witness, fixed columns, and
+all component geometry. A topology/witness match currently compares endpoint
+addresses and basic shape, not every gate value in the circuit.
 
 ## Remaining work
 

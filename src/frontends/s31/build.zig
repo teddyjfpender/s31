@@ -102,6 +102,21 @@ pub fn build(b: *std.Build) void {
     const bounded_manifest_tests = b.addRunArtifact(b.addTest(.{ .root_module = bounded_manifest_root }));
     b.step("test-bounded-component-manifest", "Test source-derived 1..8-call V4 roster blueprint")
         .dependOn(&bounded_manifest_tests.step);
+    const bounded_binding_root = localEntry(b, "entry/bounded_compiled_binding.zig", target, optimize);
+    bounded_binding_root.addImport("stwo_core", core);
+    bounded_binding_root.addImport("stwo_circuit_frontend", circuit);
+    bounded_binding_root.addImport("stwo_circuit_cpu_integration", cpu);
+    bounded_binding_root.addImport("s31_sha_provider", sha_provider);
+    bounded_binding_root.addImport("s31_poseidon_ref", sha_provider);
+    bounded_binding_root.addAnonymousImport("s31_chip_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/repeated_step_chip.zig") } });
+    bounded_binding_root.addAnonymousImport("s31_pair_boundary_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/private_pair_boundary.zig") } });
+    bounded_binding_root.addAnonymousImport("s31_tagged_pair_chip_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/tagged_pair_chip.zig") } });
+    bounded_binding_root.addAnonymousImport("s31_tagged_pair_bridge_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/tagged_pair_bridge.zig") } });
+    bounded_binding_root.addAnonymousImport("s31_pair_proof_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/direct_pair_arithmetic.zig") } });
+    bounded_binding_root.addAnonymousImport("s31_air_programs", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/vectors/circuit/official/circuit_air.air_programs_v1.bin") } });
+    const bounded_binding_tests = b.addRunArtifact(b.addTest(.{ .root_module = bounded_binding_root, .filters = &.{"bounded"} }));
+    b.step("test-bounded-compiled-binding", "Test compiled V4 endpoints and exact two-call native handle rebinding")
+        .dependOn(&bounded_binding_tests.step);
     const square_export_root = localEntry(b, "tools/formal/export_square4_topology.zig", target, optimize);
     square_export_root.addImport("stwo_s31_prototype", frontend);
     square_export_root.addImport("stwo_circuit_frontend", circuit);

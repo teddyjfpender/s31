@@ -20,7 +20,7 @@ const pair = cpu.private_pair_boundary;
 pub const schema = "s31-component-manifest-bounded-call-plan-v4";
 pub const profile = "direct-m31-bounded-call-plan-v4";
 pub const max_components = 1 + 2 * admission.max_calls;
-pub const max_public_words: u32 = 32;
+pub const max_public_words: u32 = circuit.common.component_list.N_RESERVED;
 pub const Digest = [32]u8;
 pub const Span = struct { tree: u8, start: u32, end: u32 };
 pub const Role = enum(u8) { circuit, chip, bridge };
@@ -70,6 +70,9 @@ pub const PublicOutput = struct {
 pub const CircuitFacts = struct {
     trace_log_size: u32,
     evaluation_log_size: u32,
+    main_columns: u32,
+    interaction_columns: u32,
+    preprocessed_indices: [8]u32,
     n_constraints: u32,
     selected_program_sha256: Digest,
     preprocessed_root: Digest,
@@ -132,8 +135,14 @@ fn fromPlan(
     if (plan.call_count == 0 or plan.call_count > admission.max_calls or
         facts.trace_log_size < 4 or facts.trace_log_size > 30 or
         facts.evaluation_log_size <= facts.trace_log_size or facts.evaluation_log_size > 32 or
+        facts.main_columns == 0 or facts.interaction_columns == 0 or
         facts.n_constraints == 0)
         return error.InvalidBoundedManifestFacts;
+    for (facts.preprocessed_indices, 0..) |index, position| {
+        if (index >= 8) return error.InvalidBoundedPreprocessedIndex;
+        for (facts.preprocessed_indices[0..position]) |earlier|
+            if (index == earlier) return error.InvalidBoundedPreprocessedIndex;
+    }
     var arena = std.heap.ArenaAllocator.init(backing);
     errdefer arena.deinit();
     const a = arena.allocator();
@@ -160,8 +169,8 @@ fn fromPlan(
         if (public_word_count > max_public_words) return error.TooManyBoundedPublicWords;
     }
     const components = try a.alloc(Component, 1 + 2 * plan.call_count);
-    var main_end: u32 = @intCast(pair.circuit_main_width);
-    var interaction_end: u32 = @intCast(pair.circuit_interaction_width);
+    var main_end = facts.main_columns;
+    var interaction_end = facts.interaction_columns;
     var constraint_end = facts.n_constraints;
     components[0] = .{
         .role = .circuit,
@@ -179,7 +188,7 @@ fn fromPlan(
         .interaction = .{ .tree = 2, .start = 0, .end = interaction_end },
         .n_constraints = facts.n_constraints,
         .random_coefficient_offset = 0,
-        .preprocessed_indices = try a.dupe(u32, &.{ 0, 1, 2, 3, 4, 5, 6, 7 }),
+        .preprocessed_indices = try a.dupe(u32, &facts.preprocessed_indices),
         .lookup_relation_ids = try a.dupe(u32, &.{circuit.common.component_list.GATE_RELATION_ID}),
     };
 
@@ -418,6 +427,9 @@ test "bounded V4 roster is 1+2N and uses disjoint checked intervals" {
     const facts: CircuitFacts = .{
         .trace_log_size = 5,
         .evaluation_log_size = 6,
+        .main_columns = 12,
+        .interaction_columns = 8,
+        .preprocessed_indices = .{ 0, 2, 3, 1, 4, 5, 6, 7 },
         .n_constraints = 31,
         .selected_program_sha256 = digest("selected-air"),
         .preprocessed_root = digest("fixed-root"),
@@ -450,6 +462,9 @@ test "bounded V4 rejects rehashed roster, source, native identity and geometry m
     const facts: CircuitFacts = .{
         .trace_log_size = 5,
         .evaluation_log_size = 6,
+        .main_columns = 12,
+        .interaction_columns = 8,
+        .preprocessed_indices = .{ 0, 2, 3, 1, 4, 5, 6, 7 },
         .n_constraints = 31,
         .selected_program_sha256 = digest("selected-air"),
         .preprocessed_root = digest("fixed-root"),
@@ -509,6 +524,9 @@ test "bounded V4 rejects rehashed roster, source, native identity and geometry m
     var changed_facts = facts;
     changed_facts.selected_program_sha256[0] ^= 1;
     try std.testing.expect(!try matchesSource(a, generated.value, source, "pinned-bundle", changed_facts));
+    changed_facts = facts;
+    changed_facts.preprocessed_indices[1] = changed_facts.preprocessed_indices[0];
+    try std.testing.expectError(error.InvalidBoundedPreprocessedIndex, fromSource(a, source, "pinned-bundle", changed_facts));
 }
 
 test "bounded V4 fails closed on coefficient overflow" {
@@ -516,6 +534,9 @@ test "bounded V4 fails closed on coefficient overflow" {
     const facts: CircuitFacts = .{
         .trace_log_size = 5,
         .evaluation_log_size = 6,
+        .main_columns = 12,
+        .interaction_columns = 8,
+        .preprocessed_indices = .{ 0, 2, 3, 1, 4, 5, 6, 7 },
         .n_constraints = std.math.maxInt(u32) - 1,
         .selected_program_sha256 = digest("selected-air"),
         .preprocessed_root = digest("fixed-root"),
@@ -554,6 +575,9 @@ test "bounded V4 supports one and eight calls with exact output shape" {
     const facts: CircuitFacts = .{
         .trace_log_size = 5,
         .evaluation_log_size = 6,
+        .main_columns = 12,
+        .interaction_columns = 8,
+        .preprocessed_indices = .{ 0, 2, 3, 1, 4, 5, 6, 7 },
         .n_constraints = 31,
         .selected_program_sha256 = digest("selected-air"),
         .preprocessed_root = digest("fixed-root"),
