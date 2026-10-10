@@ -75,6 +75,13 @@ def main() -> None:
             wrong_proof.write_bytes(altered)
             run(str(verifier), str(wrong_proof), str(statement), accept=False)
 
+        postcard_at = SUMS_OFFSET + 3 * 16
+        assert raw[postcard_at] == 26
+        overlong = raw[:postcard_at] + bytes((0x9A, 0)) + raw[postcard_at + 1:]
+        wrong_proof = work / "wrong-overlong-varint.bin"
+        wrong_proof.write_bytes(overlong)
+        run(str(verifier), str(wrong_proof), str(statement), accept=False)
+
         changed_source = work / "changed-source.s31.json"
         changed_source.write_bytes(SOURCE.read_bytes() + b" ")
         _, other_verifier = build(changed_source, work / "changed-source")
@@ -84,7 +91,7 @@ def main() -> None:
             "schema": "s31-many-source-pinned-acceptance-v4",
             "source_sha256": hashlib.sha256(SOURCE.read_bytes()).hexdigest(),
             "proof_bytes": len(raw),
-            "controls": 15,
+            "controls": 16,
             "accepted": True,
         }, sort_keys=True))
 

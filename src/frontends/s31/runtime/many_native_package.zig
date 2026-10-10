@@ -238,6 +238,17 @@ test "bounded sealed V4 many one-call envelope verifies and rejects canonical he
     const with_trailing = try std.mem.concat(allocator, u8, &.{ raw, &.{0} });
     defer allocator.free(with_trailing);
     if (verifyEmbedded(source, air_bytes, allocator, words, with_trailing)) |_| return error.AcceptedTrailingProofByte else |_| {}
+    // The postcard decoder permits overlong LEB128, so shape preflight must
+    // reject an alternate encoding of its first length before allocating.
+    const proof_at = headerLen(3);
+    try std.testing.expectEqual(@as(u8, 26), raw[proof_at]);
+    const overlong = try allocator.alloc(u8, raw.len + 1);
+    defer allocator.free(overlong);
+    @memcpy(overlong[0..proof_at], raw[0..proof_at]);
+    overlong[proof_at] = 0x9a;
+    overlong[proof_at + 1] = 0;
+    @memcpy(overlong[proof_at + 2 ..], raw[proof_at + 1 ..]);
+    try std.testing.expectError(error.NonCanonicalVarint, verifyEmbedded(source, air_bytes, allocator, words, overlong));
 }
 
 test "V4 native count matrix proves 2 4 8 calls and rejects each claimed sum mutation" {
