@@ -1,10 +1,11 @@
 //! Source-derived V4 roster blueprint for 1..8 tagged chip calls.
 //!
-//! This is deliberately separate from the sealed V3 pair manifest. It does
-//! not authorize a proof: source admission has no compiled endpoint addresses,
-//! and no native prover/verifier checks this roster against component handles.
-//! The V4 tagged chip and bridge templates support IDs 0..7. The separate
-//! in-memory scheduler uses them, but this plan alone is not proof admission.
+//! This is deliberately separate from the sealed V3 pair manifest. Its
+//! source-only form has no compiled endpoint addresses and cannot authorize a
+//! proof. `bounded_compiled_binding.inspectMany` attaches those addresses and
+//! checks the roster against live V4 handles. The tagged chip and bridge
+//! templates support IDs 0..7; the in-memory scheduler uses them, but V4 has
+//! no released proof-byte admission yet.
 const std = @import("std");
 const admission = @import("../language/bounded_call_admission.zig");
 const relation = @import("../language/relation.zig");
@@ -338,8 +339,9 @@ pub fn matchesSource(
     return std.mem.eql(u8, left, right);
 }
 
-/// Typed, length-delimited V4 commitment. This is an audit digest only; no
-/// current native transcript or verification key admits this schema.
+/// Typed, length-delimited V4 commitment. The experimental in-memory native
+/// transcript mixes it after source inspection; no released verification key
+/// or proof-byte entrypoint admits this schema yet.
 pub fn precommitmentDigest(value: Manifest) Digest {
     var h = Sha256.init(.{});
     h.update("S31-BOUNDED-COMPONENT-MANIFEST-V4\x00");

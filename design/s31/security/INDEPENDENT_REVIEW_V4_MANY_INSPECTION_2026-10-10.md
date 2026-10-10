@@ -1,5 +1,9 @@
 # Independent V4 many-call inspection review — 2026-10-10 UTC
 
+This is a historical snapshot of the commits named below. For the integrated
+in-memory V4 scheduler and remaining release gates, see the [later V4
+checkpoint](INDEPENDENT_SOUNDNESS_REVIEW_2026-10-10.md#v4-bounded-call-native-scheduler-review-c109a17-engine-20e25894).
+
 Reviewed S31 commit `12ec0437b91bf299b9a9b7c194209a3ab3af5786` with pinned `deps/stwo-zig` commit `a365691964bd27743f62a9ef0e1b28029bcb5a98`. This is a read-only source review of the bounded 1–8 call admission, compiler endpoint inspection, manifest geometry and digest, proposed transcript, and existing V3 pair comparison. It supplements the [earlier V4 review](INDEPENDENT_REVIEW_V4_2026-10-10.md). **No Zig, Lean, native proof, or cost tests were run for this addendum** while the V5 whole-prover study used the local host.
 
 The current V4 code **does not admit a proof**. `inspectMany` rebuilds metadata from source, but no V4 prover, verification key, proof decoder, or verifier consumes that metadata. The old tagged pair AIR still rejects call IDs above one. I found no false-public-claim acceptance path in the reviewed inspection code; the following are release requirements before it becomes a native proof profile, not claims of a present forged proof.

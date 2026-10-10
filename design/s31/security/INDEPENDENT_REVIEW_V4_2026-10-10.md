@@ -1,5 +1,9 @@
 # Independent V4 and pair-boundary review addendum — 2026-10-10
 
+This is a historical snapshot of the commits named below. For the integrated
+in-memory V4 scheduler and remaining release gates, see the [later V4
+checkpoint](INDEPENDENT_SOUNDNESS_REVIEW_2026-10-10.md#v4-bounded-call-native-scheduler-review-c109a17-engine-20e25894).
+
 Scope: static inspection of S31 `8316c11` and pinned engine `7638a3f8f` for the bounded V4 manifest, compiled endpoint inspection, source-pinned two-call verifier, and recent tagged-pair Lean source lemmas. No Zig, Lean, native proof, or cost job was run during the held-out cost measurement. This addendum supplements [the earlier independent review](INDEPENDENT_SOUNDNESS_REVIEW_2026-10-10.md).
 
 ## V4 two-call inspection needs a cross-path check

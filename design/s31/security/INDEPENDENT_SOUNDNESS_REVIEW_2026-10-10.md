@@ -687,6 +687,9 @@ the Plan and typed manifest from literal source, compiled endpoint addresses,
 the pinned AIR bundle and live verifier-handle geometry. The engine API itself
 accepts caller-provided source and manifest digests, so the S31 source
 reconstruction remains a necessary admission step.
+The S31 witness compiler recomputes the full many-boundary preprocessed root
+and compares it with the witness-free source topology before proving; this
+closes the earlier fixed-column mode-consistency concern for that adapter.
 
 | ID | Release consequence | Evidence and remaining obligation |
 | --- | --- | --- |
