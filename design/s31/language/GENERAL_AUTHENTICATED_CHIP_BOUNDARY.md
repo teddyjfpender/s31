@@ -7,10 +7,15 @@ sealed proof bytes, and a dedicated source-pinned verifier. Its formal
 soundness and witness-confidentiality obligations remain open.
 
 The bounded V4 successor has a distinct `S31MNY04` proof envelope, a
-source-pinned verifier, and native proof tests for 1, 2, 3, 4 and 8
-source-derived calls. Counts 5–7, full source-to-verifier correspondence,
-independent native soundness review, and confidential witnesses remain open.
-The V4 path is experimental and separate from the general package facade.
+source-pinned verifier, and native proof tests for every count from 1 through 8
+source-derived calls. The 2–8 matrix checks each claimed-sum position;
+selected/legacy proof-byte equality is checked at counts 1 and 8. The 8-call
+envelope is 173,058 bytes.
+An [independent review](../security/INDEPENDENT_REVIEW_GUARDED_V4_AND_EVALUATOR_2026-10-11.md)
+found no new false-proof admission through the sealed V4 verifier. Full
+source-to-verifier correspondence, a general mixed-chip boundary, and witness
+confidentiality remain open. The V4 path is experimental and separate from the
+general package facade.
 
 The bounded variable-call successor to the staged two-call profile is specified
 in [Bounded multi-call authenticated boundary](BOUNDED_MULTI_CALL_BOUNDARY.md).
