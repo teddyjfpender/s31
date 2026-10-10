@@ -9,9 +9,9 @@ verifier or an empirical test.
 | Native source | Observed condition | Formal status |
 | --- | --- | --- |
 | `tagged_pair_chip.zig::rowConstraints` | Four lane residuals enforce `out = in² + constant` **if** all trace-row residuals vanish. The call ID is a verifier component constant; `main[0]` is a witness step. | `IndexedChipPath` assumes the local step equation. AIR residual-to-trace correspondence is not proved here. |
-| `tagged_pair_chip.zig::rowConstraints` and `writeInteraction` | Each row emits `+(relation,call,step,input)` and `−(relation,call,step+1,output)` into the shared LogUp relation. No local row equation checks `step < R`, step order, or a permutation of `0..R−1`. | The `Fin R` path theorem **assumes** canonical indexing. The reduction from arbitrary witness steps and exact tagged event balance is an open Lean theorem, described below. |
-| `private_pair_boundary.zig::Plan.validate` | Two call IDs must be `0,1`; `validateRounds` requires a power of two in `[16,32768]`, far below M31's `p = 2147483647`. Endpoint addresses have checked producers; coherent aliases are allowed. | Source-level admission checks are not connected to Lean. The `R < p` fact is available for the missing index theorem. |
-| `tagged_pair_bridge.zig::rowConstraints` | Eight endpoint columns have residual `current−next` on all sixteen cyclic rows. Four paired Gate fractions have `1/16` weight; the fifth fraction closes `(call,0,input)` and `(call,R,output)`. | `TaggedPairBridgeRows.eight_columns_constant` proves constancy from zero residuals on the first fifteen adjacencies. Gate/chip lookup authentication remains conditional. |
+| `tagged_pair_chip.zig::rowConstraints` and `writeInteraction` | Each row emits `+(relation,call,step,input)` and `−(relation,call,step+1,output)` into the shared LogUp relation. No local row equation checks `step < R`, step order, or a permutation of `0..R−1`. | `RawChipIndexCoverage` proves canonical reindexing from exact tagged balance. `TaggedPairAirClosure` proves the source-shaped interaction residuals telescope to the signed row-event sum under logical-row AIR acceptance, cyclic predecessor, and nonpole premises. |
+| `private_pair_boundary.zig::Plan.validate` | Two call IDs must be `0,1`; `validateRounds` requires a power of two in `[16,32768]`, far below M31's `p = 2147483647`. Endpoint addresses have checked producers; coherent aliases are allowed. | Source-level admission checks are not connected to Lean. The `R < p` fact is a premise of the proved arbitrary-index theorem; the source admission-to-Lean correspondence remains open. |
+| `tagged_pair_bridge.zig::rowConstraints` | Eight endpoint columns have residual `current−next` on all sixteen cyclic rows. Four paired Gate fractions have `1/16` weight; the fifth fraction closes `(call,0,input)` and `(call,R,output)`. | `TaggedPairBridgeRows.eight_columns_constant` proves constancy from zero residuals on the first fifteen adjacencies. `TaggedPairAirClosure` proves all five source-shaped interaction residuals telescope to eight Gate endpoints and the chip start/end pair when those words are constant and denominators nonzero. |
 | `direct_pair_arithmetic.zig::verifyBorrowed` | Reconstructs five components and trace spans, checks four commitment roots, public words, transcript identity, one shared lookup challenge and five claimed sums, then calls the native PCS/FRI verifier. | Transcript and component correspondence, the random challenge reduction, and PCS/FRI soundness are unproved in Lean. |
 | `pair_source_binding.zig`, `component_manifest.zig`, `pair_native_package.zig` | Recompile source without witness, derive ordered calls/offsets, compare typed V3 manifest and byte-exact key, then decode a bounded proof envelope. | Host checks are staged, not formalized. `verifySealed` still accepts source, AIR bundle and key as caller arguments; a released verifier must pin its trusted statement and AIR identity. |
 
@@ -29,11 +29,33 @@ relation IDs are disjoint, and proves chip tuples retain call ID, step, and
 all four state lanes. The field algebra of the native paired fractions and
 16-row normalization is proved when denominators and 16 are nonzero.
 
-The **native AIR-to-rational-identity link remains open**: interaction running
-sums, shifted cyclic row masks, five claimed sums, and the bridge's paired
-fraction residuals must be shown to imply this precise reciprocal identity
-for the actual committed events. Transcript independence and PCS/FRI
-soundness are separate obligations. A single fixed challenge cannot prove
+`TaggedPairAirClosure.lean` now closes the **logical AIR-row-to-rational-identity**
+step. `ChipAccepted` matches the chip's two secure residuals, including its
+`claimed_sum/R` shift and previous-row mask. Summing over an explicit
+permutation of `Fin R` telescopes the interaction column and recovers the
+chip's signed row-event sum. `BridgeAccepted` matches the bridge's four
+paired Gate residuals and final chip-pair residual, with `claimed_sum/16`.
+After the eight main columns are constant, summing over its sixteen rows
+recovers eight Gate endpoint reciprocals minus the chip start plus the chip
+end. `accepted_pair_air_implies_signed_closure` composes both calls, a
+separately interpreted circuit Gate claim, and the verifier's five-claim zero
+sum into the exact signed rational identity used by the challenge theorem.
+No honest interaction-writer behavior or canonical witness step order is
+assumed for that algebraic step.
+
+The **accepted proof-to-logical-row premise remains open**: source mask geometry
+must correspond to a permutation of logical predecessor rows, and an
+accepted native quotient/PCS/FRI proof must imply that the modeled residuals
+vanish on each committed logical row with the source-derived component
+manifest. This module takes those row facts as explicit premises. Its
+`nonbijective_previous_counterexample` demonstrates the mask condition is
+substantive: over rationals, two rows can satisfy the algebraic residuals
+with nonzero denominators while both read row zero as predecessor, yet the
+claimed sum is 4 and the row-fraction sum is 5. It also
+takes nonzero event denominators explicitly; `TaggedPairChallenge` proves
+nonzero denominators outside its bad challenge set, but that implication has
+not yet been threaded through the full source profile. Transcript
+independence is a separate probabilistic obligation. A single fixed challenge cannot prove
 multiset equality merely because its denominators are distinct and nonzero:
 `1/2 + 1/12 = 1/3 + 1/4` is a concrete unequal-multiset cancellation.
 
@@ -127,9 +149,10 @@ start/end `3,9` has balanced indices but mismatched full state events.
 
 1. Extract native local residual, shifted mask, row-count, and transcript
    semantics from the exact pinned engine source into Lean.
-2. Connect the proved paired-fraction field identities to the actual AIR
-   residuals, cyclic running sums, and five claimed sums, including pole
-   exclusion and the bridge's `16⁻¹` scale.
+2. Connect the proved logical-row AIR identities to verifier acceptance:
+   validate the native mask-to-cyclic-row permutation, source-selected trace
+   columns, eight bridge constancy residuals, nonzero denominators, and
+   quotient/PCS/FRI implication that every modeled row residual vanishes.
 3. Instantiate the proved joint seven-coordinate exceptional-set theorem with
    the exact five-component event lists generated by the source and prove
    their multiplicities stay below the characteristic. Then prove the joint

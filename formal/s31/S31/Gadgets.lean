@@ -35,6 +35,7 @@ import S31.Gadgets.Air.IndexedChipPath
 import S31.Gadgets.Air.RawChipIndexCoverage
 import S31.Gadgets.Air.TaggedPairBridgeRows
 import S31.Gadgets.Air.TaggedPairChallenge
+import S31.Gadgets.Air.TaggedPairAirClosure
 import S31.Gadgets.Air.PrivateBridgeChallenge
 import S31.Gadgets.Air.PrivateBridgeChallengeMany
 import S31.Gadgets.Air.SelectRows

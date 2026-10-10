@@ -647,7 +647,7 @@ Finite cardinality upgrades the selection to the **unique** canonical row
 bijection. The full value-bearing event permutation then forces the start,
 all adjacent row joins, and the end; a locally enforced step rule yields the
 `R`-step result for both tagged calls. This is an exact-multiset theorem. The
-native paired-fraction AIR and PCS link to its premise remain unproved.
+accepted native proof-to-logical-row, event extraction, and PCS links to its premise remain unproved.
 `TaggedPairChallenge.lean` supplies the ideal seven-coordinate challenge
 reduction for the **joint** Gate/chip event support. It proves that distinct
 seven-word tuples collide for at most six compression challenges, derives an
@@ -658,10 +658,25 @@ fraction under an ideal independent uniform `(alpha,z)` draw is at most
 `(6s² + 2s)/p⁴`. It also proves the native-shaped chip row and paired bridge
 fractions reduce to event reciprocals, including the sixteen-row `1/16`
 normalization when all denominators are nonzero. This is field algebra plus
-an ideal challenge count. The AIR-to-rational-identity correspondence,
-Fiat–Shamir distribution, and PCS/FRI verifier soundness remain separate.
+an ideal challenge count. The following row-level AIR theorem establishes
+the conditional rational-identity link; accepted-proof correspondence,
+Fiat–Shamir distribution, and PCS/FRI soundness remain separate.
 A fixed good-looking challenge is insufficient: four distinct nonzero
 denominators satisfy `1/2 + 1/12 = 1/3 + 1/4` despite unequal event lists.
+`TaggedPairAirClosure.lean` proves the next algebraic step. The chip's two
+source-shaped running-sum residuals imply its claimed sum is the sum of
+`+1/q(input)−1/q(output)` over all logical rows. The bridge's four paired
+Gate residuals and fifth endpoint-pair residual imply its claimed sum is the
+eight Gate endpoint reciprocals minus the chip start plus its end, provided
+the eight main words are constant. The proof uses a cyclic predecessor
+permutation to telescope the final interaction column, so row order need not
+be canonical. Its composition theorem combines two chip claims, two bridge
+claims, the circuit Gate claim, and the verifier's checked five-claim zero
+sum into the signed rational closure. The theorem assumes the modeled row
+residuals vanish on every committed logical row, the source-selected mask
+really is that predecessor permutation, and all relevant denominators are
+nonzero. Showing native PCS/FRI verifier acceptance yields those row facts
+and binding the component manifest to the source are still open.
 `PrivateBridgeChallenge.lean` specializes the Gate exceptional-challenge
 bound to one addressed endpoint whose sixteen bridge rows vary. It also
 proves a joint eight-address Gate bound: if repeated addresses have coherent
