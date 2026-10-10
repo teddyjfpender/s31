@@ -28,13 +28,83 @@ pub const Component = struct {
     trace_spans: []const TraceSpan,
     preprocessed_indices: []const u32,
     program_binding_sha256: []const u8,
-    /// Native components use source_index 0 and bind their pinned Zig AIR.
+    /// In the sealed v1/v2 format, 1 means the bundled circuit AIR and 0 is
+    /// a native-AIR sentinel. Resolve the source with `componentSource`;
+    /// this integer alone is not a unique program identifier.
     claimed_sum_index: ?u32 = null,
     main_trace_span: ?TraceSpan = null,
     interaction_trace_span: ?TraceSpan = null,
     max_constraint_log_degree_bound: ?u32 = null,
     lookup_relation_ids: ?[]const u32 = null,
 };
+
+/// Internal, typed interpretation of the legacy source_index field. Keep it
+/// outside the sealed v1/v2 JSON and its transcript digest. A general
+/// component scheduler needs a versioned manifest with this source kind and
+/// a stable native program identity serialized explicitly.
+pub const ComponentSource = union(enum) {
+    bundled_air: u32,
+    native_air: NativeAir,
+};
+
+pub const NativeAir = enum {
+    repeated_step_chip,
+    private_boundary_bridge,
+    tagged_pair_chip,
+    tagged_pair_bridge,
+};
+
+/// Fail closed when interpreting a component's source. In particular,
+/// source_index 0 is meaningful only with a known native program name and
+/// profile; a new native chip cannot silently inherit another chip's slot.
+pub fn componentSource(schema: []const u8, c: Component) !ComponentSource {
+    if (std.mem.eql(u8, c.name, "qm31_ops")) {
+        if (c.source_index != 1) return error.InvalidComponentSource;
+        if (std.mem.eql(u8, schema, "s31-component-manifest-direct-gate-v1") or
+            std.mem.eql(u8, schema, "s31-component-manifest-direct-chip-v2") or
+            std.mem.eql(u8, schema, "s31-component-manifest-direct-pair-v1"))
+            return .{ .bundled_air = 1 };
+        return error.InvalidComponentSource;
+    }
+    if (c.source_index != 0) return error.InvalidComponentSource;
+    if (std.mem.eql(u8, schema, "s31-component-manifest-direct-chip-v2")) {
+        if (std.mem.eql(u8, c.name, "repeated_step_chip")) return .{ .native_air = .repeated_step_chip };
+        if (std.mem.eql(u8, c.name, "private_boundary_bridge")) return .{ .native_air = .private_boundary_bridge };
+    } else if (std.mem.eql(u8, schema, "s31-component-manifest-direct-pair-v1")) {
+        if (std.mem.eql(u8, c.name, "tagged_pair_chip")) return .{ .native_air = .tagged_pair_chip };
+        if (std.mem.eql(u8, c.name, "tagged_pair_bridge")) return .{ .native_air = .tagged_pair_bridge };
+    }
+    return error.InvalidComponentSource;
+}
+
+/// The released direct profiles have a fixed ordered roster. Validate the
+/// source classes and proof/sum positions independently of the generated
+/// fields before serializing or comparing them with a sealed key.
+pub fn validateDirectSourceRoster(manifest: Manifest) !void {
+    const gate = std.mem.eql(u8, manifest.schema, "s31-component-manifest-direct-gate-v1");
+    const chip_profile = std.mem.eql(u8, manifest.schema, "s31-component-manifest-direct-chip-v2");
+    if (!gate and !chip_profile) return error.InvalidComponentSource;
+    const expected_len: usize = if (gate) 1 else blk: {
+        const call = manifest.chip_call orelse return error.InvalidComponentSource;
+        if (call.call_id != 0) return error.InvalidComponentSource;
+        break :blk if (call.private_boundary != null) 3 else 2;
+    };
+    if (manifest.components.len != expected_len or manifest.claimed_sums != @as(u32, @intCast(expected_len)) or
+        (gate and manifest.chip_call != null)) return error.InvalidComponentSource;
+    for (manifest.components, 0..) |c, i| {
+        const source = try componentSource(manifest.schema, c);
+        if (c.proof_index != @as(u32, @intCast(i)) or
+            (chip_profile and (c.claimed_sum_index == null or c.claimed_sum_index.? != @as(u32, @intCast(i)))) or
+            (gate and c.claimed_sum_index != null)) return error.InvalidComponentSource;
+        const expected: ComponentSource = switch (i) {
+            0 => .{ .bundled_air = 1 },
+            1 => .{ .native_air = .repeated_step_chip },
+            2 => .{ .native_air = .private_boundary_bridge },
+            else => unreachable,
+        };
+        if (!std.meta.eql(source, expected)) return error.InvalidComponentSource;
+    }
+}
 
 /// The current direct chip has exactly one call. Its six-field lookup tuple
 /// has no call ID, so this type must not be reused for multiple calls.
@@ -185,6 +255,7 @@ pub fn directGate(
         .components = components,
         .preprocessed_columns = columns,
     };
+    try validateDirectSourceRoster(value);
     return .{ .arena = arena, .value = value };
 }
 
@@ -315,6 +386,7 @@ pub fn directChip(
         .constant = constant,
         .private_boundary = boundary,
     };
+    try validateDirectSourceRoster(generated.value);
     return generated;
 }
 
@@ -451,11 +523,44 @@ fn bridgeBinding(allocator: std.mem.Allocator, rounds: u32, addresses: direct.Pr
 }
 
 pub fn matches(allocator: std.mem.Allocator, sealed: Manifest, generated: Manifest) !bool {
+    validateDirectSourceRoster(sealed) catch return false;
+    try validateDirectSourceRoster(generated);
     const left = try std.json.Stringify.valueAlloc(allocator, sealed, .{});
     defer allocator.free(left);
     const right = try std.json.Stringify.valueAlloc(allocator, generated, .{});
     defer allocator.free(right);
     return std.mem.eql(u8, left, right);
+}
+
+test "legacy component source slots have a typed, closed interpretation" {
+    var c: Component = .{
+        .name = "qm31_ops",
+        .source_index = 1,
+        .proof_index = 0,
+        .trace_log_size = 9,
+        .evaluation_log_size = 10,
+        .base_trace_columns = 12,
+        .interaction_trace_columns = 8,
+        .n_constraints = 1,
+        .random_coefficient_offset = 0,
+        .trace_spans = &.{},
+        .preprocessed_indices = &.{},
+        .program_binding_sha256 = "binding",
+    };
+    const gate_schema = "s31-component-manifest-direct-gate-v1";
+    const chip_schema = "s31-component-manifest-direct-chip-v2";
+    const pair_schema = "s31-component-manifest-direct-pair-v1";
+    try std.testing.expect(std.meta.eql(try componentSource(gate_schema, c), ComponentSource{ .bundled_air = 1 }));
+    c.source_index = 0;
+    try std.testing.expectError(error.InvalidComponentSource, componentSource(gate_schema, c));
+    c.name = "repeated_step_chip";
+    try std.testing.expect(std.meta.eql(try componentSource(chip_schema, c), ComponentSource{ .native_air = .repeated_step_chip }));
+    try std.testing.expectError(error.InvalidComponentSource, componentSource(gate_schema, c));
+    c.name = "tagged_pair_bridge";
+    try std.testing.expect(std.meta.eql(try componentSource(pair_schema, c), ComponentSource{ .native_air = .tagged_pair_bridge }));
+    try std.testing.expectError(error.InvalidComponentSource, componentSource(chip_schema, c));
+    c.name = "unregistered_native_air";
+    try std.testing.expectError(error.InvalidComponentSource, componentSource(pair_schema, c));
 }
 
 fn hex(allocator: std.mem.Allocator, digest: [32]u8) ![]const u8 {

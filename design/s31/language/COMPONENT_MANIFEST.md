@@ -116,6 +116,32 @@ witness values. This is a precommitment to the one-call roster, while the
 engine's component constructors remain explicit code. A future multi-call
 profile needs a new lookup tuple with call ID and its own versioned transcript.
 
+### What `source_index` identifies
+
+The sealed v1/v2 JSON inherited one integer called `source_index`, but it
+encodes two different source classes. `qm31_ops` has `source_index: 1`: it is
+selected from the pinned AIR bundle at index 1 and placed at proof index 0.
+The chip and bridge have `source_index: 0`: zero is a **native AIR sentinel**,
+not another bundle index. Their `name` and `program_binding_sha256` distinguish
+the pinned Zig AIR and its parameters. For example:
+
+| Proof index | Name | `source_index` | Internal source role |
+| ---: | --- | ---: | --- |
+| 0 | `qm31_ops` | 1 | Bundled AIR 1 |
+| 1 | `repeated_step_chip` | 0 | Native repeated-step AIR |
+| 2, if private | `private_boundary_bridge` | 0 | Native bridge AIR |
+
+The manifest generator and key matcher now resolve these pairs to an internal
+tagged source role and reject an unknown native name, wrong source index, or
+wrong proof/claimed-sum position. This adds a fail-closed check without
+changing existing sealed JSON, key schemas, digest domains, or proof tags.
+It does **not** make `source_index: 0` a sufficient identity for a general
+scheduler. A future versioned manifest must serialize an explicit source
+kind and stable program identity and derive the constructed component from
+that typed reference. The staged two-call profile also uses the legacy
+sentinel for its native tagged chip and bridge; it is not a released general
+manifest scheduler.
+
 ## Remaining work
 
 - Extend to sparse, wide, full circuit, SHA and recursive profiles. These need
