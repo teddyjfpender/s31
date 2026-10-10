@@ -1,16 +1,16 @@
 # General authenticated circuit-to-chip boundary
 
-Status: **released one-call profile; staged fixed two-call prototype; general
-boundary remains a design**. The fixed two-call profile has a tagged chip AIR,
-bridge AIR, source-derived five-component manifest, in-memory proof path, and
-experimental sealed byte verifier. It is unexported while the remaining native
-controls, formal obligations, and an embedded source/key trust root are completed.
-It does not admit arbitrary numbers of calls.
+Status: **released one-call profile; experimental fixed two-call and bounded
+V4 profiles; general boundary remains a design**. The fixed two-call profile
+has a tagged chip AIR, bridge AIR, source-derived five-component manifest,
+sealed proof bytes, and a dedicated source-pinned verifier. Its formal
+soundness and witness-confidentiality obligations remain open.
 
-The bounded V4 successor has an experimental in-memory native scheduler for
-one and three source-derived calls. Release admission still needs a canonical
-proof envelope, source-pinned verifier, all admitted call counts, and a
-separate soundness review.
+The bounded V4 successor has a distinct `S31MNY04` proof envelope, a
+source-pinned verifier, and native proof tests for 1, 2, 3, 4 and 8
+source-derived calls. Counts 5–7, full source-to-verifier correspondence,
+independent native soundness review, and confidential witnesses remain open.
+The V4 path is experimental and separate from the general package facade.
 
 The bounded variable-call successor to the staged two-call profile is specified
 in [Bounded multi-call authenticated boundary](BOUNDED_MULTI_CALL_BOUNDARY.md).

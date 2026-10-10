@@ -704,3 +704,37 @@ external trust root. A relying party must authenticate the intended source,
 AIR and installed verifier, and independently fix the expected public words.
 The V4 byte-entry implementation and independent mutation run should be
 reviewed again before any release status changes.
+
+### V4 byte-admission follow-up
+
+The integrated experimental V4 path now has a dedicated source-pinned
+verifier binary and the distinct `S31MNY04` envelope. The verifier fixes
+source and official AIR at build time, checks the header's canonical call
+count, roster count, reserved bytes, source/manifest/circuit digests and M31
+sum limbs, reconstructs the live preflight from source, then validates and
+decodes a size-capped postcard proof before native verification. This closes
+the missing byte-entry and source-selection parts of **S31-V4-01 for the
+dedicated binary**; it does not authenticate distribution of that binary or
+create a general package profile.
+
+The integrated ReleaseFast tests accepted native proofs for N=1,2,3,4,8,
+including call ID 7. The black-box entrypoint accepted an honest one-call
+proof and rejected changed public words and statement schema; changed magic,
+counts, reserved bytes, source/manifest/identity digests, claimed sums,
+noncanonical limbs, malformed postcard and a proof under a changed embedded
+source. The N=2/4/8 test mutates every claimed-sum position. This improves
+**S31-V4-02**, while N=5,6,7 still lack direct native proof tests. The
+lookup/PCS refinement and confidentiality findings **S31-V4-03/04** remain
+open, as does the source-kind dependency audit **S31-V4-05**. Passing these
+tests is evidence about this bounded implementation, not an independent
+cryptographic proof.
+
+The new bounded SSA polynomial theorem strengthens **S31-SEC-08** for one
+public four-lane input/output and 1–16 static add or pointwise-multiply lets:
+exact source/normalized bytes, matched source-row selectors and addresses,
+locally accepted polynomial residuals, a pinned input and one coherent
+logical wire map force the selected wire to the source value. The coherent
+wire map is still a premise. Production Gate lookup, committed trace and
+fixed-column authentication, PCS/FRI and full compiler coverage do not follow
+from this theorem. Native acceptance rejects a resealed operand-address
+mutation in addition to the prior opcode and public-input controls.

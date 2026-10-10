@@ -194,16 +194,16 @@ The focused `zig build test-bounded-component-manifest` step checks one-,
 two-, and eight-call rosters, coefficient overflow, and these mutations
 without building proofs.
 
-**This is a source-plan blueprint, not a verification key or admitted proof
-profile.** `CircuitFacts` (selected AIR identity, circuit trace and evaluation
-logs, widths, constraint count, ordered fixed-column indices, preprocessed
-root) are supplied inputs to the plan API. A package cannot make those facts
-authoritative by providing them or their digest. An experimental V4 engine
-scheduler now proves and verifies **in memory** for one and three source-derived
-calls, using a dynamic component roster, live PCS handles and its own
-transcript phases. It has no released key schema, canonical proof-byte
-envelope, source-pinned verifier executable, or complete one-through-eight
-native matrix. The admitted package profile remains disabled.
+**The source-only plan API is a blueprint, not an admission key.** Its
+`CircuitFacts` (selected AIR identity, logs, widths, constraint count,
+fixed-column order and preprocessed root) are supplied inputs. A package
+cannot make those facts authoritative by providing them or a digest.
+`inspectMany` instead recompiles the source, obtains the selected AIR and
+fixed root, attaches compiled endpoints, and checks the complete roster
+against live native handles. The experimental V4 prover and dedicated
+source-pinned verifier use that inspection to admit a distinct `S31MNY04`
+proof envelope. Native proofs pass for counts 1, 2, 3, 4 and 8; the general
+package profile and a released verification-key schema remain disabled.
 
 ### Compiled endpoints and the executable two-call inspection
 
@@ -235,12 +235,12 @@ The inspected V4 call payload contains the compiled addresses, which are
 checked against both the native handle and the live V3 Plan. Rehashing a
 changed endpoint in that payload still fails regeneration. The source-only
 payload remains explicitly unbound to circuit addresses and cannot be used
-for proof admission. The native bridge source binding in the V4 blueprint
-still identifies a template and call parameters; it does not independently
-hash instantiated endpoint addresses. The complete inspected V4 digest does
-include them. A future proof verifier must construct its bridge handle from
-those rebound addresses and check the handle before binding the digest to a
-transcript.
+for proof admission. The compiled V4 native bridge binding and complete
+inspected manifest digest both include the instantiated endpoint addresses;
+the source-only template does not. The dedicated V4 verifier recompiles and
+rebinds those addresses, checks its live bridge handle, and mixes the
+source-derived typed manifest digest into the transcript before witness
+commitments.
 
 The two-call inspection also runs `pair_source_binding.derive`, the source
 binding used by the live V3 verifier, as an independent lowering path. It
@@ -253,17 +253,16 @@ The test injects a wrong V3 endpoint and also checks IR, root, and selected
 AIR geometry mismatches. This is a differential implementation guard, not a
 formal proof that both compilers are correct.
 
-This inspection API accepts **no proof bytes** and issues no key. It refuses
-one-call and three- through eight-call native handle rebinding. The current
-native pair schedule has hardcoded two-call component arrays and PCS order;
-its tagged chip and bridge reject call IDs 2 through 7. The one- through
-eight-call topology extractor is therefore useful for checking lowering and
-planning, but it is not a proof admission path. A future verifier must
-derive circuit facts from its selected AIR and native handles for every
-admitted call, bind the resulting versioned manifest into its transcript
-before witness commitments, and check source, witness, fixed columns, and
-all component geometry. A topology/witness match currently compares endpoint
-addresses and basic shape, not every gate value in the circuit.
+`inspectTwoCall` itself accepts **no proof bytes** and issues no key. It is a
+differential comparison with the older fixed V3 pair schedule, whose two-call
+component arrays and PCS order remain separate from V4. `inspectMany` is the
+new V4 inspection path for 1–8 calls: it derives native handle geometry and
+provides the source-owned manifest digest used by the experimental V4
+transcript. `compileManyWitness` checks the witness-mode fixed-column root
+against source topology before proving. The dedicated V4 byte verifier
+reconstructs this inspection from embedded source and official AIR bytes;
+it does not take a caller-supplied manifest or endpoint map. Counts 5–7 still
+need direct native proof tests, and no general package verifier admits V4.
 
 ## Remaining work
 
@@ -272,12 +271,13 @@ addresses and basic shape, not every gate value in the circuit.
   component orders, and the exact composition coefficient schedule.
 - Make the manifest authoritative for constructing prover and verifier trees,
   rather than a checked description of the existing direct profile layout.
-- Give a future multi-call schema its own key, proof envelope, typed digest
-  domain, and transcript so one-call proofs cannot be reinterpreted.
+- Publish an authenticated versioned V4 key and package flow; the current
+  source-pinned binary and distinct proof envelope are experimental.
 
-These slices establish manifest generation and independent reconstruction for
-the direct arithmetic profiles. They do not yet provide a general component
-selector or a multi-call chip boundary.
+These slices establish source-derived manifest reconstruction and an
+experimental bounded multi-call boundary for direct arithmetic. They do not
+yet provide a general component selector across heterogeneous chips and
+profiles.
 
 ## Single-call security boundary
 
