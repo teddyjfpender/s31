@@ -133,3 +133,65 @@ lowering selection even if that gate passes: one host, a few scales, variable
 PoW, and no profile-soundness equivalence are insufficient grounds for a
 compiler decision. A failed gate is direct evidence that this simple model
 should not be used to predict a candidate lowering's cost.
+
+### Measured outcome, 2026-10-10
+
+The [pinned audit summary](language/whole-prover-heldout-2026-10-10.json) records
+one local host, twelve sealed programs, five distinct assignments each, and
+60/60 native proof acceptances, changed-claim rejections, and independent
+oracle passes. All twelve packages have one compiler digest. The generator
+and saved trial reports are the reproducible source of each number.
+
+| Held-out target | Median relative error | P90 relative error | Maximum |
+| --- | ---: | ---: | ---: |
+| Prover plus native verifier process wall | 30.6% | 79.1% | 100.8% |
+| Proof bytes | 2.33% | 6.74% | 9.79% |
+| Prover peak RSS | 1.03% | 4.17% | 8.02% |
+
+All three targets have 12/12 held-out predictions. An empirical interval was
+available for only 10/12 programs per target because two arithmetic scales
+share a 512-row padded tier. The wall-time interval covered 7/10 of those
+held-out values. The accuracy gate failed and automatic lowering selection
+remains disabled. Package-build wall time was measured separately and ranged
+from about 50 to 71 seconds in this run; Zig's shared compiler cache was not
+isolated, so those numbers are neither cold-build baselines nor a predictive
+compiler model.
+
+| Family | Whole-process wall median error | Proof-byte median error | RSS median error |
+| --- | ---: | ---: | ---: |
+| Arithmetic recurrence | 62.5% | 2.30% | 2.31% |
+| BLAKE2s chain | 9.42% | 1.35% | 0.042% |
+| Signed division | 40.1% | 4.30% | 2.31% |
+
+To diagnose the wall-time failure, the pinned report also applies the same
+frozen padded-row fit to native stages **after** the headline evaluation. These
+are exploratory errors and do not enter the gate. Arithmetic and signed
+division show median held-out errors of 20.6% and 11.7% for proving excluding
+PoW, versus 53.3% and 48.0% for FRI PoW. Their observed FRI-PoW median
+absolute deviations are about 70.2% and 44.5% of the respective stage
+medians. Cold native setup errors are 7.3% and 5.6%. Generic BLAKE2s does not
+print separate PoW timers, so its PoW and non-PoW stage errors are unavailable.
+The 16- and 64-round arithmetic programs both pad to 512 rows, while their
+raw work differs; this is a real step in the cost surface, not evidence for a
+smooth latency law.
+
+### Next validation protocol
+
+Freeze the next model and its thresholds **before** collecting new native
+timings. Use new source programs and independent witness seeds: arithmetic
+round counts 32, 128, 512 and 2048; BLAKE2s chain depths 5 through 8; signed
+128-bit division as an extrapolation control; and unsigned 8–64-bit division
+as a separately labeled transfer test. Measure at least twenty distinct
+witnesses per program on two named hosts, rotate program order, and retain
+complete process wall, stage timers, proof bytes, RSS and package-cache state.
+Do not merge unsigned and signed results into one family accuracy number.
+
+Predeclare a stage-aware feature set: raw and padded rows by component,
+preprocessed/fixed-table cells, FRI schedule, and both PoW difficulty settings.
+Fit deterministic setup and non-PoW stages separately; treat PoW as a measured
+distribution conditioned on its policy rather than a deterministic function
+of AIR rows. Add process startup and native verification only after those
+components are measured. Evaluate on the new programs and second host without
+refitting to their outcomes. A persistent native prover API is needed to
+measure cached setup separately. Keep automatic lowering selection disabled
+until the prospective error gate and a profile-soundness comparison both pass.
