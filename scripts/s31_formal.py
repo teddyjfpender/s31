@@ -83,6 +83,7 @@ BINDINGS = [
     "src/frontends/s31/language/canonical.zig",
     "src/frontends/s31/language/record_abi.zig",
     "src/frontends/s31/language/relation_compiler.zig",
+    "src/frontends/s31/language/bounded_call_admission.zig",
     "src/frontends/s31/language/gadgets/integer_multiply.zig",
     "src/frontends/s31/language/gadgets/integer_bits.zig",
     "src/frontends/s31/language/gadgets/integer_division.zig",
