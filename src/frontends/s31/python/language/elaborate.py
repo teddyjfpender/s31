@@ -14,7 +14,7 @@ from typing import TypeAlias
 from s31_stdlib import P, Type, TypeErrorS31
 from language.builtin_types import BIT, M31_ONE, SELECTABLE_KINDS, circuit, infer_builtin
 from language.builtins import MAX_CALL_DEPTH, STANDARD_ALIASES
-from language.syntax import Circuit, Expr, Function, FunctionType, SourceError, Statement, TupleType
+from language.syntax import Circuit, Expr, Function, FunctionType, RecordType, SourceError, Statement, TupleType
 from language.types import FieldLiteral, SourceType, StaticArray
 
 
@@ -299,16 +299,33 @@ class Elaborator:
                 return StaticArray(elements)
             if expr.kind == "tuple":
                 elements = tuple(self.expr(item, env, step_mode=step_mode) for item in expr.args)
-                if not all(isinstance(item, (Type, FunctionType, TupleType))
+                if not all(isinstance(item, (Type, FunctionType, TupleType, RecordType))
                            for item in elements):
                     raise TypeErrorS31("tuple elements need declared source types")
                 return TupleType(elements)
+            if expr.kind == "record":
+                typ = expr.record_type
+                if typ is None or len(typ.fields) != len(expr.args):
+                    raise TypeErrorS31("invalid struct constructor")
+                actual = tuple(self.expr(item, env, step_mode=step_mode) for item in expr.args)
+                for (field, expected), found in zip(typ.fields, actual):
+                    if found != expected:
+                        raise TypeErrorS31(f"{typ.name}.{field} expects {expected}")
+                return typ
             if expr.kind == "project":
                 source = self.expr(expr.args[0], env, step_mode=step_mode)
                 index = int(expr.value)
                 if not isinstance(source, TupleType) or index >= len(source.elements):
                     raise TypeErrorS31("tuple projection index is out of range")
                 return source.elements[index]
+            if expr.kind == "field_project":
+                source = self.expr(expr.args[0], env, step_mode=step_mode)
+                if not isinstance(source, RecordType):
+                    raise TypeErrorS31("named field access requires a struct value")
+                for field, typ in source.fields:
+                    if field == expr.value:
+                        return typ
+                raise TypeErrorS31(f"{source.name} has no field {expr.value}")
             if expr.kind == "let":
                 bound = self.expr(expr.args[0], env, step_mode=step_mode)
                 local = env.copy()

@@ -8,7 +8,7 @@ import s31_mathlib as mathlib
 from s31_stdlib import Builder, INT_TYPES, P, StaticGroup, StepState, Type, TypeErrorS31, Value
 from language.builtins import (INT_BINARY_CALLS, INT_CAST_CALLS, INT_COMPARE_CALLS, INT_STATIC_SHIFT_CALLS,
                                MAX_CALL_DEPTH, STANDARD_ALIASES)
-from language.syntax import Circuit, Expr, Function, FunctionType, SourceError, StaticClosure, StaticNamedFunction, StaticTuple, Statement, TupleType
+from language.syntax import Circuit, Expr, Function, FunctionType, RecordType, SourceError, StaticClosure, StaticNamedFunction, StaticRecord, StaticTuple, Statement, TupleType
 
 
 class Compiler:
@@ -37,14 +37,33 @@ class Compiler:
         return thing
 
     @staticmethod
-    def source_type(thing: Any) -> Type | FunctionType | TupleType | None:
+    def source_type(thing: Any) -> Type | FunctionType | TupleType | RecordType | None:
         if isinstance(thing, (Value, StepState)):
             return thing.typ
         if isinstance(thing, (StaticClosure, StaticNamedFunction)):
             return thing.signature
         if isinstance(thing, StaticTuple):
             return thing.signature
+        if isinstance(thing, StaticRecord):
+            return thing.signature
         return None
+
+    def make_record(self, expr: Expr, elements: tuple[Any, ...]) -> StaticRecord:
+        typ = expr.record_type
+        if typ is None or len(typ.fields) != len(elements):
+            raise self.located(expr, "invalid struct constructor")
+        for (name, expected), element in zip(typ.fields, elements):
+            if self.source_type(element) != expected:
+                raise self.located(expr, f"{typ.name}.{name} expects {expected}")
+        return StaticRecord(typ, elements)
+
+    def record_field(self, expr: Expr, source: Any) -> Any:
+        if not isinstance(source, StaticRecord):
+            raise self.located(expr, "named field access requires a struct value")
+        for index, (name, _) in enumerate(source.signature.fields):
+            if name == expr.value:
+                return source.elements[index]
+        raise self.located(expr, f"{source.signature.name} has no field {expr.value}")
 
     def eval_block(self, statements: tuple[Statement, ...], body: Expr,
                    env: dict[str, Any], wanted: str | None = None,
@@ -61,7 +80,7 @@ class Compiler:
                 else:
                     target = statement.name
                 value = self.eval_expr(statement.args[0], local, wanted=target)
-                if not isinstance(value, (Value, StaticGroup, StaticClosure, StaticNamedFunction, StaticTuple, int)):
+                if not isinstance(value, (Value, StaticGroup, StaticClosure, StaticNamedFunction, StaticTuple, StaticRecord, int)):
                     raise self.located(statement.args[0], "let requires a circuit or static value")
                 local[statement.name] = value
             else:
@@ -130,7 +149,7 @@ class Compiler:
         try:
             if expr.kind == "let":
                 bound = self.eval_expr(expr.args[0], env)
-                if not isinstance(bound, (Value, StaticGroup, StaticClosure, StaticNamedFunction, StaticTuple, int)):
+                if not isinstance(bound, (Value, StaticGroup, StaticClosure, StaticNamedFunction, StaticTuple, StaticRecord, int)):
                     raise TypeErrorS31("let requires a circuit or static value")
                 local = env.copy()
                 local[expr.value] = bound
@@ -165,15 +184,19 @@ class Compiler:
             if expr.kind == "tuple":
                 elements = tuple(self.eval_expr(item, env) for item in expr.args)
                 types = tuple(self.source_type(item) for item in elements)
-                if not all(isinstance(typ, (Type, FunctionType, TupleType)) for typ in types):
+                if not all(isinstance(typ, (Type, FunctionType, TupleType, RecordType)) for typ in types):
                     raise TypeErrorS31("tuple elements need declared source types")
                 return StaticTuple(TupleType(types), elements)
+            if expr.kind == "record":
+                return self.make_record(expr, tuple(self.eval_expr(item, env) for item in expr.args))
             if expr.kind == "project":
                 source = self.eval_expr(expr.args[0], env)
                 index = int(expr.value)
                 if not isinstance(source, StaticTuple) or index >= len(source.elements):
                     raise TypeErrorS31("tuple projection index is out of range")
                 return source.elements[index]
+            if expr.kind == "field_project":
+                return self.record_field(expr, self.eval_expr(expr.args[0], env))
             if expr.kind == "if":
                 condition = self.expect_value(self.eval_expr(expr.args[0], env), expr.args[0])
                 on_true = self.expect_value(self.eval_expr(expr.args[1], env), expr.args[1])
@@ -541,15 +564,19 @@ class Compiler:
         if expr.kind == "tuple":
             elements = tuple(self.step_expr(item, env) for item in expr.args)
             types = tuple(self.source_type(item) for item in elements)
-            if not all(isinstance(typ, (Type, FunctionType, TupleType)) for typ in types):
+            if not all(isinstance(typ, (Type, FunctionType, TupleType, RecordType)) for typ in types):
                 raise self.located(expr, "tuple elements need declared source types")
             return StaticTuple(TupleType(types), elements)
+        if expr.kind == "record":
+            return self.make_record(expr, tuple(self.step_expr(item, env) for item in expr.args))
         if expr.kind == "project":
             source = self.step_expr(expr.args[0], env)
             index = int(expr.value)
             if not isinstance(source, StaticTuple) or index >= len(source.elements):
                 raise self.located(expr, "tuple projection index is out of range")
             return source.elements[index]
+        if expr.kind == "field_project":
+            return self.record_field(expr, self.step_expr(expr.args[0], env))
         if expr.kind == "lambda":
             assert expr.result_type is not None
             return StaticClosure(FunctionType(tuple(typ for _, typ in expr.params), expr.result_type),

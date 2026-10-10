@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from typing import TypeAlias
 
 from language.builtins import BUILTINS, MAX_CALL_DEPTH, STANDARD_ALIASES
-from language.syntax import Circuit, Expr, Function, FunctionType, SourceError, Statement, TupleType
+from language.syntax import Circuit, Expr, Function, FunctionType, RecordType, SourceError, Statement, TupleType
 
 
 # Keep this partition exhaustive. A newly added builtin must receive a
@@ -82,7 +82,12 @@ class TupleValue:
     elements: tuple[AbstractValue, ...]
 
 
-AbstractValue: TypeAlias = Closure | OpaqueFunction | NamedFunctionRef | FirstOrder | TupleValue
+@dataclass(frozen=True)
+class RecordValue:
+    fields: tuple[tuple[str, AbstractValue], ...]
+
+
+AbstractValue: TypeAlias = Closure | OpaqueFunction | NamedFunctionRef | FirstOrder | TupleValue | RecordValue
 FIRST_ORDER = FirstOrder()
 OPAQUE_FUNCTION = OpaqueFunction()
 
@@ -110,6 +115,9 @@ class TotalityChecker:
     def parameter(typ: object) -> AbstractValue:
         if isinstance(typ, TupleType):
             return TupleValue(tuple(TotalityChecker.parameter(item) for item in typ.elements))
+        if isinstance(typ, RecordType):
+            return RecordValue(tuple((name, TotalityChecker.parameter(field_type))
+                                     for name, field_type in typ.fields))
         return OPAQUE_FUNCTION if isinstance(typ, FunctionType) else FIRST_ORDER
 
     def block(self, statements: tuple[Statement, ...], body: Expr,
@@ -178,12 +186,27 @@ class TotalityChecker:
             components = tuple(self.expr(item, env) for item in expr.args)
             return Effect(TupleValue(tuple(item.value for item in components)),
                           frozenset().union(*(item.failure for item in components)))
+        if expr.kind == "record":
+            if expr.record_type is None:
+                raise self.error(expr, "invalid struct constructor")
+            components = tuple(self.expr(item, env) for item in expr.args)
+            return Effect(RecordValue(tuple((name, item.value)
+                                            for (name, _), item in zip(expr.record_type.fields, components))),
+                          frozenset().union(*(item.failure for item in components)))
         if expr.kind == "project":
             source = self.expr(expr.args[0], env)
             index = int(expr.value)
             if not isinstance(source.value, TupleValue) or index >= len(source.value.elements):
                 raise self.error(expr, "tuple projection index is out of range")
             return Effect(source.value.elements[index], source.failure)
+        if expr.kind == "field_project":
+            source = self.expr(expr.args[0], env)
+            if not isinstance(source.value, RecordValue):
+                raise self.error(expr, "named field access requires a struct value")
+            for name, value in source.value.fields:
+                if name == expr.value:
+                    return Effect(value, source.failure)
+            raise self.error(expr, f"unknown struct field {expr.value}")
         if expr.kind == "if":
             condition = self.expr(expr.args[0], env)
             on_true = self.expr(expr.args[1], env)

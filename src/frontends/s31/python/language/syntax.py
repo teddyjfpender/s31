@@ -24,15 +24,31 @@ class Token:
 class FunctionType:
     """A compile-time function type; no relation or AIR representation."""
 
-    params: tuple[Type | FunctionType | TupleType, ...]
-    result: Type | FunctionType | TupleType
+    params: tuple[Type | FunctionType | TupleType | RecordType, ...]
+    result: Type | FunctionType | TupleType | RecordType
 
 
 @dataclass(frozen=True)
 class TupleType:
     """A compile-time product of typed values, erased before AIR lowering."""
 
-    elements: tuple[Type | FunctionType | TupleType, ...]
+    elements: tuple[Type | FunctionType | TupleType | RecordType, ...]
+
+
+@dataclass(frozen=True)
+class RecordType:
+    """Nominal, statically shaped product; field names disappear before AIR."""
+
+    name: str
+    fields: tuple[tuple[str, Type | TupleType | RecordType], ...]
+
+
+@dataclass(frozen=True)
+class StaticRecord:
+    """A record of existing source values, never a relation node."""
+
+    signature: RecordType
+    elements: tuple[Any, ...]
 
 
 @dataclass(frozen=True)
@@ -42,8 +58,9 @@ class Expr:
     args: tuple[Expr, ...]
     token: Token
     generic: int | None = None
-    params: tuple[tuple[str, Type | FunctionType | TupleType], ...] = ()
-    result_type: Type | FunctionType | TupleType | None = None
+    params: tuple[tuple[str, Type | FunctionType | TupleType | RecordType], ...] = ()
+    result_type: Type | FunctionType | TupleType | RecordType | None = None
+    record_type: RecordType | None = None
 
 
 @dataclass(frozen=True)
@@ -57,8 +74,8 @@ class Statement:
 @dataclass(frozen=True)
 class Function:
     name: str
-    params: tuple[tuple[str, Type | FunctionType | TupleType], ...]
-    result: Type | FunctionType | TupleType
+    params: tuple[tuple[str, Type | FunctionType | TupleType | RecordType], ...]
+    result: Type | FunctionType | TupleType | RecordType
     statements: tuple[Statement, ...]
     body: Expr
 

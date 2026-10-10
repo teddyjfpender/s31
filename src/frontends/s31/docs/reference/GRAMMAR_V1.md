@@ -25,7 +25,7 @@ leading zeroes; the lexer reports the source location when that limit is
 exceeded. The lexer recognizes `->`, `=>`, `::`, and `.*` before
 their one-character prefixes. The reserved words are `use`, `let`, `in`,
 `if`, `then`, `else`, `fun`, `Fn`, `fn`, `circuit`, `blinded`, `public`,
-`private`, and `assert_eq`.
+`private`, `struct`, and `assert_eq`.
 
 ## Declarations and types
 
@@ -33,7 +33,13 @@ The notation below uses `{…}` for repetition, `[…]` for optional syntax,
 and `|` for alternatives. Quoted punctuation is literal source text.
 
 ```text
-file          = ["use", "std", "@", "1", ";"], {function}, circuit, EOF
+file          = ["use", "std", "@", "1", ";"], {struct | function}, circuit, EOF
+struct        = "struct", type_identifier, "{", field, {",", field}, [","], "}", [";"]
+field         = identifier, ":", struct_field_type
+struct_field_type = first_order_type | type_identifier
+                  | "(", struct_field_type, ",", struct_field_type,
+                    {",", struct_field_type}, ")"
+type_identifier = identifier beginning with an uppercase ASCII letter
 function      = "fn", identifier, function_parameters, "->", type, block
 circuit       = ["blinded"], "circuit", identifier,
                 circuit_parameters, "->", "public", first_order_type, block
@@ -44,7 +50,8 @@ circuit_parameters  = "(", [visibility, identifier, ":", first_order_type,
                       {",", visibility, identifier, ":", first_order_type}], ")"
 visibility    = "public" | "private"
 
-type          = first_order_type | "Fn", "(", [type, {",", type}], ")", "->", type
+type          = first_order_type | type_identifier
+              | "Fn", "(", [type, {",", type}], ")", "->", type
               | "(", type, ",", type, {",", type}, ")"
               | "(", type, ")"
 first_order_type = "bit" | "u8" | "u16" | "u32" | "u64" | "u128"
@@ -55,9 +62,14 @@ first_order_type = "bit" | "u8" | "u16" | "u32" | "u64" | "u128"
                 | "[", ("m31" | "u16"), ";", natural, "]"
 ```
 
-Array lengths and type arguments are checked after parsing. `Fn` and tuple
-values exist only during specialization; circuit inputs and outputs require
-first-order types. Functions may return or accept `Fn` and tuple values. `Digest`
+Array lengths and type arguments are checked after parsing. `Fn`, tuples, and
+struct records exist only during specialization; circuit inputs and outputs
+require first-order types. A struct field may contain a first-order value, an
+earlier declared struct, or a tuple recursively built from those types.
+Function-valued fields and forward or recursive struct references are rejected.
+Struct type names are nominal: equal field shapes with different names are
+different source types. Functions may return or accept structs, `Fn`, and
+tuple values. `Digest`
 families and the fixed-width integer names are exact and case sensitive.
 
 ## Blocks and expressions
@@ -72,13 +84,14 @@ binding_pattern = identifier
                 {",", binding_pattern}, ")"
 expression    = prefix, {postfix_call | postfix_projection | binary_operator, prefix}
 postfix_call  = "(", [expression, {",", expression}], ")"
-postfix_projection = ".", natural
+postfix_projection = ".", (natural | identifier)
 prefix        = "let", binding_pattern, "=", expression, "in", expression
               | "if", expression, "then", expression, "else", expression
               | "fun", function_parameters, "->", type, "=>", expression
               | "-", expression
               | atom
 atom          = identifier
+              | type_identifier, "{", named_field, {",", named_field}, [","], "}"
               | qualified_name, ["<", natural, ">"], "(", [expression,
                 {",", expression}], ")"
               | field_literal
@@ -87,6 +100,7 @@ atom          = identifier
               | "(", expression, ",", expression, {",", expression}, ")"
               | "[", [expression, {",", expression}], "]"
 qualified_name = identifier, {"::", identifier}
+named_field    = identifier, ":", expression
 binary_operator = "+" | "-" | ".*"
 ```
 
@@ -107,6 +121,17 @@ once. The parser uses a source-inaccessible temporary name and lowers the
 pattern to ordinary `let` bindings and static projections. A repeated name
 within one tuple pattern is rejected. No pattern node reaches elaboration,
 relation JSON or AIR.
+
+`struct Powers { square: [m31; 4], doubled: [m31; 4] }` declares a nominal
+static product. `Powers { doubled: x + x, square: x .* x }` constructs one with
+all fields named exactly once; `p.square` selects a field. Literal fields may
+appear in any order. Their expressions are evaluated in declaration order,
+including fields never projected later. Construction and projection add no
+normalized relation node; the field expressions still contribute their normal
+nodes and partial effects. A tuple projection remains numeric (`p.0`), while
+named projection requires a struct value. Whole-record witness-dependent
+selection and whole-record `assert_eq` are outside this source version; select
+or assert individual first-order fields explicitly.
 
 The parser uses left-associative Pratt binding powers: unary `-` is 30,
 lane-wise `.*` is 20, and `+` and `-` are 10. Postfix application binds more
@@ -139,7 +164,9 @@ type parsing and tuple patterns each have a **32-level** limit. Static function 
 **32-call** limit, and effect analysis has a **200,000-expression-visit**
 limit. Each parser limit reports the file, line and column at the offending
 token. Tuple-pattern lowering is capped at **100,000 generated AST nodes**
-across the source file, including hidden bindings and projection paths. These
+across the source file, including hidden bindings and projection paths.
+Struct declarations are capped at 128 types, 64 fields per type, 32 levels of
+nested product layout, and 1,024 flattened first-order fields per type. These
 limits bound parser work and reject deep source trees before later
 recursive compiler passes.
 

@@ -1,10 +1,12 @@
 # Functional source programs and zero-cost abstractions
 
 S31 now has a small functional source core: lexical `let … in` expressions,
-typed `fun` values, closures, tuples, and functions that take or return functions.
-Function and tuple values exist **only in the compiler**. A circuit input or output must
+typed `fun` values, closures, tuples, nominal records, and functions that take or return functions.
+Function, tuple, and record values exist **only in the compiler**. A circuit input or output must
 still have a first-order S31 value type. Application specializes the function
 at the call site and emits only the underlying relation operations.
+The [record guide](records.md) shows named fields with the same static-product
+erasure and a separate nominal type check.
 
 ## Static tuples: two results from one helper
 

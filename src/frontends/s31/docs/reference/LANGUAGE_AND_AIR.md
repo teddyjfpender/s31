@@ -36,6 +36,13 @@ The node list is topologically ordered. Other implemented nodes are `constant`, 
 
 The compiler validates types and shapes, then constructs a canonical SSA graph. It folds constants and merges identical expressions before lowering. The package records hashes of the source and canonical IR. The compiled circuit has a fixed graph for every assignment to that source.
 
+The text frontend's [nominal records](../records.md) are checked and projected
+before this graph exists. For `Powers { square: x .* x, doubled: x + x }`, the
+field names determine source types and projections; the relation retains only
+the two arithmetic nodes and any later use of their values. The worked record
+and positional tuple sources produce exactly the same normalized JSON and AIR
+cost. Record labels have no witness column or constraint polynomial.
+
 Four M31 values are packed into the four coordinates of one QM31-backed SIMD wire. S31 arithmetic here is **coordinate-wise M31 arithmetic**. In particular, `square` means four independent M31 squares, not one QM31 field square. This distinction is enforced by the circuit builder's pointwise multiplication gate.
 
 Under `--lowering gate`, each recurrence round becomes one four-lane pointwise multiplication gate and one four-lane addition gate. The circuit also adds constrained input guesses, public-output bindings, address/permutation rows, and M31-to-`u32` conversion/range checks. That is why the final `qm31_ops` count is larger than `2 × rounds`. For the 256-round example, the report has 829 raw arithmetic rows, padded to 1024. The gate AIR's preprocessed columns fix the operation flags and wire addresses for each row; its witness columns carry values. Lookup arguments force a producer and every consumer of a wire address to agree. The arithmetic gate constrains the declared operation on those values. A host-side evaluation alone would not constrain the proof.

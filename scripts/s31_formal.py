@@ -44,6 +44,10 @@ TEXT_NAMED_SQUARE = "src/frontends/s31/examples/arithmetic/named_square4.s31"
 TEXT_NAMED_SQUARE_DIRECT = "src/frontends/s31/examples/arithmetic/named_square4_manual.s31"
 TEXT_TUPLE_SUM = "src/frontends/s31/examples/arithmetic/tuple_square_sum.s31"
 TEXT_TUPLE_SUM_DIRECT = "src/frontends/s31/examples/arithmetic/tuple_square_sum_manual.s31"
+TEXT_RECORD_SUM = "src/frontends/s31/examples/arithmetic/record_square_sum.s31"
+TEXT_RECORD_SUM_DIRECT = "src/frontends/s31/examples/arithmetic/record_square_sum_manual.s31"
+TEXT_RECORD_DIVISION = "src/frontends/s31/examples/math/division/record_i32_division.s31"
+TEXT_RECORD_DIVISION_DIRECT = "src/frontends/s31/examples/math/division/record_i32_division_manual.s31"
 TEXT_STATIC_STEP = "src/frontends/s31/examples/recurrence/functional_step16.s31"
 TEXT_STATIC_STEP_DIRECT = "src/frontends/s31/examples/recurrence/functional_step16_manual.s31"
 TEXT_CAPTURED_STEP = "src/frontends/s31/examples/recurrence/captured_step16.s31"
@@ -61,6 +65,10 @@ BINDINGS = [
     TEXT_NAMED_SQUARE_DIRECT,
     TEXT_TUPLE_SUM,
     TEXT_TUPLE_SUM_DIRECT,
+    TEXT_RECORD_SUM,
+    TEXT_RECORD_SUM_DIRECT,
+    TEXT_RECORD_DIVISION,
+    TEXT_RECORD_DIVISION_DIRECT,
     TEXT_STATIC_STEP,
     TEXT_STATIC_STEP_DIRECT,
     TEXT_CAPTURED_STEP,
@@ -383,6 +391,18 @@ def generated_text_square4() -> str:
     )
 
 
+def check_record_erasure() -> None:
+    """Keep the nominal-record examples tied to their positional core."""
+    from src.frontends.s31.python.text_frontend import compile_file
+
+    for source, manual in ((TEXT_RECORD_SUM, TEXT_RECORD_SUM_DIRECT),
+                           (TEXT_RECORD_DIVISION, TEXT_RECORD_DIVISION_DIRECT)):
+        record_relation, _ = compile_file(ROOT / source)
+        positional_relation, _ = compile_file(ROOT / manual)
+        if record_relation != positional_relation:
+            raise FormalError(f"{source}: record did not erase to the positional relation")
+
+
 def generated_native_square4_topology() -> str:
     """Run the actual direct compiler on IR freshly produced from `.s31` text."""
     from src.frontends.s31.python.text_frontend import compile_file
@@ -412,6 +432,7 @@ def generated_native_square4_topology() -> str:
 def generated() -> dict[Path, str]:
     check_native_qm31_relation_schedule()
     check_native_eq_relation_schedule()
+    check_record_erasure()
     source = (ROOT / RELATION).read_text()
     ops = [op.strip() for op in re.search(
         r"pub const Op = enum \{([^}]+)\};", source).group(1).split(",")]

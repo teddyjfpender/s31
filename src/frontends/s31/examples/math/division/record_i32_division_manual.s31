@@ -1,0 +1,11 @@
+use std@1;
+
+fn divide(numerator: i32, divisor: i32) -> (i32, i32) {
+    std::int::div_rem(numerator, divisor)
+}
+
+circuit record_i32_division(private numerator: i32, private divisor: i32) -> public [u16; 2] {
+    let division = divide(numerator, divisor);
+    let result = std::int::limbs(division.0);
+    result
+}

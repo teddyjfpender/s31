@@ -57,8 +57,9 @@ circuit arith4_m31(public x: [m31; 4]) -> public [m31; 4] {
 }
 ```
 
-A file may begin with `use std@1;`, then has zero or more top-level `fn`
-declarations followed by one `circuit`. Without `use`, existing sources use
+A file may begin with `use std@1;`, then has zero or more top-level `struct`
+and `fn` declarations followed by one `circuit`. A struct type must be
+declared before a function uses it. Without `use`, existing sources use
 the same compiler-owned standard library version implicitly. Other packages
 and versions are rejected.
 Functions and circuit bodies contain immutable `let` statements, optional
@@ -72,7 +73,10 @@ it becomes a compile-time reference group, not a witness array. Comments start w
 integers are used only as the compile-time `N` in `splat<N>`, `iterate<N>`,
 and `std::math::pow<N>`;
 circuit arithmetic uses canonical field literals.
-The [functional core](../functional-language.md) adds expression-level
+The [record guide](../records.md) shows named struct fields that erase into
+static products before relation emission. A function may accept or return a
+record; circuit inputs and outputs still use first-order values. The
+[functional core](../functional-language.md) adds expression-level
 `let name = expression in expression`, typed
 `fun(name: Type) -> Type => expression`, and static function types
 `Fn(Type) -> Type`. Function values are specialized away at calls, cannot
@@ -132,6 +136,7 @@ relation and canonical IR digest.
 | `bit` | `m31[1]` | An input used by a Boolean operation or `select` has `b²=b`; `std::field::is_zero`, Boolean operations, and `std::math::le_u256` produce constrained bits. A computed bit can be returned as `[m31; 1]`. |
 | `Digest<Poseidon2>` | `m31[8]` | Nominal type for the pinned field-native digest. |
 | `Digest<Blake2sReduced>` | `m31[8]` | Nominal type for eight reduced BLAKE2s words. |
+| `struct Name { field: Type, ... }` | No record node; statically projected field values retain their own relation types | Nominal, closed source record; construction and access are checked then erased. |
 
 These digest types prevent text programs from mixing hash families even though
 both erase to `m31[8]` in relation v1. They do **not** claim that any arbitrary

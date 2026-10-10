@@ -10,7 +10,7 @@ from language.builtins import (BUILTINS, BINARY_POWER, INT_SOURCE_TYPES,
                                MAX_EXPRESSION_DEPTH, MAX_NUMBER_DIGITS,
                                MAX_TOKENS, MAX_TYPE_DEPTH,
                                TOKEN_RE, UNARY_POWER)
-from language.syntax import Circuit, Expr, Function, FunctionType, SourceError, Statement, Token, TupleType
+from language.syntax import Circuit, Expr, Function, FunctionType, RecordType, SourceError, Statement, Token, TupleType
 
 
 @dataclass(frozen=True)
@@ -61,6 +61,8 @@ class Parser:
         self.pattern_depth = 0
         self.pattern_serial = 0
         self.pattern_expansion = 0
+        self.records: dict[str, RecordType] = {}
+        self.record_layouts: dict[str, tuple[int, int]] = {}
 
     def peek(self) -> Token:
         return self.tokens[self.at]
@@ -85,7 +87,7 @@ class Parser:
     def identifier(self) -> str:
         token = self.peek()
         if token.kind != "ident" or token.text in {
-            "use", "let", "in", "if", "then", "else", "fun", "Fn", "fn", "circuit", "blinded",
+            "use", "let", "in", "if", "then", "else", "fun", "Fn", "fn", "struct", "circuit", "blinded",
             "public", "private", "assert_eq",
         }:
             raise self.error("expected identifier")
@@ -150,7 +152,7 @@ class Parser:
             raise self.error("duplicate tuple binding", pattern.token)
         return bindings
 
-    def parse_type(self) -> Type | FunctionType | TupleType:
+    def parse_type(self) -> Type | FunctionType | TupleType | RecordType:
         if self.type_depth >= MAX_TYPE_DEPTH:
             raise self.error("type nesting limit exceeded")
         self.type_depth += 1
@@ -159,11 +161,11 @@ class Parser:
         finally:
             self.type_depth -= 1
 
-    def _parse_type(self) -> Type | FunctionType | TupleType:
+    def _parse_type(self) -> Type | FunctionType | TupleType | RecordType:
         token = self.peek()
         if self.accept("Fn"):
             self.expect("(")
-            arguments: list[Type | FunctionType | TupleType] = []
+            arguments: list[Type | FunctionType | TupleType | RecordType] = []
             if not self.accept(")"):
                 while True:
                     arguments.append(self.parse_type())
@@ -221,7 +223,91 @@ class Parser:
             if normalized is None:
                 raise self.error("digest family must be Poseidon2 or Blake2sReduced", token)
             return Type("digest", 8, normalized)
+        if token.kind == "ident" and token.text in self.records:
+            self.at += 1
+            return self.records[token.text]
         raise self.error("expected a circuit type or a static Fn(...) -> type")
+
+    def record_field_layout(self, typ: Type | FunctionType | TupleType | RecordType) -> tuple[int, int]:
+        """Bound nested source products and exclude function-valued fields."""
+        if isinstance(typ, Type):
+            return 1, 1
+        if isinstance(typ, RecordType):
+            return self.record_layouts[typ.name]
+        if isinstance(typ, TupleType):
+            layouts = [self.record_field_layout(item) for item in typ.elements]
+            return 1 + max(depth for depth, _ in layouts), sum(leaves for _, leaves in layouts)
+        raise self.error("struct fields must contain first-order values, tuples, or earlier structs")
+
+    def record_declaration(self, function_names: set[str]) -> None:
+        token = self.expect("struct")
+        name = self.identifier()
+        reserved = set(INT_SOURCE_TYPES) | {
+            "UInt256", "Bytes32", "BlockHash", "Target", "Work", "ChainWork", "Bytes80",
+            "Digest", "Poseidon2", "Blake2sReduced", "Fn", "bit", "m31", "u16",
+        }
+        if (not name[0].isupper() or name in reserved or name in BUILTINS or
+                name in self.records or name in function_names):
+            raise self.error(f"duplicate or reserved struct type {name}", token)
+        if len(self.records) >= 128:
+            raise self.error("struct declaration limit exceeded", token)
+        self.expect("{")
+        fields: list[tuple[str, Type | TupleType | RecordType]] = []
+        names: set[str] = set()
+        if not self.accept("}"):
+            while True:
+                field_token = self.peek()
+                field = self.identifier()
+                if field in names:
+                    raise self.error(f"duplicate struct field {field}", field_token)
+                names.add(field)
+                self.expect(":")
+                typ = self.parse_type()
+                self.record_field_layout(typ)
+                fields.append((field, typ))
+                if len(fields) > 64:
+                    raise self.error("struct field limit exceeded", field_token)
+                if self.accept("}"):
+                    break
+                self.expect(",")
+                if self.accept("}"):
+                    break
+        if not fields:
+            raise self.error("struct needs at least one field", token)
+        self.accept(";")
+        layouts = [self.record_field_layout(typ) for _, typ in fields]
+        depth = 1 + max(item[0] for item in layouts)
+        leaves = sum(item[1] for item in layouts)
+        if depth > MAX_TYPE_DEPTH or leaves > 1024:
+            raise self.error("struct nesting or flattened field limit exceeded", token)
+        self.records[name] = RecordType(name, tuple(fields))
+        self.record_layouts[name] = depth, leaves
+
+    def record_literal(self, typ: RecordType, token: Token) -> Expr:
+        self.expect("{")
+        supplied: dict[str, Expr] = {}
+        declared = {name for name, _ in typ.fields}
+        if not self.accept("}"):
+            while True:
+                field_token = self.peek()
+                field = self.identifier()
+                if field not in declared:
+                    raise self.error(f"unknown {typ.name} field {field}", field_token)
+                if field in supplied:
+                    raise self.error(f"duplicate {typ.name} field {field}", field_token)
+                self.expect(":")
+                supplied[field] = self.expression()
+                if self.accept("}"):
+                    break
+                self.expect(",")
+                if self.accept("}"):
+                    break
+        missing = [name for name, _ in typ.fields if name not in supplied]
+        if missing:
+            raise self.error(f"missing {typ.name} fields: {', '.join(missing)}", token)
+        # Fields are evaluated in declaration order, independent of literal order.
+        return Expr("record", typ.name, tuple(supplied[name] for name, _ in typ.fields),
+                    token, record_type=typ)
 
     def parameters(self, circuit: bool) -> tuple[Any, ...]:
         self.expect("(")
@@ -388,7 +474,9 @@ class Parser:
             if self.accept("<"):
                 generic = self.number()
                 self.expect(">")
-            if self.peek().text == "(":
+            if generic is None and name in self.records and self.peek().text == "{":
+                lhs = self.record_literal(self.records[name], token)
+            elif self.peek().text == "(":
                 lhs = Expr("call", name, self.call_arguments(), token, generic)
             elif generic is None:
                 lhs = Expr("name", name, (), token)
@@ -399,8 +487,11 @@ class Parser:
         while True:
             if self.peek().text == ".":
                 dot = self.expect(".")
-                index = self.number()
-                lhs = Expr("project", str(index), (lhs,), dot)
+                if self.peek().kind == "number":
+                    index = self.number()
+                    lhs = Expr("project", str(index), (lhs,), dot)
+                else:
+                    lhs = Expr("field_project", self.identifier(), (lhs,), dot)
                 continue
             if self.peek().text == "(":
                 # A parenthesized lambda, `let ... in` result, or function
@@ -441,15 +532,20 @@ class Parser:
                 raise self.error("only the compiler-owned standard library std@1 is supported")
             self.stdlib_explicit = True
         functions: dict[str, Function] = {}
-        while self.peek().text == "fn":
-            fn = self.declaration()
-            assert isinstance(fn, Function)
-            if fn.name in functions or fn.name in BUILTINS:
-                raise self.error(f"duplicate or reserved function {fn.name}")
-            functions[fn.name] = fn
+        while self.peek().text in {"fn", "struct"}:
+            if self.peek().text == "struct":
+                self.record_declaration(set(functions))
+            else:
+                fn = self.declaration()
+                assert isinstance(fn, Function)
+                if fn.name in functions or fn.name in BUILTINS or fn.name in self.records:
+                    raise self.error(f"duplicate or reserved function {fn.name}")
+                functions[fn.name] = fn
         circuit = self.declaration()
         if not isinstance(circuit, Circuit):
             raise self.error("expected one circuit")
+        if circuit.name in self.records:
+            raise self.error(f"circuit name conflicts with struct type {circuit.name}", circuit.token)
         if self.peek().kind != "eof":
             raise self.error("expected end of file after circuit")
         for declaration in (*functions.values(), circuit):

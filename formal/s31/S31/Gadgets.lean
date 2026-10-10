@@ -82,6 +82,7 @@ import S31.Gadgets.Functional.NamedFunctionValue
 import S31.Gadgets.Functional.HigherOrderRoutes
 import S31.Gadgets.Functional.PowerChains
 import S31.Gadgets.Functional.TupleValues
+import S31.Gadgets.Functional.RecordValues
 import S31.Gadgets.Functional.StaticRecurrence
 import S31.Gadgets.Functional.WorkedMix4
 import S31.Gadgets.Functional.Assertions

@@ -93,6 +93,9 @@ text .s31 ──parse/typecheck/specialize──▶ normalized relation JSON
 - [Static functional core](functional-language.md): typed lambdas,
    higher-order calls, lexical capture, and the exact zero-gate staging
    boundary, with a four-lane proof example.
+- [Nominal records](records.md): named struct fields, eager evaluation,
+   static type checks, exact tuple-equivalent AIR cost, and a four-lane
+   hand calculation.
 - [Standard and math library](library.md): the pinned `std@1` package,
    typed operations, static reductions, Horner evaluation, and a proof example.
 - [Circuit lowering](circuits.md): a hand-drawn gate graph, packed M31 lanes,
@@ -118,6 +121,8 @@ The worked examples use checked-in sources under [`../examples`](../examples):
 | [`pow15.s31`](../examples/arithmetic/powers/pow15.s31) | A five-gate static power, its AIR constraints, and a direct comparison with the six-gate binary schedule | `direct-gate` |
 | [`u8_wrapping.s31`](../examples/math/multiplication/u8_wrapping.s31) | Fixed-width multiplication with range-checked byte inputs, output, and carry | `sparse-wide-gate` |
 | [`functional_square4.s31`](../examples/arithmetic/functional_square4.s31) | A higher-order function and closure erased to two multiplication nodes | `direct-gate` |
+| [`record_square_sum.s31`](../examples/arithmetic/record_square_sum.s31) | A named `Powers` record erased to the same three-node relation as a positional tuple | `direct-gate` |
+| [`record_i32_division.s31`](../examples/math/division/record_i32_division.s31) | A typed quotient/remainder record around one proved signed division | `direct-gate` |
 | [`functional_step16.s31`](../examples/recurrence/functional_step16.s31) | A closure around `iterate<16>` erased to the same one-node recurrence and chip | `direct-chip` |
 | [`functional_u256_sum.s31`](../examples/wide/functional_u256_sum.s31) | A higher-order checked 256-bit reduction with the same sparse-wide AIR cost as its direct form | `sparse-wide-gate` |
 | [`functional_rotate_hash.s31`](../examples/arrays/functional_rotate_hash.s31) | Array views, a captured hash closure and identical AIR cost to a direct Poseidon2 circuit | `direct-gate` |

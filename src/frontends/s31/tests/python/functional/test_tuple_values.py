@@ -96,7 +96,7 @@ class TupleValuesTests(unittest.TestCase):
             ("circuit p(public x: [m31; 1]) -> public [m31; 1] { (x,) }",
              "expected expression"),
             ("circuit p(public x: [m31; 1]) -> public [m31; 1] { (x,x).field }",
-             "expected a compile-time natural number"),
+             "named field access requires a struct value"),
             ("circuit p(public x: [m31; 1]) -> public [m31; 1] { "
              "let (a,a) = (x,x) in a }", "duplicate tuple binding"),
             ("circuit p(public x: [m31; 1]) -> public [m31; 1] { "

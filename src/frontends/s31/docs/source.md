@@ -34,8 +34,10 @@ explicit conversion/range machinery where needed.
 
 ## Text syntax
 
-One file has an optional leading `use std@1;`, zero or more pure `fn`
-declarations, then one `circuit`.
+One file has an optional leading `use std@1;`, zero or more `struct` and pure
+`fn` declarations, then one `circuit`. A
+[nominal record](records.md) groups named, statically typed fields inside
+functions and circuit bodies and disappears before relation emission.
 Functions are specialized and inlined at calls; recursion is rejected.
 Circuit parameters say `public` or `private`, and the result is public.
 Bodies have immutable `let` statements, optional `assert_eq(a,b);` statements
