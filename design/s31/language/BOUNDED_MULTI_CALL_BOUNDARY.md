@@ -27,6 +27,13 @@ test-bounded-compiled-binding` in the S31 package; and the existing V3
 `zig build test-pair-native` regression. These are unit and V3 proof tests,
 not V4 native proving or verification evidence.
 
+The live-handle slice at S31 `c59b885` and engine `fb300ed1` passed
+`zig build test -Dtest-filter=V4` in the engine package and
+`zig build test-bounded-component-manifest test-bounded-compiled-binding`
+in S31. This includes one-call live preflight and one-/three-call manifest
+inspection with geometry, relation, and source-binding mismatch controls.
+It still does not admit or verify a V4 proof.
+
 ## Statement and source-owned Plan
 
 The public statement is the sealed source identity, versioned proof profile,
