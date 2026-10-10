@@ -178,6 +178,19 @@ proof.
 `TextSquare4Witness` supplies a concrete honest zero-input witness for all 23
 selected local rows and their public binding, ruling out vacuity of that path
 theorem. It does not claim a full witness for the unrelated native rows.
+`TextSquare4WitnessAll.native_path_iff` strengthens that local result: for
+every four-word input, a satisfying assignment to all selected path wires
+exists exactly when the public claim is the four fourth powers. It constructs
+the input pack, both squares, output coordinate extracts and public copies.
+This remains a local AIR equivalence, not a full native proof witness.
+`GateTraceValues` models the native ordinary-arithmetic trace writer gathering
+each row's three values from one address-indexed table. For rows constructed
+this way, Lean derives arithmetic Gate-yield value coverage from the gather.
+`TextSquare4TraceValues` carries that result into both the public-claim theorem
+and the fixed-forged-witness challenge bound. External component yields still
+need table correspondence. A malicious prover can commit rows not generated
+by the honest writer, so the gather-model result does not replace the
+arbitrary-trace Gate lookup or STARK verifier soundness obligations.
 `TextSquare4ChallengeJoin` composes the selected circuit path with the
 modeled checked Gate use/yield counters and LogUp reciprocal closure. Outside
 the explicit exceptional challenge sets, a zero closure forces the public
