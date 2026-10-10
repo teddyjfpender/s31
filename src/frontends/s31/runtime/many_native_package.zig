@@ -251,6 +251,56 @@ test "bounded sealed V4 many one-call envelope verifies and rejects canonical he
     try std.testing.expectError(error.NonCanonicalVarint, verifyEmbedded(source, air_bytes, allocator, words, overlong));
 }
 
+test "bounded V4 selected schedule preserves legacy proof envelope bytes" {
+    const allocator = std.heap.smp_allocator;
+    const source = @embedFile("../examples/boundary/private_many1.s31.json");
+    const air_bytes = @embedFile("s31_air_programs");
+    var assignment = try relation.parseAssignment(allocator, @embedFile("../examples/boundary/private_many1.valid.json"));
+    defer assignment.deinit();
+
+    const selected_bytes = try proveSealed(allocator, source, air_bytes, assignment.value);
+    defer allocator.free(selected_bytes);
+
+    var inspected = try binding.inspectMany(allocator, source, air_bytes);
+    defer inspected.deinit();
+    const request = try binding.nativeManyRequest(&inspected);
+    var witness = try binding.compileManyWitness(allocator, source, assignment.value, inspected.topology);
+    defer witness.deinit();
+    var air = try engine.parseBundle(allocator, air_bytes);
+    defer air.deinit();
+    var legacy = try engine.prove(
+        allocator,
+        circuit.common.preprocessed.CircuitView.fromBuilder(&witness.circuit),
+        witness.values(),
+        &air,
+        inspected.selected_schedule.geometry.live.pcs,
+        request,
+    );
+    defer legacy.deinit();
+
+    var legacy_bytes: std.ArrayList(u8) = .empty;
+    defer legacy_bytes.deinit(allocator);
+    try legacy_bytes.appendSlice(allocator, magic);
+    try legacy_bytes.append(allocator, inspected.selected_schedule.geometry.call_count);
+    try legacy_bytes.append(allocator, @intCast(legacy.sum_count));
+    try legacy_bytes.appendSlice(allocator, &.{ 0, 0 });
+    try legacy_bytes.appendSlice(allocator, &inspected.selected_schedule.geometry.source_digest);
+    try legacy_bytes.appendSlice(allocator, &inspected.selected_schedule.manifest_digest);
+    try legacy_bytes.appendSlice(allocator, &inspected.selected_schedule.circuitIdentity());
+    var nonce: [8]u8 = undefined;
+    std.mem.writeInt(u64, &nonce, legacy.interaction_pow_nonce, .little);
+    try legacy_bytes.appendSlice(allocator, &nonce);
+    for (legacy.claimed_sums[0..legacy.sum_count]) |sum| {
+        for (sum.toM31Array()) |limb| {
+            var word: [4]u8 = undefined;
+            std.mem.writeInt(u32, &word, limb.toU32(), .little);
+            try legacy_bytes.appendSlice(allocator, &word);
+        }
+    }
+    try postcard.serializeProof(H, legacy_bytes.writer(allocator), legacy.stark_proof.proof);
+    try std.testing.expectEqualSlices(u8, legacy_bytes.items, selected_bytes);
+}
+
 test "V4 native count matrix proves 2 through 8 calls and rejects each claimed sum mutation" {
     const allocator = std.heap.smp_allocator;
     const air_bytes = @embedFile("s31_air_programs");
