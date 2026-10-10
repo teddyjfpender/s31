@@ -1,0 +1,17 @@
+{
+  "public_inputs": {},
+  "private_inputs": {
+    "numerator": [
+      53191
+    ],
+    "divisor": [
+      65513
+    ]
+  },
+  "public_outputs": {
+    "result": [
+      536,
+      65519
+    ]
+  }
+}

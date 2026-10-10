@@ -79,49 +79,51 @@ const BitCache = struct {
         }
     }
 
-    fn getByteArithmetic(self: *BitCache, comptime V: type, ctx: *circuit.builder.Context(V), word: Var) ![]Var {
-        if (self.entries.get(key(word, 8))) |bits| return bits;
-        const bits = try integer_bits.decomposeByteArithmetic(V, ctx, word);
-        try self.entries.put(ctx.scratch(), key(word, 8), bits);
+    fn getArithmetic(self: *BitCache, comptime V: type, ctx: *circuit.builder.Context(V), word: Var, width: usize) ![]Var {
+        if (self.entries.get(key(word, width))) |bits| return bits;
+        const bits = try integer_bits.decomposeWordArithmetic(V, ctx, word, width);
+        try self.entries.put(ctx.scratch(), key(word, width), bits);
         return bits;
     }
 };
 
-fn hasByteDivision(program: relation.Program) bool {
+fn hasDivisionWidth(program: relation.Program, width: u32) bool {
     for (program.nodes) |node| {
         if (node.op != .int_div_rem) continue;
         const spec = relation.IntegerSpec.decode(node.constant) orelse continue;
-        if (spec.width == 8) return true;
+        if (spec.width == width) return true;
     }
     return false;
 }
 
-/// Narrow a raw u16 input only when every direct use is an 8-bit integer
-/// view. That view already rejects values above 255, so Boolean byte
-/// decomposition preserves the source relation while avoiding the u16 table.
-fn byteOnlyInput(program: relation.Program, input: relation.Input) bool {
-    if (input.kind != .u16 or input.length != 1) return false;
-    var saw_view = false;
+/// A raw u16 scalar may skip the fixed table only when every direct use is
+/// an integer view of the same 8- or 16-bit width. Arithmetic bit
+/// decomposition then proves exactly that input's source range.
+fn arithmeticInputWidth(program: relation.Program, input: relation.Input) ?u32 {
+    if (input.kind != .u16 or input.length != 1) return null;
+    var width: ?u32 = null;
     for (program.nodes) |node| {
         if (node.lhs) |name| {
             if (std.mem.eql(u8, name, input.name)) {
                 const spec = if (node.op == .int_view) relation.IntegerSpec.decode(node.constant) else null;
-                if (spec == null or spec.?.width != 8) return false;
-                saw_view = true;
+                if (spec == null or (spec.?.width != 8 and spec.?.width != 16)) return null;
+                if (width != null and width.? != spec.?.width) return null;
+                width = spec.?.width;
             }
         }
-        if (node.rhs) |name| if (std.mem.eql(u8, name, input.name)) return false;
-        if (node.selector) |name| if (std.mem.eql(u8, name, input.name)) return false;
+        if (node.rhs) |name| if (std.mem.eql(u8, name, input.name)) return null;
+        if (node.selector) |name| if (std.mem.eql(u8, name, input.name)) return null;
     }
     for (program.assertions) |assertion| {
-        if (std.mem.eql(u8, assertion.lhs, input.name) or std.mem.eql(u8, assertion.rhs, input.name)) return false;
+        if (std.mem.eql(u8, assertion.lhs, input.name) or std.mem.eql(u8, assertion.rhs, input.name)) return null;
     }
-    for (program.public_outputs) |name| if (std.mem.eql(u8, name, input.name)) return false;
-    return saw_view;
+    for (program.public_outputs) |name| if (std.mem.eql(u8, name, input.name)) return null;
+    if (width) |w| if (hasDivisionWidth(program, w)) return w;
+    return null;
 }
 
-pub fn directByteInput(program: relation.Program, input: relation.Input) bool {
-    return hasByteDivision(program) and byteOnlyInput(program, input);
+pub fn directFixedInput(program: relation.Program, input: relation.Input) bool {
+    return arithmeticInputWidth(program, input) != null;
 }
 
 pub fn compileRaw(comptime V: type, allocator: std.mem.Allocator, program: relation.Program, assignment: ?relation.Assignment) !circuit.builder.Context(V) {
@@ -134,12 +136,11 @@ pub fn compileRaw(comptime V: type, allocator: std.mem.Allocator, program: relat
     const scratch = ctx.scratch();
     var bit_cache = BitCache{};
     defer bit_cache.deinit(scratch);
-    const byte_division = hasByteDivision(program);
     var values = std.StringHashMapUnmanaged(Entry){};
     defer values.deinit(scratch);
 
     for (program.inputs) |input| {
-        const byte_input = byte_division and byteOnlyInput(program, input);
+        const arithmetic_width = arithmeticInputWidth(program, input);
         const length: usize = input.length;
         const source_values: ?[]M31 = if (comptime V == QM31) try relation.inputValues(allocator, assignment.?, input) else null;
         defer if (source_values) |owned| allocator.free(owned);
@@ -149,12 +150,12 @@ pub fn compileRaw(comptime V: type, allocator: std.mem.Allocator, program: relat
             const value = if (source_values) |provided| provided[i] else M31.zero();
             const hint = circuit.builder.ivalue.fromQm31(V, QM31.fromBase(value));
             wire.* = switch (input.kind) {
-                .u16 => if (byte_input) try ctx.guess(hint) else (try circuit.builder.wrappers.guessU16(V, &ctx, .newUnsafe(hint))).get(),
+                .u16 => if (arithmetic_width != null) try ctx.guess(hint) else (try circuit.builder.wrappers.guessU16(V, &ctx, .newUnsafe(hint))).get(),
                 .m31 => (try circuit.builder.wrappers.guessM31(V, &ctx, .newUnsafe(hint))).get(),
             };
-            if (byte_input) {
-                const bits = try integer_bits.decomposeByteArithmetic(V, &ctx, wire.*);
-                try bit_cache.remember(scratch, &.{wire.*}, bits, 8);
+            if (arithmetic_width) |width| {
+                const bits = try integer_bits.decomposeWordArithmetic(V, &ctx, wire.*, width);
+                try bit_cache.remember(scratch, &.{wire.*}, bits, width);
             }
             wrapped.* = .newUnsafe(wire.*);
         }
@@ -163,7 +164,7 @@ pub fn compileRaw(comptime V: type, allocator: std.mem.Allocator, program: relat
             .shape = .{ .kind = input.kind, .length = length },
             .lanes = lanes,
             .raw = raw,
-            .integer_spec = if (byte_input) 8 else null,
+            .integer_spec = arithmetic_width,
         });
     }
 
@@ -357,11 +358,10 @@ pub fn compileShaChipWithSpans(comptime V: type, allocator: std.mem.Allocator, p
 
 fn compileWithSpansMode(comptime V: type, allocator: std.mem.Allocator, program: relation.Program, assignment: ?relation.Assignment, maps: ?*Maps, chip_mode: bool, direct_output: bool, sha_chip_mode: bool) !circuit.builder.Context(V) {
     const private_chip = chip_mode and direct_output and program.privateRepeatedStepChip() != null;
-    const byte_division = hasByteDivision(program);
     if (chip_mode and program.repeatedStepChip() == null and !private_chip) return error.UnsupportedChipRelation;
     if (sha_chip_mode and (chip_mode or direct_output or maps == null)) return error.InvalidShaChipCompilerMode;
     if (direct_output) for (program.inputs) |input| {
-        if (input.kind != .m31 and !(byte_division and byteOnlyInput(program, input))) return error.UnsupportedDirectRelation;
+        if (input.kind != .m31 and arithmeticInputWidth(program, input) == null) return error.UnsupportedDirectRelation;
     };
     if (comptime V == QM31) {
         if (assignment == null) return error.MissingAssignment;
@@ -400,7 +400,7 @@ fn compileWithSpansMode(comptime V: type, allocator: std.mem.Allocator, program:
                 const source_values: ?[]M31 = if (comptime V == QM31) try relation.inputValues(allocator, assignment.?, input) else null;
                 defer if (source_values) |owned| allocator.free(owned);
                 const boolean = direct_output and bit_sources[id];
-                const byte_input = byte_division and byteOnlyInput(program, input);
+                const arithmetic_width = arithmeticInputWidth(program, input);
                 // A QM31 witness is already four M31 coordinates. For a
                 // private array, guessing the packed wire directly avoids
                 // four scalar guesses and their six packing gates. Public
@@ -431,16 +431,16 @@ fn compileWithSpansMode(comptime V: type, allocator: std.mem.Allocator, program:
                         try ctx.mulInto(bit_wire, bit_wire, bit_wire);
                         break :bit bit_wire;
                     } else switch (node.kind) {
-                        .u16 => if (byte_input) try ctx.guess(hint) else (try circuit.builder.wrappers.guessU16(V, &ctx, .newUnsafe(hint))).get(),
+                        .u16 => if (arithmetic_width != null) try ctx.guess(hint) else (try circuit.builder.wrappers.guessU16(V, &ctx, .newUnsafe(hint))).get(),
                         .m31 => (try circuit.builder.wrappers.guessM31(V, &ctx, .newUnsafe(hint))).get(),
                     };
-                    if (byte_input) {
-                        const bits = try integer_bits.decomposeByteArithmetic(V, &ctx, wire.*);
-                        try bit_cache.remember(scratch, &.{wire.*}, bits, 8);
+                    if (arithmetic_width) |width| {
+                        const bits = try integer_bits.decomposeWordArithmetic(V, &ctx, wire.*, width);
+                        try bit_cache.remember(scratch, &.{wire.*}, bits, width);
                     }
                     wrapped.* = .newUnsafe(wire.*);
                 }
-                break :blk .{ .shape = .{ .kind = node.kind, .length = node.length }, .lanes = try circuit.builder.simd.pack(V, &ctx, wrappers), .raw = raw, .boolean = boolean, .integer_spec = if (byte_input) 8 else null };
+                break :blk .{ .shape = .{ .kind = node.kind, .length = node.length }, .lanes = try circuit.builder.simd.pack(V, &ctx, wrappers), .raw = raw, .boolean = boolean, .integer_spec = arithmetic_width };
             },
             .constant => blk: {
                 if (direct_output and node.length == 1 and node.constant.? <= 1 and bit_sources[id]) {
@@ -685,10 +685,10 @@ fn arrayGet(comptime V: type, ctx: *circuit.builder.Context(V), entry: Entry, in
 
 fn arraySlice(comptime V: type, ctx: *circuit.builder.Context(V), entry: Entry, start: usize, length: usize) !Entry {
     const raw: ?[]Var = if (entry.raw) |words| words[start..][0..length] else null;
-    const byte_spec: ?u32 = if (entry.integer_spec) |spec| if ((spec & 0xff) == 8 and length == 1) spec else null else null;
+    const word_spec: ?u32 = if (entry.integer_spec) |spec| if (((spec & 0xff) == 8 or (spec & 0xff) == 16) and length == 1) spec else null else null;
     if (start % 4 == 0) {
         const packed_wires = entry.lanes.data[start / 4 ..][0 .. (length + 3) / 4];
-        return .{ .shape = .{ .kind = entry.shape.kind, .length = length }, .lanes = Simd.fromPacked(packed_wires, length), .raw = raw, .boolean = entry.boolean and length == 1, .integer_spec = byte_spec };
+        return .{ .shape = .{ .kind = entry.shape.kind, .length = length }, .lanes = Simd.fromPacked(packed_wires, length), .raw = raw, .boolean = entry.boolean and length == 1, .integer_spec = word_spec };
     }
     // A shifted view cannot borrow QM31 coordinates as a packed word. Unpack
     // the selected source coordinates and constrain their new packing.
@@ -699,7 +699,7 @@ fn arraySlice(comptime V: type, ctx: *circuit.builder.Context(V), entry: Entry, 
         .lanes = try circuit.builder.simd.pack(V, ctx, wrappers),
         .raw = raw,
         .boolean = entry.boolean and length == 1,
-        .integer_spec = byte_spec,
+        .integer_spec = word_spec,
     };
 }
 
@@ -850,9 +850,9 @@ fn integerSign(comptime V: type, ctx: *circuit.builder.Context(V), word: Var, wi
     return sign;
 }
 
-fn integerSignByte(comptime V: type, ctx: *circuit.builder.Context(V), cache: *BitCache, word: Var) !Var {
-    const bits = try cache.getByteArithmetic(V, ctx, word);
-    return bits[7];
+fn integerSignArithmetic(comptime V: type, ctx: *circuit.builder.Context(V), cache: *BitCache, word: Var, width: u32) !Var {
+    const bits = try cache.getArithmetic(V, ctx, word, width);
+    return bits[width - 1];
 }
 
 fn intView(comptime V: type, ctx: *circuit.builder.Context(V), input: Entry, encoded: u32) !Entry {
@@ -1026,20 +1026,21 @@ fn intDivRem(comptime V: type, ctx: *circuit.builder.Context(V), cache: *BitCach
     const left_byte_bounded = lhs.integer_spec != null and (lhs.integer_spec.? & 0xff) == 8;
     const right_byte_bounded = rhs.integer_spec != null and (rhs.integer_spec.? & 0xff) == 8;
     const division = if (spec.signed) blk: {
-        const sa = if (spec.width == 8) try integerSignByte(V, ctx, cache, left[0]) else try integerSign(V, ctx, left[left.len - 1], spec.width);
-        const sb = if (spec.width == 8) try integerSignByte(V, ctx, cache, right[0]) else try integerSign(V, ctx, right[right.len - 1], spec.width);
-        const numerator = if (spec.width == 8) try intConditionalNegateByte(V, ctx, cache, left[0], sa) else try intConditionalNegate(V, ctx, left, sa, spec.width);
-        const denominator = if (spec.width == 8) try intConditionalNegateByte(V, ctx, cache, right[0], sb) else try intConditionalNegate(V, ctx, right, sb, spec.width);
+        const direct_word = spec.width == 8 or spec.width == 16;
+        const sa = if (direct_word) try integerSignArithmetic(V, ctx, cache, left[0], spec.width) else try integerSign(V, ctx, left[left.len - 1], spec.width);
+        const sb = if (direct_word) try integerSignArithmetic(V, ctx, cache, right[0], spec.width) else try integerSign(V, ctx, right[right.len - 1], spec.width);
+        const numerator = if (direct_word) try intConditionalNegateArithmetic(V, ctx, cache, left[0], sa, spec.width) else try intConditionalNegate(V, ctx, left, sa, spec.width);
+        const denominator = if (direct_word) try intConditionalNegateArithmetic(V, ctx, cache, right[0], sb, spec.width) else try intConditionalNegate(V, ctx, right, sb, spec.width);
         const magnitude = try integer_division.divRem(V, ctx, numerator, denominator, spec.width, true, true);
         const both = try ctx.mul(sa, sb);
         const quotient_negative = try ctx.sub(try ctx.add(sa, sb), try ctx.add(both, both));
         // A positive signed quotient cannot have the top bit set. This is
         // the MIN / -1 overflow case; negative MIN itself remains valid.
-        const quotient_top = if (spec.width == 8) try integerSignByte(V, ctx, cache, magnitude.quotient[0]) else try integerSign(V, ctx, magnitude.quotient[magnitude.quotient.len - 1], spec.width);
+        const quotient_top = if (direct_word) try integerSignArithmetic(V, ctx, cache, magnitude.quotient[0], spec.width) else try integerSign(V, ctx, magnitude.quotient[magnitude.quotient.len - 1], spec.width);
         try assertZeroArithmetic(V, ctx, try ctx.mul(quotient_top, try ctx.sub(ctx.one(), quotient_negative)));
         break :blk integer_division.Division{
-            .quotient = if (spec.width == 8) try intConditionalNegateByte(V, ctx, cache, magnitude.quotient[0], quotient_negative) else try intConditionalNegate(V, ctx, magnitude.quotient, quotient_negative, spec.width),
-            .remainder = if (spec.width == 8) try intConditionalNegateByte(V, ctx, cache, magnitude.remainder[0], sa) else try intConditionalNegate(V, ctx, magnitude.remainder, sa, spec.width),
+            .quotient = if (direct_word) try intConditionalNegateArithmetic(V, ctx, cache, magnitude.quotient[0], quotient_negative, spec.width) else try intConditionalNegate(V, ctx, magnitude.quotient, quotient_negative, spec.width),
+            .remainder = if (direct_word) try intConditionalNegateArithmetic(V, ctx, cache, magnitude.remainder[0], sa, spec.width) else try intConditionalNegate(V, ctx, magnitude.remainder, sa, spec.width),
         };
     } else try integer_division.divRem(V, ctx, left, right, spec.width, left_byte_bounded, right_byte_bounded);
     const raw = try ctx.scratch().alloc(Var, left.len * 2);
@@ -1047,26 +1048,29 @@ fn intDivRem(comptime V: type, ctx: *circuit.builder.Context(V), cache: *BitCach
     @memcpy(raw[left.len..], division.remainder);
     const wrappers = try ctx.scratch().alloc(circuit.builder.wrappers.M31Wrapper(Var), raw.len);
     for (wrappers, raw) |*wrapped, wire| wrapped.* = .newUnsafe(wire);
-    return .{ .shape = .{ .kind = .u16, .length = raw.len }, .lanes = try circuit.builder.simd.pack(V, ctx, wrappers), .raw = raw, .integer_spec = if (spec.width == 8) encoded else null };
+    return .{ .shape = .{ .kind = .u16, .length = raw.len }, .lanes = try circuit.builder.simd.pack(V, ctx, wrappers), .raw = raw, .integer_spec = if (spec.width == 8 or spec.width == 16) encoded else null };
 }
 
 /// Select `x` or its two's-complement negation with a proved Boolean sign.
 /// Every output word and carry is bounded; the terminal carry is discarded
 /// because negating zero wraps back to zero.
-fn intConditionalNegateByte(comptime V: type, ctx: *circuit.builder.Context(V), cache: *BitCache, word: Var, sign: Var) ![]Var {
+fn intConditionalNegateArithmetic(comptime V: type, ctx: *circuit.builder.Context(V), cache: *BitCache, word: Var, sign: Var, width: u32) ![]Var {
+    if (width != 8 and width != 16) return error.InvalidIntegerSpec;
+    const word_base: u32 = if (width == 8) 256 else 65536;
+    const mask = word_base - 1;
     const source_value: u32 = if (comptime V == QM31) ctx.get(word).toM31Array()[0].v else 0;
     const sign_value: u32 = if (comptime V == QM31) ctx.get(sign).toM31Array()[0].v else 0;
-    if (source_value >= 256 or sign_value > 1) return error.IntegerOutOfRange;
-    const selected_value = if (sign_value == 0) source_value else 255 - source_value;
+    if (source_value >= word_base or sign_value > 1) return error.IntegerOutOfRange;
+    const selected_value = if (sign_value == 0) source_value else mask - source_value;
     const total = selected_value + sign_value;
-    const digit = try ctx.guess(circuit.builder.ivalue.fromQm31(V, QM31.fromBase(M31.fromCanonical(total & 255))));
-    const bits = try integer_bits.decomposeByteArithmetic(V, ctx, digit);
-    try cache.remember(ctx.scratch(), &.{digit}, bits, 8);
-    const carry = try ctx.guess(circuit.builder.ivalue.fromQm31(V, QM31.fromBase(M31.fromCanonical(total >> 8))));
+    const digit = try ctx.guess(circuit.builder.ivalue.fromQm31(V, QM31.fromBase(M31.fromCanonical(total & mask))));
+    const bits = try integer_bits.decomposeWordArithmetic(V, ctx, digit, width);
+    try cache.remember(ctx.scratch(), &.{digit}, bits, width);
+    const carry = try ctx.guess(circuit.builder.ivalue.fromQm31(V, QM31.fromBase(M31.fromCanonical(total / word_base))));
     try assertZeroArithmetic(V, ctx, try ctx.sub(try ctx.mul(sign, sign), sign));
     try assertZeroArithmetic(V, ctx, try ctx.sub(try ctx.mul(carry, carry), carry));
-    const maximum = try ctx.constant(QM31.fromBase(M31.fromCanonical(255)));
-    const base = try ctx.constant(QM31.fromBase(M31.fromCanonical(256)));
+    const maximum = try ctx.constant(QM31.fromBase(M31.fromCanonical(mask)));
+    const base = try ctx.constant(QM31.fromBase(M31.fromCanonical(word_base)));
     const complement = try ctx.sub(maximum, word);
     const selected = try ctx.add(word, try ctx.mul(sign, try ctx.sub(complement, word)));
     const lhs = try ctx.add(selected, sign);
@@ -2710,14 +2714,33 @@ test "direct byte admission requires exclusive byte views" {
     ;
     var allowed = try relation.parseProgram(allocator, source);
     defer allowed.deinit();
-    try std.testing.expect(directByteInput(allowed.value, allowed.value.inputs[0]));
-    try std.testing.expect(directByteInput(allowed.value, allowed.value.inputs[1]));
+    try std.testing.expect(directFixedInput(allowed.value, allowed.value.inputs[0]));
+    try std.testing.expect(directFixedInput(allowed.value, allowed.value.inputs[1]));
 
     const raw_exposed =
         \\{"version":1,"name":"raw_exposed","inputs":[{"name":"a","kind":"u16","length":1,"visibility":"private"},{"name":"b","kind":"u16","length":1,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":8},{"name":"bv","op":"int_view","lhs":"b","constant":8},{"name":"pair","op":"int_div_rem","lhs":"av","rhs":"bv","constant":8}],"assertions":[],"public_outputs":["pair","a"]}
     ;
     var denied = try relation.parseProgram(allocator, raw_exposed);
     defer denied.deinit();
-    try std.testing.expect(!directByteInput(denied.value, denied.value.inputs[0]));
-    try std.testing.expect(directByteInput(denied.value, denied.value.inputs[1]));
+    try std.testing.expect(!directFixedInput(denied.value, denied.value.inputs[0]));
+    try std.testing.expect(directFixedInput(denied.value, denied.value.inputs[1]));
+}
+
+test "direct 16-bit admission rejects a mixed-width raw input" {
+    const allocator = std.testing.allocator;
+    const source =
+        \\{"version":1,"name":"word_views","inputs":[{"name":"a","kind":"u16","length":1,"visibility":"private"},{"name":"b","kind":"u16","length":1,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":16},{"name":"bv","op":"int_view","lhs":"b","constant":16},{"name":"pair","op":"int_div_rem","lhs":"av","rhs":"bv","constant":16}],"assertions":[],"public_outputs":["pair"]}
+    ;
+    var allowed = try relation.parseProgram(allocator, source);
+    defer allowed.deinit();
+    try std.testing.expect(directFixedInput(allowed.value, allowed.value.inputs[0]));
+    try std.testing.expect(directFixedInput(allowed.value, allowed.value.inputs[1]));
+
+    const mixed =
+        \\{"version":1,"name":"mixed_views","inputs":[{"name":"a","kind":"u16","length":1,"visibility":"private"},{"name":"b","kind":"u16","length":1,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":16},{"name":"small","op":"int_view","lhs":"a","constant":8},{"name":"bv","op":"int_view","lhs":"b","constant":16},{"name":"pair","op":"int_div_rem","lhs":"av","rhs":"bv","constant":16}],"assertions":[],"public_outputs":["pair"]}
+    ;
+    var denied = try relation.parseProgram(allocator, mixed);
+    defer denied.deinit();
+    try std.testing.expect(!directFixedInput(denied.value, denied.value.inputs[0]));
+    try std.testing.expect(directFixedInput(denied.value, denied.value.inputs[1]));
 }

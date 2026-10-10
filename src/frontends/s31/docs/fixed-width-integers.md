@@ -498,7 +498,8 @@ cannot pass the strict comparison.
 
 The `direct-gate` byte circuit proves the same fact with fewer fixed
 components. For each byte $x$, it proves eight bits $b_i$ with
-$b_i(b_i-1)=0$ and $x=\sum_{i=0}^{7}2^i b_i$. Then it constrains a byte
+$b_i(b_i-1)=0$ and $x=\sum_{i=0}^{7}2^i b_i$. Each bit uses one
+self-product circuit gate $b_i\cdot b_i=b_i$. Then it constrains a byte
 $\delta$ alongside quotient and remainder:
 
 $$q d+r=n,\qquad d=r+1+\delta.$$
@@ -520,6 +521,33 @@ toward zero; Python's floor division of negative numbers would give a
 different quotient and remainder. The positive-quotient sign check rejects
 the signed `MIN / -1` overflow case.
 
+### Two-byte division by hand
+
+The [`u16` program](../examples/math/division/u16_div_rem.s31) proves
+$60{,}000=233\cdot257+119$. Split each 16-bit value into low and high
+bytes, so $n=[96,234]$, $d=[1,1]$, $q=[233,0]$, and $r=[119,0]$. Each
+byte is reconstructed from eight Boolean bits and each 16-bit word from
+its two bytes. A carry passes from one product column to the next:
+
+| Column | What the circuit proves | Carry out |
+| --- | --- | ---: |
+| Low byte | $233\cdot1+119=96+256\cdot1$ | 1 |
+| High byte | $1+233\cdot1+0\cdot1=234+256\cdot0$ | 0 |
+| First high product byte | $0+0\cdot1=0+256\cdot0$ | 0 |
+| Final high product byte | $0=0+256\cdot0$ | 0 |
+
+Those last two rows matter: they prevent a quotient product from overflowing
+the 16-bit result and disappearing. For the strict remainder condition,
+the low-byte equation is $1+256\cdot1=119+1+137$, and the high-byte equation
+is $1+256\cdot0=0+1+0$. The first borrow is one because $1<119+1$; the
+terminal borrow is zero, proving $119<257$. Every column has at most two
+byte products and a bounded 16-bit incoming carry, so the field arithmetic
+cannot wrap modulo M31. The direct AIR uses arithmetic gates for these
+equalities, Boolean bits, and carry/borrow checks, with no lookup table or Eq
+component. The [`i16` example](../examples/math/division/i16_div_rem.s31)
+uses the same unsigned magnitude relation after proving the sign and
+conditional two's-complement conversion: $-32{,}768=(-10{,}922)\cdot3-2$.
+
 Both profiles bind their constraints and public statement to a native
 verification key. The [native division gate](../tests/acceptance/math/division.py)
 pins the exact circuit hashes and AIR geometry. These are local observations
@@ -529,36 +557,45 @@ the preceding generic implementation:
 | Program | Proof profile | Raw QM31 rows | Fixed cells | One proof, bytes |
 | --- | --- | ---: | ---: | ---: |
 | `u8_div_rem` | Wide baseline | 55 | 66,128 | 232,570 |
-| `u8_div_rem` | Direct byte | 289 | 4,096 | 56,359 |
+| `u8_div_rem` | Direct byte | 169 | 2,048 | 40,915 |
 | `i8_div_rem` | Wide baseline | 122 | 66,784 | 232,876 |
-| `i8_div_rem` | Direct byte | 607 | 8,192 | 72,947 |
+| `i8_div_rem` | Direct byte | 367 | 4,096 | 56,864 |
+| `u16_div_rem` | Direct word | 646 | 8,192 | 74,128 |
+| `i16_div_rem` | Direct word | 969 | 8,192 | 73,409 |
 | `u32_div_rem` | Wide | 136 | 67,840 | 238,377 |
 | `u128_div_quotient` | Wide | 802 | 74,752 | 234,484 |
 | `i128_div_quotient` | Wide | 1,121 | 83,200 | 239,293 |
 
 The [baseline measurement](../../../../design/s31/measurements/language/fixed-width-division-2026-10-10.json)
 records padded rows, fixed preprocessing, and separated proof stages. The
-direct byte proof trades more arithmetic rows for removal of the shared
-65,536-cell range table. A [paired profile measurement](../../../../design/s31/measurements/language/byte-direct-division-2026-10-10.json)
-uses five distinct valid assignments per source, one warmup per profile,
+older generic byte circuit has fewer raw arithmetic rows, but includes the
+shared 65,536-cell range table. The [current paired measurement](../../../../design/s31/measurements/language/direct-fixed-division-2026-10-10.json)
+compares the same current circuit graph under both proof profiles. It uses
+20 distinct valid assignments per source, one warmup per profile,
 native verification, changed-statement rejection, and independent value
 evaluation for every run:
 
 | Source | Profile | Median proof | Median proving wall time | Median prover time excluding PoW |
 | --- | --- | ---: | ---: | ---: |
-| `u8_div_rem` | Direct | 54,356 bytes | 38.8 ms | 1.27 ms |
-| `u8_div_rem` | Sparse-wide | 223,847 bytes | 152.8 ms | 15.39 ms |
-| `i8_div_rem` | Direct | 72,947 bytes | 35.7 ms | 1.94 ms |
-| `i8_div_rem` | Sparse-wide | 223,935 bytes | 100.7 ms | 15.84 ms |
+| `u8_div_rem` | Direct | 40,406 bytes | 50.1 ms | 0.91 ms |
+| `u8_div_rem` | Sparse-wide | 227,001 bytes | 127.5 ms | 16.13 ms |
+| `i8_div_rem` | Direct | 56,226 bytes | 94.6 ms | 1.23 ms |
+| `i8_div_rem` | Sparse-wide | 227,040 bytes | 95.9 ms | 15.78 ms |
+| `u16_div_rem` | Direct | 71,397 bytes | 96.7 ms | 1.85 ms |
+| `u16_div_rem` | Sparse-wide | 228,687 bytes | 89.0 ms | 16.18 ms |
+| `i16_div_rem` | Direct | 72,541 bytes | 85.7 ms | 1.86 ms |
+| `i16_div_rem` | Sparse-wide | 228,313 bytes | 93.7 ms | 15.86 ms |
 
 The matched sources have the same normalized relation and visible FRI
 settings. Wall times include process startup and a variable proof-of-work
-search; these local medians are not a cross-machine performance guarantee.
+search; the full wall timings are mixed at these small sizes, while the
+fixed-cell, proof-byte, and non-PoW improvements are consistent. These local
+medians are not a cross-machine performance guarantee.
 Matching visible FRI settings alone does not prove equal soundness across
 different AIRs. The
 [Lean division model](../../../../formal/s31/S31/Gadgets/IntegerDivision.lean)
-proves Euclidean uniqueness, bounded columns, and the no-wrap direct-byte
-equations. A formal correspondence from production Zig gates to that model
+proves Euclidean uniqueness, bounded columns, and the no-wrap direct-byte and
+direct-word equations. A formal correspondence from production Zig gates to that model
 remains open.
 
 ## Where the AIR and proof enter

@@ -49,20 +49,25 @@ pub fn decomposeWord(comptime V: type, ctx: *circuit.builder.Context(V), word: V
     return bits;
 }
 
-/// Byte range proof using only arithmetic gates. Each bit satisfies
-/// b(b-1)=0 and the packed byte equals `word`. The self-loop assertion has a
-/// unique producing gate, so it is accepted by the direct arithmetic AIR.
-pub fn decomposeByteArithmetic(comptime V: type, ctx: *circuit.builder.Context(V), word: Var) ![]Var {
-    const bits = try ctx.scratch().alloc(Var, 8);
+/// A byte or 16-bit word range proof using only arithmetic gates. Each bit
+/// has one producing self-product gate b*b=b; the packed value equals `word`.
+/// The reconstruction's self-loop assertion is accepted by the direct AIR.
+pub fn decomposeWordArithmetic(comptime V: type, ctx: *circuit.builder.Context(V), word: Var, width: usize) ![]Var {
+    if (width != 8 and width != 16) return error.InvalidIntegerBits;
+    const bits = try ctx.scratch().alloc(Var, width);
     const value: u32 = if (comptime V == QM31) ctx.get(word).toM31Array()[0].v else 0;
     for (bits, 0..) |*slot, i| {
         const bit_value: u32 = (value >> @as(u5, @intCast(i))) & 1;
-        const bit = try ctx.guess(circuit.builder.ivalue.fromQm31(V, QM31.fromBase(M31.fromCanonical(bit_value))));
-        try assertZeroArithmetic(V, ctx, try ctx.sub(try ctx.mul(bit, bit), bit));
+        const bit = try ctx.newVar(circuit.builder.ivalue.fromQm31(V, QM31.fromBase(M31.fromCanonical(bit_value))));
+        try ctx.mulInto(bit, bit, bit);
         slot.* = bit;
     }
     try assertZeroArithmetic(V, ctx, try ctx.sub(try packWord(V, ctx, bits), word));
     return bits;
+}
+
+pub fn decomposeByteArithmetic(comptime V: type, ctx: *circuit.builder.Context(V), word: Var) ![]Var {
+    return decomposeWordArithmetic(V, ctx, word, 8);
 }
 
 fn assertZeroArithmetic(comptime V: type, ctx: *circuit.builder.Context(V), value: Var) !void {

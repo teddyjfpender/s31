@@ -149,12 +149,13 @@ division. `std::math::div` reuses the checked inverse and remains on the
 native-verifier adversarial checks. [`computed_choice.s31`](examples/control/computed_choice.s31)
 uses a constrained `std::field::is_zero` bit to choose between two values;
 `python3 src/frontends/s31/tests/acceptance/acceptance_computed_bit_v1.py` proves both branches.
-[`u8_div_rem.s31`](examples/math/division/u8_div_rem.s31) and
-[`i8_div_rem.s31`](examples/math/division/i8_div_rem.s31) prove quotient and
-remainder in the arithmetic-only `direct-gate` profile, including byte range,
+[`u8_div_rem.s31`](examples/math/division/u8_div_rem.s31),
+[`i8_div_rem.s31`](examples/math/division/i8_div_rem.s31), and their
+[`u16`/`i16` companions](examples/math/division/README.md) prove quotient and
+remainder in the arithmetic-only `direct-gate` profile, including value range,
 strict remainder, and signed overflow checks. The [division walkthrough](docs/fixed-width-integers.md#division-and-remainder-by-hand)
-derives the constraints, and the [paired measurement](../../../design/s31/measurements/language/byte-direct-division-2026-10-10.json)
-compares five verified witnesses per profile.
+derives the constraints, and the [paired measurement](../../../design/s31/measurements/language/direct-fixed-division-2026-10-10.json)
+compares 20 verified witnesses per profile.
 `equations` exposes semantic field equations and source positions, with the
 generic AIR's lookup and public-binding terms documented separately in
 [the guide](docs/walkthrough.md).
@@ -358,7 +359,7 @@ python3 src/frontends/s31/python/s31.py prove zig-out/s31/arith4-sparse-chip src
 python3 src/frontends/s31/python/s31.py verify zig-out/s31/arith4-sparse-chip zig-out/s31/arith4-sparse-chip.proof
 ```
 
-The ten modes are `gate` (the original eleven-component circuit), `chip` (that circuit plus one linked step AIR), `sparse-gate`/`sparse-chip` (three arithmetic circuit components, optionally with the step AIR), `sparse-wide-gate` (Eq plus those three components for wide integers), `direct-gate`/`direct-chip` (one QM31 arithmetic component, optionally with the step AIR), and `sha-joint`, `sha-shift`, and `sha-fused` (one private Bitcoin header joined to three SHA compression calls). The repeated-step chip modes accept only the exact four-lane square-then-add recurrence and 16–32768 power-of-two rounds. `direct-chip` also accepts a private four-lane input: source-derived circuit wires connect to the chip endpoints inside the same proof, while the public statement contains only declared output claims. Sparse arithmetic retains M31-to-`u32` conversion and the 16-bit range table. Direct mode accepts all-M31 arithmetic relations and byte division whose raw inputs are proved through exclusive 8-bit integer views; it omits that converter and table. Each selected chip and circuit share one STARK proof and one native verifier invocation.
+The ten modes are `gate` (the original eleven-component circuit), `chip` (that circuit plus one linked step AIR), `sparse-gate`/`sparse-chip` (three arithmetic circuit components, optionally with the step AIR), `sparse-wide-gate` (Eq plus those three components for wide integers), `direct-gate`/`direct-chip` (one QM31 arithmetic component, optionally with the step AIR), and `sha-joint`, `sha-shift`, and `sha-fused` (one private Bitcoin header joined to three SHA compression calls). The repeated-step chip modes accept only the exact four-lane square-then-add recurrence and 16–32768 power-of-two rounds. `direct-chip` also accepts a private four-lane input: source-derived circuit wires connect to the chip endpoints inside the same proof, while the public statement contains only declared output claims. Sparse arithmetic retains M31-to-`u32` conversion and the 16-bit range table. Direct mode accepts all-M31 arithmetic relations and 8- or 16-bit division whose raw inputs are proved through exclusive matching-width integer views; it omits that converter and table. Each selected chip and circuit share one STARK proof and one native verifier invocation.
 
 The direct-M31 example is [`examples/arithmetic/arith4_m31.s31.json`](examples/arithmetic/arith4_m31.s31.json). Build it with `--lowering direct-chip` and use [`examples/arithmetic/arith4.valid.json`](examples/arithmetic/arith4.valid.json) as the assignment. The [source-to-AIR guide](docs/reference/LANGUAGE_AND_AIR.md#direct-m31-public-values) explains the different public encoding and constraint profile.
 

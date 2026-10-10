@@ -61,7 +61,9 @@ constraint.
 
 The `direct-gate` profile can prove the `u8` and `i8` division examples
 without an Eq component, 16-bit converter, or `seq_16` range table. Each byte
-wire is reconstructed from eight Boolean bits. A zero assertion is an
+wire is reconstructed from eight Boolean bits. Each bit is produced by a
+single self-product gate `b*b=b`; this is exactly the Boolean equation
+`b(b-1)=0` without a separate guessed-bit gate. A zero assertion is an
 arithmetic self-loop, `anchor + value = anchor`, with one producing gate for
 the anchor. This enforces `value = 0` in the direct arithmetic AIR.
 
@@ -80,7 +82,43 @@ the canonical relation and verification key.
 For signed bytes, the sign comes from the proved high bit. Conditional
 two's-complement negation proves a byte output and Boolean carry using
 arithmetic gates. The positive-quotient sign check rejects `MIN / -1`.
-The wide circuit remains the path for 16 through 128 bits.
+## Direct 16-bit circuit
+
+The arithmetic-only path also handles `u16` and `i16`. Every source word is
+reconstructed from sixteen Boolean bits. The divider splits each bounded
+word into two proved bytes, proves `q*d+r=n` over all four base-256 product
+columns, and proves `d-r-1>=0` with two bounded borrow columns. Quotient and
+remainder words are reconstructed from their two bytes; every carry is
+bounded to 16 bits. The terminal product carry and terminal comparison
+borrow are constrained to zero.
+
+For `60000 / 257`, the unique pair is `q=233, r=119`. In little-endian
+bytes, `n=[96,234]`, `d=[1,1]`, `q=[233,0]`, and `r=[119,0]`:
+
+| Product column | Exact integer equation | Outgoing carry |
+| --- | --- | ---: |
+| 0 | `233*1 + 119 = 96 + 256*1` | 1 |
+| 1 | `1 + 233*1 + 0*1 = 234 + 256*0` | 0 |
+| 2 | `0 + 0*1 = 0 + 256*0` | 0 |
+| 3 | `0 = 0 + 256*0` | 0 |
+
+The strict comparison proves `257-119-1=137`: the low byte equation is
+`1 + 256*1 = 119 + 1 + 137`, and the high byte equation is
+`1 + 256*0 = 0 + 1 + 0`. A Boolean borrow enters the high byte and the
+terminal borrow is zero. Each product column contains at most two byte
+products, one remainder byte, and one 16-bit incoming carry. Its two sides
+are well below M31, so the field equations cannot wrap. The
+[Lean no-wrap and strict-borrow lemmas](../../../formal/s31/S31/Gadgets/IntegerDivision.lean)
+state those obligations explicitly. The source-to-Zig-gate refinement is
+still an open proof obligation.
+
+The source assignment decoder rejects a `u16` input of 65,536 before proof
+generation. The circuit test also injects that raw field value directly with
+`q=255`, `d=257`, and `r=1`, which satisfy `65,536=255·257+1` and `r<d`.
+The arithmetic bit range gate alone makes that forged circuit invalid. This
+checks that the proof does not depend on the host decoder for the word bound.
+
+The generic wide circuit remains the path for 32 through 128 bits.
 
 ## Audit and performance gates
 
@@ -101,12 +139,14 @@ gadget as a correctness reference. A fused quotient-product-remainder column
 avoids a separate full-product output and checked-add circuit, but its
 end-to-end benefit must be measured before claiming a speedup.
 
-The [paired byte-profile record](../measurements/language/byte-direct-division-2026-10-10.json)
-compares the same current circuit under `direct-gate` and `sparse-wide-gate`
-for five distinct witnesses per signedness, with one warmup per profile.
-Median proof size falls from 223,847 to 54,356 bytes for `u8` and from
-223,935 to 72,947 bytes for `i8`; median non-PoW prover stages fall from
-15.39 to 1.27 ms and from 15.84 to 1.94 ms respectively on the measured
-machine. The record contains all per-assignment times and verification
-controls. These are local profile comparisons, not a claim of equal security
-from matching visible FRI parameters alone.
+The [current paired profile record](../measurements/language/direct-fixed-division-2026-10-10.json)
+compares the same optimized circuit under `direct-gate` and
+`sparse-wide-gate` for 20 distinct witnesses each of `u8`, `i8`, `u16`, and
+`i16`, with one warmup per profile. Median direct proof sizes are 40–73 KB,
+compared with 227–229 KB under sparse-wide. Median non-PoW prover stages are
+0.91–1.86 ms direct and 15.78–16.18 ms sparse-wide on the measured machine.
+Full wall times are mixed because proof-of-work search dominates these small
+circuits. The record contains all per-assignment times and verification
+controls. Matching visible FRI parameters alone does not establish equal
+soundness across different AIRs. The [earlier byte record](../measurements/language/byte-direct-division-2026-10-10.json)
+documents the circuit before its single-gate Boolean optimization.

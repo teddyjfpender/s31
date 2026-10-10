@@ -1,0 +1,8 @@
+use std@1;
+
+// One quotient/remainder relation: 60,000 = 233*257 + 119.
+circuit u16_div_rem(private numerator: u16, private divisor: u16) -> public [u16; 2] {
+    let (quotient, remainder) = std::int::div_rem(numerator, divisor);
+    let result = std::array::concat(std::int::limbs(quotient), std::int::limbs(remainder));
+    result
+}

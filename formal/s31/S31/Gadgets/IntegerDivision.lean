@@ -93,4 +93,43 @@ theorem direct_byte_division (n d q r difference : Nat)
   obtain ⟨hproduct, hrem⟩ := direct_byte_no_wrap n d q r difference h
   exact (Bitcoin.division_sound_complete n d q r).mp ⟨hproduct, hrem⟩
 
+/-- For the direct 16-bit circuit, a base-256 product column contains at most
+two byte products, one remainder byte, and one 16-bit incoming carry. Both
+sides are below M31, so the circuit's field equation is an integer equation. -/
+def directWordColumnConstraint (coefficient incoming digit outgoing : Nat) : Prop :=
+  coefficient ≤ 2 * 255 * 255 + 255 ∧ incoming < 65536 ∧
+    digit < 256 ∧ outgoing < 65536 ∧
+    (coefficient + incoming) % 2147483647 =
+      (digit + 256 * outgoing) % 2147483647
+
+theorem direct_word_column_no_wrap (coefficient incoming digit outgoing : Nat)
+    (h : directWordColumnConstraint coefficient incoming digit outgoing) :
+    coefficient + incoming = digit + 256 * outgoing := by
+  rcases h with ⟨hc, hi, hd, ho, heq⟩
+  have hl : coefficient + incoming < 2147483647 := by omega
+  have hr : digit + 256 * outgoing < 2147483647 := by omega
+  simpa [Nat.mod_eq_of_lt hl, Nat.mod_eq_of_lt hr] using heq
+
+/-- The two byte borrow equations prove a strict 16-bit remainder bound.
+The final borrow must be zero, including when the divisor itself is zero. -/
+def directWordStrict (d₀ d₁ r₀ r₁ e₀ e₁ b₀ b₁ : Nat) : Prop :=
+  d₀ < 256 ∧ d₁ < 256 ∧ r₀ < 256 ∧ r₁ < 256 ∧
+    e₀ < 256 ∧ e₁ < 256 ∧ b₀ < 2 ∧ b₁ = 0 ∧
+    (d₀ + 256 * b₀) % 2147483647 = (r₀ + 1 + e₀) % 2147483647 ∧
+    (d₁ + 256 * b₁) % 2147483647 = (r₁ + b₀ + e₁) % 2147483647
+
+theorem direct_word_strict_remainder (d₀ d₁ r₀ r₁ e₀ e₁ b₀ b₁ : Nat)
+    (h : directWordStrict d₀ d₁ r₀ r₁ e₀ e₁ b₀ b₁) :
+    r₀ + 256 * r₁ < d₀ + 256 * d₁ := by
+  rcases h with ⟨hd₀, hd₁, hr₀, hr₁, he₀, he₁, hb₀, hb₁, hlow, hhigh⟩
+  have hl₁ : d₀ + 256 * b₀ < 2147483647 := by omega
+  have hr₁' : r₀ + 1 + e₀ < 2147483647 := by omega
+  have hl₂ : d₁ + 256 * b₁ < 2147483647 := by omega
+  have hr₂ : r₁ + b₀ + e₁ < 2147483647 := by omega
+  have low : d₀ + 256 * b₀ = r₀ + 1 + e₀ := by
+    simpa [Nat.mod_eq_of_lt hl₁, Nat.mod_eq_of_lt hr₁'] using hlow
+  have high : d₁ + 256 * b₁ = r₁ + b₀ + e₁ := by
+    simpa [Nat.mod_eq_of_lt hl₂, Nat.mod_eq_of_lt hr₂] using hhigh
+  omega
+
 end S31.Gadgets.IntegerDivision
