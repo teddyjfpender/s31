@@ -88,6 +88,78 @@ program-median error and at least 80% trial interval coverage. Failure of any
 criterion fails the local gate. A local pass would still leave automatic
 lowering disabled until separate soundness and cross-host work is done.
 
+## Prospective result on the pinned revision
+
+The measured S31 source was commit
+`fe05a6206264c0313764132b4c67190ee25a6b06`, with stwo-zig gitlink
+`7638a3f8f06dc86c25eafe0cfac2d61e773861f6`. The compiler fingerprint
+was `ba9d281e4006930273a603f33a2d050233593713443d00e8595b714b92a6c93d`;
+the measurement-tool SHA was
+`21e1afb1399a02cab88c1202924371a38ba83a02685d90c2ab7472ce9b319ab7`;
+the protocol SHA was
+`d6c5e133f7f60f16edefba54e1019275e0a136d3b6e3b90f346f2115d43be447`.
+The model SHA
+`12d674529802bf4823c37708e6410f2581faf29d32b8813b9f70b02b98cc5af7`
+was sent to the parent agent in chat at `2026-10-10T19:17:09.372738Z`,
+**before** the first held-out build. The tracked
+[freeze record](language/whole-prover-cost-v4-freeze.json) is a later
+transcription of that earlier external checkpoint; its file commit did not
+precede validation. The [audit](language/whole-prover-cost-v4-audit.json)
+binds the exact externally recorded SHA and independently replays fitting
+and evaluation.
+
+The 18 fresh training packages produced 1,800 verified proofs; the 16 fresh
+held-out packages produced 1,600. Every native verifier accepted its correct
+statement, rejected the changed-public-claim control, and matched an
+independent output oracle. The publisher checked all 3,400 saved assignment
+digests against statements, all 34 source-to-package bindings, and the
+unchanged compiler/tool/protocol identities. Training package-build wall
+times were 51.83/53.54/70.43 seconds (min/median/max); held-out builds were
+51.14/51.57/67.52 seconds. Builds used the host Zig cache without a cache
+reset, and their wall time is **outside** the predicted prove-plus-verify
+quantity. Native setup inside each fresh prover process is included.
+
+| Held-out family | Whole-wall mean p90 error | Whole-wall trial coverage | Median upper bound / mean | Proof-byte median p90 error / coverage | Prover-RSS median p90 error / coverage |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Arithmetic | 4.58% | 89.50% | 2.17× | 5.05% / 100% | 2.70% / 100% |
+| Direct chip | 10.05% | 89.00% | 2.25× | 1.90% / 100% | 2.50% / 100% |
+| Fixed width | 7.02% | 90.50% | 2.25× | 1.49% / 100% | 2.41% / 100% |
+| Hash | 1.24% | 88.25% | 1.32× | 0.12% / 98% | 0.04% / **72%** |
+
+**The predeclared local gate fails.** Hash prover-RSS interval coverage is
+72%, below the required 80%; all other listed gates pass. The `hash_2`
+program alone has only 2/100 RSS trials inside its interval: its measured
+median was 1,017,053,184 bytes while the frozen interval lower limit was
+1,017,085,478 bytes, a 32,294-byte miss. This is a small point error but a
+systematic miss by a narrow interval. We did not widen that interval after
+seeing validation. Automatic lowering selection remains disabled.
+
+For the three families with exposed PoW timers, FRI PoW accounted for about
+64–67% of the observed family-average fresh-process whole wall time. The
+generic hash prover reports PoW inside an opaque prove stage. These stage
+shares help explain why stochastic transcript work dominates the intervals;
+they do not establish a general speed advantage. This result applies to the
+single Apple M5 Max host, frozen compiler, fixed 26-bit PoW profile, and these
+new programs and assignments. It does not validate cached setup, another
+machine, a later compiler revision, package-build prediction, or a
+compiler-to-proof end-to-end latency model. The empirical trial intervals
+carry no guaranteed tail coverage.
+
+## Next prospective study
+
+V5 should be specified and fingerprinted before any new native observation,
+then use **new** train and held-out sources and assignments. Keep V4 held-out
+data out of its fits. A candidate RSS interval construction is an absolute
+byte residual envelope combining within-program trial variation with
+leave-one-training-program-out program-median residuals; calibrate and choose
+it only on V5 training. Increase the number of distinct training and
+held-out geometries per family so a near-constant hash RSS plateau is tested
+at several independent scales. Preserve the 80% interval-coverage and 10%
+point-error gates, frozen-model external SHA, all proof/oracle controls, and
+automatic-lowering-disabled policy. Measure package-build latency as a
+separate target if claiming compile-to-proof cost. Independent host and
+compiler-revision cohorts remain necessary before deployment decisions.
+
 ## Reproduction
 
 Run from the S31 repository root on an otherwise idle host, using one pinned
