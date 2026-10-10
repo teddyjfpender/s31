@@ -282,7 +282,7 @@ columns, random composition, PCS/FRI, and Fiat–Shamir remain separate.
 ## Installed Gate bytecode: arithmetic correspondence
 
 [`GeneratedDirectGateBytecodeArithmetic.lean`](../../../formal/s31/S31/Gadgets/Air/GeneratedDirectGateBytecodeArithmetic.lean)
-closes the arithmetic part of that evaluator obligation for the bounded
+proves the arithmetic identity at base-field row cells for the bounded
 `direct-m31-v4` Gate profile. A strict exporter reads the installed
 `STWZEVA/1` bundle and checks its SHA-256, selected `qm31_ops` program digest,
 component position, semantic hash, section table, register order, root order,
@@ -292,10 +292,13 @@ log size of 23; native binding changes the log size to 9 but preserves the
 instruction stream. The generated Lean definition follows its base register
 assignments through register 121. Its first nine extension roots inject the
 base registers `[24, 28, 31, 34, 37, 61, 85, 103, 121]` with three zero
-coordinates. Lean proves, for **arbitrary** eight fixed and twelve main cells,
-that these nine roots equal `DirectGateEvaluatorCells.arithmetic`, then derives
-Gate operation/output correctness when all nine vanish. This is a universal
-field identity, rather than evidence from finitely many vectors.
+coordinates. Lean proves, for **arbitrary M31 base-field** eight fixed and
+twelve main cells, that these nine roots equal
+`DirectGateEvaluatorCells.arithmetic`, then derives Gate operation/output
+correctness when all nine vanish. This is a universal M31 identity, rather
+than evidence from finitely many vectors. The native verifier evaluates the
+same base instructions at QM31 OODS points; lifting this identity to those
+extension-field evaluations remains a separate formal obligation.
 
 The exporter is a checked extraction step, not a verified binary parser in
 Lean. CI regenerates the Lean file from a freshly built, source-checked S31
