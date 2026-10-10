@@ -335,6 +335,15 @@ addresses, limb spans, and output multiplicity equal the Lean Gate row model;
 the resulting reciprocal contribution equals `rowContribution`. The parser
 and Zig-to-Lean field representation correspondence remain trusted review
 points.
+`NativeEqRosterProof.lean` checks the two native Eq Gate reads against the
+Lean `EqRow.uses` list and Eq pair contribution. `GateEqRawSoundness.lean`
+combines arbitrary challenge-dependent Eq and arithmetic interaction
+columns. Outside the shared bad-pair set, Eq's read denominators are
+nonzero, so its AIR claim equals its use-event sum. A false equality of
+uniquely produced values therefore has the same fixed-trace challenge bound
+as an invalid arithmetic Gate relation.
+The theorem takes other components as exact external event sums; their raw
+interaction AIRs are not covered by this result.
 `GateAddressCounts.lean` further proves that an individual event cannot
 occur more often than its address occurs in the integer histogram.
 Consequently, per-address histogram bounds below `p` suffice for the

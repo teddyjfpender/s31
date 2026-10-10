@@ -123,8 +123,27 @@ def lean_list(values: list[int]) -> str:
 
 
 def generated_gate_roster() -> str:
-    """Extract the three qm31_ops lookups from the native witness emitter."""
+    """Extract arithmetic and Eq Gate lookups from the native witness emitter."""
     source = (ROOT / GATE_WITNESS).read_text()
+    eq_block = source.split("pub const eq = struct {", 1)[1].split(
+        "// ---------------------------------------------------------------------------", 1)[0]
+    if "out.* = value.toM31Array();" not in eq_block:
+        raise FormalError(f"{GATE_WITNESS}: Eq base-row limb layout changed")
+    eq_calls = re.findall(r"Lookup\.use\([^;\n]+\)", eq_block)
+    if len(eq_calls) != 2:
+        raise FormalError(f"{GATE_WITNESS}: expected two Eq Gate reads")
+    eq_slots = []
+    for call in eq_calls:
+        match = re.fullmatch(
+            r"Lookup\.use\(\.\{\s*gate,\s*pp\.(in0|in1),\s*"
+            r"((?:c\[\d+\],?\s*){4})\}\s*\)", call)
+        if match is None:
+            raise FormalError(f"{GATE_WITNESS}: unrecognized Eq lookup: {call}")
+        address, limbs = match.groups()
+        indexes = [int(value) for value in re.findall(r"c\[(\d+)\]", limbs)]
+        if indexes != [0, 1, 2, 3]:
+            raise FormalError(f"{GATE_WITNESS}: Eq lookup limb order changed: {call}")
+        eq_slots.append((address, indexes[0]))
     block = source.split("pub const qm31_ops = struct {", 1)[1].split(
         "// ---------------------------------------------------------------------------", 1)[0]
     for start, end, operand in [(0, 4, "in0"), (4, 8, "in1"), (8, 12, "out_value")]:
@@ -151,6 +170,8 @@ def generated_gate_roster() -> str:
     rendered = ",\n  ".join(
         f"⟨{'true' if is_yield else 'false'}, .{address}, {offset}⟩"
         for is_yield, address, offset in slots)
+    eq_rendered = ",\n  ".join(
+        f"⟨false, .{address}, {offset}⟩" for address, offset in eq_slots)
     return (
         "/-! Generated from circuit/witness/components.zig by scripts/s31_formal.py. -/\n"
         "namespace S31.Gadgets.Air.NativeGateRoster\n\n"
@@ -160,6 +181,7 @@ def generated_gate_roster() -> str:
         "  address : AddressSlot\n  limbStart : Nat\n"
         "deriving DecidableEq, Repr\n\n"
         "def qm31OpsRoster : List LookupSlot := [\n  " + rendered + "\n]\n\n"
+        "def eqRoster : List LookupSlot := [\n  " + eq_rendered + "\n]\n\n"
         "end S31.Gadgets.Air.NativeGateRoster\n"
     )
 

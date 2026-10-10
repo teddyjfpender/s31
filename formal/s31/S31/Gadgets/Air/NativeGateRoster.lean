@@ -17,4 +17,9 @@ def qm31OpsRoster : List LookupSlot := [
   ⟨true, .dst, 8⟩
 ]
 
+def eqRoster : List LookupSlot := [
+  ⟨false, .in0, 0⟩,
+  ⟨false, .in1, 0⟩
+]
+
 end S31.Gadgets.Air.NativeGateRoster

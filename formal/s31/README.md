@@ -338,6 +338,15 @@ multiplicity-weighted output tuple match the Lean Gate row events and
 reciprocal contribution. The extractor checks the native 12-limb base-row
 layout before generating the roster. This narrows the source-to-model gap;
 it is still a reviewed extractor, not a verified Zig compiler.
+`NativeEqRosterProof` performs the same extraction and event equality proof
+for the two Eq Gate reads. `GateEqRawSoundness` then composes raw Eq and
+arithmetic interaction residuals under one shared Gate claim. For fixed
+invalid combined rows it keeps the `(5s²+2s+3r)/p⁴` ideal-challenge bound,
+where `r` is the arithmetic row count. In particular, a false Eq assertion
+between uniquely produced values is covered without assuming Eq
+denominators are nonzero; they are excluded by the shared exceptional set.
+Other circuit components are still represented by external event sums and
+need their own AIR-to-event correspondence proofs.
 `GateAddressCounts` proves a practical sufficient condition: if the integer
 use and yield histograms are below `p` at every address, every event count
 is below `p`. The Zig preprocessed builder now rejects a multiplicity as
