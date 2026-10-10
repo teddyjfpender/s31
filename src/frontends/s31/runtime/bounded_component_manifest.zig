@@ -81,6 +81,16 @@ pub const PcsProfile = struct {
     fold_step: u32,
 };
 
+/// Filled only after the engine constructs the actual V4 verifier handles.
+/// The source-only roster keeps this absent and cannot act as a proof key.
+pub const NativePreflight = struct {
+    tree_columns: [4]u32,
+    sample_width_limits: [4]u32,
+    max_column_log_size: u32,
+    composition_log_size: u32,
+    composition_split: u32,
+};
+
 pub const fixed_pcs: PcsProfile = .{
     .pow_bits = 26,
     .log_blowup_factor = 1,
@@ -115,6 +125,7 @@ pub const Manifest = struct {
     public_word_count: u32,
     pcs: PcsProfile,
     max_component_trace_log_size: u32,
+    native_preflight: ?NativePreflight = null,
     components: []const Component,
     claimed_sums: u32,
     total_constraints: u32,
@@ -367,6 +378,14 @@ pub fn precommitmentDigest(value: Manifest) Digest {
     hashInt(&h, value.pcs.queries);
     hashInt(&h, value.pcs.fold_step);
     hashInt(&h, value.max_component_trace_log_size);
+    if (value.native_preflight) |geometry| {
+        hashInt(&h, @as(u8, 1));
+        for (geometry.tree_columns) |count| hashInt(&h, count);
+        for (geometry.sample_width_limits) |width| hashInt(&h, width);
+        hashInt(&h, geometry.max_column_log_size);
+        hashInt(&h, geometry.composition_log_size);
+        hashInt(&h, geometry.composition_split);
+    } else hashInt(&h, @as(u8, 0));
     hashInt(&h, @as(u32, @intCast(value.components.len)));
     for (value.components) |component| {
         hashInt(&h, @as(u8, @intFromEnum(component.role)));
@@ -415,13 +434,21 @@ fn nativeTemplateDigest() Digest {
     inline for (.{
         @embedFile("s31_pair_boundary_source"),
         @embedFile("s31_many_boundary_source"),
+        @embedFile("s31_many_preflight_source"),
         @embedFile("s31_many_direct_circuit_source"),
-        @embedFile("s31_tagged_pair_chip_air_source"),
-        @embedFile("s31_tagged_pair_bridge_air_source"),
+        @embedFile("s31_tagged_many_chip_air_source"),
+        @embedFile("s31_tagged_many_bridge_air_source"),
     }) |source| hashBytes(&h, source);
     var result: Digest = undefined;
     h.final(&result);
     return result;
+}
+
+pub fn nativeAirSourceDigest(kind: NativeKind) Digest {
+    return switch (kind) {
+        .tagged_chip => digest(@embedFile("s31_tagged_many_chip_air_source")),
+        .tagged_bridge => digest(@embedFile("s31_tagged_many_bridge_air_source")),
+    };
 }
 
 /// Rebind native component identities after compiler-owned endpoint addresses
@@ -455,8 +482,8 @@ fn nativeProgramDigest(kind: NativeKind, schedule: Digest, call: Call) Digest {
     hashInt(&h, @as(u8, @intFromEnum(kind)));
     h.update(&schedule);
     switch (kind) {
-        .tagged_chip => hashBytes(&h, @embedFile("s31_tagged_pair_chip_air_source")),
-        .tagged_bridge => hashBytes(&h, @embedFile("s31_tagged_pair_bridge_air_source")),
+        .tagged_chip => hashBytes(&h, @embedFile("s31_tagged_many_chip_air_source")),
+        .tagged_bridge => hashBytes(&h, @embedFile("s31_tagged_many_bridge_air_source")),
     }
     hashInt(&h, call.call_id);
     hashInt(&h, call.source_node_id);

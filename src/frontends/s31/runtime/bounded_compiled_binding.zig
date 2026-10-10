@@ -161,6 +161,7 @@ pub const TwoCallInspection = struct {
 pub const ManyInspection = struct {
     topology: Topology,
     generated: v4.Generated,
+    live_preflight: cpu.direct_many_preflight.Inspection,
     preprocessed_root: v4.Digest,
     manifest_precommitment: v4.Digest,
     effective_source_digest: v4.Digest,
@@ -237,16 +238,27 @@ pub fn inspectMany(
     var generated = try v4.fromSource(allocator, source_bytes, air_bundle_bytes, facts);
     errdefer generated.deinit();
     try attachCompiledEndpoints(&generated, topology.callSlice());
+    var template = try cpu.air.parse(allocator, air_bundle_bytes);
+    defer template.deinit();
+    const live = try cpu.direct_many_preflight.inspect(allocator, &pp, &template, plan);
     try compareManyRoster(generated.value, try cpu.private_many_boundary.expectedRoster(
         plan,
         pp.traceLogSize(),
         selected.n_constraints,
-    ));
+    ), live, plan);
+    generated.value.native_preflight = .{
+        .tree_columns = live.tree_columns,
+        .sample_width_limits = live.sample_width_limits,
+        .max_column_log_size = live.max_column_log_size,
+        .composition_log_size = live.composition_log_size,
+        .composition_split = live.composition_split,
+    };
     const precommitment = v4.precommitmentDigest(generated.value);
     const effective = cpu.private_many_boundary.effectiveDigest(topology.source_sha256, precommitment);
     return .{
         .topology = topology,
         .generated = generated,
+        .live_preflight = live,
         .preprocessed_root = root,
         .manifest_precommitment = precommitment,
         .effective_source_digest = effective,
@@ -270,7 +282,17 @@ pub fn matchesManyInspection(
         !std.meta.eql(candidate.preprocessed_root, expected.preprocessed_root) or
         !std.meta.eql(candidate.manifest_precommitment, expected.manifest_precommitment) or
         !std.meta.eql(candidate.effective_source_digest, expected.effective_source_digest) or
-        !std.meta.eql(candidate.circuit_identity, expected.circuit_identity)) return false;
+        !std.meta.eql(candidate.circuit_identity, expected.circuit_identity) or
+        !std.meta.eql(candidate.live_preflight.pcs, expected.live_preflight.pcs) or
+        !std.meta.eql(candidate.live_preflight.tree_columns, expected.live_preflight.tree_columns) or
+        !std.meta.eql(candidate.live_preflight.sample_width_limits, expected.live_preflight.sample_width_limits) or
+        candidate.live_preflight.count != expected.live_preflight.count or
+        candidate.live_preflight.max_column_log_size != expected.live_preflight.max_column_log_size or
+        candidate.live_preflight.composition_log_size != expected.live_preflight.composition_log_size or
+        candidate.live_preflight.composition_split != expected.live_preflight.composition_split)
+        return false;
+    for (candidate.live_preflight.factSlice(), expected.live_preflight.factSlice()) |actual, wanted|
+        if (!std.meta.eql(actual, wanted)) return false;
     const left = try std.json.Stringify.valueAlloc(allocator, candidate.generated.value, .{});
     defer allocator.free(left);
     const right = try std.json.Stringify.valueAlloc(allocator, expected.generated.value, .{});
@@ -295,15 +317,33 @@ fn manyPlan(calls: []const EndpointCall) !cpu.private_many_boundary.Plan {
     return plan;
 }
 
-fn compareManyRoster(value: v4.Manifest, planned: cpu.private_many_boundary.Roster) !void {
+fn compareManyRoster(
+    value: v4.Manifest,
+    planned: cpu.private_many_boundary.Roster,
+    live: cpu.direct_many_preflight.Inspection,
+    plan: cpu.private_many_boundary.Plan,
+) !void {
     if (!std.meta.eql(value.pcs, v4.fixed_pcs)) return error.BoundedManyRosterMismatch;
     if (value.components.len != planned.count or value.claimed_sums != planned.count or
         value.main_columns != planned.main_width or
         value.interaction_columns != planned.interaction_width or
-        value.total_constraints != planned.constraint_count)
+        value.total_constraints != planned.constraint_count or live.count != planned.count or
+        live.tree_columns[0] != 8 or live.tree_columns[1] != planned.main_width or
+        live.tree_columns[2] != planned.interaction_width or live.tree_columns[3] == 0 or
+        live.composition_split != core.verifier_types.COMPOSITION_LOG_SPLIT or
+        live.composition_log_size > live.max_column_log_size or
+        live.pcs.fri_config.pow_bits != value.pcs.pow_bits or
+        live.pcs.fri_config.log_blowup_factor != value.pcs.log_blowup_factor or
+        live.pcs.fri_config.log_last_layer_degree_bound != value.pcs.last_layer_degree_bound - 1 or
+        live.pcs.fri_config.n_queries != value.pcs.queries or
+        live.pcs.fri_config.fold_step != value.pcs.fold_step or
+        live.pcs.trace_lifting_log_size != value.max_component_trace_log_size + value.pcs.log_blowup_factor or
+        live.pcs.preprocessed_lifting_log_size != value.components[0].trace_log_size + value.pcs.log_blowup_factor)
         return error.BoundedManyRosterMismatch;
+    for (live.sample_width_limits) |width|
+        if (width == 0 or width > 2) return error.BoundedManyRosterMismatch;
     var max_log: u32 = 0;
-    for (value.components, planned.slice(), 0..) |component, spec, index| {
+    for (value.components, planned.slice(), live.factSlice(), 0..) |component, spec, actual, index| {
         max_log = @max(max_log, spec.log_size);
         const wanted_role: v4.Role = switch (spec.kind) {
             .circuit => .circuit,
@@ -318,8 +358,34 @@ fn compareManyRoster(value: v4.Manifest, planned: cpu.private_many_boundary.Rost
             component.interaction.tree != 2 or component.interaction.start != spec.interaction_offset or
             component.interaction.end != spec.interaction_offset + spec.interaction_columns or
             component.n_constraints != spec.constraint_count or
-            component.random_coefficient_offset != spec.constraint_offset)
+            component.random_coefficient_offset != spec.constraint_offset or
+            actual.kind != spec.kind or actual.call_id != spec.call_id or
+            actual.trace_log_size != spec.log_size or
+            actual.evaluation_log_size != component.evaluation_log_size or
+            actual.main_offset != spec.main_offset or actual.main_columns != spec.main_columns or
+            actual.interaction_offset != spec.interaction_offset or
+            actual.interaction_columns != spec.interaction_columns or
+            actual.constraint_offset != spec.constraint_offset or
+            actual.n_constraints != spec.constraint_count or
+            !std.mem.eql(u32, actual.preprocessedSlice(), component.preprocessed_indices) or
+            !std.mem.eql(u32, actual.relationSlice(), component.lookup_relation_ids))
             return error.BoundedManyRosterMismatch;
+        if (index == 0) {
+            if (component.source != .bundled_air) return error.BoundedManyRosterMismatch;
+        } else {
+            const kind: v4.NativeKind = if (spec.kind == .chip) .tagged_chip else .tagged_bridge;
+            if (component.source != .native_air or component.source.native_air.kind != kind or
+                !std.meta.eql(actual.air_source_sha256, v4.nativeAirSourceDigest(kind)))
+                return error.BoundedManyRosterMismatch;
+            const id: usize = @intCast(spec.call_id orelse return error.BoundedManyRosterMismatch);
+            if (spec.kind == .chip) {
+                if (actual.chip_constant == null or actual.chip_constant.? != plan.calls[id].constant.toU32() or
+                    actual.bridge_boundary != null) return error.BoundedManyRosterMismatch;
+            } else {
+                if (actual.bridge_boundary == null or !std.meta.eql(actual.bridge_boundary.?, plan.calls[id]) or
+                    actual.chip_constant != null) return error.BoundedManyRosterMismatch;
+            }
+        }
     }
     if (value.max_component_trace_log_size != max_log) return error.BoundedManyRosterMismatch;
 }
@@ -744,6 +810,24 @@ test "bounded native inspection fails closed outside exact two-call schedule" {
         try std.testing.expectEqual(@as(u32, @intCast(12 + 17 * topology.call_count)), inspection.generated.value.main_columns);
         try std.testing.expectEqual(@as(u32, @intCast(8 + 28 * topology.call_count)), inspection.generated.value.interaction_columns);
         try std.testing.expect(try matchesManyInspection(std.testing.allocator, &inspection, source, @embedFile("s31_air_programs")));
+        const plan = try manyPlan(topology.callSlice());
+        const roster = try cpu.private_many_boundary.expectedRoster(
+            plan,
+            inspection.generated.value.components[0].trace_log_size,
+            inspection.generated.value.components[0].n_constraints,
+        );
+        var forged_live = inspection.live_preflight;
+        forged_live.facts[1].evaluation_log_size += 1;
+        try std.testing.expectError(error.BoundedManyRosterMismatch, compareManyRoster(inspection.generated.value, roster, forged_live, plan));
+        forged_live = inspection.live_preflight;
+        forged_live.facts[1].relation_ids[0] ^= 1;
+        try std.testing.expectError(error.BoundedManyRosterMismatch, compareManyRoster(inspection.generated.value, roster, forged_live, plan));
+        forged_live = inspection.live_preflight;
+        forged_live.facts[1].air_source_sha256[0] ^= 1;
+        try std.testing.expectError(error.BoundedManyRosterMismatch, compareManyRoster(inspection.generated.value, roster, forged_live, plan));
+        forged_live = inspection.live_preflight;
+        forged_live.sample_width_limits[1] = 3;
+        try std.testing.expectError(error.BoundedManyRosterMismatch, compareManyRoster(inspection.generated.value, roster, forged_live, plan));
         const original_components = inspection.generated.value.components;
         const original_bridge_binding = original_components[1 + topology.call_count].source.native_air.program_binding_sha256;
         const original_calls = inspection.generated.value.calls;

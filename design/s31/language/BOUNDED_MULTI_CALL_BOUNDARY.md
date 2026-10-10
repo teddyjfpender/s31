@@ -1,15 +1,17 @@
 # Bounded multi-call authenticated circuit-to-chip boundary
 
-Status: **source admission, compiler endpoint maps, and a source-derived
-V4 roster inspection are implemented; native V4 proving and verification are
-not implemented**. The unexported
+Status: **source admission, compiler endpoint maps, and witness-free V4 live
+verifier-handle/PCS preflight inspection are implemented; native V4 proving
+and verification are not implemented**. The unexported
 [`bounded_call_admission.zig`](../../../src/frontends/s31/language/bounded_call_admission.zig)
 extracts canonical, live calls and enforces the initial source bounds. The
 [`bounded_compiled_binding.zig`](../../../src/frontends/s31/runtime/bounded_compiled_binding.zig)
 inspection recompiles 1–8 source calls without witness values, attaches their
 compiler-owned addresses, builds a separately counted Gate preprocessed
-circuit, and checks the generated V4 roster against engine prefix sums. It
-does not accept proof bytes or instantiate V4 native chip/bridge handles.
+circuit, and checks the generated V4 roster against engine prefix sums and
+live V4 chip/bridge verifier handles. The preflight derives tree logs, mask
+widths, composition split and degree, and fixed PCS from those handles. It
+does not accept proof bytes or verify V4 proofs.
 This is the successor to
 the experimental, fixed two-call `direct-m31-private-pair-v1` profile. It must not
 replace or reinterpret any existing one-call or pair proof. The first v4
@@ -18,7 +20,7 @@ implementation admits 1–8 instances of the existing four-lane tagged
 kinds, but each later kind needs its own AIR, lookup tuple, resource limits,
 and soundness review before admission.
 
-Focused validation at S31 `5382e252` and engine `a3656919` passed:
+Earlier focused validation at S31 `5382e252` and engine `a3656919` passed:
 `zig build test -Dtest-filter=V4` in the engine circuit CPU package;
 `zig build test-bounded-call-source test-bounded-component-manifest
 test-bounded-compiled-binding` in the S31 package; and the existing V3
@@ -155,8 +157,10 @@ Use fresh schema, key, envelope magic, manifest-hash domain, and transcript
 tag for v4. Do not reuse `S31NAT8P` or the pair's V3 digest. Serialize a
 typed `ComponentSource`, for example `bundled_air {bundle_sha256, index,
 part_sha256}` or `native_air {kind, version, code_sha256}`. The current V4
-inspection has a typed native kind and a template-derived program digest; it
-does **not** identify a live V4 AIR implementation or its version. The pair format's
+inspection has a typed native kind and a program digest that includes the
+distinct V4 chip/bridge AIR source files and the compiler-owned endpoints.
+It does **not** provide a released proof profile, wire envelope, or versioned
+native verifier. The pair format's
 numeric `source_index = 0` is a native sentinel, so treating it as a general
 zero-based AIR index would be ambiguous. Reject unknown kinds and versions;
 the JSON view is not the hash input.
@@ -167,12 +171,13 @@ claimed-sum index, relation dependencies, row log, exact base and
 interaction spans, evaluation-degree bound, constraint count and random
 coefficient offset, selected preprocessed indices, and program binding.
 The inspection manifest includes the ordered Call records, source and
-canonical IR digests, the reconstructed fixed preprocessed root, a proposed
-PCS/FRI profile, and public ABI shape. It does not yet contain individual
-fixed-column value digests or a native proof key. After compiler endpoints are
-attached, both native component program digests include the ordered input and
-output addresses; the source-only blueprint uses a distinct absent-endpoint
-tag. Length-delimit every field in a canonical binary encoding. Exclude
+canonical IR digests, the reconstructed fixed preprocessed root, fixed PCS/FRI
+parameters, the geometry derived from live verifier handles, and public ABI
+shape. It does not yet contain individual fixed-column value digests or a
+native proof key. After compiler endpoints are attached, both native
+component program digests include the ordered input and output addresses;
+the source-only blueprint uses a distinct absent-endpoint tag. Length-delimit
+every field in a canonical binary encoding. Exclude
 the circuit identity hash from the precommitment to avoid a hash cycle;
 derive that identity from the manifest precommitment, fixed root, and PCS
 profile. Mix the versioned manifest digest before the first base commitment.
@@ -208,11 +213,12 @@ bridge i offset     = C+6N+13i
 ```
 
 These formulas are review invariants, **not** a second source of verifier
-truth. Build the actual component handles from the source Plan, then derive
-tree logs, widths, masks, composition split, composition degree, and offsets
-through the same component API used for proof verification. Assert the
-generated manifest matches them. If this API produces a different geometry,
-reject before decoding. Claimed-sum indices are exactly `0..2N`: circuit,
+truth. The witness-free preflight now builds the actual V4 verifier handles
+from the source Plan, derives tree logs, widths, masks, composition split and
+degree through the same component API intended for proof verification, and
+rejects disagreement with the generated manifest. A future native verifier
+must use these same handles and checked PCS geometry before decoding; this
+reuse is still a release gate. Claimed-sum indices are exactly `0..2N`: circuit,
 then chips, then bridges. An empty, duplicate, or reordered slot is invalid.
 The source-derived roster also determines lookup dependency closure: Gate
 production/consumption and every tagged chip endpoint relation must balance.
