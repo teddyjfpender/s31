@@ -140,3 +140,23 @@ Run `s31 lower`, `s31 explain`, and `s31 equations` on the source to inspect
 the exact normalized nodes, gate spans, AIR geometry, and source positions.
 The [source-to-AIR guide](reference/LANGUAGE_AND_AIR.md) explains how the
 generic circuit gates become AIR constraints and trace polynomials.
+
+## Inspect the source layout
+
+Run this without building a proof package:
+
+```sh
+python3 src/frontends/s31/python/s31.py source-layout \
+  src/frontends/s31/examples/arithmetic/record_square_sum_destructure.s31
+```
+
+The JSON report lists each nominal declaration, its field types, and the
+ordered first-order leaves. For `Powers`, the leaves are `square` and
+`doubled`, each an `m31` relation value of length four. Nested records use
+path arrays such as `["nested", "value"]`; tuple positions are numeric path
+segments. The report also gives the source SHA-256 and the SHA-256 of the
+exact normalized relation JSON. The record, destructuring, and positional
+versions all report normalized relation digest
+`2c363f623e918c1f53d5988eabe29e4a074f6245505d28c8419cfa8f91b90467`.
+This digest identifies the source-stage relation; the package's canonical IR
+digest is a separate value computed after Zig lowering.

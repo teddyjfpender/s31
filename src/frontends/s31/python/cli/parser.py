@@ -44,6 +44,8 @@ def make_parser() -> argparse.ArgumentParser:
     sub = commands.add_parser("lower", help="lower .s31 text to normalized relation JSON")
     sub.add_argument("source", type=Path)
     sub.add_argument("--out", type=Path)
+    sub = commands.add_parser("source-layout", help="show nominal records, flat leaves, and source erasure digest")
+    sub.add_argument("source", type=Path)
     sub = commands.add_parser("prove")
     sub.add_argument("package", type=Path)
     sub.add_argument("assignment", type=Path)

@@ -10,6 +10,7 @@ from pathlib import Path
 
 from cli.parser import make_parser
 from inspection.reports import equations as report_equations, explain as report_explain
+from inspection.source_layout import source_layout
 from package.build import build, package_for
 from package.context import invoke, load_source, lower_text, write_json
 from package.verify import verify_package
@@ -31,6 +32,11 @@ def main() -> None:
 
 def dispatch(args: argparse.Namespace) -> None:
 
+    if args.command == "source-layout":
+        if args.source.suffix != ".s31":
+            raise ValueError("source-layout expects a .s31 text file")
+        print(json.dumps(source_layout(args.source), indent=2, sort_keys=True))
+        return
     if args.command == "lower":
         if args.source.suffix != ".s31":
             raise ValueError("lower expects a .s31 text file")
