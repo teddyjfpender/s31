@@ -92,6 +92,12 @@ need to satisfy the local AIR equations.
 constructs and checks every selected local row for the concrete public
 input `[0,0,0,0]` and result `[0,0,0,0]`. This shows that the row premises
 themselves are satisfiable; it is not a complete native proof witness.
+[TextSquare4WitnessAll.lean](../../../../../formal/s31/S31/Gadgets/Functional/TextSquare4WitnessAll.lean)
+constructs the wire values for **every** four-word input. It proves that the
+23 selected AIR rows and public bindings have a satisfying assignment exactly
+when the claimed output is `x⁴`. This equivalence covers the selected path;
+the remaining native component rows and the full proof protocol have separate
+obligations.
 [TextSquare4GateJoin.lean](../../../../../formal/s31/S31/Gadgets/Functional/TextSquare4GateJoin.lean)
 uses this result to remove the assumed shared-wire map from the public-claim
 proof. It requires accepted rows for the 23 selected gates, public and

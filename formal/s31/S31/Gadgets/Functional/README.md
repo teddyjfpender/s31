@@ -26,6 +26,7 @@ Lean module names follow the directory, for example
 | `TextSquare4ChallengeJoin.lean` | Checked Gate counters and good LogUp challenges force the exported circuit's public claim; a forged claim has nonzero reciprocal closure. |
 | `TextSquare4TraceRows.lean` | Source-checked preprocessed AIR positions for the selected gates imply their Gate-path membership. |
 | `TextSquare4Witness.lean` | A concrete honest zero-input witness satisfies every selected local circuit row and public boundary. |
+| `TextSquare4WitnessAll.lean` | A constructive witness for every four-word input; selected native AIR rows accept exactly the correct fourth-power public claims. |
 | `TextSquare4RawSoundness.lean` | For a fixed forged claim, source-extracted raw Gate interaction AIR accepts on at most the explicit exceptional challenge-pair bound. |
 
 The dependency order starts with `Graph`, then `Outputs`, then `Arrays`.
@@ -125,6 +126,12 @@ and proves the zero-input/zero-output case satisfies its 23 local rows. This
 checks non-vacuity of the path theorem; it does not model unrelated native
 range rows or a complete proof transcript. A companion theorem rejects a
 one-valued forged public output for that same wire assignment.
+`TextSquare4WitnessAll.native_path_iff` strengthens this local result to all
+inputs and claims: the 23 selected rows and public bindings have a satisfying
+wire assignment if and only if the claim is the input's fourth power. The
+reverse direction constructs each packed input, intermediate square,
+coordinate extract, and output wire. It does not assert that unrelated native
+component rows or the full STARK transcript have a witness.
 `TextSquare4ChallengeJoin.public_claim_of_checked_logup_closure` adds the
 modeled compressed use/yield counter walks and the fixed-list LogUp reduction.
 When the address/count checks pass, the challenges avoid the explicit bad
