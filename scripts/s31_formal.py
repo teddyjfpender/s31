@@ -95,6 +95,7 @@ BINDINGS = [
     "src/frontends/s31/runtime/pair_statement.zig",
     "src/frontends/s31/runtime/pair_prover_main.zig",
     "src/frontends/s31/runtime/pair_verifier_main.zig",
+    "scripts/export_s31_direct_gate_bridge.py",
     "src/frontends/s31/library/hash/poseidon2.zig",
     "src/core/crypto/blake2s_terminal_parallel.zig",
     "src/frontends/s31/library/hash/sha256d.zig",
