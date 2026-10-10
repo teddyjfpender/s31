@@ -707,10 +707,17 @@ claim fold. Given accepted logical rows and a challenge outside the stated
 bad set, it concludes both chips' lane equations and exact joint tagged
 event balance. The native PCS/FRI-to-row and source-manifest correspondence
 premises are still explicit.
-`chip_complete_path_of_exact_balance` additionally applies the arbitrary
-row path theorem to source chip rows once each call's exact value-bearing
-balance is supplied. Extracting those per-call balances from the joint
-seven-word permutation remains the next formal step.
+`TaggedPairEventProjection.lean` filters the exact joint seven-word
+permutation by relation tag and fixed call ID. Its source-specific theorems
+derive separate value-bearing chip/bridge event permutations for both calls.
+They require explicit Gate-only circuit event lists, bridge/chip call-ID
+agreement, and distinct call IDs. The source definitions themselves prove
+that public outputs and bridge Gate events have Gate tags and that chip and
+bridge endpoint events have their stated call tags.
+`chip_complete_path_of_exact_balance` applies the arbitrary-row path theorem
+once each call's event tuples are decoded into indexed four-lane states.
+That tuple-to-row correspondence, including the fixed round-count encoding,
+is the next formal step; native proof acceptance remains an explicit premise.
 `PrivateBridgeChallenge.lean` specializes the Gate exceptional-challenge
 bound to one addressed endpoint whose sixteen bridge rows vary. It also
 proves a joint eight-address Gate bound: if repeated addresses have coherent

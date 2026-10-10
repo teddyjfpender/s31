@@ -103,20 +103,27 @@ the explicit bad set. Its conclusion is exact joint event multiset balance.
 It does not derive native proof acceptance into row residuals, source
 addresses and public values into the manifest, or challenge goodness from
 the Fiat–Shamir transcript.
-The downstream two-path theorem must require every abstract circuit
-yield/use to carry the Gate relation tag.
+The downstream two-path theorem requires every abstract circuit yield/use
+to carry the Gate relation tag.
 `forged_circuit_chip_event_counterexample` shows why:
 if the circuit list may contain a chip-tagged tuple, one fabricated circuit
 yield balances a bridge chip start with no chip row. The source compiler's
 Gate event classification, canonical call IDs, bridge/chip call agreement,
 and round-count agreement remain proof obligations before exact joint event
 balance can be projected into two complete authenticated paths.
+`TaggedPairEventProjection.lean` now discharges the tag-filtering stage:
+given exact joint event balance, Gate-only circuit lists, bridge/chip call-ID
+agreement, and distinct call IDs, it derives a separate exact event
+permutation for each call. Public-output Gate tags, bridge Gate tags, and
+chip/bridge call tags are proved from the modeled source constructors.
 `chip_complete_path_of_exact_balance` gives the next bridge: after a
 value-bearing per-call event permutation has been extracted, canonical M31
 step values, `R < p`, and the source chip's four lane equations prove the
-entire `R`-step endpoint path. The projection from the joint seven-word
-permutation to each call's value-bearing balance is still an explicit
-premise, not hidden in this corollary.
+entire `R`-step endpoint path. The tuple-to-indexed-row decoding that
+connects those seven-word permutations to this path theorem is still open.
+The source manifest's fixed call IDs and round counts, compiler Gate-event
+classification, accepted native rows, and Fiat–Shamir challenge
+distribution are separate obligations; none follows from event filtering.
 
 The **accepted proof-to-logical-row premise remains open**: source mask geometry
 must correspond to a permutation of logical predecessor rows, and an
