@@ -304,7 +304,10 @@ The exporter is a checked extraction step, not a verified binary parser in
 Lean. CI regenerates the Lean file from a freshly built, source-checked S31
 package and compares its exact bytes with the committed file. The source,
 component manifest, verification key, and official bundle identities pass
-`check_package` first. The formal source inventory also binds the exporter,
+`check_package` first. That checker independently recomputes the selected
+Gate program binding from the official AIR bytes, component index, and pinned
+part semantic hash; a resealed change to the manifest/key/report binding is
+rejected before export. The formal source inventory also binds the exporter,
 native bundle parser/interpreter, and official bundle asset. The proof relies
 on that extraction and on the native interpreter following its documented
 opcode semantics. The standalone scalar replay interprets all 11 bytecode

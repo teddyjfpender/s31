@@ -524,11 +524,20 @@ def check_gate_topology(syntax: dict[str, Any], topology: dict[str, Any],
     return source_gates
 
 
-def _assets() -> tuple[str, str]:
+def _assets() -> tuple[str, str, str]:
     root = Path(__file__).resolve().parents[5]
     official = root / "deps/stwo-zig/vectors/circuit/official"
+    air_bytes = (official / "circuit_air.air_programs_v1.bin").read_bytes()
+    # The official bundle digest fixes the single selected qm31_ops part and
+    # its semantic hash. Recompute the production directGate program binding
+    # independently of the package's mutually resealable key/report/manifest.
+    program_hash = hashlib.sha256()
+    program_hash.update(b"S31-DIRECT-GATE-PROGRAM-V1\x00")
+    program_hash.update(air_bytes)
+    program_hash.update(struct.pack("<I", 1))
+    program_hash.update(struct.pack("<Q", 0x3FA1236478F103EF))
     return (digest((official / "compiled_air_constraints_v1.bin").read_bytes()),
-            digest((official / "circuit_air.air_programs_v1.bin").read_bytes()))
+            digest(air_bytes), program_hash.hexdigest())
 
 
 def _checked_material(package: Path) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -579,7 +588,7 @@ def _checked_material(package: Path) -> tuple[dict[str, Any], dict[str, Any]]:
                 "explicit_import": False} or
             key.get("stdlib_lock_sha256") != digest((package / "stdlib-lock.json").read_bytes())):
         raise ValueError("source text artifacts or standard library lock differ from checked package")
-    projection_hash, air_hash = _assets()
+    projection_hash, air_hash, gate_program_hash = _assets()
     if (manifest.get("lowering") != "direct-gate" or manifest.get("fri_fold_step") != 1 or
             manifest.get("name") != relation["name"] or
             manifest.get("source_text_sha256") != digest(source_bytes) or
@@ -603,6 +612,7 @@ def _checked_material(package: Path) -> tuple[dict[str, Any], dict[str, Any]]:
             component["components"][0].get("base_trace_columns") != 12 or
             component["components"][0].get("interaction_trace_columns") != 8 or
             component["components"][0].get("n_constraints") != 11 or
+            component["components"][0].get("program_binding_sha256") != gate_program_hash or
             component["components"][0].get("preprocessed_indices") != [0, 2, 3, 1, 4, 5, 6, 7] or
             component["components"][0].get("trace_spans") != [
                 {"tree": 0, "start": 0, "end": 0},

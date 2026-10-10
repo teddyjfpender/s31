@@ -139,6 +139,39 @@ def reject_resealed_component_map(honest: Path, checked: dict, work: Path,
         raise AssertionError(f"resealed {kind} component map was admitted")
 
 
+def reject_resealed_program_binding(honest: Path, checked: dict, work: Path) -> None:
+    """A forged compiler cannot nominate a different Gate AIR program hash."""
+    mutant = work / "changed-gate-program-binding"
+    shutil.copytree(honest, mutant)
+    component = json.loads((mutant / "component-manifest.json").read_text())
+    entry = component["components"][0]
+    original = entry["program_binding_sha256"]
+    entry["program_binding_sha256"] = ("0" if original[0] != "0" else "1") + original[1:]
+    write_json(mutant / "component-manifest.json", component)
+    key = json.loads((mutant / "verification-key.json").read_text())
+    report = json.loads((mutant / "cost-report.json").read_text())
+    key["component_manifest"] = component
+    report["component_manifest"] = component
+    write_json(mutant / "verification-key.json", key)
+    write_json(mutant / "cost-report.json", report)
+    fake = copy.deepcopy(checked)
+    fake["air_profile"]["component_manifest_sha256"] = digest(canonical(component))
+    fake["key_core"] = {field: key.get(field) for field in KEY_FIELDS}
+    write_json(mutant / "correspondence-certificate.json", fake)
+    manifest = json.loads((mutant / "manifest.json").read_text())
+    for name in ("component-manifest.json", "verification-key.json", "cost-report.json",
+                 "correspondence-certificate.json"):
+        manifest["artifacts"][name] = file_hash(mutant / name)
+    write_json(mutant / "manifest.json", manifest)
+    try:
+        render_bytecode_arithmetic(mutant)
+    except ValueError as exc:
+        if "direct-gate AIR profile or key core" not in str(exc):
+            raise AssertionError(f"resealed Gate program reached wrong rejection: {exc}") from exc
+    else:
+        raise AssertionError("resealed Gate program binding was admitted")
+
+
 def wrong_opcode(topology: dict, _checked: dict) -> None:
     topology["add"].insert(3, topology["pointwise_mul"].pop(0))
     topology["pointwise_mul"].append(topology["add"].pop())
@@ -225,6 +258,7 @@ def main() -> None:
             else:
                 raise AssertionError(f"changed {kind} AIR column map was admitted")
             reject_resealed_component_map(honest, checked, work, kind)
+        reject_resealed_program_binding(honest, checked, work)
         if checked["status"]["source_to_normalized"] != "source-to-normalized-checked":
             raise AssertionError("honest package lacks the source correspondence status")
         if not s31.trial(honest, assignment, work / "honest-proof")["native_verifier_accepted"]:
@@ -370,6 +404,7 @@ def main() -> None:
             "evaluator_fixture_matches_checked_package": True,
             "installed_gate_bytecode_arithmetic_matches_checked_package": True,
             "resealed_component_column_maps_rejected": True,
+            "resealed_gate_program_binding_rejected": True,
             "certificate_status": checked["status"],
         }, sort_keys=True, indent=2))
 
