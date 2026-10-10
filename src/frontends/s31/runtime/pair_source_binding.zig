@@ -20,6 +20,7 @@ pub const Binding = struct {
     source_digest: [32]u8,
     ir_digest: [32]u8,
     preprocessed_root: [32]u8,
+    trace_log_size: u32,
     precommitment_digest: [32]u8,
     effective_digest: [32]u8,
 
@@ -60,6 +61,7 @@ pub fn derive(allocator: std.mem.Allocator, source_bytes: []const u8, air_bytes:
         .source_digest = source_digest,
         .ir_digest = ir.sha256,
         .preprocessed_root = root,
+        .trace_log_size = pp.traceLogSize(),
         .precommitment_digest = precommitment,
         .effective_digest = effective,
     };
@@ -83,10 +85,36 @@ pub fn verifySourceBinding(allocator: std.mem.Allocator, source_bytes: []const u
         !std.mem.eql(u8, &expected.source_digest, &rebuilt.source_digest) or
         !std.mem.eql(u8, &expected.ir_digest, &rebuilt.ir_digest) or
         !std.mem.eql(u8, &expected.preprocessed_root, &rebuilt.preprocessed_root) or
+        expected.trace_log_size != rebuilt.trace_log_size or
         !std.mem.eql(u8, &expected.precommitment_digest, &rebuilt.precommitment_digest) or
         !std.mem.eql(u8, &expected.effective_digest, &rebuilt.effective_digest) or
         !(try manifest.matchesPair(allocator, expected_manifest, rebuilt_manifest)))
         return error.PairSourceBindingMismatch;
+}
+
+/// Recompile the source-owned circuit for native verification. This returns
+/// no witness values and refuses a topology or pair Plan different from the
+/// fully reconstructed binding.
+pub fn compileTopology(allocator: std.mem.Allocator, source_bytes: []const u8, expected: *const Binding) !circuit.builder.Context(circuit.builder.NoValue) {
+    var digest: [32]u8 = undefined;
+    Sha256.hash(source_bytes, &digest, .{});
+    if (!std.mem.eql(u8, &digest, &expected.source_digest)) return error.PairSourceMismatch;
+    var parsed = try relation.parseProgram(allocator, source_bytes);
+    defer parsed.deinit();
+    if (parsed.value.privateRepeatedStepPair() == null) return error.UnsupportedPairRelation;
+    var maps = compiler.Maps{};
+    defer maps.deinit(allocator);
+    var ctx = try compiler.compileDirectPairWithSpans(circuit.builder.NoValue, allocator, parsed.value, null, &maps);
+    errdefer ctx.deinit();
+    try padDirect(allocator, circuit.builder.NoValue, &ctx);
+    const plan = maps.private_pair_plan orelse return error.MissingPairPlan;
+    if (!std.meta.eql(plan, expected.plan)) return error.PairPlanMismatch;
+    var pp = try plan.preprocessed(allocator, circuit.common.preprocessed.CircuitView.fromBuilder(&ctx.circuit));
+    defer pp.deinit(allocator);
+    const root = try pp.preprocessedRoot(allocator, 1);
+    if (!std.mem.eql(u8, &root, &expected.preprocessed_root) or pp.traceLogSize() != expected.trace_log_size)
+        return error.PairTopologyMismatch;
+    return ctx;
 }
 
 pub const Witness = struct {

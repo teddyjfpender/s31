@@ -1,14 +1,69 @@
 const std = @import("std");
 const relation = @import("../../language/relation.zig");
 const pair_source = @import("../../runtime/pair_source_binding.zig");
+const native_pair = @import("../../runtime/pair_native_package.zig");
 const manifest = @import("../../runtime/component_manifest.zig");
 const pair = @import("stwo_circuit_cpu_integration").private_pair_boundary;
+const pair_engine = @import("s31_pair_engine");
 
 fn handRepeat(start: u32, constant: u32, rounds: u32) u32 {
     const modulus: u64 = 2147483647;
     var value: u64 = start;
     for (0..rounds) |_| value = (value * value + constant) % modulus;
     return @intCast(value);
+}
+
+test "sealed pair native proof accepts 16+32 and rejects key, claim, and envelope mutations" {
+    const a = std.testing.allocator;
+    const source = @embedFile("../../examples/boundary/private_pair16_32.s31.json");
+    const air_bytes = @embedFile("s31_air_programs");
+    var parsed = try relation.parseProgram(a, source);
+    defer parsed.deinit();
+    var assignment = try relation.parseAssignment(a, @embedFile("../../examples/boundary/private_pair16_32.valid.json"));
+    defer assignment.deinit();
+    const words = try relation.evaluate(a, parsed.value, assignment.value);
+    const key = try native_pair.sealKey(a, source, air_bytes);
+    defer a.free(key);
+    var timer = try std.time.Timer.start();
+    const raw = try native_pair.proveSealed(a, source, air_bytes, key, assignment.value);
+    const prove_ns = timer.read();
+    defer a.free(raw);
+    timer.reset();
+    try native_pair.verifySealed(a, source, air_bytes, key, words, raw);
+    const verify_ns = timer.read();
+    var binding = try pair_source.derive(a, source, air_bytes, 1);
+    defer binding.deinit();
+    std.debug.print("pair 16+32: proof_bytes={d} circuit_rows={d} chip_rows=16+32 bridge_rows=16+16 prove_ns={d} verify_ns={d}\n", .{
+        raw.len,
+        @as(usize, 1) << @intCast(binding.trace_log_size),
+        prove_ns,
+        verify_ns,
+    });
+
+    const changed_source = try std.fmt.allocPrint(a, "{s}\n", .{source});
+    defer a.free(changed_source);
+    try std.testing.expectError(error.InvalidPairVerificationKey, native_pair.verifySealed(a, changed_source, air_bytes, key, words, raw));
+    const changed_key = try a.dupe(u8, key);
+    defer a.free(changed_key);
+    changed_key[0] = if (changed_key[0] == '{') '[' else '{';
+    try std.testing.expectError(error.InvalidPairVerificationKey, native_pair.verifySealed(a, source, air_bytes, changed_key, words, raw));
+    var wrong_words = words;
+    wrong_words[5] = (wrong_words[5] + 1) % 2147483647;
+    try std.testing.expectError(error.InvalidPairPublicStatement, native_pair.verifySealed(a, source, air_bytes, key, wrong_words, raw));
+
+    const changed_raw = try a.dupe(u8, raw);
+    defer a.free(changed_raw);
+    changed_raw[0] ^= 1;
+    try std.testing.expectError(error.InvalidPairNativeEnvelope, native_pair.verifySealed(a, source, air_bytes, key, words, changed_raw));
+    @memcpy(changed_raw, raw);
+    std.mem.writeInt(u32, changed_raw[16..][0..4], 2147483647, .little);
+    try std.testing.expectError(error.InvalidPairNativeEnvelope, native_pair.verifySealed(a, source, air_bytes, key, words, changed_raw));
+    @memcpy(changed_raw, raw);
+    changed_raw[8] ^= 1;
+    if (native_pair.verifySealed(a, source, air_bytes, key, words, changed_raw)) |_| return error.TestUnexpectedResult else |_| {}
+    @memcpy(changed_raw, raw);
+    changed_raw[raw.len - 1] ^= 1;
+    if (native_pair.verifySealed(a, source, air_bytes, key, words, changed_raw)) |_| return error.TestUnexpectedResult else |_| {}
 }
 
 test "two-call source derives canonical plan and five-role V3 manifest" {
@@ -102,6 +157,36 @@ test "two-call source derives canonical plan and five-role V3 manifest" {
     var metadata_witness = try pair_source.compileWitness(a, source, assignment.value, &forged_metadata);
     defer metadata_witness.deinit();
     try std.testing.expectError(error.PairSourceBindingMismatch, pair_source.verifySourceBinding(a, source, air_bytes, &forged_metadata));
+
+    // Reseal both the V3 digest and the circuit hash in a serialized key.
+    // Native admission compares exact source-derived key bytes before it
+    // even examines the (empty) proof envelope supplied here.
+    const key_bytes = try native_pair.sealKey(a, source, air_bytes);
+    defer a.free(key_bytes);
+    var parsed_key = try std.json.parseFromSlice(native_pair.Key, a, key_bytes, .{});
+    defer parsed_key.deinit();
+    const key_components = try a.dupe(manifest.Component, parsed_key.value.component_manifest.components);
+    defer a.free(key_components);
+    key_components[3].random_coefficient_offset += 1;
+    parsed_key.value.component_manifest.components = key_components;
+    const changed_precommit = manifest.pairPrecommitmentDigest(parsed_key.value.component_manifest);
+    const changed_precommit_hex = std.fmt.bytesToHex(changed_precommit, .lower);
+    parsed_key.value.manifest_precommitment_sha256 = &changed_precommit_hex;
+    var converted: pair_engine.Plan = .{ .calls = undefined };
+    for (binding.plan.calls, &converted.calls) |call, *slot| slot.* = .{
+        .call_id = call.call_id,
+        .rounds = call.rounds,
+        .constant = call.constant,
+        .input = call.input,
+        .output = call.output,
+    };
+    const changed_hash = pair_engine.identityHash(pair.effectiveDigest(binding.source_digest, changed_precommit), binding.preprocessed_root, binding.trace_log_size, 1, converted);
+    const changed_hash_hex = std.fmt.bytesToHex(changed_hash, .lower);
+    parsed_key.value.circuit_hash = &changed_hash_hex;
+    parsed_key.value.component_manifest.circuit_hash = &changed_hash_hex;
+    const resealed_key = try std.json.Stringify.valueAlloc(a, parsed_key.value, .{});
+    defer a.free(resealed_key);
+    try std.testing.expectError(error.InvalidPairVerificationKey, native_pair.verifySealed(a, source, air_bytes, resealed_key, evaluated, ""));
 
     const changed_source = try std.fmt.allocPrint(a, "{s}\n", .{source});
     defer a.free(changed_source);

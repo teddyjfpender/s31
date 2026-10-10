@@ -542,14 +542,15 @@ fn pairComponent(a: std.mem.Allocator, spec: pair.ComponentSpec, name: []const u
 fn pairNativeBinding(a: std.mem.Allocator, domain: []const u8, parameters: []const u32) ![]const u8 {
     var h = Sha256.init(.{});
     h.update(domain);
-    // Both native components depend on these modules for tuple arity, row
-    // placement, transition semantics and interaction construction. Bind the
-    // complete pinned source set, not only the immediately named AIR file.
+    // Both native components and the joint proof schedule depend on these
+    // modules for tuple arity, row placement, transitions, interactions and
+    // transcript order. Bind the pinned source set in the V3 manifest.
     inline for (.{
         @embedFile("s31_pair_boundary_source"),
         @embedFile("s31_chip_air_source"),
         @embedFile("s31_tagged_pair_chip_air_source"),
         @embedFile("s31_tagged_pair_bridge_air_source"),
+        @embedFile("s31_pair_proof_source"),
     }) |source| hashBytes(&h, source);
     for (parameters) |parameter| hashInt(&h, parameter);
     var digest: [32]u8 = undefined;

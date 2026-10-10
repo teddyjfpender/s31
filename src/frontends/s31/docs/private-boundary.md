@@ -26,6 +26,24 @@ easy to check by hand: `3²+13=22` for call 0 and `2²+17=21` for call 1. The
 last rows, rather than the first rows, feed the two public four-word arrays.
 The [assignment](../examples/boundary/private_pair16_32.valid.json) gives
 the eight resulting public words.
+This milestone accepts normalized version-1 `.s31.json` source only. The
+current text frontend emits one public output for a version-1 circuit;
+multiple named output leaves use the version-2 public record ABI. Text syntax
+for this pair profile stays gated until that ABI and the pair verifier agree.
+
+| Lane | Left input | Right input | Left after 16 rounds | Right after 32 rounds | Public sum | Public product |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 0 | 3 | 2 | 532178712 | 1185857477 | 1718036189 | 832988171 |
+| 1 | 3 | 4 | 532178712 | 854449153 | 1386627865 | 1177026897 |
+| 2 | 7 | 6 | 2108197386 | 1535612364 | 1496326103 | 1841741547 |
+| 3 | 11 | 8 | 1611365775 | 1883997554 | 1347879682 | 1786834280 |
+
+Every cell from the fourth column onward is modulo `p = 2147483647`.
+For example, lane 0's public sum is
+`(532178712 + 1185857477) mod p = 1718036189`; its public product is
+`(532178712 × 1185857477) mod p = 832988171`. The source evaluator, the
+value-circuit output wires and a separate integer recurrence oracle must all
+agree with these eight public cells.
 
 This is an intentionally narrow initial source profile: exactly two private
 four-lane inputs; exactly two `square; add_const` repeats with power-of-two
@@ -75,7 +93,9 @@ They must check the circuit identity hash separately, since it is purposely
 outside the precommitment.
 
 **Release status:** the five-component engine proof and in-memory verifier are
-experimental. S31 does not yet package this profile, emit a sealed pair key,
-decode a `S31NAT8P` proof envelope, or accept a pair proof through its native
-CLI. Those pieces and proof-byte mutation tests are required before enabling
-the profile. The existing one-call source/key/proof format is unchanged.
+experimental. A feature-disabled package draft now emits an exact source-
+derived key and a `S31NAT8P` proof envelope and verifies it with the engine's
+host STARK verifier. Native compile, honest proof acceptance, proof-byte
+mutation tests, and independent review are still gates before enabling that
+entrypoint. S31's native CLI does not accept this profile. The existing
+one-call source/key/proof format is unchanged.
