@@ -60,6 +60,7 @@ two operands of the same nominal type. Neither field arithmetic nor
 | --- | --- |
 | `add_checked(a,b)`, `sub_checked(a,b)` | Exact integer result in the type's signed or unsigned range; overflow or underflow has no valid witness. |
 | `add_wrapping(a,b)`, `sub_wrapping(a,b)` | Low $W$ bits of the result, interpreted according to the result type. |
+| `mul_wrapping(a,b)` | Low $W$ product bits, using constrained base-256 columns. |
 | `le(a,b)`, `lt(a,b)`, `ge(a,b)`, `gt(a,b)` | Signed ordering for `iW`, unsigned ordering for `uW`; constrained `bit` result. |
 | `eq(a,b)`, `ne(a,b)` | Bit-pattern equality or inequality; constrained `bit` result. |
 | `from_limbs_u8(raw)` through `from_limbs_i128(raw)` | Turn an exactly sized `[u16; L]` into the named scalar; the `u8` and `i8` forms prove the extra byte bound. |
@@ -68,8 +69,8 @@ two operands of the same nominal type. Neither field arithmetic nor
 
 There is no integer `+` or `-` operator yet: call `std::int` to choose checked
 or wrapping semantics. `std::math::sub` and source `-` remain M31 operations.
-There are no fixed-width multiplication, division, shifts, bitwise operations,
-or cross-width numeric casts yet. Reinterpreting `i8` to `u8` maps $-1$ to
+There are no fixed-width checked multiplication, division, shifts, bitwise
+operations, or cross-width numeric casts yet. Reinterpreting `i8` to `u8` maps $-1$ to
 255; it does not reject or change the bits.
 
 ## The one-byte circuit by hand
@@ -129,6 +130,89 @@ sign bits, the answer is the sign of $a$; with equal signs, use the unsigned
 answer. So `i8(-1) <= i8(1)` is true even though their raw bytes are 255 and
 1. The remaining comparisons compose `le` with constrained Boolean `not`
 and `and` gates; they do not use a host-only comparison.
+
+## Wrapping multiplication by hand
+
+The [checked-in `u8` program](../examples/math/multiplication/u8_wrapping.s31)
+contains `std::int::mul_wrapping(a,b)`. Its private inputs are 250 and 7;
+the public output is 214 because $250\cdot7=1750=214+256\cdot6$:
+
+```s31
+circuit u8_wrapping(private a: u8, private b: u8) -> public u8 {
+    let product = std::int::mul_wrapping(a, b);
+    product
+}
+```
+
+The compiler emits one `int_mul_wrapping` node. The circuit constrains input
+bytes $a,b$, output byte $d$, and carry $c$ with
+
+$$
+0\le a,b,d<256,\qquad 0\le c<65536,\qquad ab=d+256c.
+$$
+
+| Wire | Hand-calculated value | Why it is constrained |
+| --- | ---: | --- |
+| `a`, `b` | 250, 7 | Each is a range-checked input byte. |
+| `a*b` | 1750 | A circuit multiplication of the two input wires. |
+| `d` | 214 | The output byte has an independent byte-range proof. |
+| `c` | 6 | The carry has a `u16` range proof. |
+
+Since both sides are below $p=2^{31}-1$, the field equation is also an
+ordinary integer equation. The prover cannot choose $d=215$ and compensate
+with a fractional or out-of-range carry. The final carry is discarded because
+the operation promises a result modulo $2^8$. A changed public output fails
+the verifier's output binding.
+
+For wider types, every `u16` limb is split into two proved bytes:
+$w_j=a_{2j}+256a_{2j+1}$. The low byte has a direct byte range check. The
+high byte is a `u16` witness proved below 256 by this reconstruction equation
+and the original limb's `u16` bound; it needs no second byte check. If
+$a_i,b_i$ are the little-endian input bytes,
+column $k$ proves
+
+$$
+c_k+\sum_{i=0}^{k}a_i b_{k-i}=d_k+256c_{k+1},\qquad c_0=0.
+$$
+
+The circuit computes only columns $0$ through $W/8-1$ and combines each
+output byte pair as $r_j=d_{2j}+256d_{2j+1}$. For at most 16 bytes, a column
+has at most 16 products of values below 256. Its left side is at most
+$16\cdot255^2+65535=1{,}105{,}935$, and its right side is at most
+$255+256\cdot65535=16{,}777{,}215$. Both are below $p$, so no M31 wrap can
+hide a false integer equation. Each carry is a proved `u16` value, and each
+output digit is a proved byte.
+
+In the [`u32` example](../examples/math/multiplication/u32_wrapping.s31),
+$a=2^{32}-1$ has bytes `[255,255,255,255]` and $b=2$ has bytes
+`[2,0,0,0]`. Its columns give $510=254+256\cdot1$ followed by three
+copies of $511=255+256\cdot1$. The result bytes
+`[254,255,255,255]` become little-endian limbs `[65534,65535]`, or
+$2^{32}-2$. The [`i128` example](../examples/math/multiplication/i128_wrapping.s31)
+uses the same bit-pattern rule: $-1\cdot2$ wraps to the 128-bit pattern
+for $-2$.
+
+Lean proves the high-byte bound, the per-column integer bound, unique byte
+and carry, an honest column witness, and the composed low-product value in
+[`IntegerMultiply.lean`](../../../../formal/s31/S31/Gadgets/IntegerMultiply.lean).
+Native acceptance tests check representative complete circuits and false
+public claims. The Lean model does not by itself prove that Zig emits the
+modeled columns.
+
+The native [`multiplication.py`](../tests/acceptance/math/multiplication.py)
+gate pins these `sparse-wide-gate` AIR costs and checks one proof per width:
+
+| Program | Raw QM31 rows | Padded QM31 rows | Raw range rows (`m31_to_u32`) | Raw Eq rows |
+| --- | ---: | ---: | ---: | ---: |
+| `u8_wrapping` | 278 | 512 | 7 | 4 |
+| `u32_wrapping` | 325 | 512 | 28 | 16 |
+| `i128_wrapping` | 691 | 1024 | 112 | 64 |
+
+These totals include input, output, lookup, and proof-profile overhead. The
+128-bit circuit has 16 output-byte columns, with 136 byte-product terms in
+total. Raw QM31 rows grow with the work; power-of-two padding means the first
+two examples use the same 512-row QM31 table. The local proofs were roughly
+230–237 KB each. These are one-run measurements, not a throughput claim.
 
 ## Where the AIR and proof enter
 

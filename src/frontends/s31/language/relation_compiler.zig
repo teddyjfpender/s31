@@ -10,6 +10,7 @@ const poseidon2 = @import("../library/hash/poseidon2.zig");
 const sha256d = @import("../library/hash/sha256d.zig");
 const bitcoin_target = @import("../bitcoin/consensus/bitcoin_target.zig");
 const bitcoin_work = @import("../bitcoin/consensus/bitcoin_work.zig");
+const integer_multiply = @import("gadgets/integer_multiply.zig");
 
 const M31 = core.fields.m31.M31;
 const QM31 = core.fields.qm31.QM31;
@@ -97,6 +98,7 @@ pub fn compileRaw(comptime V: type, allocator: std.mem.Allocator, program: relat
             .int_sub_checked => try intBinary(V, &ctx, lhs.?, rhs.?, node.constant.?, .sub_checked),
             .int_sub_wrapping => try intBinary(V, &ctx, lhs.?, rhs.?, node.constant.?, .sub),
             .int_le => try intBinary(V, &ctx, lhs.?, rhs.?, node.constant.?, .le),
+            .int_mul_wrapping => try intMultiplyWrapping(V, &ctx, lhs.?, rhs.?, node.constant.?),
             .hash_sha256d_header => try sha256dHeader(V, &ctx, lhs.?),
             .bitcoin_target_mainnet => try mainnetTarget(V, &ctx, lhs.?),
             .bitcoin_block_work => try blockWorkEntry(V, &ctx, lhs.?),
@@ -352,6 +354,7 @@ fn compileWithSpansMode(comptime V: type, allocator: std.mem.Allocator, program:
             .int_sub_checked => try intBinary(V, &ctx, entries[node.lhs.?], entries[node.rhs.?], node.constant.?, .sub_checked),
             .int_sub_wrapping => try intBinary(V, &ctx, entries[node.lhs.?], entries[node.rhs.?], node.constant.?, .sub),
             .int_le => try intBinary(V, &ctx, entries[node.lhs.?], entries[node.rhs.?], node.constant.?, .le),
+            .int_mul_wrapping => try intMultiplyWrapping(V, &ctx, entries[node.lhs.?], entries[node.rhs.?], node.constant.?),
             .hash_sha256d_header => blk: {
                 if (!sha_chip_mode) break :blk try sha256dHeader(V, &ctx, entries[node.lhs.?]);
                 const input = entries[node.lhs.?];
@@ -717,6 +720,24 @@ fn intView(comptime V: type, ctx: *circuit.builder.Context(V), input: Entry, enc
     var viewed = input;
     viewed.integer_spec = encoded;
     return viewed;
+}
+
+fn intMultiplyWrapping(comptime V: type, ctx: *circuit.builder.Context(V), lhs: Entry, rhs: Entry, encoded: u32) !Entry {
+    const spec = relation.IntegerSpec.decode(encoded) orelse return error.InvalidIntegerSpec;
+    const left = lhs.raw orelse return error.InvalidIntegerOperand;
+    const right = rhs.raw orelse return error.InvalidIntegerOperand;
+    if (lhs.shape.kind != .u16 or rhs.shape.kind != .u16 or
+        left.len != spec.limbCount() or right.len != spec.limbCount())
+        return error.InvalidIntegerOperand;
+    const left_byte_bounded = lhs.integer_spec != null and (lhs.integer_spec.? & 0xff) == 8;
+    const right_byte_bounded = rhs.integer_spec != null and (rhs.integer_spec.? & 0xff) == 8;
+    const raw = try integer_multiply.wrapping(V, ctx, left, right, spec.width,
+        left_byte_bounded, right_byte_bounded);
+    const wrappers = try ctx.scratch().alloc(circuit.builder.wrappers.M31Wrapper(Var), raw.len);
+    for (wrappers, raw) |*wrapped, wire| wrapped.* = .newUnsafe(wire);
+    return .{ .shape = .{ .kind = .u16, .length = raw.len },
+        .lanes = try circuit.builder.simd.pack(V, ctx, wrappers),
+        .raw = raw, .integer_spec = encoded };
 }
 
 fn intBinary(comptime V: type, ctx: *circuit.builder.Context(V), lhs: Entry, rhs: Entry, encoded: u32, mode: U256Mode) !Entry {
@@ -1940,6 +1961,56 @@ test "fixed integer byte bounds, signed overflow and width-specific carry are ci
     var invalid_byte = try compile(QM31, allocator, byte_program.value, byte_values.value);
     defer invalid_byte.deinit();
     try std.testing.expect(!try invalid_byte.isCircuitValid());
+}
+
+test "fixed integer wrapping multiplication constrains bytes, carries, and public result" {
+    const allocator = std.testing.allocator;
+    const byte_source =
+        \\{"version":1,"name":"u8_mul","inputs":[{"name":"a","kind":"u16","length":1,"visibility":"private"},{"name":"b","kind":"u16","length":1,"visibility":"private"}],"nodes":[{"name":"product","op":"int_mul_wrapping","lhs":"a","rhs":"b","constant":8}],"assertions":[],"public_outputs":["product"]}
+    ;
+    const byte_valid =
+        \\{"public_inputs":{},"private_inputs":{"a":[250],"b":[7]},"public_outputs":{"product":[214]}}
+    ;
+    const byte_forged =
+        \\{"public_inputs":{},"private_inputs":{"a":[250],"b":[7]},"public_outputs":{"product":[213]}}
+    ;
+    const byte_out_of_range =
+        \\{"public_inputs":{},"private_inputs":{"a":[256],"b":[7]},"public_outputs":{"product":[0]}}
+    ;
+    var byte_program = try relation.parseProgram(allocator, byte_source);
+    defer byte_program.deinit();
+    inline for (.{ byte_valid, byte_forged, byte_out_of_range }, 0..) |data, index| {
+        var assignment = try relation.parseAssignment(allocator, data);
+        defer assignment.deinit();
+        var compiled = try compile(QM31, allocator, byte_program.value, assignment.value);
+        defer compiled.deinit();
+        // Public claims bind during package/proof verification, while this
+        // local circuit check tests the private arithmetic witnesses only.
+        try std.testing.expectEqual(index != 2, try compiled.isCircuitValid());
+        if (index == 0) {
+            _ = try relation.evaluate(allocator, byte_program.value, assignment.value);
+        } else {
+            try std.testing.expectError(if (index == 1) error.PublicOutputMismatch else error.IntegerOutOfRange,
+                relation.evaluate(allocator, byte_program.value, assignment.value));
+        }
+    }
+    const wide_source =
+        \\{"version":1,"name":"u128_mul","inputs":[{"name":"a","kind":"u16","length":8,"visibility":"private"},{"name":"b","kind":"u16","length":8,"visibility":"private"}],"nodes":[{"name":"product","op":"int_mul_wrapping","lhs":"a","rhs":"b","constant":128}],"assertions":[],"public_outputs":["product"]}
+    ;
+    const wide_valid =
+        \\{"public_inputs":{},"private_inputs":{"a":[65535,65535,65535,65535,65535,65535,65535,65535],"b":[2,0,0,0,0,0,0,0]},"public_outputs":{"product":[65534,65535,65535,65535,65535,65535,65535,65535]}}
+    ;
+    var wide_program = try relation.parseProgram(allocator, wide_source);
+    defer wide_program.deinit();
+    var wide_assignment = try relation.parseAssignment(allocator, wide_valid);
+    defer wide_assignment.deinit();
+    _ = try relation.evaluate(allocator, wide_program.value, wide_assignment.value);
+    var wide_compiled = try compile(QM31, allocator, wide_program.value, wide_assignment.value);
+    defer wide_compiled.deinit();
+    try std.testing.expect(try wide_compiled.isCircuitValid());
+    var topology = try compile(circuit.builder.NoValue, allocator, wide_program.value, null);
+    defer topology.deinit();
+    try std.testing.expectEqual(wide_compiled.circuit.n_vars, topology.circuit.n_vars);
 }
 
 test "signed i128 full carry is valid and signed overflow is rejected" {

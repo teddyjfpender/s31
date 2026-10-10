@@ -72,6 +72,51 @@ class FixedWidthIntegerTests(unittest.TestCase):
                 assignment = self.assignment(subtract, width, a, b, result)
                 self.assertEqual(evaluate_relation(subtract, assignment), assignment["public_outputs"])
 
+    def test_wrapping_multiplication_all_fixed_width_types(self) -> None:
+        for width in (8, 16, 32, 64, 128):
+            for prefix in ("u", "i"):
+                kind = f"{prefix}{width}"
+                with self.subTest(kind=kind):
+                    relation, _ = compile_text(
+                        f"circuit product(private a: {kind}, private b: {kind}) -> public {kind} "
+                        "{ std::int::mul_wrapping(a, b) }")
+                    self.assertEqual([node["op"] for node in relation["nodes"]],
+                                     ["int_view", "int_view", "int_mul_wrapping"])
+                    spec = width | (256 if prefix == "i" else 0)
+                    self.assertEqual([node["constant"] for node in relation["nodes"]], [spec] * 3)
+                    for a, b in ((0, 17), (1, (1 << width) - 1),
+                                 ((1 << width) - 1, 2),
+                                 ((1 << (width - 1)) + 3, 19)):
+                        expected = (a * b) % (1 << width)
+                        assignment = self.assignment(relation, width, a, b, expected)
+                        self.assertEqual(evaluate_relation(relation, assignment),
+                                         assignment["public_outputs"])
+                        assignment["public_outputs"][relation["public_outputs"][0]] = limbs(
+                            (expected + 1) % (1 << width), width)
+                        with self.assertRaises(OracleError):
+                            evaluate_relation(relation, assignment)
+
+    def test_wrapping_multiplication_is_total_and_type_checked(self) -> None:
+        relation, _ = compile_text(
+            "circuit choice(private bit: bit, private a: i8, private b: i8) -> public i8 "
+            "{ if bit then std::int::mul_wrapping(a, b) else a }")
+        self.assertIn("int_mul_wrapping", [node["op"] for node in relation["nodes"]])
+        with self.assertRaisesRegex(SourceError, "equally typed"):
+            compile_text("circuit bad(private a: u16, private b: i16) -> public u16 "
+                         "{ std::int::mul_wrapping(a, b) }")
+
+    def test_named_multiply_helper_has_no_relation_overhead(self) -> None:
+        direct = ("circuit product(private a: u32, private b: u32) -> public u32 "
+                  "{ std::int::mul_wrapping(a, b) }")
+        via_function = (
+            "fn multiply(a: u32, b: u32) -> u32 { std::int::mul_wrapping(a, b) } "
+            "circuit product(private a: u32, private b: u32) -> public u32 "
+            "{ multiply(a, b) }"
+        )
+        direct_relation, _ = compile_text(direct)
+        functional_relation, _ = compile_text(via_function)
+        self.assertEqual(direct_relation, functional_relation)
+
     def test_byte_range_and_explicit_limb_conversion(self) -> None:
         relation, _ = compile_text(
             "circuit from_limbs(public raw: [u16; 1]) -> public u8 "

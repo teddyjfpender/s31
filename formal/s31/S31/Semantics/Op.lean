@@ -45,6 +45,7 @@ inductive Op where
   | int_sub_checked
   | int_sub_wrapping
   | int_le
+  | int_mul_wrapping
 deriving DecidableEq, Repr, BEq
 
 def Op.wireName : Op → String
@@ -91,6 +92,7 @@ def Op.wireName : Op → String
   | .int_sub_checked => "int_sub_checked"
   | .int_sub_wrapping => "int_sub_wrapping"
   | .int_le => "int_le"
+  | .int_mul_wrapping => "int_mul_wrapping"
 
 def Op.ofWireName : String → Option Op
   | "constant" => some .constant
@@ -136,6 +138,7 @@ def Op.ofWireName : String → Option Op
   | "int_sub_checked" => some .int_sub_checked
   | "int_sub_wrapping" => some .int_sub_wrapping
   | "int_le" => some .int_le
+  | "int_mul_wrapping" => some .int_mul_wrapping
   | _ => none
 
 def allOps : List Op := [
@@ -181,6 +184,7 @@ def allOps : List Op := [
   .int_add_wrapping,
   .int_sub_checked,
   .int_sub_wrapping,
-  .int_le]
+  .int_le,
+  .int_mul_wrapping]
 
 end S31

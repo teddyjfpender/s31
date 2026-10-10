@@ -103,7 +103,7 @@ def equations(package: Path, verify_package: Callable[[Path], dict]) -> dict:
                 f"{name}[{left[1]}+j] - {node['rhs']}[j] = 0, 0 <= j < {right[1]}",
             ))
             notes.append("This is a concatenated view of constrained positions; it introduces no independent witness values.")
-        elif op in {"int_view", "int_add_checked", "int_add_wrapping", "int_sub_checked", "int_sub_wrapping", "int_le"}:
+        elif op in {"int_view", "int_add_checked", "int_add_wrapping", "int_sub_checked", "int_sub_wrapping", "int_le", "int_mul_wrapping"}:
             width = node["constant"] & 255
             signed = bool(node["constant"] & 256)
             limb_count = max(1, width // 16)
@@ -115,7 +115,21 @@ def equations(package: Path, verify_package: Callable[[Path], dict]) -> dict:
                     field_equations.append(f"256*{node['lhs']}[0] is range checked as u16, proving 0 <= {node['lhs']}[0] < 256")
                 else:
                     field_equations.append("Both operand bytes are proved below 256 by their producer or a local range gadget.")
-            if op == "int_view":
+            if op == "int_mul_wrapping":
+                byte_count = width // 8
+                if width > 8:
+                    field_equations.append(
+                        "Each input u16 limb is split as limb[j] = byte[2j] + 256*byte[2j+1]. The low byte has a direct range check; the high byte's bound follows from the u16 limb and the equation.")
+                field_equations.extend((
+                    f"c[0] = 0; 0 <= digit[k] < 256; 0 <= c[k+1] < 65536, for 0 <= k < {byte_count}",
+                    "c[k] + sum_{i=0..k} a[i]*b[k-i] - digit[k] - 256*c[k+1] = 0",
+                    (f"{name}[0] = digit[0]" if width == 8 else
+                     f"{name}[j] = digit[2j] + 256*digit[2j+1]"),
+                ))
+                notes.append("Only the low product bytes are computed; the final carry is discarded. Each column equality is below the M31 modulus on both sides.")
+                if signed:
+                    notes.append("Signed wrapping multiplication uses the same low bit pattern as unsigned multiplication.")
+            elif op == "int_view":
                 notes.append("The view binds width and signedness into the canonical relation. Its result aliases the input limbs.")
             else:
                 field_equations.append(f"c[0] = 0; c[j] in {{0,1}}; each arithmetic digit is in [0,{base - 1}]")

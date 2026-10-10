@@ -1,0 +1,5 @@
+{
+  "public_inputs": {},
+  "private_inputs": {"a": [250], "b": [7]},
+  "public_outputs": {"product": [214]}
+}

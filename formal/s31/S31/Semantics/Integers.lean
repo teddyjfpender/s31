@@ -18,6 +18,8 @@ def evaluate (op : Op) (spec : IntegerSpec) (lhs rhs : List M31) : Result (List 
   let base := if spec.width == 8 then 256 else 65536
   require (lhs.all (fun x => x.val < base) && rhs.all (fun x => x.val < base)) .invalidValue
   if op == .int_view then return lhs
+  if op == .int_mul_wrapping then
+    return encode spec.limbs ((unsigned lhs * unsigned rhs) % spec.limit)
   let a := interpretation spec (unsigned lhs)
   let b := interpretation spec (unsigned rhs)
   if op == .int_le then return [RiscvRefinement.M31.reduce (if a ≤ b then 1 else 0)]

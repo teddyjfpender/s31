@@ -54,6 +54,13 @@ class FormalGateTests(unittest.TestCase):
     def test_full_coverage_is_valid(self) -> None:
         checks.check_coverage(ROOT, self.bindings["ops"], self.coverage, self.theorems)
 
+    def test_rendered_coverage_count_follows_operation_inventory(self) -> None:
+        rendered = checks.render_coverage(self.coverage)
+        self.assertIn(
+            f"operationCoverage.length = {len(self.coverage['operations'])} := rfl",
+            rendered,
+        )
+
     def test_missing_added_duplicate_and_reordered_operations_are_rejected(self) -> None:
         for kind in ("missing", "added", "duplicate", "reordered"):
             value = copy.deepcopy(self.coverage)

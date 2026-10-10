@@ -18,7 +18,7 @@ def Node.metadataValid (n : Node) : Bool :=
   | .select | .bool_select => n.fields true true true false false false false false
   | .repeat => n.fields true false false false false false true true
   | .add_const | .mul_const | .int_view => n.fields true false false false true false false false
-  | .int_add_checked | .int_add_wrapping | .int_sub_checked | .int_sub_wrapping | .int_le =>
+  | .int_add_checked | .int_add_wrapping | .int_sub_checked | .int_sub_wrapping | .int_le | .int_mul_wrapping =>
     n.fields true true false false true false false false
   | .add | .mul | .array_concat | .u256_add | .u256_add_checked | .u256_le |
       .u256_sub | .u256_sub_checked | .u32_lt | .bool_and | .bool_or | .bool_xor |
@@ -117,7 +117,7 @@ def inferNode (shapes : Shapes) (node : Node) : Result Shape := do
     let _ ← expectShape rhs .u16 (some 2)
     return ⟨.m31, 1⟩
   | .int_view | .int_add_checked | .int_add_wrapping | .int_sub_checked |
-      .int_sub_wrapping | .int_le =>
+      .int_sub_wrapping | .int_le | .int_mul_wrapping =>
     let spec ← need (node.constant.bind IntegerSpec.decode)
     let a ← expectShape lhs .u16 spec.limbs
     if node.op != .int_view then

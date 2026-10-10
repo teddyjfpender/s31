@@ -1,6 +1,6 @@
 # S31 normalized semantics and local constraint proofs
 
-This package gives executable Lean semantics for **all 43 operations in S31
+This package gives executable Lean semantics for **all 44 operations in S31
 relation IR v1** and proves the local constraint models sound and complete.
 It reuses `RiscvRefinement.Field.M31` and the existing
 `RiscvRefinement.Recursion.CompactPoseidon` S-box proofs through a local Lake
@@ -762,6 +762,7 @@ premises. Honest-witness evaluation alone is insufficient for soundness.
 | Boolean operations and selection | Bit equation iff 0 or 1; NOT, AND, OR, XOR, scalar/Boolean selection; zero indicator sound for every inverse witness, including the unconstrained inverse at zero. |
 | Range and packing | Byte range via scaled u16; 16 Boolean bits iff u16; byte-pair packing, endian round trips and canonical digest reduction, including quotient 2. |
 | Carry/borrow arithmetic | Local field equations imply integer equations; whole chains iff checked or wrapping arithmetic; reversed subtraction iff ≤ or <. |
+| Wrapping multiplication | Split-limb and bounded byte-column equations imply integer equations, each output byte and carry is unique, and the accepted low-byte convolution equals multiplication modulo the declared power of 256. The model does not prove production Zig constraint emission. |
 | Signed arithmetic | Sign extraction, most-significant-limb sign, two's-complement interpretation, signed comparison, overflow predicates, composed signed checked addition/subtraction iff mathematical results. |
 | Packed M31 lanes | QM31 basis multiplication, coordinate extraction, active masks, scalar multiplication, production sum projection/dual literals, `mix4`, active-lane inversion. |
 | Static repeats | Pointwise primitive constraints, sum witnesses, bodies and arbitrary finite repeat counts iff the executable recurrence. |

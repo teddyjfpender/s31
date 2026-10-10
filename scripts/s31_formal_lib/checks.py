@@ -142,7 +142,7 @@ def render_coverage(coverage: dict) -> str:
     result += "theorem operation_inventory_exact : operationCoverage.map Prod.fst = allOps := rfl\n\n"
     result += "theorem operation_inventory_complete (op : Op) :\n"
     result += "    op ∈ operationCoverage.map Prod.fst := by cases op <;> simp [operationCoverage]\n\n"
-    result += "theorem operation_inventory_size : operationCoverage.length = 43 := rfl\n\n"
+    result += f"theorem operation_inventory_size : operationCoverage.length = {len(rows)} := rfl\n\n"
     result += "end S31.Evidence\n"
     return result
 

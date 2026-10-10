@@ -1,10 +1,11 @@
 # Fixed-width integers for S31 math and standard libraries
 
-Status: **core ten-type family implemented in S31 source**, 2026-10-07.
+Status: **core ten-type family implemented in S31 source**, 2026-10-10.
 The implemented slice has `u8`, `u16`, `u32`, `u64`, `u128` and signed peers;
 range-checked bit patterns; checked/wrapping addition and subtraction;
-signed/unsigned comparisons; and same-width reinterpretation and limb views.
-Multiplication, division, bitwise operations, shifts, and cross-width numeric
+wrapping multiplication; signed/unsigned comparisons; and same-width
+reinterpretation and limb views. Checked multiplication, division, bitwise
+operations, shifts, and cross-width numeric
 casts remain design work. An M31 value is a field element, not a fixed-width
 integer. A `[u16; N]` array does not by itself specify signedness, overflow,
 or an integer operation.
@@ -27,7 +28,7 @@ No implicit conversion is allowed between these types, `UInt256`, `Bytes32`, and
 
 ## Arithmetic semantics
 
-Integer arithmetic must specify overflow in source. The API should use explicit `std::int::add_checked`, `add_wrapping`, `sub_checked`, and `sub_wrapping` calls on equal types; `mul_checked` and `mul_wrapping` follow after a bounded product relation exists. Checked operations make overflow or underflow unsatisfiable. Wrapping operations return the low $W$ bits. No build-mode-dependent behavior is allowed. Comparisons use the type's signed or unsigned ordering and return a constrained `bit`.
+Integer arithmetic must specify overflow in source. The API uses explicit `std::int::add_checked`, `add_wrapping`, `sub_checked`, `sub_wrapping`, and `mul_wrapping` calls on equal types. `mul_checked` remains to be implemented. Checked operations make overflow or underflow unsatisfiable. Wrapping operations return the low $W$ bits. No build-mode-dependent behavior is allowed. Comparisons use the type's signed or unsigned ordering and return a constrained `bit`.
 
 For unsigned addition, let $B=2^{16}$, except $B=2^8$ for an 8-bit scalar. Each limb satisfies
 
@@ -49,7 +50,7 @@ Use the existing generic circuit as the correctness baseline, then measure a lim
 
 1. Implement `u8`, `u16`, and `u32` with checked/wrapping add and subtract, equality, ordering, explicit casts, and source-to-AIR explanations. Prove the 8-bit high-range constraint and width-specific carry behavior.
 2. Generalize the same constraints to `u64` and `u128`; add `i8` through `i128` with constrained sign extraction, signed comparisons, and checked overflow. Keep all ten types in one parameterized semantic implementation rather than ten unrelated gadgets.
-3. Add checked/wrapping multiplication with a bounded full-width product relation, then division/remainder and bitwise/shift operations with their stated edge cases. Benchmark wide kernels and select chips only where they beat the generic circuit.
+3. Wrapping multiplication now uses bounded base-256 columns and drops the final carry exactly at the declared width. Add checked multiplication with a bounded full-width product relation, then division/remainder and bitwise/shift operations with their stated edge cases. Benchmark wide kernels and select chips only where they beat the generic circuit.
 4. Add independent Python big-integer oracles and positive/negative native proofs at zero, one, maximum, signed minimum, signed maximum, carries across every limb boundary, overflow, division by zero, and cast failures. Pin source-to-relation shape and AIR cost baselines for each width family. Reject changed public claims, proof bytes, keys, width tags, and signedness tags.
 
 The focused `std@1` library MVP gate covers a representative M31 and

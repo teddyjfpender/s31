@@ -35,7 +35,7 @@ TOTAL_BUILTINS = frozenset({
     "select", "sha256d_header", "splat", "std::array::concat", "std::array::drop",
     "std::array::flatten", "std::array::get", "std::array::reshape", "std::array::take", "std::bytes::from_u256_le",
     "std::bytes::limbs_m31", "std::bytes::to_u256_le", "std::int::add_wrapping", "std::int::eq", "std::int::ge",
-    "std::int::gt", "std::int::le", "std::int::limbs", "std::int::lt", "std::int::ne",
+    "std::int::gt", "std::int::le", "std::int::limbs", "std::int::lt", "std::int::mul_wrapping", "std::int::ne",
     "std::int::sub_wrapping", "std::math::add_u256", "std::math::dot", "std::math::dot_lanes", "std::math::eq_u256",
     "std::math::ge_u256", "std::math::gt_u256", "std::math::le_u256", "std::math::lt_u256", "std::math::matmul",
     "std::math::matvec", "std::math::max_u256", "std::math::min_u256", "std::math::mix4", "std::math::ne_u256", "std::math::neg",

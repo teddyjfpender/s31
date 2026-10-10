@@ -154,7 +154,7 @@ class Builder:
                    span: dict[str, int] | None = None) -> Value:
         if lhs.typ != rhs.typ or lhs.typ.kind not in INT_TYPES:
             raise TypeErrorS31("std::int requires two equally typed fixed-width integers")
-        if op not in {"int_add_checked", "int_add_wrapping", "int_sub_checked", "int_sub_wrapping", "int_le"}:
+        if op not in {"int_add_checked", "int_add_wrapping", "int_sub_checked", "int_sub_wrapping", "int_le", "int_mul_wrapping"}:
             raise TypeErrorS31(f"unsupported fixed-width integer operation {op}")
         result = Type("bit", 1) if op == "int_le" else lhs.typ
         value = self.emit(op, result, wanted=wanted, span=span,
