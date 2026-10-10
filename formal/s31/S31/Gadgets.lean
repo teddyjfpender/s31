@@ -32,6 +32,7 @@ import S31.Gadgets.Air.FunctionalBridge
 import S31.Gadgets.Air.AffineChipBoundary
 import S31.Gadgets.Air.GenericChipBoundary
 import S31.Gadgets.Air.IndexedChipPath
+import S31.Gadgets.Air.TaggedPairBridgeRows
 import S31.Gadgets.Air.PrivateBridgeChallenge
 import S31.Gadgets.Air.PrivateBridgeChallengeMany
 import S31.Gadgets.Air.SelectRows

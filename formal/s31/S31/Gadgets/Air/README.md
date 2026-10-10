@@ -620,7 +620,8 @@ Exact multiset equality of the two columns forces each state value to agree
 at its **call and index**. If the local row rule is `out = step(in)`, the end
 must be `step(step(start))`. The theorem proves this for every `R`, including
 zero; canonical indices prevent a disconnected cycle or an extra row from
-being hidden in the multiset. It assumes the exact indexed multiset and local
+being hidden in the multiset. It assumes the exact indexed multiset, a
+reindexing of native witness rows into canonical `Fin R` order, and local
 row rule. It does **not** establish that the production chip emits these
 indexed events, that its bridge supplies the authenticated endpoints, or that
 random-challenge LogUp, PCS, and Fiat–Shamir imply exact balance.
@@ -633,6 +634,12 @@ produced value is `0`. The modeled event lists use `Fin 2 × Fin (R + 1)` keys,
 so a call swap is rejected for the same reason. The `R < p` bound belongs to
 the separate reduction from field-valued lookup identities to exact integer
 multisets; this theorem starts from exact balance and is characteristic free.
+`TaggedPairBridgeRows.lean` separately proves all eight bridge endpoint
+columns are constant when the native-form `current−next` residuals vanish on
+the first fifteen of the sixteen logical rows. The actual AIR checks the
+cyclic edge too. [The boundary audit](TAGGED_PAIR_BOUNDARY_AUDIT.md) maps
+these conditional Lean premises to the staged engine and gives the missing
+arbitrary-step coverage argument and a local-row malformed trace.
 `PrivateBridgeChallenge.lean` specializes the Gate exceptional-challenge
 bound to one addressed endpoint whose sixteen bridge rows vary. It also
 proves a joint eight-address Gate bound: if repeated addresses have coherent

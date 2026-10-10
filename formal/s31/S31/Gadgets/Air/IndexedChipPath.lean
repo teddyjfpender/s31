@@ -16,6 +16,9 @@ The exact balance premise is deliberately stronger than the production
 random-challenge LogUp check. This file does not prove that the native chip
 AIR emits these indexed events, that the circuit/chip bridge authenticates the
 start and end, or that Fiat–Shamir and PCS soundness establish exact balance.
+In particular, the native chip's step column is witness-controlled. Replacing
+arbitrary native rows by the canonical `Fin R` indexing used here requires a
+separate coverage and reindexing theorem from exact tagged event balance.
 The usual `R < p` multiplicity condition is needed in that missing reduction;
 this pure exact-multiset theorem is valid in every value type and needs no
 field characteristic assumption.
