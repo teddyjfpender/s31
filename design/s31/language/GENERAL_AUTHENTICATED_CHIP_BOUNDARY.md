@@ -135,31 +135,34 @@ proof profiles soundness-equivalent.
 
 ## Implementation map: two independent calls
 
-The first multi-call release should be the explicit `direct-chip-pair`
-lowering, capped at exactly two calls. Use profile
-`direct-m31-chip-pair-v1`, key schema
-`s31-verification-key-direct-chip-pair-v1`, manifest schema
-`s31-component-manifest-direct-chip-pair-v1`, proof magic `S31NAT8P`, and
+The staged first multi-call milestone is a fixed two-call profile; it does
+not admit arbitrary `N`. Its implemented profile is
+`direct-m31-private-pair-v1`, key schema
+`s31-verification-key-direct-pair-v1`, manifest schema
+`s31-component-manifest-direct-pair-v1`, proof magic `S31NAT8P`, and
 transcript tag `0x5333315041495201` (`S31PAIR` plus version byte). Keep the
 existing one-call `direct-chip` key schemas, proof magic, six-field tuple and
 native verifier unchanged. A later variable-`N` profile can
 reuse the internal plan with another versioned limit and measured geometry.
 
-Use a source relation with two private four-lane inputs, two `repeat` nodes
-with different constants and lengths (for example 16 and 32 rounds), and a
-public sum of their four-lane outputs. The exact source operations already
-exist; the new feature is extraction and proof selection for **both** nodes.
+The admitted normalized version-1 source has two private four-lane inputs,
+two `square; add_const` repeats with independently chosen constants and lengths (for
+example 16 and 32 rounds), then both a public lane-wise **sum and product**
+of the two four-lane results. The public statement is exactly those eight
+words. The text frontend currently emits only one version-1 public output;
+text syntax for this pair awaits a version-2 record ABI correspondence gate.
+The new feature is extraction and proof selection for **both** repeats.
 The first pair profile should reject unsupported repeat bodies, extra repeat
 nodes, unconsumed calls, and noncanonical parameter values before packaging.
 
 | Owner | Required change |
 | --- | --- |
-| S31 `language/relation.zig` and `canonical.zig` | Extract an ordered call plan from canonical IR, assigning call IDs `0,1` in canonical node order. Record each node ID, chip kind/version, rounds, transformed constant and nonzero affine coordinate map. Reusing or skipping an ID is invalid. |
-| S31 `language/relation_compiler.zig` | Add a separate tagged multi-call lowering mode. For each planned repeat, emit the same constrained affine input/output wires as the one-call path, collect four input and four output addresses, and return a plan in `Maps`. Value and topology compilation must produce identical plans apart from witness values. |
+| S31 `language/relation.zig` and `canonical.zig` | Admit exactly the normalized two-repeat source shape and derive canonical repeat IDs. Assign call IDs `0,1` in source order and reject merged, reused or skipped repeat nodes. Affine coordinate changes are outside this first profile. |
+| S31 `language/relation_compiler.zig` | Lower each planned repeat to constrained scalar input/output wires, collect four input and four output addresses, and return a source-owned plan in `Maps`. Value and topology compilation must produce identical plans and preprocessed roots. |
 | stwo-zig `frontends/circuit/common/direct_arithmetic.zig` | Build one preprocessed circuit from all boundary calls. Validate each address has one producer, reject forbidden public reservation addresses, and add one Gate use **per occurrence**, including repeated addresses. Bound the total multiplicity below the field characteristic. Preserve the one-boundary constructor. |
-| stwo-zig `integrations/circuit_cpu/repeated_step_chip.zig` and `private_boundary_bridge.zig` | Add versioned tagged AIR modules. The chip and bridge use `Chip(relation_id, call_id, index, lane0..3)` with seven compression powers. `call_id` is a fixed component parameter, so the nine chip and eight bridge main-column widths need not grow. The new bridge also enforces eight row-to-row endpoint equalities. Keep the old six-field components callable by legacy proofs. |
-| stwo-zig `integrations/circuit_cpu/direct_arithmetic.zig` | Add a shared pair-plan prover schedule: circuit, chip 0, chip 1, bridge 0, bridge 1. Commit all base columns before drawing one lookup challenge pair; mix the five claimed sums before committing all interaction columns, matching the existing direct prover transcript. Require `circuit_sum + Σ chip_sums + Σ bridge_sums = 0`. |
-| S31 `runtime/component_manifest.zig`, `mvp_runtime.zig`, `native_verifier.zig` | Generate and reconstruct the exact five-component roster from sealed source and pinned AIR. The native verifier uses the validated plan for PCS logs, offsets, component handles, sum positions and transcript setup **before proof deserialization**. The new proof envelope carries exactly five canonical QM31 sums. |
+| stwo-zig `integrations/circuit_cpu/tagged_pair_chip.zig` and `tagged_pair_bridge.zig` | Add separate tagged AIR modules. The chip and bridge use `Chip(relation_id, call_id, index, lane0..3)` with seven compression powers while the existing Gate relation remains six-field. `call_id` is a fixed component parameter, so the nine chip and eight bridge main-column widths need not grow. The new bridge also enforces eight row-to-row endpoint equalities. Keep the old six-field components callable by legacy proofs. |
+| stwo-zig `integrations/circuit_cpu/direct_pair_arithmetic.zig` | Add a shared pair-plan prover schedule: circuit, chip 0, chip 1, bridge 0, bridge 1. Commit all base columns before drawing one lookup challenge pair; mix the five claimed sums before committing all interaction columns, matching the existing direct prover transcript. Require `circuit_sum + Σ chip_sums + Σ bridge_sums = 0`. |
+| S31 `runtime/component_manifest.zig`, `pair_source_binding.zig`, `pair_native_package.zig` | Generate and reconstruct the exact five-component roster from source and AIR. The feature-disabled native verifier validates the source Plan, manifest and exact key bytes **before proof deserialization**, then uses the fixed roster to build component handles and verify the proof. The new proof envelope carries exactly five canonical QM31 sums. The released verifier must embed source, key and AIR bytes. |
 | S31 `python/package/{build,verify}.py` and acceptance | Bind the versioned manifest into key, sidecar, cost report and package; retain explicit legacy branches. Build an honest pair proof and adversarial resealed-key, witness and proof cases. |
 
 For two calls, tree 1 has `12 + 2·9 + 2·8 = 46` main columns and tree 2
