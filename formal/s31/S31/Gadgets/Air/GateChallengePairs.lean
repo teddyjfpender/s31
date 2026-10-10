@@ -132,6 +132,45 @@ theorem reciprocal_closure_implies_bad_pair
   exact (rejected_outside_exceptional_sets left right alpha z hnotZ)
     hclosed
 
+/-- Any event denominator is nonzero outside the explicit bad-pair set.
+This matters because the AIR fraction equations alone do not constrain a
+zero denominator. -/
+theorem event_denominator_nonzero_of_not_bad_pair
+    (left right : List Event) (event : Event)
+    (hmem : event ∈ left ++ right)
+    (alpha z : GateSecure)
+    (hpair : (alpha, z) ∉ badPairs left right) :
+    combineTerm (eventTuple event) alpha z ≠ 0 := by
+  classical
+  have hnotA : alpha ∉ badAlpha (left ++ right) := by
+    intro ha
+    apply hpair
+    apply Finset.mem_union_left
+    exact Finset.mem_product.mpr ⟨ha, Finset.mem_univ z⟩
+  have hnotZ : z ∉ badZ left right alpha := by
+    intro hz
+    apply hpair
+    apply Finset.mem_union_right
+    apply Finset.mem_biUnion.mpr
+    refine ⟨alpha, Finset.mem_univ _, ?_⟩
+    simp [hnotA, hz]
+  have hsupport : compressedEvent alpha event ∈
+      eventSupport (left.map (compressedEvent alpha))
+        (right.map (compressedEvent alpha)) := by
+    simp only [eventSupport, List.mem_toFinset, List.mem_append,
+      List.mem_map]
+    rcases List.mem_append.mp hmem with hl | hr
+    · exact Or.inl ⟨event, hl, rfl⟩
+    · exact Or.inr ⟨event, hr, rfl⟩
+  have hzne : z ≠ compressedEvent alpha event := by
+    intro heq
+    apply hnotZ
+    apply Finset.mem_union_left
+    exact heq.symm ▸ hsupport
+  intro hzero
+  exact hzne ((combineTerm_zero_iff
+    (eventTuple event) alpha z).mp hzero)
+
 /-- For an ideal independent uniform pair from QM31², the false-closure
 fraction is at most `(5s² + 2s) / p⁴`, where `s` is the number of distinct
 canonical Gate events. -/

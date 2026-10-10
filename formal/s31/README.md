@@ -312,6 +312,16 @@ and per-event counts below `p`, at most `(5s²+2s)·p⁴` of the `p⁸` ideal
 challenge pairs can close that equation. The rows and witness events must
 be fixed before the challenge draw; committed-trace correspondence remains
 a separate obligation.
+`GateAirChallengeSoundness` connects the two modeled LogUp interaction
+columns and their claimed sum to the row equation when denominators are
+nonzero. The raw AIR does not enforce that premise. `GateAirRawSoundness`
+includes every row input and output denominator, including zero-multiplicity
+outputs. If `r` is the number of modeled AIR rows, at most
+`(5s²+2s+3r)·p⁴` of the `p⁸` ideal challenge pairs can accept a fixed
+invalid Gate witness. The interaction columns and claimed sum may depend on
+the challenges. A wrong input value at an address with a unique producer is
+a concrete invalid-witness case in the guarded theorem. These results still
+require a correspondence proof for native committed columns and transcript.
 `GateAddressCounts` proves a practical sufficient condition: if the integer
 use and yield histograms are below `p` at every address, every event count
 is below `p`. The Zig preprocessed builder now rejects a multiplicity as

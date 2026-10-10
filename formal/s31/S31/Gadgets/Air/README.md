@@ -304,6 +304,21 @@ addresses and per-event count bounds give the same `(5s²+2s)·p⁴` upper
 bound directly for row-equation closure. This is conditional on a fixed
 pre-challenge witness and does not identify the native committed columns
 with these modeled rows.
+`GateAirChallengeSoundness.lean` quantifies over arbitrary challenge-dependent
+interaction columns and a claimed component sum. With nonzero denominators,
+accepted pair and singleton AIR residuals plus the closed external Gate
+claim imply the row equation closes; the fixed-invalid-row rate is at most
+`(5s²+2s)/p⁴`. A wrong input wire read with a unique producer meets the
+invalid-row premise.
+
+`GateAirRawSoundness.lean` removes the nonzero-denominator acceptance premise.
+The native AIR fraction equations can be vacuous when a denominator is zero,
+including an output with zero multiplicity. The proof puts all three tuples
+of each modeled AIR row into a second exceptional set. Outside that set it
+derives the nonzero premises and applies the guarded theorem. For `r` fixed
+rows, the raw AIR accepts a false Gate relation on at most
+`(5s²+2s+3r)·p⁴` out of `p⁸` ideal challenge pairs. Native committed-column
+and transcript correspondence remain open.
 `GateAddressCounts.lean` further proves that an individual event cannot
 occur more often than its address occurs in the integer histogram.
 Consequently, per-address histogram bounds below `p` suffice for the
