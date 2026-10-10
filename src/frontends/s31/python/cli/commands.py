@@ -15,6 +15,7 @@ from inspection.reports import equations as report_equations, explain as report_
 from inspection.source_layout import source_layout
 from package.build import build, package_for
 from package.context import invoke, load_source, lower_text, write_json
+from package.trust import admit_pinned_package
 from package.verify import verify_package
 from runtime.folds import audit_fold_chain
 from runtime.trials import independent_value_check, trial, tune
@@ -109,7 +110,14 @@ def dispatch(args: argparse.Namespace) -> None:
         return
 
     package = args.package.resolve()
-    manifest = verify_package(package)
+    if args.command == "verify-pinned":
+        pins = {kind: getattr(args, f"{kind}_sha256")
+                for kind in ("source", "key", "prover", "verifier")}
+        if args.text_sha256 is not None:
+            pins["text"] = args.text_sha256
+        _, manifest = admit_pinned_package(package, pins)
+    else:
+        manifest = verify_package(package)
     if args.command == "prove":
         relation = json.loads((package / "source.s31.json").read_text())
         supplied = parse_assignment_json(args.assignment.read_bytes())
@@ -355,7 +363,7 @@ def dispatch(args: argparse.Namespace) -> None:
                      str(package / "recursive-verification-key.json"),
                      *((str(package / "recursive-verification-key-level2.json"),) if wide_fold else ()),
                      str(package / key_name)), end="")
-    elif args.command == "verify":
+    elif args.command in ("verify", "verify-pinned"):
         proof = args.proof.resolve()
         statement = args.statement.resolve() if args.statement else Path(str(proof) + ".statement.json")
         executable = package / "bin" / f"s31-{manifest['name']}-native-verifier"

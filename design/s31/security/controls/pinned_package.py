@@ -4,6 +4,7 @@
 The pins must come from a trusted channel. Reading them from the package's own
 manifest would make this check circular. Both executable binaries are pinned:
 the prover receives private witness data and the verifier decides acceptance.
+Text packages additionally require an exact source.s31 pin.
 This command only checks files; it does not run either binary or authenticate
 the issuer of the pins.
 """
@@ -11,57 +12,14 @@ the issuer of the pins.
 from __future__ import annotations
 
 import argparse
-import hashlib
-import hmac
 import json
-import re
 import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(REPO / "src/frontends/s31/python"))
 
-from package.verify import verify_package  # noqa: E402
-
-PIN_RE = re.compile(r"[0-9a-f]{64}\Z")
-NAME_RE = re.compile(r"[A-Za-z0-9_-]+\Z")
-
-
-def pinned_paths(package: Path) -> dict[str, Path]:
-    manifest = json.loads((package / "manifest.json").read_text())
-    name = manifest.get("name")
-    if not isinstance(name, str) or not NAME_RE.fullmatch(name):
-        raise ValueError("invalid package name for pinned verifier")
-    return {
-        "source": package / "source.s31.json",
-        "key": package / "verification-key.json",
-        "prover": package / "bin" / f"s31-{name}-prover",
-        "verifier": package / "bin" / f"s31-{name}-native-verifier",
-    }
-
-
-def check_pinned_package(package: Path, pins: dict[str, str]) -> dict[str, str]:
-    """Check external exact-byte pins, then package-internal consistency.
-
-    Callers must supply all four pins independently of the package being
-    checked. This does not pin the trusted local Python checker itself.
-    """
-    if set(pins) != {"source", "key", "prover", "verifier"}:
-        raise ValueError("source, key, prover, and verifier pins are all required")
-    if any(not isinstance(digest, str) or not PIN_RE.fullmatch(digest)
-           for digest in pins.values()):
-        raise ValueError("pins must be lowercase SHA-256 hex digests")
-    paths = pinned_paths(package)
-    actual: dict[str, str] = {}
-    package_root = package.resolve(strict=True)
-    for kind, path in paths.items():
-        if path.is_symlink() or not path.resolve(strict=True).is_relative_to(package_root):
-            raise ValueError(f"pinned {kind} is a symlink or escapes the package")
-        actual[kind] = hashlib.sha256(path.read_bytes()).hexdigest()
-        if not hmac.compare_digest(actual[kind], pins[kind]):
-            raise ValueError(f"pinned {kind} digest mismatch")
-    verify_package(package)
-    return actual
+from package.trust import check_pinned_package, pinned_paths  # noqa: E402
 
 
 def main() -> int:
@@ -71,14 +29,18 @@ def main() -> int:
     parser.add_argument("--key-sha256", required=True)
     parser.add_argument("--prover-sha256", required=True)
     parser.add_argument("--verifier-sha256", required=True)
+    parser.add_argument("--text-sha256", help="required for a package containing source.s31")
     args = parser.parse_args()
     try:
-        actual = check_pinned_package(args.package, {
+        pins = {
             "source": args.source_sha256,
             "key": args.key_sha256,
             "prover": args.prover_sha256,
             "verifier": args.verifier_sha256,
-        })
+        }
+        if args.text_sha256 is not None:
+            pins["text"] = args.text_sha256
+        actual = check_pinned_package(args.package, pins)
     except (ValueError, OSError, KeyError, TypeError, RuntimeError,
             UnicodeError, json.JSONDecodeError) as exc:
         print(f"pinned package rejected: {exc}", file=sys.stderr)

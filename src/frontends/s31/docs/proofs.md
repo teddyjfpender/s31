@@ -88,12 +88,27 @@ verification key through a trusted distribution path and check their
 identity. Re-lowering also does not prove that the compiler translated the
 source with the semantics the programmer intended.
 
-For an untrusted package, the [external-pin checker](../../../../design/s31/security/controls/pinned_package.py)
-can require SHA-256 digests of the normalized source, verification key, native
-prover, and native verifier supplied by a separate trusted channel. It checks those exact
-bytes before the package consistency checks. Pins copied from the package's
-own manifest provide no external authentication. The checker admits files at
-one point in time; it does not sandbox execution or sign a release.
+For an untrusted package, `s31 verify-pinned` requires SHA-256 digests of the
+normalized source, verification key, native prover, and native verifier from
+a separate trusted channel. A text package also requires the exact `.s31`
+source digest. It checks these bytes and package consistency immediately
+before running the native verifier:
+
+```sh
+python3 src/frontends/s31/python/s31.py verify-pinned PACKAGE PROOF \
+  --source-sha256 SOURCE_DIGEST --key-sha256 KEY_DIGEST \
+  --prover-sha256 PROVER_DIGEST --verifier-sha256 VERIFIER_DIGEST \
+  --text-sha256 TEXT_DIGEST
+```
+
+Omit `--text-sha256` only for a normalized-JSON package with no `source.s31`.
+Pins copied from the package's own manifest provide no external
+authentication. The package directory must remain unchanged during this
+command; pinning does not sandbox its executable or sign a release. The
+`verify-pinned` command covers base proofs; recursive and fold verification
+still require an independently trusted package or installed verifier. The
+[standalone control](../../../../design/s31/security/controls/pinned_package.py)
+uses the same production admission code for audits without running a proof.
 
 ## What the verifier checks
 

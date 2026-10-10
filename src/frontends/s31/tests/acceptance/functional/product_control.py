@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import json
+import contextlib
+import io
 import sys
 import tempfile
 from pathlib import Path
@@ -12,6 +14,9 @@ S31 = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(S31 / "python"))
 
 import s31
+from cli.commands import dispatch
+from cli.parser import make_parser
+from package.trust import pinned_paths
 from text_frontend import compile_file
 
 
@@ -73,6 +78,17 @@ def main() -> None:
                 raise AssertionError(f"record selection failed native trial {index}")
             reports.append({"selector": 1 if index == 0 else 0,
                             "proof_bytes": report["proof_bytes"]})
+        package = packages["product"]
+        first_trial = work / "trial-0"
+        pinned_args = ["verify-pinned", str(package),
+                       str(first_trial / "proof.bin"),
+                       "--statement", str(first_trial / "statement.json")]
+        for kind, path in pinned_paths(package).items():
+            pinned_args.extend((f"--{kind}-sha256", s31.file_hash(path)))
+        with contextlib.redirect_stdout(io.StringIO()) as native_output:
+            dispatch(make_parser().parse_args(pinned_args))
+        if not native_output.getvalue().strip():
+            raise AssertionError("externally pinned native verifier produced no acceptance")
         print(json.dumps({
             "schema": "s31-functional-product-control-acceptance-v1",
             "same_normalized_relation": True,
@@ -80,6 +96,7 @@ def main() -> None:
             "raw": costs["product"]["raw"],
             "padded": costs["product"]["padded"],
             "trials": reports,
+            "externally_pinned_verification": True,
         }, sort_keys=True, indent=2))
 
 

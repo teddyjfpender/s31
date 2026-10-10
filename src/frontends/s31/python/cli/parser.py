@@ -115,6 +115,13 @@ def make_parser() -> argparse.ArgumentParser:
     sub.add_argument("package", type=Path)
     sub.add_argument("proof", type=Path)
     sub.add_argument("--statement", type=Path)
+    sub = commands.add_parser("verify-pinned", help="verify a proof only after external package digest admission")
+    sub.add_argument("package", type=Path)
+    sub.add_argument("proof", type=Path)
+    sub.add_argument("--statement", type=Path)
+    for kind in ("source", "key", "prover", "verifier"):
+        sub.add_argument(f"--{kind}-sha256", required=True)
+    sub.add_argument("--text-sha256", help="required when the package contains source.s31")
     sub = commands.add_parser("verify-recursive", help="verify an outer proof against its embedded child key")
     sub.add_argument("package", type=Path)
     sub.add_argument("proof", type=Path)
