@@ -97,6 +97,9 @@ def infer_builtin(name: str, generic: int | None, args: tuple[SourceType, ...],
         if "from_limbs_" in name:
             require(source == Type("u16", target.length),
                     f"from_limbs_{suffix} requires [u16; {target.length}]")
+        elif "cast_checked_" in name:
+            require(source.kind in INT_TYPES,
+                    "checked integer cast requires a fixed-width scalar")
         else:
             require(source.kind in INT_TYPES and source.length == target.length and
                     INT_TYPES[source.kind][0] == INT_TYPES[target.kind][0],

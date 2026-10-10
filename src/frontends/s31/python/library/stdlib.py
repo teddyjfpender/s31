@@ -150,6 +150,17 @@ class Builder:
         return self.int_view(Value(Type(target, value.typ.length), ref=self.realize(value).ref),
                              wanted=wanted, span=span)
 
+    def int_cast_checked(self, value: Value, target: str, *, wanted: str | None = None,
+                         span: dict[str, int] | None = None) -> Value:
+        target = f"int_{target}"
+        if value.typ.kind not in INT_TYPES or target not in INT_TYPES:
+            raise TypeErrorS31("checked integer cast requires fixed-width scalar types")
+        width, signed = INT_TYPES[target]
+        typ = Type(target, max(1, width // 16))
+        encoded = int_spec(value.typ) | ((width | (256 if signed else 0)) << 9)
+        return self.emit("int_cast_checked", typ, wanted=wanted, span=span,
+                         lhs=self.realize(value).ref, constant=encoded)
+
     def int_binary(self, op: str, lhs: Value, rhs: Value, *, wanted: str | None = None,
                    span: dict[str, int] | None = None) -> Value:
         if lhs.typ != rhs.typ or lhs.typ.kind not in INT_TYPES:

@@ -1,0 +1,7 @@
+use std@1;
+
+// Numeric widening: -1 becomes the i16 pattern 0xffff, not 0x00ff.
+circuit i8_to_i16(private value: i8) -> public i16 {
+    let result = std::int::cast_checked_i16(value);
+    result
+}

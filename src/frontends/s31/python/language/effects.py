@@ -24,6 +24,8 @@ PARTIAL_BUILTINS = frozenset({
     "std::int::from_limbs_i8", "std::int::from_limbs_u8",
     "std::math::add_u256_checked", "std::math::sub_u256_checked",
     "std::math::sum_u256_checked", "std::math::inv", "std::math::div",
+    *(f"std::int::cast_checked_{kind}" for kind in
+      ("u8", "u16", "u32", "u64", "u128", "i8", "i16", "i32", "i64", "i128")),
 })
 
 TOTAL_BUILTINS = frozenset({

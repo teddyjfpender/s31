@@ -19,6 +19,8 @@ INT_BINARY_CALLS = {
 INT_COMPARE_CALLS = {"std::int::lt", "std::int::ge", "std::int::gt", "std::int::eq", "std::int::ne"}
 INT_CAST_CALLS = {f"std::int::from_limbs_{kind}" for kind in INT_SOURCE_TYPES} | {
     f"std::int::reinterpret_{kind}" for kind in INT_SOURCE_TYPES
+} | {
+    f"std::int::cast_checked_{kind}" for kind in INT_SOURCE_TYPES
 }
 
 

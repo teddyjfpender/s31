@@ -1,5 +1,6 @@
 import S31.Gadgets.Arithmetic
 import S31.Gadgets.IntegerMultiply
+import S31.Gadgets.IntegerCast
 import S31.Gadgets.Air.Qm31Ops
 import S31.Gadgets.Air.PackRows
 import S31.Gadgets.Air.NativeQm31AirProof

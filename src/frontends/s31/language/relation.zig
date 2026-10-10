@@ -55,7 +55,7 @@ pub fn applyStep(values: []M31, step: Step) !void {
         },
     }
 }
-pub const Op = enum { constant, cast_m31, add, mul, add_const, mul_const, repeat, hash_blake2s, hash_blake2s_leaf, hash_blake2s_pair, select, hash_poseidon2_leaf, hash_poseidon2_pair, sum_lanes, u256_add, u256_le, u256_add_checked, hash_sha256d_header, bitcoin_target_mainnet, bitcoin_prev_hash, bitcoin_header_bits, bitcoin_genesis_hash_mainnet, bitcoin_header_time, u32_lt, inv, is_zero, u256_sub, u256_sub_checked, array_get, array_concat, array_slice, bool_not, bool_and, bool_or, bool_xor, bool_select, bitcoin_block_work, int_view, int_add_checked, int_add_wrapping, int_sub_checked, int_sub_wrapping, int_le, int_mul_wrapping, int_mul_checked };
+pub const Op = enum { constant, cast_m31, add, mul, add_const, mul_const, repeat, hash_blake2s, hash_blake2s_leaf, hash_blake2s_pair, select, hash_poseidon2_leaf, hash_poseidon2_pair, sum_lanes, u256_add, u256_le, u256_add_checked, hash_sha256d_header, bitcoin_target_mainnet, bitcoin_prev_hash, bitcoin_header_bits, bitcoin_genesis_hash_mainnet, bitcoin_header_time, u32_lt, inv, is_zero, u256_sub, u256_sub_checked, array_get, array_concat, array_slice, bool_not, bool_and, bool_or, bool_xor, bool_select, bitcoin_block_work, int_view, int_add_checked, int_add_wrapping, int_sub_checked, int_sub_wrapping, int_le, int_mul_wrapping, int_mul_checked, int_cast_checked };
 /// The node constant binds an integer's width and signedness into canonical IR.
 /// The source-level scalar is carried as little-endian u16 words; an 8-bit
 /// scalar uses one u16 word with an additional circuit-enforced byte bound.
@@ -73,6 +73,21 @@ pub const IntegerSpec = struct {
         if (value != width and value != width + 256) return null;
         if (width != 8 and width != 16 and width != 32 and width != 64 and width != 128) return null;
         return .{ .width = width, .signed = value >= 256 };
+    }
+};
+/// Two nine-bit IntegerSpec tags, source first. A cast changes the numeric
+/// value's representation only if the value fits the destination range.
+pub const IntegerCastSpec = struct {
+    source: IntegerSpec,
+    target: IntegerSpec,
+
+    pub fn decode(encoded: ?u32) ?IntegerCastSpec {
+        const value = encoded orelse return null;
+        if (value >= (1 << 18)) return null;
+        return .{
+            .source = IntegerSpec.decode(value & 0x1ff) orelse return null,
+            .target = IntegerSpec.decode(value >> 9) orelse return null,
+        };
     }
 };
 pub const mainnet_genesis_hash_raw: [32]u8 = .{ 0x6f, 0xe2, 0x8c, 0x0a, 0xb6, 0xf1, 0xb3, 0x72, 0xc1, 0xa6, 0xa2, 0x46, 0xae, 0x63, 0xf7, 0x4f, 0x93, 0x1e, 0x83, 0x65, 0xe1, 0x5a, 0x08, 0x9c, 0x68, 0xd6, 0x19, 0x00, 0x00, 0x00, 0x00, 0x00 };
@@ -286,6 +301,13 @@ pub const Program = struct {
                     }
                     result = if (node.op == .int_le) .{ .kind = .m31, .length = 1 } else lhs.?;
                 },
+                .int_cast_checked => {
+                    const spec = IntegerCastSpec.decode(node.constant) orelse return error.InvalidIntegerSpec;
+                    if (lhs == null or lhs.?.kind != .u16 or lhs.?.length != spec.source.limbCount() or
+                        rhs != null or node.selector != null or node.index != null or node.length != null or
+                        node.rounds != null or node.body != null) return error.InvalidNode;
+                    result = .{ .kind = .u16, .length = spec.target.limbCount() };
+                },
                 .bitcoin_block_work => {
                     if (lhs == null or lhs.?.kind != .u16 or lhs.?.length != 16 or
                         rhs != null or node.selector != null or node.constant != null or
@@ -377,12 +399,13 @@ pub const Program = struct {
                 .hash_sha256d_header, .bitcoin_target_mainnet, .bitcoin_genesis_hash_mainnet, .bitcoin_block_work => 16,
                 .bitcoin_prev_hash => 16,
                 .bitcoin_header_bits, .bitcoin_header_time => 2,
+                .int_cast_checked => (IntegerCastSpec.decode(node.constant) orelse return error.InvalidIntegerSpec).target.limbCount(),
                 .hash_blake2s, .hash_blake2s_leaf, .hash_blake2s_pair, .hash_poseidon2_leaf, .hash_poseidon2_pair => 8,
                 else => (shapes.get(node.lhs orelse return error.InvalidNode) orelse return error.UnknownOperand).length,
             };
             const shape: Shape = .{ .kind = if (node.op == .array_get or node.op == .array_concat or node.op == .array_slice or node.op == .select)
                 (shapes.get(node.lhs.?) orelse return error.UnknownOperand).kind
-            else if (node.op == .int_view or node.op == .int_add_checked or node.op == .int_add_wrapping or node.op == .int_sub_checked or node.op == .int_sub_wrapping or node.op == .int_mul_wrapping or node.op == .int_mul_checked or node.op == .u256_add or node.op == .u256_add_checked or node.op == .u256_sub or node.op == .u256_sub_checked or node.op == .hash_sha256d_header or node.op == .bitcoin_target_mainnet or node.op == .bitcoin_prev_hash or node.op == .bitcoin_header_bits or node.op == .bitcoin_header_time or node.op == .bitcoin_genesis_hash_mainnet or node.op == .bitcoin_block_work) .u16 else .m31, .length = length };
+            else if (node.op == .int_view or node.op == .int_add_checked or node.op == .int_add_wrapping or node.op == .int_sub_checked or node.op == .int_sub_wrapping or node.op == .int_mul_wrapping or node.op == .int_mul_checked or node.op == .int_cast_checked or node.op == .u256_add or node.op == .u256_add_checked or node.op == .u256_sub or node.op == .u256_sub_checked or node.op == .hash_sha256d_header or node.op == .bitcoin_target_mainnet or node.op == .bitcoin_prev_hash or node.op == .bitcoin_header_bits or node.op == .bitcoin_header_time or node.op == .bitcoin_genesis_hash_mainnet or node.op == .bitcoin_block_work) .u16 else .m31, .length = length };
             if (std.mem.eql(u8, node.name, name)) return shape;
             try shapes.put(allocator, node.name, shape);
         }
@@ -474,7 +497,7 @@ pub fn evaluate(allocator: std.mem.Allocator, program: Program, assignment: Assi
     }
     for (program.inputs) |input| try values.put(allocator, input.name, try inputValues(allocator, assignment, input));
     for (program.nodes) |node| {
-        const length: usize = if (node.op == .constant or node.op == .array_slice) node.length.? else if (node.op == .array_get or node.op == .sum_lanes or node.op == .u256_le or node.op == .u32_lt or node.op == .int_le or node.op == .is_zero or node.op == .bool_not or node.op == .bool_and or node.op == .bool_or or node.op == .bool_xor or node.op == .bool_select) 1 else if (node.op == .array_concat) (values.get(node.lhs.?) orelse return error.UnknownOperand).len + (values.get(node.rhs.?) orelse return error.UnknownOperand).len else if (node.op == .hash_sha256d_header or node.op == .bitcoin_target_mainnet or node.op == .bitcoin_prev_hash or node.op == .bitcoin_genesis_hash_mainnet or node.op == .bitcoin_block_work) 16 else if (node.op == .bitcoin_header_bits or node.op == .bitcoin_header_time) 2 else if (node.op == .hash_blake2s or node.op == .hash_blake2s_leaf or node.op == .hash_blake2s_pair or node.op == .hash_poseidon2_leaf or node.op == .hash_poseidon2_pair) 8 else (values.get(node.lhs.?) orelse return error.UnknownOperand).len;
+        const length: usize = if (node.op == .constant or node.op == .array_slice) node.length.? else if (node.op == .array_get or node.op == .sum_lanes or node.op == .u256_le or node.op == .u32_lt or node.op == .int_le or node.op == .is_zero or node.op == .bool_not or node.op == .bool_and or node.op == .bool_or or node.op == .bool_xor or node.op == .bool_select) 1 else if (node.op == .array_concat) (values.get(node.lhs.?) orelse return error.UnknownOperand).len + (values.get(node.rhs.?) orelse return error.UnknownOperand).len else if (node.op == .int_cast_checked) (IntegerCastSpec.decode(node.constant) orelse return error.InvalidIntegerSpec).target.limbCount() else if (node.op == .hash_sha256d_header or node.op == .bitcoin_target_mainnet or node.op == .bitcoin_prev_hash or node.op == .bitcoin_genesis_hash_mainnet or node.op == .bitcoin_block_work) 16 else if (node.op == .bitcoin_header_bits or node.op == .bitcoin_header_time) 2 else if (node.op == .hash_blake2s or node.op == .hash_blake2s_leaf or node.op == .hash_blake2s_pair or node.op == .hash_poseidon2_leaf or node.op == .hash_poseidon2_pair) 8 else (values.get(node.lhs.?) orelse return error.UnknownOperand).len;
         const out = try allocator.alloc(M31, length);
         errdefer allocator.free(out);
         const lhs = if (node.lhs) |name| values.get(name) orelse return error.UnknownOperand else null;
@@ -531,6 +554,23 @@ pub fn evaluate(allocator: std.mem.Allocator, program: Program, assignment: Assi
         if (node.op == .bitcoin_prev_hash or node.op == .bitcoin_header_bits or node.op == .bitcoin_header_time) {
             const start: usize = if (node.op == .bitcoin_prev_hash) 2 else if (node.op == .bitcoin_header_time) 34 else 36;
             @memcpy(out, lhs.?[start .. start + length]);
+            try values.put(allocator, node.name, out);
+            continue;
+        }
+        if (node.op == .int_cast_checked) {
+            const spec = IntegerCastSpec.decode(node.constant) orelse return error.InvalidIntegerSpec;
+            var pattern: u256 = 0;
+            for (lhs.?, 0..) |word, i| pattern |= @as(u256, word.v) << @as(u8, @intCast(16 * i));
+            const source_limit: u256 = @as(u256, 1) << @as(u8, @intCast(spec.source.width));
+            if (pattern >= source_limit) return error.IntegerOutOfRange;
+            const source_negative = spec.source.signed and pattern >= source_limit / 2;
+            const value: i256 = @as(i256, @intCast(pattern)) - if (source_negative) @as(i256, @intCast(source_limit)) else 0;
+            const target_limit: i256 = @as(i256, 1) << @as(u8, @intCast(spec.target.width));
+            const minimum: i256 = if (spec.target.signed) -(target_limit >> 1) else 0;
+            const maximum: i256 = if (spec.target.signed) (target_limit >> 1) - 1 else target_limit - 1;
+            if (value < minimum or value > maximum) return error.IntegerOverflow;
+            const output_pattern: u256 = @intCast(if (value < 0) value + target_limit else value);
+            for (out, 0..) |*slot, i| slot.* = M31.fromCanonical(@intCast((output_pattern >> @as(u8, @intCast(16 * i))) & 0xffff));
             try values.put(allocator, node.name, out);
             continue;
         }
@@ -723,7 +763,7 @@ pub fn evaluate(allocator: std.mem.Allocator, program: Program, assignment: Assi
                 if (bit > 1) return error.InvalidSelector;
                 break :blk if (bit == 0) lhs.?[i] else rhs.?[i];
             },
-            .hash_blake2s, .hash_blake2s_leaf, .hash_blake2s_pair, .hash_poseidon2_leaf, .hash_poseidon2_pair, .u256_add, .u256_le, .u256_add_checked, .u256_sub, .u256_sub_checked, .u32_lt, .hash_sha256d_header, .bitcoin_target_mainnet, .bitcoin_block_work, .bitcoin_prev_hash, .bitcoin_header_bits, .bitcoin_header_time, .bitcoin_genesis_hash_mainnet, .array_get, .array_concat, .array_slice, .int_view, .int_add_checked, .int_add_wrapping, .int_sub_checked, .int_sub_wrapping, .int_le, .int_mul_wrapping, .int_mul_checked => unreachable,
+            .hash_blake2s, .hash_blake2s_leaf, .hash_blake2s_pair, .hash_poseidon2_leaf, .hash_poseidon2_pair, .u256_add, .u256_le, .u256_add_checked, .u256_sub, .u256_sub_checked, .u32_lt, .hash_sha256d_header, .bitcoin_target_mainnet, .bitcoin_block_work, .bitcoin_prev_hash, .bitcoin_header_bits, .bitcoin_header_time, .bitcoin_genesis_hash_mainnet, .array_get, .array_concat, .array_slice, .int_view, .int_add_checked, .int_add_wrapping, .int_sub_checked, .int_sub_wrapping, .int_le, .int_mul_wrapping, .int_mul_checked, .int_cast_checked => unreachable,
         };
         try values.put(allocator, node.name, out);
     }

@@ -54,6 +54,17 @@ def IntegerSpec.decode (encoded : Nat) : Option IntegerSpec :=
 def IntegerSpec.limbs (s : IntegerSpec) : Nat := max 1 (s.width / 16)
 def IntegerSpec.limit (s : IntegerSpec) : Nat := 2 ^ s.width
 
+structure IntegerCastSpec where
+  source : IntegerSpec
+  target : IntegerSpec
+deriving DecidableEq, Repr
+
+def IntegerCastSpec.decode (encoded : Nat) : Option IntegerCastSpec := do
+  if encoded ≥ 2^18 then none else
+    let source ← IntegerSpec.decode (encoded % 512)
+    let target ← IntegerSpec.decode (encoded / 512)
+    some ⟨source, target⟩
+
 structure Input where
   name : String
   shape : Shape

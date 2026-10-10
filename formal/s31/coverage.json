@@ -613,6 +613,22 @@
         "path": "src/frontends/s31/language/relation_compiler.zig",
         "function": "intMultiplyChecked"
       }
+    },
+    {
+      "op": "int_cast_checked",
+      "semantics": "S31.Integers.castChecked",
+      "gadget_theorems": [
+        "S31.Gadgets.IntegerCast.narrow_byte_sound",
+        "S31.Gadgets.IntegerCast.high_limb_sound",
+        "S31.Gadgets.IntegerCast.widening_value_sound",
+        "S31.Gadgets.IntegerCast.narrowing_value_sound",
+        "S31.Gadgets.IntegerCast.zero_sign_value",
+        "S31.Gadgets.IntegerCast.representable_pattern"
+      ],
+      "source": {
+        "path": "src/frontends/s31/language/relation_compiler.zig",
+        "function": "intCastChecked"
+      }
     }
   ]
 }

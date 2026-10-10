@@ -239,6 +239,9 @@ class Compiler:
                 if name.startswith("std::int::from_limbs_"):
                     return self.builder.int_from_limbs(values[0], name.removeprefix("std::int::from_limbs_"),
                                                        wanted=wanted, span=self.span(expr))
+                if name.startswith("std::int::cast_checked_"):
+                    return self.builder.int_cast_checked(values[0], name.removeprefix("std::int::cast_checked_"),
+                                                         wanted=wanted, span=self.span(expr))
                 return self.builder.int_reinterpret(values[0], name.removeprefix("std::int::reinterpret_"),
                                                     wanted=wanted, span=self.span(expr))
             if name == "std::array::get":

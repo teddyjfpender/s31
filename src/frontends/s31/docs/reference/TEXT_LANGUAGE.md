@@ -219,10 +219,12 @@ There is no general module loader or third-party package system yet.
 | `std::math::lt_u256`, `gt_u256`, `ge_u256`, `eq_u256`, `ne_u256` | Existing `u256_le` comparisons and Boolean nodes | Two `UInt256` values; typed `bit` result. |
 | `std::math::min_u256`, `max_u256` | `u256_le` followed by a `select` of sixteen limbs | Two `UInt256` values; result `UInt256`. |
 | `std::int::add_checked`, `add_wrapping`, `sub_checked`, `sub_wrapping` | Width-tagged integer node with per-limb carry or borrow equations | Equal nominal fixed-width types; checked mode rejects overflow. |
+| `std::int::mul_checked`, `mul_wrapping` | Width-tagged byte-product node | Equal nominal types; checked mode proves the complete product fits, wrapping mode returns low bits. |
 | `std::int::le`, `lt`, `ge`, `gt`, `eq`, `ne` | `int_le` plus Boolean composition as needed | Equal nominal fixed-width types; signed types use proved sign bits. |
 | `std::int::from_limbs_u8` through `from_limbs_i128` | Width-tagged `int_view` | Exact `[u16; L]` shape; byte types prove the high byte zero. |
 | `std::int::limbs` | No node; typed view | Fixed-width scalar to its little-endian `[u16; L]` bit pattern. |
 | `std::int::reinterpret_u8` through `reinterpret_i128` | Width-tagged `int_view` | Same width; changes signed interpretation, not bits. |
+| `std::int::cast_checked_u8` through `cast_checked_i128` | `int_cast_checked` with source and target tags | Numeric widening or narrowing; sign extension and discarded bits are constrained, and out-of-range values reject. |
 
 The [wide-value worked example](../wide-values.md) gives the exact integer
 equations, source, assignment, and current Bitcoin boundary. Its `u16`

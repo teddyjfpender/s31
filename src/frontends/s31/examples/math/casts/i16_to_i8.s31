@@ -1,0 +1,7 @@
+use std@1;
+
+// Exact narrowing: -128 fits; -129 cannot produce any valid witness.
+circuit i16_to_i8(private value: i16) -> public i8 {
+    let result = std::int::cast_checked_i8(value);
+    result
+}

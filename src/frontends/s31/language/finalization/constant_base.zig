@@ -15,7 +15,7 @@ pub fn selectedBase(program: relation.Program) ?u32 {
     if (program.nodes.len > max_compact_nodes) return null;
     var integer_operation = false;
     for (program.nodes) |node| switch (node.op) {
-        .int_view, .int_add_checked, .int_add_wrapping, .int_sub_checked, .int_sub_wrapping, .int_le, .int_mul_wrapping, .int_mul_checked => integer_operation = true,
+        .int_view, .int_add_checked, .int_add_wrapping, .int_sub_checked, .int_sub_wrapping, .int_le, .int_mul_wrapping, .int_mul_checked, .int_cast_checked => integer_operation = true,
         .hash_blake2s, .hash_blake2s_leaf, .hash_blake2s_pair, .hash_poseidon2_leaf, .hash_poseidon2_pair, .hash_sha256d_header, .bitcoin_target_mainnet, .bitcoin_block_work, .bitcoin_prev_hash, .bitcoin_header_bits, .bitcoin_header_time, .bitcoin_genesis_hash_mainnet => return null,
         else => {},
     };

@@ -34,7 +34,7 @@ _HASH_OPS = frozenset({
 _OPS = frozenset({"constant", "cast_m31", "array_get", "array_concat", "array_slice", "add", "mul", "inv", "is_zero", "bool_not", "bool_and", "bool_or", "bool_xor", "bool_select", "add_const",
                   "mul_const", "sum_lanes", "select", "repeat",
                   "u256_add", "u256_le", "u256_add_checked", "u256_sub", "u256_sub_checked",
-                  "int_view", "int_add_checked", "int_add_wrapping", "int_sub_checked", "int_sub_wrapping", "int_le", "int_mul_wrapping", "int_mul_checked",
+                  "int_view", "int_add_checked", "int_add_wrapping", "int_sub_checked", "int_sub_wrapping", "int_le", "int_mul_wrapping", "int_mul_checked", "int_cast_checked",
                   "hash_sha256d_header", "bitcoin_target_mainnet", "bitcoin_block_work",
                   "bitcoin_prev_hash", "bitcoin_header_bits", "bitcoin_header_time", "u32_lt",
                   "bitcoin_genesis_hash_mainnet"}) | _HASH_OPS
@@ -108,6 +108,13 @@ def _int_spec(node: Mapping[str, Any]) -> tuple[int, bool, int]:
     if width not in (8, 16, 32, 64, 128) or spec != width | (256 if signed else 0):
         raise OracleError(f"{node['name']}: invalid fixed-width integer spec")
     return width, signed, max(1, width // 16)
+
+
+def _cast_spec(node: Mapping[str, Any]) -> tuple[tuple[int, bool, int], tuple[int, bool, int]]:
+    encoded = _uint(node.get("constant"), f"{node['name']}.constant", 1 << 18)
+    source = _int_spec({"name": node["name"], "constant": encoded & 511})
+    target = _int_spec({"name": node["name"], "constant": encoded >> 9})
+    return source, target
 
 
 def _validated_shapes(relation: Mapping[str, Any]) -> tuple[dict[str, tuple[str, int]], int]:
@@ -228,6 +235,12 @@ def _validated_shapes(relation: Mapping[str, Any]) -> tuple[dict[str, tuple[str,
             if lhs != ("u16", limb_count) or (rhs is not None if op == "int_view" else rhs != lhs):
                 raise OracleError(f"{name}: {op} requires {limb_count} u16 limb(s) for {width} bits")
             shape = ("m31", 1) if op == "int_le" else lhs
+        elif op == "int_cast_checked":
+            _absent(node, "rhs", "selector", "index", "length", "rounds", "body")
+            source, target = _cast_spec(node)
+            if lhs != ("u16", source[2]):
+                raise OracleError(f"{name}: cast requires {source[2]} source limb(s)")
+            shape = ("u16", target[2])
         elif op == "bitcoin_block_work":
             _absent(node, "rhs", "selector", "constant", "length", "rounds", "body")
             if lhs != ("u16", 16):
@@ -435,6 +448,20 @@ def evaluate_relation(relation: Mapping[str, Any], assignment: Mapping[str, Any]
                         raise OracleError(f"{name}: checked integer arithmetic overflow")
                 bits = mathematical % limit
                 result = [(bits >> (16 * index)) & 0xffff for index in range(count)]
+        elif op == "int_cast_checked":
+            source, target = _cast_spec(node)
+            source_width, source_signed, _ = source
+            target_width, target_signed, count = target
+            pattern = sum(word << (16 * index) for index, word in enumerate(lhs))
+            if pattern >= 1 << source_width:
+                raise OracleError(f"{name}: integer operand exceeds {source_width} bits")
+            number = pattern - (1 << source_width) if source_signed and pattern >= 1 << (source_width - 1) else pattern
+            low = -(1 << (target_width - 1)) if target_signed else 0
+            high = (1 << (target_width - 1)) - 1 if target_signed else (1 << target_width) - 1
+            if not low <= number <= high:
+                raise OracleError(f"{name}: checked integer cast overflow")
+            result = [((number % (1 << target_width)) >> (16 * index)) & 0xffff
+                      for index in range(count)]
         elif op == "hash_sha256d_header":
             header = struct.pack("<40H", *lhs)
             first = hashlib.sha256(header).digest()

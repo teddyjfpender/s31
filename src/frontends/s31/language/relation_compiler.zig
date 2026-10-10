@@ -105,6 +105,7 @@ pub fn compileRaw(comptime V: type, allocator: std.mem.Allocator, program: relat
             .int_le => try intBinary(V, &ctx, lhs.?, rhs.?, node.constant.?, .le),
             .int_mul_wrapping => try intMultiplyWrapping(V, &ctx, lhs.?, rhs.?, node.constant.?),
             .int_mul_checked => try intMultiplyChecked(V, &ctx, lhs.?, rhs.?, node.constant.?),
+            .int_cast_checked => try intCastChecked(V, &ctx, lhs.?, node.constant.?),
             .hash_sha256d_header => try sha256dHeader(V, &ctx, lhs.?),
             .bitcoin_target_mainnet => try mainnetTarget(V, &ctx, lhs.?),
             .bitcoin_block_work => try blockWorkEntry(V, &ctx, lhs.?),
@@ -362,6 +363,7 @@ fn compileWithSpansMode(comptime V: type, allocator: std.mem.Allocator, program:
             .int_le => try intBinary(V, &ctx, entries[node.lhs.?], entries[node.rhs.?], node.constant.?, .le),
             .int_mul_wrapping => try intMultiplyWrapping(V, &ctx, entries[node.lhs.?], entries[node.rhs.?], node.constant.?),
             .int_mul_checked => try intMultiplyChecked(V, &ctx, entries[node.lhs.?], entries[node.rhs.?], node.constant.?),
+            .int_cast_checked => try intCastChecked(V, &ctx, entries[node.lhs.?], node.constant.?),
             .hash_sha256d_header => blk: {
                 if (!sha_chip_mode) break :blk try sha256dHeader(V, &ctx, entries[node.lhs.?]);
                 const input = entries[node.lhs.?];
@@ -727,6 +729,74 @@ fn intView(comptime V: type, ctx: *circuit.builder.Context(V), input: Entry, enc
     var viewed = input;
     viewed.integer_spec = encoded;
     return viewed;
+}
+
+/// Numeric cast, with sign extension or exact discarded-bit checks. Every
+/// equation is on values below 2^24 < p, so the M31 equalities are integer
+/// equalities. A source i8 is first byte-bounded even for forged relation IR.
+fn intCastChecked(comptime V: type, ctx: *circuit.builder.Context(V), input: Entry, encoded: u32) !Entry {
+    const spec = relation.IntegerCastSpec.decode(encoded) orelse return error.InvalidIntegerSpec;
+    const source = input.raw orelse return error.InvalidIntegerOperand;
+    if (input.shape.kind != .u16 or source.len != spec.source.limbCount()) return error.InvalidIntegerOperand;
+    if (spec.source.width == 8 and (input.integer_spec == null or (input.integer_spec.? & 0xff) != 8))
+        try constrainByte(V, ctx, source[0]);
+
+    const source_sign = if (spec.source.signed and
+        (spec.source.width != spec.target.width or !spec.target.signed))
+        try integerSign(V, ctx, source[source.len - 1], spec.source.width)
+    else
+        ctx.zero();
+    if (spec.source.signed and !spec.target.signed) try assertZeroArithmetic(V, ctx, source_sign);
+
+    const target = try ctx.scratch().alloc(Var, spec.target.limbCount());
+    const high_fill = if (spec.source.signed and spec.target.signed and source.len != target.len)
+        try ctx.mul(source_sign, try ctx.constant(QM31.fromBase(M31.fromCanonical(65535))))
+    else
+        ctx.zero();
+    if (spec.source.width < spec.target.width) {
+        if (spec.source.width == 8) {
+            const extension = if (spec.source.signed and spec.target.signed)
+                try ctx.mul(source_sign, try ctx.constant(QM31.fromBase(M31.fromCanonical(65280))))
+            else
+                ctx.zero();
+            target[0] = try ctx.add(source[0], extension);
+        } else {
+            @memcpy(target[0..source.len], source);
+        }
+        for (target[source.len..]) |*digit| digit.* = high_fill;
+    } else if (spec.source.width > spec.target.width) {
+        if (spec.target.width == 8) {
+            const value: u32 = if (comptime V == QM31) ctx.get(source[0]).toM31Array()[0].v else 0;
+            target[0] = try ctx.guessU16(circuit.builder.ivalue.fromQm31(V, QM31.fromBase(M31.fromCanonical(value & 255))));
+            try constrainByte(V, ctx, target[0]);
+            const upper = try ctx.guessU16(circuit.builder.ivalue.fromQm31(V, QM31.fromBase(M31.fromCanonical(value >> 8))));
+            const byte_base = try ctx.constant(QM31.fromBase(M31.fromCanonical(256)));
+            try ctx.eq(source[0], try ctx.add(target[0], try ctx.mul(upper, byte_base)));
+            const expected_upper = if (spec.source.signed)
+                try ctx.mul(source_sign, try ctx.constant(QM31.fromBase(M31.fromCanonical(255))))
+            else
+                ctx.zero();
+            try ctx.eq(upper, expected_upper);
+        } else {
+            @memcpy(target, source[0..target.len]);
+        }
+        for (source[target.len..]) |digit| try ctx.eq(digit, high_fill);
+    } else {
+        @memcpy(target, source);
+    }
+
+    // Narrowing to a signed type, or changing unsigned to signed at the same
+    // width, also requires the destination's top bit to match source sign.
+    if (spec.target.signed and spec.source.width >= spec.target.width and
+        (spec.source.width != spec.target.width or !spec.source.signed))
+    {
+        const target_sign = try integerSign(V, ctx, target[target.len - 1], spec.target.width);
+        try ctx.eq(target_sign, source_sign);
+    }
+
+    const wrappers = try ctx.scratch().alloc(circuit.builder.wrappers.M31Wrapper(Var), target.len);
+    for (wrappers, target) |*wrapped, digit| wrapped.* = .newUnsafe(digit);
+    return .{ .shape = .{ .kind = .u16, .length = target.len }, .lanes = try circuit.builder.simd.pack(V, ctx, wrappers), .raw = target, .integer_spec = (if (spec.target.signed) @as(u32, 256) else 0) + spec.target.width };
 }
 
 fn intMultiplyWrapping(comptime V: type, ctx: *circuit.builder.Context(V), lhs: Entry, rhs: Entry, encoded: u32) !Entry {
@@ -2088,6 +2158,41 @@ test "checked integer multiplication rejects unsigned and signed overflow" {
         var program = try relation.parseProgram(allocator, source);
         defer program.deinit();
         var assignment = try relation.parseAssignment(allocator, data);
+        defer assignment.deinit();
+        var compiled = try compile(QM31, allocator, program.value, assignment.value);
+        defer compiled.deinit();
+        try std.testing.expectEqual(case.valid, try compiled.isCircuitValid());
+        if (case.valid) {
+            _ = try relation.evaluate(allocator, program.value, assignment.value);
+        } else {
+            try std.testing.expectError(error.IntegerOverflow, relation.evaluate(allocator, program.value, assignment.value));
+        }
+        var topology = try compile(circuit.builder.NoValue, allocator, program.value, null);
+        defer topology.deinit();
+        try std.testing.expectEqual(compiled.circuit.n_vars, topology.circuit.n_vars);
+    }
+}
+
+test "checked integer casts constrain byte narrowing and sign extension" {
+    const allocator = std.testing.allocator;
+    inline for (.{
+        .{ .source = 264, .target = 272, .input = 255, .output = 65535, .valid = true }, // i8(-1) to i16
+        .{ .source = 272, .target = 264, .input = 65408, .output = 128, .valid = true }, // i16(-128) to i8
+        .{ .source = 272, .target = 264, .input = 65407, .output = 127, .valid = false }, // i16(-129) to i8
+        .{ .source = 16, .target = 264, .input = 127, .output = 127, .valid = true }, // u16(127) to i8
+        .{ .source = 16, .target = 264, .input = 128, .output = 128, .valid = false }, // u16(128) to i8
+        .{ .source = 272, .target = 32, .input = 65535, .output = 65535, .valid = false }, // i16(-1) to u32
+    }) |case| {
+        const encoded = case.source | (case.target << 9);
+        const source = try std.fmt.allocPrint(allocator, "{{\"version\":1,\"name\":\"checked_cast\",\"inputs\":[{{\"name\":\"input\",\"kind\":\"u16\",\"length\":1,\"visibility\":\"private\"}}],\"nodes\":[{{\"name\":\"result\",\"op\":\"int_cast_checked\",\"lhs\":\"input\",\"constant\":{d}}}],\"assertions\":[],\"public_outputs\":[\"result\"]}}", .{encoded});
+        defer allocator.free(source);
+        const output_text = if (case.target == 32) try std.fmt.allocPrint(allocator, "[{d},0]", .{case.output}) else try std.fmt.allocPrint(allocator, "[{d}]", .{case.output});
+        defer allocator.free(output_text);
+        const assigned = try std.fmt.allocPrint(allocator, "{{\"public_inputs\":{{}},\"private_inputs\":{{\"input\":[{d}]}},\"public_outputs\":{{\"result\":{s}}}}}", .{ case.input, output_text });
+        defer allocator.free(assigned);
+        var program = try relation.parseProgram(allocator, source);
+        defer program.deinit();
+        var assignment = try relation.parseAssignment(allocator, assigned);
         defer assignment.deinit();
         var compiled = try compile(QM31, allocator, program.value, assignment.value);
         defer compiled.deinit();

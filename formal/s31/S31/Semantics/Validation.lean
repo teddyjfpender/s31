@@ -17,7 +17,7 @@ def Node.metadataValid (n : Node) : Bool :=
   | .array_slice => n.fields true false false true false true false false
   | .select | .bool_select => n.fields true true true false false false false false
   | .repeat => n.fields true false false false false false true true
-  | .add_const | .mul_const | .int_view => n.fields true false false false true false false false
+  | .add_const | .mul_const | .int_view | .int_cast_checked => n.fields true false false false true false false false
   | .int_add_checked | .int_add_wrapping | .int_sub_checked | .int_sub_wrapping | .int_le | .int_mul_wrapping | .int_mul_checked =>
     n.fields true true false false true false false false
   | .add | .mul | .array_concat | .u256_add | .u256_add_checked | .u256_le |
@@ -124,6 +124,10 @@ def inferNode (shapes : Shapes) (node : Node) : Result Shape := do
       let _ ← expectShape rhs .u16 spec.limbs
       pure ()
     return if node.op == .int_le then ⟨.m31, 1⟩ else a
+  | .int_cast_checked =>
+    let spec ← need (node.constant.bind IntegerCastSpec.decode)
+    let _ ← expectShape lhs .u16 spec.source.limbs
+    return ⟨.u16, spec.target.limbs⟩
   | .bitcoin_block_work => expectShape lhs .u16 (some 16)
   | .hash_sha256d_header | .bitcoin_target_mainnet | .bitcoin_prev_hash |
       .bitcoin_header_bits | .bitcoin_header_time =>

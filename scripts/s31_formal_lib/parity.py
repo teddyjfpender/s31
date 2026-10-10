@@ -106,6 +106,19 @@ def expected(node: dict, args: list[tuple[str, list[int]]]) -> list[int]:
         return limbs(value % 2**256, 16)
     if op == "u32_lt":
         return [int(number(a) < number(b))]
+    if op == "int_cast_checked":
+        source_tag, target_tag = c & 511, c >> 9
+        source_width, target_width = source_tag & 255, target_tag & 255
+        source_limit, target_limit = 2**source_width, 2**target_width
+        raw = number(a)
+        if raw >= source_limit:
+            raise ValueError("source range")
+        source_signed, target_signed = bool(source_tag & 256), bool(target_tag & 256)
+        value = raw - source_limit if source_signed and raw >= source_limit // 2 else raw
+        low, high = (-target_limit // 2, target_limit // 2 - 1) if target_signed else (0, target_limit - 1)
+        if not low <= value <= high:
+            raise ValueError("cast overflow")
+        return limbs(value % target_limit, max(1, target_width // 16))
     if op.startswith("int_"):
         width, signed = c % 256, c >= 256
         limit = 2**width
@@ -177,7 +190,9 @@ def operation_case(op: str, args: list[tuple[str, list[int]]], **metadata) -> Ca
         result = expected(node, args)
     except ValueError:
         result = None
-    length = len(result) if result is not None else (16 if op.startswith("u256") or op.startswith("bitcoin") else len(args[0][1]))
+    length = len(result) if result is not None else (
+        max(1, ((metadata["constant"] >> 9) & 255) // 16) if op == "int_cast_checked" else
+        16 if op.startswith("u256") or op.startswith("bitcoin") else len(args[0][1]))
     # A sixteen-word operation is private; expose a legal eight-word projection.
     nodes, output = [node], "y"
     if length > 8:
@@ -243,6 +258,14 @@ def corpus() -> list[Case]:
                     args = [u16(limbs(x, count))] + ([] if op == "int_view" else [u16(limbs(y, count))])
                     cases.append(operation_case(op, args, constant=spec))
     cases.append(operation_case("int_view", [u16([256])], constant=8))
+    for source, target, pattern in [
+        (264, 272, 255), (272, 264, 65408), (272, 264, 65407),
+        (16, 264, 127), (16, 264, 128), (272, 32, 65535),
+        (272, 32, 42), (384, 320, 2**128 - 5), (384, 320, 2**64),
+    ]:
+        cases.append(operation_case("int_cast_checked",
+                                    [u16(limbs(pattern, max(1, (source & 255) // 16)))],
+                                    constant=source | (target << 9)))
     header = list(range(40))
     header[36:38] = limbs(0x1d00ffff, 2)
     for op in ["hash_sha256d_header", "bitcoin_target_mainnet", "bitcoin_prev_hash", "bitcoin_header_bits", "bitcoin_header_time"]:

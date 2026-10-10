@@ -188,6 +188,41 @@ class FixedWidthIntegerTests(unittest.TestCase):
         assignment = self.assignment(relation, 8, 255, 0, 255)
         self.assertEqual(evaluate_relation(relation, assignment), assignment["public_outputs"])
 
+    def test_checked_casts_all_source_destination_pairs(self) -> None:
+        kinds = [(f"{sign}{width}", width, sign == "i")
+                 for sign in ("u", "i") for width in (8, 16, 32, 64, 128)]
+        for source_kind, source_width, source_signed in kinds:
+            source_limit = 1 << source_width
+            patterns = {0, 1, source_limit // 2 - 1, source_limit // 2,
+                        source_limit // 2 + 1, source_limit - 1}
+            for target_kind, target_width, target_signed in kinds:
+                with self.subTest(source=source_kind, target=target_kind):
+                    relation, _ = compile_text(
+                        f"circuit convert(private x: {source_kind}) -> public {target_kind} "
+                        f"{{ std::int::cast_checked_{target_kind}(x) }}")
+                    self.assertEqual([node["op"] for node in relation["nodes"]],
+                                     ["int_view", "int_cast_checked"])
+                    self.assertEqual(relation["nodes"][-1]["constant"],
+                                     (source_width | (256 if source_signed else 0)) |
+                                     ((target_width | (256 if target_signed else 0)) << 9))
+                    output = relation["public_outputs"][0]
+                    low = -(1 << (target_width - 1)) if target_signed else 0
+                    high = (1 << (target_width - 1)) - 1 if target_signed else (1 << target_width) - 1
+                    for pattern in patterns:
+                        value = pattern - source_limit if source_signed and pattern >= source_limit // 2 else pattern
+                        assignment = {"public_inputs": {}, "private_inputs": {"x": limbs(pattern, source_width)},
+                                      "public_outputs": {output: limbs(value % (1 << target_width), target_width)}}
+                        if low <= value <= high:
+                            self.assertEqual(evaluate_relation(relation, assignment), assignment["public_outputs"])
+                        else:
+                            with self.assertRaisesRegex(OracleError, "cast overflow"):
+                                evaluate_relation(relation, assignment)
+
+    def test_checked_cast_cannot_fail_in_inactive_branch(self) -> None:
+        with self.assertRaises(SourceError):
+            compile_text("circuit bad(private b: bit, private x: i16) -> public i8 "
+                         "{ if b then std::int::cast_checked_i8(x) else std::int::cast_checked_i8(x) }")
+
 
 if __name__ == "__main__":
     unittest.main()

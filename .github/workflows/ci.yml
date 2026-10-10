@@ -139,6 +139,11 @@ jobs:
           set -euo pipefail
           python3 src/frontends/s31/tests/acceptance/math/multiplication.py |
             tee zig-out/s31/acceptance/fixed-width-multiplication.json
+      - name: Checked integer cast native proofs
+        run: |
+          set -euo pipefail
+          python3 src/frontends/s31/tests/acceptance/math/casts.py |
+            tee zig-out/s31/acceptance/fixed-width-casts.json
       - name: Preserve library proof evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -147,4 +152,5 @@ jobs:
           path: |
             zig-out/s31/acceptance/functional-library.json
             zig-out/s31/acceptance/fixed-width-multiplication.json
+            zig-out/s31/acceptance/fixed-width-casts.json
           if-no-files-found: warn

@@ -3,10 +3,9 @@
 Status: **core ten-type family implemented in S31 source**, 2026-10-10.
 The implemented slice has `u8`, `u16`, `u32`, `u64`, `u128` and signed peers;
 range-checked bit patterns; checked/wrapping addition, subtraction, and
-multiplication; signed/unsigned comparisons; and same-width
-reinterpretation and limb views. Division, bitwise
-operations, shifts, and cross-width numeric
-casts remain design work. An M31 value is a field element, not a fixed-width
+multiplication; signed/unsigned comparisons; same-width reinterpretation,
+checked cross-width numeric casts, and limb views. Division, bitwise
+operations, and shifts remain design work. An M31 value is a field element, not a fixed-width
 integer. A `[u16; N]` array does not by itself specify signedness, overflow,
 or an integer operation.
 
@@ -24,7 +23,7 @@ Each width is a scalar nominal type. Its representation is little-endian base-$2
 
 For a signed `iW`, interpret its constrained bit pattern $b$ as $b$ when $b<2^{W-1}$ and $b-2^W$ otherwise. The source type and verifier key distinguish signed from unsigned values even though their AIR limbs and low-level public ABI word arrays have the same shape. The generated package also records source types in its typed interface. A directly supplied nominal input remains a claim about a value; the proof must constrain its range and all operations that use it.
 
-No implicit conversion is allowed between these types, `UInt256`, `Bytes32`, and M31. In particular, a field subtraction must never silently stand in for signed integer subtraction, and `u32` values at or above the M31 modulus cannot be silently converted to a field value. Implemented explicit operations cover bit-pattern reinterpretation between equal-width `uW` and `iW`, plus conversion to and from exactly sized little-endian `[u16; N]` limbs. Zero/sign extension, checked narrowing, truncation, and reduction modulo M31 remain to be implemented.
+No implicit conversion is allowed between these types, `UInt256`, `Bytes32`, and M31. In particular, a field subtraction must never silently stand in for signed integer subtraction, and `u32` values at or above the M31 modulus cannot be silently converted to a field value. Implemented explicit operations cover bit-pattern reinterpretation between equal-width `uW` and `iW`, conversion to and from exactly sized little-endian `[u16; N]` limbs, and `cast_checked_T` for all ten destination types. The checked cast preserves the mathematical integer with zero/sign extension or proved narrowing, and rejects a value outside the destination range. Truncation and reduction modulo M31 remain to be implemented.
 
 ## Arithmetic semantics
 

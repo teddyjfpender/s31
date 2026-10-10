@@ -1,6 +1,6 @@
 # S31 normalized semantics and local constraint proofs
 
-This package gives executable Lean semantics for **all 45 operations in S31
+This package gives executable Lean semantics for **all 46 operations in S31
 relation IR v1** and proves the local constraint models sound and complete.
 It reuses `RiscvRefinement.Field.M31` and the existing
 `RiscvRefinement.Recursion.CompactPoseidon` S-box proofs through a local Lake
@@ -28,6 +28,7 @@ theorem does not establish zero knowledge.
 | [`S31/Gadgets/Air/`](S31/Gadgets/Air/README.md) | The nine QM31 operation AIR row polynomials, opcode soundness, arbitrary-length packed arithmetic and conditional bridges, and an exact Gate multiset model. |
 | [`S31/Gadgets/Functional/`](S31/Gadgets/Functional/README.md) | Typed source specialization, strict graphs, assertions, conditionals, effects, arrays and agreement with executable normalized relation nodes. |
 | `S31/Gadgets/U16Selection` | Pointwise bit-constrained selection of u16-backed vectors, including proof that selected limbs inherit the input range bound. |
+| `S31/Gadgets/IntegerCast` | Exact byte split, high-limb sign extension, signed value preservation on widening and narrowing, and canonical representability for checked casts. |
 | `S31/Evidence/` | Checked operation coverage, non-vacuity/invalid-boundary theorems and live axiom enumeration. |
 | `coverage.json` | Reviewed mapping of every operation to semantics, local gadget theorems and production source functions. |
 | `source-bindings.json`, `proof-inventory.json` | Generated exact source identities and the complete theorem inventory, including the reused modules and three source-derived proof declarations. |

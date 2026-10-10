@@ -33,6 +33,15 @@ def evaluate (op : Op) (spec : IntegerSpec) (lhs rhs : List M31) : Result (List 
   if checked then require (lower spec ≤ value && value ≤ upper spec) .overflow
   return encode spec.limbs (value % (spec.limit : Int)).toNat
 
+def castChecked (spec : IntegerCastSpec) (lhs : List M31) : Result (List M31) := do
+  let base := if spec.source.width == 8 then 256 else 65536
+  require (lhs.all (fun x => x.val < base)) .invalidValue
+  let pattern := unsigned lhs
+  require (pattern < spec.source.limit) .invalidValue
+  let value := interpretation spec.source pattern
+  require (lower spec.target ≤ value && value ≤ upper spec.target) .overflow
+  return encode spec.target.limbs (value % (spec.target.limit : Int)).toNat
+
 def u256 (op : Op) (lhs rhs : List M31) : Result (List M31) := do
   let a := unsigned lhs
   let b := unsigned rhs
