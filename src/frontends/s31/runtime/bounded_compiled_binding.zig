@@ -999,7 +999,7 @@ test "bounded native inspection fails closed outside exact two-call schedule" {
     }
 }
 
-test "V4 selected geometry rejects reordered and altered manifest slots" {
+test "bounded V4 selected geometry rejects reordered and altered manifest slots" {
     const allocator = std.testing.allocator;
     const source = @embedFile("../examples/boundary/private_many1.s31.json");
     const air_bytes = @embedFile("s31_air_programs");
