@@ -18,7 +18,7 @@ from package.correspondence import (DIRECT_COLUMN_IDS, M31_MODULUS,
                                     UnsupportedFragment, _check_constant_island,
                                     _qm_mul, check_gate_topology, parse_source,
                                     read_canonical_json)
-from package.direct_gate_schedule import constant_and_padding
+from package.direct_gate_schedule import constant_and_padding, exact_direct_gate_schedule
 from text_frontend import compile_text
 
 
@@ -53,6 +53,14 @@ class CorrespondenceParserTests(unittest.TestCase):
                       f"[m31; 4] {{ {body} }}")
             with self.subTest(body=body), self.assertRaises(UnsupportedFragment):
                 parse_source(source.encode())
+
+    def test_bounded_source_bytes_and_tokens(self) -> None:
+        source = ("circuit square(public x: [m31; 4]) -> public [m31; 4] "
+                  "{ let y = x .* x; y }")
+        with self.assertRaisesRegex(UnsupportedFragment, "byte limit"):
+            parse_source((source + "\n//" + "a" * 16_384).encode())
+        with self.assertRaisesRegex(UnsupportedFragment, "token limit"):
+            parse_source((source + " x" * 257).encode())
 
     def test_duplicate_keys_and_noncanonical_json_reject(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -138,8 +146,14 @@ class CorrespondenceParserTests(unittest.TestCase):
             synthetic = ({"add": value["add"][3 + source_adds + 8:],
                           "sub": value["sub"], "mul": value["mul"][6:]},
                          value["n_vars"], report["padded"]["qm31_ops"])
+            synthetic_exact = ({kind: value[kind] for kind in
+                                ("add", "sub", "mul", "pointwise_mul")},
+                               value["n_vars"], report["padded"]["qm31_ops"],
+                               [{"id": 1, "op": "mul", **value["pointwise_mul"][0]}])
             with (patch("package.correspondence._check_constant_island"),
-                  patch("package.correspondence.constant_and_padding", return_value=synthetic)):
+                  patch("package.correspondence.constant_and_padding", return_value=synthetic),
+                  patch("package.correspondence.exact_direct_gate_schedule",
+                        return_value=synthetic_exact)):
                 return check_gate_topology(syntax, value, declaration, report, "a" * 64)
 
         self.assertEqual(checked(topo, component)[0]["op"], "mul")
@@ -152,8 +166,14 @@ class CorrespondenceParserTests(unittest.TestCase):
         plus_component = reseal(plus)
         plus_synthetic = ({"add": plus["add"][12:], "sub": plus["sub"],
                            "mul": plus["mul"][6:]}, plus["n_vars"], 64)
+        plus_exact = ({kind: plus[kind] for kind in
+                       ("add", "sub", "mul", "pointwise_mul")},
+                      plus["n_vars"], 64,
+                      [{"id": 1, "op": "add", **plus["add"][3]}])
         with (patch("package.correspondence._check_constant_island"),
-              patch("package.correspondence.constant_and_padding", return_value=plus_synthetic)):
+              patch("package.correspondence.constant_and_padding", return_value=plus_synthetic),
+              patch("package.correspondence.exact_direct_gate_schedule",
+                    return_value=plus_exact)):
             self.assertEqual(check_gate_topology(plus_syntax, plus, plus_component,
                                                  report, "b" * 64)[0]["op"], "add")
         forged = copy.deepcopy(topo)
@@ -187,6 +207,19 @@ class CorrespondenceParserTests(unittest.TestCase):
                 self.assertEqual(len(gates["add"]), 465 - n_nodes)
                 self.assertEqual(gates["add"][-1]["in0"], 1)
                 self.assertEqual(gates["add"][-1]["in1"], 1)
+                syntax = {"instructions": [
+                    {"id": index, "op": "mul" if index % 2 else "add",
+                     "lhs": 0, "rhs": index - 1}
+                    for index in range(1, n_nodes + 1)], "output": n_nodes}
+                full, total_vars, total_rows, source = exact_direct_gate_schedule(syntax)
+                self.assertEqual((total_vars, total_rows), (512, 512))
+                self.assertEqual(full["add"][0], {"in0": 11, "in1": 17, "out": 18})
+                self.assertEqual(full["mul"][0], {"in0": 15, "in1": 12, "out": 17})
+                self.assertEqual(source[0]["out"], 23)
+                self.assertEqual(source[-1]["out"], 22 + n_nodes)
+                self.assertEqual(full["pointwise_mul"][-4:], [
+                    {"in0": address, "in1": 1, "out": address}
+                    for address in range(11, 15)])
 
     def test_independent_qm31_constant_derivation(self) -> None:
         i = (0, 1, 0, 0)

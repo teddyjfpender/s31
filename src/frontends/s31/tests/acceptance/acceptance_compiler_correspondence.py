@@ -231,6 +231,8 @@ def main() -> None:
             "resealed_wrong_constant_rejected": True,
             "resealed_extra_gate_rejected": True,
             "resealed_extra_constant_gate_rejected": True,
+            "native_gate_counts": checked["gate_counts"],
+            "native_exact_constant_schedule_checked": True,
             "certificate_status": checked["status"],
         }, sort_keys=True, indent=2))
 

@@ -12,6 +12,7 @@ one public `[m31; 4]` input and one public `[m31; 4]` output, 1–16 fresh
 `let` wire. Comments and whitespace are allowed. Imports, functions, constants,
 private inputs, assertions, casts, and nested expressions are outside this
 version. Each use must reference the input or a previous binding.
+The exact source is limited to 16,384 UTF-8 bytes and 256 tokens.
 Commutative operands must appear in increasing positional-wire order, and
 no two bindings may repeat the same operation on the same operand pair. The
 production canonicalizer would reorder or merge those cases, so this
@@ -47,7 +48,10 @@ and four masks plus three inverse-basis gates unpack the returned wire into
 the four public result addresses. The native builder reserves address 2 for
 its fixed extension constant, addresses 3–6 for input words, and addresses
 7–10 for result words. Each scalar input must also have a self-product
-producer, the direct profile's M31 lane constraint. It independently replays
+producer, the direct profile's M31 lane constraint. The independent schedule
+fixes the allocation addresses of input lanes, pack terms, source results,
+result masks, inverse products, and the eight ABI copies. It compares every
+gate triple in native kind order and independently replays
 every emitted selector, address, and use-count column row from the native
 gate lists, requires every circuit variable to have exactly one producer,
 then hashes each column as little-endian M31

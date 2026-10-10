@@ -9,6 +9,7 @@ without invoking the Zig compiler or reading its exported gate lists.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Any
 
 P = 2**31 - 1
 Q = tuple[int, int, int, int]
@@ -167,3 +168,58 @@ def constant_and_padding(n_nodes: int) -> tuple[dict[str, list[dict[str, int]]],
     for _ in range(padded_rows - raw_rows):
         model.adds.append(gate(1, 1, model.fresh()))
     return {"add": model.adds, "sub": model.subs, "mul": model.muls}, model.next_address, padded_rows
+
+
+def exact_direct_gate_schedule(syntax: dict[str, Any]) -> tuple[
+        dict[str, list[dict[str, int]]], int, int, list[dict[str, int | str]]]:
+    """Independently construct every grouped gate triple for admitted syntax."""
+    instructions = syntax["instructions"]
+    gates: dict[str, list[dict[str, int]]] = {
+        "add": [], "sub": [], "mul": [], "pointwise_mul": [],
+    }
+    raw = [11, 12, 13, 14]
+    basis = [1, 15, 2, 16]
+    packed = raw[0]
+    for lane in range(1, 4):
+        term = 17 + 2 * (lane - 1)
+        result = term + 1
+        gates["mul"].append(gate(basis[lane], raw[lane], term))
+        gates["add"].append(gate(packed, term, result))
+        packed = result
+
+    wires = {0: packed}
+    next_address = 23
+    source_gates: list[dict[str, int | str]] = []
+    for node in instructions:
+        operation = node["op"]
+        result = next_address
+        next_address += 1
+        actual = gate(wires[node["lhs"]], wires[node["rhs"]], result)
+        gates["add" if operation == "add" else "pointwise_mul"].append(actual)
+        wires[node["id"]] = result
+        source_gates.append({"id": node["id"], "op": operation, **actual})
+
+    public_result: list[int] = []
+    for lane in range(4):
+        masked = next_address
+        next_address += 1
+        gates["pointwise_mul"].append(gate(wires[syntax["output"]], basis[lane], masked))
+        result = masked
+        if lane:
+            inverse = next_address
+            next_address += 1
+            result = next_address
+            next_address += 1
+            gates["mul"].append(gate(masked, inverse, result))
+        public_result.append(result)
+    if next_address != 33 + len(instructions):
+        raise AssertionError("invalid four-lane allocation model")
+
+    for index, source in enumerate([*raw, *public_result], 3):
+        gates["add"].append(gate(source, 0, index))
+    constants, n_vars, rows = constant_and_padding(len(instructions))
+    for kind, rows_for_kind in constants.items():
+        gates[kind].extend(rows_for_kind)
+    for address in raw:
+        gates["pointwise_mul"].append(gate(address, 1, address))
+    return gates, n_vars, rows, source_gates

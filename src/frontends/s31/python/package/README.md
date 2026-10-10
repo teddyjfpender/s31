@@ -21,8 +21,9 @@ public four-lane add/multiply/static-let fragment. For direct-gate text packages
 in that grammar, build attaches `correspondence-certificate.json` and verification
 requires it. The checker compares the complete normalized relation, canonical
 SSA, public ABI, native source-map gate schedule, value-free gate topology,
-all eight emitted selector/address column hashes, fixed QM31 basis derivation,
-the exact base-256 constant and padding gate schedule,
+all eight emitted selector/address column hashes, the exact input/source/ABI
+gate allocation and base-256 constant and padding schedule, fixed QM31 basis
+derivation,
 AIR asset hashes and key core.
 The certificate still marks native Gate lookup and AIR/PCS soundness as assumptions.
 It is a **package-admission** certificate: the standalone native verifier does

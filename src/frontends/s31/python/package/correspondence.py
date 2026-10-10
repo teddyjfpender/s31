@@ -22,7 +22,7 @@ import struct
 from pathlib import Path
 from typing import Any
 
-from package.direct_gate_schedule import constant_and_padding
+from package.direct_gate_schedule import constant_and_padding, exact_direct_gate_schedule
 
 
 class UnsupportedFragment(ValueError):
@@ -33,6 +33,7 @@ TOKEN = re.compile(r"\s+|//[^\n]*|->|\.\*|[()\[\];:{}=+]|[A-Za-z_][A-Za-z_0-9]*|
 NAME = re.compile(r"[A-Za-z_][A-Za-z_0-9]*\Z")
 SCHEMA = "s31-direct-gate-correspondence-v2"
 M31_MODULUS = 2**31 - 1
+MAX_SOURCE_BYTES = 16_384
 DIRECT_COLUMN_IDS = (
     "qm31_ops_add_flag", "qm31_ops_sub_flag", "qm31_ops_mul_flag",
     "qm31_ops_pointwise_mul_flag", "qm31_ops_in0_address",
@@ -77,6 +78,8 @@ def read_canonical_json(path: Path) -> Any:
 
 
 def _tokens(data: bytes) -> list[str]:
+    if len(data) > MAX_SOURCE_BYTES:
+        raise UnsupportedFragment("source exceeds bounded correspondence byte limit")
     try:
         source = data.decode("utf-8", errors="strict")
     except UnicodeDecodeError as exc:
@@ -90,6 +93,8 @@ def _tokens(data: bytes) -> list[str]:
         token = match.group()
         if not token.isspace() and not token.startswith("//"):
             result.append(token)
+            if len(result) > 256:
+                raise UnsupportedFragment("source exceeds bounded correspondence token limit")
         position = match.end()
     return result
 
@@ -285,6 +290,20 @@ def _check_constant_island(adds: list[dict[str, int]],
         inverse = values.get(inverse_address)
         if inverse is None or _qm_mul(values[basis_address], inverse) != QM_ONE:
             raise ValueError("native output lane inverse basis is not derived correctly")
+
+
+def _require_gate_schedule(kind: str, actual: list[dict[str, int]],
+                           expected: list[dict[str, int]], *,
+                           scope: str = "constant derivation or padding gate schedule differs") -> None:
+    for index, (found, wanted) in enumerate(zip(actual, expected)):
+        if found != wanted:
+            raise ValueError(
+                f"{scope}: "
+                f"{kind}[{index}] = {found}, expected {wanted}")
+    if len(actual) != len(expected):
+        raise ValueError(
+            f"{scope}: "
+            f"{kind} has {len(actual)} gates, expected {len(expected)}")
 
 
 def check_gate_topology(syntax: dict[str, Any], topology: dict[str, Any],
@@ -485,11 +504,20 @@ def check_gate_topology(syntax: dict[str, Any], topology: dict[str, Any],
         [muls[3 + lane]["in1"] for lane in range(3)],
     )
     expected_constant, expected_vars, expected_rows = constant_and_padding(len(instructions))
-    if (n_vars != expected_vars or n_rows != expected_rows or
-            adds[add_cursor + 8:] != expected_constant["add"] or
-            gate_lists["sub"] != expected_constant["sub"] or
-            muls[6:] != expected_constant["mul"]):
-        raise ValueError("constant derivation or padding gate schedule differs")
+    if n_vars != expected_vars or n_rows != expected_rows:
+        raise ValueError(
+            "constant derivation or padding gate schedule differs: "
+            f"{n_vars} variables/{n_rows} rows, expected "
+            f"{expected_vars} variables/{expected_rows} rows")
+    _require_gate_schedule("add", adds[add_cursor + 8:], expected_constant["add"])
+    _require_gate_schedule("sub", gate_lists["sub"], expected_constant["sub"])
+    _require_gate_schedule("mul", muls[6:], expected_constant["mul"])
+    exact_gates, exact_vars, exact_rows, exact_source = exact_direct_gate_schedule(syntax)
+    if (exact_vars != n_vars or exact_rows != n_rows or exact_source != source_gates):
+        raise ValueError("native direct-gate allocation schedule differs from checked source")
+    for kind, actual in gate_lists.items():
+        _require_gate_schedule(kind, actual, exact_gates[kind],
+                               scope="native direct-gate allocation schedule differs")
     return source_gates
 
 
