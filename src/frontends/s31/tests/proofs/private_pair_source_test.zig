@@ -4,7 +4,7 @@ const pair_source = @import("../../runtime/pair_source_binding.zig");
 const native_pair = @import("../../runtime/pair_native_package.zig");
 const manifest = @import("../../runtime/component_manifest.zig");
 const pair = @import("stwo_circuit_cpu_integration").private_pair_boundary;
-const pair_engine = @import("s31_pair_engine");
+const pair_engine = @import("stwo_circuit_cpu_integration").experimental_direct_pair_arithmetic;
 
 fn handRepeat(start: u32, constant: u32, rounds: u32) u32 {
     const modulus: u64 = 2147483647;

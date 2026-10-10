@@ -574,3 +574,15 @@ source, key and public claim triggers all of that work before returning
 forgery. A public byte-entry wrapper should cap file reads, and the fixed
 length/magic check can run immediately before the expensive source work; the
 source/key checks must still precede proof decoding and acceptance.
+
+### Integration update: static pair hardening, native controls pending
+
+The later staged pair change `1d9ff56` addresses the two source-level gaps
+above. `validatePairSourceRoster` now checks the exact ordered five component
+source kinds, proof and claimed-sum indices, and both canonical call IDs; it
+runs on generated and key-compared pair manifests. `verifySealed` now rejects
+an empty, wrong-magic, or out-of-range envelope before source recompilation,
+while retaining source and exact-key checks before proof decoding. Resealed
+wrong-name and role-swap controls were added. These are static implementation
+observations; the native proof and mutation runs remain pending, and the
+caller-supplied source/key trust root is still a release gate.
