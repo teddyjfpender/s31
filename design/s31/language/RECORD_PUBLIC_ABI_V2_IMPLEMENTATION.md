@@ -89,10 +89,10 @@ claim for that wire. It rejects missing, extra, reordered, duplicated,
 mistyped, out-of-range, or mismatched alias leaves. It does not accept a
 simultaneous v1 flat map that could contradict the named statement.
 
-Parsing must reject duplicate JSON keys. Zig's standard typed JSON parser
-does not by itself establish this property for arbitrary objects, so the
-native path needs a checked canonical-byte parser or an explicit duplicate-key
-scan before typed decoding. Never silently normalize an attacker-supplied
+Parsing must reject duplicate JSON keys. Zig 0.15's
+`std.json.ParseOptions.duplicate_field_behavior` defaults to error; set it
+explicitly in the native v2 path and test duplicates in nested leaf objects.
+Check canonical bytes separately. Never silently normalize an attacker-supplied
 statement into a different statement.
 
 ## Source lowering

@@ -41,7 +41,7 @@ class ProverLogTests(unittest.TestCase):
         self.assertTrue(package_files.issubset(s31.TEXT_FRONTEND_SOURCES))
         runtime_files = set((S31_SOURCE_ROOT / "python/runtime").glob("*.py"))
         self.assertEqual({path.name for path in runtime_files},
-                         {"__init__.py", "trials.py", "folds.py"})
+                         {"__init__.py", "trials.py", "folds.py", "cost_model.py"})
         self.assertTrue(runtime_files.issubset(s31.TEXT_FRONTEND_SOURCES))
         cli_files = set((S31_SOURCE_ROOT / "python/cli").glob("*.py"))
         self.assertEqual({path.name for path in cli_files},
@@ -58,12 +58,14 @@ class ProverLogTests(unittest.TestCase):
         self.assertIsNotNone(stages)
         non_pow = stages.pop("prove_excluding_pow_seconds")
         self.assertAlmostEqual(non_pow, 0.005)
+        self.assertAlmostEqual(stages.pop("runtime_other_seconds"), 0.0093)
         self.assertEqual(stages, {
             "witness_seconds": 0.0002,
             "setup_seconds": 0.0005,
             "prove_seconds": 0.04,
             "interaction_pow_seconds": 0.003,
             "fri_pow_seconds": 0.032,
+            "total_through_verification_seconds": 0.05,
         })
 
     def test_missing_pow_timers_do_not_imply_zero_pow(self) -> None:
@@ -72,6 +74,11 @@ class ProverLogTests(unittest.TestCase):
         self.assertIsNotNone(stages)
         self.assertNotIn("prove_excluding_pow_seconds", stages)
         self.assertIsNone(s31.prover_stages("proof accepted"))
+
+    def test_inconsistent_pow_timers_fail_closed(self) -> None:
+        with self.assertRaisesRegex(ValueError, "PoW stages exceed"):
+            s31.prover_stages("witness=0.001s, setup=0.002s, prove=0.010s\n"
+                              "interaction_pow=0.010000s fri_pow=0.010000s")
 
     def test_distinct_assignment_detection_ignores_json_formatting(self) -> None:
         with TemporaryDirectory() as directory:

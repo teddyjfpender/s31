@@ -15,6 +15,7 @@ from inspection.reports import equations as report_equations, explain as report_
 from package.build import build
 from package.context import ENGINE_ROOT, ROOT, S31_DIR, file_hash, invoke, sha256, write_json
 from package.verify import verify_package
+from runtime.cost_model import measured_invoke, observed_cost_model
 
 
 def explain(package: Path) -> dict:
@@ -51,7 +52,17 @@ def prover_stages(log: str) -> dict | None:
         interaction, fri = float(pow_stages.group(1)), float(pow_stages.group(2))
         result["interaction_pow_seconds"] = interaction
         result["fri_pow_seconds"] = fri
-        result["prove_excluding_pow_seconds"] = max(0.0, result["prove_seconds"] - interaction - fri)
+        residual = result["prove_seconds"] - interaction - fri
+        if residual < -0.000003:
+            raise ValueError("reported PoW stages exceed the native prove timer")
+        result["prove_excluding_pow_seconds"] = max(0.0, residual)
+    total = re.search(r"total through verification=([\d.]+)s", log)
+    if total is not None:
+        result["total_through_verification_seconds"] = float(total.group(1))
+        other = result["total_through_verification_seconds"] - sum(
+            result[name] for name in ("witness_seconds", "setup_seconds", "prove_seconds"))
+        if other >= -0.000003:
+            result["runtime_other_seconds"] = max(0.0, other)
     return result
 
 
@@ -113,12 +124,11 @@ def trial(source_or_package: Path, assignment_path: Path, output: Path,
         statement_path = staging / "statement.json"
         wrong_path = staging / "changed-statement.json"
         write_json(statement_path, statement)
-        started = time.perf_counter()
-        prover_log = invoke(str(prover), "prove", str(assignment_path), str(proof))
-        prove_seconds = time.perf_counter() - started
-        started = time.perf_counter()
-        invoke(str(verifier), str(proof), str(statement_path), str(key))
-        verify_seconds = time.perf_counter() - started
+        prove_measurement = measured_invoke(str(prover), "prove", str(assignment_path), str(proof))
+        prover_log = prove_measurement["output"]
+        prove_seconds = prove_measurement["wall_seconds"]
+        verify_measurement = measured_invoke(str(verifier), str(proof), str(statement_path), str(key))
+        verify_seconds = verify_measurement["wall_seconds"]
         changed = copy.deepcopy(statement)
         changed_field = None
         for category in ("public_outputs", "public_inputs"):
@@ -172,14 +182,19 @@ def trial(source_or_package: Path, assignment_path: Path, output: Path,
         "build_or_load_seconds": build_seconds,
         "prove_seconds": prove_seconds,
         "prover_stages": prover_stages(prover_log),
+        "prover_peak_rss_bytes": prove_measurement["peak_rss_bytes"],
+        "prover_peak_rss_method": prove_measurement["peak_rss_method"],
         "verify_seconds": verify_seconds,
-        "timing_note": "Single local observations; proof-of-work and cache state affect timings.",
+        "verifier_peak_rss_bytes": verify_measurement["peak_rss_bytes"],
+        "verifier_peak_rss_method": verify_measurement["peak_rss_method"],
+        "timing_note": "Single local observation; every prover process constructs cold native setup. Wall time includes process startup and both PoW stages when present. Peak RSS is per process and null when unavailable.",
         "artifacts": {
             "proof": "proof.bin", "statement": "statement.json",
             "changed_statement": "changed-statement.json",
             "equations": "equations.json", "explain": "explain.json",
         },
     }
+    result["observed_cost_model"] = observed_cost_model([result])
     write_json(output / "trial-report.json", result)
     return result
 
@@ -266,6 +281,7 @@ def tune(source: Path, assignments: list[Path], output: Path,
                 item["changed_public_statement_rejected"] for item in trials),
             "independent_value_oracle_statuses": [
                 item["independent_value_oracle"]["status"] for item in trials],
+            "observed_cost_model": observed_cost_model(trials),
         }
     if len(program_digests) != 1 or len(canonical_digests) != 1:
         raise ValueError("tune profiles compiled different source or canonical relations")
@@ -279,13 +295,16 @@ def tune(source: Path, assignments: list[Path], output: Path,
         "host": {"platform": platform.platform(), "machine": platform.machine(),
                  "python": platform.python_version(), "zig": invoke("zig", "version").strip()},
         "assignment_sha256": assignment_hashes,
+        "distinct_assignment_count": len(set(assignment_hashes)),
         "independent_value_oracle_provenance": oracle_provenance(),
         "warmup_assignment_sha256": assignment_digest(warmup) if warmup is not None else None,
         "distinct_assignments": len(set(assignment_hashes)) == len(assignment_hashes),
         "same_visible_fri_settings": len(fri_settings) == 1,
         "profiles": per_profile,
-        "timing_note": ("Use --warmup for one unmeasured proof per profile. Transcript-dependent "
-                        "proof-of-work varies with the assignment; compare repeated distinct witnesses. "
+        "timing_note": ("--warmup runs one unmeasured, separate native process per profile; it may warm OS caches "
+                        "but does not reuse that process's preprocessed commitment. Each measured process constructs "
+                        "cold native setup. Transcript-dependent proof-of-work varies with the assignment; "
+                        "compare repeated distinct witnesses. "
                         "Visible FRI settings alone do not establish equal soundness across AIRs. "
                         "No profile is selected automatically."),
     }
