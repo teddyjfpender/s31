@@ -1,6 +1,7 @@
 {
-  "anchor_recorded_at_utc": "2026-10-10T19:17:09.372738Z",
-  "anchor_context": "After all 1800 training trials and model fitting, before the first held-out package build or trial; full digest sent to the parent agent at this time.",
+  "external_chat_anchor_recorded_at_utc": "2026-10-10T19:17:09.372738Z",
+  "transcribed_to_tracked_file_at_utc": "2026-10-10T19:24:58Z",
+  "anchor_context": "The full digest was sent to the parent agent in chat after all 1800 training trials and model fitting, before the first held-out package build or trial. This tracked JSON is a later transcription made during held-out package builds; the earlier chat message is the chronological freeze evidence.",
   "frozen_model_sha256": "12d674529802bf4823c37708e6410f2581faf29d32b8813b9f70b02b98cc5af7",
   "training_corpus_sha256": "d60542bc53eb031b2186ad3a0a2ea4c4542508507fe51f44e5825615c6b0ee05",
   "compiler_sha256": "ba9d281e4006930273a603f33a2d050233593713443d00e8595b714b92a6c93d",
