@@ -84,11 +84,11 @@ The machine-readable status is:
 }
 ```
 
-The parser and checker are independent of the production Python text
-compiler. They remain Python code and are not Lean-verified. The existing
-Lean SSA certificate and local packed arithmetic-row theorems explain the
-intended semantics of this fragment; this checker has not been proved to
-implement those Lean definitions.
+The Python parser and checker are independent of the production Python text
+compiler. They are not Lean-verified. The Lean byte parser below gives an
+additional, independently executed semantic check for its narrower ASCII
+fragment; equivalence between the Python and Lean parsers for all Python
+accepted inputs remains unproved.
 
 ## Concrete Lean bridge
 
@@ -100,19 +100,29 @@ positions, and the observed 512-row/512-variable shape. The checked-in
 [`GeneratedDirectGateBridge.lean`](../../../formal/s31/S31/Gadgets/Functional/GeneratedDirectGateBridge.lean)
 is regenerated from the two-operation square example during native acceptance;
 an unexpected source or native topology change makes that equality fail.
-Lean checks that this certificate matches a source term, that its deterministic
-emitter produces the same SSA, and that each observed source gate uses the
-model's exact circuit address and grouped AIR row. Changing the source's first
-operation, the certificate opcode, or an observed operand address is rejected
-by separate Lean examples. The existing SSA theorem then establishes the
-source value for every four-lane input of this concrete instance.
+Lean tokenizes and parses the embedded bytes with
+[`SSATextBytes.lean`](../../../formal/s31/S31/Gadgets/Functional/SSATextBytes.lean).
+The executable parser accepts ASCII identifiers and whitespace, `//` line
+comments, the one-input/one-output `[m31; 4]` signature, and 1–16 canonical
+binary `let` statements. A successful parse reconstructs each operation's
+meaning from its earlier named wires. The generated fixture uses `by decide`
+to check that the actual 207 source bytes yield the emitted certificate and
+the exact circuit, input, and output names. It separately checks the
+deterministic source-term emitter and each observed source gate's circuit
+address and grouped AIR row. A literal byte mutation changing the first
+`.*` to `+` parses to a different certificate; changing the emitted opcode or
+one operand address is rejected by separate Lean checks. A general theorem
+then proves that, for every four-lane input, execution of any certificate
+returned by this byte parser agrees with the source bytes' defined
+denotation. The concrete fixture instantiates that theorem for its certificate.
 
 The Python checker binds the byte array/digest and the remaining constant,
 padding, selector, multiplicity, and public ABI rows to the exported package.
-Lean does not reparse those bytes or hash them, does not prove that the Python
-checker implements its Lean model, and does not authenticate committed AIR
-columns. The bridge makes the exact checked instance inspectable and gives a
-formal semantic check for its SSA and source-gate row mapping; it is not a
+The embedded SHA-256 string is **not verified in Lean**. Lean does not prove
+the production Python or Zig parser equivalent to its byte parser, nor that
+the Python checker implements its native-row model. It also does not
+authenticate committed AIR columns. The bridge formally checks the embedded
+bytes' bounded semantics and their SSA/source-gate row mapping; it is not a
 general compiler-correctness theorem.
 
 ## Proof boundary and invocation

@@ -2,6 +2,7 @@
 -- Source SHA-256: 2555767fb91b626f6ad959eb87bb2a83626f1aaacab3ad63179d966eeedfd1f6
 import S31.Gadgets.Functional.SSADirectGateBridge
 import S31.Gadgets.Functional.SSAAirRows
+import S31.Gadgets.Functional.SSATextBytes
 
 set_option maxRecDepth 4096
 
@@ -10,6 +11,7 @@ namespace S31.Functional.GeneratedDirectGateBridge
 open S31.Functional.SSACertificate
 open S31.Functional.SSADirectGateBridge
 open S31.Functional.SSAAirRows
+open S31.Functional.SSATextBytes
 
 def sourceBytes : List Nat := [
     47, 47, 32, 70, 105, 114, 115, 116, 45, 111, 114, 100, 101, 114, 32, 114,
@@ -26,7 +28,23 @@ def sourceBytes : List Nat := [
     116, 32, 61, 32, 111, 110, 99, 101, 32, 46, 42, 32, 111, 110, 99, 101,
     59, 10, 32, 32, 32, 32, 114, 101, 115, 117, 108, 116, 10, 125, 10
   ]
+-- Informational digest from the outer package checker; Lean does not hash sourceBytes.
 def sourceSha256 : String := "2555767fb91b626f6ad959eb87bb2a83626f1aaacab3ad63179d966eeedfd1f6"
+def changedSourceBytes : List Nat := [
+    47, 47, 32, 70, 105, 114, 115, 116, 45, 111, 114, 100, 101, 114, 32, 114,
+    101, 102, 101, 114, 101, 110, 99, 101, 32, 102, 111, 114, 32, 116, 104, 101,
+    32, 104, 105, 103, 104, 101, 114, 45, 111, 114, 100, 101, 114, 32, 96, 102,
+    117, 110, 99, 116, 105, 111, 110, 97, 108, 95, 115, 113, 117, 97, 114, 101,
+    52, 46, 115, 51, 49, 96, 46, 10, 99, 105, 114, 99, 117, 105, 116, 32,
+    102, 117, 110, 99, 116, 105, 111, 110, 97, 108, 95, 115, 113, 117, 97, 114,
+    101, 52, 40, 112, 117, 98, 108, 105, 99, 32, 120, 58, 32, 91, 109, 51,
+    49, 59, 32, 52, 93, 41, 32, 45, 62, 32, 112, 117, 98, 108, 105, 99,
+    32, 91, 109, 51, 49, 59, 32, 52, 93, 32, 123, 10, 32, 32, 32, 32,
+    108, 101, 116, 32, 111, 110, 99, 101, 32, 61, 32, 120, 32, 43, 32, 32,
+    120, 59, 10, 32, 32, 32, 32, 108, 101, 116, 32, 114, 101, 115, 117, 108,
+    116, 32, 61, 32, 111, 110, 99, 101, 32, 46, 42, 32, 111, 110, 99, 101,
+    59, 10, 32, 32, 32, 32, 114, 101, 115, 117, 108, 116, 10, 125, 10
+  ]
 
 def source : Source 1 :=
   (.letValue (.mul (.var ⟨0, by decide⟩) (.var ⟨0, by decide⟩)) (.letValue (.mul (.var ⟨0, by decide⟩) (.var ⟨0, by decide⟩)) (.var ⟨0, by decide⟩)))
@@ -49,6 +67,15 @@ def observedVariables : Nat := 512
 
 theorem source_byte_count : sourceBytes.length = 207 := by decide
 theorem source_digest_length : sourceSha256.length = 64 := by decide
+theorem bytes_parse_to_certificate :
+    (parseBytes sourceBytes).map Parsed.certificate = some certificate := by decide
+theorem bytes_parse_public_names :
+    (parseBytes sourceBytes).map
+      (fun p => (p.circuitName, p.inputName, p.outputName)) =
+      some (token "functional_square4", token "x", token "result") := by decide
+theorem changed_bytes_change_certificate :
+    (parseBytes changedSourceBytes).map Parsed.certificate ≠
+      some certificate := by decide
 theorem source_ssa_checked : check source certificate = some () := by decide
 theorem deterministic_emitter_matches : compile source = certificate := by decide
 theorem source_native_rows_match :
@@ -64,6 +91,10 @@ def changedOpcode : Certificate :=
       { id := 1, lhs := 0, rhs := 0, multiply := false },
       { id := 2, lhs := 1, rhs := 1, multiply := true }],
     output := 2 }
+
+theorem changed_bytes_parse_changed_opcode :
+    (parseBytes changedSourceBytes).map Parsed.certificate =
+      some changedOpcode := by decide
 
 def changedAddressRows : List NativeSourceRow :=
   [
@@ -85,6 +116,13 @@ theorem checked_instance_sound (input : Lanes) :
   (checked_rows_source_sound source certificate input observedRows
     observedAddRows source_ssa_checked source_native_rows_match).2
 
+/-- The same result now starts from the actual embedded source bytes. The
+certificate is derived by the Lean byte parser; Python's emitted Lean source
+term is not a premise of this theorem. -/
+theorem checked_bytes_sound (input : Lanes) :
+    executeNormalized certificate input = denotation sourceBytes input :=
+  parsed_certificate_sound sourceBytes input certificate bytes_parse_to_certificate
+
 /-- Any complete accepted local arithmetic-row trace for these exact source
 instructions has the source result, provided the row operands are the values
 authenticated at their addressed prior wires. This does not discharge that
@@ -94,12 +132,11 @@ theorem checked_instance_air_claim (input claimed : Lanes)
     (hrows : AcceptsTrace [input] certificate.instructions final)
     (hclaim : final[certificate.output]? = some claimed) :
     observedRows = expectedRows certificate observedAddRows ∧
-      claimed = source.value (fun _ => input) := by
-  have hcompiled : AcceptsTrace [input] (compile source).instructions final := by
-    simpa [deterministic_emitter_matches] using hrows
-  have houtput : final[(compile source).output]? = some claimed := by
-    simpa [deterministic_emitter_matches] using hclaim
-  exact ⟨source_native_rows_match,
-    compiled_source_air_sound source input claimed final hcompiled houtput⟩
+      denotation sourceBytes input = some claimed := by
+  have hrun := accepted_trace_executes hrows
+  have hbytes := checked_bytes_sound input
+  rw [execute_normalized_eq_execute] at hbytes
+  simp [execute, hrun, hclaim] at hbytes
+  exact ⟨source_native_rows_match, hbytes.symm⟩
 
 end S31.Functional.GeneratedDirectGateBridge

@@ -170,12 +170,16 @@ row.
 AIR row formula for the narrow 512-row direct-gate profile. The generated
 `Functional/GeneratedDirectGateBridge` instance records the exact checked
 source bytes and digest, positional SSA, exported gate addresses and row
-indices for the shared-square example. Lean accepts the source certificate,
-checks exact gate positions, proves arbitrary-input source semantics, and
-rejects changed source semantics, opcode, and operand address controls. The
-Python package checker supplies the byte/digest binding and validates the
-other native rows; no theorem equates that checker with Lean or authenticates
-the PCS preprocessed root.
+indices for the shared-square example. `Functional/SSATextBytes` independently
+parses the embedded bytes for the restricted ASCII four-lane add/mul grammar,
+reconstructs its SSA meaning, and proves normalized execution agrees with
+that byte denotation for every input. The generated instance kernel-checks
+that the actual bytes parse to the emitted certificate and public names,
+checks exact gate positions, and rejects a literal source-byte opcode
+mutation, a changed certificate opcode, and an altered operand address. The
+Python package checker supplies the byte/digest binding and validates other
+native rows. Lean does not verify the embedded SHA-256 string, prove Python
+or Zig parser equivalence, or authenticate the PCS preprocessed root.
 `Functional/TextSquare4` is a narrower executable bridge: the formal gate
 runs the Python text compiler on the actual `functional_square4.s31` file and
 commits its normalized two-node program as Lean source. `TextSquare4Proof`

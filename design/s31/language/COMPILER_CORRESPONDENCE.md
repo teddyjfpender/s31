@@ -77,9 +77,40 @@ a theorem for the direct Gate circuit cannot be reused for a chip profile.
 The generated verifier must rerun or embed the checked artifact's result,
 bind its digest into the key and transcript before commitments, and construct
 the PCS component schedule from that same validated roster. Until a
-byte-level checker is shipped, the Lean four-lane fragment below is a local
-semantic proof and native acceptance tests are empirical controls. They do
-not establish the theorem at the top of this document for all `.s31` files.
+byte-level checker is part of the shipped verifier path, the Lean four-lane
+fragment below is a local semantic proof and native acceptance tests are
+empirical controls. They do not establish the theorem at the top of this
+document for all `.s31` files.
+
+### Bounded byte-to-SSA increment
+
+[`SSATextBytes.lean`](../../../formal/s31/S31/Gadgets/Functional/SSATextBytes.lean)
+implements a byte lexer and parser inside Lean for one much smaller source
+grammar: ASCII identifiers and whitespace, `//` comments, one public
+`[m31; 4]` input and output, and 1–16 canonical binary `let` operations.
+The parser consumes all tokens, resolves each named operand to a prior wire,
+and rejects duplicate names, forward reads, reversed commutative operands,
+and repeated operations. It constructs the source meaning from those parsed
+instructions, rather than trusting a separately emitted source term. Its
+general theorem has this precise form:
+
+```text
+(parseBytes bytes).map Parsed.certificate = some certificate
+  → ∀ four_lane_input,
+      executeNormalized certificate four_lane_input
+        = denotation bytes four_lane_input
+```
+
+The generated shared-square fixture proves the premise by Lean computation
+for its exact 207 source bytes. It also checks the parsed circuit and public
+names and proves that a literal opcode change in the bytes yields a different
+certificate. Its final local AIR claim uses this byte denotation. The fixture
+still relies on the outer exporter to bind those embedded bytes to the
+package, and Lean does not compute the displayed SHA-256 digest. The Python
+checker accepts some Unicode whitespace that this ASCII Lean parser rejects;
+their full parser equivalence is not proved. Production Zig compilation,
+native Gate lookup authentication, committed AIR columns, and PCS binding
+remain separate proof obligations.
 
 ### Checked positional SSA increment
 
