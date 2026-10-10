@@ -144,3 +144,69 @@ source-to-PCS correspondence.
    exporter fixture. Keep the cryptographic row-satisfaction statement as a
    named, documented premise until an independent PCS/FRI review discharges
    it.
+
+## Production evaluator obligation map
+
+The source-only Lean interface is
+[`DecodedDirectGateTrace.lean`](../../../formal/s31/S31/Gadgets/Air/DecodedDirectGateTrace.lean).
+Its `fixed`, `main`, and `interaction` arrays are in **semantic column order**,
+not the local read order of the captured AIR bytecode. The following map is
+from the installed Zig source; the equalities to the authenticated trace
+remain to be proved or independently certified.
+
+| Lean cell | Production source and index | Obligation |
+| --- | --- | --- |
+| `fixed[i][0..3]` | `direct_arithmetic.Circuit` columns `qm31_ops_{add,sub,mul,pointwise_mul}_flag`, commitment positions `0..3` | Match the four `Qm31Ops.Flags` in this order and prove the key's preprocessed root binds every row. |
+| `fixed[i][4..7]` | `qm31_ops_{in0,in1,out}_address`, `qm31_ops_mults`, commitment positions `4..7` | Decode canonical M31 addresses and multiplicity, including the source `computeUses` bound. |
+| `main[i][0..11]` | `components.qm31_ops.row`: four input-0 limbs, four input-1 limbs, four output limbs; selected main tree span expected `0..12` | Relate the committed row to the decoded `GateLookup.Row`. |
+| `interaction[i][0..7]` | `direct_arithmetic.writeInteraction`: first four limbs for the paired reads, last four for the output singleton; selected interaction tree span expected `0..8` | Decode QM31 in the pinned basis and use the last four columns at the predecessor row. |
+
+`air.bindDirectArithmetic` selects source component index `1` (`qm31_ops`),
+rebases it to proof component `0`, and its manifest advertises one claimed sum
+and **11 constraints**: nine local arithmetic constraints and two LogUp batch
+constraints. The source package checker expects the selected captured AIR's
+local preprocessed-index vector `[0,2,3,1,4,5,6,7]`. This is a permutation
+of the semantic fixed-column positions, not an identity map. `trace_lease`
+uses each local index to read the corresponding global committed column.
+The next certificate must verify that the captured AIR program actually
+uses those local reads with the intended arithmetic flags, Gate addresses,
+and multiplicity; matching a manifest vector alone does not prove evaluator
+semantics. The hand-written `air_eval/manual/circuit.zig` shows the intended
+nine local constraints and ordered three Gate terms, while the installed
+verifier executes the pinned, rebound `STWZEVA/1` AIR bundle. Their equality
+is an explicit cross-implementation obligation.
+
+The witness's final interaction column is shifted by `claimed/R` and prefix
+summed in **coset order**, then serialized in bit reversed circle order.
+For a storage row `i`, the logical predecessor required by the Lean
+`prev : Equiv.Perm (Fin R)` is
+`bitReverse(cosetToCircle((circleToCoset(bitReverse(i)) - 1) mod R))`.
+This is `previousBitReversedCircleDomainIndex(i, logSize, logSize)` in the
+native utilities. The verifier requests the last four interaction columns
+at the previous-row OODS point; the first four have only the current sample.
+A row-index mutation should show that replacing this permutation by ordinary
+`i-1` changes the residual at some row.
+
+The `DecodedDirectGateTrace.decoded_cells_to_raw_accepts` theorem accepts
+separate premises that (a) the **installed evaluator outputs** agree with
+the source-extracted pair and singleton residuals at each decoded row,
+(b) those outputs vanish on one trace authenticated by the preprocessed,
+main, and interaction commitments, and (c) the verifier's public claimed-sum
+equation matches the modeled external events. A single folded composition
+evaluation does not deterministically imply eleven separate zero residuals.
+The random composition coefficient, quotient/OODS check, PCS opening
+binding, FRI low-degree check, and transcript challenge distribution belong
+in the quantitative `epsilon_AIR_PCS_FRI` reduction. No Lean theorem here
+derives (a) or (b) from the installed bundle or a proof byte string.
+
+After V6 timing clears, the targeted checks are:
+
+```sh
+cd formal/s31 && lake build S31.Gadgets.Air.DecodedDirectGateTrace
+python3 scripts/s31_formal.py --write
+python3 scripts/s31_formal.py
+```
+
+Run the latter two commands from the repository root **after** the targeted
+Lean build succeeds. Native acceptance and row-index mutation controls are
+separate follow-ups; this source-only increment adds no native exporter.
