@@ -75,3 +75,11 @@ class StaticClosure:
     names: tuple[str, ...]
     body: Expr
     captured: dict[str, Any]
+
+
+@dataclass(frozen=True)
+class StaticNamedFunction:
+    """A top-level function reference erased by compile-time application."""
+
+    name: str
+    signature: FunctionType

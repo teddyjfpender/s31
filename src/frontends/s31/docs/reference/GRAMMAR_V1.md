@@ -92,6 +92,9 @@ lane-wise `.*` is 20, and `+` and `-` are 10. Postfix application binds more
 tightly than arithmetic and may follow any expression whose type is `Fn`.
 For example, `add_to(a)(b)` applies a function returned by `add_to(a)`, and
 `(fun(x: [m31; 1]) -> [m31; 1] => x)(value)` applies a lambda immediately.
+An unshadowed bare top-level function name is a compile-time `Fn` value, so
+`apply(square, x)`, `(square)(x)`, and `let f = square in f(x)` are valid when
+the declared types match. Local names take precedence over top-level names.
 `if`, expression `let`, and `fun` are prefix forms; parenthesize them when
 embedding them in a larger arithmetic expression or applying their result.
 Calls, types, shapes and builtins receive separate

@@ -141,6 +141,20 @@ def check_examples() -> None:
     curried_assignment = json.loads(curried_source.with_suffix(".valid.json").read_text())
     assert curried_assignment["public_outputs"] == {"result": [1]}
     assert evaluate_relation(curried, curried_assignment) == {"result": [1]}
+    named, _ = compile_text(
+        text_block_containing(DOCS / "functional-language.md", "circuit named_square4"),
+        "functional-language.md",
+    )
+    named_source = S31 / "examples/arithmetic/named_square4.s31"
+    named_direct = S31 / "examples/arithmetic/named_square4_manual.s31"
+    assert named == compile_text(named_source.read_text())[0]
+    assert named == compile_text(named_direct.read_text())[0]
+    assert named["nodes"] == [{"name": "result", "op": "mul", "lhs": "x", "rhs": "x"}]
+    named_assignment = json.loads(named_source.with_suffix(".valid.json").read_text())
+    x_words = named_assignment["private_inputs"]["x"]
+    assert named_assignment["public_outputs"] == {
+        "result": [(x * x) % P for x in x_words]}
+    assert evaluate_relation(named, named_assignment) == named_assignment["public_outputs"]
     matrix_source = text_block_containing(DOCS / "library.md", "circuit static_matvec")
     matrix_relation, _ = compile_text(matrix_source, "library.md")
     assert matrix_relation == json.loads((S31 / "examples/arrays/static_matvec.s31.json").read_text())

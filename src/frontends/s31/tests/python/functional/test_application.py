@@ -76,6 +76,61 @@ class PostfixApplicationTests(unittest.TestCase):
         ):
             compile_text(source)
 
+    def test_named_function_values_erase_to_direct_relation(self) -> None:
+        declaration = """fn square(v: [m31; 4]) -> [m31; 4] { v .* v }
+        fn apply(f: Fn([m31; 4]) -> [m31; 4], v: [m31; 4]) -> [m31; 4] { f(v) }
+        """
+        header = "circuit p(public x: [m31; 4]) -> public [m31; 4] { "
+        direct = header + "let result = x .* x; result }"
+        variants = (
+            "apply(square, x)",
+            "square(x)",
+            "(square)(x)",
+            "(let f = square in f)(x)",
+            "let f = square in apply(f, x)",
+        )
+        values = [0, 1, 7, P - 1]
+        expected = [(value * value) % P for value in values]
+        for expression in variants:
+            with self.subTest(expression=expression):
+                self.check_pair(declaration + header + "let result = " + expression + "; result }",
+                                direct, {"x": values}, expected)
+
+    def test_named_function_value_preserves_partial_effect(self) -> None:
+        declaration = """fn inverse(v: [m31; 1]) -> [m31; 1] { std::math::inv(v) }
+        fn apply(f: Fn([m31; 1]) -> [m31; 1], v: [m31; 1]) -> [m31; 1] { f(v) }
+        fn choose() -> Fn([m31; 1]) -> [m31; 1] { inverse }
+        """
+        for call in ("inverse(x)", "apply(inverse, x)", "(inverse)(x)",
+                     "(let f = inverse in f)(x)", "choose()(x)"):
+            with self.subTest(call=call), self.assertRaisesRegex(
+                SourceError, "if branch may fail when inactive: std::math::inv"
+            ):
+                compile_text(declaration + "circuit p(public b: bit, private x: [m31; 1]) "
+                             "-> public [m31; 1] { if b then " + call + " else x }")
+
+    def test_named_function_return_and_lexical_shadowing(self) -> None:
+        declaration = """fn square(v: [m31; 1]) -> [m31; 1] { v .* v }
+        fn choose() -> Fn([m31; 1]) -> [m31; 1] { square }
+        """
+        header = "circuit p(public x: [m31; 1]) -> public [m31; 1] { "
+        self.check_pair(declaration + header + "choose()(x) }",
+                        header + "x .* x }", {"x": [P - 1]}, [1])
+        shadowed = (declaration + header +
+                    "let square = fun(v: [m31; 1]) -> [m31; 1] => v + v; square(x) }")
+        self.check_pair(shadowed, header + "x + x }",
+                        {"x": [P - 1]}, [P - 2])
+
+    def test_unused_recursive_named_function_reference_is_rejected(self) -> None:
+        source = """fn recursive(x: [m31; 1]) -> [m31; 1] {
+          let again = recursive;
+          again(x)
+        }
+        circuit p(public x: [m31; 1]) -> public [m31; 1] { x }
+        """
+        with self.assertRaisesRegex(SourceError, "recursive or excessively deep function expansion"):
+            compile_text(source)
+
     def test_factory_parameter_resolves_nested_application_effect(self) -> None:
         source = """fn use_factory(factory: Fn([m31; 1]) -> Fn([m31; 1]) -> [m31; 1],
           b: bit, x: [m31; 1]) -> [m31; 1] {

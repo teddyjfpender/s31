@@ -63,11 +63,16 @@ class OpaqueFunction:
 
 
 @dataclass(frozen=True)
+class NamedFunctionRef:
+    name: str
+
+
+@dataclass(frozen=True)
 class FirstOrder:
     pass
 
 
-AbstractValue: TypeAlias = Closure | OpaqueFunction | FirstOrder
+AbstractValue: TypeAlias = Closure | OpaqueFunction | NamedFunctionRef | FirstOrder
 FIRST_ORDER = FirstOrder()
 OPAQUE_FUNCTION = OpaqueFunction()
 
@@ -140,7 +145,11 @@ class TotalityChecker:
         if self.visits > self.MAX_VISITS:
             raise self.error(expr, "effect analysis expansion limit exceeded")
         if expr.kind == "name":
-            return Effect(env.get(expr.value, FIRST_ORDER))
+            if expr.value in env:
+                return Effect(env[expr.value])
+            if expr.value in self.functions:
+                return Effect(NamedFunctionRef(expr.value))
+            return Effect(FIRST_ORDER)
         if expr.kind in {"field", "number"}:
             return Effect(FIRST_ORDER)
         if expr.kind == "lambda":
@@ -176,6 +185,9 @@ class TotalityChecker:
             if isinstance(callee.value, Closure):
                 result = self.invoke_closure(callee.value, values, expr)
                 return Effect(result.value, failure | result.failure)
+            if isinstance(callee.value, NamedFunctionRef):
+                result = self.invoke_function(callee.value.name, values, expr)
+                return Effect(result.value, failure | result.failure)
             # Type elaboration has already checked this is a Fn. Keep the
             # effect obligation until every concrete static call is known.
             return Effect(FIRST_ORDER, failure | {"opaque:application"})
@@ -192,6 +204,9 @@ class TotalityChecker:
             callee = env[expr.value]
             if isinstance(callee, Closure):
                 result = self.invoke_closure(callee, values, expr)
+                return Effect(result.value, failure | result.failure)
+            if isinstance(callee, NamedFunctionRef):
+                result = self.invoke_function(callee.name, values, expr)
                 return Effect(result.value, failure | result.failure)
             return Effect(FIRST_ORDER, failure | {f"opaque:{expr.value}"})
         if expr.value in self.functions:

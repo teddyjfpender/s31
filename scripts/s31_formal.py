@@ -40,6 +40,8 @@ TEXT_POLY4 = "src/frontends/s31/examples/arithmetic/functional_poly4.s31"
 TEXT_POLY4_DIRECT = "src/frontends/s31/examples/arithmetic/functional_poly4_manual.s31"
 TEXT_CURRIED = "src/frontends/s31/examples/arithmetic/curried_sum.s31"
 TEXT_CURRIED_DIRECT = "src/frontends/s31/examples/arithmetic/curried_sum_manual.s31"
+TEXT_NAMED_SQUARE = "src/frontends/s31/examples/arithmetic/named_square4.s31"
+TEXT_NAMED_SQUARE_DIRECT = "src/frontends/s31/examples/arithmetic/named_square4_manual.s31"
 BINDINGS = [
     RELATION,
     TEXT_SQUARE4,
@@ -47,6 +49,8 @@ BINDINGS = [
     TEXT_POLY4_DIRECT,
     TEXT_CURRIED,
     TEXT_CURRIED_DIRECT,
+    TEXT_NAMED_SQUARE,
+    TEXT_NAMED_SQUARE_DIRECT,
     "src/frontends/s31/build.zig",
     "src/frontends/s31/entry/export_square4_topology.zig",
     "src/frontends/s31/tools/formal/export_square4_topology.zig",

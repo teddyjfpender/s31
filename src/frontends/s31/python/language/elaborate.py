@@ -38,6 +38,8 @@ class Elaborator:
             return self.referenced_calls(expr.args[0], bound | {name for name, _ in expr.params})
         calls: set[str] = set()
         steps: set[str] = set()
+        if expr.kind == "name" and expr.value not in bound and expr.value in self.functions:
+            calls.add(expr.value)
         if expr.kind == "call" and expr.value not in bound:
             if expr.value in self.functions:
                 calls.add(expr.value)
@@ -133,9 +135,11 @@ class Elaborator:
     def expr(self, expr: Expr, env: dict[str, SourceType], *, step_mode: bool = False) -> SourceType:
         try:
             if expr.kind == "name":
-                if expr.value not in env:
-                    raise TypeErrorS31(f"unknown value {expr.value}")
-                return env[expr.value]
+                if expr.value in env:
+                    return env[expr.value]
+                if expr.value in self.signatures:
+                    return self.signatures[expr.value]
+                raise TypeErrorS31(f"unknown value {expr.value}")
             if expr.kind == "number":
                 raise TypeErrorS31("field literals require the _m31 suffix")
             if expr.kind == "field":

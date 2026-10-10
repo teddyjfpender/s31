@@ -27,6 +27,14 @@ MATCHED_COST = (
     "input_packing", "public_binding", "finalization", "fri",
 )
 EXPECTED_GEOMETRY: dict[str, dict] = {
+    "named_square4": {
+        "canonical_ir_sha256": "95374784391a55222a19c73f8e08f9da1049e1b1b55e81171d7986eee194cf8c",
+        "raw": {"blake_g": 0, "eq": 0, "m31_to_u32": 0,
+                "qm31_ops": 312, "triple_xor": 0},
+        "padded": {"blake_g": 0, "eq": 0, "m31_to_u32": 0,
+                   "qm31_ops": 512, "triple_xor": 0},
+        "preprocessed_cells": 4096,
+    },
     "curried_sum": {
         "canonical_ir_sha256": "969fd73181498025b6ffa9de584601fa3ac70788044c7fbcc37bb2e6ea617fd4",
         "raw": {"blake_g": 0, "eq": 0, "m31_to_u32": 0,
@@ -89,9 +97,15 @@ def cases() -> list[Case]:
         curried_source.with_name("curried_sum_manual.s31").read_text(),
         {"a": [P - 1], "b": [2]}, [(P - 1 + 2) % P], ("add",),
     )
+    named_source = S31 / "examples/arithmetic/named_square4.s31"
+    named = Case(
+        "named_square4", named_source.read_text(),
+        named_source.with_name("named_square4_manual.s31").read_text(),
+        {"x": [0, 1, 7, P - 1]}, [0, 1, 49, 1], ("mul",),
+    )
     matrix = next(case for case in math_cases() if case.family == "matmul")
     matrix_functional, matrix_direct = matrix.sources()
-    result = [polynomial, curried, Case("matrix", matrix_functional, matrix_direct,
+    result = [polynomial, curried, named, Case("matrix", matrix_functional, matrix_direct,
                                {"x": x, "y": y}, matrix.value(x, y),
                                ("mul", "add"))]
     functional, direct = pair_sources()
@@ -122,9 +136,9 @@ def check_case(work: Path, case: Case) -> dict:
     output_name = relation["public_outputs"][0]
     assignment = {"public_inputs": {}, "private_inputs": case.private_inputs,
                   "public_outputs": {output_name: case.expected}}
-    if case.name in {"polynomial", "curried_sum"}:
-        fixture_name = ("functional_poly4" if case.name == "polynomial" else
-                        "curried_sum")
+    if case.name in {"polynomial", "curried_sum", "named_square4"}:
+        fixture_name = ({"polynomial": "functional_poly4", "curried_sum": "curried_sum",
+                         "named_square4": "named_square4"}[case.name])
         fixture = json.loads((S31 / f"examples/arithmetic/{fixture_name}.valid.json").read_text())
         if assignment != fixture:
             raise AssertionError(f"{case.name}: fixture differs from independent arithmetic")

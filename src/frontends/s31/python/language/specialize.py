@@ -8,7 +8,7 @@ import s31_mathlib as mathlib
 from s31_stdlib import Builder, INT_TYPES, P, StaticGroup, StepState, Type, TypeErrorS31, Value
 from language.builtins import (INT_BINARY_CALLS, INT_CAST_CALLS, INT_COMPARE_CALLS,
                                MAX_CALL_DEPTH, STANDARD_ALIASES)
-from language.syntax import Circuit, Expr, Function, FunctionType, SourceError, StaticClosure, Statement
+from language.syntax import Circuit, Expr, Function, FunctionType, SourceError, StaticClosure, StaticNamedFunction, Statement
 
 
 class Compiler:
@@ -40,7 +40,7 @@ class Compiler:
     def source_type(thing: Any) -> Type | FunctionType | None:
         if isinstance(thing, Value):
             return thing.typ
-        if isinstance(thing, StaticClosure):
+        if isinstance(thing, (StaticClosure, StaticNamedFunction)):
             return thing.signature
         return None
 
@@ -59,7 +59,7 @@ class Compiler:
                 else:
                     target = statement.name
                 value = self.eval_expr(statement.args[0], local, wanted=target)
-                if not isinstance(value, (Value, StaticGroup, StaticClosure, int)):
+                if not isinstance(value, (Value, StaticGroup, StaticClosure, StaticNamedFunction, int)):
                     raise self.located(statement.args[0], "let requires a circuit or static value")
                 local[statement.name] = value
             else:
@@ -128,7 +128,7 @@ class Compiler:
         try:
             if expr.kind == "let":
                 bound = self.eval_expr(expr.args[0], env)
-                if not isinstance(bound, (Value, StaticGroup, StaticClosure, int)):
+                if not isinstance(bound, (Value, StaticGroup, StaticClosure, StaticNamedFunction, int)):
                     raise TypeErrorS31("let requires a circuit or static value")
                 local = env.copy()
                 local[expr.value] = bound
@@ -139,9 +139,13 @@ class Compiler:
                 return StaticClosure(signature, tuple(name for name, _ in expr.params),
                                      expr.args[0], env.copy())
             if expr.kind == "name":
-                if expr.value not in env:
-                    raise TypeErrorS31(f"unknown value {expr.value}")
-                return env[expr.value]
+                if expr.value in env:
+                    return env[expr.value]
+                if expr.value in self.functions:
+                    fn = self.functions[expr.value]
+                    return StaticNamedFunction(expr.value, FunctionType(
+                        tuple(typ for _, typ in fn.params), fn.result))
+                raise TypeErrorS31(f"unknown value {expr.value}")
             if expr.kind == "number":
                 raise TypeErrorS31("field literals require the _m31 suffix")
             if expr.kind == "field":
@@ -172,19 +176,24 @@ class Compiler:
                                            wanted=wanted, span=self.span(expr))
             if expr.kind == "apply":
                 callee = self.eval_expr(expr.args[0], env)
-                if not isinstance(callee, StaticClosure):
-                    raise TypeErrorS31("applied expression must be a function value")
                 args = tuple(self.eval_expr(arg, env) for arg in expr.args[1:])
-                return self.call_closure(callee, args, wanted, expr)
+                if isinstance(callee, StaticClosure):
+                    return self.call_closure(callee, args, wanted, expr)
+                if isinstance(callee, StaticNamedFunction):
+                    return self.call_function(callee.name, args, wanted, expr)
+                raise TypeErrorS31("applied expression must be a function value")
             if expr.kind != "call":
                 raise TypeErrorS31("invalid expression")
             if expr.value in env:
-                if not isinstance(env[expr.value], StaticClosure):
+                callee = env[expr.value]
+                if not isinstance(callee, (StaticClosure, StaticNamedFunction)):
                     raise TypeErrorS31(f"cannot call non-function value {expr.value}")
                 if expr.generic is not None:
                     raise TypeErrorS31("function values do not accept static parameters")
                 args = tuple(self.eval_expr(item, env) for item in expr.args)
-                return self.call_closure(env[expr.value], args, wanted, expr)
+                if isinstance(callee, StaticNamedFunction):
+                    return self.call_function(callee.name, args, wanted, expr)
+                return self.call_closure(callee, args, wanted, expr)
             name = STANDARD_ALIASES.get(expr.value, expr.value)
             if name in INT_BINARY_CALLS or name in INT_COMPARE_CALLS or name in INT_CAST_CALLS or name == "std::int::limbs":
                 if expr.generic is not None:

@@ -32,6 +32,50 @@ private circuit values. `let name = value in body` makes a lexically scoped
 expression binding and permits intentional shadowing. Statements of the form
 `let name = value;` remain available in function and circuit blocks.
 
+## Passing a named function as a value
+
+The [named square example](../examples/arithmetic/named_square4.s31) passes a
+top-level `fn` to a higher-order helper:
+
+```s31
+fn square(v: [m31; 4]) -> [m31; 4] { v .* v }
+
+fn apply(f: Fn([m31; 4]) -> [m31; 4], v: [m31; 4]) -> [m31; 4] {
+    f(v)
+}
+
+circuit named_square4(private x: [m31; 4]) -> public [m31; 4] {
+    let result = apply(square, x);
+    result
+}
+```
+
+The bare name `square` is a static function value with type
+`Fn([m31; 4]) -> [m31; 4]`. `apply` binds it to `f`; `f(v)` specializes
+the body of `square` using the actual argument. Each of the four **lanes** is
+one independent M31 element: for `x=[0,1,7,p-1]`, the claimed output is
+`[0,1,49,1]` modulo `p=2^31-1`. A lane is a position in the four-element
+array, not a separate proof. The residual relation is `result = mul(x,x)`
+with four elementwise multiplications. It has no function-value witness or
+function-call gate. The [direct form](../examples/arithmetic/named_square4_manual.s31)
+has the same normalized relation and native AIR geometry. A name in a local
+binding takes precedence over a top-level `fn` of the same name. Referring to
+a function that recursively refers to itself is rejected even if that
+function is unused. Partial operations inside named functions still make an
+inactive conditional branch invalid.
+At the mathematical relation level, each lane has the equation
+`result[i] - x[i]·x[i] = 0` in M31, for `i=0,1,2,3`. The prover fills a trace
+with the inputs and computed products; the verifier checks the corresponding
+AIR constraints and the public output binding. The whole native circuit has
+312 raw QM31 operation rows, padded to 512 rows for the proof, including
+boundary and scheduling work around the four products. The extra rows are
+already present in the direct form; passing `square` adds none.
+The [Lean named-function model](../../../../formal/s31/S31/Gadgets/Functional/NamedFunctionValue.lean)
+proves that a static function binding and application erase to one multiply,
+and that arbitrary satisfying strict-graph witnesses fix the claimed result.
+It models one scalar lane; source compilation and the native AIR are checked
+by the separate acceptance gate below.
+
 ## Applying a returned function
 
 The [curried sum](../examples/arithmetic/curried_sum.s31) returns a typed

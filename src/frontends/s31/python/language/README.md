@@ -20,7 +20,12 @@ nodes are then validated and compiled by Zig. `../s31.py` hashes every Python
 file in this directory into its compiler fingerprint, so changing parser or
 specializer semantics invalidates cached packages and native verifier builds.
 Postfix application allows `(fun(...) -> ... => body)(value)` and
-`factory(value)(next)`; elaboration checks the intermediate `Fn` type, the
+`factory(value)(next)`. An unshadowed top-level `fn` name is also a static
+function value, so `apply(square, x)` and `(square)(x)` emit only the
+operations in `square(x)`; a lexical binding with the same name takes precedence. The
+elaborator counts references to named functions as call-graph edges, including
+in unused definitions, so passing a function cannot hide recursion. It checks
+the intermediate `Fn` type, the
 effect pass resolves any partial operations in the called body, and
 specialization erases the application before relation emission.
 
