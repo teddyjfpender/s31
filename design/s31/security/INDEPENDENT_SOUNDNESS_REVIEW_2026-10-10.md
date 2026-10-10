@@ -438,16 +438,12 @@ is absent from the public statement, but its *witness value* is still subject
 to the proof system's ordinary disclosure limits, including the bridge issue
 above. I found no record-ABI forged-proof acceptance in this source review.
 
-One fail-closed validator difference remains: Python's generic v2 binding
-validator permits a top-level tuple and a result root name other than
-`result`, while Zig's native `root`/`validate` requires a first-order or
-record root and literal `result`. The text parser restricts circuit boundary
-roots and emits `result`, so parser-produced packages are unaffected; a
-manually authored descriptor accepted by Python may be rejected by native
-verification. Align the schemas before advertising arbitrary hand-authored
-v2 JSON as portable. This is an admission and developer-experience mismatch,
-not a proof forgery. A low-cost independent control compiled
-`record_input_sum.s31`, renamed the ABI result root and its leaf paths, and
-observed `Python validate_binding` accept the descriptor; native
-`record_abi.validate` has an explicit `result`-name check at line 260 and
-would reject it before proof admission.
+The review initially compared Python with an older isolated worktree and
+reported that it accepted a result root renamed from `result`. Current main
+already rejects that in `binding_v2.py:validate_binding`, with a regression
+test. A fresh control on current main found a narrower fail-closed mismatch:
+Python accepted a top-level tuple result when an input root was a record,
+while native `record_abi.zig:root` rejected the tuple root. The Python
+validator now applies the same first-order-or-record root rule, and a focused
+test rejects the mutated descriptor. This was a package-admission and
+developer-experience mismatch, not a forged proof.

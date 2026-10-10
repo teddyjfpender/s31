@@ -78,7 +78,10 @@ def _root(root: object, names: dict[str, object], *, input_root: bool) -> list[d
     name = _name(root["name"])
     if input_root and root["visibility"] not in ("public", "private"):
         raise AbiError("invalid ABI visibility")
-    expected = _leaves(root["type"], [{"root": name}], names)
+    tree = root["type"]
+    if type(tree) is not dict or not ("kind" in tree or "record" in tree):
+        raise AbiError("top-level ABI root must be an M31 leaf or record")
+    expected = _leaves(tree, [{"root": name}], names)
     if len(expected) > _MAX_LEAVES or type(root["leaves"]) is not list or len(root["leaves"]) != len(expected):
         raise AbiError("ABI root has missing or excessive leaves")
     for actual, declared in zip(root["leaves"], expected):

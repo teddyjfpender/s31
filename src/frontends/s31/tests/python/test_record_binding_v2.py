@@ -111,6 +111,14 @@ class RecordBindingV2Tests(unittest.TestCase):
         with self.assertRaisesRegex(AbiError, "output root must be result"):
             validate_binding(self.relation, renamed)
 
+    def test_top_level_tuple_root_matches_native_profile(self) -> None:
+        tupled = copy.deepcopy(self.binding)
+        tupled["result"]["type"] = {"tuple": [copy.deepcopy(tupled["result"]["type"])]}
+        for leaf in tupled["result"]["leaves"]:
+            leaf["path"].insert(1, {"tuple": 0})
+        with self.assertRaisesRegex(AbiError, "top-level ABI root"):
+            validate_binding(self.relation, tupled)
+
     def test_input_coverage_and_alias_constraints(self) -> None:
         wrong_input = copy.deepcopy(self.binding)
         wrong_input["inputs"][0]["leaves"][1]["wire"] = "a"
