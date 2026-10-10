@@ -685,8 +685,11 @@ claim plus those positive Gate reciprocals, and that the verifier folds the
 remaining claims in order `chip0, chip1, bridge0, bridge1`. It also proves
 the native circle/coset index formulas are inverse permutations and their
 `−1` cyclic offset stays a permutation when composed with a bit-reversal
-permutation. The exact Zig bit-reversal implementation and accepted-proof
-to logical-row mask correspondence remain explicit source-level obligations.
+involution. For the bridge's `+1` mask, it also proves that zero
+`current−next` residuals on all sixteen source-indexed rows force all eight
+endpoint columns to be constant. The exact Zig bit-reversal implementation
+and accepted-proof to logical-row residual correspondence remain explicit
+source-level obligations.
 `PrivateBridgeChallenge.lean` specializes the Gate exceptional-challenge
 bound to one addressed endpoint whose sixteen bridge rows vary. It also
 proves a joint eight-address Gate bound: if repeated addresses have coherent
