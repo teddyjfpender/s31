@@ -12,7 +12,7 @@ verifier or an empirical test.
 | `tagged_pair_chip.zig::rowConstraints` and `writeInteraction` | Each row emits `+(relation,call,step,input)` and `−(relation,call,step+1,output)` into the shared LogUp relation. No local row equation checks `step < R`, step order, or a permutation of `0..R−1`. | `RawChipIndexCoverage` proves canonical reindexing from exact tagged balance. `TaggedPairAirClosure` proves the source-shaped interaction residuals telescope to the signed row-event sum under logical-row AIR acceptance, cyclic predecessor, and nonpole premises. |
 | `private_pair_boundary.zig::Plan.validate` | Two call IDs must be `0,1`; `validateRounds` requires a power of two in `[16,32768]`, far below M31's `p = 2147483647`. Endpoint addresses have checked producers; coherent aliases are allowed. | Source-level admission checks are not connected to Lean. The `R < p` fact is a premise of the proved arbitrary-index theorem; the source admission-to-Lean correspondence remains open. |
 | `tagged_pair_bridge.zig::rowConstraints` | Eight endpoint columns have residual `current−next` on all sixteen cyclic rows. Four paired Gate fractions have `1/16` weight; the fifth fraction closes `(call,0,input)` and `(call,R,output)`. | `TaggedPairBridgeRows.eight_columns_constant` proves constancy from zero residuals on the first fifteen adjacencies. `TaggedPairAirClosure` proves all five source-shaped interaction residuals telescope to eight Gate endpoints and the chip start/end pair when those words are constant and denominators nonzero. |
-| `direct_pair_arithmetic.zig::verifyBorrowed` | Reconstructs five components and trace spans, checks four commitment roots, public words, transcript identity, one shared lookup challenge and five claimed sums, then calls the native PCS/FRI verifier. | Transcript and component correspondence, the random challenge reduction, and PCS/FRI soundness are unproved in Lean. |
+| `direct_pair_arithmetic.zig::verifyBorrowed` | Reconstructs five components and trace spans, checks four commitment roots, public words, transcript identity and one shared lookup challenge. It checks `lookupSum(outputs, claim[0]) + claim[1] + ... + claim[4] = 0`, adding public-output and fixed-`u` Gate reciprocals before PCS/FRI verification. | `TaggedPairSourceCorrespondence` proves the five-claim fold and source output-event address/order algebra. Transcript, source word conversion, and PCS/FRI soundness remain unproved. |
 | `pair_source_binding.zig`, `component_manifest.zig`, `pair_native_package.zig` | Recompile source without witness, derive ordered calls/offsets, compare typed V3 manifest and byte-exact key, then decode a bounded proof envelope. | Host checks are staged, not formalized. `verifySealed` still accepts source, AIR bundle and key as caller arguments; a released verifier must pin its trusted statement and AIR identity. |
 
 The engine has one shared seven-coordinate compression for tagged chip tuples
@@ -38,10 +38,25 @@ paired Gate residuals and final chip-pair residual, with `claimed_sum/16`.
 After the eight main columns are constant, summing over its sixteen rows
 recovers eight Gate endpoint reciprocals minus the chip start plus the chip
 end. `accepted_pair_air_implies_signed_closure` composes both calls, a
-separately interpreted circuit Gate claim, and the verifier's five-claim zero
-sum into the exact signed rational identity used by the challenge theorem.
+separately interpreted circuit Gate claim, and the verifier's **actual** closure: the five claims plus positive Gate
+reciprocals for all public outputs and the fixed `u` wire total zero.
+`TaggedPairSourceCorrespondence.lean` models `lookupSum` outputs at source
+addresses `3+i`, fixed `u` at address 2 with value `(0,0,1,0)`, and the exact
+claim order `[circuit,chip0,chip1,bridge0,bridge1]`. It proves the source
+claim fold equals this corrected premise and that six-word Gate tuples padded
+with a zero seventh word use the same compression. This corrected closure
+implies the exact signed rational identity used by the challenge theorem.
 No honest interaction-writer behavior or canonical witness step order is
 assumed for that algebraic step.
+
+The source's equal-size predecessor mask is bit reverse, circle-to-coset,
+coset offset −1, coset-to-circle, then bit reverse. The Lean model proves the
+source circle/coset formulas are mutual inverses and the offset and whole
+composition are permutations. It treats `bitReverseIndex` as a permutation
+premise; an exact Zig-machine-word correspondence and the larger quotient
+evaluation-domain mask remain unproved. These facts justify the permutation
+condition used for logical trace-row telescoping only once the native mask is
+bound to that Lean composition.
 
 The **accepted proof-to-logical-row premise remains open**: source mask geometry
 must correspond to a permutation of logical predecessor rows, and an

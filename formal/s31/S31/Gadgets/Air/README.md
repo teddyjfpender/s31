@@ -671,12 +671,22 @@ eight Gate endpoint reciprocals minus the chip start plus its end, provided
 the eight main words are constant. The proof uses a cyclic predecessor
 permutation to telescope the final interaction column, so row order need not
 be canonical. Its composition theorem combines two chip claims, two bridge
-claims, the circuit Gate claim, and the verifier's checked five-claim zero
-sum into the signed rational closure. The theorem assumes the modeled row
+claims, the circuit Gate claim, and the verifier's actual closure of five claims
+**plus** public-output and fixed-`u` Gate reciprocals into the signed
+rational closure. The theorem assumes the modeled row
 residuals vanish on every committed logical row, the source-selected mask
 really is that predecessor permutation, and all relevant denominators are
 nonzero. Showing native PCS/FRI verifier acceptance yields those row facts
 and binding the component manifest to the source are still open.
+`TaggedPairSourceCorrespondence.lean` models the source output loop with Gate
+addresses `3+i`, then the fixed `u` wire at address 2 with four limbs
+`(0,0,1,0)`. It proves that `lookupSum(outputs, claim[0])` equals the circuit
+claim plus those positive Gate reciprocals, and that the verifier folds the
+remaining claims in order `chip0, chip1, bridge0, bridge1`. It also proves
+the native circle/coset index formulas are inverse permutations and their
+`−1` cyclic offset stays a permutation when composed with a bit-reversal
+permutation. The exact Zig bit-reversal implementation and accepted-proof
+to logical-row mask correspondence remain explicit source-level obligations.
 `PrivateBridgeChallenge.lean` specializes the Gate exceptional-challenge
 bound to one addressed endpoint whose sixteen bridge rows vary. It also
 proves a joint eight-address Gate bound: if repeated addresses have coherent

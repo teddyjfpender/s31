@@ -330,12 +330,13 @@ private theorem reciprocalSum_append (left right : List JointTuple)
   simp [productionReciprocalSum7]
 
 /-- The native verifier checks that its five committed component claimed
-sums add to zero. The four component equalities below are supplied by the
+sums plus positive Gate reciprocals for every public output and the fixed
+`u` wire add to zero. The four component equalities below are supplied by the
 chip and bridge AIR lemmas above, and the circuit equality is a separate
 Gate AIR correspondence premise. Their sum is exactly the signed event
 closure consumed by `TaggedPairChallenge`. -/
 theorem five_claimed_sums_imply_signed_closure
-    (circuitYields circuitUses : List JointTuple)
+    (circuitYields circuitUses publicOutputYields : List JointTuple)
     (bridgeGates₀ bridgeGates₁ chipInputs₀ chipInputs₁
       chipOutputs₀ chipOutputs₁ chipStarts₀ chipStarts₁
       chipEnds₀ chipEnds₁ : List JointTuple)
@@ -359,8 +360,9 @@ theorem five_claimed_sums_imply_signed_closure
       productionReciprocalSum7 chipStarts₁ alpha z +
       productionReciprocalSum7 chipEnds₁ alpha z)
     (hfive : circuitClaim + chipClaim₀ + chipClaim₁ +
-      bridgeClaim₀ + bridgeClaim₁ = 0) :
-    jointSignedClosure circuitYields circuitUses
+      bridgeClaim₀ + bridgeClaim₁ +
+      productionReciprocalSum7 publicOutputYields alpha z = 0) :
+    jointSignedClosure (circuitYields ++ publicOutputYields) circuitUses
       (bridgeGates₀ ++ bridgeGates₁)
       (chipInputs₀ ++ chipInputs₁)
       (chipOutputs₀ ++ chipOutputs₁)
@@ -375,7 +377,7 @@ challenge exception set. This is exact joint event balance under the stated
 component AIR and circuit correspondence premises; it does not establish
 those premises from an accepted PCS/FRI proof. -/
 theorem five_claimed_sums_imply_exact_joint_events
-    (circuitYields circuitUses : List JointTuple)
+    (circuitYields circuitUses publicOutputYields : List JointTuple)
     (bridgeGates₀ bridgeGates₁ chipInputs₀ chipInputs₁
       chipOutputs₀ chipOutputs₁ chipStarts₀ chipStarts₁
       chipEnds₀ chipEnds₁ : List JointTuple)
@@ -399,20 +401,24 @@ theorem five_claimed_sums_imply_exact_joint_events
       productionReciprocalSum7 chipStarts₁ alpha z +
       productionReciprocalSum7 chipEnds₁ alpha z)
     (hfive : circuitClaim + chipClaim₀ + chipClaim₁ +
-      bridgeClaim₀ + bridgeClaim₁ = 0)
+      bridgeClaim₀ + bridgeClaim₁ +
+      productionReciprocalSum7 publicOutputYields alpha z = 0)
     (hgood : (alpha,z) ∉ badPairs7
-      (circuitYields ++ (bridgeGates₀ ++ bridgeGates₁) ++
+      ((circuitYields ++ publicOutputYields) ++
+        (bridgeGates₀ ++ bridgeGates₁) ++
         (chipInputs₀ ++ chipInputs₁) ++ (chipEnds₀ ++ chipEnds₁))
       (circuitUses ++ (chipOutputs₀ ++ chipOutputs₁) ++
         (chipStarts₀ ++ chipStarts₁))) :
-    (circuitYields ++ (bridgeGates₀ ++ bridgeGates₁) ++
+    ((circuitYields ++ publicOutputYields) ++
+      (bridgeGates₀ ++ bridgeGates₁) ++
       (chipInputs₀ ++ chipInputs₁) ++ (chipEnds₀ ++ chipEnds₁)).Perm
     (circuitUses ++ (chipOutputs₀ ++ chipOutputs₁) ++
       (chipStarts₀ ++ chipStarts₁)) := by
   apply exact_joint_events_of_signed_closure _ _ _ _ _ _ _ alpha z
     hgood
   exact five_claimed_sums_imply_signed_closure
-    circuitYields circuitUses bridgeGates₀ bridgeGates₁
+    circuitYields circuitUses publicOutputYields
+    bridgeGates₀ bridgeGates₁
     chipInputs₀ chipInputs₁ chipOutputs₀ chipOutputs₁
     chipStarts₀ chipStarts₁ chipEnds₀ chipEnds₁
     alpha z circuitClaim chipClaim₀ chipClaim₁ bridgeClaim₀ bridgeClaim₁
@@ -457,13 +463,14 @@ The premises explicitly say: all chip and bridge row residuals vanish on
 their cyclic predecessor masks; the bridge's eight main words are constant
 (so its denominator fields are row-independent); every event denominator is
 nonzero; the circuit Gate claim has its separate event interpretation; and
-the verifier checked the five claimed sums total zero. No PCS, Fiat–Shamir,
+the verifier checked the five claims plus public-output Gate terms total
+zero. No PCS, Fiat–Shamir,
 or source-manifest correspondence is inferred from these premises. -/
 theorem accepted_pair_air_implies_signed_closure
     {R₀ R₁ : Nat}
     (chip₀ : ChipProfile R₀) (chip₁ : ChipProfile R₁)
     (bridge₀ bridge₁ : BridgeProfile)
-    (circuitYields circuitUses : List JointTuple)
+    (circuitYields circuitUses publicOutputYields : List JointTuple)
     (circuitClaim alpha z : GateSecure)
     (hR₀ : (R₀ : GateSecure) ≠ 0)
     (hR₁ : (R₁ : GateSecure) ≠ 0)
@@ -508,8 +515,9 @@ theorem accepted_pair_air_implies_signed_closure
       productionReciprocalSum7 circuitYields alpha z -
       productionReciprocalSum7 circuitUses alpha z)
     (hfive : circuitClaim + chip₀.claim + chip₁.claim +
-      bridge₀.claim + bridge₁.claim = 0) :
-    jointSignedClosure circuitYields circuitUses
+      bridge₀.claim + bridge₁.claim +
+      productionReciprocalSum7 publicOutputYields alpha z = 0) :
+    jointSignedClosure (circuitYields ++ publicOutputYields) circuitUses
       ([bridge₀.gate0 0, bridge₀.gate1 0, bridge₀.gate0 1, bridge₀.gate1 1,
         bridge₀.gate0 2, bridge₀.gate1 2, bridge₀.gate0 3, bridge₀.gate1 3] ++
        [bridge₁.gate0 0, bridge₁.gate1 0, bridge₁.gate0 1, bridge₁.gate1 1,
@@ -553,7 +561,7 @@ theorem accepted_pair_air_implies_signed_closure
     (fun slot => (hnonzeroBridge₁.1 slot).2)
     hnonzeroBridge₁.2.1 hnonzeroBridge₁.2.2
   exact five_claimed_sums_imply_signed_closure
-    circuitYields circuitUses
+    circuitYields circuitUses publicOutputYields
     [bridge₀.gate0 0, bridge₀.gate1 0, bridge₀.gate0 1, bridge₀.gate1 1,
       bridge₀.gate0 2, bridge₀.gate1 2, bridge₀.gate0 3, bridge₀.gate1 3]
     [bridge₁.gate0 0, bridge₁.gate1 0, bridge₁.gate0 1, bridge₁.gate1 1,
