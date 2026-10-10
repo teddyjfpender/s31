@@ -463,14 +463,41 @@ proof controls, changed claims, rehashed package metadata, and re-sealed
 wrong keys passed. This supports the implementation boundary, not a theorem
 for the AIR, LogUp challenge argument, or PCS.
 
-The staged two-call AIR has no accepting proof API. Its tagged lookup tuple,
+The staged two-call AIR has no exported S31 proof API. Its tagged lookup tuple,
 checked Gate multiplicities, unique producer addresses, and cyclic bridge
-equalities were reviewed without finding a counterexample. Before enabling
-proofs, the quotient test must exercise a **nonzero row-varying bridge
-residual**; a zero-residual test cannot detect a wrong next-row mask. The
+equalities were reviewed without finding a counterexample. This review
+requested a **nonzero row-varying bridge residual** test before proof
+admission; a zero-residual test cannot detect a wrong next-row mask. The
 actual prover/verifier transcript must be compared event by event, including
 channel salt, FRI configuration, PoW nonce, five claimed sums, and both
 commitments. The staged transcript-order guard does not cover all of those
 events. The top-level chip/bridge `program_binding_sha256` fingerprints do
 not hash transitive Zig imports or the built executable, so they are audit
 identifiers rather than complete executable identities.
+
+#### Differential correction and first pair proof prototype
+
+The requested invalid bridge witness exposed a concrete **staged AIR
+implementation defect** before pair proof admission. The bridge point mask
+used the trace-log-4 circle step while the quotient evaluator used a
+log-5 lifted composition mask. For a nonzero row-varying endpoint residual,
+the domain quotient and verifier point evaluator disagreed. Pinned Stwo
+`39f78b05` now derives both neighbor mask points from the supplied maximum
+mask log. The new differential selects a nonzero composition-domain quotient
+value and compares it with point evaluation at its one-fold preimage; the
+focused test passed on the pinned branch. The earlier zero-residual test
+could not have found this bug. This correction is necessary for pair soundness
+but does not prove the other AIR or PCS obligations.
+
+An isolated engine prototype now forms one five-component, three-tree STARK
+proof for two differently parameterized chip calls and verifies it with a
+source-supplied pair plan. Honest proof and mutation checks have passed in
+that isolated tree. During review, its test fixture initially created two
+fresh lane-1 guess wires and then changed only the plan's lane-1 address to
+alias lane 0; the public output still used the unbound fresh lane-1 output.
+The fixture now aliases the actual circuit `Var` objects before constructing
+public outputs and the plan. This illustrates the remaining
+**source-to-plan correspondence obligation**: Gate and chip proofs can
+authenticate the plan they are given, but only a checked compiler can show
+that plan is the intended program's call boundary. The prototype remains
+unexported and has no S31 package or sealed native verifier yet.
