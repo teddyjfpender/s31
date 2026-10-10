@@ -167,6 +167,7 @@ BINDINGS = [
     "src/frontends/s31/python/package/correspondence.py",
     "src/frontends/s31/python/package/direct_gate_schedule.py",
     "src/frontends/s31/python/package/manifest_digest.py",
+    "src/frontends/s31/python/package/trust.py",
     "src/frontends/s31/python/package/verify.py",
     "src/frontends/s31/python/abi/record_v2.py",
     "src/frontends/s31/python/abi/binding_v2.py",
