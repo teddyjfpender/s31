@@ -12,6 +12,20 @@ copy gates. After the circuit builder's reserved first slot, the eight S31
 public slots must hold those four input and four result gates in source order.
 These are a soundness-relevant path through a larger emitted
 circuit, which also contains range and representation gates.
+The exporter runs the production circuit's single-yield check for every
+declared variable, rejects permutation scratch rows in this particular
+program, and independently enumerates all producer gate outputs to check that
+they contain each declared address exactly once. It records the resulting
+complete address range and the arithmetic-row count. Lean runs its modeled
+producer scan on that exported range and checks the selected gate addresses
+lie below the emitted declared bound. The values attached to those addresses
+in a committed trace still need a source-to-model correspondence proof.
+The exporter also compiles and pads an independent copy of the circuit, then
+asks the engine to build its actual preprocessed AIR columns. It checks each
+selected gate's row index, opcode flags, wire addresses and positive output
+multiplicity there. The generated certificate records 512 padded arithmetic
+rows, with the two source squares at rows 502 and 503. These are fixed-column
+checks; committed witness values and openings remain separate obligations.
 
 `scripts/s31_formal.py` runs the Python text compiler on the checked-in
 `.s31` source, passes that fresh IR to this executable, and compares the

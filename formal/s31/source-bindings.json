@@ -51,7 +51,7 @@
     "src/frontends/s31/examples/arithmetic/functional_square4.s31": "d2bffe38fa1a470a8c01a82a4c2e6a611f3607b06251c1fca1cf3448aa1a13b6",
     "src/frontends/s31/build.zig": "123b8e4a6f2b8fd6ef2fd70743f2c991468b131e5d698d0ce23008661fa0442e",
     "src/frontends/s31/entry/export_square4_topology.zig": "3e9266bdc4dc323162098dee218d77de0cd993d1a2da3d214a0e63e8e4c43306",
-    "src/frontends/s31/tools/formal/export_square4_topology.zig": "64bc2900a4e7ef56e8b249e2501528f46390d1c39a345fd9ceb2d3908438f358",
+    "src/frontends/s31/tools/formal/export_square4_topology.zig": "69135fc9b5f484b6e63f750b649e5d4a21cd65d1fbda94d1c95315794f07b12f",
     "src/frontends/s31/language/relation_compiler.zig": "3ca16e9fd177469322ae56ca6dcd367dcfd6badf77bee0f4321150655684ff5d",
     "src/frontends/s31/library/hash/poseidon2.zig": "8843429f1d9b6da7a895ccf474d421cad5098e9de1fa6df566b2acb7edc4ad34",
     "src/core/crypto/blake2s_terminal_parallel.zig": "bcc4b0f7e3f5a08e62bf4798a57e9ff390880aa57dcd88764f5312068813f9c5",

@@ -163,6 +163,18 @@ and permits repeated scratch producers above that bound. It requires every
 produced event below the native declared-variable bound to appear in the
 checked producer list; proving this coverage for emitted trace events is still
 part of source-to-model correspondence.
+The concrete native exporter separately enumerates every declared producer
+output and checks that they form exactly the range `0..321`. Lean evaluates
+the modeled producer scan on that generated range; the concrete raw AIR bound
+therefore has no caller-supplied scan premise. It still requires the modeled
+value-bearing events to agree with native trace values.
+The exporter also constructs the engine's padded preprocessed AIR and checks
+the selected rows' addresses, opcode flags and positive multiplicities.
+`TextSquare4TraceRows` locates the two squares at rows 502 and 503 of 512;
+its Lean theorem converts accepted rows at those positions into the Gate-path
+premise. The emitted-row raw AIR bound therefore has `3n = 1536` as its row
+term. This does not prove trace opening or AIR evaluation for a committed
+proof.
 `TextSquare4ChallengeJoin` composes the selected circuit path with the
 modeled checked Gate use/yield counters and LogUp reciprocal closure. Outside
 the explicit exceptional challenge sets, a zero closure forces the public

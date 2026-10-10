@@ -12,6 +12,14 @@ deriving DecidableEq, Repr, Inhabited
 def first : Gate := ⟨22, 22, 23⟩
 def second : Gate := ⟨23, 23, 24⟩
 def nodeRowSpans : List (Nat × Nat) := [(6, 7), (7, 8)]
+def declaredVarCount : Nat := 322
+def declaredProducerAddresses : List Nat := List.range declaredVarCount
+def arithmeticRowCount : Nat := 322
+def paddedArithmeticRowCount : Nat := 512
+def paddedDeclaredVarCount : Nat := 608
+def permutationTermCount : Nat := 0
+def mulRowStart : Nat := 475
+def pointRowStart : Nat := 502
 def inputWires : List Nat := [11, 12, 13, 14]
 def inputBasisWires : List Nat := [15, 2, 16]
 def inputPackMul : List Gate := [⟨15, 12, 17⟩, ⟨2, 13, 19⟩, ⟨16, 14, 21⟩]

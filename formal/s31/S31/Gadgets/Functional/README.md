@@ -24,6 +24,7 @@ Lean module names follow the directory, for example
 | `TextSquare4NativeBoundary.lean` | Exact native input binding, pack, arithmetic, unpack and output gate rows imply the public four-lane fourth-power claim. |
 | `TextSquare4GateJoin.lean` | Conditional exact Gate balance and unique producers construct the shared wire map used by the native public-boundary theorem. |
 | `TextSquare4ChallengeJoin.lean` | Checked Gate counters and good LogUp challenges force the exported circuit's public claim; a forged claim has nonzero reciprocal closure. |
+| `TextSquare4TraceRows.lean` | Source-checked preprocessed AIR positions for the selected gates imply their Gate-path membership. |
 | `TextSquare4RawSoundness.lean` | For a fixed forged claim, source-extracted raw Gate interaction AIR accepts on at most the explicit exceptional challenge-pair bound. |
 
 The dependency order starts with `Graph`, then `Outputs`, then `Arrays`.
@@ -101,6 +102,21 @@ coverage of these low-address events imply the needed uniqueness, even if
 unrelated permutation scratch addresses have several producer events. The
 coverage of actual native trace events by the checked list remains an explicit
 source-to-model premise.
+The native exporter now also runs the engine's single-yield validation on all
+declared variables and rejects permutation scratch rows for this source. It
+reports 322 declared variables and 322 arithmetic rows. Lean proves the
+reported declared bound is canonical and includes every selected path address.
+The exporter independently enumerates producer outputs and checks they are
+exactly the range `0..321`; Lean evaluates its modeled producer scan on that
+generated range. `native_public_claim_of_exported_producers` therefore needs
+only coverage of actual Gate events by the value-bearing declared event list.
+That value-level trace correspondence remains an explicit premise.
+The exporter checks the selected gates against the engine's **padded**
+preprocessed AIR columns. The source circuit has 322 arithmetic gates; padding
+gives 512 arithmetic rows and 608 declared variables. The two pointwise
+square rows are at indices 502 and 503. `TextSquare4TraceRows.selected_rows_imply_path`
+derives the selected-gate path from those positions. Committed witness values
+must still satisfy the local AIR equations.
 `TextSquare4ChallengeJoin.public_claim_of_checked_logup_closure` adds the
 modeled compressed use/yield counter walks and the fixed-list LogUp reduction.
 When the address/count checks pass, the challenges avoid the explicit bad
@@ -114,9 +130,11 @@ the actual source-extracted Gate LogUp residual model to a finite challenge
 bound for a fixed false fourth-power claim. Let `s` be the number of distinct
 Gate event tuples and `n` the number of padded arithmetic rows. Under the
 stated canonical-address, event-count, selected-row, public-event and
-declared-producer premises, at most `(5s² + 2s + 3n) · |QM31|` challenge pairs
+declared-event coverage premises, at most `(5s² + 2s + 3n) · |QM31|` challenge pairs
 can satisfy the modeled raw AIR, out of `|QM31|²` ideal pairs. The theorem
 does not establish Fiat-Shamir sampling or native trace/PCS correspondence.
+The emitted-row variant fixes `n = 512`, replaces the row term with
+`3n = 1536`, and names the checked row positions in its premise.
 The source binding regenerates the native artifact on every formal audit;
 there is still no machine-checked proof of the whole Zig compiler or STARK
 protocol.

@@ -3,8 +3,30 @@
 //! the IR freshly compiled from the `.s31` source on every run.
 const std = @import("std");
 const circuit = @import("stwo_circuit_frontend");
+const M31 = @import("stwo_core").fields.m31.M31;
 const QM31 = @import("stwo_core").fields.qm31.QM31;
 const s31 = @import("stwo_s31_prototype");
+
+const NativeRowColumns = struct {
+    flags: [4][]const M31,
+    input0: []const M31,
+    input1: []const M31,
+    output: []const M31,
+    multiplicity: []const M31,
+};
+
+fn checkNativeRow(columns: NativeRowColumns, row: usize, gate: anytype, opcode: usize) !void {
+    if (row >= columns.input0.len or opcode >= 4 or
+        columns.input0[row].toU32() != gate.in0 or
+        columns.input1[row].toU32() != gate.in1 or
+        columns.output[row].toU32() != gate.out or
+        columns.multiplicity[row].toU32() == 0)
+        return error.UnexpectedNativeArithmeticRow;
+    for (columns.flags, 0..) |flag, i| {
+        if (flag[row].toU32() != @as(u32, @intFromBool(i == opcode)))
+            return error.UnexpectedNativeArithmeticFlag;
+    }
+}
 
 fn writeGates(writer: *std.Io.Writer, name: []const u8, gates: anytype) !void {
     try writer.print("def {s} : List Gate := [", .{name});
@@ -41,6 +63,33 @@ pub fn main() !void {
     defer maps.deinit(allocator);
     var ctx = try s31.relation_compiler.compileDirectWithSpans(circuit.builder.NoValue, allocator, program, null, &maps, false);
     defer ctx.deinit();
+    if (ctx.circuit.n_vars >= 2147483647)
+        return error.NoncanonicalDeclaredAddressBound;
+    if (try ctx.circuit.firstYieldViolation(allocator)) |_| return error.NonUniqueDeclaredProducer;
+    if (ctx.circuit.permutation.nTerms() != 0)
+        return error.UnexpectedPermutationScratch;
+    var producer_addresses: std.ArrayList(u32) = .empty;
+    defer producer_addresses.deinit(allocator);
+    inline for (.{ ctx.circuit.add.items, ctx.circuit.sub.items, ctx.circuit.mul.items, ctx.circuit.pointwise_mul.items }) |gates| {
+        for (gates) |gate| try producer_addresses.append(allocator, gate.out);
+    }
+    for (ctx.circuit.triple_xor.items) |gate| try producer_addresses.append(allocator, gate.out);
+    for (ctx.circuit.m31_to_u32.items) |gate| try producer_addresses.append(allocator, gate.out);
+    for (ctx.circuit.blake_g_gate.items) |gate| {
+        for (gate.outputs()) |out| try producer_addresses.append(allocator, out);
+    }
+    for (ctx.circuit.permutation.outputs.items) |out| try producer_addresses.append(allocator, out);
+    if (producer_addresses.items.len != ctx.circuit.n_vars)
+        return error.MissingDeclaredProducer;
+    const seen = try allocator.alloc(bool, ctx.circuit.n_vars);
+    defer allocator.free(seen);
+    @memset(seen, false);
+    for (producer_addresses.items) |address| {
+        if (address >= ctx.circuit.n_vars or seen[address])
+            return error.DuplicateOrOutOfRangeProducer;
+        seen[address] = true;
+    }
+    for (seen) |present| if (!present) return error.MissingDeclaredProducer;
     if (maps.nodes.items.len != 3) return error.UnexpectedCanonicalNodeCount;
     const first_span = maps.nodes.items[1];
     const second_span = maps.nodes.items[2];
@@ -110,6 +159,52 @@ pub fn main() !void {
             return error.UnexpectedPublicOutputOrder;
     }
 
+    // The production AIR receives the finalized, padded circuit. Compile it
+    // independently so the unpadded gate slices above remain stable.
+    var padded_ctx = try s31.relation_compiler.compileDirect(circuit.builder.NoValue, allocator, program, null, false);
+    defer padded_ctx.deinit();
+    if (padded_ctx.circuit.n_vars != ctx.circuit.n_vars or
+        padded_ctx.circuit.add.items.len != ctx.circuit.add.items.len or
+        padded_ctx.circuit.sub.items.len != ctx.circuit.sub.items.len or
+        padded_ctx.circuit.mul.items.len != ctx.circuit.mul.items.len or
+        padded_ctx.circuit.pointwise_mul.items.len != ctx.circuit.pointwise_mul.items.len)
+        return error.TopologyChangedBetweenCompilers;
+    try circuit.common.finalize.padContext(circuit.builder.NoValue, &padded_ctx);
+    const preprocessed = circuit.common.preprocessed;
+    var native = try preprocessed.PreprocessedCircuit.fromCircuit(
+        allocator,
+        preprocessed.CircuitView.fromBuilder(&padded_ctx.circuit),
+    );
+    defer native.deinit(allocator);
+    if (native.first_permutation_row != padded_ctx.circuit.nQm31OpsRows())
+        return error.UnexpectedNativeArithmeticRowCount;
+    const columns: NativeRowColumns = .{
+        .flags = .{
+            native.columnValues("qm31_ops_add_flag").?,
+            native.columnValues("qm31_ops_sub_flag").?,
+            native.columnValues("qm31_ops_mul_flag").?,
+            native.columnValues("qm31_ops_pointwise_mul_flag").?,
+        },
+        .input0 = native.columnValues("qm31_ops_in0_address").?,
+        .input1 = native.columnValues("qm31_ops_in1_address").?,
+        .output = native.columnValues("qm31_ops_out_address").?,
+        .multiplicity = native.columnValues("qm31_ops_mults").?,
+    };
+    const mul_row_start = padded_ctx.circuit.add.items.len + padded_ctx.circuit.sub.items.len;
+    const point_row_start = mul_row_start + padded_ctx.circuit.mul.items.len;
+    for (0..3) |i| {
+        try checkNativeRow(columns, i, pack_add[i], 0);
+        try checkNativeRow(columns, mul_row_start + i, pack_mul[i], 2);
+        try checkNativeRow(columns, mul_row_start + 3 + i, output_mul[i], 2);
+    }
+    for (0..4) |i| {
+        try checkNativeRow(columns, 3 + i, input_bind[i], 0);
+        try checkNativeRow(columns, 7 + i, output_bind[i], 0);
+        try checkNativeRow(columns, point_row_start + 2 + i, output_point[i], 3);
+    }
+    try checkNativeRow(columns, point_row_start, first, 3);
+    try checkNativeRow(columns, point_row_start + 1, second, 3);
+
     var buffer: [4096]u8 = undefined;
     var stdout = std.fs.File.stdout().writer(&buffer);
     const writer = &stdout.interface;
@@ -121,8 +216,16 @@ pub fn main() !void {
     try writer.print(
         "def first : Gate := ⟨{d}, {d}, {d}⟩\n" ++
             "def second : Gate := ⟨{d}, {d}, {d}⟩\n" ++
-            "def nodeRowSpans : List (Nat × Nat) := [({d}, {d}), ({d}, {d})]\n",
-        .{ first.in0, first.in1, first.out, second.in0, second.in1, second.out, first_span.qm31_start, first_span.qm31_end, second_span.qm31_start, second_span.qm31_end },
+            "def nodeRowSpans : List (Nat × Nat) := [({d}, {d}), ({d}, {d})]\n" ++
+            "def declaredVarCount : Nat := {d}\n" ++
+            "def declaredProducerAddresses : List Nat := List.range declaredVarCount\n" ++
+            "def arithmeticRowCount : Nat := {d}\n" ++
+            "def paddedArithmeticRowCount : Nat := {d}\n" ++
+            "def paddedDeclaredVarCount : Nat := {d}\n" ++
+            "def permutationTermCount : Nat := {d}\n" ++
+            "def mulRowStart : Nat := {d}\n" ++
+            "def pointRowStart : Nat := {d}\n",
+        .{ first.in0, first.in1, first.out, second.in0, second.in1, second.out, first_span.qm31_start, first_span.qm31_end, second_span.qm31_start, second_span.qm31_end, ctx.circuit.n_vars, ctx.circuit.nQm31OpsRows(), padded_ctx.circuit.nQm31OpsRows(), padded_ctx.circuit.n_vars, ctx.circuit.permutation.nTerms(), mul_row_start, point_row_start },
     );
     try writer.print(
         "def inputWires : List Nat := [{d}, {d}, {d}, {d}]\n" ++

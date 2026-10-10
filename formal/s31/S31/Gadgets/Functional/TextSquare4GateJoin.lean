@@ -107,6 +107,48 @@ def pinnedEvents (produced : List Event) (input claimed : Fin 4 → M31) : Prop 
   (∀ i : Fin 4, (publicOutputWire i.val,
       base (Field.toZMod (claimed i))) ∈ produced)
 
+/-- The native exporter checks every declared wire has exactly one producer
+and that this concrete circuit has no permutation scratch rows. Lean checks
+the reported geometry and the selected path's declared-address bound. -/
+theorem native_compiler_declared_facts :
+    35 ≤ TextSquare4Native.declaredVarCount ∧
+    TextSquare4Native.declaredVarCount < 2147483647 ∧
+    TextSquare4Native.arithmeticRowCount =
+      TextSquare4Native.declaredVarCount ∧
+    TextSquare4Native.permutationTermCount = 0 := by
+  decide
+
+set_option maxRecDepth 4096 in
+/-- The exporter verifies that the native compiler's actual producer outputs
+are precisely the addresses in this generated range. Lean evaluates the
+modeled producer scan on that range. -/
+theorem native_producer_scan_exists :
+    ∃ result,
+      S31.Gadgets.Air.GateProducerCheck.scan
+        TextSquare4Native.declaredVarCount ∅
+        TextSquare4Native.declaredProducerAddresses = some result := by
+  have h : (S31.Gadgets.Air.GateProducerCheck.scan
+      TextSquare4Native.declaredVarCount ∅
+      TextSquare4Native.declaredProducerAddresses).isSome = true := by
+    decide
+  cases hscan : S31.Gadgets.Air.GateProducerCheck.scan
+      TextSquare4Native.declaredVarCount ∅
+      TextSquare4Native.declaredProducerAddresses with
+  | none => simp [hscan] at h
+  | some result => exact ⟨result, rfl⟩
+
+def declaredEvents (wire : Nat → Quad) : List Event :=
+  TextSquare4Native.declaredProducerAddresses.map
+    (fun address => (address, wire address))
+
+set_option maxRecDepth 4096 in
+theorem declared_events_scan_exists (wire : Nat → Quad) :
+    ∃ result,
+      S31.Gadgets.Air.GateProducerCheck.scan
+        TextSquare4Native.declaredVarCount ∅
+        ((declaredEvents wire).map Prod.fst) = some result := by
+  simpa [declaredEvents, List.map_map] using native_producer_scan_exists
+
 /-- Only addresses below 35 need unique produced values. The exported path
 uses addresses 0–34, so permutation scratch producers at higher addresses may
 share an address without weakening this circuit statement. -/
@@ -204,5 +246,45 @@ theorem native_public_claim_of_checked_declared
     exact hlow address left right (lt_of_lt_of_le haddress hbound) hleft hright
   exact native_public_claim_of_gate_balance_below rows
     externalUses externalYields input claimed hbalance hlow35 hpath hpins
+
+/-- Instantiate the declared-address theorem with the count exported by the
+production compiler, rather than a caller-supplied bound. -/
+theorem native_public_claim_of_exported_bound
+    (rows : List Row) (externalUses externalYields declared : List Event)
+    (result : Finset Nat) (input claimed : Fin 4 → M31)
+    (hbalance : balanced rows externalUses externalYields)
+    (hscan : S31.Gadgets.Air.GateProducerCheck.scan
+      TextSquare4Native.declaredVarCount ∅
+      (declared.map Prod.fst) = some result)
+    (hcovered : ∀ address value,
+      address < TextSquare4Native.declaredVarCount →
+      (address, value) ∈ allYields rows externalYields →
+      (address, value) ∈ declared)
+    (hpath : nativePathRows rows)
+    (hpins : pinnedEvents (allYields rows externalYields) input claimed) :
+    claimed = TextSquare4Air.fourth input :=
+  native_public_claim_of_checked_declared rows
+    externalUses externalYields declared
+    TextSquare4Native.declaredVarCount result input claimed
+    native_compiler_declared_facts.1 hbalance hscan hcovered hpath hpins
+
+/-- The modeled scan premise is discharged by the source-exported complete
+producer-address roster. The remaining coverage premise is exactly where
+native trace events must be identified with this declared producer map. -/
+theorem native_public_claim_of_exported_producers
+    (rows : List Row) (externalUses externalYields : List Event)
+    (wire : Nat → Quad) (input claimed : Fin 4 → M31)
+    (hbalance : balanced rows externalUses externalYields)
+    (hcovered : ∀ address value,
+      address < TextSquare4Native.declaredVarCount →
+      (address, value) ∈ allYields rows externalYields →
+      (address, value) ∈ declaredEvents wire)
+    (hpath : nativePathRows rows)
+    (hpins : pinnedEvents (allYields rows externalYields) input claimed) :
+    claimed = TextSquare4Air.fourth input := by
+  obtain ⟨result, hscan⟩ := declared_events_scan_exists wire
+  exact native_public_claim_of_exported_bound rows externalUses
+    externalYields (declaredEvents wire) result input claimed
+    hbalance hscan hcovered hpath hpins
 
 end S31.Functional.TextSquare4GateJoin

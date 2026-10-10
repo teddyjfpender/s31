@@ -73,6 +73,21 @@ values at declared addresses yields a coherent address-to-value map. Its
 scratch counterexample permits two different values at scratch address `40`
 while addresses below `35` remain unique. The exported fourth-power path
 uses only addresses `0` through `34`.
+[The native exporter](../../tools/formal/README.md) checks that this
+program has 322 declared variables, 322 arithmetic rows, no permutation
+scratch rows, and exactly one builder yield per declared variable. Lean
+checks the selected path addresses fit within that exported bound. The
+exporter also enumerates producer outputs and checks they are exactly
+`0..321`; Lean's modeled producer scan accepts that generated range. The
+correspondence between the builder's **values** and the modeled Gate event
+list is still a separate premise.
+The production AIR pads this circuit to 512 arithmetic rows. The exporter
+checks the actual preprocessed opcode flags, address columns and positive
+multiplicities for all 23 selected gates. Padding adds `add` rows before the
+`mul` and `pointwiseMul` groups, so the two squares occupy rows 502 and 503.
+[TextSquare4TraceRows.lean](../../../../../formal/s31/S31/Gadgets/Functional/TextSquare4TraceRows.lean)
+uses those positions in the Lean premise; the trace values at those rows still
+need to satisfy the local AIR equations.
 [TextSquare4GateJoin.lean](../../../../../formal/s31/S31/Gadgets/Functional/TextSquare4GateJoin.lean)
 uses this result to remove the assumed shared-wire map from the public-claim
 proof. It requires accepted rows for the 23 selected gates, public and
@@ -96,6 +111,7 @@ occur, the bound is `(5s² + 2s + 3n) · |QM31|` pairs out of `|QM31|²` possibl
 pairs. This is a count of algebraic exceptional pairs under the theorem's
 canonical-address, count, row, public-event and producer premises. It is not
 a deployed verifier error rate by itself.
+For this source's 512-row AIR, the row-dependent term is `3n = 1536`.
 
 ## The remaining proof boundary
 
