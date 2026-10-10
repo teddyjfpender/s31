@@ -1,7 +1,8 @@
 # Whole-prover cost model V6: prospective chip RSS transfer
 
-**Status: draft protocol and static tooling. No V6 package or native proof has
-been built or timed.** The [V5 audit](language/whole-prover-cost-v5-audit.json)
+**Status: protocol pinned to integrated source before native observation. No
+V6 package or native proof has been built or timed.** The
+[V5 audit](language/whole-prover-cost-v5-audit.json)
 is immutable. Its direct-chip RSS interval missed the frozen coverage gate.
 That failure motivates another independent study; V5 held-out values are not
 fit inputs, calibration inputs, or V6 gate adjustments.
@@ -9,8 +10,9 @@ fit inputs, calibration inputs, or V6 gate adjustments.
 The [V6 protocol](whole-prover-cost-v6.json) retains V5's wall and proof-byte
 models, all accuracy thresholds, 26-bit PoW policy, and source/tool/host
 controls. Automatic lowering selection remains disabled, including after a
-possible local pass. Source, engine, compiler, and tool pins are null in this
-draft, so the runner refuses every native phase.
+possible local pass. Source, engine, compiler, and tool bytes are pinned in
+the protocol; native work still requires a committed freeze anchor and its
+externally timestamped full SHA.
 
 ## Training-only interval rule
 
