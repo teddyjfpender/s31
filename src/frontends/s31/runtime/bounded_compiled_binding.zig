@@ -111,6 +111,13 @@ pub fn checkWitnessTopology(
     if (!std.mem.eql(u8, &plan.canonical_ir_sha256, &expected.canonical_ir_sha256) or
         plan.call_count != expected.call_count)
         return error.BoundedSourceMismatch;
+    for (plan.callSlice(), expected.callSlice()) |actual, wanted| {
+        if (actual.call_id != wanted.call_id or
+            actual.source_node_id != wanted.source_node_id or
+            actual.input_node_id != wanted.input_node_id or
+            actual.rounds != wanted.rounds or actual.constant != wanted.constant)
+            return error.BoundedSourceMismatch;
+    }
     var maps = compiler.Maps{};
     defer maps.deinit(allocator);
     var ctx = try compiler.compileDirectBoundedWithSpans(QM31, allocator, parsed.value, assignment, &maps);
@@ -571,6 +578,12 @@ test "bounded pair endpoints agree in topology and witness compilation" {
     try checkWitnessTopology(a, source, assignment.value, topology);
     topology.calls[0].input[0] += 1;
     try std.testing.expectError(error.BoundedWitnessTopologyMismatch, checkWitnessTopology(a, source, assignment.value, topology));
+    topology.calls[0].input[0] -= 1;
+    topology.calls[0].rounds += 16;
+    try std.testing.expectError(error.BoundedSourceMismatch, checkWitnessTopology(a, source, assignment.value, topology));
+    topology.calls[0].rounds -= 16;
+    topology.calls[0].constant += 1;
+    try std.testing.expectError(error.BoundedSourceMismatch, checkWitnessTopology(a, source, assignment.value, topology));
 }
 
 test "bounded two-call inspection rebinds selected AIR and native handle geometry" {
