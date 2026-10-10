@@ -148,3 +148,11 @@ of [Wright and Felleisen's syntactic type-soundness work](https://felleisen.org/
 That theorem must be separate from the existing local AIR gadget proofs and
 from probabilistic STARK soundness. Until all rows above have adequate
 evidence, the repository should describe the frontend as an evolving subset.
+
+The `HigherOrderRoutes` model now proves for arbitrary residual inputs that a
+captured returned function, a local function binding, and higher-order passage
+produce the same two-node polynomial graph as `x*x + y`. Its strict-graph
+theorems bind every accepted output, construct the honest witness and exclude
+a forged claim. The pinned generated Python corpus checks analogous source
+routes against the production text compiler, but there is still no theorem
+that the Python compiler implements the Lean specialization function.

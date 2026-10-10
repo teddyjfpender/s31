@@ -270,11 +270,14 @@ whole chain from genesis.
 The package supports useful field, static vector, bit, byte, hash, Merkle,
 and Bitcoin work programs today. The library MVP is a **supported subset**,
 not a general-purpose mathematical package or a production light client.
-The next math-library family is the ten
+The implemented fixed-width slice includes the ten
 [fixed-width unsigned and signed scalar types](FIXED_WIDTH_INTEGERS.md):
 `u8` through `u128` and `i8` through `i128`, with explicit range, cast,
-ordering, and overflow contracts. They are designed but not implemented;
-the current `[u16; N]` limbs and M31 values do not supply those semantics.
+ordering, and overflow contracts for checked/wrapping addition and subtraction.
+Its explicit conversions cover equal-width signedness reinterpretation and
+exactly sized limb views. Multiplication, division, shifts, bitwise operations,
+cross-width numeric casts and the full per-width native release matrix remain
+open. A raw `[u16; N]` or M31 value still does not carry integer semantics.
 The main additions beyond this bar are:
 
 1. Deterministic named-module imports and a version policy for third-party
@@ -283,8 +286,9 @@ The main additions beyond this bar are:
 2. Witness-dependent indexing and broader vector kernels, each with measured
    costs and negative proof cases. Current `get<K>` and slices have static
    indices and lengths.
-3. The fixed-width integer family above, plus general source-level `UInt256`
-   multiplication and quotient/remainder beyond the special proved
+3. Broader fixed-width integer operations and the per-width native release
+   matrix above, plus general source-level `UInt256` multiplication and
+   quotient/remainder beyond the special proved
    `block_work` calculation. A faster wide-arithmetic chip needs a measured
    crossover and sound private boundary.
 4. Larger independent proof corpora and a formal review of the chip, lookup,
