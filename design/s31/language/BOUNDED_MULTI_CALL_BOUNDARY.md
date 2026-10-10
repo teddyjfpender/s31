@@ -161,6 +161,18 @@ profile. Mix the versioned manifest digest before the first base commitment.
 The verifier reconstructs and byte-compares the key from sealed source and
 pinned AIR; no proof-supplied component description can drive the schedule.
 
+The proposed V4 channel begins with its own profile tag `S31MANY\x01` and
+an effective digest in the
+`S31-DIRECT-CHIP-MANY-MANIFEST-TRANSCRIPT-V4` domain, followed by the
+source-derived ordered call Plan. It then mixes channel salt and fixed FRI
+configuration, commits the fixed preprocessed columns, mixes the circuit
+identity in the `S31-DIRECT-M31-CHIP-MANY-V1` domain, and mixes the public
+output words **before** the main commitment. The remaining order is main
+commitment, interaction PoW nonce, lookup challenge, ordered claimed sums,
+interaction commitment, then the PCS proof. The current
+`TranscriptOrder` helper records this expected sequence for review; no V4
+prover or verifier consumes it yet.
+
 For circuit row log `L`, rounds `R_i`, and circuit constraint count `C`, the
 selected roster has `1+2N` components and ordered claims. Tree 0 has eight
 fixed columns. Trees 1 and 2 contain, respectively,
