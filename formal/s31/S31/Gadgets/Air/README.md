@@ -442,6 +442,9 @@ scratch address count is at most that length. `full_bounds_with_permutation_scra
 combines those bounds with declared-variable counts using the disjoint
 address ranges. It requires the stated row/event lengths and range
 partition; proving them for the native emitted trace remains open.
+`closed_gate_of_partitioned_scratch` carries the two bounded histograms
+through the fixed-list LogUp theorem. It accepts permutations of the
+declared/scratch event partitions, matching lookup's multiset meaning.
 
 For two permutation pairs, let the input values be `[5, 7]` and the
 output values be `[7, 5]`. The first two rows yield `(scratch, 5)` and
@@ -451,6 +454,16 @@ order may change. The zero-wire increment is `4` for these four rows;
 each scratch read/yield list has length `2`, below that checked count.
 Requiring one value per scratch address would incorrectly reject this
 valid permutation.
+
+`PermutationRows.lean` proves the exact local two-row schedule. The first
+zero-add row copies each input value to the shared scratch address; the
+second copies each scratch read to its output. The global Gate multiset
+is filtered by the chosen scratch address to recover that gate's
+scratch-only balance, even when other permutation gates are present.
+`permutation_sound_of_global_gate` concludes that output values permute
+input values. The converse constructs honest row witnesses for every
+permutation. Kernel-checked two-word controls accept the swap above and
+reject replacing `7` with `8`.
 
 `GateFinal.lean` composes that conditional multiset theorem with the
 arithmetic row theorem. If each addressed input has a unique producer, a

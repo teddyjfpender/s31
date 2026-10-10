@@ -26,6 +26,7 @@ import S31.Gadgets.Air.GateContributions
 import S31.Gadgets.Air.GateCounterCircuit
 import S31.Gadgets.Air.GateUseTraversal
 import S31.Gadgets.Air.PermutationScratch
+import S31.Gadgets.Air.PermutationRows
 import S31.Gadgets.Air.GateProducerCheck
 import S31.Gadgets.Air.GateFinal
 import S31.Gadgets.Air.EqRows

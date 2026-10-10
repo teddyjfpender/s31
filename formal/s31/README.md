@@ -358,6 +358,21 @@ are disjoint, so their separate bounds imply full Gate address bounds
 without assuming one scratch producer per address. What remains is a
 source-to-model proof that the emitted scratch event lists have those
 lengths and stay at addresses `≥ n_vars`.
+`closed_gate_of_partitioned_scratch` combines those bounds with a closed
+Gate claim and good challenges to recover exact Gate multiset balance.
+Its use and yield partitions are permutation equalities, so source rows
+may interleave declared and scratch events.
+
+`PermutationRows` proves the local meaning of the shared-address gadget.
+Each input is copied by a zero-add row to the common scratch address;
+each output is copied from one scratch read by another zero-add row.
+`permutation_rows_iff` proves those rows and a balanced scratch multiset
+exist exactly when the output words are a permutation of the input words.
+`permutation_sound_of_global_gate` extracts one gate's scratch balance from
+the whole Gate multiset by filtering on its exact scratch address. This
+allows other permutation gates to use their own scratch addresses and
+does not assume a unique scratch producer. Honest `[5,7] → [7,5]` and
+forged `[5,7] → [5,8]` controls are kernel checked.
 
 `LogUpInteraction` models the other side of the reduction. Its single and
 paired residuals use the formulas in the Zig verifier. Given nonzero
