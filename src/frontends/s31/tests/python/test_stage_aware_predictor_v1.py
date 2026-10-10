@@ -62,6 +62,9 @@ def synthetic_corpus(split: str, protocol: dict) -> dict:
             "raw": {"blake_g" if family == "hash" else "qm31_ops": scale},
             "padded": {"blake_g" if family == "hash" else "qm31_ops": 2 * scale},
             "preprocessed_cells": 16 * scale,
+            "package_build": {"package_build_wall_seconds": 1.0,
+                              "package_reused": False,
+                              "zig_compiler_cache": "synthetic"},
             "assignment_sha256": [digest(f"{split}:{name}:{i}")
                                   for i in range(protocol["samples_per_program"])],
             "trials": trials,

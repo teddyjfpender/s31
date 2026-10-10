@@ -76,6 +76,20 @@ def publish(train_path: Path, model_path: Path, validation_path: Path,
     if {key: value for key, value in evaluation.items()
         if key not in ("frozen_model_sha256", "validation_corpus_sha256")} != reevaluated:
         raise ValueError("saved evaluation differs from an independent held-out replay")
+    inventory = {}
+    for split, corpus in (("train", train), ("validation", validation)):
+        inventory[split] = {name: {
+            "family": case["family"],
+            "source_sha256": case["source_sha256"],
+            "compiler_sha256": case["compiler_sha256"],
+            "lowering": case["lowering"], "profile": case["profile"],
+            "visible_fri": case["visible_fri"],
+            "raw": case["raw"], "padded": case["padded"],
+            "preprocessed_cells": case["preprocessed_cells"],
+            "package_build": case["package_build"],
+            "assignment_sha256": case["assignment_sha256"],
+            "proof_sha256": [trial["proof_sha256"] for trial in case["trials"]],
+        } for name, case in sorted(corpus["cases"].items())}
     return {
         "schema": "s31-stage-aware-cost-pinned-audit-v1",
         "protocol_sha256": protocol_sha,
@@ -88,6 +102,7 @@ def publish(train_path: Path, model_path: Path, validation_path: Path,
         "validation_programs": len(validation["cases"]),
         "training_controls": train_controls,
         "validation_controls": validation_controls,
+        "program_inventory": inventory,
         "model": model,
         "accuracy": evaluation["accuracy"],
         "programs": evaluation["programs"],

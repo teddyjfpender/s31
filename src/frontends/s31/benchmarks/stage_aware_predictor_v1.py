@@ -105,6 +105,10 @@ def checked_cases(corpus: dict, split: str, protocol: dict) -> list[dict]:
         family = case["family"]
         if family not in protocol["profiles"] or case["lowering"] != protocol["profiles"][family]:
             raise ValueError(f"{name}: unexpected family/profile")
+        package_build = case["package_build"]
+        positive(package_build["package_build_wall_seconds"], "package build wall")
+        if not isinstance(package_build["package_reused"], bool):
+            raise ValueError(f"{name}: package reuse state is missing")
         source = case["source_sha256"]
         if not isinstance(source, str) or len(source) != 64 or source in sources:
             raise ValueError(f"{name}: duplicate or invalid source digest")
