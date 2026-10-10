@@ -14,9 +14,9 @@ from whole_prover_predictor_v3 import PROTOCOL, evaluate, fit_model
 
 def publish(train_path: Path, model_path: Path, validation_path: Path,
             evaluation_path: Path) -> dict:
-    train, train_controls = audit_corpus(train_path, "train", "s31-whole-prover-cost-corpus-v3")
+    train, train_controls = audit_corpus(train_path, "train", "s31-whole-prover-cost-corpus-v3.1")
     validation, validation_controls = audit_corpus(
-        validation_path, "validation", "s31-whole-prover-cost-corpus-v3")
+        validation_path, "validation", "s31-whole-prover-cost-corpus-v3.1")
     model = json.loads(model_path.read_text())
     evaluation = json.loads(evaluation_path.read_text())
     protocol = json.loads(PROTOCOL.read_text())
@@ -64,7 +64,7 @@ def publish(train_path: Path, model_path: Path, validation_path: Path,
                 "proof_sha256": [trial["proof_sha256"] for trial in case["trials"]],
             }
     return {
-        "schema": "s31-whole-prover-cost-pinned-audit-v3",
+        "schema": "s31-whole-prover-cost-pinned-audit-v3.1",
         "protocol_sha256": protocol_sha,
         "training_corpus_sha256": file_hash(train_path),
         "frozen_model_sha256": file_hash(model_path),

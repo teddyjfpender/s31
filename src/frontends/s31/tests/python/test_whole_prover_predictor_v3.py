@@ -31,17 +31,19 @@ def synthetic_corpus(split: str, protocol: dict) -> dict:
                "fixed_width", w * 16) for w in spec["signed_widths"]])
     cases = {}
     for name, family, scale in names:
-        padded = 1 << (scale - 1).bit_length()
+        padded = 512 if family == "chip" else 1 << (scale - 1).bit_length()
+        chip_cells = 10240 + 17 * scale if family == "chip" else 0
+        chip_domain = max(512, scale) if family == "chip" else 0
         trials = []
         for index in range(protocol["samples_per_program"]):
             pow_factor = 0.1 + index / 10
-            witness = .0001 * scale
-            setup = .0002 * padded
-            non_pow = .0003 * scale
-            interaction = .00004 * padded * pow_factor
-            fri = .0006 * padded * pow_factor
+            witness = .0001 * (chip_cells / 10000 if family == "chip" else scale)
+            setup = .001 if family == "chip" else .0002 * padded
+            non_pow = .0003 * (chip_cells / 10000 if family == "chip" else scale)
+            interaction = (.001 if family == "chip" else .00004 * padded) * pow_factor
+            fri = (.02 if family == "chip" else .0006 * padded) * pow_factor
             opaque = non_pow + interaction + fri
-            other = .00001 * padded
+            other = .001 if family == "chip" else .00001 * padded
             stages = {"witness_seconds": witness, "setup_seconds": setup,
                       "prove_seconds": opaque, "runtime_other_seconds": other,
                       "total_through_verification_seconds": witness + setup + opaque + other}
@@ -54,22 +56,31 @@ def synthetic_corpus(split: str, protocol: dict) -> dict:
                 "changed_public_statement_rejected": "public_outputs.result[0]",
                 "independent_value_oracle": {"status": "passed"},
                 "prover_stages": stages,
-                "prove_seconds": stages["total_through_verification_seconds"] + .00005 * scale,
-                "verify_seconds": .0002 * padded,
-                "proof_bytes": 200 * padded,
+                "prove_seconds": stages["total_through_verification_seconds"] +
+                                 (.001 if family == "chip" else .00005 * scale),
+                "verify_seconds": .005 * chip_domain / 512 if family == "chip" else .0002 * padded,
+                "proof_bytes": 60000 * chip_domain // 512 if family == "chip" else 200 * padded,
                 "prover_peak_rss_bytes": (8_000_000 + 1300 * padded if family == "arithmetic"
+                                          else 8_000_000 + 100 * chip_cells if family == "chip"
                                           else 100_000 * padded),
             })
         cases[name] = {
             "family": family, "source_sha256": digest(f"source:{split}:{name}"),
             "compiler_sha256": "c" * 64, "lowering": protocol["profiles"][family],
             "profile": f"synthetic-{family}", "visible_fri": {"pow_bits": 26},
-            "raw": {"blake_g" if family == "hash" else "qm31_ops": scale},
+            "raw": {"blake_g" if family == "hash" else "qm31_ops": 292 if family == "chip" else scale},
             "padded": {"blake_g" if family == "hash" else "qm31_ops": padded},
             "preprocessed_cells": 8 * padded,
             "package_build": {"package_build_wall_seconds": 1.0, "package_reused": False},
             "chip_manifest_binding": ({"schema": "s31-component-manifest-direct-chip-v2",
-                                       "chip_call": {"call_id": 0},
+                                       "chip_call": {"call_id": 0, "rounds": scale},
+                                       "component_geometry": [
+                                           {"name": "qm31_ops", "trace_log_size": 9,
+                                            "base_trace_columns": 12, "interaction_trace_columns": 8},
+                                           {"name": "repeated_step_chip", "trace_log_size": scale.bit_length() - 1,
+                                            "base_trace_columns": 9, "interaction_trace_columns": 8}],
+                                       "chip_trace_cells": chip_cells,
+                                       "chip_fri_domain_rows": chip_domain,
                                        "manifest_precommitment_sha256": digest(f"pre:{name}"),
                                        "component_manifest_sha256": digest(f"manifest:{name}")}
                                       if family == "chip" else None),
@@ -77,7 +88,7 @@ def synthetic_corpus(split: str, protocol: dict) -> dict:
                                   for i in range(protocol["samples_per_program"])],
             "trials": trials,
         }
-    return {"schema": "s31-whole-prover-cost-corpus-v3", "split": split,
+    return {"schema": "s31-whole-prover-cost-corpus-v3.1", "split": split,
             "protocol_sha256": hashlib.sha256(PROTOCOL.read_bytes()).hexdigest(),
             "samples_per_program": protocol["samples_per_program"],
             "host": {"machine": "synthetic"}, "compiler_sha256": "c" * 64,

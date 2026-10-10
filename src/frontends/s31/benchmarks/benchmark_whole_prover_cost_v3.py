@@ -165,7 +165,24 @@ def chip_manifest_binding(package: Path) -> dict:
         key.get("component_manifest") != component or
         "component-manifest.json" not in package_manifest.get("artifacts", {})):
         raise ValueError("direct-chip package lacks generated sealed one-call manifest")
+    geometry = [{key: item[key] for key in (
+        "name", "trace_log_size", "base_trace_columns", "interaction_trace_columns")}
+        for item in component["components"]]
+    if ([item["name"] for item in geometry] != ["qm31_ops", "repeated_step_chip"] or
+        any(type(item["trace_log_size"]) is not int or item["trace_log_size"] < 0 or
+            item["trace_log_size"] > 24 or
+            any(type(item[key]) is not int or item[key] <= 0
+                for key in ("base_trace_columns", "interaction_trace_columns"))
+            for item in geometry) or
+        1 << geometry[1]["trace_log_size"] != call.get("rounds")):
+        raise ValueError("direct-chip package has invalid component geometry")
+    rows = [1 << item["trace_log_size"] for item in geometry]
     return {"schema": component["schema"], "chip_call": call,
+            "component_geometry": geometry,
+            "chip_trace_cells": sum(row * (item["base_trace_columns"] +
+                                           item["interaction_trace_columns"])
+                                    for row, item in zip(rows, geometry)),
+            "chip_fri_domain_rows": max(rows),
             "manifest_precommitment_sha256": key["manifest_precommitment_sha256"],
             "component_manifest_sha256": s31.file_hash(package / "component-manifest.json")}
 
@@ -179,14 +196,14 @@ def main() -> None:
     args = parser.parse_args()
     protocol_bytes = PROTOCOL.read_bytes()
     protocol = json.loads(protocol_bytes)
-    if protocol["schema"] != "s31-whole-prover-cost-protocol-v3":
+    if protocol["schema"] != "s31-whole-prover-cost-protocol-v3.1":
         raise ValueError("unrecognized prospective protocol")
     if (args.split == "validation") != (args.model is not None):
         parser.error("--model is required exactly for the validation split")
     model_bytes = args.model.read_bytes() if args.model is not None else None
     frozen_model = json.loads(model_bytes) if model_bytes is not None else None
     if frozen_model is not None:
-        if frozen_model.get("schema") != "s31-whole-prover-cost-model-v3":
+        if frozen_model.get("schema") != "s31-whole-prover-cost-model-v3.1":
             raise ValueError("validation requires a fitted stage-aware model")
         if frozen_model.get("protocol_sha256") != hashlib.sha256(protocol_bytes).hexdigest():
             raise ValueError("model was fitted under another protocol")
@@ -285,7 +302,7 @@ def main() -> None:
             "observed_cost_model": observed_cost_model(item["trials"]),
         }
     report = {
-        "schema": "s31-whole-prover-cost-corpus-v3", "split": args.split,
+        "schema": "s31-whole-prover-cost-corpus-v3.1", "split": args.split,
         "protocol_sha256": hashlib.sha256(protocol_bytes).hexdigest(),
         "host": host_identity(),
         "samples_per_program": samples,

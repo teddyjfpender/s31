@@ -36,8 +36,39 @@ def stages_for_family(family: str) -> tuple[str, ...]:
     return OPAQUE_STAGES if family == "hash" else DIRECT_STAGES
 
 
+def case_features(case: dict) -> dict[str, float]:
+    result = features(case)
+    if case["family"] != "chip":
+        return result
+    binding = case["chip_manifest_binding"]
+    geometry = binding.get("component_geometry")
+    if (not isinstance(geometry, list) or
+        [item.get("name") for item in geometry] != ["qm31_ops", "repeated_step_chip"]):
+        raise ValueError("invalid generated chip geometry")
+    rows = []
+    cells = 0
+    for item in geometry:
+        log_size = item.get("trace_log_size")
+        base = item.get("base_trace_columns")
+        interaction = item.get("interaction_trace_columns")
+        if (type(log_size) is not int or not 0 <= log_size <= 24 or
+            type(base) is not int or base <= 0 or
+            type(interaction) is not int or interaction <= 0):
+            raise ValueError("invalid generated chip trace dimensions")
+        row_count = 1 << log_size
+        rows.append(row_count)
+        cells += row_count * (base + interaction)
+    if (binding.get("chip_trace_cells") != cells or
+        binding.get("chip_fri_domain_rows") != max(rows) or
+        binding["chip_call"].get("rounds") != rows[1]):
+        raise ValueError("chip geometry does not match generated manifest summary")
+    result["chip_trace_cells"] = float(cells)
+    result["chip_fri_domain_rows"] = float(max(rows))
+    return result
+
+
 def checked_cases(corpus: dict, split: str, protocol: dict) -> list[dict]:
-    if corpus.get("schema") != "s31-whole-prover-cost-corpus-v3" or corpus.get("split") != split:
+    if corpus.get("schema") != "s31-whole-prover-cost-corpus-v3.1" or corpus.get("split") != split:
         raise ValueError(f"expected {split} whole-prover v3 corpus")
     if corpus.get("protocol_sha256") != hashlib.sha256(PROTOCOL.read_bytes()).hexdigest():
         raise ValueError("corpus/protocol mismatch")
@@ -89,7 +120,7 @@ def checked_cases(corpus: dict, split: str, protocol: dict) -> list[dict]:
             for stage in (*stages_for_family(family), "proof_bytes", "prover_peak_rss_bytes"):
                 stage_value(trial, stage)
         records.append({"name": name, "family": family, "source": source,
-                        "features": features(case), "case": case})
+                        "features": case_features(case), "case": case})
     if len({record["case"]["compiler_sha256"] for record in records}) != 1:
         raise ValueError("mixed compiler fingerprint across families")
     for family in protocol["profiles"]:
@@ -116,8 +147,8 @@ def fit_stage(records: list[dict], stage: str, feature_name: str) -> dict:
     return result
 
 
-def fit_affine_rss(records: list[dict]) -> dict:
-    points = [(record["features"]["padded_rows"], statistics.median(
+def fit_affine_rss(records: list[dict], feature_name: str) -> dict:
+    points = [(record["features"][feature_name], statistics.median(
         trial["prover_peak_rss_bytes"] for trial in record["case"]["trials"]))
         for record in records]
     fit = affine_fit(points)
@@ -128,7 +159,7 @@ def fit_affine_rss(records: list[dict]) -> dict:
         loo.append(abs(affine_predict(affine_fit(points[:index] + points[index + 1:]), rows) - median))
         residuals.extend(trial["prover_peak_rss_bytes"] - median
                          for trial in record["case"]["trials"])
-    return {"feature": "padded_rows", "fit_kind": "positive_affine_rss",
+    return {"feature": feature_name, "fit_kind": "positive_affine_rss",
             "fit": fit, "training_loo_max_absolute_error_bytes": max(loo),
             "training_trial_residual_p05_bytes": quantile(residuals, 0.05),
             "training_trial_residual_p95_bytes": quantile(residuals, 0.95),
@@ -138,7 +169,7 @@ def fit_affine_rss(records: list[dict]) -> dict:
 def fit_model(corpus: dict, protocol: dict) -> dict:
     records = checked_cases(corpus, "train", protocol)
     model = {
-        "schema": "s31-whole-prover-cost-model-v3",
+        "schema": "s31-whole-prover-cost-model-v3.1",
         "protocol_sha256": corpus["protocol_sha256"],
         "training_host": corpus["host"],
         "compiler_sha256": records[0]["case"]["compiler_sha256"],
@@ -150,13 +181,16 @@ def fit_model(corpus: dict, protocol: dict) -> dict:
     for family in protocol["profiles"]:
         members = [record for record in records if record["family"] == family]
         stages = (*stages_for_family(family), "proof_bytes", "prover_peak_rss_bytes")
+        stage_features = (protocol["chip_stage_features"] if family == "chip"
+                          else protocol["stage_features"])
         model["families"][family] = {
             "lowering": members[0]["case"]["lowering"],
             "profile": members[0]["case"]["profile"],
             "visible_fri": members[0]["case"]["visible_fri"],
-            "stages": {stage: (fit_affine_rss(members) if family == "arithmetic" and
+            "stages": {stage: (fit_affine_rss(members, stage_features[stage])
+                               if family in {"arithmetic", "chip"} and
                                stage == "prover_peak_rss_bytes" else
-                               fit_stage(members, stage, protocol["stage_features"][stage]))
+                               fit_stage(members, stage, stage_features[stage]))
                        for stage in stages},
         }
     return model
@@ -193,7 +227,7 @@ def predict_case(model_family: dict, family: str, case_features: dict) -> dict:
 
 
 def evaluate(model: dict, corpus: dict, protocol: dict) -> dict:
-    if model.get("schema") != "s31-whole-prover-cost-model-v3":
+    if model.get("schema") != "s31-whole-prover-cost-model-v3.1":
         raise ValueError("wrong frozen v3 model")
     records = checked_cases(corpus, "validation", protocol)
     if (model["protocol_sha256"] != corpus["protocol_sha256"] or
@@ -277,7 +311,7 @@ def evaluate(model: dict, corpus: dict, protocol: dict) -> dict:
             if (stat["p90_program_relative_error"] > limit or
                 stat["trial_interval_coverage"] < gates["per_family_proof_bytes_and_rss_trial_interval_coverage_min"]):
                 passed = False
-    return {"schema": "s31-whole-prover-cost-evaluation-v3",
+    return {"schema": "s31-whole-prover-cost-evaluation-v3.1",
             "protocol_sha256": corpus["protocol_sha256"],
             "compiler_sha256": model["compiler_sha256"],
             "programs": program_results, "accuracy": accuracy,

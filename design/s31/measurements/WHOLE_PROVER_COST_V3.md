@@ -1,7 +1,7 @@
-# Whole-prover cost model v3
+# Whole-prover cost model v3.1
 
 The [machine-readable protocol](whole-prover-cost-v3.json) was written before
-native measurement. It addresses the version mismatch between the [v1
+the v3.1 native measurement. It addresses the version mismatch between the [v1
 whole-prover run](STAGE_AWARE_COST_V1.md) and the [v2 arithmetic RSS
 follow-up](ARITHMETIC_RSS_V2.md): all v3 wall, proof-byte and peak-RSS targets
 must be trained and evaluated under **one compiler fingerprint**. This is a
@@ -11,6 +11,43 @@ stable SHA-256 pseudonym of the host name and the CPU model. The model requires
 exact train/held-out host-object equality. No raw host name is saved in the
 tracked audit. This pre-timing tooling amendment did not change the protocol
 JSON or any source program, package, target or accuracy threshold.
+
+## Training-only correction before held-out work
+
+The first v3 train split built all 18 packages and verified all 360 native
+proofs, but fitting stopped: the generic circuit cost report records the same
+292 raw rows, 512 padded rows and 4,096 preprocessed cells for **every**
+direct-chip program. Chip work lives in a separate component, so a log fit on
+generic padded rows has no distinct training feature. There were **no**
+validation packages, proofs or outcomes at that point. The initial train
+artifacts remain in a separate untracked directory as a failed-fit diagnostic
+and are excluded from the v3.1 fit and audit.
+
+V3.1 adds two features derived only from the generated, sealed typed component
+manifest. `chip_trace_cells` sums `2^trace_log_size × (base_trace_columns +
+interaction_trace_columns)` over the generic and chip AIR components.
+`chip_fri_domain_rows` is their maximum `2^trace_log_size`. They encode total
+committed trace work and the largest FRI tier, respectively. The training-only
+geometry that exposed the omission is:
+
+| Chip rounds | Generic circuit rows | Chip rows | Total trace cells | Largest FRI domain |
+| ---: | ---: | ---: | ---: | ---: |
+| 16 | 512 | 16 | 10,512 | 512 |
+| 64 | 512 | 64 | 11,328 | 512 |
+| 256 | 512 | 256 | 14,592 | 512 |
+| 1,024 | 512 | 1,024 | 27,648 | 1,024 |
+| 4,096 | 512 | 4,096 | 79,872 | 4,096 |
+
+For chip programs, witness and non-PoW prove stages use trace cells; proof
+bytes and verifier wall use the FRI domain; setup, PoW and process overhead
+use a constant. Chip RSS uses the same positive-affine baseline-plus-work form
+as direct-gate arithmetic RSS, with trace cells as its work feature. On the
+failed-fit **training data only**, its positive fit had a baseline of 8,748,853 bytes
+and at most 2.09% leave-one-program-out relative error. Other families' raw,
+padded, preprocessing and hash-work features varied as planned. Every recorded
+native stage timer was positive, so no timer floor was introduced. The model
+formula and gates were frozen before a fresh v3.1 training build/proof run; the
+new model must still be frozen before any held-out build or trial.
 
 ## What is measured
 

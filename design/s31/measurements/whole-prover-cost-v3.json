@@ -1,6 +1,8 @@
 {
-  "schema": "s31-whole-prover-cost-protocol-v3",
-  "status": "predeclared-before-native-measurement",
+  "schema": "s31-whole-prover-cost-protocol-v3.1",
+  "revision": "3.1",
+  "status": "amended-after-training-only-feature-degeneracy-before-any-validation-build-or-timing; restart all training packages and proofs",
+  "amendment": "initial training fit rejected because generic circuit rows were constant across all direct-chip round counts; generated one-call manifest component log sizes and trace widths supply omitted chip AIR geometry. No validation package or timing existed at amendment time. Previous train artifacts are discarded from the prospective evaluation",
   "source_base_commit": "b90507c",
   "host_policy": "one named host and one compiler fingerprint for every train/validation package; no cross-host reliability claim",
   "samples_per_program": 20,
@@ -38,7 +40,9 @@
     "raw_rows": "sum of raw component rows",
     "padded_rows": "sum of padded component rows",
     "preprocessed_cells": "cost-report fixed/preprocessed cells",
-    "hash_work": "1 + raw blake_g rows; used for opaque gate hash prove stage"
+    "hash_work": "1 + raw blake_g rows; used for opaque gate hash prove stage",
+    "chip_trace_cells": "for direct-chip only, sum over generated typed-manifest components of (2^trace_log_size) * (base_trace_columns + interaction_trace_columns); captures total committed AIR trace work",
+    "chip_fri_domain_rows": "for direct-chip only, maximum 2^trace_log_size over generated typed-manifest components; captures the largest FRI tier"
   },
   "stage_features": {
     "runtime_witness_seconds": "raw_rows",
@@ -53,7 +57,19 @@
     "proof_bytes": "padded_rows",
     "prover_peak_rss_bytes": "padded_rows"
   },
-  "model": "per-family, per-stage training-program median log-linear fit versus declared feature; arithmetic direct-gate RSS alone uses positive affine bytes = intercept + slope * padded_rows, with additive leave-one-program-out and trial residual interval; all other RSS and proof bytes use log-linear fits",
+  "chip_stage_features": {
+    "runtime_witness_seconds": "chip_trace_cells",
+    "runtime_setup_seconds": "constant",
+    "runtime_prove_excluding_pow_seconds": "chip_trace_cells",
+    "runtime_runtime_other_seconds": "constant",
+    "prover_process_unattributed_seconds": "constant",
+    "native_verify_process_wall_seconds": "chip_fri_domain_rows",
+    "runtime_interaction_pow_seconds": "constant",
+    "runtime_fri_pow_seconds": "constant",
+    "proof_bytes": "chip_fri_domain_rows",
+    "prover_peak_rss_bytes": "chip_trace_cells"
+  },
+  "model": "per-family, per-stage training-program median log-linear fit versus declared feature; direct-gate arithmetic RSS uses positive affine bytes = intercept + slope * padded_rows and direct-chip RSS uses positive affine bytes = intercept + slope * chip_trace_cells, both with additive leave-one-program-out and trial residual interval; all other RSS and proof bytes use log-linear fits",
   "pow_variance": "direct gate/chip interaction and FRI PoW are separate stages; generic hash PoW remains opaque within prove stage. Preserve all 20 timings/program; report stage median/p90/max and coefficient of variation. For stochastic stages, interval trial-ratio endpoints are the full observed training min/max, widened by leave-one-program-out model error. This is an empirical diagnostic interval, not a tail bound",
   "targets": ["paired_prove_and_verify_wall_seconds", "proof_bytes", "prover_peak_rss_bytes"],
   "accuracy_gate": {
