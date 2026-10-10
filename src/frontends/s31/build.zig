@@ -90,8 +90,10 @@ pub fn build(b: *std.Build) void {
     pair_source_test_root.addAnonymousImport("s31_pair_proof_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/direct_pair_arithmetic.zig") } });
     const pair_source_tests = b.addRunArtifact(b.addTest(.{ .root_module = pair_source_test_root, .filters = &.{"two-call source derives canonical plan"} }));
     b.step("test-pair-source", "Test source-derived two-call plan and typed V3 manifest").dependOn(&pair_source_tests.step);
-    const pair_native_tests = b.addRunArtifact(b.addTest(.{ .root_module = pair_source_test_root, .filters = &.{"sealed pair native"} }));
+    const pair_native_tests = b.addRunArtifact(b.addTest(.{ .root_module = pair_source_test_root, .filters = &.{"sealed pair native proof accepts"} }));
     b.step("test-pair-native", "Prove and natively verify the source-derived sealed two-call envelope").dependOn(&pair_native_tests.step);
+    const pair_native_long_tests = b.addRunArtifact(b.addTest(.{ .root_module = pair_source_test_root, .filters = &.{"sealed pair native long-round lifting"} }));
+    b.step("test-pair-native-long", "Check two-call PCS lifting when chip traces exceed the circuit trace").dependOn(&pair_native_long_tests.step);
     const square_export_root = localEntry(b, "tools/formal/export_square4_topology.zig", target, optimize);
     square_export_root.addImport("stwo_s31_prototype", frontend);
     square_export_root.addImport("stwo_circuit_frontend", circuit);

@@ -66,6 +66,47 @@ test "sealed pair native proof accepts 16+32 and rejects key, claim, and envelop
     if (native_pair.verifySealed(a, source, air_bytes, key, words, changed_raw)) |_| return error.TestUnexpectedResult else |_| {}
 }
 
+test "sealed pair native long-round lifting keeps preprocessed root and proof aligned" {
+    const a = std.testing.allocator;
+    const original = @embedFile("../../examples/boundary/private_pair16_32.s31.json");
+    const air_bytes = @embedFile("s31_air_programs");
+    const first = try std.mem.replaceOwned(u8, a, original, "\"rounds\": 16", "\"rounds\": 1024");
+    defer a.free(first);
+    const source = try std.mem.replaceOwned(u8, a, first, "\"rounds\": 32", "\"rounds\": 4096");
+    defer a.free(source);
+    const left_input = [_]u32{ 3, 3, 7, 11 };
+    const right_input = [_]u32{ 2, 4, 6, 8 };
+    var sums: [4]u32 = undefined;
+    var products: [4]u32 = undefined;
+    for (left_input, right_input, 0..) |left, right, lane| {
+        const left_end = handRepeat(left, 13, 1024);
+        const right_end = handRepeat(right, 17, 4096);
+        sums[lane] = @intCast((@as(u64, left_end) + right_end) % 2147483647);
+        products[lane] = @intCast((@as(u64, left_end) * right_end) % 2147483647);
+    }
+    const assignment_json = try std.json.Stringify.valueAlloc(a, .{
+        .public_inputs = .{},
+        .private_inputs = .{ .left = left_input, .right = right_input },
+        .public_outputs = .{ .sum = sums, .product = products },
+    }, .{});
+    defer a.free(assignment_json);
+    var assignment = try relation.parseAssignment(a, assignment_json);
+    defer assignment.deinit();
+    var parsed = try relation.parseProgram(a, source);
+    defer parsed.deinit();
+    const words = try relation.evaluate(a, parsed.value, assignment.value);
+    var binding = try pair_source.derive(a, source, air_bytes, 1);
+    defer binding.deinit();
+    try std.testing.expect(binding.trace_log_size < 12);
+    try std.testing.expectEqual(@as(u32, 1024), binding.plan.calls[0].rounds);
+    try std.testing.expectEqual(@as(u32, 4096), binding.plan.calls[1].rounds);
+    const key = try native_pair.sealKey(a, source, air_bytes);
+    defer a.free(key);
+    const raw = try native_pair.proveSealed(a, source, air_bytes, key, assignment.value);
+    defer a.free(raw);
+    try native_pair.verifySealed(a, source, air_bytes, key, words, raw);
+}
+
 test "two-call source derives canonical plan and five-role V3 manifest" {
     const a = std.testing.allocator;
     const source = @embedFile("../../examples/boundary/private_pair16_32.s31.json");

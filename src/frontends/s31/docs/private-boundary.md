@@ -75,6 +75,9 @@ opposite chip endpoint terms. All five claimed sums must close to zero.
 The preprocessed Gate multiplicity counts **each occurrence** of a repeated
 wire address; two appearances of one address still read one coherent circuit
 variable.
+As in the one-call profile, “private” means absent from the eight public
+output words. The bridge commits endpoint values and trace openings can
+reveal them; this profile makes no witness-secrecy claim.
 
 [`pair_source_binding.zig`](../runtime/pair_source_binding.zig) now derives
 the Plan, preprocessed root, exact five-component roster, and typed V3

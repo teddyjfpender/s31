@@ -189,7 +189,12 @@ pub fn verifySealed(allocator: std.mem.Allocator, source: []const u8, air_bytes:
         }
         sum.* = QM31.fromU32Unchecked(limbs[0], limbs[1], limbs[2], limbs[3]);
     }
-    const decode_memory = try allocator.alloc(u8, 64 << 20);
+    // Postcard uses nested allocations while decoding. Budget 32 bytes of
+    // in-memory structure per encoded byte, with an 8 MiB floor for small
+    // proofs and a fixed 64 MiB ceiling. A malformed proof cannot trigger
+    // unbounded allocation; ordinary small proofs avoid a 64 MiB reservation.
+    const decode_limit = @min(@as(usize, 64 << 20), @max(@as(usize, 8 << 20), raw.len * 32));
+    const decode_memory = try allocator.alloc(u8, decode_limit);
     defer allocator.free(decode_memory);
     var bounded = std.heap.FixedBufferAllocator.init(decode_memory);
     var stream = std.io.fixedBufferStream(raw[header_len..]);
