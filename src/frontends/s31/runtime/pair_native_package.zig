@@ -126,6 +126,7 @@ fn publicValues(words: [8]u32) ![8]QM31 {
 
 /// Prove only after source and exact key-byte validation. The returned bytes
 /// have a fixed V3 header followed by one canonical postcard STARK proof.
+/// `allocator` must support concurrent use by the native composition workers.
 pub fn proveSealed(allocator: std.mem.Allocator, source: []const u8, air_bytes: []const u8, sealed_key: []const u8, assignment: relation.Assignment) ![]u8 {
     var binding = try source_binding.derive(allocator, source, air_bytes, 1);
     defer binding.deinit();
