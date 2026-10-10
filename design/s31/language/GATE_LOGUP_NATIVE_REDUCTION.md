@@ -275,5 +275,51 @@ The remaining evaluator obligation is to show that the exact selected
 `STWZEVA/1` bytecode, bound by the installed key and bundle hash, computes
 this pure 11-residual function at the stated local positions. The fixture
 checks the manifest's exact index vector and three trace spans, but does not
-independently interpret that bytecode. Authentication of full committed
+independently interpret that bytecode. The next section closes the nine
+arithmetic roots of this obligation. Authentication of full committed
 columns, random composition, PCS/FRI, and Fiat–Shamir remain separate.
+
+## Installed Gate bytecode: arithmetic correspondence
+
+[`GeneratedDirectGateBytecodeArithmetic.lean`](../../../formal/s31/S31/Gadgets/Air/GeneratedDirectGateBytecodeArithmetic.lean)
+closes the arithmetic part of that evaluator obligation for the bounded
+`direct-m31-v4` Gate profile. A strict exporter reads the installed
+`STWZEVA/1` bundle and checks its SHA-256, selected `qm31_ops` program digest,
+component position, semantic hash, section table, register order, root order,
+seven challenge/claim sources, and the fixed 134 base and 97 extension
+instructions. The selected program came from the official bundle with a trace
+log size of 23; native binding changes the log size to 9 but preserves the
+instruction stream. The generated Lean definition follows its base register
+assignments through register 121. Its first nine extension roots inject the
+base registers `[24, 28, 31, 34, 37, 61, 85, 103, 121]` with three zero
+coordinates. Lean proves, for **arbitrary** eight fixed and twelve main cells,
+that these nine roots equal `DirectGateEvaluatorCells.arithmetic`, then derives
+Gate operation/output correctness when all nine vanish. This is a universal
+field identity, rather than evidence from finitely many vectors.
+
+The exporter is a checked extraction step, not a verified binary parser in
+Lean. CI regenerates the Lean file from a freshly built, source-checked S31
+package and compares its exact bytes with the committed file. The source,
+component manifest, verification key, and official bundle identities pass
+`check_package` first. The formal source inventory also binds the exporter,
+native bundle parser/interpreter, and official bundle asset. The proof relies
+on that extraction and on the native interpreter following its documented
+opcode semantics. The standalone scalar replay interprets all 11 bytecode
+roots on two source rows and fixed/main/current/previous-cell mutations,
+including changed-bundle and rehashed-root-order rejection controls.
+
+This increment does **not** universally prove that extension roots 9 and 10
+equal `pair` and `last`. The scalar replay checks them on concrete rows only.
+It also does not connect the previous-row mask to `directPrevious`, show that
+the proof commits/opens these exact cells, or prove the random-composition,
+Fiat–Shamir, PCS, and FRI arguments. Those remain premises of the whole
+compiler correspondence theorem.
+
+Recheck the bounded export and theorem with:
+
+```sh
+python3 scripts/export_s31_direct_gate_bytecode_arithmetic.py PACKAGE \
+  formal/s31/S31/Gadgets/Air/GeneratedDirectGateBytecodeArithmetic.lean --check
+python3 -m unittest src/frontends/s31/tests/python/test_gate_bytecode_arithmetic.py
+(cd formal/s31 && lake build S31.Gadgets.Air.GeneratedDirectGateBytecodeArithmetic)
+```

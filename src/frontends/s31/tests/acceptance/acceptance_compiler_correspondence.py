@@ -25,6 +25,7 @@ from package.context import file_hash, invoke, sha256, write_json
 from package.correspondence import (DIRECT_COLUMN_IDS, KEY_FIELDS, canonical, check_package,
                                     digest, read_canonical_json)
 from export_s31_direct_gate_bridge import render_bridge
+from export_s31_direct_gate_bytecode_arithmetic import render as render_bytecode_arithmetic
 from export_s31_direct_gate_evaluator_fixture import (
     render as render_evaluator_fixture, validate_component_geometry,
 )
@@ -202,6 +203,10 @@ def main() -> None:
         evaluator_rendered = render_evaluator_fixture(honest, assignment)
         if evaluator_rendered != evaluator_golden.read_text():
             raise AssertionError("direct Gate evaluator fixture differs from checked Lean replay")
+        bytecode_golden = (REPO / "formal/s31/S31/Gadgets/Air/"
+                           "GeneratedDirectGateBytecodeArithmetic.lean")
+        if render_bytecode_arithmetic(honest) != bytecode_golden.read_text():
+            raise AssertionError("installed Gate bytecode differs from checked Lean arithmetic export")
         component = json.loads((honest / "component-manifest.json").read_text())["components"][0]
         for kind in ("fixed", "main", "interaction"):
             changed = copy.deepcopy(component)
@@ -363,6 +368,7 @@ def main() -> None:
             "native_exact_constant_schedule_checked": True,
             "lean_bridge_instance_matches_native_package": True,
             "evaluator_fixture_matches_checked_package": True,
+            "installed_gate_bytecode_arithmetic_matches_checked_package": True,
             "resealed_component_column_maps_rejected": True,
             "certificate_status": checked["status"],
         }, sort_keys=True, indent=2))

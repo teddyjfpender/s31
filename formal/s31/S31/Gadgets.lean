@@ -39,6 +39,7 @@ import S31.Gadgets.Air.TaggedPairAirClosure
 import S31.Gadgets.Air.TaggedPairSourceCorrespondence
 import S31.Gadgets.Air.DirectGateNativeIndices
 import S31.Gadgets.Air.DirectGateEvaluatorCells
+import S31.Gadgets.Air.GeneratedDirectGateBytecodeArithmetic
 import S31.Gadgets.Air.GeneratedDirectGateEvaluatorFixture
 import S31.Gadgets.Air.TaggedPairSourceComposition
 import S31.Gadgets.Air.TaggedPairEventProjection
