@@ -2,6 +2,10 @@
 
 This is an implementation review note for `sparse-v3`, `direct-m31-v4`, and the narrow `direct-m31-private-v5` extension, not a cryptographic security proof. They use the repository's pinned circuit AIR programs and Stwo PCS/FRI implementation. The [language guide](../../../src/frontends/s31/docs/reference/LANGUAGE_AND_AIR.md) gives the source and row equations; the [private-boundary guide](../../../src/frontends/s31/docs/private-boundary.md) describes the bridge; the [roadmap](../MVP_ROADMAP.md) records acceptance and measurement gates.
 
+The older `direct-m31-v4` profile in this note is distinct from the later
+bounded 1–8-call **V4 plan and experimental native scheduler**. The latter's
+current release obligations are in the [V4 soundness checkpoint](INDEPENDENT_SOUNDNESS_REVIEW_2026-10-10.md#v4-bounded-call-native-scheduler-review-c109a17-engine-20e25894).
+
 ## Component dependency closure
 
 | Profile | Circuit AIR components | Lookup producers and consumers |
