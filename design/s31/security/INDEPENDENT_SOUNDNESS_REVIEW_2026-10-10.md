@@ -738,3 +738,39 @@ wire map is still a premise. Production Gate lookup, committed trace and
 fixed-column authentication, PCS/FRI and full compiler coverage do not follow
 from this theorem. Native acceptance rejects a resealed operand-address
 mutation in addition to the prior opcode and public-input controls.
+
+### V4 count-complete and manifest audit: `581756b`–`5098c1d`
+
+The dedicated V4 native matrix now proves and verifies every admitted count
+N=1–8 in both Debug and ReleaseFast. For N=5,6,7, an independent `u64`
+modulo-M31 oracle checks all eight public words against pinned values, and
+each of the `1+2N` claimed-sum positions is mutated and rejected. This
+closes the **tested-count gap** in S31-V4-02 for the bounded square/add
+grammar. It does not establish arbitrary-chip scheduling or the LogUp/PCS
+reduction in S31-V4-03. The four commitment classes are constrained by the
+native verifier's fixed roster and proof-shape preflight, but a complete
+adversarial cross-product of every call, source mutation, and commitment
+class at every count has not been run.
+
+The source-pinned manifest inspector prints the full compiler-derived roster,
+compiled endpoint addresses and live PCS geometry. A black-box one-call
+proof test checked that its typed manifest digest and circuit identity equal
+the proof header's fields. A separate Python implementation recomputed the
+V4 typed digest from that inspector JSON and detected an altered endpoint in
+the captured report; its integration into the expanded black-box acceptance
+script is committed but has not yet been rerun after the V6 timing embargo.
+This is a useful cross-language check of the digest encoding, not an
+independent derivation of the correct AIR schedule. The engine still creates
+its component arrays from a separate typed Plan, and relation IDs are
+assigned by known source kind. S31-V4-05 therefore remains open for a
+manifest-driven schedule and a source-to-evaluator lookup dependency proof.
+
+The Lean Gate-map module now derives a coherent address-to-QM31 map and the
+selected packed source result from **exact Gate event balance**, unique
+producer values, exported source-row membership, and the local polynomial
+premises. It reduces one previously assumed wire-map obligation in
+S31-SEC-08 to more explicit proof premises. The native Gate claimed-sum
+mutation control is committed but awaits execution after the V6 timing
+window. The production reduction from random LogUp closure to exact event
+balance, AIR row authentication, PCS/FRI soundness and all-language compiler
+correspondence are still open.
