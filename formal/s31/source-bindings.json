@@ -104,7 +104,7 @@
     "src/frontends/s31/runtime/pair_prover_main.zig": "d7bcf7c321922fc452d6d181ae313014a2543e8fa4f9a8146c42a41d52f53eb5",
     "src/frontends/s31/runtime/pair_verifier_main.zig": "a8ae6ee0b511c93e895b308a4cadbbbc11b2786d73441fc06d6ed089c718f6e8",
     "src/frontends/s31/tests/proofs/private_pair_source_test.zig": "37d19b1b9a4a636234d450325bc74ac8a9cf6692075654223d46d09500e253a5",
-    "scripts/export_s31_direct_gate_bridge.py": "a6dced053baac9c721d5a1abb890e3e1f04225909df843cd0c1217d656b477c6",
+    "scripts/export_s31_direct_gate_bridge.py": "f97d1a604791c27dd7a5c67bfb92cb2d6f5bd104eab2c1ed244e73aa888410e7",
     "src/frontends/s31/library/hash/poseidon2.zig": "8843429f1d9b6da7a895ccf474d421cad5098e9de1fa6df566b2acb7edc4ad34",
     "src/core/crypto/blake2s_terminal_parallel.zig": "bcc4b0f7e3f5a08e62bf4798a57e9ff390880aa57dcd88764f5312068813f9c5",
     "src/frontends/s31/library/hash/sha256d.zig": "64d68cf5e7a74876a593ef8babb5abee545b2d49a25c4ddddbc1c69615ce0350",

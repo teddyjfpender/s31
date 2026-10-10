@@ -154,6 +154,7 @@ structure Parsed where
   circuitName : Token
   inputName : Token
   outputName : Token
+  wireNames : List Token
   certificate : Certificate
   meaning : Term
   checked : termFor certificate = some meaning
@@ -182,7 +183,8 @@ def parseBytes (bytes : List Nat) : Option Parsed := do
   match h : termFor certificate with
   | none => none
   | some meaning => some {
-      circuitName, inputName, outputName, certificate, meaning, checked := h }
+      circuitName, inputName, outputName, wireNames := state.names,
+      certificate, meaning, checked := h }
 
 def denotation (bytes : List Nat) (input : Lanes) : Option Lanes :=
   (parseBytes bytes).map (fun parsed => parsed.meaning.eval input)

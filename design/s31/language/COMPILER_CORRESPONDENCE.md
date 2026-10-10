@@ -104,13 +104,21 @@ general theorem has this precise form:
 The generated shared-square fixture proves the premise by Lean computation
 for its exact 207 source bytes. It also checks the parsed circuit and public
 names and proves that a literal opcode change in the bytes yields a different
-certificate. Its final local AIR claim uses this byte denotation. The fixture
-still relies on the outer exporter to bind those embedded bytes to the
-package, and Lean does not compute the displayed SHA-256 digest. The Python
-checker accepts some Unicode whitespace that this ASCII Lean parser rejects;
-their full parser equivalence is not proved. Production Zig compilation,
-native Gate lookup authentication, committed AIR columns, and PCS binding
-remain separate proof obligations.
+certificate. [`SSANormalizedBytes.lean`](../../../formal/s31/S31/Gadgets/Functional/SSANormalizedBytes.lean)
+adds an exact canonical JSON byte encoder from the parsed names and
+instructions. Its checker admits a source/normalized pair only if every
+normalized byte equals that expected encoding, then proves the resulting
+certificate computes the source-byte denotation on every input. The fixture
+kernel-checks the actual exported `source.s31.json` bytes and rejects literal
+normalized-opcode and public-output changes. Its final local AIR claim uses
+this two-file check. The fixture still relies on the outer exporter to bind
+the embedded arrays to the package, and Lean does not compute the displayed
+SHA-256 digests. The Python checker accepts some Unicode whitespace that this
+ASCII Lean parser rejects;
+their full parser equivalence is not proved. Nor is equivalence between the
+production JSON readers and the exact Lean byte encoder. Production Zig
+compilation, native Gate lookup authentication, committed AIR columns, and
+PCS binding remain separate proof obligations.
 
 ### Checked positional SSA increment
 

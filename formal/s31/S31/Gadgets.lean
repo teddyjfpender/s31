@@ -102,6 +102,7 @@ import S31.Gadgets.Functional.SSANativeTopologyCheck
 import S31.Gadgets.Functional.SSAGeneralNamedTopology
 import S31.Gadgets.Functional.SSALocalPipeline
 import S31.Gadgets.Functional.SSATextBytes
+import S31.Gadgets.Functional.SSANormalizedBytes
 import S31.Gadgets.Functional.GeneratedDirectGateBridge
 import S31.Gadgets.Functional.MathLibrary
 import S31.Gadgets.Functional.WorkedQuadratic

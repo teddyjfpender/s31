@@ -94,9 +94,10 @@ accepted inputs remains unproved.
 
 [`export_s31_direct_gate_bridge.py`](../../../scripts/export_s31_direct_gate_bridge.py)
 first admits a native package with the independent checker, then emits a
-concrete Lean instance containing the exact source bytes and SHA-256 digest,
-the positional SSA, the observed source-gate addresses and grouped trace row
-positions, and the observed 512-row/512-variable shape. The checked-in
+concrete Lean instance containing the exact source and canonical normalized
+JSON bytes, their SHA-256 digest strings, the positional SSA, the observed
+source-gate addresses and grouped trace row positions, and the observed
+512-row/512-variable shape. The checked-in
 [`GeneratedDirectGateBridge.lean`](../../../formal/s31/S31/Gadgets/Functional/GeneratedDirectGateBridge.lean)
 is regenerated from the two-operation square example during native acceptance;
 an unexpected source or native topology change makes that equality fail.
@@ -107,23 +108,32 @@ comments, the one-input/one-output `[m31; 4]` signature, and 1–16 canonical
 binary `let` statements. A successful parse reconstructs each operation's
 meaning from its earlier named wires. The generated fixture uses `by decide`
 to check that the actual 207 source bytes yield the emitted certificate and
-the exact circuit, input, and output names. It separately checks the
+the exact circuit, input, and output names. The separate
+[`SSANormalizedBytes.lean`](../../../formal/s31/S31/Gadgets/Functional/SSANormalizedBytes.lean)
+encodes the full canonical normalized JSON byte sequence from those parsed
+names and instructions. Lean checks that this sequence equals the actual
+embedded `source.s31.json` bytes. This catches added fields, duplicate keys,
+changed visibility or output, reordered nodes, changed operands or opcodes,
+and any other byte change in the bounded relation. It separately checks the
 deterministic source-term emitter and each observed source gate's circuit
 address and grouped AIR row. A literal byte mutation changing the first
 `.*` to `+` parses to a different certificate; changing the emitted opcode or
-one operand address is rejected by separate Lean checks. A general theorem
-then proves that, for every four-lane input, execution of any certificate
-returned by this byte parser agrees with the source bytes' defined
-denotation. The concrete fixture instantiates that theorem for its certificate.
+one operand address is rejected by separate Lean checks. Literal normalized
+JSON mutations to an opcode and the public output are also rejected. A
+general theorem proves that, whenever the exact source and normalized byte
+check returns a certificate, its normalized execution agrees with the source
+bytes' defined denotation for every four-lane input. The concrete fixture
+instantiates that theorem.
 
 The Python checker binds the byte array/digest and the remaining constant,
 padding, selector, multiplicity, and public ABI rows to the exported package.
-The embedded SHA-256 string is **not verified in Lean**. Lean does not prove
+The embedded SHA-256 strings are **not verified in Lean**. Lean does not prove
 the production Python or Zig parser equivalent to its byte parser, nor that
-the Python checker implements its native-row model. It also does not
+the production JSON readers implement the same exact-byte relation model.
+It does not prove that the Python checker implements its native-row model or
 authenticate committed AIR columns. The bridge formally checks the embedded
-bytes' bounded semantics and their SSA/source-gate row mapping; it is not a
-general compiler-correctness theorem.
+bytes' bounded source/normalized relation pairing and their SSA/source-gate
+row mapping; it is not a general compiler-correctness theorem.
 
 ## Proof boundary and invocation
 
