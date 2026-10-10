@@ -51,3 +51,24 @@ commitment authenticates that list, or that Gate lookup, STARK AIR evaluation,
 and PCS imply `AuthenticatedRows`. Those are explicit implementation and
 cryptographic boundaries. A successful package-only Python check must not be
 described as a theorem about the installed native verifier.
+
+## Arbitrary source names
+
+`SSAGeneralNamedTopology.lean` adds the bounded grammar's user-chosen names.
+A name table has one public input name followed by one name per checked SSA
+instruction. Its executable checker requires the exact normalized `Program`
+encoding, a unique nonempty name for each wire, an output that is a let-bound
+wire, and successful normalized `Program.validate`. It composes this check
+with `checkSourceRows`; a renamed output or operand is rejected. For example,
+`["input", "square", "fourth"]` corresponds to the same two native gates as
+`["x", "w1", "w2"]`.
+
+The Lean theorem establishes exact structural equality of the normalized
+node list and source-value soundness under `AuthenticatedRows`. It does not
+yet prove a universal equivalence of arbitrary-name `Program.evaluate` and
+the positional SSA evaluator. A proof of that equivalence needs an induction
+over the actual named environment and lookup behavior for the name table.
+The Python lexical rule, source byte parser, JSON serialization, CSE rule,
+canonical operand order, full gate list and verifier admission also remain
+outside this Lean model. These are the next exact compiler-correspondence
+obligations; the present modules do not establish a full compiler theorem.

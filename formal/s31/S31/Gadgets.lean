@@ -90,6 +90,7 @@ import S31.Gadgets.Functional.SSAAirRows
 import S31.Gadgets.Functional.SSAConcreteGateSchedule
 import S31.Gadgets.Functional.SSAConcreteGateLookup
 import S31.Gadgets.Functional.SSANativeTopologyCheck
+import S31.Gadgets.Functional.SSAGeneralNamedTopology
 import S31.Gadgets.Functional.SSALocalPipeline
 import S31.Gadgets.Functional.MathLibrary
 import S31.Gadgets.Functional.WorkedQuadratic
