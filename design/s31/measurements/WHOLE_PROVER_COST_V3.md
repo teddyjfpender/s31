@@ -1,6 +1,6 @@
 # Whole-prover cost model v3.1
 
-The [machine-readable protocol](whole-prover-cost-v3.json) was written before
+The [machine-readable protocol](whole-prover-cost-v3.json) was frozen before
 the v3.1 native measurement. It addresses the version mismatch between the [v1
 whole-prover run](STAGE_AWARE_COST_V1.md) and the [v2 arithmetic RSS
 follow-up](ARITHMETIC_RSS_V2.md): all v3 wall, proof-byte and peak-RSS targets
@@ -70,8 +70,9 @@ have twenty distinct witness assignments. The chip package must contain the
 power-of-two repeated-step round count required by the native chip, the
 compiler-generated typed `s31-component-manifest-direct-chip-v2`, exactly one
 `chip_call` at `call_id: 0`, and a sealed native key that binds it. The
-publisher rechecks each saved package, component manifest, proof digest, full
-trial report, and changed-public-statement diff.
+publisher rechecks each saved package, component manifest, source-to-package
+binding, assignment digest, assignment-to-public-statement match, proof digest,
+full trial report, and changed-public-statement diff.
 
 ## Predictor and uncertainty
 
@@ -82,8 +83,9 @@ Direct gate and chip profiles expose interaction PoW and FRI PoW timers; the
 generic hash prover exposes only an opaque prove timer that includes PoW. The
 whole wall prediction sums the stage predictions. Proof bytes and peak RSS
 have their own curves. Direct-gate arithmetic RSS uses the fixed-baseline plus
-per-padded-row positive affine form prospectively validated in v2; the other
-family RSS fits remain log-linear.
+per-padded-row positive affine form prospectively validated in v2. Direct-chip
+RSS uses a positive affine fit over sealed-manifest trace cells. Hash and
+fixed-width RSS fits remain log-linear.
 
 PoW is stochastic. The model preserves all twenty trial timings per program,
 reports each stage's median, p90, maximum and coefficient of variation, and
@@ -136,6 +138,51 @@ python3 src/frontends/s31/benchmarks/publish_whole_prover_cost_v3.py \
   zig-out/s31/whole-prover-v3-evaluation.json \
   --out design/s31/measurements/language/whole-prover-cost-v3-audit.json
 ```
+
+## Pinned v3.1 outcome
+
+The [tracked audit](language/whole-prover-cost-v3-audit.json) records the
+prospective validation under compiler fingerprint
+`1ed227604daba04c04835dd809809eca545f86ca768d3fadfd33b7e4a8cc7344`
+and protocol SHA-256
+`e93c880b08e9e9ac7a0d1a58be837cb5896758b446a81b469d78280ae26702ef`.
+The model SHA-256
+`c3210b36a4f0bee0efc7efbac60e78894f23f12a211f85c347cd0ffca02c9721`
+was recorded externally at 2026-10-10 17:52:55 UTC, **before** validation
+package builds and proofs. The publisher requires that exact hash, then
+independently refits training and replays held-out evaluation. The measured
+compiler revision is an audit of that pinned source; subsequent compiler
+changes require a new cohort before these predictions can be used.
+
+Fresh training comprised 18 packages and 360 verified proofs; fresh validation
+comprised 16 packages and 320 verified proofs. Every proof passed its native
+verifier and independent output oracle, and every changed-public-claim control
+was rejected. Saved-artifact checks matched 680 assignment digests, 680 public
+statements, 680 proof digests and 34 source-to-package bindings. The native
+verifiers and oracles were **not rerun** by the publisher; it checks their saved
+reports and artifacts. Package-build wall time was separately measured:
+training min/median/max 50.89/51.72/67.78 seconds; validation
+51.51/52.03/68.20 seconds. Builds were fresh packages under an unspecified
+existing Zig cache state; package-build RSS was unavailable.
+
+| Family | Paired wall p90 error | Wall interval coverage | Wall upper / measured median | Proof bytes p90 error | Prover RSS p90 error | Prover RSS coverage |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Arithmetic | 56.11% | 98.75% | 11.14× | 3.58% | 1.69% | 100% |
+| Direct chip | 24.75% | 96.25% | 8.46× | 2.40% | 3.13% | 78.75% |
+| Fixed width | 23.74% | 100% | 26.10× | 2.36% | 2.54% | 100% |
+| Hash | 5.49% | 100% | 2.35× | 0.43% | 0.04% | 100% |
+
+The predeclared **local gate failed**. Arithmetic wall error exceeded 25%; the
+arithmetic, chip and fixed-width wall intervals exceeded the 8× width limit;
+chip RSS coverage fell below 80%. Proof-byte p90 errors and RSS p90 errors
+were below their 10% thresholds in all four families. These are prediction
+errors, not proving speedups. In the held-out stage diagnostics, arithmetic
+FRI PoW had 90.6% median relative error and 103.1% p90 error, while its
+non-PoW prove stage had 15.6% median error. PoW variance and constant-stage
+fits dominate the weak wall predictions. No held-out-informed retuning was
+performed, and **automatic lowering selection remains disabled**. The model
+predicts fresh-process prover plus verifier wall time; it does not predict
+compile-to-proof latency, cached setup, or verifier peak memory.
 
 The untracked `zig-out` directories hold the complete proofs, statements,
 native reports and package artifacts. The tracked audit pins their digests and

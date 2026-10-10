@@ -11,6 +11,46 @@ from benchmark_whole_prover_cost_v3 import chip_manifest_binding, s31
 from publish_stage_aware_cost_v1 import audit_corpus, file_hash
 from whole_prover_predictor_v3 import PROTOCOL, evaluate, fit_model
 
+EXTERNALLY_RECORDED_FROZEN_MODEL_SHA256 = (
+    "c3210b36a4f0bee0efc7efbac60e78894f23f12a211f85c347cd0ffca02c9721"
+)
+
+
+def audit_case_artifacts(base: Path, name: str, case: dict, manifest: dict) -> int:
+    """Bind the saved witnesses and public claims to the sealed source package."""
+    source = Path(case["source"])
+    if source.suffix == ".s31":
+        if manifest.get("source_text_sha256") != case["source_sha256"]:
+            raise ValueError(f"{name}: text source differs from sealed package")
+        _, normalized, _ = s31.lower_text(source)
+        program_sha = s31.sha256(normalized)
+    else:
+        program_sha = case["source_sha256"]
+    if (manifest["program_sha256"] != program_sha or
+        manifest["lowering"] != case["lowering"]):
+        raise ValueError(f"{name}: source program or lowering differs from sealed package")
+    package = (base / name / "package").resolve()
+    count = 0
+    for index, expected_digest in enumerate(case["assignment_sha256"]):
+        assignment_path = base / name / "assignments" / f"{index:02d}.json"
+        if s31.assignment_digest(assignment_path) != expected_digest:
+            raise ValueError(f"{name}[{index}]: saved assignment digest mismatch")
+        assignment = json.loads(assignment_path.read_text())
+        statement = json.loads((base / name / "trials" / f"{index:02d}" /
+                                "statement.json").read_text())
+        if statement != {key: assignment[key] for key in ("public_inputs", "public_outputs")}:
+            raise ValueError(f"{name}[{index}]: saved statement differs from assignment")
+        report = json.loads((base / name / "trials" / f"{index:02d}" /
+                             "trial-report.json").read_text())
+        if (Path(report["assignment"]).resolve() != assignment_path.resolve() or
+            Path(report["package"]).resolve() != package or
+            report["program_sha256"] != program_sha or
+            report["lowering"] != case["lowering"] or
+            report["profile"] != case["profile"]):
+            raise ValueError(f"{name}[{index}]: saved trial report differs from package or assignment")
+        count += 1
+    return count
+
 
 def publish(train_path: Path, model_path: Path, validation_path: Path,
             evaluation_path: Path) -> dict:
@@ -21,6 +61,8 @@ def publish(train_path: Path, model_path: Path, validation_path: Path,
     evaluation = json.loads(evaluation_path.read_text())
     protocol = json.loads(PROTOCOL.read_text())
     protocol_sha = file_hash(PROTOCOL)
+    if file_hash(model_path) != EXTERNALLY_RECORDED_FROZEN_MODEL_SHA256:
+        raise ValueError("frozen model differs from externally recorded pre-validation SHA")
     if train["protocol_sha256"] != protocol_sha or validation["protocol_sha256"] != protocol_sha:
         raise ValueError("corpus/protocol digest mismatch")
     if model["training_corpus_sha256"] != file_hash(train_path):
@@ -40,6 +82,12 @@ def publish(train_path: Path, model_path: Path, validation_path: Path,
     if model["automatic_lowering_selection_enabled"] is not False or evaluation["automatic_lowering_selection_enabled"] is not False:
         raise ValueError("cost audit must not enable automatic lowering")
     inventory = {}
+    artifact_controls = {"train": {"saved_assignment_digest_matched": 0,
+                                     "assignment_statement_matched": 0,
+                                     "source_package_bound": 0},
+                         "validation": {"saved_assignment_digest_matched": 0,
+                                          "assignment_statement_matched": 0,
+                                          "source_package_bound": 0}}
     for split, corpus, corpus_path in (("train", train, train_path),
                                        ("validation", validation, validation_path)):
         inventory[split] = {}
@@ -48,6 +96,10 @@ def publish(train_path: Path, model_path: Path, validation_path: Path,
             manifest = s31.verify_package(package)
             if manifest["compiler_sha256"] != case["compiler_sha256"]:
                 raise ValueError(f"{name}: audited package compiler mismatch")
+            count = audit_case_artifacts(corpus_path.parent, name, case, manifest)
+            artifact_controls[split]["saved_assignment_digest_matched"] += count
+            artifact_controls[split]["assignment_statement_matched"] += count
+            artifact_controls[split]["source_package_bound"] += 1
             binding = chip_manifest_binding(package) if case["family"] == "chip" else None
             if binding != case["chip_manifest_binding"]:
                 raise ValueError(f"{name}: saved chip manifest binding mismatch")
@@ -75,6 +127,7 @@ def publish(train_path: Path, model_path: Path, validation_path: Path,
         "accuracy_gate": protocol["accuracy_gate"],
         "training_controls": train_controls,
         "validation_controls": validation_controls,
+        "artifact_controls": artifact_controls,
         "program_inventory": inventory,
         "model": model,
         "accuracy": evaluation["accuracy"],

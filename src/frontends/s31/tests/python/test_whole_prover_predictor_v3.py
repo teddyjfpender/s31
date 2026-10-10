@@ -11,7 +11,7 @@ from unittest.mock import patch
 S31_ROOT = Path(__file__).resolve().parents[2]
 sys.path[:0] = [str(S31_ROOT / "benchmarks"), str(S31_ROOT / "python")]
 
-from benchmark_whole_prover_cost_v3 import host_identity, workload_cases
+from benchmark_whole_prover_cost_v3 import host_identity, workload_cases, s31
 from publish_whole_prover_cost_v3 import publish
 from whole_prover_predictor_v3 import PROTOCOL, evaluate, fit_model
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -95,6 +95,31 @@ def synthetic_corpus(split: str, protocol: dict) -> dict:
             "cases": cases}
 
 
+def materialize_v3_corpus(root: Path, corpus: dict) -> Path:
+    path = materialize_corpus(root, corpus)
+    for name, case in corpus["cases"].items():
+        source = Path(case["source"])
+        normalized_source = source.with_suffix(".s31.json")
+        source.rename(normalized_source)
+        case["source"] = str(normalized_source)
+        for index, trial in enumerate(case["trials"]):
+            assignment_path = root / name / "assignments" / f"{index:02d}.json"
+            assignment = {"public_inputs": {}, "private_inputs": {
+                "seed": f"{corpus['split']}:{name}:{index}"},
+                          "public_outputs": {"result": [0]}}
+            write_json(assignment_path, assignment)
+            case["assignment_sha256"][index] = s31.assignment_digest(assignment_path)
+            report_path = root / name / "trials" / f"{index:02d}" / "trial-report.json"
+            report = json.loads(report_path.read_text())
+            report.update({"assignment": str(assignment_path),
+                           "package": str(root / name / "package"),
+                           "program_sha256": case["source_sha256"],
+                           "lowering": case["lowering"], "profile": case["profile"]})
+            write_json(report_path, report)
+    write_json(path, corpus)
+    return path
+
+
 class WholeProverV3Tests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -165,14 +190,14 @@ class WholeProverV3Tests(unittest.TestCase):
         with TemporaryDirectory() as directory:
             root = Path(directory)
             train = synthetic_corpus("train", self.protocol)
-            train_path = materialize_corpus(root / "train", train)
+            train_path = materialize_v3_corpus(root / "train", train)
             model = fit_model(train, self.protocol)
             model["training_corpus_sha256"] = hashlib.sha256(train_path.read_bytes()).hexdigest()
             model_path = root / "model.json"
             write_json(model_path, model)
             validation = synthetic_corpus("validation", self.protocol)
             validation["frozen_model_sha256"] = hashlib.sha256(model_path.read_bytes()).hexdigest()
-            validation_path = materialize_corpus(root / "validation", validation)
+            validation_path = materialize_v3_corpus(root / "validation", validation)
             evaluation = evaluate(model, validation, self.protocol)
             evaluation["frozen_model_sha256"] = hashlib.sha256(model_path.read_bytes()).hexdigest()
             evaluation["validation_corpus_sha256"] = hashlib.sha256(validation_path.read_bytes()).hexdigest()
@@ -184,12 +209,53 @@ class WholeProverV3Tests(unittest.TestCase):
                 name = package.parent.name
                 return {"train": train, "validation": validation}[split]["cases"][name]["chip_manifest_binding"]
 
+            def manifest(package: Path) -> dict:
+                split = package.parent.parent.name
+                name = package.parent.name
+                case = {"train": train, "validation": validation}[split]["cases"][name]
+                return {"compiler_sha256": "c" * 64,
+                        "program_sha256": case["source_sha256"],
+                        "lowering": case["lowering"]}
+
             with patch("publish_whole_prover_cost_v3.s31.verify_package",
-                       return_value={"compiler_sha256": "c" * 64}), patch(
-                           "publish_whole_prover_cost_v3.chip_manifest_binding", side_effect=binding):
+                       side_effect=manifest), patch(
+                           "publish_whole_prover_cost_v3.chip_manifest_binding", side_effect=binding), patch(
+                           "publish_whole_prover_cost_v3.EXTERNALLY_RECORDED_FROZEN_MODEL_SHA256",
+                           hashlib.sha256(model_path.read_bytes()).hexdigest()):
                 report = publish(train_path, model_path, validation_path, evaluation_path)
+                assignment_path = root / "validation/chip_32/assignments/00.json"
+                original = assignment_path.read_bytes()
+                tampered = json.loads(original)
+                tampered["private_inputs"]["seed"] = [999]
+                write_json(assignment_path, tampered)
+                with self.assertRaisesRegex(ValueError, "saved assignment digest"):
+                    publish(train_path, model_path, validation_path, evaluation_path)
+                assignment_path.write_bytes(original)
+                statement_path = root / "validation/chip_32/trials/00/statement.json"
+                statement = statement_path.read_bytes()
+                write_json(statement_path, {"public_inputs": {},
+                                            "public_outputs": {"result": [7]}})
+                with self.assertRaisesRegex(ValueError, "saved statement differs"):
+                    publish(train_path, model_path, validation_path, evaluation_path)
+                statement_path.write_bytes(statement)
+                def wrong_program(package: Path) -> dict:
+                    result = manifest(package)
+                    if package.parent.name == "chip_32" and package.parent.parent.name == "validation":
+                        result["program_sha256"] = "0" * 64
+                    return result
+
+                with patch("publish_whole_prover_cost_v3.s31.verify_package",
+                           side_effect=wrong_program):
+                    with self.assertRaisesRegex(ValueError, "source program or lowering"):
+                        publish(train_path, model_path, validation_path, evaluation_path)
+                with patch("publish_whole_prover_cost_v3.EXTERNALLY_RECORDED_FROZEN_MODEL_SHA256",
+                           "0" * 64):
+                    with self.assertRaisesRegex(ValueError, "externally recorded"):
+                        publish(train_path, model_path, validation_path, evaluation_path)
             self.assertEqual(report["training_controls"]["saved_proof_digest_matched"], 360)
             self.assertEqual(report["validation_controls"]["saved_proof_digest_matched"], 320)
+            self.assertEqual(report["artifact_controls"]["validation"]
+                             ["saved_assignment_digest_matched"], 320)
             self.assertEqual(report["program_inventory"]["validation"]["chip_32"]
                              ["chip_manifest_binding"], binding(root / "validation/chip_32/package"))
             self.assertFalse(report["automatic_lowering_selection_enabled"])
