@@ -173,6 +173,25 @@ def check_examples() -> None:
         state = [(value * value + 7) % P for value in state]
     assert captured_assignment["public_outputs"] == {"result": state}
     assert evaluate_relation(captured_step, captured_assignment) == {"result": state}
+    mixed_from_docs, _ = compile_text(
+        text_block_containing(DOCS / "functional-language.md", "circuit returned_mix4_3"),
+        "functional-language.md",
+    )
+    mixed_source = recurrence / "returned_mix4_3.s31"
+    mixed_direct = recurrence / "returned_mix4_3_manual.s31"
+    mixed_relation, _ = compile_text(mixed_source.read_text())
+    assert mixed_from_docs == mixed_relation == compile_text(mixed_direct.read_text())[0]
+    assert mixed_relation["nodes"] == [{
+        "name": "result", "op": "repeat", "lhs": "x", "rounds": 3,
+        "body": [{"op": "mix4"}],
+    }]
+    mixed_assignment = json.loads(mixed_source.with_suffix(".valid.json").read_text())
+    mixed_state = mixed_assignment["public_inputs"]["x"][:]
+    for _ in range(3):
+        total = sum(mixed_state) % P
+        mixed_state = [(value + total) % P for value in mixed_state]
+    assert mixed_assignment["public_outputs"] == {"result": mixed_state}
+    assert evaluate_relation(mixed_relation, mixed_assignment) == {"result": mixed_state}
     matrix_source = text_block_containing(DOCS / "library.md", "circuit static_matvec")
     matrix_relation, _ = compile_text(matrix_source, "library.md")
     assert matrix_relation == json.loads((S31 / "examples/arrays/static_matvec.s31.json").read_text())

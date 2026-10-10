@@ -7,7 +7,7 @@ import argparse
 import json
 import sys
 import tempfile
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 S31 = Path(__file__).resolve().parents[3]
@@ -27,6 +27,14 @@ MATCHED_COST = (
     "input_packing", "public_binding", "finalization", "fri",
 )
 EXPECTED_GEOMETRY: dict[str, dict] = {
+    "returned_mix4_3": {
+        "canonical_ir_sha256": "b6b3e2632278892969e9979c01a57737f9ef59f307d4133579283e2a3b39d0b9",
+        "raw": {"blake_g": 0, "eq": 0, "m31_to_u32": 0,
+                "qm31_ops": 344, "triple_xor": 0},
+        "padded": {"blake_g": 0, "eq": 0, "m31_to_u32": 0,
+                   "qm31_ops": 512, "triple_xor": 0},
+        "preprocessed_cells": 4096,
+    },
     "named_square4": {
         "canonical_ir_sha256": "95374784391a55222a19c73f8e08f9da1049e1b1b55e81171d7986eee194cf8c",
         "raw": {"blake_g": 0, "eq": 0, "m31_to_u32": 0,
@@ -78,6 +86,7 @@ class Case:
     private_inputs: dict[str, list[int]]
     expected: list[int]
     expected_ops: tuple[str, ...]
+    public_inputs: dict[str, list[int]] = field(default_factory=dict)
 
 
 def cases() -> list[Case]:
@@ -115,6 +124,13 @@ def cases() -> list[Case]:
                        {"x": left, "y": right}, pair(leaf(left), leaf(right)),
                        ("hash_poseidon2_leaf", "hash_poseidon2_leaf",
                         "hash_poseidon2_pair")))
+    mix_source = S31 / "examples/recurrence/returned_mix4_3.s31"
+    result.append(Case(
+        "returned_mix4_3", mix_source.read_text(),
+        mix_source.with_name("returned_mix4_3_manual.s31").read_text(),
+        {}, [311, 312, 313, 314], ("repeat",),
+        public_inputs={"x": [1, 2, 3, 4]},
+    ))
     return result
 
 
@@ -134,7 +150,7 @@ def check_case(work: Path, case: Case) -> dict:
         raise AssertionError(f"{case.name}: expected nontrivial field operations")
 
     output_name = relation["public_outputs"][0]
-    assignment = {"public_inputs": {}, "private_inputs": case.private_inputs,
+    assignment = {"public_inputs": case.public_inputs, "private_inputs": case.private_inputs,
                   "public_outputs": {output_name: case.expected}}
     if case.name in {"polynomial", "curried_sum", "named_square4"}:
         fixture_name = ({"polynomial": "functional_poly4", "curried_sum": "curried_sum",
@@ -142,6 +158,14 @@ def check_case(work: Path, case: Case) -> dict:
         fixture = json.loads((S31 / f"examples/arithmetic/{fixture_name}.valid.json").read_text())
         if assignment != fixture:
             raise AssertionError(f"{case.name}: fixture differs from independent arithmetic")
+    if case.name == "returned_mix4_3":
+        fixture = json.loads((S31 / "examples/recurrence/returned_mix4_3.valid.json").read_text())
+        state = fixture["public_inputs"]["x"][:]
+        for _ in range(3):
+            total = sum(state) % P
+            state = [(value + total) % P for value in state]
+        if assignment != fixture or state != case.expected:
+            raise AssertionError("returned mix4 fixture differs from independent recurrence")
     functional_path = work / f"{case.name}-functional.s31"
     direct_path = work / f"{case.name}-direct.s31"
     assignment_path = work / f"{case.name}.valid.json"

@@ -34,6 +34,10 @@ reduces to the chip's straight-line operations; dynamic captures and
 unsupported effects are rejected. The effect pass evaluates the step-value
 expression and resolves its body, including when a helper passes it through
 a `Fn` parameter, before an inactive conditional can hide a failure.
+Elaboration summarizes returned static functions and propagates step context
+through named factories, identity helpers, and lexical aliases. This permits
+`mix4` inside a factory or local closure only when that value is used as an
+iterate step; ordinary calls to `mix4` remain invalid.
 
 The elaborator checks unused declarations and lambda bodies without emitting
 relation nodes. The effect pass rejects `if` arms that could fail even when

@@ -309,12 +309,45 @@ the same `repeat` body and has a [direct equivalent](../examples/recurrence/capt
 adding it to every round is rejected because the chip's step body has no
 external dynamic input slot. An inverse or conditional is likewise outside
 the accepted step language.
-The same static flow works with `std::math::mix4`: a named
-`fn mix(v: [m31; 4]) -> [m31; 4] { std::math::mix4(v) }` may be passed through
-`repeat_with(mix, x)`, leaving one `repeat` node whose body is `mix4`.
-The type checker tracks direct named step arguments and aliases through
-higher-order helper parameters; the step recognizer still checks the final
-body.
+The [returned `mix4` example](../examples/recurrence/returned_mix4_3.s31)
+shows a function factory that returns the step:
+
+```s31
+fn mix(v: [m31; 4]) -> [m31; 4] { std::math::mix4(v) }
+fn choose() -> Fn([m31; 4]) -> [m31; 4] { mix }
+circuit returned_mix4_3(public x: [m31; 4]) -> public [m31; 4] {
+    let result = iterate<3>(choose(), x);
+    result
+}
+```
+
+`choose()` returns a static function value. The compiler follows that value
+to `mix` and emits one `repeat` node with body `mix4`; the
+[direct source](../examples/recurrence/returned_mix4_3_manual.s31) emits the
+same relation. `mix4` **couples** the four lanes: each output lane receives
+the sum of all four input lanes. For `x=[1,2,3,4]` the arithmetic is:
+
+| State | Sum before step | Four lane values after step |
+| --- | ---: | --- |
+| Input | 10 | `[1,2,3,4]` |
+| Round 1 | 10 | `[11,12,13,14]` |
+| Round 2 | 50 | `[61,62,63,64]` |
+| Round 3 | 250 | `[311,312,313,314]` |
+
+The conceptual constraint for lane `i` is
+`s[r+1,i] - s[r,i] - Σ(j=0..3) s[r,j] = 0` in M31. The [Lean `mix4` row
+proof](../../../../formal/s31/S31/Gadgets/Air/MixRows.lean) connects the
+abstract step to its arithmetic rows; the
+[repeat theorem](../../../../formal/s31/S31/Gadgets/Sequence.lean) binds the
+result of any number of such steps. These proofs do not yet establish that
+the Python source pass always emits those rows.
+The [worked Lean instance](../../../../formal/s31/S31/Gadgets/Functional/WorkedMix4.lean)
+checks all three lines of the table and proves that any satisfying abstract
+three-round trace has the claimed `[311,312,313,314]` result.
+The native `direct-gate` proof for the returned factory step verifies and
+rejects a changed public claim. It has exactly the same canonical IR and
+AIR geometry as the direct source: 344 raw QM31 operation rows, padded to
+512, with 4,096 preprocessed cells. The factory adds no rows.
 
 For an input `x=[0,1,2,7]`, each array position is a **lane** following the
 same recurrence independently:

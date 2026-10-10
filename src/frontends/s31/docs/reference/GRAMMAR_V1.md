@@ -97,7 +97,9 @@ An unshadowed bare top-level function name is a compile-time `Fn` value, so
 the declared types match. Local names take precedence over top-level names.
 `iterate<N>(step, initial)` accepts a static `Fn([m31; K]) -> [m31; K]`
 expression, including a named function passed through a parameter or a
-constant-capturing `fun`. The specialized step body must reduce to one to
+constant-capturing `fun`. A `Fn` returned by a named factory or a local
+`let` bound closure is also accepted when specialization yields a supported
+step. The specialized step body must reduce to one to
 sixteen supported recurrence operations; no witness-dependent capture,
 conditional, inverse, or helper call that cannot reduce to supported steps is
 admitted.

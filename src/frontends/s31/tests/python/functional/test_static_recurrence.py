@@ -66,9 +66,39 @@ class StaticRecurrenceTests(unittest.TestCase):
         mix = "fn mix(v: [m31; 4]) -> [m31; 4] { std::math::mix4(v) }\n"
         relay = ("fn relay(f: Fn([m31; 4]) -> [m31; 4], x: [m31; 4]) "
                  "-> [m31; 4] { run(f, x) }\n")
+        choose = "fn choose() -> Fn([m31; 4]) -> [m31; 4] { mix }\n"
+        identity = ("fn identity(f: Fn([m31; 4]) -> [m31; 4]) "
+                    "-> Fn([m31; 4]) -> [m31; 4] { f }\n")
+        factory = ("fn make() -> Fn([m31; 4]) -> [m31; 4] { "
+                   "fun(v: [m31; 4]) -> [m31; 4] => std::math::mix4(v) }\n")
         sources = (
             mix + RUN + relay +
             "circuit p(public x: [m31; 4]) -> public [m31; 4] { relay(mix, x) }",
+            mix + choose +
+            "circuit p(public x: [m31; 4]) -> public [m31; 4] "
+            "{ iterate<16>(choose(), x) }",
+            mix + identity +
+            "circuit p(public x: [m31; 4]) -> public [m31; 4] "
+            "{ iterate<16>(identity(mix), x) }",
+            mix + identity +
+            "fn choose() -> Fn([m31; 4]) -> [m31; 4] { identity(mix) }\n"
+            "circuit p(public x: [m31; 4]) -> public [m31; 4] "
+            "{ iterate<16>(choose(), x) }",
+            factory +
+            "circuit p(public x: [m31; 4]) -> public [m31; 4] "
+            "{ iterate<16>(make(), x) }",
+            factory + RUN +
+            "circuit p(public x: [m31; 4]) -> public [m31; 4] "
+            "{ run(make(), x) }",
+            "circuit p(public x: [m31; 4]) -> public [m31; 4] { "
+            "let f = fun(v: [m31; 4]) -> [m31; 4] => std::math::mix4(v); "
+            "iterate<16>(f, x) }",
+            RUN + "circuit p(public x: [m31; 4]) -> public [m31; 4] { "
+            "let f = fun(v: [m31; 4]) -> [m31; 4] => std::math::mix4(v); "
+            "let alias = f; run(alias, x) }",
+            "circuit p(public x: [m31; 4]) -> public [m31; 4] { "
+            "let f = fun(v: [m31; 4]) -> [m31; 4] => std::math::mix4(v) in "
+            "iterate<16>(f, x) }",
             "circuit p(public x: [m31; 4]) -> public [m31; 4] { "
             "iterate<16>(fun(v: [m31; 4]) -> [m31; 4] => std::math::mix4(v), x) }",
         )
@@ -114,6 +144,23 @@ class StaticRecurrenceTests(unittest.TestCase):
             SourceError, "if branch may fail when inactive: std::math::inv"
         ):
             compile_text(through_helper)
+        factory = (
+            "fn make() -> Fn([m31; 4]) -> [m31; 4] { "
+            "fun(v: [m31; 4]) -> [m31; 4] => std::math::inv(v) } "
+            "circuit p(public b: bit, private x: [m31; 4]) -> public [m31; 4] "
+            "{ if b then iterate<16>(make(), x) else x }")
+        with self.assertRaisesRegex(
+            SourceError, "if branch may fail when inactive: std::math::inv"
+        ):
+            compile_text(factory)
+
+    def test_mix4_cannot_escape_the_step_context(self) -> None:
+        source = (
+            "fn make() -> Fn([m31; 4]) -> [m31; 4] { "
+            "fun(v: [m31; 4]) -> [m31; 4] => std::math::mix4(v) } "
+            "circuit p(public x: [m31; 4]) -> public [m31; 4] { make()(x) }")
+        with self.assertRaisesRegex(SourceError, "std::math::mix4 requires"):
+            compile_text(source)
 
 
 if __name__ == "__main__":

@@ -75,6 +75,7 @@ import S31.Gadgets.Functional.WorkedQuadratic
 import S31.Gadgets.Functional.CurriedApplication
 import S31.Gadgets.Functional.NamedFunctionValue
 import S31.Gadgets.Functional.StaticRecurrence
+import S31.Gadgets.Functional.WorkedMix4
 import S31.Gadgets.Functional.Assertions
 import S31.Gadgets.Functional.Conditional
 import S31.Gadgets.Functional.ArrayConditional

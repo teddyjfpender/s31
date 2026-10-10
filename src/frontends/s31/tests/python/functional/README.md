@@ -12,6 +12,9 @@ and constant-capturing closures passed to `iterate<N>` retain exactly one
 `repeat` relation node. It covers `mix4` through higher-order helpers,
 independent recurrence values, false public claims, lexical shadowing,
 unsupported dynamic captures, and partial inactive branches.
+It also compares returned named steps, function factories, identity helpers,
+and local `mix4` closures with a direct `mix4` recurrence, and checks that
+ordinary `mix4` calls remain outside the source language.
 
 Run through the repository's Python discovery command:
 

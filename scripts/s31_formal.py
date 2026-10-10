@@ -46,6 +46,8 @@ TEXT_STATIC_STEP = "src/frontends/s31/examples/recurrence/functional_step16.s31"
 TEXT_STATIC_STEP_DIRECT = "src/frontends/s31/examples/recurrence/functional_step16_manual.s31"
 TEXT_CAPTURED_STEP = "src/frontends/s31/examples/recurrence/captured_step16.s31"
 TEXT_CAPTURED_STEP_DIRECT = "src/frontends/s31/examples/recurrence/captured_step16_manual.s31"
+TEXT_RETURNED_MIX = "src/frontends/s31/examples/recurrence/returned_mix4_3.s31"
+TEXT_RETURNED_MIX_DIRECT = "src/frontends/s31/examples/recurrence/returned_mix4_3_manual.s31"
 BINDINGS = [
     RELATION,
     TEXT_SQUARE4,
@@ -59,6 +61,8 @@ BINDINGS = [
     TEXT_STATIC_STEP_DIRECT,
     TEXT_CAPTURED_STEP,
     TEXT_CAPTURED_STEP_DIRECT,
+    TEXT_RETURNED_MIX,
+    TEXT_RETURNED_MIX_DIRECT,
     "src/frontends/s31/build.zig",
     "src/frontends/s31/entry/export_square4_topology.zig",
     "src/frontends/s31/tools/formal/export_square4_topology.zig",

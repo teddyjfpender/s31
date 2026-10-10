@@ -24,6 +24,7 @@ class Elaborator:
                            for name, fn in functions.items()}
         self.edges: dict[str, set[str]] = {}
         self.step_functions: set[str] = set()
+        self.step_lambdas: set[int] = set()
 
     def error(self, expr: Expr, message: str) -> SourceError:
         return SourceError(f"{self.filename}:{expr.token.line}:{expr.token.column}: {message}")
@@ -69,9 +70,55 @@ class Elaborator:
         found_calls, found_steps = self.referenced_calls(body, bound)
         return calls | found_calls, steps | found_steps
 
+    def function_origin(self, expr: Expr, scope: dict[str, tuple[str, str | int] | None],
+                        returns: dict[str, tuple[str, str | int] | None],
+                        owner: str | None) -> tuple[str, str | int] | None:
+        """Resolve a static Fn value to a global declaration or a parameter.
+
+        A lambda returned by a named factory is attributed to that factory so
+        its body can be typechecked in the restricted step context when used
+        by `iterate`. The call graph is acyclic before these summaries run.
+        """
+        if expr.kind == "name":
+            if expr.value in scope:
+                return scope[expr.value]
+            if expr.value in self.functions:
+                return ("global", expr.value)
+        if expr.kind == "let":
+            bound = self.function_origin(expr.args[0], scope, returns, owner)
+            return self.function_origin(expr.args[1], scope | {expr.value: bound}, returns, owner)
+        if expr.kind == "lambda":
+            return ("global", owner) if owner is not None else ("lambda", id(expr))
+        if expr.kind == "call" and expr.value not in scope:
+            summary = returns.get(expr.value)
+            if summary is not None:
+                kind, value = summary
+                if kind == "param" and isinstance(value, int) and value < len(expr.args):
+                    return self.function_origin(expr.args[value], scope, returns, owner)
+                if kind == "global":
+                    return summary
+        return None
+
+    def function_returns(self, depths: dict[str, int]) -> dict[str, tuple[str, str | int] | None]:
+        """Summarize pure functions returning Fn values, dependency first."""
+        returns: dict[str, tuple[str, str | int] | None] = {}
+        for name in sorted(self.functions, key=depths.__getitem__):
+            fn = self.functions[name]
+            if not isinstance(fn.result, FunctionType):
+                continue
+            scope: dict[str, tuple[str, str | int] | None] = {
+                param: ("param", index) for index, (param, _) in enumerate(fn.params)}
+            for statement in fn.statements:
+                if statement.kind == "let":
+                    scope[statement.name] = self.function_origin(
+                        statement.args[0], scope, returns, name)
+            returns[name] = self.function_origin(fn.body, scope, returns, name)
+        return returns
+
     def step_flows(self, statements: tuple[Statement, ...], body: Expr,
                    params: tuple[str, ...],
-                   targets: dict[str, set[int]]) -> tuple[set[int], set[str]]:
+                   targets: dict[str, set[int]],
+                   returns: dict[str, tuple[str, str | int] | None]) -> tuple[set[int], set[str]]:
         """Track static names flowing into an iterate step through Fn parameters.
 
         This is a conservative, finite source-level flow pass. Specialization
@@ -84,14 +131,7 @@ class Elaborator:
         globals_: set[str] = set()
 
         def origin(expr: Expr, scope: dict[str, Origin | None]) -> Origin | None:
-            if expr.kind == "name":
-                if expr.value in scope:
-                    return scope[expr.value]
-                if expr.value in self.functions:
-                    return ("global", expr.value)
-            if expr.kind == "let":
-                return origin(expr.args[1], scope | {expr.value: origin(expr.args[0], scope)})
-            return None
+            return self.function_origin(expr, scope, returns, None)
 
         def visit(expr: Expr, scope: dict[str, Origin | None]) -> None:
             if expr.kind == "let":
@@ -114,6 +154,8 @@ class Elaborator:
                             positions.add(value)
                         elif kind == "global" and isinstance(value, str):
                             globals_.add(value)
+                        elif kind == "lambda" and isinstance(value, int):
+                            self.step_lambdas.add(value)
             for child in expr.args:
                 visit(child, scope)
 
@@ -153,19 +195,21 @@ class Elaborator:
 
         for name in self.functions:
             depth(name, ())
+        returns = self.function_returns(depths)
         targets = {name: set() for name in self.functions}
         while True:
             changed = False
             for name, fn in self.functions.items():
                 positions, globals_ = self.step_flows(
-                    fn.statements, fn.body, tuple(param for param, _ in fn.params), targets)
+                    fn.statements, fn.body, tuple(param for param, _ in fn.params), targets,
+                    returns)
                 if positions - targets[name]:
                     targets[name].update(positions)
                     changed = True
                 self.step_functions.update(globals_)
             _, globals_ = self.step_flows(
                 self.circuit.statements, self.circuit.body,
-                tuple(name for name, _, _ in self.circuit.params), targets)
+                tuple(name for name, _, _ in self.circuit.params), targets, returns)
             self.step_functions.update(globals_)
             if not changed:
                 break
@@ -248,7 +292,8 @@ class Elaborator:
                     raise TypeErrorS31("lambda requires a declared result type")
                 local = env.copy()
                 local.update(expr.params)
-                result = self.expr(expr.args[0], local, step_mode=step_mode)
+                result = self.expr(expr.args[0], local,
+                                   step_mode=step_mode or id(expr) in self.step_lambdas)
                 if result != expr.result_type:
                     raise TypeErrorS31("function value result does not match its declared type")
                 return FunctionType(tuple(typ for _, typ in expr.params), expr.result_type)
