@@ -647,8 +647,21 @@ Finite cardinality upgrades the selection to the **unique** canonical row
 bijection. The full value-bearing event permutation then forces the start,
 all adjacent row joins, and the end; a locally enforced step rule yields the
 `R`-step result for both tagged calls. This is an exact-multiset theorem. The
-native paired-fraction AIR, seven-coordinate challenge bound, and PCS link
-to its premise remain unproved.
+native paired-fraction AIR and PCS link to its premise remain unproved.
+`TaggedPairChallenge.lean` supplies the ideal seven-coordinate challenge
+reduction for the **joint** Gate/chip event support. It proves that distinct
+seven-word tuples collide for at most six compression challenges, derives an
+explicit pole and rational-cancellation bad set, and proves a closed joint
+reciprocal sum implies exact joint tuple multiset equality outside that set.
+For `s` distinct tuples and each event list shorter than `p`, the exceptional
+fraction under an ideal independent uniform `(alpha,z)` draw is at most
+`(6s² + 2s)/p⁴`. It also proves the native-shaped chip row and paired bridge
+fractions reduce to event reciprocals, including the sixteen-row `1/16`
+normalization when all denominators are nonzero. This is field algebra plus
+an ideal challenge count. The AIR-to-rational-identity correspondence,
+Fiat–Shamir distribution, and PCS/FRI verifier soundness remain separate.
+A fixed good-looking challenge is insufficient: four distinct nonzero
+denominators satisfy `1/2 + 1/12 = 1/3 + 1/4` despite unequal event lists.
 `PrivateBridgeChallenge.lean` specializes the Gate exceptional-challenge
 bound to one addressed endpoint whose sixteen bridge rows vary. It also
 proves a joint eight-address Gate bound: if repeated addresses have coherent
