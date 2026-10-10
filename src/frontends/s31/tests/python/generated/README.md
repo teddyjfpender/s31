@@ -25,6 +25,16 @@ independent integer evaluator checks both selector values, field wrap and
 forged-output rejection. A separate native gate builds both forms at lengths
 3, 5 and 9, compares circuit/AIR geometry, and verifies two proofs per length.
 
+`test_functional_library_generated.py` adds 20 deterministic four-lane math
+programs across polynomial evaluation, dot product, matrix-vector and matrix
+multiplication, and field powers. Nine more programs cover Poseidon2 leaves of
+4, 8, 12 and 16 words and a two-leaf parent. Functional closure calls and
+explicit direct forms must produce identical normalized relations. Independent
+modular arithmetic and the pinned Poseidon2 reference calculate expected
+outputs; changed claims must fail. The 29-source corpus has a pinned SHA-256
+identity. These are source/value gates; only the existing acceptance cases
+compare native AIR geometry and proofs.
+
 A second gate perturbs valid source text and requires located diagnostics for
 rejected mutations. Deep expressions and function types must hit explicit,
 located nesting limits. The scalar corpus is deterministic (`SEED = 0x531F00D`);

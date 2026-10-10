@@ -12,6 +12,7 @@ Lean module names follow the directory, for example
 | `Outputs.lean` | One graph binds every claimed field output, including aliases. |
 | `Arrays.lean` | Shape-indexed arrays and every output lane in a strict graph. |
 | `ArithmeticNodes.lean` | Pointwise array `add`/`mul` agree with concrete normalized evaluator nodes. |
+| `MathLibrary.lean` | Nonempty sum and dot, plus Horner polynomial evaluation: source denotations and arbitrary-witness strict field-graph acceptance. This models mathematical meaning, not Python's balanced reduction schedule. |
 | `ArrayNodes.lean` | `get`, `concat`, `take` and `drop` agree with normalized array nodes and bounds. |
 | `Assertions.lean` | Source equality assertions checked against independently witnessed graph outputs. |
 | `Conditional.lean` | Total scalar branches share a graph and a bit-constrained selector. |

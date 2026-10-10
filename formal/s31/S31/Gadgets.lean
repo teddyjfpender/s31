@@ -70,6 +70,7 @@ import S31.Gadgets.Functional.Outputs
 import S31.Gadgets.Functional.Arrays
 import S31.Gadgets.Functional.ArrayNodes
 import S31.Gadgets.Functional.ArithmeticNodes
+import S31.Gadgets.Functional.MathLibrary
 import S31.Gadgets.Functional.Assertions
 import S31.Gadgets.Functional.Conditional
 import S31.Gadgets.Functional.ArrayConditional
