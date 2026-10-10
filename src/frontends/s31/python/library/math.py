@@ -8,6 +8,7 @@ nodes a handwritten relation would use.
 from __future__ import annotations
 
 from s31_stdlib import Builder, P, StaticGroup, TypeErrorS31, Value
+from library.addition_chains import exponent_chain
 
 
 BUILTINS = {
@@ -176,17 +177,15 @@ def pow_static(builder: Builder, value: Value, exponent: int, *, wanted: str | N
         return builder.splat(1, value.typ.length)
     if value.constant is not None:
         return builder.splat(pow(value.constant, exponent, P), value.typ.length)
-    result = value
-    bits = bin(exponent)[3:]  # The leading one is the initial value.
-    for index, bit in enumerate(bits):
-        last = index == len(bits) - 1
-        result = builder.binary("mul", result, result,
-                                wanted=wanted if last and bit == "0" else None,
-                                span=span)
-        if bit == "1":
-            result = builder.binary("mul", result, value,
-                                    wanted=wanted if last else None, span=span)
-    return result
+    chain = exponent_chain(exponent)
+    powers = {1: value}
+    for index, next_power in enumerate(chain[1:], 1):
+        current = chain[index - 1]
+        prior = next_power - current
+        powers[next_power] = builder.binary(
+            "mul", powers[current], powers[prior],
+            wanted=wanted if index == len(chain) - 1 else None, span=span)
+    return powers[exponent]
 
 
 def _group(value: StaticGroup, operation: str) -> tuple[Value, ...]:

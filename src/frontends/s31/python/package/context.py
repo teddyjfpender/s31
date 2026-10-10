@@ -20,6 +20,7 @@ PINNED_ASSETS = (
 LIBRARY_SOURCE_FILES = (
     "s31_stdlib.py", "s31_mathlib.py",
     "library/__init__.py", "library/stdlib.py", "library/math.py",
+    "library/addition_chains.py",
 )
 TEXT_FRONTEND_SOURCES = (
     S31_DIR / "python/text_frontend.py",

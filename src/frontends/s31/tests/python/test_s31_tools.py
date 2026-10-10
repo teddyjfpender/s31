@@ -20,6 +20,7 @@ class ProverLogTests(unittest.TestCase):
         expected = {
             "s31_stdlib.py", "s31_mathlib.py",
             "library/__init__.py", "library/stdlib.py", "library/math.py",
+            "library/addition_chains.py",
         }
         discovered = {
             f"library/{path.relative_to(S31_SOURCE_ROOT / 'python/library').as_posix()}"

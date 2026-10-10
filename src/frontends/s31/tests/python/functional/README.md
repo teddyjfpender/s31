@@ -16,6 +16,12 @@ It also compares returned named steps, function factories, identity helpers,
 and local `mix4` closures with a direct `mix4` recurrence, and checks that
 ordinary `mix4` calls remain outside the source language.
 
+`test_power_chains.py` checks every bounded static-power schedule through
+exponent 255 for valid prior powers and no multiplication-count regression
+against the binary fallback. It compares `pow<15>` with a handwritten
+five-gate graph, then evaluates honest and false field claims across small,
+boundary, and large exponents.
+
 Run through the repository's Python discovery command:
 
 ```sh

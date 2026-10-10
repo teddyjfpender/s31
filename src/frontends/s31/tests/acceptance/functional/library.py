@@ -51,6 +51,14 @@ EXPECTED_GEOMETRY: dict[str, dict] = {
                    "qm31_ops": 512, "triple_xor": 0},
         "preprocessed_cells": 4096,
     },
+    "pow15": {
+        "canonical_ir_sha256": "23d2035c12e045ef84b4e2a235a3cd57e9d774c3db0f668dc9aa99ee725354fd",
+        "raw": {"blake_g": 0, "eq": 0, "m31_to_u32": 0,
+                "qm31_ops": 316, "triple_xor": 0},
+        "padded": {"blake_g": 0, "eq": 0, "m31_to_u32": 0,
+                   "qm31_ops": 512, "triple_xor": 0},
+        "preprocessed_cells": 4096,
+    },
     "curried_sum": {
         "canonical_ir_sha256": "969fd73181498025b6ffa9de584601fa3ac70788044c7fbcc37bb2e6ea617fd4",
         "raw": {"blake_g": 0, "eq": 0, "m31_to_u32": 0,
@@ -95,6 +103,17 @@ class Case:
     expected: list[int]
     expected_ops: tuple[str, ...]
     public_inputs: dict[str, list[int]] = field(default_factory=dict)
+    exact_relation: bool = True
+
+
+def indexed_graph(relation: dict) -> list[tuple[str, int, int]]:
+    """Compare arithmetic schedules without source-only intermediate names."""
+    references = {item["name"]: index for index, item in enumerate(relation["inputs"])}
+    graph = []
+    for node in relation["nodes"]:
+        graph.append((node["op"], references[node["lhs"]], references[node["rhs"]]))
+        references[node["name"]] = len(references)
+    return graph
 
 
 def cases() -> list[Case]:
@@ -120,6 +139,13 @@ def cases() -> list[Case]:
         named_source.with_name("named_square4_manual.s31").read_text(),
         {"x": [0, 1, 7, P - 1]}, [0, 1, 49, 1], ("mul",),
     )
+    pow_source = S31 / "examples/arithmetic/powers/pow15.s31"
+    pow15 = Case(
+        "pow15", pow_source.read_text(),
+        pow_source.with_name("pow15_manual.s31").read_text(),
+        {"x": [0, 1, 2, 7]}, [pow(value, 15, P) for value in (0, 1, 2, 7)],
+        ("mul",) * 5, exact_relation=False,
+    )
     tuple_source = S31 / "examples/arithmetic/tuple_square_sum.s31"
     tuple_values = Case(
         "tuple_square_sum", tuple_source.read_text(),
@@ -128,7 +154,7 @@ def cases() -> list[Case]:
     )
     matrix = next(case for case in math_cases() if case.family == "matmul")
     matrix_functional, matrix_direct = matrix.sources()
-    result = [polynomial, curried, named, tuple_values, Case("matrix", matrix_functional, matrix_direct,
+    result = [polynomial, curried, named, pow15, tuple_values, Case("matrix", matrix_functional, matrix_direct,
                                {"x": x, "y": y}, matrix.value(x, y),
                                ("mul", "add"))]
     functional, direct = pair_sources()
@@ -151,13 +177,15 @@ def cases() -> list[Case]:
 def check_case(work: Path, case: Case) -> dict:
     relation, _ = compile_text(case.functional, f"{case.name}-functional.s31")
     direct_relation, _ = compile_text(case.direct, f"{case.name}-direct.s31")
-    if relation != direct_relation:
+    if case.exact_relation and relation != direct_relation:
         raise AssertionError(f"{case.name}: closure added or changed relation operations")
+    if not case.exact_relation and indexed_graph(relation) != indexed_graph(direct_relation):
+        raise AssertionError(f"{case.name}: source abstraction changed the arithmetic graph")
     operations = [node["op"] for node in relation["nodes"]]
     if case.name == "poseidon_pair":
         if operations != list(case.expected_ops):
             raise AssertionError(f"{case.name}: hash tree operations changed: {operations}")
-    elif case.name == "polynomial":
+    elif case.name in {"polynomial", "pow15"}:
         if operations != list(case.expected_ops):
             raise AssertionError(f"{case.name}: Horner operation schedule changed: {operations}")
     elif not set(case.expected_ops).issubset(operations):
@@ -166,9 +194,10 @@ def check_case(work: Path, case: Case) -> dict:
     output_name = relation["public_outputs"][0]
     assignment = {"public_inputs": case.public_inputs, "private_inputs": case.private_inputs,
                   "public_outputs": {output_name: case.expected}}
-    if case.name in {"polynomial", "curried_sum", "named_square4", "tuple_square_sum"}:
+    if case.name in {"polynomial", "curried_sum", "named_square4", "pow15", "tuple_square_sum"}:
         fixture_name = ({"polynomial": "functional_poly4", "curried_sum": "curried_sum",
                          "named_square4": "named_square4",
+                         "pow15": "powers/pow15",
                          "tuple_square_sum": "tuple_square_sum"}[case.name])
         fixture = json.loads((S31 / f"examples/arithmetic/{fixture_name}.valid.json").read_text())
         if assignment != fixture:

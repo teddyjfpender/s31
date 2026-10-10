@@ -16,6 +16,7 @@ Lean module names follow the directory, for example
 | `WorkedQuadratic.lean` | A captured, four-lane Horner closure specializes to the same residual polynomial as its direct form; strict graph acceptance binds all four outputs. The checked `.s31` example and native compiler remain separate evidence. |
 | `CurriedApplication.lean` | A function returning a function specializes through two applications to one field addition; the one-gate strict graph binds its claimed output. |
 | `HigherOrderRoutes.lean` | A captured returned function, local static binding and higher-order helper erase to the same two-node `x*x + y` graph; strict graph acceptance includes honest and forged claims. |
+| `PowerChains.lean` | Five-gate `x^15` addition chain and six-gate binary schedule, each proved equal to canonical M31 exponentiation; strict graph acceptance rejects false outputs for the optimized chain. |
 | `TupleValues.lean` | Typed products, projections and nested destructuring models; static pair structure erases and arbitrary accepted witnesses bind the claimed sums. |
 | `ArrayNodes.lean` | `get`, `concat`, `take` and `drop` agree with normalized array nodes and bounds. |
 | `Assertions.lean` | Source equality assertions checked against independently witnessed graph outputs. |

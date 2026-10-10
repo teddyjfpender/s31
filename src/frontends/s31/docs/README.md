@@ -115,6 +115,7 @@ The worked examples use checked-in sources under [`../examples`](../examples):
 | Program | What it teaches | Recommended profile |
 | --- | --- | --- |
 | [`math_polynomial4.s31`](../examples/arithmetic/math_polynomial4.s31) | Static power, constants, four M31 lanes, circuit gates | `direct-gate` |
+| [`pow15.s31`](../examples/arithmetic/powers/pow15.s31) | A five-gate static power, its AIR constraints, and a direct comparison with the six-gate binary schedule | `direct-gate` |
 | [`functional_square4.s31`](../examples/arithmetic/functional_square4.s31) | A higher-order function and closure erased to two multiplication nodes | `direct-gate` |
 | [`functional_step16.s31`](../examples/recurrence/functional_step16.s31) | A closure around `iterate<16>` erased to the same one-node recurrence and chip | `direct-chip` |
 | [`functional_u256_sum.s31`](../examples/wide/functional_u256_sum.s31) | A higher-order checked 256-bit reduction with the same sparse-wide AIR cost as its direct form | `sparse-wide-gate` |

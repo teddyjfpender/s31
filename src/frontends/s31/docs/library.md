@@ -82,6 +82,58 @@ recomputes SHA256d, compact target, work, addition, and Poseidon2 separately;
 it rejects overflow, invalid proof of work, changed claims, and proof/key
 tampering.
 
+### Static powers become multiplication circuits
+
+[`pow15.s31`](../examples/arithmetic/powers/pow15.s31) contains a normal library call:
+
+```s31
+use std@1;
+circuit pow15(private x: [m31; 4]) -> public [m31; 4] {
+    let result = std::math::pow<15>(x);
+    result
+}
+```
+
+The compiler chooses the addition chain $1,2,4,5,10,15$. It lowers the call
+to the same five gates as the [handwritten circuit](../examples/arithmetic/powers/pow15_manual.s31):
+
+| Gate | Exponent | Constraint in each lane |
+| --- | ---: | --- |
+| `x2` | 2 | $x_2=x\cdot x$ |
+| `x4` | 4 | $x_4=x_2\cdot x_2$ |
+| `x5` | 5 | $x_5=x_4\cdot x$ |
+| `x10` | 10 | $x_{10}=x_5\cdot x_5$ |
+| `result` | 15 | $result=x_{10}\cdot x_5$ |
+
+A *lane* is one coordinate of the four-element input array. Each gate applies
+the same field equation separately to all four coordinates; the coordinates
+are not multiplied together. For $x[3]=7$, the gate values are $49$, $2401$,
+$16807$, $282475249$, and $1622650073$, all modulo $p=2^{31}-1$. The
+[`pow15.valid.json`](../examples/arithmetic/powers/pow15.valid.json) fixture also
+checks inputs $0$, $1$, and $2$. The public statement is the resulting
+four-element array; the private input and intermediate values are witness
+values. The AIR constrains each multiplication, and the native verifier
+checks the proof against the public result.
+
+The older [binary schedule](../examples/arithmetic/powers/pow15_binary.s31) uses six
+multiplications: $1,2,3,6,7,14,15$. The bounded compiler search considers
+static exponents through 255 and adopts a chain only when it uses fewer gates
+than this binary schedule. Larger exponents and searches that hit their fixed
+work limit use the binary schedule. Thus the optimization does not add a new
+witness operation, and a search failure never raises circuit cost. This is an
+arithmetic gate count guarantee; proof time depends on padding and the rest
+of the circuit.
+
+For this four-lane fixture, native `direct-gate` builds give the library call
+and handwritten five-gate source the **same canonical IR digest**. They each
+use 316 raw QM31 operation rows; the six-gate binary source uses 317. All
+three pad to 512 rows, so this small example does not demonstrate a proof-size
+or prover-time win. The optimized source produces a 54,378-byte native proof;
+the verifier accepts it and rejects a changed public result. Lean's
+[`PowerChains.lean`](../../../../formal/s31/S31/Gadgets/Functional/PowerChains.lean)
+independently proves both graph schedules equal canonical M31 exponentiation
+and that strict graph acceptance binds the optimized output to that value.
+
 The group in brackets is a compile-time list of existing circuit values,
 not a witness array that can be indexed. Each item may be an input,
 an earlier result, or a `splat<N>(constant_m31)`. For example, if each
