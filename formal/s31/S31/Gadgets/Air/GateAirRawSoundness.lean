@@ -206,4 +206,52 @@ theorem raw_false_acceptance_card_le (logSize : Nat)
       Nat.add_le_add hbase hzero
     _ = _ := by ring
 
+/-- Composes local arithmetic soundness with the raw Gate interaction bound.
+If a locally accepted row claims an output different from the operation on
+its uniquely produced input values, its fixed trace can pass the modeled
+interaction only on the explicit exceptional challenge pairs. -/
+theorem false_local_result_raw_acceptance_card_le (logSize : Nat)
+    (prev : Equiv.Perm (Fin (2 ^ logSize)))
+    (rows : Fin (2 ^ logSize) → Row)
+    (externalUses externalYields : List Event)
+    (r : Row) (hr : r ∈ List.ofFn rows)
+    (left right : S31.Gadgets.Packed.Quad)
+    (hunique : uniqueProduced
+      (allYields (List.ofFn rows) externalYields))
+    (hleft : (r.in0Address, left) ∈
+      allYields (List.ofFn rows) externalYields)
+    (hright : (r.in1Address, right) ∈
+      allYields (List.ofFn rows) externalYields)
+    (hair : S31.Gadgets.Air.Qm31Ops.accepts
+      r.flags r.in0 r.in1 r.output)
+    (hfalse : ¬ ∃ op, r.flags = S31.Gadgets.Air.Qm31Ops.encode op ∧
+      r.output = S31.Gadgets.Air.Qm31Ops.evaluate op left right)
+    (hcanonical : ∀ event ∈
+      allUses (List.ofFn rows) externalUses ++
+        allYields (List.ofFn rows) externalYields,
+      event.1 < 2147483647)
+    (huses : ∀ event ∈
+      allUses (List.ofFn rows) externalUses ++
+        allYields (List.ofFn rows) externalYields,
+      (allUses (List.ofFn rows) externalUses).count event < 2147483647)
+    (hyields : ∀ event ∈
+      allUses (List.ofFn rows) externalUses ++
+        allYields (List.ofFn rows) externalYields,
+      (allYields (List.ofFn rows) externalYields).count event < 2147483647) :
+    (rawAcceptingPairs logSize prev rows externalUses externalYields).card ≤
+      (5 * (allUses (List.ofFn rows) externalUses ++
+        allYields (List.ofFn rows) externalYields).toFinset.card ^ 2 +
+        2 * (allUses (List.ofFn rows) externalUses ++
+          allYields (List.ofFn rows) externalYields).toFinset.card +
+        (denominatorEvents (List.ofFn rows)).length) *
+        Fintype.card GateSecure := by
+  have hwrong : ¬ (allUses (List.ofFn rows) externalUses).Perm
+      (allYields (List.ofFn rows) externalYields) := by
+    intro hbalanced
+    exact hfalse (addressed_row_sound (List.ofFn rows)
+      externalUses externalYields r hr hbalanced hunique
+      left right hleft hright hair)
+  exact raw_false_acceptance_card_le logSize prev rows
+    externalUses externalYields hcanonical huses hyields hwrong
+
 end S31.Gadgets.Air.GateAirRawSoundness

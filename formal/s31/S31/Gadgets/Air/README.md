@@ -319,6 +319,15 @@ derives the nonzero premises and applies the guarded theorem. For `r` fixed
 rows, the raw AIR accepts a false Gate relation on at most
 `(5s²+2s+3r)·p⁴` out of `p⁸` ideal challenge pairs. Native committed-column
 and transcript correspondence remain open.
+`false_local_result_raw_acceptance_card_le` combines this with the nine local
+arithmetic constraints and unique producers: if a fixed row's output is
+wrong for the values produced at its input addresses, those same exceptional
+pairs are the only modeled AIR acceptance cases.
+`scripts/s31_formal_lib/protocol_order.py` checks the main-commitment,
+lookup-draw, interaction-commitment order in reviewed native prover and
+verifier paths. It guards the fixed-before-challenge premise against simple
+source regressions but does not prove commitment binding or Fiat–Shamir
+randomness.
 `GateAddressCounts.lean` further proves that an individual event cannot
 occur more often than its address occurs in the integer histogram.
 Consequently, per-address histogram bounds below `p` suffice for the

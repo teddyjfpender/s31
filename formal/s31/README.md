@@ -322,6 +322,16 @@ invalid Gate witness. The interaction columns and claimed sum may depend on
 the challenges. A wrong input value at an address with a unique producer is
 a concrete invalid-witness case in the guarded theorem. These results still
 require a correspondence proof for native committed columns and transcript.
+`false_local_result_raw_acceptance_card_le` composes local arithmetic AIR
+validity, unique input producers, and the raw interaction bound: a fixed row
+whose claimed output disagrees with its produced input values can satisfy the
+modeled Gate interaction only on that exceptional set.
+The formal source-binding command also checks the reviewed transcript order
+in the core circuit prover, S31 native verifier, and direct SHA prover and
+verifier: main trace commitment precedes Gate challenge drawing, which
+precedes interaction commitment. This is a source-order regression check;
+commitment binding, hash-derived challenge distribution, and source-to-Lean
+column equivalence remain open proof obligations.
 `GateAddressCounts` proves a practical sufficient condition: if the integer
 use and yield histograms are below `p` at every address, every event count
 is below `p`. The Zig preprocessed builder now rejects a multiplicity as

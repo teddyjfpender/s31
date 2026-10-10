@@ -23,6 +23,7 @@ from scripts.s31_formal_lib.checks import (
     FormalError, check_audit, check_coverage, check_kernel_log, check_schedule_report,
     inventory, render_coverage,
 )
+from scripts.s31_formal_lib.protocol_order import check_protocol_order
 from scripts.riscv_refinement import _skip_lean_string, _strip_lean_comments
 from scripts.riscv_refinement_lib.model import RefinementError
 
@@ -51,6 +52,10 @@ BINDINGS = [
     "src/frontends/circuit/common/direct_arithmetic.zig",
     "src/frontends/circuit/common/preprocessed.zig",
     "src/frontends/circuit/witness/components.zig",
+    "deps/stwo-zig/src/integrations/circuit_cpu/prove.zig",
+    "src/frontends/s31/runtime/native_verifier.zig",
+    "src/frontends/s31/sha/proving/sha_direct_circuit_prover.zig",
+    "src/frontends/s31/sha/verification/sha_direct_circuit_native_verifier.zig",
     "src/core/fields/m31.zig",
     "src/core/fields/cm31.zig",
     "src/core/fields/qm31.zig",
@@ -176,6 +181,8 @@ def main() -> None:
     args = parser.parse_args()
     if args.report and (args.write or not all((args.audit, args.parity, args.controls, args.kernel_log))):
         parser.error("--report requires --audit, --kernel-log, --parity and --controls; exclude --write")
+    check_protocol_order(ROOT)
+    print("S31 protocol order: main commitment precedes lookup draws")
     failures = []
     for path, expected in generated().items():
         if args.write:
