@@ -107,8 +107,10 @@ bridges remain necessary.
 The [producer-roster proof](../../../../../formal/s31/S31/Gadgets/Functional/TextSquare4ProducerRoster.lean)
 addresses this malicious-row concern for the worked circuit. The exporter
 reads the actual padded preprocessed columns and lists active arithmetic
-output addresses; Lean checks that list has no duplicates. Given the modeled
-rows match those fixed columns, repeated lookup yields from one row still
+output addresses. It also exports each of the 512 output-address/multiplicity
+pairs. Lean checks that filtering those pairs produces the no-duplicate active
+list. Given the modeled rows match those fixed columns, repeated lookup yields
+from one row still
 have one value even when the prover chose that value arbitrarily. This removes
 the honest-gather premise from the fourth-power claim and its ideal-challenge
 bound. Committed-column and verifier soundness still need proofs.

@@ -62,6 +62,9 @@ arithmetic row outputs and other component producers with distinct addresses
 give one produced value per address, even if a prover chose every row value.
 The proof handles repeated yields caused by output multiplicity. External
 yields must be covered by the other-component producer roster.
+`active_rows_addresses_eq` connects the arbitrary row model's filtered
+outputs to an address/multiplicity pair list, so source-extracted fixed
+columns can discharge the structural address condition.
 
 `SimdChunks.partial_row_iff` covers the short final chunk of an array. For
 any `n ≤ 4`, arbitrary M31 values may fill the unused input lanes. An accepted

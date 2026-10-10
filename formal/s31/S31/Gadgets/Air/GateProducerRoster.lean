@@ -23,6 +23,22 @@ def logicalProducers (rows : List Row) (externalProducers : List Event) :
   (activeRows rows).map (fun row => (row.outAddress, row.output)) ++
     externalProducers
 
+def activeAddresses (outputs : List (Nat × Nat)) : List Nat :=
+  (outputs.filter (fun output => 0 < output.2)).map Prod.fst
+
+theorem active_rows_addresses_eq (rows : List Row) :
+    (activeRows rows).map Row.outAddress =
+      activeAddresses (rows.map
+        (fun row => (row.outAddress, row.multiplicity))) := by
+  induction rows with
+  | nil => rfl
+  | cons row rest ih =>
+      by_cases hactive : 0 < row.multiplicity
+      · simp [activeRows, activeAddresses, hactive]
+        simpa [activeRows, activeAddresses] using ih
+      · simp [activeRows, activeAddresses, hactive]
+        simpa [activeRows, activeAddresses] using ih
+
 theorem logical_address_roster (rows : List Row)
     (externalProducers : List Event) :
     (logicalProducers rows externalProducers).map Prod.fst =

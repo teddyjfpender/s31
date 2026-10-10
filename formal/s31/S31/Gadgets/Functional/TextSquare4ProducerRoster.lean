@@ -33,6 +33,31 @@ theorem source_has_no_external_producers :
     TextSquare4Native.externalProducerAddresses = [] := by
   decide
 
+set_option maxRecDepth 4096 in
+/-- Filter the source-extracted padded output-address and multiplicity
+columns. The result is exactly the active producer roster above. -/
+theorem source_active_addresses_from_fixed :
+    activeAddresses TextSquare4Native.paddedArithmeticOutputRows =
+      TextSquare4Native.activeArithmeticProducerAddresses := by
+  decide
+
+theorem fixed_output_rows_imply_active_roster
+    (rows : Fin TextSquare4Native.paddedArithmeticRowCount → Row)
+    (hfixedRows : (List.ofFn rows).map
+      (fun row => (row.outAddress, row.multiplicity)) =
+        TextSquare4Native.paddedArithmeticOutputRows) :
+    (activeRows (List.ofFn rows)).map Row.outAddress =
+      TextSquare4Native.activeArithmeticProducerAddresses := by
+  calc
+    (activeRows (List.ofFn rows)).map Row.outAddress =
+        activeAddresses ((List.ofFn rows).map
+          (fun row => (row.outAddress, row.multiplicity))) :=
+      active_rows_addresses_eq _
+    _ = activeAddresses TextSquare4Native.paddedArithmeticOutputRows :=
+      congrArg activeAddresses hfixedRows
+    _ = TextSquare4Native.activeArithmeticProducerAddresses :=
+      source_active_addresses_from_fixed
+
 /-- Repeated multiplicity yields from one active arithmetic row do not break
 producer uniqueness. This theorem allows arbitrary values in every row. -/
 theorem native_claim_of_producer_roster
@@ -86,15 +111,17 @@ theorem native_claim_of_source_roster
     (externalUses : List Event)
     (input claimed : Fin 4 → M31)
     (hbalance : balanced (List.ofFn rows) externalUses [])
-    (hfixed : (activeRows (List.ofFn rows)).map Row.outAddress =
-      TextSquare4Native.activeArithmeticProducerAddresses)
+    (hfixedRows : (List.ofFn rows).map
+      (fun row => (row.outAddress, row.multiplicity)) =
+        TextSquare4Native.paddedArithmeticOutputRows)
     (hselected : selectedRows rows)
     (hpins : pinnedEvents (allYields (List.ofFn rows) [])
       input claimed) :
     claimed = TextSquare4Air.fourth input := by
   apply native_claim_of_padded_producer_roster rows
     externalUses [] [] input claimed hbalance
-  · simpa only [List.map_nil, List.append_nil, hfixed,
+  · simpa only [List.map_nil, List.append_nil,
+      fixed_output_rows_imply_active_roster rows hfixedRows,
       source_has_no_external_producers, List.append_nil] using
       source_roster_nodup
   · intro event hmem
@@ -115,8 +142,9 @@ theorem forged_source_roster_raw_acceptance_card_le
     (externalUses : List Event)
     (input claimed : Fin 4 → M31)
     (hforged : claimed ≠ TextSquare4Air.fourth input)
-    (hfixed : (activeRows (List.ofFn rows)).map Row.outAddress =
-      TextSquare4Native.activeArithmeticProducerAddresses)
+    (hfixedRows : (List.ofFn rows).map
+      (fun row => (row.outAddress, row.multiplicity)) =
+        TextSquare4Native.paddedArithmeticOutputRows)
     (hselected : selectedRows rows)
     (hpins : pinnedEvents (allYields (List.ofFn rows) [])
       input claimed)
@@ -141,7 +169,7 @@ theorem forged_source_roster_raw_acceptance_card_le
   have hwrong : ¬ balanced (List.ofFn rows) externalUses [] := by
     intro hbalance
     exact hforged (native_claim_of_source_roster rows
-      externalUses input claimed hbalance hfixed hselected hpins)
+      externalUses input claimed hbalance hfixedRows hselected hpins)
   have hden : (S31.Gadgets.Air.GateAirRawSoundness.denominatorEvents
       (List.ofFn rows)).length = 1536 := by
     rw [S31.Gadgets.Air.GateAirRawSoundness.denominator_events_length,

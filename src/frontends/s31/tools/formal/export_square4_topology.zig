@@ -52,6 +52,20 @@ fn writeAddresses(writer: *std.Io.Writer, name: []const u8, addresses: []const u
     try writer.writeAll("]\n");
 }
 
+fn writeOutputRows(writer: *std.Io.Writer, columns: NativeRowColumns) !void {
+    try writer.writeAll("def paddedArithmeticOutputRows : List (Nat × Nat) := [");
+    for (columns.output, 0..) |address, i| {
+        if (i != 0) try writer.writeAll(",");
+        if (i % 8 == 0) {
+            try writer.writeAll("\n  ");
+        } else {
+            try writer.writeAll(" ");
+        }
+        try writer.print("({d}, {d})", .{ address.toU32(), columns.multiplicity[i].toU32() });
+    }
+    try writer.writeAll("\n]\n");
+}
+
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
     const args = try std.process.argsAlloc(allocator);
@@ -220,6 +234,8 @@ pub fn main() !void {
         .output = native.columnValues("qm31_ops_out_address").?,
         .multiplicity = native.columnValues("qm31_ops_mults").?,
     };
+    if (native.first_permutation_row != columns.output.len)
+        return error.UnexpectedPermutationRows;
     const mul_row_start = padded_ctx.circuit.add.items.len + padded_ctx.circuit.sub.items.len;
     const point_row_start = mul_row_start + padded_ctx.circuit.mul.items.len;
     for (0..3) |i| {
@@ -283,6 +299,7 @@ pub fn main() !void {
     );
     try writeAddresses(writer, "activeArithmeticProducerAddresses", active_arithmetic_addresses.items);
     try writeAddresses(writer, "externalProducerAddresses", external_producer_addresses.items);
+    try writeOutputRows(writer, columns);
     try writer.print(
         "def inputPackMul : List Gate := " ++
             "[⟨{d}, {d}, {d}⟩, ⟨{d}, {d}, {d}⟩, ⟨{d}, {d}, {d}⟩]\n",

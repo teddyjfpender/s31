@@ -141,8 +141,10 @@ soundness obligations.
 exporter enumerates every padded arithmetic output address with positive
 Gate multiplicity and checks that this program has no other component
 producers. Lean checks the generated active address roster has no duplicates.
-If modeled committed rows match those preprocessed fixed address and
-multiplicity columns, exact Gate balance and the selected AIR rows force the
+The exporter also emits all 512 padded output-address/multiplicity pairs;
+Lean proves that filtering these pairs gives precisely the active roster.
+If modeled committed rows match these preprocessed fixed columns, exact Gate
+balance and the selected AIR rows force the
 public result. For a fixed forged claim, the source-extracted raw Gate AIR
 accepts on at most `(5s² + 2s + 1536) · |QM31|` ideal challenge pairs.
 Fixed-column/trace correspondence, public pins, canonical addresses,

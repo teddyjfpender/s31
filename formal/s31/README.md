@@ -196,8 +196,10 @@ whose fixed output multiplicity is zero, a no-duplicate producer-address
 roster makes all repeated Gate yields at each address agree for *any* row
 values. The source exporter now lists the 321 active arithmetic producer
 addresses in this program's padded preprocessed AIR, checks them for
-duplicates and confirms there are no other component producers. Lean checks
-the generated roster and composes it with exact Gate balance, the 23 selected
+duplicates and confirms there are no other component producers. It also
+exports all 512 padded output-address/multiplicity pairs. Lean proves that
+filtering those fixed pairs yields the active roster, then composes that
+roster with exact Gate balance, the 23 selected
 AIR rows and the public pins. A fixed forged claim retains the
 `(5s² + 2s + 1536) · |QM31|` ideal-challenge bound without an honest-gather
 premise. The modeled rows still must match the native fixed columns, and the
