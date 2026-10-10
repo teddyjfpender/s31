@@ -167,6 +167,15 @@ compiler source and stwo-zig engine commit. Keep complete native artifacts in
 ignored `zig-out`; publish the hashes and summary audit under
 `design/s31/measurements/language/`.
 
+**Replay provenance:** run the commands from the frozen V4 source and
+measurement-tool snapshot identified above, with the retained raw V4
+artifacts. The V4 tool digest enumerates all benchmark and frontend Python
+files by a dynamic file glob. Later V5 Python files changed that file set, so
+the V4 publisher on current HEAD will reject the historical corpus's tool
+digest. This does not change the tracked V4 audit or its failed 72% hash-RSS
+coverage result; a current-HEAD run would be a different measurement and must
+receive a new protocol and audit identity.
+
 ```sh
 python3 src/frontends/s31/benchmarks/benchmark_whole_prover_cost_v4.py \
   --split train --phase build --out zig-out/s31/whole-prover-v4-train
