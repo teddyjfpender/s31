@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 import sys
 import tempfile
 from pathlib import Path
@@ -13,6 +14,8 @@ sys.path.insert(0, str(S31 / "python"))
 
 import s31
 from oracle import OracleError, evaluate_relation
+from package.context import file_hash, write_json
+from package.verify import verify_package
 from text_frontend import compile_file
 
 
@@ -24,7 +27,8 @@ MATCHED_COST = (
 
 
 def check_case(work: Path, source: Path, package_cache: dict[Path, Path], *, expected_nodes: list[str],
-               manual: Path | None = None, assignment_path: Path | None = None) -> dict:
+               manual: Path | None = None, assignment_path: Path | None = None,
+               abi_mutation_control: bool = False) -> dict:
     manual = manual or source.with_name(source.stem + "_manual.s31")
     assignment_path = assignment_path or source.with_suffix(".valid.json")
     relation, _ = compile_file(source)
@@ -65,6 +69,22 @@ def check_case(work: Path, source: Path, package_cache: dict[Path, Path], *, exp
             not trial["changed_public_statement_rejected"] or
             trial["independent_value_oracle"]["status"] != "passed"):
         raise AssertionError(f"{source.name}: native proof control failed")
+    if abi_mutation_control:
+        forged = work / "forged-public-abi-package"
+        shutil.copytree(packages["record"], forged)
+        public_abi = json.loads((forged / "public-abi.json").read_text())
+        public_abi["public_outputs"][0]["name"] = "forged_claim"
+        write_json(forged / "public-abi.json", public_abi)
+        manifest = json.loads((forged / "manifest.json").read_text())
+        manifest["artifacts"]["public-abi.json"] = file_hash(forged / "public-abi.json")
+        write_json(forged / "manifest.json", manifest)
+        try:
+            verify_package(forged)
+        except ValueError as exc:
+            if "public ABI does not match" not in str(exc):
+                raise AssertionError("forged ABI rejected for the wrong reason") from exc
+        else:
+            raise AssertionError("forged public ABI passed package admission")
     return {
         "source": source.name,
         "same_normalized_relation": True,
@@ -78,6 +98,7 @@ def check_case(work: Path, source: Path, package_cache: dict[Path, Path], *, exp
         "native_verifier_accepted": True,
         "changed_public_statement_rejected": True,
         "false_claim_rejected_by_oracle": True,
+        **({"forged_public_abi_rejected": True} if abi_mutation_control else {}),
     }
 
 
@@ -88,7 +109,8 @@ def main() -> None:
         arithmetic = S31 / "examples/arithmetic/record_square_sum.s31"
         cases = [
             check_case(work, arithmetic, package_cache,
-                       expected_nodes=["mul", "add", "add"]),
+                       expected_nodes=["mul", "add", "add"],
+                       abi_mutation_control=True),
             check_case(work, arithmetic.with_name("record_square_sum_destructure.s31"), package_cache,
                        manual=arithmetic.with_name("record_square_sum_manual.s31"),
                        assignment_path=arithmetic.with_suffix(".valid.json"),

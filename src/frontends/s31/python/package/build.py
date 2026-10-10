@@ -65,7 +65,7 @@ def build_json(source_path: Path, output: Path, lowering: str = "gate",
         if inspection["program_sha256"] != sha256(data):
             raise RuntimeError("compiled program does not match source")
         key = {
-            "schema": proof_privacy.KEY_SCHEMA if privacy else "s31-verification-key-v5p" if inspection["profile"] == "direct-m31-private-v5" else "s31-verification-key-sha-fused-v4" if lowering == "sha-fused" else "s31-verification-key-sha-shift-v3" if lowering == "sha-shift" else "s31-verification-key-sha-joint-v1" if lowering == "sha-joint" else "s31-verification-key-v4" if lowering.startswith("direct-") else "s31-verification-key-v5" if lowering == "sparse-wide-gate" else "s31-verification-key-v3" if lowering.startswith("sparse-") else "s31-verification-key-v2" if lowering == "chip" else "s31-verification-key-v1",
+            "schema": proof_privacy.KEY_SCHEMA if privacy else "s31-verification-key-v5p" if inspection["profile"] == "direct-m31-private-v5" else "s31-verification-key-sha-fused-v4" if lowering == "sha-fused" else "s31-verification-key-sha-shift-v3" if lowering == "sha-shift" else "s31-verification-key-sha-joint-v1" if lowering == "sha-joint" else "s31-verification-key-direct-manifest-v1" if lowering == "direct-gate" else "s31-verification-key-v4" if lowering.startswith("direct-") else "s31-verification-key-v5" if lowering == "sparse-wide-gate" else "s31-verification-key-v3" if lowering.startswith("sparse-") else "s31-verification-key-v2" if lowering == "chip" else "s31-verification-key-v1",
             "profile": inspection["profile"],
             "chip": inspection["chip"],
             "name": name,
@@ -93,6 +93,12 @@ def build_json(source_path: Path, output: Path, lowering: str = "gate",
             key["sha_fused"] = inspection["sha_fused"]
         if inspection["profile"] == "direct-m31-private-v5":
             key["private_boundary"] = inspection["private_boundary"]
+        if lowering == "direct-gate":
+            component_manifest = inspection.get("component_manifest")
+            if not isinstance(component_manifest, dict) or component_manifest.get("schema") != "s31-component-manifest-direct-gate-v1":
+                raise RuntimeError("direct-gate compiler did not produce a component manifest")
+            key["component_manifest"] = component_manifest
+            write_json(staging / "component-manifest.json", component_manifest)
         (staging / "source.s31.json").write_bytes(data)
         write_json(staging / "verification-key.json", key)
         if lock_bytes is not None:
@@ -144,6 +150,8 @@ def build_json(source_path: Path, output: Path, lowering: str = "gate",
             "source.s31.json", "verification-key.json", "public-abi.json",
             "cost-report.json", f"bin/{prover.name}", f"bin/{verifier.name}",
         ]
+        if lowering == "direct-gate":
+            artifacts.append("component-manifest.json")
         if lock_bytes is not None:
             artifacts.append("stdlib-lock.json")
         if recursive_option:

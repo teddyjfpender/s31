@@ -113,7 +113,71 @@ pub const Shape = struct {
     kind: Kind,
     length: usize,
 };
-pub const ChipSpec = struct { rounds: u32, constant: u32 };
+pub const ChipSpec = struct {
+    rounds: u32,
+    constant: u32,
+    /// Private endpoint map s = input_scale * x + input_shift. The inverse
+    /// map is x = inverse_scale * (s - input_shift). All values are in M31.
+    input_scale: u32 = 1,
+    input_shift: u32 = 0,
+    inverse_scale: u32 = 1,
+    order: enum { square_then_add, add_then_square, affine_one_square } = .square_then_add,
+};
+
+/// An affine prefix followed by one square and an affine suffix has the form
+/// T(x) = C(Ax+B)^2 + D. For nonzero A and C, the invertible map
+/// s = C*A^2*x + C*A*B gives s' = s^2 + (C*A^2*D + C*A*B).
+/// The four lanes share these static coefficients; mix4 and a second square
+/// need their own chip AIR and are deliberately excluded.
+fn affineOneSquareChip(body: []const Step, rounds: u32) ?ChipSpec {
+    var before_scale = M31.one();
+    var before_shift = M31.zero();
+    var after_scale = M31.one();
+    var after_shift = M31.zero();
+    var seen_square = false;
+    for (body) |step| switch (step.op) {
+        .square => {
+            if (seen_square or step.constant != null) return null;
+            seen_square = true;
+        },
+        .add_const => {
+            const value = step.constant orelse return null;
+            if (value >= P) return null;
+            const constant = M31.fromCanonical(value);
+            if (seen_square) after_shift = after_shift.add(constant) else before_shift = before_shift.add(constant);
+        },
+        .mul_const => {
+            const value = step.constant orelse return null;
+            if (value >= P) return null;
+            const constant = M31.fromCanonical(value);
+            if (seen_square) {
+                after_scale = after_scale.mul(constant);
+                after_shift = after_shift.mul(constant);
+            } else {
+                before_scale = before_scale.mul(constant);
+                before_shift = before_shift.mul(constant);
+            }
+        },
+        .mix4 => return null,
+    };
+    if (!seen_square or before_scale.isZero() or after_scale.isZero()) return null;
+    const scale = after_scale.mul(before_scale.square());
+    const shift = after_scale.mul(before_scale).mul(before_shift);
+    const chip_constant = scale.mul(after_shift).add(shift);
+    return .{
+        .rounds = rounds,
+        .constant = chip_constant.toU32(),
+        .input_scale = scale.toU32(),
+        .input_shift = shift.toU32(),
+        .inverse_scale = scale.invUncheckedNonZero().toU32(),
+        .order = if (body.len == 2 and body[0].op == .square and body[1].op == .add_const)
+            .square_then_add
+        else if (body.len == 2 and body[0].op == .add_const and body[1].op == .square)
+            .add_then_square
+        else
+            .affine_one_square,
+    };
+}
 pub const StateFoldSpec = struct { rounds: u32, body: []const Step };
 pub const Program = struct {
     version: u32,
@@ -172,6 +236,8 @@ pub const Program = struct {
     /// A direct-M31 chip may take its four endpoints from private circuit
     /// wires. The repeat is the first source node; later nodes may compute a
     /// public claim from the final state without publishing either endpoint.
+    /// A static, nondegenerate affine/square/affine step is admitted through
+    /// a constrained affine change of variables at both endpoints.
     pub fn privateRepeatedStepChip(self: Program) ?ChipSpec {
         if (self.inputs.len != 1 or self.nodes.len < 2 or self.public_outputs.len == 0)
             return null;
@@ -186,15 +252,14 @@ pub const Program = struct {
         const rounds = repeated.rounds.?;
         const body = repeated.body.?;
         if (rounds < 16 or rounds > 32768 or !std.math.isPowerOfTwo(rounds) or
-            body.len != 2 or body[0].op != .square or body[1].op != .add_const or
-            body[1].constant == null)
+            body.len == 0 or body.len > 16)
             return null;
         for (self.nodes[1..]) |node| if (node.op == .repeat) return null;
         for (self.public_outputs) |name| {
             if (std.mem.eql(u8, name, input.name) or std.mem.eql(u8, name, repeated.name))
                 return null;
         }
-        return .{ .rounds = rounds, .constant = body[1].constant.? };
+        return affineOneSquareChip(body, rounds);
     }
 
     pub fn validate(self: Program, allocator: std.mem.Allocator) !void {
@@ -938,6 +1003,50 @@ test "state fold extracts the source body but refuses private or side relations"
     var side_program = parsed.value;
     side_program.assertions = &side_assertion;
     try std.testing.expect(side_program.stateFoldStep() == null);
+}
+
+test "private chip admits nondegenerate affine one-square steps" {
+    var original = try parseProgram(std.testing.allocator, @embedFile("../examples/boundary/private_step16.s31.json"));
+    defer original.deinit();
+    const square_add = original.value.privateRepeatedStepChip() orelse return error.TestUnexpectedResult;
+    try std.testing.expectEqual(.square_then_add, square_add.order);
+    try std.testing.expectEqual(@as(u32, 13), square_add.constant);
+
+    var shifted = try parseProgram(std.testing.allocator, @embedFile("../examples/boundary/private_add_square16.s31.json"));
+    defer shifted.deinit();
+    const add_square = shifted.value.privateRepeatedStepChip() orelse return error.TestUnexpectedResult;
+    try std.testing.expectEqual(.add_then_square, add_square.order);
+    try std.testing.expectEqual(@as(u32, 13), add_square.constant);
+    shifted.value.nodes[0].body.?[1].op = .mul_const;
+    shifted.value.nodes[0].body.?[1].constant = 2;
+    try std.testing.expect(shifted.value.privateRepeatedStepChip() == null);
+
+    var affine = try parseProgram(std.testing.allocator, @embedFile("../examples/boundary/private_affine_square16.s31.json"));
+    defer affine.deinit();
+    const general = affine.value.privateRepeatedStepChip() orelse return error.TestUnexpectedResult;
+    try std.testing.expectEqual(.affine_one_square, general.order);
+    try std.testing.expectEqual(@as(u32, 63), general.input_scale);
+    try std.testing.expectEqual(@as(u32, 105), general.input_shift);
+    try std.testing.expectEqual(@as(u32, 798), general.constant);
+    try std.testing.expect(M31.fromCanonical(general.input_scale).mul(M31.fromCanonical(general.inverse_scale)).isOne());
+    for ([_]u32{ 0, 1, 3, P - 1 }) |sample| {
+        var lane = [_]M31{M31.fromCanonical(sample)} ** 4;
+        for (affine.value.nodes[0].body.?) |step| try applyStep(&lane, step);
+        const x = M31.fromCanonical(sample);
+        const state = M31.fromCanonical(general.input_scale).mul(x).add(M31.fromCanonical(general.input_shift));
+        const next = state.square().add(M31.fromCanonical(general.constant));
+        try std.testing.expect(lane[0].mul(M31.fromCanonical(general.input_scale)).add(M31.fromCanonical(general.input_shift)).eql(next));
+    }
+    const steps = affine.value.nodes[0].body.?;
+    steps[0].constant = 0;
+    try std.testing.expect(affine.value.privateRepeatedStepChip() == null);
+    steps[0].constant = 3;
+    steps[3].constant = 0;
+    try std.testing.expect(affine.value.privateRepeatedStepChip() == null);
+    steps[3].constant = 7;
+    steps[4].op = .square;
+    steps[4].constant = null;
+    try std.testing.expect(affine.value.privateRepeatedStepChip() == null);
 }
 
 test "malformed relation nodes cannot introduce unconstrained operands or metadata" {

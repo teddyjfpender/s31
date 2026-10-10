@@ -7,7 +7,7 @@ from pathlib import Path
 
 import proof_privacy
 from package.context import (
-    AIR_BUNDLE_SHA256, LIBRARY_SOURCE_FILES, PROJECTION_SHA256, file_hash,
+    AIR_BUNDLE_SHA256, LIBRARY_SOURCE_FILES, PROJECTION_SHA256, abi, file_hash,
     lower_text, text_interface,
 )
 
@@ -124,6 +124,11 @@ def verify_package(package: Path) -> dict:
             raise ValueError(f"S31 package artifact changed: {name}")
     if file_hash(package / "source.s31.json") != manifest["program_sha256"]:
         raise ValueError("S31 package source changed")
+    # A self-authored manifest hash only checks that public-abi.json was copied
+    # consistently. Re-derive the displayed statement schema from the sealed
+    # relation so package consumers cannot be shown different public fields.
+    if json.loads((package / "public-abi.json").read_text()) != abi(source, manifest["lowering"]):
+        raise ValueError("S31 public ABI does not match the sealed relation")
     key = json.loads((package / "verification-key.json").read_text())
     fri_config = key.get("fri")
     if (not isinstance(fri_config, dict) or
@@ -140,6 +145,33 @@ def verify_package(package: Path) -> dict:
     )
     if any(report.get(field) != key.get(field) for field in inspected_key_fields):
         raise ValueError("S31 package cost report does not match key")
+    if manifest.get("lowering") == "direct-gate":
+        if key.get("schema") == "s31-verification-key-v4":
+            # Existing sealed verifiers still accept their own v4 keys. Keep
+            # those packages readable, but never interpret a partial v1
+            # component manifest as an optional extension to the old schema.
+            if (key.get("profile") != "direct-m31-v4" or
+                    "component-manifest.json" in artifacts or
+                    (package / "component-manifest.json").exists() or
+                    "component_manifest" in key or "component_manifest" in report):
+                raise ValueError("invalid legacy S31 direct-gate component manifest")
+        else:
+            declared = key.get("component_manifest")
+            if ("component-manifest.json" not in artifacts or
+                    key.get("schema") != "s31-verification-key-direct-manifest-v1" or
+                    key.get("profile") != "direct-m31-v4" or
+                    not isinstance(declared, dict) or
+                    declared.get("schema") != "s31-component-manifest-direct-gate-v1" or
+                    declared.get("profile") != key["profile"] or
+                    any(declared.get(field) != key.get(field) for field in (
+                        "program_sha256", "canonical_ir_sha256", "preprocessed_root", "circuit_hash",
+                        "air_bundle_sha256")) or
+                    report.get("component_manifest") != declared or
+                    json.loads((package / "component-manifest.json").read_text()) != declared):
+                raise ValueError("S31 direct-gate component manifest does not match sealed key")
+    elif ("component-manifest.json" in artifacts or key.get("component_manifest") is not None or
+          report.get("component_manifest") is not None):
+        raise ValueError("unexpected S31 component manifest")
     if key.get("profile") == "direct-m31-private-v5":
         boundary = key.get("private_boundary")
         if (manifest.get("lowering") != "direct-chip" or

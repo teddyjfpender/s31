@@ -6,6 +6,7 @@ const circuit = @import("stwo_circuit_frontend");
 const cpu = @import("stwo_circuit_cpu_integration");
 const s31 = @import("stwo_s31_prototype");
 const native = @import("native_verifier.zig");
+const component_manifest = @import("component_manifest.zig");
 const proof_execution = @import("proof_execution.zig");
 const recursion_gate = @import("../recursion/recursion_gate.zig");
 const fixed_fold = @import("../recursion/fixed_fold.zig");
@@ -48,6 +49,7 @@ const Key = struct {
     proof_privacy: ?privacy.Policy = null,
     chip: ?ChipKey = null,
     private_boundary: ?circuit.common.direct_arithmetic.PrivateBoundary = null,
+    component_manifest: ?component_manifest.Manifest = null,
     name: []const u8,
     program_sha256: []const u8,
     canonical_ir_sha256: []const u8,
@@ -203,6 +205,7 @@ const Report = struct {
     proof_privacy: ?privacy.Policy,
     chip: ?ChipKey,
     private_boundary: ?circuit.common.direct_arithmetic.PrivateBoundary,
+    component_manifest: ?component_manifest.Manifest,
     repeated_step: ?relation.ChipSpec,
     state_fold_step: ?relation.StateFoldSpec,
     program_sha256: []const u8,
@@ -546,6 +549,8 @@ fn inspect(allocator: std.mem.Allocator, source: relation.Program) !void {
     var circuit_hash: [32]u8 = undefined;
     var trace_log: u32 = undefined;
     var preprocessed_columns: usize = undefined;
+    var generated_manifest: ?component_manifest.Generated = null;
+    defer if (generated_manifest) |*owned| owned.deinit();
     if (direct_mode) {
         const boundary = if (privateChip(source)) maps.private_boundary orelse return error.MissingPrivateBoundary else null;
         var pp = if (boundary) |item|
@@ -576,6 +581,9 @@ fn inspect(allocator: std.mem.Allocator, source: relation.Program) !void {
             1,
             chip_request,
             boundary,
+        );
+        if (!chip_mode) generated_manifest = try component_manifest.directGate(
+            allocator, &pp, air_program_bytes, source_digest, ir.sha256, root, circuit_hash,
         );
         trace_log = @max(pp.traceLogSize(), if (chip_mode)
             try cpu.repeated_step_chip.validateRounds(sourceChipSpec(source).?.rounds)
@@ -680,6 +688,7 @@ fn inspect(allocator: std.mem.Allocator, source: relation.Program) !void {
             break :blk .{ .rounds = spec.rounds, .constant = spec.constant, .relation_id = cpu.repeated_step_chip.relation_id };
         } else null,
         .private_boundary = if (privateChip(source)) maps.private_boundary else null,
+        .component_manifest = if (generated_manifest) |owned| owned.value else null,
         .repeated_step = sourceChipSpec(source),
         .state_fold_step = source.stateFoldStep(),
         .program_sha256 = &source_hex,
@@ -3320,7 +3329,8 @@ fn verify(allocator: std.mem.Allocator, path: []const u8, statement_path: []cons
     var statement = try readAssignment(allocator, statement_path);
     defer statement.deinit();
     if (statement.value.private_inputs != null) return error.InvalidPublicStatement;
-    const external_key = try std.fs.cwd().readFileAlloc(allocator, key_path, 4096);
+    // The direct-gate manifest adds eight column digests to the sealed key.
+    const external_key = try std.fs.cwd().readFileAlloc(allocator, key_path, 16 << 10);
     defer allocator.free(external_key);
     if (!std.mem.eql(u8, external_key, embedded_key)) return error.InvalidVerificationKey;
     var key_parsed = try std.json.parseFromSlice(Key, allocator, embedded_key, .{ .ignore_unknown_fields = false });
@@ -3456,7 +3466,7 @@ fn validateKey(allocator: std.mem.Allocator, source: relation.Program, key: Key)
         const pinned_stdlib = key.stdlib_lock_sha256 orelse return error.InvalidVerificationKey;
         if (!std.mem.eql(u8, pinned_stdlib, expected_stdlib)) return error.InvalidVerificationKey;
     }
-    if (!std.mem.eql(u8, key.schema, if (source.proof_mode == .blinded) "s31-verification-key-blinded-v1" else if (privateChip(source)) "s31-verification-key-v5p" else if (direct_mode) "s31-verification-key-v4" else if (wide_mode) "s31-verification-key-v5" else if (sparse_mode) "s31-verification-key-v3" else if (chip_mode) "s31-verification-key-v2" else "s31-verification-key-v1") or
+    if (!std.mem.eql(u8, key.schema, if (source.proof_mode == .blinded) "s31-verification-key-blinded-v1" else if (privateChip(source)) "s31-verification-key-v5p" else if (direct_mode and !chip_mode) "s31-verification-key-direct-manifest-v1" else if (direct_mode) "s31-verification-key-v4" else if (wide_mode) "s31-verification-key-v5" else if (sparse_mode) "s31-verification-key-v3" else if (chip_mode) "s31-verification-key-v2" else "s31-verification-key-v1") or
         !std.mem.eql(u8, key.profile, if (source.proof_mode == .blinded) "circuit-blinded-v1" else if (privateChip(source)) "direct-m31-private-v5" else if (direct_mode) "direct-m31-v4" else if (wide_mode) "sparse-wide-v5" else if (sparse_mode) "sparse-v3" else if (chip_mode) "hybrid-step-v2" else "circuit-v1") or
         !std.mem.eql(u8, key.name, source.name))
         return error.InvalidVerificationKey;
@@ -3468,6 +3478,7 @@ fn validateKey(allocator: std.mem.Allocator, source: relation.Program, key: Key)
             return error.InvalidVerificationKey;
     } else if (key.chip != null) return error.InvalidVerificationKey;
     if ((key.private_boundary == null) != !privateChip(source)) return error.InvalidVerificationKey;
+    if ((!direct_mode or chip_mode) and key.component_manifest != null) return error.InvalidVerificationKey;
     var program_digest: [32]u8 = undefined;
     std.crypto.hash.sha2.Sha256.hash(embedded_source, &program_digest, .{});
     if (!std.mem.eql(u8, key.program_sha256, &std.fmt.bytesToHex(program_digest, .lower))) return error.InvalidVerificationKey;
@@ -3480,13 +3491,13 @@ fn validateKey(allocator: std.mem.Allocator, source: relation.Program, key: Key)
         key.fri.pow_bits != 26 or key.fri.log_blowup_factor != 1 or
         key.fri.last_layer_degree_bound != 1 or key.fri.queries != 70 or
         key.fri.fold_step != fri_fold_step) return error.InvalidVerificationKey;
-    try validateCompiledKey(allocator, source, key, program_digest);
+    try validateCompiledKey(allocator, source, key, program_digest, ir.sha256);
 }
 
 /// The embedded source must determine the fixed circuit in the embedded key.
 /// A source digest alone cannot establish this: a key could carry a different
 /// circuit's commitment while retaining the expected source and IR digests.
-fn validateCompiledKey(allocator: std.mem.Allocator, source: relation.Program, key: Key, source_digest: [32]u8) !void {
+fn validateCompiledKey(allocator: std.mem.Allocator, source: relation.Program, key: Key, source_digest: [32]u8, ir_digest: [32]u8) !void {
     var maps = s31.relation_compiler.Maps{};
     defer maps.deinit(allocator);
     var ctx = if (direct_mode)
@@ -3538,6 +3549,15 @@ fn validateCompiledKey(allocator: std.mem.Allocator, source: relation.Program, k
             chip_request,
             boundary,
         );
+        if (!chip_mode) {
+            const sealed = key.component_manifest orelse return error.InvalidVerificationKey;
+            var generated = try component_manifest.directGate(
+                allocator, &pp, air_program_bytes, source_digest, ir_digest, expected_root, expected_hash,
+            );
+            defer generated.deinit();
+            if (!try component_manifest.matches(allocator, sealed, generated.value))
+                return error.InvalidVerificationKey;
+        }
         expected_trace_log = @max(pp.traceLogSize(), if (chip_mode)
             try cpu.repeated_step_chip.validateRounds(sourceChipSpec(source).?.rounds)
         else

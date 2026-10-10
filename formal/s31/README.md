@@ -120,6 +120,18 @@ production AIR lowering are outside these theorems. The formal source
 identity inventory now includes the Python
 syntax, parser, elaborator, specializer and libraries so changes there force a reviewed
 binding update; the source digests themselves do not prove compiler correspondence.
+`Functional/CompilerCorrespondence` proves, for arbitrarily nested four-lane
+M31 addition and multiplication trees, that typed source denotation, strict
+graph acceptance, executable normalized node evaluation, and packed AIR row
+constraints accept exactly the same result for arbitrary intermediate values.
+`Functional/SSACertificate` adds static `let` sharing: an executable checker
+reconstructs the source term from fresh, backward-referencing positional SSA
+instructions. Every accepted certificate evaluates to the source result on
+all inputs, including when each instruction runs through `evaluateNode`.
+The worked `square` then `square .* square` certificate uses two multiplication
+instructions; five malformed-certificate controls are rejected. These theorems
+do not establish Python parser/emitter correctness, named serialized node
+equivalence, Zig AIR emission, or verifier transcript binding.
 `Functional/TextSquare4` is a narrower executable bridge: the formal gate
 runs the Python text compiler on the actual `functional_square4.s31` file and
 commits its normalized two-node program as Lean source. `TextSquare4Proof`

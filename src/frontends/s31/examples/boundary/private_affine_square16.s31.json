@@ -1,0 +1,50 @@
+{
+  "assertions": [],
+  "inputs": [
+    {
+      "kind": "m31",
+      "length": 4,
+      "name": "secret",
+      "visibility": "private"
+    }
+  ],
+  "name": "private_affine_square16",
+  "nodes": [
+    {
+      "body": [
+        {
+          "constant": 3,
+          "op": "mul_const"
+        },
+        {
+          "constant": 5,
+          "op": "add_const"
+        },
+        {
+          "op": "square"
+        },
+        {
+          "constant": 7,
+          "op": "mul_const"
+        },
+        {
+          "constant": 11,
+          "op": "add_const"
+        }
+      ],
+      "lhs": "secret",
+      "name": "state",
+      "op": "repeat",
+      "rounds": 16
+    },
+    {
+      "lhs": "state",
+      "name": "total",
+      "op": "sum_lanes"
+    }
+  ],
+  "public_outputs": [
+    "total"
+  ],
+  "version": 1
+}

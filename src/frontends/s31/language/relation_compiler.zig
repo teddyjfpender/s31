@@ -519,24 +519,47 @@ fn compileWithSpansMode(comptime V: type, allocator: std.mem.Allocator, program:
                     const spec = if (private_chip) program.privateRepeatedStepChip().? else program.repeatedStepChip().?;
                     const input_raw = entries[node.lhs.?].raw orelse return error.UnsupportedChipRelation;
                     if (node.length != 4 or input_raw.len != 4) return error.UnsupportedChipRelation;
+                    const scaled = private_chip and spec.input_scale != 1;
+                    const shifted = private_chip and spec.input_shift != 0;
+                    const inverse_scaled = private_chip and spec.inverse_scale != 1;
+                    const scale_wire = if (scaled)
+                        try ctx.constant(QM31.fromBase(M31.fromCanonical(spec.input_scale)))
+                    else
+                        ctx.one();
+                    const shift_wire = if (shifted)
+                        try ctx.constant(QM31.fromBase(M31.fromCanonical(spec.input_shift)))
+                    else
+                        ctx.zero();
+                    const inverse_wire = if (inverse_scaled)
+                        try ctx.constant(QM31.fromBase(M31.fromCanonical(spec.inverse_scale)))
+                    else
+                        ctx.one();
+                    var chip_input: [4]Var = undefined;
+                    for (0..4) |lane| {
+                        const scaled_input = if (scaled) try ctx.mul(input_raw[lane], scale_wire) else input_raw[lane];
+                        chip_input[lane] = if (shifted) try ctx.add(scaled_input, shift_wire) else scaled_input;
+                    }
                     const raw = try scratch.alloc(Var, 4);
+                    var chip_output: [4]Var = undefined;
                     const wrappers = try scratch.alloc(circuit.builder.wrappers.M31Wrapper(Var), 4);
                     for (raw, wrappers, 0..) |*wire, *wrapped, lane| {
                         var result = if (comptime V == QM31)
-                            ctx.get(input_raw[lane]).toM31Array()[0]
+                            ctx.get(chip_input[lane]).toM31Array()[0]
                         else
                             M31.zero();
                         for (0..spec.rounds) |_|
                             result = result.mul(result).add(M31.fromCanonical(spec.constant));
                         const hint = circuit.builder.ivalue.fromQm31(V, QM31.fromBase(result));
-                        wire.* = (try circuit.builder.wrappers.guessM31(V, &ctx, .newUnsafe(hint))).get();
+                        chip_output[lane] = (try circuit.builder.wrappers.guessM31(V, &ctx, .newUnsafe(hint))).get();
+                        const unshifted = if (shifted) try ctx.sub(chip_output[lane], shift_wire) else chip_output[lane];
+                        wire.* = if (inverse_scaled) try ctx.mul(unshifted, inverse_wire) else unshifted;
                         wrapped.* = .newUnsafe(wire.*);
                     }
                     if (private_chip) if (maps) |out| {
                         var boundary: circuit.common.direct_arithmetic.PrivateBoundary = undefined;
                         for (0..4) |lane| {
-                            boundary.input[lane] = input_raw[lane].idx;
-                            boundary.output[lane] = raw[lane].idx;
+                            boundary.input[lane] = chip_input[lane].idx;
+                            boundary.output[lane] = chip_output[lane].idx;
                         }
                         out.private_boundary = boundary;
                     };

@@ -75,6 +75,8 @@ import S31.Gadgets.Functional.Outputs
 import S31.Gadgets.Functional.Arrays
 import S31.Gadgets.Functional.ArrayNodes
 import S31.Gadgets.Functional.ArithmeticNodes
+import S31.Gadgets.Functional.CompilerCorrespondence
+import S31.Gadgets.Functional.SSACertificate
 import S31.Gadgets.Functional.MathLibrary
 import S31.Gadgets.Functional.WorkedQuadratic
 import S31.Gadgets.Functional.CurriedApplication

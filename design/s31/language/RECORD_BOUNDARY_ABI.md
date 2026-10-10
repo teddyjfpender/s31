@@ -1,9 +1,8 @@
 # Record-valued circuit boundary: versioned ABI design
 
-Status: proposed after the source-only nominal record release. This document
-defines the work needed before a `struct` may appear in a circuit signature.
-The current compiler deliberately rejects record-valued circuit parameters
-and results.
+Status: canonical typed statement codec implemented as a preparatory component;
+proof-profile integration remains proposed. The current compiler deliberately
+rejects record-valued circuit parameters and results.
 
 ## Why the relation format needs an explicit extension
 
@@ -42,6 +41,16 @@ leaves are present in the witness but absent from the public statement.
 their nominal width/sign checks, including byte range checks. The sum of
 public input and output leaf words remains at most eight until the public
 ABI itself is separately raised.
+
+The preparatory [v2 codec](../../../src/frontends/s31/python/abi/record_v2.py)
+now serializes a nominal layout digest and tagged root/field/tuple paths in
+declaration order. It round-trips typed values and rejects altered layouts,
+paths, counts, noncanonical field/bit/byte words, duplicate JSON keys, and
+noncanonical JSON bytes. Its [controls](../../../src/frontends/s31/tests/python/test_record_abi_v2.py)
+cover nested records and these malformed cases. The codec is not called by
+the relation compiler, prover, package builder, or native verifier; its digest
+is **not yet bound** to a proof key or public statement. No circuit may use a
+record boundary on the strength of this codec alone.
 
 ## Required implementation and proof gates
 

@@ -162,3 +162,12 @@ versions all report normalized relation digest
 `2c363f623e918c1f53d5988eabe29e4a074f6245505d28c8419cfa8f91b90467`.
 This digest identifies the source-stage relation; the package's canonical IR
 digest is a separate value computed after Zig lowering.
+
+The proposed public-record ABI now has a standalone
+[canonical typed codec](../python/abi/record_v2.py)
+for nested paths, nominal layout digests, and eight-word public statement
+limits. It rejects reordered or duplicate leaves and noncanonical values.
+It is not connected to the relation, verification key, or native verifier yet;
+record-valued circuit parameters and results remain unavailable. The
+[boundary design](../../../../design/s31/language/RECORD_BOUNDARY_ABI.md)
+lists the remaining proof and binding gates.

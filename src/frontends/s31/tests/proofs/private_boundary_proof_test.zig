@@ -221,3 +221,62 @@ test "private S31 source produces sealed chip wires with one public aggregate" {
     wrong_source_spec.source_digest = wrong_source_digest;
     try std.testing.expectError(error.InvalidCircuitHash, native.verifyDirectPrivate(allocator, &layout, &bundle, pcs, root, hash, public_words, encoded, wrong_source_digest, wrong_source_spec, boundary));
 }
+
+test "add then square source binds affine-conjugated private endpoints" {
+    const allocator = std.testing.allocator;
+    var parsed = try s31.relation.parseProgram(allocator, @embedFile("../../examples/boundary/private_add_square16.s31.json"));
+    defer parsed.deinit();
+    var assignment = try s31.relation.parseAssignment(allocator, @embedFile("../../examples/boundary/private_add_square16.valid.json"));
+    defer assignment.deinit();
+    const spec = parsed.value.privateRepeatedStepChip() orelse return error.UnsupportedChipRelation;
+    try std.testing.expectEqual(.add_then_square, spec.order);
+    const public_words = try s31.relation.evaluate(allocator, parsed.value, assignment.value);
+    try std.testing.expectEqual(@as(u32, 490930586), public_words[0]);
+
+    var maps = s31.relation_compiler.Maps{};
+    defer maps.deinit(allocator);
+    var values = try s31.relation_compiler.compileDirectWithSpans(QM31, allocator, parsed.value, assignment.value, &maps, true);
+    defer values.deinit();
+    const boundary = maps.private_boundary orelse return error.MissingPrivateBoundary;
+    const source_values = [_]M31{ M31.fromCanonical(3), M31.fromCanonical(5), M31.fromCanonical(7), M31.fromCanonical(11) };
+    var shifted_initial: [4]M31 = undefined;
+    for (0..4) |lane| {
+        shifted_initial[lane] = source_values[lane].add(M31.fromCanonical(spec.constant));
+        try std.testing.expect((try values.values()[boundary.input[lane]].tryIntoM31()).eql(shifted_initial[lane]));
+    }
+    const shifted_final = try chip.direct(shifted_initial, M31.fromCanonical(spec.constant), spec.rounds);
+    for (0..4) |lane| {
+        try std.testing.expect((try values.values()[boundary.output[lane]].tryIntoM31()).eql(shifted_final[lane]));
+    }
+}
+
+test "affine one-square source binds nontrivial scale and shift endpoints" {
+    const allocator = std.testing.allocator;
+    var parsed = try s31.relation.parseProgram(allocator, @embedFile("../../examples/boundary/private_affine_square16.s31.json"));
+    defer parsed.deinit();
+    var assignment = try s31.relation.parseAssignment(allocator, @embedFile("../../examples/boundary/private_affine_square16.valid.json"));
+    defer assignment.deinit();
+    const spec = parsed.value.privateRepeatedStepChip() orelse return error.UnsupportedChipRelation;
+    try std.testing.expectEqual(.affine_one_square, spec.order);
+    try std.testing.expectEqual(@as(u32, 63), spec.input_scale);
+    try std.testing.expectEqual(@as(u32, 105), spec.input_shift);
+    try std.testing.expectEqual(@as(u32, 798), spec.constant);
+    const public_words = try s31.relation.evaluate(allocator, parsed.value, assignment.value);
+    try std.testing.expectEqual(@as(u32, 1035017880), public_words[0]);
+
+    var maps = s31.relation_compiler.Maps{};
+    defer maps.deinit(allocator);
+    var values = try s31.relation_compiler.compileDirectWithSpans(QM31, allocator, parsed.value, assignment.value, &maps, true);
+    defer values.deinit();
+    const boundary = maps.private_boundary orelse return error.MissingPrivateBoundary;
+    const source_values = [_]M31{ M31.fromCanonical(3), M31.fromCanonical(5), M31.fromCanonical(7), M31.fromCanonical(11) };
+    var transformed_initial: [4]M31 = undefined;
+    for (0..4) |lane| {
+        transformed_initial[lane] = source_values[lane].mul(M31.fromCanonical(spec.input_scale)).add(M31.fromCanonical(spec.input_shift));
+        try std.testing.expect((try values.values()[boundary.input[lane]].tryIntoM31()).eql(transformed_initial[lane]));
+    }
+    const transformed_final = try chip.direct(transformed_initial, M31.fromCanonical(spec.constant), spec.rounds);
+    for (0..4) |lane| {
+        try std.testing.expect((try values.values()[boundary.output[lane]].tryIntoM31()).eql(transformed_final[lane]));
+    }
+}
