@@ -5,6 +5,42 @@ const native_pair = @import("../../runtime/pair_native_package.zig");
 const manifest = @import("../../runtime/component_manifest.zig");
 const pair = @import("stwo_circuit_cpu_integration").private_pair_boundary;
 const pair_engine = @import("stwo_circuit_cpu_integration").experimental_direct_pair_arithmetic;
+const core_utils = @import("stwo_core").utils;
+
+// Independent four-bit formulas matching the concrete Lean bridge model.
+// These do not call the engine's circle/coset conversion helpers.
+fn reverse4(index: usize) usize {
+    return ((index & 1) << 3) | ((index & 2) << 1) |
+        ((index & 4) >> 1) | ((index & 8) >> 3);
+}
+
+fn circleToCoset4(index: usize) usize {
+    return if (index < 8) 2 * index else 2 * (15 - index) + 1;
+}
+
+fn cosetToCircle4(index: usize) usize {
+    return if (index % 2 == 0) index / 2 else (32 - index) / 2;
+}
+
+fn expectedBridgeMask4(index: usize, offset: usize) usize {
+    const coset = circleToCoset4(reverse4(index));
+    return reverse4(cosetToCircle4((coset + offset) % 16));
+}
+
+test "two-call source derives canonical plan bridge mask geometry" {
+    var seen_next = [_]bool{false} ** 16;
+    for (0..16) |index| {
+        const next = core_utils.offsetBitReversedCircleDomainIndex(index, 4, 4, 1);
+        const previous = core_utils.previousBitReversedCircleDomainIndex(index, 4, 4);
+        try std.testing.expectEqual(reverse4(index), core_utils.bitReverseIndex(index, 4));
+        try std.testing.expectEqual(expectedBridgeMask4(index, 1), next);
+        try std.testing.expectEqual(expectedBridgeMask4(index, 15), previous);
+        try std.testing.expectEqual(index, core_utils.previousBitReversedCircleDomainIndex(next, 4, 4));
+        try std.testing.expect(!seen_next[next]);
+        seen_next[next] = true;
+    }
+    for (seen_next) |visited| try std.testing.expect(visited);
+}
 
 fn handRepeat(start: u32, constant: u32, rounds: u32) u32 {
     const modulus: u64 = 2147483647;
