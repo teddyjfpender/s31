@@ -54,7 +54,7 @@ theorem public_claim_of_checked_logup_closure
         productionReciprocalSum externalYields alpha z = 0)
     (hscan : S31.Gadgets.Air.GateProducerCheck.scan bound ∅
       (declared.map Prod.fst) = some result)
-    (hcovered : ∀ address value, address < bound →
+    (hcovered : ∀ address value, address < 35 →
       (address, value) ∈ allYields rows externalYields →
       (address, value) ∈ declared)
     (hpath : nativePathRows rows)
@@ -98,7 +98,7 @@ theorem forged_claim_rejected_at_good_challenges
       (allUses rows externalUses) (allYields rows externalYields) alpha)
     (hscan : S31.Gadgets.Air.GateProducerCheck.scan bound ∅
       (declared.map Prod.fst) = some result)
-    (hcovered : ∀ address value, address < bound →
+    (hcovered : ∀ address value, address < 35 →
       (address, value) ∈ allYields rows externalYields →
       (address, value) ∈ declared)
     (hpath : nativePathRows rows)

@@ -18,8 +18,9 @@ program, and independently enumerates all producer gate outputs to check that
 they contain each declared address exactly once. It records the resulting
 complete address range and the arithmetic-row count. Lean runs its modeled
 producer scan on that exported range and checks the selected gate addresses
-lie below the emitted declared bound. The values attached to those addresses
-in a committed trace still need a source-to-model correspondence proof.
+lie below the emitted declared bound. Values attached to the selected path
+addresses `0..34` in a committed trace still need a source-to-model
+correspondence proof.
 The exporter also compiles and pads an independent copy of the circuit, then
 asks the engine to build its actual preprocessed AIR columns. It checks each
 selected gate's row index, opcode flags, wire addresses and positive output

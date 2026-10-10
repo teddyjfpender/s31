@@ -25,6 +25,7 @@ Lean module names follow the directory, for example
 | `TextSquare4GateJoin.lean` | Conditional exact Gate balance and unique producers construct the shared wire map used by the native public-boundary theorem. |
 | `TextSquare4ChallengeJoin.lean` | Checked Gate counters and good LogUp challenges force the exported circuit's public claim; a forged claim has nonzero reciprocal closure. |
 | `TextSquare4TraceRows.lean` | Source-checked preprocessed AIR positions for the selected gates imply their Gate-path membership. |
+| `TextSquare4Witness.lean` | A concrete honest zero-input witness satisfies every selected local circuit row and public boundary. |
 | `TextSquare4RawSoundness.lean` | For a fixed forged claim, source-extracted raw Gate interaction AIR accepts on at most the explicit exceptional challenge-pair bound. |
 
 The dependency order starts with `Graph`, then `Outputs`, then `Arrays`.
@@ -101,7 +102,7 @@ Lean against the regenerated topology. A successful modeled producer scan and
 coverage of these low-address events imply the needed uniqueness, even if
 unrelated permutation scratch addresses have several producer events. The
 coverage of actual native trace events by the checked list remains an explicit
-source-to-model premise.
+source-to-model premise only for addresses 0–34.
 The native exporter now also runs the engine's single-yield validation on all
 declared variables and rejects permutation scratch rows for this source. It
 reports 322 declared variables and 322 arithmetic rows. Lean proves the
@@ -110,13 +111,20 @@ The exporter independently enumerates producer outputs and checks they are
 exactly the range `0..321`; Lean evaluates its modeled producer scan on that
 generated range. `native_public_claim_of_exported_producers` therefore needs
 only coverage of actual Gate events by the value-bearing declared event list.
-That value-level trace correspondence remains an explicit premise.
+That value-level trace correspondence remains explicit only at the selected
+path addresses 0–34.
 The exporter checks the selected gates against the engine's **padded**
 preprocessed AIR columns. The source circuit has 322 arithmetic gates; padding
 gives 512 arithmetic rows and 608 declared variables. The two pointwise
 square rows are at indices 502 and 503. `TextSquare4TraceRows.selected_rows_imply_path`
 derives the selected-gate path from those positions. Committed witness values
 must still satisfy the local AIR equations.
+`TextSquare4Witness.zero_claim_has_native_path_witness` supplies a concrete
+QM31 value for each wire on the selected path, including the basis inverses,
+and proves the zero-input/zero-output case satisfies its 23 local rows. This
+checks non-vacuity of the path theorem; it does not model unrelated native
+range rows or a complete proof transcript. A companion theorem rejects a
+one-valued forged public output for that same wire assignment.
 `TextSquare4ChallengeJoin.public_claim_of_checked_logup_closure` adds the
 modeled compressed use/yield counter walks and the fixed-list LogUp reduction.
 When the address/count checks pass, the challenges avoid the explicit bad

@@ -80,7 +80,7 @@ checks the selected path addresses fit within that exported bound. The
 exporter also enumerates producer outputs and checks they are exactly
 `0..321`; Lean's modeled producer scan accepts that generated range. The
 correspondence between the builder's **values** and the modeled Gate event
-list is still a separate premise.
+list remains a separate premise for path addresses `0..34`.
 The production AIR pads this circuit to 512 arithmetic rows. The exporter
 checks the actual preprocessed opcode flags, address columns and positive
 multiplicities for all 23 selected gates. Padding adds `add` rows before the
@@ -88,6 +88,10 @@ multiplicities for all 23 selected gates. Padding adds `add` rows before the
 [TextSquare4TraceRows.lean](../../../../../formal/s31/S31/Gadgets/Functional/TextSquare4TraceRows.lean)
 uses those positions in the Lean premise; the trace values at those rows still
 need to satisfy the local AIR equations.
+[TextSquare4Witness.lean](../../../../../formal/s31/S31/Gadgets/Functional/TextSquare4Witness.lean)
+constructs and checks every selected local row for the concrete public
+input `[0,0,0,0]` and result `[0,0,0,0]`. This shows that the row premises
+themselves are satisfiable; it is not a complete native proof witness.
 [TextSquare4GateJoin.lean](../../../../../formal/s31/S31/Gadgets/Functional/TextSquare4GateJoin.lean)
 uses this result to remove the assumed shared-wire map from the public-claim
 proof. It requires accepted rows for the 23 selected gates, public and

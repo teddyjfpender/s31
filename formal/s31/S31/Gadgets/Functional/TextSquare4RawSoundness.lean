@@ -59,7 +59,7 @@ theorem forged_claim_native_raw_acceptance_card_le
     (input claimed : Fin 4 → M31)
     (hforged : claimed ≠ TextSquare4Air.fourth input)
     (hcovered : ∀ address value,
-      address < TextSquare4Native.declaredVarCount →
+      address < 35 →
       (address, value) ∈ allYields (List.ofFn rows) externalYields →
       (address, value) ∈ declaredEvents wire)
     (hpath : nativePathRows (List.ofFn rows))
@@ -108,7 +108,7 @@ theorem forged_claim_emitted_row_acceptance_card_le
     (input claimed : Fin 4 → M31)
     (hforged : claimed ≠ TextSquare4Air.fourth input)
     (hcovered : ∀ address value,
-      address < TextSquare4Native.declaredVarCount →
+      address < 35 →
       (address, value) ∈ allYields (List.ofFn rows) externalYields →
       (address, value) ∈ declaredEvents wire)
     (hselected : selectedRows rows)

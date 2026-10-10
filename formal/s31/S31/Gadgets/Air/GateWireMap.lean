@@ -99,6 +99,25 @@ theorem uniqueProducedBelow_of_checked_declared
     (hcovered address left haddress hleft)
     (hcovered address right haddress hright)
 
+/-- The checked list may cover more addresses than the circuit path needs.
+Only events below `target` need a source-to-trace correspondence when the
+claim uses only those addresses. -/
+theorem uniqueProducedBelow_of_checked_declared_prefix
+    (bound target : Nat) (htarget : target ≤ bound)
+    (declared produced : List Event) (result : Finset Nat)
+    (hscan : S31.Gadgets.Air.GateProducerCheck.scan bound ∅
+      (declared.map Prod.fst) = some result)
+    (hcovered : ∀ address value, address < target →
+      (address, value) ∈ produced → (address, value) ∈ declared) :
+    uniqueProducedBelow produced target := by
+  have hunique :=
+    (S31.Gadgets.Air.GateProducerCheck.checked_produced_unique
+      bound declared result hscan).1
+  intro address left right haddress hleft hright
+  exact hunique address left right
+    (hcovered address left haddress hleft)
+    (hcovered address right haddress hright)
+
 theorem producedWire_eq_below (produced : List Event) (bound : Nat)
     (hunique : uniqueProducedBelow produced bound)
     (address : Nat) (haddress : address < bound)

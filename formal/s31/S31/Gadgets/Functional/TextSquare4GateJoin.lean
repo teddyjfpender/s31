@@ -233,17 +233,15 @@ theorem native_public_claim_of_checked_declared
     (hbalance : balanced rows externalUses externalYields)
     (hscan : S31.Gadgets.Air.GateProducerCheck.scan bound ∅
       (declared.map Prod.fst) = some result)
-    (hcovered : ∀ address value, address < bound →
+    (hcovered : ∀ address value, address < 35 →
       (address, value) ∈ allYields rows externalYields →
       (address, value) ∈ declared)
     (hpath : nativePathRows rows)
     (hpins : pinnedEvents (allYields rows externalYields) input claimed) :
     claimed = TextSquare4Air.fourth input := by
-  have hlow := uniqueProducedBelow_of_checked_declared
-    bound declared (allYields rows externalYields) result hscan hcovered
-  have hlow35 : uniqueProducedBelow (allYields rows externalYields) 35 := by
-    intro address left right haddress hleft hright
-    exact hlow address left right (lt_of_lt_of_le haddress hbound) hleft hright
+  have hlow35 := uniqueProducedBelow_of_checked_declared_prefix
+    bound 35 hbound declared (allYields rows externalYields) result
+    hscan hcovered
   exact native_public_claim_of_gate_balance_below rows
     externalUses externalYields input claimed hbalance hlow35 hpath hpins
 
@@ -257,7 +255,7 @@ theorem native_public_claim_of_exported_bound
       TextSquare4Native.declaredVarCount ∅
       (declared.map Prod.fst) = some result)
     (hcovered : ∀ address value,
-      address < TextSquare4Native.declaredVarCount →
+      address < 35 →
       (address, value) ∈ allYields rows externalYields →
       (address, value) ∈ declared)
     (hpath : nativePathRows rows)
@@ -276,7 +274,7 @@ theorem native_public_claim_of_exported_producers
     (wire : Nat → Quad) (input claimed : Fin 4 → M31)
     (hbalance : balanced rows externalUses externalYields)
     (hcovered : ∀ address value,
-      address < TextSquare4Native.declaredVarCount →
+      address < 35 →
       (address, value) ∈ allYields rows externalYields →
       (address, value) ∈ declaredEvents wire)
     (hpath : nativePathRows rows)
