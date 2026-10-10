@@ -28,3 +28,13 @@ Run from the repository root:
 ```sh
 python3 src/frontends/s31/tests/acceptance/functional/library.py
 ```
+
+`product_control.py` separately builds the nested
+[`record_choice.s31`](../../../examples/control/record_choice.s31) and its
+fieldwise form under `direct-gate`. It requires identical relation IR and
+complete AIR geometry, then proves both selector values through the typed
+public record ABI and checks independent values and changed-claim rejection:
+
+```sh
+python3 src/frontends/s31/tests/acceptance/functional/product_control.py
+```

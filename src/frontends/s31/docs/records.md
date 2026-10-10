@@ -109,8 +109,36 @@ leaves. A circuit may return either a public record or a first-order M31
 value under the `direct-gate` v2 profile. The native verifier accepts one
 canonical typed v2 statement with named input and output paths. Other leaf
 types remain outside this boundary.
-Whole-record `if` and `assert_eq` are not part of this version; select or
-assert the individual circuit fields explicitly.
+Whole-record `if` and `assert_eq` now traverse first-order leaves in declared
+field order. A record `if` evaluates both branches and emits exactly the
+selectors that a handwritten fieldwise program emits. A record assertion
+emits exactly the corresponding leaf assertions. Nested tuples and records
+work the same way. The conditional is accepted only when all leaves have
+constrained selectors and neither branch can fail when inactive. Struct
+identity is nominal, so equal field layouts under different type names cannot
+be compared or selected as one value. The proof relation still has only
+first-order wires.
+
+### Selection by hand
+
+The [complete program](../examples/control/record_choice.s31) defines
+`Pair { first: [m31; 1], nested: ([m31; 1], [m31; 1]) }`. It computes
+`b = is_zero(x)`, `a = (2x, x, y)`, `c = (2y, y, x)`, and returns
+`if b then a else c`. For `x=0, y=7`, the prover computes `b=1` and the
+public result `(0, 0, 7)`. For `x=3, y=7`, it computes `b=0` and the result
+`(14, 7, 3)`. Each tuple entry here is one M31 word, reduced modulo
+`p=2³¹−1`.
+
+The residual relation has six nodes: one `is_zero`, two `add`, and three
+`select`. For each field `j`, the selector enforces the value equation
+`r_j = c_j + b·(a_j−c_j)` over M31, together with the circuit's bit
+constraint for `b`. The proof also binds all three result words to the
+typed public record paths. The
+[handwritten fieldwise source](../examples/control/record_choice_manual.s31)
+has byte-for-byte equal normalized relation JSON; it chooses each leaf
+explicitly. No record node, field tag, or product-specific AIR row is emitted.
+The fixture has passed source lowering, strict public ABI flattening, and
+the independent value oracle; native proof validation is tracked separately.
 
 ## A fixed-width integer use
 

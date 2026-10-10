@@ -9,6 +9,7 @@ import s31_mathlib as mathlib
 from s31_stdlib import Builder, INT_TYPES, P, StaticGroup, StepState, Type, TypeErrorS31, Value
 from language.builtins import (INT_BINARY_CALLS, INT_CAST_CALLS, INT_COMPARE_CALLS, INT_STATIC_SHIFT_CALLS,
                                MAX_CALL_DEPTH, STANDARD_ALIASES)
+from language.products import assert_product_equal, select_product
 from language.syntax import Circuit, Expr, Function, FunctionType, RecordType, SourceError, StaticClosure, StaticNamedFunction, StaticRecord, StaticTuple, Statement, TupleType
 
 
@@ -115,10 +116,10 @@ class Compiler:
             else:
                 if not allow_assert:
                     raise self.located(statement.args[0], "pure functions cannot contain assertions")
-                lhs = self.expect_value(self.eval_expr(statement.args[0], local), statement.args[0])
-                rhs = self.expect_value(self.eval_expr(statement.args[1], local), statement.args[1])
+                lhs = self.eval_expr(statement.args[0], local)
+                rhs = self.eval_expr(statement.args[1], local)
                 try:
-                    self.builder.assert_equal(lhs, rhs)
+                    assert_product_equal(self.builder, lhs, rhs)
                 except TypeErrorS31 as exc:
                     raise self.located(statement.args[0], exc) from exc
         return self.eval_expr(body, local, wanted=wanted)
@@ -228,13 +229,16 @@ class Compiler:
                 return self.record_field(expr, self.eval_expr(expr.args[0], env))
             if expr.kind == "if":
                 condition = self.expect_value(self.eval_expr(expr.args[0], env), expr.args[0])
-                on_true = self.expect_value(self.eval_expr(expr.args[1], env), expr.args[1])
-                on_false = self.expect_value(self.eval_expr(expr.args[2], env), expr.args[2])
-                if on_true.typ == Type("bit", 1):
-                    return self.builder.boolean("bool_select", on_false, on_true, condition,
-                                                wanted=wanted, span=self.span(expr))
-                return self.builder.select(condition, on_false, on_true,
-                                           wanted=wanted, span=self.span(expr))
+                on_true = self.eval_expr(expr.args[1], env)
+                on_false = self.eval_expr(expr.args[2], env)
+                if isinstance(on_true, Value) and isinstance(on_false, Value):
+                    if on_true.typ == Type("bit", 1):
+                        return self.builder.boolean("bool_select", on_false, on_true, condition,
+                                                    wanted=wanted, span=self.span(expr))
+                    return self.builder.select(condition, on_false, on_true,
+                                               wanted=wanted, span=self.span(expr))
+                return select_product(self.builder, condition, on_false, on_true,
+                                      span=self.span(expr))
             if expr.kind == "binary":
                 lhs = self.expect_value(self.eval_expr(expr.args[0], env), expr.args[0])
                 rhs = self.expect_value(self.eval_expr(expr.args[1], env), expr.args[1])

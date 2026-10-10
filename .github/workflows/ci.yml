@@ -78,6 +78,11 @@ jobs:
           set -euo pipefail
           python3 src/frontends/s31/tests/acceptance/acceptance_records.py |
             tee zig-out/s31/acceptance/records.json
+      - name: Whole-product selection native proof and AIR-cost gate
+        run: |
+          set -euo pipefail
+          python3 src/frontends/s31/tests/acceptance/functional/product_control.py |
+            tee zig-out/s31/acceptance/product-control.json
       - name: Preserve native acceptance evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

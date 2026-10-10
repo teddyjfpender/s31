@@ -130,9 +130,13 @@ appear in any order. Their expressions are evaluated in declaration order,
 including fields never projected later. Construction and projection add no
 normalized relation node; the field expressions still contribute their normal
 nodes and partial effects. A tuple projection remains numeric (`p.0`), while
-named projection requires a struct value. Whole-record witness-dependent
-selection and whole-record `assert_eq` are outside this source version; select
-or assert individual first-order fields explicitly.
+named projection requires a struct value. Witness-dependent selection of a
+whole record or tuple is accepted when both branches have the same type and
+every leaf has a constrained selector. The compiler emits both branches and
+then one selector per leaf in declaration order. A function-valued leaf is
+rejected. `assert_eq` over equal nominal records or equally typed tuples
+expands to one assertion per first-order leaf. This gives the same relation
+as writing those selectors or assertions field by field.
 
 `let Powers { square, doubled } = powers(x);` binds named fields without
 creating a relation node. A record pattern may list a subset of fields but

@@ -17,3 +17,11 @@ inputs.
 The source `if` eagerly emits both branches. Each arm must be total on every
 well-typed witness. The compiler rejects partial checked operations in an
 inactive arm; see the [functional guide](../../docs/functional-language.md#witness-dependent-conditionals).
+
+[`record_choice.s31`](record_choice.s31) selects a nested nominal record
+with one computed bit. Its [fieldwise form](record_choice_manual.s31) emits
+the same normalized relation: one `is_zero`, two `add`, and three `select`
+nodes. The [typed assignment](record_choice.valid.json) claims
+`{first: [0], nested: [[0], [7]]}` for `x=0, y=7`; the public record ABI
+binds the three named leaves to the native statement. This example is a
+source and oracle fixture until its dedicated native acceptance gate runs.

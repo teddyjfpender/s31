@@ -223,7 +223,10 @@ class TotalityChecker:
             # A generic Fn parameter is checked again at each concrete call
             # site. Circuit inputs cannot contain Fn values, so none may
             # remain unresolved at the circuit boundary.
-            return Effect(FIRST_ORDER, condition.failure | branch_effects)
+            # Elaborated products contain only selectable first-order leaves.
+            # Preserve their static shape so a later field projection remains
+            # analyzable without dropping an eager branch's failure.
+            return Effect(on_true.value, condition.failure | branch_effects)
         if expr.kind in {"array", "binary"}:
             results = tuple(self.expr(arg, env) for arg in expr.args)
             return Effect(FIRST_ORDER, frozenset().union(*(item.failure for item in results)))

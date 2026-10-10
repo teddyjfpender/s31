@@ -157,7 +157,7 @@ class ConditionalTests(unittest.TestCase):
         cases = (
             ("if x then x else x", "if condition must have type bit"),
             ("if b then x else b", "if branches must have the same"),
-            ("if b then [x] else [x]", "same first-order circuit type"),
+            ("if b then [x] else [x]", "result type cannot be selected"),
         )
         for expression, message in cases:
             source = ("circuit main(public b: bit, public x: [m31; 1]) "

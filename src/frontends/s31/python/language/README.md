@@ -12,6 +12,7 @@ CLI and existing tests. Implementation files are grouped by compiler phase:
 | `types.py`, `builtin_types.py` | Source-only static array/literal types and pure builtin typing rules. |
 | `elaborate.py` | Whole-program type checking, lexical scopes and call-graph bounds before emission. |
 | `effects.py` | Exhaustive builtin totality inventory and transitive effect check for eager conditional arms. |
+| `products.py` | Structural first-order selection and equality for static tuples and nominal records. |
 | `specialize.py` | Lexical environments, typed function application, source specialization, and normalized relation emission. |
 
 `Fn` values never enter normalized relation JSON. Function application
@@ -23,6 +24,11 @@ Tuple values are also source-only. `(a, b)` evaluates both components and
 `pair.0` or `pair.1` selects one without emitting a tuple node. The effect
 pass retains failures from every component, including an unselected one, so
 projection cannot hide a partial operation in an inactive conditional arm.
+Witness-dependent selection of a tuple or nominal record visits its selectable
+leaves in order and emits the same primitive selectors as explicit fieldwise
+source. Product assertions likewise become the existing leaf assertions.
+Function-valued leaves cannot be selected or asserted, and partial operations
+in either branch remain visible to the effect pass.
 Circuit inputs and outputs reject tuple types; helper functions may accept or
 return them. The [worked product](../../docs/functional-language.md#static-tuples-two-results-from-one-helper)
 shows the resulting arithmetic equations and exact direct-form relation.

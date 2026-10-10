@@ -12,8 +12,9 @@ from dataclasses import dataclass
 from typing import TypeAlias
 
 from s31_stdlib import P, Type, TypeErrorS31
-from language.builtin_types import BIT, M31_ONE, SELECTABLE_KINDS, circuit, infer_builtin
+from language.builtin_types import BIT, M31_ONE, circuit, infer_builtin
 from language.builtins import MAX_CALL_DEPTH, STANDARD_ALIASES
+from language.products import assertable_types, selectable_type
 from language.syntax import Circuit, Expr, Function, FunctionType, RecordType, SourceError, Statement, TupleType
 from language.types import FieldLiteral, SourceType, StaticArray
 
@@ -269,12 +270,12 @@ class Elaborator:
                 raise self.error(statement.args[0], "pure functions cannot contain assertions")
             lhs = self.expr(statement.args[0], local, step_mode=step_mode)
             rhs = self.expr(statement.args[1], local, step_mode=step_mode)
-            if not isinstance(lhs, Type) or not isinstance(rhs, Type):
-                raise self.error(statement.args[0], "expected a circuit value")
-            bit_field = {lhs.kind, rhs.kind} == {"bit", "m31"} and lhs.length == rhs.length == 1
-            if lhs != rhs and not bit_field:
+            if not assertable_types(lhs, rhs):
+                if isinstance(lhs, Type) and isinstance(rhs, Type):
+                    raise self.error(statement.args[0],
+                                     "assert_eq requires two values of the same relation type")
                 raise self.error(statement.args[0],
-                                 "assert_eq requires two values of the same relation type")
+                                 "assert_eq requires matching first-order or product values")
         return self.expr(body, local, step_mode=step_mode)
 
     def expr(self, expr: Expr, env: dict[str, SourceType], *, step_mode: bool = False) -> SourceType:
@@ -341,9 +342,9 @@ class Elaborator:
                 on_false = self.expr(expr.args[2], env)
                 if condition != BIT:
                     raise TypeErrorS31("if condition must have type bit")
-                if on_true != on_false or not isinstance(on_true, Type):
-                    raise TypeErrorS31("if branches must have the same first-order circuit type")
-                if on_true != BIT and on_true.kind not in SELECTABLE_KINDS:
+                if on_true != on_false:
+                    raise TypeErrorS31("if branches must have the same first-order or product type")
+                if not selectable_type(on_true):
                     raise TypeErrorS31("if result type cannot be selected by the circuit")
                 return on_true
             if expr.kind == "lambda":

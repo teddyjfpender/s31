@@ -75,7 +75,9 @@ and `std::math::pow<N>`;
 circuit arithmetic uses canonical field literals.
 The [record guide](../records.md) shows named struct fields that erase into
 static products before relation emission. A function may accept or return a
-record; circuit inputs and outputs still use first-order values. The
+record. The versioned public-record ABI also permits nominal record circuit
+inputs and outputs with M31 leaves under `direct-gate`; tuples remain inside
+records or source helpers rather than top-level proof roots. The
 [functional core](../functional-language.md) adds expression-level
 `let name = expression in expression`, typed
 `fun(name: Type) -> Type => expression`, and static function types
@@ -84,8 +86,9 @@ cross circuit inputs or outputs, and add no relation nodes by themselves.
 Recursive calls are rejected. Whole-program elaboration type checks every
 function and lambda body, including unused ones.
 For a witness-dependent `if`, both arms must have the same selectable
-first-order type and be total on well-typed values. Both arms are emitted,
-followed by one constrained `select` or `bool_select` node. The compiler
+first-order or static product type and be total on well-typed values. Both arms
+are emitted, followed by one constrained `select` or `bool_select` node per
+first-order leaf. The compiler
 rejects partial inverse, division, checked arithmetic and other potentially
 failing operations transitively through function calls in either arm. See
 the [functional language guide](../functional-language.md#witness-dependent-conditionals)
@@ -161,7 +164,7 @@ zero-row view for byte and integer operations.
 | `poseidon2_leaf(x)`, `blake2s_leaf(x)` | Corresponding leaf hash node | 4, 8, 12, or 16 M31 words. |
 | `poseidon2_pair(a,b)`, `blake2s_pair(a,b)` | Ordered-pair hash node | Two digests of the selected family. |
 | `merkle_path_poseidon2(leaf, siblings, directions)` and `merkle_path_blake2s(...)` | Optional leaf hash, then two selects and one ordered pair per level | Raw M31 leaf or same-family digest; static arrays of 1–16 digest and bit inputs. |
-| `assert_eq(a,b);` | Relation assertion | Equally typed operands; checked as a proof constraint. |
+| `assert_eq(a,b);` | Relation assertion | Equal first-order types, matching tuples, or the same nominal record; each product leaf is checked as a proof constraint. |
 | `std::bytes::to_u256_le(x)`, `from_u256_le(x)` | No node; change nominal type | Explicit little-endian interpretation of `Bytes32` or `UInt256`. |
 | `std::bytes::limbs_m31(x)` | `cast_m31` | `Bytes32` or `UInt256`; preserves all sixteen limb values. |
 | `std::hash::sha256d_header(header)` | `hash_sha256d_header` | `Bytes80` to byte-exact `Bytes32`; two first-pass and one second-pass SHA-256 blocks are fully constrained. |
