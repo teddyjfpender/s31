@@ -123,5 +123,5 @@ constant, make an otherwise unused gate read the computed result, or replace
 a `1+1` padding gate with a zero-only gate. Each
 control recomputes all eight columns, their manifest hashes, the package
 key/report, and the certificate/artifact hashes. Package admission rejects
-all three on semantic grounds. These controls exercise topology replay
+all four on semantic grounds. These controls exercise topology replay
 separately from the normalized-relation checker.
