@@ -190,8 +190,13 @@ the selector, one address, the sampled row, and the output multiplicity.
 inverse products, and four ABI copy rows from the checked SSA output and
 instruction count. Its generated instance checks all eight exported cells
 for each of those eleven rows, with mask, inverse, and copy mutations. It also
-checks the nine-address public vector and a swapped-result-slot mutation. The
-Python package checker supplies the package-to-embedded-byte/digest binding
+checks the nine-address public vector and a swapped-result-slot mutation.
+`Functional/SSAInputAirCells` derives fourteen public-input copy,
+pointwise identity, and pack rows. Its final pack add creates native wire `22`,
+SSA input wire zero, with a use count computed from the checked SSA. The
+generated fixture checks those rows and mutations to pack operands, basis,
+copies, selectors, and use counts. The Python package checker supplies the
+package-to-embedded-byte/digest binding
 and validates other native rows. Lean does not verify the embedded SHA-256 strings, prove
 Python or Zig parser equivalence, or authenticate the PCS preprocessed root.
 `Functional/TextSquare4` is a narrower executable bridge: the formal gate

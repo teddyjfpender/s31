@@ -121,7 +121,11 @@ fail by kernel reduction. `SSAOutputAirCells` then checks eleven exported
 cells for all four public-output masks, three inverse multiplications, and
 four ABI copies against the same source-selected output and native allocation
 formula. It also compares the exported nine-address public vector with the
-expected order and rejects a swapped result slot. The fixture still relies on the outer exporter to
+expected order and rejects a swapped result slot. `SSAInputAirCells` checks
+fourteen exported cells for the four public input copies, four raw lane
+identity producers, and six QM31 packing rows. Its final pack row creates source
+wire zero at address `22` with multiplicity equal to the SSA input-use count.
+The fixture still relies on the outer exporter to
 bind the embedded arrays to the package, and Lean does not compute the
 displayed SHA-256 digests. The total add-row count and source-independent
 rows remain package-checker premises, and committed-column authenticity is

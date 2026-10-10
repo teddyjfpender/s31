@@ -6,6 +6,7 @@ import S31.Gadgets.Functional.SSATextBytes
 import S31.Gadgets.Functional.SSANormalizedBytes
 import S31.Gadgets.Functional.SSAAirColumnCells
 import S31.Gadgets.Functional.SSAOutputAirCells
+import S31.Gadgets.Functional.SSAInputAirCells
 
 set_option maxRecDepth 4096
 
@@ -18,6 +19,7 @@ open S31.Functional.SSATextBytes
 open S31.Functional.SSANormalizedBytes
 open S31.Functional.SSAAirColumnCells
 open S31.Functional.SSAOutputAirCells
+open S31.Functional.SSAInputAirCells
 
 def sourceBytes : List Nat := [
     47, 47, 32, 70, 105, 114, 115, 116, 45, 111, 114, 100, 101, 114, 32, 114,
@@ -300,6 +302,126 @@ def changedOutputCopyAddress : List ColumnCell :=
 def observedPublicAddresses : List Nat := [2, 3, 4, 5, 6, 7, 8, 9, 10]
 def changedPublicAddressOrder : List Nat := [2, 3, 4, 5, 6, 8, 7, 9, 10]
 
+def observedInputCells : List ColumnCell :=
+  [
+    { traceRow := 0, addFlag := 1, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 0, in0 := 11, in1 := 17, out := 18, mults := 1 },
+    { traceRow := 1, addFlag := 1, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 0, in0 := 18, in1 := 19, out := 20, mults := 1 },
+    { traceRow := 2, addFlag := 1, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 0, in0 := 20, in1 := 21, out := 22, mults := 2 },
+    { traceRow := 475, addFlag := 0, subFlag := 0, mulFlag := 1, pointwiseMulFlag := 0, in0 := 15, in1 := 12, out := 17, mults := 1 },
+    { traceRow := 476, addFlag := 0, subFlag := 0, mulFlag := 1, pointwiseMulFlag := 0, in0 := 2, in1 := 13, out := 19, mults := 1 },
+    { traceRow := 477, addFlag := 0, subFlag := 0, mulFlag := 1, pointwiseMulFlag := 0, in0 := 16, in1 := 14, out := 21, mults := 1 },
+    { traceRow := 3, addFlag := 1, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 0, in0 := 11, in1 := 0, out := 3, mults := 1 },
+    { traceRow := 4, addFlag := 1, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 0, in0 := 12, in1 := 0, out := 4, mults := 1 },
+    { traceRow := 5, addFlag := 1, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 0, in0 := 13, in1 := 0, out := 5, mults := 1 },
+    { traceRow := 6, addFlag := 1, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 0, in0 := 14, in1 := 0, out := 6, mults := 1 },
+    { traceRow := 508, addFlag := 0, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 1, in0 := 11, in1 := 1, out := 11, mults := 3 },
+    { traceRow := 509, addFlag := 0, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 1, in0 := 12, in1 := 1, out := 12, mults := 3 },
+    { traceRow := 510, addFlag := 0, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 1, in0 := 13, in1 := 1, out := 13, mults := 3 },
+    { traceRow := 511, addFlag := 0, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 1, in0 := 14, in1 := 1, out := 14, mults := 3 }
+  ]
+def changedPackOperand : List ColumnCell :=
+  [
+    { traceRow := 0, addFlag := 1, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 0, in0 := 12, in1 := 17, out := 18, mults := 1 },
+    { traceRow := 1, addFlag := 1, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 0, in0 := 18, in1 := 19, out := 20, mults := 1 },
+    { traceRow := 2, addFlag := 1, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 0, in0 := 20, in1 := 21, out := 22, mults := 2 },
+    { traceRow := 475, addFlag := 0, subFlag := 0, mulFlag := 1, pointwiseMulFlag := 0, in0 := 15, in1 := 12, out := 17, mults := 1 },
+    { traceRow := 476, addFlag := 0, subFlag := 0, mulFlag := 1, pointwiseMulFlag := 0, in0 := 2, in1 := 13, out := 19, mults := 1 },
+    { traceRow := 477, addFlag := 0, subFlag := 0, mulFlag := 1, pointwiseMulFlag := 0, in0 := 16, in1 := 14, out := 21, mults := 1 },
+    { traceRow := 3, addFlag := 1, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 0, in0 := 11, in1 := 0, out := 3, mults := 1 },
+    { traceRow := 4, addFlag := 1, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 0, in0 := 12, in1 := 0, out := 4, mults := 1 },
+    { traceRow := 5, addFlag := 1, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 0, in0 := 13, in1 := 0, out := 5, mults := 1 },
+    { traceRow := 6, addFlag := 1, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 0, in0 := 14, in1 := 0, out := 6, mults := 1 },
+    { traceRow := 508, addFlag := 0, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 1, in0 := 11, in1 := 1, out := 11, mults := 3 },
+    { traceRow := 509, addFlag := 0, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 1, in0 := 12, in1 := 1, out := 12, mults := 3 },
+    { traceRow := 510, addFlag := 0, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 1, in0 := 13, in1 := 1, out := 13, mults := 3 },
+    { traceRow := 511, addFlag := 0, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 1, in0 := 14, in1 := 1, out := 14, mults := 3 }
+  ]
+def changedPackMultiplicity : List ColumnCell :=
+  [
+    { traceRow := 0, addFlag := 1, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 0, in0 := 11, in1 := 17, out := 18, mults := 1 },
+    { traceRow := 1, addFlag := 1, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 0, in0 := 18, in1 := 19, out := 20, mults := 1 },
+    { traceRow := 2, addFlag := 1, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 0, in0 := 20, in1 := 21, out := 22, mults := 3 },
+    { traceRow := 475, addFlag := 0, subFlag := 0, mulFlag := 1, pointwiseMulFlag := 0, in0 := 15, in1 := 12, out := 17, mults := 1 },
+    { traceRow := 476, addFlag := 0, subFlag := 0, mulFlag := 1, pointwiseMulFlag := 0, in0 := 2, in1 := 13, out := 19, mults := 1 },
+    { traceRow := 477, addFlag := 0, subFlag := 0, mulFlag := 1, pointwiseMulFlag := 0, in0 := 16, in1 := 14, out := 21, mults := 1 },
+    { traceRow := 3, addFlag := 1, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 0, in0 := 11, in1 := 0, out := 3, mults := 1 },
+    { traceRow := 4, addFlag := 1, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 0, in0 := 12, in1 := 0, out := 4, mults := 1 },
+    { traceRow := 5, addFlag := 1, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 0, in0 := 13, in1 := 0, out := 5, mults := 1 },
+    { traceRow := 6, addFlag := 1, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 0, in0 := 14, in1 := 0, out := 6, mults := 1 },
+    { traceRow := 508, addFlag := 0, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 1, in0 := 11, in1 := 1, out := 11, mults := 3 },
+    { traceRow := 509, addFlag := 0, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 1, in0 := 12, in1 := 1, out := 12, mults := 3 },
+    { traceRow := 510, addFlag := 0, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 1, in0 := 13, in1 := 1, out := 13, mults := 3 },
+    { traceRow := 511, addFlag := 0, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 1, in0 := 14, in1 := 1, out := 14, mults := 3 }
+  ]
+def changedPackBasis : List ColumnCell :=
+  [
+    { traceRow := 0, addFlag := 1, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 0, in0 := 11, in1 := 17, out := 18, mults := 1 },
+    { traceRow := 1, addFlag := 1, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 0, in0 := 18, in1 := 19, out := 20, mults := 1 },
+    { traceRow := 2, addFlag := 1, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 0, in0 := 20, in1 := 21, out := 22, mults := 2 },
+    { traceRow := 475, addFlag := 0, subFlag := 0, mulFlag := 1, pointwiseMulFlag := 0, in0 := 16, in1 := 12, out := 17, mults := 1 },
+    { traceRow := 476, addFlag := 0, subFlag := 0, mulFlag := 1, pointwiseMulFlag := 0, in0 := 2, in1 := 13, out := 19, mults := 1 },
+    { traceRow := 477, addFlag := 0, subFlag := 0, mulFlag := 1, pointwiseMulFlag := 0, in0 := 16, in1 := 14, out := 21, mults := 1 },
+    { traceRow := 3, addFlag := 1, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 0, in0 := 11, in1 := 0, out := 3, mults := 1 },
+    { traceRow := 4, addFlag := 1, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 0, in0 := 12, in1 := 0, out := 4, mults := 1 },
+    { traceRow := 5, addFlag := 1, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 0, in0 := 13, in1 := 0, out := 5, mults := 1 },
+    { traceRow := 6, addFlag := 1, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 0, in0 := 14, in1 := 0, out := 6, mults := 1 },
+    { traceRow := 508, addFlag := 0, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 1, in0 := 11, in1 := 1, out := 11, mults := 3 },
+    { traceRow := 509, addFlag := 0, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 1, in0 := 12, in1 := 1, out := 12, mults := 3 },
+    { traceRow := 510, addFlag := 0, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 1, in0 := 13, in1 := 1, out := 13, mults := 3 },
+    { traceRow := 511, addFlag := 0, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 1, in0 := 14, in1 := 1, out := 14, mults := 3 }
+  ]
+def changedInputCopyAddress : List ColumnCell :=
+  [
+    { traceRow := 0, addFlag := 1, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 0, in0 := 11, in1 := 17, out := 18, mults := 1 },
+    { traceRow := 1, addFlag := 1, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 0, in0 := 18, in1 := 19, out := 20, mults := 1 },
+    { traceRow := 2, addFlag := 1, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 0, in0 := 20, in1 := 21, out := 22, mults := 2 },
+    { traceRow := 475, addFlag := 0, subFlag := 0, mulFlag := 1, pointwiseMulFlag := 0, in0 := 15, in1 := 12, out := 17, mults := 1 },
+    { traceRow := 476, addFlag := 0, subFlag := 0, mulFlag := 1, pointwiseMulFlag := 0, in0 := 2, in1 := 13, out := 19, mults := 1 },
+    { traceRow := 477, addFlag := 0, subFlag := 0, mulFlag := 1, pointwiseMulFlag := 0, in0 := 16, in1 := 14, out := 21, mults := 1 },
+    { traceRow := 3, addFlag := 1, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 0, in0 := 11, in1 := 0, out := 4, mults := 1 },
+    { traceRow := 4, addFlag := 1, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 0, in0 := 12, in1 := 0, out := 4, mults := 1 },
+    { traceRow := 5, addFlag := 1, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 0, in0 := 13, in1 := 0, out := 5, mults := 1 },
+    { traceRow := 6, addFlag := 1, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 0, in0 := 14, in1 := 0, out := 6, mults := 1 },
+    { traceRow := 508, addFlag := 0, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 1, in0 := 11, in1 := 1, out := 11, mults := 3 },
+    { traceRow := 509, addFlag := 0, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 1, in0 := 12, in1 := 1, out := 12, mults := 3 },
+    { traceRow := 510, addFlag := 0, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 1, in0 := 13, in1 := 1, out := 13, mults := 3 },
+    { traceRow := 511, addFlag := 0, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 1, in0 := 14, in1 := 1, out := 14, mults := 3 }
+  ]
+def changedInputSelfSelector : List ColumnCell :=
+  [
+    { traceRow := 0, addFlag := 1, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 0, in0 := 11, in1 := 17, out := 18, mults := 1 },
+    { traceRow := 1, addFlag := 1, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 0, in0 := 18, in1 := 19, out := 20, mults := 1 },
+    { traceRow := 2, addFlag := 1, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 0, in0 := 20, in1 := 21, out := 22, mults := 2 },
+    { traceRow := 475, addFlag := 0, subFlag := 0, mulFlag := 1, pointwiseMulFlag := 0, in0 := 15, in1 := 12, out := 17, mults := 1 },
+    { traceRow := 476, addFlag := 0, subFlag := 0, mulFlag := 1, pointwiseMulFlag := 0, in0 := 2, in1 := 13, out := 19, mults := 1 },
+    { traceRow := 477, addFlag := 0, subFlag := 0, mulFlag := 1, pointwiseMulFlag := 0, in0 := 16, in1 := 14, out := 21, mults := 1 },
+    { traceRow := 3, addFlag := 1, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 0, in0 := 11, in1 := 0, out := 3, mults := 1 },
+    { traceRow := 4, addFlag := 1, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 0, in0 := 12, in1 := 0, out := 4, mults := 1 },
+    { traceRow := 5, addFlag := 1, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 0, in0 := 13, in1 := 0, out := 5, mults := 1 },
+    { traceRow := 6, addFlag := 1, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 0, in0 := 14, in1 := 0, out := 6, mults := 1 },
+    { traceRow := 508, addFlag := 1, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 0, in0 := 11, in1 := 1, out := 11, mults := 3 },
+    { traceRow := 509, addFlag := 0, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 1, in0 := 12, in1 := 1, out := 12, mults := 3 },
+    { traceRow := 510, addFlag := 0, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 1, in0 := 13, in1 := 1, out := 13, mults := 3 },
+    { traceRow := 511, addFlag := 0, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 1, in0 := 14, in1 := 1, out := 14, mults := 3 }
+  ]
+def changedInputSelfMultiplicity : List ColumnCell :=
+  [
+    { traceRow := 0, addFlag := 1, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 0, in0 := 11, in1 := 17, out := 18, mults := 1 },
+    { traceRow := 1, addFlag := 1, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 0, in0 := 18, in1 := 19, out := 20, mults := 1 },
+    { traceRow := 2, addFlag := 1, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 0, in0 := 20, in1 := 21, out := 22, mults := 2 },
+    { traceRow := 475, addFlag := 0, subFlag := 0, mulFlag := 1, pointwiseMulFlag := 0, in0 := 15, in1 := 12, out := 17, mults := 1 },
+    { traceRow := 476, addFlag := 0, subFlag := 0, mulFlag := 1, pointwiseMulFlag := 0, in0 := 2, in1 := 13, out := 19, mults := 1 },
+    { traceRow := 477, addFlag := 0, subFlag := 0, mulFlag := 1, pointwiseMulFlag := 0, in0 := 16, in1 := 14, out := 21, mults := 1 },
+    { traceRow := 3, addFlag := 1, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 0, in0 := 11, in1 := 0, out := 3, mults := 1 },
+    { traceRow := 4, addFlag := 1, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 0, in0 := 12, in1 := 0, out := 4, mults := 1 },
+    { traceRow := 5, addFlag := 1, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 0, in0 := 13, in1 := 0, out := 5, mults := 1 },
+    { traceRow := 6, addFlag := 1, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 0, in0 := 14, in1 := 0, out := 6, mults := 1 },
+    { traceRow := 508, addFlag := 0, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 1, in0 := 11, in1 := 1, out := 11, mults := 4 },
+    { traceRow := 509, addFlag := 0, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 1, in0 := 12, in1 := 1, out := 12, mults := 3 },
+    { traceRow := 510, addFlag := 0, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 1, in0 := 13, in1 := 1, out := 13, mults := 3 },
+    { traceRow := 511, addFlag := 0, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 1, in0 := 14, in1 := 1, out := 14, mults := 3 }
+  ]
+
 def observedAddRows : Nat := 474
 def observedGateRows : Nat := 512
 def observedVariables : Nat := 512
@@ -357,6 +479,21 @@ theorem observed_public_addresses_match :
     observedPublicAddresses = expectedPublicAddresses := by decide
 theorem changed_public_address_order_rejected :
     changedPublicAddressOrder ≠ expectedPublicAddresses := by decide
+theorem observed_input_cells_match :
+    observedInputCells = expectedInputCells certificate observedAddRows := by decide
+theorem source_input_use_count : sourceInputUses certificate = 2 := by decide
+theorem changed_pack_operand_rejected :
+    changedPackOperand ≠ expectedInputCells certificate observedAddRows := by decide
+theorem changed_pack_multiplicity_rejected :
+    changedPackMultiplicity ≠ expectedInputCells certificate observedAddRows := by decide
+theorem changed_pack_basis_rejected :
+    changedPackBasis ≠ expectedInputCells certificate observedAddRows := by decide
+theorem changed_input_copy_address_rejected :
+    changedInputCopyAddress ≠ expectedInputCells certificate observedAddRows := by decide
+theorem changed_input_self_selector_rejected :
+    changedInputSelfSelector ≠ expectedInputCells certificate observedAddRows := by decide
+theorem changed_input_self_multiplicity_rejected :
+    changedInputSelfMultiplicity ≠ expectedInputCells certificate observedAddRows := by decide
 theorem complete_native_shape :
     observedGateRows = 512 ∧ observedVariables = 512 := by decide
 
@@ -420,6 +557,15 @@ theorem checked_output_cells_sound_instance (input : Lanes) :
     observedAddRows observedOutputCells normalized_bytes_check
     observed_output_cells_match
 
+/-- Four public M31 words pack into the SSA input wire at address 22. The
+value relation and lookup authentication remain native premises. -/
+theorem checked_input_cells_sound_instance (input : Lanes) :
+    observedInputCells = expectedInputCells certificate observedAddRows ∧
+      executeNormalized certificate input = denotation sourceBytes input :=
+  checked_input_cells_sound sourceBytes normalizedBytes certificate input
+    observedAddRows observedInputCells normalized_bytes_check
+    observed_input_cells_match
+
 /-- Any complete accepted local arithmetic-row trace for these exact source
 instructions has the source result, provided the row operands are the values
 authenticated at their addressed prior wires. This does not discharge that
@@ -431,6 +577,7 @@ theorem checked_instance_air_claim (input claimed : Lanes)
     observedRows = expectedRows certificate observedAddRows ∧
       observedColumnCells = expectedCells certificate observedAddRows ∧
       observedOutputCells = expectedOutputCells certificate observedAddRows ∧
+      observedInputCells = expectedInputCells certificate observedAddRows ∧
       observedPublicAddresses = expectedPublicAddresses ∧
       denotation sourceBytes input = some claimed := by
   have hrun := accepted_trace_executes hrows
@@ -438,6 +585,7 @@ theorem checked_instance_air_claim (input claimed : Lanes)
   rw [execute_normalized_eq_execute] at hbytes
   simp [execute, hrun, hclaim] at hbytes
   exact ⟨source_native_rows_match, observed_source_columns_match,
-    observed_output_cells_match, observed_public_addresses_match, hbytes.symm⟩
+    observed_output_cells_match, observed_input_cells_match,
+    observed_public_addresses_match, hbytes.symm⟩
 
 end S31.Functional.GeneratedDirectGateBridge

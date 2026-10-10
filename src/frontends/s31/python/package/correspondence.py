@@ -442,7 +442,7 @@ def check_gate_topology(syntax: dict[str, Any], topology: dict[str, Any],
     for address in input_raw:
         if not any(gate == {"in0": address, "in1": 1, "out": address}
                    for gate in products):
-            raise ValueError("public input M31 lane lacks its self-product producer")
+            raise ValueError("public input lane lacks its pointwise identity producer")
     if sorted(products[product_count + 4:], key=lambda gate: gate["out"]) != [
             {"in0": address, "in1": 1, "out": address}
             for address in sorted(input_raw)]:

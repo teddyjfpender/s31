@@ -47,8 +47,9 @@ pointwise multiply gate consumes the previously checked wire addresses,
 and four masks plus three inverse-basis gates unpack the returned wire into
 the four public result addresses. The native builder reserves address 2 for
 its fixed extension constant, addresses 3–6 for input words, and addresses
-7–10 for result words. Each scalar input must also have a self-product
-producer, the direct profile's M31 lane constraint. The independent schedule
+7–10 for result words. Each raw input address must also have a pointwise
+identity producer (`raw .* 1 = raw`) so the Gate lookup has a producer at
+that address. The independent schedule
 fixes the allocation addresses of input lanes, pack terms, source results,
 result masks, inverse products, and the eight ABI copies. It compares every
 gate triple in native kind order and independently replays
@@ -134,6 +135,21 @@ output is read by four public-result unpack masks. The AIR row numbers differ
 from source order because the native writer groups add, sub, ordinary
 multiply, and pointwise multiply gates. The fixture kernel-checks the cells
 and rejects a changed selector, input address, sampled AIR row, or use count.
+
+[`SSAInputAirCells.lean`](../../../formal/s31/S31/Gadgets/Functional/SSAInputAirCells.lean)
+checks the other side of that source input. In this example, raw lane wires
+`11`–`14` are copied to public input wires `3`–`6` at add AIR rows `3`–`6`.
+Pointwise identity rows `508`–`511` produce those raw lane wires with
+use count `3` each. Three ordinary multiplies at rows `475`–`477` use basis
+wires `15`, `2`, and `16` to make terms `17`, `19`, and `21`. Add rows `0`,
+`1`, and `2` combine raw lane `11` and those terms into wires `18`, `20`,
+and finally `22`, the packed SSA input wire. The last pack row has output
+use count `2` because `let square = x .* x` reads `x` twice. A mixed
+16-operation example gives that same row use count `17`; the count is
+derived from every SSA operand read. The fixture compares all eight cells
+of these fourteen rows and rejects mutated pack operands, basis addresses,
+input copy addresses, selectors, and use counts. Authenticity of their
+values and the M31 public input binding remain native premises.
 
 [`SSAOutputAirCells.lean`](../../../formal/s31/S31/Gadgets/Functional/SSAOutputAirCells.lean)
 continues from source wire `24` to the four public result words. It derives
@@ -229,12 +245,13 @@ From the repository root, run:
 python3 -m unittest discover -s src/frontends/s31/tests/python -p test_correspondence.py
 python3 src/frontends/s31/tests/acceptance/acceptance_compiler_correspondence.py
 cd formal/s31
-lake build S31.Gadgets.Functional.SSAAirColumnCells S31.Gadgets.Functional.SSAOutputAirCells S31.Gadgets.Functional.GeneratedDirectGateBridge
+lake build S31.Gadgets.Functional.SSAAirColumnCells S31.Gadgets.Functional.SSAInputAirCells S31.Gadgets.Functional.SSAOutputAirCells S31.Gadgets.Functional.GeneratedDirectGateBridge
 ```
 
 The Python unit suite includes a topology change between package admission
 and Lean export. The native acceptance suite builds an honest proof and
 resealed mutant packages, then checks that source/package admission rejects
-the mutations. The Lean modules check the projected source and public-output
-cells and their selector, address, row, and multiplicity mutations. These
-checks do not discharge the PCS and Gate lookup premises above.
+the mutations. The Lean modules check the projected public-input, source,
+and public-output cells and their selector, address, row, and multiplicity
+mutations. These checks do not discharge the PCS and Gate lookup premises
+above.

@@ -8,7 +8,8 @@ derived SSA and public names, checks exact canonical normalized JSON bytes,
 and checks observed source rows and eight exported preprocessed cells against
 the formal address, selector, and use-count formulas. It also checks the
 eleven exported public-output mask, inverse, and ABI-copy cells. SHA-256
-strings are informational in Lean.
+strings are informational in Lean. Fourteen public-input packing and binding
+cells are checked by the same bounded bridge.
 """
 
 from __future__ import annotations
@@ -200,6 +201,43 @@ def _output_air_rows(checked: dict, topology: dict, *, mutation: str | None = No
     return "[\n    " + ",\n    ".join(rows) + "\n  ]"
 
 
+def _input_air_rows(checked: dict, topology: dict, *, mutation: str | None = None) -> str:
+    """Project input pack adds/muls, public copies, and M31 self-products."""
+    columns = topology["columns"]
+    if ([column["id"] for column in columns] != list(DIRECT_COLUMN_IDS) or
+            any(len(column["values"]) != 512 for column in columns)):
+        raise ValueError("Lean bridge requires eight complete direct-gate columns")
+    instructions = checked["source_ssa"]["instructions"]
+    total_adds = checked["gate_counts"]["add"]
+    source_muls = sum(instruction["op"] == "mul" for instruction in instructions)
+    source_adds = len(instructions) - source_muls
+    selected = [
+        *(('pack_add', index, index) for index in range(3)),
+        *(('pack_mul', index, total_adds + 1 + index) for index in range(3)),
+        *(('input_copy', lane, 3 + source_adds + lane) for lane in range(4)),
+        *(('input_self', lane, total_adds + 32 + source_muls + lane)
+          for lane in range(4)),
+    ]
+    rows = []
+    for kind, index, trace_row in selected:
+        values = [column["values"][trace_row] for column in columns]
+        if kind == "pack_add" and index == 0 and mutation == "pack_operand":
+            values[4] += 1
+        if kind == "pack_add" and index == 2 and mutation == "pack_multiplicity":
+            values[7] += 1
+        if kind == "pack_mul" and index == 0 and mutation == "pack_basis":
+            values[4] += 1
+        if kind == "input_copy" and index == 0 and mutation == "copy_address":
+            values[6] += 1
+        if kind == "input_self" and index == 0:
+            if mutation == "self_selector":
+                values[0], values[3] = 1, 0
+            if mutation == "self_multiplicity":
+                values[7] += 1
+        rows.append(_format_air_cell(trace_row, values))
+    return "[\n    " + ",\n    ".join(rows) + "\n  ]"
+
+
 def render_bridge(package: Path) -> str:
     checked = check_package(package)
     source_bytes = (package / "source.s31").read_bytes()
@@ -229,6 +267,8 @@ def render_bridge(package: Path) -> str:
     instructions = checked["source_ssa"]["instructions"]
     if not instructions or checked["source_ssa"]["output"] != instructions[-1]["id"]:
         raise ValueError("Lean bridge requires final SSA output")
+    source_input_uses = sum((instruction["lhs"] == 0) + (instruction["rhs"] == 0)
+                            for instruction in instructions)
     counts = checked["gate_counts"]
     public_names = (
         checked["key_core"]["name"],
@@ -269,6 +309,7 @@ import S31.Gadgets.Functional.SSATextBytes
 import S31.Gadgets.Functional.SSANormalizedBytes
 import S31.Gadgets.Functional.SSAAirColumnCells
 import S31.Gadgets.Functional.SSAOutputAirCells
+import S31.Gadgets.Functional.SSAInputAirCells
 
 set_option maxRecDepth 4096
 
@@ -281,6 +322,7 @@ open S31.Functional.SSATextBytes
 open S31.Functional.SSANormalizedBytes
 open S31.Functional.SSAAirColumnCells
 open S31.Functional.SSAOutputAirCells
+open S31.Functional.SSAInputAirCells
 
 def sourceBytes : List Nat := {byte_list}
 -- Informational digest from the outer package checker; Lean does not hash sourceBytes.
@@ -330,6 +372,21 @@ def changedOutputCopyAddress : List ColumnCell :=
   {_output_air_rows(checked, topology, mutation="copy_output")}
 def observedPublicAddresses : List Nat := {_nat_list(public_addresses)}
 def changedPublicAddressOrder : List Nat := {_nat_list(changed_public_addresses)}
+
+def observedInputCells : List ColumnCell :=
+  {_input_air_rows(checked, topology)}
+def changedPackOperand : List ColumnCell :=
+  {_input_air_rows(checked, topology, mutation="pack_operand")}
+def changedPackMultiplicity : List ColumnCell :=
+  {_input_air_rows(checked, topology, mutation="pack_multiplicity")}
+def changedPackBasis : List ColumnCell :=
+  {_input_air_rows(checked, topology, mutation="pack_basis")}
+def changedInputCopyAddress : List ColumnCell :=
+  {_input_air_rows(checked, topology, mutation="copy_address")}
+def changedInputSelfSelector : List ColumnCell :=
+  {_input_air_rows(checked, topology, mutation="self_selector")}
+def changedInputSelfMultiplicity : List ColumnCell :=
+  {_input_air_rows(checked, topology, mutation="self_multiplicity")}
 
 def observedAddRows : Nat := {counts['add']}
 def observedGateRows : Nat := {sum(counts.values())}
@@ -388,6 +445,21 @@ theorem observed_public_addresses_match :
     observedPublicAddresses = expectedPublicAddresses := by decide
 theorem changed_public_address_order_rejected :
     changedPublicAddressOrder ≠ expectedPublicAddresses := by decide
+theorem observed_input_cells_match :
+    observedInputCells = expectedInputCells certificate observedAddRows := by decide
+theorem source_input_use_count : sourceInputUses certificate = {source_input_uses} := by decide
+theorem changed_pack_operand_rejected :
+    changedPackOperand ≠ expectedInputCells certificate observedAddRows := by decide
+theorem changed_pack_multiplicity_rejected :
+    changedPackMultiplicity ≠ expectedInputCells certificate observedAddRows := by decide
+theorem changed_pack_basis_rejected :
+    changedPackBasis ≠ expectedInputCells certificate observedAddRows := by decide
+theorem changed_input_copy_address_rejected :
+    changedInputCopyAddress ≠ expectedInputCells certificate observedAddRows := by decide
+theorem changed_input_self_selector_rejected :
+    changedInputSelfSelector ≠ expectedInputCells certificate observedAddRows := by decide
+theorem changed_input_self_multiplicity_rejected :
+    changedInputSelfMultiplicity ≠ expectedInputCells certificate observedAddRows := by decide
 theorem complete_native_shape :
     observedGateRows = 512 ∧ observedVariables = 512 := by decide
 
@@ -445,6 +517,15 @@ theorem checked_output_cells_sound_instance (input : Lanes) :
     observedAddRows observedOutputCells normalized_bytes_check
     observed_output_cells_match
 
+/-- Four public M31 words pack into the SSA input wire at address 22. The
+value relation and lookup authentication remain native premises. -/
+theorem checked_input_cells_sound_instance (input : Lanes) :
+    observedInputCells = expectedInputCells certificate observedAddRows ∧
+      executeNormalized certificate input = denotation sourceBytes input :=
+  checked_input_cells_sound sourceBytes normalizedBytes certificate input
+    observedAddRows observedInputCells normalized_bytes_check
+    observed_input_cells_match
+
 /-- Any complete accepted local arithmetic-row trace for these exact source
 instructions has the source result, provided the row operands are the values
 authenticated at their addressed prior wires. This does not discharge that
@@ -456,6 +537,7 @@ theorem checked_instance_air_claim (input claimed : Lanes)
     observedRows = expectedRows certificate observedAddRows ∧
       observedColumnCells = expectedCells certificate observedAddRows ∧
       observedOutputCells = expectedOutputCells certificate observedAddRows ∧
+      observedInputCells = expectedInputCells certificate observedAddRows ∧
       observedPublicAddresses = expectedPublicAddresses ∧
       denotation sourceBytes input = some claimed := by
   have hrun := accepted_trace_executes hrows
@@ -463,7 +545,8 @@ theorem checked_instance_air_claim (input claimed : Lanes)
   rw [execute_normalized_eq_execute] at hbytes
   simp [execute, hrun, hclaim] at hbytes
   exact ⟨source_native_rows_match, observed_source_columns_match,
-    observed_output_cells_match, observed_public_addresses_match, hbytes.symm⟩
+    observed_output_cells_match, observed_input_cells_match,
+    observed_public_addresses_match, hbytes.symm⟩
 
 end S31.Functional.GeneratedDirectGateBridge
 '''
