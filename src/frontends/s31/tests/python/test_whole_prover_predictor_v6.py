@@ -43,6 +43,23 @@ def synthetic_v6(split: str, protocol: dict) -> dict:
     return result
 
 
+def checkout_pinned_protocol(protocol: dict) -> dict:
+    """Make a frozen-shaped fixture pinned to the checkout running this test."""
+    result = dict(protocol)
+    result.update({
+        "source_base_commit": subprocess.check_output(
+            ["git", "-C", str(ROOT), "rev-parse", "HEAD"], text=True).strip(),
+        "engine_gitlink_commit": subprocess.check_output(
+            ["git", "-C", str(ROOT / "deps/stwo-zig"), "rev-parse", "HEAD"],
+            text=True).strip(),
+        "compiler_sha256": s31.compiler_fingerprint(),
+        "measurement_tool_sha256": measurement_tool_digest(TOOL_SOURCES),
+        "measurement_tool_paths": tool_source_inventory(),
+        "status": "frozen-before-any-v6-native-observation",
+    })
+    return result
+
+
 def write_build_fixture(output: Path, split: str, protocol: dict,
                         protocol_sha: str, model_sha: str | None = None) -> dict:
     output.mkdir(parents=True, exist_ok=True)
@@ -187,19 +204,7 @@ class WholeProverV6Tests(unittest.TestCase):
         draft["status"] = "draft"
         with self.assertRaisesRegex(ValueError, "must be pinned"):
             require_frozen_pins(draft)
-        require_frozen_pins(self.protocol)
-        ephemeral = dict(self.protocol)
-        ephemeral.update({
-            "source_base_commit": subprocess.check_output(
-                ["git", "-C", str(ROOT), "rev-parse", "HEAD"], text=True).strip(),
-            "engine_gitlink_commit": subprocess.check_output(
-                ["git", "-C", str(ROOT / "deps/stwo-zig"), "rev-parse", "HEAD"],
-                text=True).strip(),
-            "compiler_sha256": s31.compiler_fingerprint(),
-            "measurement_tool_sha256": measurement_tool_digest(TOOL_SOURCES),
-            "measurement_tool_paths": tool_source_inventory(),
-            "status": "frozen-before-any-v6-native-observation",
-        })
+        ephemeral = checkout_pinned_protocol(self.protocol)
         require_frozen_pins(ephemeral)
         ephemeral["measurement_tool_sha256"] = "0" * 64
         with self.assertRaisesRegex(ValueError, "measurement tool digest"):
@@ -208,12 +213,16 @@ class WholeProverV6Tests(unittest.TestCase):
     def test_unanchored_cli_refuses_before_creating_native_output(self) -> None:
         with TemporaryDirectory() as directory:
             output = Path(directory) / "native-output"
+            protocol_path = Path(directory) / "protocol.json"
+            protocol_path.write_text(json.dumps(checkout_pinned_protocol(self.protocol)))
             argv = ["benchmark_whole_prover_cost_v6.py", "--split", "train",
                     "--phase", "build", "--out", str(output),
                     "--expected-protocol-sha256",
-                    hashlib.sha256(PROTOCOL.read_bytes()).hexdigest(),
+                    hashlib.sha256(protocol_path.read_bytes()).hexdigest(),
                     "--protocol-anchor-commit", "a" * 40]
             with patch.object(sys, "argv", argv), patch(
+                "benchmark_whole_prover_cost_v6.PROTOCOL", protocol_path,
+            ), patch(
                 "benchmark_whole_prover_cost_v6.run_corpus",
                 side_effect=AssertionError("native collection must not start"),
             ):
