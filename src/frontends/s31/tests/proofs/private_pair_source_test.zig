@@ -149,7 +149,8 @@ test "sealed pair native long-round lifting keeps preprocessed root and proof al
     }
     const outputs_json = try std.json.Stringify.valueAlloc(a, .{ .sum = sums, .product = products }, .{});
     defer a.free(outputs_json);
-    const assignment_json = try std.fmt.allocPrint(a,
+    const assignment_json = try std.fmt.allocPrint(
+        a,
         "{{\"public_inputs\":{{}},\"private_inputs\":{{\"left\":[3,3,7,11],\"right\":[2,4,6,8]}},\"public_outputs\":{s}}}",
         .{outputs_json},
     );
