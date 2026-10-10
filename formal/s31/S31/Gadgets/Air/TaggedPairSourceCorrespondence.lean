@@ -351,4 +351,33 @@ theorem bridgeWords_constant_of_source_residuals
   simpa [ordered, bridgeOrderedWords] using
     hconstant lane (bridgeCosetOrder bitReverseIndex hinvolution index)
 
+/-- Four-bit reversal for the bridge's fixed `log_size = 4`. The expression
+is the low four bits of Zig's `@bitReverse(usize) >> (word_bits - 4)` on an
+index in `0..15`. The machine-word identity is still an external source
+correspondence obligation. -/
+def bitReverse4 (index : Fin 16) : Fin 16 :=
+  ⟨8 * (index.val % 2) +
+    4 * ((index.val / 2) % 2) +
+    2 * ((index.val / 4) % 2) +
+    (index.val / 8) % 2, by omega⟩
+
+theorem bitReverse4_involutive :
+    ∀ index : Fin 16, bitReverse4 (bitReverse4 index) = index := by
+  decide
+
+/-- The bridge constancy result specialized to the exact four-bit reversal
+formula and the native fixed sixteen-row shape. -/
+theorem bridgeWords_constant_bitReverse4
+    {F : Type*} [AddGroup F]
+    (rows : Fin 8 → Fin 16 → F)
+    (hzero : ∀ lane index,
+      rows lane index -
+        rows lane (sourceNextIndex 8 (by decide) bitReverse4 index) = 0) :
+    ∀ lane index,
+      rows lane index =
+        rows lane ((bridgeCosetOrder bitReverse4
+          bitReverse4_involutive).symm ⟨0, by decide⟩) :=
+  bridgeWords_constant_of_source_residuals
+    bitReverse4 bitReverse4_involutive rows hzero
+
 end S31.Gadgets.Air.TaggedPairSourceCorrespondence

@@ -59,6 +59,11 @@ successor. `bridgeWords_constant_of_source_residuals` reorders the sixteen
 source rows by that bijection, applies the fifteen-adjacency theorem, then
 maps constancy back to the original rows. An exact Zig-machine-word proof of
 bit reversal and the larger quotient evaluation-domain mask remain open.
+The fixed bridge has `log_size = 4`; `bitReverse4_involutive` checks its
+four-bit reversal formula exhaustively in Lean, and
+`bridgeWords_constant_bitReverse4` specializes constancy to that concrete
+formula. Equating the Zig `@bitReverse(usize)` shift to this formula remains
+an explicit implementation correspondence premise.
 
 The **accepted proof-to-logical-row premise remains open**: source mask geometry
 must correspond to a permutation of logical predecessor rows, and an
