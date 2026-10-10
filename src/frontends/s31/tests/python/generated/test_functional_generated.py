@@ -110,6 +110,18 @@ fn apply(f: Fn([m31; 1]) -> [m31; 1], z: [m31; 1]) -> [m31; 1] { f(z) }
                                    "select(b, falseValue, trueValue)")
         return functional + tail, direct + direct_tail
 
+    def postfix_source(self) -> str:
+        """The same source term with immediate beta application syntax."""
+        return ("use std@1;\n"
+                "circuit generated(public b: bit, public x: [m31; 1],\n"
+                "            public y: [m31; 1]) -> public [m31; 1] {\n"
+                f"    let saved = {self.seed.source()};\n"
+                "    let trueValue = (fun(v: [m31; 1]) -> [m31; 1] => "
+                f"{self.body.source()})(saved);\n"
+                f"    let falseValue = {self.alternate.source()};\n"
+                "    let result = if b then trueValue else falseValue;\n"
+                "    result\n}\n")
+
     def value(self, b: int, x: int, y: int) -> int:
         env = {"b": b, "x": x, "y": y}
         saved = self.seed.value(env)
@@ -154,8 +166,11 @@ class GeneratedFunctionalTests(unittest.TestCase):
             with self.subTest(case=index):
                 relation, _ = compile_text(functional)
                 reference, _ = compile_text(direct)
+                postfix, _ = compile_text(case.postfix_source())
                 self.assertEqual(relation, reference,
                                  "source functions or if added nodes or changed bindings")
+                self.assertEqual(postfix, reference,
+                                 "immediate lambda application changed the relation")
                 self.assertTrue(all(node["op"] not in {"call", "lambda", "let", "if"}
                                     for node in relation["nodes"]))
                 output = relation["public_outputs"][0]

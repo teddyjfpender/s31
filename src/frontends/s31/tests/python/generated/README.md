@@ -8,6 +8,9 @@ Python modular integers. The S31 relation oracle separately evaluates the
 compiler's emitted graph for both selector values and several boundary input
 values; forged public results must fail. Every functional program also has an
 explicit first-order form, and the two must produce **identical relation IR**.
+The same 96 terms also compile with immediate `(fun …)(argument)` application;
+that third source form must emit the same relation and therefore inherits the
+independently checked values and forged-output rejection.
 
 `test_functional_arrays_generated.py` adds 64 deterministic four-lane array
 programs. Its independent source evaluator covers pointwise addition and

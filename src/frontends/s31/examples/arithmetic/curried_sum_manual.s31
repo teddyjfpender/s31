@@ -1,0 +1,7 @@
+use std@1;
+
+circuit curried_sum(private a: [m31; 1], private b: [m31; 1])
+    -> public [m31; 1] {
+    let result = a + b;
+    result
+}

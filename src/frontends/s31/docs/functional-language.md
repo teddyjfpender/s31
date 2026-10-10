@@ -32,6 +32,43 @@ private circuit values. `let name = value in body` makes a lexically scoped
 expression binding and permits intentional shadowing. Statements of the form
 `let name = value;` remain available in function and circuit blocks.
 
+## Applying a returned function
+
+The [curried sum](../examples/arithmetic/curried_sum.s31) returns a typed
+closure from a named source function, then applies it directly:
+
+```s31
+use std@1;
+
+fn add_to(a: [m31; 1]) -> Fn([m31; 1]) -> [m31; 1] {
+    fun(b: [m31; 1]) -> [m31; 1] => a + b
+}
+
+circuit curried_sum(private a: [m31; 1], private b: [m31; 1])
+    -> public [m31; 1] {
+    let result = add_to(a)(b);
+    result
+}
+```
+
+`add_to(a)` produces a static closure that captures `a`; the second `(b)`
+applies it. The [direct form](../examples/arithmetic/curried_sum_manual.s31)
+is `a + b`. Both compile to the one `add(a,b)` relation node. For the fixture
+`a=p-1`, `b=2`, the public result is `1`, because field addition wraps modulo
+`p=2^31-1`. Parenthesized lambdas and `let` expressions returning a function
+can be applied the same way: `(fun(v: T) -> T => body)(value)` and
+`(let f = function_value in f)(value)`. The type checker requires the callee
+to have `Fn` type, checks argument types and arity, and the effect pass still
+rejects a partial operation on an inactive `if` branch. These applications
+are erased before the relation reaches Zig.
+The native `direct-gate` circuit has 275 raw QM31 operation rows, padded to
+512; the direct source has identical AIR geometry. Those rows include the
+input and public-output boundary around the one retained `add` node.
+The [Lean curried application proof](../../../../formal/s31/S31/Gadgets/Functional/CurriedApplication.lean)
+shows the two applications erase to one addition in the typed field core,
+and that arbitrary satisfying witnesses bind the output. Its scalar model
+and the checked source example are separate from a proof of Python parsing.
+
 After specialization, the normalized relation has just two nodes:
 
 | Node | Operation | Meaning on each of four M31 lanes |

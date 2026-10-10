@@ -19,6 +19,10 @@ specializes a body into the existing `s31_stdlib.Builder`, whose primitive
 nodes are then validated and compiled by Zig. `../s31.py` hashes every Python
 file in this directory into its compiler fingerprint, so changing parser or
 specializer semantics invalidates cached packages and native verifier builds.
+Postfix application allows `(fun(...) -> ... => body)(value)` and
+`factory(value)(next)`; elaboration checks the intermediate `Fn` type, the
+effect pass resolves any partial operations in the called body, and
+specialization erases the application before relation emission.
 
 The elaborator checks unused declarations and lambda bodies without emitting
 relation nodes. The effect pass rejects `if` arms that could fail even when

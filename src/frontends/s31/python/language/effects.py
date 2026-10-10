@@ -168,6 +168,17 @@ class TotalityChecker:
         if expr.kind in {"array", "binary"}:
             results = tuple(self.expr(arg, env) for arg in expr.args)
             return Effect(FIRST_ORDER, frozenset().union(*(item.failure for item in results)))
+        if expr.kind == "apply":
+            callee = self.expr(expr.args[0], env)
+            results = tuple(self.expr(arg, env) for arg in expr.args[1:])
+            failure = callee.failure | frozenset().union(*(item.failure for item in results))
+            values = tuple(item.value for item in results)
+            if isinstance(callee.value, Closure):
+                result = self.invoke_closure(callee.value, values, expr)
+                return Effect(result.value, failure | result.failure)
+            # Type elaboration has already checked this is a Fn. Keep the
+            # effect obligation until every concrete static call is known.
+            return Effect(FIRST_ORDER, failure | {"opaque:application"})
         if expr.kind != "call":
             raise self.error(expr, "unknown expression in effect analysis")
 

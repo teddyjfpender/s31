@@ -181,6 +181,18 @@ class Elaborator:
                 if lhs != rhs or lhs.kind != "m31":
                     raise TypeErrorS31("arithmetic requires equally shaped m31 arrays")
                 return lhs
+            if expr.kind == "apply":
+                callee = self.expr(expr.args[0], env, step_mode=step_mode)
+                if not isinstance(callee, FunctionType):
+                    raise TypeErrorS31("applied expression must have a Fn type")
+                args = tuple(self.expr(arg, env, step_mode=step_mode)
+                             for arg in expr.args[1:])
+                if len(args) != len(callee.params):
+                    raise TypeErrorS31(f"function value expects {len(callee.params)} arguments")
+                for index, (actual, expected) in enumerate(zip(args, callee.params), 1):
+                    if actual != expected:
+                        raise TypeErrorS31(f"function value argument {index} expects {expected}")
+                return callee.result
             if expr.kind != "call":
                 raise TypeErrorS31("invalid expression")
             if expr.value in env:

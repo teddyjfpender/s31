@@ -129,6 +129,18 @@ def check_examples() -> None:
         pass
     else:
         raise AssertionError("worked functional polynomial accepted a false public claim")
+    curried, _ = compile_text(
+        text_block_containing(DOCS / "functional-language.md", "circuit curried_sum"),
+        "functional-language.md",
+    )
+    curried_source = S31 / "examples/arithmetic/curried_sum.s31"
+    curried_direct = S31 / "examples/arithmetic/curried_sum_manual.s31"
+    assert curried == compile_text(curried_source.read_text())[0]
+    assert curried == compile_text(curried_direct.read_text())[0]
+    assert [node["op"] for node in curried["nodes"]] == ["add"]
+    curried_assignment = json.loads(curried_source.with_suffix(".valid.json").read_text())
+    assert curried_assignment["public_outputs"] == {"result": [1]}
+    assert evaluate_relation(curried, curried_assignment) == {"result": [1]}
     matrix_source = text_block_containing(DOCS / "library.md", "circuit static_matvec")
     matrix_relation, _ = compile_text(matrix_source, "library.md")
     assert matrix_relation == json.loads((S31 / "examples/arrays/static_matvec.s31.json").read_text())

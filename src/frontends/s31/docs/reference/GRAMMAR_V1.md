@@ -64,7 +64,8 @@ families and the fixed-width integer names are exact and case sensitive.
 block         = "{", {statement}, expression, [";"], "}"
 statement     = "let", identifier, "=", expression, ";"
               | "assert_eq", "(", expression, ",", expression, ")", ";"
-expression    = prefix, {binary_operator, prefix}   // Pratt precedence below
+expression    = prefix, {postfix_call | binary_operator, prefix}
+postfix_call  = "(", [expression, {",", expression}], ")"
 prefix        = "let", identifier, "=", expression, "in", expression
               | "if", expression, "then", expression, "else", expression
               | "fun", function_parameters, "->", type, "=>", expression
@@ -87,9 +88,13 @@ it, but the type checker rejects it as a circuit value. Static natural
 arguments are used in calls such as `splat<4>(7_m31)`.
 
 The parser uses left-associative Pratt binding powers: unary `-` is 30,
-lane-wise `.*` is 20, and `+` and `-` are 10. `if`, expression `let`, and
-`fun` are prefix forms; parenthesize them when embedding them in a larger
-arithmetic expression. Calls, types, shapes and builtins receive separate
+lane-wise `.*` is 20, and `+` and `-` are 10. Postfix application binds more
+tightly than arithmetic and may follow any expression whose type is `Fn`.
+For example, `add_to(a)(b)` applies a function returned by `add_to(a)`, and
+`(fun(x: [m31; 1]) -> [m31; 1] => x)(value)` applies a lambda immediately.
+`if`, expression `let`, and `fun` are prefix forms; parenthesize them when
+embedding them in a larger arithmetic expression or applying their result.
+Calls, types, shapes and builtins receive separate
 type/effect checks. `assert_eq` is allowed only in circuit blocks.
 
 ## Resource and diagnostic contract

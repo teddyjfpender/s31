@@ -1,8 +1,9 @@
 # Functional native acceptance
 
 `library.py` builds functional and explicitly first-order forms of the
-[worked quadratic](../../../examples/arithmetic/functional_poly4.s31), one
-generated matrix program and a three-Poseidon2 hash tree. It compares normalized relation
+[worked quadratic](../../../examples/arithmetic/functional_poly4.s31), the
+[curried sum](../../../examples/arithmetic/curried_sum.s31), one generated
+matrix program and a three-Poseidon2 hash tree. It compares normalized relation
 IR and the native compiler's circuit/AIR cost report, then proves one concrete
 input for each functional form. The independent arithmetic and Poseidon2
 reference calculate expected public results; changing a result must fail

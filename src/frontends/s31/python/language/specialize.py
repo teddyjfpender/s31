@@ -170,6 +170,12 @@ class Compiler:
                 rhs = self.expect_value(self.eval_expr(expr.args[1], env), expr.args[1])
                 return self.builder.binary("add" if expr.value == "+" else "mul", lhs, rhs,
                                            wanted=wanted, span=self.span(expr))
+            if expr.kind == "apply":
+                callee = self.eval_expr(expr.args[0], env)
+                if not isinstance(callee, StaticClosure):
+                    raise TypeErrorS31("applied expression must be a function value")
+                args = tuple(self.eval_expr(arg, env) for arg in expr.args[1:])
+                return self.call_closure(callee, args, wanted, expr)
             if expr.kind != "call":
                 raise TypeErrorS31("invalid expression")
             if expr.value in env:

@@ -175,6 +175,18 @@ class Parser:
             raise self.error("duplicate parameter name")
         return tuple(params)
 
+    def call_arguments(self) -> tuple[Expr, ...]:
+        """Parse one call suffix for named and expression-valued callees."""
+        self.expect("(")
+        args: list[Expr] = []
+        if not self.accept(")"):
+            while True:
+                args.append(self.expression())
+                if self.accept(")"):
+                    break
+                self.expect(",")
+        return tuple(args)
+
     def block(self) -> tuple[tuple[Statement, ...], Expr]:
         self.expect("{")
         statements: list[Statement] = []
@@ -291,15 +303,8 @@ class Parser:
             if self.accept("<"):
                 generic = self.number()
                 self.expect(">")
-            if self.accept("("):
-                args: list[Expr] = []
-                if not self.accept(")"):
-                    while True:
-                        args.append(self.expression())
-                        if self.accept(")"):
-                            break
-                        self.expect(",")
-                lhs = Expr("call", name, tuple(args), token, generic)
+            if self.peek().text == "(":
+                lhs = Expr("call", name, self.call_arguments(), token, generic)
             elif generic is None:
                 lhs = Expr("name", name, (), token)
             else:
@@ -307,6 +312,13 @@ class Parser:
         else:
             raise self.error(f"expected expression, found {token.text!r}")
         while True:
+            if self.peek().text == "(":
+                # A parenthesized lambda, `let ... in` result, or function
+                # returned by a call can be applied directly. Named calls
+                # above retain their existing builtin/generic dispatch.
+                call_token = self.peek()
+                lhs = Expr("apply", "", (lhs, *self.call_arguments()), call_token)
+                continue
             operator = self.peek()
             power = BINARY_POWER.get(operator.text)
             if power is None or power < min_power:
