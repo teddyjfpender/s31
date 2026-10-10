@@ -99,7 +99,7 @@ fn hasDivisionWidth(program: relation.Program, width: u32, require_unsigned: boo
 /// A raw u16 array may skip the fixed table only when every direct use is
 /// an integer view of one supported width. Arithmetic bit decomposition
 /// proves every source limb's range. Wide arithmetic is admitted only for
-/// unsigned 32-bit division in the direct profile.
+/// unsigned division in the direct profile.
 fn arithmeticInputWidth(program: relation.Program, input: relation.Input, allow_wide: bool) ?u32 {
     if (input.kind != .u16) return null;
     var width: ?u32 = null;
@@ -109,7 +109,7 @@ fn arithmeticInputWidth(program: relation.Program, input: relation.Input, allow_
                 const spec = if (node.op == .int_view) relation.IntegerSpec.decode(node.constant) else null;
                 if (spec == null or input.length != spec.?.limbCount()) return null;
                 if (spec.?.width != 8 and spec.?.width != 16 and
-                    !(allow_wide and spec.?.width == 32 and !spec.?.signed)) return null;
+                    !(allow_wide and (spec.?.width == 32 or spec.?.width == 64 or spec.?.width == 128) and !spec.?.signed)) return null;
                 if (width != null and width.? != spec.?.width) return null;
                 width = spec.?.width;
             }
@@ -121,7 +121,7 @@ fn arithmeticInputWidth(program: relation.Program, input: relation.Input, allow_
         if (std.mem.eql(u8, assertion.lhs, input.name) or std.mem.eql(u8, assertion.rhs, input.name)) return null;
     }
     for (program.public_outputs) |name| if (std.mem.eql(u8, name, input.name)) return null;
-    if (width) |w| if (hasDivisionWidth(program, w, w == 32)) return w;
+    if (width) |w| if (hasDivisionWidth(program, w, w > 16)) return w;
     return null;
 }
 
@@ -1047,7 +1047,7 @@ fn intDivRem(comptime V: type, ctx: *circuit.builder.Context(V), cache: *BitCach
             .quotient = if (direct_word) try intConditionalNegateArithmetic(V, ctx, cache, magnitude.quotient[0], quotient_negative, spec.width) else try intConditionalNegate(V, ctx, magnitude.quotient, quotient_negative, spec.width),
             .remainder = if (direct_word) try intConditionalNegateArithmetic(V, ctx, cache, magnitude.remainder[0], sa, spec.width) else try intConditionalNegate(V, ctx, magnitude.remainder, sa, spec.width),
         };
-    } else if (direct_arithmetic and spec.width == 32)
+    } else if (direct_arithmetic and spec.width > 16)
         try integer_division.divRemArithmetic(V, ctx, left, right, spec.width)
     else
         try integer_division.divRem(V, ctx, left, right, spec.width, left_byte_bounded, right_byte_bounded);

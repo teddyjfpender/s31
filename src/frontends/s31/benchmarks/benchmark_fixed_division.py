@@ -21,7 +21,8 @@ def limbs(value: int, width: int) -> list[int]:
     return [(value >> (16 * i)) & 0xffff for i in range(max(1, width // 16))]
 
 
-def encode(kind: str, numerator: int, divisor: int) -> dict:
+def encode(kind: str, numerator: int, divisor: int,
+           output_name: str = "result", quotient_only: bool = False) -> dict:
     width = int(kind.lstrip("ui"))
     mask = (1 << width) - 1
     quotient = abs(numerator) // abs(divisor)
@@ -32,8 +33,8 @@ def encode(kind: str, numerator: int, divisor: int) -> dict:
         "public_inputs": {},
         "private_inputs": {"numerator": limbs(numerator & mask, width),
                            "divisor": limbs(divisor & mask, width)},
-        "public_outputs": {"result": limbs(quotient & mask, width) +
-                           limbs(remainder & mask, width)},
+        "public_outputs": {output_name: limbs(quotient & mask, width) +
+                           ([] if quotient_only else limbs(remainder & mask, width))},
     }
 
 
@@ -72,20 +73,23 @@ def corpus(kind: str, count: int, seed: int) -> list[tuple[int, int]]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("kind", choices=("u8", "i8", "u16", "i16", "u32"))
+    parser.add_argument("kind", choices=("u8", "i8", "u16", "i16", "u32", "u64", "u128"))
     parser.add_argument("--count", type=int, default=20)
     parser.add_argument("--seed", type=int, default=0x5310)
     parser.add_argument("--out", type=Path, required=True)
     args = parser.parse_args()
 
-    source = S31 / "examples/math/division" / f"{args.kind}_div_rem.s31"
+    source_name = f"{args.kind}_div_quotient.s31" if args.kind == "u128" else f"{args.kind}_div_rem.s31"
+    source = S31 / "examples/math/division" / source_name
     warmup = source.with_suffix(".valid.json")
     relation, _ = compile_text(source.read_text(), str(source))
+    output_name = relation["public_outputs"][0]
     output = args.out.resolve()
     output.mkdir(parents=True, exist_ok=True)
     assignment_paths = []
     for index, (numerator, divisor) in enumerate(corpus(args.kind, args.count, args.seed)):
-        assignment = encode(args.kind, numerator, divisor)
+        assignment = encode(args.kind, numerator, divisor, output_name,
+                            quotient_only=args.kind == "u128")
         if evaluate_relation(relation, assignment) != assignment["public_outputs"]:
             raise AssertionError(f"independent oracle rejected {args.kind} corpus case {index}")
         path = output / "assignments" / f"{index:03d}.json"

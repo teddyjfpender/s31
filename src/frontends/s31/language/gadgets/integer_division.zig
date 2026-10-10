@@ -322,6 +322,10 @@ fn testWords(ctx: *Context(QM31), value: u128, width: u32) ![]Var {
     return witnessWords(QM31, ctx, value, width);
 }
 
+fn testArithmeticWords(ctx: *Context(QM31), value: u128, width: u32) ![]Var {
+    return witnessWordsArithmetic(QM31, ctx, value, width);
+}
+
 test "unsigned division constrains all widths and rejects false witnesses" {
     const cases = [_]struct { width: u32, n: u128, d: u128 }{
         .{ .width = 8, .n = 201, .d = 14 },
@@ -457,5 +461,36 @@ test "arithmetic-only 32-bit division proves high product and word bounds" {
         try std.testing.expectEqual(case.valid, valid);
         try std.testing.expectEqual(@as(usize, 0), ctx.circuit.m31_to_u32.items.len);
         try std.testing.expectEqual(@as(usize, 0), ctx.circuit.eq.items.len);
+    }
+}
+
+test "arithmetic-only 64- and 128-bit division proves the full product" {
+    const cases = [_]struct { width: u32, n: u128, d: u128 }{
+        .{ .width = 64, .n = 0x123456789abcdef0, .d = 0x10001 },
+        .{ .width = 128, .n = std.math.maxInt(u128), .d = 0x10000000000000001 },
+    };
+    for (cases) |case| {
+        const correct = Witness{ .quotient = case.n / case.d, .remainder = case.n % case.d };
+        const false_remainder = Witness{ .quotient = correct.quotient - 1,
+            .remainder = correct.remainder + case.d };
+        const high = @as(u128, 1) << @as(u7, @intCast(case.width / 2));
+        const witnesses = [_]struct { n: u128, d: u128, witness: Witness, valid: bool }{
+            .{ .n = case.n, .d = case.d, .witness = correct, .valid = true },
+            .{ .n = case.n, .d = case.d, .witness = false_remainder, .valid = false },
+            .{ .n = 0, .d = high, .witness = .{ .quotient = high, .remainder = 0 }, .valid = false },
+        };
+        for (witnesses) |item| {
+            var ctx = try Context(QM31).init(std.testing.allocator, 1);
+            defer ctx.deinit();
+            const numerator = try testArithmeticWords(&ctx, item.n, case.width);
+            const denominator = try testArithmeticWords(&ctx, item.d, case.width);
+            const result = try divRemArithmeticWithWitness(QM31, &ctx, numerator, denominator,
+                case.width, item.witness);
+            try ctx.setOutputs(&.{result.quotient[0]});
+            try ctx.finalize(false);
+            try std.testing.expectEqual(item.valid, try ctx.isCircuitValid());
+            try std.testing.expectEqual(@as(usize, 0), ctx.circuit.m31_to_u32.items.len);
+            try std.testing.expectEqual(@as(usize, 0), ctx.circuit.eq.items.len);
+        }
     }
 }

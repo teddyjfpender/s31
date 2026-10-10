@@ -570,7 +570,41 @@ digits are constrained by Boolean bit reconstruction. Each product column
 has at most four byte products; even the general 128-bit version has at
 most sixteen, keeping its field equations below the M31 modulus. This
 unsigned 32-bit source can therefore use the arithmetic-only `direct-gate`
-profile. Wider unsigned and signed values still use sparse-wide lowering.
+profile. The same bounded-column argument applies to unsigned 64- and
+128-bit division. Signed widths above 16 bits still use sparse-wide lowering.
+
+### Eight- and sixteen-byte unsigned division
+
+The [`u64` source](../examples/math/division/u64_div_rem.s31) checks the
+following exact integer calculation:
+
+$$
+\mathtt{0x123456789abcdef0}
+=\mathtt{0x123444445678}\cdot\mathtt{0x10001}+\mathtt{0x8878},
+\qquad \mathtt{0x8878}<\mathtt{0x10001}.
+$$
+
+There are eight byte columns for the 64-bit result and eight additional
+high product columns constrained to zero. In the low column the quotient
+byte 120, divisor byte 1, and remainder byte 120 give
+$120\cdot1+120=240$, the low numerator byte. At column two, the low
+divisor byte and its byte-two value contribute
+$68\cdot1+120\cdot1=188$, matching the numerator byte. The strict
+remainder comparison proves a zero terminal borrow across all eight bytes.
+All input, quotient, remainder, carry, and borrow bytes are reconstructed
+from proved Boolean bits. The source uses `direct-gate`; its proof has no
+range lookup or Eq component.
+
+The [`u128` quotient source](../examples/math/division/u128_div_quotient.s31)
+checks $(2^{128}-1)=(2^{64}-1)(2^{64}+1)+0$. Its public output is only the
+eight 16-bit quotient limbs because the direct public ABI has eight words.
+The remainder is still fully constrained. Sixteen result-byte columns,
+sixteen zero high-product columns, and sixteen strict-comparison columns
+prove the same exact equation. Even in the widest product column there are
+at most sixteen byte products: $16\cdot255^2$ plus bounded carry and
+remainder is strictly below the M31 modulus $2^{31}-1$. Each field
+equality therefore represents an integer equality, including high columns;
+no high product bits can disappear through field wrap or truncation.
 
 Both profiles bind their constraints and public statement to a native
 verification key. The [native division gate](../tests/acceptance/math/division.py)
@@ -588,7 +622,9 @@ the preceding generic implementation:
 | `i16_div_rem` | Direct word | 969 | 8,192 | 73,409 |
 | `u32_div_rem` | Sparse-wide | 136 | 67,840 | 238,377 |
 | `u32_div_rem` | Direct | 1,282 | 16,384 | 90,241 |
+| `u64_div_rem` | Direct | 2,580 | 32,768 | 112,923 |
 | `u128_div_quotient` | Wide | 802 | 74,752 | 234,484 |
+| `u128_div_quotient` | Direct | 5,380 | 65,536 | 142,865 |
 | `i128_div_quotient` | Wide | 1,121 | 83,200 | 239,293 |
 
 The [baseline measurement](../../../../design/s31/measurements/language/fixed-width-division-2026-10-10.json)
@@ -612,12 +648,18 @@ evaluation for every run:
 | `i16_div_rem` | Sparse-wide | 228,313 bytes | 93.7 ms | 15.86 ms |
 | `u32_div_rem` | Direct | 92,802 bytes | 57.7 ms | 2.38 ms |
 | `u32_div_rem` | Sparse-wide | 234,568 bytes | 80.8 ms | 16.02 ms |
+| `u64_div_rem` | Direct | 112,623 bytes | 81.0 ms | 3.25 ms |
+| `u64_div_rem` | Sparse-wide | 235,466 bytes | 117.7 ms | 16.35 ms |
+| `u128_div_quotient` | Direct | 137,388 bytes | 84.2 ms | 4.55 ms |
+| `u128_div_quotient` | Sparse-wide | 232,517 bytes | 123.0 ms | 16.69 ms |
 
 The matched sources have the same normalized relation and visible FRI
 settings. Wall times include process startup and a variable proof-of-work
 search; the full wall timings are mixed at these small sizes, while the
 fixed-cell, proof-byte, and non-PoW improvements are consistent. These local
 medians are not a cross-machine performance guarantee.
+Median native verification in the wide unsigned runs was 13.4 ms direct
+versus 17.4 ms sparse-wide for `u64`, and 14.3 ms versus 18.0 ms for `u128`.
 Matching visible FRI settings alone does not prove equal soundness across
 different AIRs. The
 [Lean division model](../../../../formal/s31/S31/Gadgets/IntegerDivision.lean)
@@ -625,9 +667,11 @@ proves Euclidean uniqueness, bounded columns, and the no-wrap direct-byte and
 direct-word equations. A formal correspondence from production Zig gates to that model
 remains open.
 
-The [`u32` paired record](../../../../design/s31/measurements/language/direct-u32-division-2026-10-10.json)
-uses the same 20-witness method. Its direct profile removes the range-table
-component while preserving the source and public output relation.
+The [`u32` record](../../../../design/s31/measurements/language/direct-u32-division-2026-10-10.json),
+[`u64` record](../../../../design/s31/measurements/language/direct-u64-division-2026-10-10.json),
+and [`u128` record](../../../../design/s31/measurements/language/direct-u128-division-2026-10-10.json)
+use the same 20-witness method. The direct profile removes the range-table
+component while preserving each source and public output relation.
 
 ## Where the AIR and proof enter
 
