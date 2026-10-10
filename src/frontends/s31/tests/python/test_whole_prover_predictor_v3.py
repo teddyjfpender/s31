@@ -11,7 +11,7 @@ from unittest.mock import patch
 S31_ROOT = Path(__file__).resolve().parents[2]
 sys.path[:0] = [str(S31_ROOT / "benchmarks"), str(S31_ROOT / "python")]
 
-from benchmark_whole_prover_cost_v3 import workload_cases
+from benchmark_whole_prover_cost_v3 import host_identity, workload_cases
 from publish_whole_prover_cost_v3 import publish
 from whole_prover_predictor_v3 import PROTOCOL, evaluate, fit_model
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -88,6 +88,14 @@ class WholeProverV3Tests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.protocol = json.loads(PROTOCOL.read_text())
+
+    def test_host_identity_is_stable_and_pseudonymous(self) -> None:
+        from platform import node
+        identity = host_identity()
+        self.assertEqual(identity, host_identity())
+        self.assertEqual(identity["host_id_sha256"], hashlib.sha256(node().encode()).hexdigest())
+        self.assertNotIn(node(), json.dumps(identity))
+        self.assertTrue(identity["cpu_model"])
 
     def test_new_split_and_independent_oracles(self) -> None:
         from package.context import lower_text

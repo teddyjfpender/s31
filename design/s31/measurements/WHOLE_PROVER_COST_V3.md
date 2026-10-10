@@ -6,6 +6,11 @@ whole-prover run](STAGE_AWARE_COST_V1.md) and the [v2 arithmetic RSS
 follow-up](ARITHMETIC_RSS_V2.md): all v3 wall, proof-byte and peak-RSS targets
 must be trained and evaluated under **one compiler fingerprint**. This is a
 prospective test of prediction, not a claim that proving became faster.
+Before the first timed training proof, the runner was tightened to record a
+stable SHA-256 pseudonym of the host name and the CPU model. The model requires
+exact train/held-out host-object equality. No raw host name is saved in the
+tracked audit. This pre-timing tooling amendment did not change the protocol
+JSON or any source program, package, target or accuracy threshold.
 
 ## What is measured
 

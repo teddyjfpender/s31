@@ -13,6 +13,7 @@ import hashlib
 import json
 import platform
 import random
+import subprocess
 import sys
 from pathlib import Path
 
@@ -31,7 +32,22 @@ from benchmark_arithmetic_rss_v2 import program as recurrence_program
 from runtime.cost_model import observed_cost_model
 
 PROTOCOL = ROOT / "design/s31/measurements/whole-prover-cost-v3.json"
-SIGNED_WIDTHS = (8, 16, 32, 64)
+
+
+def host_identity() -> dict:
+    """Bind train/validation to one host without publishing its raw hostname."""
+    node = platform.node()
+    if not node:
+        raise ValueError("host identity is unavailable")
+    cpu = subprocess.run(["sysctl", "-n", "machdep.cpu.brand_string"],
+                         capture_output=True, text=True, check=False)
+    model = cpu.stdout.strip() if cpu.returncode == 0 else platform.processor()
+    if not model:
+        raise ValueError("CPU model is unavailable")
+    return {"host_id_sha256": hashlib.sha256(node.encode()).hexdigest(),
+            "cpu_model": model,
+            "platform": platform.platform(), "machine": platform.machine(),
+            "python": platform.python_version(), "zig": s31.invoke("zig", "version").strip()}
 
 
 def signed_words(value: int, width: int) -> list[int]:
@@ -271,8 +287,7 @@ def main() -> None:
     report = {
         "schema": "s31-whole-prover-cost-corpus-v3", "split": args.split,
         "protocol_sha256": hashlib.sha256(protocol_bytes).hexdigest(),
-        "host": {"platform": platform.platform(), "machine": platform.machine(),
-                 "python": platform.python_version(), "zig": s31.invoke("zig", "version").strip()},
+        "host": host_identity(),
         "samples_per_program": samples,
         "package_build_order": [item["workload"]["name"] for item in prepared],
         "proof_order": proof_order,
