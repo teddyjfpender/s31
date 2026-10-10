@@ -43,6 +43,41 @@ theorem hasGate_on_wire (rows : List Row) (externalUses externalYields : List Ev
     hbalance hunique row hrow hm hair
   simpa only [h0, h1, hout, hflags] using h
 
+def below35 (gate : TextSquare4Native.Gate) : Prop :=
+  gate.input0 < 35 ∧ gate.input1 < 35 ∧ gate.output < 35
+
+theorem hasGate_on_wire_below (rows : List Row)
+    (externalUses externalYields : List Event)
+    (hbalance : balanced rows externalUses externalYields)
+    (hunique : uniqueProducedBelow (allYields rows externalYields) 35)
+    (gate : TextSquare4Native.Gate) (op : S31.Gadgets.Air.Qm31Ops.Op)
+    (hbound : below35 gate) (hgate : hasGate rows gate op) :
+    accepts (encode op)
+      (producedWire (allYields rows externalYields) gate.input0)
+      (producedWire (allYields rows externalYields) gate.input1)
+      (producedWire (allYields rows externalYields) gate.output) := by
+  obtain ⟨row, hrow, h0, h1, hout, hflags, hm, hair⟩ := hgate
+  have hr0 : row.in0Address < 35 := by rw [h0]; exact hbound.1
+  have hr1 : row.in1Address < 35 := by rw [h1]; exact hbound.2.1
+  have hrout : row.outAddress < 35 := by rw [hout]; exact hbound.2.2
+  have h := row_accepts_on_wire_below rows externalUses externalYields 35
+    hbalance hunique row hrow hm hr0 hr1 hrout hair
+  simpa only [h0, h1, hout, hflags] using h
+
+theorem inputCopy_below (i : Fin 4) : below35 (inputCopy i.val) := by
+  fin_cases i <;> (unfold below35; decide)
+theorem packMul_below (i : Fin 3) : below35 (packMul i.val) := by
+  fin_cases i <;> (unfold below35; decide)
+theorem packAdd_below (i : Fin 3) : below35 (packAdd i.val) := by
+  fin_cases i <;> (unfold below35; decide)
+theorem outputPoint_below (i : Fin 4) : below35 (outputPoint i.val) := by
+  fin_cases i <;> (unfold below35; decide)
+theorem outputInverse_below (i : Fin 4) :
+    below35 (outputInverse (i.val - 1)) := by
+  fin_cases i <;> (unfold below35; decide)
+theorem outputCopy_below (i : Fin 4) : below35 (outputCopy i.val) := by
+  fin_cases i <;> (unfold below35; decide)
+
 /-- The 23 arithmetic gates on the source-generated input-to-output path.
 Other native range and representation rows may also occur in `rows`. -/
 def nativePathRows (rows : List Row) : Prop :=
@@ -72,14 +107,14 @@ def pinnedEvents (produced : List Event) (input claimed : Fin 4 → M31) : Prop 
   (∀ i : Fin 4, (publicOutputWire i.val,
       base (Field.toZMod (claimed i))) ∈ produced)
 
-/-- Exact Gate balance, unique producers, local AIR acceptance of each
-source-generated path gate, and pinned public/constant events force the full
-public fourth-power statement. -/
-theorem native_public_claim_of_gate_balance
+/-- Only addresses below 35 need unique produced values. The exported path
+uses addresses 0–34, so permutation scratch producers at higher addresses may
+share an address without weakening this circuit statement. -/
+theorem native_public_claim_of_gate_balance_below
     (rows : List Row) (externalUses externalYields : List Event)
     (input claimed : Fin 4 → M31)
     (hbalance : balanced rows externalUses externalYields)
-    (hunique : uniqueProduced (allYields rows externalYields))
+    (hunique : uniqueProducedBelow (allYields rows externalYields) 35)
     (hpath : nativePathRows rows)
     (hpins : pinnedEvents (allYields rows externalYields) input claimed) :
     claimed = TextSquare4Air.fourth input := by
@@ -87,27 +122,34 @@ theorem native_public_claim_of_gate_balance
   let wire := producedWire produced
   have hgate (gate : TextSquare4Native.Gate)
       (op : S31.Gadgets.Air.Qm31Ops.Op)
+      (hbound : below35 gate)
       (h : hasGate rows gate op) :
       accepts (encode op) (wire gate.input0) (wire gate.input1)
         (wire gate.output) :=
-    hasGate_on_wire rows externalUses externalYields hbalance hunique gate op h
+    hasGate_on_wire_below rows externalUses externalYields
+      hbalance hunique gate op hbound h
   have hpin (address : Nat) (value : Quad)
+      (hbound : address < 35)
       (h : (address, value) ∈ produced) : wire address = value :=
-    producedWire_eq produced hunique address value h
+    producedWire_eq_below produced 35 hunique address hbound value h
   rcases hpins with ⟨hzero, hinput, hb1, hb2, hb3, hunit, hinverse, houtput⟩
   rcases hpath with ⟨hcopyIn, hpackMul, hpackAdd, hfirst, hsecond,
     hpoint, hmulOut, hcopyOut⟩
   have hinput' : inputBoundary wire input :=
-    ⟨hpin _ _ hzero, fun i => ⟨hgate _ .add (hcopyIn i),
-      hpin _ _ (hinput i)⟩⟩
+    ⟨hpin _ _ (by decide) hzero,
+      fun i => ⟨hgate _ .add (inputCopy_below i) (hcopyIn i),
+        hpin _ _ (by fin_cases i <;> decide) (hinput i)⟩⟩
   have harithmetic : arithmeticGateRows wire :=
-    ⟨hpin _ _ hb1, hpin _ _ hb2, hpin _ _ hb3,
-      (fun i => hgate _ .mul (hpackMul i)),
-      (fun i => hgate _ .add (hpackAdd i)),
-      hgate _ (s31Op true) hfirst,
-      hgate _ (s31Op true) hsecond⟩
+    ⟨hpin _ _ (by decide) hb1,
+      hpin _ _ (by decide) hb2,
+      hpin _ _ (by decide) hb3,
+      (fun i => hgate _ .mul (packMul_below i) (hpackMul i)),
+      (fun i => hgate _ .add (packAdd_below i) (hpackAdd i)),
+      hgate _ (s31Op true) (by unfold below35; decide) hfirst,
+      hgate _ (s31Op true) (by unfold below35; decide) hsecond⟩
   have houtput' : nativeOutputRows wire claimed :=
-    ⟨(fun i => ⟨hpin _ _ (hunit i), hgate _ .pointwiseMul (hpoint i)⟩),
+    ⟨(fun i => ⟨hpin _ _ (by fin_cases i <;> decide) (hunit i),
+        hgate _ .pointwiseMul (outputPoint_below i) (hpoint i)⟩),
       (fun i => by
         by_cases hi : i.val = 0
         · simp [hi]
@@ -116,9 +158,51 @@ theorem native_public_claim_of_gate_balance
           simp only [hi, ↓reduceIte] at hm
           have hu := hinverse i
           simp only [hi, ↓reduceIte] at hu
-          exact ⟨hpin _ _ hu, hgate _ .mul hm⟩),
-      (fun i => ⟨hgate _ .add (hcopyOut i), hpin _ _ (houtput i)⟩)⟩
+          exact ⟨hpin _ _ (by fin_cases i <;> decide) hu,
+            hgate _ .mul (outputInverse_below i) hm⟩),
+      (fun i => ⟨hgate _ .add (outputCopy_below i) (hcopyOut i),
+        hpin _ _ (by fin_cases i <;> decide) (houtput i)⟩)⟩
   exact native_public_claim_sound wire input claimed
     hinput' harithmetic houtput'
+
+/-- The simpler full-uniqueness statement follows from the declared-address
+version; it remains useful for circuits without scratch producers. -/
+theorem native_public_claim_of_gate_balance
+    (rows : List Row) (externalUses externalYields : List Event)
+    (input claimed : Fin 4 → M31)
+    (hbalance : balanced rows externalUses externalYields)
+    (hunique : uniqueProduced (allYields rows externalYields))
+    (hpath : nativePathRows rows)
+    (hpins : pinnedEvents (allYields rows externalYields) input claimed) :
+    claimed = TextSquare4Air.fourth input :=
+  native_public_claim_of_gate_balance_below rows externalUses externalYields
+    input claimed hbalance
+    (uniqueProducedBelow_of_unique _ 35 hunique) hpath hpins
+
+/-- A successful declared-producer scan suffices for this circuit path even
+if scratch addresses elsewhere have repeated producers. Coverage identifies
+every produced event below the declared-variable bound with a checked
+declared event; multiplicity may repeat an identical event in the Gate list. -/
+theorem native_public_claim_of_checked_declared
+    (rows : List Row) (externalUses externalYields declared : List Event)
+    (bound : Nat) (result : Finset Nat)
+    (input claimed : Fin 4 → M31)
+    (hbound : 35 ≤ bound)
+    (hbalance : balanced rows externalUses externalYields)
+    (hscan : S31.Gadgets.Air.GateProducerCheck.scan bound ∅
+      (declared.map Prod.fst) = some result)
+    (hcovered : ∀ address value, address < bound →
+      (address, value) ∈ allYields rows externalYields →
+      (address, value) ∈ declared)
+    (hpath : nativePathRows rows)
+    (hpins : pinnedEvents (allYields rows externalYields) input claimed) :
+    claimed = TextSquare4Air.fourth input := by
+  have hlow := uniqueProducedBelow_of_checked_declared
+    bound declared (allYields rows externalYields) result hscan hcovered
+  have hlow35 : uniqueProducedBelow (allYields rows externalYields) 35 := by
+    intro address left right haddress hleft hright
+    exact hlow address left right (lt_of_lt_of_le haddress hbound) hleft hright
+  exact native_public_claim_of_gate_balance_below rows
+    externalUses externalYields input claimed hbalance hlow35 hpath hpins
 
 end S31.Functional.TextSquare4GateJoin

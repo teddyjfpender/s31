@@ -157,6 +157,12 @@ source-generated gates, and produced events pinning public words and
 constants, it constructs the shared address-to-value map and invokes the
 native public-claim theorem. This isolates the precise Gate and trace
 premises still needed from the native proof protocol.
+The declared-address variant checks that every selected fourth-power gate
+address is below 35, derives uniqueness there from the modeled producer scan,
+and permits repeated scratch producers above that bound. It requires every
+produced event below the native declared-variable bound to appear in the
+checked producer list; proving this coverage for emitted trace events is still
+part of source-to-model correspondence.
 
 `Functional/Arrays` extends the typed source core with `[m31; N]` values,
 pointwise addition and multiplication, static splats, indexed reads and

@@ -92,6 +92,13 @@ accepted rows for the 23 exported arithmetic gates, and produced constant and
 public events. These premises are explicit because the native trace-to-event
 correspondence, challenge reduction, and verifier protocol are still separate
 tasks. Other native rows may be present.
+`native_public_claim_of_checked_declared` needs uniqueness only below address
+35: the emitted example's selected gate addresses are all 0–34, as checked by
+Lean against the regenerated topology. A successful modeled producer scan and
+coverage of these low-address events imply the needed uniqueness, even if
+unrelated permutation scratch addresses have several producer events. The
+coverage of actual native trace events by the checked list remains an explicit
+source-to-model premise.
 The source binding regenerates the native artifact on every formal audit;
 there is still no machine-checked proof of the whole Zig compiler or STARK
 protocol.

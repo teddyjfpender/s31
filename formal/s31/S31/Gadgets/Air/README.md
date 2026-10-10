@@ -45,6 +45,12 @@ wire values. The concrete `TextSquare4GateJoin` theorem uses this bridge for
 the fourth-power circuit's 23 selected arithmetic gates. Exact Gate balance
 is the algebraic endpoint of the separate LogUp reduction; this module does
 not assume that local arithmetic rows alone join addresses.
+`uniqueProducedBelow_of_checked_declared` narrows uniqueness to addresses
+below the declared-variable bound. It consumes the modeled producer scan and
+coverage of low-address events by the checked producer list; repeated copies
+of one yielded event are allowed. The scratch counterexample has two different
+values at address 40 while all addresses below 35 remain unique. This matches
+the fact that permutation scratch rows may reuse an address.
 
 `SimdChunks.partial_row_iff` covers the short final chunk of an array. For
 any `n ≤ 4`, arbitrary M31 values may fill the unused input lanes. An accepted
