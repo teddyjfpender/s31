@@ -20,6 +20,13 @@ MATCHED_COST = (
     "preprocessed_cells", "preprocessed_columns", "preprocessed_root",
     "input_packing", "public_binding", "finalization", "fri",
 )
+EXPECTED_GEOMETRY = {
+    "profile": "direct-m31-v4",
+    "raw": {"blake_g": 0, "eq": 0, "m31_to_u32": 0,
+            "qm31_ops": 299, "triple_xor": 0},
+    "padded": {"blake_g": 0, "eq": 0, "m31_to_u32": 0,
+               "qm31_ops": 512, "triple_xor": 0},
+}
 
 
 def main() -> None:
@@ -45,6 +52,9 @@ def main() -> None:
         for field in MATCHED_COST:
             if costs["product"][field] != costs["fieldwise"][field]:
                 raise AssertionError(f"product selection changed {field}")
+        for field, expected in EXPECTED_GEOMETRY.items():
+            if costs["product"][field] != expected:
+                raise AssertionError(f"record selection changed {field} baseline")
 
         assignments = [source.with_suffix(".valid.json")]
         alternate = work / "record_choice.alternate.valid.json"

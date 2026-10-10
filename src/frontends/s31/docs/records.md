@@ -137,8 +137,15 @@ typed public record paths. The
 [handwritten fieldwise source](../examples/control/record_choice_manual.s31)
 has byte-for-byte equal normalized relation JSON; it chooses each leaf
 explicitly. No record node, field tag, or product-specific AIR row is emitted.
-The fixture has passed source lowering, strict public ABI flattening, and
-the independent value oracle; native proof validation is tracked separately.
+The fixture passes source lowering, strict public ABI flattening, and the
+independent value oracle. The native direct-gate acceptance gate builds both
+forms and compares the complete reported circuit/AIR geometry: each has 299
+raw QM31 rows, 512 padded rows, and zero rows in the other AIR components.
+It proves both selector values under the typed record ABI; the native verifier
+accepts the honest statements and rejects changed public claims. This checks
+the implemented lowering for this example; the separate Lean product theorem
+proves the per-leaf selector rule as a model, and full compiler correspondence
+remains open.
 
 ## A fixed-width integer use
 

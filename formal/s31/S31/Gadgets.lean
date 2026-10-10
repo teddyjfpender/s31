@@ -118,6 +118,7 @@ import S31.Gadgets.Functional.StaticRecurrence
 import S31.Gadgets.Functional.WorkedMix4
 import S31.Gadgets.Functional.Assertions
 import S31.Gadgets.Functional.Conditional
+import S31.Gadgets.Functional.ProductControl
 import S31.Gadgets.Functional.ArrayConditional
 import S31.Gadgets.Functional.Effects
 import S31.Gadgets.U16Selection

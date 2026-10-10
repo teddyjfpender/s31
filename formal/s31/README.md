@@ -768,6 +768,17 @@ selector is represented by an M31 expression in this small model and its
 bitness is imposed by the select constraint. The theorem does not verify
 the Python effect checker or the production `select` AIR emission.
 
+`Functional/ProductControl.select_iff` extends the same selector equation to
+an arbitrarily nested product of M31 leaves. It proves that every accepted
+leafwise constraint set selects the *entire* false or true product with one
+shared Boolean selector, and that either choice has honest witnesses.
+`equal_iff` proves that the per-leaf assertions are equivalent to whole-product
+equality. The product shape represents tuples and records only after the
+frontend has checked their types and nominal record identities. This theorem
+does not verify that the production compiler emits the leaf constraints;
+the exact source-versus-fieldwise relation and native AIR checks cover that
+implementation boundary separately.
+
 `Functional/ArrayConditional.array_if_accepts_iff` extends that statement to
 any fixed array length. It emits the selector and both complete branches into
 one strict graph. The separate selection relation constrains the shared
