@@ -67,10 +67,12 @@ def case_features(case: dict) -> dict[str, float]:
     return result
 
 
-def checked_cases(corpus: dict, split: str, protocol: dict) -> list[dict]:
-    if corpus.get("schema") != "s31-whole-prover-cost-corpus-v3.1" or corpus.get("split") != split:
+def checked_cases(corpus: dict, split: str, protocol: dict, *,
+                  protocol_path: Path = PROTOCOL,
+                  corpus_schema: str = "s31-whole-prover-cost-corpus-v3.1") -> list[dict]:
+    if corpus.get("schema") != corpus_schema or corpus.get("split") != split:
         raise ValueError(f"expected {split} whole-prover v3 corpus")
-    if corpus.get("protocol_sha256") != hashlib.sha256(PROTOCOL.read_bytes()).hexdigest():
+    if corpus.get("protocol_sha256") != hashlib.sha256(protocol_path.read_bytes()).hexdigest():
         raise ValueError("corpus/protocol mismatch")
     if corpus.get("samples_per_program") != protocol["samples_per_program"]:
         raise ValueError("wrong prospective trial count")

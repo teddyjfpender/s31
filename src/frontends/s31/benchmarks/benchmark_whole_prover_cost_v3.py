@@ -187,23 +187,20 @@ def chip_manifest_binding(package: Path) -> dict:
             "component_manifest_sha256": s31.file_hash(package / "component-manifest.json")}
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--split", choices=("train", "validation"), required=True)
-    parser.add_argument("--phase", choices=("build", "prove", "all"), default="all")
-    parser.add_argument("--model", type=Path, help="frozen training model, required for validation")
-    parser.add_argument("--out", type=Path, required=True)
-    args = parser.parse_args()
-    protocol_bytes = PROTOCOL.read_bytes()
+def run_corpus(args: argparse.Namespace, *, protocol_path: Path, protocol_schema: str,
+               model_schema: str, corpus_schema: str, build_schema: str,
+               workloads: object) -> None:
+    """Shared artifact collection; each prospective study supplies its frozen protocol."""
+    protocol_bytes = protocol_path.read_bytes()
     protocol = json.loads(protocol_bytes)
-    if protocol["schema"] != "s31-whole-prover-cost-protocol-v3.1":
+    if protocol["schema"] != protocol_schema:
         raise ValueError("unrecognized prospective protocol")
     if (args.split == "validation") != (args.model is not None):
-        parser.error("--model is required exactly for the validation split")
+        raise ValueError("--model is required exactly for the validation split")
     model_bytes = args.model.read_bytes() if args.model is not None else None
     frozen_model = json.loads(model_bytes) if model_bytes is not None else None
     if frozen_model is not None:
-        if frozen_model.get("schema") != "s31-whole-prover-cost-model-v3.1":
+        if frozen_model.get("schema") != model_schema:
             raise ValueError("validation requires a fitted stage-aware model")
         if frozen_model.get("protocol_sha256") != hashlib.sha256(protocol_bytes).hexdigest():
             raise ValueError("model was fitted under another protocol")
@@ -211,7 +208,7 @@ def main() -> None:
     output = args.out.resolve()
     output.mkdir(parents=True, exist_ok=True)
     prepared = []
-    for workload in workload_cases(args.split, output, samples, protocol):
+    for workload in workloads(args.split, output, samples, protocol):
         name = workload["name"]
         source = workload["source"]
         package_path = output / name / "package"
@@ -258,7 +255,7 @@ def main() -> None:
         raise ValueError("compiler source changed since the training model was frozen")
     if args.phase == "build":
         s31.write_json(output / "whole-prover-build-inventory.json", {
-            "schema": "s31-whole-prover-build-inventory-v3", "split": args.split,
+            "schema": build_schema, "split": args.split,
             "protocol_sha256": hashlib.sha256(protocol_bytes).hexdigest(),
             "compiler_sha256": next(iter(compiler_digests)),
             "programs": {item["workload"]["name"]: {
@@ -302,7 +299,7 @@ def main() -> None:
             "observed_cost_model": observed_cost_model(item["trials"]),
         }
     report = {
-        "schema": "s31-whole-prover-cost-corpus-v3.1", "split": args.split,
+        "schema": corpus_schema, "split": args.split,
         "protocol_sha256": hashlib.sha256(protocol_bytes).hexdigest(),
         "host": host_identity(),
         "samples_per_program": samples,
@@ -314,6 +311,21 @@ def main() -> None:
     }
     s31.write_json(output / "whole-prover-corpus.json", report)
     print(output / "whole-prover-corpus.json")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--split", choices=("train", "validation"), required=True)
+    parser.add_argument("--phase", choices=("build", "prove", "all"), default="all")
+    parser.add_argument("--model", type=Path, help="frozen training model, required for validation")
+    parser.add_argument("--out", type=Path, required=True)
+    args = parser.parse_args()
+    run_corpus(args, protocol_path=PROTOCOL,
+               protocol_schema="s31-whole-prover-cost-protocol-v3.1",
+               model_schema="s31-whole-prover-cost-model-v3.1",
+               corpus_schema="s31-whole-prover-cost-corpus-v3.1",
+               build_schema="s31-whole-prover-build-inventory-v3",
+               workloads=workload_cases)
 
 
 if __name__ == "__main__":
