@@ -1,0 +1,71 @@
+{
+  "schema": "s31-whole-prover-cost-protocol-v3",
+  "status": "predeclared-before-native-measurement",
+  "source_base_commit": "b90507c",
+  "host_policy": "one named host and one compiler fingerprint for every train/validation package; no cross-host reliability claim",
+  "samples_per_program": 20,
+  "split_policy": "fit only on training programs and witnesses; save model before held-out package builds; reject duplicate source or assignment digests; require exact profile, FRI and compiler match",
+  "splits": {
+    "train": {
+      "arithmetic_rounds": [24, 96, 384, 1536, 6144],
+      "arithmetic_constant": 7,
+      "chip_rounds": [16, 64, 256, 1024, 4096],
+      "chip_constant": 7,
+      "hash_depths": [1, 3, 5, 7],
+      "signed_widths": [8, 16, 32, 64],
+      "signed_output": "quotient_and_remainder",
+      "assignment_index_base": 310000
+    },
+    "validation": {
+      "arithmetic_rounds": [48, 192, 768, 3072],
+      "arithmetic_constant": 11,
+      "chip_rounds": [32, 128, 512, 2048],
+      "chip_constant": 11,
+      "hash_depths": [2, 4, 6, 8],
+      "signed_widths": [8, 16, 32, 64],
+      "signed_output": "quotient_only",
+      "assignment_index_base": 410000
+    }
+  },
+  "profiles": {
+    "arithmetic": "direct-gate",
+    "chip": "direct-chip",
+    "hash": "gate",
+    "fixed_width": "direct-gate"
+  },
+  "chip_manifest_policy": "every direct-chip package must carry s31-component-manifest-direct-chip-v2 with exactly one chip_call at call_id 0, bound in sealed native key and package manifest",
+  "features": {
+    "raw_rows": "sum of raw component rows",
+    "padded_rows": "sum of padded component rows",
+    "preprocessed_cells": "cost-report fixed/preprocessed cells",
+    "hash_work": "1 + raw blake_g rows; used for opaque gate hash prove stage"
+  },
+  "stage_features": {
+    "runtime_witness_seconds": "raw_rows",
+    "runtime_setup_seconds": "preprocessed_cells",
+    "runtime_prove_excluding_pow_seconds": "raw_rows",
+    "runtime_runtime_other_seconds": "padded_rows",
+    "prover_process_unattributed_seconds": "constant",
+    "native_verify_process_wall_seconds": "padded_rows",
+    "runtime_interaction_pow_seconds": "padded_rows",
+    "runtime_fri_pow_seconds": "padded_rows",
+    "runtime_prove_seconds_when_pow_opaque": "hash_work",
+    "proof_bytes": "padded_rows",
+    "prover_peak_rss_bytes": "padded_rows"
+  },
+  "model": "per-family, per-stage training-program median log-linear fit versus declared feature; arithmetic direct-gate RSS alone uses positive affine bytes = intercept + slope * padded_rows, with additive leave-one-program-out and trial residual interval; all other RSS and proof bytes use log-linear fits",
+  "pow_variance": "direct gate/chip interaction and FRI PoW are separate stages; generic hash PoW remains opaque within prove stage. Preserve all 20 timings/program; report stage median/p90/max and coefficient of variation. For stochastic stages, interval trial-ratio endpoints are the full observed training min/max, widened by leave-one-program-out model error. This is an empirical diagnostic interval, not a tail bound",
+  "targets": ["paired_prove_and_verify_wall_seconds", "proof_bytes", "prover_peak_rss_bytes"],
+  "accuracy_gate": {
+    "minimum_train_programs_per_family": 4,
+    "minimum_validation_programs_per_family": 4,
+    "minimum_validation_trials_per_program": 20,
+    "per_family_whole_wall_program_median_p90_relative_error_max": 0.25,
+    "per_family_whole_wall_trial_interval_coverage_min": 0.80,
+    "per_family_whole_wall_median_interval_upper_to_measured_median_max": 8.0,
+    "per_family_proof_bytes_program_median_p90_relative_error_max": 0.10,
+    "per_family_prover_rss_program_median_p90_relative_error_max": 0.10,
+    "per_family_proof_bytes_and_rss_trial_interval_coverage_min": 0.80
+  },
+  "selection_policy": "automatic lowering remains disabled even after a local pass; prospective cross-host validation, cached setup, paired-profile comparison, and soundness equivalence are separate prerequisites"
+}
