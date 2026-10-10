@@ -12,6 +12,7 @@ const compiler = @import("../language/relation_compiler.zig");
 const admission = @import("../language/bounded_call_admission.zig");
 const v4 = @import("bounded_component_manifest.zig");
 const sealed = @import("component_manifest.zig");
+const live_pair = @import("pair_source_binding.zig");
 const M31 = core.fields.m31.M31;
 const QM31 = core.fields.qm31.QM31;
 const Sha256 = std.crypto.hash.sha2.Sha256;
@@ -142,7 +143,8 @@ pub const TwoCallInspection = struct {
 /// Recompile and inspect the exact selected bundled AIR and both native chip
 /// and bridge handles. This returns metadata, never a key or proof verifier.
 /// The guard is intentional: current tagged native handles reject call IDs
-/// 2..7 and the native PCS roster is hardcoded to two calls.
+/// 2..7 and the native PCS roster is hardcoded to two calls. Even for two
+/// calls, the source must pass the live V3 pair grammar and cross-path check.
 pub fn inspectTwoCall(
     allocator: std.mem.Allocator,
     source_bytes: []const u8,
@@ -151,6 +153,20 @@ pub fn inspectTwoCall(
     const topology = try compileSourceTopology(allocator, source_bytes);
     if (topology.call_count != cpu.private_pair_boundary.n_calls)
         return error.NativeHandleCountUnsupported;
+    var live = try live_pair.derive(allocator, source_bytes, air_bundle_bytes, 1);
+    defer live.deinit();
+    return inspectAgainstLivePair(allocator, source_bytes, air_bundle_bytes, topology, &live);
+}
+
+// Kept private so a caller cannot substitute a supposed V3 binding. The
+// public inspection above always obtains it from the live source binding path.
+fn inspectAgainstLivePair(
+    allocator: std.mem.Allocator,
+    source_bytes: []const u8,
+    air_bundle_bytes: []const u8,
+    topology: Topology,
+    live: *const live_pair.Binding,
+) !TwoCallInspection {
     var parsed = try relation.parseProgram(allocator, source_bytes);
     defer parsed.deinit();
     var maps = compiler.Maps{};
@@ -175,6 +191,7 @@ pub fn inspectTwoCall(
         [_]u8{0} ** 32,
     );
     defer pair_generated.deinit();
+    try compareLivePairBinding(allocator, topology, root, pp.traceLogSize(), pair_generated.value, live);
     const selected = pair_generated.value.components[0];
     var selected_hash: v4.Digest = undefined;
     if (selected.program_binding_sha256.len != 64) return error.InvalidSelectedAirIdentity;
@@ -194,8 +211,61 @@ pub fn inspectTwoCall(
     };
     var generated = try v4.fromSource(allocator, source_bytes, air_bundle_bytes, facts);
     errdefer generated.deinit();
+    try attachCompiledEndpoints(&generated, topology.callSlice());
     try compareNativeRoster(generated.value, pair_generated.value, topology.callSlice());
     return .{ .topology = topology, .generated = generated, .preprocessed_root = root };
+}
+
+fn attachCompiledEndpoints(generated: *v4.Generated, calls: []const EndpointCall) !void {
+    if (generated.value.calls.len != calls.len) return error.BoundedCallCountMismatch;
+    const rebound = try generated.arena.allocator().dupe(v4.Call, generated.value.calls);
+    for (rebound, calls) |*entry, compiled| {
+        if (entry.call_id != compiled.call_id or entry.source_node_id != compiled.source_node_id or
+            entry.input_node_id != compiled.input_node_id or entry.rounds != compiled.rounds or
+            entry.constant != compiled.constant or entry.endpoints != null)
+            return error.BoundedCompiledEndpointMismatch;
+        entry.endpoints = .{ .input = compiled.input, .output = compiled.output };
+    }
+    generated.value.calls = rebound;
+}
+
+fn compareLivePairBinding(
+    allocator: std.mem.Allocator,
+    topology: Topology,
+    root: v4.Digest,
+    trace_log_size: u32,
+    bounded_pair_manifest: sealed.PairManifest,
+    live: *const live_pair.Binding,
+) !void {
+    if (topology.call_count != cpu.private_pair_boundary.n_calls or
+        !std.mem.eql(u8, &topology.source_sha256, &live.source_digest) or
+        !std.mem.eql(u8, &topology.canonical_ir_sha256, &live.ir_digest) or
+        !std.mem.eql(u8, &root, &live.preprocessed_root) or
+        trace_log_size != live.trace_log_size or
+        bounded_pair_manifest.components.len != live.generated.value.components.len or
+        bounded_pair_manifest.components.len != 5)
+        return error.BoundedLivePairMismatch;
+    for (topology.callSlice(), live.plan.calls, 0..) |bounded_call, v3_call, id| {
+        if (bounded_call.call_id != id or bounded_call.call_id != v3_call.call_id or
+            bounded_call.rounds != v3_call.rounds or
+            bounded_call.constant != v3_call.constant.toU32() or
+            !std.meta.eql(bounded_call.input, v3_call.input) or
+            !std.meta.eql(bounded_call.output, v3_call.output))
+            return error.BoundedLivePairMismatch;
+    }
+    const bounded_air = bounded_pair_manifest.components[0];
+    const v3_air = live.generated.value.components[0];
+    if (bounded_air.source_index != v3_air.source_index or
+        !std.mem.eql(u8, bounded_air.program_binding_sha256, v3_air.program_binding_sha256) or
+        bounded_air.trace_log_size != v3_air.trace_log_size or
+        bounded_air.evaluation_log_size != v3_air.evaluation_log_size or
+        bounded_air.base_trace_columns != v3_air.base_trace_columns or
+        bounded_air.interaction_trace_columns != v3_air.interaction_trace_columns or
+        bounded_air.n_constraints != v3_air.n_constraints or
+        bounded_air.random_coefficient_offset != v3_air.random_coefficient_offset or
+        !std.mem.eql(u32, bounded_air.preprocessed_indices, v3_air.preprocessed_indices) or
+        !try sealed.matchesPair(allocator, bounded_pair_manifest, live.generated.value))
+        return error.BoundedLivePairMismatch;
 }
 
 /// Rederive all source, circuit and native facts. A candidate altered together
@@ -240,9 +310,11 @@ fn compareNativeRoster(value: v4.Manifest, actual: sealed.PairManifest, calls: [
         value.claimed_sums != actual.claimed_sums)
         return error.BoundedNativeRosterMismatch;
     for (calls, actual.pair_calls, value.calls) |compiled, native, source| {
+        const endpoints = source.endpoints orelse return error.BoundedNativeRosterMismatch;
         if (compiled.call_id != native.call_id or compiled.call_id != source.call_id or
             compiled.rounds != native.rounds or compiled.rounds != source.rounds or
             compiled.constant != native.constant or compiled.constant != source.constant or
+            !std.meta.eql(compiled.input, endpoints.input) or !std.meta.eql(compiled.output, endpoints.output) or
             !std.meta.eql(compiled.input, native.input) or !std.meta.eql(compiled.output, native.output))
             return error.BoundedNativeRosterMismatch;
     }
@@ -344,8 +416,20 @@ test "bounded two-call inspection rebinds selected AIR and native handle geometr
     try std.testing.expectEqual(@as(usize, 5), inspection.generated.value.components.len);
     try std.testing.expectEqual(@as(u32, 46), inspection.generated.value.main_columns);
     try std.testing.expectEqual(@as(u32, 64), inspection.generated.value.interaction_columns);
+    try std.testing.expect(inspection.generated.value.calls[0].endpoints != null);
     try std.testing.expect(try matchesTwoCallInspection(a, &inspection, source, air));
     const original_digest = v4.precommitmentDigest(inspection.generated.value);
+    const calls = try a.dupe(v4.Call, inspection.generated.value.calls);
+    defer a.free(calls);
+    inspection.generated.value.calls = calls;
+    const original_call = calls[0];
+    var altered_endpoint = calls[0].endpoints.?;
+    altered_endpoint.input[0] += 1;
+    calls[0].endpoints = altered_endpoint;
+    const endpoint_digest = v4.precommitmentDigest(inspection.generated.value);
+    try std.testing.expect(!std.mem.eql(u8, &original_digest, &endpoint_digest));
+    try std.testing.expect(!try matchesTwoCallInspection(a, &inspection, source, air));
+    calls[0] = original_call;
     const components = try a.dupe(v4.Component, inspection.generated.value.components);
     defer a.free(components);
     inspection.generated.value.components = components;
@@ -364,6 +448,50 @@ test "bounded two-call inspection rebinds selected AIR and native handle geometr
     inspection.topology.calls[1].output[0] += 1;
     try std.testing.expect(!try matchesTwoCallInspection(a, &inspection, source, air));
     try std.testing.expectError(error.InvalidMagic, inspectTwoCall(a, source, "wrong bundle"));
+}
+
+test "bounded cross-path inspection rejects forced live V3 mismatch" {
+    const a = std.testing.allocator;
+    const source = @embedFile("../examples/boundary/private_pair16_32.s31.json");
+    const air = @embedFile("s31_air_programs");
+    const topology = try compileSourceTopology(a, source);
+    var live = try live_pair.derive(a, source, air, 1);
+    defer live.deinit();
+
+    const original_address = live.plan.calls[0].output[0];
+    live.plan.calls[0].output[0] += 1;
+    try std.testing.expectError(error.BoundedLivePairMismatch, inspectAgainstLivePair(a, source, air, topology, &live));
+    live.plan.calls[0].output[0] = original_address;
+
+    const original_source_digest = live.source_digest;
+    live.source_digest[0] ^= 1;
+    try std.testing.expectError(error.BoundedLivePairMismatch, compareLivePairBinding(a, topology, live.preprocessed_root, live.trace_log_size, live.generated.value, &live));
+    live.source_digest = original_source_digest;
+
+    const original_ir_digest = live.ir_digest;
+    live.ir_digest[0] ^= 1;
+    try std.testing.expectError(error.BoundedLivePairMismatch, compareLivePairBinding(a, topology, live.preprocessed_root, live.trace_log_size, live.generated.value, &live));
+    live.ir_digest = original_ir_digest;
+
+    const original_root = live.preprocessed_root;
+    live.preprocessed_root[0] ^= 1;
+    try std.testing.expectError(error.BoundedLivePairMismatch, compareLivePairBinding(a, topology, original_root, live.trace_log_size, live.generated.value, &live));
+    live.preprocessed_root = original_root;
+
+    const original_trace_log = live.trace_log_size;
+    live.trace_log_size += 1;
+    try std.testing.expectError(error.BoundedLivePairMismatch, compareLivePairBinding(a, topology, live.preprocessed_root, original_trace_log, live.generated.value, &live));
+    live.trace_log_size = original_trace_log;
+
+    const components = try a.dupe(sealed.Component, live.generated.value.components);
+    defer a.free(components);
+    var altered = live.generated.value;
+    altered.components = components;
+    components[0].evaluation_log_size += 1;
+    try std.testing.expectError(error.BoundedLivePairMismatch, compareLivePairBinding(a, topology, live.preprocessed_root, live.trace_log_size, altered, &live));
+    components[0] = live.generated.value.components[0];
+    components[0].program_binding_sha256 = "forged-selected-air";
+    try std.testing.expectError(error.BoundedLivePairMismatch, compareLivePairBinding(a, topology, live.preprocessed_root, live.trace_log_size, altered, &live));
 }
 
 fn chainProgram(a: std.mem.Allocator, n: usize, steps: []relation.Step) !relation.Program {

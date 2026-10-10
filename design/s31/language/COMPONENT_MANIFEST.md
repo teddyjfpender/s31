@@ -176,6 +176,9 @@ call ID, source node IDs, rounds and constant. The artifact also records the
 literal source hash, canonical IR hash, pinned native template hash, and
 preprocessed root. Its V4 typed digest has its own domain and includes every
 field. No V1/V2 or pair V3 JSON field, digest, key, or proof byte is changed.
+The typed V4 call payload includes an optional set of four input and four
+output circuit addresses; the digest encodes an explicit absence/presence tag
+and all eight addresses when present. Source-only plans leave them absent.
 
 The ordered public output ABI records each name, canonical node ID, M31 kind,
 length and word offset. Admission caps eight output names and the manifest
@@ -185,6 +188,8 @@ two-output four-lane program therefore records offsets 0 and
 compares the complete V4 artifact, so rehashing altered call order, source
 kind, native identity, lookup dependencies, spans, output shape, or sum count
 cannot make it match the admitted source and caller-supplied circuit facts.
+`matchesSource` checks the source-only form, including absent endpoints;
+`matchesTwoCallInspection` below checks the compiled-address form.
 The focused `zig build test-bounded-component-manifest` step checks one-,
 two-, and eight-call rosters, coefficient overflow, and these mutations
 without building proofs.
@@ -209,7 +214,8 @@ than one endpoint. A witness compilation can be compared with the topology
 compilation for the same source, addresses, variable count, and padded row
 count. Thus an address is not taken from user-supplied manifest JSON.
 
-For **exactly two calls**, `inspectTwoCall` additionally constructs the
+For **exactly two calls accepted by the live V3 pair grammar**,
+`inspectTwoCall` additionally constructs the
 existing native pair plan from those addresses, computes its preprocessed
 root, selects AIR bundle component 1, and constructs both tagged chip and
 bridge handles. It derives the V4 circuit facts from that selected AIR and
@@ -222,6 +228,27 @@ bundle; assuming numerical order would incorrectly pass a plan-level check.
 AIR, so changing two fixed-column indices and recomputing the candidate V4
 digest still fails. A malformed AIR bundle, altered endpoint address, or
 altered component offset also fails the focused tests.
+The inspected V4 call payload contains the compiled addresses, which are
+checked against both the native handle and the live V3 Plan. Rehashing a
+changed endpoint in that payload still fails regeneration. The source-only
+payload remains explicitly unbound to circuit addresses and cannot be used
+for proof admission. The native bridge source binding in the V4 blueprint
+still identifies a template and call parameters; it does not independently
+hash instantiated endpoint addresses. The complete inspected V4 digest does
+include them. A future proof verifier must construct its bridge handle from
+those rebound addresses and check the handle before binding the digest to a
+transcript.
+
+The two-call inspection also runs `pair_source_binding.derive`, the source
+binding used by the live V3 verifier, as an independent lowering path. It
+rejects disagreement in literal source or canonical IR digest, either call's
+tag, rounds, constant or eight circuit endpoint addresses, the committed
+preprocessed root, circuit trace log, or the selected AIR identity and full
+component manifest geometry. The V4 path does not treat a self-consistent
+V4 manifest as evidence that its lowering agrees with the live verifier.
+The test injects a wrong V3 endpoint and also checks IR, root, and selected
+AIR geometry mismatches. This is a differential implementation guard, not a
+formal proof that both compilers are correct.
 
 This inspection API accepts **no proof bytes** and issues no key. It refuses
 one-call and three- through eight-call native handle rebinding. The current

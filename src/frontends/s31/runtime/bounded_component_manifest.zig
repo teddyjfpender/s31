@@ -55,6 +55,14 @@ pub const Call = struct {
     input_node_id: u32,
     rounds: u32,
     constant: u32,
+    /// Absent in the source-only blueprint. The compiled inspection attaches
+    /// canonical circuit addresses after comparing them with the live V3 Plan.
+    endpoints: ?Endpoints = null,
+};
+
+pub const Endpoints = struct {
+    input: [4]u32,
+    output: [4]u32,
 };
 
 pub const PublicOutput = struct {
@@ -278,8 +286,9 @@ fn fromPlan(
     } };
 }
 
-/// Source-derived equality is the admission check for this plan artifact.
-/// Rehashing altered metadata cannot make it equal to the regenerated roster.
+/// Source-derived equality is a consistency check for the plan-only artifact.
+/// CircuitFacts remain caller supplied; this does not admit a proof or key.
+/// Rehashing altered metadata cannot make it equal to the regenerated plan.
 pub fn matchesSource(
     allocator: std.mem.Allocator,
     candidate: Manifest,
@@ -315,6 +324,11 @@ pub fn precommitmentDigest(value: Manifest) Digest {
         hashInt(&h, call.input_node_id);
         hashInt(&h, call.rounds);
         hashInt(&h, call.constant);
+        if (call.endpoints) |endpoints| {
+            hashInt(&h, @as(u8, 1));
+            for (endpoints.input) |address| hashInt(&h, address);
+            for (endpoints.output) |address| hashInt(&h, address);
+        } else hashInt(&h, @as(u8, 0));
     }
     hashInt(&h, @as(u32, @intCast(value.public_outputs.len)));
     for (value.public_outputs) |output| {
@@ -445,6 +459,7 @@ test "bounded V4 roster is 1+2N and uses disjoint checked intervals" {
     try std.testing.expectEqual(@as(u32, 8), value.public_word_count);
     try std.testing.expectEqual(@as(u32, 0), value.public_outputs[0].word_offset);
     try std.testing.expectEqual(@as(u32, 4), value.public_outputs[1].word_offset);
+    try std.testing.expect(value.calls[0].endpoints == null);
     try std.testing.expectEqual(Role.circuit, value.components[0].role);
     try std.testing.expectEqual(Role.chip, value.components[1].role);
     try std.testing.expectEqual(Role.chip, value.components[2].role);
@@ -515,6 +530,9 @@ test "bounded V4 rejects rehashed roster, source, native identity and geometry m
     calls[1].call_id = 0;
     try std.testing.expect(!try matchesSource(a, altered, source, "pinned-bundle", facts));
     calls[1] = generated.value.calls[1];
+    calls[0].endpoints = .{ .input = [_]u32{3} ** 4, .output = [_]u32{4} ** 4 };
+    try std.testing.expect(!try matchesSource(a, altered, source, "pinned-bundle", facts));
+    calls[0] = generated.value.calls[0];
     altered.claimed_sums = 4;
     try std.testing.expect(!try matchesSource(a, altered, source, "pinned-bundle", facts));
     altered.claimed_sums = generated.value.claimed_sums;
