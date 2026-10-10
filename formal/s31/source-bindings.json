@@ -124,7 +124,7 @@
     "src/frontends/circuit/builder/simd.zig": "4a0f480064056a7c7a87110666fce4d93a3d147d72dd7e6be8de184b75d78220",
     "src/frontends/circuit/builder/context.zig": "efe7f2bd64402ebd3983d025fbaf6301ae2004e6739bf04f753db3d0191142ef",
     "src/frontends/circuit/air_eval/manual/circuit.zig": "574d6213cf1f15bce3e14884addc6a29701ed47782199ab5da66cf1a8bec1a50",
-    "src/frontends/circuit/export_qm31_ops.zig": "d128d5b21489ad595584feab108aaed178c21bb3fe07d95a74704b6ded4c3d80",
+    "src/frontends/circuit/export_qm31_ops.zig": "7d2621bdd47f97fc060ad9f0a371007fcc5ce648f0a014366032a62d65b84720",
     "src/frontends/circuit/export_logup_air.zig": "355e3dfcfbf6869e2f2d1db4cb44959e4236ed22ffbd191e0ea670e5aee1d808",
     "src/frontends/circuit/export_logup_batches.zig": "19e6a000909886f2bb6421b3545d96ff8826e8c53a72ed9d0a91d852dce5c908",
     "src/frontends/circuit/build.zig": "fdff218a1e9e8ca3e1f515cdee417145db2f0c75336df069cb93c578fd37bf68",
