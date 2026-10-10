@@ -51,6 +51,7 @@ const Key = struct {
     chip: ?ChipKey = null,
     private_boundary: ?circuit.common.direct_arithmetic.PrivateBoundary = null,
     component_manifest: ?component_manifest.Manifest = null,
+    manifest_precommitment_sha256: ?[]const u8 = null,
     public_abi_sha256: ?[]const u8 = null,
     name: []const u8,
     program_sha256: []const u8,
@@ -208,6 +209,7 @@ const Report = struct {
     chip: ?ChipKey,
     private_boundary: ?circuit.common.direct_arithmetic.PrivateBoundary,
     component_manifest: ?component_manifest.Manifest,
+    manifest_precommitment_sha256: ?[]const u8,
     public_abi_sha256: ?[]const u8,
     repeated_step: ?relation.ChipSpec,
     state_fold_step: ?relation.StateFoldSpec,
@@ -530,6 +532,65 @@ fn padForProfile(comptime V: type, ctx: *circuit.builder.Context(V)) !void {
         return error.InvalidDirectYieldTopology;
 }
 
+const ChipManifestBinding = struct {
+    generated: component_manifest.Generated,
+    effective_digest: [32]u8,
+    precommitment_digest: [32]u8,
+    circuit_hash: [32]u8,
+
+    fn deinit(self: *ChipManifestBinding) void {
+        self.generated.deinit();
+    }
+};
+
+fn bindChipManifest(
+    allocator: std.mem.Allocator,
+    pp: *const circuit.common.direct_arithmetic.Circuit,
+    source_digest: [32]u8,
+    ir_digest: [32]u8,
+    root: [32]u8,
+    spec: relation.ChipSpec,
+    boundary: ?circuit.common.direct_arithmetic.PrivateBoundary,
+) !ChipManifestBinding {
+    var generated = try component_manifest.directChip(
+        allocator,
+        pp,
+        air_program_bytes,
+        source_digest,
+        ir_digest,
+        root,
+        [_]u8{0} ** 32,
+        spec.rounds,
+        spec.constant,
+        boundary,
+    );
+    errdefer generated.deinit();
+    const precommitment_digest = component_manifest.precommitmentDigest(generated.value);
+    const effective_digest = component_manifest.effectiveSourceDigest(source_digest, generated.value);
+    const chip_request: cpu.prove.ChipRequest = .{
+        .source_digest = effective_digest,
+        .rounds = spec.rounds,
+        .constant = M31.fromCanonical(spec.constant),
+        .initial = @splat(M31.zero()),
+        .final = @splat(M31.zero()),
+    };
+    const circuit_hash = cpu.direct_arithmetic.identityHashWithPrivateBoundary(
+        effective_digest,
+        root,
+        pp.traceLogSize(),
+        1,
+        chip_request,
+        boundary,
+    );
+    try component_manifest.setCircuitHash(&generated, circuit_hash);
+    return .{
+        .generated = generated,
+        .effective_digest = effective_digest,
+        .precommitment_digest = precommitment_digest,
+        .circuit_hash = circuit_hash,
+    };
+}
+
 fn inspect(allocator: std.mem.Allocator, source: relation.Program) !void {
     var ir = try s31.canonical.build(allocator, source);
     defer ir.deinit();
@@ -555,6 +616,7 @@ fn inspect(allocator: std.mem.Allocator, source: relation.Program) !void {
     var trace_log: u32 = undefined;
     var preprocessed_columns: usize = undefined;
     var generated_manifest: ?component_manifest.Generated = null;
+    var manifest_digest: ?[32]u8 = null;
     defer if (generated_manifest) |*owned| owned.deinit();
     if (direct_mode) {
         const boundary = if (privateChip(source)) maps.private_boundary orelse return error.MissingPrivateBoundary else null;
@@ -579,23 +641,31 @@ fn inspect(allocator: std.mem.Allocator, source: relation.Program) !void {
                 .final = @splat(M31.zero()),
             };
         } else null;
-        circuit_hash = cpu.direct_arithmetic.identityHashWithPrivateBoundary(
-            source_digest,
-            root,
-            layout.traceLogSize(),
-            1,
-            chip_request,
-            boundary,
-        );
         generated_manifest = if (chip_mode) blk: {
             const spec = sourceChipSpec(source) orelse return error.UnsupportedChipRelation;
-            break :blk try component_manifest.directChip(
-                allocator, &pp, air_program_bytes, source_digest, ir.sha256, root, circuit_hash,
-                spec.rounds, spec.constant, boundary,
+            const binding = try bindChipManifest(allocator, &pp, source_digest, ir.sha256, root, spec, boundary);
+            circuit_hash = binding.circuit_hash;
+            manifest_digest = binding.precommitment_digest;
+            break :blk binding.generated;
+        } else blk: {
+            circuit_hash = cpu.direct_arithmetic.identityHashWithPrivateBoundary(
+                source_digest,
+                root,
+                layout.traceLogSize(),
+                1,
+                chip_request,
+                boundary,
             );
-        } else try component_manifest.directGate(
-            allocator, &pp, air_program_bytes, source_digest, ir.sha256, root, circuit_hash,
-        );
+            break :blk try component_manifest.directGate(
+                allocator,
+                &pp,
+                air_program_bytes,
+                source_digest,
+                ir.sha256,
+                root,
+                circuit_hash,
+            );
+        };
         trace_log = @max(pp.traceLogSize(), if (chip_mode)
             try cpu.repeated_step_chip.validateRounds(sourceChipSpec(source).?.rounds)
         else
@@ -664,6 +734,8 @@ fn inspect(allocator: std.mem.Allocator, source: relation.Program) !void {
     const ir_hex = std.fmt.bytesToHex(ir.sha256, .lower);
     const root_hex = std.fmt.bytesToHex(root, .lower);
     const hash_hex = std.fmt.bytesToHex(circuit_hash, .lower);
+    var manifest_hex: [64]u8 = undefined;
+    if (manifest_digest) |digest| manifest_hex = std.fmt.bytesToHex(digest, .lower);
     const source_map = try allocator.alloc(SourceSpan, ir.source_map.len);
     defer allocator.free(source_map);
     for (ir.source_map, source_map) |item, *mapped| {
@@ -700,6 +772,7 @@ fn inspect(allocator: std.mem.Allocator, source: relation.Program) !void {
         } else null,
         .private_boundary = if (privateChip(source)) maps.private_boundary else null,
         .component_manifest = if (generated_manifest) |owned| owned.value else null,
+        .manifest_precommitment_sha256 = if (manifest_digest != null) &manifest_hex else null,
         .public_abi_sha256 = if (source.version == 2) blk: {
             const abi_digest = try record_abi.digest(allocator, source);
             break :blk try std.fmt.allocPrint(allocator, "{s}", .{std.fmt.bytesToHex(abi_digest, .lower)});
@@ -764,7 +837,7 @@ fn prove(allocator: std.mem.Allocator, source: relation.Program, assignment_path
     var bundle = try parseAirBundle(allocator);
     defer bundle.deinit();
 
-    const chip_request: ?cpu.prove.ChipRequest = if (chip_mode) blk: {
+    var chip_request: ?cpu.prove.ChipRequest = if (chip_mode) blk: {
         const spec = sourceChipSpec(source) orelse return error.UnsupportedChipRelation;
         var source_digest: [32]u8 = undefined;
         std.crypto.hash.sha2.Sha256.hash(embedded_source, &source_digest, .{});
@@ -805,6 +878,24 @@ fn prove(allocator: std.mem.Allocator, source: relation.Program, assignment_path
         const pcs = try directPcsConfig(pp.traceLogSize(), if (chip_request) |item| item.rounds else null);
         var committed = try cpu.direct_arithmetic.PreprocessedCommitment.build(allocator, &pp, pcs);
         defer committed.deinit(allocator);
+        var proof_digest = source_digest;
+        var chip_binding: ?ChipManifestBinding = null;
+        defer if (chip_binding) |*binding| binding.deinit();
+        if (chip_mode) {
+            var ir = try s31.canonical.build(allocator, source);
+            defer ir.deinit();
+            chip_binding = try bindChipManifest(
+                allocator,
+                &pp,
+                source_digest,
+                ir.sha256,
+                committed.root(),
+                sourceChipSpec(source).?,
+                boundary,
+            );
+            proof_digest = chip_binding.?.effective_digest;
+            chip_request.?.source_digest = proof_digest;
+        }
         setup_ns = total_timer.read() - witness_ns;
         var timer = try std.time.Timer.start();
         var proof = try cpu.direct_arithmetic.prove(
@@ -813,18 +904,17 @@ fn prove(allocator: std.mem.Allocator, source: relation.Program, assignment_path
             &pp,
             &bundle,
             pcs,
-            .{ .source_digest = source_digest, .chip_request = chip_request, .private_boundary = boundary, .preprocessed_commitment = &committed, .test_mutation = mutation, .interaction_pow_time_ns = &sparse_pow_ns, .fri_pow_time_ns = &sparse_fri_pow_ns },
+            .{ .source_digest = proof_digest, .chip_request = chip_request, .private_boundary = boundary, .preprocessed_commitment = &committed, .test_mutation = mutation, .interaction_pow_time_ns = &sparse_pow_ns, .fri_pow_time_ns = &sparse_fri_pow_ns },
         );
         defer proof.deinit();
         prove_ns = timer.read();
         encoded = if (boundary != null)
-            try native.serializeDirectPrivate(allocator, &proof)
-        else
-            try native.serializeDirect(allocator, &proof, chip_mode);
+            try native.serializeDirectPrivateBound(allocator, &proof)
+        else if (chip_mode) try native.serializeDirectBound(allocator, &proof) else try native.serializeDirect(allocator, &proof, false);
         const layout = pp.layout();
         const root = committed.root();
         const hash = cpu.direct_arithmetic.identityHashWithPrivateBoundary(
-            source_digest,
+            proof_digest,
             root,
             layout.traceLogSize(),
             pcs.fri_config.log_blowup_factor,
@@ -832,11 +922,11 @@ fn prove(allocator: std.mem.Allocator, source: relation.Program, assignment_path
             boundary,
         );
         const spec: ?native.HybridSpec = if (chip_request) |item| .{
-            .source_digest = source_digest,
+            .source_digest = proof_digest,
             .rounds = item.rounds,
             .constant = item.constant,
         } else null;
-        if (boundary) |item| try native.verifyDirectPrivate(
+        if (boundary) |item| try native.verifyDirectPrivateBound(
             allocator,
             &layout,
             &bundle,
@@ -845,9 +935,20 @@ fn prove(allocator: std.mem.Allocator, source: relation.Program, assignment_path
             hash,
             public_words,
             encoded,
-            source_digest,
+            proof_digest,
             spec.?,
             item,
+        ) else if (chip_mode) try native.verifyDirectBound(
+            allocator,
+            &layout,
+            &bundle,
+            pcs,
+            root,
+            hash,
+            public_words,
+            encoded,
+            proof_digest,
+            spec.?,
         ) else try native.verifyDirect(
             allocator,
             &layout,
@@ -857,8 +958,8 @@ fn prove(allocator: std.mem.Allocator, source: relation.Program, assignment_path
             hash,
             public_words,
             encoded,
-            source_digest,
-            spec,
+            proof_digest,
+            null,
         );
     } else if (wide_mode) {
         var pp = try circuit.common.sparse_wide.Circuit.fromBuilderCircuit(allocator, &topology_ctx.circuit);
@@ -3372,40 +3473,61 @@ fn verify(allocator: std.mem.Allocator, path: []const u8, statement_path: []cons
             key.padded.blake_g != 0 or key.padded.m31_to_u32 != 0)
             return error.InvalidVerificationKey;
         const layout = try circuit.common.direct_arithmetic.Layout.fromSize(key.padded.qm31_ops);
+        // validateKey has already reconstructed this typed roster from the
+        // sealed relation and AIR. Use its chip call/log for the native schedule.
+        const sealed_call: ?component_manifest.ChipCall = if (chip_mode)
+            (key.component_manifest orelse return error.InvalidVerificationKey).chip_call orelse return error.InvalidVerificationKey
+        else
+            null;
         const expected_trace_log = @max(layout.traceLogSize(), if (chip_mode)
-            try cpu.repeated_step_chip.validateRounds(sourceChipSpec(parsed.value).?.rounds)
+            (key.component_manifest orelse return error.InvalidVerificationKey).components[1].trace_log_size
         else
             @as(u32, 0));
         if (expected_trace_log != key.trace_log_size) return error.InvalidVerificationKey;
         var source_digest: [32]u8 = undefined;
         std.crypto.hash.sha2.Sha256.hash(embedded_source, &source_digest, .{});
+        const proof_digest = if (chip_mode)
+            component_manifest.effectiveSourceDigest(source_digest, key.component_manifest orelse return error.InvalidVerificationKey)
+        else
+            source_digest;
         const spec: ?native.HybridSpec = if (chip_mode) blk: {
-            const shape = sourceChipSpec(parsed.value) orelse return error.UnsupportedChipRelation;
-            break :blk .{ .source_digest = source_digest, .rounds = shape.rounds, .constant = M31.fromCanonical(shape.constant) };
+            const call = sealed_call.?;
+            break :blk .{ .source_digest = proof_digest, .rounds = call.rounds, .constant = M31.fromCanonical(call.constant) };
         } else null;
-        if (privateChip(parsed.value)) try native.verifyDirectPrivate(
+        if (privateChip(parsed.value)) try native.verifyDirectPrivateBound(
             allocator,
             &layout,
             &bundle,
-            try directPcsConfig(layout.traceLogSize(), sourceChipSpec(parsed.value).?.rounds),
+            try directPcsConfig(layout.traceLogSize(), sealed_call.?.rounds),
             root,
             hash,
             public_words,
             encoded,
-            source_digest,
+            proof_digest,
             spec.?,
             key.private_boundary orelse return error.InvalidVerificationKey,
+        ) else if (chip_mode) try native.verifyDirectBound(
+            allocator,
+            &layout,
+            &bundle,
+            try directPcsConfig(layout.traceLogSize(), sealed_call.?.rounds),
+            root,
+            hash,
+            public_words,
+            encoded,
+            proof_digest,
+            spec.?,
         ) else try native.verifyDirect(
             allocator,
             &layout,
             &bundle,
-            try directPcsConfig(layout.traceLogSize(), if (chip_mode) sourceChipSpec(parsed.value).?.rounds else null),
+            try directPcsConfig(layout.traceLogSize(), null),
             root,
             hash,
             public_words,
             encoded,
             source_digest,
-            spec,
+            null,
         );
     } else if (wide_mode) {
         if (key.padded.eq < 16 or key.padded.triple_xor != 0 or key.padded.blake_g != 0)
@@ -3493,7 +3615,7 @@ fn validateKey(allocator: std.mem.Allocator, source: relation.Program, key: Key)
         const pinned_stdlib = key.stdlib_lock_sha256 orelse return error.InvalidVerificationKey;
         if (!std.mem.eql(u8, pinned_stdlib, expected_stdlib)) return error.InvalidVerificationKey;
     }
-    if (!std.mem.eql(u8, key.schema, if (source.version == 2) "s31-verification-key-direct-record-v2" else if (source.proof_mode == .blinded) "s31-verification-key-blinded-v1" else if (direct_mode and chip_mode) "s31-verification-key-direct-chip-manifest-v1" else if (direct_mode) "s31-verification-key-direct-manifest-v1" else if (wide_mode) "s31-verification-key-v5" else if (sparse_mode) "s31-verification-key-v3" else if (chip_mode) "s31-verification-key-v2" else "s31-verification-key-v1") or
+    if (!std.mem.eql(u8, key.schema, if (source.version == 2) "s31-verification-key-direct-record-v2" else if (source.proof_mode == .blinded) "s31-verification-key-blinded-v1" else if (direct_mode and chip_mode) "s31-verification-key-direct-chip-manifest-v2" else if (direct_mode) "s31-verification-key-direct-manifest-v1" else if (wide_mode) "s31-verification-key-v5" else if (sparse_mode) "s31-verification-key-v3" else if (chip_mode) "s31-verification-key-v2" else "s31-verification-key-v1") or
         !std.mem.eql(u8, key.profile, if (source.proof_mode == .blinded) "circuit-blinded-v1" else if (privateChip(source)) "direct-m31-private-v5" else if (direct_mode) "direct-m31-v4" else if (wide_mode) "sparse-wide-v5" else if (sparse_mode) "sparse-v3" else if (chip_mode) "hybrid-step-v2" else "circuit-v1") or
         !std.mem.eql(u8, key.name, source.name))
         return error.InvalidVerificationKey;
@@ -3506,6 +3628,7 @@ fn validateKey(allocator: std.mem.Allocator, source: relation.Program, key: Key)
     } else if (key.chip != null) return error.InvalidVerificationKey;
     if ((key.private_boundary == null) != !privateChip(source)) return error.InvalidVerificationKey;
     if (!direct_mode and key.component_manifest != null) return error.InvalidVerificationKey;
+    if ((!direct_mode or !chip_mode) and key.manifest_precommitment_sha256 != null) return error.InvalidVerificationKey;
     var program_digest: [32]u8 = undefined;
     std.crypto.hash.sha2.Sha256.hash(embedded_source, &program_digest, .{});
     if (!std.mem.eql(u8, key.program_sha256, &std.fmt.bytesToHex(program_digest, .lower))) return error.InvalidVerificationKey;
@@ -3568,25 +3691,35 @@ fn validateCompiledKey(allocator: std.mem.Allocator, source: relation.Program, k
                 .final = @splat(M31.zero()),
             };
         } else null;
-        expected_hash = cpu.direct_arithmetic.identityHashWithPrivateBoundary(
-            source_digest,
-            expected_root,
-            pp.traceLogSize(),
-            1,
-            chip_request,
-            boundary,
-        );
         {
             const sealed = key.component_manifest orelse return error.InvalidVerificationKey;
             var generated = if (chip_mode) blk: {
                 const spec = sourceChipSpec(source) orelse return error.UnsupportedChipRelation;
-                break :blk try component_manifest.directChip(
-                    allocator, &pp, air_program_bytes, source_digest, ir_digest, expected_root, expected_hash,
-                    spec.rounds, spec.constant, boundary,
+                const binding = try bindChipManifest(allocator, &pp, source_digest, ir_digest, expected_root, spec, boundary);
+                expected_hash = binding.circuit_hash;
+                const actual_digest = key.manifest_precommitment_sha256 orelse return error.InvalidVerificationKey;
+                if (!std.mem.eql(u8, actual_digest, &std.fmt.bytesToHex(binding.precommitment_digest, .lower)))
+                    return error.InvalidVerificationKey;
+                break :blk binding.generated;
+            } else blk: {
+                expected_hash = cpu.direct_arithmetic.identityHashWithPrivateBoundary(
+                    source_digest,
+                    expected_root,
+                    pp.traceLogSize(),
+                    1,
+                    chip_request,
+                    boundary,
                 );
-            } else try component_manifest.directGate(
-                allocator, &pp, air_program_bytes, source_digest, ir_digest, expected_root, expected_hash,
-            );
+                break :blk try component_manifest.directGate(
+                    allocator,
+                    &pp,
+                    air_program_bytes,
+                    source_digest,
+                    ir_digest,
+                    expected_root,
+                    expected_hash,
+                );
+            };
             defer generated.deinit();
             if (!try component_manifest.matches(allocator, sealed, generated.value))
                 return error.InvalidVerificationKey;

@@ -32,7 +32,7 @@ def check_case(source: Path) -> None:
         key_path = package / "verification-key.json"
         key = json.loads(key_path.read_text())
         report = json.loads((package / "cost-report.json").read_text())
-        if (key["schema"] != "s31-verification-key-direct-chip-manifest-v1" or
+        if (key["schema"] != "s31-verification-key-direct-chip-manifest-v2" or
                 key["profile"] != "direct-m31-private-v5" or
                 key["private_boundary"] != report["private_boundary"] or
                 key["component_manifest"] != report["component_manifest"]):

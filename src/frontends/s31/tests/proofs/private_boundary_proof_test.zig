@@ -100,6 +100,66 @@ test "one native proof binds private circuit wires to repeated-step chip endpoin
     const spec = native.HybridSpec{ .source_digest = source_digest, .rounds = 16, .constant = request.constant };
     timer.reset();
     try native.verifyDirectPrivate(allocator, &layout, &bundle, pcs, root, proof.circuit_hash, public_words, bytes, source_digest, spec, item.boundary);
+    // A v2 envelope is disjoint from v1, and a changed precommitment-derived
+    // digest changes the transcript even with the same witness and AIR.
+    const bound_bytes = try native.serializeDirectPrivateBound(allocator, &proof);
+    defer allocator.free(bound_bytes);
+    try std.testing.expectError(error.InvalidNativeProof, native.verifyDirectPrivateBound(
+        allocator,
+        &layout,
+        &bundle,
+        pcs,
+        root,
+        proof.circuit_hash,
+        public_words,
+        bytes,
+        source_digest,
+        spec,
+        item.boundary,
+    ));
+    try std.testing.expectError(error.InvalidNativeProof, native.verifyDirectPrivate(
+        allocator,
+        &layout,
+        &bundle,
+        pcs,
+        root,
+        proof.circuit_hash,
+        public_words,
+        bound_bytes,
+        source_digest,
+        spec,
+        item.boundary,
+    ));
+    var other_digest = source_digest;
+    other_digest[0] ^= 1;
+    var other_request = request;
+    other_request.source_digest = other_digest;
+    const other_hash = cpu.direct_arithmetic.identityHashWithPrivateBoundary(
+        other_digest,
+        root,
+        pp.traceLogSize(),
+        fri.log_blowup_factor,
+        other_request,
+        item.boundary,
+    );
+    const other_spec = native.HybridSpec{
+        .source_digest = other_digest,
+        .rounds = spec.rounds,
+        .constant = spec.constant,
+    };
+    if (native.verifyDirectPrivateBound(
+        allocator,
+        &layout,
+        &bundle,
+        pcs,
+        root,
+        other_hash,
+        public_words,
+        bound_bytes,
+        other_digest,
+        other_spec,
+        item.boundary,
+    )) |_| return error.TranscriptMismatchAccepted else |_| {}
     const verify_ns = timer.read();
     std.debug.print("private bridge diagnostic: circuit_rows={d}, chip_rows=16, bridge_rows=16, bridge_main=8, bridge_interaction=20, proof_bytes={d}, prove_ms={d}, verify_ms={d}\n", .{
         @as(usize, 1) << @intCast(pp.traceLogSize()), bytes.len, prove_ns / std.time.ns_per_ms, verify_ns / std.time.ns_per_ms,

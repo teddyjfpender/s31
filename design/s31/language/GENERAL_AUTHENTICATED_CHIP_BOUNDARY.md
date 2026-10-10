@@ -1,7 +1,7 @@
 # General authenticated circuit-to-chip boundary
 
-Status: **one-call generated manifest implemented; general design and
-ideal-boundary theorem**. The native implementation is still restricted to
+Status: **one-call generated manifest and precommitment implemented; general
+design and ideal-boundary theorem**. The native implementation is still restricted to
 one four-lane affine-square repeated-step call. This brief defines the next
 proof profile; it does not claim multi-call proof support.
 
@@ -85,11 +85,15 @@ binding to native verifier behavior.
 
 The current direct-gate manifest is a one-component slice. The one-call
 direct-chip manifest checks two components for public inputs, or three when
-the private bridge is selected. The current native schedule still independently
-selects those components and uses its existing transcript profile. The
-manifest does not yet drive arbitrary component admission or enter the
-Fiat–Shamir transcript under its own digest. Both slices are useful starting
-points, but neither meets this general schedule contract.
+the private bridge is selected. The one-call v2 key and proof envelopes
+commit a canonical typed manifest digest before the first witness/base
+commitment through
+a domain-separated effective source digest. The verifier reconstructs the
+roster from sealed source and pinned AIR before proof deserialization and
+reads chip parameters and log size from the checked manifest. The native
+engine still constructs the fixed circuit, chip, and optional bridge in
+explicit code; the manifest does not yet drive arbitrary component admission
+or a multi-call PCS schedule. The direct-gate slice remains a checked roster.
 
 ## Soundness premises
 

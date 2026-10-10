@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 import proof_privacy
+from package.manifest_digest import direct_chip_v2_digest
 from package.context import (
     AIR_BUNDLE_SHA256, LIBRARY_SOURCE_FILES, PROJECTION_SHA256, abi, file_hash,
     lower_text, text_interface,
@@ -195,12 +196,22 @@ def verify_package(package: Path) -> dict:
             declared = key.get("component_manifest")
             chip_call = declared.get("chip_call") if isinstance(declared, dict) else None
             expected_components = (3 if key.get("profile") == "direct-m31-private-v5" else 2)
+            chip_v2 = key.get("schema") == "s31-verification-key-direct-chip-manifest-v2"
+            try:
+                expected_digest = direct_chip_v2_digest(declared) if chip_v2 and isinstance(declared, dict) else None
+            except (KeyError, TypeError, ValueError) as exc:
+                raise ValueError("S31 direct-chip component manifest does not match sealed key") from exc
             if ("component-manifest.json" not in artifacts or
-                    key.get("schema") != "s31-verification-key-direct-chip-manifest-v1" or
+                    key.get("schema") not in {"s31-verification-key-direct-chip-manifest-v1", "s31-verification-key-direct-chip-manifest-v2"} or
                     key.get("profile") not in {"direct-m31-v4", "direct-m31-private-v5"} or
                     not isinstance(key.get("chip"), dict) or
                     not isinstance(declared, dict) or
-                    declared.get("schema") != "s31-component-manifest-direct-chip-v1" or
+                    declared.get("schema") != ("s31-component-manifest-direct-chip-v2" if chip_v2 else "s31-component-manifest-direct-chip-v1") or
+                    (chip_v2 and (not isinstance(key.get("manifest_precommitment_sha256"), str) or
+                                  key["manifest_precommitment_sha256"] != expected_digest or
+                                  report.get("manifest_precommitment_sha256") != key["manifest_precommitment_sha256"])) or
+                    (not chip_v2 and (key.get("manifest_precommitment_sha256") is not None or
+                                      report.get("manifest_precommitment_sha256") is not None)) or
                     declared.get("profile") != key["profile"] or
                     any(declared.get(field) != key.get(field) for field in (
                         "program_sha256", "canonical_ir_sha256", "preprocessed_root", "circuit_hash",
@@ -224,7 +235,7 @@ def verify_package(package: Path) -> dict:
     if key.get("profile") == "direct-m31-private-v5":
         boundary = key.get("private_boundary")
         if (manifest.get("lowering") != "direct-chip" or
-                key.get("schema") not in {"s31-verification-key-v5p", "s31-verification-key-direct-chip-manifest-v1"} or
+                key.get("schema") not in {"s31-verification-key-v5p", "s31-verification-key-direct-chip-manifest-v1", "s31-verification-key-direct-chip-manifest-v2"} or
                 not isinstance(boundary, dict) or
                 set(boundary) != {"input", "output"} or
                 any(not isinstance(boundary[name], list) or len(boundary[name]) != 4 or

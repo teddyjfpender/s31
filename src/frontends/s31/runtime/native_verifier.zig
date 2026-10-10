@@ -604,12 +604,22 @@ fn verifySparseWideInternal(
 const DIRECT_GATE_MAGIC = "S31NAT4G";
 const DIRECT_CHIP_MAGIC = "S31NAT4C";
 const DIRECT_PRIVATE_MAGIC = "S31NAT5P";
+const DIRECT_CHIP_BOUND_MAGIC = "S31NAT6C";
+const DIRECT_PRIVATE_BOUND_MAGIC = "S31NAT6P";
 
 pub fn serializeDirect(allocator: std.mem.Allocator, proof: *const cpu.Internal.CircuitProof, has_chip: bool) ![]u8 {
+    return serializeDirectVersion(allocator, proof, has_chip, false);
+}
+
+pub fn serializeDirectBound(allocator: std.mem.Allocator, proof: *const cpu.Internal.CircuitProof) ![]u8 {
+    return serializeDirectVersion(allocator, proof, true, true);
+}
+
+fn serializeDirectVersion(allocator: std.mem.Allocator, proof: *const cpu.Internal.CircuitProof, has_chip: bool, bound: bool) ![]u8 {
     if ((proof.chip_claimed_sum != null) != has_chip or proof.bridge_claimed_sum != null) return error.WrongProofProfile;
     var bytes: std.ArrayList(u8) = .empty;
     errdefer bytes.deinit(allocator);
-    try bytes.appendSlice(allocator, if (has_chip) DIRECT_CHIP_MAGIC else DIRECT_GATE_MAGIC);
+    try bytes.appendSlice(allocator, if (bound) DIRECT_CHIP_BOUND_MAGIC else if (has_chip) DIRECT_CHIP_MAGIC else DIRECT_GATE_MAGIC);
     var nonce: [8]u8 = undefined;
     std.mem.writeInt(u64, &nonce, proof.interaction_pow_nonce, .little);
     try bytes.appendSlice(allocator, &nonce);
@@ -620,10 +630,18 @@ pub fn serializeDirect(allocator: std.mem.Allocator, proof: *const cpu.Internal.
 }
 
 pub fn serializeDirectPrivate(allocator: std.mem.Allocator, proof: *const cpu.Internal.CircuitProof) ![]u8 {
+    return serializeDirectPrivateVersion(allocator, proof, false);
+}
+
+pub fn serializeDirectPrivateBound(allocator: std.mem.Allocator, proof: *const cpu.Internal.CircuitProof) ![]u8 {
+    return serializeDirectPrivateVersion(allocator, proof, true);
+}
+
+fn serializeDirectPrivateVersion(allocator: std.mem.Allocator, proof: *const cpu.Internal.CircuitProof, bound: bool) ![]u8 {
     if (proof.chip_claimed_sum == null or proof.bridge_claimed_sum == null) return error.WrongProofProfile;
     var bytes: std.ArrayList(u8) = .empty;
     errdefer bytes.deinit(allocator);
-    try bytes.appendSlice(allocator, DIRECT_PRIVATE_MAGIC);
+    try bytes.appendSlice(allocator, if (bound) DIRECT_PRIVATE_BOUND_MAGIC else DIRECT_PRIVATE_MAGIC);
     var nonce: [8]u8 = undefined;
     std.mem.writeInt(u64, &nonce, proof.interaction_pow_nonce, .little);
     try bytes.appendSlice(allocator, &nonce);
@@ -646,7 +664,11 @@ pub fn verifyDirect(
     source_digest: [32]u8,
     chip_spec: ?HybridSpec,
 ) !void {
-    return verifyDirectProfile(allocator, layout, template, pcs, preprocessed_root, circuit_hash, public_words, raw, source_digest, chip_spec, null);
+    return verifyDirectProfile(allocator, layout, template, pcs, preprocessed_root, circuit_hash, public_words, raw, source_digest, chip_spec, null, false);
+}
+
+pub fn verifyDirectBound(allocator: std.mem.Allocator, layout: *const circuit.common.direct_arithmetic.Layout, template: *const cpu.air.Bundle, pcs: core.pcs.config_v2.PcsConfigV2, preprocessed_root: H.Hash, circuit_hash: H.Hash, public_words: [8]u32, raw: []const u8, source_digest: [32]u8, chip_spec: HybridSpec) !void {
+    return verifyDirectProfile(allocator, layout, template, pcs, preprocessed_root, circuit_hash, public_words, raw, source_digest, chip_spec, null, true);
 }
 
 pub fn verifyDirectPrivate(
@@ -662,7 +684,11 @@ pub fn verifyDirectPrivate(
     chip_spec: HybridSpec,
     boundary: cpu.private_boundary_bridge.Boundary,
 ) !void {
-    return verifyDirectProfile(allocator, layout, template, pcs, preprocessed_root, circuit_hash, public_words, raw, source_digest, chip_spec, boundary);
+    return verifyDirectProfile(allocator, layout, template, pcs, preprocessed_root, circuit_hash, public_words, raw, source_digest, chip_spec, boundary, false);
+}
+
+pub fn verifyDirectPrivateBound(allocator: std.mem.Allocator, layout: *const circuit.common.direct_arithmetic.Layout, template: *const cpu.air.Bundle, pcs: core.pcs.config_v2.PcsConfigV2, preprocessed_root: H.Hash, circuit_hash: H.Hash, public_words: [8]u32, raw: []const u8, source_digest: [32]u8, chip_spec: HybridSpec, boundary: cpu.private_boundary_bridge.Boundary) !void {
+    return verifyDirectProfile(allocator, layout, template, pcs, preprocessed_root, circuit_hash, public_words, raw, source_digest, chip_spec, boundary, true);
 }
 
 fn verifyDirectProfile(
@@ -677,6 +703,7 @@ fn verifyDirectProfile(
     source_digest: [32]u8,
     chip_spec: ?HybridSpec,
     private_boundary: ?cpu.private_boundary_bridge.Boundary,
+    manifest_bound: bool,
 ) !void {
     const has_chip = chip_spec != null;
     if (private_boundary != null and !has_chip) return error.WrongProofProfile;
@@ -684,7 +711,8 @@ fn verifyDirectProfile(
         if (!std.mem.eql(u8, &chip_spec.?.source_digest, &source_digest)) return error.InvalidChipSource;
         try private_boundary.?.validate(core.fields.m31.Modulus);
     }
-    const magic = if (private_boundary != null) DIRECT_PRIVATE_MAGIC else if (has_chip) DIRECT_CHIP_MAGIC else DIRECT_GATE_MAGIC;
+    if (manifest_bound and !has_chip) return error.WrongProofProfile;
+    const magic = if (manifest_bound) (if (private_boundary != null) DIRECT_PRIVATE_BOUND_MAGIC else DIRECT_CHIP_BOUND_MAGIC) else if (private_boundary != null) DIRECT_PRIVATE_MAGIC else if (has_chip) DIRECT_CHIP_MAGIC else DIRECT_GATE_MAGIC;
     const sum_count: usize = if (private_boundary != null) 3 else if (has_chip) 2 else 1;
     const header_len = magic.len + 8 + sum_count * 16;
     if (raw.len < header_len or raw.len > (16 << 20) or !std.mem.eql(u8, raw[0..magic.len], magic))

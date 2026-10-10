@@ -304,7 +304,7 @@ pub fn directChip(
             .lookup_relation_ids = try allocator.dupe(u32, &.{ circuit.common.component_list.GATE_RELATION_ID, chip.relation_id }),
         };
     }
-    generated.value.schema = "s31-component-manifest-direct-chip-v1";
+    generated.value.schema = "s31-component-manifest-direct-chip-v2";
     generated.value.profile = if (boundary != null) "direct-m31-private-v5" else "direct-m31-v4";
     generated.value.claimed_sums = @intCast(count);
     generated.value.components = components;
@@ -316,6 +316,119 @@ pub fn directChip(
         .private_boundary = boundary,
     };
     return generated;
+}
+
+/// The v2 precommitment is a typed, length-delimited serialization of every
+/// generated roster field except circuit_hash, which depends on this digest.
+/// It contains no witness values. The true source hash remains a separate key
+/// field; the returned effective digest is used only by the native engine.
+pub fn precommitmentDigest(manifest: Manifest) [32]u8 {
+    var h = Sha256.init(.{});
+    h.update("S31-COMPONENT-MANIFEST-PRECOMMIT-V2\x00");
+    hashBytes(&h, manifest.schema);
+    hashBytes(&h, manifest.profile);
+    hashBytes(&h, manifest.program_sha256);
+    hashBytes(&h, manifest.canonical_ir_sha256);
+    hashBytes(&h, manifest.air_bundle_sha256);
+    hashBytes(&h, manifest.preprocessed_root);
+    // circuit_hash is deliberately excluded to avoid a hash cycle.
+    hashInt(&h, manifest.composition_plan_hash);
+    hashInt(&h, manifest.claimed_sums);
+    hashInt(&h, @as(u64, @intCast(manifest.components.len)));
+    for (manifest.components) |c| {
+        hashBytes(&h, c.name);
+        hashInt(&h, c.source_index);
+        hashInt(&h, c.proof_index);
+        hashInt(&h, c.trace_log_size);
+        hashInt(&h, c.evaluation_log_size);
+        hashInt(&h, @as(u64, @intCast(c.base_trace_columns)));
+        hashInt(&h, @as(u64, @intCast(c.interaction_trace_columns)));
+        hashInt(&h, c.n_constraints);
+        hashInt(&h, c.random_coefficient_offset);
+        hashInt(&h, @as(u64, @intCast(c.trace_spans.len)));
+        for (c.trace_spans) |s| hashSpan(&h, s);
+        hashInt(&h, @as(u64, @intCast(c.preprocessed_indices.len)));
+        for (c.preprocessed_indices) |i| hashInt(&h, i);
+        hashBytes(&h, c.program_binding_sha256);
+        hashOptionalInt(&h, c.claimed_sum_index);
+        hashOptionalSpan(&h, c.main_trace_span);
+        hashOptionalSpan(&h, c.interaction_trace_span);
+        hashOptionalInt(&h, c.max_constraint_log_degree_bound);
+        if (c.lookup_relation_ids) |ids| {
+            hashInt(&h, @as(u8, 1));
+            hashInt(&h, @as(u64, @intCast(ids.len)));
+            for (ids) |id| hashInt(&h, id);
+        } else hashInt(&h, @as(u8, 0));
+    }
+    hashInt(&h, @as(u64, @intCast(manifest.preprocessed_columns.len)));
+    for (manifest.preprocessed_columns) |c| {
+        hashBytes(&h, c.id);
+        hashInt(&h, @as(u64, @intCast(c.commitment_index)));
+        hashInt(&h, c.log_size);
+        hashInt(&h, @as(u64, @intCast(c.rows)));
+        hashBytes(&h, c.values_sha256);
+    }
+    if (manifest.chip_call) |call| {
+        hashInt(&h, @as(u8, 1));
+        hashInt(&h, call.call_id);
+        hashInt(&h, call.relation_id);
+        hashInt(&h, call.rounds);
+        hashInt(&h, call.constant);
+        if (call.private_boundary) |b| {
+            hashInt(&h, @as(u8, 1));
+            for (b.input) |address| hashInt(&h, address);
+            for (b.output) |address| hashInt(&h, address);
+        } else hashInt(&h, @as(u8, 0));
+    } else hashInt(&h, @as(u8, 0));
+    var digest: [32]u8 = undefined;
+    h.final(&digest);
+    return digest;
+}
+
+pub fn effectiveSourceDigest(source_digest: [32]u8, manifest: Manifest) [32]u8 {
+    var h = Sha256.init(.{});
+    h.update("S31-DIRECT-CHIP-MANIFEST-TRANSCRIPT-V2\x00");
+    h.update(&source_digest);
+    const digest = precommitmentDigest(manifest);
+    h.update(&digest);
+    var result: [32]u8 = undefined;
+    h.final(&result);
+    return result;
+}
+
+pub fn setCircuitHash(generated: *Generated, circuit_hash: [32]u8) !void {
+    generated.value.circuit_hash = try hex(generated.arena.allocator(), circuit_hash);
+}
+
+fn hashInt(h: *Sha256, value: anytype) void {
+    var bytes: [@sizeOf(@TypeOf(value))]u8 = undefined;
+    std.mem.writeInt(@TypeOf(value), &bytes, value, .little);
+    h.update(&bytes);
+}
+
+fn hashBytes(h: *Sha256, value: []const u8) void {
+    hashInt(h, @as(u64, @intCast(value.len)));
+    h.update(value);
+}
+
+fn hashSpan(h: *Sha256, span: TraceSpan) void {
+    hashInt(h, span.tree);
+    hashInt(h, span.start);
+    hashInt(h, span.end);
+}
+
+fn hashOptionalInt(h: *Sha256, value: ?u32) void {
+    if (value) |v| {
+        hashInt(h, @as(u8, 1));
+        hashInt(h, v);
+    } else hashInt(h, @as(u8, 0));
+}
+
+fn hashOptionalSpan(h: *Sha256, value: ?TraceSpan) void {
+    if (value) |v| {
+        hashInt(h, @as(u8, 1));
+        hashSpan(h, v);
+    } else hashInt(h, @as(u8, 0));
 }
 
 fn nativeBinding(allocator: std.mem.Allocator, domain: []const u8, source: []const u8, parameters: []const u32) ![]const u8 {

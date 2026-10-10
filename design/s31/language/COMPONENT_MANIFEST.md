@@ -41,7 +41,7 @@ substituting a different external key for the embedded one.
 
 ## One-call direct-chip roster
 
-The next schema, `s31-component-manifest-direct-chip-v1`, describes the
+The current schema, `s31-component-manifest-direct-chip-v2`, describes the
 existing one-call `direct-chip` proof. The public variant has two components
 in proof and claimed-sum order: `qm31_ops`, `repeated_step_chip`. The private
 variant adds `private_boundary_bridge` as component and sum index 2. The
@@ -67,13 +67,54 @@ components with their existing explicit code; manifest equality checks that
 the key describes that code's layout. This is a checked schedule, not yet a
 manifest-driven scheduler.
 
-The new key schema is `s31-verification-key-direct-chip-manifest-v1`. Its
-proof envelope and transcript remain the existing direct-chip profile. The
-source digest, chip parameters, and private addresses already enter that
-transcript. The manifest itself is checked against sealed compiler output and
-native AIR source before proof deserialization, but its JSON digest is not
-mixed as an additional transcript element. A future multi-call profile needs
-a new chip tuple with call ID and a separately versioned transcript.
+The v2 key schema is `s31-verification-key-direct-chip-manifest-v2` and its
+proof envelopes start with `S31NAT6C` (public) or `S31NAT6P` (private). Older
+v1 packages remain readable with their own sealed binaries. The v2 verifier
+rejects a v1 key or proof tag. The source identity in the key remains the
+SHA-256 of the literal program bytes.
+
+Before proving, the compiler hashes a typed, length-delimited encoding of
+the generated manifest, including ordered components, sum indices, offsets,
+fixed columns, chip parameters, and private endpoint addresses. It omits
+`circuit_hash` because that value depends on the transcript binding. The
+preprocessed root is safe to include: it is computed from fixed circuit data
+first. The key and `inspect` expose this hash as
+`manifest_precommitment_sha256`. The engine receives a separate effective
+source digest:
+
+```text
+manifest_digest = SHA256("S31-COMPONENT-MANIFEST-PRECOMMIT-V2\0" || typed_manifest_without_circuit_hash)
+effective_digest = SHA256("S31-DIRECT-CHIP-MANIFEST-TRANSCRIPT-V2\0" || true_source_digest || manifest_digest)
+```
+
+The encoding is fixed and typed: strings are UTF-8 with a little-endian
+`u64` byte length; list lengths and `usize` fields are little-endian `u64`;
+`u32` fields are little-endian four-byte words; optional values start with a
+one-byte `0` or `1`. The ordered fields are:
+
+1. schema, profile, source digest, canonical IR digest, AIR bundle digest,
+   preprocessed root, composition plan hash, claimed-sum count;
+2. component count, then for each component: name, source and proof indices,
+   trace and evaluation logs, base and interaction widths, constraint count,
+   coefficient offset, ordered trace spans, ordered fixed-column indices,
+   AIR binding digest, optional claimed-sum index, optional main and
+   interaction spans, optional degree bound, and optional ordered lookup IDs;
+3. fixed-column count, then for each column: ID, commitment index, log size,
+   row count, and values digest;
+4. optional chip call: call ID, relation ID, rounds, constant, and optional
+   four input plus four output boundary addresses.
+
+Each span is three `u32` words `(tree, start, end)`. `circuit_hash` is
+excluded. The Python package reader independently reconstructs this digest
+from the sidecar and compares it with the key and report.
+
+The engine mixes `effective_digest` before its first witness/base commitment
+and uses it in the circuit identity. The verifier regenerates the typed manifest from
+its sealed source and pinned AIR, checks the key's digest, and derives the
+same effective digest before it verifies the proof. The digest contains no
+witness values. This is a precommitment to the one-call roster, while the
+engine's component constructors remain explicit code. A future multi-call
+profile needs a new lookup tuple with call ID and its own versioned transcript.
 
 ## Remaining work
 
@@ -82,8 +123,8 @@ a new chip tuple with call ID and a separately versioned transcript.
   component orders, and the exact composition coefficient schedule.
 - Make the manifest authoritative for constructing prover and verifier trees,
   rather than a checked description of the existing direct profile layout.
-- Version the key and transcript if the manifest ever changes proof semantics;
-  a package-only metadata change must not silently redefine an old profile.
+- Give a future multi-call schema its own key, proof envelope, typed digest
+  domain, and transcript so one-call proofs cannot be reinterpreted.
 
 These slices establish manifest generation and independent reconstruction for
 the direct arithmetic profiles. They do not yet provide a general component
