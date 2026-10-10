@@ -332,6 +332,12 @@ verifier: main trace commitment precedes Gate challenge drawing, which
 precedes interaction commitment. This is a source-order regression check;
 commitment binding, hash-derived challenge distribution, and source-to-Lean
 column equivalence remain open proof obligations.
+`NativeGateRosterProof` checks a generated extraction of the native
+`qm31_ops` witness lookup roster. It proves the two use tuples and the
+multiplicity-weighted output tuple match the Lean Gate row events and
+reciprocal contribution. The extractor checks the native 12-limb base-row
+layout before generating the roster. This narrows the source-to-model gap;
+it is still a reviewed extractor, not a verified Zig compiler.
 `GateAddressCounts` proves a practical sufficient condition: if the integer
 use and yield histograms are below `p` at every address, every event count
 is below `p`. The Zig preprocessed builder now rejects a multiplicity as

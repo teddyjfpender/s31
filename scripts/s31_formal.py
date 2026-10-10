@@ -32,6 +32,7 @@ RELATION = "src/frontends/s31/language/relation.zig"
 POSEIDON = "src/frontends/riscv/air/memory_commitment/poseidon2_constants.zig"
 SHA = "src/frontends/riscv/air/guest_precompile/sha256_compression.zig"
 SIGMA = "src/core/crypto/blake_sigma.zig"
+GATE_WITNESS = "src/frontends/circuit/witness/components.zig"
 BINDINGS = [
     RELATION,
     "src/frontends/s31/language/relation_compiler.zig",
@@ -51,7 +52,7 @@ BINDINGS = [
     "deps/stwo-zig/src/prover/air/logup_columns.zig",
     "src/frontends/circuit/common/direct_arithmetic.zig",
     "src/frontends/circuit/common/preprocessed.zig",
-    "src/frontends/circuit/witness/components.zig",
+    GATE_WITNESS,
     "deps/stwo-zig/src/integrations/circuit_cpu/prove.zig",
     "src/frontends/s31/runtime/native_verifier.zig",
     "src/frontends/s31/sha/proving/sha_direct_circuit_prover.zig",
@@ -121,6 +122,48 @@ def lean_list(values: list[int]) -> str:
     return "[" + ", ".join(map(str, values)) + "]"
 
 
+def generated_gate_roster() -> str:
+    """Extract the three qm31_ops lookups from the native witness emitter."""
+    source = (ROOT / GATE_WITNESS).read_text()
+    block = source.split("pub const qm31_ops = struct {", 1)[1].split(
+        "// ---------------------------------------------------------------------------", 1)[0]
+    for start, end, operand in [(0, 4, "in0"), (4, 8, "in1"), (8, 12, "out_value")]:
+        assignment = f"out[{start}..{end}].* = {operand}.toM31Array();"
+        if assignment not in block:
+            raise FormalError(f"{GATE_WITNESS}: qm31_ops limb layout changed: {assignment}")
+    calls = re.findall(r"Lookup\.(?:use|yield)\([^;\n]+\)", block)
+    if len(calls) != 3:
+        raise FormalError(f"{GATE_WITNESS}: expected three qm31_ops Gate lookups")
+    slots = []
+    for call in calls:
+        match = re.fullmatch(
+            r"Lookup\.(use|yield)\(\s*(pp\.mults,\s*)?\.\{\s*gate,\s*"
+            r"pp\.(in0|in1|out),\s*((?:c\[\d+\],?\s*){4})\}\s*\)", call)
+        if match is None:
+            raise FormalError(f"{GATE_WITNESS}: unrecognized qm31_ops lookup: {call}")
+        kind, multiplier, address, limbs = match.groups()
+        if (kind == "yield") != (multiplier is not None):
+            raise FormalError(f"{GATE_WITNESS}: qm31_ops lookup weight changed: {call}")
+        indexes = [int(value) for value in re.findall(r"c\[(\d+)\]", limbs)]
+        if indexes != list(range(indexes[0], indexes[0] + 4)):
+            raise FormalError(f"{GATE_WITNESS}: nonconsecutive qm31_ops limbs: {call}")
+        slots.append((kind == "yield", "dst" if address == "out" else address, indexes[0]))
+    rendered = ",\n  ".join(
+        f"⟨{'true' if is_yield else 'false'}, .{address}, {offset}⟩"
+        for is_yield, address, offset in slots)
+    return (
+        "/-! Generated from circuit/witness/components.zig by scripts/s31_formal.py. -/\n"
+        "namespace S31.Gadgets.Air.NativeGateRoster\n\n"
+        "inductive AddressSlot where\n  | in0 | in1 | dst\n"
+        "deriving DecidableEq, Repr\n\n"
+        "structure LookupSlot where\n  isYield : Bool\n"
+        "  address : AddressSlot\n  limbStart : Nat\n"
+        "deriving DecidableEq, Repr\n\n"
+        "def qm31OpsRoster : List LookupSlot := [\n  " + rendered + "\n]\n\n"
+        "end S31.Gadgets.Air.NativeGateRoster\n"
+    )
+
+
 def generated() -> dict[Path, str]:
     source = (ROOT / RELATION).read_text()
     ops = [op.strip() for op in re.search(
@@ -163,6 +206,7 @@ def generated() -> dict[Path, str]:
     return {
         FORMAL / "S31/Semantics/Op.lean": op,
         FORMAL / "S31/Semantics/Constants.lean": constants,
+        FORMAL / "S31/Gadgets/Air/NativeGateRoster.lean": generated_gate_roster(),
         FORMAL / "S31/Evidence/Coverage.lean": render_coverage(
             json.loads((FORMAL / "coverage.json").read_text())),
         FORMAL / "source-bindings.json": json.dumps(identity, indent=2) + "\n",

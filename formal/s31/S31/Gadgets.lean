@@ -24,6 +24,7 @@ import S31.Gadgets.Air.LogUpInteraction
 import S31.Gadgets.Air.Qm31GateInteraction
 import S31.Gadgets.Air.EqGateInteraction
 import S31.Gadgets.Air.GateContributions
+import S31.Gadgets.Air.NativeGateRosterProof
 import S31.Gadgets.Air.GateChallengeClosure
 import S31.Gadgets.Air.GateAirChallengeSoundness
 import S31.Gadgets.Air.GateAirRawSoundness

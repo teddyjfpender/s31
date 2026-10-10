@@ -328,6 +328,13 @@ lookup-draw, interaction-commitment order in reviewed native prover and
 verifier paths. It guards the fixed-before-challenge premise against simple
 source regressions but does not prove commitment binding or Fiat–Shamir
 randomness.
+`NativeGateRoster.lean` is generated from the three `qm31_ops.lookups` calls
+in the native witness emitter, after checking its four-limb input/output
+column layout. `NativeGateRosterProof.lean` proves the extracted event order,
+addresses, limb spans, and output multiplicity equal the Lean Gate row model;
+the resulting reciprocal contribution equals `rowContribution`. The parser
+and Zig-to-Lean field representation correspondence remain trusted review
+points.
 `GateAddressCounts.lean` further proves that an individual event cannot
 occur more often than its address occurs in the integer histogram.
 Consequently, per-address histogram bounds below `p` suffice for the
