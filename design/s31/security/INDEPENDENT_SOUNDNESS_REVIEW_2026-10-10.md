@@ -542,3 +542,26 @@ verification. This closes the identified byte-malleability path by source
 inspection. Honest pair proof decoding and the new mutation control remain
 pending native execution at this review checkpoint; the embedded-key release
 gate remains open.
+
+### Pair source-kind and native acceptance checkpoint
+
+The separate `91173fa` manifest change gives the old numeric `source_index`
+an internal tagged interpretation and validates the released direct-gate and
+one-call direct-chip rosters. It recognizes the pair chip and bridge names,
+but `directPair` and `matchesPair` do not yet call a pair-specific source-kind
+roster validator. The staged pair still regenerates its whole typed manifest
+from source and compares exact key bytes, so this omission did not yield a
+false-claim path by inspection. Before a general component scheduler or pair
+release, validate all five source kinds, proof indices, claim positions, and
+call IDs explicitly; test a re-sealed wrong native name and a chip/bridge role
+swap as well as missing and duplicated components.
+
+Native acceptance must still establish that an honest 16+32 proof and a
+long-round 1024+4096 proof pass the canonical preflight and full verifier.
+The byte regression should reject the overlong config varint, truncated and
+trailing bytes, oversized nested lengths, noncanonical M31 claim limbs,
+changed public words, swapped or re-sealed call tags, each of the five claimed
+sum positions, nonce, and all four commitments. The current static review
+cannot substitute for these runs. A deployed verifier must embed or externally
+pin its source and exact key; the compiled AIR digest check pins the bundle,
+while package self-hashes alone do not authenticate the executable.
