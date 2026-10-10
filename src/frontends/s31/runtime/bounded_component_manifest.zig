@@ -244,7 +244,7 @@ fn fromPlan(
             .call_id = source_call.call_id,
             .source = .{ .native_air = .{
                 .kind = .tagged_chip,
-                .program_binding_sha256 = nativeProgramDigest(.tagged_chip, template_digest, source_call),
+                .program_binding_sha256 = nativeProgramDigest(.tagged_chip, template_digest, calls[id]),
             } },
             .proof_index = index,
             .claimed_sum_index = index,
@@ -270,7 +270,7 @@ fn fromPlan(
             .call_id = source_call.call_id,
             .source = .{ .native_air = .{
                 .kind = .tagged_bridge,
-                .program_binding_sha256 = nativeProgramDigest(.tagged_bridge, template_digest, source_call),
+                .program_binding_sha256 = nativeProgramDigest(.tagged_bridge, template_digest, calls[id]),
             } },
             .proof_index = index,
             .claimed_sum_index = index,
@@ -424,7 +424,32 @@ fn nativeTemplateDigest() Digest {
     return result;
 }
 
-fn nativeProgramDigest(kind: NativeKind, schedule: Digest, call: admission.Call) Digest {
+/// Rebind native component identities after compiler-owned endpoint addresses
+/// are attached. A source-only blueprint has a distinct absent-endpoint tag
+/// and must never be accepted as a native verification key.
+pub fn rebindCompiledNativePrograms(generated: *Generated) !void {
+    const value = &generated.value;
+    if (value.calls.len == 0 or value.calls.len > admission.max_calls or
+        value.components.len != 1 + 2 * value.calls.len)
+        return error.InvalidBoundedNativeRoster;
+    const rebound = try generated.arena.allocator().dupe(Component, value.components);
+    for (value.calls, 0..) |call, id| {
+        if (call.call_id != id or call.endpoints == null) return error.MissingBoundedCompiledEndpoints;
+        for ([_]struct { index: usize, kind: NativeKind }{
+            .{ .index = 1 + id, .kind = .tagged_chip },
+            .{ .index = 1 + value.calls.len + id, .kind = .tagged_bridge },
+        }) |entry| {
+            const component = &rebound[entry.index];
+            if (component.source != .native_air or component.source.native_air.kind != entry.kind or
+                component.call_id == null or component.call_id.? != call.call_id)
+                return error.InvalidBoundedNativeRoster;
+            component.source.native_air.program_binding_sha256 = nativeProgramDigest(entry.kind, value.native_template_sha256, call);
+        }
+    }
+    value.components = rebound;
+}
+
+fn nativeProgramDigest(kind: NativeKind, schedule: Digest, call: Call) Digest {
     var h = Sha256.init(.{});
     h.update("S31-BOUNDED-NATIVE-COMPONENT-V4\x00");
     hashInt(&h, @as(u8, @intFromEnum(kind)));
@@ -438,6 +463,11 @@ fn nativeProgramDigest(kind: NativeKind, schedule: Digest, call: admission.Call)
     hashInt(&h, call.input_node_id);
     hashInt(&h, call.rounds);
     hashInt(&h, call.constant);
+    if (call.endpoints) |endpoints| {
+        hashInt(&h, @as(u8, 1));
+        for (endpoints.input) |address| hashInt(&h, address);
+        for (endpoints.output) |address| hashInt(&h, address);
+    } else hashInt(&h, @as(u8, 0));
     var result: Digest = undefined;
     h.final(&result);
     return result;

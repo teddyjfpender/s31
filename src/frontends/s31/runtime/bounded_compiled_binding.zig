@@ -45,6 +45,7 @@ pub const Topology = struct {
     call_count: usize = 0,
     circuit_variables: u32 = 0,
     circuit_rows: usize = 0,
+    fixed_root: v4.Digest = [_]u8{0} ** 32,
 
     pub fn callSlice(self: *const Topology) []const EndpointCall {
         return self.calls[0..self.call_count];
@@ -91,6 +92,10 @@ fn compileProgramTopology(allocator: std.mem.Allocator, program: relation.Progra
             .output = compiled.output,
         };
     }
+    const native_plan = try manyPlan(result.callSlice());
+    var pp = try native_plan.preprocessed(allocator, view);
+    defer pp.deinit(allocator);
+    result.fixed_root = try pp.preprocessedRoot(allocator, 1);
     return result;
 }
 
@@ -135,6 +140,11 @@ pub fn checkWitnessTopology(
             !std.meta.eql(actual.input, wanted.input) or !std.meta.eql(actual.output, wanted.output))
             return error.BoundedWitnessTopologyMismatch;
     }
+    const native_plan = try manyPlan(expected.callSlice());
+    var pp = try native_plan.preprocessed(allocator, view);
+    defer pp.deinit(allocator);
+    const root = try pp.preprocessedRoot(allocator, 1);
+    if (!std.meta.eql(root, expected.fixed_root)) return error.BoundedWitnessTopologyMismatch;
 }
 
 pub const TwoCallInspection = struct {
@@ -195,6 +205,7 @@ pub fn inspectMany(
     var pp = try plan.preprocessed(allocator, view);
     defer pp.deinit(allocator);
     const root = try pp.preprocessedRoot(allocator, 1);
+    if (!std.meta.eql(root, topology.fixed_root)) return error.BoundedTopologyMismatch;
     var gate = try sealed.directGate(
         allocator,
         &pp,
@@ -353,6 +364,7 @@ fn inspectAgainstLivePair(
     var pp = try plan.preprocessed(allocator, view);
     defer pp.deinit(allocator);
     const root = try pp.preprocessedRoot(allocator, 1);
+    if (!std.meta.eql(root, topology.fixed_root)) return error.BoundedTopologyMismatch;
     var pair_generated = try sealed.directPair(
         allocator,
         &pp,
@@ -400,6 +412,7 @@ fn attachCompiledEndpoints(generated: *v4.Generated, calls: []const EndpointCall
         entry.endpoints = .{ .input = compiled.input, .output = compiled.output };
     }
     generated.value.calls = rebound;
+    try v4.rebindCompiledNativePrograms(generated);
 }
 
 fn compareLivePairBinding(
@@ -584,6 +597,9 @@ test "bounded pair endpoints agree in topology and witness compilation" {
     topology.calls[0].rounds -= 16;
     topology.calls[0].constant += 1;
     try std.testing.expectError(error.BoundedSourceMismatch, checkWitnessTopology(a, source, assignment.value, topology));
+    topology.calls[0].constant -= 1;
+    topology.fixed_root[0] ^= 1;
+    try std.testing.expectError(error.BoundedWitnessTopologyMismatch, checkWitnessTopology(a, source, assignment.value, topology));
 }
 
 test "bounded two-call inspection rebinds selected AIR and native handle geometry" {
@@ -728,12 +744,18 @@ test "bounded native inspection fails closed outside exact two-call schedule" {
         try std.testing.expectEqual(@as(u32, @intCast(12 + 17 * topology.call_count)), inspection.generated.value.main_columns);
         try std.testing.expectEqual(@as(u32, @intCast(8 + 28 * topology.call_count)), inspection.generated.value.interaction_columns);
         try std.testing.expect(try matchesManyInspection(std.testing.allocator, &inspection, source, @embedFile("s31_air_programs")));
+        const original_components = inspection.generated.value.components;
+        const original_bridge_binding = original_components[1 + topology.call_count].source.native_air.program_binding_sha256;
         const original_calls = inspection.generated.value.calls;
         const changed = try std.testing.allocator.dupe(v4.Call, inspection.generated.value.calls);
         defer std.testing.allocator.free(changed);
         inspection.generated.value.calls = changed;
         defer inspection.generated.value.calls = original_calls;
         changed[0].endpoints.?.input[0] += 1;
+        try v4.rebindCompiledNativePrograms(&inspection.generated);
+        defer inspection.generated.value.components = original_components;
+        const changed_bridge_binding = inspection.generated.value.components[1 + topology.call_count].source.native_air.program_binding_sha256;
+        try std.testing.expect(!std.meta.eql(original_bridge_binding, changed_bridge_binding));
         inspection.manifest_precommitment = v4.precommitmentDigest(inspection.generated.value);
         try std.testing.expect(!try matchesManyInspection(std.testing.allocator, &inspection, source, @embedFile("s31_air_programs")));
     }

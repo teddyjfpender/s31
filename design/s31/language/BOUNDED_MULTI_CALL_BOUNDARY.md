@@ -46,7 +46,7 @@ PlanV4 = {
   profile: direct-m31-private-many-v1,
   calls: [Call { id, source_node_id, chip_kind, chip_version,
                  rounds, constant, input_address[4], output_address[4] }],
-  public_output_addresses, circuit_shape, fixed_column_digests
+  public_output_addresses, circuit_shape, fixed_preprocessed_root
 }
 ```
 
@@ -65,8 +65,13 @@ components are outside this initial profile. All rounds are powers of two
 in `[16, 32768]`; constants are canonical M31 words. No source or proof field
 may assign an ID or an endpoint address. Reject unused repeats, unsupported
 bodies, aliases that would evade live-node accounting, and public exposure of
-an endpoint. Compare every Plan field between value and topology compilation
-before building the witness trace. Recompile the witness-free Plan from the
+an endpoint. The source declares at most eight public M31 words. The compiler
+flattens them in canonical public-output order into the first `W` of eight
+reserved words; the remaining `8-W` words are constrained zero. The native
+statement must carry all eight words and its verifier must check this padding
+against the source-derived public ABI. Compare every Plan field and the
+preprocessed root between value and topology compilation before building the
+witness trace. Recompile the witness-free Plan from the
 verifier's *embedded or externally pinned* source before parsing proof bytes.
 
 For example, a three-call source may compute `a = repeat_16(x)`,
@@ -142,7 +147,9 @@ make canonical multiplicity accounting essential.
 Use fresh schema, key, envelope magic, manifest-hash domain, and transcript
 tag for v4. Do not reuse `S31NAT8P` or the pair's V3 digest. Serialize a
 typed `ComponentSource`, for example `bundled_air {bundle_sha256, index,
-part_sha256}` or `native_air {kind, version, code_sha256}`. The pair format's
+part_sha256}` or `native_air {kind, version, code_sha256}`. The current V4
+inspection has a typed native kind and a template-derived program digest; it
+does **not** identify a live V4 AIR implementation or its version. The pair format's
 numeric `source_index = 0` is a native sentinel, so treating it as a general
 zero-based AIR index would be ambiguous. Reject unknown kinds and versions;
 the JSON view is not the hash input.
@@ -152,9 +159,13 @@ bridges in call order**. Every entry includes source kind, proof index,
 claimed-sum index, relation dependencies, row log, exact base and
 interaction spans, evaluation-degree bound, constraint count and random
 coefficient offset, selected preprocessed indices, and program binding.
-The manifest also includes the ordered Call records, source and canonical IR
-digests, fixed-column value digests and root, PCS/FRI profile, and public ABI
-shape. Length-delimit every field in a canonical binary encoding. Exclude
+The inspection manifest includes the ordered Call records, source and
+canonical IR digests, the reconstructed fixed preprocessed root, a proposed
+PCS/FRI profile, and public ABI shape. It does not yet contain individual
+fixed-column value digests or a native proof key. After compiler endpoints are
+attached, both native component program digests include the ordered input and
+output addresses; the source-only blueprint uses a distinct absent-endpoint
+tag. Length-delimit every field in a canonical binary encoding. Exclude
 the circuit identity hash from the precommitment to avoid a hash cycle;
 derive that identity from the manifest precommitment, fixed root, and PCS
 profile. Mix the versioned manifest digest before the first base commitment.
