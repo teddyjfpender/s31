@@ -93,17 +93,20 @@ channel and installed checker remain outside the package.
    authenticated start/end, and `R < p` imply one complete length-`R` path,
    including no leftover cycles. Check the exact AIR degree declaration,
    masks, trace/log sizes and quotient evaluator against this model.
-3. Generate a component manifest from compiled topology, bind its canonical
-   digest to the key and transcript, then reject reordered, omitted,
-   duplicated, or unbound components and lookup relations. Test this for
-   circuits with zero, one, and multiple chip calls.
+3. Extend the generated one-call direct-chip manifest to zero- and multi-call
+   profiles. Reconstruct the exact ordered component and claimed-sum roster
+   in both native paths, bind its typed digest before witness commitments,
+   and reject reordered, omitted, duplicated, or unbound components and
+   lookup relations. The current one-call path has the digest and mutation
+   controls; the multi-call proof path is still disabled.
 4. Establish a commuting refinement diagram from typed text source through
    normalized relation, witness generation, circuit gates, AIR rows, and
    native public-claim acceptance. Separate a trusted compiler theorem from
    a verifier theorem and state each cryptographic assumption explicitly.
-5. Bind the record ABI v2's canonical layout and leaf paths to the relation,
-   key and statement. Its currently isolated codec is a useful preparatory
-   artifact; it does not yet authorize record-valued circuit boundaries.
+5. Extend record ABI v2 beyond its implemented direct-gate boundary. The
+   current direct-gate path binds canonical layout and leaf paths to the
+   relation, key and statement; chip and other profiles do not yet admit
+   record-valued boundaries.
 
 No false proof acceptance was demonstrated in this review. The package
 controls show precisely where artifact self-consistency ends and the relying
@@ -241,8 +244,10 @@ verifier from its source, compiled direct circuit, pinned AIR bundle and
 native component parameters. Its two-component public roster and
 three-component private roster follow the engine's circuit, chip, then bridge
 order, with claimed sums at the same positions. The key's exact bytes must
-match the embedded key before any proof is read. The manifest remains checked
-metadata: it is not itself a new transcript message or proof of the chip AIR.
+match the embedded key before any proof is read. In the current v2 profile,
+the typed manifest digest is folded into the effective source digest before
+the witness commitment. The manifest is still checked metadata and is not a
+proof of the chip AIR or a manifest-driven component scheduler.
 The native controls test rehashed sidecar and report mutations and re-sealed
 key mutations, including component order, sum position, chip constant and
 private bridge address. Source inspection found no proof forgery through this
@@ -250,8 +255,9 @@ binding in the current one-call profile; it does not establish an arbitrary
 multi-call component scheduler. The manifest label lifetime defect below was
 fixed and the cross-optimization key check passed afterward.
 
-The output-only record ABI v2 binds a canonical typed descriptor digest to
-the sealed key and source-derived IR. The native statement decoder requires
+The record ABI v2 binds a canonical typed descriptor digest to the sealed key
+and source-derived IR for named input and output records under direct-gate.
+The native statement decoder requires
 the matching ABI digest, exact canonical JSON bytes, ordered named paths,
 canonical M31 words, and equal values for repeated wire aliases before it
 projects to the eight public proof words. Ten focused Python record tests
@@ -370,17 +376,15 @@ It did not run native proofs or establish a new proof forgery.
    JSON does not fix this. Constrain a canonical unique call ID in the chip
    and bridge AIR tuples and version the proof profile/transcript.
 
-2. **P1 — derive one canonical component roster and bind it before proof
-   commitments.** Today's manifest checks a two- or three-component roster
-   (`component_manifest.zig:191-318`), while prover handles and claimed-sum
-   positions (`direct_arithmetic.zig:249-310`) and verifier handles and
-   positions (`native_verifier.zig:754-829`) remain independently hardcoded.
-   The current transcript parameters (`direct_arithmetic.zig:71-83`) do not
-   absorb the manifest digest. Fixed one-call topology plus sealed key checks
-   make this an expansion risk rather than a known current forgery. For two
-   calls, generate both sides from one typed roster and absorb its canonical
-   digest before the first commitment; mutation controls must cover order,
-   offsets, log sizes, sum positions, and code identities.
+2. **P1 — derive one canonical roster for the multi-call proof path.** The
+   current one-call manifest checks a two- or three-component roster and its
+   v2 typed digest is folded into the effective source digest before the
+   witness commitment. Prover handles and claimed-sum positions
+   (`direct_arithmetic.zig`) and verifier handles and positions
+   (`native_verifier.zig`) remain independently constructed in explicit code.
+   For two calls, generate both sides from one typed roster and bind its
+   canonical digest before the first witness commitment. Mutation controls
+   must cover order, offsets, log sizes, sum positions, and code identities.
 
 3. **P1 — prove lookup premises for the implemented AIR and transcript.**
    `GenericChipBoundary.lean:114-140` establishes an ideal tagged-multiset
@@ -447,3 +451,26 @@ while native `record_abi.zig:root` rejected the tuple root. The Python
 validator now applies the same first-order-or-record root rule, and a focused
 test rejects the mutated descriptor. This was a package-admission and
 developer-experience mismatch, not a forged proof.
+
+### 2026-10-10 follow-up: v2 manifest and staged pair AIR
+
+An independent source pass on S31 `57a2255` with pinned Stwo `b4ace22a`
+found no concrete false-proof path in the enabled one-call profile. The
+installed verifier reconstructs the manifest from its sealed source and
+pinned AIR before reading the proof; the v2 envelope and effective source
+digest bind the typed roster in the transcript. Public and private native
+proof controls, changed claims, rehashed package metadata, and re-sealed
+wrong keys passed. This supports the implementation boundary, not a theorem
+for the AIR, LogUp challenge argument, or PCS.
+
+The staged two-call AIR has no accepting proof API. Its tagged lookup tuple,
+checked Gate multiplicities, unique producer addresses, and cyclic bridge
+equalities were reviewed without finding a counterexample. Before enabling
+proofs, the quotient test must exercise a **nonzero row-varying bridge
+residual**; a zero-residual test cannot detect a wrong next-row mask. The
+actual prover/verifier transcript must be compared event by event, including
+channel salt, FRI configuration, PoW nonce, five claimed sums, and both
+commitments. The staged transcript-order guard does not cover all of those
+events. The top-level chip/bridge `program_binding_sha256` fingerprints do
+not hash transitive Zig imports or the built executable, so they are audit
+identifiers rather than complete executable identities.
