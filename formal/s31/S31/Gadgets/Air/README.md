@@ -701,6 +701,12 @@ interaction residuals to its source seven-word events, and
 arithmetic residuals imply the four M31 affine-square transitions. The
 witness step remains unconstrained locally and is handled by the exact
 tagged event-balance theorem.
+`TaggedPairSourceComposition.lean` joins two source-shaped chips and two
+source-shaped bridges with the verifier's actual public-output and fixed-`u`
+claim fold. Given accepted logical rows and a challenge outside the stated
+bad set, it concludes both chips' lane equations and exact joint tagged
+event balance. The native PCS/FRI-to-row and source-manifest correspondence
+premises are still explicit.
 `PrivateBridgeChallenge.lean` specializes the Gate exceptional-challenge
 bound to one addressed endpoint whose sixteen bridge rows vary. It also
 proves a joint eight-address Gate bound: if repeated addresses have coherent

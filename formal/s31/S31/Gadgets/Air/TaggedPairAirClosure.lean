@@ -26,6 +26,29 @@ def ChipAccepted {R : Nat} (previous : Fin R ≃ Fin R)
     ((current row - current (previous row) - first row +
       claim / (R : K)) * qout row + 1 = 0)
 
+/-- The first chip interaction residual cannot vanish with a zero input
+denominator: it requires `first * qin = 1`. -/
+theorem chip_accepted_input_nonzero {R : Nat}
+    {previous : Fin R ≃ Fin R}
+    {qin qout first current : Fin R → K} {claim : K}
+    (haccepted : ChipAccepted previous qin qout first current claim) :
+    ∀ row, qin row ≠ 0 := by
+  intro row hzero
+  have h := (haccepted row).1
+  simp [hzero] at h
+
+/-- The second chip interaction residual cannot vanish with a zero output
+denominator: it would read `0 + 1 = 0`. This removes a separate nonpole
+premise from the source-level chip theorem. -/
+theorem chip_accepted_output_nonzero {R : Nat}
+    {previous : Fin R ≃ Fin R}
+    {qin qout first current : Fin R → K} {claim : K}
+    (haccepted : ChipAccepted previous qin qout first current claim) :
+    ∀ row, qout row ≠ 0 := by
+  intro row hzero
+  have h := (haccepted row).2
+  simp [hzero] at h
+
 private theorem eq_inv_of_mul_eq_one (a b : K)
     (hb : b ≠ 0) (hab : a * b = 1) : a = b⁻¹ := by
   calc

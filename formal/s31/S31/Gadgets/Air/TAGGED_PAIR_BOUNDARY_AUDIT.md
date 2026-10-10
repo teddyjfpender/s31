@@ -64,6 +64,12 @@ four-bit reversal formula exhaustively in Lean, and
 `bridgeWords_constant_bitReverse4` specializes constancy to that concrete
 formula. Equating the Zig `@bitReverse(usize)` shift to this formula remains
 an explicit implementation correspondence premise.
+For the concrete four-bit formula, sorting logical storage rows by
+`circleToCosetIndex(bitReverse4(row))` gives the cycle
+`0 → 15 → 8 → 7 → 4 → 11 → 12 → 3 → 2 → 13 → 10 → 5 → 6 → 9 → 14 → 1 → 0`.
+The bridge's `+1` mask follows that cycle. Thus sixteen zero
+`current−next` residuals force the same endpoint word on every row, even
+though adjacent storage indices are not adjacent in the AIR mask.
 
 `source_bridge_claim_eq_endpoint_events` now combines the native-shaped
 bridge premises: eight raw word columns, their sixteen `current−next`
@@ -82,8 +88,29 @@ the exact signed reciprocal sum of the source seven-word input and output
 events without assuming witness steps are ordered or unique. Separately,
 `source_chip_arithmetic_residuals_sound` proves the chip's four secure-field
 row residuals force each M31 lane to satisfy `output = input² + constant`.
-Both still take logical-row AIR acceptance and nonzero lookup denominators
-as premises.
+Both still take logical-row AIR acceptance as a premise. The two chip
+interaction equations force their own input and output denominators to be
+nonzero: `first·qin=1` and `delta·qout+1=0` cannot hold at a zero
+denominator. Bridge paired fractions retain an explicit nonpole premise:
+both Gate denominators can be zero while the paired AIR residual is zero.
+
+`TaggedPairSourceComposition.lean` packages two source chips and two bridges.
+Its joint theorem combines the four chip
+transition laws, the two chip event sums, the two bridge event sums, the
+circuit Gate claim interpretation, the verifier's actual five-claim fold
+with positive public-output and fixed-`u` terms, and a challenge outside
+the explicit bad set. Its conclusion is exact joint event multiset balance.
+It does not derive native proof acceptance into row residuals, source
+addresses and public values into the manifest, or challenge goodness from
+the Fiat–Shamir transcript.
+The downstream two-path theorem must require every abstract circuit
+yield/use to carry the Gate relation tag.
+`forged_circuit_chip_event_counterexample` shows why:
+if the circuit list may contain a chip-tagged tuple, one fabricated circuit
+yield balances a bridge chip start with no chip row. The source compiler's
+Gate event classification, canonical call IDs, bridge/chip call agreement,
+and round-count agreement remain proof obligations before exact joint event
+balance can be projected into two complete authenticated paths.
 
 The **accepted proof-to-logical-row premise remains open**: source mask geometry
 must correspond to a permutation of logical predecessor rows, and an

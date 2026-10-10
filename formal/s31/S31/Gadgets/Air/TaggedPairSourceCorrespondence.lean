@@ -431,6 +431,28 @@ def sourceBridgeLast (call rounds : F)
     (alpha z : GateSecure) (row : Fin 16) : GateSecure :=
   combine7 (sourceBridgeFinishTuple call rounds words row) alpha z
 
+def sourceBridgeAnchor : Fin 16 :=
+  (bridgeCosetOrder bitReverse4 bitReverse4_involutive).symm 0
+
+def sourceBridgeGateEvents (addresses : Fin 8 → F)
+    (words : Fin 8 → Fin 16 → F) : List JointTuple :=
+  [sourceBridgeGateTuple addresses words (bridgeEvenLane 0) sourceBridgeAnchor,
+   sourceBridgeGateTuple addresses words (bridgeOddLane 0) sourceBridgeAnchor,
+   sourceBridgeGateTuple addresses words (bridgeEvenLane 1) sourceBridgeAnchor,
+   sourceBridgeGateTuple addresses words (bridgeOddLane 1) sourceBridgeAnchor,
+   sourceBridgeGateTuple addresses words (bridgeEvenLane 2) sourceBridgeAnchor,
+   sourceBridgeGateTuple addresses words (bridgeOddLane 2) sourceBridgeAnchor,
+   sourceBridgeGateTuple addresses words (bridgeEvenLane 3) sourceBridgeAnchor,
+   sourceBridgeGateTuple addresses words (bridgeOddLane 3) sourceBridgeAnchor]
+
+def sourceBridgeStartEvents (call : F)
+    (words : Fin 8 → Fin 16 → F) : List JointTuple :=
+  [sourceBridgeStartTuple call words sourceBridgeAnchor]
+
+def sourceBridgeFinishEvents (call rounds : F)
+    (words : Fin 8 → Fin 16 → F) : List JointTuple :=
+  [sourceBridgeFinishTuple call rounds words sourceBridgeAnchor]
+
 /-- All eight native main-column residuals and five native interaction
 residuals imply the claimed bridge sum is the exact endpoint event sum.
 The source fixed `+1` and `-1` masks are used directly. The accepted-row
@@ -455,34 +477,22 @@ theorem source_bridge_claim_eq_endpoint_events
       current claim)
     (hnonzero0 : ∀ slot,
       sourceBridgeD0 addresses words alpha z slot
-        ((bridgeCosetOrder bitReverse4 bitReverse4_involutive).symm 0) ≠ 0)
+        sourceBridgeAnchor ≠ 0)
     (hnonzero1 : ∀ slot,
       sourceBridgeD1 addresses words alpha z slot
-        ((bridgeCosetOrder bitReverse4 bitReverse4_involutive).symm 0) ≠ 0)
+        sourceBridgeAnchor ≠ 0)
     (hnonzeroFirst :
       sourceBridgeFirst call words alpha z
-        ((bridgeCosetOrder bitReverse4 bitReverse4_involutive).symm 0) ≠ 0)
+        sourceBridgeAnchor ≠ 0)
     (hnonzeroLast :
       sourceBridgeLast call rounds words alpha z
-        ((bridgeCosetOrder bitReverse4 bitReverse4_involutive).symm 0) ≠ 0) :
-    let anchor := (bridgeCosetOrder bitReverse4
-      bitReverse4_involutive).symm (0 : Fin 16)
+        sourceBridgeAnchor ≠ 0) :
     claim = productionReciprocalSum7
-      [sourceBridgeGateTuple addresses words (bridgeEvenLane 0) anchor,
-       sourceBridgeGateTuple addresses words (bridgeOddLane 0) anchor,
-       sourceBridgeGateTuple addresses words (bridgeEvenLane 1) anchor,
-       sourceBridgeGateTuple addresses words (bridgeOddLane 1) anchor,
-       sourceBridgeGateTuple addresses words (bridgeEvenLane 2) anchor,
-       sourceBridgeGateTuple addresses words (bridgeOddLane 2) anchor,
-       sourceBridgeGateTuple addresses words (bridgeEvenLane 3) anchor,
-       sourceBridgeGateTuple addresses words (bridgeOddLane 3) anchor]
-      alpha z -
-      productionReciprocalSum7 [sourceBridgeStartTuple call words anchor]
-        alpha z +
-      productionReciprocalSum7 [sourceBridgeFinishTuple call rounds words anchor]
-        alpha z := by
-  let anchor := (bridgeCosetOrder bitReverse4
-    bitReverse4_involutive).symm (0 : Fin 16)
+      (sourceBridgeGateEvents addresses words) alpha z -
+      productionReciprocalSum7 (sourceBridgeStartEvents call words) alpha z +
+      productionReciprocalSum7
+        (sourceBridgeFinishEvents call rounds words) alpha z := by
+  let anchor := sourceBridgeAnchor
   have hconst := bridgeWords_constant_bitReverse4 words hwords
   have hd0 : ∀ slot row,
       sourceBridgeD0 addresses words alpha z slot row =
@@ -524,7 +534,9 @@ theorem source_bridge_claim_eq_endpoint_events
     current claim h16 haccepted hnonzero0 hnonzero1
     hnonzeroFirst hnonzeroLast
   rw [hsum]
-  simp only [productionReciprocalSum7, List.map_cons, List.map_nil,
+  simp only [sourceBridgeGateEvents, sourceBridgeStartEvents,
+    sourceBridgeFinishEvents, productionReciprocalSum7,
+    List.map_cons, List.map_nil,
     List.sum_cons, List.sum_nil, add_zero]
   simp only [sourceBridgeD0, sourceBridgeD1, sourceBridgeFirst,
     sourceBridgeLast, div_eq_mul_inv, one_mul]
@@ -575,11 +587,7 @@ theorem source_chip_claim_eq_transition_events
         (bitReverseEquivOfInvolution bitReverseIndex hinvolution))
       (sourceChipQin call step input alpha z)
       (sourceChipQout call step output alpha z)
-      first current claim)
-    (hnonzeroIn : ∀ row,
-      sourceChipQin call step input alpha z row ≠ 0)
-    (hnonzeroOut : ∀ row,
-      sourceChipQout call step output alpha z row ≠ 0) :
+      first current claim) :
     claim = productionReciprocalSum7
       (List.ofFn (sourceChipInputTuple call step input)) alpha z -
       productionReciprocalSum7
@@ -593,7 +601,8 @@ theorem source_chip_claim_eq_transition_events
     (sourceChipQout call step output alpha z)
     first current claim alpha z hR hinteraction
     (by intro row; rfl) (by intro row; rfl)
-    hnonzeroIn hnonzeroOut
+    (TaggedPairAirClosure.chip_accepted_input_nonzero hinteraction)
+    (TaggedPairAirClosure.chip_accepted_output_nonzero hinteraction)
 
 private theorem liftBase_add (left right : F) :
     liftBase (left + right) = liftBase left + liftBase right := by
