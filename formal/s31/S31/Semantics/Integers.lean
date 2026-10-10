@@ -62,6 +62,22 @@ def staticShift (op : Op) (spec : IntegerSpec) (count : Nat)
     else if op == .int_rotl then a.rotateLeft count else a.rotateRight count
   return encode spec.limbs output.toNat
 
+/-- Both result words are returned in quotient-then-remainder order. Signed
+division truncates toward zero; the remainder follows the dividend. -/
+def divRem (spec : IntegerSpec) (lhs rhs : List M31) : Result (List M31) := do
+  let base := if spec.width == 8 then 256 else 65536
+  require (lhs.all (fun x => x.val < base) && rhs.all (fun x => x.val < base)) .invalidValue
+  let a := interpretation spec (unsigned lhs)
+  let b := interpretation spec (unsigned rhs)
+  require (b != 0) .divisionByZero
+  let quotientMagnitude := a.natAbs / b.natAbs
+  let remainderMagnitude := a.natAbs % b.natAbs
+  let quotient : Int := if (a < 0) != (b < 0) then -(quotientMagnitude : Int) else quotientMagnitude
+  let remainder : Int := if a < 0 then -(remainderMagnitude : Int) else remainderMagnitude
+  require (lower spec ≤ quotient && quotient ≤ upper spec) .overflow
+  return encode spec.limbs (quotient % (spec.limit : Int)).toNat ++
+    encode spec.limbs (remainder % (spec.limit : Int)).toNat
+
 def u256 (op : Op) (lhs rhs : List M31) : Result (List M31) := do
   let a := unsigned lhs
   let b := unsigned rhs

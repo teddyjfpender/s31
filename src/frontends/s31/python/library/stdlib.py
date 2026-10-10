@@ -182,6 +182,19 @@ class Builder:
         return self.emit("int_bit_not", value.typ, wanted=wanted, span=span,
                          lhs=self.realize(value).ref, constant=int_spec(value.typ))
 
+    def int_div_rem(self, lhs: Value, rhs: Value, *,
+                    span: dict[str, int] | None = None) -> tuple[Value, Value]:
+        if lhs.typ != rhs.typ or lhs.typ.kind not in INT_TYPES:
+            raise TypeErrorS31("div_rem requires two equally typed fixed-width integers")
+        count = lhs.typ.length
+        pair = self.emit("int_div_rem", Type("u16", 2 * count), span=span,
+                         lhs=self.realize(lhs).ref, rhs=self.realize(rhs).ref,
+                         constant=int_spec(lhs.typ))
+        quotient = self.array_slice(pair, 0, count, span=span)
+        remainder = self.array_slice(pair, count, count, span=span)
+        return (self.int_view(Value(lhs.typ, ref=quotient.ref), span=span),
+                self.int_view(Value(lhs.typ, ref=remainder.ref), span=span))
+
     def int_static_shift(self, op: str, value: Value, count: int, *, wanted: str | None = None,
                          span: dict[str, int] | None = None) -> Value:
         if value.typ.kind not in INT_TYPES or op not in {

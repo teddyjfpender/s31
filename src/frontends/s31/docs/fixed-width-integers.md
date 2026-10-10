@@ -62,6 +62,8 @@ two operands of the same nominal type. Neither field arithmetic nor
 | `add_wrapping(a,b)`, `sub_wrapping(a,b)` | Low $W$ bits of the result, interpreted according to the result type. |
 | `mul_wrapping(a,b)` | Low $W$ product bits, using constrained base-256 columns. |
 | `mul_checked(a,b)` | Exact product in the type's range; proves the full product and rejects overflow. |
+| `div_rem(a,b)` | One constrained division with quotient and remainder; rejects zero divisors and signed `MIN / -1`. |
+| `div_checked(a,b)`, `rem_checked(a,b)` | Select the quotient or remainder from a constrained division. |
 | `le(a,b)`, `lt(a,b)`, `ge(a,b)`, `gt(a,b)` | Signed ordering for `iW`, unsigned ordering for `uW`; constrained `bit` result. |
 | `eq(a,b)`, `ne(a,b)` | Bit-pattern equality or inequality; constrained `bit` result. |
 | `from_limbs_u8(raw)` through `from_limbs_i128(raw)` | Turn an exactly sized `[u16; L]` into the named scalar; the `u8` and `i8` forms prove the extra byte bound. |
@@ -74,7 +76,6 @@ two operands of the same nominal type. Neither field arithmetic nor
 
 There is no integer `+` or `-` operator yet: call `std::int` to choose checked
 or wrapping semantics. `std::math::sub` and source `-` remain M31 operations.
-There is no fixed-width division operation yet.
 Reinterpreting `i8` to `u8` maps $-1$ to
 255; it does not reject or change the bits.
 
@@ -457,6 +458,72 @@ finalization fell from 269 to 34 QM31 rows. Its complete circuit fell from
 the one-run prover timings did not establish an end-to-end speedup. The
 [measurement record](../../../../design/s31/measurements/language/compact-integer-constants-2026-10-10.json)
 separates rows, fixed cells, and proof observations.
+
+## Division and remainder by hand
+
+The [byte division example](../examples/math/division/u8_div_rem.s31) uses
+one relation node to produce a quotient and remainder:
+
+```s31
+use std@1;
+
+circuit u8_div_rem(private numerator: u8, private divisor: u8) -> public [u16; 2] {
+    let (quotient, remainder) = std::int::div_rem(numerator, divisor);
+    let result = std::array::concat(std::int::limbs(quotient), std::int::limbs(remainder));
+    result
+}
+```
+
+With `numerator=201` and `divisor=14`, the output is `[14, 5]` because
+$201=14\cdot14+5$ and $5<14$. The assignment supplies the inputs as one
+little-endian limb each. The compiler emits `int_div_rem` once, followed by
+two wire slices. Both halves are proved even if a later program
+uses only one.
+
+The fused multiplication column for this one-byte case is
+
+$$c_0+q_0d_0+r_0=n_0+256c_1,
+\qquad 0+14\cdot14+5=201+256\cdot0.$$
+
+The second column and terminal carry require zero high product bytes. The
+strict comparison proves $d-r-1=8\ge0$ with
+$14+256\cdot0=5+1+8$. Every byte is range checked, the borrow is Boolean,
+and both sides of every column equation are below the M31 modulus. These
+facts turn field equations into integer equations. Without the high columns,
+a forged quotient could hide overflow; without $r<d$, many quotient and
+remainder pairs would satisfy the same product equation. Division by zero
+cannot pass the strict comparison.
+
+For signed values, the [signed byte example](../examples/math/division/i8_div_rem.s31)
+proves $-7=(-2)\cdot3+(-1)$. The input bit pattern 249 has a proved sign bit
+of one. A conditional complement plus one produces magnitude 7:
+$255-249+1=7$. Unsigned division gives magnitudes 2 and 1. Proved sign
+selection negates them back to byte patterns 254 and 255. This is truncation
+toward zero; Python's floor division of negative numbers would give a
+different quotient and remainder. The positive-quotient sign check rejects
+the signed `MIN / -1` overflow case.
+
+The generic circuit AIR places byte bounds, column equations, Boolean
+borrows, sign equations, and public-output binding into trace rows. A
+verifier accepts a proof only when all those constraints and the public
+statement match its compiled key. The [native division gate](../tests/acceptance/math/division.py)
+records the exact circuit hashes and AIR rows:
+
+| Program | Raw Eq rows | Raw QM31 rows | One local proof, bytes | Explanation |
+| --- | ---: | ---: | ---: | --- |
+| `u8_div_rem` | 13 | 55 | 232,570 | One fused product column and strict byte remainder. |
+| `u32_div_rem` | 30 | 136 | 238,377 | Four byte columns per operand, with high product columns. |
+| `i8_div_rem` | 34 | 122 | 232,876 | Byte magnitude and sign reconstruction added. |
+| `u128_div_quotient` | 114 | 802 | 234,484 | Sixteen byte columns per operand; both results constrained. |
+| `i128_div_quotient` | 187 | 1,121 | 239,293 | Signed magnitude and quotient range check added. |
+
+The [measurement record](../../../../design/s31/measurements/language/fixed-width-division-2026-10-10.json)
+also includes padded rows, fixed preprocessing, and separated proof stages.
+The shared 65,536-cell range table dominates fixed work; these single-run
+sizes and timings do not establish a total proving-speed advantage. The
+[Lean division model](../../../../formal/s31/S31/Gadgets/IntegerDivision.lean)
+proves Euclidean uniqueness and reuses the bounded-column theorem. A formal
+correspondence from production Zig gates to that model remains open.
 
 ## Where the AIR and proof enter
 

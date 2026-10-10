@@ -20,7 +20,7 @@ def Node.metadataValid (n : Node) : Bool :=
   | .add_const | .mul_const | .int_view | .int_cast_checked | .int_bit_not => n.fields true false false false true false false false
   | .int_shl | .int_shr_logical | .int_shr_arithmetic | .int_rotl | .int_rotr =>
     n.fields true false false true true false false false
-  | .int_add_checked | .int_add_wrapping | .int_sub_checked | .int_sub_wrapping | .int_le | .int_mul_wrapping | .int_mul_checked | .int_bit_and | .int_bit_or | .int_bit_xor =>
+  | .int_add_checked | .int_add_wrapping | .int_sub_checked | .int_sub_wrapping | .int_le | .int_mul_wrapping | .int_mul_checked | .int_bit_and | .int_bit_or | .int_bit_xor | .int_div_rem =>
     n.fields true true false false true false false false
   | .add | .mul | .array_concat | .u256_add | .u256_add_checked | .u256_le |
       .u256_sub | .u256_sub_checked | .u32_lt | .bool_and | .bool_or | .bool_xor |
@@ -131,6 +131,11 @@ def inferNode (shapes : Shapes) (node : Node) : Result Shape := do
     let spec ← need (node.constant.bind IntegerCastSpec.decode)
     let _ ← expectShape lhs .u16 spec.source.limbs
     return ⟨.u16, spec.target.limbs⟩
+  | .int_div_rem =>
+    let spec ← need (node.constant.bind IntegerSpec.decode)
+    let _ ← expectShape lhs .u16 spec.limbs
+    let _ ← expectShape rhs .u16 spec.limbs
+    return ⟨.u16, 2 * spec.limbs⟩
   | .int_shl | .int_shr_logical | .int_shr_arithmetic | .int_rotl | .int_rotr =>
     let spec ← need (node.constant.bind IntegerSpec.decode)
     let count ← need node.index

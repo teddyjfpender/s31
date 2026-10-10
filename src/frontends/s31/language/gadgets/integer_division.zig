@@ -1,0 +1,231 @@
+//! Unsigned fixed-width quotient and remainder in the generic circuit AIR.
+//!
+//! The quotient-product-remainder equation is fused into base-256 columns.
+//! Each column is an integer equality, since its two sides are strictly
+//! smaller than the M31 modulus. The high product columns and terminal carry
+//! are included, so multiplication cannot wrap at the operand width.
+
+const core = @import("stwo_core");
+const circuit = @import("stwo_circuit_frontend");
+const std = @import("std");
+
+const M31 = core.fields.m31.M31;
+const QM31 = core.fields.qm31.QM31;
+const Var = circuit.builder.Var;
+const Context = circuit.builder.Context;
+
+pub const Division = struct { quotient: []Var, remainder: []Var };
+pub const Witness = struct { quotient: u128, remainder: u128 };
+
+const Bytes = struct { wires: []Var, values: []u32 };
+
+fn hint(comptime V: type, value: u32) V {
+    return circuit.builder.ivalue.fromQm31(V, QM31.fromBase(M31.fromCanonical(value)));
+}
+
+fn valueOf(comptime V: type, ctx: *Context(V), wire: Var) u32 {
+    return if (comptime V == QM31) ctx.get(wire).toM31Array()[0].v else 0;
+}
+
+fn value128(comptime V: type, ctx: *Context(V), words: []const Var) u128 {
+    var value: u128 = 0;
+    for (words, 0..) |word, i|
+        value |= @as(u128, valueOf(V, ctx, word)) << @as(u7, @intCast(16 * i));
+    return value;
+}
+
+fn constrainByte(comptime V: type, ctx: *Context(V), word: Var) !void {
+    const value = valueOf(V, ctx, word);
+    const scaled = try ctx.guessU16(hint(V, (value * 256) & 0xffff));
+    const base = try ctx.constant(QM31.fromBase(M31.fromCanonical(256)));
+    try ctx.eq(try ctx.mul(word, base), scaled);
+}
+
+fn boundedByte(comptime V: type, ctx: *Context(V), value: u32) !Var {
+    const word = try ctx.guessU16(hint(V, value));
+    try constrainByte(V, ctx, word);
+    return word;
+}
+
+/// Each caller-supplied word is already constrained to u16. For a byte
+/// scalar, `byte_bounded` says the preceding integer view proved the tighter
+/// range; otherwise it is proved here. The high split byte is bounded by
+/// the u16 input bound and the reconstruction equation.
+fn splitWords(comptime V: type, ctx: *Context(V), words: []const Var, width: u32, byte_bounded: bool) !Bytes {
+    const count: usize = @intCast(width / 8);
+    const wires = try ctx.scratch().alloc(Var, count);
+    const values = try ctx.scratch().alloc(u32, count);
+    if (width == 8) {
+        wires[0] = words[0];
+        values[0] = valueOf(V, ctx, words[0]);
+        if (!byte_bounded) try constrainByte(V, ctx, words[0]);
+        return .{ .wires = wires, .values = values };
+    }
+    const base = try ctx.constant(QM31.fromBase(M31.fromCanonical(256)));
+    for (words, 0..) |word, i| {
+        const value = valueOf(V, ctx, word);
+        values[2 * i] = value & 255;
+        values[2 * i + 1] = (value >> 8) & 255;
+        wires[2 * i] = try boundedByte(V, ctx, values[2 * i]);
+        wires[2 * i + 1] = try ctx.guessU16(hint(V, values[2 * i + 1]));
+        try ctx.eq(word, try ctx.add(wires[2 * i], try ctx.mul(wires[2 * i + 1], base)));
+    }
+    return .{ .wires = wires, .values = values };
+}
+
+fn witnessWords(comptime V: type, ctx: *Context(V), value: u128, width: u32) ![]Var {
+    const length: usize = if (width == 8) 1 else @intCast(width / 16);
+    const words = try ctx.scratch().alloc(Var, length);
+    for (words, 0..) |*word, i| {
+        const digit: u32 = @intCast((value >> @as(u7, @intCast(16 * i))) & 0xffff);
+        word.* = try ctx.guessU16(hint(V, digit));
+    }
+    return words;
+}
+
+pub fn divRem(comptime V: type, ctx: *Context(V), numerator: []const Var, denominator: []const Var, width: u32, numerator_byte_bounded: bool, denominator_byte_bounded: bool) !Division {
+    if (width != 8 and width != 16 and width != 32 and width != 64 and width != 128)
+        return error.InvalidIntegerSpec;
+    const limb_count: usize = if (width == 8) 1 else @intCast(width / 16);
+    if (numerator.len != limb_count or denominator.len != limb_count)
+        return error.InvalidIntegerOperand;
+    const n = value128(V, ctx, numerator);
+    const d = value128(V, ctx, denominator);
+    if (comptime V == QM31) if (width == 8 and (n >= 256 or d >= 256)) return error.IntegerOutOfRange;
+    if (comptime V == QM31) if (d == 0) return error.ZeroDivisor;
+    return divRemWithWitness(V, ctx, numerator, denominator, width, numerator_byte_bounded, denominator_byte_bounded, .{
+        .quotient = if (d == 0) 0 else n / d,
+        .remainder = if (d == 0) 0 else n % d,
+    });
+}
+
+/// The witness entry point lets tests submit a wrong quotient or remainder.
+/// The constraints below, rather than this witness, determine validity.
+pub fn divRemWithWitness(comptime V: type, ctx: *Context(V), numerator: []const Var, denominator: []const Var, width: u32, numerator_byte_bounded: bool, denominator_byte_bounded: bool, witness: Witness) !Division {
+    if (width != 8 and width != 16 and width != 32 and width != 64 and width != 128)
+        return error.InvalidIntegerSpec;
+    const limb_count: usize = if (width == 8) 1 else @intCast(width / 16);
+    if (numerator.len != limb_count or denominator.len != limb_count)
+        return error.InvalidIntegerOperand;
+    const count: usize = @intCast(width / 8);
+    const n = try splitWords(V, ctx, numerator, width, numerator_byte_bounded);
+    const d = try splitWords(V, ctx, denominator, width, denominator_byte_bounded);
+    const q_words = try witnessWords(V, ctx, witness.quotient, width);
+    const r_words = try witnessWords(V, ctx, witness.remainder, width);
+    const q = try splitWords(V, ctx, q_words, width, false);
+    const r = try splitWords(V, ctx, r_words, width, false);
+    const base = try ctx.constant(QM31.fromBase(M31.fromCanonical(256)));
+
+    // q*d+r=n over all 2W bits, with zero high result and terminal carry.
+    // Each left side is at most 16*255^2+65535+255 < p; each right side is
+    // at most 255+256*65535 < p. The field equality is an integer equality.
+    var incoming = ctx.zero();
+    var carry_value: u64 = 0;
+    for (0..2 * count) |column| {
+        var sum = incoming;
+        var integer_sum: u64 = carry_value;
+        const first = if (column < count) 0 else column - (count - 1);
+        const end = @min(column + 1, count);
+        for (first..end) |i| {
+            const j = column - i;
+            sum = try ctx.add(sum, try ctx.mul(q.wires[i], d.wires[j]));
+            integer_sum += @as(u64, q.values[i]) * d.values[j];
+        }
+        if (column < count) {
+            sum = try ctx.add(sum, r.wires[column]);
+            integer_sum += r.values[column];
+        }
+        const digit = if (column < count) n.wires[column] else ctx.zero();
+        const outgoing_value: u32 = @intCast(integer_sum / 256);
+        const outgoing = try ctx.guessU16(hint(V, outgoing_value));
+        try ctx.eq(sum, try ctx.add(digit, try ctx.mul(outgoing, base)));
+        incoming = outgoing;
+        carry_value = outgoing_value;
+    }
+    try ctx.eq(incoming, ctx.zero());
+
+    // d-r-1 >= 0. Boolean borrow and bounded digits make this an exact
+    // strict comparison. In particular, no witness exists when d=0.
+    const limb_base_value: u32 = if (width == 8) 256 else 65536;
+    const limb_base = try ctx.constant(QM31.fromBase(M31.fromCanonical(limb_base_value)));
+    var borrow = ctx.one();
+    var borrow_value: u32 = 1;
+    for (denominator, r_words) |dw, rw| {
+        const dv = valueOf(V, ctx, dw);
+        const rv = valueOf(V, ctx, rw);
+        const next_value: u32 = @intFromBool(dv < rv + borrow_value);
+        const diff_value = (dv + limb_base_value - rv - borrow_value) & (limb_base_value - 1);
+        const next = try ctx.guess(hint(V, next_value));
+        try ctx.eq(try ctx.mul(next, next), next);
+        const diff = try ctx.guessU16(hint(V, diff_value));
+        if (width == 8) try constrainByte(V, ctx, diff);
+        try ctx.eq(try ctx.add(dw, try ctx.mul(next, limb_base)), try ctx.add(try ctx.add(rw, borrow), diff));
+        borrow = next;
+        borrow_value = next_value;
+    }
+    try ctx.eq(borrow, ctx.zero());
+    return .{ .quotient = q_words, .remainder = r_words };
+}
+
+fn testWords(ctx: *Context(QM31), value: u128, width: u32) ![]Var {
+    return witnessWords(QM31, ctx, value, width);
+}
+
+test "unsigned division constrains all widths and rejects false witnesses" {
+    const cases = [_]struct { width: u32, n: u128, d: u128 }{
+        .{ .width = 8, .n = 201, .d = 14 },
+        .{ .width = 16, .n = 65535, .d = 1 },
+        .{ .width = 32, .n = 123456, .d = 300 },
+        .{ .width = 64, .n = 0x123456789abcdef0, .d = 0x10001 },
+        .{ .width = 128, .n = std.math.maxInt(u128), .d = 0x10000000000000001 },
+    };
+    for (cases) |case| {
+        var ctx = try Context(QM31).init(std.testing.allocator, 1);
+        defer ctx.deinit();
+        const n = try testWords(&ctx, case.n, case.width);
+        const d = try testWords(&ctx, case.d, case.width);
+        const result = try divRem(QM31, &ctx, n, d, case.width, false, false);
+        try std.testing.expectEqual(case.n / case.d, value128(QM31, &ctx, result.quotient));
+        try std.testing.expectEqual(case.n % case.d, value128(QM31, &ctx, result.remainder));
+        try ctx.setOutputs(&.{result.quotient[0]});
+        try ctx.finalize(false);
+        try std.testing.expect(try ctx.isCircuitValid());
+    }
+    const bad = [_]Witness{
+        .{ .quotient = 4, .remainder = 0 }, // 17/5 is 3 remainder 2.
+        .{ .quotient = 2, .remainder = 7 }, // Equality holds, but r >= d.
+        .{ .quotient = 3, .remainder = 258 }, // A byte cannot hide a high bit.
+    };
+    for (bad) |witness| {
+        var ctx = try Context(QM31).init(std.testing.allocator, 1);
+        defer ctx.deinit();
+        const n = try testWords(&ctx, 17, 8);
+        const d = try testWords(&ctx, 5, 8);
+        const result = try divRemWithWitness(QM31, &ctx, n, d, 8, false, false, witness);
+        try ctx.setOutputs(&.{result.quotient[0]});
+        try ctx.finalize(false);
+        try std.testing.expect(!(try ctx.isCircuitValid()));
+    }
+    {
+        var ctx = try Context(QM31).init(std.testing.allocator, 1);
+        defer ctx.deinit();
+        const max = std.math.maxInt(u128);
+        const n = try testWords(&ctx, max, 128);
+        const d = try testWords(&ctx, max, 128);
+        const result = try divRemWithWitness(QM31, &ctx, n, d, 128, false, false, .{ .quotient = 2, .remainder = 1 });
+        try ctx.setOutputs(&.{result.quotient[0]});
+        try ctx.finalize(false);
+        try std.testing.expect(!(try ctx.isCircuitValid()));
+    }
+    {
+        var ctx = try Context(QM31).init(std.testing.allocator, 1);
+        defer ctx.deinit();
+        const n = try testWords(&ctx, 0, 8);
+        const d = try testWords(&ctx, 0, 8);
+        try std.testing.expectError(error.ZeroDivisor, divRem(QM31, &ctx, n, d, 8, false, false));
+        const result = try divRemWithWitness(QM31, &ctx, n, d, 8, false, false, .{ .quotient = 0, .remainder = 0 });
+        try ctx.setOutputs(&.{result.quotient[0]});
+        try ctx.finalize(false);
+        try std.testing.expect(!(try ctx.isCircuitValid()));
+    }
+}

@@ -707,6 +707,17 @@
       "semantics": "S31.Integers.staticShift",
       "gadget_theorems": ["S31.Gadgets.IntegerShift.rotr_sound_complete"],
       "source": {"path": "src/frontends/s31/language/relation_compiler.zig", "function": "intStaticShift"}
+    },
+    {
+      "op": "int_div_rem",
+      "semantics": "S31.Integers.divRem",
+      "gadget_theorems": [
+        "S31.Gadgets.IntegerDivision.unsigned_sound_complete",
+        "S31.Gadgets.IntegerDivision.zero_divisor_rejected",
+        "S31.Gadgets.IntegerDivision.signed_reconstruction",
+        "S31.Gadgets.IntegerDivision.fused_columns_exact"
+      ],
+      "source": {"path": "src/frontends/s31/language/relation_compiler.zig", "function": "intDivRem"}
     }
   ]
 }

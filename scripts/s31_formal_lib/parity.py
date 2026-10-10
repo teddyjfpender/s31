@@ -154,6 +154,17 @@ def expected(node: dict, args: list[tuple[str, list[int]]]) -> list[int]:
             return limbs(result % limit, max(1, width // 16))
         if op == "int_le":
             return [int(x <= y)]
+        if op == "int_div_rem":
+            if y == 0:
+                raise ValueError("division by zero")
+            q_magnitude, r_magnitude = divmod(abs(x), abs(y))
+            quotient = -q_magnitude if (x < 0) != (y < 0) else q_magnitude
+            remainder = -r_magnitude if x < 0 else r_magnitude
+            low, high = (-limit // 2, limit // 2 - 1) if signed else (0, limit - 1)
+            if not low <= quotient <= high:
+                raise ValueError("division overflow")
+            count = max(1, width // 16)
+            return limbs(quotient % limit, count) + limbs(remainder % limit, count)
         if op == "int_mul_wrapping":
             return limbs((number(a) * number(b)) % limit, max(1, width // 16))
         if op == "int_mul_checked":
@@ -215,6 +226,7 @@ def operation_case(op: str, args: list[tuple[str, list[int]]], **metadata) -> Ca
         result = None
     length = len(result) if result is not None else (
         max(1, ((metadata["constant"] >> 9) & 255) // 16) if op == "int_cast_checked" else
+        2 * len(args[0][1]) if op == "int_div_rem" else
         16 if op.startswith("u256") or op.startswith("bitcoin") else len(args[0][1]))
     # A sixteen-word operation is private; expose a legal eight-word projection.
     nodes, output = [node], "y"
@@ -280,6 +292,11 @@ def corpus() -> list[Case]:
                              (limit // 2 - 1, 1), (limit // 2, limit - 1)]:
                     args = [u16(limbs(x, count))] + ([] if op in {"int_view", "int_bit_not"} else [u16(limbs(y, count))])
                     cases.append(operation_case(op, args, constant=spec))
+            for x, y in [(0, 1), (17, 5), (limit - 1, 3),
+                         (limit // 2, limit - 1), (limit // 2, 1), (17, 0)]:
+                cases.append(operation_case("int_div_rem",
+                                            [u16(limbs(x, count)), u16(limbs(y, count))],
+                                            constant=spec))
     cases.append(operation_case("int_view", [u16([256])], constant=8))
     for width in [8, 16, 32, 64, 128]:
         limb_count, limit = max(1, width // 16), 2**width

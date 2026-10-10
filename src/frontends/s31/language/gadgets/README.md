@@ -25,3 +25,13 @@ is normalized and carried in the relation's `index` field.
 The cache also records the bit representation of the constant-zero limb and
 of a sign-fill limb. A later unaligned shift or bitwise operation can reuse
 those bits without guessing and checking them again.
+
+`integer_division.zig` fuses quotient multiplication and remainder addition
+in base-256 columns for `u8` through `u128`. It proves all high product
+columns, fixes the terminal carry to zero, and proves `remainder<divisor`
+with bounded limb borrows. `intDivRem` in the parent compiler handles signed
+types by proving sign bits, conditionally negating the inputs into unsigned
+magnitudes, then conditionally negating both results. The positive-quotient
+sign check rejects `MIN / -1`. An explicit-witness gadget entry point tests
+wrong quotient, oversized remainder, zero divisor, and truncated product
+attempts independently of the witness generator.

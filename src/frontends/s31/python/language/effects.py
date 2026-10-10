@@ -20,7 +20,8 @@ from language.syntax import Circuit, Expr, Function, FunctionType, SourceError, 
 # reviewed effect before it can appear in an inactive branch.
 PARTIAL_BUILTINS = frozenset({
     "accumulate_chainwork", "block_work", "pow_valid", "target_mainnet",
-    "std::int::add_checked", "std::int::sub_checked", "std::int::mul_checked",
+    "std::int::add_checked", "std::int::sub_checked", "std::int::mul_checked", "std::int::div_rem",
+    "std::int::div_checked", "std::int::rem_checked",
     "std::int::from_limbs_i8", "std::int::from_limbs_u8",
     "std::math::add_u256_checked", "std::math::sub_u256_checked",
     "std::math::sum_u256_checked", "std::math::inv", "std::math::div",
@@ -245,6 +246,8 @@ class TotalityChecker:
                 failure |= {"opaque:iterate"}
         if name not in TOTAL_BUILTINS | PARTIAL_BUILTINS:
             raise self.error(expr, f"builtin {name} has no reviewed effect")
+        if name == "std::int::div_rem":
+            return Effect(TupleValue((FIRST_ORDER, FIRST_ORDER)), failure | {name})
         return Effect(FIRST_ORDER, failure | ({name} if name in PARTIAL_BUILTINS else set()))
 
     def check(self) -> None:

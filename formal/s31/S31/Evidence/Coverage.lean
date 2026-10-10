@@ -59,6 +59,10 @@ import S31.Gadgets
 #check S31.Gadgets.IntegerCast.representable_pattern
 #check S31.Gadgets.IntegerCast.widening_value_sound
 #check S31.Gadgets.IntegerCast.zero_sign_value
+#check S31.Gadgets.IntegerDivision.fused_columns_exact
+#check S31.Gadgets.IntegerDivision.signed_reconstruction
+#check S31.Gadgets.IntegerDivision.unsigned_sound_complete
+#check S31.Gadgets.IntegerDivision.zero_divisor_rejected
 #check S31.Gadgets.IntegerMultiply.column_complete
 #check S31.Gadgets.IntegerMultiply.column_sound
 #check S31.Gadgets.IntegerMultiply.full_product_sound
@@ -125,6 +129,7 @@ import S31.Gadgets
 #check S31.Blake2s.hash
 #check S31.Field.inverse
 #check S31.Integers.castChecked
+#check S31.Integers.divRem
 #check S31.Integers.evaluate
 #check S31.Integers.staticShift
 #check S31.Integers.u256
@@ -191,13 +196,14 @@ def operationCoverage : List (Op × List String) := [
   (.int_shr_logical, ["S31.Gadgets.IntegerShift.shr_logical_sound_complete"]),
   (.int_shr_arithmetic, ["S31.Gadgets.IntegerShift.shr_arithmetic_sound_complete", "S31.Gadgets.IntegerShift.repeated_fill_pack"]),
   (.int_rotl, ["S31.Gadgets.IntegerShift.rotl_sound_complete"]),
-  (.int_rotr, ["S31.Gadgets.IntegerShift.rotr_sound_complete"])]
+  (.int_rotr, ["S31.Gadgets.IntegerShift.rotr_sound_complete"]),
+  (.int_div_rem, ["S31.Gadgets.IntegerDivision.unsigned_sound_complete", "S31.Gadgets.IntegerDivision.zero_divisor_rejected", "S31.Gadgets.IntegerDivision.signed_reconstruction", "S31.Gadgets.IntegerDivision.fused_columns_exact"])]
 
 theorem operation_inventory_exact : operationCoverage.map Prod.fst = allOps := rfl
 
 theorem operation_inventory_complete (op : Op) :
     op ∈ operationCoverage.map Prod.fst := by cases op <;> simp [operationCoverage]
 
-theorem operation_inventory_size : operationCoverage.length = 55 := rfl
+theorem operation_inventory_size : operationCoverage.length = 56 := rfl
 
 end S31.Evidence

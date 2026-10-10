@@ -97,4 +97,4 @@ STANDARD_ALIASES = {
     "std::merkle::path_blake2s": "merkle_path_blake2s",
 }
 BUILTINS |= STANDARD_ALIASES.keys()
-BUILTINS |= INT_BINARY_CALLS.keys() | INT_COMPARE_CALLS | INT_STATIC_SHIFT_CALLS.keys() | INT_CAST_CALLS | {"std::int::limbs", "std::int::bit_not"}
+BUILTINS |= INT_BINARY_CALLS.keys() | INT_COMPARE_CALLS | INT_STATIC_SHIFT_CALLS.keys() | INT_CAST_CALLS | {"std::int::limbs", "std::int::bit_not", "std::int::div_rem", "std::int::div_checked", "std::int::rem_checked"}

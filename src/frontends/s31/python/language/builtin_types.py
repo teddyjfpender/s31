@@ -10,6 +10,7 @@ from __future__ import annotations
 from s31_stdlib import INT_TYPES, P, SELECTABLE_KINDS, Type, TypeErrorS31
 from language.builtins import INT_BINARY_CALLS, INT_CAST_CALLS, INT_COMPARE_CALLS, INT_STATIC_SHIFT_CALLS
 from language.types import FieldLiteral, SourceType, StaticArray
+from language.syntax import TupleType
 
 
 BIT = Type("bit", 1)
@@ -90,6 +91,13 @@ def infer_builtin(name: str, generic: int | None, args: tuple[SourceType, ...],
         require(lhs == rhs and lhs.kind in INT_TYPES,
                 "std::int requires two equally typed fixed-width integers")
         return BIT if name in INT_COMPARE_CALLS or name == "std::int::le" else lhs
+    if name in {"std::int::div_rem", "std::int::div_checked", "std::int::rem_checked"}:
+        static_parameter(name, generic)
+        arity(name, args, 2)
+        lhs, rhs = map(circuit, args)
+        require(lhs == rhs and lhs.kind in INT_TYPES,
+                "div_rem requires two equally typed fixed-width integers")
+        return TupleType((lhs, lhs)) if name == "std::int::div_rem" else lhs
     if name == "std::int::bit_not":
         static_parameter(name, generic)
         arity(name, args, 1)

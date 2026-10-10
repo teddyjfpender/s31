@@ -12,6 +12,7 @@ const bitcoin_target = @import("../bitcoin/consensus/bitcoin_target.zig");
 const bitcoin_work = @import("../bitcoin/consensus/bitcoin_work.zig");
 const integer_multiply = @import("gadgets/integer_multiply.zig");
 const integer_bits = @import("gadgets/integer_bits.zig");
+const integer_division = @import("gadgets/integer_division.zig");
 const constant_base = @import("finalization/constant_base.zig");
 
 const M31 = core.fields.m31.M31;
@@ -119,7 +120,7 @@ pub fn compileRaw(comptime V: type, allocator: std.mem.Allocator, program: relat
         const lhs: ?Entry = if (node.lhs) |name| values.get(name) orelse return error.UnknownOperand else null;
         const rhs: ?Entry = if (node.rhs) |name| values.get(name) orelse return error.UnknownOperand else null;
         const selector: ?Entry = if (node.selector) |name| values.get(name) orelse return error.UnknownOperand else null;
-        const length: usize = if (node.op == .constant or node.op == .array_slice) node.length.? else if (node.op == .array_get or node.op == .sum_lanes or node.op == .u256_le or node.op == .u32_lt or node.op == .int_le or node.op == .bool_not or node.op == .bool_and or node.op == .bool_or or node.op == .bool_xor or node.op == .bool_select) 1 else if (node.op == .array_concat) lhs.?.shape.length + rhs.?.shape.length else if (node.op == .bitcoin_genesis_hash_mainnet) 16 else if (node.op == .hash_blake2s or node.op == .hash_blake2s_leaf or node.op == .hash_blake2s_pair or node.op == .hash_poseidon2_leaf or node.op == .hash_poseidon2_pair) 8 else lhs.?.shape.length;
+        const length: usize = if (node.op == .constant or node.op == .array_slice) node.length.? else if (node.op == .array_get or node.op == .sum_lanes or node.op == .u256_le or node.op == .u32_lt or node.op == .int_le or node.op == .bool_not or node.op == .bool_and or node.op == .bool_or or node.op == .bool_xor or node.op == .bool_select) 1 else if (node.op == .array_concat) lhs.?.shape.length + rhs.?.shape.length else if (node.op == .int_div_rem) 2 * lhs.?.shape.length else if (node.op == .bitcoin_genesis_hash_mainnet) 16 else if (node.op == .hash_blake2s or node.op == .hash_blake2s_leaf or node.op == .hash_blake2s_pair or node.op == .hash_poseidon2_leaf or node.op == .hash_poseidon2_pair) 8 else lhs.?.shape.length;
         const entry: Entry = switch (node.op) {
             .array_get => try arrayGet(V, &ctx, lhs.?, node.index.?),
             .array_slice => try arraySlice(V, &ctx, lhs.?, node.index.?, node.length.?),
@@ -153,6 +154,7 @@ pub fn compileRaw(comptime V: type, allocator: std.mem.Allocator, program: relat
             .int_le => try intBinary(V, &ctx, lhs.?, rhs.?, node.constant.?, .le),
             .int_mul_wrapping => try intMultiplyWrapping(V, &ctx, lhs.?, rhs.?, node.constant.?),
             .int_mul_checked => try intMultiplyChecked(V, &ctx, lhs.?, rhs.?, node.constant.?),
+            .int_div_rem => try intDivRem(V, &ctx, lhs.?, rhs.?, node.constant.?),
             .int_cast_checked => try intCastChecked(V, &ctx, lhs.?, node.constant.?),
             .int_bit_and => try intBitwise(V, &ctx, &bit_cache, lhs.?, rhs.?, node.constant.?, .and_),
             .int_bit_or => try intBitwise(V, &ctx, &bit_cache, lhs.?, rhs.?, node.constant.?, .or_),
@@ -422,6 +424,7 @@ fn compileWithSpansMode(comptime V: type, allocator: std.mem.Allocator, program:
             .int_le => try intBinary(V, &ctx, entries[node.lhs.?], entries[node.rhs.?], node.constant.?, .le),
             .int_mul_wrapping => try intMultiplyWrapping(V, &ctx, entries[node.lhs.?], entries[node.rhs.?], node.constant.?),
             .int_mul_checked => try intMultiplyChecked(V, &ctx, entries[node.lhs.?], entries[node.rhs.?], node.constant.?),
+            .int_div_rem => try intDivRem(V, &ctx, entries[node.lhs.?], entries[node.rhs.?], node.constant.?),
             .int_cast_checked => try intCastChecked(V, &ctx, entries[node.lhs.?], node.constant.?),
             .int_bit_and => try intBitwise(V, &ctx, &bit_cache, entries[node.lhs.?], entries[node.rhs.?], node.constant.?, .and_),
             .int_bit_or => try intBitwise(V, &ctx, &bit_cache, entries[node.lhs.?], entries[node.rhs.?], node.constant.?, .or_),
@@ -947,6 +950,70 @@ fn intMultiplyWrapping(comptime V: type, ctx: *circuit.builder.Context(V), lhs: 
     const wrappers = try ctx.scratch().alloc(circuit.builder.wrappers.M31Wrapper(Var), raw.len);
     for (wrappers, raw) |*wrapped, wire| wrapped.* = .newUnsafe(wire);
     return .{ .shape = .{ .kind = .u16, .length = raw.len }, .lanes = try circuit.builder.simd.pack(V, ctx, wrappers), .raw = raw, .integer_spec = encoded };
+}
+
+fn intDivRem(comptime V: type, ctx: *circuit.builder.Context(V), lhs: Entry, rhs: Entry, encoded: u32) !Entry {
+    const spec = relation.IntegerSpec.decode(encoded) orelse return error.InvalidIntegerSpec;
+    const left = lhs.raw orelse return error.InvalidIntegerOperand;
+    const right = rhs.raw orelse return error.InvalidIntegerOperand;
+    if (lhs.shape.kind != .u16 or rhs.shape.kind != .u16 or
+        left.len != spec.limbCount() or right.len != spec.limbCount())
+        return error.InvalidIntegerOperand;
+    const left_byte_bounded = lhs.integer_spec != null and (lhs.integer_spec.? & 0xff) == 8;
+    const right_byte_bounded = rhs.integer_spec != null and (rhs.integer_spec.? & 0xff) == 8;
+    const division = if (spec.signed) blk: {
+        const sa = try integerSign(V, ctx, left[left.len - 1], spec.width);
+        const sb = try integerSign(V, ctx, right[right.len - 1], spec.width);
+        const numerator = try intConditionalNegate(V, ctx, left, sa, spec.width);
+        const denominator = try intConditionalNegate(V, ctx, right, sb, spec.width);
+        const magnitude = try integer_division.divRem(V, ctx, numerator, denominator, spec.width, true, true);
+        const both = try ctx.mul(sa, sb);
+        const quotient_negative = try ctx.sub(try ctx.add(sa, sb), try ctx.add(both, both));
+        // A positive signed quotient cannot have the top bit set. This is
+        // the MIN / -1 overflow case; negative MIN itself remains valid.
+        const quotient_top = try integerSign(V, ctx, magnitude.quotient[magnitude.quotient.len - 1], spec.width);
+        try assertZeroArithmetic(V, ctx, try ctx.mul(quotient_top, try ctx.sub(ctx.one(), quotient_negative)));
+        break :blk integer_division.Division{
+            .quotient = try intConditionalNegate(V, ctx, magnitude.quotient, quotient_negative, spec.width),
+            .remainder = try intConditionalNegate(V, ctx, magnitude.remainder, sa, spec.width),
+        };
+    } else try integer_division.divRem(V, ctx, left, right, spec.width, left_byte_bounded, right_byte_bounded);
+    const raw = try ctx.scratch().alloc(Var, left.len * 2);
+    @memcpy(raw[0..left.len], division.quotient);
+    @memcpy(raw[left.len..], division.remainder);
+    const wrappers = try ctx.scratch().alloc(circuit.builder.wrappers.M31Wrapper(Var), raw.len);
+    for (wrappers, raw) |*wrapped, wire| wrapped.* = .newUnsafe(wire);
+    return .{ .shape = .{ .kind = .u16, .length = raw.len }, .lanes = try circuit.builder.simd.pack(V, ctx, wrappers), .raw = raw };
+}
+
+/// Select `x` or its two's-complement negation with a proved Boolean sign.
+/// Every output word and carry is bounded; the terminal carry is discarded
+/// because negating zero wraps back to zero.
+fn intConditionalNegate(comptime V: type, ctx: *circuit.builder.Context(V), source: []const Var, sign: Var, width: u32) ![]Var {
+    const base_value: u32 = if (width == 8) 256 else 65536;
+    const base = try ctx.constant(QM31.fromBase(M31.fromCanonical(base_value)));
+    const maximum = try ctx.constant(QM31.fromBase(M31.fromCanonical(base_value - 1)));
+    const sign_value: u32 = if (comptime V == QM31) ctx.get(sign).toM31Array()[0].v else 0;
+    const output = try ctx.scratch().alloc(Var, source.len);
+    var incoming = sign;
+    var carry_value = sign_value;
+    for (source, output) |word, *digit| {
+        const value: u32 = if (comptime V == QM31) ctx.get(word).toM31Array()[0].v else 0;
+        if (value >= base_value or sign_value > 1) return error.IntegerOutOfRange;
+        const selected_value = if (sign_value == 0) value else base_value - 1 - value;
+        const total_value = selected_value + carry_value;
+        digit.* = try ctx.guessU16(circuit.builder.ivalue.fromQm31(V, QM31.fromBase(M31.fromCanonical(total_value & (base_value - 1)))));
+        if (width == 8) try constrainByte(V, ctx, digit.*);
+        const next_value: u32 = total_value / base_value;
+        const outgoing = try ctx.guess(circuit.builder.ivalue.fromQm31(V, QM31.fromBase(M31.fromCanonical(next_value))));
+        try ctx.eq(try ctx.mul(outgoing, outgoing), outgoing);
+        const complemented = try ctx.sub(maximum, word);
+        const selected = try ctx.add(word, try ctx.mul(sign, try ctx.sub(complemented, word)));
+        try ctx.eq(try ctx.add(selected, incoming), try ctx.add(digit.*, try ctx.mul(outgoing, base)));
+        incoming = outgoing;
+        carry_value = next_value;
+    }
+    return output;
 }
 
 fn intMultiplyChecked(comptime V: type, ctx: *circuit.builder.Context(V), lhs: Entry, rhs: Entry, encoded: u32) !Entry {
@@ -1755,6 +1822,37 @@ test "u16 array views keep bounded words in the generic circuit" {
     try std.testing.expect(try values.isCircuitValid());
     try std.testing.expectEqual(values.circuit.n_vars, topology.circuit.n_vars);
     try std.testing.expect(std.meta.eql(values.gate_counts, topology.gate_counts));
+}
+
+test "signed byte division rejects MIN over negative one in circuit constraints" {
+    const allocator = std.testing.allocator;
+    const source =
+        \\{"version":1,"name":"signed_division","inputs":[{"name":"a","kind":"u16","length":1,"visibility":"private"},{"name":"b","kind":"u16","length":1,"visibility":"private"}],"nodes":[{"name":"pair","op":"int_div_rem","lhs":"a","rhs":"b","constant":264}],"assertions":[],"public_outputs":["pair"]}
+    ;
+    var program = try relation.parseProgram(allocator, source);
+    defer program.deinit();
+    const valid_json =
+        \\{"public_inputs":{},"private_inputs":{"a":[249],"b":[3]},"public_outputs":{"pair":[254,255]}}
+    ;
+    const overflow_json =
+        \\{"public_inputs":{},"private_inputs":{"a":[128],"b":[255]},"public_outputs":{"pair":[128,0]}}
+    ;
+    const assignments = [_]struct { json: []const u8, valid: bool }{
+        .{ .json = valid_json, .valid = true },
+        .{ .json = overflow_json, .valid = false },
+    };
+    for (assignments) |item| {
+        var assignment = try relation.parseAssignment(allocator, item.json);
+        defer assignment.deinit();
+        var ctx = try compile(QM31, allocator, program.value, assignment.value);
+        defer ctx.deinit();
+        try std.testing.expectEqual(item.valid, try ctx.isCircuitValid());
+    }
+    var zero = try relation.parseAssignment(allocator,
+        \\{"public_inputs":{},"private_inputs":{"a":[249],"b":[0]},"public_outputs":{"pair":[0,0]}}
+    );
+    defer zero.deinit();
+    try std.testing.expectError(error.ZeroDivisor, compile(QM31, allocator, program.value, zero.value));
 }
 
 test "strict u32 comparison constrains equality, borrow, and limb boundary" {

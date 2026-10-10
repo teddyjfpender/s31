@@ -215,6 +215,16 @@ class Compiler:
                 value = self.expect_value(self.eval_expr(expr.args[0], env), expr.args[0])
                 return self.builder.int_static_shift(INT_STATIC_SHIFT_CALLS[name], value,
                                                      expr.generic, wanted=wanted, span=self.span(expr))
+            if name in {"std::int::div_rem", "std::int::div_checked", "std::int::rem_checked"}:
+                if expr.generic is not None or len(expr.args) != 2:
+                    raise TypeErrorS31(f"{name}(a, b) expected")
+                lhs, rhs = (self.expect_value(self.eval_expr(arg, env), arg) for arg in expr.args)
+                quotient, remainder = self.builder.int_div_rem(lhs, rhs, span=self.span(expr))
+                if name == "std::int::div_checked":
+                    return quotient
+                if name == "std::int::rem_checked":
+                    return remainder
+                return StaticTuple(TupleType((quotient.typ, remainder.typ)), (quotient, remainder))
             if name in INT_BINARY_CALLS or name in INT_COMPARE_CALLS or name in INT_CAST_CALLS or name in {"std::int::limbs", "std::int::bit_not"}:
                 if expr.generic is not None:
                     raise TypeErrorS31(f"{name} does not accept a static parameter")

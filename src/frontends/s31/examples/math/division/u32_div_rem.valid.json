@@ -1,0 +1,5 @@
+{
+  "public_inputs": {},
+  "private_inputs": {"numerator": [57920, 1], "divisor": [300, 0]},
+  "public_outputs": {"result": [411, 0, 156, 0]}
+}

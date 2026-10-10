@@ -220,6 +220,8 @@ There is no general module loader or third-party package system yet.
 | `std::math::min_u256`, `max_u256` | `u256_le` followed by a `select` of sixteen limbs | Two `UInt256` values; result `UInt256`. |
 | `std::int::add_checked`, `add_wrapping`, `sub_checked`, `sub_wrapping` | Width-tagged integer node with per-limb carry or borrow equations | Equal nominal fixed-width types; checked mode rejects overflow. |
 | `std::int::mul_checked`, `mul_wrapping` | Width-tagged byte-product node | Equal nominal types; checked mode proves the complete product fits, wrapping mode returns low bits. |
+| `std::int::div_rem` | One `int_div_rem` node with quotient and remainder in adjacent limb segments; source projects a pair | Equal nominal fixed-width types; division by zero and signed quotient overflow reject. Signed quotient rounds toward zero. |
+| `std::int::div_checked`, `rem_checked` | Select one result of `int_div_rem` | The other result remains constrained. Use one `div_rem` call to share work when both are used. |
 | `std::int::le`, `lt`, `ge`, `gt`, `eq`, `ne` | `int_le` plus Boolean composition as needed | Equal nominal fixed-width types; signed types use proved sign bits. |
 | `std::int::from_limbs_u8` through `from_limbs_i128` | Width-tagged `int_view` | Exact `[u16; L]` shape; byte types prove the high byte zero. |
 | `std::int::limbs` | No node; typed view | Fixed-width scalar to its little-endian `[u16; L]` bit pattern. |

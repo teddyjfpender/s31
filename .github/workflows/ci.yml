@@ -166,3 +166,34 @@ jobs:
             zig-out/s31/acceptance/fixed-width-bitwise.json
             zig-out/s31/acceptance/fixed-width-shifts.json
           if-no-files-found: warn
+
+  fixed-width-division-native-proofs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          submodules: recursive
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.13"
+      - uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2
+        with:
+          version: 0.15.2
+      - name: Verify pinned engine
+        run: |
+          test -z "$(git submodule status | grep '^[-+]')"
+          test -z "$(git -C deps/stwo-zig status --porcelain --untracked-files=no)"
+      - name: Fixed-width division native proofs and negative controls
+        run: |
+          set -euo pipefail
+          mkdir -p zig-out/s31/acceptance
+          python3 src/frontends/s31/tests/acceptance/math/division.py |
+            tee zig-out/s31/acceptance/fixed-width-division.json
+      - name: Preserve division proof evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: s31-fixed-width-division-evidence
+          path: zig-out/s31/acceptance/fixed-width-division.json
+          if-no-files-found: warn

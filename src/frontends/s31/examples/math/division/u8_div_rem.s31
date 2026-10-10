@@ -1,0 +1,8 @@
+use std@1;
+
+// One division relation produces both results. 201 = 14*14 + 5.
+circuit u8_div_rem(private numerator: u8, private divisor: u8) -> public [u16; 2] {
+    let (quotient, remainder) = std::int::div_rem(numerator, divisor);
+    let result = std::array::concat(std::int::limbs(quotient), std::int::limbs(remainder));
+    result
+}

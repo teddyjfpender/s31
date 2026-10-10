@@ -24,6 +24,92 @@ class FixedWidthIntegerTests(unittest.TestCase):
                                [int(result)] if isinstance(result, bool) else limbs(result, width)},
         }
 
+    def test_unsigned_div_rem_all_widths_and_boundaries(self) -> None:
+        for width in (8, 16, 32, 64, 128):
+            kind = f"u{width}"
+            count = max(1, width // 16)
+            result_type = kind if width == 128 else f"[u16; {2 * count}]"
+            result_expr = "q" if width == 128 else "std::array::concat(std::int::limbs(q), std::int::limbs(r))"
+            source = (f"circuit divide(private a: {kind}, private b: {kind}) -> public {result_type} "
+                      "{ let (q, r) = std::int::div_rem(a, b); "
+                      f"let result = {result_expr}; result }}")
+            relation, _ = compile_text(source)
+            output_name = relation["public_outputs"][0]
+            self.assertEqual([node["op"] for node in relation["nodes"]].count("int_div_rem"), 1)
+            divide = next(node for node in relation["nodes"] if node["op"] == "int_div_rem")
+            self.assertEqual(divide["constant"], width)
+            for a, b in ((0, 1), (1, 2), ((1 << width) - 1, 1),
+                         ((1 << width) - 1, (1 << (width - 1)) + 1),
+                         (min(123456789, (1 << width) - 1), 7)):
+                with self.subTest(width=width, a=a, b=b):
+                    q, r = divmod(a, b)
+                    expected = limbs(q, width) + ([] if width == 128 else limbs(r, width))
+                    assignment = {"public_inputs": {},
+                                  "private_inputs": {"a": limbs(a, width), "b": limbs(b, width)},
+                                  "public_outputs": {output_name: expected}}
+                    self.assertEqual(evaluate_relation(relation, assignment), {output_name: expected})
+                    assignment["public_outputs"][output_name] = expected.copy()
+                    assignment["public_outputs"][output_name][0 if width == 128 else count] ^= 1
+                    with self.assertRaises(OracleError):
+                        evaluate_relation(relation, assignment)
+            zero = {"public_inputs": {},
+                    "private_inputs": {"a": limbs(17, width), "b": limbs(0, width)},
+                    "public_outputs": {output_name: [0] * (count if width == 128 else 2 * count)}}
+            with self.assertRaisesRegex(OracleError, "division by zero"):
+                evaluate_relation(relation, zero)
+
+    def test_signed_div_rem_truncates_toward_zero_and_checks_overflow(self) -> None:
+        for width in (8, 16, 32, 64, 128):
+            kind = f"i{width}"
+            count = max(1, width // 16)
+            half = 1 << (width - 1)
+            result_type = kind if width == 128 else f"[u16; {2 * count}]"
+            result_expr = "q" if width == 128 else "std::array::concat(std::int::limbs(q), std::int::limbs(r))"
+            source = (f"circuit divide(private a: {kind}, private b: {kind}) -> public {result_type} "
+                      "{ let (q, r) = std::int::div_rem(a, b); "
+                      f"let result = {result_expr}; result }}")
+            relation, _ = compile_text(source)
+            output_name = relation["public_outputs"][0]
+            divide = next(node for node in relation["nodes"] if node["op"] == "int_div_rem")
+            self.assertEqual(divide["constant"], width | 256)
+            for a, b in ((0, 1), (7, 3), (-7, 3), (7, -3), (-7, -3),
+                         (-half, 1), (half - 1, -1)):
+                with self.subTest(width=width, a=a, b=b):
+                    q_magnitude, r_magnitude = divmod(abs(a), abs(b))
+                    q = -q_magnitude if (a < 0) != (b < 0) else q_magnitude
+                    r = -r_magnitude if a < 0 else r_magnitude
+                    expected = limbs(q % (1 << width), width) + (
+                        [] if width == 128 else limbs(r % (1 << width), width))
+                    assignment = {"public_inputs": {},
+                                  "private_inputs": {"a": limbs(a % (1 << width), width),
+                                                     "b": limbs(b % (1 << width), width)},
+                                  "public_outputs": {output_name: expected}}
+                    self.assertEqual(evaluate_relation(relation, assignment), {output_name: expected})
+            overflow = {"public_inputs": {},
+                        "private_inputs": {"a": limbs(half, width), "b": limbs((1 << width) - 1, width)},
+                        "public_outputs": {output_name: [0] * (count if width == 128 else 2 * count)}}
+            with self.assertRaisesRegex(OracleError, "division overflow"):
+                evaluate_relation(relation, overflow)
+
+    def test_division_projections_use_the_same_relation_operation(self) -> None:
+        for function, expected in (("div_checked", 254), ("rem_checked", 255)):
+            with self.subTest(function=function):
+                source = ("circuit project(private a: i8, private b: i8) -> public i8 "
+                          f"{{ std::int::{function}(a, b) }}")
+                relation, _ = compile_text(source)
+                self.assertEqual([node["op"] for node in relation["nodes"]].count("int_div_rem"), 1)
+                assignment = {"public_inputs": {}, "private_inputs": {"a": [249], "b": [3]},
+                              "public_outputs": {relation["public_outputs"][0]: [expected]}}
+                self.assertEqual(evaluate_relation(relation, assignment), assignment["public_outputs"])
+
+    def test_div_rem_rejects_mixed_and_inactive_branches(self) -> None:
+        with self.assertRaisesRegex(SourceError, "equally typed"):
+            compile_text("circuit bad(private a: u8, private b: u16) -> public u8 "
+                         "{ let (q, r) = std::int::div_rem(a, b); q }")
+        with self.assertRaisesRegex(SourceError, "inactive"):
+            compile_text("circuit bad(private flag: bit, private a: u8, private b: u8) -> public u8 "
+                         "{ if flag then std::int::div_rem(a, b).0 else a }")
+
     def test_all_ten_types_checked_and_wrapping_add(self) -> None:
         for width in (8, 16, 32, 64, 128):
             for prefix in ("u", "i"):

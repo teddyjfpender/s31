@@ -31,6 +31,7 @@ theorem does not establish zero knowledge.
 | `S31/Gadgets/IntegerCast` | Exact byte split, high-limb sign extension, signed value preservation on widening and narrowing, and canonical representability for checked casts. |
 | `S31/Gadgets/IntegerBits` | Width-generic pointwise AND, OR, XOR, and NOT soundness and completeness over constrained Boolean bits. |
 | `S31/Gadgets/IntegerShift` | Width-generic pointwise shifts and rotations, including arithmetic sign fill. |
+| `S31/Gadgets/IntegerDivision` | Unique unsigned quotient/remainder, strict zero-divisor exclusion, fused bounded-column equality, and signed sign reconstruction. |
 | `S31/Evidence/` | Checked operation coverage, non-vacuity/invalid-boundary theorems and live axiom enumeration. |
 | `coverage.json` | Reviewed mapping of every operation to semantics, local gadget theorems and production source functions. |
 | `source-bindings.json`, `proof-inventory.json` | Generated exact source identities and the complete theorem inventory, including the reused modules and three source-derived proof declarations. |
@@ -766,6 +767,7 @@ premises. Honest-witness evaluation alone is insufficient for soundness.
 | Range and packing | Byte range via scaled u16; 16 Boolean bits iff u16; byte-pair packing, endian round trips and canonical digest reduction, including quotient 2. |
 | Carry/borrow arithmetic | Local field equations imply integer equations; whole chains iff checked or wrapping arithmetic; reversed subtraction iff ≤ or <. |
 | Fixed-width multiplication | Split-limb and bounded byte-column equations imply integer equations, each output byte and carry is unique, and the accepted low-byte convolution equals multiplication modulo the declared power of 256. Full convolution with terminal carry zero binds the complete unsigned product. A zero upper word proves unsigned fit; an exact signed high-word correction with terminal carry proves and is implied by sign-extended product equality. The model does not prove production Zig constraint emission. |
+| Fixed-width division | Bounded fused columns with zero terminal carry imply the full integer equation `a=q·b+r`; strict `r<b` gives the unique unsigned pair and excludes a zero divisor. Signed sign reconstruction proves the corresponding equation after magnitude division. The model does not prove production Zig constraint emission or all signed range checks. |
 | Signed arithmetic | Sign extraction, most-significant-limb sign, two's-complement interpretation, signed comparison, overflow predicates, composed signed checked addition/subtraction iff mathematical results. |
 | Packed M31 lanes | QM31 basis multiplication, coordinate extraction, active masks, scalar multiplication, production sum projection/dual literals, `mix4`, active-lane inversion. |
 | Static repeats | Pointwise primitive constraints, sum witnesses, bodies and arbitrary finite repeat counts iff the executable recurrence. |

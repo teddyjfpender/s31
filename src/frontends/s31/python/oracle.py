@@ -35,7 +35,7 @@ _OPS = frozenset({"constant", "cast_m31", "array_get", "array_concat", "array_sl
                   "mul_const", "sum_lanes", "select", "repeat",
                   "u256_add", "u256_le", "u256_add_checked", "u256_sub", "u256_sub_checked",
                   "int_view", "int_add_checked", "int_add_wrapping", "int_sub_checked", "int_sub_wrapping", "int_le", "int_mul_wrapping", "int_mul_checked", "int_cast_checked", "int_bit_and", "int_bit_or", "int_bit_xor", "int_bit_not",
-                  "int_shl", "int_shr_logical", "int_shr_arithmetic", "int_rotl", "int_rotr",
+                  "int_shl", "int_shr_logical", "int_shr_arithmetic", "int_rotl", "int_rotr", "int_div_rem",
                   "hash_sha256d_header", "bitcoin_target_mainnet", "bitcoin_block_work",
                   "bitcoin_prev_hash", "bitcoin_header_bits", "bitcoin_header_time", "u32_lt",
                   "bitcoin_genesis_hash_mainnet"}) | _HASH_OPS
@@ -237,6 +237,12 @@ def _validated_shapes(relation: Mapping[str, Any]) -> tuple[dict[str, tuple[str,
             if lhs != ("u16", limb_count) or (rhs is not None if op in {"int_view", "int_bit_not"} else rhs != lhs):
                 raise OracleError(f"{name}: {op} requires {limb_count} u16 limb(s) for {width} bits")
             shape = ("m31", 1) if op == "int_le" else lhs
+        elif op == "int_div_rem":
+            _absent(node, "selector", "index", "length", "rounds", "body")
+            width, _, limb_count = _int_spec(node)
+            if lhs != ("u16", limb_count) or rhs != lhs:
+                raise OracleError(f"{name}: div_rem requires equal-width integers")
+            shape = ("u16", 2 * limb_count)
         elif op in {"int_shl", "int_shr_logical", "int_shr_arithmetic", "int_rotl", "int_rotr"}:
             _absent(node, "rhs", "selector", "length", "rounds", "body")
             width, signed, limb_count = _int_spec(node)
@@ -446,6 +452,27 @@ def evaluate_relation(relation: Mapping[str, Any], assignment: Mapping[str, Any]
             else:
                 shifted = ((bits >> amount) | (bits << (width - amount))) & (limit - 1) if amount else bits
             result = [(shifted >> (16 * index)) & 0xffff for index in range(count)]
+        elif op == "int_div_rem":
+            width, signed, count = _int_spec(node)
+            numerator = sum(word << (16 * index) for index, word in enumerate(lhs))
+            denominator = sum(word << (16 * index) for index, word in enumerate(rhs))
+            limit = 1 << width
+            if numerator >= limit or denominator >= limit:
+                raise OracleError(f"{name}: division operand exceeds {width}-bit range")
+            half = limit >> 1
+            numerator_negative = signed and numerator >= half
+            denominator_negative = signed and denominator >= half
+            a = numerator - limit if numerator_negative else numerator
+            b = denominator - limit if denominator_negative else denominator
+            if b == 0:
+                raise OracleError(f"{name}: division by zero")
+            q_magnitude, r_magnitude = divmod(abs(a), abs(b))
+            quotient = -q_magnitude if (a < 0) != (b < 0) else q_magnitude
+            remainder = -r_magnitude if a < 0 else r_magnitude
+            if signed and not -half <= quotient < half:
+                raise OracleError(f"{name}: checked integer division overflow")
+            result = [(number >> (16 * index)) & 0xffff
+                      for number in (quotient % limit, remainder % limit) for index in range(count)]
         elif op in {"int_view", "int_add_checked", "int_add_wrapping", "int_sub_checked", "int_sub_wrapping", "int_le", "int_mul_wrapping", "int_mul_checked", "int_bit_and", "int_bit_or", "int_bit_xor", "int_bit_not"}:
             width, signed, count = _int_spec(node)
             limit = 1 << width

@@ -1,0 +1,174 @@
+{
+  "cases": [
+    {
+      "canonical_ir_sha256": "01974444113fe3a63061d4a72ba79d5cbf200e86ca84c9aa99419923da100e10",
+      "changed_public_statement_rejected": true,
+      "name": "u8_div_rem",
+      "native_verifier_accepted": true,
+      "padded": {
+        "blake_g": 0,
+        "eq": 16,
+        "m31_to_u32": 16,
+        "qm31_ops": 64,
+        "triple_xor": 0
+      },
+      "preprocessed_cells": 66128,
+      "proof_bytes": 232570,
+      "prove_wall_seconds": 0.8421233330154791,
+      "prover_stages": {
+        "fri_pow_seconds": 0.085098,
+        "interaction_pow_seconds": 0.00055,
+        "prove_excluding_pow_seconds": 0.024416000000000007,
+        "prove_seconds": 0.110064,
+        "setup_seconds": 0.005995,
+        "witness_seconds": 0.000662
+      },
+      "raw": {
+        "blake_g": 0,
+        "eq": 13,
+        "m31_to_u32": 14,
+        "qm31_ops": 55,
+        "triple_xor": 0
+      },
+      "spec": 8,
+      "verify_wall_seconds": 0.40645537490490824
+    },
+    {
+      "canonical_ir_sha256": "76a5ec985ccd6ca98987f22f1447bd9549652061006a54f46c122b805363251a",
+      "changed_public_statement_rejected": true,
+      "name": "u32_div_rem",
+      "native_verifier_accepted": true,
+      "padded": {
+        "blake_g": 0,
+        "eq": 32,
+        "m31_to_u32": 64,
+        "qm31_ops": 256,
+        "triple_xor": 0
+      },
+      "preprocessed_cells": 67840,
+      "proof_bytes": 238377,
+      "prove_wall_seconds": 0.6610113749047741,
+      "prover_stages": {
+        "fri_pow_seconds": 0.045524,
+        "interaction_pow_seconds": 0.000803,
+        "prove_excluding_pow_seconds": 0.024238000000000003,
+        "prove_seconds": 0.070565,
+        "setup_seconds": 0.006488,
+        "witness_seconds": 0.000571
+      },
+      "raw": {
+        "blake_g": 0,
+        "eq": 30,
+        "m31_to_u32": 42,
+        "qm31_ops": 136,
+        "triple_xor": 0
+      },
+      "spec": 32,
+      "verify_wall_seconds": 0.40044425008818507
+    },
+    {
+      "canonical_ir_sha256": "d5fe4e98aad634c55bed7ef83790ee49de72dfcd610472a756d30e1ae116ec95",
+      "changed_public_statement_rejected": true,
+      "name": "i8_div_rem",
+      "native_verifier_accepted": true,
+      "padded": {
+        "blake_g": 0,
+        "eq": 64,
+        "m31_to_u32": 32,
+        "qm31_ops": 128,
+        "triple_xor": 0
+      },
+      "preprocessed_cells": 66784,
+      "proof_bytes": 232876,
+      "prove_wall_seconds": 0.6582184170838445,
+      "prover_stages": {
+        "fri_pow_seconds": 0.075015,
+        "interaction_pow_seconds": 0.000419,
+        "prove_excluding_pow_seconds": 0.022763999999999993,
+        "prove_seconds": 0.098198,
+        "setup_seconds": 0.005087,
+        "witness_seconds": 0.000612
+      },
+      "raw": {
+        "blake_g": 0,
+        "eq": 34,
+        "m31_to_u32": 28,
+        "qm31_ops": 122,
+        "triple_xor": 0
+      },
+      "spec": 264,
+      "verify_wall_seconds": 0.40521512494888157
+    },
+    {
+      "canonical_ir_sha256": "e41f23f0d422d1e7821ca1a5c6619e6aae9d0a3140840c2f68c19667dbbbb1c4",
+      "changed_public_statement_rejected": true,
+      "name": "u128_div_quotient",
+      "native_verifier_accepted": true,
+      "padded": {
+        "blake_g": 0,
+        "eq": 128,
+        "m31_to_u32": 256,
+        "qm31_ops": 1024,
+        "triple_xor": 0
+      },
+      "preprocessed_cells": 74752,
+      "proof_bytes": 234484,
+      "prove_wall_seconds": 0.8252720000455156,
+      "prover_stages": {
+        "fri_pow_seconds": 0.215289,
+        "interaction_pow_seconds": 0.004564,
+        "prove_excluding_pow_seconds": 0.023964999999999986,
+        "prove_seconds": 0.243818,
+        "setup_seconds": 0.005781,
+        "witness_seconds": 0.000668
+      },
+      "raw": {
+        "blake_g": 0,
+        "eq": 114,
+        "m31_to_u32": 168,
+        "qm31_ops": 802,
+        "triple_xor": 0
+      },
+      "spec": 128,
+      "verify_wall_seconds": 0.40323033300228417
+    },
+    {
+      "canonical_ir_sha256": "bcbe032a2ffa65c57521bbb65dc2775d2e4dccc8263d58eb221155ba374f1250",
+      "changed_public_statement_rejected": true,
+      "name": "i128_div_quotient",
+      "native_verifier_accepted": true,
+      "padded": {
+        "blake_g": 0,
+        "eq": 256,
+        "m31_to_u32": 256,
+        "qm31_ops": 2048,
+        "triple_xor": 0
+      },
+      "preprocessed_cells": 83200,
+      "proof_bytes": 239293,
+      "prove_wall_seconds": 0.7273103749612346,
+      "prover_stages": {
+        "fri_pow_seconds": 0.098141,
+        "interaction_pow_seconds": 0.00471,
+        "prove_excluding_pow_seconds": 0.02306799999999999,
+        "prove_seconds": 0.125919,
+        "setup_seconds": 0.005808,
+        "witness_seconds": 0.000674
+      },
+      "raw": {
+        "blake_g": 0,
+        "eq": 187,
+        "m31_to_u32": 206,
+        "qm31_ops": 1121,
+        "triple_xor": 0
+      },
+      "spec": 384,
+      "verify_wall_seconds": 0.4085523330140859
+    }
+  ],
+  "constant_min_base": 16,
+  "date": "2026-10-10",
+  "measurement_limits": "Canonical IR hashes, AIR rows, and fixed cells are deterministic for these source programs. Proof size and timings are one local run each, with cache and proof-of-work variance. The shared 65536-cell seq_16 range table dominates fixed preprocessing. These data do not establish an end-to-end speedup.",
+  "profile": "sparse-wide-v5",
+  "schema": "s31-fixed-width-division-v1"
+}
