@@ -1,7 +1,7 @@
-"""Canonical typed record statement codec for the proposed public ABI v2.
+"""Canonical typed record value and statement codec for public ABI v2.
 
-This module handles source values and statement bytes. It does not enable
-record-valued circuit parameters or bind an ABI digest into a Stwo key yet.
+Native key and relation binding lives in ``abi.binding_v2`` and the Zig
+``record_abi`` validator; this module handles source-side value layouts.
 """
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ _NAME = re.compile(r"[A-Za-z_][A-Za-z_0-9]*\Z")
 
 
 class AbiError(ValueError):
-    """A value or statement violates the proposed record ABI v2."""
+    """A value or statement violates record ABI v2."""
 
 
 def _canonical_json(value: object) -> bytes:
@@ -86,7 +86,7 @@ def _word_count(typ: Type | RecordType | TupleType) -> int:
 
 
 def layout_digest(typ: Type | RecordType | TupleType, root: str) -> str:
-    """Domain-separated digest to be bound into a future v2 verification key."""
+    """Domain-separated standalone layout digest for typed values."""
     if not _NAME.fullmatch(root):
         raise AbiError("invalid root name")
     layout = {"root": root, "type": type_tree(typ)}

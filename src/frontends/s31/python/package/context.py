@@ -171,7 +171,10 @@ def text_interface(circuit: object, explicit_import: bool) -> dict:
                 **({"family": typ.family} if typ.family else {})}
 
     return {
-        "schema": "s31-text-interface-v2" if getattr(circuit.result, "fields", None) is not None else "s31-text-interface-v1",
+        "schema": "s31-text-interface-v2" if (
+            getattr(circuit.result, "fields", None) is not None or
+            any(getattr(typ, "fields", None) is not None for _, typ, _ in circuit.params)
+        ) else "s31-text-interface-v1",
         "inputs": [{"name": name, "visibility": visibility, "type": type_entry(typ)}
                    for name, typ, visibility in circuit.params],
         "output": type_entry(circuit.result),

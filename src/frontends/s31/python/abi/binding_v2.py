@@ -95,9 +95,8 @@ def _root(root: object, names: dict[str, object], *, input_root: bool) -> list[d
 def validate_binding(relation: Mapping[str, Any], binding: object) -> None:
     """Check typed paths, wire binding, aliases, visibility, and proof budget.
 
-    This uses the independent v1 relation shape validator until relation v2
-    exists. It cannot authenticate itself: only the future native verifier can
-    bind a validated descriptor to a key and proof statement.
+    The native verifier independently binds this descriptor to the sealed
+    relation, key and proof statement.
     """
     if type(binding) is not dict or set(binding) != {"schema", "inputs", "result"} or binding["schema"] != SCHEMA:
         raise AbiError("invalid ABI boundary descriptor")
@@ -134,6 +133,11 @@ def validate_binding(relation: Mapping[str, Any], binding: object) -> None:
                 raise AbiError("ABI input wire, shape, or visibility differs from relation")
             at += 1
     outputs = _root(binding["result"], names, input_root=False)
+    if binding["result"]["name"] != "result":
+        raise AbiError("ABI output root must be result")
+    if not ("record" in binding["result"]["type"] or any(
+            "record" in root["type"] for root in inputs)):
+        raise AbiError("v2 requires a nominal record boundary root")
     if binding["result"]["name"] in root_names:
         raise AbiError("duplicate ABI root name")
     if len(input_wires) + len(outputs) > _MAX_LEAVES:
@@ -195,6 +199,19 @@ def _unique_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
             raise AbiError("duplicate public statement JSON key")
         result[name] = value
     return result
+
+
+def parse_assignment_json(encoded: bytes) -> dict[str, Any]:
+    """Reject duplicate object keys before any typed or flat dispatch."""
+    try:
+        value = json.loads(encoded, object_pairs_hook=_unique_object)
+    except AbiError:
+        raise
+    except (UnicodeDecodeError, json.JSONDecodeError, ValueError, RecursionError) as exc:
+        raise AbiError("invalid assignment JSON") from exc
+    if type(value) is not dict:
+        raise AbiError("assignment must be a JSON object")
+    return value
 
 
 def decode_public_statement(relation: Mapping[str, Any], binding: dict[str, Any],
@@ -268,3 +285,75 @@ def statement_from_assignment(source: Mapping[str, Any], assignment: Mapping[str
     words.extend(assignment["public_outputs"][leaf["wire"]]
                  for leaf in binding["result"]["leaves"])
     return encode_public_statement(base, binding, words)
+
+
+def _flatten_typed(tree: dict[str, Any], value: object,
+                   path: list[dict[str, str | int]]) -> list[tuple[list[dict[str, str | int]], list[int]]]:
+    """Validate one typed value and return declaration-ordered M31 leaves."""
+    if "kind" in tree:
+        length = tree["length"]
+        if (type(value) is not list or len(value) != length or
+                any(type(word) is not int or word < 0 or word >= 2**31 - 1 for word in value)):
+            raise AbiError("typed M31 leaf has noncanonical words or wrong length")
+        return [(path, value)]
+    if "record" in tree:
+        fields = tree["fields"]
+        names = [field["name"] for field in fields]
+        if type(value) is not dict or set(value) != set(names) or len(value) != len(names):
+            raise AbiError("typed record must contain exactly its declared fields")
+        return [leaf for field in fields
+                for leaf in _flatten_typed(field["type"], value[field["name"]],
+                                           path + [{"field": field["name"]}])]
+    elements = tree["tuple"]
+    if type(value) is not list or len(value) != len(elements):
+        raise AbiError("typed tuple has the wrong arity")
+    return [leaf for index, element in enumerate(elements)
+            for leaf in _flatten_typed(element, value[index], path + [{"tuple": index}])]
+
+
+def flat_assignment_from_typed(source: Mapping[str, Any], encoded: bytes) -> dict[str, dict[str, list[int]]]:
+    """Lower one strict v2 source assignment to native first-order wire maps."""
+    if source.get("version") != 2 or type(source.get("public_abi")) is not dict:
+        raise AbiError("typed assignment requires a v2 record relation")
+    if type(encoded) is not bytes or len(encoded) > _MAX_STATEMENT_BYTES:
+        raise AbiError("invalid typed assignment size")
+    assignment = parse_assignment_json(encoded)
+    if (type(assignment) is not dict or set(assignment) !=
+            {"version", "public_inputs", "private_inputs", "result"} or
+            type(assignment["version"]) is not int or assignment["version"] != 2):
+        raise AbiError("invalid typed assignment envelope")
+    base = {**source, "version": 1}
+    binding = base.pop("public_abi")
+    validate_binding(base, binding)
+    flat: dict[str, dict[str, list[int]]] = {
+        "public_inputs": {}, "private_inputs": {}, "public_outputs": {}}
+    for visibility in ("public", "private"):
+        key = f"{visibility}_inputs"
+        roots = [root for root in binding["inputs"] if root["visibility"] == visibility]
+        raw = assignment[key]
+        if type(raw) is not dict or set(raw) != {root["name"] for root in roots}:
+            raise AbiError(f"typed {key} roots differ from the ABI")
+        for root in roots:
+            leaves = _flatten_typed(root["type"], raw[root["name"]],
+                                    [{"root": root["name"]}])
+            if len(leaves) != len(root["leaves"]):
+                raise AbiError("typed input leaf count differs from the ABI")
+            for (path, words), descriptor in zip(leaves, root["leaves"]):
+                if path != descriptor["path"]:
+                    raise AbiError("typed input leaf path differs from the ABI")
+                flat[key][descriptor["wire"]] = words
+    result = binding["result"]
+    leaves = _flatten_typed(result["type"], assignment["result"],
+                            [{"root": result["name"]}])
+    if len(leaves) != len(result["leaves"]):
+        raise AbiError("typed result leaf count differs from the ABI")
+    for (path, words), descriptor in zip(leaves, result["leaves"]):
+        if path != descriptor["path"]:
+            raise AbiError("typed result leaf path differs from the ABI")
+        wire = descriptor["wire"]
+        prior = flat["public_outputs"].get(wire)
+        if prior is not None and prior != words:
+            raise AbiError("aliased result fields claim different values")
+        flat["public_outputs"][wire] = words
+    statement_from_assignment(source, flat)
+    return flat

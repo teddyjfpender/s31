@@ -104,10 +104,11 @@ rejects this expression in either arm of a witness-dependent `if`. The
 record does not hide proof obligations in an unused field.
 
 Records may be passed to and returned from pure `fn` helpers and stored in
-`let` bindings. Circuit parameters remain first-order. A circuit may now
-return a public record of M31 leaves under the `direct-gate` profile. The
-native verifier accepts one canonical typed v2 statement with named field
-paths. Other leaf types and record-valued inputs remain outside this boundary.
+`let` bindings. Circuit parameters may also be nominal records with M31
+leaves. A circuit may return either a public record or a first-order M31
+value under the `direct-gate` v2 profile. The native verifier accepts one
+canonical typed v2 statement with named input and output paths. Other leaf
+types remain outside this boundary.
 Whole-record `if` and `assert_eq` are not part of this version; select or
 assert the individual circuit fields explicitly.
 
@@ -212,3 +213,48 @@ nominal layouts, alias checks, and the eight-word proof budget. The
 [native acceptance control](../tests/acceptance/acceptance_public_record_v2.py)
 compares AIR geometry with a flat relation and mutates field paths, aliases,
 digest, JSON encoding, and M31 words.
+
+## A record input and scalar result
+
+The executable [record-input source](../examples/arithmetic/record_input_sum.s31)
+and [typed assignment](../examples/arithmetic/record_input_sum.valid.json)
+are:
+
+```s31
+struct Pair { left: [m31; 1], right: [m31; 1] }
+circuit record_input_sum(public request: Pair, private mask: Pair) -> public [m31; 1] {
+    request.left + request.right + mask.left + mask.right
+}
+```
+
+For `request={left:[3], right:[4]}` and `mask={left:[5], right:[6]}`,
+the result is `[18]` in M31. A strict typed prover assignment is:
+
+```json
+{"version":2,"public_inputs":{"request":{"left":[3],"right":[4]}},
+ "private_inputs":{"mask":{"left":[5],"right":[6]}},"result":[18]}
+```
+
+The source grouping erases into four distinct first-order input wires. The
+relation and sealed key bind each wire to its nominal root, tagged field
+path, and visibility. The verifier's canonical statement contains three
+leaves: `request.left=3`, `request.right=4`, and `result=18`. It has no
+`mask` leaf. Its proof word vector has those same three values followed by
+five zeros. The private mask values enter the circuit computation; absence
+from the public statement does not make this transparent proof zero
+knowledge.
+
+For this scalar example, the arithmetic graph has three add nodes. Write
+the four flattened inputs as $a,b,c,d$. Its witnesses $t_0,t_1,t_2$ must
+satisfy $t_0-a-b=0$, $t_1-t_0-c=0$, and $t_2-t_1-d=0$ in M31. The public
+result claim binds $t_2=18$. The named record paths select which existing
+input wires supply $a,b,c,d$; they do not create another polynomial
+constraint or a copy gate. A manually flattened circuit has the same
+arithmetic equations and AIR geometry.
+
+The [record-input native acceptance](../tests/acceptance/acceptance_record_inputs_v2.py)
+uses a deeper nested record and tuple. It compares the exact direct-gate AIR
+geometry with an equivalent manually flattened relation, proves both, and
+checks that the native verifier rejects changed field paths and values. The
+typed assignment adapter rejects missing or extra fields, wrong tuple arity,
+duplicate JSON keys, and noncanonical M31 words before proving.

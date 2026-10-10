@@ -141,8 +141,7 @@ const State = struct {
         self.nominal.deinit(self.allocator);
     }
 
-    fn leaf(self: *State, program: anytype, descriptor: Value,
-            expected_length: usize, input_root: bool, visibility: []const u8) !void {
+    fn leaf(self: *State, program: anytype, descriptor: Value, expected_length: usize, input_root: bool, visibility: []const u8) !void {
         _ = try object(descriptor, &.{ "kind", "length", "path", "wire" });
         if (!std.mem.eql(u8, try name(try field(descriptor, "kind")), "m31") or
             try count(try field(descriptor, "length")) != expected_length)
@@ -171,8 +170,7 @@ const State = struct {
         }
     }
 
-    fn typeTree(self: *State, program: anytype, tree: Value, leaves: []Value,
-                at: *usize, input_root: bool, visibility: []const u8, depth: usize) !void {
+    fn typeTree(self: *State, program: anytype, tree: Value, leaves: []Value, at: *usize, input_root: bool, visibility: []const u8, depth: usize) !void {
         if (depth > 32 or tree != .object) return error.InvalidRecordAbi;
         if (tree.object.contains("kind")) {
             _ = try object(tree, &.{ "kind", "length" });
@@ -211,15 +209,13 @@ const State = struct {
                     return error.InvalidRecordAbi;
             }
             try self.path.append(self.allocator, .{ .field = field_name });
-            try self.typeTree(program, try field(child, "type"), leaves, at,
-                              input_root, visibility, depth + 1);
+            try self.typeTree(program, try field(child, "type"), leaves, at, input_root, visibility, depth + 1);
             _ = self.path.pop();
         }
     }
 };
 
-fn root(state: *State, program: anytype, descriptor: Value,
-        input_root: bool) ![]const u8 {
+fn root(state: *State, program: anytype, descriptor: Value, input_root: bool) ![]const u8 {
     if (input_root)
         _ = try object(descriptor, &.{ "name", "type", "leaves", "visibility" })
     else
@@ -229,8 +225,9 @@ fn root(state: *State, program: anytype, descriptor: Value,
     if (input_root and !std.mem.eql(u8, visibility, "public") and !std.mem.eql(u8, visibility, "private"))
         return error.InvalidRecordAbi;
     const tree = try field(descriptor, "type");
-    if (tree != .object or (input_root and !tree.object.contains("kind")) or
-        (!input_root and !tree.object.contains("record"))) return error.InvalidRecordAbi;
+    if (tree != .object or
+        (!tree.object.contains("kind") and !tree.object.contains("record")))
+        return error.InvalidRecordAbi;
     const leaves = try array(try field(descriptor, "leaves"));
     try state.path.append(state.allocator, .{ .root = root_name });
     defer _ = state.path.pop();
@@ -245,18 +242,26 @@ pub fn validate(allocator: std.mem.Allocator, program: anytype) !void {
     _ = try object(abi, &.{ "inputs", "result", "schema" });
     if (!std.mem.eql(u8, try string(try field(abi, "schema")), schema)) return error.InvalidRecordAbi;
     const inputs = try array(try field(abi, "inputs"));
-    if (inputs.len != program.inputs.len) return error.InvalidRecordAbi;
+    if (inputs.len > program.inputs.len) return error.InvalidRecordAbi;
     var state: State = .{ .allocator = allocator };
     defer state.deinit();
     var roots: std.StringHashMapUnmanaged(void) = .empty;
     defer roots.deinit(allocator);
+    var has_record_boundary = false;
     for (inputs) |descriptor| {
+        const tree = try field(descriptor, "type");
+        if (tree == .object and tree.object.contains("record")) has_record_boundary = true;
         const root_name = try root(&state, program, descriptor, true);
         if (roots.contains(root_name)) return error.InvalidRecordAbi;
         try roots.put(allocator, root_name, {});
     }
     if (state.input_at != program.inputs.len) return error.InvalidRecordAbi;
-    const result_name = try root(&state, program, try field(abi, "result"), false);
+    const result_descriptor = try field(abi, "result");
+    const result_tree = try field(result_descriptor, "type");
+    if (result_tree == .object and result_tree.object.contains("record"))
+        has_record_boundary = true;
+    if (!has_record_boundary) return error.InvalidRecordAbi;
+    const result_name = try root(&state, program, result_descriptor, false);
     if (!std.mem.eql(u8, result_name, "result") or roots.contains(result_name)) return error.InvalidRecordAbi;
     if (state.outputs.items.len != program.public_outputs.len) return error.InvalidRecordAbi;
     for (state.outputs.items, program.public_outputs) |actual, expected| {
@@ -277,12 +282,10 @@ pub fn digest(allocator: std.mem.Allocator, program: anytype) ![32]u8 {
     return output;
 }
 
-pub fn claimedWords(allocator: std.mem.Allocator, program: anytype,
-                    encoded: []const u8) ![8]u32 {
+pub fn claimedWords(allocator: std.mem.Allocator, program: anytype, encoded: []const u8) ![8]u32 {
     if (encoded.len == 0 or encoded.len > 1_000_000) return error.InvalidRecordStatement;
     try validate(allocator, program);
-    var parsed = try std.json.parseFromSlice(Value, allocator, encoded,
-        .{ .duplicate_field_behavior = .@"error" });
+    var parsed = try std.json.parseFromSlice(Value, allocator, encoded, .{ .duplicate_field_behavior = .@"error" });
     defer parsed.deinit();
     const statement = parsed.value;
     _ = try object(statement, &.{ "abi_sha256", "leaves", "version" });
@@ -345,8 +348,7 @@ pub fn claimedWords(allocator: std.mem.Allocator, program: anytype,
     return output;
 }
 
-fn checkClaim(allocator: std.mem.Allocator, descriptor: Value, actual: Value,
-              wire_values: *std.StringHashMapUnmanaged([]const u32)) !void {
+fn checkClaim(allocator: std.mem.Allocator, descriptor: Value, actual: Value, wire_values: *std.StringHashMapUnmanaged([]const u32)) !void {
     _ = try object(actual, &.{ "path", "words" });
     const expected_path = try canonicalJson(allocator, try field(descriptor, "path"));
     defer allocator.free(expected_path);

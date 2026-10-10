@@ -430,17 +430,24 @@ class Elaborator:
                 raise self.error(fn.body, f"{name} result does not match its declared type")
         env = {name: typ for name, typ, _ in self.circuit.params}
         result = self.block(self.circuit.statements, self.circuit.body, env, allow_assert=True)
+        record_boundary = isinstance(self.circuit.result, RecordType) or any(
+            isinstance(typ, RecordType) for _, typ, _ in self.circuit.params)
         bit_as_field = isinstance(self.circuit.result, Type) and result == BIT and self.circuit.result == M31_ONE
+        if record_boundary and bit_as_field:
+            raise self.error(self.circuit.body,
+                             "public record v2 requires exact m31 result leaves")
         if result != self.circuit.result and not bit_as_field:
             raise self.error(self.circuit.body,
                              "circuit result does not match declared public output type")
-        if isinstance(self.circuit.result, RecordType) and any(
-                typ.kind != "m31" for _, typ, _ in self.circuit.params):
+        if record_boundary and self.circuit.proof_mode == "blinded":
             raise self.error(self.circuit.body,
-                             "public record v2 currently supports only m31 circuit inputs")
+                             "public record v2 currently requires transparent direct-gate proofs")
+        if record_boundary and any(name == "result" for name, _, _ in self.circuit.params):
+            raise self.error(self.circuit.body,
+                             "result is reserved for the public output root")
         def result_words(typ: Type | RecordType | TupleType) -> int:
             if isinstance(typ, Type):
-                if isinstance(self.circuit.result, RecordType) and typ.kind != "m31":
+                if record_boundary and typ.kind != "m31":
                     raise self.error(self.circuit.body,
                                      "public record v2 currently supports only m31 leaves")
                 return typ.length
@@ -449,8 +456,11 @@ class Elaborator:
             return sum(result_words(item) for item in typ.elements)
 
         result_leaf_words = result_words(self.circuit.result)
-        public_words = sum(typ.length for _, typ, visibility in self.circuit.params
+        public_words = sum(result_words(typ) for _, typ, visibility in self.circuit.params
                            if visibility == "public")
+        if record_boundary:
+            for _, typ, _ in self.circuit.params:
+                result_words(typ)
         # Record leaves may alias one relation wire. The specialist counts
         # distinct realized result wires against the eight proof-word budget.
         if isinstance(self.circuit.result, Type):

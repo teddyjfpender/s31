@@ -355,8 +355,8 @@ class Parser:
                 name = self.identifier()
                 self.expect(":")
                 typ = self.parse_type()
-                if circuit and not isinstance(typ, Type):
-                    raise self.error("circuit inputs must be first-order values")
+                if circuit and not isinstance(typ, (Type, RecordType)):
+                    raise self.error("circuit inputs must be first-order values or nominal records")
                 params.append((name, typ, visibility) if circuit else (name, typ))
                 if self.accept(")"):
                     break

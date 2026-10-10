@@ -190,10 +190,14 @@ circuit p(private x: [m31; 1]) -> public [m31; 1] {
             evaluate_relation(relation, {"public_inputs": {}, "private_inputs": {"x": [0]},
                                          "public_outputs": {"x": [0]}})
 
-    def test_record_inputs_remain_rejected_but_public_record_outputs_bind_names(self) -> None:
+    def test_record_inputs_and_public_record_outputs_bind_names(self) -> None:
         prelude = "struct A { value: [m31; 1] }\n"
-        with self.assertRaisesRegex(SourceError, "circuit inputs must be first-order values"):
-            compile_text(prelude + "circuit p(private x: A) -> public [m31; 1] { x.value }")
+        input_relation, _ = compile_text(prelude +
+            "circuit p(private x: A) -> public [m31; 1] { x.value }")
+        self.assertEqual(input_relation["version"], 2)
+        self.assertEqual(len(input_relation["inputs"]), 1)
+        self.assertEqual(input_relation["public_abi"]["inputs"][0]["leaves"][0]["path"],
+                         [{"root": "x"}, {"field": "value"}])
         relation, _ = compile_text(prelude +
             "circuit p(private x: [m31; 1]) -> public A { A { value: x } }")
         self.assertEqual(relation["version"], 2)

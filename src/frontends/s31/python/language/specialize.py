@@ -24,6 +24,32 @@ class Compiler:
         self.source_names.update(statement.name for statement in circuit.statements
                                  if statement.kind == "let")
         self.builder.reserved_names = self.source_names
+        self.input_leaf_counter = 0
+
+    def circuit_input(self, name: str, typ: Type | RecordType | TupleType,
+                      visibility: str, *, nested: bool = False) -> tuple[Any, list[str]]:
+        """Erase a static product into fresh first-order relation inputs."""
+        if isinstance(typ, Type):
+            if nested:
+                while True:
+                    wire = f"_s31_abi_input_{self.input_leaf_counter}"
+                    self.input_leaf_counter += 1
+                    if wire not in self.builder.used_names and wire not in self.builder.reserved_names:
+                        break
+            else:
+                wire = name
+            return self.builder.input(wire, typ, visibility), [wire]
+        if isinstance(typ, RecordType):
+            fields = [self.circuit_input(name, child, visibility, nested=True)
+                      for _, child in typ.fields]
+            return StaticRecord(typ, tuple(value for value, _ in fields)), [
+                wire for _, wires in fields for wire in wires]
+        if isinstance(typ, TupleType):
+            elements = [self.circuit_input(name, child, visibility, nested=True)
+                        for child in typ.elements]
+            return StaticTuple(typ, tuple(value for value, _ in elements)), [
+                wire for _, wires in elements for wire in wires]
+        raise TypeErrorS31("function values cannot cross a circuit input boundary")
 
     def located(self, expr: Expr, exc: Exception) -> SourceError:
         return SourceError(f"{self.filename}:{expr.token.line}:{expr.token.column}: {exc}")
@@ -653,12 +679,23 @@ class Compiler:
         raise self.located(expr, "iterate step must use square, add_const, mul_const, or mix4 operations")
 
     def compile(self) -> tuple[dict[str, Any], dict[str, dict[str, int]]]:
-        env = {name: self.builder.input(name, typ, visibility)
-               for name, typ, visibility in self.circuit.params}
+        env: dict[str, Any] = {}
+        input_bindings: list[tuple[str, Type | RecordType | TupleType, str, list[str]]] = []
+        for name, typ, visibility in self.circuit.params:
+            value, wires = self.circuit_input(name, typ, visibility)
+            env[name] = value
+            input_bindings.append((name, typ, visibility, wires))
         result = self.eval_block(self.circuit.statements, self.circuit.body, env)
-        if isinstance(self.circuit.result, RecordType):
-            if not isinstance(result, StaticRecord) or result.signature != self.circuit.result:
-                raise self.located(self.circuit.body, "circuit record result has the wrong nominal type")
+        record_boundary = isinstance(self.circuit.result, RecordType) or any(
+            isinstance(typ, RecordType) for _, typ, _ in self.circuit.params)
+        if record_boundary:
+            if isinstance(self.circuit.result, RecordType):
+                if not isinstance(result, StaticRecord) or result.signature != self.circuit.result:
+                    raise self.located(self.circuit.body, "circuit record result has the wrong nominal type")
+            else:
+                result = self.expect_value(result, self.circuit.body)
+                if result.typ != self.circuit.result:
+                    raise self.located(self.circuit.body, "circuit result has the wrong type")
 
             def collect(typ: Type | TupleType | RecordType, value: Any) -> list[Value]:
                 if isinstance(typ, Type):
@@ -679,9 +716,7 @@ class Compiler:
             if any(leaf.typ.kind != "m31" for leaf in leaves):
                 raise self.located(self.circuit.body, "public record v2 currently supports only m31 leaves")
             relation, refs = self.builder.finish_record_outputs(leaves, self.span(self.circuit.body))
-            binding = make_binding(relation,
-                                   [(name, typ, visibility, [name])
-                                    for name, typ, visibility in self.circuit.params],
+            binding = make_binding(relation, input_bindings,
                                    ("result", self.circuit.result, refs))
             relation["version"] = 2
             relation["public_abi"] = binding

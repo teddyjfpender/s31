@@ -1,18 +1,17 @@
 # Public record ABI v2: implementation contract
 
-Status: an output-only, M31-leaf v2 direct-gate slice is implemented. The
-native verifier checks the typed statement, embedded relation descriptor, and
-sealed key digest. Record inputs and other proof profiles remain disabled.
-The acceptance controls below are the release gate for this slice.
+Status: M31-leaf v2 record outputs and record-valued public/private inputs
+are implemented for the direct-gate profile. The native verifier checks the
+typed statement, embedded relation descriptor, and sealed key digest. Other
+proof profiles and non-M31 boundary leaves remain disabled. The input slice
+passed its local native proof and mutation acceptance; CI is still pending.
 
 ## Minimal first release
 
-The first native slice admits nominal records of `m31` leaves, including
-nested records and tuples, **only as the public result**. Circuit inputs stay
-first-order, with their current public or private visibility. The standalone
-reference validator also models future record inputs, but that capability
-must remain disabled at the source parser until input flattening and native
-assignment checks land. Retain the existing eight-word public budget. Other
+The initial native slice admitted nominal records of `m31` leaves, including
+nested records and tuples, as the public result. The next slice extends that
+same v2 relation to nominal record inputs with inherited public or private
+visibility. Retain the existing eight-word public budget. Other
 leaf types require native checks for their additional invariants and are
 excluded from this slice. A later version can add `u16`, `bit`, fixed-width
 integers, and digest families with explicit semantic tags and range or
@@ -82,8 +81,9 @@ The public v2 statement is a canonical JSON envelope containing `version: 2`,
 the ABI digest, and ordered leaves for public input roots and the result root.
 Each leaf carries its tagged path and canonical words. Private leaves are
 present only in a prover assignment, never in the public statement. The
-prover takes a flat witness assignment and the CLI derives the single
-canonical typed statement; the verifier admits only that v2 envelope. It constructs its
+CLI accepts a typed root assignment, validates and lowers it to the flat
+native witness assignment, and derives the single canonical typed statement.
+The verifier admits only that v2 envelope. It constructs its
 existing eight-word vector from relation input order followed by ordered
 **distinct** public result wires, comparing every alias leaf against the first
 claim for that wire. It rejects missing, extra, reordered, duplicated,
@@ -98,18 +98,19 @@ statement into a different statement.
 
 ## Source lowering
 
-Change `Circuit.result` to carry a first-order or product type while keeping
-`Circuit.params` first-order for the first native slice. The parser admits a
-record or tuple result only for relation v2 and rejects function values
-there. The elaborator counts recursively flattened public result words and
+`Circuit.result` carries a first-order or product type, and the parser admits
+nominal record parameters for relation v2. The elaborator counts recursively
+flattened public words and
 checks the exact result type. After evaluating the circuit result, the
 specialist traverses the `StaticRecord` or `StaticTuple` in declaration order
 to obtain leaf values and references. Existing `Builder.input` and
 `Builder.realize` remain the source of first-order wires. The emitter derives
 the ABI descriptor from the typed circuit and those references and finishes
 the relation with distinct result wires. No field projection emits an
-arithmetic node. Record input support later constructs static products from
-fresh leaf inputs and requires a separate assignment/visibility audit.
+arithmetic node. Record input lowering constructs static products from fresh
+leaf input wires, preserving declaration order and root visibility. The typed
+assignment adapter checks nested values before passing a flat map to the
+native prover.
 
 The CLI writes only a v2 statement for a v2 package. Package admission
 rederives `public-abi.json` from the sealed relation, compares the v2 ABI
@@ -117,11 +118,16 @@ digest with the sealed key, and rejects version/profile mismatches. Native
 proof verification is the final authority; Python package checks cannot
 substitute for native ABI validation.
 
-## Next increment: record-valued inputs
+## Record-valued inputs
 
-Keep the output-only profile independently releasable. Record input support
-extends relation v2, rather than introducing an unbound source-only sugar.
-For example, the planned source form is:
+Record input support extends relation v2, rather than introducing an unbound
+source-only sugar. **Status: implemented in the direct-gate profile; local
+native acceptance passed, and CI remains the release gate.** Admit
+nominal record roots whose nested fields may contain records or static tuples,
+with `m31` leaves only. A circuit may return an `m31` scalar or a record.
+When any boundary root is a record, every other circuit input and output leaf
+must also be `m31` until additional native type checks are implemented.
+For example, the source form is:
 
 ```s31
 struct Amounts { left: [m31; 1], right: [m31; 1] }
@@ -137,6 +143,33 @@ statement claims only the two `request` leaves and the scalar `result`.
 The private `mask` leaves enter the proved computation; their names,
 layout, and private visibility remain bound in the
 v2 relation and key.
+
+The source-level assignment for that example should be one typed object:
+
+```json
+{
+  "version": 2,
+  "public_inputs": {"request": {"left": [3], "right": [4]}},
+  "private_inputs": {"mask": {"left": [5], "right": [6]}},
+  "result": [18]
+}
+```
+
+The lowering assigns four distinct first-order input wires in this order:
+
+| Source path | Relation input | Visibility | Public statement leaf |
+| --- | --- | --- | --- |
+| `request.left` | first fresh input wire | public | yes |
+| `request.right` | second fresh input wire | public | yes |
+| `mask.left` | third fresh input wire | private | no |
+| `mask.right` | fourth fresh input wire | private | no |
+
+The native prover receives those four wire values and the result wire's
+claimed value through its existing flat assignment interface. The generated
+verifier receives exactly three ordered typed leaves: `request.left`,
+`request.right`, and `result`. Its ABI digest commits to *all* four input
+paths, including the private root's nominal type and visibility. It never
+accepts a second flat public statement beside the typed one.
 
 Each circuit input root has one visibility, `public` or `private`, inherited
 by every M31 leaf. Traverse fields in declaration order and tuple elements
@@ -160,11 +193,30 @@ and statement schema. Compare a record-input circuit with an identical
 manually flattened relation under the direct-gate AIR profile; input
 packing, raw and padded AIR rows, and preprocessing cells must match.
 
+The public proof-word budget is the sum of all **public input leaf widths**
+plus the widths of **distinct result wires**. Repeating a result wire under
+two result paths adds a named claim but no proof word. A result wire that also
+names a public input still occupies the existing result proof slot, and the
+native verifier checks that both claims agree. Private input leaves consume
+no public slots. Generated leaf wire names must avoid every source parameter,
+local, and generated relation name. A source input root named `result` is
+rejected because the output root already uses that name.
+
+Release gates for this increment are strict typed-assignment validation
+(missing/extra fields, tuple arity, duplicate JSON keys, noncanonical M31),
+native public/private path and visibility binding, native rejection of
+private leaves injected into the public statement, alias equality, a
+re-sealed key with a wrong ABI digest, v1 compatibility, and exact AIR and
+preprocessing parity with a manually flattened direct-gate relation. Test
+both scalar and record results, nested record/tuple inputs, eight-word limit
+cases, and generated-name collisions. These controls must pass before the
+source parser admits record-valued circuit parameters.
+
 ## Required acceptance controls
 
-- Honest nested record outputs accepted by independent oracle and generated
-  native verifier; record inputs remain rejected. A later input release must
-  test public/private visibility for nested input fields.
+- Honest nested record outputs and public/private nested record inputs are
+  accepted by the independent oracle and generated native verifier. The input
+  acceptance must test public/private visibility for nested input fields.
 - A named-field program and manually flattened program have the same
   arithmetic rows, padded rows, witness columns, and preprocessing cells.
   Compare under **the same direct-gate AIR profile**; the relation/key bytes may

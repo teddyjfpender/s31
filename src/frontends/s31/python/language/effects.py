@@ -287,7 +287,7 @@ class TotalityChecker:
         for fn in self.functions.values():
             env = {name: self.parameter(typ) for name, typ in fn.params}
             self.block(fn.statements, fn.body, env)
-        env = {name: FIRST_ORDER for name, _, _ in self.circuit.params}
+        env = {name: self.parameter(typ) for name, typ, _ in self.circuit.params}
         result = self.block(self.circuit.statements, self.circuit.body, env)
         unresolved = sorted(reason for reason in result.failure if reason.startswith("opaque:"))
         if unresolved:

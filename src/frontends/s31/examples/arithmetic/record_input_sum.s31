@@ -1,0 +1,5 @@
+struct Pair { left: [m31; 1], right: [m31; 1] }
+
+circuit record_input_sum(public request: Pair, private mask: Pair) -> public [m31; 1] {
+    request.left + request.right + mask.left + mask.right
+}

@@ -11,7 +11,8 @@ import tempfile
 import time
 from pathlib import Path
 
-from abi.binding_v2 import statement_from_assignment
+from abi.binding_v2 import (flat_assignment_from_typed, parse_assignment_json,
+                            statement_from_assignment)
 from inspection.reports import equations as report_equations, explain as report_explain
 from package.build import build
 from package.context import ENGINE_ROOT, ROOT, S31_DIR, file_hash, invoke, sha256, write_json
@@ -111,8 +112,11 @@ def trial(source_or_package: Path, assignment_path: Path, output: Path,
                         1 if fri_fold_step is None else fri_fold_step)
         manifest = verify_package(package)
     build_seconds = time.perf_counter() - started
-    assignment = json.loads(assignment_path.read_text())
     relation = json.loads((package / "source.s31.json").read_text())
+    supplied_assignment = parse_assignment_json(assignment_path.read_bytes())
+    typed_assignment = relation["version"] == 2 and supplied_assignment.get("version") == 2
+    assignment = (flat_assignment_from_typed(relation, assignment_path.read_bytes())
+                  if typed_assignment else supplied_assignment)
     value_check = independent_value_check(relation, assignment)
     statement = {
         "public_inputs": assignment["public_inputs"],
@@ -127,11 +131,15 @@ def trial(source_or_package: Path, assignment_path: Path, output: Path,
         proof = staging / "proof.bin"
         statement_path = staging / "statement.json"
         wrong_path = staging / "changed-statement.json"
+        prover_assignment_path = assignment_path
+        if typed_assignment:
+            prover_assignment_path = staging / "native-assignment.json"
+            write_json(prover_assignment_path, assignment)
         if relation["version"] == 2:
             statement_path.write_bytes(statement_from_assignment(relation, assignment))
         else:
             write_json(statement_path, statement)
-        prove_measurement = measured_invoke(str(prover), "prove", str(assignment_path), str(proof))
+        prove_measurement = measured_invoke(str(prover), "prove", str(prover_assignment_path), str(proof))
         prover_log = prove_measurement["output"]
         prove_seconds = prove_measurement["wall_seconds"]
         verify_measurement = measured_invoke(str(verifier), str(proof), str(statement_path), str(key))

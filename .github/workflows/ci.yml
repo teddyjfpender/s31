@@ -85,6 +85,42 @@ jobs:
           path: zig-out/s31/acceptance/
           if-no-files-found: warn
 
+  record-public-abi-native-proofs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          submodules: recursive
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.13"
+      - uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2
+        with:
+          version: 0.15.2
+      - name: Verify pinned engine
+        run: |
+          test -z "$(git submodule status | grep '^[-+]')"
+          test -z "$(git -C deps/stwo-zig status --porcelain --untracked-files=no)"
+      - name: Versioned public record ABI native proof and key controls
+        run: |
+          set -euo pipefail
+          mkdir -p zig-out/s31/acceptance
+          python3 src/frontends/s31/tests/acceptance/acceptance_public_record_v2.py |
+            tee zig-out/s31/acceptance/public-record-v2.json
+      - name: Record-valued input ABI native proof and visibility controls
+        run: |
+          set -euo pipefail
+          python3 src/frontends/s31/tests/acceptance/acceptance_record_inputs_v2.py |
+            tee zig-out/s31/acceptance/record-inputs-v2.json
+      - name: Preserve record ABI acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: s31-record-public-abi-v2-evidence
+          path: zig-out/s31/acceptance/
+          if-no-files-found: warn
+
   private-boundary-native-proofs:
     runs-on: ubuntu-latest
     timeout-minutes: 45

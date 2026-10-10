@@ -8,7 +8,8 @@ import sys
 import tempfile
 from pathlib import Path
 
-from abi.binding_v2 import statement_from_assignment
+from abi.binding_v2 import (flat_assignment_from_typed, parse_assignment_json,
+                            statement_from_assignment)
 from cli.parser import make_parser
 from inspection.reports import equations as report_equations, explain as report_explain
 from inspection.source_layout import source_layout
@@ -71,7 +72,12 @@ def dispatch(args: argparse.Namespace) -> None:
             relation, _, _ = lower_text(args.source_or_package.resolve())
         else:
             relation, _ = load_source(args.source_or_package.resolve())
-        result = independent_value_check(relation, json.loads(args.assignment.read_text()))
+        encoded = args.assignment.read_bytes()
+        supplied = parse_assignment_json(encoded)
+        assignment = (flat_assignment_from_typed(relation, encoded)
+                      if relation["version"] == 2 and supplied.get("version") == 2
+                      else supplied)
+        result = independent_value_check(relation, assignment)
         if result["status"] != "passed":
             raise ValueError(result["reason"])
         print(json.dumps({"schema": "s31-oracle-v1", "program": relation["name"], **result},
@@ -87,14 +93,29 @@ def dispatch(args: argparse.Namespace) -> None:
         package = package_for(args.source_or_package)
         manifest = verify_package(package)
         executable = package / "bin" / f"s31-{manifest['name']}-prover"
-        extra = (str(args.assignment.resolve()),) if args.command == "run" else ()
-        print(invoke(str(executable), args.command, *extra), end="")
+        if args.command == "run":
+            relation = json.loads((package / "source.s31.json").read_text())
+            supplied = parse_assignment_json(args.assignment.read_bytes())
+            if relation["version"] == 2 and supplied.get("version") == 2:
+                assignment = flat_assignment_from_typed(relation, args.assignment.read_bytes())
+                with tempfile.TemporaryDirectory(prefix="s31-run-assignment-") as temporary:
+                    native_path = Path(temporary) / "assignment.json"
+                    write_json(native_path, assignment)
+                    print(invoke(str(executable), "run", str(native_path)), end="")
+            else:
+                print(invoke(str(executable), "run", str(args.assignment.resolve())), end="")
+        else:
+            print(invoke(str(executable), args.command), end="")
         return
 
     package = args.package.resolve()
     manifest = verify_package(package)
     if args.command == "prove":
-        assignment = json.loads(args.assignment.read_text())
+        relation = json.loads((package / "source.s31.json").read_text())
+        supplied = parse_assignment_json(args.assignment.read_bytes())
+        typed = relation["version"] == 2 and supplied.get("version") == 2
+        assignment = (flat_assignment_from_typed(relation, args.assignment.read_bytes())
+                      if typed else supplied)
         statement = {
             "public_inputs": assignment["public_inputs"],
             "public_outputs": assignment["public_outputs"],
@@ -102,9 +123,14 @@ def dispatch(args: argparse.Namespace) -> None:
         proof = args.proof.resolve()
         proof.parent.mkdir(parents=True, exist_ok=True)
         executable = package / "bin" / f"s31-{manifest['name']}-prover"
-        print(invoke(str(executable), "prove", str(args.assignment.resolve()), str(proof)), end="")
+        if typed:
+            with tempfile.TemporaryDirectory(prefix="s31-prove-assignment-") as temporary:
+                native_path = Path(temporary) / "assignment.json"
+                write_json(native_path, assignment)
+                print(invoke(str(executable), "prove", str(native_path), str(proof)), end="")
+        else:
+            print(invoke(str(executable), "prove", str(args.assignment.resolve()), str(proof)), end="")
         statement_path = Path(str(proof) + ".statement.json")
-        relation = json.loads((package / "source.s31.json").read_text())
         if relation["version"] == 2:
             statement_path.write_bytes(statement_from_assignment(relation, assignment))
         else:

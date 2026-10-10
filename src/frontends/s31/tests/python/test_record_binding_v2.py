@@ -1,4 +1,4 @@
-"""Adversarial checks for the inactive public-record boundary model."""
+"""Adversarial checks for the versioned public-record boundary."""
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ S31 = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(S31 / "python"))
 
 from abi.binding_v2 import (binding_digest, decode_public_statement,
+                            flat_assignment_from_typed, statement_from_assignment,
                             encode_public_statement, make_binding, validate_binding)
 from abi.record_v2 import AbiError
 from language.syntax import RecordType, TupleType
@@ -102,6 +103,14 @@ class RecordBindingV2Tests(unittest.TestCase):
             with self.subTest(variant=variant), self.assertRaises(AbiError):
                 validate_binding(self.relation, variant)
 
+    def test_result_root_matches_native_reserved_name(self) -> None:
+        renamed = copy.deepcopy(self.binding)
+        renamed["result"]["name"] = "claim"
+        for leaf in renamed["result"]["leaves"]:
+            leaf["path"][0] = {"root": "claim"}
+        with self.assertRaisesRegex(AbiError, "output root must be result"):
+            validate_binding(self.relation, renamed)
+
     def test_input_coverage_and_alias_constraints(self) -> None:
         wrong_input = copy.deepcopy(self.binding)
         wrong_input["inputs"][0]["leaves"][1]["wire"] = "a"
@@ -179,6 +188,35 @@ class RecordBindingV2Tests(unittest.TestCase):
                                                     b'"version":2,"version":2'))
         with self.assertRaisesRegex(AbiError, "noncanonical"):
             decode_public_statement(self.relation, self.binding, encoded[:-1])
+
+    def test_typed_record_assignment_lowers_to_exact_native_wires(self) -> None:
+        source = {**self.relation, "version": 2, "public_abi": self.binding}
+        typed = {"version": 2,
+                 "public_inputs": {"request": {"first": [3], "second": [5]}},
+                 "private_inputs": {"witness": [7]},
+                 "result": {"sum": [10], "copy": [[5], [5]]}}
+        encoded = json.dumps(typed).encode()
+        flat = flat_assignment_from_typed(source, encoded)
+        self.assertEqual(flat, {"public_inputs": {"a": [3], "b": [5]},
+                                "private_inputs": {"secret": [7]},
+                                "public_outputs": {"sum": [10], "b": [5]}})
+        statement = statement_from_assignment(source, flat)
+        self.assertEqual(decode_public_statement(self.relation, self.binding, statement),
+                         [3, 5, 10, 5, 0, 0, 0, 0])
+        wrong_alias = copy.deepcopy(typed)
+        wrong_alias["result"]["copy"][1] = [6]
+        missing_field = copy.deepcopy(typed)
+        del missing_field["public_inputs"]["request"]["second"]
+        private_as_public = copy.deepcopy(typed)
+        private_as_public["public_inputs"]["witness"] = [7]
+        noncanonical = copy.deepcopy(typed)
+        noncanonical["private_inputs"]["witness"] = [2**31 - 1]
+        for variant in (wrong_alias, missing_field, private_as_public, noncanonical):
+            with self.subTest(variant=variant), self.assertRaises(AbiError):
+                flat_assignment_from_typed(source, json.dumps(variant).encode())
+        with self.assertRaisesRegex(AbiError, "duplicate"):
+            flat_assignment_from_typed(source,
+                encoded.replace(b'"version": 2', b'"version": 2, "version": 2'))
 
 
 if __name__ == "__main__":
