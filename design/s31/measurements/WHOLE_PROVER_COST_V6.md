@@ -9,10 +9,10 @@ fit inputs, calibration inputs, or V6 gate adjustments.
 
 The [V6 protocol](whole-prover-cost-v6.json) retains V5's wall and proof-byte
 models, all accuracy thresholds, 26-bit PoW policy, and source/tool/host
-controls. Automatic lowering selection remains disabled, including after a
-possible local pass. Source, engine, compiler, and tool bytes are pinned in
-the protocol; native work still requires a committed freeze anchor and its
-externally timestamped full SHA.
+controls. Automatic lowering selection remains disabled after this local
+pass. Source, engine, compiler, and tool bytes were pinned in the protocol;
+both committed freeze anchors and their full hashes were externally
+timestamped before their respective native phases.
 
 ## Measured result
 
@@ -78,7 +78,7 @@ compile-to-proof latency. Automatic lowering remains disabled.
 V5 training-only leave-one-program-out chip residuals had a maximum
 absolute-byte radius of about 485,000 bytes and a maximum radius relative to
 its predicted center of about 5%. These are diagnostics, **not V6 model
-parameters**. All V6 coefficients will be fitted anew using V6 training only.
+parameters**. All V6 coefficients were fitted anew using V6 training only.
 
 For each V6 training chip program `j`, leave that whole program out, fit the
 RSS point model on the other training programs, and predict its positive
@@ -95,26 +95,27 @@ RSS interval = [max(0, p - R(p)), p + R(p)]
 
 This lets the uncertainty envelope grow with predicted chip RSS while
 retaining an absolute floor. The three non-chip families keep V5's absolute
-byte envelope. No held-out residual can alter `A`, `rho`, or any point fit.
+byte envelope. No held-out residual altered `A`, `rho`, or any point fit.
 The interval is empirical and has no guaranteed tail coverage.
 
 ## Fresh split and decision gate
 
-V6 predeclares 23 training programs and 20 held-out programs, with 100 fresh
-assignments per program: 4,300 native trials if admitted. Six training and
-five validation programs belong to each arithmetic, direct-chip, and hash
-family; fixed-width has five in each split. Different constants, assignment
-index ranges, hash relation names, and fixed-width circuit names make V6
-source and assignment bytes disjoint from V4 and V5. Static tests check the
-disjointness and independently evaluate generated programs before native
+The frozen V6 protocol predeclared 23 training programs and 20 held-out
+programs, with 100 fresh assignments per program. All 4,300 native trials
+completed. Each arithmetic, direct-chip, and hash family had six training
+programs and five validation programs; fixed-width had five in each split.
+Different constants, assignment index ranges, hash relation names, and
+fixed-width circuit names made V6 source and assignment bytes disjoint from
+V4 and V5. Static tests checked the
+disjointness and independently evaluated generated programs before native
 work.
 
 Chip training rounds are `32, 128, 512, 2048, 8192, 16384`; validation
-rounds are `64, 256, 1024, 4096, 32768`. The largest held-out program tests
-transfer beyond the largest training chip. Its source and assignments are
-unseen by fitting. The other families preserve comparable scale variation
-without changing their formulas. The current eight-word public ABI means the
-i128 training case publishes quotient only and the held-out case publishes
+rounds are `64, 256, 1024, 4096, 32768`. The largest held-out program tested
+transfer beyond the largest training chip. Its source and assignments were
+unseen by fitting. The other families preserved comparable scale variation
+without changing their formulas. The current eight-word public ABI meant the
+i128 training case published quotient only and the held-out case published
 remainder only.
 
 The unchanged gate requires, per family, whole-process wall program-mean
@@ -127,30 +128,31 @@ coverage at least 70% and upper-to-measured-median ratio at most 1.5. All
 oracle, and rejected changed-public-claim control. Failure of any condition
 fails the local gate.
 
-## Freeze and run sequence
+## Frozen run sequence
 
-After integrating the V6 tooling, pin the exact S31 source commit, engine
-gitlink, `s31.compiler_fingerprint()` SHA, sorted Python tool-path inventory,
-and aggregate tool SHA in the protocol. Set status to
-`frozen-before-any-v6-native-observation`, commit a V6 protocol-freeze JSON
-with its full SHA and aware UTC timestamp, and record the protocol SHA plus
-anchor commit in an external timestamped message **before any native build**.
-The runner verifies current bytes against those pins and the committed
-ancestor anchor. It requires at least 8 GiB of free artifact space.
+The run pinned the exact S31 source commit, engine gitlink,
+`s31.compiler_fingerprint()` SHA, sorted Python tool-path inventory, and
+aggregate tool SHA in the protocol. Its status was set to
+`frozen-before-any-v6-native-observation`. The protocol-freeze JSON was
+committed with the full SHA and aware UTC timestamp; its hash and commit
+were then recorded in an external timestamped message **before the first
+native build**. The runner checked current bytes against those pins and the
+committed ancestor anchor, and required at least 8 GiB of free artifact
+space at phase entry.
 
-Build and prove the 23 training packages under the pinned source. Fit the
-model on that corpus only. Before any held-out build, commit a model-freeze
-JSON containing full model SHA, training corpus SHA, and protocol SHA; record
-the model SHA and anchor commit externally. The validation build and proof
-phases require both anchors and reject any mismatch in protocol, model,
-source, compiler, tool inventory, saved package build record, or generated
-chip manifest. Evaluate the unchanged gate once, then publish passes or
-failures with the saved artifact replay. Retain the raw evidence and do not
-retune against held-out outcomes.
+The 23 training packages were built and proved under the pinned source, and
+the model was fitted on that corpus only. A model-freeze JSON containing the
+full model, training corpus, and protocol hashes was committed and recorded
+externally **before the first held-out build**. Both validation phases
+required the anchors and rejected mismatches in protocol, model, source,
+compiler, tool inventory, saved package build records, or generated chip
+manifests. The unchanged gate was evaluated once; the publisher replayed the
+saved artifacts. The raw evidence was retained, and no held-out outcome was
+used to retune the model or gate.
 
 V6 predicts fresh-process prover-plus-verifier wall, proof bytes, and prover
-peak RSS on one pinned host. Package-build wall is measured separately and
-excluded from that prediction; Zig cache state is recorded but uncontrolled.
-This study will not establish cross-host transfer, cached setup, or
-compile-to-proof latency. Even a local pass does not enable automatic
-lowering selection.
+peak RSS on one pinned host. Package-build wall was measured separately and
+excluded from that prediction; Zig cache state was recorded but uncontrolled.
+This study does not establish cross-host transfer, cached setup, or
+compile-to-proof latency. This local pass did not enable automatic lowering
+selection.
