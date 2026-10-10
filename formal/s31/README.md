@@ -195,7 +195,12 @@ checks the nine-address public vector and a swapped-result-slot mutation.
 pointwise identity, and pack rows. Its final pack add creates native wire `22`,
 SSA input wire zero, with a use count computed from the checked SSA. The
 generated fixture checks those rows and mutations to pack operands, basis,
-copies, selectors, and use counts. The Python package checker supplies the
+copies, selectors, and use counts. `Functional/SSAPublicInputBinding` proves
+that local copy-add acceptance and four native public pins determine the
+scalar words, while fixed zero/basis wires and six accepted pack rows
+determine SSA input wire `22`. Its public-input uniqueness theorem rules out
+one witness satisfying two different pinned input vectors. These are
+conditional local AIR value theorems; the Python package checker supplies the
 package-to-embedded-byte/digest binding
 and validates other native rows. Lean does not verify the embedded SHA-256 strings, prove
 Python or Zig parser equivalence, or authenticate the PCS preprocessed root.

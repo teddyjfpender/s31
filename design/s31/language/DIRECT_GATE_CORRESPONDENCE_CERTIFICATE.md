@@ -148,8 +148,27 @@ use count `2` because `let square = x .* x` reads `x` twice. A mixed
 16-operation example gives that same row use count `17`; the count is
 derived from every SSA operand read. The fixture compares all eight cells
 of these fourteen rows and rejects mutated pack operands, basis addresses,
-input copy addresses, selectors, and use counts. Authenticity of their
-values and the M31 public input binding remain native premises.
+input copy addresses, selectors, and use counts.
+
+[`SSAPublicInputBinding.lean`](../../../formal/s31/S31/Gadgets/Functional/SSAPublicInputBinding.lean)
+adds the value argument for any admitted direct-gate certificate. Given
+accepted local copy-add rows, fixed zero and three basis wires, accepted
+six pack rows, and the four public ABI pins, it proves raw wire `11+i`
+equals the public input word `i` and packed wire `22` equals the four-lane
+input. It also proves one witness cannot satisfy two distinct public input
+vectors under those premises. The theorem composes this with exact source
+and normalized bytes plus fourteen expected cells. It does not prove that
+the verifier authenticates the row values or pins: Gate lookup and PCS/FRI
+remain separate obligations. The acceptance test changes the first public
+input word in an honest proof statement and checks native rejection.
+
+For the hand-written input `x = [0, 1, 2, 7]`, the public pins at addresses
+`3`–`6` read `[0, 1, 2, 7]`. Each copy-add row has the form
+`public[i] = raw[i] + 0`, so raw addresses `11`–`14` must read the same
+four words. The three basis multiplies make `1·u`, `2·u²`, and `7·u³`;
+the three pack adds combine these with `0` into wire `22`, whose QM31
+coordinates are `(0, 1, 2, 7)`. Changing only the statement's first word
+to `1` would force raw wire `11` to both `0` and `1` for the same witness.
 
 [`SSAOutputAirCells.lean`](../../../formal/s31/S31/Gadgets/Functional/SSAOutputAirCells.lean)
 continues from source wire `24` to the four public result words. It derives
@@ -245,13 +264,14 @@ From the repository root, run:
 python3 -m unittest discover -s src/frontends/s31/tests/python -p test_correspondence.py
 python3 src/frontends/s31/tests/acceptance/acceptance_compiler_correspondence.py
 cd formal/s31
-lake build S31.Gadgets.Functional.SSAAirColumnCells S31.Gadgets.Functional.SSAInputAirCells S31.Gadgets.Functional.SSAOutputAirCells S31.Gadgets.Functional.GeneratedDirectGateBridge
+lake build S31.Gadgets.Functional.SSAAirColumnCells S31.Gadgets.Functional.SSAInputAirCells S31.Gadgets.Functional.SSAPublicInputBinding S31.Gadgets.Functional.SSAOutputAirCells S31.Gadgets.Functional.GeneratedDirectGateBridge
 ```
 
 The Python unit suite includes a topology change between package admission
-and Lean export. The native acceptance suite builds an honest proof and
-resealed mutant packages, then checks that source/package admission rejects
-the mutations. The Lean modules check the projected public-input, source,
-and public-output cells and their selector, address, row, and multiplicity
-mutations. These checks do not discharge the PCS and Gate lookup premises
+and Lean export. The native acceptance suite builds an honest proof, rejects
+a changed public input statement, and checks that source/package admission
+rejects resealed mutant packages. The Lean modules check the projected
+public-input, source, and public-output cells and their selector, address,
+row, and multiplicity mutations, then prove the conditional input value
+boundary. These checks do not discharge the PCS and Gate lookup premises
 above.

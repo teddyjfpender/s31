@@ -21,7 +21,7 @@ sys.path.insert(0, str(REPO / "scripts"))
 import s31
 from package import verify as package_verify
 from package.build import build_json
-from package.context import file_hash, sha256, write_json
+from package.context import file_hash, invoke, sha256, write_json
 from package.correspondence import (DIRECT_COLUMN_IDS, KEY_FIELDS, canonical, check_package,
                                     digest, read_canonical_json)
 from export_s31_direct_gate_bridge import render_bridge
@@ -151,6 +151,21 @@ def main() -> None:
             raise AssertionError("honest package lacks the source correspondence status")
         if not s31.trial(honest, assignment, work / "honest-proof")["native_verifier_accepted"]:
             raise AssertionError("honest certified native proof was rejected")
+        statement = json.loads((work / "honest-proof/statement.json").read_text())
+        changed_input = copy.deepcopy(statement)
+        changed_input["public_inputs"]["x"][0] = (
+            changed_input["public_inputs"]["x"][0] + 1) % ((1 << 31) - 1)
+        changed_input_path = work / "changed-public-input-statement.json"
+        write_json(changed_input_path, changed_input)
+        manifest = json.loads((honest / "manifest.json").read_text())
+        native_verifier = honest / "bin" / f"s31-{manifest['name']}-native-verifier"
+        try:
+            invoke(str(native_verifier), str(work / "honest-proof/proof.bin"),
+                   str(changed_input_path), str(honest / "verification-key.json"))
+        except RuntimeError:
+            pass
+        else:
+            raise AssertionError("native verifier accepted a changed public input word")
         missing = work / "missing-certificate"
         shutil.copytree(honest, missing)
         (missing / "correspondence-certificate.json").unlink()
@@ -237,6 +252,7 @@ def main() -> None:
             "schema": "s31-compiler-correspondence-acceptance-v1",
             "fragment": "public four-lane direct-gate add/mul/static-let",
             "honest_native_proof_accepted": True,
+            "changed_public_input_native_statement_rejected": True,
             "resealed_mutant_native_proof_accepted_under_mutant_relation": True,
             "resealed_mutant_package_admission_rejected": True,
             "duplicate_json_key_rejected": True,
