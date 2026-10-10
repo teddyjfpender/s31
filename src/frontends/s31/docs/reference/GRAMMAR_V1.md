@@ -95,6 +95,12 @@ For example, `add_to(a)(b)` applies a function returned by `add_to(a)`, and
 An unshadowed bare top-level function name is a compile-time `Fn` value, so
 `apply(square, x)`, `(square)(x)`, and `let f = square in f(x)` are valid when
 the declared types match. Local names take precedence over top-level names.
+`iterate<N>(step, initial)` accepts a static `Fn([m31; K]) -> [m31; K]`
+expression, including a named function passed through a parameter or a
+constant-capturing `fun`. The specialized step body must reduce to one to
+sixteen supported recurrence operations; no witness-dependent capture,
+conditional, inverse, or helper call that cannot reduce to supported steps is
+admitted.
 `if`, expression `let`, and `fun` are prefix forms; parenthesize them when
 embedding them in a larger arithmetic expression or applying their result.
 Calls, types, shapes and builtins receive separate

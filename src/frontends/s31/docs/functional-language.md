@@ -275,18 +275,20 @@ the supplied arguments, then specializes its body. This matters when an outer
 name is shadowed: the closure still reads the value it captured. Calls and
 bindings do not add gates; primitive operations in the specialized body do.
 The compiler rejects recursion and caps expansion depth at 32 so circuit
-shape remains statically finite. `iterate` retains its restricted named-step
-recognizer and its existing chip selection rules.
+shape remains statically finite. `iterate` accepts a static `Fn` value, but
+its body must still be a straight-line step recognized by the recurrence
+chip: square, add or multiply by a constant, and four-lane `mix4`.
 
 The [functional recurrence example](../examples/recurrence/functional_step16.s31)
-passes a closure through a source function before calling `iterate<16>`:
+passes a named step as a `Fn` value into a higher-order helper:
 
 ```s31
 fn step(v: [m31; 4]) -> [m31; 4] { v .* v + splat<4>(7_m31) }
-fn apply(f: Fn([m31; 4]) -> [m31; 4], x: [m31; 4]) -> [m31; 4] { f(x) }
+fn repeat_with(f: Fn([m31; 4]) -> [m31; 4], x: [m31; 4]) -> [m31; 4] {
+    iterate<16>(f, x)
+}
 circuit functional_step16(public x: [m31; 4]) -> public [m31; 4] {
-    let run = fun(initial: [m31; 4]) -> [m31; 4] => iterate<16>(step, initial);
-    let result = apply(run, x);
+    let result = repeat_with(step, x);
     result
 }
 ```
@@ -298,6 +300,43 @@ four-lane repeated-step chip. The
 calls `iterate` directly and emits the same normalized relation. The native
 acceptance gate compares their chip and AIR cost reports and proves the
 functional form.
+
+The [captured step example](../examples/recurrence/captured_step16.s31) uses
+`let bias = splat<4>(7_m31)` and a closure
+`fun(v: [m31; 4]) -> [m31; 4] => v .* v + bias` as the step. It produces
+the same `repeat` body and has a [direct equivalent](../examples/recurrence/captured_step16_manual.s31).
+`bias` is a compile-time constant. Capturing a witness-dependent array and
+adding it to every round is rejected because the chip's step body has no
+external dynamic input slot. An inverse or conditional is likewise outside
+the accepted step language.
+The same static flow works with `std::math::mix4`: a named
+`fn mix(v: [m31; 4]) -> [m31; 4] { std::math::mix4(v) }` may be passed through
+`repeat_with(mix, x)`, leaving one `repeat` node whose body is `mix4`.
+The type checker tracks direct named step arguments and aliases through
+higher-order helper parameters; the step recognizer still checks the final
+body.
+
+For an input `x=[0,1,2,7]`, each array position is a **lane** following the
+same recurrence independently:
+
+| State | Lane 0 | Lane 1 | Lane 2 | Lane 3 |
+| --- | ---: | ---: | ---: | ---: |
+| Input `s₀` | 0 | 1 | 2 | 7 |
+| After one round `s₁=s₀²+7` | 7 | 8 | 11 | 56 |
+| After two rounds `s₂=s₁²+7` | 56 | 71 | 128 | 3143 |
+
+The conceptual constraint is `s[r+1,i] - s[r,i]² - 7 = 0` in M31 for each
+round `r=0..15` and lane `i=0..3`. The verifier checks a proof for the fixed
+16-round trace and its public output claim; the native implementation packs
+these operations into its AIR layout. The current `direct-chip` cost is 292
+raw QM31 operation rows, padded to 512, including circuit boundary work.
+Passing the step through `Fn` or a constant-capturing closure adds no rows.
+The [Lean recurrence theorem](../../../../formal/s31/S31/Gadgets/Functional/StaticRecurrence.lean)
+proves for any round count and array length that this two-operation body acts
+independently on each M31 lane. It also proves that every witness satisfying
+the abstract repeat relation yields those results, and that an honest witness
+exists. Source-to-body equivalence is checked by the compiler tests and
+native gate; it is not yet a theorem about the Python implementation.
 
 The [wide-integer example](../examples/wide/functional_u256_sum.s31) passes a
 three-argument `UInt256` closure through `apply3`, then hashes the checked

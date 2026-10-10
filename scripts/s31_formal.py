@@ -42,6 +42,10 @@ TEXT_CURRIED = "src/frontends/s31/examples/arithmetic/curried_sum.s31"
 TEXT_CURRIED_DIRECT = "src/frontends/s31/examples/arithmetic/curried_sum_manual.s31"
 TEXT_NAMED_SQUARE = "src/frontends/s31/examples/arithmetic/named_square4.s31"
 TEXT_NAMED_SQUARE_DIRECT = "src/frontends/s31/examples/arithmetic/named_square4_manual.s31"
+TEXT_STATIC_STEP = "src/frontends/s31/examples/recurrence/functional_step16.s31"
+TEXT_STATIC_STEP_DIRECT = "src/frontends/s31/examples/recurrence/functional_step16_manual.s31"
+TEXT_CAPTURED_STEP = "src/frontends/s31/examples/recurrence/captured_step16.s31"
+TEXT_CAPTURED_STEP_DIRECT = "src/frontends/s31/examples/recurrence/captured_step16_manual.s31"
 BINDINGS = [
     RELATION,
     TEXT_SQUARE4,
@@ -51,6 +55,10 @@ BINDINGS = [
     TEXT_CURRIED_DIRECT,
     TEXT_NAMED_SQUARE,
     TEXT_NAMED_SQUARE_DIRECT,
+    TEXT_STATIC_STEP,
+    TEXT_STATIC_STEP_DIRECT,
+    TEXT_CAPTURED_STEP,
+    TEXT_CAPTURED_STEP_DIRECT,
     "src/frontends/s31/build.zig",
     "src/frontends/s31/entry/export_square4_topology.zig",
     "src/frontends/s31/tools/formal/export_square4_topology.zig",

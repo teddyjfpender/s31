@@ -6,7 +6,8 @@ beside its checked normalized `.s31.json` relation and matching assignment
 
 | Directory | Programs |
 | --- | --- |
-| [`arithmetic/`](arithmetic/) | Field arithmetic, polynomials, reductions, and simple recurrences. |
+| [`arithmetic/`](arithmetic/) | Field arithmetic, polynomials, and reductions. |
+| [`recurrence/`](recurrence/) | Higher-order static steps that retain the dedicated recurrence chip. |
 | [`boundary/`](boundary/) | A private four-lane circuit-to-chip recurrence with one public aggregate. |
 | [`arrays/`](arrays/) | Static arrays, views, slices, and matrix operations. |
 | [`control/`](control/) | Boolean values, selection, and mixed computations. |

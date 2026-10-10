@@ -28,6 +28,12 @@ in unused definitions, so passing a function cannot hide recursion. It checks
 the intermediate `Fn` type, the
 effect pass resolves any partial operations in the called body, and
 specialization erases the application before relation emission.
+For `iterate<N>`, a static named reference or closure is interpreted by the
+restricted step recognizer. It emits one `repeat` node only when the step
+reduces to the chip's straight-line operations; dynamic captures and
+unsupported effects are rejected. The effect pass evaluates the step-value
+expression and resolves its body, including when a helper passes it through
+a `Fn` parameter, before an inactive conditional can hide a failure.
 
 The elaborator checks unused declarations and lambda bodies without emitting
 relation nodes. The effect pass rejects `if` arms that could fail even when

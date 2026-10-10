@@ -155,6 +155,24 @@ def check_examples() -> None:
     assert named_assignment["public_outputs"] == {
         "result": [(x * x) % P for x in x_words]}
     assert evaluate_relation(named, named_assignment) == named_assignment["public_outputs"]
+    step_from_docs, _ = compile_text(
+        text_block_containing(DOCS / "functional-language.md", "circuit functional_step16"),
+        "functional-language.md",
+    )
+    recurrence = S31 / "examples/recurrence"
+    named_step, _ = compile_text((recurrence / "functional_step16.s31").read_text())
+    manual_step, _ = compile_text((recurrence / "functional_step16_manual.s31").read_text())
+    assert step_from_docs == named_step == manual_step
+    captured_step, _ = compile_text((recurrence / "captured_step16.s31").read_text())
+    captured_manual, _ = compile_text((recurrence / "captured_step16_manual.s31").read_text())
+    assert captured_step == captured_manual
+    assert captured_step["nodes"] == named_step["nodes"]
+    captured_assignment = json.loads((recurrence / "captured_step16.valid.json").read_text())
+    state = captured_assignment["public_inputs"]["x"][:]
+    for _ in range(16):
+        state = [(value * value + 7) % P for value in state]
+    assert captured_assignment["public_outputs"] == {"result": state}
+    assert evaluate_relation(captured_step, captured_assignment) == {"result": state}
     matrix_source = text_block_containing(DOCS / "library.md", "circuit static_matvec")
     matrix_relation, _ = compile_text(matrix_source, "library.md")
     assert matrix_relation == json.loads((S31 / "examples/arrays/static_matvec.s31.json").read_text())

@@ -30,6 +30,7 @@ EXPECTED_GEOMETRY = {
     "preprocessed_cells": 4096,
 }
 EXPECTED_CHIP_GEOMETRY = {
+    "canonical_ir_sha256": "4745fc8a96df2874399ca1b9ef0bfea6e9861d9461ec7a19b084fc8a0237583e",
     "profile": "direct-m31-v4",
     "chip": {"constant": 7, "relation_id": 1395863810, "rounds": 16},
     "raw": {"blake_g": 0, "eq": 0, "m31_to_u32": 0,
@@ -108,7 +109,45 @@ def check_chip(work: Path) -> dict:
             "chip": cost["chip"], "raw": cost["raw"], "padded": cost["padded"],
             "preprocessed_cells": cost["preprocessed_cells"],
             "native_verifier_accepted": True,
-            "changed_public_statement_rejected": trial["changed_public_statement_rejected"]}
+            "changed_public_statement_rejected": True}
+
+
+def check_captured_chip(work: Path) -> dict:
+    example = S31 / "examples/recurrence/captured_step16"
+    functional = example.with_suffix(".s31")
+    manual = example.with_name("captured_step16_manual.s31")
+    assignment_path = example.with_suffix(".valid.json")
+    assignment = json.loads(assignment_path.read_text())
+    modulus = (1 << 31) - 1
+    expected = assignment["public_inputs"]["x"][:]
+    for _ in range(16):
+        expected = [(value * value + 7) % modulus for value in expected]
+    if assignment["public_outputs"] != {"result": expected}:
+        raise AssertionError("captured recurrence fixture differs from independent arithmetic")
+    relation, _ = compile_file(functional)
+    direct_relation, _ = compile_file(manual)
+    if relation != direct_relation:
+        raise AssertionError("captured step changed normalized relation")
+    if relation["nodes"] != [{
+        "name": "result", "op": "repeat", "lhs": "x", "rounds": 16,
+        "body": [{"op": "square"}, {"op": "add_const", "constant": 7}],
+    }]:
+        raise AssertionError("captured step did not become one expected chip node")
+    functional_package = s31.build(functional, work / "captured-chip", "direct-chip")
+    manual_package = s31.build(manual, work / "captured-chip-manual", "direct-chip")
+    cost = json.loads((functional_package / "cost-report.json").read_text())
+    manual_cost = json.loads((manual_package / "cost-report.json").read_text())
+    compare_cost(cost, manual_cost, EXPECTED_CHIP_GEOMETRY, "captured functional chip")
+    trial = s31.trial(functional_package, assignment_path, work / "captured-chip-trial")
+    if (not trial["native_verifier_accepted"] or
+            not trial["changed_public_statement_rejected"] or
+            trial["independent_value_oracle"]["status"] != "passed"):
+        raise AssertionError("captured chip verifier acceptance or claim rejection missing")
+    return {"canonical_ir_sha256": cost["canonical_ir_sha256"],
+            "chip": cost["chip"], "raw": cost["raw"], "padded": cost["padded"],
+            "preprocessed_cells": cost["preprocessed_cells"],
+            "native_verifier_accepted": True,
+            "changed_public_statement_rejected": True}
 
 
 def check_sparse_wide(work: Path) -> dict:
@@ -217,6 +256,7 @@ def main() -> None:
                 trial["independent_value_oracle"]["status"] != "passed"):
             raise AssertionError("native verifier acceptance or claim rejection missing")
         chip_report = check_chip(work)
+        captured_chip_report = check_captured_chip(work)
         wide_report = check_sparse_wide(work)
         array_hash_report = check_array_hash(work)
         print(json.dumps({
@@ -230,6 +270,7 @@ def main() -> None:
                 "changed_public_statement_rejected": trial["changed_public_statement_rejected"],
             },
             "recurrence_chip": chip_report,
+            "captured_recurrence_chip": captured_chip_report,
             "sparse_wide": wide_report,
             "array_hash": array_hash_report,
         }, indent=2, sort_keys=True))

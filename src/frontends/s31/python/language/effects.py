@@ -194,10 +194,7 @@ class TotalityChecker:
         if expr.kind != "call":
             raise self.error(expr, "unknown expression in effect analysis")
 
-        # A repeat step is a compiler-checked, total straight-line recurrence.
-        # Its first argument names the step function and is not evaluated here.
-        arguments = expr.args[1:] if expr.value == "iterate" and expr.value not in env else expr.args
-        results = tuple(self.expr(arg, env) for arg in arguments)
+        results = tuple(self.expr(arg, env) for arg in expr.args)
         failure = frozenset().union(*(item.failure for item in results))
         values = tuple(item.value for item in results)
         if expr.value in env:
@@ -213,6 +210,18 @@ class TotalityChecker:
             result = self.invoke_function(expr.value, values, expr)
             return Effect(result.value, failure | result.failure)
         name = STANDARD_ALIASES.get(expr.value, expr.value)
+        if name == "iterate":
+            # The step body is evaluated in every round. Resolve its effect
+            # now, including when a higher-order helper passes the function.
+            step = values[0]
+            if isinstance(step, NamedFunctionRef):
+                effect = self.invoke_function(step.name, (FIRST_ORDER,), expr)
+                failure |= effect.failure
+            elif isinstance(step, Closure):
+                effect = self.invoke_closure(step, (FIRST_ORDER,), expr)
+                failure |= effect.failure
+            else:
+                failure |= {"opaque:iterate"}
         if name not in TOTAL_BUILTINS | PARTIAL_BUILTINS:
             raise self.error(expr, f"builtin {name} has no reviewed effect")
         return Effect(FIRST_ORDER, failure | ({name} if name in PARTIAL_BUILTINS else set()))

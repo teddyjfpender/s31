@@ -43,7 +43,8 @@ class Elaborator:
         if expr.kind == "call" and expr.value not in bound:
             if expr.value in self.functions:
                 calls.add(expr.value)
-            if expr.value == "iterate" and expr.args and expr.args[0].kind == "name":
+            if (expr.value == "iterate" and expr.args and expr.args[0].kind == "name"
+                    and expr.args[0].value not in bound):
                 steps.add(expr.args[0].value)
                 if expr.args[0].value in self.functions:
                     calls.add(expr.args[0].value)
@@ -68,6 +69,62 @@ class Elaborator:
         found_calls, found_steps = self.referenced_calls(body, bound)
         return calls | found_calls, steps | found_steps
 
+    def step_flows(self, statements: tuple[Statement, ...], body: Expr,
+                   params: tuple[str, ...],
+                   targets: dict[str, set[int]]) -> tuple[set[int], set[str]]:
+        """Track static names flowing into an iterate step through Fn parameters.
+
+        This is a conservative, finite source-level flow pass. Specialization
+        remains the authority for the exact restricted step body.
+        """
+        Origin = tuple[str, str | int]
+        env: dict[str, Origin | None] = {name: ("param", index)
+                                          for index, name in enumerate(params)}
+        positions: set[int] = set()
+        globals_: set[str] = set()
+
+        def origin(expr: Expr, scope: dict[str, Origin | None]) -> Origin | None:
+            if expr.kind == "name":
+                if expr.value in scope:
+                    return scope[expr.value]
+                if expr.value in self.functions:
+                    return ("global", expr.value)
+            if expr.kind == "let":
+                return origin(expr.args[1], scope | {expr.value: origin(expr.args[0], scope)})
+            return None
+
+        def visit(expr: Expr, scope: dict[str, Origin | None]) -> None:
+            if expr.kind == "let":
+                visit(expr.args[0], scope)
+                visit(expr.args[1], scope | {expr.value: origin(expr.args[0], scope)})
+                return
+            if expr.kind == "lambda":
+                visit(expr.args[0], scope | {name: None for name, _ in expr.params})
+                return
+            if expr.kind == "call" and expr.value not in scope:
+                step_args = ({0} if expr.value == "iterate" else
+                             targets.get(expr.value, set()))
+                for index in step_args:
+                    if index >= len(expr.args):
+                        continue
+                    source = origin(expr.args[index], scope)
+                    if source is not None:
+                        kind, value = source
+                        if kind == "param" and isinstance(value, int):
+                            positions.add(value)
+                        elif kind == "global" and isinstance(value, str):
+                            globals_.add(value)
+            for child in expr.args:
+                visit(child, scope)
+
+        for statement in statements:
+            for expr in statement.args:
+                visit(expr, env)
+            if statement.kind == "let":
+                env[statement.name] = origin(statement.args[0], env)
+        visit(body, env)
+        return positions, globals_
+
     def prepare_calls(self) -> None:
         for name, fn in self.functions.items():
             calls, steps = self.block_references(fn.statements, fn.body,
@@ -78,8 +135,6 @@ class Elaborator:
             self.circuit.statements, self.circuit.body,
             frozenset(name for name, _, _ in self.circuit.params))
         self.step_functions.update(circuit_steps)
-        for root in tuple(self.step_functions):
-            self.step_functions.update(self.reachable(root))
         depths: dict[str, int] = {}
 
         def depth(name: str, stack: tuple[str, ...]) -> int:
@@ -98,6 +153,24 @@ class Elaborator:
 
         for name in self.functions:
             depth(name, ())
+        targets = {name: set() for name in self.functions}
+        while True:
+            changed = False
+            for name, fn in self.functions.items():
+                positions, globals_ = self.step_flows(
+                    fn.statements, fn.body, tuple(param for param, _ in fn.params), targets)
+                if positions - targets[name]:
+                    targets[name].update(positions)
+                    changed = True
+                self.step_functions.update(globals_)
+            _, globals_ = self.step_flows(
+                self.circuit.statements, self.circuit.body,
+                tuple(name for name, _, _ in self.circuit.params), targets)
+            self.step_functions.update(globals_)
+            if not changed:
+                break
+        for root in tuple(self.step_functions):
+            self.step_functions.update(self.reachable(root))
 
     def reachable(self, start: str) -> set[str]:
         found: set[str] = set()
@@ -213,14 +286,12 @@ class Elaborator:
                         raise TypeErrorS31(f"function value argument {index} expects {expected}")
                 return fn.result
             if expr.value == "iterate":
-                if expr.generic is None or len(expr.args) != 2 or expr.args[0].kind != "name":
+                if expr.generic is None or len(expr.args) != 2:
                     raise TypeErrorS31("iterate<N>(step_function, initial_value) expected")
-                name = expr.args[0].value
-                if name not in self.signatures:
-                    raise TypeErrorS31(f"unknown step function {name}")
+                step = self.expr(expr.args[0], env, step_mode=True)
                 start = circuit(self.expr(expr.args[1], env, step_mode=step_mode))
-                signature = self.signatures[name]
-                if signature.params != (start,) or signature.result != start or start.kind != "m31":
+                if (not isinstance(step, FunctionType) or step.params != (start,)
+                        or step.result != start or start.kind != "m31"):
                     raise TypeErrorS31("iterate step must have type [m31; N] -> [m31; N]")
                 if not 1 <= expr.generic <= 32768:
                     raise TypeErrorS31("iterate requires 1..32768 rounds")

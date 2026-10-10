@@ -38,7 +38,7 @@ class Compiler:
 
     @staticmethod
     def source_type(thing: Any) -> Type | FunctionType | None:
-        if isinstance(thing, Value):
+        if isinstance(thing, (Value, StepState)):
             return thing.typ
         if isinstance(thing, (StaticClosure, StaticNamedFunction)):
             return thing.signature
@@ -325,13 +325,11 @@ class Compiler:
                              "std::math::max_u256": mathlib.max_u256}[name]
                 return operation(self.builder, *values, wanted=wanted, span=self.span(expr))
             if name == "iterate":
-                if expr.generic is None or len(expr.args) != 2 or expr.args[0].kind != "name":
+                if expr.generic is None or len(expr.args) != 2:
                     raise TypeErrorS31("iterate<N>(step_function, initial_value) expected")
-                fn_name = expr.args[0].value
-                if fn_name not in self.functions:
-                    raise TypeErrorS31(f"unknown step function {fn_name}")
+                step = self.eval_expr(expr.args[0], env)
                 start = self.expect_value(self.eval_expr(expr.args[1], env), expr.args[1])
-                steps = self.step_function(fn_name, start.typ, expr)
+                steps = self.step_function_value(step, start.typ, expr)
                 return self.builder.repeat(expr.generic, start, steps, wanted=wanted, span=self.span(expr))
             if expr.generic is not None and name != "splat":
                 raise TypeErrorS31(f"{name} does not accept a static parameter")
@@ -427,14 +425,53 @@ class Compiler:
         except TypeErrorS31 as exc:
             raise self.located(expr, exc) from exc
 
-    def step_function(self, name: str, typ: Type, site: Expr) -> tuple[dict[str, Any], ...]:
-        fn = self.functions[name]
-        if len(fn.params) != 1 or fn.params[0][1] != typ or fn.result != typ or typ.kind != "m31":
+    def step_function_value(self, step: Any, typ: Type,
+                            site: Expr) -> tuple[dict[str, Any], ...]:
+        signature = self.source_type(step)
+        if (not isinstance(signature, FunctionType) or signature.params != (typ,)
+                or signature.result != typ or typ.kind != "m31"):
             raise self.located(site, "iterate step must have type [m31; N] -> [m31; N]")
-        state = self.step_block(fn, {fn.params[0][0]: StepState(typ, ())}, site)
+        seed = StepState(typ, ())
+        if isinstance(step, StaticNamedFunction):
+            state = self.step_call_named(step.name, (seed,), site)
+        elif isinstance(step, StaticClosure):
+            state = self.step_call_closure(step, (seed,), site)
+        else:
+            raise self.located(site, "iterate requires a static function value")
         if not isinstance(state, StepState) or not state.steps:
             raise self.located(site, "iterate step must transform its input")
         return state.steps
+
+    def step_call_named(self, name: str, args: tuple[Any, ...], site: Expr) -> Any:
+        fn = self.functions[name]
+        if len(fn.params) != len(args):
+            raise self.located(site, "wrong step function arity")
+        for (_, typ), value in zip(fn.params, args):
+            if self.source_type(value) != typ:
+                raise self.located(site, "step helper argument type mismatch")
+        result = self.step_block(fn, {param: value for (param, _), value in zip(fn.params, args)}, site)
+        if self.source_type(result) != fn.result:
+            raise self.located(site, "step helper result type mismatch")
+        return result
+
+    def step_call_closure(self, closure: StaticClosure, args: tuple[Any, ...],
+                          site: Expr) -> Any:
+        if (len(args) != len(closure.signature.params) or
+                any(self.source_type(arg) != typ for arg, typ in zip(args, closure.signature.params))):
+            raise self.located(site, "step function value argument type mismatch")
+        key = f"step-lambda:{id(closure.body)}"
+        if key in self.call_stack or len(self.call_stack) >= MAX_CALL_DEPTH:
+            raise self.located(site, "recursive or excessively deep step function")
+        local = closure.captured.copy()
+        local.update(zip(closure.names, args))
+        self.call_stack.append(key)
+        try:
+            result = self.step_expr(closure.body, local)
+        finally:
+            self.call_stack.pop()
+        if self.source_type(result) != closure.signature.result:
+            raise self.located(site, "step function value result type mismatch")
+        return result
 
     def step_block(self, fn: Function, env: dict[str, Any], site: Expr) -> Any:
         if fn.name in self.call_stack or len(self.call_stack) >= MAX_CALL_DEPTH:
@@ -459,14 +496,38 @@ class Compiler:
             local[expr.value] = bound
             return self.step_expr(expr.args[1], local)
         if expr.kind == "name":
-            if expr.value not in env:
-                raise self.located(expr, f"unknown step value {expr.value}")
-            return env[expr.value]
+            if expr.value in env:
+                return env[expr.value]
+            if expr.value in self.functions:
+                fn = self.functions[expr.value]
+                return StaticNamedFunction(expr.value, FunctionType(
+                    tuple(typ for _, typ in fn.params), fn.result))
+            raise self.located(expr, f"unknown step value {expr.value}")
+        if expr.kind == "lambda":
+            assert expr.result_type is not None
+            return StaticClosure(FunctionType(tuple(typ for _, typ in expr.params), expr.result_type),
+                                 tuple(name for name, _ in expr.params), expr.args[0], env.copy())
+        if expr.kind == "apply":
+            callee = self.step_expr(expr.args[0], env)
+            args = tuple(self.step_expr(arg, env) for arg in expr.args[1:])
+            if isinstance(callee, StaticNamedFunction):
+                return self.step_call_named(callee.name, args, expr)
+            if isinstance(callee, StaticClosure):
+                return self.step_call_closure(callee, args, expr)
+            raise self.located(expr, "cannot apply non-function step value")
         if expr.kind == "field":
             number = int(expr.value[:-4])
             if not 0 <= number < P:
                 raise self.located(expr, "m31 literal must be canonical")
             return number
+        if expr.kind == "call" and expr.value in env:
+            callee = env[expr.value]
+            args = tuple(self.step_expr(arg, env) for arg in expr.args)
+            if isinstance(callee, StaticNamedFunction):
+                return self.step_call_named(callee.name, args, expr)
+            if isinstance(callee, StaticClosure):
+                return self.step_call_closure(callee, args, expr)
+            raise self.located(expr, f"cannot call non-function step value {expr.value}")
         if expr.kind == "call" and expr.value == "splat":
             if expr.generic is None or len(expr.args) != 1:
                 raise self.located(expr, "splat<N>(constant_m31) expected")
@@ -493,17 +554,8 @@ class Compiler:
                 raise self.located(expr, "iterate body exceeds sixteen steps")
             return StepState(value.typ, value.steps + ({"op": "mix4"},))
         if expr.kind == "call" and expr.value in self.functions and expr.generic is None:
-            fn = self.functions[expr.value]
-            if len(fn.params) != len(expr.args):
-                raise self.located(expr, "wrong step function arity")
-            args = [self.step_expr(arg, env) for arg in expr.args]
-            for (_, typ), value in zip(fn.params, args):
-                if not isinstance(value, (StepState, Value)) or value.typ != typ:
-                    raise self.located(expr, "step helper argument type mismatch")
-            result = self.step_block(fn, {param: value for (param, _), value in zip(fn.params, args)}, expr)
-            if not isinstance(result, (StepState, Value)) or result.typ != fn.result:
-                raise self.located(expr, "step helper result type mismatch")
-            return result
+            return self.step_call_named(expr.value,
+                                        tuple(self.step_expr(arg, env) for arg in expr.args), expr)
         if expr.kind == "binary":
             lhs, rhs = (self.step_expr(arg, env) for arg in expr.args)
             if isinstance(lhs, StepState) and isinstance(rhs, StepState):
