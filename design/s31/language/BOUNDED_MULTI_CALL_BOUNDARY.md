@@ -1,7 +1,11 @@
 # Bounded multi-call authenticated circuit-to-chip boundary
 
-Status: **engineering design, not implemented**. This is the successor to the
-experimental, fixed two-call `direct-m31-private-pair-v1` profile. It must not
+Status: **source-only admission implemented; native proof profile not
+implemented**. The unexported
+[`bounded_call_admission.zig`](../../../src/frontends/s31/language/bounded_call_admission.zig)
+extracts canonical, live calls and enforces the initial source bounds. It
+does not derive circuit addresses or accept proofs. This is the successor to
+the experimental, fixed two-call `direct-m31-private-pair-v1` profile. It must not
 replace or reinterpret any existing one-call or pair proof. The first v4
 implementation admits 1–8 instances of the existing four-lane tagged
 `s -> s² + c` chip. The plan and manifest formats are suitable for more chip

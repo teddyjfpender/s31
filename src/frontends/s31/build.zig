@@ -86,6 +86,11 @@ pub fn build(b: *std.Build) void {
     b.step("test-pair-native", "Prove and natively verify the source-derived sealed two-call envelope").dependOn(&pair_native_tests.step);
     const pair_native_long_tests = b.addRunArtifact(b.addTest(.{ .root_module = pair_source_test_root, .filters = &.{"sealed pair native long-round lifting"} }));
     b.step("test-pair-native-long", "Check two-call PCS lifting when chip traces exceed the circuit trace").dependOn(&pair_native_long_tests.step);
+    const many_call_source_root = localEntry(b, "language/bounded_call_admission.zig", target, optimize);
+    many_call_source_root.addImport("stwo_core", core);
+    const many_call_source_tests = b.addRunArtifact(b.addTest(.{ .root_module = many_call_source_root }));
+    b.step("test-bounded-call-source", "Test source-only bounded multi-call admission")
+        .dependOn(&many_call_source_tests.step);
     const square_export_root = localEntry(b, "tools/formal/export_square4_topology.zig", target, optimize);
     square_export_root.addImport("stwo_s31_prototype", frontend);
     square_export_root.addImport("stwo_circuit_frontend", circuit);
