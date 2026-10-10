@@ -13,6 +13,24 @@ import s31
 
 
 class ProverLogTests(unittest.TestCase):
+    def test_library_lock_and_compiler_identity_cover_implementations(self) -> None:
+        lock = s31.standard_library_lock(True)
+        expected = {
+            "s31_stdlib.py", "s31_mathlib.py",
+            "library/__init__.py", "library/stdlib.py", "library/math.py",
+        }
+        discovered = {
+            f"library/{path.relative_to(S31_SOURCE_ROOT / 'python/library').as_posix()}"
+            for path in (S31_SOURCE_ROOT / "python/library").rglob("*.py")
+        }
+        self.assertEqual(discovered, expected - {"s31_stdlib.py", "s31_mathlib.py"})
+        self.assertEqual(set(lock["sources"]), expected)
+        self.assertEqual(lock["version"], 1)
+        for name in expected:
+            path = S31_SOURCE_ROOT / "python" / name
+            self.assertEqual(lock["sources"][name], s31.file_hash(path))
+            self.assertIn(path, s31.TEXT_FRONTEND_SOURCES)
+
     def test_pins_the_runtime_stage_format(self) -> None:
         log = (
             "S31 demo: proof=123 bytes, witness=0.000200s, setup=0.000500s, "

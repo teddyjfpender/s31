@@ -33,11 +33,14 @@ PINNED_ASSETS = (
     ENGINE_ROOT / "vectors/circuit/official/compiled_air_constraints_v1.bin",
     ENGINE_ROOT / "vectors/circuit/official/circuit_air.air_programs_v1.bin",
 )
+LIBRARY_SOURCE_FILES = (
+    "s31_stdlib.py", "s31_mathlib.py",
+    "library/__init__.py", "library/stdlib.py", "library/math.py",
+)
 TEXT_FRONTEND_SOURCES = (
     S31_DIR / "python/text_frontend.py",
     *sorted((S31_DIR / "python/language").glob("*.py")),
-    S31_DIR / "python/s31_stdlib.py",
-    S31_DIR / "python/s31_mathlib.py",
+    *(S31_DIR / "python" / name for name in LIBRARY_SOURCE_FILES),
     S31_DIR / "python/proof_privacy.py",
 )
 
@@ -138,7 +141,7 @@ def standard_library_lock(explicit_import: bool) -> dict:
         "explicit_import": explicit_import,
         "sources": {
             name: file_hash(S31_DIR / "python" / name)
-            for name in ("s31_stdlib.py", "s31_mathlib.py")
+            for name in LIBRARY_SOURCE_FILES
         },
     }
 
@@ -604,7 +607,7 @@ def verify_package(package: Path) -> dict:
                         lock.get("version") != expected_interface["stdlib"]["version"] or
                         lock.get("explicit_import") != parser.stdlib_explicit or
                         not isinstance(sources, dict) or
-                        set(sources) != {"s31_stdlib.py", "s31_mathlib.py"} or
+                        set(sources) != set(LIBRARY_SOURCE_FILES) or
                         any(not isinstance(value, str) or len(value) != 64 or
                                 any(char not in "0123456789abcdef" for char in value)
                                 for value in sources.values())):

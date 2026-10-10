@@ -195,6 +195,13 @@ def check_case(work: Path, case: Case) -> dict:
     functional_package = s31.build(functional_path, work / f"{case.name}-functional",
                                    "direct-gate")
     direct_package = s31.build(direct_path, work / f"{case.name}-direct", "direct-gate")
+    lock = json.loads((functional_package / "stdlib-lock.json").read_text())
+    expected_sources = {
+        name: s31.file_hash(S31 / "python" / name)
+        for name in s31.LIBRARY_SOURCE_FILES
+    }
+    if lock["sources"] != expected_sources:
+        raise AssertionError(f"{case.name}: standard-library lock omits compiler library source")
     cost = json.loads((functional_package / "cost-report.json").read_text())
     direct_cost = json.loads((direct_package / "cost-report.json").read_text())
     mismatched = [key for key in MATCHED_COST if cost[key] != direct_cost[key]]

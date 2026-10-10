@@ -578,8 +578,9 @@ the package identities can differ.
 ## What a package pins
 
 A text build writes `stdlib-lock.json` with package/version, whether the
-import was explicit, and SHA-256 hashes of `s31_stdlib.py` and
-`s31_mathlib.py`. Its own digest is in the package manifest and the
+import was explicit, and SHA-256 hashes of the compatibility imports
+`s31_stdlib.py` and `s31_mathlib.py` plus the implementations under
+`python/library/`. Its own digest is in the package manifest and the
 verification key. The generated native verifier is compiled with that digest
 and rejects a key bearing another one. The normalized relation and source
 text are separately hashed in the package; the proof still establishes the

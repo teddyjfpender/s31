@@ -101,6 +101,7 @@ def main() -> None:
     )
     sources = ("relation.zig", "canonical.zig", "relation_compiler.zig",
                "python/s31_mathlib.py", "python/s31_stdlib.py", "python/text_frontend.py",
+               "python/library/__init__.py", "python/library/stdlib.py", "python/library/math.py",
                *language_sources, "python/oracle.py",
                "python/s31.py", "tests/acceptance/acceptance_u256_sub.py")
     record = {

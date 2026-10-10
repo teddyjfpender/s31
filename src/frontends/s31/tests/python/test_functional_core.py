@@ -27,6 +27,7 @@ class FunctionalCoreTests(unittest.TestCase):
 
     def test_every_language_module_enters_compiler_identity(self) -> None:
         modules = set((S31_SOURCE_ROOT / "python/language").glob("*.py"))
+        modules |= set((S31_SOURCE_ROOT / "python/library").glob("*.py"))
         self.assertTrue(modules)
         self.assertLessEqual(modules, set(TEXT_FRONTEND_SOURCES))
 
