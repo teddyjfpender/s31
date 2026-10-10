@@ -102,3 +102,69 @@ verifier reports, changed-claim controls, package artifacts and raw timings.
 The tracked summary should pin their digests and the exact model and protocol
 used. The run should be repeated on a separately named host before any
 general-purpose cost claim.
+
+## Prospective result, 2026-10-10
+
+The [pinned audit](language/stage-aware-cost-v1-audit.json) is the reviewable
+result. It independently refits the training corpus, replays the frozen model
+on validation, checks every saved proof's length and SHA-256, checks each full
+trial report against the compact corpus, and checks that each saved changed
+statement differs at exactly the reported public word. The model was frozen
+at SHA-256 `f77ba341f216baf68cbaef6920db9b0a64edae2513af90fd4ca7b0600b20105b`
+before any validation package or proof was made. All 25 packages used compiler
+SHA-256 `d9ee38fc2e0ecc38776e72e5b40598b896a9545e030b50dd290935561e7c185f`.
+Thirteen training and twelve validation programs each had twenty distinct
+witnesses. **500/500** native proofs verified, changed public claims rejected,
+and independent value-oracle checks passed. Training and validation source and
+assignment digests are disjoint.
+
+| Held-out target, 12 programs | Median relative error | P90 relative error | Maximum |
+| --- | ---: | ---: | ---: |
+| Prover plus native verifier process wall | 7.86% | 20.93% | 23.38% |
+| Proof bytes | 0.59% | 3.46% | 4.28% |
+| Prover peak RSS | 1.70% | 8.75% | 18.03% |
+
+| Family, four validation programs each | Wall p90 error | Proof bytes p90 error | Peak RSS p90 error | Wall trial interval coverage |
+| --- | ---: | ---: | ---: | ---: |
+| Arithmetic recurrence | 19.59% | 4.08% | **15.34%** | 95% |
+| Signed quotient-only division | 22.41% | 1.72% | 2.39% | 95% |
+| Deeper BLAKE2s chains | 7.94% | 0.45% | 0.07% | 95% |
+
+The predeclared local gate **failed** because arithmetic peak RSS p90 error
+exceeded its 10% limit. The 512-round arithmetic program was the largest miss:
+10.81 MiB measured versus 12.76 MiB predicted, an 18.03% error. The other
+wall, proof-byte, interval-coverage and interval-width criteria passed on this
+host. This is a cost-model result, not evidence that the circuit or proving
+algorithm became faster. Automatic lowering selection remains disabled.
+
+The wall intervals use empirical training p05/p95 trial ratios widened by the
+largest training leave-one-program-out stage error. They covered 95% of the
+held-out **individual trials** in each family. Their median upper bound was
+4.99 times the observed program median for arithmetic, 4.64 times for signed
+division, and 1.82 times for hash. These are diagnostic predictive intervals,
+not calibrated 95% confidence bounds or tail guarantees. Proof-byte trial
+coverage was 100%, 100% and 98.8% respectively; RSS trial coverage was 100%
+for all three families.
+
+The largest measured stage by median share was FRI PoW for direct-gate
+arithmetic (about 65%) and signed division (about 60%). It also had 22–23%
+median held-out stage-median error. Their non-PoW prove-stage median errors
+were 4.2% and 1.6%. Hash uses the generic gate prover, whose opaque prove
+timer accounts for about 77% of the summed median stages; separate hash PoW
+timers are unavailable, so that share cannot be assigned to PoW. These stage
+shares are descriptive sums of program-median timers, not causal attributions
+of each wall-time outlier.
+
+Training package-build wall ranged from 52.75 to 70.75 seconds (median 55.03);
+validation ranged from 51.85 to 67.66 seconds (median 52.12). Every package
+was fresh at its output path, while the Zig compiler cache remained
+uncontrolled. Package build is excluded from the predicted proof latency.
+An earlier three-package build attempt was stopped before any timed proof when
+a direct-chip manifest component label lifetime bug was found. Those packages
+were discarded; the full 25-package run above used the fixed compiler digest.
+
+The next model iteration should predeclare an arithmetic RSS baseline plus
+padded-tier feature, validate it on **new** programs and witnesses, and repeat
+the whole experiment on another host. It should also expose PoW timers for the
+generic hash prover if that profile is to receive a stage-specific model.
+Neither change should be tuned against the twelve held-out outcomes above.

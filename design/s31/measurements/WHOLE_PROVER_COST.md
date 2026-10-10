@@ -175,7 +175,13 @@ The 16- and 64-round arithmetic programs both pad to 512 rows, while their
 raw work differs; this is a real step in the cost surface, not evidence for a
 smooth latency law.
 
-### Next validation protocol
+### Original follow-up proposal (superseded)
+
+The following was the design sketch after the first held-out corpus. The
+later, executable [stage-aware v1 protocol](stage-aware-cost-v1.json) was
+committed before its native timings and is the authoritative split and gate
+for that run. Its one-host signed quotient-only transfer leaves the proposed
+second-host and unsigned-transfer checks for future work.
 
 Freeze the next model and its thresholds **before** collecting new native
 timings. Use new source programs and independent witness seeds: arithmetic
@@ -195,3 +201,8 @@ components are measured. Evaluate on the new programs and second host without
 refitting to their outcomes. A persistent native prover API is needed to
 measure cached setup separately. Keep automatic lowering selection disabled
 until the prospective error gate and a profile-soundness comparison both pass.
+
+The first prospective follow-up and its measured outcome are recorded in
+[Stage-aware cost v1](STAGE_AWARE_COST_V1.md). Its independent held-out set has
+500 total training/validation native proofs and materially better wall-time
+prediction, but the predeclared local gate still fails on arithmetic peak RSS.
