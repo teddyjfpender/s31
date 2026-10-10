@@ -1,5 +1,6 @@
 import S31.Gadgets.Arithmetic
 import S31.Gadgets.Air.Qm31Ops
+import S31.Gadgets.Air.NativeQm31AirProof
 import S31.Gadgets.Air.QuadField
 import S31.Gadgets.Air.SimdChunks
 import S31.Gadgets.Air.FunctionalBridge

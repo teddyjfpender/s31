@@ -338,6 +338,12 @@ multiplicity-weighted output tuple match the Lean Gate row events and
 reciprocal contribution. The extractor checks the native 12-limb base-row
 layout before generating the roster. This narrows the source-to-model gap;
 it is still a reviewed extractor, not a verified Zig compiler.
+`NativeQm31AirProof` goes further for the nine arithmetic AIR constraints:
+Zig prints the exact comptime trees consumed by `evaluateQm31Ops`, and Lean
+proves their residual list equals `Qm31Ops.residuals` for every field input.
+This removes manual transcription of the arithmetic polynomials from the
+trusted boundary. The Zig-to-Lean base-field representation and committed
+AIR column mapping still need their own correspondence proofs.
 `NativeEqRosterProof` performs the same extraction and event equality proof
 for the two Eq Gate reads. `GateEqRawSoundness` then composes raw Eq and
 arithmetic interaction residuals under one shared Gate claim. For fixed
@@ -718,7 +724,9 @@ also included in the live axiom audit. Only Lean's standard `propext`,
 
 ## Reproduce the gate
 
-Run from the repository root with the pinned Lean toolchain available:
+Run from the repository root with Zig 0.15.2 and the pinned Lean toolchain
+available. The first command regenerates the native arithmetic AIR tree in
+memory and checks it against the committed Lean source:
 
 ```sh
 python3 scripts/s31_formal.py

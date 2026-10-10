@@ -45,6 +45,8 @@ BINDINGS = [
     "src/frontends/circuit/builder/simd.zig",
     "src/frontends/circuit/builder/context.zig",
     "src/frontends/circuit/air_eval/manual/circuit.zig",
+    "src/frontends/circuit/export_qm31_ops.zig",
+    "src/frontends/circuit/build.zig",
     "src/frontends/circuit/stark_verifier/logup.zig",
     "src/frontends/circuit/stark_verifier/constraint_eval.zig",
     "src/frontends/circuit/common/component_list.zig",
@@ -186,6 +188,24 @@ def generated_gate_roster() -> str:
     )
 
 
+def generated_native_qm31_air() -> str:
+    """Ask Zig to print the comptime trees consumed by the native AIR."""
+    try:
+        result = subprocess.run(
+            ["zig", "build", "--build-file", "src/frontends/circuit/build.zig",
+             "export-qm31-air-lean", "-Doptimize=ReleaseFast"],
+            cwd=ENGINE_ROOT, capture_output=True, text=True, timeout=300,
+            check=False,
+        )
+    except subprocess.TimeoutExpired as error:
+        raise FormalError("native qm31_ops AIR export timed out") from error
+    if result.returncode != 0:
+        raise FormalError("native qm31_ops AIR export failed: " + result.stderr[-4000:])
+    if not result.stdout.startswith("import S31.Gadgets.Air.Qm31Ops\n"):
+        raise FormalError("native qm31_ops AIR export returned unexpected output")
+    return result.stdout
+
+
 def generated() -> dict[Path, str]:
     source = (ROOT / RELATION).read_text()
     ops = [op.strip() for op in re.search(
@@ -229,6 +249,7 @@ def generated() -> dict[Path, str]:
         FORMAL / "S31/Semantics/Op.lean": op,
         FORMAL / "S31/Semantics/Constants.lean": constants,
         FORMAL / "S31/Gadgets/Air/NativeGateRoster.lean": generated_gate_roster(),
+        FORMAL / "S31/Gadgets/Air/NativeQm31Air.lean": generated_native_qm31_air(),
         FORMAL / "S31/Evidence/Coverage.lean": render_coverage(
             json.loads((FORMAL / "coverage.json").read_text())),
         FORMAL / "source-bindings.json": json.dumps(identity, indent=2) + "\n",
