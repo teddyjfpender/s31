@@ -47,6 +47,16 @@ without reading compiler internals. Functional and first-order sources must emit
 relation IR; both bit values, field boundaries, random inputs and false public
 claims are checked. The three-source corpus has a pinned SHA-256 identity.
 
+`test_higher_order_generated.py` adds 160 programs from 16 independently
+evaluated arithmetic trees. Ten source routes for each tree cover named
+functions, first-class function arguments, returned functions, curried
+closures, captured lambdas, local function bindings and lexical shadowing.
+Each route must emit the **same entire relation** as its direct expression.
+Both selector values, field boundaries, random inputs and forged public
+outputs are checked. A partial inverse carried through each route must be
+rejected in an inactive conditional arm. The corpus seed and SHA-256 identity
+are pinned in the test.
+
 A second gate perturbs valid source text and requires located diagnostics for
 rejected mutations. Deep expressions and function types must hit explicit,
 located nesting limits. The scalar corpus is deterministic (`SEED = 0x531F00D`);
