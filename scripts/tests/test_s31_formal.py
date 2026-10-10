@@ -178,6 +178,20 @@ class FormalGateTests(unittest.TestCase):
                 after = s31_formal.generated()[root / "formal/s31/source-bindings.json"]
                 self.assertNotEqual(before, after)
 
+    def test_text_square4_compiler_binding_changes_with_source(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            for relative in (s31_formal.RELATION, s31_formal.TEXT_SQUARE4):
+                target = root / relative
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(ROOT / relative, target)
+            with patch.object(s31_formal, "ROOT", root):
+                before = s31_formal.generated_text_square4()
+                source = root / s31_formal.TEXT_SQUARE4
+                source.write_text(source.read_text().replace("v .* v", "v + v", 1))
+                after = s31_formal.generated_text_square4()
+                self.assertNotEqual(before, after)
+
     def test_native_logup_caller_order_mutation_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

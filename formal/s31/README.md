@@ -108,6 +108,14 @@ production AIR lowering are outside these theorems. The formal source
 identity inventory now includes the Python
 syntax, parser, elaborator, specializer and libraries so changes there force a reviewed
 binding update; the source digests themselves do not prove compiler correspondence.
+`Functional/TextSquare4` is a narrower executable bridge: the formal gate
+runs the Python text compiler on the actual `functional_square4.s31` file and
+commits its normalized two-node program as Lean source. `TextSquare4Proof`
+checks the exact node sequence, validates the program, and proves its two
+nodes compute the fourth power on every one of four arbitrary M31 inputs.
+The hand-written typed source expression has the same lane-wise meaning.
+This proves one compiler output instance, while the general parser and
+specializer correspondence remains open.
 
 `Functional/Arrays` extends the typed source core with `[m31; N]` values,
 pointwise addition and multiplication, static splats, indexed reads and

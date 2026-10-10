@@ -48,6 +48,7 @@
   ],
   "sources": {
     "src/frontends/s31/language/relation.zig": "aa0c107e173cb7566e4c3961f5a0c4134ca059e3890816ca53573123612826c9",
+    "src/frontends/s31/examples/arithmetic/functional_square4.s31": "d2bffe38fa1a470a8c01a82a4c2e6a611f3607b06251c1fca1cf3448aa1a13b6",
     "src/frontends/s31/language/relation_compiler.zig": "3ca16e9fd177469322ae56ca6dcd367dcfd6badf77bee0f4321150655684ff5d",
     "src/frontends/s31/library/hash/poseidon2.zig": "8843429f1d9b6da7a895ccf474d421cad5098e9de1fa6df566b2acb7edc4ad34",
     "src/core/crypto/blake2s_terminal_parallel.zig": "bcc4b0f7e3f5a08e62bf4798a57e9ff390880aa57dcd88764f5312068813f9c5",
