@@ -90,6 +90,31 @@ Lean SSA certificate and local packed arithmetic-row theorems explain the
 intended semantics of this fragment; this checker has not been proved to
 implement those Lean definitions.
 
+## Concrete Lean bridge
+
+[`export_s31_direct_gate_bridge.py`](../../../scripts/export_s31_direct_gate_bridge.py)
+first admits a native package with the independent checker, then emits a
+concrete Lean instance containing the exact source bytes and SHA-256 digest,
+the positional SSA, the observed source-gate addresses and grouped trace row
+positions, and the observed 512-row/512-variable shape. The checked-in
+[`GeneratedDirectGateBridge.lean`](../../../formal/s31/S31/Gadgets/Functional/GeneratedDirectGateBridge.lean)
+is regenerated from the two-operation square example during native acceptance;
+an unexpected source or native topology change makes that equality fail.
+Lean checks that this certificate matches a source term, that its deterministic
+emitter produces the same SSA, and that each observed source gate uses the
+model's exact circuit address and grouped AIR row. Changing the source's first
+operation, the certificate opcode, or an observed operand address is rejected
+by separate Lean examples. The existing SSA theorem then establishes the
+source value for every four-lane input of this concrete instance.
+
+The Python checker binds the byte array/digest and the remaining constant,
+padding, selector, multiplicity, and public ABI rows to the exported package.
+Lean does not reparse those bytes or hash them, does not prove that the Python
+checker implements its Lean model, and does not authenticate committed AIR
+columns. The bridge makes the exact checked instance inspectable and gives a
+formal semantic check for its SSA and source-gate row mapping; it is not a
+general compiler-correctness theorem.
+
 ## Proof boundary and invocation
 
 Call S31 package verification before using the package's prover or native

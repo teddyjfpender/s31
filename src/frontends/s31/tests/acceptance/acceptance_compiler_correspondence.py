@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import copy
+import difflib
 import hashlib
 import json
 import shutil
@@ -14,6 +15,8 @@ from pathlib import Path
 
 S31 = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(S31 / "python"))
+REPO = S31.parents[2]
+sys.path.insert(0, str(REPO / "scripts"))
 
 import s31
 from package import verify as package_verify
@@ -21,6 +24,7 @@ from package.build import build_json
 from package.context import file_hash, sha256, write_json
 from package.correspondence import (DIRECT_COLUMN_IDS, KEY_FIELDS, canonical, check_package,
                                     digest, read_canonical_json)
+from export_s31_direct_gate_bridge import render_bridge
 
 
 def reseal_emitted_columns(topology: dict, component: dict) -> None:
@@ -133,6 +137,16 @@ def main() -> None:
             raise AssertionError("duplicate JSON keys were admitted")
         honest = s31.build(source, work / "honest", "direct-gate")
         checked = check_package(honest)
+        golden_bridge = (REPO / "formal/s31/S31/Gadgets/Functional/"
+                         "GeneratedDirectGateBridge.lean")
+        rendered_bridge = render_bridge(honest)
+        if rendered_bridge != golden_bridge.read_text():
+            difference = "".join(list(difflib.unified_diff(
+                golden_bridge.read_text().splitlines(keepends=True),
+                rendered_bridge.splitlines(keepends=True),
+                fromfile="checked-in Lean", tofile="regenerated Lean"))[:40])
+            raise AssertionError("source/native bridge differs from checked Lean instance:\n"
+                                 + difference)
         if checked["status"]["source_to_normalized"] != "source-to-normalized-checked":
             raise AssertionError("honest package lacks the source correspondence status")
         if not s31.trial(honest, assignment, work / "honest-proof")["native_verifier_accepted"]:
@@ -233,6 +247,7 @@ def main() -> None:
             "resealed_extra_constant_gate_rejected": True,
             "native_gate_counts": checked["gate_counts"],
             "native_exact_constant_schedule_checked": True,
+            "lean_bridge_instance_matches_native_package": True,
             "certificate_status": checked["status"],
         }, sort_keys=True, indent=2))
 

@@ -166,6 +166,16 @@ for one row under **exact** Gate multiset balance, unique producer values,
 and source-owned producer membership. It does not infer exact balance from
 the random-challenge LogUp proof or establish those premises for every native
 row.
+`Functional/SSADirectGateBridge` defines the source-gate address and grouped
+AIR row formula for the narrow 512-row direct-gate profile. The generated
+`Functional/GeneratedDirectGateBridge` instance records the exact checked
+source bytes and digest, positional SSA, exported gate addresses and row
+indices for the shared-square example. Lean accepts the source certificate,
+checks exact gate positions, proves arbitrary-input source semantics, and
+rejects changed source semantics, opcode, and operand address controls. The
+Python package checker supplies the byte/digest binding and validates the
+other native rows; no theorem equates that checker with Lean or authenticates
+the PCS preprocessed root.
 `Functional/TextSquare4` is a narrower executable bridge: the formal gate
 runs the Python text compiler on the actual `functional_square4.s31` file and
 commits its normalized two-node program as Lean source. `TextSquare4Proof`
