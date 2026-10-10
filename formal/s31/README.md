@@ -315,24 +315,49 @@ theorem. The `p−1` count is accepted, while incrementing it to `p` and
 adding `p` at once are rejected. Connecting the actual Zig traversal of
 every circuit component to those exact modeled event lists is still open.
 
-`GateCounterCircuit` proves the compact yield representation used by the
-circuit agrees with that expanded event histogram: a row output at address
-`a` with multiplicity `m` contributes one checked increment `(a,m)`, while
+`GateCounterCircuit` proves a compact yield representation agrees with the
+expanded event histogram: a row output at address
+`a` with multiplicity `m` can contribute one checked increment `(a,m)`, while
 the ideal Gate list contains `m` copies of its output event. The theorem
 holds for every address and arbitrary rows and external yields. Successful
-checked use and compressed-yield walks, together with closed Gate fractions
+modeled checked use and compressed-yield walks, together with closed Gate fractions
 and good challenges, now imply exact circuit Gate balance without assuming
 the address histogram bounds separately.
 
 `GateProducerCheck` models the engine's new producer-address bitmap scan.
-If the scan accepts, the produced addresses are distinct and below the
-declared variable bound. A proved corollary supplies `uniqueProduced` for
-the Gate address join, and an addressed arithmetic row consequently reads
-the values of its sole producers. A repeated address is rejected by an
-explicit control. The engine now rejects duplicate producers in supplied
-`CircuitView` gate lists before preprocessing; native tests cover duplicates
-across arithmetic, Blake, and permutation outputs. The correspondence of
-the complete Zig output traversal to the Lean list is still an open step.
+If the scan accepts, the *declared-variable* producer addresses are distinct
+and below `n_vars`. A repeated address is rejected by an explicit control.
+Permutation lowering deliberately shares scratch addresses at or above
+`n_vars`, so global `uniqueProduced` does not follow. The stronger
+`addressed_declared_row_sound` theorem splits declared and scratch yields:
+ordinary rows reading addresses below `n_vars` still read their sole
+producer values when scratch yields stay above that bound. The engine now
+rejects duplicate declared producers in supplied `CircuitView` gate lists;
+native tests cover arithmetic, Blake, and permutation output collisions.
+The complete Zig output partition remains a source correspondence step.
+
+`GateUseTraversal` covers two special use-count paths in the same
+preprocessed builder. One increment `(0, permutationRows)` equals the
+histogram of that many Gate reads of the zero wire. The private SHA boundary
+adds one read per fixed address. A successful *modeled* checked walk over
+base uses, the compressed zero increment, and boundary uses therefore bounds
+the corresponding expanded histogram. Zig's declared-variable counter does
+not walk permutation scratch reads; their count bound and their placement
+in `baseUses` remain separate source correspondence obligations.
+`closed_gate_of_compressed_counters` makes that obligation a single list
+equality: if the ordinary and special reads form the ideal Gate-use list,
+successful modeled compressed use and yield counters discharge both
+histogram bounds in the whole-Gate soundness theorem. Native preprocessing
+still needs a separate proof for scratch-address counts.
+
+`PermutationScratch` now supplies that count argument conditionally. If
+the checked zero-wire increment is `2` times the number of permutation
+pairs, and scratch has one read and one yield per pair, both scratch
+address histograms are below `p`. The declared and scratch address ranges
+are disjoint, so their separate bounds imply full Gate address bounds
+without assuming one scratch producer per address. What remains is a
+source-to-model proof that the emitted scratch event lists have those
+lengths and stay at addresses `≥ n_vars`.
 
 `LogUpInteraction` models the other side of the reduction. Its single and
 paired residuals use the formulas in the Zig verifier. Given nonzero

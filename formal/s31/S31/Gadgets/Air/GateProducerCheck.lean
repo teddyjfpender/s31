@@ -3,8 +3,9 @@ import S31.Gadgets.Air.GateLookup
 namespace S31.Gadgets.Air.GateProducerCheck
 open S31.Gadgets.Air.GateLookup
 
-/-- Model of the preprocessed builder's address bitmap scan. The scan rejects
-an out-of-range output or a second producer at an already seen address. -/
+/-- Model of the preprocessed builder's declared-variable address scan. It
+rejects an out-of-range output or a second producer at an already seen
+address. Permutation scratch addresses are handled separately. -/
 def scan (bound : Nat) (seen : Finset Nat) :
     List Nat → Option (Finset Nat)
   | [] => some seen
@@ -46,8 +47,8 @@ theorem scan_sound {bound : Nat} {seen : Finset Nat}
                 hnotInsert (Finset.mem_insert_of_mem hin)⟩
       · simp [scan, hbound] at hscan
 
-/-- Successful checking of produced addresses discharges both uniqueness
-and canonical-range premises for the exact Gate address join. -/
+/-- Successful checking of one produced-event list discharges uniqueness
+and range premises for that list. -/
 theorem checked_produced_unique (bound : Nat)
     (produced : List Event) (result : Finset Nat)
     (hscan : scan bound ∅ (produced.map Prod.fst) = some result) :
@@ -67,25 +68,66 @@ theorem duplicate_addresses_rejected (bound address : Nat)
     scan bound ∅ [address, address] = none := by
   simp [scan, hbound]
 
-theorem addressed_row_sound_of_scan
-    (bound : Nat) (rows : List Row)
-    (externalUses externalYields : List Event)
+/-- Scratch producers can share addresses, but they cannot shadow a declared
+variable because their addresses start at or above the declared bound. -/
+theorem checked_declared_unique_with_scratch
+    (bound : Nat) (declared scratch : List Event)
     (result : Finset Nat)
-    (hscan : scan bound ∅
-      ((allYields rows externalYields).map Prod.fst) = some result)
+    (hscan : scan bound ∅ (declared.map Prod.fst) = some result)
+    (hscratch : ∀ event ∈ scratch, bound ≤ event.1)
+    (address : Nat) (haddress : address < bound)
+    (left right : S31.Gadgets.Packed.Quad)
+    (hleft : (address, left) ∈ declared ++ scratch)
+    (hright : (address, right) ∈ declared ++ scratch) :
+    left = right := by
+  have hunique := (checked_produced_unique bound declared result hscan).1
+  have hdeclaredLeft : (address, left) ∈ declared := by
+    rcases List.mem_append.mp hleft with h | h
+    · exact h
+    · exact False.elim (Nat.not_le_of_gt haddress (hscratch _ h))
+  have hdeclaredRight : (address, right) ∈ declared := by
+    rcases List.mem_append.mp hright with h | h
+    · exact h
+    · exact False.elim (Nat.not_le_of_gt haddress (hscratch _ h))
+  exact hunique address left right hdeclaredLeft hdeclaredRight
+
+/-- An ordinary row reading declared addresses remains sound even when
+permutation scratch addresses have several producer rows. -/
+theorem addressed_declared_row_sound
+    (bound : Nat) (rows : List Row)
+    (externalUses externalYields declared scratch : List Event)
+    (result : Finset Nat)
+    (hproduced : (allYields rows externalYields).Perm
+      (declared ++ scratch))
+    (hscan : scan bound ∅ (declared.map Prod.fst) = some result)
+    (hscratch : ∀ event ∈ scratch, bound ≤ event.1)
     (hbalance : balanced rows externalUses externalYields)
     (row : Row) (hrow : row ∈ rows)
+    (haddress0 : row.in0Address < bound)
+    (haddress1 : row.in1Address < bound)
     (left right : S31.Gadgets.Packed.Quad)
-    (hleft : (row.in0Address, left) ∈
-      allYields rows externalYields)
-    (hright : (row.in1Address, right) ∈
-      allYields rows externalYields)
+    (hleft : (row.in0Address, left) ∈ allYields rows externalYields)
+    (hright : (row.in1Address, right) ∈ allYields rows externalYields)
     (hair : Qm31Ops.accepts row.flags row.in0 row.in1 row.output) :
     ∃ op, row.flags = Qm31Ops.encode op ∧
       row.output = Qm31Ops.evaluate op left right := by
-  exact addressed_row_sound rows externalUses externalYields row hrow
-    hbalance
-    (checked_produced_unique bound _ result hscan).1
-    left right hleft hright hair
+  obtain ⟨huse0, huse1⟩ := row_input_use rows externalUses row hrow
+  have hread0 : (row.in0Address, row.in0) ∈
+      allYields rows externalYields := hbalance.mem_iff.mp huse0
+  have hread1 : (row.in1Address, row.in1) ∈
+      allYields rows externalYields := hbalance.mem_iff.mp huse1
+  have hread0' := hproduced.mem_iff.mp hread0
+  have hread1' := hproduced.mem_iff.mp hread1
+  have hleft' := hproduced.mem_iff.mp hleft
+  have hright' := hproduced.mem_iff.mp hright
+  have h0 := checked_declared_unique_with_scratch bound declared scratch
+    result hscan hscratch row.in0Address haddress0 row.in0 left
+    hread0' hleft'
+  have h1 := checked_declared_unique_with_scratch bound declared scratch
+    result hscan hscratch row.in1Address haddress1 row.in1 right
+    hread1' hright'
+  obtain ⟨op, hflags, hout⟩ :=
+    (Qm31Ops.accepts_iff _ _ _ _).mp hair
+  exact ⟨op, hflags, by simpa [h0, h1] using hout⟩
 
 end S31.Gadgets.Air.GateProducerCheck

@@ -403,21 +403,54 @@ remains a compiler/source correspondence task.
 
 `GateCounterCircuit.lean` connects the compact output count to the
 repeated events of `GateLookup.Row.yields`. For an output at address `9`
-used three times, the counter takes one step `(9,3)`, while the ideal
+used three times, the modeled counter takes one step `(9,3)`, while the ideal
 multiset contains three `(9,output)` events; both have address count `3`
 at address `9` and `0` elsewhere. `compressed_yields_match_events` proves
 this for arbitrary row lists and external yields. The
-`closed_gate_of_checked_counters` theorem uses successful checked input
-and compact output counts to discharge the bounds in whole-Gate closure.
+`closed_gate_of_checked_counters` theorem uses successful modeled checked
+input and compact output counts to discharge the bounds in whole-Gate
+closure. Native permutation scratch counts remain a separate obligation.
 
-`GateProducerCheck.lean` models the other preprocessed invariant: its
-bitmap scan rejects an output address outside `n_vars` or any address
-already seen. `scan_sound` proves successful scans have no repeated
-addresses. Mapping a produced Gate event to its address then proves
-`uniqueProduced`, which `addressed_row_sound_of_scan` feeds directly to
-the arithmetic row's Gate join. This matches the engine's fail-closed
-duplicate-producer check, subject to the remaining source-to-model
-traversal correspondence.
+`GateProducerCheck.lean` models the declared-variable producer scan: it
+rejects outputs outside `n_vars` and repeated declared addresses.
+`scan_sound` proves a successful scan has no repeated addresses. The
+permutation lowering intentionally reuses a scratch address for multiple
+rows, so the theorem partitions declared yields from scratch yields.
+`addressed_declared_row_sound` proves ordinary rows whose input addresses
+are below `n_vars` still read their sole producer values when scratch
+addresses are at or above `n_vars`. The actual output partition remains
+a source-to-model correspondence obligation.
+
+`GateUseTraversal.lean` models the preprocessed builder's special use
+increments. If there are four permutation input/output rows, Zig adds `4`
+to the zero-wire counter once; the ideal Gate list has four `(0, zero)`
+reads. Each private SHA boundary address contributes one further use.
+`compressed_uses_match_events` proves the compressed increments and
+expanded reads have the same address histogram for arbitrary ordinary
+uses, row counts, and boundary lists. A successful modeled checked walk
+then bounds that histogram below `p` at every address.
+`closed_gate_of_compressed_counters` plugs both modeled compact walks into
+the Gate closure theorem. Zig's declared-variable counter does not walk
+permutation scratch reads, so the native scratch count and event-list
+correspondence remain separate obligations.
+
+`PermutationScratch.lean` handles the intentionally shared scratch
+address. One permutation pair emits two arithmetic rows and contributes
+one scratch read and one scratch yield. Thus a checked increment by the
+total permutation row count bounds each scratch list's length, and every
+scratch address count is at most that length. `full_bounds_with_permutation_scratch`
+combines those bounds with declared-variable counts using the disjoint
+address ranges. It requires the stated row/event lengths and range
+partition; proving them for the native emitted trace remains open.
+
+For two permutation pairs, let the input values be `[5, 7]` and the
+output values be `[7, 5]`. The first two rows yield `(scratch, 5)` and
+`(scratch, 7)` at the same scratch address. The next two rows read
+`(scratch, 7)` and `(scratch, 5)`. Gate checks the two multisets, so the
+order may change. The zero-wire increment is `4` for these four rows;
+each scratch read/yield list has length `2`, below that checked count.
+Requiring one value per scratch address would incorrectly reject this
+valid permutation.
 
 `GateFinal.lean` composes that conditional multiset theorem with the
 arithmetic row theorem. If each addressed input has a unique producer, a
