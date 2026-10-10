@@ -12,6 +12,8 @@ from benchmark_whole_prover_cost_v3 import (
 )
 
 PROTOCOL = HERE.parents[2] / "design/s31/measurements/whole-prover-cost-v4.json"
+TOOL_SOURCES = (tuple(sorted((HERE / "benchmarks").glob("*.py"))) +
+                tuple(sorted((HERE / "python").rglob("*.py"))))
 
 
 def workload_cases(split: str, output: Path, samples: int, protocol: dict) -> list[dict]:
@@ -79,7 +81,7 @@ def main() -> None:
                model_schema="s31-whole-prover-cost-model-v4",
                corpus_schema="s31-whole-prover-cost-corpus-v4",
                build_schema="s31-whole-prover-build-inventory-v4",
-               workloads=workload_cases)
+               workloads=workload_cases, tool_sources=TOOL_SOURCES)
 
 
 if __name__ == "__main__":

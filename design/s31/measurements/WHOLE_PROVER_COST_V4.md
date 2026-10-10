@@ -71,7 +71,10 @@ and an independent output oracle check. The model and its SHA-256 must be
 recorded **before any held-out package is built**. Every package, source and
 trial must share the protocol SHA, compiler fingerprint, host pseudonym,
 profile and FRI policy. The generated one-call direct-chip manifest is sealed
-in each chip package.
+in each chip package. A separate measurement-tool SHA-256 covers all S31
+benchmark and frontend Python files; it must match across package builds,
+timed trials, frozen model and audit replay. This closes a gap left by the
+compiler fingerprint, which does not include benchmark scripts.
 
 Each family needs at least four held-out programs. Their expected-wall
 program-mean p90 relative error must be at most 25%; whole-wall trial interval

@@ -49,6 +49,7 @@
   "selection_policy": "Automatic lowering stays disabled, including after a local pass; independent source revision, host transfer, cached setup, paired lowering comparisons, and proof soundness equivalence remain separate prerequisites",
   "source_base_commit": "b90507c",
   "source_pin_policy": "record exact compiler SHA-256 and pinned stwo-zig commit in every package; reject any source fingerprint change between train build, model freeze, validation build and proof",
+  "tool_pin_policy": "hash all S31 benchmark and frontend Python source files by repository-relative path and bytes; require equal digest across package-build, timed trial, train model, validation, and independent publisher replay",
   "split_policy": "All v4 train and held-out sources and assignments are generated fresh. Fit only v4 train, freeze serialized model and its SHA before any held-out package build. Reject duplicate source/assignment digests within and across splits, require exact host/compiler/profile/FRI match. V3.1 held-out is not used for v4 fit or calibration.",
   "splits": {
     "train": {

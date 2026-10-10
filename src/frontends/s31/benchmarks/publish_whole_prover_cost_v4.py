@@ -8,7 +8,10 @@ import json
 import re
 from pathlib import Path
 
-from benchmark_whole_prover_cost_v3 import chip_manifest_binding, s31
+from benchmark_whole_prover_cost_v3 import (
+    chip_manifest_binding, measurement_tool_digest, s31,
+)
+from benchmark_whole_prover_cost_v4 import TOOL_SOURCES
 from publish_stage_aware_cost_v1 import audit_corpus, file_hash
 from publish_whole_prover_cost_v3 import audit_case_artifacts
 from whole_prover_predictor_v4 import PROTOCOL, evaluate, fit_model
@@ -30,6 +33,10 @@ def publish(train_path: Path, model_path: Path, validation_path: Path,
     protocol_sha = file_hash(PROTOCOL)
     if train["protocol_sha256"] != protocol_sha or validation["protocol_sha256"] != protocol_sha:
         raise ValueError("corpus/protocol digest mismatch")
+    tool_sha = measurement_tool_digest(TOOL_SOURCES)
+    if (train.get("measurement_tool_sha256") != tool_sha or
+        validation.get("measurement_tool_sha256") != tool_sha):
+        raise ValueError("saved corpus differs from pinned measurement tool bytes")
     if model["training_corpus_sha256"] != file_hash(train_path):
         raise ValueError("frozen model does not bind audited training corpus")
     if validation["frozen_model_sha256"] != externally_recorded_model_sha256:
@@ -82,6 +89,7 @@ def publish(train_path: Path, model_path: Path, validation_path: Path,
     return {
         "schema": "s31-whole-prover-cost-pinned-audit-v4",
         "protocol_sha256": protocol_sha,
+        "measurement_tool_sha256": tool_sha,
         "training_corpus_sha256": file_hash(train_path),
         "externally_recorded_frozen_model_sha256": externally_recorded_model_sha256,
         "validation_corpus_sha256": file_hash(validation_path),

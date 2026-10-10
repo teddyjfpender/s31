@@ -12,7 +12,8 @@ S31_ROOT = Path(__file__).resolve().parents[2]
 sys.path[:0] = [str(S31_ROOT / "benchmarks"), str(S31_ROOT / "python"),
                 str(Path(__file__).resolve().parent)]
 
-from benchmark_whole_prover_cost_v4 import workload_cases
+from benchmark_whole_prover_cost_v3 import measurement_tool_digest
+from benchmark_whole_prover_cost_v4 import TOOL_SOURCES, workload_cases
 from stage_aware_predictor_v1 import actual_target
 from whole_prover_predictor_v4 import PROTOCOL, evaluate, fit_model, wall_center
 from publish_whole_prover_cost_v4 import publish
@@ -24,6 +25,7 @@ def corpus(split: str, protocol: dict) -> dict:
     result = synthetic_corpus(split, protocol)
     result["schema"] = "s31-whole-prover-cost-corpus-v4"
     result["protocol_sha256"] = hashlib.sha256(PROTOCOL.read_bytes()).hexdigest()
+    result["measurement_tool_sha256"] = measurement_tool_digest(TOOL_SOURCES)
     return result
 
 
@@ -99,6 +101,10 @@ class WholeProverV4Tests(unittest.TestCase):
         held = corpus("validation", self.protocol)
         held["host"] = {"machine": "another-host"}
         with self.assertRaisesRegex(ValueError, "host"):
+            evaluate(model, held, self.protocol)
+        held = corpus("validation", self.protocol)
+        held["measurement_tool_sha256"] = "0" * 64
+        with self.assertRaisesRegex(ValueError, "tool"):
             evaluate(model, held, self.protocol)
 
     def test_publisher_requires_prevalidation_hash_and_keeps_failed_gate(self) -> None:

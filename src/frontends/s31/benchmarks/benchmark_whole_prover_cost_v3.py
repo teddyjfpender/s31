@@ -187,9 +187,19 @@ def chip_manifest_binding(package: Path) -> dict:
             "component_manifest_sha256": s31.file_hash(package / "component-manifest.json")}
 
 
+def measurement_tool_digest(paths: tuple[Path, ...]) -> str:
+    """Bind collection/oracle/modeling Python bytes separately from compiler SHA."""
+    digest = hashlib.sha256()
+    for path in sorted(paths):
+        digest.update(str(path.relative_to(ROOT)).encode())
+        digest.update(b"\0")
+        digest.update(bytes.fromhex(s31.file_hash(path)))
+    return digest.hexdigest()
+
+
 def run_corpus(args: argparse.Namespace, *, protocol_path: Path, protocol_schema: str,
                model_schema: str, corpus_schema: str, build_schema: str,
-               workloads: object) -> None:
+               workloads: object, tool_sources: tuple[Path, ...] = ()) -> None:
     """Shared artifact collection; each prospective study supplies its frozen protocol."""
     protocol_bytes = protocol_path.read_bytes()
     protocol = json.loads(protocol_bytes)
@@ -199,11 +209,14 @@ def run_corpus(args: argparse.Namespace, *, protocol_path: Path, protocol_schema
         raise ValueError("--model is required exactly for the validation split")
     model_bytes = args.model.read_bytes() if args.model is not None else None
     frozen_model = json.loads(model_bytes) if model_bytes is not None else None
+    tool_sha = measurement_tool_digest(tool_sources) if tool_sources else None
     if frozen_model is not None:
         if frozen_model.get("schema") != model_schema:
             raise ValueError("validation requires a fitted stage-aware model")
         if frozen_model.get("protocol_sha256") != hashlib.sha256(protocol_bytes).hexdigest():
             raise ValueError("model was fitted under another protocol")
+        if tool_sources and frozen_model.get("measurement_tool_sha256") != tool_sha:
+            raise ValueError("measurement tooling changed since model freeze")
     samples = protocol["samples_per_program"]
     output = args.out.resolve()
     output.mkdir(parents=True, exist_ok=True)
@@ -217,6 +230,8 @@ def run_corpus(args: argparse.Namespace, *, protocol_path: Path, protocol_schema
             build_record = json.loads(build_record_path.read_text())
             if build_record["source_sha256"] != s31.file_hash(source):
                 raise ValueError(f"{name}: source changed since package build phase")
+            if tool_sources and build_record.get("measurement_tool_sha256") != tool_sha:
+                raise ValueError(f"{name}: measurement tooling changed since package build")
             package = s31.build(source, package_path, workload["lowering"])
             build_measurement = build_record["package_build"]
         else:
@@ -231,6 +246,7 @@ def run_corpus(args: argparse.Namespace, *, protocol_path: Path, protocol_schema
                 "source_sha256": s31.file_hash(source),
                 "compiler_sha256": manifest["compiler_sha256"],
                 "package_build": build_measurement,
+                **({"measurement_tool_sha256": tool_sha} if tool_sources else {}),
             })
         cost = json.loads((package / "cost-report.json").read_text())
         chip_binding = chip_manifest_binding(package) if workload["family"] == "chip" else None
@@ -258,6 +274,7 @@ def run_corpus(args: argparse.Namespace, *, protocol_path: Path, protocol_schema
             "schema": build_schema, "split": args.split,
             "protocol_sha256": hashlib.sha256(protocol_bytes).hexdigest(),
             "compiler_sha256": next(iter(compiler_digests)),
+            **({"measurement_tool_sha256": tool_sha} if tool_sources else {}),
             "programs": {item["workload"]["name"]: {
                 "source_sha256": s31.file_hash(item["workload"]["source"]),
                 "chip_manifest_binding": item["chip_manifest_binding"],
@@ -301,6 +318,7 @@ def run_corpus(args: argparse.Namespace, *, protocol_path: Path, protocol_schema
     report = {
         "schema": corpus_schema, "split": args.split,
         "protocol_sha256": hashlib.sha256(protocol_bytes).hexdigest(),
+        **({"measurement_tool_sha256": tool_sha} if tool_sources else {}),
         "host": host_identity(),
         "samples_per_program": samples,
         "package_build_order": [item["workload"]["name"] for item in prepared],

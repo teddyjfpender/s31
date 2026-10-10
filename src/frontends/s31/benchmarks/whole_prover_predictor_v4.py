@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import statistics
 from pathlib import Path
 
@@ -22,6 +23,8 @@ MODEL_SCHEMA = "s31-whole-prover-cost-model-v4"
 
 
 def records_for(corpus: dict, split: str, protocol: dict) -> list[dict]:
+    if not re.fullmatch(r"[0-9a-f]{64}", corpus.get("measurement_tool_sha256", "")):
+        raise ValueError("missing pinned measurement tool digest")
     records = checked_cases(corpus, split, protocol, protocol_path=PROTOCOL,
                             corpus_schema=CORPUS_SCHEMA)
     if any(record["case"]["visible_fri"].get("pow_bits") !=
@@ -82,6 +85,7 @@ def wall_interval_calibration(records: list[dict], family: str,
 def fit_model(corpus: dict, protocol: dict) -> dict:
     records = records_for(corpus, "train", protocol)
     model = {"schema": MODEL_SCHEMA, "protocol_sha256": corpus["protocol_sha256"],
+             "measurement_tool_sha256": corpus["measurement_tool_sha256"],
              "training_host": corpus["host"],
              "compiler_sha256": records[0]["case"]["compiler_sha256"],
              "training_source_sha256": sorted(record["source"] for record in records),
@@ -114,9 +118,10 @@ def evaluate(model: dict, corpus: dict, protocol: dict) -> dict:
         raise ValueError("wrong frozen v4 model")
     records = records_for(corpus, "validation", protocol)
     if (model["protocol_sha256"] != corpus["protocol_sha256"] or
+        model["measurement_tool_sha256"] != corpus["measurement_tool_sha256"] or
         model["training_host"] != corpus["host"] or
         model["compiler_sha256"] != records[0]["case"]["compiler_sha256"]):
-        raise ValueError("protocol/host/compiler changed across splits")
+        raise ValueError("protocol/tool/host/compiler changed across splits")
     if set(model["training_source_sha256"]) & {record["source"] for record in records}:
         raise ValueError("training source leaked into validation")
     if set(model["training_assignment_sha256"]) & {
