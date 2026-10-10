@@ -90,6 +90,8 @@ BINDINGS = [
     "src/frontends/s31/language/finalization/constant_base.zig",
     "src/frontends/s31/runtime/mvp_runtime.zig",
     "src/frontends/s31/runtime/component_manifest.zig",
+    "src/frontends/s31/runtime/bounded_component_manifest.zig",
+    "src/frontends/s31/entry/bounded_component_manifest.zig",
     "src/frontends/s31/runtime/pair_source_binding.zig",
     "src/frontends/s31/runtime/pair_native_package.zig",
     "src/frontends/s31/runtime/pair_statement.zig",
