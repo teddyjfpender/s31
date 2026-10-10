@@ -120,12 +120,22 @@ def compact_trial(trial: dict) -> dict:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--split", choices=("train", "validation"), required=True)
+    parser.add_argument("--model", type=Path, help="frozen training model, required for validation")
     parser.add_argument("--out", type=Path, required=True)
     args = parser.parse_args()
     protocol_bytes = PROTOCOL.read_bytes()
     protocol = json.loads(protocol_bytes)
     if protocol["schema"] != "s31-stage-aware-cost-protocol-v1":
         raise ValueError("unrecognized prospective protocol")
+    if (args.split == "validation") != (args.model is not None):
+        parser.error("--model is required exactly for the validation split")
+    model_bytes = args.model.read_bytes() if args.model is not None else None
+    frozen_model = json.loads(model_bytes) if model_bytes is not None else None
+    if frozen_model is not None:
+        if frozen_model.get("schema") != "s31-stage-aware-cost-model-v1":
+            raise ValueError("validation requires a fitted stage-aware model")
+        if frozen_model.get("protocol_sha256") != hashlib.sha256(protocol_bytes).hexdigest():
+            raise ValueError("model was fitted under another protocol")
     samples = protocol["samples_per_program"]
     output = args.out.resolve()
     output.mkdir(parents=True, exist_ok=True)
@@ -153,6 +163,8 @@ def main() -> None:
     compiler_digests = {item["manifest"]["compiler_sha256"] for item in prepared}
     if len(compiler_digests) != 1:
         raise ValueError("compiler source changed during package builds")
+    if frozen_model is not None and compiler_digests != {frozen_model["compiler_sha256"]}:
+        raise ValueError("compiler source changed since the training model was frozen")
     proof_order = []
     for index in range(samples):
         rotated = prepared[index % len(prepared):] + prepared[:index % len(prepared)]
@@ -192,6 +204,7 @@ def main() -> None:
         "samples_per_program": samples,
         "package_build_order": [item["workload"]["name"] for item in prepared],
         "proof_order": proof_order,
+        "frozen_model_sha256": hashlib.sha256(model_bytes).hexdigest() if model_bytes is not None else None,
         "scope": "Fresh process and cold native setup per proof; package-build Zig cache uncontrolled. No cached-setup measurement.",
         "cases": cases,
     }

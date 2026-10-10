@@ -78,11 +78,18 @@ python3 src/frontends/s31/benchmarks/stage_aware_predictor_v1.py fit \
   zig-out/s31/stage-aware-train-v1/stage-aware-corpus.json \
   --out zig-out/s31/stage-aware-model-v1.json
 python3 src/frontends/s31/benchmarks/benchmark_whole_prover_stage_v1.py \
-  --split validation --out zig-out/s31/stage-aware-validation-v1
+  --split validation --model zig-out/s31/stage-aware-model-v1.json \
+  --out zig-out/s31/stage-aware-validation-v1
 python3 src/frontends/s31/benchmarks/stage_aware_predictor_v1.py evaluate \
   zig-out/s31/stage-aware-model-v1.json \
   zig-out/s31/stage-aware-validation-v1/stage-aware-corpus.json \
   --out zig-out/s31/stage-aware-evaluation-v1.json
+python3 src/frontends/s31/benchmarks/publish_stage_aware_cost_v1.py \
+  zig-out/s31/stage-aware-train-v1/stage-aware-corpus.json \
+  zig-out/s31/stage-aware-model-v1.json \
+  zig-out/s31/stage-aware-validation-v1/stage-aware-corpus.json \
+  zig-out/s31/stage-aware-evaluation-v1.json \
+  --out design/s31/measurements/language/stage-aware-cost-v1-audit.json
 ```
 
 Keep the full untracked `zig-out` corpora: they include proof files, native

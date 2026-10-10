@@ -356,6 +356,8 @@ def main() -> None:
         result["training_corpus_sha256"] = hashlib.sha256(corpus_bytes).hexdigest()
     else:
         model_bytes = args.model.read_bytes()
+        if corpus.get("frozen_model_sha256") != hashlib.sha256(model_bytes).hexdigest():
+            raise ValueError("validation timings were not collected against this frozen model")
         result = evaluate(json.loads(model_bytes), corpus, protocol)
         result["frozen_model_sha256"] = hashlib.sha256(model_bytes).hexdigest()
         result["validation_corpus_sha256"] = hashlib.sha256(corpus_bytes).hexdigest()
