@@ -289,6 +289,21 @@ two sums using Zig's sign convention `1/(H(tuple)-z)`.
 collision-free compression, so
 `fixed_gate_multiset_sound_of_counts` needs no total-length bound. It keeps
 the same `5s²` and `t+(t-1)` exceptional-set bounds.
+`GateChallengePairs.lean` forms the combined bad set in `QM31²`. If the
+two fixed canonical lists differ and every event count is below `p`, the
+bad set has at most `(5s²+2s)·p⁴` pairs out of `p⁸`, where `s` is the
+number of distinct events. `uniform_pair_failure_rate_le` proves the
+corresponding rate bound `(5s²+2s)/p⁴` for independent uniform field
+challenges. `reciprocal_closure_implies_bad_pair` proves any accidental
+closure lies in the named set. The transcript and commitment system still
+need their own soundness argument.
+`GateChallengeClosure.lean` filters the full challenge-pair space by the
+actual modeled row-plus-external reciprocal equation. Every closing pair
+is in `badPairs`. If the fixed use and yield event lists differ, canonical
+addresses and per-event count bounds give the same `(5s²+2s)·p⁴` upper
+bound directly for row-equation closure. This is conditional on a fixed
+pre-challenge witness and does not identify the native committed columns
+with these modeled rows.
 `GateAddressCounts.lean` further proves that an individual event cannot
 occur more often than its address occurs in the integer histogram.
 Consequently, per-address histogram bounds below `p` suffice for the

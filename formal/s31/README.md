@@ -298,6 +298,20 @@ by Gate LogUp; it handles repeated events and the characteristic bound.
 `GateLocalCounts.fixed_gate_multiset_sound_of_counts` transfers the sharper
 per-event count premise through collision-free tuple compression, retaining
 the same exceptional-set bounds for arbitrarily large total event lists.
+`GateChallengePairs` combines the two exceptional sets into one set of
+`(alpha,z)` pairs. For fixed unequal canonical lists with per-event counts
+below `p`, where `s` is the number of distinct events, its cardinality is
+at most `(5s²+2s)·p⁴` among `p⁸` possible pairs. Under independent uniform
+QM31 challenges, the false-closure rate is therefore at most
+`(5s²+2s)/p⁴`. Any equal reciprocal sums must use a pair in that set.
+This is an ideal fixed-instance challenge bound; it does not prove the
+Fiat–Shamir transcript samples that distribution.
+`GateChallengeClosure` applies the bound to the modeled row-plus-external
+Gate reciprocal equation. For fixed invalid rows with canonical addresses
+and per-event counts below `p`, at most `(5s²+2s)·p⁴` of the `p⁸` ideal
+challenge pairs can close that equation. The rows and witness events must
+be fixed before the challenge draw; committed-trace correspondence remains
+a separate obligation.
 `GateAddressCounts` proves a practical sufficient condition: if the integer
 use and yield histograms are below `p` at every address, every event count
 is below `p`. The Zig preprocessed builder now rejects a multiplicity as
