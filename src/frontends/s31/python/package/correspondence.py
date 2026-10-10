@@ -55,26 +55,29 @@ def canonical(value: Any) -> bytes:
     return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode()
 
 
-def read_canonical_json(path: Path) -> Any:
+def parse_canonical_json(data: bytes, name: str) -> Any:
     """Reject duplicate keys, non-JSON numbers, and serialization ambiguity."""
-    data = path.read_bytes()
 
     def pairs(items: list[tuple[str, Any]]) -> dict[str, Any]:
         result: dict[str, Any] = {}
         for key, value in items:
             if key in result:
-                raise ValueError(f"duplicate JSON key in {path.name}: {key}")
+                raise ValueError(f"duplicate JSON key in {name}: {key}")
             result[key] = value
         return result
 
     def invalid_constant(value: str) -> Any:
-        raise ValueError(f"invalid JSON constant in {path.name}: {value}")
+        raise ValueError(f"invalid JSON constant in {name}: {value}")
 
     value = json.loads(data, object_pairs_hook=pairs, parse_constant=invalid_constant)
     expected = (json.dumps(value, indent=2, sort_keys=True, ensure_ascii=True) + "\n").encode()
     if data != expected:
-        raise ValueError(f"noncanonical JSON serialization: {path.name}")
+        raise ValueError(f"noncanonical JSON serialization: {name}")
     return value
+
+
+def read_canonical_json(path: Path) -> Any:
+    return parse_canonical_json(path.read_bytes(), path.name)
 
 
 def _tokens(data: bytes) -> list[str]:
@@ -541,7 +544,8 @@ def _checked_material(package: Path) -> tuple[dict[str, Any], dict[str, Any]]:
     key = read_canonical_json(package / "verification-key.json")
     report = read_canonical_json(package / "cost-report.json")
     component = read_canonical_json(package / "component-manifest.json")
-    topology = read_canonical_json(package / "gate-topology.json")
+    topology_bytes = (package / "gate-topology.json").read_bytes()
+    topology = parse_canonical_json(topology_bytes, "gate-topology.json")
     source_map = read_canonical_json(package / "source-map.json")
     interface = read_canonical_json(package / "typed-interface.json")
     library_lock = read_canonical_json(package / "stdlib-lock.json")
@@ -554,7 +558,9 @@ def _checked_material(package: Path) -> tuple[dict[str, Any], dict[str, Any]]:
     )
     if (manifest.get("schema") != "s31-package-v1" or
             not isinstance(artifacts, dict) or
-            any(artifacts.get(name) != digest((package / name).read_bytes())
+            any(artifacts.get(name) != digest(
+                topology_bytes if name == "gate-topology.json" else
+                (package / name).read_bytes())
                 for name in required) or
             source_map.get("schema") != "s31-text-source-map-v1" or
             source_map.get("source_sha256") != digest(source_bytes) or
@@ -633,7 +639,7 @@ def _checked_material(package: Path) -> tuple[dict[str, Any], dict[str, Any]]:
         "source_gates": source_gates,
         "gate_counts": {name: len(topology[name]) for name in
                         ("add", "sub", "mul", "pointwise_mul")},
-        "gate_topology_sha256": digest((package / "gate-topology.json").read_bytes()),
+        "gate_topology_sha256": digest(topology_bytes),
         "public_abi": public_abi(syntax),
         "air_profile": {"lowering": "direct-gate", "profile": "direct-m31-v4",
                         "projection_sha256": projection_hash,

@@ -23,7 +23,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src/frontends/s31/python"))
 
 from package.correspondence import (  # noqa: E402
-    DIRECT_COLUMN_IDS, check_package, read_canonical_json,
+    DIRECT_COLUMN_IDS, check_package, parse_canonical_json,
 )
 
 
@@ -165,7 +165,14 @@ def render_bridge(package: Path) -> str:
     normalized_digest = hashlib.sha256(normalized_bytes).hexdigest()
     if normalized_digest != checked["relation_sha256"]:
         raise ValueError("checked relation digest differs from exact normalized bytes")
-    topology = read_canonical_json(package / "gate-topology.json")
+    # check_package validates canonical topology bytes and returns their
+    # digest. Parse the exact same captured bytes after checking that digest;
+    # a second path read after parsing would reopen the TOCTOU gap.
+    topology_bytes = (package / "gate-topology.json").read_bytes()
+    topology_digest = hashlib.sha256(topology_bytes).hexdigest()
+    if topology_digest != checked["gate_topology_sha256"]:
+        raise ValueError("checked topology digest differs from exact topology bytes")
+    topology = parse_canonical_json(topology_bytes, "gate-topology.json")
     if topology["n_vars"] != 512:
         raise ValueError("Lean bridge only covers 512 direct variables")
     instructions = checked["source_ssa"]["instructions"]

@@ -157,7 +157,10 @@ projected cells to the exported columns and manifest hashes. Lean does not
 read the package itself or prove those columns are the verifier's committed
 preprocessed columns. In particular, the total add-row count and all
 source-independent rows are checked by the Python package checker, not by
-this Lean cell theorem.
+this Lean cell theorem. The checker computes the topology digest from the
+same captured bytes it parses, and the Lean exporter rejects a changed
+topology digest before parsing its own captured bytes. A unit control changes
+the topology after package admission and confirms that export fails.
 
 ## Proof boundary and invocation
 

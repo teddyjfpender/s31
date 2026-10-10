@@ -13,6 +13,7 @@ from unittest.mock import patch
 
 S31 = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(S31 / "python"))
+sys.path.insert(0, str(S31.parents[2] / "scripts"))
 
 from package.correspondence import (DIRECT_COLUMN_IDS, M31_MODULUS,
                                     UnsupportedFragment, _check_constant_island,
@@ -20,9 +21,35 @@ from package.correspondence import (DIRECT_COLUMN_IDS, M31_MODULUS,
                                     read_canonical_json)
 from package.direct_gate_schedule import constant_and_padding, exact_direct_gate_schedule
 from text_frontend import compile_text
+from export_s31_direct_gate_bridge import render_bridge
 
 
 class CorrespondenceParserTests(unittest.TestCase):
+    def test_lean_export_rejects_topology_changed_after_admission(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            package = Path(directory)
+            source = b"bounded source fixture"
+            relation = b"bounded normalized fixture"
+            original_topology = b'{"n_vars":512}'
+            (package / "source.s31").write_bytes(source)
+            (package / "source.s31.json").write_bytes(relation)
+            topology_path = package / "gate-topology.json"
+            topology_path.write_bytes(original_topology)
+            checked = {
+                "source_sha256": hashlib.sha256(source).hexdigest(),
+                "relation_sha256": hashlib.sha256(relation).hexdigest(),
+                "gate_topology_sha256": hashlib.sha256(original_topology).hexdigest(),
+            }
+
+            def admitted_then_changed(_: Path) -> dict:
+                topology_path.write_bytes(b'{"n_vars":511}')
+                return checked
+
+            with patch("export_s31_direct_gate_bridge.check_package",
+                       side_effect=admitted_then_changed):
+                with self.assertRaisesRegex(ValueError, "checked topology digest"):
+                    render_bridge(package)
+
     def test_add_mul_and_shared_let_match_production_relation(self) -> None:
         cases = (
             "let result = x + x; result",
