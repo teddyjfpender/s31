@@ -128,5 +128,9 @@ words, noncanonical proof varints, and changed proof bytes are rejected.
 **Release status:** this remains an experimental fixed two-call profile. The
 AIR/LogUp/PCS verifier has not been reduced to the exact tagged event-balance
 premise used by the Lean path theorem, and no witness-secrecy claim is made.
-The 1–8 call source-admission prototype does not yet produce dynamic circuit
-addresses, component manifests, or native proofs.
+The 1–8 call source-admission prototype derives compiled circuit addresses
+and a typed component manifest. Its experimental V4 engine path has
+in-memory native proof and verification tests for one and three calls,
+including changed public words, source, manifest, plan, claimed sum and root
+controls. It does not yet admit a canonical proof envelope through a
+source-pinned verifier executable or cover every allowed call count.

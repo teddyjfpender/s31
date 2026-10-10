@@ -7,6 +7,11 @@ experimental sealed byte verifier. It is unexported while the remaining native
 controls, formal obligations, and an embedded source/key trust root are completed.
 It does not admit arbitrary numbers of calls.
 
+The bounded V4 successor has an experimental in-memory native scheduler for
+one and three source-derived calls. Release admission still needs a canonical
+proof envelope, source-pinned verifier, all admitted call counts, and a
+separate soundness review.
+
 The bounded variable-call successor to the staged two-call profile is specified
 in [Bounded multi-call authenticated boundary](BOUNDED_MULTI_CALL_BOUNDARY.md).
 

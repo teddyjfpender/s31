@@ -198,9 +198,12 @@ without building proofs.
 profile.** `CircuitFacts` (selected AIR identity, circuit trace and evaluation
 logs, widths, constraint count, ordered fixed-column indices, preprocessed
 root) are supplied inputs to the plan API. A package cannot make those facts
-authoritative by providing them or their digest. The pinned tagged native AIR
-template still limits call IDs to the existing two-call implementation, and
-there is no native 1–8-call schedule, key schema, transcript, or verifier.
+authoritative by providing them or their digest. An experimental V4 engine
+scheduler now proves and verifies **in memory** for one and three source-derived
+calls, using a dynamic component roster, live PCS handles and its own
+transcript phases. It has no released key schema, canonical proof-byte
+envelope, source-pinned verifier executable, or complete one-through-eight
+native matrix. The admitted package profile remains disabled.
 
 ### Compiled endpoints and the executable two-call inspection
 
