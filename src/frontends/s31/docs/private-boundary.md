@@ -173,6 +173,12 @@ zig-out/bin/s31-private_many1-many-native-verifier \
   /tmp/many.proof /tmp/many.statement.json
 ```
 
+The [black-box acceptance script](../tests/acceptance/acceptance_many_source_pinned.py)
+runs these binaries and checks a changed public word, statement schema,
+every header digest, each claimed sum, proof bytes, and changed embedded
+source. Run it with `python3 src/frontends/s31/tests/acceptance/acceptance_many_source_pinned.py`
+from the repository root.
+
 The verifier binary embeds source and official AIR bytes. A caller choosing
 which verifier binary and public words to trust is outside this protocol.
 The current proof and verification implementation passes native N=1,2,3,4,8
