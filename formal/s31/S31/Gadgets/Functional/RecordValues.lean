@@ -30,10 +30,24 @@ def directSquareSum : Expr [.field] .field :=
   .add (.mul (.var .here) (.var .here))
        (.add (.var .here) (.var .here))
 
+/-- A typed record argument models the result of source pattern desugaring:
+field names are resolved before this product reaches specialization. -/
+def recordSquareSumPattern : Expr [.field] .field :=
+  .apply
+    (.lambda (.add (.fst (.var .here)) (.snd (.var .here))))
+    (makePowers (.mul (.var .here) (.var .here))
+                (.add (.var .here) (.var .here)))
+
 /-- Constructing a named product and selecting its fields leaves exactly the
 same residual polynomial as writing the arithmetic directly. -/
 theorem recordSquareSum_zero_cost {n : Nat} (x : Poly n) :
     specialize recordSquareSum (.cons x .nil) =
+      specialize directSquareSum (.cons x .nil) := rfl
+
+/-- Destructuring the typed product also leaves the residual expression
+unchanged; eager effects are handled by the separate compiler effect pass. -/
+theorem recordSquareSumPattern_zero_cost {n : Nat} (x : Poly n) :
+    specialize recordSquareSumPattern (.cons x .nil) =
       specialize directSquareSum (.cons x .nil) := rfl
 
 /-- Every accepted graph witness binds the public result to the field

@@ -1,0 +1,17 @@
+use std@1;
+
+// Record patterns bind selected fields by name. They create no proof nodes.
+struct Powers {
+    square: [m31; 4],
+    doubled: [m31; 4],
+}
+
+fn powers(x: [m31; 4]) -> Powers {
+    Powers { doubled: x + x, square: x .* x }
+}
+
+circuit record_square_sum(private x: [m31; 4]) -> public [m31; 4] {
+    let Powers { square, doubled } = powers(x);
+    let result = square + doubled;
+    result
+}

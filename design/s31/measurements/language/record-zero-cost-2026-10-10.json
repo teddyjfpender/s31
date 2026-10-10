@@ -40,6 +40,45 @@
       "source": "record_square_sum.s31"
     },
     {
+      "canonical_ir_sha256": "59ab9feaa010e9c9673fd277b537fce1a539c1664eca82df78fdec7fa58bb203",
+      "changed_public_statement_rejected": true,
+      "false_claim_rejected_by_oracle": true,
+      "native_verifier_accepted": true,
+      "padded": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 512,
+        "triple_xor": 0
+      },
+      "preprocessed_cells": 4096,
+      "profile": "direct-m31-v4",
+      "proof_bytes": 57815,
+      "raw": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 314,
+        "triple_xor": 0
+      },
+      "same_cost_fields": [
+        "canonical_ir_sha256",
+        "profile",
+        "chip",
+        "raw",
+        "padded",
+        "preprocessed_cells",
+        "preprocessed_columns",
+        "preprocessed_root",
+        "input_packing",
+        "public_binding",
+        "finalization",
+        "fri"
+      ],
+      "same_normalized_relation": true,
+      "source": "record_square_sum_destructure.s31"
+    },
+    {
       "canonical_ir_sha256": "993d1367dcf0c2989957ad526e3e5c1db1596ea03aff2023a5dcb1e329e8d71b",
       "changed_public_statement_rejected": true,
       "false_claim_rejected_by_oracle": true,

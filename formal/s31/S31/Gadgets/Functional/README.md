@@ -18,7 +18,7 @@ Lean module names follow the directory, for example
 | `HigherOrderRoutes.lean` | A captured returned function, local static binding and higher-order helper erase to the same two-node `x*x + y` graph; strict graph acceptance includes honest and forged claims. |
 | `PowerChains.lean` | Five-gate `x^15` addition chain and six-gate binary schedule, each proved equal to canonical M31 exponentiation; strict graph acceptance rejects false outputs for the optimized chain. |
 | `TupleValues.lean` | Typed products, projections and nested destructuring models; static pair structure erases and arbitrary accepted witnesses bind the claimed sums. |
-| `RecordValues.lean` | Named record construction and projection elaborate to a typed product; specializing the worked source leaves exactly the direct arithmetic polynomial and binds accepted outputs. Nominal type checking and eager unused-field effects remain executable frontend obligations. |
+| `RecordValues.lean` | Named record construction, projection, and pattern desugaring elaborate to a typed product; specializing the worked sources leaves exactly the direct arithmetic polynomial and binds accepted outputs. Nominal type checking and eager unused-field effects remain executable frontend obligations. |
 | `ArrayNodes.lean` | `get`, `concat`, `take` and `drop` agree with normalized array nodes and bounds. |
 | `Assertions.lean` | Source equality assertions checked against independently witnessed graph outputs. |
 | `Conditional.lean` | Total scalar branches share a graph and a bit-constrained selector. |

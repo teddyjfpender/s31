@@ -60,6 +60,8 @@ class Compiler:
     def record_field(self, expr: Expr, source: Any) -> Any:
         if not isinstance(source, StaticRecord):
             raise self.located(expr, "named field access requires a struct value")
+        if expr.record_type is not None and source.signature != expr.record_type:
+            raise self.located(expr, f"struct pattern expects {expr.record_type.name}")
         for index, (name, _) in enumerate(source.signature.fields):
             if name == expr.value:
                 return source.elements[index]

@@ -15,11 +15,13 @@ from language.syntax import Circuit, Expr, Function, FunctionType, RecordType, S
 
 @dataclass(frozen=True)
 class Pattern:
-    """Parser-only binder; tuple patterns desugar before type elaboration."""
+    """Parser-only binder; product patterns desugar before type elaboration."""
 
     name: str | None
     elements: tuple[Pattern, ...]
     token: Token
+    record_type: RecordType | None = None
+    fields: tuple[str, ...] = ()
 
 
 def lex(source: str, filename: str = "<source>") -> list[Token]:
@@ -107,6 +109,30 @@ class Parser:
         self.pattern_depth += 1
         try:
             token = self.peek()
+            if token.text in self.records and self.tokens[self.at + 1].text == "{":
+                typ = self.records[token.text]
+                self.at += 1
+                self.expect("{")
+                fields: list[str] = []
+                children: list[Pattern] = []
+                declared = {name for name, _ in typ.fields}
+                if self.accept("}"):
+                    raise self.error("struct pattern needs at least one field", token)
+                while True:
+                    field_token = self.peek()
+                    field = self.identifier()
+                    if field not in declared:
+                        raise self.error(f"unknown {typ.name} pattern field {field}", field_token)
+                    if field in fields:
+                        raise self.error(f"duplicate {typ.name} pattern field {field}", field_token)
+                    fields.append(field)
+                    children.append(Pattern(field, (), field_token))
+                    if self.accept("}"):
+                        break
+                    self.expect(",")
+                    if self.accept("}"):
+                        break
+                return Pattern(None, tuple(children), token, typ, tuple(fields))
             if not self.accept("("):
                 return Pattern(self.identifier(), (), token)
             first = self.pattern()
@@ -131,19 +157,24 @@ class Parser:
         self.pattern_expansion += 1
         bindings = [(hidden, bound, pattern.token)]
 
-        def collect(current: Pattern, indices: tuple[int, ...]) -> None:
+        def collect(current: Pattern, path: tuple[tuple[int | str, RecordType | None], ...]) -> None:
             if current.name is None:
                 for index, child in enumerate(current.elements):
-                    collect(child, indices + (index,))
+                    step: int | str = current.fields[index] if current.record_type else index
+                    collect(child, path + ((step, current.record_type),))
                 return
             # One name, one binding and one projection per path element.
             # Count the lowered tree, not only the shorter surface pattern.
-            self.pattern_expansion += len(indices) + 2
+            self.pattern_expansion += len(path) + 2
             if self.pattern_expansion > MAX_TOKENS:
-                raise self.error("tuple pattern expansion limit exceeded", current.token)
+                raise self.error("product pattern expansion limit exceeded", current.token)
             value = Expr("name", hidden, (), current.token)
-            for index in indices:
-                value = Expr("project", str(index), (value,), current.token)
+            for step, record_type in path:
+                if record_type is None:
+                    value = Expr("project", str(step), (value,), current.token)
+                else:
+                    value = Expr("field_project", str(step), (value,), current.token,
+                                 record_type=record_type)
             bindings.append((current.name, value, current.token))
 
         collect(pattern, ())

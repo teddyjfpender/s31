@@ -23,9 +23,10 @@ MATCHED_COST = (
 )
 
 
-def check_case(work: Path, source: Path, *, expected_nodes: list[str]) -> dict:
-    manual = source.with_name(source.stem + "_manual.s31")
-    assignment_path = source.with_suffix(".valid.json")
+def check_case(work: Path, source: Path, package_cache: dict[Path, Path], *, expected_nodes: list[str],
+               manual: Path | None = None, assignment_path: Path | None = None) -> dict:
+    manual = manual or source.with_name(source.stem + "_manual.s31")
+    assignment_path = assignment_path or source.with_suffix(".valid.json")
     relation, _ = compile_file(source)
     manual_relation, _ = compile_file(manual)
     if relation != manual_relation:
@@ -45,10 +46,11 @@ def check_case(work: Path, source: Path, *, expected_nodes: list[str]) -> dict:
     else:
         raise AssertionError(f"{source.name}: oracle accepted a false public result")
 
-    packages = {
-        label: s31.build(path, work / f"{source.stem}-{label}", "direct-gate")
-        for label, path in (("record", source), ("manual", manual))
-    }
+    packages: dict[str, Path] = {}
+    for label, path in (("record", source), ("manual", manual)):
+        if path not in package_cache:
+            package_cache[path] = s31.build(path, work / f"{source.stem}-{label}", "direct-gate")
+        packages[label] = package_cache[path]
     costs = {label: json.loads((package / "cost-report.json").read_text())
              for label, package in packages.items()}
     if any(costs["record"][field] != costs["manual"][field] for field in MATCHED_COST):
@@ -82,10 +84,16 @@ def check_case(work: Path, source: Path, *, expected_nodes: list[str]) -> dict:
 def main() -> None:
     with tempfile.TemporaryDirectory(prefix="s31-record-acceptance-") as temporary:
         work = Path(temporary)
+        package_cache: dict[Path, Path] = {}
+        arithmetic = S31 / "examples/arithmetic/record_square_sum.s31"
         cases = [
-            check_case(work, S31 / "examples/arithmetic/record_square_sum.s31",
+            check_case(work, arithmetic, package_cache,
                        expected_nodes=["mul", "add", "add"]),
-            check_case(work, S31 / "examples/math/division/record_i32_division.s31",
+            check_case(work, arithmetic.with_name("record_square_sum_destructure.s31"), package_cache,
+                       manual=arithmetic.with_name("record_square_sum_manual.s31"),
+                       assignment_path=arithmetic.with_suffix(".valid.json"),
+                       expected_nodes=["mul", "add", "add"]),
+            check_case(work, S31 / "examples/math/division/record_i32_division.s31", package_cache,
                        expected_nodes=["int_view", "int_view", "int_div_rem",
                                        "array_slice", "array_slice", "int_view", "int_view"]),
         ]

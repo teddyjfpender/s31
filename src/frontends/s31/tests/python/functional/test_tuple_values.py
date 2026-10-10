@@ -138,7 +138,7 @@ class TupleValuesTests(unittest.TestCase):
         source = ("circuit p(public x: [m31; 1]) -> public [m31; 1] { "
                   f"let {pattern} = x in x }}")
         with self.assertRaisesRegex(
-            SourceError, r"^<source>:[0-9]+:[0-9]+: tuple pattern expansion limit exceeded"
+            SourceError, r"^<source>:[0-9]+:[0-9]+: product pattern expansion limit exceeded"
         ):
             compile_text(source)
 

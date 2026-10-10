@@ -322,6 +322,8 @@ class Elaborator:
                 source = self.expr(expr.args[0], env, step_mode=step_mode)
                 if not isinstance(source, RecordType):
                     raise TypeErrorS31("named field access requires a struct value")
+                if expr.record_type is not None and source != expr.record_type:
+                    raise TypeErrorS31(f"struct pattern expects {expr.record_type.name}")
                 for field, typ in source.fields:
                     if field == expr.value:
                         return typ

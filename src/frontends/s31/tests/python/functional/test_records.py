@@ -19,7 +19,9 @@ class RecordTests(unittest.TestCase):
         example = S31 / "examples/arithmetic/record_square_sum.s31"
         relation, _ = compile_file(example)
         manual, _ = compile_file(example.with_name("record_square_sum_manual.s31"))
+        destructured, _ = compile_file(example.with_name("record_square_sum_destructure.s31"))
         self.assertEqual(relation, manual)
+        self.assertEqual(relation, destructured)
         self.assertEqual([node["op"] for node in relation["nodes"]], ["mul", "add", "add"])
         assignment = json.loads(example.with_suffix(".valid.json").read_text())
         self.assertEqual(evaluate_relation(relation, assignment), assignment["public_outputs"])
@@ -45,6 +47,80 @@ circuit nested(private x: [m31; 1]) -> public [m31; 1] {
         assignment = {"public_inputs": {}, "private_inputs": {"x": [7]},
                       "public_outputs": {"result": [70]}}
         self.assertEqual(evaluate_relation(relation, assignment), assignment["public_outputs"])
+
+    def test_lambda_captures_record_without_extra_relation_nodes(self) -> None:
+        source = """struct Params { bias: [m31; 1] }
+fn apply(x: [m31; 1]) -> [m31; 1] {
+    let params = Params { bias: x };
+    let f = fun(y: [m31; 1]) -> [m31; 1] => y + params.bias;
+    f(x)
+}
+circuit p(private x: [m31; 1]) -> public [m31; 1] {
+    let result = apply(x);
+    result
+}"""
+        relation, _ = compile_text(source)
+        self.assertEqual([node["op"] for node in relation["nodes"]], ["add"])
+        self.assertEqual(evaluate_relation(relation, {
+            "public_inputs": {}, "private_inputs": {"x": [7]},
+            "public_outputs": {"result": [14]},
+        }), {"result": [14]})
+
+    def test_record_pattern_in_static_repeat_step(self) -> None:
+        source = """struct State { value: [m31; 4] }
+fn square(x: [m31; 4]) -> [m31; 4] {
+    let State { value } = State { value: x .* x };
+    value
+}
+circuit p(private x: [m31; 4]) -> public [m31; 4] {
+    let result = iterate<2>(square, x);
+    result
+}"""
+        relation, _ = compile_text(source)
+        self.assertEqual([node["op"] for node in relation["nodes"]], ["repeat"])
+        self.assertEqual(relation["nodes"][0]["rounds"], 2)
+        self.assertEqual(evaluate_relation(relation, {
+            "public_inputs": {}, "private_inputs": {"x": [0, 1, 2, 7]},
+            "public_outputs": {"result": [0, 1, 16, 2401]},
+        }), {"result": [0, 1, 16, 2401]})
+
+    def test_record_patterns_are_nominal_and_can_nest_in_tuple_patterns(self) -> None:
+        prelude = """struct A { value: [m31; 1] }
+struct B { value: [m31; 1] }
+"""
+        source = prelude + """circuit p(private x: [m31; 1]) -> public [m31; 1] {
+    let (A { value }, y) = (A { value: x }, x + x);
+    let result = value + y;
+    result
+}"""
+        relation, _ = compile_text(source)
+        self.assertEqual(evaluate_relation(relation, {
+            "public_inputs": {}, "private_inputs": {"x": [7]},
+            "public_outputs": {"result": [21]},
+        }), {"result": [21]})
+        partial = """struct Powers { square: [m31; 1], doubled: [m31; 1] }
+circuit p(private x: [m31; 1]) -> public [m31; 1] {
+    let result = let Powers { square } =
+        Powers { square: x .* x, doubled: x + x } in square;
+    result
+}"""
+        partial_relation, _ = compile_text(partial)
+        self.assertEqual([node["op"] for node in partial_relation["nodes"]], ["mul", "add"])
+        output_name = partial_relation["public_outputs"][0]
+        self.assertEqual(evaluate_relation(partial_relation, {
+            "public_inputs": {}, "private_inputs": {"x": [7]},
+            "public_outputs": {output_name: [49]},
+        }), {output_name: [49]})
+        invalid = (
+            ("let A { value } = B { value: x }; value", "struct pattern expects A"),
+            ("let A { value, value } = A { value: x }; value", "duplicate A pattern field"),
+            ("let A { missing } = A { value: x }; x", "unknown A pattern field"),
+            ("let A {} = A { value: x }; x", "struct pattern needs at least one field"),
+        )
+        for body, message in invalid:
+            with self.subTest(body=body), self.assertRaisesRegex(SourceError, message):
+                compile_text(prelude + "circuit p(private x: [m31; 1]) -> public [m31; 1] { "
+                             + body + " }")
 
     def test_nominal_identity_and_field_type_are_checked(self) -> None:
         prelude = """struct A { value: [m31; 1] }

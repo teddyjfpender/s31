@@ -84,6 +84,7 @@ class TupleValue:
 
 @dataclass(frozen=True)
 class RecordValue:
+    signature: RecordType
     fields: tuple[tuple[str, AbstractValue], ...]
 
 
@@ -116,8 +117,9 @@ class TotalityChecker:
         if isinstance(typ, TupleType):
             return TupleValue(tuple(TotalityChecker.parameter(item) for item in typ.elements))
         if isinstance(typ, RecordType):
-            return RecordValue(tuple((name, TotalityChecker.parameter(field_type))
-                                     for name, field_type in typ.fields))
+            fields = tuple((name, TotalityChecker.parameter(field_type))
+                           for name, field_type in typ.fields)
+            return RecordValue(typ, fields)
         return OPAQUE_FUNCTION if isinstance(typ, FunctionType) else FIRST_ORDER
 
     def block(self, statements: tuple[Statement, ...], body: Expr,
@@ -190,8 +192,9 @@ class TotalityChecker:
             if expr.record_type is None:
                 raise self.error(expr, "invalid struct constructor")
             components = tuple(self.expr(item, env) for item in expr.args)
-            return Effect(RecordValue(tuple((name, item.value)
-                                            for (name, _), item in zip(expr.record_type.fields, components))),
+            fields = tuple((name, item.value)
+                           for (name, _), item in zip(expr.record_type.fields, components))
+            return Effect(RecordValue(expr.record_type, fields),
                           frozenset().union(*(item.failure for item in components)))
         if expr.kind == "project":
             source = self.expr(expr.args[0], env)
@@ -203,6 +206,8 @@ class TotalityChecker:
             source = self.expr(expr.args[0], env)
             if not isinstance(source.value, RecordValue):
                 raise self.error(expr, "named field access requires a struct value")
+            if expr.record_type is not None and source.value.signature != expr.record_type:
+                raise self.error(expr, f"struct pattern expects {expr.record_type.name}")
             for name, value in source.value.fields:
                 if name == expr.value:
                     return Effect(value, source.failure)

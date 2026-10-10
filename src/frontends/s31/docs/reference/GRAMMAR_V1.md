@@ -79,6 +79,7 @@ block         = "{", {statement}, expression, [";"], "}"
 statement     = "let", binding_pattern, "=", expression, ";"
               | "assert_eq", "(", expression, ",", expression, ")", ";"
 binding_pattern = identifier
+              | type_identifier, "{", identifier, {",", identifier}, [","], "}"
               | "(", binding_pattern, ")"
               | "(", binding_pattern, ",", binding_pattern,
                 {",", binding_pattern}, ")"
@@ -133,6 +134,14 @@ named projection requires a struct value. Whole-record witness-dependent
 selection and whole-record `assert_eq` are outside this source version; select
 or assert individual first-order fields explicitly.
 
+`let Powers { square, doubled } = powers(x);` binds named fields without
+creating a relation node. A record pattern may list a subset of fields but
+must list at least one. It requires the exact nominal type, rejects repeated
+or unknown names, and can nest inside a tuple pattern. Like tuple patterns,
+it evaluates the source expression once and works in both block statements
+and `let … in` expressions. Unbound fields still retain their computations
+and partial effects.
+
 The parser uses left-associative Pratt binding powers: unary `-` is 30,
 lane-wise `.*` is 20, and `+` and `-` are 10. Postfix application binds more
 tightly than arithmetic and may follow any expression whose type is `Fn`.
@@ -163,7 +172,7 @@ and the resulting expression tree each have a **128-level** limit; recursive
 type parsing and tuple patterns each have a **32-level** limit. Static function expansion has a
 **32-call** limit, and effect analysis has a **200,000-expression-visit**
 limit. Each parser limit reports the file, line and column at the offending
-token. Tuple-pattern lowering is capped at **100,000 generated AST nodes**
+token. Product-pattern lowering is capped at **100,000 generated AST nodes**
 across the source file, including hidden bindings and projection paths.
 Struct declarations are capped at 128 types, 64 fields per type, 32 levels of
 nested product layout, and 1,024 flattened first-order fields per type. These

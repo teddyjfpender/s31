@@ -70,6 +70,21 @@ AIR rows, preprocessing, and FRI settings. Both have 314 raw arithmetic rows,
 pins the exact comparison and successful generated-verifier proof. The records themselves add zero
 circuit gates and zero AIR rows; the three field computations remain.
 
+The same helper can be consumed with a named pattern:
+
+```s31
+let Powers { square, doubled } = powers(x);
+let result = square + doubled;
+```
+
+The [destructuring source](../examples/arithmetic/record_square_sum_destructure.s31)
+compiles to the **same normalized relation** as both the field-access version
+and the positional tuple version. A pattern can bind only the fields needed
+by its caller; construction still evaluates every field. The pattern checks
+the struct's nominal type before projecting, so a same-shaped struct with a
+different name cannot match it. Named patterns also nest inside tuple patterns
+and work in expression-level `let … in` bindings.
+
 ## What is checked before proving
 
 The parser requires a struct declaration before use, 1–64 uniquely named
@@ -113,9 +128,9 @@ rejected a changed quotient claim.
 ## Formal status and inspection
 
 The [Lean record model](../../../../formal/s31/S31/Gadgets/Functional/RecordValues.lean)
-models named construction and projection as typed product operations and
-proves specialization has the same residual polynomial as the direct
-three-operation program. The executable source-to-source comparison checks
+models named construction, projection, and pattern desugaring as typed product
+operations and proves specialization has the same residual polynomial as the
+direct three-operation program. The executable source-to-source comparison checks
 the current Python compiler erases the example to the same normalized
 relation as a tuple. Native verification checks the resulting proof and
 changed-public-statement rejection. As with the rest of S31, a machine-checked

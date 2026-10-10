@@ -30,6 +30,10 @@ them in another order. Every field expression is evaluated exactly once.
 Types are nominal: `DivResult` cannot be passed where another struct of the
 same field types is expected. Field access is static and has no witness or
 index input. Structs can nest and contain tuples of first-order values.
+`let DivResult { quotient, remainder } = divide(a, b);` is a statically
+checked record pattern. It may bind a nonempty subset of fields and may nest
+inside a tuple pattern. The scrutinee is evaluated once and all field effects
+remain even if the pattern binds only one field.
 Function-valued fields, recursive layouts, record mutation, whole-record
 `if`/`assert_eq`, and record-valued circuit boundaries are outside this
 version. A function can take and return records; a circuit can construct and
@@ -80,12 +84,14 @@ are byte-for-byte equal at that boundary.
 - [Lean's erasure model](../../../formal/s31/S31/Gadgets/Functional/RecordValues.lean)
   proves that typed named construction and projection specialize to the
   direct residual polynomial and that accepted graph outputs have the
-  specified value. The formal source-binding gate also recompiles two
-  record/manual pairs and requires exact normalized relation equality.
+  specified value. The formal source-binding gate also recompiles the field
+  access, destructuring, and division examples against their positional
+  versions and requires exact normalized relation equality.
 - The [native acceptance gate](../../../src/frontends/s31/tests/acceptance/acceptance_records.py)
-  compares canonical IR, AIR rows and preprocessing for both the field and
-  signed-division examples, then requires generated native verification and
-  changed-statement rejection. The [cost record](../measurements/language/record-zero-cost-2026-10-10.json)
+  compares canonical IR, AIR rows and preprocessing for field access,
+  destructuring, and signed division. It then requires generated native
+  verification and changed-statement rejection. The
+  [cost record](../measurements/language/record-zero-cost-2026-10-10.json)
   holds one local run. Timing is not used to establish the zero-cost claim.
 
 The Lean theorem describes the typed erasure model; it is not a
@@ -101,3 +107,5 @@ per-field visibility, and native verifier checks for every leaf. This source
 release deliberately leaves that boundary versioned separately. The current
 records already make pure helper APIs and internal circuit logic substantially
 clearer without changing proof soundness parameters or fixed costs.
+The [record boundary ABI design](RECORD_BOUNDARY_ABI.md) lists the relation,
+key-binding, flattening, and proof gates needed for that extension.

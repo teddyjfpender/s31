@@ -46,6 +46,7 @@ TEXT_TUPLE_SUM = "src/frontends/s31/examples/arithmetic/tuple_square_sum.s31"
 TEXT_TUPLE_SUM_DIRECT = "src/frontends/s31/examples/arithmetic/tuple_square_sum_manual.s31"
 TEXT_RECORD_SUM = "src/frontends/s31/examples/arithmetic/record_square_sum.s31"
 TEXT_RECORD_SUM_DIRECT = "src/frontends/s31/examples/arithmetic/record_square_sum_manual.s31"
+TEXT_RECORD_SUM_PATTERN = "src/frontends/s31/examples/arithmetic/record_square_sum_destructure.s31"
 TEXT_RECORD_DIVISION = "src/frontends/s31/examples/math/division/record_i32_division.s31"
 TEXT_RECORD_DIVISION_DIRECT = "src/frontends/s31/examples/math/division/record_i32_division_manual.s31"
 TEXT_STATIC_STEP = "src/frontends/s31/examples/recurrence/functional_step16.s31"
@@ -67,6 +68,7 @@ BINDINGS = [
     TEXT_TUPLE_SUM_DIRECT,
     TEXT_RECORD_SUM,
     TEXT_RECORD_SUM_DIRECT,
+    TEXT_RECORD_SUM_PATTERN,
     TEXT_RECORD_DIVISION,
     TEXT_RECORD_DIVISION_DIRECT,
     TEXT_STATIC_STEP,
@@ -396,6 +398,7 @@ def check_record_erasure() -> None:
     from src.frontends.s31.python.text_frontend import compile_file
 
     for source, manual in ((TEXT_RECORD_SUM, TEXT_RECORD_SUM_DIRECT),
+                           (TEXT_RECORD_SUM_PATTERN, TEXT_RECORD_SUM_DIRECT),
                            (TEXT_RECORD_DIVISION, TEXT_RECORD_DIVISION_DIRECT)):
         record_relation, _ = compile_file(ROOT / source)
         positional_relation, _ = compile_file(ROOT / manual)
