@@ -251,20 +251,16 @@ test "bounded sealed V4 many one-call envelope verifies and rejects canonical he
     try std.testing.expectError(error.NonCanonicalVarint, verifyEmbedded(source, air_bytes, allocator, words, overlong));
 }
 
-test "bounded V4 selected schedule preserves legacy proof envelope bytes" {
-    const allocator = std.heap.smp_allocator;
-    const source = @embedFile("../examples/boundary/private_many1.s31.json");
-    const air_bytes = @embedFile("s31_air_programs");
-    var assignment = try relation.parseAssignment(allocator, @embedFile("../examples/boundary/private_many1.valid.json"));
-    defer assignment.deinit();
-
-    const selected_bytes = try proveSealed(allocator, source, air_bytes, assignment.value);
-    defer allocator.free(selected_bytes);
-
+fn legacySealedForByteTest(
+    allocator: std.mem.Allocator,
+    source: []const u8,
+    air_bytes: []const u8,
+    assignment: relation.Assignment,
+) ![]u8 {
     var inspected = try binding.inspectMany(allocator, source, air_bytes);
     defer inspected.deinit();
     const request = try binding.nativeManyRequest(&inspected);
-    var witness = try binding.compileManyWitness(allocator, source, assignment.value, inspected.topology);
+    var witness = try binding.compileManyWitness(allocator, source, assignment, inspected.topology);
     defer witness.deinit();
     var air = try engine.parseBundle(allocator, air_bytes);
     defer air.deinit();
@@ -279,7 +275,7 @@ test "bounded V4 selected schedule preserves legacy proof envelope bytes" {
     defer legacy.deinit();
 
     var legacy_bytes: std.ArrayList(u8) = .empty;
-    defer legacy_bytes.deinit(allocator);
+    errdefer legacy_bytes.deinit(allocator);
     try legacy_bytes.appendSlice(allocator, magic);
     try legacy_bytes.append(allocator, inspected.selected_schedule.geometry.call_count);
     try legacy_bytes.append(allocator, @intCast(legacy.sum_count));
@@ -298,7 +294,20 @@ test "bounded V4 selected schedule preserves legacy proof envelope bytes" {
         }
     }
     try postcard.serializeProof(H, legacy_bytes.writer(allocator), legacy.stark_proof.proof);
-    try std.testing.expectEqualSlices(u8, legacy_bytes.items, selected_bytes);
+    return legacy_bytes.toOwnedSlice(allocator);
+}
+
+test "bounded V4 selected schedule preserves legacy proof envelope bytes" {
+    const allocator = std.heap.smp_allocator;
+    const source = @embedFile("../examples/boundary/private_many1.s31.json");
+    const air_bytes = @embedFile("s31_air_programs");
+    var assignment = try relation.parseAssignment(allocator, @embedFile("../examples/boundary/private_many1.valid.json"));
+    defer assignment.deinit();
+    const selected_bytes = try proveSealed(allocator, source, air_bytes, assignment.value);
+    defer allocator.free(selected_bytes);
+    const legacy_bytes = try legacySealedForByteTest(allocator, source, air_bytes, assignment.value);
+    defer allocator.free(legacy_bytes);
+    try std.testing.expectEqualSlices(u8, legacy_bytes, selected_bytes);
 }
 
 test "V4 native count matrix proves 2 through 8 calls and rejects each claimed sum mutation" {
@@ -362,6 +371,12 @@ test "V4 native count matrix proves 2 through 8 calls and rejects each claimed s
             try std.testing.expectEqualSlices(u32, &pinned_5_to_7[n - 5], &words);
         const raw = try proveSealed(allocator, source, air_bytes, assignment.value);
         defer allocator.free(raw);
+        if (n == 8) {
+            const legacy_bytes = try legacySealedForByteTest(allocator, source, air_bytes, assignment.value);
+            defer allocator.free(legacy_bytes);
+            try std.testing.expectEqualSlices(u8, legacy_bytes, raw);
+            std.debug.print("V4 N=8 selected/legacy envelope byte equality: proof_bytes={d}\n", .{raw.len});
+        }
         try std.testing.expectEqual(@as(u8, @intCast(n)), raw[magic.len]);
         try std.testing.expectEqual(@as(u8, @intCast(1 + 2 * n)), raw[magic.len + 1]);
         try verifySourceBound(allocator, source, air_bytes, words, raw);
