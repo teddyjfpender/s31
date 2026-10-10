@@ -17,4 +17,12 @@ def inputBasisWires : List Nat := [15, 2, 16]
 def inputPackMul : List Gate := [⟨15, 12, 17⟩, ⟨2, 13, 19⟩, ⟨16, 14, 21⟩]
 def inputPackAdd : List Gate := [⟨11, 17, 18⟩, ⟨18, 19, 20⟩, ⟨20, 21, 22⟩]
 
+def zeroWire : Nat := 0
+def inputBindingAdd : List Gate := [⟨11, 0, 3⟩, ⟨12, 0, 4⟩, ⟨13, 0, 5⟩, ⟨14, 0, 6⟩]
+def outputUnpackPoint : List Gate := [⟨24, 1, 25⟩, ⟨24, 15, 26⟩, ⟨24, 2, 29⟩, ⟨24, 16, 32⟩]
+def outputUnpackMul : List Gate := [⟨26, 27, 28⟩, ⟨29, 30, 31⟩, ⟨32, 33, 34⟩]
+def outputBindingAdd : List Gate := [⟨25, 0, 7⟩, ⟨28, 0, 8⟩, ⟨31, 0, 9⟩, ⟨34, 0, 10⟩]
+def publicInputWires : List Nat := [3, 4, 5, 6]
+def publicOutputWires : List Nat := [7, 8, 9, 10]
+
 end S31.Functional.TextSquare4Native

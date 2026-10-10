@@ -140,6 +140,17 @@ packing rows and proves that their arbitrary witnesses produce the packed
 public input before the first square. Source regeneration detects drift in
 the Python frontend or native compiler; the proof itself covers the emitted
 topology instance and local row semantics.
+`TextSquare4NativeBoundary.native_public_claim_sound` follows the native
+public input copy gates, six packing gates, two square gates, four output
+coordinate masks, three inverse-basis gates and public output copy gates.
+For arbitrary intermediate values, accepted rows on this path force all
+four public output values to equal the fourth powers of the four public
+inputs. The exporter checks the concrete gate links and pinned constants.
+The native circuit has additional range and representation gates; this
+theorem proves that the selected path suffices for local functional
+soundness, conditional on all its rows and same-address wire values being
+enforced. Gate closure, source-to-trace correspondence, and the STARK
+protocol remain separate obligations.
 
 `Functional/Arrays` extends the typed source core with `[m31; N]` values,
 pointwise addition and multiplication, static splats, indexed reads and

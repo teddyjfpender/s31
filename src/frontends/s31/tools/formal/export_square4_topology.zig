@@ -6,6 +6,15 @@ const circuit = @import("stwo_circuit_frontend");
 const QM31 = @import("stwo_core").fields.qm31.QM31;
 const s31 = @import("stwo_s31_prototype");
 
+fn writeGates(writer: *std.Io.Writer, name: []const u8, gates: anytype) !void {
+    try writer.print("def {s} : List Gate := [", .{name});
+    for (gates, 0..) |gate, i| {
+        if (i != 0) try writer.writeAll(", ");
+        try writer.print("⟨{d}, {d}, {d}⟩", .{ gate.in0, gate.in1, gate.out });
+    }
+    try writer.writeAll("]\n");
+}
+
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
     const args = try std.process.argsAlloc(allocator);
@@ -62,6 +71,44 @@ pub fn main() !void {
     if (pack_mul[0].in0 != unit_i.idx or pack_mul[1].in0 != unit_u.idx or
         pack_mul[2].in0 != unit_iu.idx)
         return error.UnexpectedInputBasis;
+    if (ctx.circuit.pointwise_mul.items.len < 6 or ctx.circuit.mul.items.len < 6 or
+        ctx.circuit.add.items.len < 11)
+        return error.MissingPublicBoundaryGates;
+    const input_bind = ctx.circuit.add.items[3..7];
+    const output_point = ctx.circuit.pointwise_mul.items[2..6];
+    const output_mul = ctx.circuit.mul.items[3..6];
+    const output_bind = ctx.circuit.add.items[7..11];
+    const units = [4]QM31{
+        QM31.fromU32Unchecked(1, 0, 0, 0),
+        QM31.fromU32Unchecked(0, 1, 0, 0),
+        QM31.fromU32Unchecked(0, 0, 1, 0),
+        QM31.fromU32Unchecked(0, 0, 0, 1),
+    };
+    const input_raw = [4]u32{ pack_add[0].in0, pack_mul[0].in1, pack_mul[1].in1, pack_mul[2].in1 };
+    const zero = ctx.zero().idx;
+    for (0..4) |i| {
+        const unit_wire = ctx.constants.get(circuit.builder.context.constantKey(units[i])) orelse return error.MissingBasis;
+        if (input_bind[i].in0 != input_raw[i] or input_bind[i].in1 != zero or
+            output_point[i].in0 != second.out or output_point[i].in1 != unit_wire.idx or
+            output_bind[i].in1 != zero)
+            return error.UnexpectedPublicBoundary;
+        const unpacked = if (i == 0) output_point[i].out else blk: {
+            const inverse = units[i].inv() catch unreachable;
+            const inverse_wire = ctx.constants.get(circuit.builder.context.constantKey(inverse)) orelse return error.MissingBasisInverse;
+            const inverse_gate = output_mul[i - 1];
+            if (inverse_gate.in0 != output_point[i].out or inverse_gate.in1 != inverse_wire.idx)
+                return error.UnexpectedUnpackInverse;
+            break :blk inverse_gate.out;
+        };
+        if (output_bind[i].in0 != unpacked)
+            return error.UnexpectedOutputBinding;
+        // Circuit output slot 0 is the builder's reserved wire; S31's eight
+        // public words follow in source order.
+        if (ctx.circuit.output.items.len != 9 or
+            ctx.circuit.output.items[1 + i] != input_bind[i].out or
+            ctx.circuit.output.items[5 + i] != output_bind[i].out)
+            return error.UnexpectedPublicOutputOrder;
+    }
 
     var buffer: [4096]u8 = undefined;
     var stdout = std.fs.File.stdout().writer(&buffer);
@@ -91,6 +138,16 @@ pub fn main() !void {
         "def inputPackAdd : List Gate := " ++
             "[⟨{d}, {d}, {d}⟩, ⟨{d}, {d}, {d}⟩, ⟨{d}, {d}, {d}⟩]\n\n",
         .{ pack_add[0].in0, pack_add[0].in1, pack_add[0].out, pack_add[1].in0, pack_add[1].in1, pack_add[1].out, pack_add[2].in0, pack_add[2].in1, pack_add[2].out },
+    );
+    try writer.print("def zeroWire : Nat := {d}\n", .{zero});
+    try writeGates(writer, "inputBindingAdd", input_bind);
+    try writeGates(writer, "outputUnpackPoint", output_point);
+    try writeGates(writer, "outputUnpackMul", output_mul);
+    try writeGates(writer, "outputBindingAdd", output_bind);
+    try writer.print(
+        "def publicInputWires : List Nat := [{d}, {d}, {d}, {d}]\n" ++
+            "def publicOutputWires : List Nat := [{d}, {d}, {d}, {d}]\n\n",
+        .{ input_bind[0].out, input_bind[1].out, input_bind[2].out, input_bind[3].out, output_bind[0].out, output_bind[1].out, output_bind[2].out, output_bind[3].out },
     );
     try writer.writeAll("end S31.Functional.TextSquare4Native\n");
     try stdout.interface.flush();

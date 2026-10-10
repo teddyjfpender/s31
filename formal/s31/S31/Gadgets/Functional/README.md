@@ -21,6 +21,7 @@ Lean module names follow the directory, for example
 | `TextSquare4Air.lean` | Both packed multiplication AIR rows for that source, including arbitrary intermediate and result row witnesses. |
 | `TextSquare4Statement.lean` | The generated program's assignment parser and public-output comparison bind an accepted claim to the computed fourth powers. |
 | `TextSquare4Native.lean` and `TextSquare4NativeProof.lean` | Native Zig direct-compiler gate IDs and adjacent node spans, regenerated from the source program and interpreted in the local AIR model. |
+| `TextSquare4NativeBoundary.lean` | Exact native input binding, pack, arithmetic, unpack and output gate rows imply the public four-lane fourth-power claim. |
 
 The dependency order starts with `Graph`, then `Outputs`, then `Arrays`.
 Arithmetic and array-node bridges depend on `Arrays`; conditionals depend on
@@ -71,6 +72,18 @@ four-lane fourth power. The same native certificate now includes the three
 basis multiplications and three additions that produce wire `22`; the Lean
 proof derives its packed value from their local constraints and the four
 canonical scalar input values.
+`TextSquare4NativeBoundary.native_public_claim_sound` extends that path
+through the actual public input copy gates, four coordinate masks, three
+inverse-basis multiplications and four public output copy gates. For **any**
+assignment to all intermediate QM31 wires, accepted local rows along this
+input-to-output path and correctly pinned zero/basis wires force the public
+result to be the fourth power of the four public inputs. The gate IDs are
+extracted from the native compiler. The compiler also emits other gates,
+including range and representation checks; those extra constraints can only
+reduce the accepted witness set if their rows are enforced. The theorem
+models wires as one value per address; connecting
+that equality to committed trace reads still depends on the separate Gate
+lookup/source-correspondence and STARK soundness obligations.
 The source binding regenerates the native artifact on every formal audit;
 there is still no machine-checked proof of the whole Zig compiler or STARK
 protocol.
