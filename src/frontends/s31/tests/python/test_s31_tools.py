@@ -1,6 +1,7 @@
 """Checks that agent-facing measurements distinguish proving from PoW time."""
 
 import sys
+import json
 from pathlib import Path
 S31_SOURCE_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(S31_SOURCE_ROOT / "python"))
@@ -8,6 +9,7 @@ sys.path.insert(0, str(S31_SOURCE_ROOT / "python"))
 import unittest
 from tempfile import TemporaryDirectory
 from pathlib import Path
+from unittest.mock import patch
 
 import s31
 
@@ -66,6 +68,35 @@ class ProverLogTests(unittest.TestCase):
             changed.write_text('{"public_inputs":{"x":[1]},"public_outputs":{"y":[3]}}')
             self.assertEqual(s31.assignment_digest(first), s31.assignment_digest(second))
             self.assertNotEqual(s31.assignment_digest(first), s31.assignment_digest(changed))
+
+    def test_inspection_wrappers_verify_then_report_source_equations(self) -> None:
+        with TemporaryDirectory() as directory:
+            package = Path(directory)
+            relation = {
+                "name": "square", "inputs": [{"name": "x", "kind": "m31", "length": 1,
+                                               "visibility": "public"}],
+                "nodes": [{"name": "result", "op": "mul", "lhs": "x", "rhs": "x"}],
+                "assertions": [], "public_outputs": ["result"],
+            }
+            source_map = {"name": "result", "canonical_id": 1}
+            for component in ("qm31", "m31_to_u32", "eq", "triple_xor", "blake_g"):
+                source_map[f"{component}_start"] = 0
+                source_map[f"{component}_end"] = 1 if component == "qm31" else 0
+            cost = {
+                "name": "square", "profile": "direct-m31-v4", "chip": None,
+                "raw": {"qm31_ops": 1}, "padded": {"qm31_ops": 16},
+                "preprocessed_cells": 128, "preprocessed_columns": 8,
+                "canonical_ir_sha256": "0" * 64, "source_map": [source_map],
+            }
+            (package / "source.s31.json").write_text(json.dumps(relation))
+            (package / "cost-report.json").write_text(json.dumps(cost))
+            with patch.object(s31, "verify_package", return_value={}) as verifier:
+                explained = s31.explain(package)
+                equations = s31.equations(package)
+            self.assertEqual(verifier.call_count, 2)
+            self.assertEqual(explained["nodes"][0]["gate_rows"]["qm31"], 1)
+            self.assertEqual(equations["nodes"][0]["field_equations"],
+                             ["result[j] - x[j] * x[j] = 0"])
 
 
 if __name__ == "__main__":

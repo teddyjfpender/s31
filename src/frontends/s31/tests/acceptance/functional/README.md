@@ -11,6 +11,9 @@ reference calculate expected public results; changing a result must fail
 native verification. The exact geometry baselines detect unexpected cost
 changes, while the direct-form comparison tests zero overhead from closures
 and tuple structure.
+The gate also reads the sealed standard-library lock and semantic-equation
+report, checking that every compiler library source is hashed and every
+normalized node appears in the report.
 
 These are representative executable release gates, not a proof of compiler
 correctness for all source programs. The larger generated source corpus lives

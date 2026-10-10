@@ -202,6 +202,11 @@ def check_case(work: Path, case: Case) -> dict:
     }
     if lock["sources"] != expected_sources:
         raise AssertionError(f"{case.name}: standard-library lock omits compiler library source")
+    equations = s31.equations(functional_package)
+    if (equations["program"] != relation["name"] or
+            [(node["name"], node["op"]) for node in equations["nodes"]] !=
+            [(node["name"], node["op"]) for node in relation["nodes"]]):
+        raise AssertionError(f"{case.name}: inspection report does not cover the sealed relation")
     cost = json.loads((functional_package / "cost-report.json").read_text())
     direct_cost = json.loads((direct_package / "cost-report.json").read_text())
     mismatched = [key for key in MATCHED_COST if cost[key] != direct_cost[key]]

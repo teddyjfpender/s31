@@ -117,6 +117,8 @@ BINDINGS = [
     "src/frontends/s31/python/library/stdlib.py",
     "src/frontends/s31/python/library/math.py",
     "src/frontends/s31/python/text_frontend.py",
+    "src/frontends/s31/python/inspection/__init__.py",
+    "src/frontends/s31/python/inspection/reports.py",
     "src/frontends/s31/python/language/syntax.py",
     "src/frontends/s31/python/language/types.py",
     "src/frontends/s31/python/language/parser.py",
