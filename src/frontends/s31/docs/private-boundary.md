@@ -193,9 +193,10 @@ from the repository root.
 
 The verifier binary embeds source and official AIR bytes. A caller choosing
 which verifier binary and public words to trust is outside this protocol.
-The current proof and verification implementation passes native N=1,2,3,4,8
-tests, including call ID 7, count/roster and every claimed-sum position
-mutations; counts 5–7 still need direct native proof tests. The source-derived
+The current proof and verification implementation passes native tests for
+every admitted N from 1 through 8. For N=5,6,7, an independent integer oracle
+checks the eight public words, and every claimed-sum slot is mutated and
+rejected. The source-derived
 manifest names relation dependencies by reviewed AIR kind; the live preflight
 introspects widths, masks, degree and fixed-column indices, but does not
 discover lookup relation IDs from evaluator formulas. A full compiler-to-AIR

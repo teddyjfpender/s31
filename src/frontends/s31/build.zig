@@ -129,7 +129,7 @@ pub fn build(b: *std.Build) void {
     b.step("test-bounded-compiled-binding", "Test compiled V4 endpoints and experimental native proof admission")
         .dependOn(&bounded_binding_tests.step);
     const many_native_matrix_tests = b.addRunArtifact(b.addTest(.{ .root_module = bounded_binding_root, .filters = &.{"V4 native count matrix"} }));
-    b.step("test-many-native-matrix", "Prove and verify bounded V4 2, 4 and 8-call native envelopes")
+    b.step("test-many-native-matrix", "Prove and verify bounded V4 native envelopes for every count 2 through 8")
         .dependOn(&many_native_matrix_tests.step);
     const square_export_root = localEntry(b, "tools/formal/export_square4_topology.zig", target, optimize);
     square_export_root.addImport("stwo_s31_prototype", frontend);

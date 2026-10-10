@@ -251,14 +251,19 @@ test "bounded sealed V4 many one-call envelope verifies and rejects canonical he
     try std.testing.expectError(error.NonCanonicalVarint, verifyEmbedded(source, air_bytes, allocator, words, overlong));
 }
 
-test "V4 native count matrix proves 2 4 8 calls and rejects each claimed sum mutation" {
+test "V4 native count matrix proves 2 through 8 calls and rejects each claimed sum mutation" {
     const allocator = std.heap.smp_allocator;
     const air_bytes = @embedFile("s31_air_programs");
-    const initial = [4]M31{
-        M31.fromCanonical(3), M31.fromCanonical(5),
-        M31.fromCanonical(7), M31.fromCanonical(11),
+    // This oracle uses ordinary u64 modular arithmetic, independently of
+    // S31 relation evaluation and the engine's M31 field implementation.
+    const p: u64 = 2147483647;
+    const initial = [4]u64{ 3, 5, 7, 11 };
+    const pinned_5_to_7 = [3][8]u32{
+        .{ 489847162, 58371116, 422257245, 1460185845, 1469541477, 291855555, 808317019, 1029658645 },
+        .{ 1901382382, 2115332761, 496715432, 1820666583, 1409179843, 1986729192, 1329524328, 699979469 },
+        .{ 1890162284, 1349810231, 481975622, 711744516, 1375519549, 306600189, 1226345658, 1386738614 },
     };
-    for ([_]usize{ 2, 4, 8 }) |n| {
+    for ([_]usize{ 2, 3, 4, 5, 6, 7, 8 }) |n| {
         var source_list: std.ArrayList(u8) = .empty;
         defer source_list.deinit(allocator);
         try source_list.appendSlice(allocator,
@@ -275,9 +280,9 @@ test "V4 native count matrix proves 2 4 8 calls and rejects each claimed sum mut
             );
             defer allocator.free(node);
             try source_list.appendSlice(allocator, node);
-            const constant = M31.fromCanonical(@intCast(13 + id));
+            const constant: u64 = 13 + id;
             for (&final) |*value| for (0..16) |_| {
-                value.* = value.*.mul(value.*).add(constant);
+                value.* = (value.* * value.* + constant) % p;
             };
         }
         const suffix = try std.fmt.allocPrint(
@@ -291,8 +296,8 @@ test "V4 native count matrix proves 2 4 8 calls and rejects each claimed sum mut
         var sums: [4]u32 = undefined;
         var products: [4]u32 = undefined;
         for (0..4) |lane| {
-            sums[lane] = final[lane].add(initial[lane]).toU32();
-            products[lane] = final[lane].mul(initial[lane]).toU32();
+            sums[lane] = @intCast((final[lane] + initial[lane]) % p);
+            products[lane] = @intCast((final[lane] * initial[lane]) % p);
         }
         const assignment_json = try std.fmt.allocPrint(
             allocator,
@@ -303,6 +308,8 @@ test "V4 native count matrix proves 2 4 8 calls and rejects each claimed sum mut
         var assignment = try relation.parseAssignment(allocator, assignment_json);
         defer assignment.deinit();
         const words = sums ++ products;
+        if (n >= 5 and n <= 7)
+            try std.testing.expectEqualSlices(u32, &pinned_5_to_7[n - 5], &words);
         const raw = try proveSealed(allocator, source, air_bytes, assignment.value);
         defer allocator.free(raw);
         try std.testing.expectEqual(@as(u8, @intCast(n)), raw[magic.len]);

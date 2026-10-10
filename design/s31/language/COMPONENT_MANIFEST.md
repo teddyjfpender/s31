@@ -152,6 +152,13 @@ requires a new versioned source-kind manifest.
 
 ## Bounded-call V4 plan artifact
 
+The bounded V4 profile now has experimental source-pinned native proving and
+verification for 1–8 calls. This section records how its manifest is derived
+and checked; [the bounded boundary design](BOUNDED_MULTI_CALL_BOUNDARY.md)
+describes the current proof envelope, tests, scheduler authority, and release
+gates. The manifest is still a checked description of engine-selected live
+handles, rather than the sole constructor of those handles.
+
 `runtime/bounded_component_manifest.zig` defines a separate, versioned
 `s31-component-manifest-bounded-call-plan-v4` artifact. It takes literal
 normalized source through `language/bounded_call_admission.zig`, which accepts
@@ -202,10 +209,12 @@ cannot make those facts authoritative by providing them or a digest.
 fixed root, attaches compiled endpoints, and checks the complete roster
 against live native handles. The experimental V4 prover and dedicated
 source-pinned verifier use that inspection to admit a distinct `S31MNY04`
-proof envelope. Native proofs pass for counts 1, 2, 3, 4 and 8; the general
-package profile and a released verification-key schema remain disabled.
+proof envelope. Native proofs pass for every count 1–8, including call IDs
+0–7. The engine still constructs component arrays from its typed Plan; the
+manifest checks that schedule against source and live handles. A general
+package profile and external verification-key schema remain disabled.
 
-### Compiled endpoints and the executable two-call inspection
+### Compiled endpoints and executable inspection
 
 `runtime/bounded_compiled_binding.zig` adds a separate inspection path. It
 compiles an admitted one- through eight-call source in circuit topology mode
@@ -261,8 +270,9 @@ provides the source-owned manifest digest used by the experimental V4
 transcript. `compileManyWitness` checks the witness-mode fixed-column root
 against source topology before proving. The dedicated V4 byte verifier
 reconstructs this inspection from embedded source and official AIR bytes;
-it does not take a caller-supplied manifest or endpoint map. Counts 5–7 still
-need direct native proof tests, and no general package verifier admits V4.
+it does not take a caller-supplied manifest or endpoint map. Proof tests now
+cover all admitted counts 1–8; no general package verifier admits V4. The
+source-pinned package checks the PCS geometry before bounded proof decoding.
 
 ## Remaining work
 

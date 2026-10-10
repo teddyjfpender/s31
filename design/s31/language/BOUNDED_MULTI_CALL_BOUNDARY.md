@@ -1,8 +1,7 @@
 # Bounded multi-call authenticated circuit-to-chip boundary
 
-Status: **source admission, compiler endpoint maps, and witness-free V4 live
-verifier-handle/PCS preflight inspection are implemented; native V4 proving
-and verification are not implemented**. The unexported
+Status: **experimental source-pinned native proving and verification are
+implemented for the bounded 1–8-call profile**. The unexported
 [`bounded_call_admission.zig`](../../../src/frontends/s31/language/bounded_call_admission.zig)
 extracts canonical, live calls and enforces the initial source bounds. The
 [`bounded_compiled_binding.zig`](../../../src/frontends/s31/runtime/bounded_compiled_binding.zig)
@@ -10,8 +9,12 @@ inspection recompiles 1–8 source calls without witness values, attaches their
 compiler-owned addresses, builds a separately counted Gate preprocessed
 circuit, and checks the generated V4 roster against engine prefix sums and
 live V4 chip/bridge verifier handles. The preflight derives tree logs, mask
-widths, composition split and degree, and fixed PCS from those handles. It
-does not accept proof bytes or verify V4 proofs.
+widths, composition split and degree, and fixed PCS from those handles.
+[`many_native_package.zig`](../../../src/frontends/s31/runtime/many_native_package.zig)
+binds that inspection to a distinct V4 transcript, checks a canonical
+source-pinned byte envelope before bounded postcard decoding, then invokes
+native verification. The engine still builds its component schedule from a
+typed Plan; the manifest cross-checks it instead of constructing each handle.
 This is the successor to
 the experimental, fixed two-call `direct-m31-private-pair-v1` profile. It must not
 replace or reinterpret any existing one-call or pair proof. The first v4
@@ -20,19 +23,28 @@ implementation admits 1–8 instances of the existing four-lane tagged
 kinds, but each later kind needs its own AIR, lookup tuple, resource limits,
 and soundness review before admission.
 
-Earlier focused validation at S31 `5382e252` and engine `a3656919` passed:
+Earlier inspection validation at S31 `5382e252` and engine `a3656919` passed:
 `zig build test -Dtest-filter=V4` in the engine circuit CPU package;
 `zig build test-bounded-call-source test-bounded-component-manifest
 test-bounded-compiled-binding` in the S31 package; and the existing V3
-`zig build test-pair-native` regression. These are unit and V3 proof tests,
-not V4 native proving or verification evidence.
+`zig build test-pair-native` regression. These historical checks predate V4
+proof admission.
 
 The live-handle slice at S31 `c59b885` and engine `fb300ed1` passed
 `zig build test -Dtest-filter=V4` in the engine package and
 `zig build test-bounded-component-manifest test-bounded-compiled-binding`
 in S31. This includes one-call live preflight and one-/three-call manifest
 inspection with geometry, relation, and source-binding mismatch controls.
-It still does not admit or verify a V4 proof.
+This historical checkpoint also predates V4 proof admission.
+
+The current source-pinned V4 test matrix proves and verifies every count from
+1 through 8. The N=2 through 8 test generates dependent source calls,
+mutates every `1+2N` claimed-sum position, and includes call ID 7 at N=8.
+For N=5,6,7, the eight public words are also checked against pinned values
+from an independent ordinary-integer modular oracle. The one-call black-box
+CLI acceptance test mutates public words, envelope digests, claimed sums,
+postcard bytes, and embedded source. These tests are evidence for this one
+reviewed chip family and source grammar, not for arbitrary component kinds.
 
 ## Statement and source-owned Plan
 
@@ -160,14 +172,14 @@ make canonical multiplicity accounting essential.
 
 ## Canonical typed manifest and native schedule
 
-Use fresh schema, key, envelope magic, manifest-hash domain, and transcript
-tag for v4. Do not reuse `S31NAT8P` or the pair's V3 digest. Serialize a
+Use fresh envelope magic, manifest-hash domain, and transcript tag for V4.
+Do not reuse `S31NAT8P` or the pair's V3 digest. Serialize a
 typed `ComponentSource`, for example `bundled_air {bundle_sha256, index,
 part_sha256}` or `native_air {kind, version, code_sha256}`. The current V4
 inspection has a typed native kind and a program digest that includes the
 distinct V4 chip/bridge AIR source files and the compiler-owned endpoints.
-It does **not** provide a released proof profile, wire envelope, or versioned
-native verifier. The pair format's
+The source-pinned V4 proof envelope is implemented but remains experimental;
+there is no external V4 verification-key schema. The pair format's
 numeric `source_index = 0` is a native sentinel, so treating it as a general
 zero-based AIR index would be ambiguous. Reject unknown kinds and versions;
 the JSON view is not the hash input.
@@ -188,8 +200,8 @@ every field in a canonical binary encoding. Exclude
 the circuit identity hash from the precommitment to avoid a hash cycle;
 derive that identity from the manifest precommitment, fixed root, and PCS
 profile. Mix the versioned manifest digest before the first base commitment.
-The verifier reconstructs and byte-compares the key from sealed source and
-pinned AIR; no proof-supplied component description can drive the schedule.
+The verifier reconstructs the source-derived manifest from embedded source
+and pinned AIR; no proof-supplied component description drives the schedule.
 
 The proposed V4 channel begins with its own profile tag `S31MANY\x01` and
 an effective digest in the
@@ -199,9 +211,10 @@ configuration, commits the fixed preprocessed columns, mixes the circuit
 identity in the `S31-DIRECT-M31-CHIP-MANY-V1` domain, and mixes the public
 output words **before** the main commitment. The remaining order is main
 commitment, interaction PoW nonce, lookup challenge, ordered claimed sums,
-interaction commitment, then the PCS proof. The current
-`TranscriptOrder` helper records this expected sequence for review; no V4
-prover or verifier consumes it yet.
+interaction commitment, then the PCS proof. `TranscriptOrder` records this
+expected sequence for review; the native V4 prover and verifier consume the
+corresponding ordered fields, while the helper itself is not their executable
+transcript implementation.
 
 For circuit row log `L`, rounds `R_i`, and circuit constraint count `C`, the
 selected roster has `1+2N` components and ordered claims. Tree 0 has eight
@@ -223,14 +236,48 @@ These formulas are review invariants, **not** a second source of verifier
 truth. The witness-free preflight now builds the actual V4 verifier handles
 from the source Plan, derives tree logs, widths, masks, composition split and
 degree through the same component API intended for proof verification, and
-rejects disagreement with the generated manifest. A future native verifier
-must use these same handles and checked PCS geometry before decoding; this
-reuse is still a release gate. Claimed-sum indices are exactly `0..2N`: circuit,
+rejects disagreement with the generated manifest. The experimental native
+verifier uses this preflight before decoding. Claimed-sum indices are exactly
+`0..2N`: circuit,
 then chips, then bridges. An empty, duplicate, or reordered slot is invalid.
 The source-derived roster also determines lookup dependency closure: Gate
 production/consumption and every tagged chip endpoint relation must balance.
 Reject a component whose relation dependency is absent, even if its
 claim happens to be zero.
+
+### Can the manifest schedule components?
+
+For this bounded profile, **the manifest can become the single typed schedule
+input**, but it is not yet the direct scheduler. Today `inspectMany` derives a
+manifest and an engine `Plan` from authenticated source, constructs live AIR
+handles through `direct_many_preflight.inspect`, and compares each handle's
+order, widths, trace/evaluation logs, degree, fixed indices, source binding,
+constraint offsets, and PCS geometry with the manifest. Proof admission
+repeats this inspection before decoding. The engine then independently
+constructs its component arrays from the `Plan` and its own roster. No caller
+supplies geometry to the source-pinned verifier, but the manifest still
+cross-checks a second schedule instead of owning the construction.
+
+The next scheduler API should accept only a sealed, source-derived
+`SelectedSchedule` containing the ordered live handles and checked PCS
+geometry. It should create each chip/bridge handle from its typed source kind
+and compiled endpoints, derive all spans and claimed-sum indices from those
+handles, and use that same object for commitment, transcript, quotient,
+opening, and verifier preflight. Unknown kinds, different handle counts or
+order, or any mismatch with the generated manifest must fail before proof
+decoding. Keep the engine's independent roster formulas as assertions, not
+as caller-controlled geometry. A generalized package reader must
+authenticate the source and selected AIR before constructing this object;
+raw package metadata or a matching digest alone is not authority.
+
+This change needs an AIR-level lookup dependency registry for each admitted
+kind. The current `lookup_relation_ids` values are assigned by known source
+kind in `direct_many_preflight`, rather than discovered from evaluator
+formulas. Thus the lookup-closure check is conditional on review of those
+AIR implementations. A new kind cannot become admissible merely by adding
+a manifest enum value. The source compiler, live AIR, relation IDs, and
+transcript schedule must agree under separate tests or proofs. Endpoint
+confidentiality remains absent because the bridge commits endpoint values.
 
 ## Resource and proof-byte admission
 
@@ -247,15 +294,15 @@ B + I <= 6,000,000
 
 This bounds the principal committed trace storage; it is **not** a peak-RSS
 claim. The exact PCS, FFT, quotient, and proof-memory limits require native
-measurements. Use a profile-fixed proof wire cap of 32 MiB and decoder
-allocation cap of 128 MiB initially; tighten only after measuring valid
-maximal cases. Before postcard allocation, reject wrong magic, wrong exact
-key, noncanonical M31 words or varints, extra/trailing bytes, and use the
+measurements. The current profile uses a 16 MiB proof wire cap and a bounded
+decoder allocation of 8–64 MiB, at most 32 times the wire length. Before
+postcard allocation, reject wrong magic, wrong source-derived digests,
+noncanonical M31 words or varints, extra/trailing bytes, and use the
 source-derived four-tree column counts, max log size, and mask sample widths
 with the canonical postcard preflight. Do not accept proof-provided logs,
 query widths, component counts, or FRI parameters. A parser may do bounded
 work on untrusted bytes but must not allocate according to them before these
-checks. Record proof size, prove/verify time, and peak RSS at N=1,2,4,8
+checks. Record proof size, prove/verify time, and peak RSS at N=1 through 8
 against the same-source generic-circuit path before choosing a default.
 The envelope has exactly one nonce and `1+2N` canonical QM31 claims of
 16 bytes each; its header length is computed from the source Plan, never
@@ -263,23 +310,23 @@ from a proof count field.
 
 ## Implementation and release sequence
 
-1. Finish fixed-pair native honest and byte-mutation acceptance first.
-   Freeze its protocol and keep it readable only by its own sealed verifier.
-2. Add `PlanV4` extraction and value/topology correspondence checks in S31.
-   Test dependent calls, shared addresses, wrong liveness, and all source
-   admission bounds without native proving.
-3. Generalize the tagged AIR call-ID validation and direct-circuit
-   multiplicity builder behind a new v4 API. Keep pair constructors intact.
-   Extend the exact path and tagged lookup arguments in Lean before assuming
-   `N` is harmless.
-4. Build the typed source-kind manifest and dynamic roster constructor.
-   Make the prover, verifier, PCS preflight, claimed-sum envelope, and
-   transcript consume the same selected roster. Compare native geometry
-   with the generated manifest before accepting bytes.
-5. Release only after native tests accept honest `N=1,2,4,8` proofs,
-   including dependent calls and repeated endpoints, and reject the matrix
-   below. Obtain independent source-level soundness review and a quantitative
-   lookup/PCS error budget for the bounded profile.
+The fixed V3 pair protocol is separate. V4 now has source admission,
+compiler-derived endpoints, witness/topology and fixed-root checks, 1–8-call
+tagged AIRs, a typed manifest, live-handle/PCS preflight, a source-pinned
+envelope, native proving and verification, and count-matrix tests. The
+following gates remain before treating this as a released general boundary:
+
+1. Make the typed selected schedule the actual prover/verifier construction
+   path, preserving live-handle checks and refusing unsupported AIR kinds or
+   geometry. Confirm transcript, quotient, and PCS order use that one object.
+2. Extend the exact path and tagged lookup arguments in Lean to variable N;
+   prove compiler/IR-to-AIR correspondence for all admitted source forms.
+3. Complete the mutation matrix below with independent source-level review,
+   including lookup adversaries that bypass self-hash checks.
+4. Quantify lookup/PCS soundness error and measure proof size, time, and peak
+   memory at all admitted counts and large resource-bound instances.
+5. Define an authenticated external verification-key/package format before
+   allowing a general package reader to select this profile.
 
 | Mutation class | Required rejection evidence |
 | --- | --- |
