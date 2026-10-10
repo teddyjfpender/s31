@@ -199,6 +199,25 @@ changed source operand address. Its premises and open joins are:
    fixed cells and trace values through its commitments and PCS/FRI checks.
    This is outside the Lean theorem.
 
+[`SSAGateLookupWireMap.lean`](../../../formal/s31/S31/Gadgets/Functional/SSAGateLookupWireMap.lean)
+discharges the *logical* coherent-wire premise for the source rows under an
+exact Gate event model. Each physical row is identified at the projected
+AIR trace index. Its two input events are Gate uses; its output event is a
+Gate yield repeated by the checked multiplicity. If all uses and yields
+form equal multisets and each produced address has one value, Lean derives
+one address-to-QM31 map and proves the row values agree with it. A positive
+example has a row reading `5` and `3` and writing `8`; a locally correct
+forgery that reads `4` from the address producing `5` cannot close Gate.
+
+The exact multiset equality is a **premise**, not a theorem about the
+production challenge-compressed LogUp proof. Source-row membership, the
+packed input's producer event, and producer uniqueness are also explicit.
+The native control changes the first canonical M31 limb of a direct-gate
+proof's Gate claimed sum at proof-envelope byte offset `16` and requires
+the native verifier's `InvalidLookupSum` rejection. This tests the installed
+closure check; it does not establish the LogUp soundness reduction or
+PCS/FRI authentication of the committed row values.
+
 [`SSAOutputAirCells.lean`](../../../formal/s31/S31/Gadgets/Functional/SSAOutputAirCells.lean)
 continues from source wire `24` to the four public result words. It derives
 eleven more expected preprocessed cells: four pointwise basis masks, three

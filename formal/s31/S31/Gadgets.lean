@@ -108,6 +108,7 @@ import S31.Gadgets.Functional.SSAOutputAirCells
 import S31.Gadgets.Functional.SSAInputAirCells
 import S31.Gadgets.Functional.SSAPublicInputBinding
 import S31.Gadgets.Functional.SSANativePolynomialRows
+import S31.Gadgets.Functional.SSAGateLookupWireMap
 import S31.Gadgets.Functional.GeneratedDirectGateBridge
 import S31.Gadgets.Functional.MathLibrary
 import S31.Gadgets.Functional.WorkedQuadratic

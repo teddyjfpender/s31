@@ -166,13 +166,33 @@ def main() -> None:
         write_json(changed_input_path, changed_input)
         manifest = json.loads((honest / "manifest.json").read_text())
         native_verifier = honest / "bin" / f"s31-{manifest['name']}-native-verifier"
+        proof_path = work / "honest-proof/proof.bin"
+        statement_path = work / "honest-proof/statement.json"
         try:
-            invoke(str(native_verifier), str(work / "honest-proof/proof.bin"),
+            invoke(str(native_verifier), str(proof_path),
                    str(changed_input_path), str(honest / "verification-key.json"))
         except RuntimeError:
             pass
         else:
             raise AssertionError("native verifier accepted a changed public input word")
+        changed_gate_claim = bytearray(proof_path.read_bytes())
+        if changed_gate_claim[:8] != b"S31NAT4G" or len(changed_gate_claim) < 32:
+            raise AssertionError("honest proof is not a direct-gate proof envelope")
+        first_limb = struct.unpack_from("<I", changed_gate_claim, 16)[0]
+        if first_limb >= (1 << 31) - 1:
+            raise AssertionError("honest Gate claim is not canonical M31")
+        struct.pack_into("<I", changed_gate_claim, 16,
+                         (first_limb + 1) % ((1 << 31) - 1))
+        changed_gate_claim_path = work / "changed-gate-claim.proof.bin"
+        changed_gate_claim_path.write_bytes(changed_gate_claim)
+        try:
+            invoke(str(native_verifier), str(changed_gate_claim_path),
+                   str(statement_path), str(honest / "verification-key.json"))
+        except RuntimeError as exc:
+            if "InvalidLookupSum" not in str(exc):
+                raise AssertionError(f"Gate claim reached wrong rejection: {exc}") from exc
+        else:
+            raise AssertionError("native verifier accepted a changed Gate lookup claim")
         missing = work / "missing-certificate"
         shutil.copytree(honest, missing)
         (missing / "correspondence-certificate.json").unlink()
@@ -263,6 +283,7 @@ def main() -> None:
             "fragment": "public four-lane direct-gate add/mul/static-let",
             "honest_native_proof_accepted": True,
             "changed_public_input_native_statement_rejected": True,
+            "changed_gate_claim_native_lookup_sum_rejected": True,
             "resealed_mutant_native_proof_accepted_under_mutant_relation": True,
             "resealed_mutant_package_admission_rejected": True,
             "duplicate_json_key_rejected": True,

@@ -206,6 +206,11 @@ its selectors as local polynomial flags, and proves by SSA execution
 induction that a coherent logical wire map forces the selected native wire
 to contain the packed source-byte denotation. Concrete changed-selector
 and changed-operand row controls reject incompatible arithmetic values.
+`Functional/SSAGateLookupWireMap` derives that logical map for matched source
+rows from an ideal exact Gate event balance and one produced value per address;
+it proves a locally valid forged read cannot satisfy that balance. The exact
+balance and source-row membership remain explicit premises, since production
+LogUp is challenge-compressed and PCS/FRI authentication is not formalized.
 The Python package checker supplies the
 package-to-embedded-byte/digest binding
 and validates other native rows. Lean does not verify the embedded SHA-256 strings, prove
