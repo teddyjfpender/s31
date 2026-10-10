@@ -1,7 +1,16 @@
 # Whole-prover cost model V6: prospective chip RSS transfer
 
-**Status: draft protocol and static tooling. No V6 package or native proof has
-been built or timed.** The [V5 audit](language/whole-prover-cost-v5-audit.json)
+**Status: frozen protocol in an isolated study worktree; training package
+builds are under way. No V6 timed proof, fitted model, or held-out result
+exists yet.** The integrated tree retains the prospective draft protocol;
+the frozen study worktree is pinned to source base
+`1b04f77c87e650cd4cc24727b23d2b3d1d5718b6`, engine
+`fb300ed1bcfac3299f249928fdfe18f4345deae6`, protocol SHA-256
+`c839427e3651a92f07710e5fc446cfa8fb022fbe4f70245d8fa22ec01c5c5b14`,
+and committed protocol anchor
+`b3191bd5d9c0b7a2afc71b440e9c2e636ef1d2af`. These full pins were
+recorded externally before the first native build. The
+[V5 audit](language/whole-prover-cost-v5-audit.json)
 is immutable. Its direct-chip RSS interval missed the frozen coverage gate.
 That failure motivates another independent study; V5 held-out values are not
 fit inputs, calibration inputs, or V6 gate adjustments.
@@ -9,8 +18,9 @@ fit inputs, calibration inputs, or V6 gate adjustments.
 The [V6 protocol](whole-prover-cost-v6.json) retains V5's wall and proof-byte
 models, all accuracy thresholds, 26-bit PoW policy, and source/tool/host
 controls. Automatic lowering selection remains disabled, including after a
-possible local pass. Source, engine, compiler, and tool pins are null in this
-draft, so the runner refuses every native phase.
+possible local pass. Source, engine, compiler, and tool pins remain null in
+this integrated draft, so it refuses every native phase. The isolated frozen
+worktree carries committed pins and anchors.
 
 ## Training-only interval rule
 
@@ -76,6 +86,16 @@ with its full SHA and aware UTC timestamp, and record the protocol SHA plus
 anchor commit in an external timestamped message **before any native build**.
 The runner verifies current bytes against those pins and the committed
 ancestor anchor. It requires at least 8 GiB of free artifact space.
+
+The runner pins the Python compiler/tool inventory and engine gitlink, while
+its S31 source-base check requires ancestry rather than byte equality for
+every tracked Zig/build source. An independent prebuild diff of the frozen
+worktree against the pinned source base found only protocol, anchor, documentation and
+V6 test-file changes; no build/runtime source changed. Repeat and record that
+diff plus worktree status before each timed or held-out phase, and stop the
+cohort if a build/runtime source changes. This is a procedural integrity
+control for V6, not a claim that the runner enforces a complete source-tree
+digest.
 
 Build and prove the 23 training packages under the pinned source. Fit the
 model on that corpus only. Before any held-out build, commit a model-freeze
