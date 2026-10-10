@@ -183,6 +183,33 @@ pub const PairGenerated = struct {
     }
 };
 
+/// The experimental pair has exactly five proof components and two canonical
+/// call tags. This typed interpretation is independent of JSON field order
+/// and leaves the sealed V3 byte format unchanged.
+pub fn validatePairSourceRoster(value: PairManifest) !void {
+    if (!std.mem.eql(u8, value.schema, "s31-component-manifest-direct-pair-v1") or
+        value.components.len != 5 or value.claimed_sums != 5)
+        return error.InvalidPairComponentManifest;
+    for (value.pair_calls, 0..) |call, id| {
+        if (call.call_id != @as(u32, @intCast(id)) or call.relation_id != pair.relation_id)
+            return error.InvalidPairComponentManifest;
+    }
+    const expected = [_]ComponentSource{
+        .{ .bundled_air = 1 },
+        .{ .native_air = .tagged_pair_chip },
+        .{ .native_air = .tagged_pair_chip },
+        .{ .native_air = .tagged_pair_bridge },
+        .{ .native_air = .tagged_pair_bridge },
+    };
+    for (value.components, expected, 0..) |entry, source, index| {
+        const actual = componentSource(value.schema, entry) catch return error.InvalidPairComponentManifest;
+        if (!std.meta.eql(actual, source) or
+            entry.proof_index != @as(u32, @intCast(index)) or
+            entry.claimed_sum_index == null or entry.claimed_sum_index.? != @as(u32, @intCast(index)))
+            return error.InvalidPairComponentManifest;
+    }
+}
+
 pub const Generated = struct {
     arena: std.heap.ArenaAllocator,
     value: Manifest,
@@ -517,6 +544,7 @@ pub fn directPair(
         .preprocessed_columns = generated.value.preprocessed_columns,
         .pair_calls = calls,
     };
+    try validatePairSourceRoster(value);
     return .{ .arena = generated.arena, .value = value };
 }
 
@@ -638,6 +666,8 @@ pub fn setPairCircuitHash(generated: *PairGenerated, circuit_hash: [32]u8) !void
 }
 
 pub fn matchesPair(a: std.mem.Allocator, sealed: PairManifest, generated: PairManifest) !bool {
+    validatePairSourceRoster(sealed) catch return false;
+    try validatePairSourceRoster(generated);
     const left = try std.json.Stringify.valueAlloc(a, sealed, .{});
     defer a.free(left);
     const right = try std.json.Stringify.valueAlloc(a, generated, .{});

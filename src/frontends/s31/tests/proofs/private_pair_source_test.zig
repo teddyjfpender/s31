@@ -13,6 +13,27 @@ fn handRepeat(start: u32, constant: u32, rounds: u32) u32 {
     return @intCast(value);
 }
 
+fn resealPairKey(a: std.mem.Allocator, original: native_pair.Key, altered: manifest.PairManifest, binding: *const pair_source.Binding) ![]u8 {
+    var key = original;
+    key.component_manifest = altered;
+    const digest = manifest.pairPrecommitmentDigest(altered);
+    const digest_hex = std.fmt.bytesToHex(digest, .lower);
+    key.manifest_precommitment_sha256 = &digest_hex;
+    var plan: pair_engine.Plan = .{ .calls = undefined };
+    for (binding.plan.calls, &plan.calls) |call, *slot| slot.* = .{
+        .call_id = call.call_id,
+        .rounds = call.rounds,
+        .constant = call.constant,
+        .input = call.input,
+        .output = call.output,
+    };
+    const hash = pair_engine.identityHash(pair.effectiveDigest(binding.source_digest, digest), binding.preprocessed_root, binding.trace_log_size, 1, plan);
+    const hash_hex = std.fmt.bytesToHex(hash, .lower);
+    key.circuit_hash = &hash_hex;
+    key.component_manifest.circuit_hash = &hash_hex;
+    return std.json.Stringify.valueAlloc(a, key, .{});
+}
+
 test "sealed pair native proof accepts 16+32 and rejects key, claim, and envelope mutations" {
     const a = std.testing.allocator;
     const source = @embedFile("../../examples/boundary/private_pair16_32.s31.json");
@@ -39,6 +60,8 @@ test "sealed pair native proof accepts 16+32 and rejects key, claim, and envelop
         prove_ns,
         verify_ns,
     });
+    try std.testing.expectError(error.InvalidPairNativeEnvelope, native_pair.verifySealed(a, source, air_bytes, key, words, ""));
+    try std.testing.expectError(error.InvalidPairNativeEnvelope, native_pair.verifySealed(a, source, air_bytes, key, words, "S31NAT8P"));
 
     const changed_source = try std.fmt.allocPrint(a, "{s}\n", .{source});
     defer a.free(changed_source);
@@ -174,6 +197,7 @@ test "two-call source derives canonical plan and five-role V3 manifest" {
     changed.pair_calls[1].call_id = 0;
     changed_digest = manifest.pairPrecommitmentDigest(changed);
     try std.testing.expect(!std.mem.eql(u8, &binding.precommitment_digest, &changed_digest));
+    try std.testing.expectError(error.InvalidPairComponentManifest, manifest.validatePairSourceRoster(changed));
     changed = binding.generated.value;
     const altered_components = try a.dupe(manifest.Component, changed.components);
     defer a.free(altered_components);
@@ -181,6 +205,22 @@ test "two-call source derives canonical plan and five-role V3 manifest" {
     changed.components = altered_components;
     changed_digest = manifest.pairPrecommitmentDigest(changed);
     try std.testing.expect(!std.mem.eql(u8, &binding.precommitment_digest, &changed_digest));
+
+    // A native component cannot borrow the bundled AIR slot or another
+    // component's proof/sum position, even with a rehashed manifest.
+    const wrong_name = try a.dupe(manifest.Component, binding.generated.value.components);
+    defer a.free(wrong_name);
+    wrong_name[1].name = "unregistered_native_air";
+    changed = binding.generated.value;
+    changed.components = wrong_name;
+    try std.testing.expectError(error.InvalidPairComponentManifest, manifest.validatePairSourceRoster(changed));
+    try std.testing.expect(!(try manifest.matchesPair(a, changed, binding.generated.value)));
+    const wrong_role = try a.dupe(manifest.Component, binding.generated.value.components);
+    defer a.free(wrong_role);
+    std.mem.swap(manifest.Component, &wrong_role[1], &wrong_role[3]);
+    changed.components = wrong_role;
+    try std.testing.expectError(error.InvalidPairComponentManifest, manifest.validatePairSourceRoster(changed));
+    try std.testing.expect(!(try manifest.matchesPair(a, changed, binding.generated.value)));
 
     var assignment = try relation.parseAssignment(a, @embedFile("../../examples/boundary/private_pair16_32.valid.json"));
     defer assignment.deinit();
@@ -265,7 +305,27 @@ test "two-call source derives canonical plan and five-role V3 manifest" {
     parsed_key.value.component_manifest.circuit_hash = &changed_hash_hex;
     const resealed_key = try std.json.Stringify.valueAlloc(a, parsed_key.value, .{});
     defer a.free(resealed_key);
-    try std.testing.expectError(error.InvalidPairVerificationKey, native_pair.verifySealed(a, source, air_bytes, resealed_key, evaluated, ""));
+    var fake_raw = [_]u8{0} ** ("S31NAT8P".len + 8 + 5 * 16);
+    @memcpy(fake_raw[0.."S31NAT8P".len], "S31NAT8P");
+    try std.testing.expectError(error.InvalidPairVerificationKey, native_pair.verifySealed(a, source, air_bytes, resealed_key, evaluated, &fake_raw));
+
+    var pristine = try std.json.parseFromSlice(native_pair.Key, a, key_bytes, .{});
+    defer pristine.deinit();
+    const renamed = try a.dupe(manifest.Component, pristine.value.component_manifest.components);
+    defer a.free(renamed);
+    renamed[1].name = "unregistered_native_air";
+    var altered = pristine.value.component_manifest;
+    altered.components = renamed;
+    const renamed_key = try resealPairKey(a, pristine.value, altered, &binding);
+    defer a.free(renamed_key);
+    try std.testing.expectError(error.InvalidPairVerificationKey, native_pair.verifySealed(a, source, air_bytes, renamed_key, evaluated, &fake_raw));
+    const swapped_roles = try a.dupe(manifest.Component, pristine.value.component_manifest.components);
+    defer a.free(swapped_roles);
+    std.mem.swap(manifest.Component, &swapped_roles[1], &swapped_roles[3]);
+    altered.components = swapped_roles;
+    const swapped_roles_key = try resealPairKey(a, pristine.value, altered, &binding);
+    defer a.free(swapped_roles_key);
+    try std.testing.expectError(error.InvalidPairVerificationKey, native_pair.verifySealed(a, source, air_bytes, swapped_roles_key, evaluated, &fake_raw));
 
     const changed_source = try std.fmt.allocPrint(a, "{s}\n", .{source});
     defer a.free(changed_source);

@@ -1,9 +1,11 @@
 # General authenticated circuit-to-chip boundary
 
-Status: **one-call generated manifest and precommitment implemented; general
-design and ideal-boundary theorem**. The native implementation is still restricted to
-one four-lane affine-square repeated-step call. This brief defines the next
-proof profile; it does not claim multi-call proof support.
+Status: **released one-call profile; staged fixed two-call prototype; general
+boundary remains a design**. The fixed two-call profile has a tagged chip AIR,
+bridge AIR, source-derived five-component manifest, in-memory proof path, and
+experimental sealed byte verifier. It is unexported while native proof tests,
+adversarial controls, and an embedded source/key trust root are completed.
+It does not admit arbitrary numbers of calls.
 
 ## Contract
 
@@ -39,17 +41,17 @@ opposite chip endpoint events. All components share one base commitment,
 challenge pair, interaction commitment, claimed-sum roster, composition
 proof, and FRI proof.
 
-The future chip tuple must include a **canonical call ID** as well as its
+The staged two-call chip tuple includes a **canonical call ID** as well as its
 relation ID, row index and four state lanes:
 
 ```text
 Chip(relation_id, call_id, row_index, lane0, lane1, lane2, lane3)
 ```
 
-The current six-field tuple lacks `call_id`, which is safe only for its
+The released one-call six-field tuple lacks `call_id`, which is safe only for its
 single-call profile. Two calls with identical parameters must not be able to
-exchange start or end endpoints. A new tuple arity and transcript/profile
-version are required; assigning distinct calls to one shared six-field
+exchange start or end endpoints. The staged pair profile uses a new tuple
+arity and transcript version; assigning distinct calls to one shared six-field
 relation would leave the desired per-call join unstated.
 
 The bridge may batch calls in one 16-row component with separate column
@@ -90,10 +92,11 @@ commit a canonical typed manifest digest before the first witness/base
 commitment through
 a domain-separated effective source digest. The verifier reconstructs the
 roster from sealed source and pinned AIR before proof deserialization and
-reads chip parameters and log size from the checked manifest. The native
-engine still constructs the fixed circuit, chip, and optional bridge in
-explicit code; the manifest does not yet drive arbitrary component admission
-or a multi-call PCS schedule. The direct-gate slice remains a checked roster.
+reads chip parameters and log size from the checked manifest. The one-call
+native engine still constructs its fixed circuit, chip, and optional bridge
+in explicit code. The staged pair engine has a fixed five-role PCS schedule;
+its manifest does not yet drive arbitrary component admission. The direct-gate
+slice remains a checked roster.
 
 ## Soundness premises
 

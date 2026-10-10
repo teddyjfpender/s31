@@ -164,10 +164,14 @@ pub fn proveSealed(allocator: std.mem.Allocator, source: []const u8, air_bytes: 
     return bytes.toOwnedSlice(allocator);
 }
 
-/// The source-derived typed manifest and byte-exact key are checked before
-/// inspecting `raw`. This is a host STARK verification path, not an evaluator
-/// that recomputes the claimed result from private input.
+/// A cheap envelope size/magic check runs first. The source-derived typed
+/// manifest and byte-exact key are then checked before proof decoding. This
+/// host STARK verifier does not recompute the result from private input.
 pub fn verifySealed(allocator: std.mem.Allocator, source: []const u8, air_bytes: []const u8, sealed_key: []const u8, public_words: [8]u32, raw: []const u8) !void {
+    // Reject trivially invalid byte inputs before either source compilation.
+    // The full source-shaped postcard preflight still runs before decoding.
+    if (raw.len < header_len or raw.len > (16 << 20) or !std.mem.eql(u8, raw[0..magic.len], magic))
+        return error.InvalidPairNativeEnvelope;
     var binding = try source_binding.derive(allocator, source, air_bytes, 1);
     defer binding.deinit();
     try source_binding.verifySourceBinding(allocator, source, air_bytes, &binding);
@@ -176,8 +180,6 @@ pub fn verifySealed(allocator: std.mem.Allocator, source: []const u8, air_bytes:
     const outputs = try publicValues(public_words);
     var topology = try source_binding.compileTopology(allocator, source, &binding);
     defer topology.deinit();
-    if (raw.len < header_len or raw.len > (16 << 20) or !std.mem.eql(u8, raw[0..magic.len], magic))
-        return error.InvalidPairNativeEnvelope;
     const nonce = std.mem.readInt(u64, raw[magic.len..][0..8], .little);
     var sums: [sum_count]QM31 = undefined;
     for (&sums, 0..) |*sum, index| {
