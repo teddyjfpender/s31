@@ -7,10 +7,10 @@ interval coverage was 72% against an 80% threshold. V5 is a new prospective
 study. V4 held-out values motivated the interval design but cannot enter V5
 fitting, calibration, or gate changes.
 
-The machine-readable [V5 protocol](whole-prover-cost-v5.json) currently has
-null source, engine, compiler, and measurement-tool pins. The runner refuses
-all native phases until the integrated source revision is stable and those
-four pins plus an explicit sorted Python tool-path inventory are filled.
+The machine-readable [V5 protocol](whole-prover-cost-v5.json) pins the
+integrated S31 source, engine gitlink, compiler digest, measurement-tool
+digest, and an explicit sorted Python tool-path inventory. The runner refuses
+native phases if any pinned byte or path differs from the checkout.
 Before the first V5 native build, commit the protocol freeze JSON described
 below and record its commit SHA plus the full protocol SHA in a timestamped
 external message. The CLI requires both, checks the committed anchor bytes,

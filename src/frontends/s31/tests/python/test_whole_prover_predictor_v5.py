@@ -159,10 +159,14 @@ class WholeProverV5Tests(unittest.TestCase):
         self.assertFalse(rss_program_gate(entries, self.protocol["accuracy_gate"]))
 
     def test_unfrozen_protocol_cannot_start_native_runner(self) -> None:
-        self.assertIsNone(self.protocol["compiler_sha256"])
-        self.assertIsNone(self.protocol["measurement_tool_sha256"])
+        draft = dict(self.protocol)
+        draft["compiler_sha256"] = None
+        draft["measurement_tool_sha256"] = None
+        draft["measurement_tool_paths"] = None
+        draft["status"] = "draft"
         with self.assertRaisesRegex(ValueError, "must be pinned"):
-            require_frozen_pins(self.protocol)
+            require_frozen_pins(draft)
+        require_frozen_pins(self.protocol)
         ephemeral = dict(self.protocol)
         ephemeral.update({
             "source_base_commit": subprocess.check_output(
