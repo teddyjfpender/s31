@@ -33,6 +33,9 @@ class WholeProverV4Tests(unittest.TestCase):
         cls.protocol = json.loads(PROTOCOL.read_text())
 
     def test_fresh_split_has_distinct_sources_and_assignments(self) -> None:
+        from oracle import evaluate_relation
+        from package.context import lower_text
+
         with TemporaryDirectory() as directory:
             train = workload_cases("train", Path(directory) / "train", 2, self.protocol)
             held = workload_cases("validation", Path(directory) / "held", 2, self.protocol)
@@ -43,6 +46,13 @@ class WholeProverV4Tests(unittest.TestCase):
                 return {json.dumps(value, sort_keys=True).encode()
                         for item in items for value in item["assignments"]}
             self.assertFalse(assignments(train) & assignments(held))
+            for item in train + held:
+                source = item["source"]
+                relation = (lower_text(source)[0] if source.suffix == ".s31"
+                            else json.loads(source.read_text()))
+                for assignment in item["assignments"]:
+                    self.assertEqual(evaluate_relation(relation, assignment),
+                                     assignment["public_outputs"])
 
     def test_expected_wall_is_sum_of_stage_means_and_pow_is_constant(self) -> None:
         train = corpus("train", self.protocol)
