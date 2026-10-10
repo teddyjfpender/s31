@@ -197,3 +197,21 @@ control recomputes all eight columns, their manifest hashes, the package
 key/report, and the certificate/artifact hashes. Package admission rejects
 all four on semantic grounds. These controls exercise topology replay
 separately from the normalized-relation checker.
+
+## Focused validation
+
+From the repository root, run:
+
+```sh
+python3 -m unittest discover -s src/frontends/s31/tests/python -p test_correspondence.py
+python3 src/frontends/s31/tests/acceptance/acceptance_compiler_correspondence.py
+cd formal/s31
+lake build S31.Gadgets.Functional.SSAAirColumnCells S31.Gadgets.Functional.GeneratedDirectGateBridge
+```
+
+The Python unit suite includes a topology change between package admission
+and Lean export. The native acceptance suite builds an honest proof and
+resealed mutant packages, then checks that source/package admission rejects
+the mutations. The two Lean modules check the projected source cells and
+their selector, address, row, and multiplicity mutations. These checks do not
+discharge the PCS and Gate lookup premises above.
