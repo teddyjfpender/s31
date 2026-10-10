@@ -27,6 +27,7 @@ TEXT_FRONTEND_SOURCES = (
     *sorted((S31_DIR / "python/library").glob("*.py")),
     *sorted((S31_DIR / "python/inspection").glob("*.py")),
     *sorted((S31_DIR / "python/package").glob("*.py")),
+    *sorted((S31_DIR / "python/runtime").glob("*.py")),
     *(S31_DIR / "python" / name for name in ("s31_stdlib.py", "s31_mathlib.py")),
     S31_DIR / "python/proof_privacy.py",
 )
