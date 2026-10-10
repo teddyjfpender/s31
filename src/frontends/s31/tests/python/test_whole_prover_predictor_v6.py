@@ -187,8 +187,7 @@ class WholeProverV6Tests(unittest.TestCase):
         draft["status"] = "draft"
         with self.assertRaisesRegex(ValueError, "must be pinned"):
             require_frozen_pins(draft)
-        with self.assertRaisesRegex(ValueError, "must be pinned"):
-            require_frozen_pins(self.protocol)
+        require_frozen_pins(self.protocol)
         ephemeral = dict(self.protocol)
         ephemeral.update({
             "source_base_commit": subprocess.check_output(
@@ -206,7 +205,7 @@ class WholeProverV6Tests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "measurement tool digest"):
             require_frozen_pins(ephemeral)
 
-    def test_draft_cli_refuses_before_creating_native_output(self) -> None:
+    def test_unanchored_cli_refuses_before_creating_native_output(self) -> None:
         with TemporaryDirectory() as directory:
             output = Path(directory) / "native-output"
             argv = ["benchmark_whole_prover_cost_v6.py", "--split", "train",
@@ -218,7 +217,7 @@ class WholeProverV6Tests(unittest.TestCase):
                 "benchmark_whole_prover_cost_v6.run_corpus",
                 side_effect=AssertionError("native collection must not start"),
             ):
-                with self.assertRaisesRegex(ValueError, "must be pinned"):
+                with self.assertRaisesRegex(ValueError, "not an ancestor"):
                     benchmark_main()
             self.assertFalse(output.exists())
 
