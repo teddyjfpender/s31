@@ -199,10 +199,20 @@ binding, FRI low-degree check, and transcript challenge distribution belong
 in the quantitative `epsilon_AIR_PCS_FRI` reduction. No Lean theorem here
 derives (a) or (b) from the installed bundle or a proof byte string.
 
+[`DirectGateNativeIndices.lean`](../../../formal/s31/S31/Gadgets/Air/DirectGateNativeIndices.lean)
+encodes the captured AIR's fixed-column read permutation as an eight-element
+equivalence. Its `local_fixed_at_semantic` lemma recovers any semantic fixed
+cell from the inverse local position. It also reuses the proven circle/coset
+permutation to define `directPrevious` for any even row count, conditional on
+the supplied bit-reversal involution, and specializes it to sixteen rows.
+`decoded_last_at_previous16` explicitly requires `PreviousMaskMatches` for
+the trace. This module proves index algebra only: neither the manifest bytes
+nor the installed `at_prev` mask are authenticated by these lemmas.
+
 After V6 timing clears, the targeted checks are:
 
 ```sh
-cd formal/s31 && lake build S31.Gadgets.Air.DecodedDirectGateTrace
+(cd formal/s31 && lake build S31.Gadgets.Air.DecodedDirectGateTrace S31.Gadgets.Air.DirectGateNativeIndices)
 python3 scripts/s31_formal.py --write
 python3 scripts/s31_formal.py
 ```
