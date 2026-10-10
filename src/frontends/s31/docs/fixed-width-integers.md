@@ -44,7 +44,7 @@ both occupy one `u16` limb in the low-level relation.
 
 | Source type | Range as an integer | Proof representation |
 | --- | ---: | --- |
-| `u8`, `i8` | `0..255`, `-128..127` | One range-checked `u16` limb, additionally proved below 256. |
+| `u8`, `i8` | `0..255`, `-128..127` | One `u16` ABI slot carrying an 8-bit pattern. The wide profile uses the `u16` lookup plus a byte bound; direct byte division proves eight Boolean bits. |
 | `u16`, `i16` | `0..65535`, `-32768..32767` | One `u16` limb. |
 | `u32`, `i32` | Unsigned `0..2^32-1`, signed `-2^31..2^31-1` | Two little-endian `u16` limbs. |
 | `u64`, `i64` | Unsigned `0..2^64-1`, signed `-2^63..2^63-1` | Four little-endian `u16` limbs. |
@@ -95,7 +95,8 @@ it by requiring $c=0$. A claimed public result other than the computed byte
 also fails its public-output binding. The prover cannot choose an unbounded
 `r` to make a false addition appear true: the byte range is proved.
 
-The underlying `u16` range check is a lookup into the existing range table.
+In the generic wide profile, the underlying `u16` range check is a lookup into
+the existing range table.
 For a byte $x$, the circuit additionally guesses a range-checked `u16` wire
 $q$ and enforces $256x=q$. As $0\le q<65536$ and the product stays below the
 M31 modulus, this proves $0\le x<256$ as an ordinary integer inequality.
@@ -480,7 +481,8 @@ little-endian limb each. The compiler emits `int_div_rem` once, followed by
 two wire slices. Both halves are proved even if a later program
 uses only one.
 
-The fused multiplication column for this one-byte case is
+In the generic `sparse-wide-gate` circuit, the fused multiplication column
+for this one-byte case is
 
 $$c_0+q_0d_0+r_0=n_0+256c_1,
 \qquad 0+14\cdot14+5=201+256\cdot0.$$
@@ -494,6 +496,21 @@ a forged quotient could hide overflow; without $r<d$, many quotient and
 remainder pairs would satisfy the same product equation. Division by zero
 cannot pass the strict comparison.
 
+The `direct-gate` byte circuit proves the same fact with fewer fixed
+components. For each byte $x$, it proves eight bits $b_i$ with
+$b_i(b_i-1)=0$ and $x=\sum_{i=0}^{7}2^i b_i$. Then it constrains a byte
+$\delta$ alongside quotient and remainder:
+
+$$q d+r=n,\qquad d=r+1+\delta.$$
+
+For the example, $(n,d,q,r,\delta)=(201,14,14,5,8)$. The first left side
+can never exceed $255^2+255=65{,}280$; the second right side is at most
+511. Both are below $p=2^{31}-1$, so equality in M31 is exact integer
+equality. The second equation proves $r<d$ and excludes $d=0$. In the
+direct arithmetic AIR, each zero constraint is emitted as an arithmetic
+self-loop `anchor + value = anchor`, which forces `value=0` without an Eq
+component. The byte bit checks remove the `seq_16` lookup table altogether.
+
 For signed values, the [signed byte example](../examples/math/division/i8_div_rem.s31)
 proves $-7=(-2)\cdot3+(-1)$. The input bit pattern 249 has a proved sign bit
 of one. A conditional complement plus one produces magnitude 7:
@@ -503,27 +520,46 @@ toward zero; Python's floor division of negative numbers would give a
 different quotient and remainder. The positive-quotient sign check rejects
 the signed `MIN / -1` overflow case.
 
-The generic circuit AIR places byte bounds, column equations, Boolean
-borrows, sign equations, and public-output binding into trace rows. A
-verifier accepts a proof only when all those constraints and the public
-statement match its compiled key. The [native division gate](../tests/acceptance/math/division.py)
-records the exact circuit hashes and AIR rows:
+Both profiles bind their constraints and public statement to a native
+verification key. The [native division gate](../tests/acceptance/math/division.py)
+pins the exact circuit hashes and AIR geometry. These are local observations
+for the same source programs; the byte rows marked “wide baseline” come from
+the preceding generic implementation:
 
-| Program | Raw Eq rows | Raw QM31 rows | One local proof, bytes | Explanation |
-| --- | ---: | ---: | ---: | --- |
-| `u8_div_rem` | 13 | 55 | 232,570 | One fused product column and strict byte remainder. |
-| `u32_div_rem` | 30 | 136 | 238,377 | Four byte columns per operand, with high product columns. |
-| `i8_div_rem` | 34 | 122 | 232,876 | Byte magnitude and sign reconstruction added. |
-| `u128_div_quotient` | 114 | 802 | 234,484 | Sixteen byte columns per operand; both results constrained. |
-| `i128_div_quotient` | 187 | 1,121 | 239,293 | Signed magnitude and quotient range check added. |
+| Program | Proof profile | Raw QM31 rows | Fixed cells | One proof, bytes |
+| --- | --- | ---: | ---: | ---: |
+| `u8_div_rem` | Wide baseline | 55 | 66,128 | 232,570 |
+| `u8_div_rem` | Direct byte | 289 | 4,096 | 56,359 |
+| `i8_div_rem` | Wide baseline | 122 | 66,784 | 232,876 |
+| `i8_div_rem` | Direct byte | 607 | 8,192 | 72,947 |
+| `u32_div_rem` | Wide | 136 | 67,840 | 238,377 |
+| `u128_div_quotient` | Wide | 802 | 74,752 | 234,484 |
+| `i128_div_quotient` | Wide | 1,121 | 83,200 | 239,293 |
 
-The [measurement record](../../../../design/s31/measurements/language/fixed-width-division-2026-10-10.json)
-also includes padded rows, fixed preprocessing, and separated proof stages.
-The shared 65,536-cell range table dominates fixed work; these single-run
-sizes and timings do not establish a total proving-speed advantage. The
+The [baseline measurement](../../../../design/s31/measurements/language/fixed-width-division-2026-10-10.json)
+records padded rows, fixed preprocessing, and separated proof stages. The
+direct byte proof trades more arithmetic rows for removal of the shared
+65,536-cell range table. A [paired profile measurement](../../../../design/s31/measurements/language/byte-direct-division-2026-10-10.json)
+uses five distinct valid assignments per source, one warmup per profile,
+native verification, changed-statement rejection, and independent value
+evaluation for every run:
+
+| Source | Profile | Median proof | Median proving wall time | Median prover time excluding PoW |
+| --- | --- | ---: | ---: | ---: |
+| `u8_div_rem` | Direct | 54,356 bytes | 38.8 ms | 1.27 ms |
+| `u8_div_rem` | Sparse-wide | 223,847 bytes | 152.8 ms | 15.39 ms |
+| `i8_div_rem` | Direct | 72,947 bytes | 35.7 ms | 1.94 ms |
+| `i8_div_rem` | Sparse-wide | 223,935 bytes | 100.7 ms | 15.84 ms |
+
+The matched sources have the same normalized relation and visible FRI
+settings. Wall times include process startup and a variable proof-of-work
+search; these local medians are not a cross-machine performance guarantee.
+Matching visible FRI settings alone does not prove equal soundness across
+different AIRs. The
 [Lean division model](../../../../formal/s31/S31/Gadgets/IntegerDivision.lean)
-proves Euclidean uniqueness and reuses the bounded-column theorem. A formal
-correspondence from production Zig gates to that model remains open.
+proves Euclidean uniqueness, bounded columns, and the no-wrap direct-byte
+equations. A formal correspondence from production Zig gates to that model
+remains open.
 
 ## Where the AIR and proof enter
 

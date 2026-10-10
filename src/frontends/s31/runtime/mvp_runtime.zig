@@ -247,7 +247,8 @@ pub fn main() !void {
     if (chip_mode and sourceChipSpec(parsed.value) == null)
         return error.UnsupportedChipRelation;
     if (direct_mode) for (parsed.value.inputs) |input| {
-        if (input.kind != .m31) return error.UnsupportedDirectRelation;
+        if (input.kind != .m31 and !s31.relation_compiler.directByteInput(parsed.value, input))
+            return error.UnsupportedDirectRelation;
     };
     if (std.mem.eql(u8, command, "check") and args.len == 2) {
         std.debug.print("S31 {s}: relation valid\n", .{parsed.value.name});

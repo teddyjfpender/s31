@@ -62,4 +62,35 @@ theorem fused_columns_exact (q d r n : List Nat)
       decode 256 n = decode 256 q * decode 256 d + decode 256 r := by
   rw [Schoolbook.schoolbook_product_sound_complete q d r n hc hn hlen, eq_comm]
 
+/-- The direct byte circuit uses field equalities rather than a range table.
+Once its five byte wires are bounded, both sides of each equation lie below
+the M31 modulus, so a field equality is an exact integer equality. -/
+def directByteConstraint (n d q r difference : Nat) : Prop :=
+  n < 256 ∧ d < 256 ∧ q < 256 ∧ r < 256 ∧ difference < 256 ∧
+    (q * d + r) % 2147483647 = n % 2147483647 ∧
+    d % 2147483647 = (r + 1 + difference) % 2147483647
+
+theorem direct_byte_no_wrap (n d q r difference : Nat)
+    (h : directByteConstraint n d q r difference) :
+    n = q * d + r ∧ r < d := by
+  rcases h with ⟨hn, hd, hq, hr, hdiff, hproduct, hcompare⟩
+  have hq' : q ≤ 255 := by omega
+  have hd' : d ≤ 255 := by omega
+  have hmul : q * d ≤ 255 * 255 := Nat.mul_le_mul hq' hd'
+  have hn_field : n < 2147483647 := by omega
+  have hd_field : d < 2147483647 := by omega
+  have hproduct_bound : q * d + r < 2147483647 := by omega
+  have hcompare_bound : r + 1 + difference < 2147483647 := by omega
+  constructor
+  · simpa [Nat.mod_eq_of_lt hproduct_bound, Nat.mod_eq_of_lt hn_field] using hproduct.symm
+  · have hexact : d = r + 1 + difference := by
+      simpa [Nat.mod_eq_of_lt hd_field, Nat.mod_eq_of_lt hcompare_bound] using hcompare
+    omega
+
+theorem direct_byte_division (n d q r difference : Nat)
+    (h : directByteConstraint n d q r difference) :
+    0 < d ∧ q = n / d ∧ r = n % d := by
+  obtain ⟨hproduct, hrem⟩ := direct_byte_no_wrap n d q r difference h
+  exact (Bitcoin.division_sound_complete n d q r).mp ⟨hproduct, hrem⟩
+
 end S31.Gadgets.IntegerDivision

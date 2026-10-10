@@ -95,6 +95,8 @@ def abi(source: dict, lowering: str) -> dict:
             length = 1
         elif op == "array_concat":
             length = shapes[node["lhs"]]["length"] + shapes[node["rhs"]]["length"]
+        elif op == "int_div_rem":
+            length = 2 * shapes[node["lhs"]]["length"]
         elif op in {"hash_sha256d_header", "bitcoin_target_mainnet", "bitcoin_block_work", "bitcoin_prev_hash", "bitcoin_genesis_hash_mainnet"}:
             length = 16
         elif op in {"bitcoin_header_bits", "bitcoin_header_time"}:
@@ -105,7 +107,7 @@ def abi(source: dict, lowering: str) -> dict:
         else:
             length = shapes[node["lhs"]]["length"]
         shapes[node["name"]] = {"kind": (shapes[node["lhs"]]["kind"] if op in {"array_get", "array_concat", "array_slice", "select"} else
-                                         "u16" if op in {"int_view", "int_add_checked", "int_add_wrapping", "int_sub_checked", "int_sub_wrapping", "int_mul_wrapping", "int_mul_checked", "u256_add", "u256_add_checked", "u256_sub", "u256_sub_checked", "hash_sha256d_header", "bitcoin_target_mainnet", "bitcoin_block_work", "bitcoin_prev_hash", "bitcoin_header_bits", "bitcoin_header_time", "bitcoin_genesis_hash_mainnet"} else "m31"), "length": length}
+                                         "u16" if op in {"int_view", "int_add_checked", "int_add_wrapping", "int_sub_checked", "int_sub_wrapping", "int_mul_wrapping", "int_mul_checked", "int_div_rem", "u256_add", "u256_add_checked", "u256_sub", "u256_sub_checked", "hash_sha256d_header", "bitcoin_target_mainnet", "bitcoin_block_work", "bitcoin_prev_hash", "bitcoin_header_bits", "bitcoin_header_time", "bitcoin_genesis_hash_mainnet"} else "m31"), "length": length}
     return {
         "schema": "s31-public-abi-v1",
         "encoding": "eight canonical M31 words, encoded little-endian u32; unused words are zero" if lowering.startswith("direct-") or lowering in {"sha-shift", "sha-fused"} else "eight little-endian u32 words; unused words are zero",

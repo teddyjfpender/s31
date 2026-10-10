@@ -25,7 +25,8 @@ field element as an integer.
 ## Circuit construction
 
 First prove every input, quotient, and remainder limb belongs to its declared
-width. An 8-bit scalar needs a byte bound in addition to the `u16` lookup.
+width. The generic wide circuit uses `u16` lookups; its byte scalars also
+prove the tighter bound below 256.
 Split each 16-bit limb into two bytes, constraining the low byte and using
 the bounded limb plus reconstruction to bound the high byte. For a width
 `W`, let `K=W/8` be the number of bytes. A direct convolution proves the
@@ -42,8 +43,8 @@ below the modulus. Thus a field equality in each column is an integer
 equality; a witness cannot borrow a multiple of the field modulus or discard
 high product bytes.
 
-Prove `r<b` with `b-r-1` in bounded base-`2^16` digits (base `2^8` for a
-byte), Boolean borrows, and final borrow zero. This strict inequality alone
+Prove `r<b` with `b-r-1` in bounded base-`2^16` digits, Boolean borrows,
+and final borrow zero. This strict inequality alone
 excludes `b=0`. Together, the convolution and comparison determine the
 unique Euclidean quotient and remainder. A witness generator may calculate
 `q` and `r`, but the verifier accepts only the constrained equations.
@@ -55,6 +56,31 @@ its top sign bit clear; this excludes `MIN / -1`. A negative quotient may
 reach exactly `MIN`. The sign selection and each conditional negation need
 explicit Boolean and limb equations; witness-time branching alone is not a
 constraint.
+
+## Direct byte circuit
+
+The `direct-gate` profile can prove the `u8` and `i8` division examples
+without an Eq component, 16-bit converter, or `seq_16` range table. Each byte
+wire is reconstructed from eight Boolean bits. A zero assertion is an
+arithmetic self-loop, `anchor + value = anchor`, with one producing gate for
+the anchor. This enforces `value = 0` in the direct arithmetic AIR.
+
+For the unsigned relation, the circuit proves
+
+$$0\le n,d,q,r,\delta<256,\qquad qd+r=n,\qquad d=r+1+\delta.$$
+
+The largest possible left side of the product equation is
+`255*255+255=65,280`; the comparison's right side is at most 511. Both are
+smaller than the M31 modulus. The field equalities therefore prove exact
+integer equalities and `r<d`, including the zero-divisor exclusion. The
+compiler admits this profile only when each raw `u16` input flows exclusively
+through an 8-bit integer view; the source type and public ABI remain bound in
+the canonical relation and verification key.
+
+For signed bytes, the sign comes from the proved high bit. Conditional
+two's-complement negation proves a byte output and Boolean carry using
+arithmetic gates. The positive-quotient sign check rejects `MIN / -1`.
+The wide circuit remains the path for 16 through 128 bits.
 
 ## Audit and performance gates
 
@@ -74,3 +100,13 @@ and verifier time separately. Reuse the existing Bitcoin 256-bit division
 gadget as a correctness reference. A fused quotient-product-remainder column
 avoids a separate full-product output and checked-add circuit, but its
 end-to-end benefit must be measured before claiming a speedup.
+
+The [paired byte-profile record](../measurements/language/byte-direct-division-2026-10-10.json)
+compares the same current circuit under `direct-gate` and `sparse-wide-gate`
+for five distinct witnesses per signedness, with one warmup per profile.
+Median proof size falls from 223,847 to 54,356 bytes for `u8` and from
+223,935 to 72,947 bytes for `i8`; median non-PoW prover stages fall from
+15.39 to 1.27 ms and from 15.84 to 1.94 ms respectively on the measured
+machine. The record contains all per-assignment times and verification
+controls. These are local profile comparisons, not a claim of equal security
+from matching visible FRI parameters alone.

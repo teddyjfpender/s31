@@ -8,6 +8,7 @@
 const core = @import("stwo_core");
 const circuit = @import("stwo_circuit_frontend");
 const std = @import("std");
+const integer_bits = @import("integer_bits.zig");
 
 const M31 = core.fields.m31.M31;
 const QM31 = core.fields.qm31.QM31;
@@ -39,6 +40,12 @@ fn constrainByte(comptime V: type, ctx: *Context(V), word: Var) !void {
     const scaled = try ctx.guessU16(hint(V, (value * 256) & 0xffff));
     const base = try ctx.constant(QM31.fromBase(M31.fromCanonical(256)));
     try ctx.eq(try ctx.mul(word, base), scaled);
+}
+
+fn assertEqualArithmetic(comptime V: type, ctx: *Context(V), lhs: Var, rhs: Var) !void {
+    const difference = try ctx.sub(lhs, rhs);
+    const anchor = try ctx.newVar(circuit.builder.ivalue.fromQm31(V, QM31.zero()));
+    try ctx.addInto(anchor, difference, anchor);
 }
 
 fn boundedByte(comptime V: type, ctx: *Context(V), value: u32) !Var {
@@ -83,6 +90,33 @@ fn witnessWords(comptime V: type, ctx: *Context(V), value: u128, width: u32) ![]
     return words;
 }
 
+/// A byte product plus remainder is at most 65,280, so one M31 equality
+/// proves the full integer equation without convolution carries. The strict
+/// remainder equation is likewise below the field modulus. The bounded flags
+/// may only be set when a preceding constraint already proved the two bytes.
+fn divRemByteWithWitness(comptime V: type, ctx: *Context(V), numerator: []const Var, denominator: []const Var, numerator_byte_bounded: bool, denominator_byte_bounded: bool, witness: Witness) !Division {
+    if (!numerator_byte_bounded) _ = try integer_bits.decomposeByteArithmetic(V, ctx, numerator[0]);
+    if (!denominator_byte_bounded) _ = try integer_bits.decomposeByteArithmetic(V, ctx, denominator[0]);
+    const quotient_value = std.math.cast(u32, witness.quotient) orelse return error.IntegerOutOfRange;
+    const remainder_value = std.math.cast(u32, witness.remainder) orelse return error.IntegerOutOfRange;
+    if (quotient_value >= core.fields.m31.Modulus or remainder_value >= core.fields.m31.Modulus) return error.IntegerOutOfRange;
+    const quotient = try ctx.guess(hint(V, quotient_value));
+    const remainder = try ctx.guess(hint(V, remainder_value));
+    _ = try integer_bits.decomposeByteArithmetic(V, ctx, quotient);
+    _ = try integer_bits.decomposeByteArithmetic(V, ctx, remainder);
+    const d = valueOf(V, ctx, denominator[0]);
+    const difference_value = (d +% 256 -% remainder_value -% 1) & 255;
+    const difference = try ctx.guess(hint(V, difference_value));
+    _ = try integer_bits.decomposeByteArithmetic(V, ctx, difference);
+    try assertEqualArithmetic(V, ctx, try ctx.add(try ctx.mul(quotient, denominator[0]), remainder), numerator[0]);
+    try assertEqualArithmetic(V, ctx, denominator[0], try ctx.add(try ctx.add(remainder, ctx.one()), difference));
+    const q = try ctx.scratch().alloc(Var, 1);
+    const r = try ctx.scratch().alloc(Var, 1);
+    q[0] = quotient;
+    r[0] = remainder;
+    return .{ .quotient = q, .remainder = r };
+}
+
 pub fn divRem(comptime V: type, ctx: *Context(V), numerator: []const Var, denominator: []const Var, width: u32, numerator_byte_bounded: bool, denominator_byte_bounded: bool) !Division {
     if (width != 8 and width != 16 and width != 32 and width != 64 and width != 128)
         return error.InvalidIntegerSpec;
@@ -107,6 +141,7 @@ pub fn divRemWithWitness(comptime V: type, ctx: *Context(V), numerator: []const 
     const limb_count: usize = if (width == 8) 1 else @intCast(width / 16);
     if (numerator.len != limb_count or denominator.len != limb_count)
         return error.InvalidIntegerOperand;
+    if (width == 8) return divRemByteWithWitness(V, ctx, numerator, denominator, numerator_byte_bounded, denominator_byte_bounded, witness);
     const count: usize = @intCast(width / 8);
     const n = try splitWords(V, ctx, numerator, width, numerator_byte_bounded);
     const d = try splitWords(V, ctx, denominator, width, denominator_byte_bounded);
@@ -228,4 +263,31 @@ test "unsigned division constrains all widths and rejects false witnesses" {
         try ctx.finalize(false);
         try std.testing.expect(!(try ctx.isCircuitValid()));
     }
+}
+
+test "proved byte division needs no u16 lookup rows" {
+    var ctx = try Context(QM31).init(std.testing.allocator, 2);
+    defer ctx.deinit();
+    const numerator = try ctx.guess(hint(QM31, 201));
+    const denominator = try ctx.guess(hint(QM31, 14));
+    _ = try integer_bits.decomposeByteArithmetic(QM31, &ctx, numerator);
+    _ = try integer_bits.decomposeByteArithmetic(QM31, &ctx, denominator);
+    const division = try divRemWithWitness(QM31, &ctx, &.{numerator}, &.{denominator}, 8, true, true, .{ .quotient = 14, .remainder = 5 });
+    try ctx.setOutputs(&.{ division.quotient[0], division.remainder[0] });
+    try ctx.finalize(false);
+    try std.testing.expect(try ctx.isCircuitValid());
+    try std.testing.expectEqual(@as(usize, 0), ctx.circuit.m31_to_u32.items.len);
+    try std.testing.expectEqual(@as(usize, 0), ctx.circuit.eq.items.len);
+}
+
+test "byte division rejects an unbounded input even when equations agree" {
+    var ctx = try Context(QM31).init(std.testing.allocator, 2);
+    defer ctx.deinit();
+    const numerator = try ctx.guess(hint(QM31, 256));
+    const denominator = try ctx.guess(hint(QM31, 14));
+    // 256 = 18*14+4 and 4<14; only the byte bound rules this out.
+    const division = try divRemWithWitness(QM31, &ctx, &.{numerator}, &.{denominator}, 8, false, false, .{ .quotient = 18, .remainder = 4 });
+    try ctx.setOutputs(&.{ division.quotient[0], division.remainder[0] });
+    try ctx.finalize(false);
+    try std.testing.expect(!(try ctx.isCircuitValid()));
 }

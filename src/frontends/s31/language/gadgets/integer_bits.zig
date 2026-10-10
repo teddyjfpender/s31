@@ -49,6 +49,27 @@ pub fn decomposeWord(comptime V: type, ctx: *circuit.builder.Context(V), word: V
     return bits;
 }
 
+/// Byte range proof using only arithmetic gates. Each bit satisfies
+/// b(b-1)=0 and the packed byte equals `word`. The self-loop assertion has a
+/// unique producing gate, so it is accepted by the direct arithmetic AIR.
+pub fn decomposeByteArithmetic(comptime V: type, ctx: *circuit.builder.Context(V), word: Var) ![]Var {
+    const bits = try ctx.scratch().alloc(Var, 8);
+    const value: u32 = if (comptime V == QM31) ctx.get(word).toM31Array()[0].v else 0;
+    for (bits, 0..) |*slot, i| {
+        const bit_value: u32 = (value >> @as(u5, @intCast(i))) & 1;
+        const bit = try ctx.guess(circuit.builder.ivalue.fromQm31(V, QM31.fromBase(M31.fromCanonical(bit_value))));
+        try assertZeroArithmetic(V, ctx, try ctx.sub(try ctx.mul(bit, bit), bit));
+        slot.* = bit;
+    }
+    try assertZeroArithmetic(V, ctx, try ctx.sub(try packWord(V, ctx, bits), word));
+    return bits;
+}
+
+fn assertZeroArithmetic(comptime V: type, ctx: *circuit.builder.Context(V), value: Var) !void {
+    const anchor = try ctx.newVar(circuit.builder.ivalue.fromQm31(V, QM31.zero()));
+    try ctx.addInto(anchor, value, anchor);
+}
+
 pub fn combine(comptime V: type, ctx: *circuit.builder.Context(V), lhs: []const Var, rhs: ?[]const Var, mode: Mode) ![]Var {
     if (rhs) |right| if (right.len != lhs.len) return error.InvalidIntegerBits;
     if (mode != .not_ and rhs == null) return error.InvalidIntegerBits;

@@ -8,6 +8,7 @@ S31_SOURCE_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(S31_SOURCE_ROOT / "python"))
 
 from oracle import OracleError, evaluate_relation
+from package.context import abi
 from text_frontend import SourceError, compile_text
 
 
@@ -16,6 +17,17 @@ def limbs(value: int, width: int) -> list[int]:
 
 
 class FixedWidthIntegerTests(unittest.TestCase):
+    def test_division_pair_has_two_integer_results_in_public_abi(self) -> None:
+        source = {"inputs": [{"name": "a", "kind": "u16", "length": 1,
+                              "visibility": "private"},
+                             {"name": "b", "kind": "u16", "length": 1,
+                              "visibility": "private"}],
+                  "nodes": [{"name": "pair", "op": "int_div_rem", "lhs": "a",
+                             "rhs": "b", "constant": 8}],
+                  "public_outputs": ["pair"]}
+        self.assertEqual(abi(source, "sparse-wide-gate")["public_outputs"],
+                         [{"name": "pair", "kind": "u16", "length": 2}])
+
     def assignment(self, relation: dict, width: int, a: int, b: int, result: int | bool) -> dict:
         return {
             "public_inputs": {},
