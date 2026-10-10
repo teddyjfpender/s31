@@ -6,10 +6,14 @@ from __future__ import annotations
 import hashlib
 import json
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
 S31 = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(S31))
+from python.package.bounded_manifest_v4 import bounded_v4_digest
+
 SOURCE = S31 / "examples/boundary/private_many1.s31.json"
 ASSIGNMENT = S31 / "examples/boundary/private_many1.valid.json"
 MAGIC = b"S31MNY04"
@@ -72,8 +76,12 @@ def main() -> None:
         ]
         assert inspected["manifest"]["calls"][0]["endpoints"] is not None
         assert inspected["manifest"]["native_preflight"] is not None
+        assert bounded_v4_digest(inspected["manifest"]) == inspected["manifest_precommitment_sha256"]
         assert bytes.fromhex(inspected["manifest_precommitment_sha256"]) == raw[len(MAGIC) + 36:len(MAGIC) + 68]
         assert bytes.fromhex(inspected["circuit_identity_sha256"]) == raw[len(MAGIC) + 68:len(MAGIC) + 100]
+        changed_manifest = json.loads(json.dumps(inspected["manifest"]))
+        changed_manifest["calls"][0]["endpoints"]["input"][0] += 1
+        assert bounded_v4_digest(changed_manifest) != inspected["manifest_precommitment_sha256"]
         for name, offset in (
             ("magic", 0), ("count", len(MAGIC)),
             ("roster", len(MAGIC) + 1), ("reserved", len(MAGIC) + 2),

@@ -181,6 +181,8 @@
     "src/frontends/s31/python/package/correspondence.py": "927359e691ff6374379c51973a699789b137209f5f17921103616ad5434df111",
     "src/frontends/s31/python/package/direct_gate_schedule.py": "e1a974ae3eda8e54b95f9a2b4c69d8e708be972be753da8017c9789dca541d12",
     "src/frontends/s31/python/package/manifest_digest.py": "fb82333fda60d230e4bacf251429cd6eee460a7ed74b9a7182beccbbb8918e39",
+    "src/frontends/s31/python/package/bounded_manifest_v4.py": "4a3a4a66645da3c48c8dfd9bbf2d9782db1669911d3bf63cf1810c861a9484a7",
+    "src/frontends/s31/tests/acceptance/acceptance_many_source_pinned.py": "2b0b51f8c91e37c0a4fd648ad66b42fe3ae1a6dcd07fd412c7aa1cc7e4d2f519",
     "src/frontends/s31/python/package/trust.py": "38b72a8f061eebe95ba1537894016b36f02a94a5972116e5eaaae6137cb435b7",
     "src/frontends/s31/python/package/verify.py": "91fb1590767c832ecd9ad367f0d18c2fd0bfcf4d6e12be50080d2b328652a047",
     "src/frontends/s31/python/abi/record_v2.py": "e40f84ba2e0edf4335f1ee5956d699e4df866098b1820e9f1e2db0187689cd18",

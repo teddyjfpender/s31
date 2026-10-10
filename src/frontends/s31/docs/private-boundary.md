@@ -183,6 +183,11 @@ must match the two corresponding 32-byte fields in the proof envelope. The
 JSON is an audit view; changing it cannot change the verifier's embedded
 source or reconstructed roster. For example, the one-call report has roles
 `["circuit", "chip", "bridge"]` and exactly three claimed sums.
+The independent Python
+[`bounded_v4_digest`](../python/package/bounded_manifest_v4.py) reader recomputes
+the typed SHA-256 from that JSON. The black-box acceptance script compares
+its result with both the inspector and the native proof header, and checks
+that changing an endpoint address changes the digest.
 
 The [black-box acceptance script](../tests/acceptance/acceptance_many_source_pinned.py)
 runs these binaries and checks a changed public word, statement schema,
