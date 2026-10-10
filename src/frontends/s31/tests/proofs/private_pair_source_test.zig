@@ -147,11 +147,12 @@ test "sealed pair native long-round lifting keeps preprocessed root and proof al
         sums[lane] = @intCast((@as(u64, left_end) + right_end) % 2147483647);
         products[lane] = @intCast((@as(u64, left_end) * right_end) % 2147483647);
     }
-    const assignment_json = try std.json.Stringify.valueAlloc(a, .{
-        .public_inputs = .{},
-        .private_inputs = .{ .left = left_input, .right = right_input },
-        .public_outputs = .{ .sum = sums, .product = products },
-    }, .{});
+    const outputs_json = try std.json.Stringify.valueAlloc(a, .{ .sum = sums, .product = products }, .{});
+    defer a.free(outputs_json);
+    const assignment_json = try std.fmt.allocPrint(a,
+        "{{\"public_inputs\":{{}},\"private_inputs\":{{\"left\":[3,3,7,11],\"right\":[2,4,6,8]}},\"public_outputs\":{s}}}",
+        .{outputs_json},
+    );
     defer a.free(assignment_json);
     var assignment = try relation.parseAssignment(a, assignment_json);
     defer assignment.deinit();
