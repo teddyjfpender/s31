@@ -21,6 +21,16 @@ DERIVED_THEOREMS = {
     "formal/s31/S31/Gadgets/Packed.lean": ("S31.Gadgets.Packed.Quad.ext_iff",),
     "formal/s31/S31/Gadgets/Functional/SSATextBytes.lean": (
         "S31.Functional.SSATextBytes.Parsed.checked",),
+    "formal/s31/S31/Gadgets/Functional/SSAPublicInputBinding.lean": (
+        "S31.Functional.SSAPublicInputBinding.InputBoundary.basis1",
+        "S31.Functional.SSAPublicInputBinding.InputBoundary.basis2",
+        "S31.Functional.SSAPublicInputBinding.InputBoundary.basis3",
+        "S31.Functional.SSAPublicInputBinding.InputBoundary.copies",
+        "S31.Functional.SSAPublicInputBinding.InputBoundary.packAdds",
+        "S31.Functional.SSAPublicInputBinding.InputBoundary.packMuls",
+        "S31.Functional.SSAPublicInputBinding.InputBoundary.pins",
+        "S31.Functional.SSAPublicInputBinding.InputBoundary.zero",
+    ),
     "formal/s31/S31/Gadgets/Air/TaggedPairSourceComposition.lean": (
         "S31.Gadgets.Air.TaggedPairSourceComposition.BridgeRows.interactionAccepted",
         "S31.Gadgets.Air.TaggedPairSourceComposition.BridgeRows.mainAccepted",

@@ -47,6 +47,29 @@ class FormalGateTests(unittest.TestCase):
                                      "@[simp] theorem ofNat?_toNat : True := by trivial\nend X\n", s31_formal.lean_code)
         self.assertEqual(names, ["X.ofNat?_toNat"])
 
+    def test_public_input_boundary_proof_projections_are_inventoried(self) -> None:
+        prefix = "S31.Functional.SSAPublicInputBinding.InputBoundary."
+        expected = {prefix + field for field in (
+            "basis1", "basis2", "basis3", "copies", "packAdds", "packMuls",
+            "pins", "zero",
+        )}
+        path = "formal/s31/S31/Gadgets/Functional/SSAPublicInputBinding.lean"
+        source = (ROOT / path).read_text()
+        fields = set()
+        in_structure = False
+        for line in source.splitlines():
+            if line.startswith("structure InputBoundary "):
+                in_structure = True
+            elif in_structure and not line.strip():
+                break
+            elif in_structure:
+                field = line.split(":", 1)[0].strip()
+                if field.isidentifier():
+                    fields.add(prefix + field)
+        self.assertEqual(fields, expected)
+        self.assertEqual(set(checks.DERIVED_THEOREMS[path]), expected)
+        self.assertTrue(expected <= self.theorems)
+
     def test_unsupported_declaration_style_is_rejected(self) -> None:
         with self.assertRaises(checks.FormalError):
             checks.theorem_names("namespace X\ntheorem «hidden name» : True := by trivial\nend X\n", s31_formal.lean_code)
