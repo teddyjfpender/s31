@@ -73,12 +73,17 @@ From the repository root, with compiler/package/runtime sources stable:
 
 ```sh
 python3 src/frontends/s31/benchmarks/benchmark_whole_prover_stage_v1.py \
-  --split train --out zig-out/s31/stage-aware-train-v1
+  --split train --phase build --out zig-out/s31/stage-aware-train-v1
+python3 src/frontends/s31/benchmarks/benchmark_whole_prover_stage_v1.py \
+  --split train --phase prove --out zig-out/s31/stage-aware-train-v1
 python3 src/frontends/s31/benchmarks/stage_aware_predictor_v1.py fit \
   zig-out/s31/stage-aware-train-v1/stage-aware-corpus.json \
   --out zig-out/s31/stage-aware-model-v1.json
 python3 src/frontends/s31/benchmarks/benchmark_whole_prover_stage_v1.py \
-  --split validation --model zig-out/s31/stage-aware-model-v1.json \
+  --split validation --phase build --model zig-out/s31/stage-aware-model-v1.json \
+  --out zig-out/s31/stage-aware-validation-v1
+python3 src/frontends/s31/benchmarks/benchmark_whole_prover_stage_v1.py \
+  --split validation --phase prove --model zig-out/s31/stage-aware-model-v1.json \
   --out zig-out/s31/stage-aware-validation-v1
 python3 src/frontends/s31/benchmarks/stage_aware_predictor_v1.py evaluate \
   zig-out/s31/stage-aware-model-v1.json \

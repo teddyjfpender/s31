@@ -128,6 +128,7 @@ def compact_trial(trial: dict) -> dict:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--split", choices=("train", "validation"), required=True)
+    parser.add_argument("--phase", choices=("build", "prove", "all"), default="all")
     parser.add_argument("--model", type=Path, help="frozen training model, required for validation")
     parser.add_argument("--out", type=Path, required=True)
     args = parser.parse_args()
@@ -151,9 +152,27 @@ def main() -> None:
     for workload in workload_cases(args.split, output, samples, protocol):
         name = workload["name"]
         source = workload["source"]
-        package, build_measurement = measured_package_build(
-            source, output / name / "package", workload["lowering"])
+        package_path = output / name / "package"
+        build_record_path = output / name / "package-build-record.json"
+        if args.phase == "prove":
+            build_record = json.loads(build_record_path.read_text())
+            if build_record["source_sha256"] != s31.file_hash(source):
+                raise ValueError(f"{name}: source changed since package build phase")
+            package = s31.build(source, package_path, workload["lowering"])
+            build_measurement = build_record["package_build"]
+        else:
+            package, build_measurement = measured_package_build(
+                source, package_path, workload["lowering"])
         manifest = json.loads((package / "manifest.json").read_text())
+        if args.phase == "prove":
+            if build_record["compiler_sha256"] != manifest["compiler_sha256"]:
+                raise ValueError(f"{name}: compiler changed since package build phase")
+        else:
+            s31.write_json(build_record_path, {
+                "source_sha256": s31.file_hash(source),
+                "compiler_sha256": manifest["compiler_sha256"],
+                "package_build": build_measurement,
+            })
         cost = json.loads((package / "cost-report.json").read_text())
         digests = []
         for index, assignment in enumerate(workload["assignments"]):
@@ -173,6 +192,18 @@ def main() -> None:
         raise ValueError("compiler source changed during package builds")
     if frozen_model is not None and compiler_digests != {frozen_model["compiler_sha256"]}:
         raise ValueError("compiler source changed since the training model was frozen")
+    if args.phase == "build":
+        s31.write_json(output / "stage-aware-build-inventory.json", {
+            "schema": "s31-stage-aware-build-inventory-v1", "split": args.split,
+            "protocol_sha256": hashlib.sha256(protocol_bytes).hexdigest(),
+            "compiler_sha256": next(iter(compiler_digests)),
+            "programs": {item["workload"]["name"]: {
+                "source_sha256": s31.file_hash(item["workload"]["source"]),
+                "package_build": item["build_measurement"],
+            } for item in prepared},
+        })
+        print(output / "stage-aware-build-inventory.json")
+        return
     proof_order = []
     for index in range(samples):
         rotated = prepared[index % len(prepared):] + prepared[:index % len(prepared)]
