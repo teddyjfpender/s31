@@ -158,7 +158,10 @@ class FormalGateTests(unittest.TestCase):
             for relative in s31_formal.BINDINGS + ["formal/s31/coverage.json"]:
                 path = root / relative; path.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(ROOT / relative, path)
-            with patch.object(s31_formal, "ROOT", root), patch.object(s31_formal, "FORMAL", root / "formal/s31"):
+            with patch.object(s31_formal, "ROOT", root), \
+                    patch.object(s31_formal, "FORMAL", root / "formal/s31"), \
+                    patch.object(s31_formal, "generated_native_square4_topology",
+                                 return_value=(FORMAL / "S31/Gadgets/Functional/TextSquare4Native.lean").read_text()):
                 before = s31_formal.generated()[root / "formal/s31/source-bindings.json"]
                 source = root / s31_formal.RELATION
                 source.write_text(source.read_text() + "\n// changed source identity\n")
@@ -171,7 +174,10 @@ class FormalGateTests(unittest.TestCase):
             for relative in s31_formal.BINDINGS + ["formal/s31/coverage.json"]:
                 path = root / relative; path.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(ROOT / relative, path)
-            with patch.object(s31_formal, "ROOT", root), patch.object(s31_formal, "FORMAL", root / "formal/s31"):
+            with patch.object(s31_formal, "ROOT", root), \
+                    patch.object(s31_formal, "FORMAL", root / "formal/s31"), \
+                    patch.object(s31_formal, "generated_native_square4_topology",
+                                 return_value=(FORMAL / "S31/Gadgets/Functional/TextSquare4Native.lean").read_text()):
                 before = s31_formal.generated()[root / "formal/s31/source-bindings.json"]
                 source = root / "src/frontends/s31/python/language/specialize.py"
                 source.write_text(source.read_text() + "\n# changed specialization identity\n")

@@ -12,6 +12,7 @@ import json
 import re
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -38,6 +39,9 @@ TEXT_SQUARE4 = "src/frontends/s31/examples/arithmetic/functional_square4.s31"
 BINDINGS = [
     RELATION,
     TEXT_SQUARE4,
+    "src/frontends/s31/build.zig",
+    "src/frontends/s31/entry/export_square4_topology.zig",
+    "src/frontends/s31/tools/formal/export_square4_topology.zig",
     "src/frontends/s31/language/relation_compiler.zig",
     "src/frontends/s31/library/hash/poseidon2.zig",
     "src/core/crypto/blake2s_terminal_parallel.zig",
@@ -329,6 +333,32 @@ def generated_text_square4() -> str:
     )
 
 
+def generated_native_square4_topology() -> str:
+    """Run the actual direct compiler on IR freshly produced from `.s31` text."""
+    from src.frontends.s31.python.text_frontend import compile_file
+
+    program, _ = compile_file(ROOT / TEXT_SQUARE4)
+    with tempfile.TemporaryDirectory(prefix="s31-square4-topology-") as directory:
+        ir = Path(directory) / "program.json"
+        ir.write_text(json.dumps(program, sort_keys=True) + "\n")
+        try:
+            result = subprocess.run(
+                ["zig", "build", "--build-file", "src/frontends/s31/build.zig",
+                 "export-square4-topology-lean", "-Doptimize=ReleaseFast",
+                 f"-Ds31-source={ir}"],
+                cwd=ROOT, capture_output=True, text=True, timeout=300,
+                check=False,
+            )
+        except subprocess.TimeoutExpired as error:
+            raise FormalError("native square4 topology export timed out") from error
+    if result.returncode != 0:
+        raise FormalError("native square4 topology export failed: " + result.stderr[-4000:])
+    expected = "import S31.Gadgets.Functional.TextSquare4Air\n"
+    if not result.stdout.startswith(expected):
+        raise FormalError("native square4 topology exporter returned unexpected output")
+    return result.stdout
+
+
 def generated() -> dict[Path, str]:
     check_native_qm31_relation_schedule()
     check_native_eq_relation_schedule()
@@ -381,6 +411,8 @@ def generated() -> dict[Path, str]:
         FORMAL / "S31/Gadgets/Air/NativeLogUpBatches.lean": generated_native_air(
             "export-logup-batches-lean", "NativeLogUpAir"),
         FORMAL / "S31/Gadgets/Functional/TextSquare4.lean": generated_text_square4(),
+        FORMAL / "S31/Gadgets/Functional/TextSquare4Native.lean":
+            generated_native_square4_topology(),
         FORMAL / "S31/Evidence/Coverage.lean": render_coverage(
             json.loads((FORMAL / "coverage.json").read_text())),
         FORMAL / "source-bindings.json": json.dumps(identity, indent=2) + "\n",

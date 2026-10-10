@@ -132,6 +132,12 @@ to the public statement returned by the executable model. This is a concrete
 program instance, not a full formal verification of the Python parser or
 native STARK verifier. A separate theorem rules out successful evaluation
 when a canonical public `result` differs from the computed fourth powers.
+The generated `TextSquare4Native` module records the gate IDs and row spans
+returned by the production Zig direct compiler for this same normalized IR.
+Lean checks the concrete gate chain and interprets its arbitrary wire values
+with the two packed AIR row constraints. Source regeneration detects drift in
+the Python frontend or native compiler; the proof itself covers the emitted
+topology instance and local row semantics.
 
 `Functional/Arrays` extends the typed source core with `[m31; N]` values,
 pointwise addition and multiplication, static splats, indexed reads and

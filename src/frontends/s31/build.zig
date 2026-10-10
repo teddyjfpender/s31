@@ -65,6 +65,16 @@ pub fn build(b: *std.Build) void {
     const tests = b.addRunArtifact(b.addTest(.{ .root_module = frontend }));
     const test_step = b.step("test", "Test the S31 prototype parser, evaluator and circuit compiler");
     test_step.dependOn(&tests.step);
+    const square_export_root = localEntry(b, "tools/formal/export_square4_topology.zig", target, optimize);
+    square_export_root.addImport("stwo_s31_prototype", frontend);
+    square_export_root.addImport("stwo_circuit_frontend", circuit);
+    const square_export = b.addRunArtifact(b.addExecutable(.{
+        .name = "s31-export-square4-topology-lean",
+        .root_module = square_export_root,
+    }));
+    square_export.addFileArg(source_asset);
+    b.step("export-square4-topology-lean", "Print compiled square4 circuit topology as Lean source")
+        .dependOn(&square_export.step);
     const bitcoin_step_inspector_root = localEntry(b, "tools/inspect/inspect_bitcoin_fold_step.zig", target, optimize);
     bitcoin_step_inspector_root.addImport("stwo_s31_prototype", frontend);
     bitcoin_step_inspector_root.addImport("stwo_circuit_frontend", circuit);
