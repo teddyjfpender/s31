@@ -64,6 +64,44 @@ test "sealed pair native proof accepts 16+32 and rejects key, claim, and envelop
     @memcpy(changed_raw, raw);
     changed_raw[raw.len - 1] ^= 1;
     if (native_pair.verifySealed(a, source, air_bytes, key, words, changed_raw)) |_| return error.TestUnexpectedResult else |_| {}
+
+    // Postcard's general decoder accepts overlong LEB128. The allocation-free
+    // source-shaped preflight must reject 26 as 0x9a,0x00 before decoding.
+    const header_len = "S31NAT8P".len + 8 + 5 * 16;
+    try std.testing.expectEqual(@as(u8, 26), raw[header_len]);
+    const overlong = try a.alloc(u8, raw.len + 1);
+    defer a.free(overlong);
+    @memcpy(overlong[0..header_len], raw[0..header_len]);
+    overlong[header_len] = 0x9a;
+    overlong[header_len + 1] = 0;
+    @memcpy(overlong[header_len + 2 ..], raw[header_len + 1 ..]);
+    try std.testing.expectError(error.NonCanonicalVarint, native_pair.verifySealed(a, source, air_bytes, key, words, overlong));
+
+    // Swap both canonical call tags, then reseal the typed manifest digest
+    // and circuit identity as an attacker controlling a serialized key might.
+    // Source reconstruction still rejects the byte-entry before proof parse.
+    var parsed_key = try std.json.parseFromSlice(native_pair.Key, a, key, .{});
+    defer parsed_key.deinit();
+    parsed_key.value.component_manifest.pair_calls[0].call_id = 1;
+    parsed_key.value.component_manifest.pair_calls[1].call_id = 0;
+    const swapped_precommit = manifest.pairPrecommitmentDigest(parsed_key.value.component_manifest);
+    const swapped_precommit_hex = std.fmt.bytesToHex(swapped_precommit, .lower);
+    parsed_key.value.manifest_precommitment_sha256 = &swapped_precommit_hex;
+    var swapped_plan: pair_engine.Plan = .{ .calls = undefined };
+    for (binding.plan.calls, &swapped_plan.calls) |call, *slot| slot.* = .{
+        .call_id = 1 - call.call_id,
+        .rounds = call.rounds,
+        .constant = call.constant,
+        .input = call.input,
+        .output = call.output,
+    };
+    const swapped_hash = pair_engine.identityHash(pair.effectiveDigest(binding.source_digest, swapped_precommit), binding.preprocessed_root, binding.trace_log_size, 1, swapped_plan);
+    const swapped_hash_hex = std.fmt.bytesToHex(swapped_hash, .lower);
+    parsed_key.value.circuit_hash = &swapped_hash_hex;
+    parsed_key.value.component_manifest.circuit_hash = &swapped_hash_hex;
+    const swapped_key = try std.json.Stringify.valueAlloc(a, parsed_key.value, .{});
+    defer a.free(swapped_key);
+    try std.testing.expectError(error.InvalidPairVerificationKey, native_pair.verifySealed(a, source, air_bytes, swapped_key, words, raw));
 }
 
 test "sealed pair native long-round lifting keeps preprocessed root and proof aligned" {

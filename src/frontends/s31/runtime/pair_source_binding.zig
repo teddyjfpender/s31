@@ -30,9 +30,10 @@ pub const Binding = struct {
     }
 };
 
-/// `air_bytes` must be the same pinned official bundle embedded in the
-/// released S31 runtime; directPair checks its pinned SHA256. `blowup` is
-/// supplied by the selected, source-sealed PCS profile.
+/// `air_bytes` is hashed into the generated manifest. This experimental API
+/// takes it from the caller and does not independently pin its identity.
+/// A released verifier must embed or pin the official AIR bundle separately.
+/// `blowup` is supplied by the selected source-sealed PCS profile.
 pub fn derive(allocator: std.mem.Allocator, source_bytes: []const u8, air_bytes: []const u8, blowup: u32) !Binding {
     if (blowup != 1) return error.UnsupportedPairPcsProfile;
     var parsed = try relation.parseProgram(allocator, source_bytes);

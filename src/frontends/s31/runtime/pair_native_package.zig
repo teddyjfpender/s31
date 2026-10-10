@@ -189,6 +189,33 @@ pub fn verifySealed(allocator: std.mem.Allocator, source: []const u8, air_bytes:
         }
         sum.* = QM31.fromU32Unchecked(limbs[0], limbs[1], limbs[2], limbs[3]);
     }
+    var air = try pair_engine.parseBundle(allocator, air_bytes);
+    defer air.deinit();
+    const geometry = try pair_engine.preflightGeometry(
+        allocator,
+        circuit.common.preprocessed.CircuitView.fromBuilder(&topology.circuit),
+        &air,
+        pcs,
+        enginePlan(&binding),
+    );
+    // The independent source-owned five-component roster defines every tree
+    // count, FRI height, and sample-width bound. Preflight is allocation-free
+    // and also rejects noncanonical postcard varints before decoder allocation.
+    try postcard.proof_preflight.validateFor(4, raw[header_len..], .{
+        .config = .{
+            .pow_bits = pcs.fri_config.pow_bits,
+            .log_blowup_factor = pcs.fri_config.log_blowup_factor,
+            .n_queries = pcs.fri_config.n_queries,
+            .log_last_layer_degree_bound = pcs.fri_config.log_last_layer_degree_bound,
+            .fold_step = pcs.fri_config.fold_step,
+            .lifting_log_size = null,
+        },
+        .tree_columns = geometry.tree_columns,
+        .max_column_log_size = geometry.max_column_log_size,
+        .sample_width_limits = geometry.sample_width_limits,
+        .hash_size = @sizeOf(H.Hash),
+        .max_wire_bytes = (16 << 20) - header_len,
+    });
     // Postcard uses nested allocations while decoding. Budget 32 bytes of
     // in-memory structure per encoded byte, with an 8 MiB floor for small
     // proofs and a fixed 64 MiB ceiling. A malformed proof cannot trigger
@@ -201,8 +228,6 @@ pub fn verifySealed(allocator: std.mem.Allocator, source: []const u8, air_bytes:
     var stark = try postcard.deserializeProof(H, bounded.allocator(), stream.reader());
     defer stark.deinit(bounded.allocator());
     if (stream.pos != raw.len - header_len) return error.InvalidPairNativeEnvelope;
-    var air = try pair_engine.parseBundle(allocator, air_bytes);
-    defer air.deinit();
     try pair_engine.verifyBorrowed(allocator, circuit.common.preprocessed.CircuitView.fromBuilder(&topology.circuit), &air, pcs, engineRequest(&binding), public_words, .{
         .output_values = &outputs,
         .interaction_pow_nonce = nonce,
