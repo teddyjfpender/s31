@@ -26,12 +26,18 @@ class ProverLogTests(unittest.TestCase):
             for path in (S31_SOURCE_ROOT / "python/library").rglob("*.py")
         }
         self.assertEqual(discovered, expected - {"s31_stdlib.py", "s31_mathlib.py"})
+        self.assertEqual(set(s31.LIBRARY_SOURCE_FILES), expected)
         self.assertEqual(set(lock["sources"]), expected)
         self.assertEqual(lock["version"], 1)
         for name in expected:
             path = S31_SOURCE_ROOT / "python" / name
             self.assertEqual(lock["sources"][name], s31.file_hash(path))
             self.assertIn(path, s31.TEXT_FRONTEND_SOURCES)
+
+        package_files = set((S31_SOURCE_ROOT / "python/package").glob("*.py"))
+        self.assertEqual({path.name for path in package_files},
+                         {"__init__.py", "context.py", "build.py", "verify.py"})
+        self.assertTrue(package_files.issubset(s31.TEXT_FRONTEND_SOURCES))
 
     def test_pins_the_runtime_stage_format(self) -> None:
         log = (
