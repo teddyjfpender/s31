@@ -22,6 +22,7 @@ Lean module names follow the directory, for example
 | `TextSquare4Statement.lean` | The generated program's assignment parser and public-output comparison bind an accepted claim to the computed fourth powers. |
 | `TextSquare4Native.lean` and `TextSquare4NativeProof.lean` | Native Zig direct-compiler gate IDs and adjacent node spans, regenerated from the source program and interpreted in the local AIR model. |
 | `TextSquare4NativeBoundary.lean` | Exact native input binding, pack, arithmetic, unpack and output gate rows imply the public four-lane fourth-power claim. |
+| `TextSquare4GateJoin.lean` | Conditional exact Gate balance and unique producers construct the shared wire map used by the native public-boundary theorem. |
 
 The dependency order starts with `Graph`, then `Outputs`, then `Arrays`.
 Arithmetic and array-node bridges depend on `Arrays`; conditionals depend on
@@ -84,6 +85,13 @@ reduce the accepted witness set if their rows are enforced. The theorem
 models wires as one value per address; connecting
 that equality to committed trace reads still depends on the separate Gate
 lookup/source-correspondence and STARK soundness obligations.
+`TextSquare4GateJoin.native_public_claim_of_gate_balance` removes the assumed
+shared wire map: it constructs one from the exact Gate event multiset. Its
+premises require balanced reads/yields, one produced value per address,
+accepted rows for the 23 exported arithmetic gates, and produced constant and
+public events. These premises are explicit because the native trace-to-event
+correspondence, challenge reduction, and verifier protocol are still separate
+tasks. Other native rows may be present.
 The source binding regenerates the native artifact on every formal audit;
 there is still no machine-checked proof of the whole Zig compiler or STARK
 protocol.

@@ -151,6 +151,12 @@ theorem proves that the selected path suffices for local functional
 soundness, conditional on all its rows and same-address wire values being
 enforced. Gate closure, source-to-trace correspondence, and the STARK
 protocol remain separate obligations.
+`TextSquare4GateJoin` takes a further conditional step. Given exact Gate
+balance, unique produced values per address, accepted rows matching the 23
+source-generated gates, and produced events pinning public words and
+constants, it constructs the shared address-to-value map and invokes the
+native public-claim theorem. This isolates the precise Gate and trace
+premises still needed from the native proof protocol.
 
 `Functional/Arrays` extends the typed source core with `[m31; N]` values,
 pointwise addition and multiplication, static splats, indexed reads and

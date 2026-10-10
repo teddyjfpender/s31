@@ -12,6 +12,7 @@ import S31.Gadgets.Functional.TextSquare4Air
 import S31.Gadgets.Functional.TextSquare4Statement
 import S31.Gadgets.Functional.TextSquare4NativeProof
 import S31.Gadgets.Functional.TextSquare4NativeBoundary
+import S31.Gadgets.Functional.TextSquare4GateJoin
 import S31.Gadgets.Air.QuadField
 import S31.Gadgets.Air.SimdChunks
 import S31.Gadgets.Air.FunctionalBridge
@@ -24,6 +25,7 @@ import S31.Gadgets.Air.UnpackRows
 import S31.Gadgets.Air.SumRows
 import S31.Gadgets.Air.MixRows
 import S31.Gadgets.Air.GateLookup
+import S31.Gadgets.Air.GateWireMap
 import S31.Gadgets.Air.GateChallenge
 import S31.Gadgets.Air.LogUpNumerator
 import S31.Gadgets.Air.LogUpCount

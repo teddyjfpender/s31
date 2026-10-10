@@ -38,6 +38,14 @@ source-generated `TextSquare4Native` module records the actual six gate IDs
 emitted for the worked program. Its proof applies `PackRows` to derive the
 arithmetic circuit's input wire from those gate constraints.
 
+`GateWireMap.lean` turns an exactly balanced Gate read/yield multiset with a
+unique produced value per address into a coherent wire map. Every accepted
+row whose output has positive multiplicity then accepts with those shared
+wire values. The concrete `TextSquare4GateJoin` theorem uses this bridge for
+the fourth-power circuit's 23 selected arithmetic gates. Exact Gate balance
+is the algebraic endpoint of the separate LogUp reduction; this module does
+not assume that local arithmetic rows alone join addresses.
+
 `SimdChunks.partial_row_iff` covers the short final chunk of an array. For
 any `n ≤ 4`, arbitrary M31 values may fill the unused input lanes. An accepted
 full row with claimed active output lanes exists exactly when every active
