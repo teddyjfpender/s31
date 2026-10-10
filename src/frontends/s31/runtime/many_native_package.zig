@@ -43,7 +43,6 @@ pub fn proveSealed(
 ) ![]u8 {
     var inspected = try binding.inspectMany(allocator, source, air_bytes);
     defer inspected.deinit();
-    const request = try binding.nativeManyRequest(&inspected);
     const identity = inspected.selected_schedule.circuitIdentity();
     var parsed = try relation.parseProgram(allocator, source);
     defer parsed.deinit();
@@ -53,13 +52,12 @@ pub fn proveSealed(
     defer witness.deinit();
     var air = try engine.parseBundle(allocator, air_bytes);
     defer air.deinit();
-    var proof = try engine.prove(
+    var proof = try engine.proveSelected(
         allocator,
         circuit.common.preprocessed.CircuitView.fromBuilder(&witness.circuit),
         witness.values(),
         &air,
-        inspected.selected_schedule.geometry.live.pcs,
-        request,
+        &inspected.selected_schedule,
     );
     defer proof.deinit();
     if (proof.sum_count != inspected.selected_schedule.geometry.live.count or
@@ -124,7 +122,6 @@ fn verifySourceBound(
         return error.InvalidManyNativeEnvelope;
     var inspected = try binding.inspectMany(allocator, source, air_bytes);
     defer inspected.deinit();
-    const request = try binding.nativeManyRequest(&inspected);
     const identity = inspected.selected_schedule.circuitIdentity();
     if (inspected.selected_schedule.geometry.call_count != n_calls or
         inspected.selected_schedule.geometry.slot_count != sum_count or
@@ -184,12 +181,11 @@ fn verifySourceBound(
     var stark = try postcard.deserializeProof(H, bounded.allocator(), stream.reader());
     defer stark.deinit(bounded.allocator());
     if (stream.pos != raw.len - at) return error.InvalidManyNativeEnvelope;
-    try engine.verifyBorrowed(
+    try engine.verifySelectedBorrowed(
         allocator,
         circuit.common.preprocessed.CircuitView.fromBuilder(&topology.circuit),
         &air,
-        pcs,
-        request,
+        &inspected.selected_schedule,
         public_words,
         .{
             .output_values = &outputs,

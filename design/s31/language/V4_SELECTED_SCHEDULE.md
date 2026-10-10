@@ -1,11 +1,16 @@
 # One selected schedule for the bounded V4 proof
 
-Status: implementation in progress. The source-pinned V4 profile proves and
-verifies 1–8 calls. `direct_many_schedule.selectGeometry` now selects typed
-manifest slots against the live verifier handles, fixed circuit root, and PCS
-profile; S31 subsequently binds the unchanged V4 manifest digest. The native
-prover and verifier still consume the legacy Plan and hardcoded component
-passes, so this selected geometry is not yet the sole proof scheduler.
+Status: source implementation in progress; the selected native path has not
+yet passed build, proof, or proof-byte comparison after its refactor.
+`direct_many_schedule.selectGeometry` selects typed manifest slots against the
+live verifier handles, fixed circuit root, and PCS profile. S31 binds the
+unchanged V4 manifest digest and passes the result to selected prover and
+verifier adapters. Their selected branches now take column order, claimed-sum
+positions, verifier tree logs, and component handles from those slots. The
+legacy Plan path remains for existing engine tests; the selected adapters
+project calls to a Plan only for the current fixed-circuit constructor,
+witness endpoint extraction, and transcript helper signatures. This
+projection is derived from the selected calls, not a second caller input.
 
 ## The authority split today
 
@@ -114,9 +119,13 @@ geometry; the engine cannot authenticate arbitrary source bytes on its own.
    invariant inside selection, never as a second execution schedule.
 
 This is a bounded refactor: at most 17 slots, no per-row dynamic dispatch,
-no JSON in the engine hot path, and one preflight per proof instead of the
-current wrapper-plus-engine duplication. It should preserve the V4 wire and
-transcript bytes; any intended protocol change needs a new version.
+and no JSON in the engine hot path. The current selected adapter revalidates
+live geometry after S31 inspection because `SelectedSchedule` is a public
+mutable Zig value. That intentionally retains a second witness-free
+preflight. A later single-preflight optimization needs a stronger sealed
+in-process API or a private adapter, not an unchecked trust in mutable
+geometry. The refactor should preserve V4 wire and transcript bytes; any
+intended protocol change needs a new version.
 
 ## Acceptance after the timed study
 

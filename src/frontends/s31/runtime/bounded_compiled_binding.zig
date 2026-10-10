@@ -1041,6 +1041,21 @@ test "bounded V4 selected geometry rejects reordered and altered manifest slots"
     changed = original;
     changed.pcs_profile.queries += 1;
     try std.testing.expectError(error.InvalidManySchedule, cpu.direct_many_schedule.selectGeometry(allocator, &pp, &template, changed));
+
+    // These identities are authenticated by the source-pinned S31 wrapper,
+    // not by the engine geometry selector alone.
+    var changed_inspection = inspection;
+    changed_inspection.selected_schedule.geometry.source_digest[0] ^= 1;
+    try std.testing.expect(!try matchesManyInspection(allocator, &changed_inspection, source, air_bytes));
+    changed_inspection = inspection;
+    changed_inspection.selected_schedule.geometry.slots[1].program_binding_sha256[0] ^= 1;
+    try std.testing.expect(!try matchesManyInspection(allocator, &changed_inspection, source, air_bytes));
+    changed_inspection = inspection;
+    changed_inspection.selected_schedule.manifest_digest[0] ^= 1;
+    try std.testing.expect(!try matchesManyInspection(allocator, &changed_inspection, source, air_bytes));
+    changed_inspection = inspection;
+    changed_inspection.selected_schedule.geometry.call_count = 9;
+    try std.testing.expectError(error.InvalidManySchedule, changed_inspection.selected_schedule.validateShape());
 }
 
 test "bounded V4 source-derived one-call native proof verifies a public statement" {
