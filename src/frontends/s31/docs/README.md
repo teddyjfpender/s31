@@ -101,7 +101,8 @@ text .s31 ──parse/typecheck/specialize──▶ normalized relation JSON
 - [Circuit lowering](circuits.md): a hand-drawn gate graph, packed M31 lanes,
    fixed/witness columns, address lookups, and the six proof profiles.
 - [Private circuit-to-chip boundary](private-boundary.md): eight source-derived
-   wire addresses, authenticated Gate and chip lookup closure, and the public ABI.
+   wire addresses, authenticated Gate and chip lookup closure, affine
+   one-square steps, and the public ABI and confidentiality limits.
 - [AIR and polynomials](air.md): a hand-filled trace, the **actual six
    repeated-step chip constraints**, lookup closure, quotient, and FRI.
 - [Direct SHA AIR by hand](sha-direct-air.md): trace one padded block word
@@ -112,6 +113,12 @@ text .s31 ──parse/typecheck/specialize──▶ normalized relation JSON
    one-level path.
 - [Packages, verification, and audit](proofs.md): build/prove/verify commands,
    what the key binds, artifact names, cost report fields, and current limits.
+- [Generated component manifest](../../../../design/s31/language/COMPONENT_MANIFEST.md):
+   the direct-gate AIR component and fixed-column roster, native rederivation,
+   and the exact direct-chip extension still required.
+- [Compiler correspondence](../../../../design/s31/language/COMPILER_CORRESPONDENCE.md):
+   the checked Lean arithmetic and SSA fragment and the production boundaries
+   still requiring a refinement proof.
 
 The worked examples use checked-in sources under [`../examples`](../examples):
 
@@ -132,6 +139,7 @@ The worked examples use checked-in sources under [`../examples`](../examples):
 | [`field_div4.s31`](../examples/arithmetic/field_div4.s31) | Checked inverse and division, one inverse witness shared across calls | `direct-gate` |
 | [`bitcoin_chainwork_step.s31`](../examples/bitcoin/bitcoin_chainwork_step.s31) | Header proof of work, checked block work, and a committed ChainWork transition | `sparse-wide-gate` |
 | [`private_step16.s31`](../examples/boundary/private_step16.s31) | Private chip endpoints and one public aggregate | `direct-chip` |
+| [`private_affine_square16.s31`](../examples/boundary/private_affine_square16.s31) | A nondegenerate affine change of variables around one authenticated chip call | `direct-chip` |
 | [`computed_choice.s31`](../examples/control/computed_choice.s31) | Computed zero bit, two algebraic constraints, and conditional selection | `direct-gate` |
 | [`total_if.s31`](../examples/control/total_if.s31) | Typed witness-dependent `if`, total-branch effect check, and one strict selector | `direct-gate` |
 | [`arith4_m31.s31`](../examples/arithmetic/arith4_m31.s31) | `iterate`, gate unrolling versus one linked AIR chip | `direct-chip` |

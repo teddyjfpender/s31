@@ -54,3 +54,31 @@ substituting a different external key for the embedded one.
 
 This slice proves manifest generation and independent reconstruction for one
 existing arithmetic profile. It is not a general component selector.
+
+## Next profile: one private direct-chip call
+
+The existing private proof commits three AIR components in this exact order:
+`qm31_ops`, `repeated_step_chip`, `private_boundary_bridge`. Its claimed sums
+follow the same order. The main trace columns are laid out as 12 circuit, 9
+chip, then 8 bridge columns; the interaction trace uses 8, 8, then 20. The
+chip's trace log size is derived from the source round count; the bridge uses
+log size 4. The bridge has five constraints and the chip has six. The circuit
+has the same eight ordered preprocessed columns as direct-gate; the chip and
+bridge consume no additional preprocessed columns.
+
+A direct-chip manifest must bind the chip relation ID, round count and
+compiler-derived constant, then bind the eight transformed boundary wire
+addresses in input/output order. It must derive all three component offsets,
+trace logs, evaluation bounds, constraint counts, lookup relation IDs, and
+claimed-sum positions from the compiled topology and selected native AIR.
+The verifier should reconstruct this entire roster before reading proof bytes
+and compare it to the sealed key. Tamper controls need to re-seal changed
+component order, chip constant, bridge address, log size, and claimed-sum
+position; a rehashed package sidecar alone is a weaker control. The key
+schema needs its own version so direct-gate and old private keys cannot
+silently acquire a different roster.
+
+This is an implementation plan, not a claim that the current direct-chip key
+already carries such a manifest. For multiple chip calls, the roster also
+needs an instance index and explicit multiset multiplicities; the current
+single-call bridge cannot supply that information.
