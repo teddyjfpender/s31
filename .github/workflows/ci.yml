@@ -149,6 +149,11 @@ jobs:
           set -euo pipefail
           python3 src/frontends/s31/tests/acceptance/acceptance_component_manifest.py |
             tee zig-out/s31/acceptance/component-manifest.log
+      - name: Bounded compiler correspondence and resealed mutation control
+        run: |
+          set -euo pipefail
+          python3 src/frontends/s31/tests/acceptance/acceptance_compiler_correspondence.py |
+            tee zig-out/s31/acceptance/compiler-correspondence.json
       - name: Direct-chip component roster and sealed-key controls
         run: |
           set -euo pipefail

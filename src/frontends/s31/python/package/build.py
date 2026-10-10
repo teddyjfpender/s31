@@ -250,6 +250,18 @@ def build_text(source_path: Path, output: Path, lowering: str = "gate", fri_fold
         if source_path.read_bytes() != text_data or manifest["compiler_sha256"] != compiler_fingerprint():
             raise RuntimeError("S31 text source or compiler inputs changed during package build")
         write_json(manifest_path, manifest)
+        if lowering == "direct-gate":
+            from package.correspondence import UnsupportedFragment, make_certificate
+
+            try:
+                certificate = make_certificate(package)
+            except UnsupportedFragment:
+                pass
+            else:
+                certificate_path = package / "correspondence-certificate.json"
+                write_json(certificate_path, certificate)
+                manifest["artifacts"][certificate_path.name] = file_hash(certificate_path)
+                write_json(manifest_path, manifest)
         os.rename(package, output)
     return output
 

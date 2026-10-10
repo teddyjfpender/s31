@@ -324,4 +324,18 @@ def verify_package(package: Path) -> dict:
                                 any(char not in "0123456789abcdef" for char in value)
                                 for value in sources.values())):
                     raise ValueError("S31 standard library lock does not match text source")
+    from package.correspondence import UnsupportedFragment, check_package, parse_source
+
+    certificate_path = package / "correspondence-certificate.json"
+    certificate_listed = certificate_path.name in manifest["artifacts"]
+    if "source_text_sha256" in manifest and manifest.get("lowering") == "direct-gate":
+        try:
+            parse_source((package / "source.s31").read_bytes())
+        except UnsupportedFragment:
+            if certificate_listed or certificate_path.exists():
+                raise ValueError("unsupported source cannot carry a correspondence certificate")
+        else:
+            check_package(package)
+    elif certificate_listed or certificate_path.exists():
+        raise ValueError("correspondence certificate requires a bounded direct-gate text source")
     return manifest

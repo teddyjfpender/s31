@@ -16,5 +16,14 @@ library lock, verification keys, AIR identifiers and profile-specific recursive
 keys before package data is used by the CLI. This is **package integrity**, not
 a proof check: the installed native verifier checks a proof and public claim.
 
+`correspondence.py` independently reparses the exact source bytes for a bounded
+public four-lane add/multiply/static-let fragment. For direct-gate text packages
+in that grammar, build attaches `correspondence-certificate.json` and verification
+requires it. The checker compares the complete normalized relation, canonical
+SSA, public ABI, native source-map gate schedule, AIR asset hashes and key core.
+The certificate marks native gate emission and AIR/PCS soundness as assumptions.
+It is a **package-admission** certificate: the standalone native verifier does
+not read it. See the [design brief](../../../../../design/s31/language/DIRECT_GATE_CORRESPONDENCE_CERTIFICATE.md).
+
 The public Python API remains in `../s31.py`; its functions import these
 modules. The dependency direction is `context -> verify -> build -> CLI`.
