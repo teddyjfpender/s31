@@ -278,6 +278,8 @@ AIR implementations. A new kind cannot become admissible merely by adding
 a manifest enum value. The source compiler, live AIR, relation IDs, and
 transcript schedule must agree under separate tests or proofs. Endpoint
 confidentiality remains absent because the bridge commits endpoint values.
+The [selected-schedule plan](V4_SELECTED_SCHEDULE.md) identifies the exact
+engine call sites and a bounded migration sequence.
 
 ## Resource and proof-byte admission
 
