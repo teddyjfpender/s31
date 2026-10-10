@@ -28,7 +28,7 @@ theorem eight_columns_constant (rows : Fin 8 → Fin 16 → F)
   intro lane row
   have hprefix (n : Nat) (hn : n < 16) :
       rows lane ⟨n, hn⟩ = rows lane ⟨0, by decide⟩ := by
-    induction n generalizing hn with
+    induction n with
     | zero => rfl
     | succ n ih =>
         have hn15 : n < 15 := by omega

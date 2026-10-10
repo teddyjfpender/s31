@@ -643,9 +643,12 @@ arbitrary-step coverage argument and a local-row malformed trace.
 `RawChipIndexCoverage.lean` starts that arbitrary-step argument. It models
 exact full index/state event balance for one call, projects to index balance,
 and proves every `0 ≤ i < R` has a distinct native row when `0 < R < p`.
-The Lean conclusion is an injective selection of rows by canonical index;
-the finite-cardinality bijection, value-bearing joins, and composition with
-`IndexedChipPath` are not yet formalized.
+Finite cardinality upgrades the selection to the **unique** canonical row
+bijection. The full value-bearing event permutation then forces the start,
+all adjacent row joins, and the end; a locally enforced step rule yields the
+`R`-step result for both tagged calls. This is an exact-multiset theorem. The
+native paired-fraction AIR, seven-coordinate challenge bound, and PCS link
+to its premise remain unproved.
 `PrivateBridgeChallenge.lean` specializes the Gate exceptional-challenge
 bound to one addressed endpoint whose sixteen bridge rows vary. It also
 proves a joint eight-address Gate bound: if repeated addresses have coherent

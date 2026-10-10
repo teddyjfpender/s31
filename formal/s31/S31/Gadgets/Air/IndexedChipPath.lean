@@ -50,12 +50,12 @@ def yieldValue {R : Nat} (rows : Fin 2 → Fin R → Row F)
   else
     (rows key.1 ⟨key.2.val - 1, by omega⟩).output
 
-def useEvents {R : Nat} (rows : Fin 2 → Fin R → Row F)
+noncomputable def useEvents {R : Nat} (rows : Fin 2 → Fin R → Row F)
     (finish : Fin 2 → F) : List (StateKey R × F) :=
   (Finset.univ : Finset (StateKey R)).toList.map
     (fun key => (key, useValue rows finish key))
 
-def yieldEvents {R : Nat} (rows : Fin 2 → Fin R → Row F)
+noncomputable def yieldEvents {R : Nat} (rows : Fin 2 → Fin R → Row F)
     (start : Fin 2 → F) : List (StateKey R × F) :=
   (Finset.univ : Finset (StateKey R)).toList.map
     (fun key => (key, yieldValue rows start key))
@@ -89,9 +89,7 @@ private theorem yield_row {R : Nat} (rows : Fin 2 → Fin R → Row F)
     (start : Fin 2 → F) (call : Fin 2) (index : Fin R) :
     yieldValue rows start (call, ⟨index.val + 1, by omega⟩) =
       (rows call index).output := by
-  have hindex : (⟨(index.val + 1) - 1, by omega⟩ : Fin R) = index :=
-    Fin.ext (by omega)
-  simp [yieldValue, hindex]
+  simp [yieldValue]
 
 private theorem use_finish {R : Nat} (rows : Fin 2 → Fin R → Row F)
     (finish : Fin 2 → F) (call : Fin 2) :
@@ -121,7 +119,7 @@ theorem two_call_complete_path {R : Nat}
   have hpath (call : Fin 2) (n : Nat) (hn : n ≤ R) :
       useValue rows finish (call, ⟨n, by omega⟩) =
         iterateStep (step call) n (start call) := by
-    induction n generalizing hn with
+    induction n with
     | zero =>
         calc
           useValue rows finish (call, ⟨0, by omega⟩) =

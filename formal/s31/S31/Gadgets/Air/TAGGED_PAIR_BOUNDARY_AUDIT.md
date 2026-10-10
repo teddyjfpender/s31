@@ -45,29 +45,22 @@ separately for call IDs 0 and 1 because the call ID is part of every tuple.
 For `R = 0`, exact balance directly equates start and end. The native profile
 admits only `R ≥ 16`.
 
-This is the missing *coverage and reindexing lemma* between arbitrary native
-rows and `IndexedChipPath.two_call_complete_path`. The current Lean theorem
-does not prove it: its `rows : Fin 2 → Fin R → Row` already names the row at
-each canonical index. A future theorem must start with arbitrary `R` rows and
-witness M31 steps, derive the unique reindexing, then reuse the path theorem.
-It must also account for the actual seven-coordinate call/step/state tuple,
-not only the projected step count.
+`IndexedChipPath.two_call_complete_path` states the result for rows already
+named in canonical order. `RawChipIndexCoverage.lean` now closes that ideal
+event-model gap. Starting with arbitrary native row indices, it projects
+exact full `(index,state)` balance to index balance, proves coverage, upgrades
+the injective selection to a **unique** bijection by finite cardinality, and
+uses the full value-bearing permutation to prove start, adjacent-state, and
+end joins. Its `two_call_joint_exact_events_complete_path` theorem takes one
+multiset containing both canonical call tags and a local step rule, then
+proves both `R`-step endpoint claims. Its field modulus and state type are
+abstract; the actual seven-coordinate tuple and production source still need
+the source correspondence and challenge reduction below.
 
-`RawChipIndexCoverage.lean` now proves the first half with arbitrary native
-row indices: exact event balance projects to index balance, every canonical
-index has a row, and those chosen rows are injective. Its Lean theorem does
-not yet turn that injection into a finite bijection or derive the adjacent
-**state-value** joins. The proof uses exact integer multiset balance, not a
-random-compressed lookup identity. The full seven-coordinate/tagged
-compression reduction remains open.
-
-The desired Lean conclusion can be stated as an equivalence of finite row
-sets for `R > 0`: for each call, there exists a bijection `order : Fin R ≃ Fin R` such
-that native row `order(i)` has witness step `i`, its input equals the previous
-row's output (or the authenticated start at `i = 0`), and the output of
-`order(R−1)` equals the authenticated end. The premises must be only the raw
-rows, `R < p`, exact tagged multiset balance, and the two authenticated
-endpoint tuples; the bijection may not be supplied by the prover.
+The proof uses exact integer multiset balance, not a random-compressed lookup
+identity. A forged trace with duplicate witness steps cannot satisfy this
+ideal full-tuple balance when `R < p`; that does not by itself establish what
+the native STARK verifier accepts.
 
 ## Malformed rows and what they establish
 
@@ -114,9 +107,9 @@ start/end `3,9` has balanced indices but mismatched full state events.
    five-component closure, with nonzero denominators and `16⁻¹` accounted for.
 3. Prove a joint seven-coordinate challenge exceptional-set bound that
    separates Gate and both tagged-chip event multisets.
-4. Prove arbitrary-row canonical index coverage from exact chip balance and
-   `R < p`, then compose `IndexedChipPath` and `TaggedPairBridgeRows` with the
-   existing circuit-to-chip endpoint join.
+4. Connect the now-proved arbitrary-row tagged path and bridge constancy
+   theorems to the existing circuit-to-chip endpoint join using the exact
+   source-generated addresses, call IDs, and four-lane tuple encoding.
 5. Tie the source-generated Plan, manifest, public words, and proof verifier's
    committed trace openings to those Lean models under an explicit PCS/FRI
    and Fiat–Shamir soundness theorem or assumption.
