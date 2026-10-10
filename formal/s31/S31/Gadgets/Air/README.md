@@ -695,6 +695,12 @@ also defined and proved involutive by exhaustive finite checking in Lean.
 word columns and all thirteen source-shaped zero residuals, and derives the
 eight Gate endpoint terms and tagged chip start/finish terms of the claimed
 sum. It no longer assumes the denominator columns are constant.
+For the chip, `source_chip_claim_eq_transition_events` binds the two
+interaction residuals to its source seven-word events, and
+`source_chip_arithmetic_residuals_sound` proves the four secure-field
+arithmetic residuals imply the four M31 affine-square transitions. The
+witness step remains unconstrained locally and is handled by the exact
+tagged event-balance theorem.
 `PrivateBridgeChallenge.lean` specializes the Gate exceptional-challenge
 bound to one addressed endpoint whose sixteen bridge rows vary. It also
 proves a joint eight-address Gate bound: if repeated addresses have coherent

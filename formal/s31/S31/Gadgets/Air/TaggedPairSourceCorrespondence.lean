@@ -530,4 +530,94 @@ theorem source_bridge_claim_eq_endpoint_events
     sourceBridgeLast, div_eq_mul_inv, one_mul]
   ring
 
+/-- The source chip's seven-word input tuple uses verifier-fixed `call`,
+witness `step`, and four witness input lanes. -/
+def sourceChipInputTuple {R : Nat} (call : F)
+    (step : Fin R → F) (input : Fin R → Fin 4 → F)
+    (row : Fin R) : JointTuple :=
+  chipTuple7 call (step row) (input row)
+
+/-- The chip's output event has the same fixed call tag and witness
+`step + 1` in the M31 field. Exact event balance, not a local AIR range
+check, later rules out wrapped or duplicate steps for `R < p`. -/
+def sourceChipOutputTuple {R : Nat} (call : F)
+    (step : Fin R → F) (output : Fin R → Fin 4 → F)
+    (row : Fin R) : JointTuple :=
+  chipTuple7 call (step row + 1) (output row)
+
+def sourceChipQin {R : Nat} (call : F)
+    (step : Fin R → F) (input : Fin R → Fin 4 → F)
+    (alpha z : GateSecure) (row : Fin R) : GateSecure :=
+  combine7 (sourceChipInputTuple call step input row) alpha z
+
+def sourceChipQout {R : Nat} (call : F)
+    (step : Fin R → F) (output : Fin R → Fin 4 → F)
+    (alpha z : GateSecure) (row : Fin R) : GateSecure :=
+  combine7 (sourceChipOutputTuple call step output row) alpha z
+
+/-- Native-shaped chip interaction closure with the source's equal-size
+logical predecessor mask. The fixed call ID is separate from all witness
+columns. This theorem does not assume canonical step order; exact tagged
+event balance and `R < p` are used later to prove that property. -/
+theorem source_chip_claim_eq_transition_events
+    (m : Nat) (hm : 0 < m)
+    (bitReverseIndex : Fin (2 * m) → Fin (2 * m))
+    (hinvolution : ∀ index,
+      bitReverseIndex (bitReverseIndex index) = index)
+    (call : F)
+    (step : Fin (2 * m) → F)
+    (input output : Fin (2 * m) → Fin 4 → F)
+    (first current : Fin (2 * m) → GateSecure)
+    (claim alpha z : GateSecure)
+    (hR : ((2 * m : Nat) : GateSecure) ≠ 0)
+    (hinteraction : TaggedPairAirClosure.ChipAccepted
+      (nativePrevMask m hm
+        (bitReverseEquivOfInvolution bitReverseIndex hinvolution))
+      (sourceChipQin call step input alpha z)
+      (sourceChipQout call step output alpha z)
+      first current claim)
+    (hnonzeroIn : ∀ row,
+      sourceChipQin call step input alpha z row ≠ 0)
+    (hnonzeroOut : ∀ row,
+      sourceChipQout call step output alpha z row ≠ 0) :
+    claim = productionReciprocalSum7
+      (List.ofFn (sourceChipInputTuple call step input)) alpha z -
+      productionReciprocalSum7
+        (List.ofFn (sourceChipOutputTuple call step output)) alpha z := by
+  exact TaggedPairAirClosure.chip_air_claim_eq_event_sums
+    (nativePrevMask m hm
+      (bitReverseEquivOfInvolution bitReverseIndex hinvolution))
+    (sourceChipInputTuple call step input)
+    (sourceChipOutputTuple call step output)
+    (sourceChipQin call step input alpha z)
+    (sourceChipQout call step output alpha z)
+    first current claim alpha z hR hinteraction
+    (by intro row; rfl) (by intro row; rfl)
+    hnonzeroIn hnonzeroOut
+
+private theorem liftBase_add (left right : F) :
+    liftBase (left + right) = liftBase left + liftBase right := by
+  rfl
+
+private theorem liftBase_mul (left right : F) :
+    liftBase (left * right) = liftBase left * liftBase right := by
+  simp [liftBase]
+
+/-- The chip's four secure-field residuals imply the four actual M31
+affine-square transitions. This uses injectivity of the M31-to-QM31
+embedding and its addition/multiplication compatibility. -/
+theorem source_chip_arithmetic_residuals_sound
+    {R : Nat} (constant : F)
+    (input output : Fin R → Fin 4 → F)
+    (hresidual : ∀ row lane,
+      liftBase (output row lane) -
+        (liftBase (input row lane)) ^ 2 - liftBase constant = 0) :
+    ∀ row lane,
+      output row lane = (input row lane) ^ 2 + constant := by
+  intro row lane
+  apply liftBase_injective
+  rw [liftBase_add, pow_two, liftBase_mul]
+  have h := hresidual row lane
+  linear_combination h
+
 end S31.Gadgets.Air.TaggedPairSourceCorrespondence

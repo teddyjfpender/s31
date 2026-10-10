@@ -8,7 +8,7 @@ verifier or an empirical test.
 
 | Native source | Observed condition | Formal status |
 | --- | --- | --- |
-| `tagged_pair_chip.zig::rowConstraints` | Four lane residuals enforce `out = in² + constant` **if** all trace-row residuals vanish. The call ID is a verifier component constant; `main[0]` is a witness step. | `IndexedChipPath` assumes the local step equation. AIR residual-to-trace correspondence is not proved here. |
+| `tagged_pair_chip.zig::rowConstraints` | Four lane residuals enforce `out = in² + constant` **if** all trace-row residuals vanish. The call ID is a verifier component constant; `main[0]` is a witness step. | `TaggedPairSourceCorrespondence.source_chip_arithmetic_residuals_sound` derives all four M31 transitions from the secure residuals via the injective base embedding. AIR residual-to-trace correspondence is not proved here. |
 | `tagged_pair_chip.zig::rowConstraints` and `writeInteraction` | Each row emits `+(relation,call,step,input)` and `−(relation,call,step+1,output)` into the shared LogUp relation. No local row equation checks `step < R`, step order, or a permutation of `0..R−1`. | `RawChipIndexCoverage` proves canonical reindexing from exact tagged balance. `TaggedPairAirClosure` proves the source-shaped interaction residuals telescope to the signed row-event sum under logical-row AIR acceptance, cyclic predecessor, and nonpole premises. |
 | `private_pair_boundary.zig::Plan.validate` | Two call IDs must be `0,1`; `validateRounds` requires a power of two in `[16,32768]`, far below M31's `p = 2147483647`. Endpoint addresses have checked producers; coherent aliases are allowed. | Source-level admission checks are not connected to Lean. The `R < p` fact is a premise of the proved arbitrary-index theorem; the source admission-to-Lean correspondence remains open. |
 | `tagged_pair_bridge.zig::rowConstraints` | Eight endpoint columns have residual `current−next` on all sixteen cyclic rows. Four paired Gate fractions have `1/16` weight; the fifth fraction closes `(call,0,input)` and `(call,R,output)`. | `TaggedPairSourceCorrespondence.bridgeWords_constant_of_source_residuals` proves all eight columns constant directly from sixteen source-shaped `current−next` residuals, provided the logical-row bit reversal is an involution. `TaggedPairAirClosure` then telescopes the five interaction residuals to eight Gate endpoints and the chip start/end pair when denominators are nonzero. |
@@ -74,6 +74,16 @@ endpoint reciprocals, minus the tagged chip start, plus the tagged chip
 finish. Addresses, call ID, and round count are explicit fixed parameters.
 The theorem still assumes the accepted-row residuals rather than deriving
 them from the quotient check or PCS/FRI.
+
+For each tagged chip, `source_chip_claim_eq_transition_events` uses a fixed
+call tag, witness step and four-lane input/output values, the source's
+equal-size predecessor mask, and its two interaction residuals. It derives
+the exact signed reciprocal sum of the source seven-word input and output
+events without assuming witness steps are ordered or unique. Separately,
+`source_chip_arithmetic_residuals_sound` proves the chip's four secure-field
+row residuals force each M31 lane to satisfy `output = input² + constant`.
+Both still take logical-row AIR acceptance and nonzero lookup denominators
+as premises.
 
 The **accepted proof-to-logical-row premise remains open**: source mask geometry
 must correspond to a permutation of logical predecessor rows, and an
