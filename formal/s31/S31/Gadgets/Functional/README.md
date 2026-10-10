@@ -128,6 +128,14 @@ local rows and Gate balance then imply the public claim without a separate
 value-coverage assumption for arithmetic yields. External component yields
 still need to match that table. The Lean gather model mirrors the source-bound
 Zig trace writer; this is not a formal proof of Zig execution.
+`forged_claim_gathered_padded_card_le` carries the same gather model into the
+fixed-forged-witness Gate LogUp bound. Arithmetic yield coverage is derived
+from the common value table; external yields, selected AIR rows, public pins,
+canonical addresses and bounded counts remain explicit.
+This gather condition describes an honest native trace writer. A malicious
+prover can commit row values that were never gathered by that writer, so this
+conditional result does not replace the arbitrary-trace Gate lookup or STARK
+soundness obligations.
 `TextSquare4Witness.zero_claim_has_native_path_witness` supplies a concrete
 QM31 value for each wire on the selected path, including the basis inverses,
 and proves the zero-input/zero-output case satisfies its 23 local rows. This
