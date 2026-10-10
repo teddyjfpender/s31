@@ -51,6 +51,12 @@ coverage of low-address events by the checked producer list; repeated copies
 of one yielded event are allowed. The scratch counterexample has two different
 values at address 40 while all addresses below 35 remain unique. This matches
 the fact that permutation scratch rows may reuse an address.
+`GateTraceValues.lean` models the ordinary native trace writer's three
+address-based value gathers. For rows built from one value table, every
+arithmetic Gate yield has that table's value at its output address. This is a
+formal property of the modeled gather; correspondence to the Zig writer still
+depends on the source binding. Yields from other components retain an
+explicit value-table premise.
 
 `SimdChunks.partial_row_iff` covers the short final chunk of an array. For
 any `n ≤ 4`, arbitrary M31 values may fill the unused input lanes. An accepted

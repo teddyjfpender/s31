@@ -25,6 +25,7 @@ Lean module names follow the directory, for example
 | `TextSquare4GateJoin.lean` | Conditional exact Gate balance and unique producers construct the shared wire map used by the native public-boundary theorem. |
 | `TextSquare4ChallengeJoin.lean` | Checked Gate counters and good LogUp challenges force the exported circuit's public claim; a forged claim has nonzero reciprocal closure. |
 | `TextSquare4TraceRows.lean` | Source-checked preprocessed AIR positions for the selected gates imply their Gate-path membership. |
+| `TextSquare4TraceValues.lean` | Native-style trace gathers discharge arithmetic yield value coverage; external component yields remain explicit. |
 | `TextSquare4Witness.lean` | A concrete honest zero-input witness satisfies every selected local circuit row and public boundary. |
 | `TextSquare4WitnessAll.lean` | A constructive witness for every four-word input; selected native AIR rows accept exactly the correct fourth-power public claims. |
 | `TextSquare4RawSoundness.lean` | For a fixed forged claim, source-extracted raw Gate interaction AIR accepts on at most the explicit exceptional challenge-pair bound. |
@@ -120,6 +121,13 @@ gives 512 arithmetic rows and 608 declared variables. The two pointwise
 square rows are at indices 502 and 503. `TextSquare4TraceRows.selected_rows_imply_path`
 derives the selected-gate path from those positions. Committed witness values
 must still satisfy the local AIR equations.
+`TextSquare4TraceValues.native_claim_of_gathered_padded_rows` models the
+native writer filling each ordinary arithmetic row's three value columns
+from one address-indexed value table. The selected 512-row schedule, accepted
+local rows and Gate balance then imply the public claim without a separate
+value-coverage assumption for arithmetic yields. External component yields
+still need to match that table. The Lean gather model mirrors the source-bound
+Zig trace writer; this is not a formal proof of Zig execution.
 `TextSquare4Witness.zero_claim_has_native_path_witness` supplies a concrete
 QM31 value for each wire on the selected path, including the basis inverses,
 and proves the zero-input/zero-output case satisfies its 23 local rows. This

@@ -88,6 +88,13 @@ multiplicities for all 23 selected gates. Padding adds `add` rows before the
 [TextSquare4TraceRows.lean](../../../../../formal/s31/S31/Gadgets/Functional/TextSquare4TraceRows.lean)
 uses those positions in the Lean premise; the trace values at those rows still
 need to satisfy the local AIR equations.
+The [trace-value bridge](../../../../../formal/s31/S31/Gadgets/Functional/TextSquare4TraceValues.lean)
+models the native writer gathering each arithmetic row's two inputs and
+output from one address-indexed value table. Lean proves that the resulting
+arithmetic yield events carry exactly that table's values, so these rows no
+longer need a separate event-value coverage premise. External component
+yields still need a value-table correspondence, and the modeled gather has
+not been proved equivalent to executing the Zig writer.
 [TextSquare4Witness.lean](../../../../../formal/s31/S31/Gadgets/Functional/TextSquare4Witness.lean)
 constructs and checks every selected local row for the concrete public
 input `[0,0,0,0]` and result `[0,0,0,0]`. This shows that the row premises
