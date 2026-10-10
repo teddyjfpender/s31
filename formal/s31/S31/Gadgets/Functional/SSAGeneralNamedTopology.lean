@@ -40,8 +40,7 @@ equality checked below. -/
 def encodeNamed (programName : String) (names : List String)
     (certificate : Certificate) : Program :=
   { name := programName,
-    inputs := [{ name := nameAt names 0, shape := ⟨.m31, 4⟩,
-      visibility := .«public» }],
+    inputs := [{ name := nameAt names 0, shape := ⟨.m31, 4⟩, visibility := .«public» }],
     nodes := certificate.instructions.map (instructionNode names),
     assertions := [],
     outputs := [nameAt names certificate.output] }
@@ -55,6 +54,11 @@ def NameTableValid (names : List String)
   names.Nodup ∧
   "" ∉ names ∧
   certificate.output ≠ 0
+
+instance (names : List String) (certificate : Certificate) :
+    Decidable (NameTableValid names certificate) := by
+  unfold NameTableValid
+  infer_instance
 
 /-- One executable Lean admission decision for source certificate, name
 table, normalized relation and projected native arithmetic source gates. -/
@@ -90,13 +94,14 @@ theorem checked_named_structure (source : Source 1)
       by_cases hnames : NameTableValid names certificate
       · by_cases hprogram :
             program = encodeNamed programName names certificate
-        · cases hvalid : program.validate with
-          | error err => simp [hsource, hnames, hprogram, hvalid] at hcheck
+        · subst program
+          cases hvalid : (encodeNamed programName names certificate).validate with
+          | error err => simp [hsource, hnames, hvalid] at hcheck
           | ok shapes =>
               have haddresses : addresses = finalAddresses := by
-                simpa [hsource, hnames, hprogram, hvalid] using hcheck
+                simpa [hsource, hnames, hvalid] using hcheck
               subst addresses
-              exact ⟨hnames, hprogram, ⟨shapes, hvalid⟩, hsource⟩
+              exact ⟨hnames, rfl, ⟨shapes, rfl⟩, rfl⟩
         · simp [hsource, hnames, hprogram] at hcheck
       · simp [hsource, hnames] at hcheck
 
@@ -106,8 +111,7 @@ theorem checked_named_nodes (source : Source 1)
     (gates : List Gate) (finalAddresses : List Nat)
     (hcheck : checkNamedSourceRows source certificate programName names
       program gates = some finalAddresses) :
-    program.inputs = [{ name := nameAt names 0,
-      shape := ⟨.m31, 4⟩, visibility := .«public» }] ∧
+    program.inputs = [{ name := nameAt names 0, shape := ⟨.m31, 4⟩, visibility := .«public» }] ∧
     program.nodes = certificate.instructions.map (instructionNode names) ∧
     program.outputs = [nameAt names certificate.output] := by
   have hp := (checked_named_structure source certificate programName names

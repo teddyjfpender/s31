@@ -19,6 +19,7 @@ open S31.Functional.SSACertificate
 open S31.Functional.SSAConcreteGateSchedule
 open S31.Gadgets.Air.Qm31Ops
 open S31.Gadgets.Air.GateLookup
+open S31.Gadgets.Packed
 
 private theorem pack_injective {a b : Lanes}
     (h : packM31 a = packM31 b) : a = b := by

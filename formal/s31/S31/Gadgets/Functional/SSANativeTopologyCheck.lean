@@ -40,6 +40,11 @@ def Gate.matches (addresses : List Nat) (instruction : Instruction)
   gate.out ∉ addresses ∧
   gate.multiply = instruction.multiply
 
+instance (addresses : List Nat) (instruction : Instruction) (gate : Gate) :
+    Decidable (gate.matches addresses instruction) := by
+  unfold Gate.matches
+  infer_instance
+
 /-- `checkOne` is executable and fails closed on a nonfresh output, missing
 operand, wrong operand address, wrong opcode, or wrong instruction ID. -/
 def checkOne (addresses : List Nat) (instruction : Instruction)
@@ -55,7 +60,7 @@ theorem checkOne_iff (addresses : List Nat) (instruction : Instruction)
         next = addresses ++ [gate.out] := by
   unfold checkOne
   by_cases h : gate.matches addresses instruction
-  · simp [h]
+  · simp [h, eq_comm]
   · simp [h]
 
 /-- Consumes the entire instruction and gate lists in lockstep. An extra or
@@ -91,7 +96,7 @@ theorem checkSourceRows_implies_certificate (source : Source 1)
   | some unit =>
       cases unit
       constructor
-      · exact hcertificate
+      · simpa using hcertificate
       · simpa [hcertificate] using hcheck
 
 /-- A native arithmetic row has the structural gate plus field witnesses.
@@ -109,9 +114,9 @@ so these implications cannot be vacuous at the selected instructions. -/
 def Row.authenticated (addresses : List Nat) (values : List Lanes)
     (row : Row) : Prop :=
   addresses.length = values.length ∧
-  (∀ index, addresses[index]? = some row.gate.in0 →
+  (∀ (index : Nat), addresses[index]? = some row.gate.in0 →
     values[index]? = some row.in0) ∧
-  (∀ index, addresses[index]? = some row.gate.in1 →
+  (∀ (index : Nat), addresses[index]? = some row.gate.in1 →
     values[index]? = some row.in1) ∧
   accepts (encode (s31Op row.gate.multiply))
     (packM31 row.in0) (packM31 row.in1) (packM31 row.output)
