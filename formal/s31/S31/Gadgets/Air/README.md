@@ -608,10 +608,18 @@ for arbitrarily many tagged chip calls; it also shows exact balance would
 force the current sixteen bridge rows to share an endpoint value.
 `PrivateBridgeChallenge.lean` specializes the Gate exceptional-challenge
 bound to one addressed endpoint whose sixteen bridge rows vary. It also
-proves a joint eight-address Gate bound: with distinct canonical addresses,
-one incorrect row makes the whole ideal event multiset unequal, so its
-reciprocal closure can hold only in the stated finite exceptional set. These
-are scoped algebra and ideal-lookup results. The native bridge's weighted
-paired-fraction AIR must still be connected to that ideal reciprocal equation;
-the chip endpoint relation and shared transcript need their own joint
-probabilistic soundness proof.
+proves a joint eight-address Gate bound: if repeated addresses have coherent
+expected producer values, one incorrect row makes the whole ideal event
+multiset unequal. `PrivateBridgeChallengeMany.lean` extends the argument to
+any finite number `n` of endpoints with `16n < 2³¹−1`, so lookup
+multiplicities cannot vanish modulo M31. Its sixteen-endpoint theorem covers
+two eight-endpoint calls and bounds false ideal closure by
+`1,311,744 × |GateSecure|` exceptional challenge pairs, even with coherent
+repeated addresses. These are scoped algebra and ideal-lookup results. The
+native bridge's weighted paired-fraction AIR must still be connected to that
+ideal reciprocal equation; the chip endpoint relation, shared transcript,
+and PCS need their own joint soundness proof.
+The direct circuit's `PrivateBoundary.validate` checks that its eight
+compiler-selected addresses are distinct and in range before preprocessed
+columns are constructed. The generic Lean theorem admits coherent repeats,
+while production admission remains narrower.

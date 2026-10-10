@@ -49,6 +49,38 @@ elaborator, and serializer to these checked Lean models, then connecting the
 normalized `Program` to Zig's circuit/chip plan and generated component
 manifest. Source hashes trigger review but do not establish correspondence.
 
+### Certificate-backed path to the production theorem
+
+The practical route is to make the Python compiler an **untrusted producer of
+a checked artifact**. A separate small checker receives the exact `.s31`
+source bytes, proposed typed syntax, normalized relation, chosen chip-call
+plan, and generated component roster. It must reparse the source bytes (or
+check a token stream against them), replay typing and specialization, and
+compare every emitted node, address, visibility, public claim and selected
+AIR component. A digest or sample execution cannot replace this check.
+
+The checker's acceptance theorem should have this shape:
+
+```text
+check(source_bytes, certificate, relation, chip_plan, roster) = accept
+  → ∀ canonical_assignment,
+      relation_accepts(canonical_assignment)
+      → source_denotation(source_bytes, canonical_assignment)
+```
+
+The theorem must include failures and assertions, not just successful
+arithmetic results. Its AIR refinement must quantify over arbitrary prover
+columns satisfying constraints; honest trace generation alone is too weak.
+An explicit proof-profile tag and version belong to the certificate so that
+a theorem for the direct Gate circuit cannot be reused for a chip profile.
+
+The generated verifier must rerun or embed the checked artifact's result,
+bind its digest into the key and transcript before commitments, and construct
+the PCS component schedule from that same validated roster. Until a
+byte-level checker is shipped, the Lean four-lane fragment below is a local
+semantic proof and native acceptance tests are empirical controls. They do
+not establish the theorem at the top of this document for all `.s31` files.
+
 ### Checked positional SSA increment
 
 [`SSACertificate.lean`](../../../formal/s31/S31/Gadgets/Functional/SSACertificate.lean)
@@ -98,17 +130,33 @@ it computes `x⁴` in all four lanes. Reordered, duplicate, unbound, and
 malformed-output examples are rejected by the static checker and by
 `Program.validate`.
 
-The generic theorem does **not** yet prove that every canonical named program
-executes identically through `Program.environment`; the arbitrary-input
-named-execution theorem currently covers the shared-square instance. More
-importantly, the model does not prove that Python emits these names or nodes
+[`SSANamedExecution.lean`](../../../formal/s31/S31/Gadgets/Functional/SSANamedExecution.lean)
+closes the generic **modeled named-execution** step. It maintains a relation
+between every checked positional term and the value found at its canonical
+name in the real normalized environment. For every checked certificate whose
+finite names are collision-free, the actual `Program.nodes` fold using
+`evaluateNode` returns the source value on all four-lane inputs. The theorem
+then runs the real `Program.environment` on any assignment whose public input
+has been accepted as those four lanes. A finite `namesDistinct` test is part
+of `checkBounded`, so successful checking supplies the name premise rather
+than relying on an axiom. For **every** supported source term, the deterministic
+emitter and canonical named program pass that checker when this finite name
+test and `Program.validate` succeed. The shared-square program is a concrete
+accepted witness, so the theorem is non-vacuous.
+
+[`SSANamedPublicClaim.lean`](../../../formal/s31/S31/Gadgets/Functional/SSANamedPublicClaim.lean)
+extends the same checked fragment through normalized `Program.evaluate`.
+When an assignment is accepted, its declared public output has the source
+value at the canonical output name. The proof uses the actual output-checking
+path, including the value equality check, and an accepted public input whose
+four lanes are the source input.
+
+These bounds matter: `Program.validate` limits names to 128 characters, and
+the modeled `wN` names cannot be valid for all mathematically unbounded source
+trees. The model still does not prove that Python emits these names or nodes
 from arbitrary `.s31` source bytes, that JSON parsing preserves them, or that
 Zig lowers them to the corresponding AIR and verifier. Those are explicit
 production correspondence obligations, not consequences of source bindings.
-The positional emitter is total for all formal source trees; named-program
-acceptance also depends on the normalized validator's 128-character name
-limit, so a universal named theorem needs an explicit program-size bound or a
-different bounded naming scheme.
 
 [`SSAAirRows.lean`](../../../formal/s31/S31/Gadgets/Functional/SSAAirRows.lean)
 extends this fragment from one final arithmetic row to the complete emitted
@@ -121,3 +169,31 @@ This is a full local arithmetic-row refinement for the four-lane fragment.
 Its premise that row operands are the values of earlier addressed wires is
 where the native Gate lookup join must be connected; it is not yet a proof of
 the production row writer or verifier.
+
+[`SSALocalPipeline.lean`](../../../formal/s31/S31/Gadgets/Functional/SSALocalPipeline.lean)
+composes these modeled checks for **any** accepted bounded certificate in the
+same four-lane fragment. Every such certificate has an honest complete row
+trace. Given arbitrary accepted arithmetic rows, an accepted normalized
+`Program.evaluate` result, and the checked source/certificate/program triple,
+the selected row value, named environment output, and accepted public output
+all equal source denotation. The row model reads operands from the addressed
+prior values; native Gate authentication and row emission remain independent
+proof obligations.
+
+### One source-bound end-to-end arithmetic instance
+
+[`TextSquare4CompilerChain.lean`](../../../formal/s31/S31/Gadgets/Functional/TextSquare4CompilerChain.lean)
+checks that the generated normalized `Program` for
+`functional_square4.s31` is exactly the accepted shared-let SSA encoding after
+renaming `w1` to `_s31_i1_0` and `w2` to `result`. It checks the complete
+concrete program equality, including its ordered nodes, inputs, output, and
+metadata. The two shared multiplications compute `x²` then `x⁴`; expanding
+the repeated square without a let emits three multiplications. The named
+`Program.nodes` fold and both packed QM31 arithmetic AIR rows accept a claim
+exactly when it equals the formal source value. Successful normalized
+`Program.evaluate` acceptance binds the public `result` to that same value.
+
+This is a checked **single compiler output**, with the generated program
+recorded as Lean data. It does not prove that the Python parser and emitter
+produce this record from arbitrary source bytes, that JSON preserves it, or
+that Zig lowers it into the native AIR and transcript for every profile.

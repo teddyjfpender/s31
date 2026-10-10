@@ -222,11 +222,17 @@ value. If any row differs, exact event balance is impossible; a false
 reciprocal closure lies in the bounded exceptional set of challenge pairs,
 assuming a canonical address and multiplicities below the field
 characteristic. Multiplying the bridge's `1/16` contribution by 16 motivates
-this model. For eight distinct canonical addresses, the new joint Gate lemma
-shows that a wrong row at any address makes the combined ideal event multiset
-unequal and inherits the exceptional-pair bound. The native paired-fraction
-AIR-to-reciprocal derivation and the joint Gate-plus-chip probability bound
-remain unproved.
+this model. For eight canonical addresses, including repeated addresses whose
+circuit producer values agree, the new joint Gate lemma shows that a wrong
+row at any address makes the combined ideal event multiset unequal and
+inherits the exceptional-pair bound. The finite-family theorem in
+[`PrivateBridgeChallengeMany.lean`](../../../formal/s31/S31/Gadgets/Air/PrivateBridgeChallengeMany.lean)
+extends that ideal Gate argument to any `n` endpoints with `16n < p` and
+coherent expected values at repeated addresses. Its sixteen-endpoint
+specialization bounds exceptional challenge pairs by
+`1,311,744 × |GateSecure|`. The native paired-fraction AIR-to-reciprocal
+derivation, PCS link, and joint Gate-plus-chip probability bound remain
+unproved.
 
 ### 2026-10-10 follow-up: direct-chip roster and record ABI v2
 
@@ -293,3 +299,155 @@ raw/padded AIR geometry and the ABI digest unchanged, and passed ReleaseFast
 proof verification with the ReleaseSafe verifier plus the alias and re-sealed
 key rejection controls. This closes the observed reproducibility defect for
 this profile, not the broader compiler or STARK proof obligations.
+
+### 2026-10-10 follow-up: authenticated boundary soundness audit
+
+This source audit separates limitations of the **implemented one-call**
+direct-chip profile from release gates for the **proposed two-call** profile in
+[the general boundary design](../language/GENERAL_AUTHENTICATED_CHIP_BOUNDARY.md).
+It did not run native proofs or establish a new proof forgery.
+
+#### Implemented one-call profile
+
+1. **Private is a statement boundary, not witness confidentiality.**
+   `private_boundary_bridge.zig:55-71` commits each transformed endpoint as a
+   constant M31 main column over all sixteen bridge rows. Opened bridge rows
+   reveal that value. For the admitted affine change of variables
+   `s = qx + r` with nonzero `q`, an observer can recover `x` from `s`.
+   [The user documentation](../../../src/frontends/s31/docs/private-boundary.md)
+   already gives the narrower definition of private. This is a confidentiality
+   limitation, not an invalid-proof counterexample.
+
+2. **Reserve the complete Gate multiplicity with checked arithmetic.**
+   `computeUses` checks that every initial count is `< p`. The direct,
+   sparse, and sparse-wide arithmetic builders formerly added permutation
+   and boundary uses with unchecked `+=`. In particular, sparse-wide later
+   converted counts with `M31.fromU64`, which silently reduces modulo `p`.
+   The current dependency worktree now calls `addCanonicalMultiplicity` at
+   every such reservation, including both SHA boundary calls and repeated
+   addresses; that helper rejects crossing `p` before field conversion.
+   This closes the identified invariant gap if the dependency patch is
+   integrated and its at-the-bound regression tests pass. No forged proof was
+   reproduced from the pre-fix code: reaching the bound in the admitted
+   profiles requires an enormous trace.
+
+3. **The source-shape gate does not require a live chip result.**
+   `relation.zig:243-264` requires the private input, first repeat, later
+   nodes, and a public output, but does not require any public output to
+   depend transitively on the repeat. A repeat followed by an unrelated
+   constant output fits those local checks. The chip still proves its own
+   transition; the public claim simply does not consume it. Rejecting such
+   dead calls is an admission and cost gate, not a demonstrated false result.
+
+4. **The per-component native hash has a limited code closure.**
+   `component_manifest.zig:321-337` hashes the embedded chip or bridge AIR
+   source file and parameters; `build.zig:646-647,670-671` embeds those files.
+   Transitive imported field, AIR, and PCS implementation code is not part of
+   that per-component hash. The package separately fingerprints its pinned
+   engine source, and its key is sealed to the installed native verifier. No
+   verifier bypass follows from this observation. A general profile should
+   specify whether `program_binding_sha256` means a canonical typed
+   constraint program or a reproducible full code closure.
+
+5. **External executable trust remains a deployment assumption.** Earlier
+   package controls in this review show why a self-hashed package cannot
+   authenticate its own verifier or prover. The four-pin checker now rejects
+   the tested substitutions; users must obtain those pins and the checker
+   through a trusted channel. This is a trust-root requirement of the current
+   distribution, not a defect in its lookup equations.
+
+#### Two-call profile: release blockers, not current one-call exploits
+
+1. **P1 — put a call tag inside every Chip lookup tuple.** The current chip
+   and bridge use six-field tuples `(relation_id, index, lane0..lane3)`
+   (`repeated_step_chip.zig:164-189,204-213` and
+   `private_boundary_bridge.zig:124-130`). With two untagged calls, their
+   index-zero start events can be swapped while the global multiset closes:
+   if chip A proves `a -> A(a)` and chip B proves `b -> B(b)`, the bridge
+   could associate circuit call A with `b -> A(a)` and call B with
+   `a -> B(b)`. The start and end event multisets still match although
+   neither circuit call has its claimed input/output relation. A call ID in
+   JSON does not fix this. Constrain a canonical unique call ID in the chip
+   and bridge AIR tuples and version the proof profile/transcript.
+
+2. **P1 — derive one canonical component roster and bind it before proof
+   commitments.** Today's manifest checks a two- or three-component roster
+   (`component_manifest.zig:191-318`), while prover handles and claimed-sum
+   positions (`direct_arithmetic.zig:249-310`) and verifier handles and
+   positions (`native_verifier.zig:754-829`) remain independently hardcoded.
+   The current transcript parameters (`direct_arithmetic.zig:71-83`) do not
+   absorb the manifest digest. Fixed one-call topology plus sealed key checks
+   make this an expansion risk rather than a known current forgery. For two
+   calls, generate both sides from one typed roster and absorb its canonical
+   digest before the first commitment; mutation controls must cover order,
+   offsets, log sizes, sum positions, and code identities.
+
+3. **P1 — prove lookup premises for the implemented AIR and transcript.**
+   `GenericChipBoundary.lean:114-140` establishes an ideal tagged-multiset
+   join under exact balance and unique producers, but does not derive exact
+   balance from native AIR, LogUp, or PCS verification.
+   `PrivateBridgeChallengeMany.lean` proves the ideal Gate challenge result
+   for any finite endpoint count satisfying `16n < p`, with coherent expected
+   producer values at repeated canonical addresses. For two eight-endpoint
+   calls, its sixteen-endpoint theorem gives the explicit upper bound
+   `1,311,744 × |GateSecure|` exceptional challenge pairs. This **does**
+   cover the larger ideal Gate event set. The proposed pair profile also has
+   a seven-field tagged Chip relation. Its native release argument still
+   needs a derivation from committed AIR rows through paired-fraction LogUp
+   and PCS to the ideal rational closure, and a joint Gate/Chip bound that
+   handles zero denominators, tuple compression collisions, canonical
+   multiplicities, and weighted `1/16` bridge fractions. These Lean results
+   are substantive ideal-model theorems, not yet native-profile soundness.
+
+4. **P2 — verify the cyclic bridge mask when adding row-local endpoint
+   equalities.** The one-call bridge masks only current main values
+   (`private_boundary_bridge.zig:168-195`) and uses the lookup argument to
+   bind all sixteen rows. If the pair profile adds neighbor equalities to
+   make each endpoint constant, it must compare every row with its successor
+   **including row 15 to row 0**, as its design specifies. The wrap equality
+   is redundant for pure constancy if the other fifteen adjacent equalities
+   form one enforced path, so its omission alone is not a counterexample.
+   Incorrect circle-domain masks or an inadvertently missing interior edge
+   could leave disconnected segments. Native mask-point geometry, quotient
+   constraints, and boundary-row mutations should test these cases.
+
+### 2026-10-10 follow-up: record-valued input ABI v2
+
+I read the isolated record-input implementation at
+`/private/tmp/s31-record-input-worktree` (`8dc20cc`, `d3b6657`) and the
+corresponding files present in this worktree. This was a source audit, not an
+independent rerun of its native acceptance program. Its acceptance control
+[`acceptance_record_inputs_v2.py`](../../../src/frontends/s31/tests/acceptance/acceptance_record_inputs_v2.py)
+constructs a nested public `Request` and private `Pair`, checks six flattened
+first-order input wires and equal direct-gate cost against a manual flat v1
+relation, then expects an honest native proof to pass. It explicitly expects
+rejection for changed public input/result words, swapped same-type field
+paths, an injected private leaf, changed result root, changed ABI digest, and
+a re-sealed key that changes the private input's visibility. It also checks
+missing nested fields, a noncanonical private M31 word, a misplaced private
+root, wrong tuple arity, and duplicate JSON keys before proving. These are
+implementation-agent controls; this review did not establish their pass rate
+independently.
+
+The native verifier recomputes the ABI digest from the embedded relation
+(`mvp_runtime.zig:3480-3487`), requires it in the sealed key, and projects a
+canonical, duplicate-key-free v2 statement to the exact eight proof words
+(`record_abi.zig:285-370`). The validator binds each declared leaf path,
+wire, length and input visibility to the flattened relation. A private input
+is absent from the public statement, but its *witness value* is still subject
+to the proof system's ordinary disclosure limits, including the bridge issue
+above. I found no record-ABI forged-proof acceptance in this source review.
+
+One fail-closed validator difference remains: Python's generic v2 binding
+validator permits a top-level tuple and a result root name other than
+`result`, while Zig's native `root`/`validate` requires a first-order or
+record root and literal `result`. The text parser restricts circuit boundary
+roots and emits `result`, so parser-produced packages are unaffected; a
+manually authored descriptor accepted by Python may be rejected by native
+verification. Align the schemas before advertising arbitrary hand-authored
+v2 JSON as portable. This is an admission and developer-experience mismatch,
+not a proof forgery. A low-cost independent control compiled
+`record_input_sum.s31`, renamed the ABI result root and its leaf paths, and
+observed `Python validate_binding` accept the descriptor; native
+`record_abi.validate` has an explicit `result`-name check at line 260 and
+would reject it before proof admission.

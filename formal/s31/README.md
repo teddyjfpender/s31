@@ -135,12 +135,23 @@ source in the four-lane add/mul/static-let fragment, including shared lets.
 `Functional/SSANamedProgram` maps checked SSA to a canonical real
 `Program.nodes` list and checks exact structure with `Program.validate`; the
 shared-square named node list runs through actual name lookup and
-`evaluateNode` for arbitrary inputs. `Functional/SSAAirRows` then proves
+`evaluateNode` for arbitrary inputs. `Functional/SSANamedExecution` proves
+the generic named `Program.nodes` fold and `Program.environment` agree with
+source semantics for every checked four-lane add/mul/static-let term under an
+executable finite name-uniqueness check, `Program.validate`, and accepted
+input assignment.
+`Functional/SSANamedPublicClaim` further proves that successful normalized
+`Program.evaluate` acceptance binds the declared public output to that source
+value. `Functional/SSAAirRows` proves
 soundness and honest completeness for every packed arithmetic AIR row in the
 emitted instruction trace, assuming each row operand is authenticated to its
 addressed prior wire. These theorems do not establish Python
-parser/emitter correctness, a generic named-environment equivalence theorem,
-Zig AIR emission, or verifier transcript binding.
+parser/emitter correctness, JSON serialization, Zig AIR emission, or verifier
+transcript binding.
+`Functional/SSALocalPipeline` composes these modeled boundaries for any
+accepted bounded certificate: an arbitrary accepted complete row trace, the
+actual named environment, and the accepted public claim all equal source
+semantics; an honest row trace exists for every accepted certificate.
 `Functional/TextSquare4` is a narrower executable bridge: the formal gate
 runs the Python text compiler on the actual `functional_square4.s31` file and
 commits its normalized two-node program as Lean source. `TextSquare4Proof`
@@ -160,6 +171,11 @@ covered only by their separate models and assumptions.
 `TextSquare4Statement` also unfolds the generated program's assignment and
 output path. Any successful evaluation with a canonical four-word public
 input requires its claimed `result` to parse as those same fourth powers.
+`TextSquare4CompilerChain` checks that this exact generated `Program` is the
+accepted two-instruction shared-let SSA program under an explicit renaming of
+its live wires. It joins the generated named-node fold, both packed arithmetic
+rows, and accepted public output to that formal source value. Duplicating the
+square subtree emits three multiplications; the shared let emits two.
 Together with the generic `evaluate_ok_claimed` theorem, the result is bound
 to the public statement returned by the executable model. This is a concrete
 program instance, not a full formal verification of the Python parser or

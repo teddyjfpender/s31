@@ -180,4 +180,70 @@ theorem public_private_public_order {α : Type}
       ⟨c, .visible, last⟩] = flatten a first ++ flatten c last := by
   simp [publicInputWords]
 
+/-- The normalized relation input order, retaining each root's visibility. -/
+def taggedInputLeaves {α : Type} : List (InputRoot α) → List (Visibility × α)
+  | [] => []
+  | root :: rest =>
+      (flatten root.layout root.value).map (fun word => (root.visibility, word)) ++
+        taggedInputLeaves rest
+
+/-- The native public-word projection over first-order relation inputs. -/
+def visibleWords {α : Type} : List (Visibility × α) → List α
+  | [] => []
+  | (.visible, word) :: rest => word :: visibleWords rest
+  | (.secret, _) :: rest => visibleWords rest
+
+theorem visibleWords_append {α : Type} (left right : List (Visibility × α)) :
+    visibleWords (left ++ right) = visibleWords left ++ visibleWords right := by
+  induction left with
+  | nil => rfl
+  | cons head tail ih =>
+      cases head with
+      | mk visibility word =>
+          cases visibility <;> simp [visibleWords, ih]
+
+theorem visibleWords_visible_map {α : Type} (words : List α) :
+    visibleWords (words.map (fun word => (Visibility.visible, word))) = words := by
+  induction words with
+  | nil => rfl
+  | cons word rest ih => simp [visibleWords, ih]
+
+theorem visibleWords_secret_map {α : Type} (words : List α) :
+    visibleWords (words.map (fun word => (Visibility.secret, word))) = [] := by
+  induction words with
+  | nil => rfl
+  | cons word rest ih => simp [visibleWords, ih]
+
+/-- Flattening all first-order inputs and then selecting the public ones is
+identical to deriving the public input statement from typed roots. -/
+theorem publicInputWords_eq_visible_flatten {α : Type} (roots : List (InputRoot α)) :
+    publicInputWords roots = visibleWords (taggedInputLeaves roots) := by
+  induction roots with
+  | nil => rfl
+  | cons root rest ih =>
+      cases root with
+      | mk layout visibility value =>
+          cases visibility <;>
+            simp [publicInputWords, taggedInputLeaves, visibleWords_append,
+              visibleWords_visible_map, visibleWords_secret_map, ih]
+
+/-- The public word vector contains only public inputs and each distinct
+result wire, in declaration order and first-reference order respectively. -/
+def boundaryProofWords {α : Type} {n : Nat} (roots : List (InputRoot α))
+    (wires : Fin n → α) (resultRefs : List (Fin n)) : List α :=
+  publicInputWords roots ++ distinctProofWords wires resultRefs
+
+theorem private_root_boundary_irrelevant {α : Type} {n : Nat}
+    (layout : Layout) (first second : Value α layout)
+    (rest : List (InputRoot α)) (wires : Fin n → α)
+    (resultRefs : List (Fin n)) :
+    boundaryProofWords (⟨layout, .secret, first⟩ :: rest) wires resultRefs =
+    boundaryProofWords (⟨layout, .secret, second⟩ :: rest) wires resultRefs := rfl
+
+theorem two_result_aliases_one_word {α : Type} {n : Nat}
+    (roots : List (InputRoot α)) (wires : Fin n → α) (wire : Fin n) :
+    boundaryProofWords roots wires [wire, wire] =
+      publicInputWords roots ++ [wires wire] := by
+  simp [boundaryProofWords, repeated_wire_one_proof_word]
+
 end S31.Functional.RecordBoundary

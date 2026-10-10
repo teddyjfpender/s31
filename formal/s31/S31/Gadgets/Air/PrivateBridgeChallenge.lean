@@ -130,13 +130,15 @@ def allCircuitEvents (addresses : Fin 8 → Nat)
   (List.ofFn (fun lane : Fin 8 => lane)).flatMap
     (fun lane => circuitEvents (addresses lane) (expected lane))
 
-/-- With unique compiler-selected addresses, one wrong bridge row makes the
-entire eight-address event multiset wrong. This excludes cancellation across
-different endpoint addresses at the ideal multiset level. -/
+/-- If repeated circuit addresses have the same expected producer value, one
+wrong bridge row makes the entire eight-address event multiset wrong. This
+covers repeated endpoint uses as well as distinct addresses at the ideal
+multiset level. -/
 theorem wrong_row_breaks_joint_balance
     (addresses : Fin 8 → Nat) (rows : Fin 8 → Fin 16 → S31.M31)
     (expected : Fin 8 → S31.M31)
-    (haddresses : Function.Injective addresses)
+    (hcoherent : ∀ left right,
+      addresses left = addresses right → expected left = expected right)
     (lane : Fin 8) (row : Fin 16)
     (hwrong : rows lane row ≠ expected lane) :
     ¬ (allBridgeEvents addresses rows).Perm
@@ -153,12 +155,13 @@ theorem wrong_row_breaks_joint_balance
       event (addresses other) (expected other) := by
     simpa [circuitEvents] using
       (List.eq_of_mem_replicate hother)
-  have haddress : lane = other := haddresses
-    (congrArg Prod.fst hevent)
-  subst other
+  have haddress : addresses lane = addresses other :=
+    congrArg Prod.fst hevent
+  have hexpected : expected lane = expected other :=
+    hcoherent lane other haddress
   have hvalue := congrArg (fun pair : GateEvent => pair.2.a) hevent
-  exact hwrong (S31.Field.toZMod_injective (by
-    simpa [event, base] using hvalue))
+  exact hwrong ((S31.Field.toZMod_injective (by
+    simpa [event, base] using hvalue)).trans hexpected.symm)
 
 private theorem all_bridge_length
     (addresses : Fin 8 → Nat) (rows : Fin 8 → Fin 16 → S31.M31) :
@@ -187,7 +190,7 @@ private theorem all_events_canonical
     rw [heq]
     exact haddresses lane
 
-/-- Under distinct canonical addresses, one incorrect row in any of the
+/-- Under coherent canonical addresses, one incorrect row in any of the
 eight bridge endpoints makes the **joint Gate** reciprocal closure a false
 identity except for the same explicit finite-field challenge exceptional
 set as the generic Gate theorem. The production AIR-to-rational and chip
@@ -195,7 +198,8 @@ closure links remain separate obligations. -/
 theorem joint_eight_address_false_closure_bound
     (addresses : Fin 8 → Nat) (rows : Fin 8 → Fin 16 → S31.M31)
     (expected : Fin 8 → S31.M31)
-    (haddresses : Function.Injective addresses)
+    (hcoherent : ∀ left right,
+      addresses left = addresses right → expected left = expected right)
     (hcanonical : ∀ lane, addresses lane < 2147483647)
     (lane : Fin 8) (row : Fin 16)
     (hwrong : rows lane row ≠ expected lane) :
@@ -207,7 +211,7 @@ theorem joint_eight_address_false_closure_bound
         allCircuitEvents addresses expected).toFinset.card) *
       Fintype.card S31.Gadgets.Air.GateChallenge.GateSecure := by
   have hwrongBalance := wrong_row_breaks_joint_balance addresses rows
-    expected haddresses lane row hwrong
+    expected hcoherent lane row hwrong
   have hbridgeCount :
       ∀ entry ∈ allBridgeEvents addresses rows ++
         allCircuitEvents addresses expected,

@@ -15,6 +15,7 @@ import S31.Gadgets.Air.CompositionFold
 import S31.Gadgets.Functional.TextSquare4Proof
 import S31.Gadgets.Functional.TextSquare4Air
 import S31.Gadgets.Functional.TextSquare4Statement
+import S31.Gadgets.Functional.TextSquare4CompilerChain
 import S31.Gadgets.Functional.TextSquare4NativeProof
 import S31.Gadgets.Functional.TextSquare4NativeBoundary
 import S31.Gadgets.Functional.TextSquare4GateJoin
@@ -31,6 +32,7 @@ import S31.Gadgets.Air.FunctionalBridge
 import S31.Gadgets.Air.AffineChipBoundary
 import S31.Gadgets.Air.GenericChipBoundary
 import S31.Gadgets.Air.PrivateBridgeChallenge
+import S31.Gadgets.Air.PrivateBridgeChallengeMany
 import S31.Gadgets.Air.SelectRows
 import S31.Gadgets.Air.BooleanRows
 import S31.Gadgets.Air.BitRows
@@ -82,7 +84,10 @@ import S31.Gadgets.Functional.CompilerCorrespondence
 import S31.Gadgets.Functional.SSACertificate
 import S31.Gadgets.Functional.SSAEmitterProof
 import S31.Gadgets.Functional.SSANamedProgram
+import S31.Gadgets.Functional.SSANamedExecution
+import S31.Gadgets.Functional.SSANamedPublicClaim
 import S31.Gadgets.Functional.SSAAirRows
+import S31.Gadgets.Functional.SSALocalPipeline
 import S31.Gadgets.Functional.MathLibrary
 import S31.Gadgets.Functional.WorkedQuadratic
 import S31.Gadgets.Functional.CurriedApplication

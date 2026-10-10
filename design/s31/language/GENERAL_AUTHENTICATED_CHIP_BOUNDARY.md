@@ -128,3 +128,84 @@ multiplicity, changed claims and proof bytes. Then measure batch versus
 per-call bridge geometry before choosing the general default. No automated
 lowering choice should use an unvalidated cost model or presume the two
 proof profiles soundness-equivalent.
+
+## Implementation map: two independent calls
+
+The first multi-call release should be the explicit `direct-chip-pair`
+lowering, capped at exactly two calls. Use profile
+`direct-m31-chip-pair-v1`, key schema
+`s31-verification-key-direct-chip-pair-v1`, manifest schema
+`s31-component-manifest-direct-chip-pair-v1`, proof magic `S31NAT8P`, and
+transcript tag `0x5333315041495201` (`S31PAIR` plus version byte). Keep the
+existing one-call `direct-chip` key schemas, proof magic, six-field tuple and
+native verifier unchanged. A later variable-`N` profile can
+reuse the internal plan with another versioned limit and measured geometry.
+
+Use a source relation with two private four-lane inputs, two `repeat` nodes
+with different constants and lengths (for example 16 and 32 rounds), and a
+public sum of their four-lane outputs. The exact source operations already
+exist; the new feature is extraction and proof selection for **both** nodes.
+The first pair profile should reject unsupported repeat bodies, extra repeat
+nodes, unconsumed calls, and noncanonical parameter values before packaging.
+
+| Owner | Required change |
+| --- | --- |
+| S31 `language/relation.zig` and `canonical.zig` | Extract an ordered call plan from canonical IR, assigning call IDs `0,1` in canonical node order. Record each node ID, chip kind/version, rounds, transformed constant and nonzero affine coordinate map. Reusing or skipping an ID is invalid. |
+| S31 `language/relation_compiler.zig` | Add a separate tagged multi-call lowering mode. For each planned repeat, emit the same constrained affine input/output wires as the one-call path, collect four input and four output addresses, and return a plan in `Maps`. Value and topology compilation must produce identical plans apart from witness values. |
+| stwo-zig `frontends/circuit/common/direct_arithmetic.zig` | Build one preprocessed circuit from all boundary calls. Validate each address has one producer, reject forbidden public reservation addresses, and add one Gate use **per occurrence**, including repeated addresses. Bound the total multiplicity below the field characteristic. Preserve the one-boundary constructor. |
+| stwo-zig `integrations/circuit_cpu/repeated_step_chip.zig` and `private_boundary_bridge.zig` | Add versioned tagged AIR modules. The chip and bridge use `Chip(relation_id, call_id, index, lane0..3)` with seven compression powers. `call_id` is a fixed component parameter, so the nine chip and eight bridge main-column widths need not grow. The new bridge also enforces eight row-to-row endpoint equalities. Keep the old six-field components callable by legacy proofs. |
+| stwo-zig `integrations/circuit_cpu/direct_arithmetic.zig` | Add a shared pair-plan prover schedule: circuit, chip 0, chip 1, bridge 0, bridge 1. Commit all base columns before drawing one lookup challenge pair; commit all interactions and mix five claimed sums in that order. Require `circuit_sum + Σ chip_sums + Σ bridge_sums = 0`. |
+| S31 `runtime/component_manifest.zig`, `mvp_runtime.zig`, `native_verifier.zig` | Generate and reconstruct the exact five-component roster from sealed source and pinned AIR. The native verifier uses the validated plan for PCS logs, offsets, component handles, sum positions and transcript setup **before proof deserialization**. The new proof envelope carries exactly five canonical QM31 sums. |
+| S31 `python/package/{build,verify}.py` and acceptance | Bind the versioned manifest into key, sidecar, cost report and package; retain explicit legacy branches. Build an honest pair proof and adversarial resealed-key, witness and proof cases. |
+
+For two calls, tree 1 has `12 + 2·9 + 2·8 = 46` main columns and tree 2
+has `8 + 2·8 + 2·20 = 64` interaction columns. The eight fixed circuit
+columns remain in tree 0. Chip trace logs are `4` and `5` for the example;
+both bridge logs are `4`. If the selected circuit has `C` constraints, the
+five random-coefficient offsets are `0, C, C+6, C+12, C+25`; the total is
+`C+38`, assuming six constraints per chip and thirteen per new bridge.
+The extra eight bridge constraints make each endpoint column constant across
+its 16 rows, simplifying the argument behind its `1/16` lookup weight.
+Generate these values from the selected components and verify them
+against the manifest, rather than maintaining a second handwritten list.
+
+Use a canonical binary encoding to hash the roster: domain tag, source and
+canonical IR digests, pinned AIR/code identities, fixed-column digests and
+root, ordered call records, component geometry, and sum order. Exclude the
+circuit identity hash from that digest to avoid a cycle; derive the new
+circuit identity from the roster digest and fixed root. Mix the roster digest
+under a new transcript tag **before the first commitment**. The JSON
+manifest is an audit view of the same typed roster, not the hash input.
+
+Acceptance must reject cross-swapped endpoints, changed call IDs, duplicated
+or omitted calls/components, changed constants/lengths/addresses, wrong Gate
+multiplicity, row-varying bridge endpoints, changed public claims, altered
+claimed sums, truncated/trailing proof bytes, and old/new profile replay.
+At least one mutation should re-seal a false key and verifier binary, proving
+that source-derived reconstruction rejects it independently of package hashes.
+The Lean ideal-join theorem covers exact tagged multiset balance only; a
+separate probabilistic LogUp/PCS argument and compiler correspondence proof
+remain release obligations. Measure complete prover time, peak memory and
+proof size against the same source lowered through the generic circuit.
+
+### Independent review questions before release
+
+- Does canonical IR traversal assign the same IDs in the value compiler,
+  topology compiler and sealed verifier, including repeated or shared
+  subexpressions? Are dead chip calls rejected before any proof is built?
+- Does the tagged chip AIR actually incorporate the fixed `call_id` into each
+  seven-field lookup constraint, or is it merely displayed in JSON?
+- Are every Gate address use and all repeated occurrences reflected in the
+  committed multiplicity column with checked arithmetic below `p`?
+- Are the new bridge's eight row-to-row equalities enforced at the wrap edge
+  in both domain and point evaluation, with the correct circle-domain mask?
+- Does the challenge argument bound false global lookup balance for both
+  relations, seven-field compression collisions, zero denominators and
+  weighted multiplicities? The ideal Lean multiset theorem assumes exact
+  balance and does not discharge this probability bound.
+- Does the same typed roster drive prover columns, verifier PCS logs,
+  component order, sums and transcript mixing? Can an altered key be re-sealed
+  with a verifier that silently uses another schedule?
+- Are proof privacy and package trust described accurately? The current
+  bridge opens private endpoints, and a self-hashed package is not an external
+  trust root for its verifier binary.
