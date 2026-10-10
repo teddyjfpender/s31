@@ -565,3 +565,12 @@ sum positions, nonce, and all four commitments. The current static review
 cannot substitute for these runs. A deployed verifier must embed or externally
 pin its source and exact key; the compiled AIR digest check pins the bundle,
 while package self-hashes alone do not authenticate the executable.
+
+The staged `verifySealed` performs source derivation, re-derivation for binding
+comparison, key reconstruction, and topology compilation before its first
+fixed envelope length/magic check. Passing `raw = ""` with an otherwise valid
+source, key and public claim triggers all of that work before returning
+`InvalidPairNativeEnvelope`. This is bounded CPU amplification, not a proof
+forgery. A public byte-entry wrapper should cap file reads, and the fixed
+length/magic check can run immediately before the expensive source work; the
+source/key checks must still precede proof decoding and acceptance.
