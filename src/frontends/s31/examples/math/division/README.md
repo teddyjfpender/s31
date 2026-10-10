@@ -24,9 +24,9 @@ occupy sixteen words together, so the last example exposes only the quotient;
 the internal remainder and its constraints still exist in the proof.
 Division by zero and signed `MIN / -1` make the circuit unsatisfiable.
 
-The 8- and 16-bit examples use `--lowering direct-gate`. This profile proves
+The 8- and 16-bit examples, plus unsigned `u32`, use `--lowering direct-gate`. This profile proves
 each input and intermediate bound with Boolean bits and emits arithmetic-only
-AIR gates; it does not require the 65,536-cell range table. Widths 32 through
-128 currently use `--lowering sparse-wide-gate`, whose limb and carry checks use lookup and
+AIR gates; it does not require the 65,536-cell range table. Signed `i32` and
+widths 64 through 128 currently use `--lowering sparse-wide-gate`, whose limb and carry checks use lookup and
 equality components. See the [worked constraints](../../../docs/fixed-width-integers.md#division-and-remainder-by-hand)
 for the equations each profile proves.

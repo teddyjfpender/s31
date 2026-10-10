@@ -39,12 +39,12 @@ CASES = {
     },
     "u32_div_rem": {
         "spec": 32,
-        "lowering": "sparse-wide-gate",
-        "profile": "sparse-wide-v5",
+        "lowering": "direct-gate",
+        "profile": "direct-m31-v4",
         "canonical_ir_sha256": "76a5ec985ccd6ca98987f22f1447bd9549652061006a54f46c122b805363251a",
-        "raw": {"blake_g": 0, "eq": 30, "m31_to_u32": 42, "qm31_ops": 136, "triple_xor": 0},
-        "padded": {"blake_g": 0, "eq": 32, "m31_to_u32": 64, "qm31_ops": 256, "triple_xor": 0},
-        "preprocessed_cells": 67840,
+        "raw": {"blake_g": 0, "eq": 0, "m31_to_u32": 0, "qm31_ops": 1282, "triple_xor": 0},
+        "padded": {"blake_g": 0, "eq": 0, "m31_to_u32": 0, "qm31_ops": 2048, "triple_xor": 0},
+        "preprocessed_cells": 16384,
     },
     "i8_div_rem": {
         "spec": 264,

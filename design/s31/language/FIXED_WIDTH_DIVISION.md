@@ -118,7 +118,17 @@ generation. The circuit test also injects that raw field value directly with
 The arithmetic bit range gate alone makes that forged circuit invalid. This
 checks that the proof does not depend on the host decoder for the word bound.
 
-The generic wide circuit remains the path for 32 through 128 bits.
+The same arithmetic-only convolution now proves unsigned `u32` with four
+little-endian bytes, eight product columns, four comparison columns, and
+two 16-bit source limbs per input. For `123456 / 300`, the circuit's first
+three product columns are `155*44+156=64+256*27`,
+`27+155*1+1*44=226+256*0`, and `1*1=1+256*0`; the remaining high columns
+and terminal carry are zero. A four-byte borrow chain proves `156<300`.
+The [paired u32 record](../measurements/language/direct-u32-division-2026-10-10.json)
+shows 92,802 median direct proof bytes and 2.38 ms median non-PoW prover
+time versus 234,568 bytes and 16.02 ms under sparse-wide for 20 witnesses.
+The signed `i32` and 64- through 128-bit source profiles still use the
+generic wide circuit.
 
 ## Audit and performance gates
 

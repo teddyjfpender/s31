@@ -87,26 +87,29 @@ const BitCache = struct {
     }
 };
 
-fn hasDivisionWidth(program: relation.Program, width: u32) bool {
+fn hasDivisionWidth(program: relation.Program, width: u32, require_unsigned: bool) bool {
     for (program.nodes) |node| {
         if (node.op != .int_div_rem) continue;
         const spec = relation.IntegerSpec.decode(node.constant) orelse continue;
-        if (spec.width == width) return true;
+        if (spec.width == width and (!require_unsigned or !spec.signed)) return true;
     }
     return false;
 }
 
-/// A raw u16 scalar may skip the fixed table only when every direct use is
-/// an integer view of the same 8- or 16-bit width. Arithmetic bit
-/// decomposition then proves exactly that input's source range.
-fn arithmeticInputWidth(program: relation.Program, input: relation.Input) ?u32 {
-    if (input.kind != .u16 or input.length != 1) return null;
+/// A raw u16 array may skip the fixed table only when every direct use is
+/// an integer view of one supported width. Arithmetic bit decomposition
+/// proves every source limb's range. Wide arithmetic is admitted only for
+/// unsigned 32-bit division in the direct profile.
+fn arithmeticInputWidth(program: relation.Program, input: relation.Input, allow_wide: bool) ?u32 {
+    if (input.kind != .u16) return null;
     var width: ?u32 = null;
     for (program.nodes) |node| {
         if (node.lhs) |name| {
             if (std.mem.eql(u8, name, input.name)) {
                 const spec = if (node.op == .int_view) relation.IntegerSpec.decode(node.constant) else null;
-                if (spec == null or (spec.?.width != 8 and spec.?.width != 16)) return null;
+                if (spec == null or input.length != spec.?.limbCount()) return null;
+                if (spec.?.width != 8 and spec.?.width != 16 and
+                    !(allow_wide and spec.?.width == 32 and !spec.?.signed)) return null;
                 if (width != null and width.? != spec.?.width) return null;
                 width = spec.?.width;
             }
@@ -118,12 +121,12 @@ fn arithmeticInputWidth(program: relation.Program, input: relation.Input) ?u32 {
         if (std.mem.eql(u8, assertion.lhs, input.name) or std.mem.eql(u8, assertion.rhs, input.name)) return null;
     }
     for (program.public_outputs) |name| if (std.mem.eql(u8, name, input.name)) return null;
-    if (width) |w| if (hasDivisionWidth(program, w)) return w;
+    if (width) |w| if (hasDivisionWidth(program, w, w == 32)) return w;
     return null;
 }
 
 pub fn directFixedInput(program: relation.Program, input: relation.Input) bool {
-    return arithmeticInputWidth(program, input) != null;
+    return arithmeticInputWidth(program, input, true) != null;
 }
 
 pub fn compileRaw(comptime V: type, allocator: std.mem.Allocator, program: relation.Program, assignment: ?relation.Assignment) !circuit.builder.Context(V) {
@@ -140,7 +143,7 @@ pub fn compileRaw(comptime V: type, allocator: std.mem.Allocator, program: relat
     defer values.deinit(scratch);
 
     for (program.inputs) |input| {
-        const arithmetic_width = arithmeticInputWidth(program, input);
+        const arithmetic_width = arithmeticInputWidth(program, input, false);
         const length: usize = input.length;
         const source_values: ?[]M31 = if (comptime V == QM31) try relation.inputValues(allocator, assignment.?, input) else null;
         defer if (source_values) |owned| allocator.free(owned);
@@ -154,8 +157,9 @@ pub fn compileRaw(comptime V: type, allocator: std.mem.Allocator, program: relat
                 .m31 => (try circuit.builder.wrappers.guessM31(V, &ctx, .newUnsafe(hint))).get(),
             };
             if (arithmetic_width) |width| {
-                const bits = try integer_bits.decomposeWordArithmetic(V, &ctx, wire.*, width);
-                try bit_cache.remember(scratch, &.{wire.*}, bits, width);
+                const limb_width: usize = if (width == 8) 8 else 16;
+                const bits = try integer_bits.decomposeWordArithmetic(V, &ctx, wire.*, limb_width);
+                try bit_cache.remember(scratch, &.{wire.*}, bits, @intCast(limb_width));
             }
             wrapped.* = .newUnsafe(wire.*);
         }
@@ -206,7 +210,7 @@ pub fn compileRaw(comptime V: type, allocator: std.mem.Allocator, program: relat
             .int_le => try intBinary(V, &ctx, lhs.?, rhs.?, node.constant.?, .le),
             .int_mul_wrapping => try intMultiplyWrapping(V, &ctx, lhs.?, rhs.?, node.constant.?),
             .int_mul_checked => try intMultiplyChecked(V, &ctx, lhs.?, rhs.?, node.constant.?),
-            .int_div_rem => try intDivRem(V, &ctx, &bit_cache, lhs.?, rhs.?, node.constant.?),
+            .int_div_rem => try intDivRem(V, &ctx, &bit_cache, lhs.?, rhs.?, node.constant.?, false),
             .int_cast_checked => try intCastChecked(V, &ctx, lhs.?, node.constant.?),
             .int_bit_and => try intBitwise(V, &ctx, &bit_cache, lhs.?, rhs.?, node.constant.?, .and_),
             .int_bit_or => try intBitwise(V, &ctx, &bit_cache, lhs.?, rhs.?, node.constant.?, .or_),
@@ -361,7 +365,7 @@ fn compileWithSpansMode(comptime V: type, allocator: std.mem.Allocator, program:
     if (chip_mode and program.repeatedStepChip() == null and !private_chip) return error.UnsupportedChipRelation;
     if (sha_chip_mode and (chip_mode or direct_output or maps == null)) return error.InvalidShaChipCompilerMode;
     if (direct_output) for (program.inputs) |input| {
-        if (input.kind != .m31 and arithmeticInputWidth(program, input) == null) return error.UnsupportedDirectRelation;
+        if (input.kind != .m31 and arithmeticInputWidth(program, input, true) == null) return error.UnsupportedDirectRelation;
     };
     if (comptime V == QM31) {
         if (assignment == null) return error.MissingAssignment;
@@ -400,7 +404,7 @@ fn compileWithSpansMode(comptime V: type, allocator: std.mem.Allocator, program:
                 const source_values: ?[]M31 = if (comptime V == QM31) try relation.inputValues(allocator, assignment.?, input) else null;
                 defer if (source_values) |owned| allocator.free(owned);
                 const boolean = direct_output and bit_sources[id];
-                const arithmetic_width = arithmeticInputWidth(program, input);
+                const arithmetic_width = arithmeticInputWidth(program, input, direct_output);
                 // A QM31 witness is already four M31 coordinates. For a
                 // private array, guessing the packed wire directly avoids
                 // four scalar guesses and their six packing gates. Public
@@ -435,8 +439,9 @@ fn compileWithSpansMode(comptime V: type, allocator: std.mem.Allocator, program:
                         .m31 => (try circuit.builder.wrappers.guessM31(V, &ctx, .newUnsafe(hint))).get(),
                     };
                     if (arithmetic_width) |width| {
-                        const bits = try integer_bits.decomposeWordArithmetic(V, &ctx, wire.*, width);
-                        try bit_cache.remember(scratch, &.{wire.*}, bits, width);
+                        const limb_width: usize = if (width == 8) 8 else 16;
+                        const bits = try integer_bits.decomposeWordArithmetic(V, &ctx, wire.*, limb_width);
+                        try bit_cache.remember(scratch, &.{wire.*}, bits, @intCast(limb_width));
                     }
                     wrapped.* = .newUnsafe(wire.*);
                 }
@@ -481,7 +486,7 @@ fn compileWithSpansMode(comptime V: type, allocator: std.mem.Allocator, program:
             .int_le => try intBinary(V, &ctx, entries[node.lhs.?], entries[node.rhs.?], node.constant.?, .le),
             .int_mul_wrapping => try intMultiplyWrapping(V, &ctx, entries[node.lhs.?], entries[node.rhs.?], node.constant.?),
             .int_mul_checked => try intMultiplyChecked(V, &ctx, entries[node.lhs.?], entries[node.rhs.?], node.constant.?),
-            .int_div_rem => try intDivRem(V, &ctx, &bit_cache, entries[node.lhs.?], entries[node.rhs.?], node.constant.?),
+            .int_div_rem => try intDivRem(V, &ctx, &bit_cache, entries[node.lhs.?], entries[node.rhs.?], node.constant.?, direct_output),
             .int_cast_checked => try intCastChecked(V, &ctx, entries[node.lhs.?], node.constant.?),
             .int_bit_and => try intBitwise(V, &ctx, &bit_cache, entries[node.lhs.?], entries[node.rhs.?], node.constant.?, .and_),
             .int_bit_or => try intBitwise(V, &ctx, &bit_cache, entries[node.lhs.?], entries[node.rhs.?], node.constant.?, .or_),
@@ -1016,7 +1021,7 @@ fn intMultiplyWrapping(comptime V: type, ctx: *circuit.builder.Context(V), lhs: 
     return .{ .shape = .{ .kind = .u16, .length = raw.len }, .lanes = try circuit.builder.simd.pack(V, ctx, wrappers), .raw = raw, .integer_spec = encoded };
 }
 
-fn intDivRem(comptime V: type, ctx: *circuit.builder.Context(V), cache: *BitCache, lhs: Entry, rhs: Entry, encoded: u32) !Entry {
+fn intDivRem(comptime V: type, ctx: *circuit.builder.Context(V), cache: *BitCache, lhs: Entry, rhs: Entry, encoded: u32, direct_arithmetic: bool) !Entry {
     const spec = relation.IntegerSpec.decode(encoded) orelse return error.InvalidIntegerSpec;
     const left = lhs.raw orelse return error.InvalidIntegerOperand;
     const right = rhs.raw orelse return error.InvalidIntegerOperand;
@@ -1042,7 +1047,10 @@ fn intDivRem(comptime V: type, ctx: *circuit.builder.Context(V), cache: *BitCach
             .quotient = if (direct_word) try intConditionalNegateArithmetic(V, ctx, cache, magnitude.quotient[0], quotient_negative, spec.width) else try intConditionalNegate(V, ctx, magnitude.quotient, quotient_negative, spec.width),
             .remainder = if (direct_word) try intConditionalNegateArithmetic(V, ctx, cache, magnitude.remainder[0], sa, spec.width) else try intConditionalNegate(V, ctx, magnitude.remainder, sa, spec.width),
         };
-    } else try integer_division.divRem(V, ctx, left, right, spec.width, left_byte_bounded, right_byte_bounded);
+    } else if (direct_arithmetic and spec.width == 32)
+        try integer_division.divRemArithmetic(V, ctx, left, right, spec.width)
+    else
+        try integer_division.divRem(V, ctx, left, right, spec.width, left_byte_bounded, right_byte_bounded);
     const raw = try ctx.scratch().alloc(Var, left.len * 2);
     @memcpy(raw[0..left.len], division.quotient);
     @memcpy(raw[left.len..], division.remainder);
@@ -2743,4 +2751,23 @@ test "direct 16-bit admission rejects a mixed-width raw input" {
     defer denied.deinit();
     try std.testing.expect(!directFixedInput(denied.value, denied.value.inputs[0]));
     try std.testing.expect(directFixedInput(denied.value, denied.value.inputs[1]));
+}
+
+test "direct wide admission is limited to unsigned 32-bit views" {
+    const allocator = std.testing.allocator;
+    const source =
+        \\{"version":1,"name":"u32_views","inputs":[{"name":"a","kind":"u16","length":2,"visibility":"private"},{"name":"b","kind":"u16","length":2,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":32},{"name":"bv","op":"int_view","lhs":"b","constant":32},{"name":"pair","op":"int_div_rem","lhs":"av","rhs":"bv","constant":32}],"assertions":[],"public_outputs":["pair"]}
+    ;
+    var unsigned = try relation.parseProgram(allocator, source);
+    defer unsigned.deinit();
+    try std.testing.expect(directFixedInput(unsigned.value, unsigned.value.inputs[0]));
+    try std.testing.expect(directFixedInput(unsigned.value, unsigned.value.inputs[1]));
+
+    const signed =
+        \\{"version":1,"name":"i32_views","inputs":[{"name":"a","kind":"u16","length":2,"visibility":"private"},{"name":"b","kind":"u16","length":2,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":288},{"name":"bv","op":"int_view","lhs":"b","constant":288},{"name":"pair","op":"int_div_rem","lhs":"av","rhs":"bv","constant":288}],"assertions":[],"public_outputs":["pair"]}
+    ;
+    var denied = try relation.parseProgram(allocator, signed);
+    defer denied.deinit();
+    try std.testing.expect(!directFixedInput(denied.value, denied.value.inputs[0]));
+    try std.testing.expect(!directFixedInput(denied.value, denied.value.inputs[1]));
 }

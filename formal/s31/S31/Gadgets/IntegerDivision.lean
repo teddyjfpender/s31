@@ -132,4 +132,21 @@ theorem direct_word_strict_remainder (d₀ d₁ r₀ r₁ e₀ e₁ b₀ b₁ : 
     simpa [Nat.mod_eq_of_lt hl₂, Nat.mod_eq_of_lt hr₂] using hhigh
   omega
 
+/-- The arithmetic-only wide divider has at most sixteen byte products per
+column at width 128. Including one remainder byte and a bounded incoming
+carry, the column still lies below the M31 modulus. -/
+def directWideColumnConstraint (coefficient incoming digit outgoing : Nat) : Prop :=
+  coefficient ≤ 16 * 255 * 255 + 255 ∧ incoming < 65536 ∧
+    digit < 256 ∧ outgoing < 65536 ∧
+    (coefficient + incoming) % 2147483647 =
+      (digit + 256 * outgoing) % 2147483647
+
+theorem direct_wide_column_no_wrap (coefficient incoming digit outgoing : Nat)
+    (h : directWideColumnConstraint coefficient incoming digit outgoing) :
+    coefficient + incoming = digit + 256 * outgoing := by
+  rcases h with ⟨hc, hi, hd, ho, heq⟩
+  have hl : coefficient + incoming < 2147483647 := by omega
+  have hr : digit + 256 * outgoing < 2147483647 := by omega
+  simpa [Nat.mod_eq_of_lt hl, Nat.mod_eq_of_lt hr] using heq
+
 end S31.Gadgets.IntegerDivision

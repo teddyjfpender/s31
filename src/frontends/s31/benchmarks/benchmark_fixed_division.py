@@ -17,6 +17,10 @@ from oracle import evaluate_relation
 from text_frontend import compile_text
 
 
+def limbs(value: int, width: int) -> list[int]:
+    return [(value >> (16 * i)) & 0xffff for i in range(max(1, width // 16))]
+
+
 def encode(kind: str, numerator: int, divisor: int) -> dict:
     width = int(kind.lstrip("ui"))
     mask = (1 << width) - 1
@@ -26,8 +30,10 @@ def encode(kind: str, numerator: int, divisor: int) -> dict:
     remainder = numerator - quotient * divisor
     return {
         "public_inputs": {},
-        "private_inputs": {"numerator": [numerator & mask], "divisor": [divisor & mask]},
-        "public_outputs": {"result": [quotient & mask, remainder & mask]},
+        "private_inputs": {"numerator": limbs(numerator & mask, width),
+                           "divisor": limbs(divisor & mask, width)},
+        "public_outputs": {"result": limbs(quotient & mask, width) +
+                           limbs(remainder & mask, width)},
     }
 
 
@@ -41,8 +47,10 @@ def corpus(kind: str, count: int, seed: int) -> list[tuple[int, int]]:
     cases: list[tuple[int, int]] = []
     for path in sorted(fixture_dir.glob("*.json")):
         assignment = json.loads(path.read_text())
-        n = assignment["private_inputs"]["numerator"][0]
-        d = assignment["private_inputs"]["divisor"][0]
+        n = sum(value << (16 * i) for i, value in
+                enumerate(assignment["private_inputs"]["numerator"]))
+        d = sum(value << (16 * i) for i, value in
+                enumerate(assignment["private_inputs"]["divisor"]))
         if signed:
             n = n - (1 << width) if n & (1 << (width - 1)) else n
             d = d - (1 << width) if d & (1 << (width - 1)) else d
@@ -64,7 +72,7 @@ def corpus(kind: str, count: int, seed: int) -> list[tuple[int, int]]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("kind", choices=("u8", "i8", "u16", "i16"))
+    parser.add_argument("kind", choices=("u8", "i8", "u16", "i16", "u32"))
     parser.add_argument("--count", type=int, default=20)
     parser.add_argument("--seed", type=int, default=0x5310)
     parser.add_argument("--out", type=Path, required=True)

@@ -1,6 +1,6 @@
 # Byte division measurement inputs
 
-The five assignments for each of `u8`, `i8`, `u16`, and `i16` give distinct private witnesses for
+The five assignments for each of `u8`, `i8`, `u16`, `i16`, and `u32` give distinct private witnesses for
 comparing `direct-gate` with `sparse-wide-gate` on the same source relation.
 Each file contains the independently calculated public quotient and remainder
 as low-byte patterns. Signed division truncates the quotient toward zero, and
@@ -12,7 +12,7 @@ divisor, `MIN / -1`, and out-of-range byte are tested separately by the
 [native division gate](../../../../tests/acceptance/math/division.py).
 
 From the repository root, run a verified profile comparison for either
-`u8`, `i8`, `u16`, or `i16` by replacing `u8` in this command:
+`u8`, `i8`, `u16`, `i16`, or `u32` by replacing `u8` in this command:
 
 ```sh
 python3 src/frontends/s31/python/s31.py tune \
@@ -36,5 +36,5 @@ python3 src/frontends/s31/benchmarks/benchmark_fixed_division.py u16 \
   --count 20 --seed 21264 --out zig-out/s31/benchmarks/u16-division-20
 ```
 
-Replace `u16` with any of the other three kinds. The benchmark writes the
+Replace `u16` with any of the other supported kinds. The benchmark writes the
 generated assignments, complete `s31 tune` report, and a short summary.

@@ -548,6 +548,30 @@ component. The [`i16` example](../examples/math/division/i16_div_rem.s31)
 uses the same unsigned magnitude relation after proving the sign and
 conditional two's-complement conversion: $-32{,}768=(-10{,}922)\cdot3-2$.
 
+### Four-byte unsigned division
+
+The [`u32` program](../examples/math/division/u32_div_rem.s31) proves
+$123{,}456=411\cdot300+156$. Its little-endian byte rows are
+$n=[64,226,1,0]$, $d=[44,1,0,0]$, $q=[155,1,0,0]$,
+and $r=[156,0,0,0]$:
+
+| Column | Exact equation | Carry out |
+| --- | --- | ---: |
+| 0 | $155\cdot44+156=64+256\cdot27$ | 27 |
+| 1 | $27+155\cdot1+1\cdot44=226+256\cdot0$ | 0 |
+| 2 | $1\cdot1=1+256\cdot0$ | 0 |
+| 3–7 | No remaining nonzero product terms; high result and terminal carry are zero | 0 |
+
+The strict remainder check begins with
+$44+256\cdot1=156+1+143$, then resolves the borrow in the next byte:
+$1+256\cdot0=0+1+0$. The remaining two bytes and terminal borrow are
+zero. All 16-bit source limbs, product bytes, carries, and comparison
+digits are constrained by Boolean bit reconstruction. Each product column
+has at most four byte products; even the general 128-bit version has at
+most sixteen, keeping its field equations below the M31 modulus. This
+unsigned 32-bit source can therefore use the arithmetic-only `direct-gate`
+profile. Wider unsigned and signed values still use sparse-wide lowering.
+
 Both profiles bind their constraints and public statement to a native
 verification key. The [native division gate](../tests/acceptance/math/division.py)
 pins the exact circuit hashes and AIR geometry. These are local observations
@@ -562,7 +586,8 @@ the preceding generic implementation:
 | `i8_div_rem` | Direct byte | 367 | 4,096 | 56,864 |
 | `u16_div_rem` | Direct word | 646 | 8,192 | 74,128 |
 | `i16_div_rem` | Direct word | 969 | 8,192 | 73,409 |
-| `u32_div_rem` | Wide | 136 | 67,840 | 238,377 |
+| `u32_div_rem` | Sparse-wide | 136 | 67,840 | 238,377 |
+| `u32_div_rem` | Direct | 1,282 | 16,384 | 90,241 |
 | `u128_div_quotient` | Wide | 802 | 74,752 | 234,484 |
 | `i128_div_quotient` | Wide | 1,121 | 83,200 | 239,293 |
 
@@ -585,6 +610,8 @@ evaluation for every run:
 | `u16_div_rem` | Sparse-wide | 228,687 bytes | 89.0 ms | 16.18 ms |
 | `i16_div_rem` | Direct | 72,541 bytes | 85.7 ms | 1.86 ms |
 | `i16_div_rem` | Sparse-wide | 228,313 bytes | 93.7 ms | 15.86 ms |
+| `u32_div_rem` | Direct | 92,802 bytes | 57.7 ms | 2.38 ms |
+| `u32_div_rem` | Sparse-wide | 234,568 bytes | 80.8 ms | 16.02 ms |
 
 The matched sources have the same normalized relation and visible FRI
 settings. Wall times include process startup and a variable proof-of-work
@@ -597,6 +624,10 @@ different AIRs. The
 proves Euclidean uniqueness, bounded columns, and the no-wrap direct-byte and
 direct-word equations. A formal correspondence from production Zig gates to that model
 remains open.
+
+The [`u32` paired record](../../../../design/s31/measurements/language/direct-u32-division-2026-10-10.json)
+uses the same 20-witness method. Its direct profile removes the range-table
+component while preserving the source and public output relation.
 
 ## Where the AIR and proof enter
 
