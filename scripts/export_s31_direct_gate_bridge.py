@@ -5,8 +5,9 @@ This is an audit bridge, not a standalone verifier. Package admission first
 reparses the exact source bytes and replays the complete direct-gate topology.
 The resulting Lean instance reparses the emitted bytes in Lean, checks the
 derived SSA and public names, checks exact canonical normalized JSON bytes,
-and checks observed source rows against the formal address formula. SHA-256
-strings are informational in Lean.
+and checks observed source rows and eight exported preprocessed cells against
+the formal address, selector, and use-count formulas. SHA-256 strings are
+informational in Lean.
 """
 
 from __future__ import annotations
@@ -21,7 +22,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src/frontends/s31/python"))
 
-from package.correspondence import check_package, read_canonical_json  # noqa: E402
+from package.correspondence import (  # noqa: E402
+    DIRECT_COLUMN_IDS, check_package, read_canonical_json,
+)
 
 
 _LEAN_TOKEN = re.compile(
@@ -120,6 +123,38 @@ def _native_rows(checked: dict, *, change_address: bool = False) -> str:
     return "[\n    " + ",\n    ".join(rows) + "\n  ]"
 
 
+def _air_column_rows(checked: dict, topology: dict, *, mutation: str | None = None) -> str:
+    """Project the eight actual exported preprocessed cells at source rows."""
+    columns = topology["columns"]
+    if ([column["id"] for column in columns] != list(DIRECT_COLUMN_IDS) or
+            any(len(column["values"]) != 512 for column in columns)):
+        raise ValueError("Lean bridge requires eight complete direct-gate columns")
+    instructions = checked["source_ssa"]["instructions"]
+    counts = checked["gate_counts"]
+    seen_add = seen_mul = 0
+    rows = []
+    for index, instruction in enumerate(instructions):
+        multiply = instruction["op"] == "mul"
+        trace_row = (counts["add"] + counts["sub"] + counts["mul"] + seen_mul
+                     if multiply else 3 + seen_add)
+        if index == 0 and mutation == "trace_row":
+            trace_row = trace_row - 1 if trace_row == 511 else trace_row + 1
+        values = [column["values"][trace_row] for column in columns]
+        if index == 0 and mutation == "selector":
+            values[0], values[3] = (1, 0) if multiply else (0, 1)
+        if index == 0 and mutation == "address":
+            values[5] += 1
+        if index == 0 and mutation == "multiplicity":
+            values[7] += 1
+        rows.append(
+            "{ traceRow := %d, addFlag := %d, subFlag := %d, mulFlag := %d, "
+            "pointwiseMulFlag := %d, in0 := %d, in1 := %d, out := %d, mults := %d }" %
+            (trace_row, *values))
+        seen_add += not multiply
+        seen_mul += multiply
+    return "[\n    " + ",\n    ".join(rows) + "\n  ]"
+
+
 def render_bridge(package: Path) -> str:
     checked = check_package(package)
     source_bytes = (package / "source.s31").read_bytes()
@@ -174,6 +209,7 @@ import S31.Gadgets.Functional.SSADirectGateBridge
 import S31.Gadgets.Functional.SSAAirRows
 import S31.Gadgets.Functional.SSATextBytes
 import S31.Gadgets.Functional.SSANormalizedBytes
+import S31.Gadgets.Functional.SSAAirColumnCells
 
 set_option maxRecDepth 4096
 
@@ -184,6 +220,7 @@ open S31.Functional.SSADirectGateBridge
 open S31.Functional.SSAAirRows
 open S31.Functional.SSATextBytes
 open S31.Functional.SSANormalizedBytes
+open S31.Functional.SSAAirColumnCells
 
 def sourceBytes : List Nat := {byte_list}
 -- Informational digest from the outer package checker; Lean does not hash sourceBytes.
@@ -203,6 +240,17 @@ def certificate : Certificate :=
 
 def observedRows : List NativeSourceRow :=
   {_native_rows(checked)}
+
+def observedColumnCells : List ColumnCell :=
+  {_air_column_rows(checked, topology)}
+def changedSelectorCells : List ColumnCell :=
+  {_air_column_rows(checked, topology, mutation="selector")}
+def changedColumnAddressCells : List ColumnCell :=
+  {_air_column_rows(checked, topology, mutation="address")}
+def changedTraceRowCells : List ColumnCell :=
+  {_air_column_rows(checked, topology, mutation="trace_row")}
+def changedMultiplicityCells : List ColumnCell :=
+  {_air_column_rows(checked, topology, mutation="multiplicity")}
 
 def observedAddRows : Nat := {counts['add']}
 def observedGateRows : Nat := {sum(counts.values())}
@@ -229,6 +277,16 @@ theorem source_ssa_checked : check source certificate = some () := by decide
 theorem deterministic_emitter_matches : compile source = certificate := by decide
 theorem source_native_rows_match :
     observedRows = expectedRows certificate observedAddRows := by decide
+theorem observed_source_columns_match :
+    observedColumnCells = expectedCells certificate observedAddRows := by decide
+theorem changed_selector_cell_rejected :
+    changedSelectorCells ≠ expectedCells certificate observedAddRows := by decide
+theorem changed_column_address_cell_rejected :
+    changedColumnAddressCells ≠ expectedCells certificate observedAddRows := by decide
+theorem changed_trace_row_cell_rejected :
+    changedTraceRowCells ≠ expectedCells certificate observedAddRows := by decide
+theorem changed_multiplicity_cell_rejected :
+    changedMultiplicityCells ≠ expectedCells certificate observedAddRows := by decide
 theorem complete_native_shape :
     observedGateRows = 512 ∧ observedVariables = 512 := by decide
 
@@ -267,6 +325,16 @@ theorem checked_bytes_sound (input : Lanes) :
   checked_relation_sound sourceBytes normalizedBytes certificate input
     normalized_bytes_check
 
+/-- Exact source selectors, addresses and output use counts from the exported
+preprocessed cells agree with the SSA-derived row plan. The byte relation
+premise is discharged for this concrete package instance. -/
+theorem checked_column_cells_sound (input : Lanes) :
+    observedColumnCells = expectedCells certificate observedAddRows ∧
+      executeNormalized certificate input = denotation sourceBytes input :=
+  checked_air_cells_sound sourceBytes normalizedBytes certificate input
+    observedAddRows observedColumnCells normalized_bytes_check
+    observed_source_columns_match
+
 /-- Any complete accepted local arithmetic-row trace for these exact source
 instructions has the source result, provided the row operands are the values
 authenticated at their addressed prior wires. This does not discharge that
@@ -276,12 +344,13 @@ theorem checked_instance_air_claim (input claimed : Lanes)
     (hrows : AcceptsTrace [input] certificate.instructions final)
     (hclaim : final[certificate.output]? = some claimed) :
     observedRows = expectedRows certificate observedAddRows ∧
+      observedColumnCells = expectedCells certificate observedAddRows ∧
       denotation sourceBytes input = some claimed := by
   have hrun := accepted_trace_executes hrows
   have hbytes := checked_bytes_sound input
   rw [execute_normalized_eq_execute] at hbytes
   simp [execute, hrun, hclaim] at hbytes
-  exact ⟨source_native_rows_match, hbytes.symm⟩
+  exact ⟨source_native_rows_match, observed_source_columns_match, hbytes.symm⟩
 
 end S31.Functional.GeneratedDirectGateBridge
 '''

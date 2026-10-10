@@ -180,9 +180,14 @@ its checker admits a source/normalized byte pair only when the entire JSON
 byte sequence matches, and its theorem transfers source denotation to the
 admitted certificate. The generated instance kernel-checks both actual byte
 arrays, the public names, exact source-gate positions, and literal source or
-normalized opcode and public-output mutation controls. The Python package
-checker supplies the package-to-embedded-byte/digest binding and validates
-other native rows. Lean does not verify the embedded SHA-256 strings, prove
+normalized opcode and public-output mutation controls.
+`Functional/SSAAirColumnCells` projects the eight native preprocessed cells
+at each source gate's grouped AIR row and computes the expected selector,
+addresses, and use count from the parsed SSA. The generated shared-square
+instance checks both actual exported source cells and rejects mutations to
+the selector, one address, the sampled row, and the output multiplicity. The
+Python package checker supplies the package-to-embedded-byte/digest binding
+and validates other native rows. Lean does not verify the embedded SHA-256 strings, prove
 Python or Zig parser equivalence, or authenticate the PCS preprocessed root.
 `Functional/TextSquare4` is a narrower executable bridge: the formal gate
 runs the Python text compiler on the actual `functional_square4.s31` file and

@@ -96,7 +96,8 @@ accepted inputs remains unproved.
 first admits a native package with the independent checker, then emits a
 concrete Lean instance containing the exact source and canonical normalized
 JSON bytes, their SHA-256 digest strings, the positional SSA, the observed
-source-gate addresses and grouped trace row positions, and the observed
+source-gate addresses and grouped trace row positions, the eight observed
+preprocessed column cells at each source gate's AIR row, and the
 512-row/512-variable shape. The checked-in
 [`GeneratedDirectGateBridge.lean`](../../../formal/s31/S31/Gadgets/Functional/GeneratedDirectGateBridge.lean)
 is regenerated from the two-operation square example during native acceptance;
@@ -116,9 +117,26 @@ embedded `source.s31.json` bytes. This catches added fields, duplicate keys,
 changed visibility or output, reordered nodes, changed operands or opcodes,
 and any other byte change in the bounded relation. It separately checks the
 deterministic source-term emitter and each observed source gate's circuit
-address and grouped AIR row. A literal byte mutation changing the first
-`.*` to `+` parses to a different certificate; changing the emitted opcode or
-one operand address is rejected by separate Lean checks. Literal normalized
+address and grouped AIR row. [`SSAAirColumnCells.lean`](../../../formal/s31/S31/Gadgets/Functional/SSAAirColumnCells.lean)
+derives the expected selector, three wire addresses, and output use count
+from the parsed SSA and checks them against the eight cells that the exporter
+reads from `gate-topology.json` at those rows. For the example, source wire
+`0` is at circuit address `22`; the square and fourth-power outputs are at
+`23` and `24`. Their pointwise-multiply cells are:
+
+| AIR row | Selectors: add, sub, mul, pointwise | In 0 | In 1 | Out | Uses of out |
+| ---: | --- | ---: | ---: | ---: | ---: |
+| 502 | `0, 0, 0, 1` | 22 | 22 | 23 | 2 |
+| 503 | `0, 0, 0, 1` | 23 | 23 | 24 | 4 |
+
+The first output is read twice by the next source operation; the final
+output is read by four public-result unpack masks. The AIR row numbers differ
+from source order because the native writer groups add, sub, ordinary
+multiply, and pointwise multiply gates. The fixture kernel-checks the cells
+and rejects a changed selector, input address, sampled AIR row, or use count.
+A literal byte mutation changing the first `.*` to `+` parses to a different
+certificate; changing the emitted opcode or one operand address is rejected
+by separate Lean checks. Literal normalized
 JSON mutations to an opcode and the public output are also rejected. A
 general theorem proves that, whenever the exact source and normalized byte
 check returns a certificate, its normalized execution agrees with the source
@@ -133,7 +151,13 @@ the production JSON readers implement the same exact-byte relation model.
 It does not prove that the Python checker implements its native-row model or
 authenticate committed AIR columns. The bridge formally checks the embedded
 bytes' bounded source/normalized relation pairing and their SSA/source-gate
-row mapping; it is not a general compiler-correctness theorem.
+row and projected-column mapping; it is not a general compiler-correctness
+theorem. The outer Python checker checks every native row and binds the
+projected cells to the exported columns and manifest hashes. Lean does not
+read the package itself or prove those columns are the verifier's committed
+preprocessed columns. In particular, the total add-row count and all
+source-independent rows are checked by the Python package checker, not by
+this Lean cell theorem.
 
 ## Proof boundary and invocation
 

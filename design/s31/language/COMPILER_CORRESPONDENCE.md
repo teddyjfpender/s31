@@ -111,11 +111,19 @@ normalized byte equals that expected encoding, then proves the resulting
 certificate computes the source-byte denotation on every input. The fixture
 kernel-checks the actual exported `source.s31.json` bytes and rejects literal
 normalized-opcode and public-output changes. Its final local AIR claim uses
-this two-file check. The fixture still relies on the outer exporter to bind
-the embedded arrays to the package, and Lean does not compute the displayed
-SHA-256 digests. The Python checker accepts some Unicode whitespace that this
-ASCII Lean parser rejects;
-their full parser equivalence is not proved. Nor is equivalence between the
+this two-file check. [`SSAAirColumnCells.lean`](../../../formal/s31/S31/Gadgets/Functional/SSAAirColumnCells.lean)
+derives the eight selector, address, and multiplicity cells for each source
+operation from the same certificate and checks exported native column values
+at their grouped AIR rows. The shared-square instance checks rows 502 and
+503, including two uses of the first result and four public-unpack uses of
+the last result; selector, address, sampled-row, and multiplicity mutations
+fail by kernel reduction. The fixture still relies on the outer exporter to
+bind the embedded arrays to the package, and Lean does not compute the
+displayed SHA-256 digests. The total add-row count and source-independent
+rows remain package-checker premises, and committed-column authenticity is
+still a PCS obligation. The Python checker accepts some Unicode whitespace
+that this ASCII Lean parser rejects; their full parser equivalence is not
+proved. Nor is equivalence between the
 production JSON readers and the exact Lean byte encoder. Production Zig
 compilation, native Gate lookup authentication, committed AIR columns, and
 PCS binding remain separate proof obligations.
