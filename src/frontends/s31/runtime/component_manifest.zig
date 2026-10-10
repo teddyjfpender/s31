@@ -20,6 +20,11 @@ pub const TraceSpan = struct { tree: u32, start: u32, end: u32 };
 
 pub const Component = struct {
     name: []const u8,
+    /// Direct profiles use 1 for the bundle's `qm31_ops` component and 0 as
+    /// a native-component sentinel. The sentinel collides with a possible
+    /// zero-based bundle index in other profiles, so this field is meaningful
+    /// only together with this profile's component name and program binding.
+    /// A future general scheduler needs an explicit source-kind variant.
     source_index: u32,
     proof_index: u32,
     trace_log_size: u32,

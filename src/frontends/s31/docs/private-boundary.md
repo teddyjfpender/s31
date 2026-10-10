@@ -75,6 +75,11 @@ opposite chip endpoint terms. All five claimed sums must close to zero.
 The preprocessed Gate multiplicity counts **each occurrence** of a repeated
 wire address; two appearances of one address still read one coherent circuit
 variable.
+In the current direct manifest, `source_index=1` names the official
+`qm31_ops` bundle component while `source_index=0` is a sentinel for each
+native chip or bridge, whose Zig source hash is stored separately. The numeric
+field is not a general bundle index; a variable-component scheduler needs an
+explicit source-kind field before it can use this schema.
 As in the one-call profile, “private” means absent from the eight public
 output words. The bridge commits endpoint values and trace openings can
 reveal them; this profile makes no witness-secrecy claim.
