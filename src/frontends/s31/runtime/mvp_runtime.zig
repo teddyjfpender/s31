@@ -232,6 +232,25 @@ const Report = struct {
     fri: struct { pow_bits: u32, log_blowup_factor: u32, last_layer_degree_bound: u32, queries: u32, fold_step: u32 },
 };
 
+/// Value-free builder gates and the exact direct AIR preprocessed columns.
+/// This is an inspection artifact, not a verifier key or a PCS commitment.
+const DirectTopologyColumn = struct { id: []const u8, values: []const u32 };
+const DirectTopology = struct {
+    schema: []const u8 = "s31-direct-gate-topology-v1",
+    program_sha256: []const u8,
+    n_vars: usize,
+    output: []const u32,
+    add: []const circuit.builder.circuit.BinaryGate,
+    sub: []const circuit.builder.circuit.BinaryGate,
+    mul: []const circuit.builder.circuit.BinaryGate,
+    pointwise_mul: []const circuit.builder.circuit.BinaryGate,
+    permutation_ends: []const u32,
+    permutation_inputs: []const u32,
+    permutation_outputs: []const u32,
+    first_permutation_row: usize,
+    columns: [circuit.common.direct_arithmetic.N_COLUMNS]DirectTopologyColumn,
+};
+
 pub fn main() !void {
     // Check the source request before dispatching to specialized runtimes.
     var source_guard = try parsedProgram(std.heap.page_allocator);
@@ -267,6 +286,8 @@ pub fn main() !void {
         printWords(words);
     } else if (std.mem.eql(u8, command, "inspect") and args.len == 2) {
         try inspect(allocator, parsed.value);
+    } else if (std.mem.eql(u8, command, "inspect-topology") and args.len == 2 and direct_mode and !chip_mode) {
+        try inspectDirectTopology(allocator, parsed.value);
     } else if (std.mem.eql(u8, command, "prove") and args.len == 4) {
         try prove(allocator, parsed.value, args[2], args[3], null, false, null, null, false);
     } else if (std.mem.eql(u8, command, "recurse-check") and args.len == 5 and !chip_mode and !sparse_mode and !direct_mode) {
@@ -393,7 +414,7 @@ fn parseInspectStep(args: []const []const u8, base_len: usize) !u32 {
 }
 
 fn usage() error{InvalidArguments} {
-    std.debug.print("usage: s31-program check | inspect | run ASSIGNMENT.json | prove ASSIGNMENT.json PROOF\n", .{});
+    std.debug.print("usage: s31-program check | inspect | inspect-topology (bounded direct-gate only) | run ASSIGNMENT.json | prove ASSIGNMENT.json PROOF\n", .{});
     std.debug.print("       recurse-check ASSIGNMENT.json CHILD-PROOF CHILD-KEY.json | recurse-prove ASSIGNMENT.json CHILD-PROOF OUTER-PROOF CHILD-KEY.json [--low-memory]\n", .{});
     std.debug.print("       recurse-wrap CHILD-PROOF CHILD-STATEMENT.json OUTER-PROOF CHILD-KEY.json [--low-memory]\n", .{});
     std.debug.print("       recurse-wrap-next OUTER-PROOF OUTER-STATEMENT.json NEXT-PROOF CHILD-KEY.json RECURSIVE-KEY.json NEXT-KEY.json [--low-memory]\n", .{});
@@ -799,6 +820,47 @@ fn inspect(allocator: std.mem.Allocator, source: relation.Program) !void {
     };
     const encoded = try std.json.Stringify.valueAlloc(allocator, report, .{});
     defer allocator.free(encoded);
+    std.debug.print("{s}\n", .{encoded});
+}
+
+fn inspectDirectTopology(allocator: std.mem.Allocator, source: relation.Program) !void {
+    // The command is deliberately bounded: package admission invokes it only
+    // for the small, independently parsed source fragment.
+    if (source.version != 1 or source.inputs.len != 1 or source.nodes.len > 16 or
+        source.proof_mode != .transparent) return error.UnsupportedTopologyInspection;
+    var ctx = try s31.relation_compiler.compileDirect(circuit.builder.NoValue, allocator, source, null, false);
+    defer ctx.deinit();
+    try padForProfile(circuit.builder.NoValue, &ctx);
+    var pp = try circuit.common.direct_arithmetic.Circuit.fromBuilderCircuit(allocator, &ctx.circuit);
+    defer pp.deinit(allocator);
+    if (pp.columns[0].values.len > 1024) return error.UnsupportedTopologyInspection;
+    var arena = std.heap.ArenaAllocator.init(allocator);
+    defer arena.deinit();
+    const temp = arena.allocator();
+    var columns: [circuit.common.direct_arithmetic.N_COLUMNS]DirectTopologyColumn = undefined;
+    for (pp.columns, &columns) |column, *item| {
+        const values = try temp.alloc(u32, column.values.len);
+        for (column.values, values) |value, *word| word.* = value.toU32();
+        item.* = .{ .id = column.id, .values = values };
+    }
+    var source_digest: [32]u8 = undefined;
+    std.crypto.hash.sha2.Sha256.hash(embedded_source, &source_digest, .{});
+    const source_hex = std.fmt.bytesToHex(source_digest, .lower);
+    const exported: DirectTopology = .{
+        .program_sha256 = &source_hex,
+        .n_vars = ctx.circuit.n_vars,
+        .output = ctx.circuit.output.items,
+        .add = ctx.circuit.add.items,
+        .sub = ctx.circuit.sub.items,
+        .mul = ctx.circuit.mul.items,
+        .pointwise_mul = ctx.circuit.pointwise_mul.items,
+        .permutation_ends = ctx.circuit.permutation.ends.items,
+        .permutation_inputs = ctx.circuit.permutation.inputs.items,
+        .permutation_outputs = ctx.circuit.permutation.outputs.items,
+        .first_permutation_row = pp.first_permutation_row,
+        .columns = columns,
+    };
+    const encoded = try std.json.Stringify.valueAlloc(temp, exported, .{});
     std.debug.print("{s}\n", .{encoded});
 }
 

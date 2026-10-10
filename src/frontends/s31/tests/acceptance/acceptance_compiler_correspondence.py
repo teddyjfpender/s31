@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-"""A real direct-gate proof and a resealed compiler-mutation rejection."""
+"""A real direct-gate proof and independently rejected resealed mutations."""
 
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
 import shutil
+import struct
 import sys
 import tempfile
 from pathlib import Path
@@ -17,8 +19,102 @@ import s31
 from package import verify as package_verify
 from package.build import build_json
 from package.context import file_hash, sha256, write_json
-from package.correspondence import (KEY_FIELDS, canonical, check_package,
+from package.correspondence import (DIRECT_COLUMN_IDS, KEY_FIELDS, canonical, check_package,
                                     digest, read_canonical_json)
+
+
+def reseal_emitted_columns(topology: dict, component: dict) -> None:
+    """An adversary recomputes the complete value-free column plan and hashes."""
+    uses = [0] * topology["n_vars"]
+    for kind in ("add", "sub", "mul", "pointwise_mul"):
+        for gate in topology[kind]:
+            uses[gate["in0"]] += 1
+            uses[gate["in1"]] += 1
+    for address in (*topology["permutation_inputs"], *topology["output"]):
+        uses[address] += 1
+    uses[0] += 2 * len(topology["permutation_inputs"])
+    rows = []
+    for opcode, kind in enumerate(("add", "sub", "mul", "pointwise_mul")):
+        for gate in topology[kind]:
+            rows.append([*(int(index == opcode) for index in range(4)),
+                         gate["in0"], gate["in1"], gate["out"], uses[gate["out"]]])
+    begin = 0
+    for index, end in enumerate(topology["permutation_ends"]):
+        scratch = topology["n_vars"] + index
+        for source, target in zip(topology["permutation_inputs"][begin:end],
+                                  topology["permutation_outputs"][begin:end], strict=True):
+            rows.extend(([1, 0, 0, 0, 0, source, scratch, 1],
+                         [1, 0, 0, 0, 0, scratch, target, uses[target]]))
+        begin = end
+    assert len(rows) == len(topology["columns"][0]["values"])
+    for index, column in enumerate(topology["columns"]):
+        assert column["id"] == DIRECT_COLUMN_IDS[index]
+        column["values"] = [row[index] for row in rows]
+        component["preprocessed_columns"][index]["values_sha256"] = hashlib.sha256(
+            b"".join(struct.pack("<I", word) for word in column["values"])).hexdigest()
+
+
+def reject_resealed_topology(honest: Path, checked: dict, work: Path,
+                             name: str, mutate, expected: tuple[str, ...]) -> None:
+    """Let an adversary rewrite topology, columns, key, manifest and claim."""
+    mutant = work / name
+    shutil.copytree(honest, mutant)
+    topology = json.loads((mutant / "gate-topology.json").read_text())
+    component = json.loads((mutant / "component-manifest.json").read_text())
+    mutate(topology, checked)
+    reseal_emitted_columns(topology, component)
+    write_json(mutant / "gate-topology.json", topology)
+    write_json(mutant / "component-manifest.json", component)
+    key = json.loads((mutant / "verification-key.json").read_text())
+    report = json.loads((mutant / "cost-report.json").read_text())
+    key["component_manifest"] = component
+    report["component_manifest"] = component
+    write_json(mutant / "verification-key.json", key)
+    write_json(mutant / "cost-report.json", report)
+    fake = copy.deepcopy(checked)
+    fake["gate_topology_sha256"] = file_hash(mutant / "gate-topology.json")
+    fake["air_profile"]["component_manifest_sha256"] = digest(canonical(component))
+    fake["key_core"] = {field: key.get(field) for field in KEY_FIELDS}
+    write_json(mutant / "correspondence-certificate.json", fake)
+    manifest = json.loads((mutant / "manifest.json").read_text())
+    for artifact in ("gate-topology.json", "component-manifest.json",
+                     "verification-key.json", "cost-report.json",
+                     "correspondence-certificate.json"):
+        manifest["artifacts"][artifact] = file_hash(mutant / artifact)
+    write_json(mutant / "manifest.json", manifest)
+    try:
+        check_package(mutant)
+    except ValueError as exc:
+        if not any(fragment in str(exc) for fragment in expected):
+            raise AssertionError(f"{name} reached the wrong rejection boundary: {exc}") from exc
+    else:
+        raise AssertionError(f"resealed {name} was admitted")
+
+
+def wrong_opcode(topology: dict, _checked: dict) -> None:
+    topology["add"].insert(3, topology["pointwise_mul"].pop(0))
+    topology["pointwise_mul"].append(topology["add"].pop())
+
+
+def wrong_constant(topology: dict, checked: dict) -> None:
+    # Keep the pack/unpack address equality intact, but replace the second
+    # extension-field basis element with the unit constant.
+    first_result_mask = sum(gate["op"] == "mul" for gate in checked["source_gates"])
+    topology["mul"][0]["in0"] = 1
+    topology["pointwise_mul"][first_result_mask + 1]["in1"] = 1
+
+
+def extra_gate(topology: dict, checked: dict) -> None:
+    # The final add is a constant/padding gate in this packaged example. Make
+    # it read the computed result, retaining all gate and row counts.
+    topology["add"][-1]["in0"] = checked["source_gates"][-1]["out"]
+
+
+def extra_constant_gate(topology: dict, _checked: dict) -> None:
+    # A valid but noncanonical zero-only gate would pass a semantic island
+    # check. The exact constant/padding schedule must still reject it.
+    topology["add"][-1]["in0"] = 0
+    topology["add"][-1]["in1"] = 0
 
 
 def main() -> None:
@@ -54,6 +150,20 @@ def main() -> None:
                 raise AssertionError(f"wrong missing-certificate rejection: {exc}") from exc
         else:
             raise AssertionError("eligible source package omitted its required certificate")
+
+        reject_resealed_topology(
+            honest, checked, work, "wrong-opcode", wrong_opcode,
+            ("source gates are missing", "unexpected pointwise gates",
+             "native source gate selector or operands"))
+        reject_resealed_topology(
+            honest, checked, work, "wrong-constant", wrong_constant,
+            ("native four-lane basis is not derived from fixed constants",))
+        reject_resealed_topology(
+            honest, checked, work, "extra-gate", extra_gate,
+            ("extra native gate depends on source or public data",))
+        reject_resealed_topology(
+            honest, checked, work, "extra-constant-gate", extra_constant_gate,
+            ("constant derivation or padding gate schedule differs",))
 
         relation = json.loads((honest / "source.s31.json").read_text())
         forged_relation = copy.deepcopy(relation)
@@ -117,6 +227,10 @@ def main() -> None:
             "resealed_mutant_package_admission_rejected": True,
             "duplicate_json_key_rejected": True,
             "missing_certificate_rejected": True,
+            "resealed_wrong_opcode_rejected": True,
+            "resealed_wrong_constant_rejected": True,
+            "resealed_extra_gate_rejected": True,
+            "resealed_extra_constant_gate_rejected": True,
             "certificate_status": checked["status"],
         }, sort_keys=True, indent=2))
 

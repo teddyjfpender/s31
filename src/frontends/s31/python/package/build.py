@@ -251,13 +251,22 @@ def build_text(source_path: Path, output: Path, lowering: str = "gate", fri_fold
             raise RuntimeError("S31 text source or compiler inputs changed during package build")
         write_json(manifest_path, manifest)
         if lowering == "direct-gate":
-            from package.correspondence import UnsupportedFragment, make_certificate
+            from package.correspondence import (UnsupportedFragment, make_certificate,
+                                                parse_source)
 
             try:
-                certificate = make_certificate(package)
+                parse_source(text_data)
             except UnsupportedFragment:
                 pass
             else:
+                topology = json.loads(invoke(
+                    str(package / "bin" / f"s31-{manifest['name']}-prover"),
+                    "inspect-topology"))
+                topology_path = package / "gate-topology.json"
+                write_json(topology_path, topology)
+                manifest["artifacts"][topology_path.name] = file_hash(topology_path)
+                write_json(manifest_path, manifest)
+                certificate = make_certificate(package)
                 certificate_path = package / "correspondence-certificate.json"
                 write_json(certificate_path, certificate)
                 manifest["artifacts"][certificate_path.name] = file_hash(certificate_path)

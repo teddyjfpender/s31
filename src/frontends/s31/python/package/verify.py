@@ -328,14 +328,16 @@ def verify_package(package: Path) -> dict:
 
     certificate_path = package / "correspondence-certificate.json"
     certificate_listed = certificate_path.name in manifest["artifacts"]
+    topology_path = package / "gate-topology.json"
+    topology_present = topology_path.name in manifest["artifacts"] or topology_path.exists()
     if "source_text_sha256" in manifest and manifest.get("lowering") == "direct-gate":
         try:
             parse_source((package / "source.s31").read_bytes())
         except UnsupportedFragment:
-            if certificate_listed or certificate_path.exists():
+            if certificate_listed or certificate_path.exists() or topology_present:
                 raise ValueError("unsupported source cannot carry a correspondence certificate")
         else:
             check_package(package)
-    elif certificate_listed or certificate_path.exists():
+    elif certificate_listed or certificate_path.exists() or topology_present:
         raise ValueError("correspondence certificate requires a bounded direct-gate text source")
     return manifest

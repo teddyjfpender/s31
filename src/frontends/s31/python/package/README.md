@@ -20,8 +20,11 @@ a proof check: the installed native verifier checks a proof and public claim.
 public four-lane add/multiply/static-let fragment. For direct-gate text packages
 in that grammar, build attaches `correspondence-certificate.json` and verification
 requires it. The checker compares the complete normalized relation, canonical
-SSA, public ABI, native source-map gate schedule, AIR asset hashes and key core.
-The certificate marks native gate emission and AIR/PCS soundness as assumptions.
+SSA, public ABI, native source-map gate schedule, value-free gate topology,
+all eight emitted selector/address column hashes, fixed QM31 basis derivation,
+the exact base-256 constant and padding gate schedule,
+AIR asset hashes and key core.
+The certificate still marks native Gate lookup and AIR/PCS soundness as assumptions.
 It is a **package-admission** certificate: the standalone native verifier does
 not read it. See the [design brief](../../../../../design/s31/language/DIRECT_GATE_CORRESPONDENCE_CERTIFICATE.md).
 
