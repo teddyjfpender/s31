@@ -140,6 +140,15 @@ class WholeProverV4Tests(unittest.TestCase):
                 self.assertFalse(report["automatic_lowering_selection_enabled"])
                 self.assertEqual(report["artifact_controls"]["validation"]
                                  ["saved_assignment_digest_matched"], 1600)
+                assignment_path = root / "validation/arithmetic_80/assignments/00.json"
+                original = assignment_path.read_bytes()
+                tampered = json.loads(original)
+                tampered["public_outputs"]["result"][0] += 1
+                write_json(assignment_path, tampered)
+                with self.assertRaisesRegex(ValueError, "saved assignment digest"):
+                    publish(train_path, model_path, held_path, evaluation_path,
+                            model_sha)
+                assignment_path.write_bytes(original)
                 with self.assertRaisesRegex(ValueError, "externally recorded"):
                     publish(train_path, model_path, held_path, evaluation_path, "0" * 64)
 
