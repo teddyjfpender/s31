@@ -1,10 +1,70 @@
 # Functional source programs and zero-cost abstractions
 
 S31 now has a small functional source core: lexical `let … in` expressions,
-typed `fun` values, closures, and functions that take or return functions.
-Function values exist **only in the compiler**. A circuit input or output must
+typed `fun` values, closures, tuples, and functions that take or return functions.
+Function and tuple values exist **only in the compiler**. A circuit input or output must
 still have a first-order S31 value type. Application specializes the function
 at the call site and emits only the underlying relation operations.
+
+## Static tuples: two results from one helper
+
+The [tuple example](../examples/arithmetic/tuple_square_sum.s31) returns a
+pair of arrays. A pair can contain different source types, including a
+function value; its fields are selected by zero-based `.0`, `.1`, and so on.
+
+```s31
+use std@1;
+
+fn square_and_sum(v: [m31; 4]) -> ([m31; 4], [m31; 4]) {
+    (v .* v, v + v)
+}
+
+circuit tuple_square_sum(private x: [m31; 4]) -> public [m31; 4] {
+    let pair = square_and_sum(x);
+    let result = pair.0 + pair.1;
+    result
+}
+```
+
+For each array position, a **lane** is one M31 field element. The prover
+computes the following values. The `x` column is private, while `result` is
+the claimed public array; all four positions are checked by one proof.
+
+| Position (lane) | Private `x` | `pair.0 = x²` | `pair.1 = x+x` | Public `result` |
+| --- | ---: | ---: | ---: | ---: |
+| 0 | 0 | 0 | 0 | 0 |
+| 1 | 1 | 1 | 2 | 3 |
+| 2 | 2 | 4 | 4 | 8 |
+| 3 | 7 | 49 | 14 | 63 |
+
+Specialization replaces the pair with references to its two component
+values. The residual relation has exactly three nodes, `square = mul(x,x)`,
+`double = add(x,x)`, and `result = add(square,double)`. At the gate relation
+level, each lane has the equations `square[i] - x[i]² = 0`,
+`double[i] - 2·x[i] = 0`, and
+`result[i] - square[i] - double[i] = 0` modulo `p=2³¹−1`.
+These are the arithmetic obligations represented in the actual direct-gate
+AIR, which also contains wiring and public-boundary constraints. The verifier
+checks a proof of those constraints and the public result. A false public
+result fails the witness oracle and the native verifier.
+
+The [handwritten direct form](../examples/arithmetic/tuple_square_sum_manual.s31)
+compiles to the same normalized relation. The pair contributes no AIR column,
+constraint, or row. Its components are **eager**: both computations run even
+when a later `.0` projection discards the second value. This rule also keeps
+partial operations visible to the inactive-branch effect check. For example,
+`if b then (x, std::math::inv(x)).0 else x` is rejected because inverse may
+fail when that branch is inactive. A function may accept or return a tuple;
+the circuit's public and private boundary remains first order.
+The [Lean product model](../../../../formal/s31/S31/Gadgets/Functional/TupleValues.lean)
+proves tuple erasure in its typed core and soundness for arbitrary satisfying
+local arithmetic witnesses. Python lowering and the native AIR are checked
+separately by the executable tests and native acceptance gate.
+In the measured native `direct-gate` profile, both forms have **314 raw QM31
+operation rows**, 512 padded rows and 4,096 preprocessed cells. Their
+canonical relation digest and all checked AIR cost fields match. The honest
+fixture yields a 56,967-byte proof; the generated verifier accepts it and
+rejects a changed public result.
 
 ## A complete program
 

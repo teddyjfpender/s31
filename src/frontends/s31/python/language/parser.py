@@ -9,7 +9,7 @@ from language.builtins import (BUILTINS, BINARY_POWER, INT_SOURCE_TYPES,
                                MAX_EXPRESSION_DEPTH, MAX_NUMBER_DIGITS,
                                MAX_TOKENS, MAX_TYPE_DEPTH,
                                TOKEN_RE, UNARY_POWER)
-from language.syntax import Circuit, Expr, Function, FunctionType, SourceError, Statement, Token
+from language.syntax import Circuit, Expr, Function, FunctionType, SourceError, Statement, Token, TupleType
 
 
 def lex(source: str, filename: str = "<source>") -> list[Token]:
@@ -86,7 +86,7 @@ class Parser:
         self.at += 1
         return int(token.text)
 
-    def parse_type(self) -> Type | FunctionType:
+    def parse_type(self) -> Type | FunctionType | TupleType:
         if self.type_depth >= MAX_TYPE_DEPTH:
             raise self.error("type nesting limit exceeded")
         self.type_depth += 1
@@ -95,11 +95,11 @@ class Parser:
         finally:
             self.type_depth -= 1
 
-    def _parse_type(self) -> Type | FunctionType:
+    def _parse_type(self) -> Type | FunctionType | TupleType:
         token = self.peek()
         if self.accept("Fn"):
             self.expect("(")
-            arguments: list[Type | FunctionType] = []
+            arguments: list[Type | FunctionType | TupleType] = []
             if not self.accept(")"):
                 while True:
                     arguments.append(self.parse_type())
@@ -108,6 +108,16 @@ class Parser:
                     self.expect(",")
             self.expect("->")
             return FunctionType(tuple(arguments), self.parse_type())
+        if self.accept("("):
+            first = self.parse_type()
+            if not self.accept(","):
+                self.expect(")")
+                return first
+            elements = [first, self.parse_type()]
+            while self.accept(","):
+                elements.append(self.parse_type())
+            self.expect(")")
+            return TupleType(tuple(elements))
         if self.accept("["):
             kind = self.identifier()
             if kind not in {"m31", "u16"}:
@@ -164,7 +174,7 @@ class Parser:
                 name = self.identifier()
                 self.expect(":")
                 typ = self.parse_type()
-                if circuit and isinstance(typ, FunctionType):
+                if circuit and not isinstance(typ, Type):
                     raise self.error("circuit inputs must be first-order values")
                 params.append((name, typ, visibility) if circuit else (name, typ))
                 if self.accept(")"):
@@ -233,7 +243,7 @@ class Parser:
         self.expect("->")
         self.expect("public")
         result = self.parse_type()
-        if isinstance(result, FunctionType):
+        if not isinstance(result, Type):
             raise self.error("circuit output must be a first-order value")
         statements, body = self.block()
         return Circuit(name, params, result, statements, body, token, proof_mode)
@@ -280,8 +290,16 @@ class Parser:
             else:
                 lhs = Expr("call", "std::math::neg", (self.expression(UNARY_POWER),), token)
         elif self.accept("("):
-            lhs = self.expression()
-            self.expect(")")
+            first = self.expression()
+            if self.accept(","):
+                elements = [first, self.expression()]
+                while self.accept(","):
+                    elements.append(self.expression())
+                self.expect(")")
+                lhs = Expr("tuple", "", tuple(elements), token)
+            else:
+                self.expect(")")
+                lhs = first
         elif self.accept("["):
             elements: list[Expr] = []
             if not self.accept("]"):
@@ -312,6 +330,11 @@ class Parser:
         else:
             raise self.error(f"expected expression, found {token.text!r}")
         while True:
+            if self.peek().text == ".":
+                dot = self.expect(".")
+                index = self.number()
+                lhs = Expr("project", str(index), (lhs,), dot)
+                continue
             if self.peek().text == "(":
                 # A parenthesized lambda, `let ... in` result, or function
                 # returned by a call can be applied directly. Named calls

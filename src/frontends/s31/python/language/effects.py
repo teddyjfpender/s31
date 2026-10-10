@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from typing import TypeAlias
 
 from language.builtins import BUILTINS, MAX_CALL_DEPTH, STANDARD_ALIASES
-from language.syntax import Circuit, Expr, Function, FunctionType, SourceError, Statement
+from language.syntax import Circuit, Expr, Function, FunctionType, SourceError, Statement, TupleType
 
 
 # Keep this partition exhaustive. A newly added builtin must receive a
@@ -72,7 +72,12 @@ class FirstOrder:
     pass
 
 
-AbstractValue: TypeAlias = Closure | OpaqueFunction | NamedFunctionRef | FirstOrder
+@dataclass(frozen=True)
+class TupleValue:
+    elements: tuple[AbstractValue, ...]
+
+
+AbstractValue: TypeAlias = Closure | OpaqueFunction | NamedFunctionRef | FirstOrder | TupleValue
 FIRST_ORDER = FirstOrder()
 OPAQUE_FUNCTION = OpaqueFunction()
 
@@ -98,6 +103,8 @@ class TotalityChecker:
 
     @staticmethod
     def parameter(typ: object) -> AbstractValue:
+        if isinstance(typ, TupleType):
+            return TupleValue(tuple(TotalityChecker.parameter(item) for item in typ.elements))
         return OPAQUE_FUNCTION if isinstance(typ, FunctionType) else FIRST_ORDER
 
     def block(self, statements: tuple[Statement, ...], body: Expr,
@@ -162,6 +169,16 @@ class TotalityChecker:
             bound = self.expr(expr.args[0], env)
             body = self.expr(expr.args[1], env | {expr.value: bound.value})
             return Effect(body.value, bound.failure | body.failure)
+        if expr.kind == "tuple":
+            components = tuple(self.expr(item, env) for item in expr.args)
+            return Effect(TupleValue(tuple(item.value for item in components)),
+                          frozenset().union(*(item.failure for item in components)))
+        if expr.kind == "project":
+            source = self.expr(expr.args[0], env)
+            index = int(expr.value)
+            if not isinstance(source.value, TupleValue) or index >= len(source.value.elements):
+                raise self.error(expr, "tuple projection index is out of range")
+            return Effect(source.value.elements[index], source.failure)
         if expr.kind == "if":
             condition = self.expr(expr.args[0], env)
             on_true = self.expr(expr.args[1], env)

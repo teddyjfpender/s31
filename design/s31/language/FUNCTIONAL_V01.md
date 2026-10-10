@@ -11,7 +11,7 @@ S31 has two stages:
 
 1. **Static source stage.** Names, functions, closures, type arguments, fixed
    shapes, library aliases and source modules are resolved and specialized.
-   A value of `Fn(A) -> B` belongs here. No witness bit or field word may
+   Values of `Fn(A) -> B` and source tuples belong here. No witness bit or field word may
    control which program graph is generated.
 2. **Dynamic relation stage.** Circuit inputs, fixed-width values, field
    arrays, digest types and primitive operations become a typed, acyclic
@@ -35,9 +35,9 @@ The core value judgment should eventually be explicit:
 ```
 
 Here `ε` records partial proof operations, such as checked inversion or
-overflow, and assertions. A `Fn` value has no circuit representation. Circuit
+overflow, and assertions. A `Fn` or tuple value has no circuit representation. Circuit
 inputs and outputs require first-order `Circuit` types. Source functions may
-accept and return `Fn` values, but each application must specialize to a
+accept and return `Fn` or tuple values, but each application must specialize to a
 finite relation. Effect tracking for partial operations draws on the general
 approach of making effects explicit in function types, as in
 [Koka's row-polymorphic effect types](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/paper-20.pdf);
@@ -55,6 +55,9 @@ ops(specialize(let x = e₁ in e₂))
 
 ops(specialize((fun(x: A) -> B => body)(arg)))
     = ops(specialize(body[x := arg]))
+
+ops(specialize(let pair = (a, b) in pair.0 + pair.1))
+    = ops(specialize(a + b))
 ```
 
 Equality is up to fresh node names and shared references; source and package
@@ -118,6 +121,19 @@ The following are required for a v0.1.0 claim:
 | Build and native verification | Build, prove, verify, changed-statement rejection, independent oracle, reproducible source/key/IR identity | Functional arithmetic, conditional, named and captured recurrence-chip, and sparse-wide native trials pass, including both selector values and changed-claim rejection. Packed arrays of lengths 3, 5 and 9 each pass two native proofs, independent modular arithmetic, and changed-claim rejection; their raw QM31 row counts are 311, 319 and 328, while each padded trace has 512 rows and 4096 preprocessed cells. The curried sum, named four-lane square, handwritten quadratic, static matrix product, returned `mix4` step and Poseidon2 pair also have native proofs, independent expected results and false-claim rejection. A complete supported-profile release matrix remains. |
 | Repository hygiene | Parser, AST, elaborator, specialization, library and CLI isolated by directory, module READMEs and pinned dependency versions | Syntax, parser, builtin typing, elaboration and specialization now live under `python/language/`; further library/CLI separation remains. |
 | Release artifact | Tagged source, lockfile, supported-profile matrix, signed or otherwise authenticated distribution process, changelog and exact test commands | No v0.1.0 tag or release audit yet. |
+
+The typed product extension adds `(A, B)` and `(a, b)` with statically checked
+`.0`/`.1` projections. A tuple is evaluated eagerly and erased before relation
+emission. The `tuple_square_sum.s31` example compiles to the exact normalized
+three-node relation of its handwritten form. The Lean source core has product
+semantics and a general specialization theorem covering pairs and projections;
+its worked scalar theorem binds arbitrary satisfying local graph witnesses.
+The native direct-gate cost and proof comparison is part of the functional
+library gate: the tuple and direct forms share a 314-raw-row, 512-padded-row
+AIR and an accepted 56,967-byte native proof; a changed claim is rejected.
+Forty generated tuple sources compare exact relation IR and independent values
+at both selector bits. This evidence still does not prove Python compiler
+correctness.
 
 The Lean package now has an intrinsically typed total field/array/function core,
 a semantic simulation theorem for specialization, and strict graph theorems

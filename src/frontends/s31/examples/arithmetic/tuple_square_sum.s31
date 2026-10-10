@@ -1,0 +1,13 @@
+use std@1;
+
+// A product exists only at specialization time. Its two components are
+// ordinary circuit values; selecting either component adds no gate.
+fn square_and_sum(v: [m31; 4]) -> ([m31; 4], [m31; 4]) {
+    (v .* v, v + v)
+}
+
+circuit tuple_square_sum(private x: [m31; 4]) -> public [m31; 4] {
+    let pair = square_and_sum(x);
+    let result = pair.0 + pair.1;
+    result
+}

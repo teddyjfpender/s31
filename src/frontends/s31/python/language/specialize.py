@@ -8,7 +8,7 @@ import s31_mathlib as mathlib
 from s31_stdlib import Builder, INT_TYPES, P, StaticGroup, StepState, Type, TypeErrorS31, Value
 from language.builtins import (INT_BINARY_CALLS, INT_CAST_CALLS, INT_COMPARE_CALLS,
                                MAX_CALL_DEPTH, STANDARD_ALIASES)
-from language.syntax import Circuit, Expr, Function, FunctionType, SourceError, StaticClosure, StaticNamedFunction, Statement
+from language.syntax import Circuit, Expr, Function, FunctionType, SourceError, StaticClosure, StaticNamedFunction, StaticTuple, Statement, TupleType
 
 
 class Compiler:
@@ -37,10 +37,12 @@ class Compiler:
         return thing
 
     @staticmethod
-    def source_type(thing: Any) -> Type | FunctionType | None:
+    def source_type(thing: Any) -> Type | FunctionType | TupleType | None:
         if isinstance(thing, (Value, StepState)):
             return thing.typ
         if isinstance(thing, (StaticClosure, StaticNamedFunction)):
+            return thing.signature
+        if isinstance(thing, StaticTuple):
             return thing.signature
         return None
 
@@ -59,7 +61,7 @@ class Compiler:
                 else:
                     target = statement.name
                 value = self.eval_expr(statement.args[0], local, wanted=target)
-                if not isinstance(value, (Value, StaticGroup, StaticClosure, StaticNamedFunction, int)):
+                if not isinstance(value, (Value, StaticGroup, StaticClosure, StaticNamedFunction, StaticTuple, int)):
                     raise self.located(statement.args[0], "let requires a circuit or static value")
                 local[statement.name] = value
             else:
@@ -128,7 +130,7 @@ class Compiler:
         try:
             if expr.kind == "let":
                 bound = self.eval_expr(expr.args[0], env)
-                if not isinstance(bound, (Value, StaticGroup, StaticClosure, StaticNamedFunction, int)):
+                if not isinstance(bound, (Value, StaticGroup, StaticClosure, StaticNamedFunction, StaticTuple, int)):
                     raise TypeErrorS31("let requires a circuit or static value")
                 local = env.copy()
                 local[expr.value] = bound
@@ -160,6 +162,18 @@ class Compiler:
                 if not all(isinstance(value, (Value, StaticGroup)) for value in values):
                     raise TypeErrorS31("static array elements must be circuit values or static arrays")
                 return StaticGroup(values)
+            if expr.kind == "tuple":
+                elements = tuple(self.eval_expr(item, env) for item in expr.args)
+                types = tuple(self.source_type(item) for item in elements)
+                if not all(isinstance(typ, (Type, FunctionType, TupleType)) for typ in types):
+                    raise TypeErrorS31("tuple elements need declared source types")
+                return StaticTuple(TupleType(types), elements)
+            if expr.kind == "project":
+                source = self.eval_expr(expr.args[0], env)
+                index = int(expr.value)
+                if not isinstance(source, StaticTuple) or index >= len(source.elements):
+                    raise TypeErrorS31("tuple projection index is out of range")
+                return source.elements[index]
             if expr.kind == "if":
                 condition = self.expect_value(self.eval_expr(expr.args[0], env), expr.args[0])
                 on_true = self.expect_value(self.eval_expr(expr.args[1], env), expr.args[1])
@@ -503,6 +517,18 @@ class Compiler:
                 return StaticNamedFunction(expr.value, FunctionType(
                     tuple(typ for _, typ in fn.params), fn.result))
             raise self.located(expr, f"unknown step value {expr.value}")
+        if expr.kind == "tuple":
+            elements = tuple(self.step_expr(item, env) for item in expr.args)
+            types = tuple(self.source_type(item) for item in elements)
+            if not all(isinstance(typ, (Type, FunctionType, TupleType)) for typ in types):
+                raise self.located(expr, "tuple elements need declared source types")
+            return StaticTuple(TupleType(types), elements)
+        if expr.kind == "project":
+            source = self.step_expr(expr.args[0], env)
+            index = int(expr.value)
+            if not isinstance(source, StaticTuple) or index >= len(source.elements):
+                raise self.located(expr, "tuple projection index is out of range")
+            return source.elements[index]
         if expr.kind == "lambda":
             assert expr.result_type is not None
             return StaticClosure(FunctionType(tuple(typ for _, typ in expr.params), expr.result_type),

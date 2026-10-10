@@ -8,11 +8,27 @@ bit provenance, static repeat shape, partial constants and resource limits.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+from typing import TypeAlias
+
 from s31_stdlib import P, Type, TypeErrorS31
 from language.builtin_types import BIT, M31_ONE, SELECTABLE_KINDS, circuit, infer_builtin
 from language.builtins import MAX_CALL_DEPTH, STANDARD_ALIASES
-from language.syntax import Circuit, Expr, Function, FunctionType, SourceError, Statement
+from language.syntax import Circuit, Expr, Function, FunctionType, SourceError, Statement, TupleType
 from language.types import FieldLiteral, SourceType, StaticArray
+
+
+Origin: TypeAlias = tuple[str, str | int]
+
+
+@dataclass(frozen=True)
+class ProductOrigin:
+    """Static origin summary for a tuple containing function values."""
+
+    elements: tuple[OriginValue, ...]
+
+
+OriginValue: TypeAlias = Origin | ProductOrigin | None
 
 
 class Elaborator:
@@ -70,9 +86,9 @@ class Elaborator:
         found_calls, found_steps = self.referenced_calls(body, bound)
         return calls | found_calls, steps | found_steps
 
-    def function_origin(self, expr: Expr, scope: dict[str, tuple[str, str | int] | None],
-                        returns: dict[str, tuple[str, str | int] | None],
-                        owner: str | None) -> tuple[str, str | int] | None:
+    def function_origin(self, expr: Expr, scope: dict[str, OriginValue],
+                        returns: dict[str, OriginValue],
+                        owner: str | None) -> OriginValue:
         """Resolve a static Fn value to a global declaration or a parameter.
 
         A lambda returned by a named factory is attributed to that factory so
@@ -87,26 +103,39 @@ class Elaborator:
         if expr.kind == "let":
             bound = self.function_origin(expr.args[0], scope, returns, owner)
             return self.function_origin(expr.args[1], scope | {expr.value: bound}, returns, owner)
+        if expr.kind == "tuple":
+            return ProductOrigin(tuple(self.function_origin(item, scope, returns, owner)
+                                       for item in expr.args))
+        if expr.kind == "project":
+            product = self.function_origin(expr.args[0], scope, returns, owner)
+            index = int(expr.value)
+            if isinstance(product, ProductOrigin) and index < len(product.elements):
+                return product.elements[index]
+            return None
         if expr.kind == "lambda":
             return ("global", owner) if owner is not None else ("lambda", id(expr))
         if expr.kind == "call" and expr.value not in scope:
             summary = returns.get(expr.value)
-            if summary is not None:
-                kind, value = summary
-                if kind == "param" and isinstance(value, int) and value < len(expr.args):
-                    return self.function_origin(expr.args[value], scope, returns, owner)
-                if kind == "global":
-                    return summary
+            def substitute(value: OriginValue) -> OriginValue:
+                if isinstance(value, ProductOrigin):
+                    return ProductOrigin(tuple(substitute(item) for item in value.elements))
+                if isinstance(value, tuple):
+                    kind, index = value
+                    if kind == "param" and isinstance(index, int) and index < len(expr.args):
+                        return self.function_origin(expr.args[index], scope, returns, owner)
+                    return value if kind == "global" else None
+                return None
+            return substitute(summary)
         return None
 
-    def function_returns(self, depths: dict[str, int]) -> dict[str, tuple[str, str | int] | None]:
-        """Summarize pure functions returning Fn values, dependency first."""
-        returns: dict[str, tuple[str, str | int] | None] = {}
+    def function_returns(self, depths: dict[str, int]) -> dict[str, OriginValue]:
+        """Summarize pure functions returning static values, dependency first."""
+        returns: dict[str, OriginValue] = {}
         for name in sorted(self.functions, key=depths.__getitem__):
             fn = self.functions[name]
-            if not isinstance(fn.result, FunctionType):
+            if not isinstance(fn.result, (FunctionType, TupleType)):
                 continue
-            scope: dict[str, tuple[str, str | int] | None] = {
+            scope: dict[str, OriginValue] = {
                 param: ("param", index) for index, (param, _) in enumerate(fn.params)}
             for statement in fn.statements:
                 if statement.kind == "let":
@@ -118,22 +147,21 @@ class Elaborator:
     def step_flows(self, statements: tuple[Statement, ...], body: Expr,
                    params: tuple[str, ...],
                    targets: dict[str, set[int]],
-                   returns: dict[str, tuple[str, str | int] | None]) -> tuple[set[int], set[str]]:
+                   returns: dict[str, OriginValue]) -> tuple[set[int], set[str]]:
         """Track static names flowing into an iterate step through Fn parameters.
 
         This is a conservative, finite source-level flow pass. Specialization
         remains the authority for the exact restricted step body.
         """
-        Origin = tuple[str, str | int]
-        env: dict[str, Origin | None] = {name: ("param", index)
+        env: dict[str, OriginValue] = {name: ("param", index)
                                           for index, name in enumerate(params)}
         positions: set[int] = set()
         globals_: set[str] = set()
 
-        def origin(expr: Expr, scope: dict[str, Origin | None]) -> Origin | None:
+        def origin(expr: Expr, scope: dict[str, OriginValue]) -> OriginValue:
             return self.function_origin(expr, scope, returns, None)
 
-        def visit(expr: Expr, scope: dict[str, Origin | None]) -> None:
+        def visit(expr: Expr, scope: dict[str, OriginValue]) -> None:
             if expr.kind == "let":
                 visit(expr.args[0], scope)
                 visit(expr.args[1], scope | {expr.value: origin(expr.args[0], scope)})
@@ -148,7 +176,7 @@ class Elaborator:
                     if index >= len(expr.args):
                         continue
                     source = origin(expr.args[index], scope)
-                    if source is not None:
+                    if isinstance(source, tuple):
                         kind, value = source
                         if kind == "param" and isinstance(value, int):
                             positions.add(value)
@@ -269,6 +297,18 @@ class Elaborator:
                 if not elements or not all(isinstance(item, (Type, StaticArray)) for item in elements):
                     raise TypeErrorS31("static array elements must be circuit values or static arrays")
                 return StaticArray(elements)
+            if expr.kind == "tuple":
+                elements = tuple(self.expr(item, env, step_mode=step_mode) for item in expr.args)
+                if not all(isinstance(item, (Type, FunctionType, TupleType))
+                           for item in elements):
+                    raise TypeErrorS31("tuple elements need declared source types")
+                return TupleType(elements)
+            if expr.kind == "project":
+                source = self.expr(expr.args[0], env, step_mode=step_mode)
+                index = int(expr.value)
+                if not isinstance(source, TupleType) or index >= len(source.elements):
+                    raise TypeErrorS31("tuple projection index is out of range")
+                return source.elements[index]
             if expr.kind == "let":
                 bound = self.expr(expr.args[0], env, step_mode=step_mode)
                 local = env.copy()

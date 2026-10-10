@@ -23,7 +23,7 @@ INT_CAST_CALLS = {f"std::int::from_limbs_{kind}" for kind in INT_SOURCE_TYPES} |
 TOKEN_RE = re.compile(
     r"(?P<space>\s+)|(?P<comment>//[^\n]*)|(?P<field>[0-9]+_m31\b)|"
     r"(?P<number>[0-9]+)|(?P<ident>[A-Za-z_][A-Za-z_0-9]*)|"
-    r"(?P<symbol>->|=>|::|\.\*|==|[\[\]{}();,:<>+\-=*@])"
+    r"(?P<symbol>->|=>|::|\.\*|==|[\[\]{}();,.:<>+\-=*@])"
 )
 # Binary operator binding power; unary minus binds tighter than all of them.
 BINARY_POWER = {"+": 10, "-": 10, ".*": 20}

@@ -45,6 +45,8 @@ circuit_parameters  = "(", [visibility, identifier, ":", first_order_type,
 visibility    = "public" | "private"
 
 type          = first_order_type | "Fn", "(", [type, {",", type}], ")", "->", type
+              | "(", type, ",", type, {",", type}, ")"
+              | "(", type, ")"
 first_order_type = "bit" | "u8" | "u16" | "u32" | "u64" | "u128"
                 | "i8" | "i16" | "i32" | "i64" | "i128"
                 | "UInt256" | "Bytes32" | "Bytes80" | "BlockHash"
@@ -53,9 +55,9 @@ first_order_type = "bit" | "u8" | "u16" | "u32" | "u64" | "u128"
                 | "[", ("m31" | "u16"), ";", natural, "]"
 ```
 
-Array lengths and type arguments are checked after parsing. `Fn` values
-exist only during specialization; circuit inputs and outputs require
-first-order types. Functions may return or accept `Fn` values. `Digest`
+Array lengths and type arguments are checked after parsing. `Fn` and tuple
+values exist only during specialization; circuit inputs and outputs require
+first-order types. Functions may return or accept `Fn` and tuple values. `Digest`
 families and the fixed-width integer names are exact and case sensitive.
 
 ## Blocks and expressions
@@ -64,8 +66,9 @@ families and the fixed-width integer names are exact and case sensitive.
 block         = "{", {statement}, expression, [";"], "}"
 statement     = "let", identifier, "=", expression, ";"
               | "assert_eq", "(", expression, ",", expression, ")", ";"
-expression    = prefix, {postfix_call | binary_operator, prefix}
+expression    = prefix, {postfix_call | postfix_projection | binary_operator, prefix}
 postfix_call  = "(", [expression, {",", expression}], ")"
+postfix_projection = ".", natural
 prefix        = "let", identifier, "=", expression, "in", expression
               | "if", expression, "then", expression, "else", expression
               | "fun", function_parameters, "->", type, "=>", expression
@@ -77,6 +80,7 @@ atom          = identifier
               | field_literal
               | natural
               | "(", expression, ")"
+              | "(", expression, ",", expression, {",", expression}, ")"
               | "[", [expression, {",", expression}], "]"
 qualified_name = identifier, {"::", identifier}
 binary_operator = "+" | "-" | ".*"
@@ -87,9 +91,17 @@ The parser's block lookahead distinguishes a `let …;` statement from a final
 it, but the type checker rejects it as a circuit value. Static natural
 arguments are used in calls such as `splat<4>(7_m31)`.
 
+Tuple expressions and tuple types have at least two elements. `(x)` is
+grouping; `(x, y)` is a tuple; `pair.0` selects its first element. Indexing is
+zero-based and statically checked. Tuple construction evaluates every
+component, even if a later projection selects only one. Tuples add no relation
+node of their own, but their component computations are retained.
+
 The parser uses left-associative Pratt binding powers: unary `-` is 30,
 lane-wise `.*` is 20, and `+` and `-` are 10. Postfix application binds more
 tightly than arithmetic and may follow any expression whose type is `Fn`.
+Postfix projection has the same precedence and can be chained or followed by
+application, as in `pair.0(value)`.
 For example, `add_to(a)(b)` applies a function returned by `add_to(a)`, and
 `(fun(x: [m31; 1]) -> [m31; 1] => x)(value)` applies a lambda immediately.
 An unshadowed bare top-level function name is a compile-time `Fn` value, so

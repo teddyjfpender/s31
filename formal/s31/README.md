@@ -23,7 +23,7 @@ theorem does not establish zero knowledge.
 | `S31/Semantics/Types`, `Validation`, `Node`, `Program`, `Json` | Typed IR, complete operation dispatch, validation, assignment and public ABI. `Json` is an executable adapter, not a parser-correctness proof. |
 | `S31/Semantics/Words`, `Integers`, `Bitcoin` | Little-endian limbs, five signed/unsigned widths, checked/wrapping operations, compact target and block work. |
 | `S31/Semantics/Graph`, `Poseidon2`, `Blake2s`, `Sha256` | Explicit straight-line gate schedules and exact hash encodings. No uninterpreted hash callback is used. |
-| `S31/Semantics/Functional` | Intrinsically typed field and fixed-length field-array `let`/lambda/application core, static specialization into first-order field polynomials, and an arbitrary-witness local constraint relation. |
+| `S31/Semantics/Functional` | Intrinsically typed field, fixed-length field-array and source-product `let`/lambda/application core, static specialization into first-order field polynomials, and an arbitrary-witness local constraint relation. |
 | `S31/Gadgets/` | Primitive residual proofs, arbitrary auxiliary witnesses, constructive completeness and composition. |
 | [`S31/Gadgets/Air/`](S31/Gadgets/Air/README.md) | The nine QM31 operation AIR row polynomials, opcode soundness, arbitrary-length packed arithmetic and conditional bridges, and an exact Gate multiset model. |
 | [`S31/Gadgets/Functional/`](S31/Gadgets/Functional/README.md) | Typed source specialization, strict graphs, assertions, conditionals, effects, arrays and agreement with executable normalized relation nodes. |
@@ -48,7 +48,7 @@ recursion limit on some hosts.
 ### Typed functional core
 
 `Functional.Expr Γ τ` can be constructed only with well-typed variables,
-field addition/multiplication, `let`, lambdas and application. `Meaning` gives
+field addition/multiplication, source pairs and projections, `let`, lambdas and application. `Meaning` gives
 these expressions their ordinary field/function meaning. `specialize` maps
 field values to polynomial expressions and functions to compile-time Lean
 functions, so the residual `Poly` syntax has only inputs, literals, adds and
@@ -63,6 +63,11 @@ every satisfying witness yields exactly the polynomial evaluation, and that
 an honest witness exists. `program_accepts_iff` composes this with the source
 theorem. `specialize_beta` proves that static function application has the
 same residual result as binding the argument in a `let`.
+`TupleValues.tupleSquareSum_zero_cost` shows that a source pair and both
+projections leave exactly the same residual arithmetic as its direct source
+expression. `tupleSquareSum_accepts` binds any accepted local witness to
+`x*x+(x+x)` for one M31 lane. The four-lane `.s31` source and native cost
+comparison are separate executable evidence.
 
 The hand-written `capturedSquare` term models
 `let saved = x in let f = fun(y : m31) -> m31 => y * y + saved in f(saved)`.

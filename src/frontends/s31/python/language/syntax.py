@@ -24,8 +24,15 @@ class Token:
 class FunctionType:
     """A compile-time function type; no relation or AIR representation."""
 
-    params: tuple[Type | FunctionType, ...]
-    result: Type | FunctionType
+    params: tuple[Type | FunctionType | TupleType, ...]
+    result: Type | FunctionType | TupleType
+
+
+@dataclass(frozen=True)
+class TupleType:
+    """A compile-time product of typed values, erased before AIR lowering."""
+
+    elements: tuple[Type | FunctionType | TupleType, ...]
 
 
 @dataclass(frozen=True)
@@ -35,8 +42,8 @@ class Expr:
     args: tuple[Expr, ...]
     token: Token
     generic: int | None = None
-    params: tuple[tuple[str, Type | FunctionType], ...] = ()
-    result_type: Type | FunctionType | None = None
+    params: tuple[tuple[str, Type | FunctionType | TupleType], ...] = ()
+    result_type: Type | FunctionType | TupleType | None = None
 
 
 @dataclass(frozen=True)
@@ -50,8 +57,8 @@ class Statement:
 @dataclass(frozen=True)
 class Function:
     name: str
-    params: tuple[tuple[str, Type | FunctionType], ...]
-    result: Type | FunctionType
+    params: tuple[tuple[str, Type | FunctionType | TupleType], ...]
+    result: Type | FunctionType | TupleType
     statements: tuple[Statement, ...]
     body: Expr
 
@@ -83,3 +90,11 @@ class StaticNamedFunction:
 
     name: str
     signature: FunctionType
+
+
+@dataclass(frozen=True)
+class StaticTuple:
+    """Tuple of source values; components may still be circuit references."""
+
+    signature: TupleType
+    elements: tuple[Any, ...]

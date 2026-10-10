@@ -6,7 +6,7 @@ CLI and existing tests. Implementation files are grouped by compiler phase:
 
 | File | Responsibility |
 | --- | --- |
-| `syntax.py` | Located AST, declared function signatures, and static closures. |
+| `syntax.py` | Located AST, declared function/product signatures, static closures and tuples. |
 | `builtins.py` | Compiler-owned names, lexical tokens, binding powers, and resource caps. |
 | `parser.py` | Lexing, declaration and expression parsing, and first-order circuit boundary checks. |
 | `types.py`, `builtin_types.py` | Source-only static array/literal types and pure builtin typing rules. |
@@ -19,6 +19,13 @@ specializes a body into the existing `s31_stdlib.Builder`, whose primitive
 nodes are then validated and compiled by Zig. `../s31.py` hashes every Python
 file in this directory into its compiler fingerprint, so changing parser or
 specializer semantics invalidates cached packages and native verifier builds.
+Tuple values are also source-only. `(a, b)` evaluates both components and
+`pair.0` or `pair.1` selects one without emitting a tuple node. The effect
+pass retains failures from every component, including an unselected one, so
+projection cannot hide a partial operation in an inactive conditional arm.
+Circuit inputs and outputs reject tuple types; helper functions may accept or
+return them. The [worked product](../../docs/functional-language.md#static-tuples-two-results-from-one-helper)
+shows the resulting arithmetic equations and exact direct-form relation.
 Postfix application allows `(fun(...) -> ... => body)(value)` and
 `factory(value)(next)`. An unshadowed top-level `fn` name is also a static
 function value, so `apply(square, x)` and `(square)(x)` emit only the

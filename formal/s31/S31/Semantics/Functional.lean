@@ -12,6 +12,7 @@ namespace S31.Functional
 inductive Ty where
   | field
   | array (length : Nat)
+  | prod (left right : Ty)
   | arrow (domain codomain : Ty)
 deriving DecidableEq, Repr
 
@@ -34,6 +35,9 @@ inductive Expr : List Ty → Ty → Type where
       Expr Γ (.array length) → Expr Γ (.array (length - count))
   | arrayConcat : Expr Γ (.array left) → Expr Γ (.array right) →
       Expr Γ (.array (left + right))
+  | pair : Expr Γ a → Expr Γ b → Expr Γ (.prod a b)
+  | fst : Expr Γ (.prod a b) → Expr Γ a
+  | snd : Expr Γ (.prod a b) → Expr Γ b
   | letValue : Expr Γ a → Expr (a :: Γ) b → Expr Γ b
   | lambda : Expr (a :: Γ) b → Expr Γ (.arrow a b)
   | apply : Expr Γ (.arrow a b) → Expr Γ a → Expr Γ b
@@ -54,11 +58,13 @@ def Poly.eval {n : Nat} (inputs : Fin n → M31) : Poly n → M31
 @[reducible] def Meaning : Ty → Type
   | .field => M31
   | .array length => Fin length → M31
+  | .prod a b => Meaning a × Meaning b
   | .arrow a b => Meaning a → Meaning b
 
 @[reducible] def Residual (n : Nat) : Ty → Type
   | .field => Poly n
   | .array length => Fin length → Poly n
+  | .prod a b => Residual n a × Residual n b
   | .arrow a b => Residual n a → Residual n b
 
 inductive Env (F : Ty → Type) : List Ty → Type where
@@ -89,6 +95,9 @@ def denote : Expr Γ t → Env Meaning Γ → Meaning t
   | .arrayTake _ h value, env => arrayTakeFn h (denote value env)
   | .arrayDrop _ h value, env => arrayDropFn h (denote value env)
   | .arrayConcat a b, env => Fin.append (denote a env) (denote b env)
+  | .pair a b, env => (denote a env, denote b env)
+  | .fst value, env => (denote value env).1
+  | .snd value, env => (denote value env).2
   | .letValue value body, env => denote body (.cons (denote value env) env)
   | .lambda body, env => fun value => denote body (.cons value env)
   | .apply fn arg, env => (denote fn env) (denote arg env)
@@ -106,6 +115,9 @@ def specialize {n : Nat} : Expr Γ t → Env (Residual n) Γ → Residual n t
   | .arrayTake _ h value, env => arrayTakeFn h (specialize value env)
   | .arrayDrop _ h value, env => arrayDropFn h (specialize value env)
   | .arrayConcat a b, env => Fin.append (specialize a env) (specialize b env)
+  | .pair a b, env => (specialize a env, specialize b env)
+  | .fst value, env => (specialize value env).1
+  | .snd value, env => (specialize value env).2
   | .letValue value body, env => specialize body (.cons (specialize value env) env)
   | .lambda body, env => fun value => specialize body (.cons value env)
   | .apply fn arg, env => (specialize fn env) (specialize arg env)
@@ -115,6 +127,8 @@ def Related {n : Nat} (inputs : Fin n → M31) :
     (t : Ty) → Meaning t → Residual n t → Prop
   | .field, value, poly => poly.eval inputs = value
   | .array _, value, polys => ∀ i, (polys i).eval inputs = value i
+  | .prod a b, value, residual =>
+      Related inputs a value.1 residual.1 ∧ Related inputs b value.2 residual.2
   | .arrow a b, fn, closure =>
       ∀ value poly, Related inputs a value poly →
         Related inputs b (fn value) (closure poly)
@@ -189,6 +203,12 @@ theorem specialize_correct {n : Nat} (inputs : Fin n → M31)
         simpa [Fin.append] using iha source residual h j
       · intro j
         simpa [Fin.append] using ihb source residual h j
+  | pair a b iha ihb =>
+      exact ⟨iha source residual h, ihb source residual h⟩
+  | fst value ih =>
+      exact (ih source residual h).1
+  | snd value ih =>
+      exact (ih source residual h).2
   | letValue value body ihValue ihBody =>
       exact ihBody (.cons (denote value source) source)
         (.cons (specialize value residual) residual)

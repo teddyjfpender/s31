@@ -155,6 +155,20 @@ def check_examples() -> None:
     assert named_assignment["public_outputs"] == {
         "result": [(x * x) % P for x in x_words]}
     assert evaluate_relation(named, named_assignment) == named_assignment["public_outputs"]
+    tuple_from_docs, _ = compile_text(
+        text_block_containing(DOCS / "functional-language.md", "circuit tuple_square_sum"),
+        "functional-language.md",
+    )
+    tuple_source = S31 / "examples/arithmetic/tuple_square_sum.s31"
+    tuple_direct = S31 / "examples/arithmetic/tuple_square_sum_manual.s31"
+    assert tuple_from_docs == compile_text(tuple_source.read_text())[0]
+    assert tuple_from_docs == compile_text(tuple_direct.read_text())[0]
+    assert [node["op"] for node in tuple_from_docs["nodes"]] == ["mul", "add", "add"]
+    tuple_assignment = json.loads(tuple_source.with_suffix(".valid.json").read_text())
+    x_words = tuple_assignment["private_inputs"]["x"]
+    assert tuple_assignment["public_outputs"] == {
+        "result": [(x * x + x + x) % P for x in x_words]}
+    assert evaluate_relation(tuple_from_docs, tuple_assignment) == tuple_assignment["public_outputs"]
     step_from_docs, _ = compile_text(
         text_block_containing(DOCS / "functional-language.md", "circuit functional_step16"),
         "functional-language.md",
