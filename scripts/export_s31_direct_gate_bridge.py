@@ -6,8 +6,9 @@ reparses the exact source bytes and replays the complete direct-gate topology.
 The resulting Lean instance reparses the emitted bytes in Lean, checks the
 derived SSA and public names, checks exact canonical normalized JSON bytes,
 and checks observed source rows and eight exported preprocessed cells against
-the formal address, selector, and use-count formulas. SHA-256 strings are
-informational in Lean.
+the formal address, selector, and use-count formulas. It also checks the
+eleven exported public-output mask, inverse, and ABI-copy cells. SHA-256
+strings are informational in Lean.
 """
 
 from __future__ import annotations
@@ -146,12 +147,52 @@ def _air_column_rows(checked: dict, topology: dict, *, mutation: str | None = No
             values[5] += 1
         if index == 0 and mutation == "multiplicity":
             values[7] += 1
-        rows.append(
-            "{ traceRow := %d, addFlag := %d, subFlag := %d, mulFlag := %d, "
-            "pointwiseMulFlag := %d, in0 := %d, in1 := %d, out := %d, mults := %d }" %
-            (trace_row, *values))
+        rows.append(_format_air_cell(trace_row, values))
         seen_add += not multiply
         seen_mul += multiply
+    return "[\n    " + ",\n    ".join(rows) + "\n  ]"
+
+
+def _format_air_cell(trace_row: int, values: list[int]) -> str:
+    return ("{ traceRow := %d, addFlag := %d, subFlag := %d, mulFlag := %d, "
+            "pointwiseMulFlag := %d, in0 := %d, in1 := %d, out := %d, mults := %d }" %
+            (trace_row, *values))
+
+
+def _output_air_rows(checked: dict, topology: dict, *, mutation: str | None = None) -> str:
+    """Project four public masks, three inverse products, and four ABI copies."""
+    columns = topology["columns"]
+    if ([column["id"] for column in columns] != list(DIRECT_COLUMN_IDS) or
+            any(len(column["values"]) != 512 for column in columns)):
+        raise ValueError("Lean bridge requires eight complete direct-gate columns")
+    instructions = checked["source_ssa"]["instructions"]
+    total_adds = checked["gate_counts"]["add"]
+    source_muls = sum(instruction["op"] == "mul" for instruction in instructions)
+    source_adds = len(instructions) - source_muls
+    selected = [
+        *(('mask', lane, total_adds + 28 + source_muls + lane) for lane in range(4)),
+        *(('inverse', lane, total_adds + 4 + lane) for lane in range(3)),
+        *(('copy', lane, 7 + source_adds + lane) for lane in range(4)),
+    ]
+    rows = []
+    for kind, lane, trace_row in selected:
+        if mutation == "mask_row" and kind == "mask" and lane == 0:
+            trace_row += 1
+        values = [column["values"][trace_row] for column in columns]
+        if kind == "mask" and lane == 0:
+            if mutation == "mask_selector":
+                values[0], values[3] = 1, 0
+            if mutation == "mask_source":
+                values[4] += 1
+            if mutation == "mask_multiplicity":
+                values[7] += 1
+        if mutation == "mask_basis" and kind == "mask" and lane == 1:
+            values[5] += 1
+        if mutation == "inverse_basis" and kind == "inverse" and lane == 0:
+            values[5] += 1
+        if mutation == "copy_output" and kind == "copy" and lane == 0:
+            values[6] += 1
+        rows.append(_format_air_cell(trace_row, values))
     return "[\n    " + ",\n    ".join(rows) + "\n  ]"
 
 
@@ -217,6 +258,7 @@ import S31.Gadgets.Functional.SSAAirRows
 import S31.Gadgets.Functional.SSATextBytes
 import S31.Gadgets.Functional.SSANormalizedBytes
 import S31.Gadgets.Functional.SSAAirColumnCells
+import S31.Gadgets.Functional.SSAOutputAirCells
 
 set_option maxRecDepth 4096
 
@@ -228,6 +270,7 @@ open S31.Functional.SSAAirRows
 open S31.Functional.SSATextBytes
 open S31.Functional.SSANormalizedBytes
 open S31.Functional.SSAAirColumnCells
+open S31.Functional.SSAOutputAirCells
 
 def sourceBytes : List Nat := {byte_list}
 -- Informational digest from the outer package checker; Lean does not hash sourceBytes.
@@ -258,6 +301,23 @@ def changedTraceRowCells : List ColumnCell :=
   {_air_column_rows(checked, topology, mutation="trace_row")}
 def changedMultiplicityCells : List ColumnCell :=
   {_air_column_rows(checked, topology, mutation="multiplicity")}
+
+def observedOutputCells : List ColumnCell :=
+  {_output_air_rows(checked, topology)}
+def changedOutputMaskSelector : List ColumnCell :=
+  {_output_air_rows(checked, topology, mutation="mask_selector")}
+def changedOutputMaskSource : List ColumnCell :=
+  {_output_air_rows(checked, topology, mutation="mask_source")}
+def changedOutputMaskRow : List ColumnCell :=
+  {_output_air_rows(checked, topology, mutation="mask_row")}
+def changedOutputMaskMultiplicity : List ColumnCell :=
+  {_output_air_rows(checked, topology, mutation="mask_multiplicity")}
+def changedOutputMaskBasis : List ColumnCell :=
+  {_output_air_rows(checked, topology, mutation="mask_basis")}
+def changedOutputInverseBasis : List ColumnCell :=
+  {_output_air_rows(checked, topology, mutation="inverse_basis")}
+def changedOutputCopyAddress : List ColumnCell :=
+  {_output_air_rows(checked, topology, mutation="copy_output")}
 
 def observedAddRows : Nat := {counts['add']}
 def observedGateRows : Nat := {sum(counts.values())}
@@ -294,6 +354,24 @@ theorem changed_trace_row_cell_rejected :
     changedTraceRowCells ≠ expectedCells certificate observedAddRows := by decide
 theorem changed_multiplicity_cell_rejected :
     changedMultiplicityCells ≠ expectedCells certificate observedAddRows := by decide
+theorem observed_output_cells_match :
+    observedOutputCells = expectedOutputCells certificate observedAddRows := by decide
+theorem selected_source_output_has_four_mask_reads :
+    sourceUses certificate certificate.output = 4 := by decide
+theorem changed_output_mask_selector_rejected :
+    changedOutputMaskSelector ≠ expectedOutputCells certificate observedAddRows := by decide
+theorem changed_output_mask_source_rejected :
+    changedOutputMaskSource ≠ expectedOutputCells certificate observedAddRows := by decide
+theorem changed_output_mask_row_rejected :
+    changedOutputMaskRow ≠ expectedOutputCells certificate observedAddRows := by decide
+theorem changed_output_mask_multiplicity_rejected :
+    changedOutputMaskMultiplicity ≠ expectedOutputCells certificate observedAddRows := by decide
+theorem changed_output_mask_basis_rejected :
+    changedOutputMaskBasis ≠ expectedOutputCells certificate observedAddRows := by decide
+theorem changed_output_inverse_basis_rejected :
+    changedOutputInverseBasis ≠ expectedOutputCells certificate observedAddRows := by decide
+theorem changed_output_copy_address_rejected :
+    changedOutputCopyAddress ≠ expectedOutputCells certificate observedAddRows := by decide
 theorem complete_native_shape :
     observedGateRows = 512 ∧ observedVariables = 512 := by decide
 
@@ -342,6 +420,15 @@ theorem checked_column_cells_sound (input : Lanes) :
     observedAddRows observedColumnCells normalized_bytes_check
     observed_source_columns_match
 
+/-- The same exact byte admission also fixes the eleven exported public
+output rows, subject to the package-to-Lean artifact premise. -/
+theorem checked_output_cells_sound_instance (input : Lanes) :
+    observedOutputCells = expectedOutputCells certificate observedAddRows ∧
+      executeNormalized certificate input = denotation sourceBytes input :=
+  checked_output_cells_sound sourceBytes normalizedBytes certificate input
+    observedAddRows observedOutputCells normalized_bytes_check
+    observed_output_cells_match
+
 /-- Any complete accepted local arithmetic-row trace for these exact source
 instructions has the source result, provided the row operands are the values
 authenticated at their addressed prior wires. This does not discharge that
@@ -352,12 +439,14 @@ theorem checked_instance_air_claim (input claimed : Lanes)
     (hclaim : final[certificate.output]? = some claimed) :
     observedRows = expectedRows certificate observedAddRows ∧
       observedColumnCells = expectedCells certificate observedAddRows ∧
+      observedOutputCells = expectedOutputCells certificate observedAddRows ∧
       denotation sourceBytes input = some claimed := by
   have hrun := accepted_trace_executes hrows
   have hbytes := checked_bytes_sound input
   rw [execute_normalized_eq_execute] at hbytes
   simp [execute, hrun, hclaim] at hbytes
-  exact ⟨source_native_rows_match, observed_source_columns_match, hbytes.symm⟩
+  exact ⟨source_native_rows_match, observed_source_columns_match,
+    observed_output_cells_match, hbytes.symm⟩
 
 end S31.Functional.GeneratedDirectGateBridge
 '''

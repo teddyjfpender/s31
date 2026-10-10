@@ -185,7 +185,11 @@ normalized opcode and public-output mutation controls.
 at each source gate's grouped AIR row and computes the expected selector,
 addresses, and use count from the parsed SSA. The generated shared-square
 instance checks both actual exported source cells and rejects mutations to
-the selector, one address, the sampled row, and the output multiplicity. The
+the selector, one address, the sampled row, and the output multiplicity.
+`Functional/SSAOutputAirCells` derives four public mask rows, three
+inverse products, and four ABI copy rows from the checked SSA output and
+instruction count. Its generated instance checks all eight exported cells
+for each of those eleven rows, with mask, inverse, and copy mutations. The
 Python package checker supplies the package-to-embedded-byte/digest binding
 and validates other native rows. Lean does not verify the embedded SHA-256 strings, prove
 Python or Zig parser equivalence, or authenticate the PCS preprocessed root.

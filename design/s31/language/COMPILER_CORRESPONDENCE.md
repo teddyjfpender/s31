@@ -117,7 +117,10 @@ operation from the same certificate and checks exported native column values
 at their grouped AIR rows. The shared-square instance checks rows 502 and
 503, including two uses of the first result and four public-unpack uses of
 the last result; selector, address, sampled-row, and multiplicity mutations
-fail by kernel reduction. The fixture still relies on the outer exporter to
+fail by kernel reduction. `SSAOutputAirCells` then checks eleven exported
+cells for all four public-output masks, three inverse multiplications, and
+four ABI copies against the same source-selected output and native allocation
+formula. The fixture still relies on the outer exporter to
 bind the embedded arrays to the package, and Lean does not compute the
 displayed SHA-256 digests. The total add-row count and source-independent
 rows remain package-checker premises, and committed-column authenticity is

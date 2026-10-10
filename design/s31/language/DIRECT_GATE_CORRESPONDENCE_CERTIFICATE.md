@@ -134,6 +134,24 @@ output is read by four public-result unpack masks. The AIR row numbers differ
 from source order because the native writer groups add, sub, ordinary
 multiply, and pointwise multiply gates. The fixture kernel-checks the cells
 and rejects a changed selector, input address, sampled AIR row, or use count.
+
+[`SSAOutputAirCells.lean`](../../../formal/s31/S31/Gadgets/Functional/SSAOutputAirCells.lean)
+continues from source wire `24` to the four public result words. It derives
+eleven more expected preprocessed cells: four pointwise basis masks, three
+ordinary inverse-basis multiplications, and four add-by-zero ABI copies.
+The example's first lane has a mask at pointwise AIR row `504` that reads
+source wire `24` and basis wire `1`, writes `25`, and is read once. The copy
+at add AIR row `7` reads `25`, adds zero at wire `0`, and writes public output
+wire `7`. The other lanes use basis wires `15`, `2`, and `16`; their inverse
+products occupy ordinary multiplication rows `478`–`480`. For example,
+lane 1 takes mask wire `26` through inverse-basis wire `27` into wire `28`,
+then the copy at add row `8` writes public output wire `8`. The exact
+selector, all three addresses, and output use count of every one of these
+eleven rows are checked. Mutations to a mask selector/source/basis/row/use
+count, an inverse basis address, and a public copy output address are rejected.
+The basis constants' actual field values and the lookup join remain separate
+package/native premises.
+
 A literal byte mutation changing the first `.*` to `+` parses to a different
 certificate; changing the emitted opcode or one operand address is rejected
 by separate Lean checks. Literal normalized
@@ -206,12 +224,12 @@ From the repository root, run:
 python3 -m unittest discover -s src/frontends/s31/tests/python -p test_correspondence.py
 python3 src/frontends/s31/tests/acceptance/acceptance_compiler_correspondence.py
 cd formal/s31
-lake build S31.Gadgets.Functional.SSAAirColumnCells S31.Gadgets.Functional.GeneratedDirectGateBridge
+lake build S31.Gadgets.Functional.SSAAirColumnCells S31.Gadgets.Functional.SSAOutputAirCells S31.Gadgets.Functional.GeneratedDirectGateBridge
 ```
 
 The Python unit suite includes a topology change between package admission
 and Lean export. The native acceptance suite builds an honest proof and
 resealed mutant packages, then checks that source/package admission rejects
-the mutations. The two Lean modules check the projected source cells and
-their selector, address, row, and multiplicity mutations. These checks do not
-discharge the PCS and Gate lookup premises above.
+the mutations. The Lean modules check the projected source and public-output
+cells and their selector, address, row, and multiplicity mutations. These
+checks do not discharge the PCS and Gate lookup premises above.
