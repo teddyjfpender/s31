@@ -170,6 +170,35 @@ the three pack adds combine these with `0` into wire `22`, whose QM31
 coordinates are `(0, 1, 2, 7)`. Changing only the statement's first word
 to `1` would force raw wire `11` to both `0` and `1` for the same witness.
 
+[`SSANativePolynomialRows.lean`](../../../formal/s31/S31/Gadgets/Functional/SSANativePolynomialRows.lean)
+continues through every checked source operation in this admitted fragment:
+one public four-lane M31 input, one public four-lane result, and one to
+sixteen nonduplicate static `let` additions or pointwise multiplications.
+It interprets the four
+selector cells as field flags and the operation's three address cells as
+reads and a write in a single logical QM31 wire map. If each matched
+source cell satisfies the nine local AIR residual equations, induction over
+the normalized SSA execution proves that native address `22 + output_id`
+contains the packed denotation of the actual source bytes. For `x = 3`, a
+pointwise square row reads `3` twice and must write `9`; replacing its
+selector with add requires `6`, and changing one input to `4` requires
+`12`. Lean proves both mutations incompatible with the unchanged output;
+the native package acceptance suite separately reseals and rejects a
+changed source operand address. Its premises and open joins are:
+
+1. **Projected rows and local residuals:** the observed cells equal the
+   source-derived cell roster, and every source operation has a matched
+   observed cell whose nine local polynomial residuals vanish.
+2. **Gate lookup value join:** all row reads and writes at one address use
+   the same logical `wire` value. The theorem assumes this coherent map;
+   it does not prove that production Gate lookup establishes it.
+3. **Public input:** the four public pins, zero and basis constants, and
+   accepted copy/pack rows establish `wire 22 = pack(input)` through the
+   preceding input-boundary theorem.
+4. **Cryptographic acceptance:** a native verifier must authenticate the
+   fixed cells and trace values through its commitments and PCS/FRI checks.
+   This is outside the Lean theorem.
+
 [`SSAOutputAirCells.lean`](../../../formal/s31/S31/Gadgets/Functional/SSAOutputAirCells.lean)
 continues from source wire `24` to the four public result words. It derives
 eleven more expected preprocessed cells: four pointwise basis masks, three
@@ -264,7 +293,7 @@ From the repository root, run:
 python3 -m unittest discover -s src/frontends/s31/tests/python -p test_correspondence.py
 python3 src/frontends/s31/tests/acceptance/acceptance_compiler_correspondence.py
 cd formal/s31
-lake build S31.Gadgets.Functional.SSAAirColumnCells S31.Gadgets.Functional.SSAInputAirCells S31.Gadgets.Functional.SSAPublicInputBinding S31.Gadgets.Functional.SSAOutputAirCells S31.Gadgets.Functional.GeneratedDirectGateBridge
+lake build S31.Gadgets.Functional.SSAAirColumnCells S31.Gadgets.Functional.SSAInputAirCells S31.Gadgets.Functional.SSAPublicInputBinding S31.Gadgets.Functional.SSANativePolynomialRows S31.Gadgets.Functional.SSAOutputAirCells S31.Gadgets.Functional.GeneratedDirectGateBridge
 ```
 
 The Python unit suite includes a topology change between package admission
@@ -273,5 +302,5 @@ a changed public input statement, and checks that source/package admission
 rejects resealed mutant packages. The Lean modules check the projected
 public-input, source, and public-output cells and their selector, address,
 row, and multiplicity mutations, then prove the conditional input value
-boundary. These checks do not discharge the PCS and Gate lookup premises
-above.
+boundary and source-row polynomial execution. These checks do not discharge
+the PCS and Gate lookup premises above.

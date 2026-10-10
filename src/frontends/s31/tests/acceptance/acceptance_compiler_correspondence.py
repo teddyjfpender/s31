@@ -100,6 +100,13 @@ def wrong_opcode(topology: dict, _checked: dict) -> None:
     topology["pointwise_mul"].append(topology["add"].pop())
 
 
+def wrong_source_operand(topology: dict, checked: dict) -> None:
+    source = checked["source_gates"][0]
+    kind = "pointwise_mul" if source["op"] == "mul" else "add"
+    gate = next(gate for gate in topology[kind] if gate["out"] == source["out"])
+    gate["in1"] = 11 if source["in1"] != 11 else 12
+
+
 def wrong_constant(topology: dict, checked: dict) -> None:
     # Keep the pack/unpack address equality intact, but replace the second
     # extension-field basis element with the unit constant.
@@ -185,6 +192,9 @@ def main() -> None:
             ("source gates are missing", "unexpected pointwise gates",
              "native source gate selector or operands"))
         reject_resealed_topology(
+            honest, checked, work, "wrong-source-operand", wrong_source_operand,
+            ("native source gate selector or operands differ from checked SSA",))
+        reject_resealed_topology(
             honest, checked, work, "wrong-constant", wrong_constant,
             ("native four-lane basis is not derived from fixed constants",))
         reject_resealed_topology(
@@ -258,6 +268,7 @@ def main() -> None:
             "duplicate_json_key_rejected": True,
             "missing_certificate_rejected": True,
             "resealed_wrong_opcode_rejected": True,
+            "resealed_wrong_source_operand_rejected": True,
             "resealed_wrong_constant_rejected": True,
             "resealed_extra_gate_rejected": True,
             "resealed_extra_constant_gate_rejected": True,

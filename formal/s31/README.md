@@ -200,7 +200,13 @@ that local copy-add acceptance and four native public pins determine the
 scalar words, while fixed zero/basis wires and six accepted pack rows
 determine SSA input wire `22`. Its public-input uniqueness theorem rules out
 one witness satisfying two different pinned input vectors. These are
-conditional local AIR value theorems; the Python package checker supplies the
+conditional local AIR value theorems. `Functional/SSANativePolynomialRows`
+then matches each source instruction to a projected AIR cell, interprets
+its selectors as local polynomial flags, and proves by SSA execution
+induction that a coherent logical wire map forces the selected native wire
+to contain the packed source-byte denotation. Concrete changed-selector
+and changed-operand row controls reject incompatible arithmetic values.
+The Python package checker supplies the
 package-to-embedded-byte/digest binding
 and validates other native rows. Lean does not verify the embedded SHA-256 strings, prove
 Python or Zig parser equivalence, or authenticate the PCS preprocessed root.
