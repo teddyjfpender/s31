@@ -26,6 +26,7 @@ Lean module names follow the directory, for example
 | `TextSquare4ChallengeJoin.lean` | Checked Gate counters and good LogUp challenges force the exported circuit's public claim; a forged claim has nonzero reciprocal closure. |
 | `TextSquare4TraceRows.lean` | Source-checked preprocessed AIR positions for the selected gates imply their Gate-path membership. |
 | `TextSquare4TraceValues.lean` | Native-style trace gathers discharge arithmetic yield value coverage; external component yields remain explicit. |
+| `TextSquare4ProducerRoster.lean` | Source-exported active producer addresses give arbitrary-trace uniqueness and a conditional forged-claim challenge bound. |
 | `TextSquare4Witness.lean` | A concrete honest zero-input witness satisfies every selected local circuit row and public boundary. |
 | `TextSquare4WitnessAll.lean` | A constructive witness for every four-word input; selected native AIR rows accept exactly the correct fourth-power public claims. |
 | `TextSquare4RawSoundness.lean` | For a fixed forged claim, source-extracted raw Gate interaction AIR accepts on at most the explicit exceptional challenge-pair bound. |
@@ -136,6 +137,16 @@ This gather condition describes an honest native trace writer. A malicious
 prover can commit row values that were never gathered by that writer, so this
 conditional result does not replace the arbitrary-trace Gate lookup or STARK
 soundness obligations.
+`TextSquare4ProducerRoster` avoids the honest-gather condition. The native
+exporter enumerates every padded arithmetic output address with positive
+Gate multiplicity and checks that this program has no other component
+producers. Lean checks the generated active address roster has no duplicates.
+If modeled committed rows match those preprocessed fixed address and
+multiplicity columns, exact Gate balance and the selected AIR rows force the
+public result. For a fixed forged claim, the source-extracted raw Gate AIR
+accepts on at most `(5s² + 2s + 1536) · |QM31|` ideal challenge pairs.
+Fixed-column/trace correspondence, public pins, canonical addresses,
+bounded counts, and proof-protocol soundness remain separate obligations.
 `TextSquare4Witness.zero_claim_has_native_path_witness` supplies a concrete
 QM31 value for each wire on the selected path, including the basis inverses,
 and proves the zero-input/zero-output case satisfies its 23 local rows. This

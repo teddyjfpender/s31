@@ -191,6 +191,17 @@ and the fixed-forged-witness challenge bound. External component yields still
 need table correspondence. A malicious prover can commit rows not generated
 by the honest writer, so the gather-model result does not replace the
 arbitrary-trace Gate lookup or STARK verifier soundness obligations.
+`GateProducerRoster` adds an arbitrary-trace argument: after discarding rows
+whose fixed output multiplicity is zero, a no-duplicate producer-address
+roster makes all repeated Gate yields at each address agree for *any* row
+values. The source exporter now lists the 321 active arithmetic producer
+addresses in this program's padded preprocessed AIR, checks them for
+duplicates and confirms there are no other component producers. Lean checks
+the generated roster and composes it with exact Gate balance, the 23 selected
+AIR rows and the public pins. A fixed forged claim retains the
+`(5s² + 2s + 1536) · |QM31|` ideal-challenge bound without an honest-gather
+premise. The modeled rows still must match the native fixed columns, and the
+committed trace/verifier protocol remains unproved.
 `TextSquare4ChallengeJoin` composes the selected circuit path with the
 modeled checked Gate use/yield counters and LogUp reciprocal closure. Outside
 the explicit exceptional challenge sets, a zero closure forces the public

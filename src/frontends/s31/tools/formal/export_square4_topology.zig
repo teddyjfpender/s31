@@ -37,6 +37,21 @@ fn writeGates(writer: *std.Io.Writer, name: []const u8, gates: anytype) !void {
     try writer.writeAll("]\n");
 }
 
+fn writeAddresses(writer: *std.Io.Writer, name: []const u8, addresses: []const u32) !void {
+    try writer.print("def {s} : List Nat := [", .{name});
+    for (addresses, 0..) |address, i| {
+        if (i != 0) try writer.writeAll(",");
+        if (i % 16 == 0) {
+            if (addresses.len != 0) try writer.writeAll("\n  ");
+        } else {
+            try writer.writeAll(" ");
+        }
+        try writer.print("{d}", .{address});
+    }
+    if (addresses.len != 0) try writer.writeAll("\n");
+    try writer.writeAll("]\n");
+}
+
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
     const args = try std.process.argsAlloc(allocator);
@@ -70,15 +85,29 @@ pub fn main() !void {
         return error.UnexpectedPermutationScratch;
     var producer_addresses: std.ArrayList(u32) = .empty;
     defer producer_addresses.deinit(allocator);
+    var external_producer_addresses: std.ArrayList(u32) = .empty;
+    defer external_producer_addresses.deinit(allocator);
     inline for (.{ ctx.circuit.add.items, ctx.circuit.sub.items, ctx.circuit.mul.items, ctx.circuit.pointwise_mul.items }) |gates| {
         for (gates) |gate| try producer_addresses.append(allocator, gate.out);
     }
-    for (ctx.circuit.triple_xor.items) |gate| try producer_addresses.append(allocator, gate.out);
-    for (ctx.circuit.m31_to_u32.items) |gate| try producer_addresses.append(allocator, gate.out);
-    for (ctx.circuit.blake_g_gate.items) |gate| {
-        for (gate.outputs()) |out| try producer_addresses.append(allocator, out);
+    for (ctx.circuit.triple_xor.items) |gate| {
+        try producer_addresses.append(allocator, gate.out);
+        try external_producer_addresses.append(allocator, gate.out);
     }
-    for (ctx.circuit.permutation.outputs.items) |out| try producer_addresses.append(allocator, out);
+    for (ctx.circuit.m31_to_u32.items) |gate| {
+        try producer_addresses.append(allocator, gate.out);
+        try external_producer_addresses.append(allocator, gate.out);
+    }
+    for (ctx.circuit.blake_g_gate.items) |gate| {
+        for (gate.outputs()) |out| {
+            try producer_addresses.append(allocator, out);
+            try external_producer_addresses.append(allocator, out);
+        }
+    }
+    for (ctx.circuit.permutation.outputs.items) |out| {
+        try producer_addresses.append(allocator, out);
+        try external_producer_addresses.append(allocator, out);
+    }
     if (producer_addresses.items.len != ctx.circuit.n_vars)
         return error.MissingDeclaredProducer;
     const seen = try allocator.alloc(bool, ctx.circuit.n_vars);
@@ -170,6 +199,7 @@ pub fn main() !void {
         padded_ctx.circuit.pointwise_mul.items.len != ctx.circuit.pointwise_mul.items.len)
         return error.TopologyChangedBetweenCompilers;
     try circuit.common.finalize.padContext(circuit.builder.NoValue, &padded_ctx);
+    if (try padded_ctx.circuit.firstYieldViolation(allocator)) |_| return error.NonUniquePaddedProducer;
     const preprocessed = circuit.common.preprocessed;
     var native = try preprocessed.PreprocessedCircuit.fromCircuit(
         allocator,
@@ -204,6 +234,25 @@ pub fn main() !void {
     }
     try checkNativeRow(columns, point_row_start, first, 3);
     try checkNativeRow(columns, point_row_start + 1, second, 3);
+    var active_arithmetic_addresses: std.ArrayList(u32) = .empty;
+    defer active_arithmetic_addresses.deinit(allocator);
+    for (0..native.first_permutation_row) |row| {
+        if (columns.multiplicity[row].toU32() != 0)
+            try active_arithmetic_addresses.append(allocator, columns.output[row].toU32());
+    }
+    const active_seen = try allocator.alloc(bool, padded_ctx.circuit.n_vars);
+    defer allocator.free(active_seen);
+    @memset(active_seen, false);
+    for (active_arithmetic_addresses.items) |address| {
+        if (address >= active_seen.len or active_seen[address])
+            return error.DuplicateActiveArithmeticProducer;
+        active_seen[address] = true;
+    }
+    for (external_producer_addresses.items) |address| {
+        if (address >= active_seen.len or active_seen[address])
+            return error.DuplicateExternalProducer;
+        active_seen[address] = true;
+    }
 
     var buffer: [4096]u8 = undefined;
     var stdout = std.fs.File.stdout().writer(&buffer);
@@ -232,6 +281,8 @@ pub fn main() !void {
             "def inputBasisWires : List Nat := [{d}, {d}, {d}]\n",
         .{ pack_add[0].in0, pack_mul[0].in1, pack_mul[1].in1, pack_mul[2].in1, unit_i.idx, unit_u.idx, unit_iu.idx },
     );
+    try writeAddresses(writer, "activeArithmeticProducerAddresses", active_arithmetic_addresses.items);
+    try writeAddresses(writer, "externalProducerAddresses", external_producer_addresses.items);
     try writer.print(
         "def inputPackMul : List Gate := " ++
             "[⟨{d}, {d}, {d}⟩, ⟨{d}, {d}, {d}⟩, ⟨{d}, {d}, {d}⟩]\n",

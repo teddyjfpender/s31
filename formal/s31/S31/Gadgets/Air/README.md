@@ -57,6 +57,11 @@ arithmetic Gate yield has that table's value at its output address. This is a
 formal property of the modeled gather; correspondence to the Zig writer still
 depends on the source binding. Yields from other components retain an
 explicit value-table premise.
+`GateProducerRoster.lean` gives a separate arbitrary-trace route. Active
+arithmetic row outputs and other component producers with distinct addresses
+give one produced value per address, even if a prover chose every row value.
+The proof handles repeated yields caused by output multiplicity. External
+yields must be covered by the other-component producer roster.
 
 `SimdChunks.partial_row_iff` covers the short final chunk of an array. For
 any `n ≤ 4`, arbitrary M31 values may fill the unused input lanes. An accepted
