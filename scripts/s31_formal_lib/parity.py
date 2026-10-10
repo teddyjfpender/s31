@@ -120,6 +120,12 @@ def expected(node: dict, args: list[tuple[str, list[int]]]) -> list[int]:
             return [int(x <= y)]
         if op == "int_mul_wrapping":
             return limbs((number(a) * number(b)) % limit, max(1, width // 16))
+        if op == "int_mul_checked":
+            value = x * y
+            lo, hi = (-limit // 2, limit // 2 - 1) if signed else (0, limit - 1)
+            if not lo <= value <= hi:
+                raise ValueError("integer multiplication overflow")
+            return limbs(value % limit, max(1, width // 16))
         value = x - y if "sub" in op else x + y
         lo, hi = (-limit // 2, limit // 2 - 1) if signed else (0, limit - 1)
         if op.endswith("checked") and not lo <= value <= hi:
@@ -231,8 +237,9 @@ def corpus() -> list[Case]:
         count, limit = max(1, width // 16), 2**width
         for signed in [False, True]:
             spec = width + 256 * signed
-            for op in ["int_view", "int_add_checked", "int_add_wrapping", "int_sub_checked", "int_sub_wrapping", "int_le", "int_mul_wrapping"]:
-                for x, y in [(0, 1), (limit - 1, 1), (limit // 2 - 1, 1), (limit // 2, limit - 1)]:
+            for op in ["int_view", "int_add_checked", "int_add_wrapping", "int_sub_checked", "int_sub_wrapping", "int_le", "int_mul_wrapping", "int_mul_checked"]:
+                for x, y in [(0, 1), (limit - 1, 1), (limit - 1, 2),
+                             (limit // 2 - 1, 1), (limit // 2, limit - 1)]:
                     args = [u16(limbs(x, count))] + ([] if op == "int_view" else [u16(limbs(y, count))])
                     cases.append(operation_case(op, args, constant=spec))
     cases.append(operation_case("int_view", [u16([256])], constant=8))

@@ -199,20 +199,78 @@ Native acceptance tests check representative complete circuits and false
 public claims. The Lean model does not by itself prove that Zig emits the
 modeled columns.
 
+## Checked multiplication by hand
+
+`std::int::mul_checked` computes all $2W$ product bits. Its byte columns run
+through index $2W/8-1$, and the final carry is constrained to zero. Write the
+complete product as $U=L+2^W H$, where $L$ and $H$ each have $W$ bits. For an
+unsigned type, the circuit requires every byte of $H$ to be zero. In the
+[`u8` example](../examples/math/multiplication/u8_checked.s31),
+$25\cdot10=250=250+256\cdot0$, so the check passes. With the same first
+input and second input 11, $275=19+256\cdot1$; the nonzero high byte makes
+the circuit unsatisfiable even if a caller claims the low byte 19.
+
+Signed types interpret a bit pattern $A$ as $A-s_A2^W$, where $s_A$ is its
+proved sign bit. Let $s_B$ be the other operand's sign and $s_L$ the sign
+of the low product. The circuit proves one more bounded carry chain for
+
+$$
+H+2^W C=s_A B+s_B A+s_L(2^W-1),
+\qquad C=s_As_B+s_L.
+$$
+
+It follows by expanding $(A-s_A2^W)(B-s_B2^W)$ that the **integer** product
+equals $L-s_L2^W$, exactly the signed value represented by the output.
+Each correction column uses base $2^{16}$, or 256 for `i8`; its carry is
+constrained to one of 0, 1, 2, 3 by a four-root polynomial. Its two sides
+are below the M31 modulus, so field wrap cannot fake this equality.
+
+The [`i8` program](../examples/math/multiplication/i8_checked.s31) proves
+$(-1)\cdot2=-2$. Its unsigned byte patterns are $A=255$, $B=2$, and
+$U=510=254+256\cdot1$. The signs are $(s_A,s_B,s_L)=(1,0,1)$:
+
+| Checked quantity | Hand calculation | Required equality |
+| --- | ---: | --- |
+| Full product | $255\cdot2=510$ | $L=254$, $H=1$ |
+| Sign correction | $1\cdot2+0\cdot255+1\cdot255=257$ | $H+256C=1+256\cdot1$ |
+| Terminal carry | $C=1$ | $s_As_B+s_L=0+1$ |
+| Signed result | $(255-256)\cdot2=-2$ | $254-256=-2$ |
+
+For `i8`, $(-128)\cdot(-1)=128$ is rejected: 128 is outside
+$[-128,127]$. The full-product and correction equations reject it even
+though the low byte alone would be 128. The source operation is **partial**:
+it cannot appear in an inactive branch of a witness-dependent `if`.
+The same gadget covers signed and unsigned widths through 128 bits; it
+uses a full byte convolution, so its proof cost grows with width.
+
+Lean proves the complete unsigned product, the unsigned high-zero rule,
+and both directions of the exact signed correction equation in
+[`IntegerMultiply.lean`](../../../../formal/s31/S31/Gadgets/IntegerMultiply.lean).
+The production Zig emission and complete AIR are separately checked by
+local circuit tests and native proofs; they are not covered by that Lean
+theorem.
+
 The native [`multiplication.py`](../tests/acceptance/math/multiplication.py)
-gate pins these `sparse-wide-gate` AIR costs and checks one proof per width:
+gate pins these `sparse-wide-gate` AIR costs and checks one proof per
+representative operation and width:
 
 | Program | Raw QM31 rows | Padded QM31 rows | Raw range rows (`m31_to_u32`) | Raw Eq rows |
 | --- | ---: | ---: | ---: | ---: |
 | `u8_wrapping` | 278 | 512 | 7 | 4 |
 | `u32_wrapping` | 325 | 512 | 28 | 16 |
 | `i128_wrapping` | 691 | 1024 | 112 | 64 |
+| `u8_checked` | 282 | 512 | 10 | 7 |
+| `i8_checked` | 313 | 512 | 16 | 19 |
+| `u32_checked` | 355 | 512 | 40 | 25 |
+| `i128_checked` | 1,135 | 2,048 | 166 | 123 |
 
 These totals include input, output, lookup, and proof-profile overhead. The
-128-bit circuit has 16 output-byte columns, with 136 byte-product terms in
-total. Raw QM31 rows grow with the work; power-of-two padding means the first
-two examples use the same 512-row QM31 table. The local proofs were roughly
-230–237 KB each. These are one-run measurements, not a throughput claim.
+128-bit wrapping circuit has 16 output-byte columns, with 136 byte-product
+terms in total. The checked circuit computes all 32 product columns and
+proves the signed correction. Raw QM31 rows grow with the work; power-of-two
+padding means the small examples share the 512-row QM31 table. The local
+proofs were roughly 230–238 KB each. These are one-run measurements, not a
+throughput claim.
 
 ## Where the AIR and proof enter
 

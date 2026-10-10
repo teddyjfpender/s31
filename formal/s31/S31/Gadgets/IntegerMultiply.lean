@@ -4,7 +4,8 @@ import S31.Gadgets.Schoolbook
 The integer-bound argument for one byte-convolution column in the native
 fixed-width multiplication gadget. This proves that its M31 equality cannot
 hide modular wrap and that its byte and carry witnesses are unique. The
-low-column chain theorem composes the arithmetic into a wrapping product.
+low-column chain theorem composes the arithmetic into a wrapping product;
+the full-chain and high-word theorems cover checked multiplication.
 Correspondence to Zig emission remains outside these theorems.
 -/
 
@@ -143,5 +144,78 @@ theorem wrapping_product_sound (left right digits : List Nat)
       (decode_take_mod _ _ enough).symm
     _ = (Words.decode 256 left * Words.decode 256 right) % 256 ^ byte_count := by
       rw [Schoolbook.convolution_decode]
+
+/-- The final carry of a complete convolution is zero, so the output is the
+exact unsigned product, not just its low bytes. -/
+theorem full_product_sound (left right digits : List Nat)
+    (chain : Schoolbook.Columns (Schoolbook.convolve left right) digits 0 0) :
+    Words.decode 256 digits = Words.decode 256 left * Words.decode 256 right := by
+  have h := Schoolbook.columns_equation chain
+  simpa [Schoolbook.convolution_decode] using h.symm
+
+/-- A zero high word is precisely the unsigned checked-product condition. -/
+theorem unsigned_checked_sound (a b low high modulus : Nat)
+    (low_bounded : low < modulus)
+    (product : a * b = low + modulus * high)
+    (high_zero : high = 0) : a * b < modulus := by
+  rw [high_zero] at product
+  omega
+
+theorem unsigned_checked_complete (a b low high modulus : Nat)
+    (product : a * b = low + modulus * high)
+    (fits : a * b < modulus) : high = 0 := by
+  by_contra not_zero
+  have one_le : 1 ≤ high := by omega
+  have large : modulus ≤ modulus * high := by
+    simpa using Nat.mul_le_mul_left modulus one_le
+  omega
+
+/-- The signed high-word correction includes its terminal carry. Together
+with the exact unsigned product, it proves the mathematical signed product
+equals the sign-extended low word. -/
+theorem signed_checked_sound (a b low high modulus sa sb sr carry : Nat)
+    (positive : 0 < modulus)
+    (product : a * b = low + modulus * high)
+    (correction : high + modulus * carry =
+      sa * b + sb * a + sr * (modulus - 1))
+    (terminal : carry = sa * sb + sr) :
+    ((a : Int) - sa * modulus) * ((b : Int) - sb * modulus) =
+      (low : Int) - sr * modulus := by
+  have product_int : (a : Int) * b = low + modulus * high := by
+    exact_mod_cast product
+  have correction_int : (high : Int) + modulus * carry =
+      sa * b + sb * a + sr * ((modulus : Int) - 1) := by
+    have hsub : ((modulus - 1 : Nat) : Int) = (modulus : Int) - 1 := by omega
+    have casted : (high : Int) + modulus * carry =
+        sa * b + sb * a + sr * ((modulus - 1 : Nat) : Int) := by
+      exact_mod_cast correction
+    simpa [hsub] using casted
+  have multiplied := congrArg (fun x : Int => x * modulus) correction_int
+  rw [terminal] at multiplied
+  simp only [Nat.cast_add, Nat.cast_mul] at multiplied
+  nlinarith [product_int, multiplied]
+
+/-- A representable signed product satisfies the exact high-word correction
+with terminal carry `sa*sb+sr`; the column witnesses then exist by division. -/
+theorem signed_checked_complete (a b low high modulus sa sb sr : Nat)
+    (positive : 0 < modulus)
+    (product : a * b = low + modulus * high)
+    (signed_product :
+      ((a : Int) - sa * modulus) * ((b : Int) - sb * modulus) =
+        (low : Int) - sr * modulus) :
+    high + modulus * (sa * sb + sr) =
+      sa * b + sb * a + sr * (modulus - 1) := by
+  have product_int : (a : Int) * b = low + modulus * high := by
+    exact_mod_cast product
+  have shifted : (modulus : Int) * (high + modulus * (sa * sb + sr)) =
+      modulus * (sa * b + sb * a + sr * ((modulus : Int) - 1)) := by
+    nlinarith [product_int, signed_product]
+  have hsub : ((modulus - 1 : Nat) : Int) = (modulus : Int) - 1 := by omega
+  have desired_int : (high : Int) + modulus * (sa * sb + sr) =
+      sa * b + sb * a + sr * ((modulus : Int) - 1) := by
+    exact mul_left_cancel₀ (by omega : (modulus : Int) ≠ 0) shifted
+  exact_mod_cast (show (high : Int) + modulus * (sa * sb + sr) =
+      sa * b + sb * a + sr * ((modulus - 1 : Nat) : Int) by
+        simpa [hsub] using desired_int)
 
 end S31.Gadgets.IntegerMultiply

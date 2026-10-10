@@ -23,6 +23,10 @@ def evaluate (op : Op) (spec : IntegerSpec) (lhs rhs : List M31) : Result (List 
   let a := interpretation spec (unsigned lhs)
   let b := interpretation spec (unsigned rhs)
   if op == .int_le then return [RiscvRefinement.M31.reduce (if a ≤ b then 1 else 0)]
+  if op == .int_mul_checked then
+    let product := a * b
+    require (lower spec ≤ product && product ≤ upper spec) .overflow
+    return encode spec.limbs (product % (spec.limit : Int)).toNat
   let subtract := op == .int_sub_checked || op == .int_sub_wrapping
   let checked := op == .int_add_checked || op == .int_sub_checked
   let value := if subtract then a - b else a + b

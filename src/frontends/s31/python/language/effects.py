@@ -20,7 +20,7 @@ from language.syntax import Circuit, Expr, Function, FunctionType, SourceError, 
 # reviewed effect before it can appear in an inactive branch.
 PARTIAL_BUILTINS = frozenset({
     "accumulate_chainwork", "block_work", "pow_valid", "target_mainnet",
-    "std::int::add_checked", "std::int::sub_checked",
+    "std::int::add_checked", "std::int::sub_checked", "std::int::mul_checked",
     "std::int::from_limbs_i8", "std::int::from_limbs_u8",
     "std::math::add_u256_checked", "std::math::sub_u256_checked",
     "std::math::sum_u256_checked", "std::math::inv", "std::math::div",

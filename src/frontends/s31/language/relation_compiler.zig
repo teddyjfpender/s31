@@ -99,6 +99,7 @@ pub fn compileRaw(comptime V: type, allocator: std.mem.Allocator, program: relat
             .int_sub_wrapping => try intBinary(V, &ctx, lhs.?, rhs.?, node.constant.?, .sub),
             .int_le => try intBinary(V, &ctx, lhs.?, rhs.?, node.constant.?, .le),
             .int_mul_wrapping => try intMultiplyWrapping(V, &ctx, lhs.?, rhs.?, node.constant.?),
+            .int_mul_checked => try intMultiplyChecked(V, &ctx, lhs.?, rhs.?, node.constant.?),
             .hash_sha256d_header => try sha256dHeader(V, &ctx, lhs.?),
             .bitcoin_target_mainnet => try mainnetTarget(V, &ctx, lhs.?),
             .bitcoin_block_work => try blockWorkEntry(V, &ctx, lhs.?),
@@ -355,6 +356,7 @@ fn compileWithSpansMode(comptime V: type, allocator: std.mem.Allocator, program:
             .int_sub_wrapping => try intBinary(V, &ctx, entries[node.lhs.?], entries[node.rhs.?], node.constant.?, .sub),
             .int_le => try intBinary(V, &ctx, entries[node.lhs.?], entries[node.rhs.?], node.constant.?, .le),
             .int_mul_wrapping => try intMultiplyWrapping(V, &ctx, entries[node.lhs.?], entries[node.rhs.?], node.constant.?),
+            .int_mul_checked => try intMultiplyChecked(V, &ctx, entries[node.lhs.?], entries[node.rhs.?], node.constant.?),
             .hash_sha256d_header => blk: {
                 if (!sha_chip_mode) break :blk try sha256dHeader(V, &ctx, entries[node.lhs.?]);
                 const input = entries[node.lhs.?];
@@ -731,13 +733,66 @@ fn intMultiplyWrapping(comptime V: type, ctx: *circuit.builder.Context(V), lhs: 
         return error.InvalidIntegerOperand;
     const left_byte_bounded = lhs.integer_spec != null and (lhs.integer_spec.? & 0xff) == 8;
     const right_byte_bounded = rhs.integer_spec != null and (rhs.integer_spec.? & 0xff) == 8;
-    const raw = try integer_multiply.wrapping(V, ctx, left, right, spec.width,
-        left_byte_bounded, right_byte_bounded);
+    const raw = try integer_multiply.wrapping(V, ctx, left, right, spec.width, left_byte_bounded, right_byte_bounded);
     const wrappers = try ctx.scratch().alloc(circuit.builder.wrappers.M31Wrapper(Var), raw.len);
     for (wrappers, raw) |*wrapped, wire| wrapped.* = .newUnsafe(wire);
-    return .{ .shape = .{ .kind = .u16, .length = raw.len },
-        .lanes = try circuit.builder.simd.pack(V, ctx, wrappers),
-        .raw = raw, .integer_spec = encoded };
+    return .{ .shape = .{ .kind = .u16, .length = raw.len }, .lanes = try circuit.builder.simd.pack(V, ctx, wrappers), .raw = raw, .integer_spec = encoded };
+}
+
+fn intMultiplyChecked(comptime V: type, ctx: *circuit.builder.Context(V), lhs: Entry, rhs: Entry, encoded: u32) !Entry {
+    const spec = relation.IntegerSpec.decode(encoded) orelse return error.InvalidIntegerSpec;
+    const left = lhs.raw orelse return error.InvalidIntegerOperand;
+    const right = rhs.raw orelse return error.InvalidIntegerOperand;
+    if (lhs.shape.kind != .u16 or rhs.shape.kind != .u16 or
+        left.len != spec.limbCount() or right.len != spec.limbCount())
+        return error.InvalidIntegerOperand;
+    const left_byte_bounded = lhs.integer_spec != null and (lhs.integer_spec.? & 0xff) == 8;
+    const right_byte_bounded = rhs.integer_spec != null and (rhs.integer_spec.? & 0xff) == 8;
+    const product = try integer_multiply.fullProduct(V, ctx, left, right, spec.width, left_byte_bounded, right_byte_bounded);
+    if (!spec.signed) {
+        // The complete unsigned product must fit in exactly W bits.
+        for (product.high) |word| try assertZeroArithmetic(V, ctx, word);
+    } else {
+        // A signed W-bit value is its unsigned bit pattern minus sign*2^W.
+        // If U=A*B=low+2^W*high, the signed product fits exactly when
+        // high + carry*2^W = sign(A)*B + sign(B)*A +
+        // sign(low)*(2^W-1), with carry = sign(A)*sign(B)+sign(low).
+        const sa = try integerSign(V, ctx, left[left.len - 1], spec.width);
+        const sb = try integerSign(V, ctx, right[right.len - 1], spec.width);
+        const sr = try integerSign(V, ctx, product.low[product.low.len - 1], spec.width);
+        const base_value: u32 = if (spec.width == 8) 256 else 65536;
+        const base = try ctx.constant(QM31.fromBase(M31.fromCanonical(base_value)));
+        const base_minus_one = try ctx.constant(QM31.fromBase(M31.fromCanonical(base_value - 1)));
+        const one = ctx.one();
+        const two = try ctx.constant(QM31.fromBase(M31.fromCanonical(2)));
+        const three = try ctx.constant(QM31.fromBase(M31.fromCanonical(3)));
+        const sa_value: u32 = if (comptime V == QM31) ctx.get(sa).toM31Array()[0].v else 0;
+        const sb_value: u32 = if (comptime V == QM31) ctx.get(sb).toM31Array()[0].v else 0;
+        const sr_value: u32 = if (comptime V == QM31) ctx.get(sr).toM31Array()[0].v else 0;
+        var incoming = ctx.zero();
+        var carry_value: u32 = 0;
+        for (left, right, product.high) |a, b, high| {
+            const av: u32 = if (comptime V == QM31) ctx.get(a).toM31Array()[0].v else 0;
+            const bv: u32 = if (comptime V == QM31) ctx.get(b).toM31Array()[0].v else 0;
+            const total_value = sa_value * bv + sb_value * av + sr_value * (base_value - 1) + carry_value;
+            const outgoing_value = total_value / base_value;
+            const outgoing = try ctx.guess(circuit.builder.ivalue.fromQm31(V, QM31.fromBase(M31.fromCanonical(outgoing_value))));
+            // A four-value polynomial keeps both sides of the field equation
+            // below p, so no modular wrap can satisfy a false high word.
+            const zero_to_three = try ctx.mul(try ctx.mul(outgoing, try ctx.sub(outgoing, one)), try ctx.mul(try ctx.sub(outgoing, two), try ctx.sub(outgoing, three)));
+            try ctx.eq(zero_to_three, ctx.zero());
+            const sum = try ctx.add(try ctx.add(try ctx.add(incoming, try ctx.mul(sa, b)), try ctx.mul(sb, a)), try ctx.mul(sr, base_minus_one));
+            try ctx.eq(sum, try ctx.add(high, try ctx.mul(outgoing, base)));
+            incoming = outgoing;
+            carry_value = outgoing_value;
+        }
+        // Fixing this carry converts the modular high-word comparison into
+        // an exact signed integer equality, including at MIN * -1.
+        try ctx.eq(incoming, try ctx.add(try ctx.mul(sa, sb), sr));
+    }
+    const wrappers = try ctx.scratch().alloc(circuit.builder.wrappers.M31Wrapper(Var), product.low.len);
+    for (wrappers, product.low) |*wrapped, wire| wrapped.* = .newUnsafe(wire);
+    return .{ .shape = .{ .kind = .u16, .length = product.low.len }, .lanes = try circuit.builder.simd.pack(V, ctx, wrappers), .raw = product.low, .integer_spec = encoded };
 }
 
 fn intBinary(comptime V: type, ctx: *circuit.builder.Context(V), lhs: Entry, rhs: Entry, encoded: u32, mode: U256Mode) !Entry {
@@ -1990,8 +2045,7 @@ test "fixed integer wrapping multiplication constrains bytes, carries, and publi
         if (index == 0) {
             _ = try relation.evaluate(allocator, byte_program.value, assignment.value);
         } else {
-            try std.testing.expectError(if (index == 1) error.PublicOutputMismatch else error.IntegerOutOfRange,
-                relation.evaluate(allocator, byte_program.value, assignment.value));
+            try std.testing.expectError(if (index == 1) error.PublicOutputMismatch else error.IntegerOutOfRange, relation.evaluate(allocator, byte_program.value, assignment.value));
         }
     }
     const wide_source =
@@ -2011,6 +2065,37 @@ test "fixed integer wrapping multiplication constrains bytes, carries, and publi
     var topology = try compile(circuit.builder.NoValue, allocator, wide_program.value, null);
     defer topology.deinit();
     try std.testing.expectEqual(wide_compiled.circuit.n_vars, topology.circuit.n_vars);
+}
+
+test "checked integer multiplication rejects unsigned and signed overflow" {
+    const allocator = std.testing.allocator;
+    inline for (.{
+        .{ .spec = 8, .left = 25, .right = 10, .output = 250, .valid = true },
+        .{ .spec = 8, .left = 25, .right = 11, .output = 19, .valid = false },
+        .{ .spec = 264, .left = 255, .right = 2, .output = 254, .valid = true },
+        .{ .spec = 264, .left = 128, .right = 1, .output = 128, .valid = true },
+        .{ .spec = 264, .left = 128, .right = 255, .output = 128, .valid = false },
+    }) |case| {
+        const source = try std.fmt.allocPrint(allocator, "{{\"version\":1,\"name\":\"checked_product\",\"inputs\":[{{\"name\":\"a\",\"kind\":\"u16\",\"length\":1,\"visibility\":\"private\"}},{{\"name\":\"b\",\"kind\":\"u16\",\"length\":1,\"visibility\":\"private\"}}],\"nodes\":[{{\"name\":\"product\",\"op\":\"int_mul_checked\",\"lhs\":\"a\",\"rhs\":\"b\",\"constant\":{d}}}],\"assertions\":[],\"public_outputs\":[\"product\"]}}", .{case.spec});
+        defer allocator.free(source);
+        const data = try std.fmt.allocPrint(allocator, "{{\"public_inputs\":{{}},\"private_inputs\":{{\"a\":[{d}],\"b\":[{d}]}},\"public_outputs\":{{\"product\":[{d}]}}}}", .{ case.left, case.right, case.output });
+        defer allocator.free(data);
+        var program = try relation.parseProgram(allocator, source);
+        defer program.deinit();
+        var assignment = try relation.parseAssignment(allocator, data);
+        defer assignment.deinit();
+        var compiled = try compile(QM31, allocator, program.value, assignment.value);
+        defer compiled.deinit();
+        try std.testing.expectEqual(case.valid, try compiled.isCircuitValid());
+        if (case.valid) {
+            _ = try relation.evaluate(allocator, program.value, assignment.value);
+        } else {
+            try std.testing.expectError(error.IntegerOverflow, relation.evaluate(allocator, program.value, assignment.value));
+        }
+        var topology = try compile(circuit.builder.NoValue, allocator, program.value, null);
+        defer topology.deinit();
+        try std.testing.expectEqual(compiled.circuit.n_vars, topology.circuit.n_vars);
+    }
 }
 
 test "signed i128 full carry is valid and signed overflow is rejected" {

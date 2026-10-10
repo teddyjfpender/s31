@@ -595,6 +595,24 @@
         "path": "src/frontends/s31/language/gadgets/integer_multiply.zig",
         "function": "wrapping"
       }
+    },
+    {
+      "op": "int_mul_checked",
+      "semantics": "S31.Integers.evaluate",
+      "gadget_theorems": [
+        "S31.Gadgets.IntegerMultiply.column_sound",
+        "S31.Gadgets.IntegerMultiply.column_complete",
+        "S31.Gadgets.IntegerMultiply.full_product_sound",
+        "S31.Gadgets.IntegerMultiply.unsigned_checked_sound",
+        "S31.Gadgets.IntegerMultiply.unsigned_checked_complete",
+        "S31.Gadgets.IntegerMultiply.signed_checked_sound",
+        "S31.Gadgets.IntegerMultiply.signed_checked_complete",
+        "S31.Gadgets.Signed.sign_sound_complete"
+      ],
+      "source": {
+        "path": "src/frontends/s31/language/relation_compiler.zig",
+        "function": "intMultiplyChecked"
+      }
     }
   ]
 }

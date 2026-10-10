@@ -1,0 +1,7 @@
+use std@1;
+
+// 25 * 10 = 250 fits u8. Multiplying by 11 would overflow.
+circuit u8_checked_product(private a: u8, private b: u8) -> public u8 {
+    let product = std::int::mul_checked(a, b);
+    product
+}

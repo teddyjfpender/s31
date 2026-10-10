@@ -276,10 +276,10 @@ not a general-purpose mathematical package or a production light client.
 The implemented fixed-width slice includes the ten
 [fixed-width unsigned and signed scalar types](FIXED_WIDTH_INTEGERS.md):
 `u8` through `u128` and `i8` through `i128`, with explicit range, cast,
-ordering, and overflow contracts for checked/wrapping addition and subtraction,
-plus wrapping multiplication through a byte-constrained product circuit.
+ordering, and overflow contracts for checked/wrapping addition, subtraction,
+and multiplication through byte-constrained product circuits.
 Its explicit conversions cover equal-width signedness reinterpretation and
-exactly sized limb views. Checked multiplication, division, shifts, bitwise
+exactly sized limb views. Division, shifts, bitwise
 operations, cross-width numeric casts and the full per-width native release matrix remain
 open. A raw `[u16; N]` or M31 value still does not carry integer semantics.
 The main additions beyond this bar are:

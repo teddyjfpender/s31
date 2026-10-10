@@ -13,6 +13,7 @@ INT_BINARY_CALLS = {
     "std::int::sub_checked": "int_sub_checked",
     "std::int::sub_wrapping": "int_sub_wrapping",
     "std::int::mul_wrapping": "int_mul_wrapping",
+    "std::int::mul_checked": "int_mul_checked",
     "std::int::le": "int_le",
 }
 INT_COMPARE_CALLS = {"std::int::lt", "std::int::ge", "std::int::gt", "std::int::eq", "std::int::ne"}

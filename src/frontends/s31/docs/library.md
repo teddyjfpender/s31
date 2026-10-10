@@ -47,6 +47,7 @@ AIR. No helper is a host-only calculation or a new specialized AIR chip.
 | `std::int::add_checked(a,b)`, `sub_checked(a,b)` | Exact fixed-width result, rejecting signed or unsigned overflow | Equally typed `u8`–`u128` or `i8`–`i128` operands. |
 | `std::int::add_wrapping(a,b)`, `sub_wrapping(a,b)` | Low $W$ bits of the result | Equally typed fixed-width operands. |
 | `std::int::mul_wrapping(a,b)` | Low $W$ bits of the product | Equally typed `u8`–`u128` or `i8`–`i128` operands; byte-constrained convolution. |
+| `std::int::mul_checked(a,b)` | Exact fixed-width product; rejects unsigned or signed overflow | Equally typed fixed-width operands; complete $2W$-bit convolution and upper-word constraints. |
 | `std::int::{le,lt,ge,gt,eq,ne}(a,b)` | Typed ordering or equality; returns constrained `bit` | Equally typed fixed-width operands. |
 | `std::int::from_limbs_u8(raw)` through `from_limbs_i128(raw)` | Explicitly construct a fixed-width scalar from little-endian limbs | Exact `[u16; L]` shape; byte types gain an extra 8-bit proof constraint. |
 | `std::int::limbs(x)` | Explicit bit-pattern view as `[u16; L]` | One fixed-width scalar; no arithmetic node. |
@@ -660,7 +661,7 @@ they do not expose a witness-selected lane as a source value.
 The scalar-integer family is described with a handwritten circuit and AIR
 example in [fixed-width integers](fixed-width-integers.md). It includes all
 ten widths/signs, checked and wrapping addition and subtraction, ordering,
-and bit-pattern views. Fixed-width multiplication, division, bitwise
+wrapping/checked multiplication, and bit-pattern views. Division, bitwise
 operations, and cross-width numeric casts remain to be implemented.
 
 ## Library MVP release gate

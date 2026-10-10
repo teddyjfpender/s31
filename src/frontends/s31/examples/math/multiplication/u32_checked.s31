@@ -1,0 +1,7 @@
+use std@1;
+
+// 65535^2 = 4294836225 = [1, 65534] in little-endian u16 limbs.
+circuit u32_checked_product(private a: u32, private b: u32) -> public u32 {
+    let product = std::int::mul_checked(a, b);
+    product
+}

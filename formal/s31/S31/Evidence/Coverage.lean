@@ -51,7 +51,12 @@ import S31.Gadgets
 #check S31.Gadgets.HashEncoding.sha_hash_sound_complete
 #check S31.Gadgets.IntegerMultiply.column_complete
 #check S31.Gadgets.IntegerMultiply.column_sound
+#check S31.Gadgets.IntegerMultiply.full_product_sound
+#check S31.Gadgets.IntegerMultiply.signed_checked_complete
+#check S31.Gadgets.IntegerMultiply.signed_checked_sound
 #check S31.Gadgets.IntegerMultiply.split_high_byte_sound
+#check S31.Gadgets.IntegerMultiply.unsigned_checked_complete
+#check S31.Gadgets.IntegerMultiply.unsigned_checked_sound
 #check S31.Gadgets.IntegerMultiply.wrapping_product_sound
 #check S31.Gadgets.Packed.add_sound_complete
 #check S31.Gadgets.Packed.dual_literal
@@ -157,13 +162,14 @@ def operationCoverage : List (Op × List String) := [
   (.int_sub_checked, ["S31.Gadgets.Radix.sub_chain_checked_sound_complete", "S31.Gadgets.Arithmetic.signed_sub_sound_complete", "S31.Gadgets.Signed.sign_sound_complete", "S31.Gadgets.Packing.top_limb_sign"]),
   (.int_sub_wrapping, ["S31.Gadgets.Radix.sub_chain_wrapping_sound_complete", "S31.Gadgets.Arithmetic.twos_emod", "S31.Gadgets.Packing.integer_layout"]),
   (.int_le, ["S31.Gadgets.Arithmetic.comparison_sound_complete", "S31.Gadgets.Signed.signed_le", "S31.Gadgets.Signed.le_sound_complete", "S31.Gadgets.Signed.sign_sound_complete"]),
-  (.int_mul_wrapping, ["S31.Gadgets.IntegerMultiply.column_sound", "S31.Gadgets.IntegerMultiply.column_complete", "S31.Gadgets.IntegerMultiply.split_high_byte_sound", "S31.Gadgets.IntegerMultiply.wrapping_product_sound", "S31.Gadgets.Radix.byte_sound_complete"])]
+  (.int_mul_wrapping, ["S31.Gadgets.IntegerMultiply.column_sound", "S31.Gadgets.IntegerMultiply.column_complete", "S31.Gadgets.IntegerMultiply.split_high_byte_sound", "S31.Gadgets.IntegerMultiply.wrapping_product_sound", "S31.Gadgets.Radix.byte_sound_complete"]),
+  (.int_mul_checked, ["S31.Gadgets.IntegerMultiply.column_sound", "S31.Gadgets.IntegerMultiply.column_complete", "S31.Gadgets.IntegerMultiply.full_product_sound", "S31.Gadgets.IntegerMultiply.unsigned_checked_sound", "S31.Gadgets.IntegerMultiply.unsigned_checked_complete", "S31.Gadgets.IntegerMultiply.signed_checked_sound", "S31.Gadgets.IntegerMultiply.signed_checked_complete", "S31.Gadgets.Signed.sign_sound_complete"])]
 
 theorem operation_inventory_exact : operationCoverage.map Prod.fst = allOps := rfl
 
 theorem operation_inventory_complete (op : Op) :
     op ∈ operationCoverage.map Prod.fst := by cases op <;> simp [operationCoverage]
 
-theorem operation_inventory_size : operationCoverage.length = 44 := rfl
+theorem operation_inventory_size : operationCoverage.length = 45 := rfl
 
 end S31.Evidence

@@ -105,6 +105,49 @@ class FixedWidthIntegerTests(unittest.TestCase):
             compile_text("circuit bad(private a: u16, private b: i16) -> public u16 "
                          "{ std::int::mul_wrapping(a, b) }")
 
+    def test_checked_multiplication_all_fixed_width_types(self) -> None:
+        for width in (8, 16, 32, 64, 128):
+            for prefix in ("u", "i"):
+                kind = f"{prefix}{width}"
+                with self.subTest(kind=kind):
+                    relation, _ = compile_text(
+                        f"circuit product(private a: {kind}, private b: {kind}) -> public {kind} "
+                        "{ std::int::mul_checked(a, b) }")
+                    self.assertEqual([node["op"] for node in relation["nodes"]],
+                                     ["int_view", "int_view", "int_mul_checked"])
+                    spec = width | (256 if prefix == "i" else 0)
+                    self.assertEqual([node["constant"] for node in relation["nodes"]], [spec] * 3)
+                    if prefix == "u":
+                        valid = ((0, (1 << width) - 1, 0),
+                                 ((1 << width) - 1, 1, (1 << width) - 1),
+                                 (33, 3, 99))
+                        overflow = (((1 << width) - 1, 2),
+                                    (1 << (width - 1), 2))
+                    else:
+                        mask = (1 << width) - 1
+                        half = 1 << (width - 1)
+                        valid = ((mask, 2, mask - 1),
+                                 (half, 1, half),
+                                 (mask, mask, 1),
+                                 (half, 0, 0),
+                                 (half - 1, mask, half + 1))
+                        overflow = ((half, mask), (half - 1, 2),
+                                    (half, 2))
+                    for a, b, result in valid:
+                        assignment = self.assignment(relation, width, a, b, result)
+                        self.assertEqual(evaluate_relation(relation, assignment),
+                                         assignment["public_outputs"])
+                    for a, b in overflow:
+                        with self.assertRaisesRegex(OracleError, "multiplication overflow"):
+                            evaluate_relation(relation,
+                                              self.assignment(relation, width, a, b, 0))
+
+    def test_checked_multiplication_is_partial_in_dynamic_branches(self) -> None:
+        with self.assertRaises(SourceError):
+            compile_text(
+                "circuit choice(private bit: bit, private a: i8, private b: i8) -> public i8 "
+                "{ if bit then std::int::mul_checked(a, b) else a }")
+
     def test_named_multiply_helper_has_no_relation_overhead(self) -> None:
         direct = ("circuit product(private a: u32, private b: u32) -> public u32 "
                   "{ std::int::mul_wrapping(a, b) }")
@@ -116,6 +159,10 @@ class FixedWidthIntegerTests(unittest.TestCase):
         direct_relation, _ = compile_text(direct)
         functional_relation, _ = compile_text(via_function)
         self.assertEqual(direct_relation, functional_relation)
+
+        checked_direct, _ = compile_text(direct.replace("mul_wrapping", "mul_checked"))
+        checked_function, _ = compile_text(via_function.replace("mul_wrapping", "mul_checked"))
+        self.assertEqual(checked_direct, checked_function)
 
     def test_byte_range_and_explicit_limb_conversion(self) -> None:
         relation, _ = compile_text(

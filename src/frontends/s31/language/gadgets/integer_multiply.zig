@@ -5,7 +5,8 @@
 //! convolution. Every column sum is below 16*255^2+4096 < 2^31-1, and the
 //! right side is below 256*65535+255 < 2^31-1. Thus a field equality is an
 //! integer equality: a witness cannot exploit field wrap to forge a product.
-//! The high carry after the final low byte is deliberately discarded.
+//! Wrapping multiplication discards the high carry; full multiplication
+//! constrains the terminal carry to zero.
 
 const core = @import("stwo_core");
 const circuit = @import("stwo_circuit_frontend");
@@ -18,6 +19,11 @@ const Context = circuit.builder.Context;
 const Bytes = struct {
     wires: []Var,
     values: []u32,
+};
+
+pub const FullProduct = struct {
+    low: []Var,
+    high: []Var,
 };
 
 fn hint(comptime V: type, value: u32) V {
@@ -43,8 +49,7 @@ fn boundedByte(comptime V: type, ctx: *Context(V), value: u32) !Var {
     return result;
 }
 
-fn inputBytes(comptime V: type, ctx: *Context(V), words: []const Var,
-    byte_bounded: bool, count: usize) !Bytes {
+fn inputBytes(comptime V: type, ctx: *Context(V), words: []const Var, byte_bounded: bool, count: usize) !Bytes {
     const wires = try ctx.scratch().alloc(Var, count);
     const values = try ctx.scratch().alloc(u32, count);
     if (count == 1) {
@@ -64,17 +69,12 @@ fn inputBytes(comptime V: type, ctx: *Context(V), words: []const Var,
         wires[2 * index + 1] = try ctx.guessU16(hint(V, high));
         values[2 * index] = low;
         values[2 * index + 1] = high;
-        try ctx.eq(word, try ctx.add(wires[2 * index],
-            try ctx.mul(wires[2 * index + 1], base)));
+        try ctx.eq(word, try ctx.add(wires[2 * index], try ctx.mul(wires[2 * index + 1], base)));
     }
     return .{ .wires = wires, .values = values };
 }
 
-/// Return little-endian u16 limbs of `(left * right) mod 2^width`. Signed and
-/// unsigned fixed-width operands use the same bit-pattern operation.
-pub fn wrapping(comptime V: type, ctx: *Context(V), left: []const Var,
-    right: []const Var, width: u32, left_byte_bounded: bool,
-    right_byte_bounded: bool) ![]Var {
+fn product(comptime V: type, ctx: *Context(V), left: []const Var, right: []const Var, width: u32, left_byte_bounded: bool, right_byte_bounded: bool, full: bool) !FullProduct {
     if (width != 8 and width != 16 and width != 32 and width != 64 and width != 128)
         return error.InvalidIntegerSpec;
     const count: usize = @intCast(width / 8);
@@ -84,16 +84,19 @@ pub fn wrapping(comptime V: type, ctx: *Context(V), left: []const Var,
 
     const a = try inputBytes(V, ctx, left, left_byte_bounded, count);
     const b = try inputBytes(V, ctx, right, right_byte_bounded, count);
-    const output_bytes = try ctx.scratch().alloc(Var, count);
+    const column_count = if (full) 2 * count else count;
+    const output_bytes = try ctx.scratch().alloc(Var, column_count);
     const base = try ctx.constant(QM31.fromBase(M31.fromCanonical(256)));
     var incoming = ctx.zero();
     var carry_value: u32 = 0;
-    for (0..count) |column| {
+    for (0..column_count) |column| {
         var sum_wire = incoming;
         var sum_value = carry_value;
-        for (0..column + 1) |i| {
-            sum_wire = try ctx.add(sum_wire, try ctx.mul(a.wires[i], b.wires[column - i]));
-            sum_value += a.values[i] * b.values[column - i];
+        for (0..@min(count, column + 1)) |i| {
+            const j = column - i;
+            if (j >= count) continue;
+            sum_wire = try ctx.add(sum_wire, try ctx.mul(a.wires[i], b.wires[j]));
+            sum_value += a.values[i] * b.values[j];
         }
         const digit_value = sum_value & 0xff;
         const outgoing_value = sum_value >> 8;
@@ -103,12 +106,28 @@ pub fn wrapping(comptime V: type, ctx: *Context(V), left: []const Var,
         incoming = outgoing;
         carry_value = outgoing_value;
     }
+    if (full) try ctx.eq(incoming, ctx.zero());
 
-    const output = try ctx.scratch().alloc(Var, limb_count);
+    const low = try ctx.scratch().alloc(Var, limb_count);
+    const high = try ctx.scratch().alloc(Var, if (full) limb_count else 0);
     if (width == 8) {
-        output[0] = output_bytes[0];
-    } else for (output, 0..) |*word, i| {
+        low[0] = output_bytes[0];
+        if (full) high[0] = output_bytes[1];
+    } else for (low, 0..) |*word, i| {
         word.* = try ctx.add(output_bytes[2 * i], try ctx.mul(output_bytes[2 * i + 1], base));
+        if (full) high[i] = try ctx.add(output_bytes[count + 2 * i], try ctx.mul(output_bytes[count + 2 * i + 1], base));
     }
-    return output;
+    return .{ .low = low, .high = high };
+}
+
+/// Return little-endian u16 limbs of `(left * right) mod 2^width`. Signed and
+/// unsigned fixed-width operands use the same bit-pattern operation.
+pub fn wrapping(comptime V: type, ctx: *Context(V), left: []const Var, right: []const Var, width: u32, left_byte_bounded: bool, right_byte_bounded: bool) ![]Var {
+    return (try product(V, ctx, left, right, width, left_byte_bounded, right_byte_bounded, false)).low;
+}
+
+/// Return the complete 2W-bit unsigned product. The terminal carry is fixed
+/// to zero; callers must apply their signed or unsigned overflow predicate.
+pub fn fullProduct(comptime V: type, ctx: *Context(V), left: []const Var, right: []const Var, width: u32, left_byte_bounded: bool, right_byte_bounded: bool) !FullProduct {
+    return product(V, ctx, left, right, width, left_byte_bounded, right_byte_bounded, true);
 }
