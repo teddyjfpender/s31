@@ -604,6 +604,11 @@ def _checked_material(package: Path) -> tuple[dict[str, Any], dict[str, Any]]:
             component["components"][0].get("interaction_trace_columns") != 8 or
             component["components"][0].get("n_constraints") != 11 or
             component["components"][0].get("preprocessed_indices") != [0, 2, 3, 1, 4, 5, 6, 7] or
+            component["components"][0].get("trace_spans") != [
+                {"tree": 0, "start": 0, "end": 0},
+                {"tree": 1, "start": 0, "end": 12},
+                {"tree": 2, "start": 0, "end": 8},
+            ] or
             [column.get("id") for column in component.get("preprocessed_columns", [])] != [
                 "qm31_ops_add_flag", "qm31_ops_sub_flag", "qm31_ops_mul_flag",
                 "qm31_ops_pointwise_mul_flag", "qm31_ops_in0_address",

@@ -223,3 +223,57 @@ python3 scripts/s31_formal.py
 Run the latter two commands from the repository root. Native acceptance and
 row-index mutation controls are separate follow-ups; this increment adds no
 native exporter, and the conditional Lean bridge does not prove PCS/FRI.
+
+## Bounded evaluator-cell replay
+
+[`DirectGateEvaluatorCells.lean`](../../../formal/s31/S31/Gadgets/Air/DirectGateEvaluatorCells.lean)
+defines a pure evaluator over the selected component's eight local fixed
+reads, twelve main cells, eight current interaction cells, and eight cells
+sampled with the previous-row mask. It proves, for every decoded trace, that
+the local fixed read permutation reconstructs the semantic Gate row and that
+the nine arithmetic and two LogUp residuals equal the existing source Gate
+model. `arithmetic_zero_decodes` derives the Gate operation and output from
+the nine zero local residuals. `modeled_evaluator_to_raw_accepts` requires
+the installed evaluator to return these modeled residuals, authenticated row
+residuals to vanish, and the public claimed-sum equation to hold. It proves raw Gate interaction
+acceptance under those premises; it does not prove the premises.
+
+The checked fixture
+[`GeneratedDirectGateEvaluatorFixture.lean`](../../../formal/s31/S31/Gadgets/Air/GeneratedDirectGateEvaluatorFixture.lean)
+replays `functional_square4_manual.s31` at public input `[0,1,2,7]`.
+The native package exports these two selected rows:
+
+| Trace row | Semantic flag | Local fixed flags `[add,mul,pointwise,sub]` | Main input | Main output | Multiplicity |
+| --- | --- | --- | --- | --- | --- |
+| 502 | pointwise multiply | `[0,0,1,0]` | `[0,1,2,7]` twice | `[0,1,4,49]` | 2 |
+| 503 | pointwise multiply | `[0,0,1,0]` | `[0,1,4,49]` twice | `[0,1,16,2401]` | 4 |
+
+An independent Python replay checks the nine M31 arithmetic residuals on
+these cells and computes the two QM31 LogUp residuals using the production
+six-word Gate tuple order. Lean kernel computation checks the same numeric
+results. Swapping the fixed mul/pointwise reads or main output limbs makes
+the arithmetic residual nonzero; swapping a first/last interaction cell
+changes the paired LogUp residual. The independent package checker also
+rejects resealed fixed, main, or interaction span mutations in the component
+manifest; the acceptance control exercises all three cases. Changing the
+previous interaction sample changes the singleton LogUp residual in Lean,
+but proving the native mask selects that sample remains an obligation.
+The interaction values are deliberately synthetic, so their nonzero
+residuals test the equation and column order only; they are not a claimed
+native witness or proof opening.
+
+Regenerate and check the fixture with:
+
+```sh
+python3 scripts/export_s31_direct_gate_evaluator_fixture.py PACKAGE \
+  src/frontends/s31/examples/arithmetic/functional_square4.valid.json \
+  formal/s31/S31/Gadgets/Air/GeneratedDirectGateEvaluatorFixture.lean --check
+(cd formal/s31 && lake build S31.Gadgets.Air.GeneratedDirectGateEvaluatorFixture)
+```
+
+The remaining evaluator obligation is to show that the exact selected
+`STWZEVA/1` bytecode, bound by the installed key and bundle hash, computes
+this pure 11-residual function at the stated local positions. The fixture
+checks the manifest's exact index vector and three trace spans, but does not
+independently interpret that bytecode. Authentication of full committed
+columns, random composition, PCS/FRI, and Fiat–Shamir remain separate.

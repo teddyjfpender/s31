@@ -25,6 +25,9 @@ from package.context import file_hash, invoke, sha256, write_json
 from package.correspondence import (DIRECT_COLUMN_IDS, KEY_FIELDS, canonical, check_package,
                                     digest, read_canonical_json)
 from export_s31_direct_gate_bridge import render_bridge
+from export_s31_direct_gate_evaluator_fixture import (
+    render as render_evaluator_fixture, validate_component_geometry,
+)
 
 
 def reseal_emitted_columns(topology: dict, component: dict) -> None:
@@ -95,6 +98,46 @@ def reject_resealed_topology(honest: Path, checked: dict, work: Path,
         raise AssertionError(f"resealed {name} was admitted")
 
 
+def reject_resealed_component_map(honest: Path, checked: dict, work: Path,
+                                  kind: str) -> None:
+    """Reseal every package copy of a changed fixed/main/interaction map."""
+    mutant = work / f"changed-{kind}-component-map"
+    shutil.copytree(honest, mutant)
+    component = json.loads((mutant / "component-manifest.json").read_text())
+    entry = component["components"][0]
+    if kind == "fixed":
+        entry["preprocessed_indices"][1:3] = reversed(entry["preprocessed_indices"][1:3])
+    elif kind == "main":
+        entry["trace_spans"][1]["start"] = 1
+    elif kind == "interaction":
+        entry["trace_spans"][2]["start"] = 1
+    else:
+        raise AssertionError(f"unknown component map mutation: {kind}")
+    write_json(mutant / "component-manifest.json", component)
+    key = json.loads((mutant / "verification-key.json").read_text())
+    report = json.loads((mutant / "cost-report.json").read_text())
+    key["component_manifest"] = component
+    report["component_manifest"] = component
+    write_json(mutant / "verification-key.json", key)
+    write_json(mutant / "cost-report.json", report)
+    fake = copy.deepcopy(checked)
+    fake["air_profile"]["component_manifest_sha256"] = digest(canonical(component))
+    fake["key_core"] = {field: key.get(field) for field in KEY_FIELDS}
+    write_json(mutant / "correspondence-certificate.json", fake)
+    manifest = json.loads((mutant / "manifest.json").read_text())
+    for name in ("component-manifest.json", "verification-key.json", "cost-report.json",
+                 "correspondence-certificate.json"):
+        manifest["artifacts"][name] = file_hash(mutant / name)
+    write_json(mutant / "manifest.json", manifest)
+    try:
+        check_package(mutant)
+    except ValueError as exc:
+        if "direct-gate AIR profile or key core" not in str(exc):
+            raise AssertionError(f"resealed {kind} map reached wrong rejection: {exc}") from exc
+    else:
+        raise AssertionError(f"resealed {kind} component map was admitted")
+
+
 def wrong_opcode(topology: dict, _checked: dict) -> None:
     topology["add"].insert(3, topology["pointwise_mul"].pop(0))
     topology["pointwise_mul"].append(topology["add"].pop())
@@ -154,6 +197,29 @@ def main() -> None:
                 fromfile="checked-in Lean", tofile="regenerated Lean"))[:40])
             raise AssertionError("source/native bridge differs from checked Lean instance:\n"
                                  + difference)
+        evaluator_golden = (REPO / "formal/s31/S31/Gadgets/Air/"
+                            "GeneratedDirectGateEvaluatorFixture.lean")
+        evaluator_rendered = render_evaluator_fixture(honest, assignment)
+        if evaluator_rendered != evaluator_golden.read_text():
+            raise AssertionError("direct Gate evaluator fixture differs from checked Lean replay")
+        component = json.loads((honest / "component-manifest.json").read_text())["components"][0]
+        for kind in ("fixed", "main", "interaction"):
+            changed = copy.deepcopy(component)
+            if kind == "fixed":
+                changed["preprocessed_indices"][1:3] = reversed(
+                    changed["preprocessed_indices"][1:3])
+            elif kind == "main":
+                changed["trace_spans"][1]["start"] = 1
+            else:
+                changed["trace_spans"][2]["start"] = 1
+            try:
+                validate_component_geometry(changed)
+            except ValueError as exc:
+                if "column geometry changed" not in str(exc):
+                    raise AssertionError(f"{kind} map reached wrong rejection: {exc}") from exc
+            else:
+                raise AssertionError(f"changed {kind} AIR column map was admitted")
+            reject_resealed_component_map(honest, checked, work, kind)
         if checked["status"]["source_to_normalized"] != "source-to-normalized-checked":
             raise AssertionError("honest package lacks the source correspondence status")
         if not s31.trial(honest, assignment, work / "honest-proof")["native_verifier_accepted"]:
@@ -296,6 +362,8 @@ def main() -> None:
             "native_gate_counts": checked["gate_counts"],
             "native_exact_constant_schedule_checked": True,
             "lean_bridge_instance_matches_native_package": True,
+            "evaluator_fixture_matches_checked_package": True,
+            "resealed_component_column_maps_rejected": True,
             "certificate_status": checked["status"],
         }, sort_keys=True, indent=2))
 
