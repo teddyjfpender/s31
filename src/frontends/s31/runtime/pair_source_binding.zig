@@ -1,7 +1,7 @@
 //! Source-owned admission for the experimental two-call direct chip profile.
-//! This module does not enable a pair proof or accept proof bytes. It gives a
-//! future prover and native verifier the same witness-free Plan, preprocessed
-//! root and typed V3 manifest precommitment from the sealed source alone.
+//! This module does not accept proof bytes. It gives the experimental pair
+//! prover and source-pinned native verifier the same witness-free Plan,
+//! preprocessed root and typed V3 manifest precommitment from source alone.
 const std = @import("std");
 const core = @import("stwo_core");
 const circuit = @import("stwo_circuit_frontend");
@@ -32,8 +32,10 @@ pub const Binding = struct {
 
 /// `air_bytes` is checked against the compiled-in official bundle SHA-256 by
 /// `component_manifest.directGate`, then hashed into the generated manifest.
-/// The experimental verifier still takes source and key bytes from its caller;
-/// a released verifier must independently pin those two trust roots.
+/// The generic `verifySealed` adapter still takes caller source and key bytes;
+/// the dedicated pair CLI embeds source and AIR and derives its key internally.
+/// A relying party must authenticate that executable and fix its expected
+/// public statement independently.
 /// `blowup` is supplied by the selected source-sealed PCS profile.
 pub fn derive(allocator: std.mem.Allocator, source_bytes: []const u8, air_bytes: []const u8, blowup: u32) !Binding {
     if (blowup != 1) return error.UnsupportedPairPcsProfile;
