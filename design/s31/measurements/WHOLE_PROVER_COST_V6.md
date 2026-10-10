@@ -1,7 +1,7 @@
 # Whole-prover cost model V6: prospective chip RSS transfer
 
-**Status: protocol pinned to integrated source before native observation. No
-V6 package or native proof has been built or timed.** The
+**Status: prospective native run complete; the predeclared local accuracy
+gate passed. Automatic lowering remains disabled.** The
 [V5 audit](language/whole-prover-cost-v5-audit.json)
 is immutable. Its direct-chip RSS interval missed the frozen coverage gate.
 That failure motivates another independent study; V5 held-out values are not
@@ -13,6 +13,65 @@ controls. Automatic lowering selection remains disabled, including after a
 possible local pass. Source, engine, compiler, and tool bytes are pinned in
 the protocol; native work still requires a committed freeze anchor and its
 externally timestamped full SHA.
+
+## Measured result
+
+The [pinned V6 audit](language/whole-prover-cost-v6-audit.json) records 23
+fresh training packages and 20 source- and assignment-disjoint held-out
+packages on one Apple M5 Max host. All 2,300 training and 2,000 held-out
+native proofs were accepted. Each trial's changed-public-claim control
+rejected, its independent value oracle passed, and the publisher matched
+all saved proof, full trial report, assignment, source, package, and direct-chip
+manifest digests. The publisher replayed the frozen fit and evaluation. It
+did not rerun native verification or independent oracles.
+
+| Family | Wall p90 error / coverage | Proof bytes p90 error / coverage | Prover RSS p90 error / coverage |
+| --- | ---: | ---: | ---: |
+| Arithmetic | 13.58% / 88.0% | 4.99% / 99.8% | 2.57% / 98.6% |
+| Direct chip | 11.19% / 89.0% | 4.73% / 96.0% | 3.00% / 100% |
+| Fixed width | 13.78% / 86.2% | 2.59% / 99.8% | 8.67% / 100% |
+| Hash | 3.00% / 86.8% | 0.17% / 96.6% | 0.032% / 99.0% |
+
+These are per-family p90 relative errors across program point estimates and
+trial interval coverage. The gate requires wall p90 error at most 25%, wall
+coverage at least 80%, proof-byte and RSS p90 errors at most 10%, and their
+coverage at least 80%. Each held-out program also needs RSS coverage at
+least 70% and interval upper bound at most 1.5 times its measured median.
+The weakest RSS program covered 93/100 trials (`arithmetic_1280`); the
+largest RSS upper-to-median ratio was 1.453 (`signed_quotient_32`). The
+largest wall point error was 16.42% (`signed_quotient_64`), proof-byte point
+error 6.14% (`chip_32768`), and RSS point error 9.09%
+(`signed_remainder_128`). The result passes this local gate, with empirical
+intervals that do not guarantee future tail coverage.
+
+The exact measured source base is S31 commit
+`1b04f77c87e650cd4cc24727b23d2b3d1d5718b6`, with stwo-zig engine
+gitlink `fb300ed1bcfac3299f249928fdfe18f4345deae6`. The compiler digest
+is `cf31fcb1b1b6c90bc1be1b363c778a6afdf370eba851f841cf4939f268aa6782`
+and the measurement-tool digest is
+`3762036a89536935231fbfe57a351172e1c835d8e2fcb226e5e1a6fa130f0079`.
+The frozen protocol SHA-256 is
+`c839427e3651a92f07710e5fc446cfa8fb022fbe4f70245d8fa22ec01c5c5b14`,
+anchored by commit `b3191bd5d9c0b7a2afc71b440e9c2e636ef1d2af` before
+the first native build. The frozen model SHA-256 is
+`0f0d4356123fa6ee85e1653c4224a9abbfaf8ec011037a5aa1c47ec374876b7c`,
+anchored by commit `22223af1ea5a0486ce7bcebfb66bc064cafab233` before
+the first held-out build. Both full hashes and commits were separately
+timestamped in the parent task conversation before those phases.
+The saved training corpus, validation corpus, and evaluation have SHA-256
+digests `bad7cbcd5d27f9546c2a2edad1ccdb28e8fec498f17df40e7637424b9a62a59d`,
+`02bf8f9f47c8b2f548d47c0243dc7b5059c2ed5ec60a36bc3da2efe96e23e903`,
+and `e51e1d332282a6d2c9b492841f445814e8f8d1fde9dfcddda18af87122310909`,
+respectively. The pinned audit file hashes to
+`05bac7095a4b1f82a20c52898410f7cd886020a8a4e78c26e1f768e37b2e5b01`.
+
+The target is fresh-process prover-plus-verifier wall time, proof bytes, and
+prover peak RSS on this one host and compiler revision. Package-build wall
+time was measured separately for every package, with uncontrolled Zig cache,
+and is excluded from the wall predictor. The 26-bit PoW policy adds variance;
+the wall intervals remain broad, especially for the direct-chip family.
+This check does not establish cross-host transfer, cached setup, or
+compile-to-proof latency. Automatic lowering remains disabled.
 
 ## Training-only interval rule
 
