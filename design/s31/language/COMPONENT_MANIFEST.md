@@ -150,6 +150,55 @@ A changed span or missing bridge relation is rejected before the sealed key
 is compared with the source-derived manifest. Variable-call scheduling
 requires a new versioned source-kind manifest.
 
+## Bounded-call V4 plan artifact
+
+`runtime/bounded_component_manifest.zig` defines a separate, versioned
+`s31-component-manifest-bounded-call-plan-v4` artifact. It takes literal
+normalized source through `language/bounded_call_admission.zig`, which accepts
+one through eight live canonical square/add-constant repeats. The roster has
+exactly `1 + 2N` entries in this order: bundled `qm31_ops`, all `N` tagged
+chips in canonical call-ID order, then all `N` tagged bridges in that order.
+Each entry has its own proof and claimed-sum index; main and interaction spans
+are disjoint, contiguous, and computed with checked `u32` addition. The
+coefficient offsets are checked the same way. For a circuit with `C`
+constraints, total constraints are `C + 19N`; main and interaction widths are
+`12 + 17N` and `8 + 28N` respectively. A bridge depends on both the circuit
+Gate relation and the tagged Chip relation; the circuit and each chip list
+their own relation dependencies.
+
+V4 uses an explicit tagged source identity. The circuit entry names bundled
+AIR index 1, the bundle SHA-256, and the selected program SHA-256 supplied by
+the rebound-circuit caller. Native entries name the chip or bridge kind and
+hash the pinned native AIR **template** source together with the canonical
+call ID, source node IDs, rounds and constant. The artifact also records the
+literal source hash, canonical IR hash, pinned native template hash, and
+preprocessed root. Its V4 typed digest has its own domain and includes every
+field. No V1/V2 or pair V3 JSON field, digest, key, or proof byte is changed.
+
+The ordered public output ABI records each name, canonical node ID, M31 kind,
+length and word offset. Admission caps eight output names and the manifest
+caps 32 words. A two-output four-lane program therefore records offsets 0 and
+4, rather than treating two names as two scalar words. Source regeneration
+compares the complete V4 artifact, so rehashing altered call order, source
+kind, native identity, lookup dependencies, spans, output shape, or sum count
+cannot make it match the admitted source and caller-supplied circuit facts.
+The focused `zig build test-bounded-component-manifest` step checks one-,
+two-, and eight-call rosters, coefficient overflow, and these mutations
+without building proofs.
+
+**This is a source-plan blueprint, not a verification key or admitted proof
+profile.** `CircuitFacts` (selected AIR identity, circuit trace and evaluation
+logs, constraint count, preprocessed root) are supplied inputs, not yet checked
+against actual rebound AIR handles or a compiled multi-call circuit. The
+source admission plan has no circuit endpoint addresses or committed Gate
+multiplicities. The pinned tagged native AIR template still limits call IDs
+to the existing two-call implementation, and there is no native 1–8-call
+schedule, key schema, transcript, or verifier. Before proof admission, the
+compiler must produce exact endpoint addresses in value and topology modes;
+the verifier must rederive fixed columns and geometry, compare every manifest
+span/width/relation/sum with actual native component handles, and bind the
+result into a new transcript before commitments.
+
 ## Remaining work
 
 - Extend to sparse, wide, full circuit, SHA and recursive profiles. These need

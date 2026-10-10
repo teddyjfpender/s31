@@ -92,6 +92,16 @@ pub fn build(b: *std.Build) void {
     const many_call_source_tests = b.addRunArtifact(b.addTest(.{ .root_module = many_call_source_root }));
     b.step("test-bounded-call-source", "Test source-only bounded multi-call admission")
         .dependOn(&many_call_source_tests.step);
+    const bounded_manifest_root = localEntry(b, "entry/bounded_component_manifest.zig", target, optimize);
+    bounded_manifest_root.addImport("stwo_core", core);
+    bounded_manifest_root.addImport("stwo_circuit_frontend", circuit);
+    bounded_manifest_root.addImport("stwo_circuit_cpu_integration", cpu);
+    bounded_manifest_root.addAnonymousImport("s31_pair_boundary_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/private_pair_boundary.zig") } });
+    bounded_manifest_root.addAnonymousImport("s31_tagged_pair_chip_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/tagged_pair_chip.zig") } });
+    bounded_manifest_root.addAnonymousImport("s31_tagged_pair_bridge_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/tagged_pair_bridge.zig") } });
+    const bounded_manifest_tests = b.addRunArtifact(b.addTest(.{ .root_module = bounded_manifest_root }));
+    b.step("test-bounded-component-manifest", "Test source-derived 1..8-call V4 roster blueprint")
+        .dependOn(&bounded_manifest_tests.step);
     const square_export_root = localEntry(b, "tools/formal/export_square4_topology.zig", target, optimize);
     square_export_root.addImport("stwo_s31_prototype", frontend);
     square_export_root.addImport("stwo_circuit_frontend", circuit);
