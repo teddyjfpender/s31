@@ -80,7 +80,7 @@
     "src/frontends/s31/entry/export_square4_topology.zig": "3e9266bdc4dc323162098dee218d77de0cd993d1a2da3d214a0e63e8e4c43306",
     "src/frontends/s31/tools/formal/export_square4_topology.zig": "13929f4b1e40621f4c735f8e2955dc6670951907b6d26936c5b42a86f8e2ac86",
     "src/frontends/s31/language/canonical.zig": "e4d6563b28bb399b3d10e5517cab003f53a451e69aa868270e4811546412748c",
-    "src/frontends/s31/language/relation_compiler.zig": "dfc716da37b9ae329cf055f3dd471b60e3f10372b5ccc7a7d160a41098a20f66",
+    "src/frontends/s31/language/relation_compiler.zig": "e33b884b7081c444cfe6c989777431c1d1696d8da6e8ace0e516793372b7c12d",
     "src/frontends/s31/language/gadgets/integer_multiply.zig": "c63b6fe6329a42c377d5c87613d37ed98669b5907c0f6e18d572c4819f555c15",
     "src/frontends/s31/language/gadgets/integer_bits.zig": "18e880ba7a96f958810d041939e35ba9fa2fc2d0226f98e5a574158e696e853d",
     "src/frontends/s31/language/gadgets/integer_division.zig": "00205d801446d1e41f2fc65c2be7b4fca27d92c2532fe83fa1b24b1af8a0973f",

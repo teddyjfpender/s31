@@ -87,11 +87,11 @@ const BitCache = struct {
     }
 };
 
-fn hasDivisionWidth(program: relation.Program, width: u32, require_unsigned: bool) bool {
+fn hasDivisionWidth(program: relation.Program, width: u32) bool {
     for (program.nodes) |node| {
         if (node.op != .int_div_rem) continue;
         const spec = relation.IntegerSpec.decode(node.constant) orelse continue;
-        if (spec.width == width and (!require_unsigned or !spec.signed)) return true;
+        if (spec.width == width) return true;
     }
     return false;
 }
@@ -99,7 +99,7 @@ fn hasDivisionWidth(program: relation.Program, width: u32, require_unsigned: boo
 /// A raw u16 array may skip the fixed table only when every direct use is
 /// an integer view of one supported width. Arithmetic bit decomposition
 /// proves every source limb's range. Wide arithmetic is admitted only for
-/// unsigned division in the direct profile.
+/// division in the direct profile.
 fn arithmeticInputWidth(program: relation.Program, input: relation.Input, allow_wide: bool) ?u32 {
     if (input.kind != .u16) return null;
     var width: ?u32 = null;
@@ -109,7 +109,7 @@ fn arithmeticInputWidth(program: relation.Program, input: relation.Input, allow_
                 const spec = if (node.op == .int_view) relation.IntegerSpec.decode(node.constant) else null;
                 if (spec == null or input.length != spec.?.limbCount()) return null;
                 if (spec.?.width != 8 and spec.?.width != 16 and
-                    !(allow_wide and (spec.?.width == 32 or spec.?.width == 64 or spec.?.width == 128) and !spec.?.signed)) return null;
+                    !(allow_wide and (spec.?.width == 32 or spec.?.width == 64 or spec.?.width == 128))) return null;
                 if (width != null and width.? != spec.?.width) return null;
                 width = spec.?.width;
             }
@@ -121,7 +121,7 @@ fn arithmeticInputWidth(program: relation.Program, input: relation.Input, allow_
         if (std.mem.eql(u8, assertion.lhs, input.name) or std.mem.eql(u8, assertion.rhs, input.name)) return null;
     }
     for (program.public_outputs) |name| if (std.mem.eql(u8, name, input.name)) return null;
-    if (width) |w| if (hasDivisionWidth(program, w, w > 16)) return w;
+    if (width) |w| if (hasDivisionWidth(program, w)) return w;
     return null;
 }
 
@@ -1032,20 +1032,21 @@ fn intDivRem(comptime V: type, ctx: *circuit.builder.Context(V), cache: *BitCach
     const right_byte_bounded = rhs.integer_spec != null and (rhs.integer_spec.? & 0xff) == 8;
     const division = if (spec.signed) blk: {
         const direct_word = spec.width == 8 or spec.width == 16;
-        const sa = if (direct_word) try integerSignArithmetic(V, ctx, cache, left[0], spec.width) else try integerSign(V, ctx, left[left.len - 1], spec.width);
-        const sb = if (direct_word) try integerSignArithmetic(V, ctx, cache, right[0], spec.width) else try integerSign(V, ctx, right[right.len - 1], spec.width);
-        const numerator = if (direct_word) try intConditionalNegateArithmetic(V, ctx, cache, left[0], sa, spec.width) else try intConditionalNegate(V, ctx, left, sa, spec.width);
-        const denominator = if (direct_word) try intConditionalNegateArithmetic(V, ctx, cache, right[0], sb, spec.width) else try intConditionalNegate(V, ctx, right, sb, spec.width);
-        const magnitude = try integer_division.divRem(V, ctx, numerator, denominator, spec.width, true, true);
+        const direct_wide = direct_arithmetic and spec.width > 16;
+        const sa = if (direct_word) try integerSignArithmetic(V, ctx, cache, left[0], spec.width) else if (direct_wide) try integerSignArithmetic(V, ctx, cache, left[left.len - 1], 16) else try integerSign(V, ctx, left[left.len - 1], spec.width);
+        const sb = if (direct_word) try integerSignArithmetic(V, ctx, cache, right[0], spec.width) else if (direct_wide) try integerSignArithmetic(V, ctx, cache, right[right.len - 1], 16) else try integerSign(V, ctx, right[right.len - 1], spec.width);
+        const numerator = if (direct_word) try intConditionalNegateArithmetic(V, ctx, cache, left[0], sa, spec.width) else if (direct_wide) try intConditionalNegateWideArithmetic(V, ctx, cache, left, sa, spec.width) else try intConditionalNegate(V, ctx, left, sa, spec.width);
+        const denominator = if (direct_word) try intConditionalNegateArithmetic(V, ctx, cache, right[0], sb, spec.width) else if (direct_wide) try intConditionalNegateWideArithmetic(V, ctx, cache, right, sb, spec.width) else try intConditionalNegate(V, ctx, right, sb, spec.width);
+        const magnitude = if (direct_wide) try integer_division.divRemArithmetic(V, ctx, numerator, denominator, spec.width) else try integer_division.divRem(V, ctx, numerator, denominator, spec.width, true, true);
         const both = try ctx.mul(sa, sb);
         const quotient_negative = try ctx.sub(try ctx.add(sa, sb), try ctx.add(both, both));
         // A positive signed quotient cannot have the top bit set. This is
         // the MIN / -1 overflow case; negative MIN itself remains valid.
-        const quotient_top = if (direct_word) try integerSignArithmetic(V, ctx, cache, magnitude.quotient[0], spec.width) else try integerSign(V, ctx, magnitude.quotient[magnitude.quotient.len - 1], spec.width);
+        const quotient_top = if (direct_word) try integerSignArithmetic(V, ctx, cache, magnitude.quotient[0], spec.width) else if (direct_wide) try integerSignArithmetic(V, ctx, cache, magnitude.quotient[magnitude.quotient.len - 1], 16) else try integerSign(V, ctx, magnitude.quotient[magnitude.quotient.len - 1], spec.width);
         try assertZeroArithmetic(V, ctx, try ctx.mul(quotient_top, try ctx.sub(ctx.one(), quotient_negative)));
         break :blk integer_division.Division{
-            .quotient = if (direct_word) try intConditionalNegateArithmetic(V, ctx, cache, magnitude.quotient[0], quotient_negative, spec.width) else try intConditionalNegate(V, ctx, magnitude.quotient, quotient_negative, spec.width),
-            .remainder = if (direct_word) try intConditionalNegateArithmetic(V, ctx, cache, magnitude.remainder[0], sa, spec.width) else try intConditionalNegate(V, ctx, magnitude.remainder, sa, spec.width),
+            .quotient = if (direct_word) try intConditionalNegateArithmetic(V, ctx, cache, magnitude.quotient[0], quotient_negative, spec.width) else if (direct_wide) try intConditionalNegateWideArithmetic(V, ctx, cache, magnitude.quotient, quotient_negative, spec.width) else try intConditionalNegate(V, ctx, magnitude.quotient, quotient_negative, spec.width),
+            .remainder = if (direct_word) try intConditionalNegateArithmetic(V, ctx, cache, magnitude.remainder[0], sa, spec.width) else if (direct_wide) try intConditionalNegateWideArithmetic(V, ctx, cache, magnitude.remainder, sa, spec.width) else try intConditionalNegate(V, ctx, magnitude.remainder, sa, spec.width),
         };
     } else if (direct_arithmetic and spec.width > 16)
         try integer_division.divRemArithmetic(V, ctx, left, right, spec.width)
@@ -1086,6 +1087,41 @@ fn intConditionalNegateArithmetic(comptime V: type, ctx: *circuit.builder.Contex
     try assertZeroArithmetic(V, ctx, try ctx.sub(lhs, rhs));
     const output = try ctx.scratch().alloc(Var, 1);
     output[0] = digit;
+    return output;
+}
+
+/// Prove a width-wide conditional two's complement using 16-bit limbs.
+/// Each equation has both sides below M31 after the Boolean sign and carry
+/// constraints; the terminal carry is discarded for modular negation.
+fn intConditionalNegateWideArithmetic(comptime V: type, ctx: *circuit.builder.Context(V), cache: *BitCache, source: []const Var, sign: Var, width: u32) ![]Var {
+    if ((width != 32 and width != 64 and width != 128) or source.len != width / 16)
+        return error.InvalidIntegerSpec;
+    const base_value: u32 = 65536;
+    const base = try ctx.constant(QM31.fromBase(M31.fromCanonical(base_value)));
+    const maximum = try ctx.constant(QM31.fromBase(M31.fromCanonical(base_value - 1)));
+    const sign_value: u32 = if (comptime V == QM31) ctx.get(sign).toM31Array()[0].v else 0;
+    if (sign_value > 1) return error.IntegerOutOfRange;
+    try assertZeroArithmetic(V, ctx, try ctx.sub(try ctx.mul(sign, sign), sign));
+    const output = try ctx.scratch().alloc(Var, source.len);
+    var incoming = sign;
+    var carry_value = sign_value;
+    for (source, output) |word, *digit| {
+        const value: u32 = if (comptime V == QM31) ctx.get(word).toM31Array()[0].v else 0;
+        if (value >= base_value) return error.IntegerOutOfRange;
+        const selected_value = if (sign_value == 0) value else base_value - 1 - value;
+        const total_value = selected_value + carry_value;
+        digit.* = try ctx.guess(circuit.builder.ivalue.fromQm31(V, QM31.fromBase(M31.fromCanonical(total_value & (base_value - 1)))));
+        _ = try cache.getArithmetic(V, ctx, digit.*, 16);
+        const next_value: u32 = total_value / base_value;
+        const outgoing = try ctx.guess(circuit.builder.ivalue.fromQm31(V, QM31.fromBase(M31.fromCanonical(next_value))));
+        try assertZeroArithmetic(V, ctx, try ctx.sub(try ctx.mul(outgoing, outgoing), outgoing));
+        const complemented = try ctx.sub(maximum, word);
+        const selected = try ctx.add(word, try ctx.mul(sign, try ctx.sub(complemented, word)));
+        try assertZeroArithmetic(V, ctx, try ctx.sub(try ctx.add(selected, incoming),
+            try ctx.add(digit.*, try ctx.mul(outgoing, base))));
+        incoming = outgoing;
+        carry_value = next_value;
+    }
     return output;
 }
 
@@ -2753,7 +2789,7 @@ test "direct 16-bit admission rejects a mixed-width raw input" {
     try std.testing.expect(directFixedInput(denied.value, denied.value.inputs[1]));
 }
 
-test "direct wide admission is limited to unsigned 32-bit views" {
+test "direct wide admission accepts matching signed and unsigned views" {
     const allocator = std.testing.allocator;
     const source =
         \\{"version":1,"name":"u32_views","inputs":[{"name":"a","kind":"u16","length":2,"visibility":"private"},{"name":"b","kind":"u16","length":2,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":32},{"name":"bv","op":"int_view","lhs":"b","constant":32},{"name":"pair","op":"int_div_rem","lhs":"av","rhs":"bv","constant":32}],"assertions":[],"public_outputs":["pair"]}
@@ -2766,8 +2802,60 @@ test "direct wide admission is limited to unsigned 32-bit views" {
     const signed =
         \\{"version":1,"name":"i32_views","inputs":[{"name":"a","kind":"u16","length":2,"visibility":"private"},{"name":"b","kind":"u16","length":2,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":288},{"name":"bv","op":"int_view","lhs":"b","constant":288},{"name":"pair","op":"int_div_rem","lhs":"av","rhs":"bv","constant":288}],"assertions":[],"public_outputs":["pair"]}
     ;
-    var denied = try relation.parseProgram(allocator, signed);
-    defer denied.deinit();
-    try std.testing.expect(!directFixedInput(denied.value, denied.value.inputs[0]));
-    try std.testing.expect(!directFixedInput(denied.value, denied.value.inputs[1]));
+    var signed_32 = try relation.parseProgram(allocator, signed);
+    defer signed_32.deinit();
+    try std.testing.expect(directFixedInput(signed_32.value, signed_32.value.inputs[0]));
+    try std.testing.expect(directFixedInput(signed_32.value, signed_32.value.inputs[1]));
+
+    const signed_64_source =
+        \\{"version":1,"name":"i64_views","inputs":[{"name":"a","kind":"u16","length":4,"visibility":"private"},{"name":"b","kind":"u16","length":4,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":320},{"name":"bv","op":"int_view","lhs":"b","constant":320},{"name":"pair","op":"int_div_rem","lhs":"av","rhs":"bv","constant":320}],"assertions":[],"public_outputs":["pair"]}
+    ;
+    var signed_64 = try relation.parseProgram(allocator, signed_64_source);
+    defer signed_64.deinit();
+    try std.testing.expect(directFixedInput(signed_64.value, signed_64.value.inputs[0]));
+    try std.testing.expect(directFixedInput(signed_64.value, signed_64.value.inputs[1]));
+}
+
+test "direct signed wide division rejects MIN over negative one in circuit constraints" {
+    const allocator = std.testing.allocator;
+    const cases = [_]struct { source: []const u8, valid: []const u8, overflow: []const u8 }{
+        .{
+            .source =
+                \\{"version":1,"name":"direct_i32","inputs":[{"name":"a","kind":"u16","length":2,"visibility":"private"},{"name":"b","kind":"u16","length":2,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":288},{"name":"bv","op":"int_view","lhs":"b","constant":288},{"name":"pair","op":"int_div_rem","lhs":"av","rhs":"bv","constant":288}],"assertions":[],"public_outputs":["pair"]}
+            ,
+            .valid =
+                \\{"public_inputs":{},"private_inputs":{"a":[7616,65534],"b":[300,0]},"public_outputs":{"pair":[65125,65535,65380,65535]}}
+            ,
+            .overflow =
+                \\{"public_inputs":{},"private_inputs":{"a":[0,32768],"b":[65535,65535]},"public_outputs":{"pair":[0,32768,0,0]}}
+            ,
+        },
+        .{
+            .source =
+                \\{"version":1,"name":"direct_i128","inputs":[{"name":"a","kind":"u16","length":8,"visibility":"private"},{"name":"b","kind":"u16","length":8,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":384},{"name":"bv","op":"int_view","lhs":"b","constant":384},{"name":"pair","op":"int_div_rem","lhs":"av","rhs":"bv","constant":384},{"name":"quotient","op":"array_slice","lhs":"pair","index":0,"length":8}],"assertions":[],"public_outputs":["quotient"]}
+            ,
+            .valid =
+                \\{"public_inputs":{},"private_inputs":{"a":[0,0,0,0,0,0,0,32768],"b":[2,0,0,0,0,0,0,0]},"public_outputs":{"quotient":[0,0,0,0,0,0,0,49152]}}
+            ,
+            .overflow =
+                \\{"public_inputs":{},"private_inputs":{"a":[0,0,0,0,0,0,0,32768],"b":[65535,65535,65535,65535,65535,65535,65535,65535]},"public_outputs":{"quotient":[0,0,0,0,0,0,0,32768]}}
+            ,
+        },
+    };
+    for (cases) |case| {
+        var program = try relation.parseProgram(allocator, case.source);
+        defer program.deinit();
+        for ([_]struct { json: []const u8, valid: bool }{
+            .{ .json = case.valid, .valid = true },
+            .{ .json = case.overflow, .valid = false },
+        }) |item| {
+            var assignment = try relation.parseAssignment(allocator, item.json);
+            defer assignment.deinit();
+            var ctx = try compileDirect(QM31, allocator, program.value, assignment.value, false);
+            defer ctx.deinit();
+            try std.testing.expectEqual(item.valid, try ctx.isCircuitValid());
+            try std.testing.expectEqual(@as(usize, 0), ctx.circuit.eq.items.len);
+            try std.testing.expectEqual(@as(usize, 0), ctx.circuit.m31_to_u32.items.len);
+        }
+    }
 }

@@ -73,13 +73,13 @@ def corpus(kind: str, count: int, seed: int) -> list[tuple[int, int]]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("kind", choices=("u8", "i8", "u16", "i16", "u32", "u64", "u128"))
+    parser.add_argument("kind", choices=("u8", "i8", "u16", "i16", "u32", "i32", "u64", "i64", "u128", "i128"))
     parser.add_argument("--count", type=int, default=20)
     parser.add_argument("--seed", type=int, default=0x5310)
     parser.add_argument("--out", type=Path, required=True)
     args = parser.parse_args()
 
-    source_name = f"{args.kind}_div_quotient.s31" if args.kind == "u128" else f"{args.kind}_div_rem.s31"
+    source_name = f"{args.kind}_div_quotient.s31" if args.kind in ("u128", "i128") else f"{args.kind}_div_rem.s31"
     source = S31 / "examples/math/division" / source_name
     warmup = source.with_suffix(".valid.json")
     relation, _ = compile_text(source.read_text(), str(source))
@@ -89,7 +89,7 @@ def main() -> None:
     assignment_paths = []
     for index, (numerator, divisor) in enumerate(corpus(args.kind, args.count, args.seed)):
         assignment = encode(args.kind, numerator, divisor, output_name,
-                            quotient_only=args.kind == "u128")
+                            quotient_only=args.kind in ("u128", "i128"))
         if evaluate_relation(relation, assignment) != assignment["public_outputs"]:
             raise AssertionError(f"independent oracle rejected {args.kind} corpus case {index}")
         path = output / "assignments" / f"{index:03d}.json"

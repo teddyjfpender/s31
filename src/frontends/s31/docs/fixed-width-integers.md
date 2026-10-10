@@ -570,8 +570,30 @@ digits are constrained by Boolean bit reconstruction. Each product column
 has at most four byte products; even the general 128-bit version has at
 most sixteen, keeping its field equations below the M31 modulus. This
 unsigned 32-bit source can therefore use the arithmetic-only `direct-gate`
-profile. The same bounded-column argument applies to unsigned 64- and
-128-bit division. Signed widths above 16 bits still use sparse-wide lowering.
+profile. The same bounded-column argument applies to wider unsigned division.
+
+### Four-byte signed division
+
+The [`i32` source](../examples/math/division/i32_div_rem.s31) proves
+$-123456=(-411)\cdot300-156$. Its numerator is stored as little-endian
+two's-complement limbs `[0x1dc0, 0xfffe]`. The highest bit of the second
+limb proves that the numerator is negative. A conditional complement and
+carry chain converts it to the unsigned magnitude `[0xe240, 0x0001]`:
+
+| Limb | Conditional complement plus carry | Magnitude limb | Next carry |
+| --- | --- | ---: | ---: |
+| Low | $65535-7616+1=57920$ | `0xe240` | 0 |
+| High | $65535-65534+0=1$ | `0x0001` | 0 |
+
+The divisor's proved sign is zero, so its magnitude remains 300. The
+eight-column unsigned convolution and four-column strict comparison prove
+$123456=411\cdot300+156$ and $156<300$. The circuit then negates the
+quotient and remainder back to `[0xfe65, 0xffff]` and
+`[0xff64, 0xffff]`. Every output limb and carry is proved in the arithmetic
+AIR. A positive signed quotient must have a clear top sign bit; this
+separate constraint rejects `MIN / -1` while allowing `MIN / 1`.
+The same construction scales to signed 64 and 128 bits, with the unsigned
+product columns bounded as described next.
 
 ### Eight- and sixteen-byte unsigned division
 
@@ -622,12 +644,18 @@ the preceding generic implementation:
 | `i16_div_rem` | Direct word | 969 | 8,192 | 73,409 |
 | `u32_div_rem` | Sparse-wide | 136 | 67,840 | 238,377 |
 | `u32_div_rem` | Direct | 1,282 | 16,384 | 90,241 |
+| `i32_div_rem` | Direct | 1,853 | 16,384 | 90,409 |
 | `u64_div_rem` | Direct | 2,580 | 32,768 | 112,923 |
+| `i64_div_rem` | Direct | 3,647 | 32,768 | 113,204 |
 | `u128_div_quotient` | Wide | 802 | 74,752 | 234,484 |
 | `u128_div_quotient` | Direct | 5,380 | 65,536 | 142,865 |
 | `i128_div_quotient` | Wide | 1,121 | 83,200 | 239,293 |
+| `i128_div_quotient` | Direct | 7,439 | 65,536 | 138,645 |
 
-The [baseline measurement](../../../../design/s31/measurements/language/fixed-width-division-2026-10-10.json)
+The [ten-case native acceptance record](../../../../design/s31/measurements/language/direct-fixed-division-native-2026-10-10.json)
+pins direct AIR geometry and records honest verification, changed-statement,
+false-output, zero-divisor, signed-overflow, and byte-range controls where
+applicable. The [baseline measurement](../../../../design/s31/measurements/language/fixed-width-division-2026-10-10.json)
 records padded rows, fixed preprocessing, and separated proof stages. The
 older generic byte circuit has fewer raw arithmetic rows, but includes the
 shared 65,536-cell range table. The [current paired measurement](../../../../design/s31/measurements/language/direct-fixed-division-2026-10-10.json)
@@ -648,28 +676,37 @@ evaluation for every run:
 | `i16_div_rem` | Sparse-wide | 228,313 bytes | 93.7 ms | 15.86 ms |
 | `u32_div_rem` | Direct | 92,802 bytes | 57.7 ms | 2.38 ms |
 | `u32_div_rem` | Sparse-wide | 234,568 bytes | 80.8 ms | 16.02 ms |
+| `i32_div_rem` | Direct | 91,636 bytes | 76.4 ms | 2.40 ms |
+| `i32_div_rem` | Sparse-wide | 234,501 bytes | 96.6 ms | 15.87 ms |
+| `i64_div_rem` | Direct | 112,682 bytes | 51.1 ms | 3.29 ms |
+| `i64_div_rem` | Sparse-wide | 235,081 bytes | 104.0 ms | 16.47 ms |
 | `u64_div_rem` | Direct | 112,623 bytes | 81.0 ms | 3.25 ms |
 | `u64_div_rem` | Sparse-wide | 235,466 bytes | 117.7 ms | 16.35 ms |
 | `u128_div_quotient` | Direct | 137,388 bytes | 84.2 ms | 4.55 ms |
 | `u128_div_quotient` | Sparse-wide | 232,517 bytes | 123.0 ms | 16.69 ms |
+| `i128_div_quotient` | Direct | 136,480 bytes | 69.3 ms | 4.54 ms |
+| `i128_div_quotient` | Sparse-wide | 232,516 bytes | 90.5 ms | 16.47 ms |
 
 The matched sources have the same normalized relation and visible FRI
 settings. Wall times include process startup and a variable proof-of-work
 search; the full wall timings are mixed at these small sizes, while the
 fixed-cell, proof-byte, and non-PoW improvements are consistent. These local
 medians are not a cross-machine performance guarantee.
-Median native verification in the wide unsigned runs was 13.4 ms direct
-versus 17.4 ms sparse-wide for `u64`, and 14.3 ms versus 18.0 ms for `u128`.
+Median native verification was 13.4 ms direct versus 17.1 ms sparse-wide
+for `i64`, and 13.2 ms versus 16.9 ms for `i128`.
 Matching visible FRI settings alone does not prove equal soundness across
 different AIRs. The
 [Lean division model](../../../../formal/s31/S31/Gadgets/IntegerDivision.lean)
-proves Euclidean uniqueness, bounded columns, and the no-wrap direct-byte and
-direct-word equations. A formal correspondence from production Zig gates to that model
+proves Euclidean uniqueness, bounded columns, and no-wrap direct-byte,
+direct-word, wide-column, and signed-limb equations. A formal correspondence from production Zig gates to that model
 remains open.
 
 The [`u32` record](../../../../design/s31/measurements/language/direct-u32-division-2026-10-10.json),
+[`i32` record](../../../../design/s31/measurements/language/direct-i32-division-2026-10-10.json),
+[`i64` record](../../../../design/s31/measurements/language/direct-i64-division-2026-10-10.json),
 [`u64` record](../../../../design/s31/measurements/language/direct-u64-division-2026-10-10.json),
-and [`u128` record](../../../../design/s31/measurements/language/direct-u128-division-2026-10-10.json)
+[`u128` record](../../../../design/s31/measurements/language/direct-u128-division-2026-10-10.json),
+and [`i128` record](../../../../design/s31/measurements/language/direct-i128-division-2026-10-10.json)
 use the same 20-witness method. The direct profile removes the range-table
 component while preserving each source and public output relation.
 

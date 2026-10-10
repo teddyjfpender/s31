@@ -50,6 +50,28 @@ theorem signed_reconstruction (negativeA negativeB : Bool) (a b q r : Nat)
         signedValue negativeA r := by
   cases negativeA <;> cases negativeB <;> simp [signedValue, h] <;> omega
 
+/-! A signed wide conversion selects either the original 16-bit limb or its
+one's complement, then adds the incoming carry. The native circuit constrains
+the sign, incoming carry, outgoing carry, and output bits. This bound upgrades
+the resulting M31 equation to an exact integer equation per limb. -/
+def directSignedLimbConstraint
+    (sign input incoming digit outgoing : Nat) : Prop :=
+  sign < 2 ∧ input < 65536 ∧ incoming < 2 ∧
+    digit < 65536 ∧ outgoing < 2 ∧
+    ((if sign = 0 then input else 65535 - input) + incoming) % 2147483647 =
+      (digit + 65536 * outgoing) % 2147483647
+
+theorem direct_signed_limb_no_wrap
+    (sign input incoming digit outgoing : Nat)
+    (h : directSignedLimbConstraint sign input incoming digit outgoing) :
+    (if sign = 0 then input else 65535 - input) + incoming =
+      digit + 65536 * outgoing := by
+  rcases h with ⟨hs, hi, hc, hd, ho, heq⟩
+  have hl : (if sign = 0 then input else 65535 - input) + incoming < 2147483647 := by
+    split_ifs <;> omega
+  have hr : digit + 65536 * outgoing < 2147483647 := by omega
+  simpa [Nat.mod_eq_of_lt hl, Nat.mod_eq_of_lt hr] using heq
+
 /-- The fused base-256 columns prove the full product-plus-remainder
 equation, including high product bytes. The hypotheses make the range and
 same-length obligations explicit. -/

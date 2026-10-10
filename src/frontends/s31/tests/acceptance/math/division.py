@@ -46,6 +46,15 @@ CASES = {
         "padded": {"blake_g": 0, "eq": 0, "m31_to_u32": 0, "qm31_ops": 2048, "triple_xor": 0},
         "preprocessed_cells": 16384,
     },
+    "i32_div_rem": {
+        "spec": 288,
+        "lowering": "direct-gate",
+        "profile": "direct-m31-v4",
+        "canonical_ir_sha256": "0babfa35e6df7e797f376f5342849d313a8a7ada1f02fa357ec10c62085f3bdd",
+        "raw": {"blake_g": 0, "eq": 0, "m31_to_u32": 0, "qm31_ops": 1853, "triple_xor": 0},
+        "padded": {"blake_g": 0, "eq": 0, "m31_to_u32": 0, "qm31_ops": 2048, "triple_xor": 0},
+        "preprocessed_cells": 16384,
+    },
     "i8_div_rem": {
         "spec": 264,
         "lowering": "direct-gate",
@@ -73,6 +82,15 @@ CASES = {
         "padded": {"blake_g": 0, "eq": 0, "m31_to_u32": 0, "qm31_ops": 4096, "triple_xor": 0},
         "preprocessed_cells": 32768,
     },
+    "i64_div_rem": {
+        "spec": 320,
+        "lowering": "direct-gate",
+        "profile": "direct-m31-v4",
+        "canonical_ir_sha256": "485c5f54e00cbb972cfbc230f80962035976b5c1b584bfabd510411afe4c55f2",
+        "raw": {"blake_g": 0, "eq": 0, "m31_to_u32": 0, "qm31_ops": 3647, "triple_xor": 0},
+        "padded": {"blake_g": 0, "eq": 0, "m31_to_u32": 0, "qm31_ops": 4096, "triple_xor": 0},
+        "preprocessed_cells": 32768,
+    },
     "u128_div_quotient": {
         "spec": 128,
         "lowering": "direct-gate",
@@ -84,12 +102,12 @@ CASES = {
     },
     "i128_div_quotient": {
         "spec": 384,
-        "lowering": "sparse-wide-gate",
-        "profile": "sparse-wide-v5",
+        "lowering": "direct-gate",
+        "profile": "direct-m31-v4",
         "canonical_ir_sha256": "bcbe032a2ffa65c57521bbb65dc2775d2e4dccc8263d58eb221155ba374f1250",
-        "raw": {"blake_g": 0, "eq": 187, "m31_to_u32": 206, "qm31_ops": 1121, "triple_xor": 0},
-        "padded": {"blake_g": 0, "eq": 256, "m31_to_u32": 256, "qm31_ops": 2048, "triple_xor": 0},
-        "preprocessed_cells": 83200,
+        "raw": {"blake_g": 0, "eq": 0, "m31_to_u32": 0, "qm31_ops": 7439, "triple_xor": 0},
+        "padded": {"blake_g": 0, "eq": 0, "m31_to_u32": 0, "qm31_ops": 8192, "triple_xor": 0},
+        "preprocessed_cells": 65536,
     },
 }
 

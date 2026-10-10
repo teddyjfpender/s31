@@ -1,9 +1,9 @@
 # Fixed-width division measurement inputs
 
-The five assignments for each of `u8`, `i8`, `u16`, `i16`, `u32`, `u64`, and `u128` give distinct private witnesses for
+The five assignments for each of `u8`, `i8`, `u16`, `i16`, `u32`, `i32`, `u64`, `i64`, `u128`, and `i128` give distinct private witnesses for
 comparing `direct-gate` with `sparse-wide-gate` on the same source relation.
 Each file contains the independently calculated public quotient and remainder
-as little-endian `u16` patterns, except `u128`, whose eight-word public ABI
+as little-endian `u16` patterns, except `u128` and `i128`, whose eight-word public ABI
 exposes the quotient while the remainder remains constrained inside the circuit.
 Signed division truncates the quotient toward zero, and
 its remainder has the numerator's sign.
@@ -14,8 +14,9 @@ divisor, `MIN / -1`, and out-of-range byte are tested separately by the
 [native division gate](../../../../tests/acceptance/math/division.py).
 
 From the repository root, run a verified profile comparison for either
-`u8`, `i8`, `u16`, `i16`, `u32`, or `u64` by replacing `u8` in this command.
-For `u128`, use `u128_div_quotient.s31` and its matching valid assignment:
+`u8`, `i8`, `u16`, `i16`, `u32`, `i32`, `u64`, or `i64` by replacing `u8` in this command.
+For `u128` or `i128`, use the corresponding `*_div_quotient.s31` source and
+its matching valid assignment:
 
 ```sh
 python3 src/frontends/s31/python/s31.py tune \

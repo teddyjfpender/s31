@@ -137,7 +137,41 @@ shows 112,623 median proof bytes and 3.25 ms median non-PoW proving versus
 [`u128` record](../measurements/language/direct-u128-division-2026-10-10.json)
 shows 137,388 bytes and 4.55 ms versus 232,517 bytes and 16.69 ms.
 Each comparison uses 20 distinct verified witnesses and changed-statement
-controls. Signed `i32`, `i64`, and `i128` still use the generic wide circuit.
+controls.
+
+For signed `i32`, `i64`, and `i128`, the direct compiler proves the high bit
+of the top input limb with Boolean reconstruction. Conditional two's
+complement walks the 16-bit limbs from low to high. For a proved sign bit
+`s`, input limb `x_j`, output limb `m_j`, and Boolean carries `c_j`, it
+constrains
+
+$$
+x_j+s(65535-2x_j)+c_j=m_j+65536c_{j+1},\qquad c_0=s.
+$$
+
+When `s=0`, every output equals its input and every carry is zero. When
+`s=1`, this is complement plus one, including the legal signed minimum.
+Each output limb is proved 16-bit, and both sides of each equation are
+below M31 after the Boolean selection, so the equality cannot hide field
+wrap. The [Lean signed-limb no-wrap theorem](../../../formal/s31/S31/Gadgets/IntegerDivision.lean)
+models that exact field-to-integer step. The unsigned direct divider proves the quotient and remainder of the
+two magnitudes. The quotient sign is the XOR of the input signs; the
+remainder sign is the numerator sign. Conditional negation restores their
+bit patterns. A nonnegative quotient must have its top sign bit clear,
+which rejects `MIN / -1`; a negative `MIN` quotient remains valid. The
+arithmetic-only path is covered by circuit-level `MIN / -1` controls at
+32 and 128 bits and native proofs for signed samples at all three wide
+widths. Production Zig-to-Lean refinement remains open.
+
+For 20 distinct valid witnesses per signed width, the direct profile's
+median proof sizes were 91,636, 112,682, and 136,480 bytes for i32, i64,
+and i128, respectively. The matching sparse-wide medians were 234,501,
+235,081, and 232,516 bytes. Median proving time excluding proof-of-work was
+2.40, 3.29, and 4.54 ms direct versus 15.87, 16.47, and 16.47 ms
+sparse-wide. The [i32](../measurements/language/direct-i32-division-2026-10-10.json),
+[i64](../measurements/language/direct-i64-division-2026-10-10.json), and
+[i128](../measurements/language/direct-i128-division-2026-10-10.json) records
+contain individual native verification and changed-statement controls.
 
 ## Audit and performance gates
 
