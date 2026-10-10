@@ -292,13 +292,33 @@ log size of 23; native binding changes the log size to 9 but preserves the
 instruction stream. The generated Lean definition follows its base register
 assignments through register 121. Its first nine extension roots inject the
 base registers `[24, 28, 31, 34, 37, 61, 85, 103, 121]` with three zero
-coordinates. Lean proves, for **arbitrary M31 base-field** eight fixed and
-twelve main cells, that these nine roots equal
-`DirectGateEvaluatorCells.arithmetic`, then derives Gate operation/output
-correctness when all nine vanish. This is a universal M31 identity, rather
-than evidence from finitely many vectors. The native verifier evaluates the
-same base instructions at QM31 OODS points; lifting this identity to those
-extension-field evaluations remains a separate formal obligation.
+coordinates. [`DirectGatePolynomial.lean`](../../../formal/s31/S31/Gadgets/Air/DirectGatePolynomial.lean)
+defines the nine constraints over any commutative ring. Lean proves, for
+**arbitrary** eight fixed and twelve main cells in any such ring, that the
+extracted bytecode arithmetic equals those constraints. Specializing to M31
+recovers `DirectGateEvaluatorCells.arithmetic` and derives Gate
+operation/output correctness when all nine row residuals vanish. This is a
+universal polynomial identity, rather than evidence from finitely many
+vectors.
+
+The native resident verifier evaluates the base instructions at an OODS point
+using **QM31** values read from the sampled trace mask. A QM31 sample can have
+four nonzero coordinates even when its source column commits to M31 rows.
+[`DirectGateOodsArithmetic.lean`](../../../formal/s31/S31/Gadgets/Air/DirectGateOodsArithmetic.lean)
+specializes the same identity to QM31 and models the installed `secure_col`
+operation. Each of the nine roots is `fromPartialEvals(r, 0, 0, 0) = r`, so the
+installed arithmetic roots equal the nine modeled polynomial evaluations for
+*arbitrary QM31 samples*. For example, at OODS point `ζ`, the first root is
+`add(ζ) + sub(ζ) + mul(ζ) + pointwise(ζ) - 1`; the next is
+`add(ζ) · (add(ζ) - 1)`. The output roots use the same packed multiplication
+polynomials as the M31 row model, evaluated in QM31. The Python opcode test
+also checks three sets of nonbase QM31 fixed and main samples.
+
+This proves a local evaluator identity at the supplied samples. The theorem
+does not authenticate those samples as polynomial openings, establish the
+native `traceValue` mask's correspondence to the committed columns, or infer
+all-row M31 zero constraints from a single OODS evaluation. Those steps need
+the production random-composition, Fiat–Shamir, PCS, and FRI arguments.
 
 The exporter is a checked extraction step, not a verified binary parser in
 Lean. CI regenerates the Lean file from a freshly built, source-checked S31
@@ -327,5 +347,5 @@ Recheck the bounded export and theorem with:
 python3 scripts/export_s31_direct_gate_bytecode_arithmetic.py PACKAGE \
   formal/s31/S31/Gadgets/Air/GeneratedDirectGateBytecodeArithmetic.lean --check
 python3 -m unittest src/frontends/s31/tests/python/test_gate_bytecode_arithmetic.py
-(cd formal/s31 && lake build S31.Gadgets.Air.GeneratedDirectGateBytecodeArithmetic)
+(cd formal/s31 && lake build S31.Gadgets.Air.DirectGateOodsArithmetic)
 ```

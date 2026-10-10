@@ -231,15 +231,17 @@ def render(package: Path) -> str:
         f"-- Gate program SHA-256: {GATE_PROGRAM_SHA256}",
         f"-- Source SHA-256: {checked['source_sha256']}",
         "-- Native rebind changes domain log size (23 to 9), not these instructions.",
-        "import S31.Gadgets.Air.DirectGateEvaluatorCells", "",
+        "import S31.Gadgets.Air.DirectGatePolynomial", "",
         "namespace S31.Gadgets.Air.GeneratedDirectGateBytecodeArithmetic", "",
         "open S31.Gadgets.Packed", "",
         "open S31.Gadgets.Air.DirectGateEvaluatorCells", "",
+        "open S31.Gadgets.Air.DirectGatePolynomial", "",
         "set_option linter.unusedVariables false", "",
         "/-- The first nine installed roots are secure-column injections of",
         "base registers 24, 28, 31, 34, 37, 61, 85, 103, 121.",
         "Registers 25 in their other coordinates are the bytecode constant zero. -/",
-        "def bytecodeArithmetic (cells : Cells) : List F := Id.run do",
+        "def bytecodeArithmeticOver {K : Type*} [CommRing K]",
+        "    (cells : ArithmeticCells K) : List K := Id.run do",
     ]
     for op, tree, dst, a, b, imm in base[:122]:
         if op == 0:
@@ -249,16 +251,21 @@ def render(package: Path) -> str:
             expression = str(a)
         else:
             expression = f"r{a} { {4: '+', 5: '-', 6: '*'}[op] } r{b}"
-        lines.append(f"  let r{dst} : F := {expression}")
+        lines.append(f"  let r{dst} : K := {expression}")
     lines += ["  return [r24, r28, r31, r34, r37, r61, r85, r103, r121]", "",
-              "/-- Universal M31 arithmetic correspondence for the selected",
-              "installed bytecode prefix; LogUp roots 9–10 remain separate. -/",
+              "/-- Ring-polynomial identity for arbitrary sampled base-column",
+              "values. This includes native QM31 OODS samples. -/",
+              "theorem bytecode_arithmetic_over_eq {K : Type*} [CommRing K]",
+              "    (cells : ArithmeticCells K) :",
+              "    bytecodeArithmeticOver cells = modeledArithmetic cells := by",
+              "  simp [bytecodeArithmeticOver, modeledArithmetic]", "",
+              "def bytecodeArithmetic (cells : Cells) : List F :=",
+              "  bytecodeArithmeticOver (fromM31Cells cells)", "",
+              "/-- The generic identity specializes to the earlier M31 model. -/",
               "theorem bytecode_arithmetic_eq (cells : Cells) :",
               "    bytecodeArithmetic cells = arithmetic cells := by",
-              "  simp [bytecodeArithmetic, arithmetic, decodedRow, semanticFixed,",
-              "    S31.Gadgets.Air.NativeQm31Air.residuals,",
-              "    S31.Gadgets.Air.DirectGateNativeIndices.fixedReadOrder,",
-              "    S31.Gadgets.Air.DirectGateNativeIndices.semanticToAirLocal]", "",
+              "  simpa [bytecodeArithmetic, bytecode_arithmetic_over_eq] using",
+              "    modeled_m31_eq_pure cells", "",
               "/-- Zero arithmetic roots of the selected program enforce the",
               "decoded Gate operation and output for arbitrary local cells. -/",
               "theorem bytecode_zero_decodes (cells : Cells)",

@@ -92,6 +92,56 @@ class GateBytecodeArithmeticTest(unittest.TestCase):
             singleton = add(mul(difference, output), base(semantic[7]))
             self.assertEqual(actual[9:], (pair, singleton))
 
+    def test_arithmetic_roots_over_nonbase_oods_cells(self) -> None:
+        """The verifier runs base opcodes over QM31, not row-local M31."""
+        for seed in (3, 211, 104729):
+            fixed = tuple(tuple(seed + 17 * i + j for j in range(4)) for i in range(8))
+            main = tuple(tuple(seed + 31 * i + 2 * j for j in range(4)) for i in range(12))
+            registers = [base(0)] * 134
+            for opcode, tree, dst, a, b, imm in self.program[0][:122]:
+                if opcode == 0:
+                    self.assertEqual(imm, 0)
+                    registers[dst] = (fixed, main)[tree][a]
+                elif opcode == 3:
+                    registers[dst] = base(a)
+                elif opcode == 4:
+                    registers[dst] = add(registers[a], registers[b])
+                elif opcode == 5:
+                    registers[dst] = sub(registers[a], registers[b])
+                elif opcode == 6:
+                    registers[dst] = mul(registers[a], registers[b])
+                else:
+                    self.fail("unsupported arithmetic bytecode opcode")
+            roots = tuple(registers[index] for index in
+                          (24, 28, 31, 34, 37, 61, 85, 103, 121))
+            fa, fs, fm, fp = fixed[0], fixed[3], fixed[1], fixed[2]
+            x, y, output = main[:4], main[4:8], main[8:12]
+            product = (
+                sub(add(sub(mul(x[0], y[0]), mul(x[1], y[1])),
+                        scale(sub(mul(x[2], y[2]), mul(x[3], y[3])), 2)),
+                    add(mul(x[2], y[3]), mul(x[3], y[2]))),
+                add(add(add(mul(x[0], y[1]), mul(x[1], y[0])),
+                        scale(add(mul(x[2], y[3]), mul(x[3], y[2])), 2)),
+                    sub(mul(x[2], y[2]), mul(x[3], y[3]))),
+                sub(add(sub(mul(x[0], y[2]), mul(x[1], y[3])),
+                        mul(x[2], y[0])), mul(x[3], y[1])),
+                add(add(add(mul(x[0], y[3]), mul(x[1], y[2])),
+                        mul(x[2], y[1])), mul(x[3], y[0])),
+            )
+            expected = (sub(add(add(fa, fs), add(fm, fp)), base(1)),
+                        mul(fa, sub(fa, base(1))),
+                        mul(fs, sub(fs, base(1))),
+                        mul(fm, sub(fm, base(1))),
+                        mul(fp, sub(fp, base(1))))
+            # Each output limb uses the same four selector polynomials.
+            for i in range(4):
+                weighted = add(add(mul(product[i], fm),
+                                   mul(add(x[i], y[i]), fa)),
+                               add(mul(sub(x[i], y[i]), fs),
+                                   mul(mul(x[i], y[i]), fp)))
+                expected += (sub(output[i], weighted),)
+            self.assertEqual(roots, expected)
+
     def test_changed_installed_bundle_is_rejected(self) -> None:
         mutation = bytearray(self.bundle)
         mutation[-32] ^= 1
