@@ -11,16 +11,32 @@ from pathlib import Path
 from benchmark_whole_prover_cost_v3 import (
     chip_manifest_binding, measurement_tool_digest, s31,
 )
-from benchmark_whole_prover_cost_v5 import TOOL_SOURCES, require_frozen_pins
+from benchmark_whole_prover_cost_v5 import (
+    TOOL_SOURCES, check_build_inventory, require_frozen_pins,
+    require_model_anchor, require_protocol_anchor,
+)
 from publish_stage_aware_cost_v1 import audit_corpus, file_hash
 from publish_whole_prover_cost_v3 import audit_case_artifacts
 from whole_prover_predictor_v5 import PROTOCOL, evaluate, fit_model
 
 
+def assert_build_case_binding(name: str, built: dict, case: dict) -> None:
+    if (built["source_sha256"] != case["source_sha256"] or
+        built["package_build"] != case["package_build"] or
+        built.get("chip_manifest_binding") != case["chip_manifest_binding"]):
+        raise ValueError(f"{name}: final corpus differs from saved build inventory")
+
+
 def publish(train_path: Path, model_path: Path, validation_path: Path,
-            evaluation_path: Path, externally_recorded_model_sha256: str) -> dict:
+            evaluation_path: Path, externally_recorded_model_sha256: str,
+            externally_recorded_protocol_sha256: str,
+            protocol_anchor_commit: str, model_anchor_commit: str) -> dict:
     if not re.fullmatch(r"[0-9a-f]{64}", externally_recorded_model_sha256):
         raise ValueError("expected externally recorded model SHA-256")
+    if not re.fullmatch(r"[0-9a-f]{64}", externally_recorded_protocol_sha256):
+        raise ValueError("expected externally recorded protocol SHA-256")
+    if file_hash(PROTOCOL) != externally_recorded_protocol_sha256:
+        raise ValueError("protocol differs from externally recorded prebuild SHA")
     if file_hash(model_path) != externally_recorded_model_sha256:
         raise ValueError("frozen model differs from externally recorded pre-validation SHA")
     train, train_controls = audit_corpus(train_path, "train",
@@ -31,6 +47,12 @@ def publish(train_path: Path, model_path: Path, validation_path: Path,
     evaluation = json.loads(evaluation_path.read_text())
     protocol = json.loads(PROTOCOL.read_text())
     require_frozen_pins(protocol)
+    protocol_anchor = require_protocol_anchor(
+        protocol, externally_recorded_protocol_sha256, protocol_anchor_commit)
+    model_anchor = require_model_anchor(
+        model, externally_recorded_model_sha256,
+        externally_recorded_protocol_sha256, model_anchor_commit,
+        protocol_anchor_commit)
     protocol_sha = file_hash(PROTOCOL)
     if train["protocol_sha256"] != protocol_sha or validation["protocol_sha256"] != protocol_sha:
         raise ValueError("corpus/protocol digest mismatch")
@@ -58,6 +80,15 @@ def publish(train_path: Path, model_path: Path, validation_path: Path,
     if (model["automatic_lowering_selection_enabled"] is not False or
         evaluation["automatic_lowering_selection_enabled"] is not False):
         raise ValueError("cost audit must not enable automatic lowering")
+    build_inventories = {
+        "train": check_build_inventory(
+            train_path.parent, "train", protocol, protocol_sha,
+            protocol_anchor_commit=protocol_anchor_commit),
+        "validation": check_build_inventory(
+            validation_path.parent, "validation", protocol,
+            protocol_sha, externally_recorded_model_sha256,
+            protocol_anchor_commit, model_anchor_commit),
+    }
     inventory = {}
     artifact_controls = {}
     for split, corpus, corpus_path in (("train", train, train_path),
@@ -67,6 +98,8 @@ def publish(train_path: Path, model_path: Path, validation_path: Path,
                                     "assignment_statement_matched": 0,
                                     "source_package_bound": 0}
         for name, case in sorted(corpus["cases"].items()):
+            built = build_inventories[split]["programs"][name]
+            assert_build_case_binding(name, built, case)
             package = corpus_path.parent / name / "package"
             manifest = s31.verify_package(package)
             if manifest["compiler_sha256"] != case["compiler_sha256"]:
@@ -93,6 +126,11 @@ def publish(train_path: Path, model_path: Path, validation_path: Path,
     return {
         "schema": "s31-whole-prover-cost-pinned-audit-v5",
         "protocol_sha256": protocol_sha,
+        "externally_recorded_protocol_sha256": externally_recorded_protocol_sha256,
+        "protocol_anchor_commit": protocol_anchor_commit,
+        "protocol_anchor_recorded_at_utc": protocol_anchor["recorded_at_utc"],
+        "model_anchor_commit": model_anchor_commit,
+        "model_anchor_recorded_at_utc": model_anchor["recorded_at_utc"],
         "measurement_tool_sha256": tool_sha,
         "training_corpus_sha256": file_hash(train_path),
         "externally_recorded_frozen_model_sha256": externally_recorded_model_sha256,
@@ -120,10 +158,14 @@ def main() -> None:
     parser.add_argument("validation", type=Path)
     parser.add_argument("evaluation", type=Path)
     parser.add_argument("--expected-model-sha256", required=True)
+    parser.add_argument("--expected-protocol-sha256", required=True)
+    parser.add_argument("--protocol-anchor-commit", required=True)
+    parser.add_argument("--model-anchor-commit", required=True)
     parser.add_argument("--out", type=Path, required=True)
     args = parser.parse_args()
     result = publish(args.train, args.model, args.validation, args.evaluation,
-                     args.expected_model_sha256)
+                     args.expected_model_sha256, args.expected_protocol_sha256,
+                     args.protocol_anchor_commit, args.model_anchor_commit)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")
     print(args.out)

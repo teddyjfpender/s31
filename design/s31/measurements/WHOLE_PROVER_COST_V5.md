@@ -9,10 +9,15 @@ fitting, calibration, or gate changes.
 
 The machine-readable [V5 protocol](whole-prover-cost-v5.json) currently has
 null source, engine, compiler, and measurement-tool pins. The runner refuses
-all native phases until the integrated source revision is stable and these
-four pins are filled and recorded with the protocol SHA. No package build may
-start before that freeze. The protocol also requires at least 8 GiB of free
-artifact space; raw V4 and V5 evidence is retained.
+all native phases until the integrated source revision is stable and those
+four pins plus an explicit sorted Python tool-path inventory are filled.
+Before the first V5 native build, commit the protocol freeze JSON described
+below and record its commit SHA plus the full protocol SHA in a timestamped
+external message. The CLI requires both, checks the committed anchor bytes,
+and checks exact protocol bytes. Before prove, it also checks the saved
+build-inventory protocol SHA. A local draft record or CLI argument alone
+cannot establish when the hash was first recorded. The protocol requires at
+least 8 GiB of free artifact space; raw V4 and V5 evidence is retained.
 
 ## Split and controls
 
@@ -74,16 +79,56 @@ Automatic lowering selection remains disabled even if the local gate passes.
 ## Freeze and publication procedure
 
 After integration tests complete, pin the exact S31 source commit, stwo-zig
-gitlink, `s31.compiler_fingerprint()` digest, and SHA-256 of all S31 benchmark
-and frontend Python sources in the protocol; set `status` exactly to
-`frozen-before-any-v5-native-observation`. Record the protocol digest and
-host pseudonym. Build and prove all 23 training packages, fit the model,
-then record the exact serialized model SHA outside the validation corpus
-**before** building any held-out package. Build and prove the 20 new held-out
+gitlink, `s31.compiler_fingerprint()` digest, sorted list of every S31
+benchmark/frontend Python path, and aggregate tool-source SHA in the
+protocol; set `status` exactly to `frozen-before-any-v5-native-observation`.
+Write `design/s31/measurements/language/whole-prover-cost-v5-protocol-freeze.json`
+with schema `s31-whole-prover-v5-protocol-freeze`, aware UTC
+`recorded_at_utc`, full `protocol_sha256`, and the four pinned
+`source_base_commit`, `engine_gitlink_commit`, `compiler_sha256`, and
+`measurement_tool_sha256` values. Commit that file **before the first native
+build**. Record the full anchor commit SHA, protocol SHA, and host pseudonym
+in a timestamped external message. Pass the same
+`--protocol-anchor-commit` and `--expected-protocol-sha256` to both training
+phases and both held-out phases. The runner checks that the anchor bytes
+exist at an ancestor commit and match the current file. Only `--phase build`
+and `--phase prove` are accepted. Before prove,
+the runner checks the build inventory's protocol SHA, compiler/tool SHA,
+program set, and fresh-build status. For every program it also matches
+source SHA and package-build timing against the package-build record,
+rehashes the generated source, and checks the chip manifest binding.
+Changing only a gate, assignment range, build timing, or source after build
+therefore fails before any native proof process.
+
+Build and prove all 23 training packages, then fit the model. Write
+`design/s31/measurements/language/whole-prover-cost-v5-model-freeze.json`
+with schema `s31-whole-prover-v5-model-freeze`, aware UTC
+`recorded_at_utc`, full `protocol_sha256`, `frozen_model_sha256`, and
+`training_corpus_sha256`. Commit it **before any held-out package build**
+and externally record its full commit SHA and model SHA. Its commit must
+descend from the protocol-anchor commit. Pass `--model-anchor-commit` and
+`--expected-model-sha256` to both held-out phases. The held-out build
+inventory records both anchor commits and the model SHA, and
+the proof phase rejects a mismatch. Build and prove the 20 new held-out
 packages without changing source, tools, protocol, or model. Evaluate once
-against the frozen gate, publish both passes and failures, and replay the
-artifact bindings with `publish_whole_prover_cost_v5.py --expected-model-sha256`.
-Do not adjust the radius or gate after held-out observations.
+against the frozen gate and publish both passes and failures with
+`publish_whole_prover_cost_v5.py --expected-protocol-sha256 ...
+--protocol-anchor-commit ... --expected-model-sha256 ...
+--model-anchor-commit ...`. The publisher replays both committed anchors and external hashes,
+the two build inventories, model fitting, evaluation, and saved artifact
+bindings, including exact build-inventory-to-final-corpus cost measurements.
+It does not rerun native proofs or oracles. Do not adjust the
+radius or gate after held-out observations.
+
+**Replay requires the exact pinned checkout.** V4's publisher cannot replay
+from a later checkout after new benchmark Python files change its dynamic
+tool digest; its V4 audit remains valid under its original frozen snapshot.
+V5 records an explicit path inventory to make such changes visible and
+diagnosable, and rejects any added or removed path during native work or
+publication. Merely hashing an old allowlist while loading Python from a
+newer checkout could miss code introduced through imports, so this inventory
+does not authorize replay on an arbitrary newer tree. Use an isolated
+worktree at the pinned commit and engine gitlink to reproduce the audit.
 
 This one-host check, even if successful, will not measure cached setup,
 predict compile-to-proof latency, establish cross-host transfer, or license

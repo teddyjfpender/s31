@@ -5,8 +5,10 @@ import json
 import subprocess
 import sys
 import unittest
+from datetime import datetime, timezone
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 S31_ROOT = Path(__file__).resolve().parents[2]
 sys.path[:0] = [str(S31_ROOT / "benchmarks"), str(S31_ROOT / "python"),
@@ -14,13 +16,16 @@ sys.path[:0] = [str(S31_ROOT / "benchmarks"), str(S31_ROOT / "python"),
 
 from benchmark_whole_prover_cost_v4 import workload_cases as v4_workloads
 from benchmark_whole_prover_cost_v5 import (
-    PROTOCOL, TOOL_SOURCES, require_frozen_pins, workload_cases,
+    PROTOCOL, TOOL_SOURCES, check_build_inventory, checked_sha, committed_anchor,
+    require_frozen_pins, tool_source_inventory, workload_cases,
 )
 from benchmark_whole_prover_cost_v3 import ROOT, measurement_tool_digest, s31
 from whole_prover_predictor_v5 import (
     evaluate, fit_model, predict_rss_absolute, rss_program_gate,
 )
+from publish_whole_prover_cost_v5 import assert_build_case_binding
 from test_whole_prover_predictor_v3 import synthetic_corpus
+from whole_prover_predictor_v3 import expected_names
 
 
 def synthetic_v5(split: str, protocol: dict) -> dict:
@@ -34,6 +39,42 @@ def synthetic_v5(split: str, protocol: dict) -> dict:
     result["protocol_sha256"] = hashlib.sha256(PROTOCOL.read_bytes()).hexdigest()
     result["measurement_tool_sha256"] = measurement_tool_digest(TOOL_SOURCES)
     return result
+
+
+def write_build_fixture(output: Path, split: str, protocol: dict,
+                        protocol_sha: str, model_sha: str | None = None) -> dict:
+    output.mkdir(parents=True, exist_ok=True)
+    inventory = {
+        "schema": "s31-whole-prover-build-inventory-v5",
+        "split": split, "protocol_sha256": protocol_sha,
+        "compiler_sha256": protocol["compiler_sha256"],
+        "measurement_tool_sha256": protocol["measurement_tool_sha256"],
+        "protocol_anchor_commit": "a" * 40,
+        "model_anchor_commit": "b" * 40 if model_sha is not None else None,
+        "frozen_model_sha256": model_sha,
+        "programs": {},
+    }
+    for name in expected_names(split, protocol):
+        source = output / "generated-sources" / (
+            name + (".s31" if name.startswith("signed_") else ".s31.json"))
+        source.parent.mkdir(parents=True, exist_ok=True)
+        source.write_text(name)
+        source_sha = hashlib.sha256(source.read_bytes()).hexdigest()
+        build = {"source_sha256": source_sha,
+                 "compiler_sha256": protocol["compiler_sha256"],
+                 "measurement_tool_sha256": protocol["measurement_tool_sha256"],
+                 "package_build": {"package_reused": False,
+                                   "package_build_wall_seconds": 1.0}}
+        record_path = output / name / "package-build-record.json"
+        record_path.parent.mkdir(parents=True, exist_ok=True)
+        record_path.write_text(json.dumps(build))
+        inventory["programs"][name] = {
+            "source_sha256": source_sha,
+            "chip_manifest_binding": None,
+            "package_build": build["package_build"],
+        }
+    (output / "whole-prover-build-inventory.json").write_text(json.dumps(inventory))
+    return inventory
 
 
 class WholeProverV5Tests(unittest.TestCase):
@@ -131,12 +172,132 @@ class WholeProverV5Tests(unittest.TestCase):
                 text=True).strip(),
             "compiler_sha256": s31.compiler_fingerprint(),
             "measurement_tool_sha256": measurement_tool_digest(TOOL_SOURCES),
+            "measurement_tool_paths": tool_source_inventory(),
             "status": "frozen-before-any-v5-native-observation",
         })
         require_frozen_pins(ephemeral)
         ephemeral["measurement_tool_sha256"] = "0" * 64
         with self.assertRaisesRegex(ValueError, "measurement tool digest"):
             require_frozen_pins(ephemeral)
+
+    def test_protocol_mutation_between_build_and_prove_fails_before_native(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            protocol_path = root / "protocol.json"
+            protocol_path.write_bytes(PROTOCOL.read_bytes())
+            original_sha = hashlib.sha256(protocol_path.read_bytes()).hexdigest()
+            output = root / "build"
+            original = json.loads(protocol_path.read_text())
+            write_build_fixture(output, "train", original, original_sha)
+            checked_sha(protocol_path, original_sha, "protocol")
+            with patch("benchmark_whole_prover_cost_v5.chip_manifest_binding",
+                       return_value=None):
+                check_build_inventory(output, "train", original, original_sha,
+                                      protocol_anchor_commit="a" * 40)
+            changed = json.loads(protocol_path.read_text())
+            changed["accuracy_gate"]["per_family_whole_wall_trial_interval_coverage_min"] = .7
+            protocol_path.write_text(json.dumps(changed))
+            with self.assertRaisesRegex(ValueError, "externally recorded"):
+                checked_sha(protocol_path, original_sha, "protocol")
+            changed_sha = hashlib.sha256(protocol_path.read_bytes()).hexdigest()
+            with self.assertRaisesRegex(ValueError, "build inventory protocol SHA"):
+                check_build_inventory(output, "train", changed, changed_sha,
+                                      protocol_anchor_commit="a" * 40)
+            changed["splits"]["train"]["assignment_index_base"] += 1
+            protocol_path.write_text(json.dumps(changed))
+            with self.assertRaisesRegex(ValueError, "externally recorded"):
+                checked_sha(protocol_path, original_sha, "protocol")
+
+    def test_model_mutation_after_validation_build_fails_before_native(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            model_path = root / "model.json"
+            model_path.write_text('{"training_corpus_sha256":"' + "b" * 64 + '"}')
+            original_sha = hashlib.sha256(model_path.read_bytes()).hexdigest()
+            output = root / "build"
+            inventory = write_build_fixture(
+                output, "validation", self.protocol,
+                hashlib.sha256(PROTOCOL.read_bytes()).hexdigest(), original_sha)
+            checked_sha(model_path, original_sha, "model")
+            with patch("benchmark_whole_prover_cost_v5.chip_manifest_binding",
+                       return_value=None):
+                check_build_inventory(output, "validation", self.protocol,
+                                      inventory["protocol_sha256"], original_sha,
+                                      "a" * 40, "b" * 40)
+            model_path.write_text('{"training_corpus_sha256":"' + "c" * 64 + '"}')
+            with self.assertRaisesRegex(ValueError, "externally recorded"):
+                checked_sha(model_path, original_sha, "model")
+            changed_sha = hashlib.sha256(model_path.read_bytes()).hexdigest()
+            with self.assertRaisesRegex(ValueError, "frozen model SHA"):
+                check_build_inventory(output, "validation", self.protocol,
+                                      inventory["protocol_sha256"], changed_sha,
+                                      "a" * 40, "b" * 40)
+
+    def test_build_wall_and_source_metadata_are_bound_before_proving(self) -> None:
+        with TemporaryDirectory() as directory:
+            output = Path(directory) / "build"
+            protocol_sha = hashlib.sha256(PROTOCOL.read_bytes()).hexdigest()
+            inventory = write_build_fixture(output, "train", self.protocol, protocol_sha)
+            inventory_path = output / "whole-prover-build-inventory.json"
+            name = "arithmetic_24"
+            built = inventory["programs"][name]
+            case = {"source_sha256": built["source_sha256"],
+                    "package_build": dict(built["package_build"]),
+                    "chip_manifest_binding": None}
+            assert_build_case_binding(name, built, case)
+            case["package_build"]["package_build_wall_seconds"] = 999
+            with self.assertRaisesRegex(ValueError, "final corpus"):
+                assert_build_case_binding(name, built, case)
+            build_path = output / name / "package-build-record.json"
+            source_path = output / "generated-sources" / f"{name}.s31.json"
+            with patch("benchmark_whole_prover_cost_v5.chip_manifest_binding",
+                       return_value=None):
+                check_build_inventory(output, "train", self.protocol, protocol_sha,
+                                      protocol_anchor_commit="a" * 40)
+                tampered = json.loads(inventory_path.read_text())
+                tampered["programs"][name]["package_build"]["package_build_wall_seconds"] = 999
+                inventory_path.write_text(json.dumps(tampered))
+                with self.assertRaisesRegex(ValueError, "build record"):
+                    check_build_inventory(output, "train", self.protocol, protocol_sha,
+                                          protocol_anchor_commit="a" * 40)
+                inventory_path.write_text(json.dumps(inventory))
+                build = json.loads(build_path.read_text())
+                build["package_build"]["package_build_wall_seconds"] = 999
+                build_path.write_text(json.dumps(build))
+                with self.assertRaisesRegex(ValueError, "build record"):
+                    check_build_inventory(output, "train", self.protocol, protocol_sha,
+                                          protocol_anchor_commit="a" * 40)
+                build["package_build"]["package_build_wall_seconds"] = 1.0
+                build_path.write_text(json.dumps(build))
+                source_path.write_text("different")
+                with self.assertRaisesRegex(ValueError, "generated source"):
+                    check_build_inventory(output, "train", self.protocol, protocol_sha,
+                                          protocol_anchor_commit="a" * 40)
+
+    def test_freeze_anchor_requires_committed_bytes_and_schema(self) -> None:
+        with TemporaryDirectory() as directory:
+            repo = Path(directory)
+            subprocess.run(["git", "init", "-q", str(repo)], check=True)
+            subprocess.run(["git", "-C", str(repo), "config", "user.name", "V5 test"],
+                           check=True)
+            subprocess.run(["git", "-C", str(repo), "config", "user.email",
+                            "v5-test@example.invalid"], check=True)
+            path = repo / "protocol-freeze.json"
+            anchor = {"schema": "s31-whole-prover-v5-protocol-freeze",
+                      "recorded_at_utc": datetime.now(timezone.utc).isoformat(),
+                      "protocol_sha256": "a" * 64}
+            path.write_text(json.dumps(anchor))
+            subprocess.run(["git", "-C", str(repo), "add", path.name], check=True)
+            subprocess.run(["git", "-C", str(repo), "commit", "-qm", "freeze"], check=True)
+            commit = subprocess.check_output(
+                ["git", "-C", str(repo), "rev-parse", "HEAD"], text=True).strip()
+            with patch("benchmark_whole_prover_cost_v5.ROOT", repo):
+                self.assertEqual(committed_anchor(path, commit, anchor["schema"]), anchor)
+                with self.assertRaisesRegex(ValueError, "wrong schema"):
+                    committed_anchor(path, commit, "s31-whole-prover-v5-model-freeze")
+                path.write_text(json.dumps({**anchor, "protocol_sha256": "b" * 64}))
+                with self.assertRaisesRegex(ValueError, "differs from its recorded commit"):
+                    committed_anchor(path, commit, anchor["schema"])
 
 
 if __name__ == "__main__":

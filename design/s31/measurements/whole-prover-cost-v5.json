@@ -29,6 +29,7 @@
   },
   "compiler_sha256": null,
   "engine_gitlink_commit": null,
+  "external_anchor_policy": "Before first native build, commit design/s31/measurements/language/whole-prover-cost-v5-protocol-freeze.json containing schema, aware UTC timestamp, full protocol SHA, source/engine/compiler/tool pins; externally record its full commit SHA and protocol SHA in a timestamped message. Pass both to every build/prove phase. After training and before any held-out build, similarly commit whole-prover-cost-v5-model-freeze.json containing full model SHA, training corpus SHA, protocol SHA and timestamp; externally record its full commit SHA and model SHA. Runner requires committed anchor bytes at those ancestor commits, current bytes equality, and model anchor descendant of protocol anchor. CLI arguments or an uncommitted draft file alone are insufficient proof of chronology.",
   "features": {
     "chip_fri_domain_rows": "for direct-chip only, maximum 2^trace_log_size over generated typed-manifest components; captures the largest FRI tier",
     "chip_trace_cells": "for direct-chip only, sum over generated typed-manifest components of (2^trace_log_size) * (base_trace_columns + interaction_trace_columns); captures total committed AIR trace work",
@@ -38,6 +39,7 @@
     "raw_rows": "sum of raw component rows"
   },
   "host_policy": "one named host and one compiler fingerprint for every train/validation package; no cross-host reliability claim",
+  "measurement_tool_paths": null,
   "measurement_tool_sha256": null,
   "minimum_available_disk_bytes_before_native_phase": 8589934592,
   "model": "V4 expected-wall and proof-byte point/interval formulas unchanged. RSS point fit remains positive affine for arithmetic/direct chip and log-linear for hash/fixed width. RSS trial interval uses a symmetric absolute-byte radius calibrated only from V5 training programs left out of their own fit.",
@@ -58,7 +60,7 @@
   "selection_policy": "Automatic lowering stays disabled even after a local pass; independent source revision, host transfer, cached setup, paired lowering comparisons, and proof soundness equivalence remain separate prerequisites",
   "source_base_commit": null,
   "source_pin_policy": "Before the first native V5 build, replace null source/engine/compiler digests with exact integrated commits and compiler SHA-256, then freeze protocol SHA and reject any compiler change across all builds/trials.",
-  "split_policy": "All V5 train and held-out source bytes and assignment values are newly generated, disjoint within V5 and checked against earlier V4 generated sources/assignments at static admission. Fit only V5 train; externally record exact serialized model SHA before any V5 held-out package build. Reject duplicate source/assignment digests and require exact host/compiler/tool/protocol/profile/FRI match.",
+  "split_policy": "All V5 train and held-out source bytes and assignment values are newly generated, disjoint within V5 and checked against earlier V4 generated sources/assignments at static admission. Fit only V5 train; commit and externally record exact serialized model SHA before any V5 held-out package build. Reject duplicate source/assignment digests and require exact host/compiler/tool/protocol/profile/FRI match. Separate build/prove phases; prove checks committed anchors and build-inventory protocol and model SHA before native work.",
   "splits": {
     "train": {
       "arithmetic_constant": 19,
@@ -153,6 +155,6 @@
     "proof_bytes",
     "prover_peak_rss_bytes"
   ],
-  "tool_pin_policy": "Before the first native V5 build, replace null measurement tool digest with SHA-256 over all S31 benchmark and frontend Python source files by path and bytes; runner rejects any later tooling change.",
+  "tool_pin_policy": "Before first V5 native build, pin a sorted explicit inventory of all S31 benchmark and frontend Python paths plus their aggregate SHA-256. Runner and publisher require the exact path inventory and bytes; later added files require replay on the pinned checkout, not silent omission.",
   "wall_interval": "For each training program, fit the full stage model on all other training programs, predict its expected wall, and collect every observed trial-wall / out-of-fold prediction ratio. Use pooled 5th and 95th percentile ratios as the prospective per-trial interval around the full-training expected-wall prediction. This interval is empirical and has no guaranteed tail coverage."
 }
