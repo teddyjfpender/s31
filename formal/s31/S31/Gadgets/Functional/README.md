@@ -24,6 +24,7 @@ Lean module names follow the directory, for example
 | `TextSquare4NativeBoundary.lean` | Exact native input binding, pack, arithmetic, unpack and output gate rows imply the public four-lane fourth-power claim. |
 | `TextSquare4GateJoin.lean` | Conditional exact Gate balance and unique producers construct the shared wire map used by the native public-boundary theorem. |
 | `TextSquare4ChallengeJoin.lean` | Checked Gate counters and good LogUp challenges force the exported circuit's public claim; a forged claim has nonzero reciprocal closure. |
+| `TextSquare4RawSoundness.lean` | For a fixed forged claim, source-extracted raw Gate interaction AIR accepts on at most the explicit exceptional challenge-pair bound. |
 
 The dependency order starts with `Graph`, then `Outputs`, then `Arrays`.
 Arithmetic and array-node bridges depend on `Arrays`; conditionals depend on
@@ -108,6 +109,14 @@ sets, and the reciprocal sum closes, the produced public result is `x⁴`.
 incorrect claim. This is an algebraic challenge theorem. It still requires
 the native committed trace and verifier to realize the modeled events and
 constraints, plus Fiat-Shamir challenge sampling and PCS/STARK soundness.
+`TextSquare4RawSoundness.forged_claim_native_raw_acceptance_card_le` goes from
+the actual source-extracted Gate LogUp residual model to a finite challenge
+bound for a fixed false fourth-power claim. Let `s` be the number of distinct
+Gate event tuples and `n` the number of padded arithmetic rows. Under the
+stated canonical-address, event-count, selected-row, public-event and
+declared-producer premises, at most `(5s² + 2s + 3n) · |QM31|` challenge pairs
+can satisfy the modeled raw AIR, out of `|QM31|²` ideal pairs. The theorem
+does not establish Fiat-Shamir sampling or native trace/PCS correspondence.
 The source binding regenerates the native artifact on every formal audit;
 there is still no machine-checked proof of the whole Zig compiler or STARK
 protocol.

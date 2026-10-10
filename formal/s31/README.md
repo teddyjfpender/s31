@@ -170,6 +170,14 @@ fourth-power claim; a forged claim instead has a nonzero closure. This is a
 conditional finite-list algebra result. It does not prove that native
 commitments, transcript challenges, or verifier openings satisfy its
 premises.
+For the source-extracted raw Gate interaction AIR,
+`TextSquare4RawSoundness` also bounds acceptance of a **fixed forged** public
+fourth-power claim by `(5s² + 2s + 3n) · |QM31|` ideal challenge pairs out of
+`|QM31|²`, where `s` counts distinct Gate tuples and `n` counts padded
+arithmetic rows. It relies on the explicit local row, public event, checked
+producer coverage, canonical address and per-event count premises. Challenge
+sampling, committed trace binding and PCS verification remain outside this
+finite-list theorem.
 
 `Functional/Arrays` extends the typed source core with `[m31; N]` values,
 pointwise addition and multiplication, static splats, indexed reads and

@@ -36,6 +36,9 @@ text .s31 ──parse/typecheck/specialize──▶ normalized relation JSON
 - [Two proofs worked by hand](worked-proofs.md): a private cross-lane sum
     and dot product from source through gate equations and public binding,
     followed by a 16-round recurrence with actual transition rows.
+- [One program's Lean proof ladder](formal/README.md): the real functional
+   `x⁴` source, generated wire IDs, local AIR rows, Gate address joins,
+   LogUp closure, an explicit forged-witness bound, and remaining premises.
 - [A private choice worked by hand](worked-choice.md): a Boolean selector
    chooses between two public square-plus-seven results. See the filled
    circuit wires, gate equations, two-row polynomial factorization, and the

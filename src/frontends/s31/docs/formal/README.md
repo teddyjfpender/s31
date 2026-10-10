@@ -1,0 +1,108 @@
+# One S31 program, from source to a Lean soundness bound
+
+This page follows the real [fourth-power source](../../examples/arithmetic/functional_square4.s31).
+Its public input is four M31 values and its public result is their fourth
+powers. The [fixture](../../examples/arithmetic/functional_square4.valid.json)
+uses `x = [0, 1, 2, 7]` and claims `[0, 1, 16, 2401]`.
+
+```s31
+fn apply_twice(f: Fn([m31; 4]) -> [m31; 4], x: [m31; 4]) -> [m31; 4] {
+    let once = f(x);
+    f(once)
+}
+
+circuit functional_square4(public x: [m31; 4]) -> public [m31; 4] {
+    let square = fun(v: [m31; 4]) -> [m31; 4] => v .* v;
+    let result = apply_twice(square, x);
+    result
+}
+```
+
+`apply_twice`, the lambda, and `let` disappear during specialization. The
+generated relation has **two** elementwise multiplication nodes: `x .* x`,
+then the saved result multiplied by itself. Lean checks the exact generated
+two-node program and its all-input meaning in
+[TextSquare4Proof.lean](../../../../../formal/s31/S31/Gadgets/Functional/TextSquare4Proof.lean).
+This certificate is regenerated from this source file on each formal audit.
+It does not prove that the Python parser preserves meaning for every program.
+
+## What the circuit wires mean
+
+The native Zig compiler's exported addresses are checked against the
+[generated topology](../../../../../formal/s31/S31/Gadgets/Functional/TextSquare4Native.lean):
+
+```text
+scalar inputs:   11, 12, 13, 14
+public copies:   11 + 0 -> 3, 12 + 0 -> 4, 13 + 0 -> 5, 14 + 0 -> 6
+pack into QM31:  11,12,13,14 -> 22   (three basis muls, three adds)
+square rows:     22 .* 22 -> 23; 23 .* 23 -> 24
+unpack result:   24 -> 25,28,31,34   (four masks, three inverse muls)
+public copies:   25,28,31,34 + 0 -> 7,8,9,10
+```
+
+An address identifies one circuit value. For this fixture, wire `22` holds
+the four QM31 coordinates `(0, 1, 2, 7)`. The `.*` operation multiplies
+coordinates separately, so wire `23` holds `(0, 1, 4, 49)` and wire `24`
+holds `(0, 1, 16, 2401)`. The pack uses QM31 basis elements; the unpack masks
+one coordinate and multiplies by that basis element's inverse to recover a
+base-field value. The output copy gates bind those four values to public
+slots. The circuit builder has a separate reserved output slot before S31's
+four input and four result slots.
+
+The local AIR relation for each `.*` row has the pointwise-multiply flag set.
+For every coordinate `i`, its output residual is
+`out[i] - in0[i] * in1[i] = 0`, along with one-hot and Boolean flag
+constraints. This equation applies to **arbitrary** intermediate witness
+values. [TextSquare4NativeBoundary.lean](../../../../../formal/s31/S31/Gadgets/Functional/TextSquare4NativeBoundary.lean)
+proves that accepted local rows on the exported input-to-output path force the
+public result to be `x⁴`. The native circuit also contains range and
+representation gates; the theorem uses the path sufficient for this
+functional claim.
+
+## Why AIR arithmetic alone does not join wires
+
+Each AIR row carries its own input values. A row could locally satisfy
+`4 * 4 = 16` while claiming it read `4` from an address whose producer wrote
+`5`. The Gate lookup compares **address and value together**. For example,
+the first square reads `(22, (0,1,2,7))` twice and yields address `23` with
+`(0,1,4,49)`; the second square must read that same address and value.
+
+[GateWireMap.lean](../../../../../formal/s31/S31/Gadgets/Air/GateWireMap.lean)
+proves that exact balance of all Gate read/yield events plus unique produced
+values at declared addresses yields a coherent address-to-value map. Its
+scratch counterexample permits two different values at scratch address `40`
+while addresses below `35` remain unique. The exported fourth-power path
+uses only addresses `0` through `34`.
+[TextSquare4GateJoin.lean](../../../../../formal/s31/S31/Gadgets/Functional/TextSquare4GateJoin.lean)
+uses this result to remove the assumed shared-wire map from the public-claim
+proof. It requires accepted rows for the 23 selected gates, public and
+constant events, and coverage by the modeled producer scan.
+
+## What the LogUp proof adds
+
+Gate events are compressed into field elements using challenge values. The
+interaction AIR checks reciprocal sums of compressed read and yield tuples.
+For a fixed trace with bounded per-address counts and canonical addresses,
+the formal LogUp argument proves that a zero reciprocal closure at challenges
+outside its explicit exceptional sets implies exact Gate multiset balance.
+[TextSquare4ChallengeJoin.lean](../../../../../formal/s31/S31/Gadgets/Functional/TextSquare4ChallengeJoin.lean)
+composes this with the circuit proof: at good challenges, a forged public
+fourth-power claim has **nonzero** closure.
+
+The [source-extracted raw AIR theorem](../../../../../formal/s31/S31/Gadgets/Functional/TextSquare4RawSoundness.lean)
+also bounds how many ideal challenge pairs can accept a **fixed forged**
+witness. If `s` distinct Gate tuples occur and `n` padded arithmetic rows
+occur, the bound is `(5s² + 2s + 3n) · |QM31|` pairs out of `|QM31|²` possible
+pairs. This is a count of algebraic exceptional pairs under the theorem's
+canonical-address, count, row, public-event and producer premises. It is not
+a deployed verifier error rate by itself.
+
+## The remaining proof boundary
+
+The Lean result does not yet establish that native committed trace columns
+correspond to every modeled event and row, that verifier openings and
+polynomial commitments are sound, or that Fiat-Shamir yields the ideal
+challenge distribution. The source compiler's general parser and specializer
+also need a proof beyond this regenerated concrete certificate. These are
+substantive obligations; [the formal package README](../../../../../formal/s31/README.md)
+tracks the other proved components and the full audit commands.
