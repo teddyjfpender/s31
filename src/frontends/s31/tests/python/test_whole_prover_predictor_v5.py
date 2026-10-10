@@ -166,7 +166,6 @@ class WholeProverV5Tests(unittest.TestCase):
         draft["status"] = "draft"
         with self.assertRaisesRegex(ValueError, "must be pinned"):
             require_frozen_pins(draft)
-        require_frozen_pins(self.protocol)
         ephemeral = dict(self.protocol)
         ephemeral.update({
             "source_base_commit": subprocess.check_output(
@@ -179,6 +178,20 @@ class WholeProverV5Tests(unittest.TestCase):
             "measurement_tool_paths": tool_source_inventory(),
             "status": "frozen-before-any-v5-native-observation",
         })
+        # A prospective model is allowed to run only in the exact frozen
+        # source/tool checkout. Later language edits must make its original
+        # pins reject, while fresh current-checkout pins still pass.
+        current_pins = ("engine_gitlink_commit", "compiler_sha256",
+                        "measurement_tool_sha256", "measurement_tool_paths")
+        base_is_ancestor = subprocess.run(
+            ["git", "-C", str(ROOT), "merge-base", "--is-ancestor",
+             self.protocol["source_base_commit"], "HEAD"], check=False).returncode == 0
+        if base_is_ancestor and all(self.protocol[key] == ephemeral[key]
+                                    for key in current_pins):
+            require_frozen_pins(self.protocol)
+        else:
+            with self.assertRaises(ValueError):
+                require_frozen_pins(self.protocol)
         require_frozen_pins(ephemeral)
         ephemeral["measurement_tool_sha256"] = "0" * 64
         with self.assertRaisesRegex(ValueError, "measurement tool digest"):
