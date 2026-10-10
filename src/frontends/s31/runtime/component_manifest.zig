@@ -301,19 +301,7 @@ pub fn directGate(
     const indices = try allocator.dupe(u32, selected.preprocessed_indices);
     const components = try allocator.alloc(Component, 1);
     const facts = circuit.common.component_list.component_facts.qm31_ops;
-    var program_hash = Sha256.init(.{});
-    program_hash.update("S31-DIRECT-GATE-PROGRAM-V1\x00");
-    program_hash.update(air_bytes);
-    var index_word: [4]u8 = undefined;
-    std.mem.writeInt(u32, &index_word, 1, .little);
-    program_hash.update(&index_word);
-    var part_word: [8]u8 = undefined;
-    for (selected.parts) |part| {
-        std.mem.writeInt(u64, &part_word, part.semantic_hash, .little);
-        program_hash.update(&part_word);
-    }
-    var program_hash_bytes: [32]u8 = undefined;
-    program_hash.final(&program_hash_bytes);
+    const program_hash_bytes = try cpu.air.directProgramBindingDigest(air_bytes, &bound);
     components[0] = .{
         // The bound AIR is deinitialized before this manifest is serialized.
         // Arena free can poison its label, so retain an independently owned copy.

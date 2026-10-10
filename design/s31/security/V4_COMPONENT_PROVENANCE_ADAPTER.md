@@ -41,8 +41,10 @@ Before native proving or verification, the guarded adapter checks:
 4. Each native descriptor's canonical source/input node IDs, selected call
    parameters, compiled input/output addresses, embedded AIR source bytes, and
    native-template digest reproduce the existing V4 program-binding hash.
-   The circuit descriptor is checked against the selected bundled program hash;
-   S31 still owns that program's semantic binding.
+   The guarded adapter also recomputes the circuit slot-0 binding from the
+   pinned AIR bytes, selected bundle index, and semantic hashes of the bound
+   direct-gate parts. It compares this independently with both the descriptor
+   and selected schedule, rejecting a joint edit of their claimed hash.
 5. S31 derives descriptors from its regenerated typed manifest and invokes the
    guarded adapter. It also validates provenance before decoding proof bytes.
 
@@ -51,6 +53,12 @@ adapter boundary. They do not turn public Zig structs into unforgeable
 capabilities. A caller that bypasses S31's source-pinned wrapper can construct
 self-consistent fake source metadata, so the wrapper remains the only admitted
 proof-byte entrypoint.
+
+The circuit hash check uses the already rebound AIR in the prover and verifier;
+it does not repeat the expensive circuit binding. S31 still owns the statement
+that source syntax, canonical node IDs, compiled endpoints, and the complete
+manifest digest correspond to that bound circuit. The engine cannot establish
+those source semantics by hashing AIR bytes alone.
 
 ## Versioning and extension rule
 

@@ -1266,6 +1266,42 @@ test "bounded V4 guarded adapter rejects source and versioned program provenance
     try std.testing.expectError(error.InvalidManyProvenance, cpu.direct_many_provenance.validate(&changed, descriptors.pin(source, air_bytes)));
 }
 
+test "bounded V4 guarded adapter recomputes jointly forged circuit program binding" {
+    const allocator = std.testing.allocator;
+    const source = @embedFile("../examples/boundary/private_many1.s31.json");
+    const air_bytes = @embedFile("s31_air_programs");
+    var inspection = try inspectMany(allocator, source, air_bytes);
+    defer inspection.deinit();
+    var descriptors = try manyProvenance(&inspection);
+    var topology_ctx = try compileManyTopology(allocator, source, inspection.topology);
+    defer topology_ctx.deinit();
+    const plan = inspection.selected_schedule.fixedCircuitPlan();
+    var pp = try plan.preprocessed(allocator, circuit.common.preprocessed.CircuitView.fromBuilder(&topology_ctx.circuit));
+    defer pp.deinit(allocator);
+    var template = try cpu.air.parse(allocator, air_bytes);
+    defer template.deinit();
+    const layout = pp.layout();
+    var bound = try cpu.air.bindDirectArithmetic(allocator, &template, pp.traceLogSize(), &layout);
+    defer bound.deinit();
+    const pin = descriptors.pin(source, air_bytes);
+    try cpu.direct_many_provenance.validate(&inspection.selected_schedule, pin);
+    try cpu.direct_many_provenance.validateCircuitProgram(&inspection.selected_schedule, pin, &bound);
+
+    var forged = inspection.selected_schedule;
+    forged.geometry.slots[0].program_binding_sha256[0] ^= 1;
+    descriptors.descriptors[0].program_binding_sha256[0] ^= 1;
+    const forged_pin = descriptors.pin(source, air_bytes);
+    // The early metadata-only check sees two consistent claims. The bound
+    // program check independently rejects their joint forgery.
+    try cpu.direct_many_provenance.validate(&forged, forged_pin);
+    try std.testing.expectError(error.InvalidManyProvenance, cpu.direct_many_provenance.validateCircuitProgram(&forged, forged_pin, &bound));
+
+    const original_semantic_hash = bound.components[0].parts[0].semantic_hash;
+    bound.components[0].parts[0].semantic_hash ^= 1;
+    try std.testing.expectError(error.InvalidManyProvenance, cpu.direct_many_provenance.validateCircuitProgram(&inspection.selected_schedule, pin, &bound));
+    bound.components[0].parts[0].semantic_hash = original_semantic_hash;
+}
+
 test "bounded V4 source-derived one-call native proof verifies a public statement" {
     // This exercises the source-owned in-memory adapter. It is deliberately
     // absent from the S31 proof-byte API until a source-pinned V4 envelope
