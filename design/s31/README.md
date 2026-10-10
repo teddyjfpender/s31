@@ -20,6 +20,10 @@ parameter choices, counter and key-binding arguments, adversarial evidence,
 and the missing concrete recursive security analysis. The `u32` fixed-fold
 counter does not turn the two-header Bitcoin leaf into a growing chain.
 
+The [soundness remediation status](security/REMEDIATION_STATUS.md) tracks each
+independent-review finding against implemented controls and remaining release
+gates without changing the original review.
+
 The [standard/math library brief](language/STDLIB_MATHLIB.md) records the first qualified
 field math operations and the work needed for versioned modules, reductions,
 checked inversion, and computed boolean/range values.
