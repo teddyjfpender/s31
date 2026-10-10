@@ -1,0 +1,231 @@
+# Bounded multi-call authenticated circuit-to-chip boundary
+
+Status: **engineering design, not implemented**. This is the successor to the
+experimental, fixed two-call `direct-m31-private-pair-v1` profile. It must not
+replace or reinterpret any existing one-call or pair proof. The first v4
+implementation admits 1–8 instances of the existing four-lane tagged
+`s -> s² + c` chip. The plan and manifest formats are suitable for more chip
+kinds, but each later kind needs its own AIR, lookup tuple, resource limits,
+and soundness review before admission.
+
+## Statement and source-owned Plan
+
+The public statement is the sealed source identity, versioned proof profile,
+generated manifest identity, PCS parameters, and the source-declared public
+outputs. Each call's input and output values are witness values. Every admitted
+call must contribute to a public output through the circuit's checked dataflow;
+dead calls are rejected. `private` means absent from the public ABI, **not**
+confidential: the present bridge commits each endpoint as a constant column
+and proof openings can reveal it. A zero-knowledge boundary is a separate
+profile and requires a new privacy argument.
+
+Compile the normalized source twice, without values and with values, using
+the same canonical IR traversal. The witness-free pass is authoritative:
+
+```text
+PlanV4 = {
+  profile: direct-m31-private-many-v1,
+  calls: [Call { id, source_node_id, chip_kind, chip_version,
+                 rounds, constant, input_address[4], output_address[4] }],
+  public_output_addresses, circuit_shape, fixed_column_digests
+}
+```
+
+IDs are consecutive `0..N-1` in canonical **live repeat-node** order, with
+`1 <= N <= 8`. The admitted initial normalized JSON source grammar is v1
+direct-M31 arithmetic:
+private `[m31; 4]` inputs, `N` four-lane repeats whose body is exactly
+`square; add_const`, and ordinary `add`, `mul`, and lane-reduction nodes that
+connect all repeat results to public outputs. A call may consume an earlier
+call's output; the compiler must record that actual circuit address, rather
+than assuming independent inputs. Public inputs and non-direct circuit
+components are outside this initial profile. All rounds are powers of two
+in `[16, 32768]`; constants are canonical M31 words. No source or proof field
+may assign an ID or an endpoint address. Reject unused repeats, unsupported
+bodies, aliases that would evade live-node accounting, and public exposure of
+an endpoint. Compare every Plan field between value and topology compilation
+before building the witness trace. Recompile the witness-free Plan from the
+verifier's *embedded or externally pinned* source before parsing proof bytes.
+
+For example, a three-call source may compute `a = repeat_16(x)`,
+`b = repeat_32(y)`, `c = repeat_16(a)`, then publish
+`sum_lanes(b + c)`. Its canonical calls are `0,1,2`; call 2's input
+addresses are call 0's output addresses. Those four addresses receive two
+boundary uses each, one as call 0's output and one as call 2's input, in
+addition to ordinary circuit uses. All three chip outputs affect the claim.
+
+Each of the `8N` endpoint occurrences adds **one** Gate use at its circuit
+address. Repeated addresses are legal and add repeated uses; a deduplicated
+set is wrong. Check one genuine producer per address, no reserved/public
+endpoint address, `address < p`, and canonical checked multiplicity `< p`,
+where `p = 2^31 - 1`. The fixed preprocessed columns and their Merkle root
+must be recomputed from these counts. Source and key hashes inside an
+attacker-selected package are not a trust root; a released verifier embeds
+or receives authenticated source/key identities from its caller.
+
+## AIR and lookup closure
+
+Keep one bridge component per call for v4. One chip component has nine base
+columns, eight interaction columns, six constraints, and `R_i` rows. One
+bridge has eight base columns, 20 interaction columns, thirteen constraints,
+and 16 rows. Its eight cyclic row-equality constraints make its eight
+endpoint columns constant. The remaining five constraints realize four
+pairs of Gate fractions and one pair of tagged chip endpoint fractions.
+The chip lookup tuple is
+
+```text
+Chip(relation_id, call_id, row_index, lane0, lane1, lane2, lane3)
+```
+
+with `call_id` a source-derived **component parameter**, never a trace
+column or proof choice. The Gate tuple retains its six fields. One challenge
+pair `(z, alpha)` is sampled after all base commitments. Gate and chip
+relations use distinct fixed relation IDs. For call `i`, let `G(a,v)` and
+`C(i,j,s)` denote their compressed tuples, and let `b_i^0,b_i^R` be its
+eight bridge endpoints. Its extra rational terms are
+
+```text
+Gate circuit:  -Σ_i Σ_lanes [1/G(a_in(i,l), v_in(i,l))
+                            + 1/G(a_out(i,l), v_out(i,l))]
+Bridge i:      +Σ_16 rows (1/16) [Σ_lanes 1/G(a_in(i,l), b_i^0[l])
+                                         + 1/G(a_out(i,l), b_i^R[l])
+                                  - 1/C(i,0,b_i^0) + 1/C(i,R_i,b_i^R)]
+Chip i:        +Σ_{j=0}^{R_i-1} [1/C(i,j,s_j) - 1/C(i,j+1,s_{j+1})]
+```
+
+The actual verifier checks `public_Gate_terms + Σ_{k=0}^{2N} claimed_sum[k]
+= 0`, then verifies all AIRs and the shared PCS proof. All sums use one
+ordered claim vector; no component may be omitted or appended. The ideal
+algebraic argument assumes exact tagged event-multiset equality, unique
+Gate producers, and the AIR transition equations. The native argument must
+also bound false equality under random compression, zero denominators,
+weighted multiplicities, and field wrap. It must account for all `N` calls,
+all relations, and the selected FRI/PCS parameters. Do not infer a concrete
+soundness level merely from the ideal Lean theorem.
+
+**Why an array generalization is unsafe:** the current tagged chip and
+bridge reject `call_id >= 2`, and the pair verifier constructs exactly five
+component handles. More subtly, the chip AIR enforces each local transition
+but does not set `row_index` equal to the physical trace row. The conclusion
+that a length-`R_i` chip is the exact path `0 -> R_i` relies on exact
+tagged multiset balance, `R_i < p`, and the fact that this path already
+uses all `R_i` rows; it cannot simply be asserted from the transition
+equations. The proof must be generalized to `N` with unique canonical tags
+and no extra cycles or field-wrapped paths. A global claimed-sum equality is
+only a probabilistic proxy for that exact balance. Repeated Gate addresses
+make canonical multiplicity accounting essential.
+
+## Canonical typed manifest and native schedule
+
+Use fresh schema, key, envelope magic, manifest-hash domain, and transcript
+tag for v4. Do not reuse `S31NAT8P` or the pair's V3 digest. Serialize a
+typed `ComponentSource`, for example `bundled_air {bundle_sha256, index,
+part_sha256}` or `native_air {kind, version, code_sha256}`. The pair format's
+numeric `source_index = 0` is a native sentinel, so treating it as a general
+zero-based AIR index would be ambiguous. Reject unknown kinds and versions;
+the JSON view is not the hash input.
+
+The source-derived component order is **circuit, chips in call order,
+bridges in call order**. Every entry includes source kind, proof index,
+claimed-sum index, relation dependencies, row log, exact base and
+interaction spans, evaluation-degree bound, constraint count and random
+coefficient offset, selected preprocessed indices, and program binding.
+The manifest also includes the ordered Call records, source and canonical IR
+digests, fixed-column value digests and root, PCS/FRI profile, and public ABI
+shape. Length-delimit every field in a canonical binary encoding. Exclude
+the circuit identity hash from the precommitment to avoid a hash cycle;
+derive that identity from the manifest precommitment, fixed root, and PCS
+profile. Mix the versioned manifest digest before the first base commitment.
+The verifier reconstructs and byte-compares the key from sealed source and
+pinned AIR; no proof-supplied component description can drive the schedule.
+
+For circuit row log `L`, rounds `R_i`, and circuit constraint count `C`, the
+selected roster has `1+2N` components and ordered claims. Tree 0 has eight
+fixed columns. Trees 1 and 2 contain, respectively,
+
+```text
+base width          = 12 + 17N
+interaction width   =  8 + 28N
+constraint count    =  C + 19N
+chip i base span    = [12+9i, 12+9(i+1))
+bridge i base span  = [12+9N+8i, 12+9N+8(i+1))
+chip i inter span   = [8+8i, 8+8(i+1))
+bridge i inter span = [8+8N+20i, 8+8N+20(i+1))
+chip i coeff offset = C+6i
+bridge i offset     = C+6N+13i
+```
+
+These formulas are review invariants, **not** a second source of verifier
+truth. Build the actual component handles from the source Plan, then derive
+tree logs, widths, masks, composition split, composition degree, and offsets
+through the same component API used for proof verification. Assert the
+generated manifest matches them. If this API produces a different geometry,
+reject before decoding. Claimed-sum indices are exactly `0..2N`: circuit,
+then chips, then bridges. An empty, duplicate, or reordered slot is invalid.
+The source-derived roster also determines lookup dependency closure: Gate
+production/consumption and every tagged chip endpoint relation must balance.
+Reject a component whose relation dependency is absent, even if its
+claim happens to be zero.
+
+## Resource and proof-byte admission
+
+Initial fixed profile caps: `N <= 8`, `L <= 16`, `ΣR_i <= 2^18`, source bytes
+`<= 1 MiB`, and canonical endpoint multiplicities `< p`. Compute every
+length, offset, and allocation with checked arithmetic. Before proving,
+bound the field-cell count
+
+```text
+B = 12*2^L + 9*ΣR_i + 8*16*N
+I =  8*2^L + 8*ΣR_i + 20*16*N
+B + I <= 6,000,000
+```
+
+This bounds the principal committed trace storage; it is **not** a peak-RSS
+claim. The exact PCS, FFT, quotient, and proof-memory limits require native
+measurements. Use a profile-fixed proof wire cap of 32 MiB and decoder
+allocation cap of 128 MiB initially; tighten only after measuring valid
+maximal cases. Before postcard allocation, reject wrong magic, wrong exact
+key, noncanonical M31 words or varints, extra/trailing bytes, and use the
+source-derived four-tree column counts, max log size, and mask sample widths
+with the canonical postcard preflight. Do not accept proof-provided logs,
+query widths, component counts, or FRI parameters. A parser may do bounded
+work on untrusted bytes but must not allocate according to them before these
+checks. Record proof size, prove/verify time, and peak RSS at N=1,2,4,8
+against the same-source generic-circuit path before choosing a default.
+The envelope has exactly one nonce and `1+2N` canonical QM31 claims of
+16 bytes each; its header length is computed from the source Plan, never
+from a proof count field.
+
+## Implementation and release sequence
+
+1. Finish fixed-pair native honest and byte-mutation acceptance first.
+   Freeze its protocol and keep it readable only by its own sealed verifier.
+2. Add `PlanV4` extraction and value/topology correspondence checks in S31.
+   Test dependent calls, shared addresses, wrong liveness, and all source
+   admission bounds without native proving.
+3. Generalize the tagged AIR call-ID validation and direct-circuit
+   multiplicity builder behind a new v4 API. Keep pair constructors intact.
+   Extend the exact path and tagged lookup arguments in Lean before assuming
+   `N` is harmless.
+4. Build the typed source-kind manifest and dynamic roster constructor.
+   Make the prover, verifier, PCS preflight, claimed-sum envelope, and
+   transcript consume the same selected roster. Compare native geometry
+   with the generated manifest before accepting bytes.
+5. Release only after native tests accept honest `N=1,2,4,8` proofs,
+   including dependent calls and repeated endpoints, and reject the matrix
+   below. Obtain independent source-level soundness review and a quantitative
+   lookup/PCS error budget for the bounded profile.
+
+| Mutation class | Required rejection evidence |
+| --- | --- |
+| Source/Plan | Re-sealed changed source, constants, rounds, call order, missing/duplicate ID, wrong endpoint or public-output address, dead call, and value/topology Plan mismatch. |
+| Lookup | Cross-swapped endpoints, repeated address with one lost Gate use, changed multiplicity including `p` wrap, row-varying bridge endpoint, chip trace with missing/duplicate index or disjoint cycle. |
+| Roster/transcript | Omitted/extra/reordered component, source-kind swap, wrong program binding, span/log/constraint/degree/claim index, altered claimed sum, old-profile replay. |
+| Wire/PCS | Changed public claim, noncanonical field word or varint, truncated/trailing bytes, inflated vector length or mask width, wrong FRI/PCS parameters, proofs above caps. |
+
+At least one case in each class must bypass package self-hashes by re-sealing
+an adversarial key or mutating the native proof bytes. A failed semantic
+mutation should be rejected by the **native** verifier, not only by a Python
+package comparison. This v4 slice is a scalable authenticated boundary for
+one chip kind; arbitrary chip families, a general scheduler, and endpoint
+confidentiality remain separately versioned work.

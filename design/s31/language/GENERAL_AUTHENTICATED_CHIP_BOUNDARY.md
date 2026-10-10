@@ -3,9 +3,12 @@
 Status: **released one-call profile; staged fixed two-call prototype; general
 boundary remains a design**. The fixed two-call profile has a tagged chip AIR,
 bridge AIR, source-derived five-component manifest, in-memory proof path, and
-experimental sealed byte verifier. It is unexported while native proof tests,
-adversarial controls, and an embedded source/key trust root are completed.
+experimental sealed byte verifier. It is unexported while the remaining native
+controls, formal obligations, and an embedded source/key trust root are completed.
 It does not admit arbitrary numbers of calls.
+
+The bounded variable-call successor to the staged two-call profile is specified
+in [Bounded multi-call authenticated boundary](BOUNDED_MULTI_CALL_BOUNDARY.md).
 
 ## Contract
 
