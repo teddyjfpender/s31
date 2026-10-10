@@ -1,4 +1,5 @@
 import S31.Gadgets.Functional.SSAAirRows
+import S31.Gadgets.Functional.SSANamedProgram
 
 /-!
 An exact, address-bearing refinement boundary for the bounded four-lane
@@ -19,6 +20,7 @@ namespace S31.Functional.SSAConcreteGateSchedule
 
 open S31.Functional.SSACertificate
 open S31.Functional.SSAAirRows
+open S31.Functional.SSANamedProgram
 open S31.Gadgets.Air.Qm31Ops
 
 structure NativeRow where
@@ -108,6 +110,20 @@ theorem NativeRows.fresh_addresses {addresses finalAddresses : List Nat}
       have hotherAddress := heq ▸ haddress
       exact hfresh (hother ▸ hotherAddress)
 
+/-- The exact native row schedule commutes with the executable normalized
+relation evaluator. The `NativeRows` premise supplies the authenticated
+address/value join and the local AIR equations for every instruction. -/
+theorem native_rows_normalized_output (certificate : Certificate)
+    (input claimed : Lanes) (rows : List NativeRow)
+    (finalAddresses : List Nat) (finalValues : List Lanes)
+    (hnative : NativeRows [0] [input] certificate.instructions rows
+      finalAddresses finalValues)
+    (hclaim : finalValues[certificate.output]? = some claimed) :
+    executeNormalized certificate input = some claimed := by
+  have hrun := accepted_trace_executes hnative.to_air_trace
+  rw [execute_normalized_eq_execute]
+  simpa [execute, hrun] using hclaim
+
 /-- A checked source and exact native schedule cannot accept an incorrect
 four-lane public result. This theorem covers the semantic source rows only;
 packing, padding, lookup and proof verification remain explicit premises at
@@ -121,8 +137,28 @@ theorem native_rows_source_sound (source : Source 1)
       finalAddresses finalValues)
     (hclaim : finalValues[certificate.output]? = some claimed) :
     claimed = source.value (fun _ => input) := by
-  have hrun := accepted_trace_executes hnative.to_air_trace
-  have hsource := checked_certificate_sound source certificate input hcheck
-  simpa [execute, hrun, hclaim] using hsource
+  have hnativeOutput := native_rows_normalized_output certificate input
+    claimed rows finalAddresses finalValues hnative hclaim
+  have hsource := checked_certificate_normalized_sound source certificate
+    input hcheck
+  simpa [hnativeOutput] using hsource
+
+/-- The same refinement for an independently checked canonical named S31
+program. `checkNamed` includes normalized `Program.validate` and equality of
+the full named node/output structure to the checked SSA serialization. -/
+theorem native_rows_named_program_sound (source : Source 1)
+    (certificate : Certificate) (program : S31.Program)
+    (input claimed : Lanes) (rows : List NativeRow)
+    (finalAddresses : List Nat) (finalValues : List Lanes)
+    (hNamed : checkNamed source certificate program = some ())
+    (hnative : NativeRows [0] [input] certificate.instructions rows
+      finalAddresses finalValues)
+    (hclaim : finalValues[certificate.output]? = some claimed) :
+    claimed = source.value (fun _ => input) := by
+  have hnativeOutput := native_rows_normalized_output certificate input
+    claimed rows finalAddresses finalValues hnative hclaim
+  have hsource := (checked_named_trace_sound source certificate program input
+    hNamed).2.2
+  simpa [hnativeOutput] using hsource
 
 end S31.Functional.SSAConcreteGateSchedule

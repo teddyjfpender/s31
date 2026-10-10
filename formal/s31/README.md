@@ -156,9 +156,16 @@ semantics; an honest row trace exists for every accepted certificate.
 row roster. It consumes exactly one native row per checked SSA instruction,
 requires the selected opcode and source-derived operand addresses, checks a
 fresh output address, and states the lookup-authenticated value premise.
-Under that premise, the native roster's accepted public result equals source
-denotation. This does not itself show that Python or Zig emit that roster or
-that the proof system establishes the address/value premise.
+Under that premise, the complete native roster commutes with the executable
+normalized relation evaluator, and its accepted public result equals source
+denotation, including when the named normalized program passes `checkNamed`
+and `Program.validate`. This does not show that Python or Zig emit that
+roster, or that the proof system establishes the address/value premise.
+`Functional/SSAConcreteGateLookup` discharges the two operand-value joins
+for one row under **exact** Gate multiset balance, unique producer values,
+and source-owned producer membership. It does not infer exact balance from
+the random-challenge LogUp proof or establish those premises for every native
+row.
 `Functional/TextSquare4` is a narrower executable bridge: the formal gate
 runs the Python text compiler on the actual `functional_square4.s31` file and
 commits its normalized two-node program as Lean source. `TextSquare4Proof`
