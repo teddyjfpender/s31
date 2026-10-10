@@ -188,12 +188,24 @@ pub const PairGenerated = struct {
 /// and leaves the sealed V3 byte format unchanged.
 pub fn validatePairSourceRoster(value: PairManifest) !void {
     if (!std.mem.eql(u8, value.schema, "s31-component-manifest-direct-pair-v1") or
-        value.components.len != 5 or value.claimed_sums != 5)
+        value.components.len != 5 or value.claimed_sums != 5 or
+        value.preprocessed_columns.len != 8)
         return error.InvalidPairComponentManifest;
+    var plan: pair.Plan = .{ .calls = undefined };
     for (value.pair_calls, 0..) |call, id| {
-        if (call.call_id != @as(u32, @intCast(id)) or call.relation_id != pair.relation_id)
+        if (call.call_id != @as(u32, @intCast(id)) or call.relation_id != pair.relation_id or
+            call.constant >= core.fields.m31.Modulus)
             return error.InvalidPairComponentManifest;
+        plan.calls[id] = .{
+            .call_id = call.call_id,
+            .rounds = call.rounds,
+            .constant = M31.fromCanonical(call.constant),
+            .input = call.input,
+            .output = call.output,
+        };
     }
+    const specs = pair.expectedSpecs(plan, value.components[0].trace_log_size, value.components[0].n_constraints) catch
+        return error.InvalidPairComponentManifest;
     const expected = [_]ComponentSource{
         .{ .bundled_air = 1 },
         .{ .native_air = .tagged_pair_chip },
@@ -203,10 +215,44 @@ pub fn validatePairSourceRoster(value: PairManifest) !void {
     };
     for (value.components, expected, 0..) |entry, source, index| {
         const actual = componentSource(value.schema, entry) catch return error.InvalidPairComponentManifest;
+        const spec = specs[index];
+        const main = TraceSpan{ .tree = 1, .start = @intCast(spec.main_offset), .end = @intCast(spec.main_offset + spec.main_columns) };
+        const interaction = TraceSpan{ .tree = 2, .start = @intCast(spec.interaction_offset), .end = @intCast(spec.interaction_offset + spec.interaction_columns) };
+        const expected_relations: []const u32 = if (index == 0) &.{circuit.common.component_list.GATE_RELATION_ID} else if (index <= 2) &.{pair.relation_id} else &.{ circuit.common.component_list.GATE_RELATION_ID, pair.relation_id };
+        const relations = entry.lookup_relation_ids orelse return error.InvalidPairComponentManifest;
         if (!std.meta.eql(actual, source) or
             entry.proof_index != @as(u32, @intCast(index)) or
-            entry.claimed_sum_index == null or entry.claimed_sum_index.? != @as(u32, @intCast(index)))
+            entry.claimed_sum_index == null or entry.claimed_sum_index.? != @as(u32, @intCast(index)) or
+            entry.trace_log_size != spec.log_size or
+            entry.base_trace_columns != spec.main_columns or
+            entry.interaction_trace_columns != spec.interaction_columns or
+            entry.n_constraints != spec.constraint_count or
+            entry.random_coefficient_offset != spec.constraint_offset or
+            entry.main_trace_span == null or !std.meta.eql(entry.main_trace_span.?, main) or
+            entry.interaction_trace_span == null or !std.meta.eql(entry.interaction_trace_span.?, interaction) or
+            !std.mem.eql(u32, relations, expected_relations))
             return error.InvalidPairComponentManifest;
+        if (index == 0) {
+            if (entry.preprocessed_indices.len != 8 or
+                entry.max_constraint_log_degree_bound != entry.evaluation_log_size)
+                return error.InvalidPairComponentManifest;
+            var found_main = false;
+            var found_interaction = false;
+            for (entry.trace_spans) |span| {
+                found_main = found_main or std.meta.eql(span, main);
+                found_interaction = found_interaction or std.meta.eql(span, interaction);
+            }
+            if (!found_main or !found_interaction) return error.InvalidPairComponentManifest;
+        } else {
+            const degree: u32 = spec.log_size + @as(u32, if (index <= 2) 1 else 2);
+            if (entry.evaluation_log_size != degree or
+                entry.max_constraint_log_degree_bound != degree or
+                entry.preprocessed_indices.len != 0 or
+                entry.trace_spans.len != 2 or
+                !std.meta.eql(entry.trace_spans[0], main) or
+                !std.meta.eql(entry.trace_spans[1], interaction))
+                return error.InvalidPairComponentManifest;
+        }
     }
 }
 

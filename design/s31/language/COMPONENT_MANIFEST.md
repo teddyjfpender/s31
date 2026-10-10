@@ -142,6 +142,14 @@ that typed reference. The staged two-call profile also uses the legacy
 sentinel for its native tagged chip and bridge; it is not a released general
 manifest scheduler.
 
+For that fixed two-call profile, the typed roster check also reconstructs
+native component geometry from call rounds and circuit shape. It checks each
+main and interaction span, row log, degree bound, constraint count and
+coefficient offset, plus the exact Gate and tagged-chip lookup dependencies.
+A changed span or missing bridge relation is rejected before the sealed key
+is compared with the source-derived manifest. Variable-call scheduling
+requires a new versioned source-kind manifest.
+
 ## Remaining work
 
 - Extend to sparse, wide, full circuit, SHA and recursive profiles. These need

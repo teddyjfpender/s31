@@ -226,6 +226,21 @@ test "two-call source derives canonical plan and five-role V3 manifest" {
     try std.testing.expectError(error.InvalidPairComponentManifest, manifest.validatePairSourceRoster(changed));
     try std.testing.expect(!(try manifest.matchesPair(a, changed, binding.generated.value)));
 
+    // Geometry and lookup dependencies are checked as a typed roster, before
+    // an attacker-controlled serialized key is compared with the source.
+    const wrong_geometry = try a.dupe(manifest.Component, binding.generated.value.components);
+    defer a.free(wrong_geometry);
+    changed.components = wrong_geometry;
+    const original_chip = wrong_geometry[1];
+    wrong_geometry[1].main_trace_span = .{ .tree = 1, .start = 0, .end = 9 };
+    try std.testing.expectError(error.InvalidPairComponentManifest, manifest.validatePairSourceRoster(changed));
+    wrong_geometry[1] = original_chip;
+    wrong_geometry[1].evaluation_log_size += 1;
+    try std.testing.expectError(error.InvalidPairComponentManifest, manifest.validatePairSourceRoster(changed));
+    wrong_geometry[1] = original_chip;
+    wrong_geometry[3].lookup_relation_ids = &.{pair.relation_id};
+    try std.testing.expectError(error.InvalidPairComponentManifest, manifest.validatePairSourceRoster(changed));
+
     var assignment = try relation.parseAssignment(a, @embedFile("../../examples/boundary/private_pair16_32.valid.json"));
     defer assignment.deinit();
     var witness = try pair_source.compileWitness(a, source, assignment.value, &binding);
