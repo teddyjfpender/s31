@@ -163,6 +163,13 @@ and permits repeated scratch producers above that bound. It requires every
 produced event below the native declared-variable bound to appear in the
 checked producer list; proving this coverage for emitted trace events is still
 part of source-to-model correspondence.
+`TextSquare4ChallengeJoin` composes the selected circuit path with the
+modeled checked Gate use/yield counters and LogUp reciprocal closure. Outside
+the explicit exceptional challenge sets, a zero closure forces the public
+fourth-power claim; a forged claim instead has a nonzero closure. This is a
+conditional finite-list algebra result. It does not prove that native
+commitments, transcript challenges, or verifier openings satisfy its
+premises.
 
 `Functional/Arrays` extends the typed source core with `[m31; N]` values,
 pointwise addition and multiplication, static splats, indexed reads and

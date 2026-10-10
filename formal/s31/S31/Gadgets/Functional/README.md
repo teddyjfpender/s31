@@ -23,6 +23,7 @@ Lean module names follow the directory, for example
 | `TextSquare4Native.lean` and `TextSquare4NativeProof.lean` | Native Zig direct-compiler gate IDs and adjacent node spans, regenerated from the source program and interpreted in the local AIR model. |
 | `TextSquare4NativeBoundary.lean` | Exact native input binding, pack, arithmetic, unpack and output gate rows imply the public four-lane fourth-power claim. |
 | `TextSquare4GateJoin.lean` | Conditional exact Gate balance and unique producers construct the shared wire map used by the native public-boundary theorem. |
+| `TextSquare4ChallengeJoin.lean` | Checked Gate counters and good LogUp challenges force the exported circuit's public claim; a forged claim has nonzero reciprocal closure. |
 
 The dependency order starts with `Graph`, then `Outputs`, then `Arrays`.
 Arithmetic and array-node bridges depend on `Arrays`; conditionals depend on
@@ -99,6 +100,14 @@ coverage of these low-address events imply the needed uniqueness, even if
 unrelated permutation scratch addresses have several producer events. The
 coverage of actual native trace events by the checked list remains an explicit
 source-to-model premise.
+`TextSquare4ChallengeJoin.public_claim_of_checked_logup_closure` adds the
+modeled compressed use/yield counter walks and the fixed-list LogUp reduction.
+When the address/count checks pass, the challenges avoid the explicit bad
+sets, and the reciprocal sum closes, the produced public result is `x⁴`.
+`forged_claim_rejected_at_good_challenges` states the contrapositive for an
+incorrect claim. This is an algebraic challenge theorem. It still requires
+the native committed trace and verifier to realize the modeled events and
+constraints, plus Fiat-Shamir challenge sampling and PCS/STARK soundness.
 The source binding regenerates the native artifact on every formal audit;
 there is still no machine-checked proof of the whole Zig compiler or STARK
 protocol.

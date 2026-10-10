@@ -13,6 +13,7 @@ import S31.Gadgets.Functional.TextSquare4Statement
 import S31.Gadgets.Functional.TextSquare4NativeProof
 import S31.Gadgets.Functional.TextSquare4NativeBoundary
 import S31.Gadgets.Functional.TextSquare4GateJoin
+import S31.Gadgets.Functional.TextSquare4ChallengeJoin
 import S31.Gadgets.Air.QuadField
 import S31.Gadgets.Air.SimdChunks
 import S31.Gadgets.Air.FunctionalBridge
