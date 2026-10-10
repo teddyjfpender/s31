@@ -65,6 +65,16 @@ four-bit reversal formula exhaustively in Lean, and
 formula. Equating the Zig `@bitReverse(usize)` shift to this formula remains
 an explicit implementation correspondence premise.
 
+`source_bridge_claim_eq_endpoint_events` now combines the native-shaped
+bridge premises: eight raw word columns, their sixteen `current−next`
+residuals, the five interaction residuals with a source-shaped `−1` mask,
+and nonzero endpoint denominators. It derives constant denominators from
+the `+1` mask, then proves the bridge claim equals eight positive Gate
+endpoint reciprocals, minus the tagged chip start, plus the tagged chip
+finish. Addresses, call ID, and round count are explicit fixed parameters.
+The theorem still assumes the accepted-row residuals rather than deriving
+them from the quotient check or PCS/FRI.
+
 The **accepted proof-to-logical-row premise remains open**: source mask geometry
 must correspond to a permutation of logical predecessor rows, and an
 accepted native quotient/PCS/FRI proof must imply that the modeled residuals

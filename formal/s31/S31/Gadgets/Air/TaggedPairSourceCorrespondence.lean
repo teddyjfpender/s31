@@ -380,4 +380,154 @@ theorem bridgeWords_constant_bitReverse4
   bridgeWords_constant_of_source_residuals
     bitReverse4 bitReverse4_involutive rows hzero
 
+def bridgeEvenLane (slot : Fin 4) : Fin 8 :=
+  ⟨2 * slot.val, by omega⟩
+
+def bridgeOddLane (slot : Fin 4) : Fin 8 :=
+  ⟨2 * slot.val + 1, by omega⟩
+
+def bridgeInputLane (slot : Fin 4) : Fin 8 :=
+  ⟨slot.val, by omega⟩
+
+def bridgeOutputLane (slot : Fin 4) : Fin 8 :=
+  ⟨4 + slot.val, by omega⟩
+
+/-- Native source's eight Gate endpoint words and two tagged chip endpoints,
+formed from one row of eight committed bridge main columns. -/
+def sourceBridgeGateTuple
+    (addresses : Fin 8 → F) (words : Fin 8 → Fin 16 → F)
+    (lane : Fin 8) (row : Fin 16) : JointTuple :=
+  gateTuple7 (addresses lane) (words lane row)
+
+def sourceBridgeStartTuple
+    (call : F) (words : Fin 8 → Fin 16 → F)
+    (row : Fin 16) : JointTuple :=
+  chipTuple7 call 0 (fun slot => words (bridgeInputLane slot) row)
+
+def sourceBridgeFinishTuple
+    (call rounds : F) (words : Fin 8 → Fin 16 → F)
+    (row : Fin 16) : JointTuple :=
+  chipTuple7 call rounds (fun slot => words (bridgeOutputLane slot) row)
+
+/-- Native-shaped bridge denominator fields, before constancy is derived. -/
+def sourceBridgeD0 (addresses : Fin 8 → F)
+    (words : Fin 8 → Fin 16 → F)
+    (alpha z : GateSecure) (slot : Fin 4) (row : Fin 16) : GateSecure :=
+  combine7 (sourceBridgeGateTuple addresses words (bridgeEvenLane slot) row)
+    alpha z
+
+def sourceBridgeD1 (addresses : Fin 8 → F)
+    (words : Fin 8 → Fin 16 → F)
+    (alpha z : GateSecure) (slot : Fin 4) (row : Fin 16) : GateSecure :=
+  combine7 (sourceBridgeGateTuple addresses words (bridgeOddLane slot) row)
+    alpha z
+
+def sourceBridgeFirst (call : F) (words : Fin 8 → Fin 16 → F)
+    (alpha z : GateSecure) (row : Fin 16) : GateSecure :=
+  combine7 (sourceBridgeStartTuple call words row) alpha z
+
+def sourceBridgeLast (call rounds : F)
+    (words : Fin 8 → Fin 16 → F)
+    (alpha z : GateSecure) (row : Fin 16) : GateSecure :=
+  combine7 (sourceBridgeFinishTuple call rounds words row) alpha z
+
+/-- All eight native main-column residuals and five native interaction
+residuals imply the claimed bridge sum is the exact endpoint event sum.
+The source fixed `+1` and `-1` masks are used directly. The accepted-row
+premises and nonzero denominators remain explicit; this does not infer them
+from PCS or a native verifier result. -/
+theorem source_bridge_claim_eq_endpoint_events
+    (addresses : Fin 8 → F) (call rounds : F)
+    (words : Fin 8 → Fin 16 → F)
+    (current : Fin 5 → Fin 16 → GateSecure)
+    (claim alpha z : GateSecure)
+    (h16 : (16 : GateSecure) ≠ 0)
+    (hwords : ∀ lane row,
+      words lane row - words lane
+        (sourceNextIndex 8 (by decide) bitReverse4 row) = 0)
+    (hinteraction : TaggedPairAirClosure.BridgeAccepted
+      (nativePrevMask 8 (by decide)
+        (bitReverseEquivOfInvolution bitReverse4 bitReverse4_involutive))
+      (sourceBridgeD0 addresses words alpha z)
+      (sourceBridgeD1 addresses words alpha z)
+      (sourceBridgeFirst call words alpha z)
+      (sourceBridgeLast call rounds words alpha z)
+      current claim)
+    (hnonzero0 : ∀ slot,
+      sourceBridgeD0 addresses words alpha z slot
+        ((bridgeCosetOrder bitReverse4 bitReverse4_involutive).symm 0) ≠ 0)
+    (hnonzero1 : ∀ slot,
+      sourceBridgeD1 addresses words alpha z slot
+        ((bridgeCosetOrder bitReverse4 bitReverse4_involutive).symm 0) ≠ 0)
+    (hnonzeroFirst :
+      sourceBridgeFirst call words alpha z
+        ((bridgeCosetOrder bitReverse4 bitReverse4_involutive).symm 0) ≠ 0)
+    (hnonzeroLast :
+      sourceBridgeLast call rounds words alpha z
+        ((bridgeCosetOrder bitReverse4 bitReverse4_involutive).symm 0) ≠ 0) :
+    let anchor := (bridgeCosetOrder bitReverse4
+      bitReverse4_involutive).symm (0 : Fin 16)
+    claim = productionReciprocalSum7
+      [sourceBridgeGateTuple addresses words (bridgeEvenLane 0) anchor,
+       sourceBridgeGateTuple addresses words (bridgeOddLane 0) anchor,
+       sourceBridgeGateTuple addresses words (bridgeEvenLane 1) anchor,
+       sourceBridgeGateTuple addresses words (bridgeOddLane 1) anchor,
+       sourceBridgeGateTuple addresses words (bridgeEvenLane 2) anchor,
+       sourceBridgeGateTuple addresses words (bridgeOddLane 2) anchor,
+       sourceBridgeGateTuple addresses words (bridgeEvenLane 3) anchor,
+       sourceBridgeGateTuple addresses words (bridgeOddLane 3) anchor]
+      alpha z -
+      productionReciprocalSum7 [sourceBridgeStartTuple call words anchor]
+        alpha z +
+      productionReciprocalSum7 [sourceBridgeFinishTuple call rounds words anchor]
+        alpha z := by
+  let anchor := (bridgeCosetOrder bitReverse4
+    bitReverse4_involutive).symm (0 : Fin 16)
+  have hconst := bridgeWords_constant_bitReverse4 words hwords
+  have hd0 : ∀ slot row,
+      sourceBridgeD0 addresses words alpha z slot row =
+        sourceBridgeD0 addresses words alpha z slot anchor := by
+    intro slot row
+    simp [sourceBridgeD0, sourceBridgeGateTuple, hconst]
+  have hd1 : ∀ slot row,
+      sourceBridgeD1 addresses words alpha z slot row =
+        sourceBridgeD1 addresses words alpha z slot anchor := by
+    intro slot row
+    simp [sourceBridgeD1, sourceBridgeGateTuple, hconst]
+  have hfirst : ∀ row,
+      sourceBridgeFirst call words alpha z row =
+        sourceBridgeFirst call words alpha z anchor := by
+    intro row
+    simp [sourceBridgeFirst, sourceBridgeStartTuple, hconst]
+  have hlast : ∀ row,
+      sourceBridgeLast call rounds words alpha z row =
+        sourceBridgeLast call rounds words alpha z anchor := by
+    intro row
+    simp [sourceBridgeLast, sourceBridgeFinishTuple, hconst]
+  have haccepted : TaggedPairAirClosure.BridgeAccepted
+      (nativePrevMask 8 (by decide)
+        (bitReverseEquivOfInvolution bitReverse4 bitReverse4_involutive))
+      (fun slot _ => sourceBridgeD0 addresses words alpha z slot anchor)
+      (fun slot _ => sourceBridgeD1 addresses words alpha z slot anchor)
+      (fun _ => sourceBridgeFirst call words alpha z anchor)
+      (fun _ => sourceBridgeLast call rounds words alpha z anchor)
+      current claim := by
+    intro row
+    simpa only [hd0, hd1, hfirst, hlast] using hinteraction row
+  have hsum := TaggedPairAirClosure.bridge_air_claim_eq_endpoint_reciprocals
+    (nativePrevMask 8 (by decide)
+      (bitReverseEquivOfInvolution bitReverse4 bitReverse4_involutive))
+    (fun slot => sourceBridgeD0 addresses words alpha z slot anchor)
+    (fun slot => sourceBridgeD1 addresses words alpha z slot anchor)
+    (sourceBridgeFirst call words alpha z anchor)
+    (sourceBridgeLast call rounds words alpha z anchor)
+    current claim h16 haccepted hnonzero0 hnonzero1
+    hnonzeroFirst hnonzeroLast
+  rw [hsum]
+  simp only [productionReciprocalSum7, List.map_cons, List.map_nil,
+    List.sum_cons, List.sum_nil, add_zero]
+  simp only [sourceBridgeD0, sourceBridgeD1, sourceBridgeFirst,
+    sourceBridgeLast, div_eq_mul_inv, one_mul]
+  ring
+
 end S31.Gadgets.Air.TaggedPairSourceCorrespondence

@@ -691,6 +691,10 @@ endpoint columns to be constant. The exact Zig bit-reversal implementation
 and accepted-proof to logical-row residual correspondence remain explicit
 source-level obligations. The bridge's fixed four-bit reversal formula is
 also defined and proved involutive by exhaustive finite checking in Lean.
+`source_bridge_claim_eq_endpoint_events` then starts from eight raw bridge
+word columns and all thirteen source-shaped zero residuals, and derives the
+eight Gate endpoint terms and tagged chip start/finish terms of the claimed
+sum. It no longer assumes the denominator columns are constant.
 `PrivateBridgeChallenge.lean` specializes the Gate exceptional-challenge
 bound to one addressed endpoint whose sixteen bridge rows vary. It also
 proves a joint eight-address Gate bound: if repeated addresses have coherent
