@@ -1,4 +1,5 @@
 import S31.Gadgets.Air.TaggedPairSourceCorrespondence
+import S31.Gadgets.Air.RawChipIndexCoverage
 
 /-!
 Source-shaped composition for the staged two-call tagged chip boundary.
@@ -13,6 +14,7 @@ open S31.Gadgets.Air.GateChallenge
 open S31.Gadgets.Air.TaggedPairChallenge
 open S31.Gadgets.Air.TaggedPairAirClosure
 open S31.Gadgets.Air.TaggedPairSourceCorrespondence
+open S31.Gadgets.Air.RawChipIndexCoverage
 
 /-- The six row residuals of one source chip: four secure arithmetic
 coordinates and two LogUp interaction coordinates. `call` is a fixed
@@ -265,5 +267,44 @@ theorem source_pair_claims_imply_exact_events
     alpha z circuitClaim chip₀.claim chip₁.claim bridge₀.claim
     bridge₁.claim hcircuit chip₀.claim_eq_events chip₁.claim_eq_events
     bridge₀.claim_eq_events bridge₁.claim_eq_events hfive hgood
+
+/-- Decode one chip's committed M31 step and four-lane state into the
+arbitrary-row model. `ZMod.val` is the canonical M31 index in `0..p-1`. -/
+def ChipRows.rawRows {m : Nat} {hm : 0 < m}
+    {alpha z : GateSecure} (chip : ChipRows m hm alpha z) :
+    Fin (2 * m) → RawRow (Fin 4 → F) :=
+  fun row =>
+    { index := (chip.step row).val
+      input := chip.input row
+      output := chip.output row }
+
+def BridgeRows.initialState {alpha z : GateSecure}
+    (bridge : BridgeRows alpha z) : Fin 4 → F :=
+  fun lane => bridge.words (bridgeInputLane lane) sourceBridgeAnchor
+
+def BridgeRows.finalState {alpha z : GateSecure}
+    (bridge : BridgeRows alpha z) : Fin 4 → F :=
+  fun lane => bridge.words (bridgeOutputLane lane) sourceBridgeAnchor
+
+/-- Once exact per-call value-bearing event balance has been extracted
+from the seven-word joint multiset, the source chip's four accepted
+arithmetic residuals and `R < p` prove its entire endpoint path. The
+per-call extraction is deliberately an explicit premise. -/
+theorem chip_complete_path_of_exact_balance
+    {m : Nat} {hm : 0 < m} {alpha z : GateSecure}
+    (chip : ChipRows m hm alpha z) (bridge : BridgeRows alpha z)
+    (hR : 2 * m < 2147483647)
+    (hbalance :
+      (useEvents chip.rawRows bridge.finalState).Perm
+        (yieldEvents 2147483647 chip.rawRows bridge.initialState)) :
+    bridge.finalState = iterateStep
+      (fun state lane => state lane ^ 2 + chip.constant)
+      (2 * m) bridge.initialState := by
+  apply exact_events_complete_path chip.rawRows bridge.initialState
+    bridge.finalState (fun state lane => state lane ^ 2 + chip.constant)
+    (by omega) hR hbalance
+  intro row
+  funext lane
+  exact chip.arithmetic_sound row lane
 
 end S31.Gadgets.Air.TaggedPairSourceComposition

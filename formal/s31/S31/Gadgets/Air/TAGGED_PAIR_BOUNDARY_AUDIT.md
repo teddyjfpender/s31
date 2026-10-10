@@ -111,6 +111,12 @@ yield balances a bridge chip start with no chip row. The source compiler's
 Gate event classification, canonical call IDs, bridge/chip call agreement,
 and round-count agreement remain proof obligations before exact joint event
 balance can be projected into two complete authenticated paths.
+`chip_complete_path_of_exact_balance` gives the next bridge: after a
+value-bearing per-call event permutation has been extracted, canonical M31
+step values, `R < p`, and the source chip's four lane equations prove the
+entire `R`-step endpoint path. The projection from the joint seven-word
+permutation to each call's value-bearing balance is still an explicit
+premise, not hidden in this corollary.
 
 The **accepted proof-to-logical-row premise remains open**: source mask geometry
 must correspond to a permutation of logical predecessor rows, and an
