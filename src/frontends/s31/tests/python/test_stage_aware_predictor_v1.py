@@ -120,14 +120,26 @@ class StageAwareModelTests(unittest.TestCase):
             validation = workload_cases("validation", root / "validation", 3, self.protocol)
             self.assertFalse({case["name"] for case in train} &
                              {case["name"] for case in validation})
+            sys.path.insert(0, str(S31_ROOT / "python"))
+            from package.context import lower_text
+            from oracle import evaluate_relation
+            for case in validation:
+                if case["source"].suffix == ".json":
+                    relation = json.loads(case["source"].read_text())
+                else:
+                    relation, _, _ = lower_text(case["source"])
+                for assignment in case["assignments"]:
+                    self.assertEqual(evaluate_relation(relation, assignment),
+                                     assignment["public_outputs"])
+                if case["family"] == "fixed_width":
+                    self.assertEqual(set(case["assignments"][0]["public_outputs"]),
+                                     set(relation["public_outputs"]))
         for width in (8, 16, 32, 64):
             assignment = signed_assignment(width, 50001, True)
             words = assignment["public_outputs"]["result"]
             self.assertEqual(len(words), (width + 15) // 16)
             self.assertEqual(signed_words(-2, width)[0], (1 << min(width, 16)) - 2)
             self.assertIn("let result = std::int::limbs(quotient);", quotient_source(width))
-        sys.path.insert(0, str(S31_ROOT / "python"))
-        from package.context import lower_text
         with TemporaryDirectory() as directory:
             for width in (8, 16, 32, 64):
                 source = Path(directory) / f"i{width}.s31"
