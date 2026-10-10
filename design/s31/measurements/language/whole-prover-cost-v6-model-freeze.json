@@ -1,0 +1,7 @@
+{
+  "schema": "s31-whole-prover-v6-model-freeze",
+  "recorded_at_utc": "2026-10-10T22:19:29Z",
+  "protocol_sha256": "c839427e3651a92f07710e5fc446cfa8fb022fbe4f70245d8fa22ec01c5c5b14",
+  "frozen_model_sha256": "0f0d4356123fa6ee85e1653c4224a9abbfaf8ec011037a5aa1c47ec374876b7c",
+  "training_corpus_sha256": "bad7cbcd5d27f9546c2a2edad1ccdb28e8fec498f17df40e7637424b9a62a59d"
+}
