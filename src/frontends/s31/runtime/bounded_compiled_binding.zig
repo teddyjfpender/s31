@@ -161,6 +161,43 @@ pub fn compileManyWitness(
     return ctx;
 }
 
+/// Reconstruct the exact witness-free circuit used by a native verifier.
+/// The caller must first derive `expected` from its authenticated source via
+/// `inspectMany`; this function also recompiles the source to reject drift.
+pub fn compileManyTopology(
+    allocator: std.mem.Allocator,
+    source_bytes: []const u8,
+    expected: Topology,
+) !circuit.builder.Context(circuit.builder.NoValue) {
+    const rebuilt = try compileSourceTopology(allocator, source_bytes);
+    if (!std.meta.eql(rebuilt, expected)) return error.BoundedTopologyMismatch;
+    var parsed = try relation.parseProgram(allocator, source_bytes);
+    defer parsed.deinit();
+    var maps = compiler.Maps{};
+    defer maps.deinit(allocator);
+    var ctx = try compiler.compileDirectBoundedWithSpans(circuit.builder.NoValue, allocator, parsed.value, null, &maps);
+    errdefer ctx.deinit();
+    try padDirect(allocator, circuit.builder.NoValue, &ctx);
+    const view = circuit.common.preprocessed.CircuitView.fromBuilder(&ctx.circuit);
+    try validateEndpoints(allocator, view, maps.bounded_calls.items);
+    if (maps.bounded_calls.items.len != expected.call_count or
+        view.n_vars != expected.circuit_variables or
+        view.nQm31OpsRows() != expected.circuit_rows)
+        return error.BoundedTopologyMismatch;
+    for (maps.bounded_calls.items, expected.callSlice()) |actual, wanted| {
+        if (actual.call_id != wanted.call_id or actual.source_node_id != wanted.source_node_id or
+            actual.input_node_id != wanted.input_node_id or
+            !std.meta.eql(actual.input, wanted.input) or !std.meta.eql(actual.output, wanted.output))
+            return error.BoundedTopologyMismatch;
+    }
+    const plan = try manyPlan(expected.callSlice());
+    var pp = try plan.preprocessed(allocator, view);
+    defer pp.deinit(allocator);
+    const root = try pp.preprocessedRoot(allocator, 1);
+    if (!std.meta.eql(root, expected.fixed_root)) return error.BoundedTopologyMismatch;
+    return ctx;
+}
+
 pub const TwoCallInspection = struct {
     topology: Topology,
     generated: v4.Generated,
@@ -187,10 +224,9 @@ pub const ManyInspection = struct {
     }
 };
 
-/// Internal adapter for the experimental in-memory native test. A future
-/// public proof path must reconstruct `inspection` from sealed source rather
-/// than accept a caller-supplied candidate with matching digest fields.
-fn nativeManyRequest(inspection: *const ManyInspection) !cpu.experimental_direct_many_arithmetic.Request {
+/// The returned request has no authority by itself. Proof admission must
+/// reconstruct `inspection` from authenticated source in the same call.
+pub fn nativeManyRequest(inspection: *const ManyInspection) !cpu.experimental_direct_many_arithmetic.Request {
     return .{
         .source_digest = inspection.topology.source_sha256,
         .manifest_digest = inspection.manifest_precommitment,

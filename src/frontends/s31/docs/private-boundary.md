@@ -128,9 +128,60 @@ words, noncanonical proof varints, and changed proof bytes are rejected.
 **Release status:** this remains an experimental fixed two-call profile. The
 AIR/LogUp/PCS verifier has not been reduced to the exact tagged event-balance
 premise used by the Lean path theorem, and no witness-secrecy claim is made.
-The 1–8 call source-admission prototype derives compiled circuit addresses
-and a typed component manifest. Its experimental V4 engine path has
-in-memory native proof and verification tests for one and three calls,
-including changed public words, source, manifest, plan, claimed sum and root
-controls. It does not yet admit a canonical proof envelope through a
-source-pinned verifier executable or cover every allowed call count.
+The fixed V3 profile remains separate from the experimental bounded V4
+profile below; their proof magics and public statement schemas differ.
+
+## Experimental bounded V4 native envelope
+
+V4 admits 1–8 canonical `square; add_const` calls with power-of-two round
+counts, compiler-derived private endpoint wires, and exactly eight public M31
+words. The [one-call example](../examples/boundary/private_many1.s31.json)
+publishes `r+x` and `r*x` as two four-lane arrays. Its proof has three
+components: direct circuit, chip 0, bridge 0. A three-call proof has seven
+components; in general the order is **circuit, all N chips, all N bridges**.
+The native scheduler commits one main tree and one interaction tree with
+widths `12+17N` and `8+28N`. It mixes exactly `1+2N` claimed sums in that
+same component order. The Gate and tagged-chip lookup sums must close to zero.
+The preprocessed tree always has eight columns, and the fourth tree is the
+composition tree.
+
+The byte envelope begins with the distinct eight-byte magic `S31MNY04`,
+then one byte each for N and `1+2N`, two zero reserved bytes, three 32-byte
+digests (source, typed manifest precommitment, circuit identity), one
+little-endian `u64` interaction nonce, `1+2N` canonical four-limb QM31 sums,
+and one canonical postcard STARK proof. Each limb is a little-endian `u32`
+strictly below `p`. There are no unused sum slots on wire. The verifier checks
+the length, magic, count relation, reserved bytes, and source-derived digests
+before proof decoding. It recompiles the embedded source without witness,
+checks the endpoint map and fixed-column root, reconstructs the actual AIR
+handles and PCS geometry, validates the postcard shape against the roster,
+and decodes under a bounded allocator. The eight public words are provided in
+a separate `s31-many-public-words-v4` statement and mixed into the transcript
+before the main commitment.
+
+Build the source-pinned one-call binaries with:
+
+```sh
+cd src/frontends/s31
+zig build install -Doptimize=ReleaseFast -Ds31-version=1 \
+  -Ds31-lowering=direct-many \
+  -Ds31-source="$PWD/examples/boundary/private_many1.s31.json" \
+  -Ds31-name=private_many1
+zig-out/bin/s31-private_many1-many-prover \
+  examples/boundary/private_many1.valid.json /tmp/many.proof /tmp/many.statement.json
+zig-out/bin/s31-private_many1-many-native-verifier \
+  /tmp/many.proof /tmp/many.statement.json
+```
+
+The verifier binary embeds source and official AIR bytes. A caller choosing
+which verifier binary and public words to trust is outside this protocol.
+The current proof and verification implementation passes native N=1,2,3,4,8
+tests, including call ID 7, count/roster and every claimed-sum position
+mutations; counts 5–7 still need direct native proof tests. The source-derived
+manifest names relation dependencies by reviewed AIR kind; the live preflight
+introspects widths, masks, degree and fixed-column indices, but does not
+discover lookup relation IDs from evaluator formulas. A full compiler-to-AIR
+correspondence proof, independent V4 soundness review, and external prover
+interoperability remain release gates. The profile is transparent: committed
+bridge rows can expose private endpoint values. No zero-knowledge or witness
+confidentiality claim is made.
