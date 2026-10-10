@@ -18,6 +18,13 @@ implementation admits 1–8 instances of the existing four-lane tagged
 kinds, but each later kind needs its own AIR, lookup tuple, resource limits,
 and soundness review before admission.
 
+Focused validation at S31 `5382e252` and engine `a3656919` passed:
+`zig build test -Dtest-filter=V4` in the engine circuit CPU package;
+`zig build test-bounded-call-source test-bounded-component-manifest
+test-bounded-compiled-binding` in the S31 package; and the existing V3
+`zig build test-pair-native` regression. These are unit and V3 proof tests,
+not V4 native proving or verification evidence.
+
 ## Statement and source-owned Plan
 
 The public statement is the sealed source identity, versioned proof profile,
