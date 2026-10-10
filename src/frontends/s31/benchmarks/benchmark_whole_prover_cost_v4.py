@@ -27,6 +27,9 @@ def workload_cases(split: str, output: Path, samples: int, protocol: dict) -> li
         ("chip", "chip_rounds", "direct-chip", 100000),
     ):
         for rounds in spec[key]:
+            if family == "chip" and (rounds < 16 or rounds > 32768 or
+                                     rounds & (rounds - 1)):
+                raise ValueError("direct-chip rounds must be powers of two from 16 to 32768")
             name = f"{family}_{rounds}"
             source = source_dir / f"{name}.s31.json"
             body = [{"op": "square"}, {"op": "add_const",

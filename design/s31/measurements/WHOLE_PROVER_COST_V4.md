@@ -4,6 +4,10 @@ The [frozen protocol](whole-prover-cost-v4.json) defines a **new** train and
 held-out corpus. It follows the [failed v3.1 audit](WHOLE_PROVER_COST_V3.md).
 No v3.1 held-out observations are inputs to v4 fitting, interval calibration,
 or model choice. Automatic lowering selection remains disabled.
+Before any v4 native build, a source-admission audit corrected the proposed
+eight-round chip case: native direct-chip rounds must be powers of two from
+16 to 32,768. The train case is now 16 rounds and the held-out case 32 rounds.
+No v4 package or timing existed when this preflight correction was made.
 
 ## Training-only diagnosis
 

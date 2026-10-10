@@ -55,6 +55,10 @@ class WholeProverV4Tests(unittest.TestCase):
                 for assignment in item["assignments"]:
                     self.assertEqual(evaluate_relation(relation, assignment),
                                      assignment["public_outputs"])
+            bad = json.loads(json.dumps(self.protocol))
+            bad["splits"]["train"]["chip_rounds"][0] = 8
+            with self.assertRaisesRegex(ValueError, "direct-chip rounds"):
+                workload_cases("train", Path(directory) / "invalid", 1, bad)
 
     def test_expected_wall_is_sum_of_stage_means_and_pow_is_constant(self) -> None:
         train = corpus("train", self.protocol)

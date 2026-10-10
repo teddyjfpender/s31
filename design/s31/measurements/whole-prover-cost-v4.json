@@ -35,6 +35,7 @@
   "host_policy": "one named host and one compiler fingerprint for every train/validation package; no cross-host reliability claim",
   "model": "per-family, per-stage log-linear fit on training-program trial means using declared source/AIR feature; fixed 26-bit interaction and FRI PoW stage means pooled as scale-independent constants. Whole-wall point is sum of stage expectations. Proof bytes and RSS retain v3.1 model formulas, independent of held-out v3.1 outcomes.",
   "point_target": "per-program arithmetic mean of 100 fresh-process prover-plus-native-verifier wall times; a sampling estimate of expected wall under the pinned host/process policy, distinct from v3.1 program median",
+  "prebuild_admission_amendment": "Before any v4 native build or timing, repository source audit found direct-chip rounds must be powers of two from 16 to 32768. Replace proposed train 8 with 16 and held-out 16 with 32; no v4 observations existed.",
   "pow_bits_required": 26,
   "pow_variance": "Keep interaction and FRI PoW separate where timers expose them; hash prove includes opaque PoW. Report stage means, medians, p90, CV, and process-wall variance. Never interpret fixed 26-bit PoW as deterministic. Use 100 independent transcript-dependent assignments/program.",
   "profiles": {
@@ -64,7 +65,7 @@
       "assignment_index_base": 510000,
       "chip_constant": 13,
       "chip_rounds": [
-        8,
+        16,
         64,
         512,
         2048,
@@ -95,7 +96,7 @@
       "assignment_index_base": 610000,
       "chip_constant": 17,
       "chip_rounds": [
-        16,
+        32,
         128,
         1024,
         4096
