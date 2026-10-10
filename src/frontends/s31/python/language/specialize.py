@@ -209,7 +209,7 @@ class Compiler:
                     return self.call_function(callee.name, args, wanted, expr)
                 return self.call_closure(callee, args, wanted, expr)
             name = STANDARD_ALIASES.get(expr.value, expr.value)
-            if name in INT_BINARY_CALLS or name in INT_COMPARE_CALLS or name in INT_CAST_CALLS or name == "std::int::limbs":
+            if name in INT_BINARY_CALLS or name in INT_COMPARE_CALLS or name in INT_CAST_CALLS or name in {"std::int::limbs", "std::int::bit_not"}:
                 if expr.generic is not None:
                     raise TypeErrorS31(f"{name} does not accept a static parameter")
                 arity = 2 if name in INT_BINARY_CALLS or name in INT_COMPARE_CALLS else 1
@@ -236,6 +236,8 @@ class Compiler:
                             self.builder.boolean("bool_not", equal, wanted=wanted, span=self.span(expr)))
                 if name == "std::int::limbs":
                     return self.builder.int_limbs(values[0])
+                if name == "std::int::bit_not":
+                    return self.builder.int_bit_not(values[0], wanted=wanted, span=self.span(expr))
                 if name.startswith("std::int::from_limbs_"):
                     return self.builder.int_from_limbs(values[0], name.removeprefix("std::int::from_limbs_"),
                                                        wanted=wanted, span=self.span(expr))

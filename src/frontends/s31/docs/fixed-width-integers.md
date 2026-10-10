@@ -68,67 +68,13 @@ two operands of the same nominal type. Neither field arithmetic nor
 | `limbs(x)` | Explicitly view a scalar as its `[u16; L]` bit pattern; no arithmetic node. |
 | `reinterpret_u8(x)` through `reinterpret_i128(x)` | Reinterpret the same bits at the **same width** with the named signedness; no numeric conversion. |
 | `cast_checked_u8(x)` through `cast_checked_i128(x)` | Preserve the numeric value in the named target type; reject values outside its range. |
+| `bit_and(a,b)`, `bit_or(a,b)`, `bit_xor(a,b)`, `bit_not(a)` | Operate on the exact $W$-bit patterns; signed and unsigned inputs have the same Boolean equations. |
 
 There is no integer `+` or `-` operator yet: call `std::int` to choose checked
 or wrapping semantics. `std::math::sub` and source `-` remain M31 operations.
-There are no fixed-width division, shifts, or bitwise operations yet.
+There are no fixed-width division or shift operations yet.
 Reinterpreting `i8` to `u8` maps $-1$ to
 255; it does not reject or change the bits.
-
-## Checked numeric casts by hand
-
-The [cast examples](../examples/math/casts/README.md) use
-`std::int::cast_checked_T(x)` for every pair of the ten fixed-width integer
-types. The call is **partial**: if the integer does not fit in `T`, there is
-no valid witness, including in an inactive witness-dependent branch.
-`reinterpret_T(x)` instead keeps the bits and requires the same width.
-
-For `i8(-1) → i16`, the source byte is $a=255$ with proved sign bit $s=1$.
-The circuit computes its target limb from
-
-$$r=a+65280s=255+65280=65535.$$
-
-The two interpretations agree: $255-256=-1=65535-65536$. For widening
-to multiple limbs, every new upper limb is $65535s$. A nonnegative source
-has $s=0$, so its added limbs are zero. These are constrained arithmetic
-wires; the prover cannot supply a different extension.
-
-For the [`i16 → i8` example](../examples/math/casts/i16_to_i8.s31),
-the source limb $a=65408$ is split into a target byte $r=128$ and an
-upper byte $h=255$:
-
-$$a=r+256h=128+256(255),\qquad h=255s_a,\qquad s_r=s_a=1.$$
-
-Here both bits prove the sign of their own word, and both bytes are bounded.
-The field equation is an integer equation because each side is below
-$2^{24}<p$. A proposed cast of `i16(-129)` has source pattern $65407$.
-It splits as $r=127,h=255$, but $s_r=0$ while $s_a=1$, so the sign equality
-rejects it. `u16(128) → i8` fails for the opposite reason: its high byte
-is zero, but the target byte has sign bit one. For larger narrowing casts,
-every discarded 16-bit limb must equal $65535s_a$, and the destination sign
-must match the source sign. A signed-to-unsigned cast separately requires
-$s_a=0$, even when the unsigned target is wider.
-
-The relation records both source and target width/sign tags in one
-`int_cast_checked` node. The [Lean cast model](../../../../formal/s31/S31/Gadgets/IntegerCast.lean)
-proves that the extension and discarded-limb equations preserve the
-interpreted integer. It does not establish correspondence of production
-Zig gates to that model; local circuit controls and native proofs check that
-path separately.
-
-The [native cast gate](../tests/acceptance/math/casts.py) proves these exact
-sources and rejects plausible truncated outputs on overflow:
-
-| Source → target | Raw QM31 rows | Padded QM31 rows | Raw range rows | Proof bytes, one local run |
-| --- | ---: | ---: | ---: | ---: |
-| `i8 → i16` | 48 | 64 | 4 | 236,747 |
-| `i16 → i8` | 54 | 64 | 8 | 227,219 |
-| `i128 → i64` | 70 | 128 | 12 | 231,179 |
-
-The [measurement record](../../../../design/s31/measurements/language/checked-integer-casts-2026-10-10.json)
-pins the complete rows and canonical circuit hashes. The shared 65,536-cell
-range table dominates fixed preprocessing, so these numbers describe proof
-shape rather than an established throughput gain.
 
 ## The one-byte circuit by hand
 
@@ -187,6 +133,120 @@ sign bits, the answer is the sign of $a$; with equal signs, use the unsigned
 answer. So `i8(-1) <= i8(1)` is true even though their raw bytes are 255 and
 1. The remaining comparisons compose `le` with constrained Boolean `not`
 and `and` gates; they do not use a host-only comparison.
+
+## Checked numeric casts by hand
+
+The [cast examples](../examples/math/casts/README.md) use
+`std::int::cast_checked_T(x)` for every pair of the ten fixed-width integer
+types. The call is **partial**: if the integer does not fit in `T`, there is
+no valid witness, including in an inactive witness-dependent branch.
+`reinterpret_T(x)` instead keeps the bits and requires the same width.
+
+For `i8(-1) → i16`, the source byte is $a=255$ with proved sign bit $s=1$.
+The circuit computes its target limb from
+
+$$r=a+65280s=255+65280=65535.$$
+
+The two interpretations agree: $255-256=-1=65535-65536$. For widening
+to multiple limbs, every new upper limb is $65535s$. A nonnegative source
+has $s=0$, so its added limbs are zero. These are constrained arithmetic
+wires; the prover cannot supply a different extension.
+
+For the [`i16 → i8` example](../examples/math/casts/i16_to_i8.s31),
+the source limb $a=65408$ is split into a target byte $r=128$ and an
+upper byte $h=255$:
+
+$$a=r+256h=128+256(255),\qquad h=255s_a,\qquad s_r=s_a=1.$$
+
+Here both bits prove the sign of their own word, and both bytes are bounded.
+The field equation is an integer equation because each side is below
+$2^{24}<p$. A proposed cast of `i16(-129)` has source pattern $65407$.
+It splits as $r=127,h=255$, but $s_r=0$ while $s_a=1$, so the sign equality
+rejects it. `u16(128) → i8` fails for the opposite reason: its high byte
+is zero, but the target byte has sign bit one. For larger narrowing casts,
+every discarded 16-bit limb must equal $65535s_a$, and the destination sign
+must match the source sign. A signed-to-unsigned cast separately requires
+$s_a=0$, even when the unsigned target is wider.
+
+The relation records both source and target width/sign tags in one
+`int_cast_checked` node. The [Lean cast model](../../../../formal/s31/S31/Gadgets/IntegerCast.lean)
+proves that the extension and discarded-limb equations preserve the
+interpreted integer. It does not establish correspondence of production
+Zig gates to that model; local circuit controls and native proofs check that
+path separately.
+
+The [native cast gate](../tests/acceptance/math/casts.py) proves these exact
+sources and rejects plausible truncated outputs on overflow:
+
+| Source → target | Raw QM31 rows | Padded QM31 rows | Raw range rows | Proof bytes, one local run |
+| --- | ---: | ---: | ---: | ---: |
+| `i8 → i16` | 48 | 64 | 4 | 236,747 |
+| `i16 → i8` | 54 | 64 | 8 | 227,219 |
+| `i128 → i64` | 70 | 128 | 12 | 231,179 |
+
+The [measurement record](../../../../design/s31/measurements/language/checked-integer-casts-2026-10-10.json)
+pins the complete rows and canonical circuit hashes. The shared 65,536-cell
+range table dominates fixed preprocessing, so these numbers describe proof
+shape rather than an established throughput gain.
+
+## Bitwise operations by hand
+
+The [byte XOR source](../examples/math/bitwise/u8_xor.s31) proves a private
+calculation with public result 102:
+
+```s31
+use std@1;
+
+circuit u8_xor(private a: u8, private b: u8) -> public u8 {
+    let result = std::int::bit_xor(a, b);
+    result
+}
+```
+
+The assignment gives `a=[170]` and `b=[204]`. A `u8` occupies one
+little-endian limb in the assignment; inside the bit gadget it is decomposed
+into eight constrained bits, numbered from the least significant bit:
+
+| Bit position $i$ | 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| $a_i$ for 170 | 1 | 0 | 1 | 0 | 1 | 0 | 1 | 0 |
+| $b_i$ for 204 | 1 | 1 | 0 | 0 | 1 | 1 | 0 | 0 |
+| $y_i=a_i\oplus b_i$ | 0 | 1 | 1 | 0 | 0 | 1 | 1 | 0 |
+
+For each guessed input bit, the circuit checks $a_i^2=a_i$ and
+$b_i^2=b_i$. It also checks $a=\sum_{i=0}^7 2^i a_i$ and the same equation
+for $b$. XOR uses $y_i=a_i+b_i-2a_ib_i$, then packs
+$y=\sum_{i=0}^7 2^i y_i=102$. The Boolean input equations force every
+$y_i$ to be Boolean; the output limbs and public result are bound by the
+ordinary circuit and AIR gates. An invented bit decomposition cannot satisfy
+the reconstruction equation for a different input byte. Since the packed
+values are below 256, these field equalities do not hide an M31 wrap.
+
+`bit_and` uses $a_ib_i$; `bit_or` uses $a_i+b_i-a_ib_i$; `bit_not`
+uses $1-a_i$. The same construction repeats for all $W$ bits of `u16` through
+`u128` and their signed peers. Every 16-bit input limb is reconstructed from
+exactly 16 bits. The compiler caches proved bits by circuit wire, so a
+straight-line expression that reads the same input in both AND and XOR shares
+its decomposition. The [mixed `u32` source](../examples/math/bitwise/u32_mix.s31)
+exercises this reuse across two 16-bit limbs. Its two 32-bit inputs require
+64 bit Boolean checks in total; the subsequent NOT and OR use already proved
+result bits. The recorded 68 raw Eq rows include those 64 bit checks and four
+other equality checks. The generated proof establishes
+these equations and the public output; it does not reveal the private inputs.
+
+The [Lean Boolean model](../../../../formal/s31/S31/Gadgets/IntegerBits.lean)
+proves soundness and completeness of the pointwise operations for any `BitVec`
+width. The source-to-Zig gate correspondence is still checked by executable
+circuit tests and native proof controls, not by a Lean refinement theorem.
+The [native bitwise gate](../tests/acceptance/math/bitwise.py) pins the
+canonical circuit hash and AIR rows, verifies all three examples, and rejects a
+false output and a changed verifier statement. In one local run, `u8_xor`
+used 141 raw QM31 rows and a 230,986-byte proof; `u32_mix` used 820 raw QM31
+rows and a 237,398-byte proof. Signed `i128_xor` used 1,812 raw QM31 rows
+and a 236,298-byte proof. The
+[measurement record](../../../../design/s31/measurements/language/fixed-width-bitwise-2026-10-10.json)
+includes padded rows and fixed preprocessing. The shared range table still
+dominates fixed work, and these single-run sizes are not speed benchmarks.
 
 ## Wrapping multiplication by hand
 

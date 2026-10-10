@@ -1,0 +1,7 @@
+use std@1;
+
+// The byte patterns 10101010 and 11001100 XOR to 01100110.
+circuit u8_xor(private a: u8, private b: u8) -> public u8 {
+    let result = std::int::bit_xor(a, b);
+    result
+}

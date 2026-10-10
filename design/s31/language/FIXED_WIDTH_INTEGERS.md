@@ -4,8 +4,8 @@ Status: **core ten-type family implemented in S31 source**, 2026-10-10.
 The implemented slice has `u8`, `u16`, `u32`, `u64`, `u128` and signed peers;
 range-checked bit patterns; checked/wrapping addition, subtraction, and
 multiplication; signed/unsigned comparisons; same-width reinterpretation,
-checked cross-width numeric casts, and limb views. Division, bitwise
-operations, and shifts remain design work. An M31 value is a field element, not a fixed-width
+checked cross-width numeric casts, limb views, and four bitwise operations.
+Division and shifts remain design work. An M31 value is a field element, not a fixed-width
 integer. A `[u16; N]` array does not by itself specify signedness, overflow,
 or an integer operation.
 
@@ -37,7 +37,7 @@ with range-checked limbs and Boolean carries. Checked addition also requires $c_
 
 Signed wrapping addition uses the same bit-vector equation. Signed checked addition must also prove the sign bits and reject when equal-sign operands produce the opposite-sign result. For `i8`, $120+10$ has bit pattern 130, interpreted as $-126$ after wrapping, and is rejected by checked addition. Checked subtraction and multiplication must similarly use the mathematical signed bounds $-2^{W-1}\le x\le2^{W-1}-1$. An integer hint never counts as a constraint.
 
-Division and remainder come after the core arithmetic. The intended unsigned rule is $a=q b+r$, $b>0$, and $0\le r<b$ as an integer equality. Signed division rounds toward zero, the remainder has the dividend's sign, division by zero rejects, and checked `MIN / -1` rejects. Shifts and bitwise operations will have explicit shift-count and width semantics; they need bit or byte constraints rather than host-only computation.
+Division and remainder come after the core arithmetic. The intended unsigned rule is $a=q b+r$, $b>0$, and $0\le r<b$ as an integer equality. Signed division rounds toward zero, the remainder has the dividend's sign, division by zero rejects, and checked `MIN / -1` rejects. Shifts will have explicit shift-count and width semantics. The shipped bitwise operations decompose bounded limbs into constrained Boolean bits, apply Boolean polynomial equations, and pack the result; repeated circuit wires reuse their proved decomposition.
 
 ## Lowering and cost
 
@@ -49,7 +49,7 @@ Use the existing generic circuit as the correctness baseline, then measure a lim
 
 1. Implement `u8`, `u16`, and `u32` with checked/wrapping add and subtract, equality, ordering, explicit casts, and source-to-AIR explanations. Prove the 8-bit high-range constraint and width-specific carry behavior.
 2. Generalize the same constraints to `u64` and `u128`; add `i8` through `i128` with constrained sign extraction, signed comparisons, and checked overflow. Keep all ten types in one parameterized semantic implementation rather than ten unrelated gadgets.
-3. Wrapping multiplication uses bounded base-256 columns and drops the final carry exactly at the declared width. Checked multiplication retains the full product, proves its terminal carry zero, and constrains unsigned upper bits or signed sign extension. Add division/remainder and bitwise/shift operations with their stated edge cases. Benchmark wide kernels and select chips only where they beat the generic circuit.
+3. Wrapping multiplication uses bounded base-256 columns and drops the final carry exactly at the declared width. Checked multiplication retains the full product, proves its terminal carry zero, and constrains unsigned upper bits or signed sign extension. Bitwise AND, OR, XOR, and NOT now use a width-indexed Boolean gadget with reuse of decomposed wires. Add division/remainder and shift operations with their stated edge cases. Benchmark wide kernels and select chips only where they beat the generic circuit.
 4. Add independent Python big-integer oracles and positive/negative native proofs at zero, one, maximum, signed minimum, signed maximum, carries across every limb boundary, overflow, division by zero, and cast failures. Pin source-to-relation shape and AIR cost baselines for each width family. Reject changed public claims, proof bytes, keys, width tags, and signedness tags.
 
 The focused `std@1` library MVP gate covers a representative M31 and

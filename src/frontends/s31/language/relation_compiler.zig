@@ -11,6 +11,7 @@ const sha256d = @import("../library/hash/sha256d.zig");
 const bitcoin_target = @import("../bitcoin/consensus/bitcoin_target.zig");
 const bitcoin_work = @import("../bitcoin/consensus/bitcoin_work.zig");
 const integer_multiply = @import("gadgets/integer_multiply.zig");
+const integer_bits = @import("gadgets/integer_bits.zig");
 const constant_base = @import("finalization/constant_base.zig");
 
 const M31 = core.fields.m31.M31;
@@ -33,6 +34,41 @@ const Entry = struct {
     integer_spec: ?u32 = null,
 };
 
+const BitCache = struct {
+    entries: std.AutoHashMapUnmanaged(u64, []Var) = .{},
+
+    fn key(word: Var, per_limb: usize) u64 {
+        return (@as(u64, word.idx) << 5) | @as(u64, @intCast(per_limb));
+    }
+
+    fn deinit(self: *BitCache, allocator: std.mem.Allocator) void {
+        self.entries.deinit(allocator);
+    }
+
+    fn get(self: *BitCache, comptime V: type, ctx: *circuit.builder.Context(V), words: []const Var, width: u32) ![]Var {
+        const per_limb: usize = if (width == 8) 8 else 16;
+        if (words.len * per_limb != @as(usize, @intCast(width))) return error.InvalidIntegerBits;
+        const bits = try ctx.scratch().alloc(Var, @intCast(width));
+        for (words, 0..) |word, i| {
+            const chunk = self.entries.get(key(word, per_limb)) orelse blk: {
+                const fresh = try integer_bits.decomposeWord(V, ctx, word, per_limb);
+                try self.entries.put(ctx.scratch(), key(word, per_limb), fresh);
+                break :blk fresh;
+            };
+            @memcpy(bits[i * per_limb ..][0..per_limb], chunk);
+        }
+        return bits;
+    }
+
+    fn remember(self: *BitCache, allocator: std.mem.Allocator, words: []const Var, bits: []Var, width: u32) !void {
+        const per_limb: usize = if (width == 8) 8 else 16;
+        if (words.len * per_limb != bits.len or bits.len != @as(usize, @intCast(width))) return error.InvalidIntegerBits;
+        for (words, 0..) |word, i| {
+            try self.entries.put(allocator, key(word, per_limb), bits[i * per_limb ..][0..per_limb]);
+        }
+    }
+};
+
 pub fn compileRaw(comptime V: type, allocator: std.mem.Allocator, program: relation.Program, assignment: ?relation.Assignment) !circuit.builder.Context(V) {
     try program.validate(allocator);
     if (comptime V == QM31) {
@@ -41,6 +77,8 @@ pub fn compileRaw(comptime V: type, allocator: std.mem.Allocator, program: relat
     var ctx = try circuit.builder.Context(V).init(allocator, N_RESERVED);
     errdefer ctx.deinit();
     const scratch = ctx.scratch();
+    var bit_cache = BitCache{};
+    defer bit_cache.deinit(scratch);
     var values = std.StringHashMapUnmanaged(Entry){};
     defer values.deinit(scratch);
 
@@ -106,6 +144,10 @@ pub fn compileRaw(comptime V: type, allocator: std.mem.Allocator, program: relat
             .int_mul_wrapping => try intMultiplyWrapping(V, &ctx, lhs.?, rhs.?, node.constant.?),
             .int_mul_checked => try intMultiplyChecked(V, &ctx, lhs.?, rhs.?, node.constant.?),
             .int_cast_checked => try intCastChecked(V, &ctx, lhs.?, node.constant.?),
+            .int_bit_and => try intBitwise(V, &ctx, &bit_cache, lhs.?, rhs.?, node.constant.?, .and_),
+            .int_bit_or => try intBitwise(V, &ctx, &bit_cache, lhs.?, rhs.?, node.constant.?, .or_),
+            .int_bit_xor => try intBitwise(V, &ctx, &bit_cache, lhs.?, rhs.?, node.constant.?, .xor_),
+            .int_bit_not => try intBitwise(V, &ctx, &bit_cache, lhs.?, null, node.constant.?, .not_),
             .hash_sha256d_header => try sha256dHeader(V, &ctx, lhs.?),
             .bitcoin_target_mainnet => try mainnetTarget(V, &ctx, lhs.?),
             .bitcoin_block_work => try blockWorkEntry(V, &ctx, lhs.?),
@@ -260,6 +302,8 @@ fn compileWithSpansMode(comptime V: type, allocator: std.mem.Allocator, program:
     var ctx = try circuit.builder.Context(V).init(allocator, N_RESERVED);
     errdefer ctx.deinit();
     const scratch = ctx.scratch();
+    var bit_cache = BitCache{};
+    defer bit_cache.deinit(scratch);
     const entries = try scratch.alloc(Entry, ir.nodes.len);
     const bit_sources = try scratch.alloc(bool, ir.nodes.len);
     @memset(bit_sources, false);
@@ -364,6 +408,10 @@ fn compileWithSpansMode(comptime V: type, allocator: std.mem.Allocator, program:
             .int_mul_wrapping => try intMultiplyWrapping(V, &ctx, entries[node.lhs.?], entries[node.rhs.?], node.constant.?),
             .int_mul_checked => try intMultiplyChecked(V, &ctx, entries[node.lhs.?], entries[node.rhs.?], node.constant.?),
             .int_cast_checked => try intCastChecked(V, &ctx, entries[node.lhs.?], node.constant.?),
+            .int_bit_and => try intBitwise(V, &ctx, &bit_cache, entries[node.lhs.?], entries[node.rhs.?], node.constant.?, .and_),
+            .int_bit_or => try intBitwise(V, &ctx, &bit_cache, entries[node.lhs.?], entries[node.rhs.?], node.constant.?, .or_),
+            .int_bit_xor => try intBitwise(V, &ctx, &bit_cache, entries[node.lhs.?], entries[node.rhs.?], node.constant.?, .xor_),
+            .int_bit_not => try intBitwise(V, &ctx, &bit_cache, entries[node.lhs.?], null, node.constant.?, .not_),
             .hash_sha256d_header => blk: {
                 if (!sha_chip_mode) break :blk try sha256dHeader(V, &ctx, entries[node.lhs.?]);
                 const input = entries[node.lhs.?];
@@ -797,6 +845,24 @@ fn intCastChecked(comptime V: type, ctx: *circuit.builder.Context(V), input: Ent
     const wrappers = try ctx.scratch().alloc(circuit.builder.wrappers.M31Wrapper(Var), target.len);
     for (wrappers, target) |*wrapped, digit| wrapped.* = .newUnsafe(digit);
     return .{ .shape = .{ .kind = .u16, .length = target.len }, .lanes = try circuit.builder.simd.pack(V, ctx, wrappers), .raw = target, .integer_spec = (if (spec.target.signed) @as(u32, 256) else 0) + spec.target.width };
+}
+
+fn intBitwise(comptime V: type, ctx: *circuit.builder.Context(V), cache: *BitCache, lhs: Entry, rhs: ?Entry, encoded: u32, mode: integer_bits.Mode) !Entry {
+    const spec = relation.IntegerSpec.decode(encoded) orelse return error.InvalidIntegerSpec;
+    const left = lhs.raw orelse return error.InvalidIntegerOperand;
+    if (lhs.shape.kind != .u16 or left.len != spec.limbCount()) return error.InvalidIntegerOperand;
+    const left_bits = try cache.get(V, ctx, left, spec.width);
+    const right_bits: ?[]const Var = if (rhs) |right_entry| blk: {
+        const right = right_entry.raw orelse return error.InvalidIntegerOperand;
+        if (right_entry.shape.kind != .u16 or right.len != spec.limbCount()) return error.InvalidIntegerOperand;
+        break :blk try cache.get(V, ctx, right, spec.width);
+    } else null;
+    const bits = try integer_bits.combine(V, ctx, left_bits, right_bits, mode);
+    const raw = try integer_bits.pack(V, ctx, bits, spec.width);
+    try cache.remember(ctx.scratch(), raw, bits, spec.width);
+    const wrappers = try ctx.scratch().alloc(circuit.builder.wrappers.M31Wrapper(Var), raw.len);
+    for (wrappers, raw) |*wrapped, word| wrapped.* = .newUnsafe(word);
+    return .{ .shape = .{ .kind = .u16, .length = raw.len }, .lanes = try circuit.builder.simd.pack(V, ctx, wrappers), .raw = raw, .integer_spec = encoded };
 }
 
 fn intMultiplyWrapping(comptime V: type, ctx: *circuit.builder.Context(V), lhs: Entry, rhs: Entry, encoded: u32) !Entry {
@@ -2206,6 +2272,37 @@ test "checked integer casts constrain byte narrowing and sign extension" {
         defer topology.deinit();
         try std.testing.expectEqual(compiled.circuit.n_vars, topology.circuit.n_vars);
     }
+}
+
+test "bitwise integer chain constrains bits and reuses input decomposition" {
+    const allocator = std.testing.allocator;
+    const source =
+        \\{"version":1,"name":"byte_bits","inputs":[{"name":"a","kind":"u16","length":1,"visibility":"private"},{"name":"b","kind":"u16","length":1,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":8},{"name":"bv","op":"int_view","lhs":"b","constant":8},{"name":"both","op":"int_bit_and","lhs":"av","rhs":"bv","constant":8},{"name":"different","op":"int_bit_xor","lhs":"av","rhs":"bv","constant":8},{"name":"inverse","op":"int_bit_not","lhs":"both","constant":8},{"name":"result","op":"int_bit_or","lhs":"different","rhs":"inverse","constant":8}],"assertions":[],"public_outputs":["result"]}
+    ;
+    const valid_text =
+        \\{"public_inputs":{},"private_inputs":{"a":[170],"b":[204]},"public_outputs":{"result":[119]}}
+    ;
+    const false_text =
+        \\{"public_inputs":{},"private_inputs":{"a":[170],"b":[204]},"public_outputs":{"result":[118]}}
+    ;
+    var program = try relation.parseProgram(allocator, source);
+    defer program.deinit();
+    var valid = try relation.parseAssignment(allocator, valid_text);
+    defer valid.deinit();
+    var false_claim = try relation.parseAssignment(allocator, false_text);
+    defer false_claim.deinit();
+    _ = try relation.evaluate(allocator, program.value, valid.value);
+    try std.testing.expectError(error.PublicOutputMismatch, relation.evaluate(allocator, program.value, false_claim.value));
+    var values = try compile(QM31, allocator, program.value, valid.value);
+    defer values.deinit();
+    var topology = try compile(circuit.builder.NoValue, allocator, program.value, null);
+    defer topology.deinit();
+    try std.testing.expect(try values.isCircuitValid());
+    try std.testing.expectEqual(values.circuit.n_vars, topology.circuit.n_vars);
+    try std.testing.expect(std.meta.eql(values.gate_counts, topology.gate_counts));
+    // Two input bytes account for sixteen Boolean checks and two
+    // reconstruction equalities. The chain should not decompose them again.
+    try std.testing.expect(values.circuit.eq.items.len < 40);
 }
 
 test "signed i128 full carry is valid and signed overflow is rejected" {

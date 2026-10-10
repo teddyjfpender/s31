@@ -48,6 +48,7 @@ AIR. No helper is a host-only calculation or a new specialized AIR chip.
 | `std::int::add_wrapping(a,b)`, `sub_wrapping(a,b)` | Low $W$ bits of the result | Equally typed fixed-width operands. |
 | `std::int::mul_wrapping(a,b)` | Low $W$ bits of the product | Equally typed `u8`–`u128` or `i8`–`i128` operands; byte-constrained convolution. |
 | `std::int::mul_checked(a,b)` | Exact fixed-width product; rejects unsigned or signed overflow | Equally typed fixed-width operands; complete $2W$-bit convolution and upper-word constraints. |
+| `std::int::{bit_and,bit_or,bit_xor}(a,b)`, `bit_not(a)` | AND, OR, XOR, or NOT of exactly $W$ bits | Equally typed fixed-width operands for binary calls; proved Boolean decomposition, with reusable input bits. |
 | `std::int::{le,lt,ge,gt,eq,ne}(a,b)` | Typed ordering or equality; returns constrained `bit` | Equally typed fixed-width operands. |
 | `std::int::from_limbs_u8(raw)` through `from_limbs_i128(raw)` | Explicitly construct a fixed-width scalar from little-endian limbs | Exact `[u16; L]` shape; byte types gain an extra 8-bit proof constraint. |
 | `std::int::limbs(x)` | Explicit bit-pattern view as `[u16; L]` | One fixed-width scalar; no arithmetic node. |

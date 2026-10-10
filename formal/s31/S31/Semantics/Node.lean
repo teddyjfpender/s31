@@ -72,7 +72,7 @@ def evaluateNode (env : Env) (n : Node) : Result Value := do
   | .u256_add | .u256_add_checked | .u256_sub | .u256_sub_checked | .u256_le =>
     Integers.u256 n.op a.words b.words
   | .u32_lt => pure [bitValue (Integers.unsigned a.words < Integers.unsigned b.words)]
-  | .int_add_checked | .int_add_wrapping | .int_sub_checked | .int_sub_wrapping | .int_le | .int_mul_wrapping | .int_mul_checked =>
+  | .int_add_checked | .int_add_wrapping | .int_sub_checked | .int_sub_wrapping | .int_le | .int_mul_wrapping | .int_mul_checked | .int_bit_and | .int_bit_or | .int_bit_xor | .int_bit_not =>
     Integers.evaluate n.op (← need (n.constant.bind IntegerSpec.decode)) a.words b.words
   | .int_cast_checked => Integers.castChecked (← need (n.constant.bind IntegerCastSpec.decode)) a.words
   | .bitcoin_target_mainnet => Bitcoin.headerTarget a.words

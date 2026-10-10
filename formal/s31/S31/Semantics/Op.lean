@@ -48,6 +48,10 @@ inductive Op where
   | int_mul_wrapping
   | int_mul_checked
   | int_cast_checked
+  | int_bit_and
+  | int_bit_or
+  | int_bit_xor
+  | int_bit_not
 deriving DecidableEq, Repr, BEq
 
 def Op.wireName : Op → String
@@ -97,6 +101,10 @@ def Op.wireName : Op → String
   | .int_mul_wrapping => "int_mul_wrapping"
   | .int_mul_checked => "int_mul_checked"
   | .int_cast_checked => "int_cast_checked"
+  | .int_bit_and => "int_bit_and"
+  | .int_bit_or => "int_bit_or"
+  | .int_bit_xor => "int_bit_xor"
+  | .int_bit_not => "int_bit_not"
 
 def Op.ofWireName : String → Option Op
   | "constant" => some .constant
@@ -145,6 +153,10 @@ def Op.ofWireName : String → Option Op
   | "int_mul_wrapping" => some .int_mul_wrapping
   | "int_mul_checked" => some .int_mul_checked
   | "int_cast_checked" => some .int_cast_checked
+  | "int_bit_and" => some .int_bit_and
+  | "int_bit_or" => some .int_bit_or
+  | "int_bit_xor" => some .int_bit_xor
+  | "int_bit_not" => some .int_bit_not
   | _ => none
 
 def allOps : List Op := [
@@ -193,6 +205,10 @@ def allOps : List Op := [
   .int_le,
   .int_mul_wrapping,
   .int_mul_checked,
-  .int_cast_checked]
+  .int_cast_checked,
+  .int_bit_and,
+  .int_bit_or,
+  .int_bit_xor,
+  .int_bit_not]
 
 end S31

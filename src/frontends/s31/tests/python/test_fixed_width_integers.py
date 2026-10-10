@@ -223,6 +223,56 @@ class FixedWidthIntegerTests(unittest.TestCase):
             compile_text("circuit bad(private b: bit, private x: i16) -> public i8 "
                          "{ if b then std::int::cast_checked_i8(x) else std::int::cast_checked_i8(x) }")
 
+    def test_bitwise_operations_on_all_ten_types(self) -> None:
+        for width in (8, 16, 32, 64, 128):
+            mask = (1 << width) - 1
+            patterns = ((0x55 * ((1 << width) - 1) // 255) & mask,
+                        (0xaa * ((1 << width) - 1) // 255) & mask)
+            for prefix in ("u", "i"):
+                kind = f"{prefix}{width}"
+                for operation, expected in (("bit_and", patterns[0] & patterns[1]),
+                                            ("bit_or", patterns[0] | patterns[1]),
+                                            ("bit_xor", patterns[0] ^ patterns[1]),
+                                            ("bit_not", (~patterns[0]) & mask)):
+                    with self.subTest(kind=kind, operation=operation):
+                        arguments = "a" if operation == "bit_not" else "a, b"
+                        relation, _ = compile_text(
+                            f"circuit bits(private a: {kind}, private b: {kind}) -> public {kind} "
+                            f"{{ std::int::{operation}({arguments}) }}")
+                        op = f"int_{operation}"
+                        self.assertEqual(relation["nodes"][-1]["op"], op)
+                        assignment = self.assignment(relation, width, *patterns, expected)
+                        self.assertEqual(evaluate_relation(relation, assignment),
+                                         assignment["public_outputs"])
+                        assignment["public_outputs"][relation["public_outputs"][0]] = limbs(
+                            (expected + 1) & mask, width)
+                        with self.assertRaises(OracleError):
+                            evaluate_relation(relation, assignment)
+
+    def test_bitwise_chain_is_total_and_static_helper_is_zero_cost(self) -> None:
+        direct = ("circuit bits(private a: u32, private b: u32) -> public u32 "
+                  "{ std::int::bit_xor(std::int::bit_and(a, b), std::int::bit_not(a)) }")
+        helper = ("fn mix(a: u32, b: u32) -> u32 { "
+                  "std::int::bit_xor(std::int::bit_and(a, b), std::int::bit_not(a)) } "
+                  "circuit bits(private a: u32, private b: u32) -> public u32 { mix(a, b) }")
+        self.assertEqual(compile_text(direct)[0], compile_text(helper)[0])
+        relation, _ = compile_text(
+            "circuit choose(private pick: bit, private a: u8, private b: u8) -> public u8 "
+            "{ if pick then std::int::bit_xor(a, b) else std::int::bit_not(a) }")
+        self.assertIn("int_bit_xor", [node["op"] for node in relation["nodes"]])
+
+    def test_bitwise_rejects_nominal_mismatch_and_extra_metadata(self) -> None:
+        with self.assertRaisesRegex(SourceError, "equally typed"):
+            compile_text("circuit bad(private a: u16, private b: i16) -> public u16 "
+                         "{ std::int::bit_xor(a, b) }")
+        relation, _ = compile_text("circuit bits(private a: u8) -> public u8 "
+                                   "{ std::int::bit_not(a) }")
+        relation["nodes"][-1]["index"] = 0
+        assignment = {"public_inputs": {}, "private_inputs": {"a": [1]},
+                      "public_outputs": {relation["public_outputs"][0]: [254]}}
+        with self.assertRaises(OracleError):
+            evaluate_relation(relation, assignment)
+
 
 if __name__ == "__main__":
     unittest.main()

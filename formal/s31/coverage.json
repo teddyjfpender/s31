@@ -629,6 +629,54 @@
         "path": "src/frontends/s31/language/relation_compiler.zig",
         "function": "intCastChecked"
       }
+    },
+    {
+      "op": "int_bit_and",
+      "semantics": "S31.Integers.evaluate",
+      "gadget_theorems": [
+        "S31.Gadgets.Packing.bits_sound_complete",
+        "S31.Gadgets.IntegerBits.and_sound_complete"
+      ],
+      "source": {
+        "path": "src/frontends/s31/language/relation_compiler.zig",
+        "function": "intBitwise"
+      }
+    },
+    {
+      "op": "int_bit_or",
+      "semantics": "S31.Integers.evaluate",
+      "gadget_theorems": [
+        "S31.Gadgets.Packing.bits_sound_complete",
+        "S31.Gadgets.IntegerBits.or_sound_complete"
+      ],
+      "source": {
+        "path": "src/frontends/s31/language/relation_compiler.zig",
+        "function": "intBitwise"
+      }
+    },
+    {
+      "op": "int_bit_xor",
+      "semantics": "S31.Integers.evaluate",
+      "gadget_theorems": [
+        "S31.Gadgets.Packing.bits_sound_complete",
+        "S31.Gadgets.IntegerBits.xor_sound_complete"
+      ],
+      "source": {
+        "path": "src/frontends/s31/language/relation_compiler.zig",
+        "function": "intBitwise"
+      }
+    },
+    {
+      "op": "int_bit_not",
+      "semantics": "S31.Integers.evaluate",
+      "gadget_theorems": [
+        "S31.Gadgets.Packing.bits_sound_complete",
+        "S31.Gadgets.IntegerBits.not_sound_complete"
+      ],
+      "source": {
+        "path": "src/frontends/s31/language/relation_compiler.zig",
+        "function": "intBitwise"
+      }
     }
   ]
 }

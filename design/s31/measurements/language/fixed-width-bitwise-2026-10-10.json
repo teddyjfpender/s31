@@ -1,0 +1,42 @@
+{
+  "schema": "s31-fixed-width-bitwise-v1",
+  "date": "2026-10-10",
+  "profile": "sparse-wide-v5",
+  "constant_min_base": 16,
+  "measurement_limits": "AIR rows and fixed cells are deterministic for these sources. Proof sizes are one local run each. The shared 65536-cell seq_16 range table dominates fixed preprocessing. These values do not establish a proving-time advantage over another implementation.",
+  "cases": [
+    {
+      "name": "u8_xor",
+      "canonical_ir_sha256": "019bb9d642147499bba94a50f59883b5b8438ed473dc3e7bb990c363f85853d2",
+      "raw": {"blake_g": 0, "eq": 20, "m31_to_u32": 4, "qm31_ops": 141, "triple_xor": 0},
+      "padded": {"blake_g": 0, "eq": 32, "m31_to_u32": 16, "qm31_ops": 256, "triple_xor": 0},
+      "preprocessed_cells": 67696,
+      "proof_bytes": 230986,
+      "native_verifier_accepted": true,
+      "changed_public_statement_rejected": true,
+      "false_output_rejected": true
+    },
+    {
+      "name": "u32_mix",
+      "canonical_ir_sha256": "96592086adf85d67c781e7b1cdf5a9e3ca5fa6aa177297619f1cbbc9770fbabe",
+      "raw": {"blake_g": 0, "eq": 68, "m31_to_u32": 4, "qm31_ops": 820, "triple_xor": 0},
+      "padded": {"blake_g": 0, "eq": 128, "m31_to_u32": 16, "qm31_ops": 1024, "triple_xor": 0},
+      "preprocessed_cells": 74032,
+      "proof_bytes": 237398,
+      "native_verifier_accepted": true,
+      "changed_public_statement_rejected": true,
+      "false_output_rejected": true
+    },
+    {
+      "name": "i128_xor",
+      "canonical_ir_sha256": "b529539ef2e01f54c36fe963144ef6d03fbe4ad31930a4990daa6002ffa5f389",
+      "raw": {"blake_g": 0, "eq": 272, "m31_to_u32": 16, "qm31_ops": 1812, "triple_xor": 0},
+      "padded": {"blake_g": 0, "eq": 512, "m31_to_u32": 16, "qm31_ops": 2048, "triple_xor": 0},
+      "preprocessed_cells": 82992,
+      "proof_bytes": 236298,
+      "native_verifier_accepted": true,
+      "changed_public_statement_rejected": true,
+      "false_output_rejected": true
+    }
+  ]
+}

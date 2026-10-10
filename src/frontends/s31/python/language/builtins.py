@@ -14,6 +14,9 @@ INT_BINARY_CALLS = {
     "std::int::sub_wrapping": "int_sub_wrapping",
     "std::int::mul_wrapping": "int_mul_wrapping",
     "std::int::mul_checked": "int_mul_checked",
+    "std::int::bit_and": "int_bit_and",
+    "std::int::bit_or": "int_bit_or",
+    "std::int::bit_xor": "int_bit_xor",
     "std::int::le": "int_le",
 }
 INT_COMPARE_CALLS = {"std::int::lt", "std::int::ge", "std::int::gt", "std::int::eq", "std::int::ne"}
@@ -87,4 +90,4 @@ STANDARD_ALIASES = {
     "std::merkle::path_blake2s": "merkle_path_blake2s",
 }
 BUILTINS |= STANDARD_ALIASES.keys()
-BUILTINS |= INT_BINARY_CALLS.keys() | INT_COMPARE_CALLS | INT_CAST_CALLS | {"std::int::limbs"}
+BUILTINS |= INT_BINARY_CALLS.keys() | INT_COMPARE_CALLS | INT_CAST_CALLS | {"std::int::limbs", "std::int::bit_not"}

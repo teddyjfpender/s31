@@ -165,7 +165,7 @@ class Builder:
                    span: dict[str, int] | None = None) -> Value:
         if lhs.typ != rhs.typ or lhs.typ.kind not in INT_TYPES:
             raise TypeErrorS31("std::int requires two equally typed fixed-width integers")
-        if op not in {"int_add_checked", "int_add_wrapping", "int_sub_checked", "int_sub_wrapping", "int_le", "int_mul_wrapping", "int_mul_checked"}:
+        if op not in {"int_add_checked", "int_add_wrapping", "int_sub_checked", "int_sub_wrapping", "int_le", "int_mul_wrapping", "int_mul_checked", "int_bit_and", "int_bit_or", "int_bit_xor"}:
             raise TypeErrorS31(f"unsupported fixed-width integer operation {op}")
         result = Type("bit", 1) if op == "int_le" else lhs.typ
         value = self.emit(op, result, wanted=wanted, span=span,
@@ -174,6 +174,13 @@ class Builder:
         if op == "int_le":
             self.computed_bits.add(value.ref)
         return value
+
+    def int_bit_not(self, value: Value, *, wanted: str | None = None,
+                    span: dict[str, int] | None = None) -> Value:
+        if value.typ.kind not in INT_TYPES:
+            raise TypeErrorS31("std::int::bit_not requires a fixed-width scalar")
+        return self.emit("int_bit_not", value.typ, wanted=wanted, span=span,
+                         lhs=self.realize(value).ref, constant=int_spec(value.typ))
 
     def emit(self, op: str, typ: Type, *, wanted: str | None = None,
              span: dict[str, int] | None = None, **fields: Any) -> Value:

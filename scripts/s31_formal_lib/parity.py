@@ -129,6 +129,12 @@ def expected(node: dict, args: list[tuple[str, list[int]]]) -> list[int]:
         x, y = interpret(number(a)), interpret(number(b))
         if op == "int_view":
             return a.copy()
+        if op == "int_bit_not":
+            return limbs((~number(a)) & (limit - 1), max(1, width // 16))
+        if op in {"int_bit_and", "int_bit_or", "int_bit_xor"}:
+            raw = (number(a) & number(b)) if op == "int_bit_and" else (
+                (number(a) | number(b)) if op == "int_bit_or" else (number(a) ^ number(b)))
+            return limbs(raw, max(1, width // 16))
         if op == "int_le":
             return [int(x <= y)]
         if op == "int_mul_wrapping":
@@ -252,10 +258,10 @@ def corpus() -> list[Case]:
         count, limit = max(1, width // 16), 2**width
         for signed in [False, True]:
             spec = width + 256 * signed
-            for op in ["int_view", "int_add_checked", "int_add_wrapping", "int_sub_checked", "int_sub_wrapping", "int_le", "int_mul_wrapping", "int_mul_checked"]:
+            for op in ["int_view", "int_add_checked", "int_add_wrapping", "int_sub_checked", "int_sub_wrapping", "int_le", "int_mul_wrapping", "int_mul_checked", "int_bit_and", "int_bit_or", "int_bit_xor", "int_bit_not"]:
                 for x, y in [(0, 1), (limit - 1, 1), (limit - 1, 2),
                              (limit // 2 - 1, 1), (limit // 2, limit - 1)]:
-                    args = [u16(limbs(x, count))] + ([] if op == "int_view" else [u16(limbs(y, count))])
+                    args = [u16(limbs(x, count))] + ([] if op in {"int_view", "int_bit_not"} else [u16(limbs(y, count))])
                     cases.append(operation_case(op, args, constant=spec))
     cases.append(operation_case("int_view", [u16([256])], constant=8))
     for source, target, pattern in [

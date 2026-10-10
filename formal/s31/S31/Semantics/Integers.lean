@@ -18,6 +18,12 @@ def evaluate (op : Op) (spec : IntegerSpec) (lhs rhs : List M31) : Result (List 
   let base := if spec.width == 8 then 256 else 65536
   require (lhs.all (fun x => x.val < base) && rhs.all (fun x => x.val < base)) .invalidValue
   if op == .int_view then return lhs
+  if op == .int_bit_not || op == .int_bit_and || op == .int_bit_or || op == .int_bit_xor then
+    let a : BitVec spec.width := BitVec.ofNat spec.width (unsigned lhs)
+    let b : BitVec spec.width := BitVec.ofNat spec.width (unsigned rhs)
+    let value := if op == .int_bit_not then ~~~a else if op == .int_bit_and then a &&& b
+      else if op == .int_bit_or then a ||| b else a ^^^ b
+    return encode spec.limbs value.toNat
   if op == .int_mul_wrapping then
     return encode spec.limbs ((unsigned lhs * unsigned rhs) % spec.limit)
   let a := interpretation spec (unsigned lhs)

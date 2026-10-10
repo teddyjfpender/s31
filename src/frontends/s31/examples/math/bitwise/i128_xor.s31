@@ -1,0 +1,7 @@
+use std@1;
+
+// Signed integers use the same exact 128-bit XOR as unsigned integers.
+circuit i128_xor(private a: i128, private b: i128) -> public i128 {
+    let result = std::int::bit_xor(a, b);
+    result
+}

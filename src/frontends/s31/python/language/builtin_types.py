@@ -82,6 +82,12 @@ def infer_builtin(name: str, generic: int | None, args: tuple[SourceType, ...],
         require(lhs == rhs and lhs.kind in INT_TYPES,
                 "std::int requires two equally typed fixed-width integers")
         return BIT if name in INT_COMPARE_CALLS or name == "std::int::le" else lhs
+    if name == "std::int::bit_not":
+        static_parameter(name, generic)
+        arity(name, args, 1)
+        value = circuit(args[0])
+        require(value.kind in INT_TYPES, "std::int::bit_not requires a fixed-width scalar")
+        return value
     if name == "std::int::limbs":
         static_parameter(name, generic)
         arity(name, args, 1)
