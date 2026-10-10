@@ -6,14 +6,17 @@ const pair = @import("pair_native_package.zig");
 const statement = @import("pair_statement.zig");
 
 pub fn main() !void {
-    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-    defer arena.deinit();
-    const allocator = arena.allocator();
+    // Native verification may allocate from parallel PCS work. Keep the CLI
+    // allocator safe for that execution model too.
+    const allocator = std.heap.smp_allocator;
     const args = try std.process.argsAlloc(allocator);
+    defer std.process.argsFree(allocator, args);
     if (args.len != 3) return error.ExpectedProofAndStatementPaths;
 
     const raw = try std.fs.cwd().readFileAlloc(allocator, args[1], 16 << 20);
+    defer allocator.free(raw);
     const statement_bytes = try std.fs.cwd().readFileAlloc(allocator, args[2], 4096);
+    defer allocator.free(statement_bytes);
     var parsed = try std.json.parseFromSlice(statement.Statement, allocator, statement_bytes, .{ .ignore_unknown_fields = false });
     defer parsed.deinit();
     if (!std.mem.eql(u8, parsed.value.schema, statement.schema_name))
