@@ -23,6 +23,11 @@ minus the initial chip endpoint, plus the final chip endpoint. The latter
 reduction uses the factor `1/16` and cyclic telescoping, so it must not be
 treated as sixteen independent endpoint events.
 
+This contract does **not** include all 512 Gate arithmetic row residuals.
+`LocalPublicPath` supplies only selected arithmetic facts on the source-to-
+public path. An end-to-end AIR correspondence proof must separately establish
+the full Gate arithmetic constraints for the committed trace.
+
 `AuthenticatedMixedTrace.gateRowsEq` binds every decoded Gate row, including
 its raw canonical addresses and fixed multiplicity, to the source roster.
 `AuthenticatedMixedTrace.positiveAligned` and `.negativeAligned` identify

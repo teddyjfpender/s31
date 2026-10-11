@@ -22,7 +22,7 @@ DERIVED_THEOREMS = {
 # Versioned, reviewed roster of Lean-generated theorem projections for proof
 # fields. Each entry binds a kernel declaration to a concrete source structure
 # and field. Unknown generated theorems still fail the exact live audit; a
-# removed or renamed source field fails inventory generation. These 42 fields
+# removed or renamed source field fails inventory generation. These reviewed fields
 # are separate from explicit `theorem` declarations and the two non-field
 # derived declarations above.
 PROOF_FIELD_PROJECTIONS_V1 = {
@@ -65,6 +65,52 @@ PROOF_FIELD_PROJECTIONS_V1 = {
         "S31.Gadgets.Air.DirectGatePcsOpeningLink.PcsOpeningAssumption": (
             "bound", "fixed", "main", "interactionFirst", "interactionLast", "composition",
         ),
+    },
+    "formal/s31/S31/Gadgets/Functional/Correspondence/RawGateSoundness.lean": {
+        "S31.Functional.Correspondence.RawGateSoundness.PhysicalTraceContext": (
+            "partition", "fixed", "arithmetic", "unique", "zero", "basis1", "basis2",
+            "basis3", "maskBasis", "inverseBasis", "inputPins", "outputPins",
+        ),
+        "S31.Functional.Correspondence.RawGateSoundness.FixedTraceContext": ("relation",),
+    },
+    "formal/s31/S31/Gadgets/Functional/Correspondence/AliasRawGateSoundness.lean": {
+        "S31.Functional.Correspondence.AliasRawGateSoundness.AliasFixedTraceContext": (
+            "relation",
+        ),
+    },
+    "formal/s31/S31/Gadgets/Air/SourceMixedLookupBound.lean": {
+        "S31.Gadgets.Air.SourceMixedLookupBound.SourceShape": (
+            "rows", "multiplicity", "baselineUses", "baselineYields", "rounds",
+        ),
+    },
+    "formal/s31/S31/Gadgets/Air/SourceMixedFalseClaimBound.lean": {
+        "S31.Gadgets.Air.SourceMixedFalseClaimBound.LocalPublicPath": (
+            "addresses", "unique", "first", "constants", "step", "packedInitial",
+            "packedFinal", "zero", "add", "mul", "outputs",
+        ),
+    },
+    "formal/s31/S31/Gadgets/Air/SourceMixedAuthenticatedTrace.lean": {
+        "S31.Gadgets.Air.SourceMixedAuthenticatedTrace.GateRows": (
+            "use0Nonzero", "use1Nonzero", "yieldNonzero", "pairResidual",
+            "yieldResidual",
+        ),
+        "S31.Gadgets.Air.SourceMixedAuthenticatedTrace.AuthenticatedMixedTrace": (
+            "gateRowsEq", "publicWordsEq", "positiveAligned", "negativeAligned",
+            "claimFoldZero",
+        ),
+    },
+}
+# Lean also generates proof projections for inherited Prop-valued contexts.
+# Require the actual `extends` clause in the reviewed structure header before
+# accepting the kernel declaration in the theorem inventory.
+INHERITED_PROJECTIONS_V1 = {
+    "formal/s31/S31/Gadgets/Functional/Correspondence/RawGateSoundness.lean": {
+        "S31.Functional.Correspondence.RawGateSoundness.FixedTraceContext":
+            ("PhysicalTraceContext", "toPhysicalTraceContext"),
+    },
+    "formal/s31/S31/Gadgets/Functional/Correspondence/AliasRawGateSoundness.lean": {
+        "S31.Functional.Correspondence.AliasRawGateSoundness.AliasFixedTraceContext":
+            ("PhysicalTraceContext", "toPhysicalTraceContext"),
     },
 }
 CONTROLS = frozenset("S31.Evidence." + name for name in (
@@ -181,6 +227,29 @@ def proof_field_projection_names(source: str, label: str,
     return names
 
 
+def inherited_projection_names(source: str, label: str,
+                               lexer: Callable[[str], str]) -> list[str]:
+    """Inventory reviewed `extends` projections from source-bound headers."""
+    lines = lexer(source).splitlines()
+    names = []
+    for qualified, (parent, projection) in INHERITED_PROJECTIONS_V1.get(label, {}).items():
+        headers = _qualified_structure_headers(lines, qualified, label)
+        if len(headers) != 1:
+            raise FormalError(f"{label}: expected one inherited structure {qualified}")
+        cursor = headers[0]
+        while not re.search(r"\bwhere\b", lines[cursor]):
+            cursor += 1
+            if cursor >= len(lines) or cursor > headers[0] + 10 or not lines[cursor].strip():
+                raise FormalError(f"{label}: missing inherited structure body {qualified}")
+        header = " ".join(lines[headers[0]:cursor + 1])
+        if not re.search(rf"\bextends\s+{re.escape(parent)}\b.*\bwhere\b", header):
+            raise FormalError(f"{label}: stale inherited projection roster for {qualified}")
+        if projection != "to" + parent:
+            raise FormalError(f"{label}: unexpected inherited projection {projection}")
+        names.append(f"{qualified}.{projection}")
+    return names
+
+
 def source_paths(root: Path) -> list[Path]:
     formal = root / "formal/s31"
     required = [formal / "S31.lean", formal / "S31/Semantics/Node.lean",
@@ -206,6 +275,7 @@ def inventory(root: Path, lexer: Callable[[str], str]) -> dict:
         declarations.extend(theorem_names(source, lexer))
         declarations.extend(DERIVED_THEOREMS.get(label, ()))
         declarations.extend(proof_field_projection_names(source, label, lexer))
+        declarations.extend(inherited_projection_names(source, label, lexer))
     if len(declarations) != len(set(declarations)):
         raise FormalError("duplicate theorem in proof closure")
     if not CONTROLS <= set(declarations):

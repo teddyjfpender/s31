@@ -72,6 +72,7 @@ import S31.Gadgets.Air.SourceMixedAddressSchedule
 import S31.Gadgets.Air.SourceMixedChainSemantics
 import S31.Gadgets.Air.SourceMixedPublicClosure
 import S31.Gadgets.Air.SourceMixedFalseClaimBound
+import S31.Gadgets.Air.SourceMixedAuthenticatedTrace
 import S31.Gadgets.Air.SourceMixedPackCorrespondence
 import S31.Gadgets.Air.SourceMixedProducerCheck
 import S31.Gadgets.Air.PrivateBridgeChallenge

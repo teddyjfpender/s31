@@ -96,7 +96,23 @@ class FormalGateTests(unittest.TestCase):
             self.assertNotEqual(changed, source)
             with self.subTest(path=path), self.assertRaises(checks.FormalError):
                 checks.proof_field_projection_names(changed, path, s31_formal.lean_code)
-        self.assertEqual(len(all_names), 42)
+        self.assertEqual(len(all_names), 82)
+
+    def test_inherited_projections_require_real_extends_clause(self) -> None:
+        for path, structures in checks.INHERITED_PROJECTIONS_V1.items():
+            source = (ROOT / path).read_text()
+            expected = {f"{structure}.{projection}"
+                        for structure, (_, projection) in structures.items()}
+            self.assertEqual(set(checks.inherited_projection_names(
+                source, path, s31_formal.lean_code)), expected)
+            self.assertTrue(expected <= self.theorems)
+            for structure, (parent, _) in structures.items():
+                start = source.index(f"structure {structure.rsplit('.', 1)[1]}")
+                changed = source[:start] + source[start:].replace(
+                    f"extends {parent}", "extends OtherContext", 1)
+                with self.subTest(path=path), self.assertRaisesRegex(
+                        checks.FormalError, "stale inherited projection roster"):
+                    checks.inherited_projection_names(changed, path, s31_formal.lean_code)
 
     def test_tagged_public_block_proof_fields_require_live_source(self) -> None:
         path = "formal/s31/S31/Gadgets/Functional/RecordAbiV2.lean"
