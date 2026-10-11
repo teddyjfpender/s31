@@ -421,6 +421,21 @@ class GateBytecodeArithmeticTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "selected Gate semantic identity changed"):
             decoded_program(bytes(mutation))
 
+    def test_previous_mask_opcode_changes_only_singleton_row_root(self) -> None:
+        """The selected -1 read has semantic effect, beyond its pinned digest."""
+        base_insts, ext_insts, roots = self.program
+        changed_base = list(base_insts)
+        op, tree, dst, column, auxiliary, offset = changed_base[126]
+        self.assertEqual((op, tree, column, offset), (0, 2, 4, -1))
+        changed_base[126] = (op, tree, dst, column, auxiliary, 0)
+        fixed, main, current, previous = first_row()
+        arguments = (fixed, main, current, previous,
+                     base(2), base(7), base(11), 512)
+        honest = evaluate_row(self.program, *arguments)
+        changed = evaluate_row((changed_base, ext_insts, roots), *arguments)
+        self.assertEqual(honest[:10], changed[:10])
+        self.assertNotEqual(honest[10], changed[10])
+
 
 if __name__ == "__main__":
     unittest.main()
