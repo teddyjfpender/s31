@@ -17,12 +17,12 @@ inventories. Some hash and fixed-width programs retain V6 validation *shapes*
 under new names, so this checks cross-revision behavior, not eight unseen
 semantic shapes.
 
-The [first corpus](language/whole-prover-transfer-v1-first-corpus.json) and
-[first audit](language/whole-prover-transfer-v1-first-audit.json) record 80
+The [first corpus](language/transfer-v1/first-corpus.json) and
+[first audit](language/transfer-v1/first-audit.json) record 80
 fresh proofs. A second fresh build and proof run used the same protocol and
 assignments in a different output directory to examine host-load sensitivity;
-its [corpus](language/whole-prover-transfer-v1-repeat-corpus.json) and
-[audit](language/whole-prover-transfer-v1-repeat-audit.json) are also pinned.
+its [corpus](language/transfer-v1/repeat-corpus.json) and
+[audit](language/transfer-v1/repeat-audit.json) are also pinned.
 Both runs accepted all 80 honest proofs, rejected every changed public claim,
 and passed the independent value oracle on every trial. The repeated programs
 and assignments make the second run a sensitivity check, **not** an independent
