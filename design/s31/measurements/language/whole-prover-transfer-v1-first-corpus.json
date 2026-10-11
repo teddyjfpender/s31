@@ -1,0 +1,3259 @@
+{
+  "cases": {
+    "transfer_arithmetic_1536": {
+      "assignment_sha256": [
+        "ceff09e7c0c4e9a42d2628fdc12eab22de19cff7e961301ae0d592f2d6781e49",
+        "062c98414183c70b9665b5f1e987ee1b94a3d20844cb5fff1528a8f887ce0a7e",
+        "d1b70fdc5aa5391d2de3974f8a0766b3b93ec3a67a410ce86b3bc33f69df5f4a",
+        "32dfffbb6621f11b7608ca505835f76bd6509044e69ae3ccde608599d9fbef7e",
+        "f9b022470aca1e80d1fb04c062aa0a8856f6f44f2cd0d7b907ca0940918b329c",
+        "dc9b0bcb150c4fa774d7c3e9ba95d582bb32579cd936f783dc8f144248831dda",
+        "bb4ff35314f316f8c5b45b8c330e54d1e1f86df7b25cf50a47a0a90029b6b29a",
+        "ee63a19817f9c5b7528d0421c98a8a0fd6b4bdf1a8cb6298321330dfc04aac43",
+        "dcb21cbe7b69b18f9d0121c45403ea524eb0df73b025a4943449fd0987143140",
+        "d600a5f8055d0f093c99de16fec0c2a858e25eb38c4553e89e6878a7d2c50e61"
+      ],
+      "build": {
+        "package_build_peak_rss_bytes": null,
+        "package_build_peak_rss_method": "unavailable: Python build invokes Zig subprocesses",
+        "package_build_wall_seconds": 57.20045250002295,
+        "package_reused": false,
+        "zig_compiler_cache": "uncontrolled host cache; no cache clearing or isolation"
+      },
+      "family": "arithmetic",
+      "features": {
+        "constant": 1.0,
+        "hash_work": 1.0,
+        "padded_rows": 4096.0,
+        "preprocessed_cells": 32768.0,
+        "raw_rows": 3393.0
+      },
+      "profile": "direct-m31-v4",
+      "size": 1536,
+      "source_sha256": "b1e12940532714c4892cfd926400dd3d87c8273fdae0ff784bd361faee26c3f6",
+      "targets": {
+        "paired_prove_and_verify_wall_seconds": {
+          "covered_trials": 6,
+          "measured_point": 0.294661795895081,
+          "prediction": {
+            "center": 0.1414789094930401,
+            "lower": 0.05095865182069562,
+            "upper": 0.33653858263241593
+          },
+          "relative_point_error": 0.5198600176067076,
+          "trial_count": 10
+        },
+        "proof_bytes": {
+          "covered_trials": 10,
+          "measured_point": 114929.0,
+          "prediction": {
+            "center": 107849.21314557648,
+            "lower": 94750.65101554319,
+            "upper": 122323.19656796876
+          },
+          "relative_point_error": 0.061601396117807725,
+          "trial_count": 10
+        },
+        "prover_peak_rss_bytes": {
+          "covered_trials": 10,
+          "measured_point": 13533184.0,
+          "prediction": {
+            "center": 13962326.377696063,
+            "lower": 13347665.081144335,
+            "upper": 14576987.674247792
+          },
+          "relative_point_error": 0.031710377816193396,
+          "trial_count": 10
+        }
+      },
+      "trials": [
+        {
+          "changed_public_statement_rejected": "public_outputs.result[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "result": [
+                1821227193,
+                2111880982,
+                891509306,
+                1816473366
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 113871,
+          "proof_sha256": "61160fc4362817b1b8bcd5859616e66214f77ea38eb530d26e27f91911e7002f",
+          "prove_seconds": 0.6046958339866251,
+          "prover_peak_rss_bytes": 13385728,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.099234,
+            "interaction_pow_seconds": 0.003408,
+            "prove_excluding_pow_seconds": 0.003603999999999996,
+            "prove_seconds": 0.106246,
+            "runtime_other_seconds": 0.0023200000000000026,
+            "setup_seconds": 0.001356,
+            "total_through_verification_seconds": 0.110333,
+            "witness_seconds": 0.000411
+          },
+          "verifier_peak_rss_bytes": 5996544,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.37902424996718764
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs.result[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "result": [
+                1934986634,
+                73072810,
+                522103420,
+                200487507
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 107866,
+          "proof_sha256": "524c7a8f8615c8f5bf22039f57dc91d0914a1fc3ca872ffee52cb8b47889e3a8",
+          "prove_seconds": 0.15220658294856548,
+          "prover_peak_rss_bytes": 13434880,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.130166,
+            "interaction_pow_seconds": 0.00254,
+            "prove_excluding_pow_seconds": 0.0033240000000000214,
+            "prove_seconds": 0.13603,
+            "runtime_other_seconds": 0.0021709999999999785,
+            "setup_seconds": 0.001017,
+            "total_through_verification_seconds": 0.139424,
+            "witness_seconds": 0.000206
+          },
+          "verifier_peak_rss_bytes": 5980160,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.01306445908267051
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs.result[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "result": [
+                1390541329,
+                1925620776,
+                1378696439,
+                180359033
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 116706,
+          "proof_sha256": "88e85599ff6f7d73f606f845b5fe1bfe493fad22edd1d28963c0ccf3648990e4",
+          "prove_seconds": 0.2947351250331849,
+          "prover_peak_rss_bytes": 13565952,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.276465,
+            "interaction_pow_seconds": 0.00141,
+            "prove_excluding_pow_seconds": 0.0036439999999999806,
+            "prove_seconds": 0.281519,
+            "runtime_other_seconds": 0.0024119999999999697,
+            "setup_seconds": 0.001094,
+            "total_through_verification_seconds": 0.285242,
+            "witness_seconds": 0.000217
+          },
+          "verifier_peak_rss_bytes": 5996544,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.013057957985438406
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs.result[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "result": [
+                1482797330,
+                1981356649,
+                1526439070,
+                1927414289
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 109959,
+          "proof_sha256": "3db63f6da2eda89402122908bed761290f283776481d2c3ece94f64b4003bae5",
+          "prove_seconds": 0.03493658406659961,
+          "prover_peak_rss_bytes": 13434880,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.017516,
+            "interaction_pow_seconds": 0.001327,
+            "prove_excluding_pow_seconds": 0.00341,
+            "prove_seconds": 0.022253,
+            "runtime_other_seconds": 0.0023299999999999987,
+            "setup_seconds": 0.001023,
+            "total_through_verification_seconds": 0.025823,
+            "witness_seconds": 0.000217
+          },
+          "verifier_peak_rss_bytes": 5980160,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.013563666958361864
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs.result[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "result": [
+                481357648,
+                1596551288,
+                1348798304,
+                565029176
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 116204,
+          "proof_sha256": "2843634835966375d280520eb7035bf617f8d9b95ef9a2770a7fa6a0ba0b7556",
+          "prove_seconds": 0.018310624989680946,
+          "prover_peak_rss_bytes": 13533184,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.001146,
+            "interaction_pow_seconds": 0.000322,
+            "prove_excluding_pow_seconds": 0.0035589999999999997,
+            "prove_seconds": 0.005027,
+            "runtime_other_seconds": 0.002300000000000001,
+            "setup_seconds": 0.001071,
+            "total_through_verification_seconds": 0.008625,
+            "witness_seconds": 0.000227
+          },
+          "verifier_peak_rss_bytes": 5996544,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.013675541034899652
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs.result[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "result": [
+                831639231,
+                773837623,
+                609204550,
+                1828308870
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 112065,
+          "proof_sha256": "02f881a3fa0cbed046107a6f445f0f8a47c1dc3e945680e8bead1127ea915240",
+          "prove_seconds": 0.6533541249809787,
+          "prover_peak_rss_bytes": 13385728,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.630498,
+            "interaction_pow_seconds": 0.002738,
+            "prove_excluding_pow_seconds": 0.0036640000000000006,
+            "prove_seconds": 0.6369,
+            "runtime_other_seconds": 0.004769999999999941,
+            "setup_seconds": 0.001069,
+            "total_through_verification_seconds": 0.642965,
+            "witness_seconds": 0.000226
+          },
+          "verifier_peak_rss_bytes": 5996544,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.02020825003273785
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs.result[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "result": [
+                692771546,
+                1547538891,
+                411729580,
+                2134276497
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 112679,
+          "proof_sha256": "b7857a282552fc721f261d9cb9888b6846c1d0167c687527da648082881fada7",
+          "prove_seconds": 0.046781874960288405,
+          "prover_peak_rss_bytes": 13549568,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.022516,
+            "interaction_pow_seconds": 0.003549,
+            "prove_excluding_pow_seconds": 0.0033539999999999993,
+            "prove_seconds": 0.029419,
+            "runtime_other_seconds": 0.0023630000000000005,
+            "setup_seconds": 0.000948,
+            "total_through_verification_seconds": 0.032936,
+            "witness_seconds": 0.000206
+          },
+          "verifier_peak_rss_bytes": 5980160,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.020494624972343445
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs.result[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "result": [
+                1236269263,
+                493278129,
+                157784894,
+                304457548
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 116049,
+          "proof_sha256": "90c0286c3915d9ec8f7dde83629abfdac29af77f6bad33b6a0c021d75096be49",
+          "prove_seconds": 0.29575258307158947,
+          "prover_peak_rss_bytes": 13533184,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.270773,
+            "interaction_pow_seconds": 0.001737,
+            "prove_excluding_pow_seconds": 0.003832000000000002,
+            "prove_seconds": 0.276342,
+            "runtime_other_seconds": 0.0024969999999999715,
+            "setup_seconds": 0.001089,
+            "total_through_verification_seconds": 0.280168,
+            "witness_seconds": 0.00024
+          },
+          "verifier_peak_rss_bytes": 5996544,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.020412874990142882
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs.result[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "result": [
+                1915780892,
+                916366484,
+                30767691,
+                1220583059
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 116155,
+          "proof_sha256": "653b044f68b9ade6e699311aa6848ffb80a8c790ece600c0b3bc6e04ea74e418",
+          "prove_seconds": 0.06567041703965515,
+          "prover_peak_rss_bytes": 13615104,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.03988,
+            "interaction_pow_seconds": 0.000882,
+            "prove_excluding_pow_seconds": 0.0035359999999999975,
+            "prove_seconds": 0.044298,
+            "runtime_other_seconds": 0.0023000000000000034,
+            "setup_seconds": 0.001078,
+            "total_through_verification_seconds": 0.047898,
+            "witness_seconds": 0.000222
+          },
+          "verifier_peak_rss_bytes": 5996544,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.02211483393330127
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs.result[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "result": [
+                2146962648,
+                987577073,
+                568194321,
+                1596931048
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 115987,
+          "proof_sha256": "c0de4eb85313a39a9c617909fa5d40f60b53111a2ea99bc7a21019f485353bb9",
+          "prove_seconds": 0.24125783296767622,
+          "prover_peak_rss_bytes": 13615104,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.215627,
+            "interaction_pow_seconds": 0.001719,
+            "prove_excluding_pow_seconds": 0.00356999999999999,
+            "prove_seconds": 0.220916,
+            "runtime_other_seconds": 0.002361000000000002,
+            "setup_seconds": 0.001091,
+            "total_through_verification_seconds": 0.224598,
+            "witness_seconds": 0.00023
+          },
+          "verifier_peak_rss_bytes": 5996544,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.0232999159488827
+        }
+      ],
+      "visible_fri": {
+        "blowup_factor": 2,
+        "fold_step": 1,
+        "last_layer_degree_bound": 1,
+        "pow_bits": 26,
+        "queries": 70
+      }
+    },
+    "transfer_arithmetic_96": {
+      "assignment_sha256": [
+        "23ec377dfb4fccecda62e897904dbc16ee7ab00318c12c325b2871a84fae47b2",
+        "301d5f2818d6c247a016cfb2a61379a291a77a2b87cce2ca212417bb99a37e60",
+        "5ce098b475f3bfe1646a7cd8d708ae2e307b8b5f9e3c7d8d9ae7ff980ff2bcb7",
+        "f59ca1d52a40d38f9138e99ae9f1799bd8451f4c8b59e96a1f29cd6eb248521e",
+        "c3d673854ab7a223805ee54c8132ecf490677f48413a5f361e4d1fb8d09acf39",
+        "a83e519175645281eff96e03d931d9bf3e583c9299f3cd2f20247691de021e72",
+        "5183a901e482af84c7b918dd1f2e06456f93591c86493a226d5721c6584014d9",
+        "513b6c91c51c9b8a73e404af7300f854421cbc2387aa2df9d24423bad29d15ce",
+        "e4e38490e27d5c2e5c76a551b70746d2e18f77fb5e99da6a9099ac378b6d370c",
+        "84d80024bbf65bd90d412375df1f58a19b9ecd7c2d66b45638ec2fac568d09e2"
+      ],
+      "build": {
+        "package_build_peak_rss_bytes": null,
+        "package_build_peak_rss_method": "unavailable: Python build invokes Zig subprocesses",
+        "package_build_wall_seconds": 56.82312108296901,
+        "package_reused": false,
+        "zig_compiler_cache": "uncontrolled host cache; no cache clearing or isolation"
+      },
+      "family": "arithmetic",
+      "features": {
+        "constant": 1.0,
+        "hash_work": 1.0,
+        "padded_rows": 1024.0,
+        "preprocessed_cells": 8192.0,
+        "raw_rows": 513.0
+      },
+      "profile": "direct-m31-v4",
+      "size": 96,
+      "source_sha256": "a3f1e0f1e9eb92e639cbcceec9994a7c54af4b49d384be9343f47aaba5ab4f05",
+      "targets": {
+        "paired_prove_and_verify_wall_seconds": {
+          "covered_trials": 7,
+          "measured_point": 0.22907852100906895,
+          "prediction": {
+            "center": 0.1359936228342093,
+            "lower": 0.0489829311003022,
+            "upper": 0.3234906265511158
+          },
+          "relative_point_error": 0.4063449413102092,
+          "trial_count": 10
+        },
+        "proof_bytes": {
+          "covered_trials": 10,
+          "measured_point": 72095.0,
+          "prediction": {
+            "center": 71615.96000442242,
+            "lower": 62918.018922982264,
+            "upper": 81227.23288856988
+          },
+          "relative_point_error": 0.006644566136036885,
+          "trial_count": 10
+        },
+        "prover_peak_rss_bytes": {
+          "covered_trials": 10,
+          "measured_point": 10043392.0,
+          "prediction": {
+            "center": 9891234.625541955,
+            "lower": 9276573.328990227,
+            "upper": 10505895.922093684
+          },
+          "relative_point_error": 0.01514999857200085,
+          "trial_count": 10
+        }
+      },
+      "trials": [
+        {
+          "changed_public_statement_rejected": "public_outputs.result[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "result": [
+                1546790731,
+                1908676248,
+                478446652,
+                1950686295
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 72136,
+          "proof_sha256": "e97ca5d3af098c4560a55747471085220662c5c0a0722916c8e4fa458ea89bf5",
+          "prove_seconds": 0.426537457969971,
+          "prover_peak_rss_bytes": 10158080,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.044351,
+            "interaction_pow_seconds": 0.000567,
+            "prove_excluding_pow_seconds": 0.0021750000000000033,
+            "prove_seconds": 0.047093,
+            "runtime_other_seconds": 0.0017210000000000003,
+            "setup_seconds": 0.001114,
+            "total_through_verification_seconds": 0.050201,
+            "witness_seconds": 0.000273
+          },
+          "verifier_peak_rss_bytes": 5701632,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.37163262499962
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs.result[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "result": [
+                821747809,
+                1118567910,
+                388874751,
+                1683626466
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 75215,
+          "proof_sha256": "e497a7d08bf5660341cea26fa8ba3a75ba91699ab8567c432e5de5c8b2741f4b",
+          "prove_seconds": 0.11376116704195738,
+          "prover_peak_rss_bytes": 10125312,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.092552,
+            "interaction_pow_seconds": 0.003537,
+            "prove_excluding_pow_seconds": 0.0020610000000000073,
+            "prove_seconds": 0.09815,
+            "runtime_other_seconds": 0.0017220000000000013,
+            "setup_seconds": 0.000881,
+            "total_through_verification_seconds": 0.100869,
+            "witness_seconds": 0.000116
+          },
+          "verifier_peak_rss_bytes": 5718016,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.023648375063203275
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs.result[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "result": [
+                1279394031,
+                634790663,
+                1827157582,
+                1990606617
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 72054,
+          "proof_sha256": "c62935498ccf268743d25f2af468782632daf0713f7bbd5a7d0c62e073c58dcb",
+          "prove_seconds": 0.18100224994122982,
+          "prover_peak_rss_bytes": 10108928,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.161848,
+            "interaction_pow_seconds": 0.000663,
+            "prove_excluding_pow_seconds": 0.0022040000000000115,
+            "prove_seconds": 0.164715,
+            "runtime_other_seconds": 0.0017490000000000006,
+            "setup_seconds": 0.000854,
+            "total_through_verification_seconds": 0.16745,
+            "witness_seconds": 0.000132
+          },
+          "verifier_peak_rss_bytes": 5718016,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.02043358306400478
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs.result[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "result": [
+                1709429958,
+                152603766,
+                1026144751,
+                1416470575
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 68990,
+          "proof_sha256": "a8d17ecd93243740d4f4d8593d95590e07a86d33a658009d1b8d03df228da195",
+          "prove_seconds": 0.05199916707351804,
+          "prover_peak_rss_bytes": 10027008,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.028537,
+            "interaction_pow_seconds": 0.002543,
+            "prove_excluding_pow_seconds": 0.002060999999999997,
+            "prove_seconds": 0.033141,
+            "runtime_other_seconds": 0.0016060000000000033,
+            "setup_seconds": 0.000853,
+            "total_through_verification_seconds": 0.035725,
+            "witness_seconds": 0.000125
+          },
+          "verifier_peak_rss_bytes": 5685248,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.021248625009320676
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs.result[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "result": [
+                539026359,
+                675544460,
+                928418425,
+                107148229
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 74798,
+          "proof_sha256": "66fdaaeea4b925219e0e5435c9a8e8a6adf81a95d407a6b4e56c387b329f5be3",
+          "prove_seconds": 0.03018295904621482,
+          "prover_peak_rss_bytes": 10059776,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.00733,
+            "interaction_pow_seconds": 0.001915,
+            "prove_excluding_pow_seconds": 0.0021279999999999997,
+            "prove_seconds": 0.011373,
+            "runtime_other_seconds": 0.0016369999999999996,
+            "setup_seconds": 0.000911,
+            "total_through_verification_seconds": 0.014055,
+            "witness_seconds": 0.000134
+          },
+          "verifier_peak_rss_bytes": 5718016,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.016986791975796223
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs.result[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "result": [
+                1367306493,
+                544289604,
+                1509159995,
+                794648035
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 71148,
+          "proof_sha256": "fda6ce20a3427774fc87d352189dbb240bc72c9cce897be27e6bd10ffd40a93c",
+          "prove_seconds": 0.09870562492869794,
+          "prover_peak_rss_bytes": 10010624,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.077066,
+            "interaction_pow_seconds": 0.000815,
+            "prove_excluding_pow_seconds": 0.0020900000000000085,
+            "prove_seconds": 0.079971,
+            "runtime_other_seconds": 0.0016179999999999944,
+            "setup_seconds": 0.000854,
+            "total_through_verification_seconds": 0.082566,
+            "witness_seconds": 0.000123
+          },
+          "verifier_peak_rss_bytes": 5701632,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.01862820889800787
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs.result[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "result": [
+                1010265856,
+                1133442228,
+                2008981853,
+                1710313958
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 71579,
+          "proof_sha256": "fd11155552afb2ed0f135d0322a7c124d1f81ece4c7c58db7cceaf6b9c30ce23",
+          "prove_seconds": 0.04957583290524781,
+          "prover_peak_rss_bytes": 9895936,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.029147,
+            "interaction_pow_seconds": 0.002042,
+            "prove_excluding_pow_seconds": 0.0020349999999999986,
+            "prove_seconds": 0.033224,
+            "runtime_other_seconds": 0.0016120000000000023,
+            "setup_seconds": 0.000815,
+            "total_through_verification_seconds": 0.035782,
+            "witness_seconds": 0.000131
+          },
+          "verifier_peak_rss_bytes": 5701632,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.021533500053919852
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs.result[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "result": [
+                83249311,
+                384084799,
+                1477110771,
+                2108535144
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 71120,
+          "proof_sha256": "4549d193ebf78415ce6fadbe82a8ae48d73860c469247d596f598eeada46a2fc",
+          "prove_seconds": 0.600324708968401,
+          "prover_peak_rss_bytes": 10092544,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.567864,
+            "interaction_pow_seconds": 0.009977,
+            "prove_excluding_pow_seconds": 0.0021979999999999222,
+            "prove_seconds": 0.580039,
+            "runtime_other_seconds": 0.001811000000000007,
+            "setup_seconds": 0.000861,
+            "total_through_verification_seconds": 0.582847,
+            "witness_seconds": 0.000136
+          },
+          "verifier_peak_rss_bytes": 5685248,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.021708833053708076
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs.result[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "result": [
+                977921551,
+                1283695405,
+                697122716,
+                327599145
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 72664,
+          "proof_sha256": "b2c8f57747c8e2cd65ccf25a7a95d6a0dd4aa3618fb3b44d34ed97ceea33075e",
+          "prove_seconds": 0.049445334007032216,
+          "prover_peak_rss_bytes": 9928704,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.023217,
+            "interaction_pow_seconds": 0.004769,
+            "prove_excluding_pow_seconds": 0.002116,
+            "prove_seconds": 0.030102,
+            "runtime_other_seconds": 0.0017129999999999958,
+            "setup_seconds": 0.000788,
+            "total_through_verification_seconds": 0.032725,
+            "witness_seconds": 0.000122
+          },
+          "verifier_peak_rss_bytes": 5685248,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.02256504201795906
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs.result[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "result": [
+                604703426,
+                868578094,
+                409516406,
+                249444397
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 72510,
+          "proof_sha256": "e61760f03b2c7d606c6b3ce439ace731742519e3de8e31ab49654f73d33a6947",
+          "prove_seconds": 0.12911991600412875,
+          "prover_peak_rss_bytes": 9994240,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.105587,
+            "interaction_pow_seconds": 0.001776,
+            "prove_excluding_pow_seconds": 0.002229999999999996,
+            "prove_seconds": 0.109593,
+            "runtime_other_seconds": 0.001700000000000007,
+            "setup_seconds": 0.000873,
+            "total_through_verification_seconds": 0.112315,
+            "witness_seconds": 0.000149
+          },
+          "verifier_peak_rss_bytes": 5718016,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.0217452080687508
+        }
+      ],
+      "visible_fri": {
+        "blowup_factor": 2,
+        "fold_step": 1,
+        "last_layer_degree_bound": 1,
+        "pow_bits": 26,
+        "queries": 70
+      }
+    },
+    "transfer_chip_1024": {
+      "assignment_sha256": [
+        "c2b5890df909ea9727b6a71c73d716b9e516b12a82c363bf23efa63c244e15d1",
+        "37622d7455b0010586f36ff696e38c2823547d51d70ac5db21b580f3bd665974",
+        "512a596fcd5368e98722d8cf418e331b2ce7af00fac52293a407719ee0349dd6",
+        "ca325fd35dbc857533a741708e5fbb4494d52c55bef2b658818f06f5a1365735",
+        "0670dfb4c7e5607ec1f24115eb83d98b385f66433cb49742c5c12f46780824cf",
+        "855d1fec6792f8069858ae9e4ec46894447f1ef2be5bd391284d1283ea6bd3b1",
+        "fa92c7f99ed2b1af0114cfe3a9f25ef91abd155aaf1649fc5ed1986a37bf21b2",
+        "7dfb6a64cff6d9c2884e48a77cbcbd1f1243cadf9527d93e113de4218d925b30",
+        "3d89db69f4f8cdd46ccf48c09bdca58d3613624df26aab508a98019d145664cf",
+        "3b65ff4a2e3f651e7c9101c7cbad1d9ab3812aa343ae2f635772b0a6d1eabf12"
+      ],
+      "build": {
+        "package_build_peak_rss_bytes": null,
+        "package_build_peak_rss_method": "unavailable: Python build invokes Zig subprocesses",
+        "package_build_wall_seconds": 56.22209654201288,
+        "package_reused": false,
+        "zig_compiler_cache": "uncontrolled host cache; no cache clearing or isolation"
+      },
+      "family": "chip",
+      "features": {
+        "chip_fri_domain_rows": 1024.0,
+        "chip_trace_cells": 27648.0,
+        "constant": 1.0,
+        "hash_work": 1.0,
+        "padded_rows": 512.0,
+        "preprocessed_cells": 4096.0,
+        "raw_rows": 292.0
+      },
+      "profile": "direct-m31-v4",
+      "size": 1024,
+      "source_sha256": "1ae60f4208e779fc320a3f0d7dc4f7dbf5f57fe6e3625aa1bf632b03a8941370",
+      "targets": {
+        "paired_prove_and_verify_wall_seconds": {
+          "covered_trials": 8,
+          "measured_point": 0.24200667502591386,
+          "prediction": {
+            "center": 0.15067450597333598,
+            "lower": 0.04685058817304623,
+            "upper": 0.35979460198324187
+          },
+          "relative_point_error": 0.37739524764264504,
+          "trial_count": 10
+        },
+        "proof_bytes": {
+          "covered_trials": 10,
+          "measured_point": 77257.0,
+          "prediction": {
+            "center": 74821.22923964108,
+            "lower": 69116.82852767133,
+            "upper": 80861.89844548752
+          },
+          "relative_point_error": 0.031528156158780726,
+          "trial_count": 10
+        },
+        "prover_peak_rss_bytes": {
+          "covered_trials": 10,
+          "measured_point": 10117120.0,
+          "prediction": {
+            "center": 10045387.498224458,
+            "lower": 9224003.259916073,
+            "upper": 10866771.736532843
+          },
+          "relative_point_error": 0.007090209642224494,
+          "trial_count": 10
+        }
+      },
+      "trials": [
+        {
+          "changed_public_statement_rejected": "public_outputs.result[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "result": [
+                1412044191,
+                2056378805,
+                1222717107,
+                571651891
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 72984,
+          "proof_sha256": "0628854f84594032031bd0f4f9a54f571d04e673c6223dbe4173628ff3f4a18b",
+          "prove_seconds": 0.5635879579931498,
+          "prover_peak_rss_bytes": 9912320,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.055242,
+            "interaction_pow_seconds": 0.002885,
+            "prove_excluding_pow_seconds": 0.0023980000000000043,
+            "prove_seconds": 0.060525,
+            "runtime_other_seconds": 0.0017809999999999979,
+            "setup_seconds": 0.001371,
+            "total_through_verification_seconds": 0.063918,
+            "witness_seconds": 0.000241
+          },
+          "verifier_peak_rss_bytes": 5799936,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.3750644999090582
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs.result[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "result": [
+                2110043084,
+                880777948,
+                563448150,
+                777411520
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 77654,
+          "proof_sha256": "a7a2a7deb0a1cd0d1146e2e16ae3b73506316443469afa9da81a3635c9e426db",
+          "prove_seconds": 0.3348242079373449,
+          "prover_peak_rss_bytes": 10076160,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.313268,
+            "interaction_pow_seconds": 0.002491,
+            "prove_excluding_pow_seconds": 0.0022139999999999938,
+            "prove_seconds": 0.317973,
+            "runtime_other_seconds": 0.001823000000000019,
+            "setup_seconds": 0.000859,
+            "total_through_verification_seconds": 0.320761,
+            "witness_seconds": 0.000106
+          },
+          "verifier_peak_rss_bytes": 5816320,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.021330458112061024
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs.result[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "result": [
+                2004308647,
+                1851065403,
+                11447434,
+                1688000006
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 79282,
+          "proof_sha256": "30beea60d34d3eeef26f0f341857fa86be8f63b0becd941ce245aa82b6a42617",
+          "prove_seconds": 0.03310141700785607,
+          "prover_peak_rss_bytes": 10092544,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.010157,
+            "interaction_pow_seconds": 0.003623,
+            "prove_excluding_pow_seconds": 0.002163,
+            "prove_seconds": 0.015943,
+            "runtime_other_seconds": 0.001573999999999999,
+            "setup_seconds": 0.000751,
+            "total_through_verification_seconds": 0.018386,
+            "witness_seconds": 0.000118
+          },
+          "verifier_peak_rss_bytes": 5816320,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.01922429201658815
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs.result[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "result": [
+                894771030,
+                1169546383,
+                988686306,
+                1488619886
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 78416,
+          "proof_sha256": "181a33a827d218beb50f2e6205bbf54928876cb2df4e895daae57e98b9fd961d",
+          "prove_seconds": 0.18618645798414946,
+          "prover_peak_rss_bytes": 9928704,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.163021,
+            "interaction_pow_seconds": 0.002485,
+            "prove_excluding_pow_seconds": 0.0023030000000000272,
+            "prove_seconds": 0.167809,
+            "runtime_other_seconds": 0.0017179999999999696,
+            "setup_seconds": 0.000783,
+            "total_through_verification_seconds": 0.170422,
+            "witness_seconds": 0.000112
+          },
+          "verifier_peak_rss_bytes": 5816320,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.02090108406264335
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs.result[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "result": [
+                698267018,
+                1431219412,
+                1402202426,
+                749444068
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 80235,
+          "proof_sha256": "e240c1e7b29e727135b3b44cd174d1ba301c3c5362c45faad4b55039ae9c426d",
+          "prove_seconds": 0.23291491600684822,
+          "prover_peak_rss_bytes": 10207232,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.207201,
+            "interaction_pow_seconds": 0.001448,
+            "prove_excluding_pow_seconds": 0.0025090000000000112,
+            "prove_seconds": 0.211158,
+            "runtime_other_seconds": 0.0019889999999999908,
+            "setup_seconds": 0.00078,
+            "total_through_verification_seconds": 0.214038,
+            "witness_seconds": 0.000111
+          },
+          "verifier_peak_rss_bytes": 5849088,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.020091041922569275
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs.result[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "result": [
+                530713448,
+                712200706,
+                618212936,
+                684624841
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 76860,
+          "proof_sha256": "306fd7cb0d98fa56c06ff1f28a6791816580b36be4287b9ad7a467dbb2c2a3bb",
+          "prove_seconds": 0.20896858407650143,
+          "prover_peak_rss_bytes": 10059776,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.186602,
+            "interaction_pow_seconds": 0.001305,
+            "prove_excluding_pow_seconds": 0.0024060000000000192,
+            "prove_seconds": 0.190313,
+            "runtime_other_seconds": 0.0016449999999999798,
+            "setup_seconds": 0.000828,
+            "total_through_verification_seconds": 0.192906,
+            "witness_seconds": 0.00012
+          },
+          "verifier_peak_rss_bytes": 5799936,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.012217666022479534
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs.result[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "result": [
+                1682663319,
+                617142873,
+                2067617876,
+                1699564531
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 78993,
+          "proof_sha256": "ae84bab99a126c294ee6ea658ea52808a1c35655b31a9f2eea06f55b4d979991",
+          "prove_seconds": 0.04793087509460747,
+          "prover_peak_rss_bytes": 10305536,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.030677,
+            "interaction_pow_seconds": 0.002242,
+            "prove_excluding_pow_seconds": 0.0023669999999999976,
+            "prove_seconds": 0.035286,
+            "runtime_other_seconds": 0.0018850000000000047,
+            "setup_seconds": 0.000854,
+            "total_through_verification_seconds": 0.038134,
+            "witness_seconds": 0.000109
+          },
+          "verifier_peak_rss_bytes": 5881856,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.012365541071631014
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs.result[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "result": [
+                1054297327,
+                376666242,
+                1779023724,
+                564629910
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 76308,
+          "proof_sha256": "80d061ec777dddd2b582d2b9a7f77b0e323692fab2fc0caff39dd21b52c52eff",
+          "prove_seconds": 0.1528785420814529,
+          "prover_peak_rss_bytes": 10141696,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.134104,
+            "interaction_pow_seconds": 0.002016,
+            "prove_excluding_pow_seconds": 0.0023849999999999982,
+            "prove_seconds": 0.138505,
+            "runtime_other_seconds": 0.003389000000000003,
+            "setup_seconds": 0.000903,
+            "total_through_verification_seconds": 0.142924,
+            "witness_seconds": 0.000127
+          },
+          "verifier_peak_rss_bytes": 5816320,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.01224804192315787
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs.result[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "result": [
+                968478456,
+                1785290200,
+                1563056243,
+                2041027355
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 72653,
+          "proof_sha256": "6568457d5d06d53ca2bc76b1751690113f7d14dd615e109fd00acfd0b52e05d0",
+          "prove_seconds": 0.017862750100903213,
+          "prover_peak_rss_bytes": 10158080,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.002322,
+            "interaction_pow_seconds": 0.001826,
+            "prove_excluding_pow_seconds": 0.002224,
+            "prove_seconds": 0.006372,
+            "runtime_other_seconds": 0.0016229999999999994,
+            "setup_seconds": 0.000854,
+            "total_through_verification_seconds": 0.008974,
+            "witness_seconds": 0.000125
+          },
+          "verifier_peak_rss_bytes": 5914624,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.012048667063936591
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs.result[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "result": [
+                277707864,
+                719851549,
+                835741020,
+                1514655449
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 74134,
+          "proof_sha256": "3acc2bb79c38ea06435808a87fd84380a0db61e54928d5fad4b25a94f8c239a6",
+          "prove_seconds": 0.11633445892948657,
+          "prover_peak_rss_bytes": 10256384,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.099327,
+            "interaction_pow_seconds": 0.002689,
+            "prove_excluding_pow_seconds": 0.002259000000000011,
+            "prove_seconds": 0.104275,
+            "runtime_other_seconds": 0.001695000000000002,
+            "setup_seconds": 0.000854,
+            "total_through_verification_seconds": 0.106939,
+            "witness_seconds": 0.000115
+          },
+          "verifier_peak_rss_bytes": 5849088,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.01998529094271362
+        }
+      ],
+      "visible_fri": {
+        "blowup_factor": 2,
+        "fold_step": 1,
+        "last_layer_degree_bound": 1,
+        "pow_bits": 26,
+        "queries": 70
+      }
+    },
+    "transfer_chip_16": {
+      "assignment_sha256": [
+        "77c08bb4f6170449c710342cd52497e0b72f0425f36ac3500041a59e9b568d69",
+        "a8f8729935fdba15843f9fb29254a8b9a2c82191b278efaf2406b4343b3336f3",
+        "41f608e0372ef8ce754bbe350be592eeec637df21e3f4fb18685935e6a63d45d",
+        "d26590166fd51c9b26c3a0f1323a5d68cf35f789c1d83726b37e807eb8802746",
+        "9e152367933ff6e991a1b9970e42caeb28b3bb5805b369c454515e12dd817ad5",
+        "ab577d3291db4a7264307be5fc9883839bd049a536da3958638754bc468271fc",
+        "7f1e589dd4082c791ea138426af41d8245bda83a7ddc215b83328f74795481e7",
+        "31784239901ab5ad5a7a0113b39f72f74068bc349fd4d61403a08f07b9bad842",
+        "7257c15d48ab6ae915ebac8f708f99c2a4699ceedcec8d8a092e1576b753828b",
+        "144b6aaa0e3303e07ed6aeec9bf056827d376dd499ba403d2185a20b7ea178d6"
+      ],
+      "build": {
+        "package_build_peak_rss_bytes": null,
+        "package_build_peak_rss_method": "unavailable: Python build invokes Zig subprocesses",
+        "package_build_wall_seconds": 53.215704084024765,
+        "package_reused": false,
+        "zig_compiler_cache": "uncontrolled host cache; no cache clearing or isolation"
+      },
+      "family": "chip",
+      "features": {
+        "chip_fri_domain_rows": 512.0,
+        "chip_trace_cells": 10512.0,
+        "constant": 1.0,
+        "hash_work": 1.0,
+        "padded_rows": 512.0,
+        "preprocessed_cells": 4096.0,
+        "raw_rows": 292.0
+      },
+      "profile": "direct-m31-v4",
+      "size": 16,
+      "source_sha256": "e4fa7e8345a86812f3aa41bbda8a88335141d8e45f9d33e24463f5ddde3d5e46",
+      "targets": {
+        "paired_prove_and_verify_wall_seconds": {
+          "covered_trials": 8,
+          "measured_point": 0.2521222793147899,
+          "prediction": {
+            "center": 0.14909797815599315,
+            "lower": 0.046360384106760785,
+            "upper": 0.356030022203191
+          },
+          "relative_point_error": 0.4086283109877993,
+          "trial_count": 10
+        },
+        "proof_bytes": {
+          "covered_trials": 10,
+          "measured_point": 60467.0,
+          "prediction": {
+            "center": 61757.25283600991,
+            "lower": 57048.85495713111,
+            "upper": 66743.20587681493
+          },
+          "relative_point_error": 0.021338132138354962,
+          "trial_count": 10
+        },
+        "prover_peak_rss_bytes": {
+          "covered_trials": 10,
+          "measured_point": 9224192.0,
+          "prediction": {
+            "center": 9077790.083949758,
+            "lower": 8256405.845641373,
+            "upper": 9899174.322258143
+          },
+          "relative_point_error": 0.015871516556706784,
+          "trial_count": 10
+        }
+      },
+      "trials": [
+        {
+          "changed_public_statement_rejected": "public_outputs.result[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "result": [
+                31688273,
+                1432245388,
+                470137696,
+                1304766316
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 61393,
+          "proof_sha256": "d93b1ff55a67632f09317df7dc7faa9cf68bdb11cffec7158d1344a82a94ec46",
+          "prove_seconds": 0.7588993749814108,
+          "prover_peak_rss_bytes": 9240576,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.022185,
+            "interaction_pow_seconds": 0.000594,
+            "prove_excluding_pow_seconds": 0.0015629999999999984,
+            "prove_seconds": 0.024342,
+            "runtime_other_seconds": 0.0013220000000000003,
+            "setup_seconds": 0.001235,
+            "total_through_verification_seconds": 0.027128,
+            "witness_seconds": 0.000229
+          },
+          "verifier_peak_rss_bytes": 5718016,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.373984916950576
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs.result[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "result": [
+                1408601325,
+                247145818,
+                1872088093,
+                282012285
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 59426,
+          "proof_sha256": "8ef2dccb2c3085b17e0d51598f82f2c2147ad4dd8a79ad24e4e2305cd6fc0af6",
+          "prove_seconds": 0.07518470904324204,
+          "prover_peak_rss_bytes": 9240576,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.047146,
+            "interaction_pow_seconds": 0.009278,
+            "prove_excluding_pow_seconds": 0.0029659999999999964,
+            "prove_seconds": 0.05939,
+            "runtime_other_seconds": 0.0011950000000000016,
+            "setup_seconds": 0.001523,
+            "total_through_verification_seconds": 0.06221,
+            "witness_seconds": 0.000102
+          },
+          "verifier_peak_rss_bytes": 5701632,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.011464750044979155
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs.result[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "result": [
+                1971113669,
+                2056690837,
+                547105066,
+                1037032416
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 62421,
+          "proof_sha256": "987f1d2c677df586328736d30d17670b0357203a15b19e1a77b70932c5736367",
+          "prove_seconds": 0.15047774999402463,
+          "prover_peak_rss_bytes": 9224192,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.127322,
+            "interaction_pow_seconds": 0.006529,
+            "prove_excluding_pow_seconds": 0.0014389999999999958,
+            "prove_seconds": 0.13529,
+            "runtime_other_seconds": 0.001368000000000008,
+            "setup_seconds": 0.000783,
+            "total_through_verification_seconds": 0.137528,
+            "witness_seconds": 8.7e-05
+          },
+          "verifier_peak_rss_bytes": 5718016,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.018711999990046024
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs.result[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "result": [
+                687029686,
+                926230829,
+                570939539,
+                245615875
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 61365,
+          "proof_sha256": "a1e1dee4500e41516b7f52104f76199fb5d8be973ff3d7e0be43e37b77e88317",
+          "prove_seconds": 0.22115379199385643,
+          "prover_peak_rss_bytes": 9240576,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.198139,
+            "interaction_pow_seconds": 0.00284,
+            "prove_excluding_pow_seconds": 0.0016009999999999913,
+            "prove_seconds": 0.20258,
+            "runtime_other_seconds": 0.001439999999999969,
+            "setup_seconds": 0.000828,
+            "total_through_verification_seconds": 0.204943,
+            "witness_seconds": 9.5e-05
+          },
+          "verifier_peak_rss_bytes": 5718016,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.021646083099767566
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs.result[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "result": [
+                1296407810,
+                186078449,
+                1027698098,
+                351719485
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 60040,
+          "proof_sha256": "b8918da2c71438d546e06b67ad3a5309a7de3d9e454a309d9fd1f289646cde66",
+          "prove_seconds": 0.031259375042282045,
+          "prover_peak_rss_bytes": 9224192,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.00383,
+            "interaction_pow_seconds": 0.007538,
+            "prove_excluding_pow_seconds": 0.0015199999999999997,
+            "prove_seconds": 0.012888,
+            "runtime_other_seconds": 0.001268,
+            "setup_seconds": 0.000797,
+            "total_through_verification_seconds": 0.015054,
+            "witness_seconds": 0.000101
+          },
+          "verifier_peak_rss_bytes": 5718016,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.01780754199717194
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs.result[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "result": [
+                2092488471,
+                446898362,
+                3142965,
+                1368129052
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 62821,
+          "proof_sha256": "8fb3635ac556c66e67dcd8931894ec73c932bc7be77d435eae3a78735a09f0f9",
+          "prove_seconds": 0.17924212501384318,
+          "prover_peak_rss_bytes": 9322496,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.158949,
+            "interaction_pow_seconds": 0.001956,
+            "prove_excluding_pow_seconds": 0.0015799999999999703,
+            "prove_seconds": 0.162485,
+            "runtime_other_seconds": 0.001358999999999999,
+            "setup_seconds": 0.00089,
+            "total_through_verification_seconds": 0.164823,
+            "witness_seconds": 8.9e-05
+          },
+          "verifier_peak_rss_bytes": 5734400,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.019915999961085618
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs.result[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "result": [
+                1529755567,
+                1855240716,
+                813284177,
+                817269579
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 59990,
+          "proof_sha256": "9805ef619894821e83c94bccddc39bdaa67be7d90ff25118d429cda50283fbaa",
+          "prove_seconds": 0.04370750009547919,
+          "prover_peak_rss_bytes": 9224192,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.019432,
+            "interaction_pow_seconds": 0.005501,
+            "prove_excluding_pow_seconds": 0.0016119999999999989,
+            "prove_seconds": 0.026545,
+            "runtime_other_seconds": 0.0026770000000000023,
+            "setup_seconds": 0.000815,
+            "total_through_verification_seconds": 0.030131,
+            "witness_seconds": 9.4e-05
+          },
+          "verifier_peak_rss_bytes": 5701632,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.0206346670165658
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs.result[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "result": [
+                356844365,
+                1094089244,
+                956894213,
+                1584146538
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 60582,
+          "proof_sha256": "aec9d6bf5c555afd07911f12b7d6b3a9a82563299bbefc4db13e22d682264619",
+          "prove_seconds": 0.02260725002270192,
+          "prover_peak_rss_bytes": 9224192,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.004814,
+            "interaction_pow_seconds": 0.000488,
+            "prove_excluding_pow_seconds": 0.0015500000000000002,
+            "prove_seconds": 0.006852,
+            "runtime_other_seconds": 0.0012310000000000012,
+            "setup_seconds": 0.000833,
+            "total_through_verification_seconds": 0.009017,
+            "witness_seconds": 0.000101
+          },
+          "verifier_peak_rss_bytes": 5718016,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.01774870906956494
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs.result[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "result": [
+                1530643974,
+                2115336909,
+                1262307161,
+                1227663904
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 60352,
+          "proof_sha256": "83a5e9c31157efe03c10631f33cdb91a15352180226f3e6aa0e5dc12d352645d",
+          "prove_seconds": 0.2777893329039216,
+          "prover_peak_rss_bytes": 9224192,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.250869,
+            "interaction_pow_seconds": 0.000775,
+            "prove_excluding_pow_seconds": 0.00168299999999999,
+            "prove_seconds": 0.253327,
+            "runtime_other_seconds": 0.0017490000000000006,
+            "setup_seconds": 0.000849,
+            "total_through_verification_seconds": 0.256027,
+            "witness_seconds": 0.000102
+          },
+          "verifier_peak_rss_bytes": 5701632,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.021814916981384158
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs.result[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "result": [
+                1977145447,
+                1860527979,
+                2068596478,
+                754564506
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 59464,
+          "proof_sha256": "92f304c6c1f737aa6f4f6a29bae774c7b8f0f97b21059d60622a73dd76f03a15",
+          "prove_seconds": 0.21770866599399596,
+          "prover_peak_rss_bytes": 9207808,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.186138,
+            "interaction_pow_seconds": 0.011581,
+            "prove_excluding_pow_seconds": 0.0016009999999999913,
+            "prove_seconds": 0.19932,
+            "runtime_other_seconds": 0.0014570000000000138,
+            "setup_seconds": 0.000837,
+            "total_through_verification_seconds": 0.201719,
+            "witness_seconds": 0.000105
+          },
+          "verifier_peak_rss_bytes": 5701632,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.0194633329520002
+        }
+      ],
+      "visible_fri": {
+        "blowup_factor": 2,
+        "fold_step": 1,
+        "last_layer_degree_bound": 1,
+        "pow_bits": 26,
+        "queries": 70
+      }
+    },
+    "transfer_fixed_width_16": {
+      "assignment_sha256": [
+        "7d55afb4ca666da3d2524fccdae606c67f3df0060618e1e49d50083208ea4089",
+        "177bb7285851fd5267de41db91a98ddd9e6ce7ed3d073406e0a0f2577fb53b6f",
+        "8da7c138c6ffe08c1a0a2a2ea0dc1d1a57264db7f1b21aff7dd10d3a9a7143ad",
+        "fd7c5d98d07f7171d57e2794471f096bf1a2cd0e1cb8f6c135f09b2d1ed0702f",
+        "1c72e8731dabf97d8c2f468d602402e102b086797b5c86df06b9076bf16295ae",
+        "988fc423c5a6f7a777a331df038f98077876340c3f1676ec5e4052ab388eef58",
+        "073e130f93562047523e282b32854d9159577bb094b325c6e8569571e1d92d76",
+        "1e4481bf00073c3cbdcb65df17e60f5f174f30097d1ec2550351f36edd372005",
+        "60897e4412a52428d5200106c9f5f754223e6578d7fb45491607442a0f50da38",
+        "69798eceef619a795191e67668f3654d88195bfa354925385aabc1960968ebf5"
+      ],
+      "build": {
+        "package_build_peak_rss_bytes": null,
+        "package_build_peak_rss_method": "unavailable: Python build invokes Zig subprocesses",
+        "package_build_wall_seconds": 55.651104041957296,
+        "package_reused": false,
+        "zig_compiler_cache": "uncontrolled host cache; no cache clearing or isolation"
+      },
+      "family": "fixed_width",
+      "features": {
+        "constant": 1.0,
+        "hash_work": 1.0,
+        "padded_rows": 1024.0,
+        "preprocessed_cells": 8192.0,
+        "raw_rows": 967.0
+      },
+      "profile": "direct-m31-v4",
+      "size": 16,
+      "source_sha256": "ae1edce5e0aba8e9878c4c0e7884290b1dbe30b8b12a42a1689935aa043c159a",
+      "targets": {
+        "paired_prove_and_verify_wall_seconds": {
+          "covered_trials": 8,
+          "measured_point": 0.2530330711044371,
+          "prediction": {
+            "center": 0.13890811512994214,
+            "lower": 0.0466903377462462,
+            "upper": 0.32246751656786565
+          },
+          "relative_point_error": 0.45102782603223807,
+          "trial_count": 10
+        },
+        "proof_bytes": {
+          "covered_trials": 10,
+          "measured_point": 71318.0,
+          "prediction": {
+            "center": 70620.88397839302,
+            "lower": 63453.16729562972,
+            "upper": 77998.0033596455
+          },
+          "relative_point_error": 0.009774755624204042,
+          "trial_count": 10
+        },
+        "prover_peak_rss_bytes": {
+          "covered_trials": 10,
+          "measured_point": 10264576.0,
+          "prediction": {
+            "center": 10268020.651793314,
+            "lower": 5979540.769077716,
+            "upper": 14556500.534508912
+          },
+          "relative_point_error": 0.00033558636940426414,
+          "trial_count": 10
+        }
+      },
+      "trials": [
+        {
+          "changed_public_statement_rejected": "public_outputs._s31_5[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "_s31_5": [
+                0
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 69585,
+          "proof_sha256": "e4ae10e41eb1120eafc863c403808910255c622e8277b1e831a06430dc8869ea",
+          "prove_seconds": 0.8461257499875501,
+          "prover_peak_rss_bytes": 10108928,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.02539,
+            "interaction_pow_seconds": 0.004898,
+            "prove_excluding_pow_seconds": 0.004129000000000004,
+            "prove_seconds": 0.034417,
+            "runtime_other_seconds": 0.0017109999999999972,
+            "setup_seconds": 0.002383,
+            "total_through_verification_seconds": 0.039156,
+            "witness_seconds": 0.000645
+          },
+          "verifier_peak_rss_bytes": 5849088,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.40409658302087337
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs._s31_5[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "_s31_5": [
+                65525
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 69958,
+          "proof_sha256": "d801ec66b15faa03e777e390bdcda5326615d87267b98f3c6fea5747f2181dec",
+          "prove_seconds": 0.06096199993044138,
+          "prover_peak_rss_bytes": 10272768,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.033486,
+            "interaction_pow_seconds": 0.002449,
+            "prove_excluding_pow_seconds": 0.002602,
+            "prove_seconds": 0.038537,
+            "runtime_other_seconds": 0.0016100000000000003,
+            "setup_seconds": 0.001037,
+            "total_through_verification_seconds": 0.041352,
+            "witness_seconds": 0.000168
+          },
+          "verifier_peak_rss_bytes": 5849088,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.023036208003759384
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs._s31_5[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "_s31_5": [
+                0
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 71637,
+          "proof_sha256": "1cc8efa6642f59f018554c98b7ed830060b9d9d0ad5f920df958d9ecfe33d85c",
+          "prove_seconds": 0.08580437488853931,
+          "prover_peak_rss_bytes": 10272768,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.060882,
+            "interaction_pow_seconds": 0.00221,
+            "prove_excluding_pow_seconds": 0.0020679999999999935,
+            "prove_seconds": 0.06516,
+            "runtime_other_seconds": 0.0015399999999999997,
+            "setup_seconds": 0.000935,
+            "total_through_verification_seconds": 0.067757,
+            "witness_seconds": 0.000122
+          },
+          "verifier_peak_rss_bytes": 5849088,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.01965199992991984
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs._s31_5[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "_s31_5": [
+                65535
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 71951,
+          "proof_sha256": "eb0dcfea8a2d75f046dfb0c87414bc26f17a8170707ee3498109009995c44705",
+          "prove_seconds": 0.1323694590246305,
+          "prover_peak_rss_bytes": 10108928,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.106366,
+            "interaction_pow_seconds": 0.004798,
+            "prove_excluding_pow_seconds": 0.0019279999999999992,
+            "prove_seconds": 0.113092,
+            "runtime_other_seconds": 0.0016010000000000052,
+            "setup_seconds": 0.000738,
+            "total_through_verification_seconds": 0.115553,
+            "witness_seconds": 0.000122
+          },
+          "verifier_peak_rss_bytes": 5849088,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.018516042036935687
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs._s31_5[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "_s31_5": [
+                0
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 70890,
+          "proof_sha256": "0a0fc5b9ee00dfca1887937cf64701a4c29b3ab649aa1925fe2ece1f00c03702",
+          "prove_seconds": 0.3039857499534264,
+          "prover_peak_rss_bytes": 10092544,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.281894,
+            "interaction_pow_seconds": 0.000588,
+            "prove_excluding_pow_seconds": 0.0022210000000000285,
+            "prove_seconds": 0.284703,
+            "runtime_other_seconds": 0.0016439999999999788,
+            "setup_seconds": 0.000763,
+            "total_through_verification_seconds": 0.287232,
+            "witness_seconds": 0.000122
+          },
+          "verifier_peak_rss_bytes": 5832704,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.022327083977870643
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs._s31_5[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "_s31_5": [
+                1
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 73213,
+          "proof_sha256": "769d19a0ad919e8f51e0a9f65c9eba2578621d05f442fadb26a45503a6ccb5c7",
+          "prove_seconds": 0.16113245906308293,
+          "prover_peak_rss_bytes": 10403840,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.139999,
+            "interaction_pow_seconds": 0.00042,
+            "prove_excluding_pow_seconds": 0.0019459999999999755,
+            "prove_seconds": 0.142365,
+            "runtime_other_seconds": 0.0016810000000000158,
+            "setup_seconds": 0.000817,
+            "total_through_verification_seconds": 0.144981,
+            "witness_seconds": 0.000118
+          },
+          "verifier_peak_rss_bytes": 5865472,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.01999170903582126
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs._s31_5[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "_s31_5": [
+                2
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 69052,
+          "proof_sha256": "5c84a46439884332d731715db8149d93a3b6f25e359873d7df233a0d27fc85e6",
+          "prove_seconds": 0.0991092500044033,
+          "prover_peak_rss_bytes": 10174464,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.077011,
+            "interaction_pow_seconds": 0.001393,
+            "prove_excluding_pow_seconds": 0.0019779999999999937,
+            "prove_seconds": 0.080382,
+            "runtime_other_seconds": 0.0016290000000000054,
+            "setup_seconds": 0.000772,
+            "total_through_verification_seconds": 0.08291,
+            "witness_seconds": 0.000127
+          },
+          "verifier_peak_rss_bytes": 5832704,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.018673083977773786
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs._s31_5[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "_s31_5": [
+                0
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 70999,
+          "proof_sha256": "3054c9a764b3160d44dbe483002edae9bd4026c483995ec8bbd519ce07294224",
+          "prove_seconds": 0.03693512501195073,
+          "prover_peak_rss_bytes": 10256384,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.014999,
+            "interaction_pow_seconds": 0.001285,
+            "prove_excluding_pow_seconds": 0.001984999999999999,
+            "prove_seconds": 0.018269,
+            "runtime_other_seconds": 0.0014949999999999998,
+            "setup_seconds": 0.000775,
+            "total_through_verification_seconds": 0.020656,
+            "witness_seconds": 0.000117
+          },
+          "verifier_peak_rss_bytes": 5849088,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.0217890830244869
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs._s31_5[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "_s31_5": [
+                2
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 73556,
+          "proof_sha256": "4b10cf819bf41dda750acb137e00b15c402e1fb307c9eb2203e41ab4de5edb5a",
+          "prove_seconds": 0.11496537504717708,
+          "prover_peak_rss_bytes": 10354688,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.089058,
+            "interaction_pow_seconds": 0.00097,
+            "prove_excluding_pow_seconds": 0.0021950000000000025,
+            "prove_seconds": 0.092223,
+            "runtime_other_seconds": 0.0017710000000000087,
+            "setup_seconds": 0.000867,
+            "total_through_verification_seconds": 0.094978,
+            "witness_seconds": 0.000117
+          },
+          "verifier_peak_rss_bytes": 5865472,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.027006125077605247
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs._s31_5[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "_s31_5": [
+                0
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 72408,
+          "proof_sha256": "1e4390c612387d056e2085f1598a5ebeb5befad7c87487c594ee518ae80e03ba",
+          "prove_seconds": 0.09214712504763156,
+          "prover_peak_rss_bytes": 10338304,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.068786,
+            "interaction_pow_seconds": 0.004771,
+            "prove_excluding_pow_seconds": 0.0021810000000000024,
+            "prove_seconds": 0.075738,
+            "runtime_other_seconds": 0.001799999999999996,
+            "setup_seconds": 0.000792,
+            "total_through_verification_seconds": 0.078472,
+            "witness_seconds": 0.000142
+          },
+          "verifier_peak_rss_bytes": 5865472,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.02170612500049174
+        }
+      ],
+      "visible_fri": {
+        "blowup_factor": 2,
+        "fold_step": 1,
+        "last_layer_degree_bound": 1,
+        "pow_bits": 26,
+        "queries": 70
+      }
+    },
+    "transfer_fixed_width_64": {
+      "assignment_sha256": [
+        "96a540eb533cb16904ca67308dfc67c2530621e29d489767713b62ca84c23646",
+        "c817dd8c02c47e7db7120636eefcf1e815c41dffe187f16a936f4ff12b70703d",
+        "2e7434ff8b1e45a96e8a05c090987c97e0dbf845b41398bf50fb6550b7312fbb",
+        "2bf7b6342eaa5c8afcd35baafb2de3ad5c88311e038e4d3ecc57e9f586e94d2b",
+        "b1224e179cf19bb342195a06a24e11f17a7b29ecd35a2bd4ca816afbdc619d61",
+        "421b4a6dbe3a723d8f9b97b577807608fa5396401798eedf51ac3ee67a62d03d",
+        "a69fcdf6c06636389f057aaabb203c903ef15e3ab614f3e74ea6f18228f9b49d",
+        "eb0bf3c03a549071c8ad9c2be3af0797c4a3a7f8bda4563d706a730fb542cf5d",
+        "6ca925ebbfc516c329baba5d0e73400f3652b12abf7156727127ad1433318cab",
+        "9a3e96c6b3c101a9c888e12692aebab7391f63d1a5d2a302e34f16903a91379b"
+      ],
+      "build": {
+        "package_build_peak_rss_bytes": null,
+        "package_build_peak_rss_method": "unavailable: Python build invokes Zig subprocesses",
+        "package_build_wall_seconds": 52.16333083296195,
+        "package_reused": false,
+        "zig_compiler_cache": "uncontrolled host cache; no cache clearing or isolation"
+      },
+      "family": "fixed_width",
+      "features": {
+        "constant": 1.0,
+        "hash_work": 1.0,
+        "padded_rows": 4096.0,
+        "preprocessed_cells": 32768.0,
+        "raw_rows": 3647.0
+      },
+      "profile": "direct-m31-v4",
+      "size": 64,
+      "source_sha256": "de2fe0fda85e178fec7d35bcbe63491ad48d75a699becd095e5bb17a9c910348",
+      "targets": {
+        "paired_prove_and_verify_wall_seconds": {
+          "covered_trials": 9,
+          "measured_point": 0.18554143743822352,
+          "prediction": {
+            "center": 0.14275953638200334,
+            "lower": 0.04798489248765631,
+            "upper": 0.3314083782680412
+          },
+          "relative_point_error": 0.23057868714887217,
+          "trial_count": 10
+        },
+        "proof_bytes": {
+          "covered_trials": 10,
+          "measured_point": 113365.5,
+          "prediction": {
+            "center": 111689.60211915878,
+            "lower": 100353.58677494946,
+            "upper": 123356.79576020295
+          },
+          "relative_point_error": 0.01478313844018878,
+          "trial_count": 10
+        },
+        "prover_peak_rss_bytes": {
+          "covered_trials": 10,
+          "measured_point": 13615104.0,
+          "prediction": {
+            "center": 14676540.450481186,
+            "lower": 10388060.567765588,
+            "upper": 18965020.33319678
+          },
+          "relative_point_error": 0.07796021613064327,
+          "trial_count": 10
+        }
+      },
+      "trials": [
+        {
+          "changed_public_statement_rejected": "public_outputs._s31_5[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "_s31_5": [
+                65535,
+                65535,
+                65535,
+                65535
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 116344,
+          "proof_sha256": "319f1b5dd7a997ec0e48500bdaa2f269afb7b4225afac5a06cae720b6e8f4525",
+          "prove_seconds": 0.5895670830504969,
+          "prover_peak_rss_bytes": 13860864,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.034269,
+            "interaction_pow_seconds": 0.001578,
+            "prove_excluding_pow_seconds": 0.005926999999999995,
+            "prove_seconds": 0.041774,
+            "runtime_other_seconds": 0.002482999999999999,
+            "setup_seconds": 0.001514,
+            "total_through_verification_seconds": 0.046335,
+            "witness_seconds": 0.000564
+          },
+          "verifier_peak_rss_bytes": 6012928,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.4057695410447195
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs._s31_5[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "_s31_5": [
+                1,
+                0,
+                0,
+                0
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 113493,
+          "proof_sha256": "b00df956b832c9677895bb2a180283e55ff88e20ff752e62f1fe8703fffe1645",
+          "prove_seconds": 0.1296284580603242,
+          "prover_peak_rss_bytes": 13697024,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.100816,
+            "interaction_pow_seconds": 0.001886,
+            "prove_excluding_pow_seconds": 0.004237000000000005,
+            "prove_seconds": 0.106939,
+            "runtime_other_seconds": 0.0029860000000000025,
+            "setup_seconds": 0.001393,
+            "total_through_verification_seconds": 0.111557,
+            "witness_seconds": 0.000239
+          },
+          "verifier_peak_rss_bytes": 5996544,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.022908749990165234
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs._s31_5[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "_s31_5": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 112830,
+          "proof_sha256": "c88a097c309cc472b973d4a270d27af6d5cd0bb39ae8fbc6006edd6d8ac4faeb",
+          "prove_seconds": 0.06028354202862829,
+          "prover_peak_rss_bytes": 13484032,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.031913,
+            "interaction_pow_seconds": 0.001084,
+            "prove_excluding_pow_seconds": 0.003161999999999998,
+            "prove_seconds": 0.036159,
+            "runtime_other_seconds": 0.0020980000000000026,
+            "setup_seconds": 0.001077,
+            "total_through_verification_seconds": 0.039509,
+            "witness_seconds": 0.000175
+          },
+          "verifier_peak_rss_bytes": 5996544,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.01896662509534508
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs._s31_5[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "_s31_5": [
+                9,
+                0,
+                0,
+                0
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 115150,
+          "proof_sha256": "b056af24de969424a19b5dfeb8f0ac5268a8c22b2938070e3c82bbcb8abd1a82",
+          "prove_seconds": 0.08034220803529024,
+          "prover_peak_rss_bytes": 13631488,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.054697,
+            "interaction_pow_seconds": 0.00043,
+            "prove_excluding_pow_seconds": 0.0033240000000000006,
+            "prove_seconds": 0.058451,
+            "runtime_other_seconds": 0.002108999999999993,
+            "setup_seconds": 0.000954,
+            "total_through_verification_seconds": 0.061678,
+            "witness_seconds": 0.000164
+          },
+          "verifier_peak_rss_bytes": 6012928,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.021690208930522203
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs._s31_5[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "_s31_5": [
+                3,
+                0,
+                0,
+                0
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 113238,
+          "proof_sha256": "d22362f8f0cd3c7046d6e303c9d85a79e0caffb25767980a337406168769593b",
+          "prove_seconds": 0.05216929200105369,
+          "prover_peak_rss_bytes": 13664256,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.028079,
+            "interaction_pow_seconds": 0.001871,
+            "prove_excluding_pow_seconds": 0.003283000000000001,
+            "prove_seconds": 0.033233,
+            "runtime_other_seconds": 0.002023999999999998,
+            "setup_seconds": 0.000976,
+            "total_through_verification_seconds": 0.036397,
+            "witness_seconds": 0.000164
+          },
+          "verifier_peak_rss_bytes": 6012928,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.021995333023369312
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs._s31_5[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "_s31_5": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 112833,
+          "proof_sha256": "5dc7d4f70ee4d134ccfdd803279e5a18a49b391f01a6615c30e68fea5b366f3c",
+          "prove_seconds": 0.15024591598194093,
+          "prover_peak_rss_bytes": 13500416,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.127627,
+            "interaction_pow_seconds": 0.000334,
+            "prove_excluding_pow_seconds": 0.0031980000000000064,
+            "prove_seconds": 0.131159,
+            "runtime_other_seconds": 0.002581,
+            "setup_seconds": 0.000989,
+            "total_through_verification_seconds": 0.134895,
+            "witness_seconds": 0.000166
+          },
+          "verifier_peak_rss_bytes": 6012928,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.019698624964803457
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs._s31_5[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "_s31_5": [
+                65534,
+                65535,
+                65535,
+                65535
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 113019,
+          "proof_sha256": "b3f156b98275874dc5ced8d56b58771fcf7a0f98d1fce9c334c1f8845f82c394",
+          "prove_seconds": 0.07109787501394749,
+          "prover_peak_rss_bytes": 13484032,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.045804,
+            "interaction_pow_seconds": 0.003013,
+            "prove_excluding_pow_seconds": 0.0031240000000000018,
+            "prove_seconds": 0.051941,
+            "runtime_other_seconds": 0.0021689999999999973,
+            "setup_seconds": 0.000964,
+            "total_through_verification_seconds": 0.05524,
+            "witness_seconds": 0.000166
+          },
+          "verifier_peak_rss_bytes": 5996544,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.021499625057913363
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs._s31_5[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "_s31_5": [
+                1,
+                0,
+                0,
+                0
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 115598,
+          "proof_sha256": "01419e742d55b54d82fbc2074e6d8c1f3c41673c931013f315ef686f1ee8af81",
+          "prove_seconds": 0.03962825005874038,
+          "prover_peak_rss_bytes": 13778944,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.016213,
+            "interaction_pow_seconds": 0.001236,
+            "prove_excluding_pow_seconds": 0.0032409999999999974,
+            "prove_seconds": 0.02069,
+            "runtime_other_seconds": 0.0023859999999999992,
+            "setup_seconds": 0.000983,
+            "total_through_verification_seconds": 0.024214,
+            "witness_seconds": 0.000155
+          },
+          "verifier_peak_rss_bytes": 6012928,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.020235959091223776
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs._s31_5[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "_s31_5": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 110130,
+          "proof_sha256": "eacb58363011871d1b8e90c2eea898ac57f9a8ee37e8996784b7b5de8de40733",
+          "prove_seconds": 0.05189829191658646,
+          "prover_peak_rss_bytes": 13418496,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.029779,
+            "interaction_pow_seconds": 0.000713,
+            "prove_excluding_pow_seconds": 0.0031219999999999998,
+            "prove_seconds": 0.033614,
+            "runtime_other_seconds": 0.0019480000000000053,
+            "setup_seconds": 0.000958,
+            "total_through_verification_seconds": 0.036691,
+            "witness_seconds": 0.000171
+          },
+          "verifier_peak_rss_bytes": 5996544,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.020554999937303364
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs._s31_5[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "_s31_5": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 113906,
+          "proof_sha256": "69058df756d274d3f72a7b759a6c7cf02dec76af9d681a1a42ac2ccdca7a9d58",
+          "prove_seconds": 0.03668895806185901,
+          "prover_peak_rss_bytes": 13598720,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "fri_pow_seconds": 0.012789,
+            "interaction_pow_seconds": 0.001174,
+            "prove_excluding_pow_seconds": 0.0033489999999999995,
+            "prove_seconds": 0.017312,
+            "runtime_other_seconds": 0.0022450000000000005,
+            "setup_seconds": 0.000973,
+            "total_through_verification_seconds": 0.020684,
+            "witness_seconds": 0.000154
+          },
+          "verifier_peak_rss_bytes": 5996544,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.020544833038002253
+        }
+      ],
+      "visible_fri": {
+        "blowup_factor": 2,
+        "fold_step": 1,
+        "last_layer_degree_bound": 1,
+        "pow_bits": 26,
+        "queries": 70
+      }
+    },
+    "transfer_hash_2": {
+      "assignment_sha256": [
+        "aae3cd2d1f875e5a315295f67e757f072c5eb73e3d2f13457e1544a177d2d252",
+        "05993a8cff29551cbc4bfebcf517e4f243511dd9e4f0a756f914a84b474dc824",
+        "65a4af4efec2298457aeb8b99adce417de1e1fe06fffb341a8b6040880814131",
+        "fed082da9c823197f2e9bddb6e5107459d67aca652b386eac9d21665fb806e2c",
+        "ee73b4c973c126667745820dd6db16527e145b9f4f5e1b875e19b3875a171734",
+        "9506803dd9f6b25749577b75943d3502326661c47560ab795917f113eed64df5",
+        "3aef89a253997f86cd6d489f6428a840e46bcc07f2610c348309764927c47358",
+        "1659929b5f1ddabfffad35143bc22d9b02bdd53a8270e9628b09da30e944d270",
+        "8fbd56c9e00885d2cf11cb228417ff795b341d0b5cf48bf3b55e9502dfe48ac2",
+        "aab9a32cb2e9bab41d6add27cf6061b27fdacb0b6776221d78a97aaf20148028"
+      ],
+      "build": {
+        "package_build_peak_rss_bytes": null,
+        "package_build_peak_rss_method": "unavailable: Python build invokes Zig subprocesses",
+        "package_build_wall_seconds": 72.90844116697554,
+        "package_reused": false,
+        "zig_compiler_cache": "uncontrolled host cache; no cache clearing or isolation"
+      },
+      "family": "hash",
+      "features": {
+        "constant": 1.0,
+        "hash_work": 161.0,
+        "padded_rows": 1344.0,
+        "preprocessed_cells": 4255440.0,
+        "raw_rows": 753.0
+      },
+      "profile": "circuit-v1",
+      "size": 2,
+      "source_sha256": "25ec90be18990c2e6144bd3506f22f8d2e92f7288fa702b8cc37952405785cac",
+      "targets": {
+        "paired_prove_and_verify_wall_seconds": {
+          "covered_trials": 7,
+          "measured_point": 0.8319125542417168,
+          "prediction": {
+            "center": 0.7160654218561381,
+            "lower": 0.616591023747823,
+            "upper": 0.9138953186215155
+          },
+          "relative_point_error": 0.1392539778308463,
+          "trial_count": 10
+        },
+        "proof_bytes": {
+          "covered_trials": 10,
+          "measured_point": 467425.0,
+          "prediction": {
+            "center": 467048.86528585834,
+            "lower": 456324.5282592816,
+            "upper": 476925.6146032579
+          },
+          "relative_point_error": 0.0008046953289654226,
+          "trial_count": 10
+        },
+        "prover_peak_rss_bytes": {
+          "covered_trials": 10,
+          "measured_point": 1017020416.0,
+          "prediction": {
+            "center": 1017478224.0227132,
+            "lower": 1016667861.0977925,
+            "upper": 1018288586.9476339
+          },
+          "relative_point_error": 0.00045014634466608816,
+          "trial_count": 10
+        }
+      },
+      "trials": [
+        {
+          "changed_public_statement_rejected": "public_outputs.h1[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "h1": [
+                699629399,
+                1719403532,
+                1582840068,
+                1199970891,
+                77945034,
+                1464650903,
+                1501855578,
+                1988577365
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 466064,
+          "proof_sha256": "0f943950fcf945db6499fcded5c0efa31faac82f7860ac60481574e1c09431e2",
+          "prove_seconds": 1.1732657499378547,
+          "prover_peak_rss_bytes": 1017020416,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "prove_seconds": 0.594623,
+            "runtime_other_seconds": 0.008935999999999944,
+            "setup_seconds": 0.052401,
+            "total_through_verification_seconds": 0.65631,
+            "witness_seconds": 0.00035
+          },
+          "verifier_peak_rss_bytes": 205225984,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.43786858301609755
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs.h1[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "h1": [
+                405500892,
+                1221055158,
+                304967874,
+                2115449536,
+                1105418864,
+                2038296210,
+                682848000,
+                201741421
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 470904,
+          "proof_sha256": "938e85da0dfd084091a7bd725222b56e1804e6c452e55f840698a0a199d47b4c",
+          "prove_seconds": 0.5572491670027375,
+          "prover_peak_rss_bytes": 1017020416,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "prove_seconds": 0.486285,
+            "runtime_other_seconds": 0.00812400000000002,
+            "setup_seconds": 0.052805,
+            "total_through_verification_seconds": 0.547366,
+            "witness_seconds": 0.000152
+          },
+          "verifier_peak_rss_bytes": 205275136,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.07111958309542388
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs.h1[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "h1": [
+                1287525318,
+                704043836,
+                1584615348,
+                2036105372,
+                1369296838,
+                1494102476,
+                2075562965,
+                793623623
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 462939,
+          "proof_sha256": "2052b4b184bd7367f6464d9aad45cdf1660f94dff233c359b07fbafdaf8a4f57",
+          "prove_seconds": 0.7119560830760747,
+          "prover_peak_rss_bytes": 1017020416,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "prove_seconds": 0.631656,
+            "runtime_other_seconds": 0.009734999999999938,
+            "setup_seconds": 0.052861,
+            "total_through_verification_seconds": 0.69441,
+            "witness_seconds": 0.000158
+          },
+          "verifier_peak_rss_bytes": 205225984,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.07892387500032783
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs.h1[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "h1": [
+                1567211010,
+                1791201526,
+                720462865,
+                520831988,
+                670609576,
+                982546959,
+                1608803951,
+                691559424
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 469919,
+          "proof_sha256": "734ddef3fd055a8892b4a0947aa4375411ee50ca1bba6d3e0de04dc2d0b810b7",
+          "prove_seconds": 0.8393103340640664,
+          "prover_peak_rss_bytes": 1017020416,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "prove_seconds": 0.759017,
+            "runtime_other_seconds": 0.007449000000000039,
+            "setup_seconds": 0.053001,
+            "total_through_verification_seconds": 0.819625,
+            "witness_seconds": 0.000158
+          },
+          "verifier_peak_rss_bytes": 205225984,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.07835029205307364
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs.h1[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "h1": [
+                1561630167,
+                1298932121,
+                1148743730,
+                1751412287,
+                1971497563,
+                285521391,
+                596404357,
+                735763395
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 468786,
+          "proof_sha256": "b2153dfccc709847efb676db79551686947873e044c06aa681e0179c14337401",
+          "prove_seconds": 0.9388161670649424,
+          "prover_peak_rss_bytes": 1017020416,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "prove_seconds": 0.859357,
+            "runtime_other_seconds": 0.0072549999999999,
+            "setup_seconds": 0.052375,
+            "total_through_verification_seconds": 0.919129,
+            "witness_seconds": 0.000142
+          },
+          "verifier_peak_rss_bytes": 205225984,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.08184291701763868
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs.h1[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "h1": [
+                1402554142,
+                1129197944,
+                1223306702,
+                775634216,
+                1343237270,
+                1642628845,
+                1179905060,
+                1004887799
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 461669,
+          "proof_sha256": "4d85b982656e33c14041bfd07e1a7f2c9999932ffc9a4019ccbabff99a929b5d",
+          "prove_seconds": 0.5663258329732344,
+          "prover_peak_rss_bytes": 1017020416,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "prove_seconds": 0.482345,
+            "runtime_other_seconds": 0.009757000000000016,
+            "setup_seconds": 0.054802,
+            "total_through_verification_seconds": 0.54706,
+            "witness_seconds": 0.000156
+          },
+          "verifier_peak_rss_bytes": 205225984,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.07727291702758521
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs.h1[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "h1": [
+                180854082,
+                1643680238,
+                587781573,
+                192898810,
+                365095692,
+                89780875,
+                1610082330,
+                1104952928
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 464441,
+          "proof_sha256": "7202de0bbf6d5bf82bd8fe698db2926353a986227170377a0f4b72babdeadc6c",
+          "prove_seconds": 0.5869997080881149,
+          "prover_peak_rss_bytes": 1017020416,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "prove_seconds": 0.505131,
+            "runtime_other_seconds": 0.00830900000000001,
+            "setup_seconds": 0.053495,
+            "total_through_verification_seconds": 0.567093,
+            "witness_seconds": 0.000158
+          },
+          "verifier_peak_rss_bytes": 205225984,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.08297591703012586
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs.h1[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "h1": [
+                6017016,
+                467155129,
+                36678296,
+                772445923,
+                1597065319,
+                368099565,
+                996551567,
+                368013489
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 463505,
+          "proof_sha256": "311b7598d2a325162eea46ba2d713567e55339d44c7f18d3e7ae8535e63921ba",
+          "prove_seconds": 0.60875491600018,
+          "prover_peak_rss_bytes": 1017020416,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "prove_seconds": 0.532567,
+            "runtime_other_seconds": 0.008196999999999899,
+            "setup_seconds": 0.056336,
+            "total_through_verification_seconds": 0.597277,
+            "witness_seconds": 0.000177
+          },
+          "verifier_peak_rss_bytes": 205225984,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.08194570790510625
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs.h1[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "h1": [
+                1790253787,
+                757173013,
+                903575461,
+                771281534,
+                394433632,
+                1728347660,
+                1807869572,
+                947540927
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 469438,
+          "proof_sha256": "75a64095f2ea0a6fe293bddf90f84cc9f408fcbaf5f812d330eaa2eb57947321",
+          "prove_seconds": 0.5866194580448791,
+          "prover_peak_rss_bytes": 1017020416,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "prove_seconds": 0.506257,
+            "runtime_other_seconds": 0.010594000000000103,
+            "setup_seconds": 0.053938,
+            "total_through_verification_seconds": 0.570944,
+            "witness_seconds": 0.000155
+          },
+          "verifier_peak_rss_bytes": 205307904,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.08435587503481656
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs.h1[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "h1": [
+                81350196,
+                496837183,
+                1062439797,
+                660782747,
+                512574663,
+                608178317,
+                1047315933,
+                1085407206
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 470598,
+          "proof_sha256": "c860617d11a689a7ca7f7f491183af13aad2e29a40a00292806d2df6cee65815",
+          "prove_seconds": 0.5908284590113908,
+          "prover_peak_rss_bytes": 1017020416,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "prove_seconds": 0.506892,
+            "runtime_other_seconds": 0.008282000000000012,
+            "setup_seconds": 0.055796,
+            "total_through_verification_seconds": 0.571142,
+            "witness_seconds": 0.000172
+          },
+          "verifier_peak_rss_bytes": 205225984,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.08434399997349828
+        }
+      ],
+      "visible_fri": {
+        "blowup_factor": 2,
+        "fold_step": 1,
+        "last_layer_degree_bound": 1,
+        "pow_bits": 26,
+        "queries": 70
+      }
+    },
+    "transfer_hash_6": {
+      "assignment_sha256": [
+        "83ee7be13e8c620d182b9e41792241ad01bb33e74cafa10744f728432d4fcdbf",
+        "8038becdc9c0646a038df1d855681e3a77ab1ce164018ca795f6a82a708ffaf6",
+        "27238d3b33ff817b9f03b2f11fdb4f1c4a8b0d5d2806df7aae76e819e0b5c9d0",
+        "bac65f8160349dc8464bef85f365bc69200aa5229626f7ecd68430904c256e5c",
+        "eb40dccd7e5d0597c0f83ce67c550cc92fd7b51c800d4aa0e06b20294ed4cfe0",
+        "0bfe355a4117abbbbe09594b14f8b0486d5aea46b2da648dbf757a0aad8b0eb0",
+        "28b2abbd08230c8095a4111bb16b45bcb5e8e099d9dc946aaffc07572285f1cb",
+        "ca46eda7f66b3768a8a3334f0de8645140a54a63601ea22e837c335befcc0480",
+        "758a2c0de808ba600fbc85612da0a81088f58d115fc3a31f5aead4f8977d6777",
+        "8518407815672665e924458a8ae10aebd7a8e90ebe89b8d33d9095609a7ca133"
+      ],
+      "build": {
+        "package_build_peak_rss_bytes": null,
+        "package_build_peak_rss_method": "unavailable: Python build invokes Zig subprocesses",
+        "package_build_wall_seconds": 77.16625687503256,
+        "package_reused": false,
+        "zig_compiler_cache": "uncontrolled host cache; no cache clearing or isolation"
+      },
+      "family": "hash",
+      "features": {
+        "constant": 1.0,
+        "hash_work": 481.0,
+        "padded_rows": 1744.0,
+        "preprocessed_cells": 4258784.0,
+        "raw_rows": 1489.0
+      },
+      "profile": "circuit-v1",
+      "size": 6,
+      "source_sha256": "7af6e0122cb7868cea86ae2a847dde5108a55427915c6f14ffa0cfb04872facf",
+      "targets": {
+        "paired_prove_and_verify_wall_seconds": {
+          "covered_trials": 9,
+          "measured_point": 0.7920125750126317,
+          "prediction": {
+            "center": 0.7203771692173573,
+            "lower": 0.6203037916576387,
+            "upper": 0.9193982874958995
+          },
+          "relative_point_error": 0.09044730861013399,
+          "trial_count": 10
+        },
+        "proof_bytes": {
+          "covered_trials": 9,
+          "measured_point": 465611.0,
+          "prediction": {
+            "center": 466908.6117739343,
+            "lower": 456187.49523678125,
+            "upper": 476782.3951302084
+          },
+          "relative_point_error": 0.0027869010266816582,
+          "trial_count": 10
+        },
+        "prover_peak_rss_bytes": {
+          "covered_trials": 10,
+          "measured_point": 1017806848.0,
+          "prediction": {
+            "center": 1017913346.9443147,
+            "lower": 1017102984.019394,
+            "upper": 1018723709.8692354
+          },
+          "relative_point_error": 0.00010463571209408708,
+          "trial_count": 10
+        }
+      },
+      "trials": [
+        {
+          "changed_public_statement_rejected": "public_outputs.h5[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "h5": [
+                1146577093,
+                511522532,
+                530101614,
+                520485458,
+                739442042,
+                1537923089,
+                1749270701,
+                825079308
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 474798,
+          "proof_sha256": "955f6f82508da7348cdf2fe2ae58a926c7001cdbe6dc341ba7a0615ad0c21eaf",
+          "prove_seconds": 1.1502549999859184,
+          "prover_peak_rss_bytes": 1017806848,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "prove_seconds": 0.574052,
+            "runtime_other_seconds": 0.010375000000000023,
+            "setup_seconds": 0.05317,
+            "total_through_verification_seconds": 0.637974,
+            "witness_seconds": 0.000377
+          },
+          "verifier_peak_rss_bytes": 205357056,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.436466500046663
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs.h5[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "h5": [
+                272846227,
+                790100384,
+                917231002,
+                1866430002,
+                751793716,
+                580753619,
+                1692485177,
+                1199950299
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 481863,
+          "proof_sha256": "83b7eca094b27ac4185f769a926360618bb130f2c2e2e1ef8f45584fda5f4d72",
+          "prove_seconds": 0.5715206249151379,
+          "prover_peak_rss_bytes": 1017806848,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "prove_seconds": 0.487671,
+            "runtime_other_seconds": 0.012495000000000034,
+            "setup_seconds": 0.051692,
+            "total_through_verification_seconds": 0.552057,
+            "witness_seconds": 0.000199
+          },
+          "verifier_peak_rss_bytes": 205340672,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.07930304203182459
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs.h5[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "h5": [
+                698675633,
+                666278414,
+                1236847327,
+                892783597,
+                753978443,
+                1278776194,
+                724761172,
+                313512900
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 466505,
+          "proof_sha256": "35fcf717931219b524b777a73e58970a6804a002bd8393a905550491114d6884",
+          "prove_seconds": 0.6643710000207648,
+          "prover_peak_rss_bytes": 1017806848,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "prove_seconds": 0.5813,
+            "runtime_other_seconds": 0.010106999999999977,
+            "setup_seconds": 0.052684,
+            "total_through_verification_seconds": 0.644294,
+            "witness_seconds": 0.000203
+          },
+          "verifier_peak_rss_bytes": 205406208,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.08239329105708748
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs.h5[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "h5": [
+                1870097734,
+                63671313,
+                1819593058,
+                792620270,
+                146893126,
+                965061207,
+                1880781867,
+                629632442
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 465389,
+          "proof_sha256": "dbf6259875fd7e5a9957e9313109b56637a932b5a6587fedf60146ef51e83889",
+          "prove_seconds": 0.6196254580281675,
+          "prover_peak_rss_bytes": 1017806848,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "prove_seconds": 0.538219,
+            "runtime_other_seconds": 0.008081000000000005,
+            "setup_seconds": 0.053636,
+            "total_through_verification_seconds": 0.600141,
+            "witness_seconds": 0.000205
+          },
+          "verifier_peak_rss_bytes": 205357056,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.08209837495815009
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs.h5[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "h5": [
+                1640119807,
+                1079721120,
+                565598455,
+                293425345,
+                1921892213,
+                1406569603,
+                2104966263,
+                202274425
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 461170,
+          "proof_sha256": "ae6c4b736ccac9bd101d864ef8515ca21abbd7deea35ad7d3256b790b2f779c1",
+          "prove_seconds": 0.5908516659401357,
+          "prover_peak_rss_bytes": 1017806848,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "prove_seconds": 0.505155,
+            "runtime_other_seconds": 0.010384999999999978,
+            "setup_seconds": 0.057546,
+            "total_through_verification_seconds": 0.573317,
+            "witness_seconds": 0.000231
+          },
+          "verifier_peak_rss_bytes": 205357056,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.08199441700708121
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs.h5[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "h5": [
+                911658614,
+                160296757,
+                2093507165,
+                1673318831,
+                767769375,
+                1275149877,
+                229928616,
+                2129110414
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 463799,
+          "proof_sha256": "4cea1ae431d8a45c2b315742f8f40d98ab5a038f92438bd89edc82175a59f9d6",
+          "prove_seconds": 0.6052461670478806,
+          "prover_peak_rss_bytes": 1017806848,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "prove_seconds": 0.522725,
+            "runtime_other_seconds": 0.008086999999999955,
+            "setup_seconds": 0.05379,
+            "total_through_verification_seconds": 0.584831,
+            "witness_seconds": 0.000229
+          },
+          "verifier_peak_rss_bytes": 205357056,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.08345366606954485
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs.h5[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "h5": [
+                928186912,
+                629797540,
+                856801055,
+                588052269,
+                1302007850,
+                302381491,
+                1289789928,
+                1607822322
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 466250,
+          "proof_sha256": "17b1877262de28883d7ab00a98afbc0af222382568ef8a20c642236dbb417b92",
+          "prove_seconds": 0.6173999580787495,
+          "prover_peak_rss_bytes": 1017806848,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "prove_seconds": 0.534503,
+            "runtime_other_seconds": 0.008114000000000066,
+            "setup_seconds": 0.054275,
+            "total_through_verification_seconds": 0.597107,
+            "witness_seconds": 0.000215
+          },
+          "verifier_peak_rss_bytes": 205340672,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.07208862493280321
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs.h5[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "h5": [
+                1571279901,
+                1558937059,
+                769946897,
+                1267149373,
+                1287141416,
+                409489774,
+                658215663,
+                2007556292
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 465606,
+          "proof_sha256": "55e16d747b0d8015c2a79b068fdd0ae3569d897c609688d51b1b432853bf4ab2",
+          "prove_seconds": 0.5859689170029014,
+          "prover_peak_rss_bytes": 1017806848,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "prove_seconds": 0.511465,
+            "runtime_other_seconds": 0.010040000000000049,
+            "setup_seconds": 0.053798,
+            "total_through_verification_seconds": 0.57551,
+            "witness_seconds": 0.000207
+          },
+          "verifier_peak_rss_bytes": 205373440,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.08349629200529307
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs.h5[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "h5": [
+                760430766,
+                493926615,
+                1833299748,
+                129888657,
+                955666507,
+                1871546206,
+                184479168,
+                240937882
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 456372,
+          "proof_sha256": "610d3a2761a158df0565dd83b4cd7b7b2db6247f2815b0ad16cc4817833dede2",
+          "prove_seconds": 0.7311432500137016,
+          "prover_peak_rss_bytes": 1017806848,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "prove_seconds": 0.649132,
+            "runtime_other_seconds": 0.007863999999999982,
+            "setup_seconds": 0.054482,
+            "total_through_verification_seconds": 0.711709,
+            "witness_seconds": 0.000231
+          },
+          "verifier_peak_rss_bytes": 205340672,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.07952245906926692
+        },
+        {
+          "changed_public_statement_rejected": "public_outputs.h5[0]",
+          "independent_value_oracle": {
+            "computed_public_outputs": {
+              "h5": [
+                573723910,
+                224549006,
+                746969431,
+                1373511350,
+                685954682,
+                974434084,
+                984655926,
+                2144391448
+              ]
+            },
+            "status": "passed"
+          },
+          "native_verifier_accepted": true,
+          "proof_bytes": 465616,
+          "proof_sha256": "e953d05e71e928f30f4d72daa967b486b2eb1aee06351e85a134bec79a53e4c8",
+          "prove_seconds": 0.6187850419664755,
+          "prover_peak_rss_bytes": 1017806848,
+          "prover_peak_rss_method": "darwin-time-max-rss-bytes",
+          "prover_stages": {
+            "prove_seconds": 0.537521,
+            "runtime_other_seconds": 0.00782000000000005,
+            "setup_seconds": 0.053195,
+            "total_through_verification_seconds": 0.598755,
+            "witness_seconds": 0.000219
+          },
+          "verifier_peak_rss_bytes": 205357056,
+          "verifier_peak_rss_method": "darwin-time-max-rss-bytes",
+          "verify_seconds": 0.08414199994876981
+        }
+      ],
+      "visible_fri": {
+        "blowup_factor": 2,
+        "fold_step": 1,
+        "last_layer_degree_bound": 1,
+        "pow_bits": 26,
+        "queries": 70
+      }
+    }
+  },
+  "compiler_sha256": "aea630bacf2dba03f384df13ee8fdd4214cb11d9665bf557750efeda6af2cf71",
+  "engine_gitlink_commit": "844f8ddf10291733b845e81a8f20026e829fc509",
+  "host": {
+    "cpu_model": "Apple M5 Max",
+    "host_id_sha256": "dc6522752aa8ebb1d33f9e32e69cd35e7f086a2b89e26b6f008fbe4979a8cc03",
+    "machine": "arm64",
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "python": "3.14.6",
+    "zig": "0.15.2"
+  },
+  "protocol_sha256": "6e1e59544b41ea1e39b28a565a6f054d1dad6a4738a265b6252a563a661e64e5",
+  "schema": "s31-whole-prover-v6-transfer-corpus-v1",
+  "v6_audit_sha256": "05bac7095a4b1f82a20c52898410f7cd886020a8a4e78c26e1f768e37b2e5b01"
+}

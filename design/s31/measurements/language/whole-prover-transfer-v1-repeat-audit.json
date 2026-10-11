@@ -1,0 +1,88 @@
+{
+  "automatic_lowering_selection_enabled": false,
+  "compiler_sha256": "aea630bacf2dba03f384df13ee8fdd4214cb11d9665bf557750efeda6af2cf71",
+  "corpus_sha256": "e901c96f19c351be60f9c6219680ccc17f74150cc28647ccf4ddb349508e250c",
+  "diagnostic_gate_pass": false,
+  "family_results": {
+    "arithmetic": {
+      "paired_prove_and_verify_wall_seconds": {
+        "diagnostic_gate_pass": false,
+        "max_program_point_error": 0.4772282448431885,
+        "pooled_trial_coverage": 0.7
+      },
+      "proof_bytes": {
+        "diagnostic_gate_pass": true,
+        "max_program_point_error": 0.061601396117807725,
+        "pooled_trial_coverage": 1.0
+      },
+      "prover_peak_rss_bytes": {
+        "diagnostic_gate_pass": true,
+        "max_program_point_error": 0.031710377816193396,
+        "pooled_trial_coverage": 1.0
+      }
+    },
+    "chip": {
+      "paired_prove_and_verify_wall_seconds": {
+        "diagnostic_gate_pass": false,
+        "max_program_point_error": 0.38406036267929083,
+        "pooled_trial_coverage": 0.75
+      },
+      "proof_bytes": {
+        "diagnostic_gate_pass": true,
+        "max_program_point_error": 0.031528156158780726,
+        "pooled_trial_coverage": 1.0
+      },
+      "prover_peak_rss_bytes": {
+        "diagnostic_gate_pass": true,
+        "max_program_point_error": 0.015871516556706784,
+        "pooled_trial_coverage": 1.0
+      }
+    },
+    "fixed_width": {
+      "paired_prove_and_verify_wall_seconds": {
+        "diagnostic_gate_pass": false,
+        "max_program_point_error": 0.3238884770714644,
+        "pooled_trial_coverage": 0.9
+      },
+      "proof_bytes": {
+        "diagnostic_gate_pass": true,
+        "max_program_point_error": 0.01478313844018878,
+        "pooled_trial_coverage": 1.0
+      },
+      "prover_peak_rss_bytes": {
+        "diagnostic_gate_pass": true,
+        "max_program_point_error": 0.07796021613064327,
+        "pooled_trial_coverage": 1.0
+      }
+    },
+    "hash": {
+      "paired_prove_and_verify_wall_seconds": {
+        "diagnostic_gate_pass": false,
+        "max_program_point_error": 0.09066738447947865,
+        "pooled_trial_coverage": 0.35
+      },
+      "proof_bytes": {
+        "diagnostic_gate_pass": true,
+        "max_program_point_error": 0.0027869010266816582,
+        "pooled_trial_coverage": 0.95
+      },
+      "prover_peak_rss_bytes": {
+        "diagnostic_gate_pass": true,
+        "max_program_point_error": 0.00045014634466608816,
+        "pooled_trial_coverage": 0.95
+      }
+    }
+  },
+  "host": {
+    "cpu_model": "Apple M5 Max",
+    "host_id_sha256": "dc6522752aa8ebb1d33f9e32e69cd35e7f086a2b89e26b6f008fbe4979a8cc03",
+    "machine": "arm64",
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "python": "3.14.6",
+    "zig": "0.15.2"
+  },
+  "protocol_sha256": "6e1e59544b41ea1e39b28a565a6f054d1dad6a4738a265b6252a563a661e64e5",
+  "schema": "s31-whole-prover-v6-transfer-audit-v1",
+  "scope": "Same-host cross-revision diagnostic; 2 programs/family and 10 trials/program. No cross-host or tail guarantee.",
+  "v6_audit_sha256": "05bac7095a4b1f82a20c52898410f7cd886020a8a4e78c26e1f768e37b2e5b01"
+}
