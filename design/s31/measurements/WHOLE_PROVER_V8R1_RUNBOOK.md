@@ -1,6 +1,18 @@
 # V8r1 baseline whole-prover runbook
 
-Status: **prospective; no V8r1 native package build or proof has run**. V8r1
+Status: **completed with a post-freeze evaluator roster repair; qualified local
+accuracy gate passed**. The frozen protocol was externally recorded before
+native work, and the training-only model was externally recorded before any
+held-out build. The original frozen held-out evaluator failed before producing
+an accuracy result because its inherited V3 roster expected four quotient
+names where the pinned V8r1 inventory specified div/rem. The separately
+versioned, reviewed roster-only bridge then produced a passing held-out
+evaluation, independent gate, native publisher, and relocated native replay.
+This is a **post-freeze repaired result**, not an unqualified prospective V8r1
+result. The frozen model, gates, protocol, and raw trial evidence were not
+changed. See [the result and evidence record](WHOLE_PROVER_V8R1_RESULT.md).
+
+V8r1
 repairs the frozen V8 training fit gate. The V8 protocol called the 128-bit
 fixed-width choice `signed_128_result`; its inherited V3 roster checker read
 `signed_128_output`. V8 built 23 clean training packages and verified 2,300
