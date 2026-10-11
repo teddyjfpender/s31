@@ -37,7 +37,7 @@ open S31.Functional.SSAInstalledBytecodeGateJoin
 arithmetic evaluator. The fixed cells are checked separately by equality
 with `expectedOutputCells`; this predicate binds each expected cell to a
 physical row and its main trace values. -/
-def outputGateBytecodeRows (observedCells : List ColumnCell)
+def physicalGateBytecodeRows (observedCells : List ColumnCell)
     (rows : List Row) : Prop :=
   ∀ cell ∈ observedCells, ∃ row : Row,
     rows[cell.traceRow]? = some row ∧
@@ -52,10 +52,10 @@ def outputGateBytecodeRows (observedCells : List ColumnCell)
 /-- Exact Gate balance changes each physical output-path row into the local
 arithmetic relation evaluated on the unique produced value at each address.
 The row's positive multiplicity is needed for its output event. -/
-theorem output_cells_evaluated
+theorem physical_cells_evaluated
     (observedCells : List ColumnCell) (rows : List Row)
     (externalUses externalYields : List Event)
-    (hrows : outputGateBytecodeRows observedCells rows)
+    (hrows : physicalGateBytecodeRows observedCells rows)
     (hbalance : balanced rows externalUses externalYields)
     (hunique : uniqueProduced (allYields rows externalYields)) :
     ∀ cell ∈ observedCells,
@@ -195,7 +195,7 @@ theorem output_boundary_of_exact_gate
     (observedCells : List ColumnCell) (claimed : Lanes)
     (rows : List Row) (externalUses externalYields : List Event)
     (hcells : observedCells = expectedOutputCells certificate totalAddRows)
-    (hrows : outputGateBytecodeRows observedCells rows)
+    (hrows : physicalGateBytecodeRows observedCells rows)
     (hbalance : balanced rows externalUses externalYields)
     (hunique : uniqueProduced (allYields rows externalYields))
     (hzero : (0, base 0) ∈ allYields rows externalYields)
@@ -210,7 +210,7 @@ theorem output_boundary_of_exact_gate
     OutputBoundary certificate totalAddRows
       (wireOfProduced (allYields rows externalYields)) claimed := by
   let produced := allYields rows externalYields
-  have heval := output_cells_evaluated observedCells rows externalUses
+  have heval := physical_cells_evaluated observedCells rows externalUses
     externalYields hrows hbalance hunique
   refine ⟨wire_of_produced_event produced hunique _ _ hzero,
     ?_, ?_, ?_, ?_, ?_, ?_⟩
@@ -256,7 +256,7 @@ theorem bytecode_exact_gate_public_claim_sound
     (hsourceCells : sourceCells = expectedCells certificate totalAddRows)
     (hsourceRows : sourceGateBytecodeRows certificate sourceCells rows)
     (houtputCells : outputCells = expectedOutputCells certificate totalAddRows)
-    (houtputRows : outputGateBytecodeRows outputCells rows)
+    (houtputRows : physicalGateBytecodeRows outputCells rows)
     (hbalance : balanced rows externalUses externalYields)
     (hunique : uniqueProduced (allYields rows externalYields))
     (hinputYield : (address 0, packM31 input) ∈

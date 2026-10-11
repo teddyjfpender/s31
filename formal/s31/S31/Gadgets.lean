@@ -135,6 +135,7 @@ import S31.Gadgets.Functional.SSAInstalledBytecodeMixedReturn
 import S31.Gadgets.Functional.SSAGateLookupWireMap
 import S31.Gadgets.Functional.SSAInstalledBytecodeGateJoin
 import S31.Gadgets.Functional.SSAInstalledBytecodePublicOutput
+import S31.Gadgets.Functional.SSAInstalledBytecodePublicInput
 import S31.Gadgets.Functional.GeneratedDirectGateBridge
 import S31.Gadgets.Functional.GeneratedDirectGateMixedReturn
 import S31.Gadgets.Functional.MathLibrary
