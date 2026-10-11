@@ -178,6 +178,18 @@ does **not** enter either fixed-profile proof transcript. The experimental gener
 profile derives it from source and mixes it into a distinct transcript and
 circuit identity.
 
+Before that general profile constructs its native prover or verifier plan,
+`requireNativeGeometry` compares each manifest entry with the corresponding
+live engine slot: family, call ID, proof order, trace size, column spans,
+constraint count, fixed-column indices, lookup relations, and native AIR
+source hash. It also checks the fixed, main, and interaction polynomial-column
+log sizes and nonempty masks. The native plan's calls and circuit binding are
+then projected from the checked manifest. Focused N=1 through N=8 tests reject
+changed live call IDs, relation IDs, AIR hashes, and column geometry before
+using a stale-digest check. This is a local schedule consistency check; the
+source-embedded verifier and engine's independent live-handle reconstruction
+remain necessary for proof admission.
+
 Before projecting a mutable selected schedule into a registry manifest,
 `fromSchedule` also recomputes the selected-schedule digest from its active
 slots and native PCS geometry. This rejects a stale schedule identity when

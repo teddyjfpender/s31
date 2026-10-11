@@ -3,6 +3,7 @@
 //! The diagnostic digest here is not a proof transcript. Existing N=3 and
 //! N=4 proof profiles retain their distinct, frozen schedule digests and tags.
 const std = @import("std");
+const cpu = @import("stwo_circuit_cpu_integration");
 const mixed = @import("inspection.zig");
 const descriptor = @import("descriptor.zig");
 const registry = @import("registry.zig");
@@ -151,12 +152,75 @@ pub fn fromSchedule(schedule: *const mixed.SelectedSchedule) !Manifest {
     if (main_at != schedule.main_columns or interaction_at != schedule.interaction_columns or
         constraint_at != schedule.total_constraints)
         return error.InvalidMixedRegistryManifest;
+    try requireNativeGeometry(&result, &(schedule.native_geometry orelse return error.InvalidMixedLiveManifestBinding));
     // A stale digest would let the manifest label changed live geometry with
     // the previous schedule identity. The source-pinned caller remains the
     // authority even when this check passes.
     if (!mixed.hasCurrentDigest(schedule)) return error.InvalidMixedRegistryManifest;
     result.digest = digest(&result);
     return result;
+}
+
+/// Bind the typed, transcript-mixed manifest to the exact ordered native
+/// component and polynomial-column schedule consumed by the engine. The
+/// engine independently reconstructs its handles from source at admission;
+/// this check makes a drift between our registry and that live schedule fail
+/// before the manifest digest is used as an identity.
+pub fn requireNativeGeometry(manifest: *const Manifest, geometry: *const cpu.direct_mixed_schedule.Geometry) !void {
+    if (manifest.call_count == 0 or manifest.call_count > registry.max_calls or
+        manifest.entry_count != 1 + 2 * @as(usize, manifest.call_count) or
+        geometry.version != cpu.direct_mixed_schedule.version or
+        geometry.slot_count != manifest.entry_count or geometry.slot_count > geometry.slots.len or
+        geometry.tree_columns[0] != 8 or geometry.tree_columns[1] != manifest.main_columns or
+        geometry.tree_columns[2] != manifest.interaction_columns or
+        geometry.tree_columns[0] > geometry.columns[0].len or
+        geometry.tree_columns[1] > geometry.columns[1].len or
+        geometry.tree_columns[2] > geometry.columns[2].len)
+        return error.InvalidMixedLiveManifestBinding;
+    for (geometry.columns[0][0..geometry.tree_columns[0]]) |column| {
+        if (column.log_size != manifest.entries[0].trace_log_size or column.mask_width == 0)
+            return error.InvalidMixedLiveManifestBinding;
+    }
+    for (manifest.entrySlice(), geometry.slotSlice(), 0..) |entry, live, index| {
+        const kind: ?cpu.direct_mixed_admission.SourceKind = switch (entry.registry_key) {
+            .bundled_circuit => null,
+            .pair_chip => .pair_chip,
+            .pair_bridge => .pair_bridge,
+            .many_chip => .many_chip,
+            .many_bridge => .many_bridge,
+        };
+        if (entry.proof_index != index or entry.claimed_sum_index != index or
+            entry.preprocessed_count > entry.preprocessed_indices.len or
+            entry.relation_count > entry.relation_ids.len or
+            live.preprocessed_count > live.preprocessed_indices.len or
+            live.relation_count > live.relation_ids.len or
+            live.kind != kind or live.call_id != entry.call_id or
+            live.trace_log_size != entry.trace_log_size or
+            live.evaluation_log_size != entry.evaluation_log_size or
+            live.main_offset != entry.main_offset or live.main_columns != entry.main_columns or
+            live.interaction_offset != entry.interaction_offset or live.interaction_columns != entry.interaction_columns or
+            live.constraint_offset != entry.constraint_offset or live.n_constraints != entry.n_constraints or
+            live.preprocessed_count != entry.preprocessed_count or
+            live.relation_count != entry.relation_count or
+            !std.mem.eql(u32, live.preprocessed_indices[0..live.preprocessed_count], entry.preprocessed_indices[0..entry.preprocessed_count]) or
+            !std.mem.eql(u32, live.relation_ids[0..live.relation_count], entry.relation_ids[0..entry.relation_count]) or
+            (index != 0 and !std.meta.eql(live.air_source_sha256, entry.air_source_sha256)))
+            return error.InvalidMixedLiveManifestBinding;
+        const main_end = std.math.add(u32, entry.main_offset, entry.main_columns) catch
+            return error.InvalidMixedLiveManifestBinding;
+        const interaction_end = std.math.add(u32, entry.interaction_offset, entry.interaction_columns) catch
+            return error.InvalidMixedLiveManifestBinding;
+        if (main_end > geometry.tree_columns[1] or interaction_end > geometry.tree_columns[2])
+            return error.InvalidMixedLiveManifestBinding;
+        for (geometry.columns[1][entry.main_offset..main_end]) |column| {
+            if (column.log_size != entry.trace_log_size or column.mask_width == 0)
+                return error.InvalidMixedLiveManifestBinding;
+        }
+        for (geometry.columns[2][entry.interaction_offset..interaction_end]) |column| {
+            if (column.log_size != entry.trace_log_size or column.mask_width == 0)
+                return error.InvalidMixedLiveManifestBinding;
+        }
+    }
 }
 
 pub fn fromSource(allocator: std.mem.Allocator, source: []const u8, air_bytes: []const u8) !Manifest {
@@ -230,11 +294,33 @@ test "mixed registry manifest is source-derived and ordered for all bounded coun
         const manifest = try fromSchedule(&selected);
         try requireSource(a, &manifest, source, air_bytes);
         try std.testing.expectEqual(@as(usize, 1 + 2 * n), manifest.entry_count);
+        const native = selected.native_geometry.?;
+        try requireNativeGeometry(&manifest, &native);
         for (manifest.entrySlice(), 0..) |entry, index| {
             try std.testing.expectEqual(@as(u32, @intCast(index)), entry.proof_index);
             try std.testing.expectEqual(@as(u32, @intCast(index)), entry.claimed_sum_index);
             try std.testing.expectEqual((try registry.forSlot(index, n)).constructor.key, entry.registry_key);
         }
+        // Exercise the direct live binding without relying on a stale
+        // selected-schedule digest: each candidate retains a plausible native
+        // shape, but would assign a different handle or polynomial column to
+        // a transcript-bound manifest entry.
+        var changed_native = native;
+        changed_native.slots[1].call_id = if (n == 1) 7 else 1;
+        if (n > 1) changed_native.slots[3].call_id = 0;
+        try std.testing.expectError(error.InvalidMixedLiveManifestBinding, requireNativeGeometry(&manifest, &changed_native));
+        changed_native = native;
+        changed_native.slots[2].relation_ids[0] ^= 1;
+        try std.testing.expectError(error.InvalidMixedLiveManifestBinding, requireNativeGeometry(&manifest, &changed_native));
+        changed_native = native;
+        changed_native.slots[1].air_source_sha256[0] ^= 1;
+        try std.testing.expectError(error.InvalidMixedLiveManifestBinding, requireNativeGeometry(&manifest, &changed_native));
+        changed_native = native;
+        changed_native.columns[1][manifest.entries[1].main_offset].log_size += 1;
+        try std.testing.expectError(error.InvalidMixedLiveManifestBinding, requireNativeGeometry(&manifest, &changed_native));
+        changed_native = native;
+        changed_native.columns[2][manifest.entries[2].interaction_offset].mask_width = 0;
+        try std.testing.expectError(error.InvalidMixedLiveManifestBinding, requireNativeGeometry(&manifest, &changed_native));
         var changed = manifest;
         changed.entries[changed.entry_count - 1].registry_id ^= 1;
         changed.digest = digest(&changed);
@@ -293,7 +379,7 @@ test "mixed registry manifest is source-derived and ordered for all bounded coun
         altered_schedule = selected;
         altered_schedule.native_geometry.?.tree_columns[0] =
             @intCast(altered_schedule.native_geometry.?.columns[0].len + 1);
-        try std.testing.expectError(error.InvalidMixedRegistryManifest, fromSchedule(&altered_schedule));
+        try std.testing.expectError(error.InvalidMixedLiveManifestBinding, fromSchedule(&altered_schedule));
     }
 }
 

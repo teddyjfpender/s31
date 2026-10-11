@@ -39,8 +39,12 @@ fn selectedFromSource(source: *const mixed.SelectedSchedule) !engine.Selected {
     if (source.call_count == 0 or source.call_count > engine.max_calls or
         source.slot_count != 1 + 2 * @as(usize, source.call_count))
         return error.UnsupportedMixedProofCount;
-    var plan: cpu.private_many_boundary.Plan = .{ .count = source.call_count };
-    for (source.calls[0..source.call_count], plan.calls[0..source.call_count]) |call, *slot| {
+    // The registry manifest is the checked source-to-engine scheduling bridge.
+    // Build the native plan and circuit binding from that exact roster rather
+    // than independently projecting a second copy of the source schedule.
+    const typed_manifest = try registry_manifest.fromSchedule(source);
+    var plan: cpu.private_many_boundary.Plan = .{ .count = typed_manifest.call_count };
+    for (typed_manifest.calls[0..typed_manifest.call_count], plan.calls[0..typed_manifest.call_count]) |call, *slot| {
         if (call.constant >= core.fields.m31.Modulus) return error.InvalidMixedSource;
         slot.* = .{
             .call_id = call.call_id,
@@ -50,15 +54,60 @@ fn selectedFromSource(source: *const mixed.SelectedSchedule) !engine.Selected {
             .output = call.output,
         };
     }
-    const typed_manifest = try registry_manifest.fromSchedule(source);
     return .{
-        .source_sha256 = source.source_sha256,
+        .source_sha256 = typed_manifest.source_sha256,
         .manifest_sha256 = typed_manifest.digest,
-        .fixed_root = source.fixed_root,
-        .circuit_program_sha256 = source.slots[0].program_binding_sha256,
+        .fixed_root = typed_manifest.fixed_root,
+        .circuit_program_sha256 = typed_manifest.entries[0].program_binding_sha256,
         .plan = plan,
         .geometry = source.native_geometry orelse return error.InvalidMixedSource,
     };
+}
+
+test "mixed registry manifest drives the exact native plan for every bounded count" {
+    const allocator = std.testing.allocator;
+    const air_bytes = @embedFile("s31_air_programs");
+    const family = @import("test_source.zig");
+    inline for (1..engine.max_calls + 1) |count| {
+        const source = family.forCount(count);
+        const inspected = try mixed.inspectSource(allocator, source, air_bytes);
+        const native = try selectedFromSource(&inspected);
+        const manifest = try registry_manifest.fromSchedule(&inspected);
+        // Parity with the former direct source-to-engine projection proves
+        // this refactor changes neither the engine selection nor its identity.
+        var prior_plan: cpu.private_many_boundary.Plan = .{ .count = inspected.call_count };
+        for (inspected.calls[0..inspected.call_count], prior_plan.calls[0..inspected.call_count]) |call, *slot| {
+            slot.* = .{
+                .call_id = call.call_id,
+                .rounds = call.rounds,
+                .constant = M31.fromCanonical(call.constant),
+                .input = call.input,
+                .output = call.output,
+            };
+        }
+        const prior: engine.Selected = .{
+            .source_sha256 = inspected.source_sha256,
+            .manifest_sha256 = manifest.digest,
+            .fixed_root = inspected.fixed_root,
+            .circuit_program_sha256 = inspected.slots[0].program_binding_sha256,
+            .plan = prior_plan,
+            .geometry = inspected.native_geometry.?,
+        };
+        try std.testing.expectEqualDeep(prior, native);
+        try std.testing.expectEqualDeep(prior.circuitIdentity(), native.circuitIdentity());
+        try std.testing.expectEqualDeep(manifest.digest, native.manifest_sha256);
+        try std.testing.expectEqualDeep(manifest.fixed_root, native.fixed_root);
+        try std.testing.expectEqualDeep(manifest.entries[0].program_binding_sha256, native.circuit_program_sha256);
+        try std.testing.expectEqual(@as(u8, count), native.plan.count);
+        for (manifest.calls[0..manifest.call_count], native.plan.callSlice()) |call, scheduled| {
+            try std.testing.expectEqual(call.call_id, scheduled.call_id);
+            try std.testing.expectEqual(call.rounds, scheduled.rounds);
+            try std.testing.expectEqual(call.constant, scheduled.constant.toU32());
+            try std.testing.expectEqualDeep(call.input, scheduled.input);
+            try std.testing.expectEqualDeep(call.output, scheduled.output);
+        }
+        try registry_manifest.requireNativeGeometry(&manifest, &native.geometry);
+    }
 }
 
 /// The same source-derived profile identity used by proveSealed and
