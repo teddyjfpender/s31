@@ -9,7 +9,7 @@ import proof_privacy
 from package.manifest_digest import direct_chip_v2_digest
 from package.context import (
     AIR_BUNDLE_SHA256, LIBRARY_SOURCE_FILES, PROJECTION_SHA256, abi, file_hash,
-    lower_text, text_interface,
+    lower_text, parse_source_json, text_interface,
 )
 
 
@@ -36,7 +36,7 @@ def verify_package(package: Path) -> dict:
     }
     if not required_artifacts.issubset(artifacts):
         raise ValueError("S31 package is missing required artifacts")
-    source = json.loads((package / "source.s31.json").read_text())
+    source = parse_source_json((package / "source.s31.json").read_bytes())
     if source.get("version") not in (1, 2):
         raise ValueError("unsupported S31 relation version")
     if source["version"] == 2 and manifest.get("lowering") not in {"direct-gate", "direct-chip"}:

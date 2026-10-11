@@ -78,9 +78,26 @@ def invoke(*args: str) -> str:
     return result.stdout + result.stderr
 
 
+def _unique_source_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    result: dict[str, object] = {}
+    for name, value in pairs:
+        if name in result:
+            raise ValueError(f"duplicate S31 source JSON key: {name}")
+        result[name] = value
+    return result
+
+
+def parse_source_json(data: bytes) -> dict:
+    """Match the native parser's duplicate-key rejection at the Python edge."""
+    source = json.loads(data, object_pairs_hook=_unique_source_object)
+    if not isinstance(source, dict):
+        raise ValueError("S31 relation source must be a JSON object")
+    return source
+
+
 def load_source(path: Path) -> tuple[dict, bytes]:
     data = path.read_bytes()
-    source = json.loads(data)
+    source = parse_source_json(data)
     if source.get("version") not in (1, 2) or not isinstance(source.get("name"), str):
         raise ValueError("S31 requires a version 1 or 2 relation source")
     return source, data
