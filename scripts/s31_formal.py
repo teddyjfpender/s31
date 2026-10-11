@@ -153,6 +153,8 @@ BINDINGS = [
     "src/frontends/s31/tests/acceptance/record_abi/nested_alias_v2.py",
     "src/frontends/s31/benchmarks/pow_workers/phase_equivalence.py",
     "src/frontends/s31/tests/acceptance/compiler_correspondence/generated_native_subset.py",
+    "src/frontends/s31/tests/acceptance/compiler_correspondence/native_source_cells.py",
+    "formal/s31/fixtures/correspondence/native_source_cells.json",
     "src/frontends/s31/tests/python/generated/test_source_mutation_correspondence.py",
     "src/frontends/s31/tests/python/generated/render_lean_source_row_fixture.py",
     "src/frontends/s31/runtime/many_statement.zig",

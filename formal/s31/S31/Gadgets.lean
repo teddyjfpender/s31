@@ -176,6 +176,8 @@ import S31.Gadgets.Functional.Correspondence.AliasRawGateSoundness
 import S31.Gadgets.Functional.Correspondence.AliasCanonicalIrBytes
 import S31.Gadgets.Functional.Correspondence.AliasCanonicalAirBridge
 import S31.Gadgets.Functional.Correspondence.SourceDeterminedDirectRows
+import S31.Gadgets.Functional.Correspondence.SourceDeterminedPhysicalSoundness
+import S31.Gadgets.Functional.Correspondence.GeneratedNativeSourceCells
 import S31.Gadgets.Functional.Correspondence.CanonicalDagOptimization
 import S31.Gadgets.Functional.Correspondence.CanonicalDagCompleteness
 import S31.Gadgets.Functional.Correspondence.OptimizedTextBytes
