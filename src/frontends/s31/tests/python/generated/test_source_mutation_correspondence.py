@@ -38,6 +38,7 @@ class Sample:
     source: str
     gate_count: int
     return_id: int
+    steps: tuple[tuple[str, int, int], ...]
 
 
 def _spell(index: int, steps: list[tuple[str, int, int]], return_id: int,
@@ -100,7 +101,7 @@ def corpus() -> list[Sample]:
                       "whitespace", "alpha"):
             samples.append(Sample(f"{index:02d}:{style}",
                                   _spell(index, steps, return_id, style),
-                                  count, return_id))
+                                  count, return_id, tuple(steps)))
     return samples
 
 
