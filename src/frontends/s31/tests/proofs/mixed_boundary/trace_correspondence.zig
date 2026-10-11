@@ -1,11 +1,11 @@
-//! Concrete N=1/N=8 source-to-native-circuit and base-trace fixture.
+//! Concrete N=1..8 source-to-native-circuit and base-trace fixture.
 //!
 //! These are the same base writers called by general_package.proveSealed via
 //! direct_mixed_general_arithmetic.proveSourceBound. It checks the emitted
 //! pack, public arithmetic, unpack and output-copy Gate rows as well as the
-//! bridge/chip base rows. The fixture also proves and verifies the exact
-//! pinned sources, then changes proof-envelope fields.
-//! It does not establish a general compiler correspondence theorem.
+//! bridge/chip base rows. N=1 and N=8 also prove and verify the exact pinned
+//! sources, then change proof-envelope fields. Emitted trace checks alone do
+//! not authenticate verifier openings or establish compiler correspondence.
 const std = @import("std");
 const core = @import("stwo_core");
 const circuit = @import("stwo_circuit_frontend");
@@ -173,14 +173,122 @@ fn rejectChangedBridgeRow(columns: anytype, addresses: [8]u32, expected: [8]u32)
     try std.testing.expectError(error.WrongFixtureBridgeWord, checkBridge(columns, addresses, expected));
 }
 
-fn fixture(comptime count: usize) !void {
+/// Audit all 512 emitted fixed rows and all 512x12 main cells. Multiplicity
+/// comes from a separate count of circuit reads, public outputs, and the
+/// source-pinned bridge endpoints, rather than from the emitted fixed column.
+/// This is a test of the honest writer output, not a verifier-opening claim.
+fn checkCircuitRows(
+    allocator: std.mem.Allocator,
+    view: circuit.common.preprocessed.CircuitView,
+    pp: *const circuit.common.direct_arithmetic.Circuit,
+    base: *const circuit.witness.direct_arithmetic.Base,
+    values: []const QM31,
+    count: usize,
+) !void {
+    if (view.n_vars != 512 or values.len != 512 or
+        view.add.len != 468 - 7 * count or view.sub.len != 1 or
+        view.mul.len != 30 + 3 * count or view.pointwise_mul.len != 13 + 4 * count or
+        view.nPermutations() != 0 or pp.first_permutation_row != 512 or
+        pp.n_outputs != 8 or base.columns.len != 12 or base.log_size != 9)
+        return error.WrongFixtureRowShape;
+    var fixed: [8][]const M31 = undefined;
+    for (circuit.common.preprocessed.QM31_OPS_COLUMN_IDS, &fixed) |id, *column| {
+        column.* = pp.columnValues(id) orelse return error.MissingFixtureFixedColumn;
+        if (column.*.len != 512) return error.WrongFixtureRowShape;
+    }
+    for (base.columns) |column|
+        if (column.values.len != 512 or column.log_size != 9) return error.WrongFixtureRowShape;
+
+    const reads = try allocator.alloc(u32, values.len);
+    defer allocator.free(reads);
+    @memset(reads, 0);
+    inline for (.{ view.add, view.sub, view.mul, view.pointwise_mul }) |gates|
+        for (gates) |gate| {
+            if (gate.in0 >= reads.len or gate.in1 >= reads.len or gate.out >= reads.len)
+                return error.WrongFixtureFixedAddress;
+            reads[gate.in0] += 1;
+            reads[gate.in1] += 1;
+        };
+    for (view.output) |address| {
+        if (address >= reads.len) return error.WrongFixtureFixedAddress;
+        reads[address] += 1;
+    }
+    for (0..count + 1) |state| for (0..4) |lane| {
+        const address: usize = if (state == 0) 11 + lane else 23 + 10 * (state - 1) + lane;
+        reads[address] += if (state == 0 or state == count) @as(u32, 1) else @as(u32, 2);
+    };
+
+    var row: usize = 0;
+    inline for (.{ view.add, view.sub, view.mul, view.pointwise_mul }, 0..) |gates, opcode| {
+        for (gates) |gate| {
+            for (0..4) |flag| {
+                if (fixed[flag][row].toU32() != @intFromBool(flag == opcode))
+                    return error.WrongFixtureFixedRow;
+            }
+            const expected = [4]u32{ gate.in0, gate.in1, gate.out, reads[gate.out] };
+            for (expected, 4..) |want, column|
+                if (fixed[column][row].toU32() != want) return error.WrongFixtureFixedRow;
+
+            const in0 = values[gate.in0];
+            const in1 = values[gate.in1];
+            const out = values[gate.out];
+            const computed = switch (opcode) {
+                0 => in0.add(in1),
+                1 => in0.sub(in1),
+                2 => in0.mul(in1),
+                3 => core.fields.qm31_pointwise.pointwiseMul(in0, in1),
+                else => unreachable,
+            };
+            if (!out.eql(computed)) return error.WrongFixtureMainGate;
+            const operands = [3]QM31{ in0, in1, out };
+            for (operands, 0..) |operand, segment| {
+                const limbs = operand.toM31Array();
+                for (limbs, 0..) |limb, lane|
+                    if (!base.columns[4 * segment + lane].values[row].eql(limb))
+                        return error.WrongFixtureMainRow;
+            }
+            row += 1;
+        }
+    }
+    if (row != 512) return error.WrongFixtureRowShape;
+}
+
+fn rejectChangedCircuitRows(
+    allocator: std.mem.Allocator,
+    view: circuit.common.preprocessed.CircuitView,
+    pp: *circuit.common.direct_arithmetic.Circuit,
+    base: *circuit.witness.direct_arithmetic.Base,
+    values: []const QM31,
+    count: usize,
+) !void {
+    for ([_]usize{ 0, 4, 6, 7 }) |column| {
+        const original = pp.columns[column].values[0];
+        pp.columns[column].values[0] = M31.fromCanonical((original.toU32() + 1) % p);
+        const result = checkCircuitRows(allocator, view, pp, base, values, count);
+        pp.columns[column].values[0] = original;
+        try std.testing.expectError(error.WrongFixtureFixedRow, result);
+    }
+    const original = base.columns[0].values[0];
+    @constCast(base.columns[0].values)[0] = M31.fromCanonical((original.toU32() + 1) % p);
+    const result = checkCircuitRows(allocator, view, pp, base, values, count);
+    @constCast(base.columns[0].values)[0] = original;
+    try std.testing.expectError(error.WrongFixtureMainRow, result);
+}
+
+fn fixture(comptime count: usize, comptime prove: bool) !void {
     const allocator = std.testing.allocator;
     // These compile-time bytes are also the embedded verifier authority below.
     const source = comptime pinnedSource(count);
-    const expected_source_sha256 = if (count == 1)
-        "8c5296ef964e3be770e442cd28b66eed3051e210bdd6a97e265a4cd2c5962f75"
-    else
-        "08b5c20367e910261a194658bc3753038037fb85bc8f16dbc7f9191c7d1f45ff";
+    const expected_source_sha256 = ([_][]const u8{
+        "8c5296ef964e3be770e442cd28b66eed3051e210bdd6a97e265a4cd2c5962f75",
+        "4b8f0660e7ac21ea31782fffc56300d0a5ad8bdb39b76317428e27380b4fc6ba",
+        "06855c2bd39485f6a9b014da76b9db43c0f08f3c25ad216c45cd0442882686a6",
+        "3508bf5b4e000e434e4c276758d66e85ddd8c2c4978f9a19d939792fd6e622d4",
+        "168c4ada49a53759a4dd813fd51cf553de8b93656cb0a5e9870afa70d913e92e",
+        "10acfa1c1d6694f88617cd7380e2663f705c70efc7b03baea2d3b8b529b14418",
+        "425cfdafca60816bb38b1b6c46db3792e57534e15e9a237392b93d8fc0c39623",
+        "08b5c20367e910261a194658bc3753038037fb85bc8f16dbc7f9191c7d1f45ff",
+    })[count - 1];
     var source_hash: [32]u8 = undefined;
     std.crypto.hash.sha2.Sha256.hash(source, &source_hash, .{});
     const source_hash_hex = std.fmt.bytesToHex(source_hash, .lower);
@@ -247,6 +355,8 @@ fn fixture(comptime count: usize) !void {
         return error.WrongFixtureFixedRoot;
     var circuit_base = try circuit.witness.direct_arithmetic.writeBase(allocator, values, &pp);
     defer circuit_base.deinit();
+    try checkCircuitRows(allocator, view, &pp, &circuit_base, values, count);
+    try rejectChangedCircuitRows(allocator, view, &pp, &circuit_base, values, count);
     if (circuit_base.output_values.len != 8) return error.WrongFixturePublicWidth;
     for (sum ++ product, circuit_base.output_values) |word, actual|
         if ((try actual.tryIntoM31()).toU32() != word) return error.WrongFixturePublicWord;
@@ -309,6 +419,8 @@ fn fixture(comptime count: usize) !void {
         }
     }
     if (!std.meta.eql(state, final)) return error.WrongFixtureFinal;
+
+    if (!prove) return;
 
     // Prove through the production package after checking the exact base
     // writers. Its engine consumes the same compiler witness and source-bound
@@ -410,6 +522,5 @@ fn fixture(comptime count: usize) !void {
 }
 
 test "mixed N1 and N8 source base rows and proof envelope match native verification" {
-    try fixture(1);
-    try fixture(8);
+    inline for (1..9) |count| try fixture(count, count == 1 or count == 8);
 }
