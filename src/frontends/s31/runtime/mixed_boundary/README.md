@@ -43,7 +43,12 @@ oracle, then rejects changed public result words, a changed claimed proof sum,
 the opposite bit with the original output claim, and a non-bit input. The
 non-bit rejection is at the source evaluator before proof construction; the
 test does not mutate an already committed trace to exercise the circuit's
-Boolean constraint adversarially.
+Boolean constraint adversarially. The separate
+`test-mixed-circuit-mutations` engine test does exercise that constraint:
+honest bits 0 and 1 pass, while a rebuilt precommitment trace with bit 2
+and unchanged public outputs fails the Gate row audit at `b² = b`. This is
+a local AIR/trace check, not a forged succinct proof accepted and then
+rejected by the verifier.
 
 The command implementations and statement schema live here; the tiny files in
 `entry/` are required only by Zig's module-root import rule.
