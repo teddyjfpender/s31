@@ -1052,6 +1052,25 @@ Only Lean's standard `propext`,
 `Classical.choice` and `Quot.sound` axioms are approved. Proof sources reject
 `sorry`, `admit`, custom `axiom`, `unsafe` and `native_decide`.
 
+### Early-return Gate non-vacuity check
+
+Run `python3 formal/s31/scripts/check_early_return_nonvacuity.py` from the
+repository root. It constructs a concrete zero-input, zero-output witness for
+the physical-row and ideal-Gate premises of
+`SSADeadRowMixedReturn.early_return_public_io_sound`: 512
+physical rows, including its zero-multiplicity final source row; the exported
+source and public-boundary cells; zero arithmetic roots; exact Gate multiset
+balance; unique values per produced address; fixed basis events; and public
+pins. The generated Lean fixture separately proves the source/normalized-byte
+and expected-cell equalities. Two negative controls remove a Gate use or
+change the selected public claim and must fail balance. This executable
+witness rules out a contradictory
+set of *ideal-model premises* for that fixture. It is not a Lean existence
+theorem, and it does not establish that authenticated native trace openings,
+LogUp, PCS/FRI, or the compiler imply those premises. The dummy rows and
+external events are legal in the theorem's abstract model; their identity
+with production components remains an external proof obligation.
+
 ## Reproduce the gate
 
 Run from the repository root with Zig 0.15.2 and the pinned Lean toolchain
