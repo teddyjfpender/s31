@@ -120,11 +120,15 @@ pub fn build(b: *std.Build) void {
     b.step("test-pair-native-long", "Check two-call PCS lifting when chip traces exceed the circuit trace").dependOn(&pair_native_long_tests.step);
     const many_call_source_root = localEntry(b, "language/bounded_call_admission.zig", target, optimize);
     many_call_source_root.addImport("stwo_core", core);
+    many_call_source_root.addImport("stwo_circuit_frontend", circuit);
+    many_call_source_root.addImport("s31_poseidon_ref", sha_provider);
     const many_call_source_tests = b.addRunArtifact(b.addTest(.{ .root_module = many_call_source_root }));
     b.step("test-bounded-call-source", "Test source-only bounded multi-call admission")
         .dependOn(&many_call_source_tests.step);
     const mixed_call_source_root = localEntry(b, "language/bounded_call_admission_v2.zig", target, optimize);
     mixed_call_source_root.addImport("stwo_core", core);
+    mixed_call_source_root.addImport("stwo_circuit_frontend", circuit);
+    mixed_call_source_root.addImport("s31_poseidon_ref", sha_provider);
     const mixed_call_source_tests = b.addRunArtifact(b.addTest(.{ .root_module = mixed_call_source_root }));
     b.step("test-mixed-call-source-v2", "Test source-only mixed square/add and mix4 call admission")
         .dependOn(&mixed_call_source_tests.step);
@@ -132,6 +136,7 @@ pub fn build(b: *std.Build) void {
     bounded_manifest_root.addImport("stwo_core", core);
     bounded_manifest_root.addImport("stwo_circuit_frontend", circuit);
     bounded_manifest_root.addImport("stwo_circuit_cpu_integration", cpu);
+    bounded_manifest_root.addImport("s31_poseidon_ref", sha_provider);
     bounded_manifest_root.addAnonymousImport("s31_pair_boundary_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/private_pair_boundary.zig") } });
     bounded_manifest_root.addAnonymousImport("s31_many_boundary_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/private_many_boundary.zig") } });
     bounded_manifest_root.addAnonymousImport("s31_many_preflight_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/direct_many_preflight.zig") } });
@@ -295,6 +300,8 @@ pub fn build(b: *std.Build) void {
     private_bridge_test_root.addImport("stwo_cairo_frontend", cpu.import_table.get("stwo_cairo_frontend") orelse @panic("missing Cairo frontend"));
     private_bridge_test_root.addImport("interop_postcard", sha_postcard);
     private_bridge_test_root.addImport("s31_air_programs", official_air);
+    private_bridge_test_root.addAnonymousImport("s31_chip_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/repeated_step_chip.zig") } });
+    private_bridge_test_root.addAnonymousImport("s31_bridge_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/private_boundary_bridge.zig") } });
     const private_bridge_test = b.addTest(.{ .root_module = private_bridge_test_root });
     const private_bridge_tests = b.addRunArtifact(private_bridge_test);
     b.step("check-private-boundary-proof", "Compile the private source-to-chip proof test")
