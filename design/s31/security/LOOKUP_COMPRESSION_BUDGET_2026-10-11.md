@@ -62,6 +62,38 @@ committed Gate row and chip round. Counting just boundary endpoints would be
 incorrect. A tighter argument may exploit tuple structure or independent
 relation challenges, but must be proved for the implemented transcript.
 
+### An envelope from the current bounded geometry
+
+For the proposed 1–8-call pair/many schedule, the existing `Plan.validate`
+caps circuit rows at `2^16`, the sum of chip rounds at `2^18`, and calls at
+eight. The direct circuit emits three Gate lookup occurrences per row. Each
+tagged chip emits two endpoint occurrences per round. A bridge has 16 rows;
+each row contributes eight Gate and two tagged chip denominator terms. The
+public statement contributes at most eight output terms plus the `u` term.
+Counting every bridge row separately, even though its AIR should force equal
+endpoints across rows, gives the conservative envelope
+
+```text
+E <= 3 * 2^16 + 2 * 2^18 + (8 + 2) * 16 * 8 + (8 + 1)
+  = 722185 occurrences.
+T <= E.
+```
+
+Substituting this ceiling into the conditional formula above gives an
+algebraic error ceiling below `2^-83.49` for the proposed bounded profile.
+The count is also below the M31 characteristic, so a nonzero *integer*
+imbalance of these occurrences cannot vanish solely by reduction modulo
+`p`. The bridge uses `1/16` per row: that integer interpretation additionally
+requires its row-constancy AIR constraints to hold, so this is not an
+independent bridge-soundness proof. Nor is it a blanket bound for every S31
+program or future chip kind. The native N=3 and N=4 profiles use smaller
+source-derived counts; the 1–8-call native proof scheduler is still pending.
+The factors come from `private_many_boundary.Plan.validate`,
+`components.qm31_ops.n_lookups`, `tagged_pair_chip.FillContext.fill`,
+`tagged_pair_bridge.FillContext.fill`, and `witness.trace.lookupSum` in the
+pinned engine. Any change to those emitters or caps requires recomputing this
+envelope before using it in a release budget.
+
 ## Conditions to check in the implementation
 
 1. The manifest or registry supplies a checked upper bound on **distinct**
