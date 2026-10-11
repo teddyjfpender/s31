@@ -94,7 +94,9 @@ Create and commit `language/mixed-stage-cost-transfer-v1-freeze.json` with
 `protocol_sha256`, and `recorded_at_utc` in UTC. Record its full commit ID and
 protocol hash externally before the first timed build. The anchor must descend
 from the source commit. Do not edit this protocol in place. Use a new version
-if a source, tool, host, or gate must change.
+if a source, tool, host, or gate must change. Keep the timed run in a dedicated
+worktree at this frozen revision; ongoing S31 development in another worktree
+must not alter its compiler or collector bytes.
 
 Use a fresh ignored path such as `zig-out/s31-mixed-stage-transfer-v1-YYYYMMDD`
 for raw evidence. The `build` and `prove` commands need `--out`, `--expected-protocol-sha256`,
