@@ -1,0 +1,41 @@
+{
+  "schema": "s31-mixed-stage-cost-v1-prospective",
+  "status": "design-only-no-native-measurements",
+  "source_template": "src/frontends/s31/examples/boundary/record_mixed1.s31.json",
+  "source_name_prefix": "mixed_stage_cost_v1_n",
+  "train_call_counts": [1, 3, 5, 7],
+  "heldout_call_counts": [2, 4, 6, 8],
+  "assignments_per_call_count": 100,
+  "assignment_seed": 2026101101,
+  "build_mode": "ReleaseFast",
+  "lowering": "direct-mixed-general",
+  "first_verified_boundary": "one fresh prover process plus one fresh source-embedded external native verifier process; both wall times include startup; package build and Python orchestration are separate",
+  "model_features": {
+    "profile_rebuild_ns": "call_count",
+    "semantic_evaluation_ns": "call_count",
+    "topology_compile_ns": "call_count",
+    "witness_compile_ns": "call_count",
+    "native_prove_including_setup_ns": "call_count",
+    "envelope_and_serialization_ns": "call_count",
+    "prover_process_residual_ns": "constant",
+    "external_verifier_process_wall_ns": "constant",
+    "proof_bytes": "call_count"
+  },
+  "model_fit": "nonnegative-affine least squares on per-source trial medians for call_count stages; pooled median of per-source trial medians for constant stages; training leave-one-source-out trial ratios determine empirical p05/p95 intervals",
+  "accuracy_gate": {
+    "minimum_heldout_programs": 4,
+    "whole_wall_program_median_p90_relative_error_max": 0.25,
+    "whole_wall_program_median_max_relative_error_max": 0.35,
+    "whole_wall_trial_interval_coverage_min": 0.80,
+    "whole_wall_median_interval_upper_to_measured_median_max": 8.0,
+    "proof_bytes_program_median_p90_relative_error_max": 0.10,
+    "proof_bytes_trial_interval_coverage_min": 0.80,
+    "proof_bytes_median_interval_upper_to_measured_median_max": 1.5,
+    "native_opaque_program_median_p90_relative_error_max": 0.30
+  },
+  "minimum_available_disk_bytes_before_native_phase": 8589934592,
+  "minimum_available_disk_bytes_at_phase_start": 12884901888,
+  "prior_study_data_allowed_in_fit": false,
+  "automatic_lowering_selection_enabled": false,
+  "speedup_claim_enabled": false
+}

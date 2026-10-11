@@ -36,6 +36,11 @@ jobs:
         run: cd src/frontends/s31 && zig build test -Doptimize=ReleaseSafe -j2
       - name: Text frontend and oracle tests
         run: python3 -m unittest discover -s src/frontends/s31/tests/python -p 'test_*.py' -q
+      - name: Mixed stage cost protocol checks
+        run: |
+          python3 -B src/frontends/s31/benchmarks/mixed_stage_cost_v1/cohort.py
+          python3 -B src/frontends/s31/benchmarks/mixed_stage_cost_v1/test_static.py
+          python3 -B src/frontends/s31/benchmarks/paired_record_v2/test_diagnose_stages_v1.py
       - name: Documentation consistency
         run: python3 src/frontends/s31/docs/check.py
       - name: Native proof smoke

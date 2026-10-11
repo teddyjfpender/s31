@@ -38,14 +38,14 @@ def unique_object(pairs: list[tuple[str, object]]) -> dict:
     return value
 
 
-def invoke(argv: list[str]) -> tuple[subprocess.CompletedProcess[bytes], int]:
+def invoke(argv: list[str]) -> tuple[subprocess.CompletedProcess[bytes], int, int]:
     start = time.perf_counter_ns()
     result = subprocess.run(argv, capture_output=True, check=False)
-    elapsed = time.perf_counter_ns() - start
+    end = time.perf_counter_ns()
     if result.returncode:
         raise RuntimeError(f"command failed ({result.returncode}): {argv!r}\n"
                            f"{result.stderr.decode(errors='replace')}")
-    return result, elapsed
+    return result, start, end
 
 
 def parse_prover_stage(stderr: bytes, manifest: dict, proof: bytes,
@@ -90,7 +90,7 @@ def measure(prover: Path, verifier: Path, inspector: Path, assignment: Path,
                 (("prover", prover), ("verifier", verifier), ("inspector", inspector))}
     supplied = typed_statement.read_bytes()
     assignment_bytes = assignment.read_bytes()
-    inspector_result, _ = invoke([str(inspector)])
+    inspector_result, _, _ = invoke([str(inspector)])
     manifest = json.loads(inspector_result.stdout, object_pairs_hook=unique_object)
     if (manifest.get("schema") != "s31-mixed-component-inspection-general-v3" or
             any(type(manifest.get(field)) is not str or len(manifest[field]) != 64 or
@@ -101,9 +101,10 @@ def measure(prover: Path, verifier: Path, inspector: Path, assignment: Path,
     out.mkdir(parents=True, exist_ok=False)
     proof_path = out / "proof.bin"
     statement_path = out / "statement.json"
-    prover_result, prover_wall = invoke([str(prover), str(assignment),
-                                        str(proof_path), str(statement_path),
-                                        str(typed_statement)])
+    prover_result, prover_start, prover_end = invoke([str(prover), str(assignment),
+                                                     str(proof_path), str(statement_path),
+                                                     str(typed_statement)])
+    prover_wall = prover_end - prover_start
     proof = proof_path.read_bytes()
     statement = statement_path.read_bytes()
     if statement != supplied:
@@ -111,8 +112,9 @@ def measure(prover: Path, verifier: Path, inspector: Path, assignment: Path,
     stages = parse_prover_stage(prover_result.stderr, manifest, proof, statement)
     if stages["stages_ns"]["package_total_ns"] > prover_wall:
         raise ValueError("reported internal package time exceeds measured prover process wall")
-    verifier_result, verifier_wall = invoke([str(verifier), str(proof_path),
-                                            str(statement_path)])
+    verifier_result, verifier_start, verifier_end = invoke([str(verifier), str(proof_path),
+                                                           str(statement_path)])
+    verifier_wall = verifier_end - verifier_start
     if (proof_path.read_bytes() != proof or statement_path.read_bytes() != statement or
             assignment.read_bytes() != assignment_bytes or
             typed_statement.read_bytes() != supplied):
@@ -140,6 +142,10 @@ def measure(prover: Path, verifier: Path, inspector: Path, assignment: Path,
         "prover_process_wall_ns": prover_wall,
         "external_verifier_process_wall_ns": verifier_wall,
         "first_verified_process_wall_ns": prover_wall + verifier_wall,
+        "process_monotonic_ns": {
+            "prover_start": prover_start, "prover_end": prover_end,
+            "verifier_start": verifier_start, "verifier_end": verifier_end,
+        },
         "prover_internal_stages_ns": stages["stages_ns"],
         "engine_setup_preprocessing_ns": None,
         "engine_pow_ns": None,

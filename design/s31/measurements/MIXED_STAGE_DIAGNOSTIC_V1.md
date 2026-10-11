@@ -47,7 +47,11 @@ python3 src/frontends/s31/benchmarks/paired_record_v2/diagnose_stages_v1.py \
 ```
 
 The collector measures complete prover and external native verifier process
-wall times with the host monotonic clock. It accepts a report only after the
+wall times with the host monotonic clock. New reports also include raw
+`process_monotonic_ns` start/end readings for both processes, so an audit can
+rederive their two durations and ordering. Earlier N3/N8 smoke reports predate
+that additive field and remain diagnostic examples. The collector accepts a
+report only after the
 verifier exits successfully, the prover copied the canonical typed statement
 exactly, the stage line matches the inspector's source/registry/circuit
 identity, all stage intervals partition the package timer, and the named

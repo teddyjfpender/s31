@@ -114,6 +114,14 @@ class StageDiagnosticTests(unittest.TestCase):
             self.assertTrue(result["external_native_verification_accepted"])
             self.assertIsNone(result["engine_setup_preprocessing_ns"])
             self.assertEqual(result["prover_internal_stages_ns"], STAGES)
+            endpoints = result["process_monotonic_ns"]
+            self.assertLess(endpoints["prover_start"], endpoints["prover_end"])
+            self.assertLessEqual(endpoints["prover_end"], endpoints["verifier_start"])
+            self.assertLess(endpoints["verifier_start"], endpoints["verifier_end"])
+            self.assertEqual(result["prover_process_wall_ns"],
+                             endpoints["prover_end"] - endpoints["prover_start"])
+            self.assertEqual(result["external_verifier_process_wall_ns"],
+                             endpoints["verifier_end"] - endpoints["verifier_start"])
             self.assertEqual(result["first_verified_process_wall_ns"],
                              result["prover_process_wall_ns"] +
                              result["external_verifier_process_wall_ns"])
