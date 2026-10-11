@@ -151,6 +151,8 @@ def main() -> None:
     parser.add_argument("--expected-model-sha256", required=True)
     parser.add_argument("--model-anchor-commit", required=True)
     parser.add_argument("--native", action="store_true")
+    parser.add_argument("--require-pass", action="store_true",
+                        help="exit nonzero if the verified audit fails its local accuracy gate")
     parser.add_argument("--out", type=Path, required=True)
     args = parser.parse_args()
     result = publish(args.train, args.model, args.validation, args.evaluation,
@@ -160,6 +162,8 @@ def main() -> None:
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")
     print(args.out)
+    if args.require_pass and result["local_accuracy_gate_pass"] is not True:
+        raise SystemExit("V7 evidence is consistent, but the local accuracy gate failed")
 
 
 if __name__ == "__main__":

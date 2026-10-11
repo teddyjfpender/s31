@@ -119,6 +119,7 @@ python3 src/frontends/s31/benchmarks/publish_whole_prover_cost_v7.py \
   --protocol-anchor-commit <full-protocol-anchor-commit> \
   --expected-model-sha256 <full-model-sha256> \
   --model-anchor-commit <full-model-anchor-commit> \
+  --require-pass \
   --out zig-out/s31-v7-evidence/validation/audit.json
 ```
 
@@ -148,7 +149,8 @@ python3 src/frontends/s31/benchmarks/cost/replay_portable_v7.py \
   --expected-protocol-sha256 <full-protocol-sha256> \
   --protocol-anchor-commit <full-protocol-anchor-commit> \
   --expected-model-sha256 <full-model-sha256> \
-  --model-anchor-commit <full-model-anchor-commit>
+  --model-anchor-commit <full-model-anchor-commit> \
+  --require-pass
 ```
 
 `--native` on the portable replay reruns original and changed statements. The
@@ -158,12 +160,12 @@ symlinks. These portable tools enter the V7 tool digest when its protocol is
 eventually frozen; they do not change the frozen V6 inventory. The separate
 `independent_v7_gate.py` recomputes held-out predictions and every gate from
 the serialized model and raw trials without importing the fitting predictor.
-The publisher and portable replay exit successfully when the evidence is
-internally consistent, even if `local_accuracy_gate_pass` is `false`. For a
-cost-accuracy release gate, inspect that boolean in the emitted audit JSON and
-require it to be `true`; process exit status alone is only an evidence-integrity
-check. The fitted features (`raw`, `padded`, `preprocessed_cells`, profile, and
-visible FRI settings) must also match each package's sealed cost report.
+The publisher and portable replay exit successfully by default when the
+evidence is internally consistent, even if `local_accuracy_gate_pass` is
+`false`. Use `--require-pass` in CI or inspect the audit boolean directly when
+cost accuracy is a release gate. The fitted features (`raw`, `padded`,
+`preprocessed_cells`, profile, and visible FRI settings) must also match each
+package's sealed cost report.
 
 ## Acceptance and limits
 

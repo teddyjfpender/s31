@@ -1,5 +1,7 @@
 """V7 evidence paths remain verifiable after moving the artifact directory."""
 
+import contextlib
+import io
 import json
 import shutil
 import sys
@@ -14,6 +16,7 @@ sys.path.insert(0, str(S31 / "benchmarks" / "cost"))
 sys.path.insert(0, str(S31 / "python"))
 
 import portable_v7
+import publish_whole_prover_cost_v7
 import replay_portable_v7
 import v7_protocol
 from benchmark_arithmetic_rss_v2 import assignment, program
@@ -21,6 +24,37 @@ import s31
 
 
 class PortableV7Tests(unittest.TestCase):
+    def test_require_pass_exits_nonzero_after_writing_failed_audit(self):
+        with tempfile.TemporaryDirectory() as directory:
+            audit = Path(directory) / "audit.json"
+            publisher_args = ["publish", "train.json", "model.json", "validation.json",
+                              "evaluation.json", "--expected-protocol-sha256", "a" * 64,
+                              "--protocol-anchor-commit", "b" * 40,
+                              "--expected-model-sha256", "c" * 64,
+                              "--model-anchor-commit", "d" * 40,
+                              "--out", str(audit), "--require-pass"]
+            with (patch.object(sys, "argv", publisher_args),
+                  patch.object(publish_whole_prover_cost_v7, "publish",
+                               return_value={"local_accuracy_gate_pass": False}),
+                  contextlib.redirect_stdout(io.StringIO()),
+                  self.assertRaisesRegex(SystemExit, "accuracy gate failed")):
+                publish_whole_prover_cost_v7.main()
+            self.assertIs(json.loads(audit.read_text())["local_accuracy_gate_pass"], False)
+
+            replay_args = ["replay", "--root", directory,
+                           "--expected-manifest-sha256", "e" * 64,
+                           "--expected-protocol-sha256", "a" * 64,
+                           "--protocol-anchor-commit", "b" * 40,
+                           "--expected-model-sha256", "c" * 64,
+                           "--model-anchor-commit", "d" * 40,
+                           "--require-pass"]
+            with (patch.object(sys, "argv", replay_args),
+                  patch.object(replay_portable_v7, "replay",
+                               return_value={"local_accuracy_gate_pass": False}),
+                  contextlib.redirect_stdout(io.StringIO()),
+                  self.assertRaisesRegex(SystemExit, "accuracy gate failed")):
+                replay_portable_v7.main()
+
     def fixture(self, root: Path):
         protocol_sha, model_sha = "a" * 64, "b" * 64
         (root / "train").mkdir(parents=True)

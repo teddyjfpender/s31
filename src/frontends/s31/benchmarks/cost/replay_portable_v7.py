@@ -197,12 +197,16 @@ def main() -> None:
     parser.add_argument("--expected-model-sha256", required=True)
     parser.add_argument("--model-anchor-commit", required=True)
     parser.add_argument("--native", action="store_true")
+    parser.add_argument("--require-pass", action="store_true",
+                        help="exit nonzero if the verified audit fails its local accuracy gate")
     args = parser.parse_args()
     result = replay(args.root.resolve(), args.expected_manifest_sha256,
                     args.expected_protocol_sha256, args.protocol_anchor_commit,
                     args.expected_model_sha256, args.model_anchor_commit,
                     native=args.native)
     print(json.dumps(result, indent=2, sort_keys=True))
+    if args.require_pass and result["local_accuracy_gate_pass"] is not True:
+        raise SystemExit("V7 evidence is consistent, but the local accuracy gate failed")
 
 
 if __name__ == "__main__":
