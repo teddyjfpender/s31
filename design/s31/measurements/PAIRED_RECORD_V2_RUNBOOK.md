@@ -1,6 +1,10 @@
 # Paired public-record v2 direct-gate versus mixed-general study
 
-Status: **prefreeze tooling under review; no paired native timing result**.
+Status: **corrected protocol anchored; external timestamp and timed corpus
+pending**. The protocol SHA-256 is
+`c1177e83d3e0fb7f37fc232601cc3d20ea6ebe06eda229bee34950968d4cd302`,
+and its anchor commit is `6091a0773a02e9445946402df0435ab38e1f06a9`.
+There is no paired native timing result.
 Untimed generic N=1 and mixed N=1/N=8 admission controls passed. The first
 unanchored protocol candidate (`2d5914a8f8f6436b9fca57515e42cae0979b235a`)
 was withdrawn after review found missing train and report gates. Its successor
