@@ -220,6 +220,22 @@ class GateBytecodeArithmeticTest(unittest.TestCase):
                 offsets[a].append(imm)
         self.assertEqual(offsets, [[0]] * 4 + [[-1, 0]] * 4)
 
+    def test_native_mask_and_proof_conversion_source_order(self) -> None:
+        """Guard the native source statements to which the Lean slot model binds."""
+        engine = ROOT / "deps/stwo-zig/src"
+        geometry = (engine / "frontends/cairo/witness/resident_geometry.zig").read_text()
+        verifier = (engine / "frontends/cairo/witness/resident_verifier.zig").read_text()
+        conversion = (engine / "integrations/circuit_cpu/verifier_proof.zig").read_text()
+        self.assertIn("offsets[instruction.a].append(allocator, instruction.imm)",
+                      geometry)
+        self.assertIn("point.add(step.mulSigned(offset))", geometry)
+        self.assertIn("offsetIndex(offsets[local_column].items, offset)", verifier)
+        self.assertIn("mask.items[interaction][global][sample_index]", verifier)
+        self.assertIn("2 => .{ .at_oods = samples[1], .at_prev = samples[0] }",
+                      conversion)
+        self.assertIn("1 => .{ .at_oods = samples[0], .at_prev = null }",
+                      conversion)
+
     def test_changed_installed_bundle_is_rejected(self) -> None:
         mutation = bytearray(self.bundle)
         mutation[-32] ^= 1

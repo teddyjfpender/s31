@@ -208,6 +208,9 @@ def extra_constant_gate(topology: dict, _checked: dict) -> None:
 
 
 def main() -> None:
+    invoke("zig", "test", "--dep", "stwo_utils",
+           "-Mroot=src/frontends/s31/tests/proofs/gate_mask_native_test.zig",
+           "-Mstwo_utils=deps/stwo-zig/src/core/utils.zig")
     source = S31 / "examples/arithmetic/functional_square4_manual.s31"
     assignment = S31 / "examples/arithmetic/functional_square4.valid.json"
     with tempfile.TemporaryDirectory(prefix="s31-correspondence-") as directory:
@@ -410,6 +413,7 @@ def main() -> None:
             "evaluator_fixture_matches_checked_package": True,
             "installed_gate_bytecode_arithmetic_matches_checked_package": True,
             "installed_gate_bytecode_logup_matches_checked_package": True,
+            "native_gate_512_row_previous_mask_matches_lean_formula": True,
             "resealed_component_column_maps_rejected": True,
             "resealed_gate_program_binding_rejected": True,
             "certificate_status": checked["status"],

@@ -44,6 +44,7 @@ import S31.Gadgets.Air.GeneratedDirectGateBytecodeArithmetic
 import S31.Gadgets.Air.DirectGateOodsArithmetic
 import S31.Gadgets.Air.DirectGateOodsLogUp
 import S31.Gadgets.Air.GeneratedDirectGateBytecodeLogUp
+import S31.Gadgets.Air.DirectGateOodsMask
 import S31.Gadgets.Air.GeneratedDirectGateEvaluatorFixture
 import S31.Gadgets.Air.TaggedPairSourceComposition
 import S31.Gadgets.Air.TaggedPairEventProjection

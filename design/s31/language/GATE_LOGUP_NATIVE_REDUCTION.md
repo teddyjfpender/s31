@@ -357,10 +357,34 @@ last-column limb, offset `-1` reads sample slot 0 and offset `0` reads slot 1.
 Native `verifier_proof.zig` assigns those same two slots to `at_prev` and
 `at_oods`. Native `pointsFromOffsets` places the first sample at the OODS
 point plus negative trace step. This is an exact shape and read-order result,
-subject to the checked exporter/native-source binding. The source row-index
-permutation for a 512-row trace is modeled generically in
-`DirectGateNativeIndices.lean`; the machine-word bit reversal and proof-opening
-provenance remain explicit premises.
+subject to the checked exporter/native-source binding.
+
+[`DirectGateOodsMask.lean`](../../../formal/s31/S31/Gadgets/Air/DirectGateOodsMask.lean)
+specializes the earlier generic source predecessor to the actual 512-row Gate
+shape. It defines nine-bit reversal, proves it is an involution and equals an
+explicit nine-term arithmetic formula, then composes
+it with circle-to-coset conversion, coset offset `-1`, and the inverse
+conversion. Its `row_mask_previous` and `row_mask_current` theorems connect
+that predecessor to the selected bytecode's `interactionMaskRead`: for any
+512-row trace and each column 4–7, the previous read selects the predecessor
+row and the current read selects the present row. `row_mask_proof_wire`
+models native proof conversion: a one-sample column stores only `at_oods`,
+while a two-sample column stores slot 1 as `at_oods` and slot 0 as `at_prev`.
+The Zig-to-Lean conversion step remains a reviewed source correspondence,
+guarded by pinned source hashes and a targeted native-source order test.
+The separate `last_sample_points` theorem gives the geometric OODS requests:
+`ζ − traceStep` in slot 0 and `ζ` in slot 1. These are two models of the same
+offset, at rows and at sample points; the theorem does not equate an OODS
+opening with a trace-row value.
+
+An independent [native 512-row test](../../../src/frontends/s31/tests/proofs/gate_mask_native_test.zig)
+checks every index of `utils.previousBitReversedCircleDomainIndex(row, 9, 9)`
+against the explicit nine-bit/coset formula and checks offset zero is the
+identity. Compiler correspondence acceptance runs this test. The Zig
+machine-word operation is compared against the same explicit arithmetic
+formula proved equivalent to Lean `BitVec.reverse`, through this exhaustive
+finite test. This is a finite validation of the pinned native function, not a
+verified translation of Zig's `@bitReverse` intrinsic or proof opening logic.
 
 The theorem does not authenticate the supplied samples as openings of
 committed columns or prove random composition, Fiat–Shamir, PCS, or FRI. Nor
@@ -375,4 +399,8 @@ python3 scripts/export_s31_direct_gate_bytecode_arithmetic.py PACKAGE \
   --logup-output formal/s31/S31/Gadgets/Air/GeneratedDirectGateBytecodeLogUp.lean --check
 python3 -m unittest src/frontends/s31/tests/python/test_gate_bytecode_arithmetic.py
 (cd formal/s31 && lake build S31.Gadgets.Air.GeneratedDirectGateBytecodeLogUp)
+(cd formal/s31 && lake build S31.Gadgets.Air.DirectGateOodsMask)
+zig test --dep stwo_utils \
+  -Mroot=src/frontends/s31/tests/proofs/gate_mask_native_test.zig \
+  -Mstwo_utils=deps/stwo-zig/src/core/utils.zig
 ```

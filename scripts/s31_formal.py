@@ -112,6 +112,7 @@ BINDINGS = [
     "src/frontends/s31/runtime/pair_prover_main.zig",
     "src/frontends/s31/runtime/pair_verifier_main.zig",
     "src/frontends/s31/tests/proofs/private_pair_source_test.zig",
+    "src/frontends/s31/tests/proofs/gate_mask_native_test.zig",
     "scripts/export_s31_direct_gate_bridge.py",
     "scripts/export_s31_direct_gate_bytecode_arithmetic.py",
     "deps/stwo-zig/src/frontends/cairo/witness/eval_program.zig",

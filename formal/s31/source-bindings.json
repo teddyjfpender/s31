@@ -116,6 +116,7 @@
     "src/frontends/s31/runtime/pair_prover_main.zig": "c883866562965f307286db0ebf9f7a3a0583440cf7dd05e89690bd21d120de10",
     "src/frontends/s31/runtime/pair_verifier_main.zig": "28a4ea320510aa372be66fe26846b7ee3a36e0535efee0df28159e8abbaced52",
     "src/frontends/s31/tests/proofs/private_pair_source_test.zig": "37d19b1b9a4a636234d450325bc74ac8a9cf6692075654223d46d09500e253a5",
+    "src/frontends/s31/tests/proofs/gate_mask_native_test.zig": "9544d08ef27cbbc0d5cc5a5cf5afa0e7ee099278bcc0f899a2db2f63a01abf48",
     "scripts/export_s31_direct_gate_bridge.py": "93abdd07eef9101ea1fe789b19f41dabc8bc30f575406d30f4abc060bddc1e1a",
     "scripts/export_s31_direct_gate_bytecode_arithmetic.py": "5a8dfae802c5d92dc34b41056d60061a173dfd08c3686e5ae5243e0c09da6a73",
     "deps/stwo-zig/src/frontends/cairo/witness/eval_program.zig": "d0f28de6b7c89d6308b6f47306d9d290a965fee7e98cf53811fede39ea9bbcf7",
