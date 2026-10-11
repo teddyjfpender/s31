@@ -13,6 +13,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from export_s31_direct_gate_bytecode_arithmetic import (  # noqa: E402
     BUNDLE, check_composition_source_contract,
+    check_composition_opening_source_contract,
     check_transcript_parameter_source_contract, check_oods_opening_source_contract,
     decoded_program, evaluate_row,
     gate_program,
@@ -322,6 +323,38 @@ class GateBytecodeArithmeticTest(unittest.TestCase):
             check_oods_opening_source_contract(
                 core, resident.replace("mask.items[interaction][global][sample_index]",
                                        "mask.items[interaction][global][0]"))
+
+    def test_split_one_composition_extraction_source(self) -> None:
+        engine = ROOT / "deps/stwo-zig/src"
+        core = (engine / "core/verifier.zig").read_text()
+        proof = (engine / "core/proof.zig").read_text()
+        types = (engine / "core/verifier_types.zig").read_text()
+        resident = (engine / "frontends/cairo/witness/resident_verifier.zig").read_text()
+        components = (engine / "core/air/components.zig").read_text()
+        field = (engine / "core/fields/qm31.zig").read_text()
+        def check(*args):
+            return check_composition_opening_source_contract(*args)
+        check(core, proof, types, resident, components, field)
+        with self.assertRaisesRegex(ValueError, "default composition split changed"):
+            check(core, proof, types.replace("COMPOSITION_LOG_SPLIT: u32 = 1",
+                                             "COMPOSITION_LOG_SPLIT: u32 = 2"),
+                  resident, components, field)
+        with self.assertRaisesRegex(ValueError, "composition sampled-value extraction changed"):
+            check(core, proof.replace("chunk_index * qm31.SECURE_EXTENSION_DEGREE + coordinate_index",
+                                      "coordinate_index * chunk_count + chunk_index"),
+                  types, resident, components, field)
+        with self.assertRaisesRegex(ValueError, "composition sampled-value extraction changed"):
+            check(core, proof.replace("if (column.len != 1) return null;",
+                                      "if (column.len == 0) return null;"),
+                  types, resident, components, field)
+        with self.assertRaisesRegex(ValueError, "composition chunk reconstruction changed"):
+            check(core, proof.replace("factor.mul(chunk_evals[input_index + 1])",
+                                      "factor.mul(chunk_evals[input_index])"),
+                  types, resident, components, field)
+        with self.assertRaisesRegex(ValueError, "native composition coordinate basis changed"):
+            check(core, proof, types, resident, components,
+                  field.replace("QM31.fromU32Unchecked(0, 0, 1, 0)",
+                                "QM31.fromU32Unchecked(0, 1, 0, 0)"))
 
     def test_changed_installed_bundle_is_rejected(self) -> None:
         mutation = bytearray(self.bundle)

@@ -30,6 +30,7 @@ from export_s31_direct_gate_bytecode_arithmetic import (
     render_composition as render_bytecode_composition,
     render_transcript_params as render_bytecode_transcript_params,
     render_oods_openings as render_bytecode_oods_openings,
+    render_composition_opening as render_bytecode_composition_opening,
 )
 from export_s31_direct_gate_evaluator_fixture import (
     render as render_evaluator_fixture, validate_component_geometry,
@@ -264,6 +265,10 @@ def main() -> None:
                            "GeneratedDirectGateOodsOpenings.lean")
         if render_bytecode_oods_openings(honest) != openings_golden.read_text():
             raise AssertionError("Gate OODS sampled-value claim differs from checked Lean export")
+        composition_opening_golden = (REPO / "formal/s31/S31/Gadgets/Air/"
+                                      "GeneratedDirectGateCompositionOpening.lean")
+        if render_bytecode_composition_opening(honest) != composition_opening_golden.read_text():
+            raise AssertionError("Gate composition proof opening differs from checked Lean export")
         component = json.loads((honest / "component-manifest.json").read_text())["components"][0]
         for kind in ("fixed", "main", "interaction"):
             changed = copy.deepcopy(component)
@@ -431,6 +436,7 @@ def main() -> None:
             "installed_gate_composition_matches_checked_package": True,
             "installed_gate_transcript_params_match_checked_package": True,
             "installed_gate_oods_openings_match_checked_package": True,
+            "installed_gate_composition_opening_matches_checked_package": True,
             "native_gate_512_row_previous_mask_matches_lean_formula": True,
             "resealed_component_column_maps_rejected": True,
             "resealed_gate_program_binding_rejected": True,

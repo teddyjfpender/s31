@@ -491,6 +491,39 @@ This link still needs a separate proof that the PCS opening check binds each
 sample to its commitment, that the composition opening itself is authentic,
 and that the Fiat–Shamir and FRI arguments give the desired all-row claim.
 
+## How the claimed composition value is read
+
+The direct Gate component uses the native default composition split of one.
+The proof's **last** sampled-value tree therefore has eight columns, each
+with exactly one QM31 sample. The extractor groups the first four samples
+into one secure-field value `A` and the next four into `B`, using the basis
+`(1, i, u, iu)`. It reconstructs the claimed composition evaluation as
+
+```text
+A = a0 + i·a1 + u·a2 + iu·a3
+B = b0 + i·b1 + u·b2 + iu·b3
+claim = A + X·B
+X = oods_point.repeatedDouble(composition_log_size - 2).x
+```
+
+For a hand calculation, choose samples
+`[[7],[0],[0],[0],[11],[0],[0],[0]]` and an illustrative `X=3`. Then
+`A=7`, `B=11`, and the extracted claim is `7+3·11=40` in QM31. In a real
+proof, `X` is determined by the verifier's OODS point and composition log
+size. Seven columns or a column containing two samples cause extraction to
+fail; the verifier cannot fill the missing coordinate with zero.
+
+[`DirectGateCompositionOpening.lean`](../../../formal/s31/S31/Gadgets/Air/DirectGateCompositionOpening.lean)
+defines this exact split-one extraction and proves the calculation and
+missing, extra, and oversized sample rejection cases. The checked
+[`GeneratedDirectGateCompositionOpening.lean`](../../../formal/s31/S31/Gadgets/Air/GeneratedDirectGateCompositionOpening.lean)
+links a successful extracted value and the core verifier's OODS equality
+check to the pure eleven-root Gate composition expression on the same proof
+samples. The exporter checks the native split default, coordinate basis,
+last-tree extraction, chunk reconstruction and comparison source statements.
+It leaves native circle arithmetic, PCS authentication, FRI and all-row
+soundness as explicit obligations.
+
 Recheck the bounded export and theorem with:
 
 ```sh
@@ -499,13 +532,15 @@ python3 scripts/export_s31_direct_gate_bytecode_arithmetic.py PACKAGE \
   --logup-output formal/s31/S31/Gadgets/Air/GeneratedDirectGateBytecodeLogUp.lean \
   --composition-output formal/s31/S31/Gadgets/Air/GeneratedDirectGateComposition.lean \
   --transcript-output formal/s31/S31/Gadgets/Air/GeneratedDirectGateTranscriptParams.lean \
-  --oods-openings-output formal/s31/S31/Gadgets/Air/GeneratedDirectGateOodsOpenings.lean --check
+  --oods-openings-output formal/s31/S31/Gadgets/Air/GeneratedDirectGateOodsOpenings.lean \
+  --composition-opening-output formal/s31/S31/Gadgets/Air/GeneratedDirectGateCompositionOpening.lean --check
 python3 -m unittest src/frontends/s31/tests/python/test_gate_bytecode_arithmetic.py
 (cd formal/s31 && lake build S31.Gadgets.Air.GeneratedDirectGateBytecodeLogUp)
 (cd formal/s31 && lake build S31.Gadgets.Air.DirectGateOodsMask)
 (cd formal/s31 && lake build S31.Gadgets.Air.GeneratedDirectGateComposition)
 (cd formal/s31 && lake build S31.Gadgets.Air.GeneratedDirectGateTranscriptParams)
 (cd formal/s31 && lake build S31.Gadgets.Air.GeneratedDirectGateOodsOpenings)
+(cd formal/s31 && lake build S31.Gadgets.Air.GeneratedDirectGateCompositionOpening)
 zig test --dep stwo_utils \
   -Mroot=src/frontends/s31/tests/proofs/gate_mask_native_test.zig \
   -Mstwo_utils=deps/stwo-zig/src/core/utils.zig

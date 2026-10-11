@@ -660,6 +660,118 @@ def render_oods_openings(package: Path) -> str:
     ])
 
 
+def check_composition_opening_source_contract(core: str, proof: str,
+                                              types: str, resident: str,
+                                              components: str, field: str) -> None:
+    """Check selected split-one composition extraction and OODS comparison.
+
+    This contract checks reviewed Zig statements; it is not a verified Zig
+    interpreter, PCS-opening theorem, or proof of circle arithmetic.
+    """
+    require("pub const COMPOSITION_LOG_SPLIT: u32 = 1;" in types and
+            "return verifier_types.COMPOSITION_LOG_SPLIT;" in components,
+            "default composition split changed")
+    require("pub const SECURE_EXTENSION_DEGREE: usize = 4;" in field and
+            "out = out.add(evals[1].mul(QM31.fromU32Unchecked(0, 1, 0, 0)));" in field and
+            "out = out.add(evals[2].mul(QM31.fromU32Unchecked(0, 0, 1, 0)));" in field and
+            "out = out.add(evals[3].mul(QM31.fromU32Unchecked(0, 0, 0, 1)));" in field,
+            "native composition coordinate basis changed")
+    vtable = resident.split("pub fn asComponent(", 1)[-1].split("fn cast(", 1)[0]
+    require(".evaluateConstraintQuotientsAtPoint = evaluateConstraintQuotientsAtPoint," in vtable
+            and ".compositionLogSplit" not in vtable,
+            "selected resident component split override changed")
+    extraction = proof.split("pub fn extractCompositionOodsEvalWithSplit(", 1)[-1].split(
+        "pub fn sizeEstimate(", 1)[0]
+    markers = [
+        "self.commitment_scheme_proof.sampled_values.items.len - 1",
+        "const expected_cols = verifier_types.compositionColumnCount(",
+        "if (masks.len != expected_cols) return null;",
+        "chunk_index * qm31.SECURE_EXTENSION_DEGREE + coordinate_index",
+        "if (column.len != 1) return null;",
+        "coordinate.* = column[0];",
+        "chunk_eval.* = QM31.fromPartialEvals(coordinates);",
+        "return reconstructCompositionChunkEvals(",
+    ]
+    positions = [extraction.find(marker) for marker in markers]
+    require(all(position >= 0 for position in positions) and positions == sorted(positions)
+            and all(extraction.count(marker) == 1 for marker in markers),
+            "composition sampled-value extraction changed")
+    reconstruction = proof.split("pub fn reconstructCompositionChunkEvals(", 1)[-1].split(
+        "pub fn ExtendedStarkProof(", 1)[0]
+    require("var parent_log = composition_log_size - split_depth + 1;" in reconstruction and
+            "const factor = point.repeatedDouble(parent_log - 2).x;" in reconstruction and
+            "chunk_evals[out_index] = chunk_evals[input_index].add(" in reconstruction and
+            "factor.mul(chunk_evals[input_index + 1])," in reconstruction and
+            "active /= 2;" in reconstruction,
+            "composition chunk reconstruction changed")
+    require("try appendCompositionMaskTree(" in core and
+            "const composition_oods_eval = proof.extractCompositionOodsEvalWithSplit(" in core
+            and "composition_log_split," in core and
+            "if (!composition_oods_eval.eql(try components.evalCompositionPolynomialAtPoint(" in core,
+            "composition opening/OODS comparison changed")
+
+
+def render_composition_opening(package: Path) -> str:
+    """Emit the selected proof's last-tree composition opening reduction."""
+    checked = check_package(package)
+    _base, _ext, roots = decoded_program(gate_program(BUNDLE.read_bytes()))
+    manifest = json.loads((package / "component-manifest.json").read_text())
+    entry = manifest["components"]
+    require(len(entry) == 1 and entry[0]["source_index"] == 1 and
+            entry[0]["evaluation_log_size"] == 10 and
+            entry[0]["random_coefficient_offset"] == 0 and
+            roots == (*range(9), 88, 96),
+            "selected Gate composition opening profile changed")
+    engine = ROOT / "deps/stwo-zig/src"
+    core = (engine / "core/verifier.zig").read_text()
+    proof = (engine / "core/proof.zig").read_text()
+    types = (engine / "core/verifier_types.zig").read_text()
+    resident = (engine / "frontends/cairo/witness/resident_verifier.zig").read_text()
+    components = (engine / "core/air/components.zig").read_text()
+    field = (engine / "core/fields/qm31.zig").read_text()
+    check_composition_opening_source_contract(core, proof, types, resident, components, field)
+    return "\n".join([
+        "-- Generated from the selected Gate package and split-one native composition extraction.",
+        f"-- Bundle SHA-256: {AIR_BUNDLE_SHA256}",
+        f"-- Gate program SHA-256: {GATE_PROGRAM_SHA256}",
+        f"-- Source SHA-256: {checked['source_sha256']}",
+        f"-- Core verifier SHA-256: {hashlib.sha256(core.encode()).hexdigest()}",
+        f"-- Proof extraction SHA-256: {hashlib.sha256(proof.encode()).hexdigest()}",
+        f"-- Verifier types SHA-256: {hashlib.sha256(types.encode()).hexdigest()}",
+        f"-- QM31 field SHA-256: {hashlib.sha256(field.encode()).hexdigest()}",
+        "-- `factor` is native `oods_point.repeatedDouble(composition_log_size - 2).x`.",
+        "-- PCS authentication, circle-point implementation and FRI are premises.",
+        "import S31.Gadgets.Air.DirectGateCompositionOpening",
+        "import S31.Gadgets.Air.GeneratedDirectGateOodsOpenings", "",
+        "namespace S31.Gadgets.Air.GeneratedDirectGateCompositionOpening", "",
+        "open S31.Gadgets.Air.DirectGateOodsArithmetic",
+        "open S31.Gadgets.Air.DirectGateOodsOpenings",
+        "open S31.Gadgets.Air.DirectGateOodsLogUp",
+        "open S31.Gadgets.Air.DirectGateOodsComposition",
+        "open S31.Gadgets.Air.DirectGateCompositionOpening", "",
+        "open S31.Gadgets.Air.GeneratedDirectGateTranscriptParams", "",
+        "/-- The native `extractCompositionOodsEvalWithSplit` reads exactly the",
+        "last eight singleton columns when split is one. `accepted` is the",
+        "subsequent core-verifier comparison to Gate quotient evaluation. -/",
+        "theorem accepted_tree_eq_pure (samples : Samples)",
+        "    (_shape : DirectGateOodsOpenings.Shape samples)",
+        "    (compositionTree : List (List QM))",
+        "    (factor z alpha claimed coefficient zeroifier : QM)",
+        "    (hzero : zeroifier ≠ 0)",
+        "    (accepted : extractSplitOne factor compositionTree =",
+        "      some (quotientFold coefficient zeroifier⁻¹",
+        "        (S31.Gadgets.Air.GeneratedDirectGateTranscriptParams.transcriptRoots",
+        "          (cellsOfSamples samples) z alpha claimed))) :",
+        "    extractSplitOne factor compositionTree =",
+        "      some (S31.Gadgets.Air.CompositionFold.fold coefficient",
+        "        (pureRoots (cellsOfSamples samples) alpha z (claimed / 512)) / zeroifier) := by",
+        "  rw [← transcript_composition_eq_pure (cellsOfSamples samples)",
+        "    z alpha claimed coefficient zeroifier hzero]",
+        "  exact accepted", "",
+        "end S31.Gadgets.Air.GeneratedDirectGateCompositionOpening", "",
+    ])
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("package", type=Path)
@@ -672,6 +784,8 @@ def main() -> None:
                         help="also regenerate the selected Gate transcript parameter theorem")
     parser.add_argument("--oods-openings-output", type=Path,
                         help="also regenerate the selected Gate OODS sampled-value theorem")
+    parser.add_argument("--composition-opening-output", type=Path,
+                        help="also regenerate the split-one composition-tree theorem")
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
     result = render(args.package)
@@ -682,6 +796,8 @@ def main() -> None:
                   if args.transcript_output is not None else None)
     openings = (render_oods_openings(args.package)
                 if args.oods_openings_output is not None else None)
+    composition_opening = (render_composition_opening(args.package)
+                           if args.composition_opening_output is not None else None)
     if args.check:
         if not args.output.is_file() or args.output.read_text() != result:
             raise SystemExit("installed Gate bytecode Lean export changed")
@@ -697,6 +813,11 @@ def main() -> None:
         if openings is not None and (not args.oods_openings_output.is_file() or
                                      args.oods_openings_output.read_text() != openings):
             raise SystemExit("installed Gate OODS openings Lean export changed")
+        if composition_opening is not None and (
+            not args.composition_opening_output.is_file() or
+            args.composition_opening_output.read_text() != composition_opening
+        ):
+            raise SystemExit("installed Gate composition opening Lean export changed")
     else:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(result)
@@ -712,6 +833,9 @@ def main() -> None:
         if openings is not None:
             args.oods_openings_output.parent.mkdir(parents=True, exist_ok=True)
             args.oods_openings_output.write_text(openings)
+        if composition_opening is not None:
+            args.composition_opening_output.parent.mkdir(parents=True, exist_ok=True)
+            args.composition_opening_output.write_text(composition_opening)
 
 
 if __name__ == "__main__":
