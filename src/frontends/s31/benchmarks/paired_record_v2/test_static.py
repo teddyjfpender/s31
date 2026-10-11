@@ -7,7 +7,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from design import case, design, inventory
+from design import canonical, case, design, inventory, sha
+from integrity import (EVENT_SCHEMA, GENESIS, append_event, phase_root,
+                       read_ledger, replay_process)
 from protocol import check
 from runner import changed_claim, materialize, paired_summary, require_static_case
 
@@ -86,6 +88,60 @@ class PairedRecordDesign(unittest.TestCase):
         summary = paired_summary({"split": "heldout", "cases": {"1": rows}}, cfg)
         self.assertEqual(summary["per_call_count"]["1"]["first_verified_wall_seconds"]
                          ["median_ratio_generic_over_mixed"], 2.0)
+
+    def test_phase_root_detects_corpus_cost_and_identity_mutations(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            raw = {"schema": EVENT_SCHEMA, "arm": "generic", "source_sha256": "a" * 64,
+                   "start_monotonic_ns": 10, "end_monotonic_ns": 20,
+                   "peak_rss_bytes": 4096, "proof_bytes": 64}
+            ledger = directory / "phase-ledger.ndjson"
+            append_event(ledger, raw, 0, GENESIS)
+            row = {"arm": "generic", "source_sha256": "a" * 64,
+                   "prove_wall_seconds": 1.0, "prover_peak_rss_bytes": 4096,
+                   "proof_bytes": 64}
+            corpus = {"cases": {"1": [{"generic": row}]}}
+            (directory / "corpus.json").write_bytes(canonical(corpus))
+            sealed = phase_root(directory, "train", "b" * 64, "c" * 40, 1)
+            self.assertEqual(len(read_ledger(ledger)[0]), 1)
+            for field, changed in (("prove_wall_seconds", 2.0),
+                                   ("prover_peak_rss_bytes", 8192),
+                                   ("proof_bytes", 65),
+                                   ("arm", "mixed"),
+                                   ("source_sha256", "d" * 64)):
+                altered = {"cases": {"1": [{"generic": {**row, field: changed}}]}}
+                (directory / "corpus.json").write_bytes(canonical(altered))
+                self.assertNotEqual(phase_root(directory, "train", "b" * 64,
+                                                "c" * 40, 1), sealed)
+            line = ledger.read_text()
+            ledger.write_text(line.replace('"arm":"generic"', '"arm":"mixed"'))
+            with self.assertRaises(ValueError):
+                read_ledger(ledger)
+
+    def test_raw_resource_replay_rejects_rss_or_output_mutation(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            for name, content in (("prover.stdout", b"ok\n"), ("prover.stderr", b""),
+                                  ("prover.log", b"ok\n"), ("prover.resource", b"42\n")):
+                (directory / name).write_bytes(content)
+            observation = {
+                "argv": ["/pinned/prover"], "start_monotonic_ns": 100,
+                "end_monotonic_ns": 1_000_000_100, "exit_code": 0,
+                "rss_method": "gnu-time-max-rss-kib", "raw_resource_text": "42\n",
+                "raw_resource_sha256": sha(b"42\n"), "peak_rss_bytes": 42 * 1024,
+                "stdout_sha256": sha(b"ok\n"), "stderr_sha256": sha(b""),
+                "log_sha256": sha(b"ok\n"),
+            }
+            self.assertEqual(replay_process(observation, directory, "prover",
+                                             ["/pinned/prover"])[0], 1.0)
+            with self.assertRaises(ValueError):
+                replay_process({**observation, "peak_rss_bytes": 8192}, directory,
+                               "prover", ["/pinned/prover"])
+            with self.assertRaises(ValueError):
+                replay_process(observation, directory, "prover", ["/wrong/prover"])
+            (directory / "prover.stdout").write_bytes(b"changed\n")
+            with self.assertRaises(ValueError):
+                replay_process(observation, directory, "prover", ["/pinned/prover"])
 
 
 if __name__ == "__main__":

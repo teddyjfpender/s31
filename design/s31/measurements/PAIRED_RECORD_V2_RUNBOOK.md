@@ -37,6 +37,13 @@ when available; the mixed CLI currently exposes only process wall time, so
 native stage-by-stage speed comparisons are unavailable. The ordinary
 self-verifying `prove` behavior is unchanged.
 
+The mixed prover also evaluates the relation twice in its shipped workflow.
+The paired ratio therefore describes these **complete shipped prover and
+verifier workflows** for this source family, not pure AIR or chip arithmetic
+speed. The pinned Python collector and host monotonic clock/resource reports
+are trusted measurement inputs. The ledger and external phase anchor detect
+later evidence edits; they cannot prove collector or clock honesty.
+
 The study estimates the median of paired `log(generic/mixed)` ratios per call
 count, with a 95% assignment-paired percentile bootstrap interval. Ratios
 above one favor mixed. It reports absolute medians too. There is no chosen
@@ -85,13 +92,16 @@ An uncommitted or merely prospective design cannot authorize measurements.
 
 `build` rejects an existing evidence directory. `prove` rejects absent or
 changed build attestations and any existing partial or completed corpus.
-`audit` rejects absent proofs, changed bytes, failed native replay, changed
+`audit` additionally requires a committed, externally timestamped phase-root
+anchor. It rejects absent proofs, changed bytes, failed native replay, changed
 public claims accepted by either verifier, wrong-source/component/witness
 controls accepted, and mismatched protocol or trial order. All phases fail
 closed below 8 GiB free. The build gate requires an exact live `FriConfigV2`
 and matching interaction PoW bits across arms, while preserving and reporting
 each arm's full PCS configuration, including potentially different lifting.
-No timing may be interpreted if any gate fails.
+The collector also requires supported `/usr/bin/time` RSS output and fails
+if the raw resource report is missing or unparseable. No timing may be
+interpreted if any gate fails.
 
 Run the two native phases only with exclusive access to the host and at least
 8 GiB free. Use a fresh evidence directory and never reuse failed paths:
@@ -103,16 +113,42 @@ python3 src/frontends/s31/benchmarks/paired_record_v2/runner.py \
 python3 src/frontends/s31/benchmarks/paired_record_v2/runner.py \
   --split train --phase prove --out zig-out/s31-paired-record-v2/train \
   --expected-protocol-sha256 <full-hash> --anchor-commit <full-commit>
-python3 src/frontends/s31/benchmarks/paired_record_v2/runner.py \
-  --split train --phase audit --out zig-out/s31-paired-record-v2/train \
-  --expected-protocol-sha256 <full-hash> --anchor-commit <full-commit>
 ```
 
-Repeat for `--split heldout` with a fresh `.../heldout` path only after the
+The `prove` phase prints the full SHA-256 of `phase-root.json` but emits **no
+analysis**. For each arm it durably stores separate native stdout/stderr,
+the raw `/usr/bin/time` RSS report, combined logs and proof bytes. It appends
+one canonical, fsynced hash-chain event after the external verifier accepts
+and changed-claim controls reject. The event records the exact source, claim,
+package, executable, proof, process argv, monotonic start/end nanoseconds,
+raw RSS evidence, output hashes, and exit status. The phase root binds the
+complete ledger and corpus. A failed or partial proof phase must be discarded,
+not resumed.
+
+Create `design/s31/measurements/language/paired-record-v2-train-phase-anchor.json`
+with schema `s31-paired-record-v2-phase-anchor-v1`, split `train`, the full
+`phase_root_sha256`, the full `protocol_sha256`, and a real UTC
+`recorded_at_utc`; commit it. Record the full phase-root hash and full phase
+anchor commit in an independent timestamped message **before audit or any
+summary**. Then run:
+
+```sh
+python3 src/frontends/s31/benchmarks/paired_record_v2/runner.py \
+  --split train --phase audit --out zig-out/s31-paired-record-v2/train \
+  --expected-protocol-sha256 <full-hash> --anchor-commit <full-commit> \
+  --expected-phase-root-sha256 <full-phase-root-hash> \
+  --phase-anchor-commit <full-phase-anchor-commit>
+```
+
+Repeat for `--split heldout` with its own fresh `.../heldout` path and
+`paired-record-v2-heldout-phase-anchor.json`, only after the
 train corpus is sealed and reviewed. The runner saves proof bytes, canonical
 typed statements, changed-claim controls, per-arm process times/RSS, package
-attestations, complete corpus, replay audit, and analysis. Failed controls
-abort the phase; do not extract a speedup from a partial corpus. The held-out
+attestations, the raw ledger and phase root, complete corpus, replay audit,
+and analysis. Audit reconstructs every reported timing, RSS, proof size,
+arm, source and statement identity from the externally anchored raw events,
+compares the entire corpus exactly, and only then computes the summary.
+Failed controls abort the phase; do not extract a speedup from a partial corpus. The held-out
 analysis is independent of training and is not used to tune the protocol.
 The prefreeze admission builds warm Zig's cache before package-build timing. Report
 those build times as observed warm-cache package costs, with cache state and

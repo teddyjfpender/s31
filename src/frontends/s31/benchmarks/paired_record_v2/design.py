@@ -52,6 +52,8 @@ def design() -> dict:
             value.get("minimum_available_disk_bytes_before_native_phase") != 8 * 1024**3 or
             "both arms invoke prover without internal native verification" not in
                 value.get("first_verified_proof_boundary", "") or
+            "externally timestamp the full phase-root digest before audit or summary" not in
+                value.get("phase_integrity_gate", "") or
             "identical complete FriConfigV2 and interaction PoW bits" not in
                 value.get("live_security_config_gate", "") or
             value.get("automatic_lowering_selection_enabled") is not False or

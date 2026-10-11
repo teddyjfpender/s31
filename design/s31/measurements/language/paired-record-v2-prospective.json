@@ -15,6 +15,7 @@
   "generic_lowering": "direct-gate",
   "mixed_lowering": "direct-mixed-general",
   "first_verified_proof_boundary": "both arms invoke prover without internal native verification, then a fresh source-embedded native verifier process on the same canonical typed public statement; include both wall times and process startups",
+  "phase_integrity_gate": "append and fsync canonical raw per-arm process evidence in a SHA256 hash-chain ledger; externally timestamp the full phase-root digest before audit or summary; replay all reported metrics and identities from the anchored raw ledger",
   "live_security_config_gate": "record each arm's live PCS from source-embedded inspector; require identical complete FriConfigV2 and interaction PoW bits, report geometry-dependent lifting sizes separately; security equivalence remains unproven",
   "automatic_lowering_selection_enabled": false,
   "speedup_threshold": null,

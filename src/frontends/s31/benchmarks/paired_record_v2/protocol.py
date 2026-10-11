@@ -104,6 +104,7 @@ def draft() -> str:
         "mixed_lowering": cfg["mixed_lowering"],
         "samples_per_call_count": cfg["assignments_per_call_count"],
         "first_verified_proof_boundary": cfg["first_verified_proof_boundary"],
+        "phase_integrity_gate": cfg["phase_integrity_gate"],
         "live_security_config_gate": cfg["live_security_config_gate"],
         "bootstrap_seed": cfg["bootstrap_seed"],
         "bootstrap_resamples": cfg["bootstrap_resamples"],
@@ -157,6 +158,7 @@ def check(expected_protocol_sha256: str, anchor_commit: str) -> dict:
             value.get("mixed_lowering") != cfg["mixed_lowering"] or
             value.get("samples_per_call_count") != cfg["assignments_per_call_count"] or
             value.get("first_verified_proof_boundary") != cfg["first_verified_proof_boundary"] or
+            value.get("phase_integrity_gate") != cfg["phase_integrity_gate"] or
             value.get("live_security_config_gate") != cfg["live_security_config_gate"] or
             value.get("bootstrap_seed") != cfg["bootstrap_seed"] or
             value.get("bootstrap_resamples") != cfg["bootstrap_resamples"] or

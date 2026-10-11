@@ -27,8 +27,10 @@ sys.path.insert(0, str(S31 / "tests/acceptance/mixed_boundary"))
 
 import s31
 from registry_manifest_digest import digest as registry_digest
-from runtime.cost_model import measured_invoke
 from design import canonical, case, design, sha
+from integrity import (EVENT_SCHEMA, GENESIS, append_event, check_phase_anchor,
+                       durable_write, fsync_existing, observed_invoke,
+                       phase_root, replay_process)
 from protocol import check
 
 P = (1 << 31) - 1
@@ -250,6 +252,8 @@ def paired_summary(corpus: dict, cfg: dict) -> dict:
         "schema": "s31-paired-record-v2-analysis-v1",
         "split": corpus["split"],
         "estimand": "fresh-process first native-verified proof; generic and mixed each have one external native verification; package build excluded",
+        "workflow_note": "mixed prover evaluates the relation twice; ratios describe shipped workflows, not pure AIR arithmetic speed",
+        "measurement_trust": "anchored raw evidence detects later mutation; pinned collector, monotonic clock, and OS RSS accounting remain trusted",
         "ratio_direction": "generic divided by mixed; above one favors mixed",
         "bootstrap": "assignment-paired percentile bootstrap of median log ratio, 10000 resamples",
         "automatic_lowering_selection_enabled": False,
@@ -257,19 +261,18 @@ def paired_summary(corpus: dict, cfg: dict) -> dict:
     }
 
 
-def arm_trial(directory: Path, count: int, index: int, arm: str,
-              expected: dict) -> dict:
+def arm_commands(directory: Path, index: int, arm: str) -> tuple[list[str], list[str], Path | None]:
     source_path = directory / "source.s31.json"
     name = json.loads(source_path.read_bytes())["name"]
     assignment = directory / f"assignments/{index:02d}.json"
     typed = directory / f"statements/{index:02d}.json"
     target = directory / f"trials/{index:02d}/{arm}"
-    target.mkdir(parents=True, exist_ok=False)
     proof = target / "proof.bin"
     if arm == "generic":
         prover, verifier, key = generic_bins(directory, name)
         prove_cmd = [str(prover), "prove-for-external-verification", str(assignment), str(proof)]
         verify_cmd = [str(verifier), str(proof), str(typed), str(key)]
+        output_statement = None
     elif arm == "mixed":
         prover, verifier, _ = mixed_bins(directory, name)
         output_statement = target / "statement.json"
@@ -277,51 +280,145 @@ def arm_trial(directory: Path, count: int, index: int, arm: str,
         verify_cmd = [str(verifier), str(proof), str(typed)]
     else:
         raise ValueError("unknown paired arm")
-    prove = measured_invoke(*prove_cmd)
+    return prove_cmd, verify_cmd, output_statement
+
+
+def arm_trial(directory: Path, split: str, count: int, index: int, order: str,
+              arm: str, expected: dict) -> dict:
+    target = directory / f"trials/{index:02d}/{arm}"
+    target.mkdir(parents=True, exist_ok=False)
+    prove_cmd, verify_cmd, output_statement = arm_commands(directory, index, arm)
+    typed = directory / f"statements/{index:02d}.json"
+    proof = target / "proof.bin"
+    prove = observed_invoke(prove_cmd, target, "prover")
     generic_native_total = None
     if arm == "generic":
-        match = re.search(r"total before external verification=([\d.]+)s", prove["output"])
-        if match is None or "total through verification=" in prove["output"]:
+        log = (target / "prover.log").read_text()
+        match = re.search(r"total before external verification=([\d.]+)s", log)
+        if match is None or "total through verification=" in log:
             raise ValueError("generic timed prover did not expose its unchecked phase boundary")
         generic_native_total = float(match.group(1))
-        if not 0 <= generic_native_total <= prove["wall_seconds"] + 0.003:
+        if not 0 <= generic_native_total <= \
+                (prove["end_monotonic_ns"] - prove["start_monotonic_ns"]) / 1e9 + 0.003:
             raise ValueError("generic native phase total exceeds measured prover process wall")
     # No trial exists unless this source-embedded native verifier accepts the
     # saved bytes against the exact independently generated typed statement.
-    verify = measured_invoke(*verify_cmd)
-    prover_log = target / "prover.log"
-    verifier_log = target / "verifier.log"
-    prover_log.write_text(prove["output"])
-    verifier_log.write_text(verify["output"])
-    if arm == "mixed" and output_statement.read_bytes() != typed.read_bytes():
+    verify = observed_invoke(verify_cmd, target, "verifier")
+    fsync_existing(proof)
+    if output_statement is not None:
+        fsync_existing(output_statement)
+    if output_statement is not None and output_statement.read_bytes() != typed.read_bytes():
         raise ValueError("mixed prover emitted a different typed public statement")
     changed_input = target / "changed-input.json"
     changed_result = target / "changed-result.json"
-    changed_input.write_bytes(changed_claim(typed.read_bytes(), 0))
-    changed_result.write_bytes(changed_claim(typed.read_bytes(), 1))
+    durable_write(changed_input, changed_claim(typed.read_bytes(), 0))
+    durable_write(changed_result, changed_claim(typed.read_bytes(), 1))
     for altered in (changed_input, changed_result):
         changed = verify_cmd[:]
         changed[2] = str(altered)
         if not rejected(changed):
             raise ValueError(f"{arm}: native verifier accepted changed public claim")
     return {
+        "schema": EVENT_SCHEMA,
+        "split": split,
+        "count": count,
+        "index": index,
+        "order": order,
         "arm": arm,
+        "timing_boundary": "unchecked-prover-then-one-external-native-verifier-v1",
         "source_sha256": expected["source_sha256"],
         "assignment_sha256": expected["assignment_sha256"][index],
         "statement_sha256": expected["statement_sha256"][index],
+        "package_attestation_sha256": sha((directory / "package-attestation.json").read_bytes()),
+        "prover_binary_sha256": sha(Path(prove_cmd[0]).read_bytes()),
+        "verifier_binary_sha256": sha(Path(verify_cmd[0]).read_bytes()),
+        "verifier_key_sha256": sha(Path(verify_cmd[3]).read_bytes()) if arm == "generic" else None,
         "proof_sha256": sha(proof.read_bytes()),
         "proof_bytes": proof.stat().st_size,
-        "prover_log_sha256": sha(prover_log.read_bytes()),
-        "verifier_log_sha256": sha(verifier_log.read_bytes()),
-        "native_prover_stages": s31.prover_stages(prove["output"]) if arm == "generic" else None,
-        "generic_native_total_before_external_verification_seconds": generic_native_total,
-        "prove_wall_seconds": prove["wall_seconds"],
-        "verify_wall_seconds": verify["wall_seconds"],
-        "first_verified_wall_seconds": prove["wall_seconds"] + verify["wall_seconds"],
-        "prover_peak_rss_bytes": prove["peak_rss_bytes"],
-        "prover_peak_rss_method": prove["peak_rss_method"],
-        "verifier_peak_rss_bytes": verify["peak_rss_bytes"],
-        "verifier_peak_rss_method": verify["peak_rss_method"],
+        "mixed_output_statement_sha256": sha(output_statement.read_bytes()) if output_statement else None,
+        "changed_input_sha256": sha(changed_input.read_bytes()),
+        "changed_result_sha256": sha(changed_result.read_bytes()),
+        "prover": prove,
+        "verifier": verify,
+    }
+
+
+def event_record(event: dict, directory: Path, split: str, count: int,
+                 index: int, order: str, arm: str, expected: dict) -> dict:
+    """Reconstruct every reported metric and identity from raw anchored bytes."""
+    prove_cmd, verify_cmd, output_statement = arm_commands(directory, index, arm)
+    target = directory / f"trials/{index:02d}/{arm}"
+    typed = directory / f"statements/{index:02d}.json"
+    proof = target / "proof.bin"
+    if (set(event) != {"schema", "split", "count", "index", "order", "arm",
+                       "timing_boundary", "source_sha256", "assignment_sha256",
+                       "statement_sha256", "package_attestation_sha256",
+                       "prover_binary_sha256", "verifier_binary_sha256",
+                       "verifier_key_sha256", "proof_sha256", "proof_bytes",
+                       "mixed_output_statement_sha256", "changed_input_sha256",
+                       "changed_result_sha256", "prover", "verifier"} or
+            event["schema"] != EVENT_SCHEMA or event["split"] != split or
+            event["count"] != count or event["index"] != index or
+            event["order"] != order or event["arm"] != arm or
+            event["timing_boundary"] != "unchecked-prover-then-one-external-native-verifier-v1" or
+            event["source_sha256"] != expected["source_sha256"] or
+            event["assignment_sha256"] != expected["assignment_sha256"][index] or
+            event["statement_sha256"] != expected["statement_sha256"][index] or
+            event["package_attestation_sha256"] != sha((directory / "package-attestation.json").read_bytes()) or
+            event["prover_binary_sha256"] != sha(Path(prove_cmd[0]).read_bytes()) or
+            event["verifier_binary_sha256"] != sha(Path(verify_cmd[0]).read_bytes()) or
+            event["verifier_key_sha256"] != (sha(Path(verify_cmd[3]).read_bytes()) if arm == "generic" else None) or
+            event["proof_sha256"] != sha(proof.read_bytes()) or
+            type(event["proof_bytes"]) is not int or event["proof_bytes"] <= 0 or
+            event["proof_bytes"] != proof.stat().st_size or
+            event["mixed_output_statement_sha256"] !=
+                (sha(output_statement.read_bytes()) if output_statement else None) or
+            (output_statement is not None and output_statement.read_bytes() != typed.read_bytes())):
+        raise ValueError(f"N={count}/{index}/{arm}: raw arm source, claim, artifact, or phase identity changed")
+    changed_input = target / "changed-input.json"
+    changed_result = target / "changed-result.json"
+    if (changed_input.read_bytes() != changed_claim(typed.read_bytes(), 0) or
+            changed_result.read_bytes() != changed_claim(typed.read_bytes(), 1) or
+            event["changed_input_sha256"] != sha(changed_input.read_bytes()) or
+            event["changed_result_sha256"] != sha(changed_result.read_bytes())):
+        raise ValueError("raw changed-claim control differs from typed public statement")
+    prove_wall, prove_rss, prover_log = replay_process(event["prover"], target,
+                                                        "prover", prove_cmd)
+    verify_wall, verify_rss, _ = replay_process(event["verifier"], target,
+                                                "verifier", verify_cmd)
+    if event["prover"]["end_monotonic_ns"] > event["verifier"]["start_monotonic_ns"]:
+        raise ValueError("external native verifier began before prover process ended")
+    native_total = None
+    stages = None
+    if arm == "generic":
+        match = re.search(r"total before external verification=([\d.]+)s", prover_log)
+        if match is None or "total through verification=" in prover_log:
+            raise ValueError("generic proof lacks unchecked phase marker")
+        native_total = float(match.group(1))
+        if not 0 <= native_total <= prove_wall + 0.003:
+            raise ValueError("generic native total exceeds measured process wall")
+        stages = s31.prover_stages(prover_log)
+        if stages is None:
+            raise ValueError("generic native stage timers are absent")
+    return {
+        "arm": arm,
+        "source_sha256": event["source_sha256"],
+        "assignment_sha256": event["assignment_sha256"],
+        "statement_sha256": event["statement_sha256"],
+        "raw_event_sha256": sha(canonical(event)),
+        "proof_sha256": event["proof_sha256"],
+        "proof_bytes": proof.stat().st_size,
+        "prover_log_sha256": event["prover"]["log_sha256"],
+        "verifier_log_sha256": event["verifier"]["log_sha256"],
+        "native_prover_stages": stages,
+        "generic_native_total_before_external_verification_seconds": native_total,
+        "prove_wall_seconds": prove_wall,
+        "verify_wall_seconds": verify_wall,
+        "first_verified_wall_seconds": prove_wall + verify_wall,
+        "prover_peak_rss_bytes": prove_rss,
+        "prover_peak_rss_method": event["prover"]["rss_method"],
+        "verifier_peak_rss_bytes": verify_rss,
+        "verifier_peak_rss_method": event["verifier"]["rss_method"],
         "external_native_verifier_accepted": True,
         "changed_public_input_rejected": True,
         "changed_public_result_rejected": True,
@@ -351,11 +448,15 @@ def run(args: argparse.Namespace) -> None:
             require_static_case(directory, count, index, cfg, expected)
         require_package_identity(directory, count, expected, protocol["compiler_sha256"])
     if args.phase == "prove":
-        if (out / "corpus.partial.json").exists() or (out / "corpus.json").exists():
+        if any((out / name).exists() for name in (
+                "phase-ledger.ndjson", "phase-root.json", "corpus.partial.json", "corpus.json")):
             raise ValueError("paired proof evidence already exists; do not resume a partial timed phase")
         corpus = {"schema": "s31-paired-record-v2-corpus-v1", "split": split,
                   "protocol_sha256": args.expected_protocol_sha256,
                   "anchor_commit": args.anchor_commit, "cases": {}}
+        ledger = out / "phase-ledger.ndjson"
+        previous = GENESIS
+        sequence = 0
         for key, expected in entries.items():
             directory = out / f"n{key}"
             (directory / "trials").mkdir(exist_ok=False)
@@ -363,15 +464,31 @@ def run(args: argparse.Namespace) -> None:
             for index, order in enumerate(expected["order"]):
                 first, second = (("generic", "mixed") if order == "generic-first"
                                  else ("mixed", "generic"))
-                a = arm_trial(directory, int(key), index, first, expected)
-                b = arm_trial(directory, int(key), index, second, expected)
-                results.append({"index": index, "order": order, first: a, second: b})
+                arms = {}
+                for arm in (first, second):
+                    event = arm_trial(directory, split, int(key), index, order, arm, expected)
+                    arms[arm] = event_record(event, directory, split, int(key),
+                                             index, order, arm, expected)
+                    previous = append_event(ledger, event, sequence, previous)
+                    sequence += 1
+                results.append({"index": index, "order": order, **arms})
             corpus["cases"][key] = results
             saved_json(out / "corpus.partial.json", corpus)
-        saved_json(out / "corpus.json", corpus)
+        durable_write(out / "corpus.json", canonical(corpus))
         (out / "corpus.partial.json").unlink()
+        root = phase_root(out, split, args.expected_protocol_sha256,
+                          args.anchor_commit, 2 * sum(len(item["order"]) for item in entries.values()))
+        durable_write(out / "phase-root.json", canonical(root))
+        print(sha((out / "phase-root.json").read_bytes()))
         return
     if args.phase == "audit":
+        if (out / "corpus.partial.json").exists() or (out / "audit.json").exists() or \
+                (out / "analysis.json").exists():
+            raise ValueError("partial proof phase or prior audit makes this audit inadmissible")
+        events = check_phase_anchor(
+            out, split, args.expected_protocol_sha256, args.anchor_commit,
+            2 * sum(len(item["order"]) for item in entries.values()),
+            args.expected_phase_root_sha256, args.phase_anchor_commit)
         corpus = json.loads((out / "corpus.json").read_bytes())
         if (corpus.get("schema") != "s31-paired-record-v2-corpus-v1" or
                 corpus.get("split") != split or
@@ -379,29 +496,36 @@ def run(args: argparse.Namespace) -> None:
                 corpus.get("anchor_commit") != args.anchor_commit or
                 corpus.get("cases", {}).keys() != entries.keys()):
             raise ValueError("paired corpus differs from frozen roster")
+        derived = {"schema": "s31-paired-record-v2-corpus-v1", "split": split,
+                   "protocol_sha256": args.expected_protocol_sha256,
+                   "anchor_commit": args.anchor_commit, "cases": {}}
+        event_at = 0
+        previous_arm_end_ns = None
         for key, expected in entries.items():
             directory = out / f"n{key}"
             name = json.loads((directory / "source.s31.json").read_bytes())["name"]
+            derived_rows = []
             for index, row in enumerate(corpus["cases"][key]):
                 if row.get("index") != index or row.get("order") != expected["order"][index]:
                     raise ValueError("paired trial order differs from freeze")
                 typed = directory / f"statements/{index:02d}.json"
-                for arm in ("generic", "mixed"):
+                order = expected["order"][index]
+                arms = ("generic", "mixed") if order == "generic-first" else ("mixed", "generic")
+                reconstructed = {"index": index, "order": order}
+                for arm in arms:
+                    event = events[event_at]
+                    event_at += 1
+                    if previous_arm_end_ns is not None and \
+                            event["prover"]["start_monotonic_ns"] < previous_arm_end_ns:
+                        raise ValueError("raw arm timing order differs from sequential frozen trial order")
+                    reconstructed[arm] = event_record(event, directory, split,
+                                                       int(key), index, order, arm, expected)
+                    previous_arm_end_ns = event["verifier"]["end_monotonic_ns"]
                     proof = directory / f"trials/{index:02d}/{arm}/proof.bin"
                     verifier = generic_bins(directory, name)[1] if arm == "generic" else mixed_bins(directory, name)[1]
                     command = [str(verifier), str(proof), str(typed)]
                     if arm == "generic":
                         command.append(str(generic_bins(directory, name)[2]))
-                    record = row[arm]
-                    prover_log = directory / f"trials/{index:02d}/{arm}/prover.log"
-                    verifier_log = directory / f"trials/{index:02d}/{arm}/verifier.log"
-                    if (record.get("external_native_verifier_accepted") is not True or
-                            record.get("proof_sha256") != sha(proof.read_bytes()) or
-                            record.get("prover_log_sha256") != sha(prover_log.read_bytes()) or
-                            record.get("verifier_log_sha256") != sha(verifier_log.read_bytes()) or
-                            record.get("assignment_sha256") != expected["assignment_sha256"][index] or
-                            record.get("statement_sha256") != expected["statement_sha256"][index]):
-                        raise ValueError("paired saved proof or statement differs from corpus")
                     subprocess.run(command, cwd=ROOT, check=True, capture_output=True)
                     for leaf in (0, 1):
                         changed = directory / f"trials/{index:02d}/{arm}/changed-{'input' if leaf == 0 else 'result'}.json"
@@ -411,6 +535,10 @@ def run(args: argparse.Namespace) -> None:
                         altered[2] = str(changed)
                         if not rejected(altered):
                             raise ValueError("saved verifier accepted a changed typed claim")
+                derived_rows.append(reconstructed)
+            derived["cases"][key] = derived_rows
+        if event_at != len(events) or corpus != derived:
+            raise ValueError("corpus timing, RSS, bytes, arm, source, or order differs from raw phase ledger")
         # Independent, untimed controls exercise source identity, component
         # binding, and a witness inconsistent with the original typed claim.
         first_key, second_key = list(entries)[:2]
@@ -465,11 +593,16 @@ def run(args: argparse.Namespace) -> None:
             raise ValueError("mixed prover accepted witness inconsistent with typed claim")
         saved_json(out / "audit.json", {"schema": "s31-paired-record-v2-audit-v1",
                                             "protocol_sha256": args.expected_protocol_sha256,
+                                            "phase_root_sha256": args.expected_phase_root_sha256,
+                                            "phase_anchor_commit": args.phase_anchor_commit,
                                             "corpus_sha256": sha((out / "corpus.json").read_bytes()),
+                                            "raw_ledger_replayed_before_summary": True,
                                             "all_saved_proofs_native_replayed": True,
                                             "all_changed_public_claims_rejected": True,
                                             "wrong_source_component_witness_controls_rejected": True})
-        analysis = paired_summary(corpus, cfg)
+        analysis = paired_summary(derived, cfg)
+        analysis["phase_root_sha256"] = args.expected_phase_root_sha256
+        analysis["phase_anchor_commit"] = args.phase_anchor_commit
         analysis["live_security_profiles"] = {}
         for key in entries:
             package = json.loads((out / f"n{key}/package-attestation.json").read_bytes())
@@ -498,5 +631,9 @@ if __name__ == "__main__":
     parser.add_argument("--phase", choices=("build", "prove", "audit"), required=True)
     parser.add_argument("--expected-protocol-sha256", required=True)
     parser.add_argument("--anchor-commit", required=True)
+    parser.add_argument("--expected-phase-root-sha256",
+                        help="full externally recorded phase-root SHA-256; required by audit")
+    parser.add_argument("--phase-anchor-commit",
+                        help="committed split-specific UTC phase anchor; required by audit")
     parser.add_argument("--out", type=Path, required=True)
     run(parser.parse_args())
