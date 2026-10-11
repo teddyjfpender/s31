@@ -252,6 +252,16 @@ test "mixed sealed N3 native envelope authenticates source and interleaved claim
     var timer = try std.time.Timer.start();
     const raw = try proveSealed(allocator, source, air_bytes, assignment.value);
     defer allocator.free(raw);
+    var raw_digest: [32]u8 = undefined;
+    std.crypto.hash.sha2.Sha256.hash(raw, &raw_digest, .{});
+    // Pin the full envelope, transcript, commitments, and PCS serialization.
+    // A profile change must use a new wire tag and update this fixture openly.
+    const raw_hex = std.fmt.bytesToHex(raw_digest, .lower);
+    try std.testing.expectEqualStrings(
+        "fd0b44510bd96af2e0e223afe7f9aa53bbf0255c890d6433b70ca2f7d24e4e80",
+        &raw_hex,
+    );
+    try std.testing.expectEqual(@as(usize, 98_363), raw.len);
     const prove_ns = timer.read();
     timer.reset();
     try verifyEmbedded(source, air_bytes, allocator, words, raw);
