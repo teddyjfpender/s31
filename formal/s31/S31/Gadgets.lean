@@ -143,6 +143,7 @@ import S31.Gadgets.Functional.SSAInstalledBytecodePublicInput
 import S31.Gadgets.Functional.SSADeadRowGateJoin
 import S31.Gadgets.Functional.SSADeadRowMixedReturn
 import S31.Gadgets.Functional.SSADecodedTraceBridge
+import S31.Gadgets.Functional.SSAGeneralDecodedTraceBridge
 import S31.Gadgets.Functional.GeneratedDirectGateBridge
 import S31.Gadgets.Functional.GeneratedDirectGateMixedReturn
 import S31.Gadgets.Functional.MathLibrary
