@@ -29,9 +29,9 @@ V8_PROTOCOL = LANGUAGE / "mixed-cost-v8-calibrated-protocol.json"
 V9_PROTOCOL = LANGUAGE / "mixed-cost-v9-geometry-transfer-protocol.json"
 V10_PROTOCOL = LANGUAGE / "mixed-cost-v10-geometry-transfer-protocol.json"
 PROBES = LANGUAGE / "mixed-cost-v9-feasibility"
-SOURCES = {"gate_surge_n1": {"rounds": (16,), "gates": 512},
+SOURCES = {"gate_surge_n1": {"rounds": (16,), "gates": 1024},
            "chip_surge_n1": {"rounds": (2048,), "gates": 0},
-           "joint_surge_n1": {"rounds": (2048,), "gates": 512},
+           "joint_surge_n1": {"rounds": (2048,), "gates": 1024},
            "serial_surge_n2": {"rounds": (2048, 16), "gates": 0}}
 NAMES = {name: len(spec["rounds"]) for name, spec in SOURCES.items()}
 CLAIMS = 20

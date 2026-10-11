@@ -6,6 +6,14 @@ with a log-11 chip. The exact source generator, independently checked claims,
 frozen extrapolation, manifest guards, runner, and auditor live in
 [`mixed_cost_v11_unseen_geometry`](../../../src/frontends/s31/benchmarks/mixed_cost_v11_unseen_geometry/README.md).
 
+Pre-native correction: the first committed freeze (`63ec190`) used 512 live
+source mul nodes for the two circuit-log cases. Source inspection showed that
+one four-lane SIMD mul records one QM31 operation, so 512 was insufficient to
+establish log 11 analytically. Before any V11 native package build or proof,
+the roster was superseded with 1,024 live mul nodes and new source/claim
+hashes. The numeric model, score gates, and sample size did not change. Only
+the superseding protocol is eligible for the prospective run.
+
 The V9 transfer of V8 failed 6/12 gates on new geometry. V10 passed 12/12
 only on source instances at geometry already used in the V10 fit. V11 keeps
 the V10 fit fixed and extrapolates its first measured log-size contrasts one

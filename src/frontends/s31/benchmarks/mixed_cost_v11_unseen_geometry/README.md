@@ -10,9 +10,9 @@ experiment are explicitly excluded from V11 fitting.
 
 | Source | Live mul gates | Chip rounds | Expected circuit/chip log | Calls | Slots |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| `gate_surge_n1` | 512 | 16 | 11/4 | 1 | 3 |
+| `gate_surge_n1` | 1,024 | 16 | 11/4 | 1 | 3 |
 | `chip_surge_n1` | 0 | 2,048 | 9/11 | 1 | 3 |
-| `joint_surge_n1` | 512 | 2,048 | 11/11 | 1 | 3 |
+| `joint_surge_n1` | 1,024 | 2,048 | 11/11 | 1 | 3 |
 | `serial_surge_n2` | 0 | 2,048 then 16 | 9/11 | 2 | 5 |
 
 The one-call circuit/chip log pairs 11/4, 9/11, and 11/11 and the two-call
@@ -20,7 +20,9 @@ The one-call circuit/chip log pairs 11/4, 9/11, and 11/11 and the two-call
 claims have new hashes disjoint from prior protocol rosters. Python evaluates
 every claim independently from source semantics. Static sizing follows the
 published one-call 256-gate/1,024-round manifests and the mixed component
-roster: circuit rows are expected to double for 512 live four-lane mul gates;
+roster: each live four-lane SIMD mul records one QM31 operation, so 1,024
+additional live mul nodes exceed 1,024 circuit rows and are expected to
+reach the next 2,048-row trace;
 chip trace rows equal rounds; each call contributes one chip and one bridge.
 These are **expected**, not independently measured AIR dimensions. The native
 manifest guard requires exact logs, columns, constraints, component count,
