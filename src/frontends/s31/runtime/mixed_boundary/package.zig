@@ -10,7 +10,7 @@ const cpu = @import("stwo_circuit_cpu_integration");
 const postcard = @import("interop_postcard");
 const relation = @import("../../language/relation.zig");
 const binding = @import("../bounded_compiled_binding.zig");
-const mixed = @import("../experimental_mixed_admission.zig");
+const mixed = @import("inspection.zig");
 const engine = cpu.experimental_direct_mixed_arithmetic;
 
 const M31 = core.fields.m31.M31;

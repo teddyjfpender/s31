@@ -46,7 +46,7 @@ nonzero unused in-memory sum slots
 ([`direct_mixed_arithmetic.zig:578-684`](../../../deps/stwo-zig/src/integrations/circuit_cpu/direct_mixed_arithmetic.zig#L578-L684)).
 The source inspector separately rejects altered relation IDs, program bindings,
 PCS geometry and local AIR dependency hashes
-([`experimental_mixed_admission.zig:365-444`](../../../src/frontends/s31/runtime/experimental_mixed_admission.zig#L365-L444)).
+([`inspection.zig:365-444`](../../../src/frontends/s31/runtime/mixed_boundary/inspection.zig#L365-L444)).
 
 These controls exercise the selected roster and admission path. They do not
 establish independent pair/many AIR equation soundness, a cryptographic

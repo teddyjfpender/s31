@@ -51,7 +51,7 @@ live trace widths, height, degree, constraint count, preprocessed indices,
 composition split, and pinned AIR source hash. It refuses a pair source at
 call ID 2 and any call ID above 7.
 
-[`experimental_mixed_admission.zig`](../../../src/frontends/s31/runtime/experimental_mixed_admission.zig)
+[`inspection.zig`](../../../src/frontends/s31/runtime/mixed_boundary/inspection.zig)
 reparses and recompiles the supplied S31 source without witness values using
 the existing V4 inspector. It obtains canonical source node IDs, exact
 compiled endpoint addresses, fixed preprocessed root, bound circuit AIR, and
@@ -137,8 +137,9 @@ The current bridge commits endpoint values without blinding. A source field
 marked `private` is hidden from the public ABI, but this design makes **no
 witness-confidentiality claim**.
 
-The refreshed formal source inventory records the engine revision. It does
-not contain a Lean theorem about this mixed inspection path or the mixed
+The refreshed formal source inventory pins the mixed wrapper, engine schedule,
+and engine revision. It does not contain a Lean theorem about this mixed
+inspection path or the mixed
 proof. The [N=3 profile](MIXED_NATIVE_N3_PROFILE.md) describes the supported
 proof-byte entrypoint and its limits.
 

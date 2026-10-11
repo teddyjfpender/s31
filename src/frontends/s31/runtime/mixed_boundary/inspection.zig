@@ -1,15 +1,15 @@
-//! Source-bound, witness-free prototype for a mixed pair/many AIR roster.
+//! Source-bound, witness-free inspection of the mixed pair/many AIR roster.
 //!
-//! This deliberately has no proof serializer, prover, verifier, transcript,
-//! or package key. A future proof profile must bind this distinct roster and
-//! implement the corresponding native scheduler before admitting proof bytes.
+//! This API has no proof serializer or verifier. The fixed N=3 proof profile
+//! in package.zig consumes its regenerated schedule before proof decoding;
+//! other callers must not treat this inspection result as proof authority.
 const std = @import("std");
 const core = @import("stwo_core");
 const cpu = @import("stwo_circuit_cpu_integration");
 const circuit = @import("stwo_circuit_frontend");
-const binding = @import("bounded_compiled_binding.zig");
-const v4 = @import("bounded_component_manifest.zig");
-const admission = @import("../language/bounded_call_admission.zig");
+const binding = @import("../bounded_compiled_binding.zig");
+const v4 = @import("../bounded_component_manifest.zig");
+const admission = @import("../../language/bounded_call_admission.zig");
 
 const Digest = [32]u8;
 const Sha256 = std.crypto.hash.sha2.Sha256;
@@ -52,8 +52,7 @@ pub const Slot = struct {
 };
 
 /// Rebuilt source-owned candidate. `digest` is an inspection manifest digest,
-/// not an admitted proof transcript field until a mixed prover/verifier uses
-/// this exact schedule.
+/// its authentication depends on a source-pinned caller such as package.zig.
 pub const SelectedSchedule = struct {
     policy_version: u32 = Native.policy_version,
     source_sha256: Digest,

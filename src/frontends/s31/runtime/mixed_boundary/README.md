@@ -1,7 +1,9 @@
 # Mixed native boundary (experimental)
 
-`package.zig` contains the N=3 proof-byte envelope, sealed prover, and
-source-pinned verifier. Its verifier embeds the S31 source and official AIR
+`inspection.zig` reconstructs the selected mixed roster from source and live
+AIR handles without consuming proof bytes. `package.zig` contains the N=3
+proof-byte envelope, sealed prover, and source-pinned verifier. Its verifier
+embeds the S31 source and official AIR
 bundle, reconstructs the seven-component live schedule, checks the envelope
 and bounded proof shape, then invokes the engine's mixed native verifier.
 
