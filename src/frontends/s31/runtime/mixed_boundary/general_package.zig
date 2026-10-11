@@ -291,8 +291,11 @@ test "mixed general sealed native proofs authenticate one through eight source c
         var final = initial;
         for (0..n) |id| {
             const constant = M31.fromCanonical(@intCast(13 + id));
-            for (0..16) |_| for (&final) |*value|
-                value.* = value.*.mul(value.*).add(constant);
+            for (0..16) |_| {
+                for (&final) |*value| {
+                    value.* = value.*.mul(value.*).add(constant);
+                }
+            }
         }
         var sum: [4]u32 = undefined;
         var product: [4]u32 = undefined;
