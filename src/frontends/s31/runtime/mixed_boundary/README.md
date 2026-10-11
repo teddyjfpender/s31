@@ -35,6 +35,16 @@ focused test does not establish a general compiler correspondence theorem or
 the soundness of the underlying STARK/PCS stack. The pair/many AIRs and
 `S31MIX07` wire format are unchanged.
 
+[`private_two_selected_chip_feeder.s31.json`](../../examples/boundary/private_two_selected_chip_feeder.s31.json)
+uses that same private bit in two live selects. The first select feeds the
+second chip; the second select feeds both public results. The focused native
+gate proves and verifies both bit values using an independent arithmetic
+oracle, then rejects changed public result words, a changed claimed proof sum,
+the opposite bit with the original output claim, and a non-bit input. The
+non-bit rejection is at the source evaluator before proof construction; the
+test does not mutate an already committed trace to exercise the circuit's
+Boolean constraint adversarially.
+
 The command implementations and statement schema live here; the tiny files in
 `entry/` are required only by Zig's module-root import rule.
 

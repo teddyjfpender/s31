@@ -437,3 +437,91 @@ test "mixed selected feeder native proof binds both private bit branches" {
         }
     }
 }
+
+test "mixed selected feeder native proof with two live selects sharing one private bit" {
+    const allocator = std.heap.smp_allocator;
+    const source = @embedFile("../../examples/boundary/private_two_selected_chip_feeder.s31.json");
+    const air_bytes = @embedFile("s31_air_programs");
+    const p: u64 = core.fields.m31.Modulus;
+    const x = [4]u32{ 0, 1, core.fields.m31.Modulus - 1, 7 };
+    const y = [4]u32{ 2, 3, 5, 11 };
+    const profile = try inspectProfile(allocator, source, air_bytes);
+    try std.testing.expectEqual(@as(u8, 2), profile.schedule.call_count);
+    // The first select is the second chip's input. The second select remains
+    // live because both public outputs consume it.
+    try std.testing.expect(profile.schedule.calls[1].input[0] > profile.schedule.calls[0].output[0]);
+
+    var first = x;
+    for (0..16) |_| for (&first) |*word| {
+        word.* = @intCast((@as(u64, word.*) * word.* + 13) % p);
+    };
+    var branch_words: [2][8]u32 = undefined;
+    for (0..2) |bit| {
+        var feed: [4]u32 = undefined;
+        for (&feed, x, y, first) |*word, left, right, computed| {
+            word.* = @intCast((if (bit == 0)
+                @as(u64, computed) + left
+            else
+                @as(u64, computed) * right) % p);
+        }
+        var second = feed;
+        for (0..16) |_| for (&second) |*word| {
+            word.* = @intCast((@as(u64, word.*) * word.* + 17) % p);
+        };
+        var sum: [4]u32 = undefined;
+        var product: [4]u32 = undefined;
+        for (second, x, y, first, &sum, &product) |computed, left, right, a, *s, *m| {
+            const chosen: u64 = if (bit == 0)
+                @as(u64, computed) + right
+            else
+                @as(u64, computed) * left;
+            const reduced = chosen % p;
+            s.* = @intCast((reduced + a) % p);
+            m.* = @intCast((reduced * computed) % p);
+        }
+        const expected = [8]u32{ sum[0], sum[1], sum[2], sum[3], product[0], product[1], product[2], product[3] };
+        branch_words[bit] = expected;
+        const assignment_bytes = try std.fmt.allocPrint(allocator, "{{\"public_inputs\":{{}},\"private_inputs\":{{\"x\":[0,1,{d},7],\"y\":[2,3,5,11],\"bit\":[{d}]}},\"public_outputs\":{{\"sum\":[{d},{d},{d},{d}],\"product\":[{d},{d},{d},{d}]}}}}", .{ core.fields.m31.Modulus - 1, bit, sum[0], sum[1], sum[2], sum[3], product[0], product[1], product[2], product[3] });
+        defer allocator.free(assignment_bytes);
+        var assignment = try relation.parseAssignment(allocator, assignment_bytes);
+        defer assignment.deinit();
+        var program = try relation.parseProgram(allocator, source);
+        defer program.deinit();
+        const words = try relation.evaluate(allocator, program.value, assignment.value);
+        try std.testing.expectEqualSlices(u32, &expected, &words);
+        const sealed = try proveSealedAndInspect(allocator, source, air_bytes, assignment.value);
+        defer allocator.free(sealed.bytes);
+        try verifyEmbedded(source, air_bytes, allocator, words, sealed.bytes);
+
+        // Changing either selected public result must fail with the original proof.
+        for ([_]usize{ 0, 4 }) |index| {
+            var changed_words = words;
+            changed_words[index] = (changed_words[index] + 1) % core.fields.m31.Modulus;
+            if (verifyEmbedded(source, air_bytes, allocator, changed_words, sealed.bytes)) |_| {
+                return error.AcceptedChangedTwoSelectPublicClaim;
+            } else |_| {}
+        }
+        // A changed claimed sum in the envelope must not verify, even though
+        // its public output words and source identity still match.
+        const changed_proof = try allocator.dupe(u8, sealed.bytes);
+        defer allocator.free(changed_proof);
+        changed_proof[fixed_header_len] ^= 1;
+        if (verifyEmbedded(source, air_bytes, allocator, words, changed_proof)) |_| {
+            return error.AcceptedChangedTwoSelectProofClaim;
+        } else |_| {}
+
+        // Keep the original output claim while changing the private bit. The
+        // semantic gate rejects the witness before any native proof is made.
+        const flipped = try std.mem.replaceOwned(u8, allocator, assignment_bytes, if (bit == 0) "\"bit\":[0]" else "\"bit\":[1]", if (bit == 0) "\"bit\":[1]" else "\"bit\":[0]");
+        defer allocator.free(flipped);
+        var flipped_assignment = try relation.parseAssignment(allocator, flipped);
+        defer flipped_assignment.deinit();
+        try std.testing.expectError(error.PublicOutputMismatch, proveSealedAndInspect(allocator, source, air_bytes, flipped_assignment.value));
+        const nonbit = try std.mem.replaceOwned(u8, allocator, assignment_bytes, if (bit == 0) "\"bit\":[0]" else "\"bit\":[1]", "\"bit\":[2]");
+        defer allocator.free(nonbit);
+        var nonbit_assignment = try relation.parseAssignment(allocator, nonbit);
+        defer nonbit_assignment.deinit();
+        try std.testing.expectError(error.InvalidSelector, proveSealedAndInspect(allocator, source, air_bytes, nonbit_assignment.value));
+    }
+    try std.testing.expect(!std.meta.eql(branch_words[0], branch_words[1]));
+}
