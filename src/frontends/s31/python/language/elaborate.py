@@ -462,7 +462,7 @@ class Elaborator:
                              "circuit result does not match declared public output type")
         if record_boundary and self.circuit.proof_mode == "blinded":
             raise self.error(self.circuit.body,
-                             "public record v2 currently requires transparent direct-gate proofs")
+                             "public record v2 currently requires transparent direct proofs")
         if record_boundary and any(name == "result" for name, _, _ in self.circuit.params):
             raise self.error(self.circuit.body,
                              "result is reserved for the public output root")
