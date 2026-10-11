@@ -42,6 +42,12 @@ that its accepted proof implies these premises. The separate native
 full-trace auditor can check a concrete witness but is not a general
 proof-to-premise theorem.
 
+The follow-on [trace-owned boundary](SourceMixedDecodedBoundary.md) eliminates
+the decoded-to-boundary row-list premise by constructing the canonical row list
+from the decoded trace. Its pinned N=1/N=8 constructors also set the chain's
+round count, call addresses, constants, and first input state by definition;
+the remaining main-value and source/proof-binding obligations are explicit.
+
 Focused kernel check:
 
 ```sh
