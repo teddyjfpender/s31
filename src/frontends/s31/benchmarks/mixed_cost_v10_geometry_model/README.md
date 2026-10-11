@@ -1,6 +1,8 @@
 # V10 prospective geometry transfer
 
-This is a one-run, out-of-distribution check of a **frozen** one-call whole-prover cost model. V9 showed that the V8 model's proof-size center missed all three one-call geometry variants while its wall-time gates passed. V9 remains a failed transfer. V6 was invalidated by a changed compiler pin and contributes no performance data.
+This is a one-run prospective **same-geometry transfer to fresh source instances** of a frozen one-call whole-prover cost model. V9 showed that the V8 model's proof-size center missed all three one-call geometry variants while its wall-time gates passed. V9 remains a failed transfer. V6 was invalidated by a changed compiler pin and contributes no performance data.
+
+Post-run wording correction: the pre-run version called V10 an “out-of-distribution” check. All three circuit/chip log pairs were used to fit the V10 model from V9, and the new sources use closely related operator skeletons. The appropriate claim is prospective transfer to fresh instances at **observed** geometry. This correction changes no frozen model, protocol, gates, or score. The single run passed all 12 declared gates; see [the result report](../../../../../design/s31/measurements/MIXED_COST_V10_GEOMETRY_TRANSFER_RESULT.md).
 
 ## What is fitted
 
