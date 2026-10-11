@@ -6,6 +6,7 @@ const std = @import("std");
 const mixed = @import("inspection.zig");
 const descriptor = @import("descriptor.zig");
 const registry = @import("registry.zig");
+const lookup_budget = @import("lookup_budget.zig");
 
 const Digest = [32]u8;
 const Sha256 = std.crypto.hash.sha2.Sha256;
@@ -61,6 +62,17 @@ pub const Manifest = struct {
 /// This function has no authority on a caller-supplied schedule by itself.
 pub fn fromSchedule(schedule: *const mixed.SelectedSchedule) !Manifest {
     const identities = try descriptor.fromSchedule(schedule);
+    const admitted = schedule.lookup_envelope orelse return error.InvalidMixedLookupBudget;
+    var rounds: [registry.max_calls]u32 = undefined;
+    for (schedule.calls[0..schedule.call_count], rounds[0..schedule.call_count]) |call, *round_count|
+        round_count.* = call.rounds;
+    const rows = if (schedule.slots[0].trace_log_size <= 16)
+        @as(usize, 1) << @intCast(schedule.slots[0].trace_log_size)
+    else
+        return error.InvalidMixedLookupBudget;
+    const rebuilt = lookup_budget.evaluate(rows, admitted.output_addresses, rounds[0..schedule.call_count]) catch
+        return error.InvalidMixedLookupBudget;
+    if (!std.meta.eql(admitted, rebuilt)) return error.InvalidMixedLookupBudget;
     if (schedule.slot_count != 1 + 2 * @as(usize, schedule.call_count) or
         schedule.slot_count > registry.max_components)
         return error.InvalidMixedRegistryManifest;
@@ -250,6 +262,15 @@ test "mixed registry manifest is source-derived and ordered for all bounded coun
         changed.fixed_root[0] ^= 1;
         changed.digest = digest(&changed);
         try std.testing.expectError(error.InvalidMixedRegistryManifest, requireSource(a, &changed, source, air_bytes));
+        var altered_schedule = selected;
+        altered_schedule.lookup_envelope.?.integerized_absolute_weight += 1;
+        try std.testing.expectError(error.InvalidMixedLookupBudget, fromSchedule(&altered_schedule));
+        altered_schedule = selected;
+        altered_schedule.slots[0].trace_log_size += 1;
+        try std.testing.expectError(error.InvalidMixedLookupBudget, fromSchedule(&altered_schedule));
+        altered_schedule = selected;
+        altered_schedule.lookup_envelope = null;
+        try std.testing.expectError(error.InvalidMixedLookupBudget, fromSchedule(&altered_schedule));
     }
 }
 

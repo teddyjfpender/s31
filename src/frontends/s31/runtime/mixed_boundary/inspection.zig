@@ -11,6 +11,7 @@ const binding = @import("../bounded_compiled_binding.zig");
 const v4 = @import("../bounded_component_manifest.zig");
 const admission = @import("../../language/bounded_call_admission.zig");
 const registry = @import("registry.zig");
+const lookup_budget = @import("lookup_budget.zig");
 
 const Digest = [32]u8;
 const Sha256 = std.crypto.hash.sha2.Sha256;
@@ -69,6 +70,8 @@ pub const SelectedSchedule = struct {
     interaction_columns: u32 = 0,
     total_constraints: u32 = 0,
     native_geometry: ?Mixed.Geometry = null,
+    /// Checked source and live-roster lookup envelope; diagnostic, unhashed.
+    lookup_envelope: ?lookup_budget.Budget = null,
     digest: Digest = [_]u8{0} ** 32,
 };
 
@@ -221,6 +224,17 @@ pub fn inspectSource(allocator: std.mem.Allocator, source: []const u8, air_bytes
     defer template.deinit();
     const geometry = try Mixed.inspect(allocator, &pp, &template, plan);
     try compareLiveGeometry(&result, &geometry, &inspected.selected_schedule.geometry.live);
+    var rounds: [admission.max_calls]u32 = undefined;
+    for (result.calls[0..count], rounds[0..count], 0..) |call, *round_count, id| {
+        round_count.* = call.rounds;
+        if (result.slots[1 + 2 * id].trace_log_size != @as(u32, @intCast(@ctz(call.rounds))) or
+            result.slots[2 + 2 * id].trace_log_size != 4)
+            return error.InvalidMixedLookupGeometry;
+    }
+    const budget = try lookup_budget.evaluate(view.nQm31OpsRows(), view.output.len, rounds[0..count]);
+    if (result.slots[0].trace_log_size != @as(u32, @intCast(@ctz(@as(usize, @intCast(budget.circuit_rows))))))
+        return error.InvalidMixedLookupGeometry;
+    result.lookup_envelope = budget;
     result.native_geometry = geometry;
     result.digest = digestSelectedSchedule(&result);
     return result;

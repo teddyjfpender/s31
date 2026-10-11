@@ -90,6 +90,8 @@ pub fn main() !void {
         .main_columns = schedule.main_columns,
         .interaction_columns = schedule.interaction_columns,
         .total_constraints = schedule.total_constraints,
+        // Diagnostic algebraic term only; this is not total proof security.
+        .conditional_lookup_budget = schedule.lookup_envelope.?,
         .tree_columns = geometry.tree_columns,
         .max_column_log_size = geometry.max_column_log_size,
         .composition_log_size = geometry.composition_log_size,

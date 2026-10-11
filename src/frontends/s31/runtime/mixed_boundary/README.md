@@ -102,6 +102,23 @@ does **not** enter either fixed-profile proof transcript. The draft general
 profile derives it from source and mixes it into a distinct transcript and
 circuit identity.
 
+The general profile also runs `lookup_budget.zig` during source inspection,
+before proof creation or bounded verifier decoding. It counts every Gate row,
+chip round, bridge row and public output lookup term, then checks the
+integerized absolute-weight bound below the M31 characteristic. The circuit
+must have exactly nine output addresses: eight public words and the reserved
+`u` wire. Each chip and bridge trace size is checked against its source call
+and registered geometry. The JSON manifest reports `conditional_lookup_budget`
+as an audit diagnostic; this field is derived from authenticated source and
+live geometry, and is not an independent proof key or a registry-digest input.
+The maximum admitted counts are `E = 722185` occurrences and
+`B = 12585504 < 2147483647` integerized absolute weight. The direct
+two-challenge calculation gives `(7E-6)/((2^31-1)^4) < 2^-101.73` **only**
+for the lookup-compression algebraic event under the worksheet's fixed-tuple,
+uniform-challenge and AIR-enforcement premises. AIR, PCS/FRI and transcript
+failure probabilities are separate; the JSON value is not total proof
+security. See `design/s31/security/LOOKUP_COMPRESSION_BUDGET_2026-10-11.md`.
+
 The JSON reports include every **direct input** to the registry digest:
 `registry_manifest_version`, root `registry_version`, source and IR hashes,
 fixed root, `manifest_sha256`, `descriptor_sha256`, calls, ordered slots and

@@ -193,6 +193,14 @@ pinned engine. Any change to those emitters or caps requires recomputing this
 envelope before using it in a release budget.
 The release admission gate must enforce `source.output.len <= 9` and its
 profile's exact public-word shape before applying these numeric ceilings.
+The isolated general profile now has an executable candidate gate in
+`src/frontends/s31/runtime/mixed_boundary/lookup_budget.zig`: source inspection
+checks exactly nine circuit output addresses, power-of-two circuit rows and
+chip rounds, live circuit/chip/bridge trace sizes, the checked `E` count,
+and `B < p`. `registry_manifest.fromSchedule` rechecks the derived counts
+before the general package selects its proof identity. This candidate still
+requires native compilation and rejection tests before release. The envelope
+does not add its algebraic term to a measured AIR/PCS/FRI/Fiat–Shamir budget.
 
 ## Conditions to check in the implementation
 
