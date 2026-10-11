@@ -11,6 +11,12 @@ digests before native work, pins every benchmark and frontend Python source
 the V6 or transfer corpora. The V7 collector, predictor, and publisher do not
 alter any V6 protocol, model, audit, or raw artifact.
 
+`portable_v7.py` writes a relative, content-addressed manifest over retained
+train/validation artifacts. `replay_portable_v7.py` checks it after the
+evidence directory is moved, then replays proofs, statements, oracles, the
+training fit, and validation. `independent_v7_gate.py` separately recomputes
+the held-out gate math from the frozen model and raw trials.
+
 Automatic lowering remains disabled. A future V7 pass would describe only the
 exact pinned host, compiler, engine, proof profile, and workload family.
 

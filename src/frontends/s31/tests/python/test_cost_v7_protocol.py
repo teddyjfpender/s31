@@ -14,6 +14,8 @@ sys.path.insert(0, str(S31 / "benchmarks" / "cost"))
 sys.path.insert(0, str(S31 / "python"))
 
 import v7_protocol as v7
+from independent_v7_gate import check_saved_evaluation, features as independent_features
+from independent_v7_gate import prediction as independent_prediction
 from oracle import evaluate_relation
 from package.context import lower_text
 import whole_prover_predictor_v7 as predictor
@@ -25,6 +27,8 @@ class CostV7ProtocolTests(unittest.TestCase):
         names = {path.name for path in v7.tool_paths()}
         self.assertTrue({"v7_protocol.py", "benchmark_whole_prover_cost_v7.py",
                          "whole_prover_predictor_v7.py", "publish_whole_prover_cost_v7.py",
+                         "independent_v7_gate.py", "portable_v7.py",
+                         "replay_portable_v7.py",
                          "arithmetic_rss_predictor_v2.py", "oracle.py",
                          "poseidon2_oracle.py"} <= names)
         self.assertEqual(len(v7.tool_paths()), len(set(v7.tool_paths())))
@@ -91,6 +95,36 @@ class CostV7ProtocolTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "canonical model artifact"):
                 v7.require_model(Path(directory) / "unfrozen.json", "0" * 64,
                                  "1" * 40, "2" * 64, "3" * 40)
+
+    def test_second_source_formulas_cover_all_four_families_on_saved_model(self):
+        from whole_prover_predictor_v3 import case_features, predict_stage
+        from whole_prover_predictor_v6 import predict_rss_interval, wall_center
+
+        audit = json.loads(v7.V6_AUDIT.read_bytes())
+        for family, policy in audit["model"]["families"].items():
+            row = next(item for item in audit["program_inventory"]["train"].values()
+                       if item["family"] == family)
+            case = {"family": family, "raw": row["raw"], "padded": row["padded"],
+                    "preprocessed_cells": row["preprocessed_cells"],
+                    "chip_manifest_binding": row["chip_manifest_binding"]}
+            x = independent_features(case)
+            self.assertEqual(x, case_features(case))
+            actual = independent_prediction(policy, x)
+            center = wall_center(policy["wall_stages"], x)
+            ratios = policy["wall_interval"]
+            expected = {
+                "paired_prove_and_verify_wall_seconds": {
+                    "center": center, "lower": center * ratios["ratio_p05"],
+                    "upper": center * ratios["ratio_p95"]},
+                "proof_bytes": predict_stage(policy["proof_bytes"], x),
+                "prover_peak_rss_bytes": predict_rss_interval(
+                    policy["prover_peak_rss_bytes"], x),
+            }
+            for target in expected:
+                for part in ("center", "lower", "upper"):
+                    self.assertAlmostEqual(actual[target][part], expected[target][part],
+                                           delta=1e-8 * expected[target][part],
+                                           msg=f"{family}.{target}.{part}")
 
     def test_fitted_model_rejects_program_specific_verifier_startup_miss(self):
         def digest(value):
@@ -180,16 +214,24 @@ class CostV7ProtocolTests(unittest.TestCase):
             with patch.object(predictor, "PROTOCOL", protocol_path):
                 model = predictor.fit_model(train, protocol)
                 clean = predictor.evaluate(model, validation, protocol)
+                self.assertEqual(check_saved_evaluation(model, validation, protocol, clean)
+                                 ["programs_checked"], 5)
                 self.assertTrue(all(row["process_stage_gate_pass"]
                                     for row in clean["programs"]))
                 validation_cases["arithmetic_96"]["trials"] = [
                     {**trial, "verify_seconds": .063}
                     for trial in validation_cases["arithmetic_96"]["trials"]]
                 missed = predictor.evaluate(model, validation, protocol)
+                self.assertFalse(check_saved_evaluation(model, validation, protocol, missed)
+                                 ["local_accuracy_gate_pass"])
                 self.assertFalse(missed["local_accuracy_gate_pass"])
                 self.assertFalse(next(row for row in missed["programs"]
                                       if row["program"] == "arithmetic_96")
                                  ["process_stage_gate_pass"])
+                missed["accuracy"]["arithmetic"]["paired_prove_and_verify_wall_seconds"][
+                    "trial_interval_coverage"] = 1.0
+                with self.assertRaisesRegex(ValueError, "independent held-out value differs"):
+                    check_saved_evaluation(model, validation, protocol, missed)
 
 
 if __name__ == "__main__":

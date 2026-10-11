@@ -21,8 +21,9 @@ programs per family: direct-gate arithmetic, direct chip, gate hash, and
 fixed-width arithmetic. The resulting 40 programs and 4,000 assignments are
 digest-disjoint from each other, V6, and the V6 transfer diagnostic. Direct
 chip powers of two and fixed-width division forms can repeat earlier shapes;
-the study does not claim shape novelty. Mixed-chip programs enter only after a
-reviewed proof-backed native profile exists.
+the study does not claim shape novelty. Fixed N=3 mixed proof support exists;
+it enters this cost study after a packaged CLI lowering and a representative
+mixed workload/profile are specified and reviewed.
 
 ## Freeze in this order
 
@@ -58,17 +59,17 @@ directory for both:
 
 ```sh
 python3 src/frontends/s31/benchmarks/benchmark_whole_prover_cost_v7.py \
-  --split train --phase build --out zig-out/s31-v7-train \
+  --split train --phase build --out zig-out/s31-v7-evidence/train \
   --expected-protocol-sha256 <full-protocol-sha256> \
   --protocol-anchor-commit <full-protocol-anchor-commit>
 python3 src/frontends/s31/benchmarks/benchmark_whole_prover_cost_v7.py \
-  --split train --phase prove --out zig-out/s31-v7-train \
+  --split train --phase prove --out zig-out/s31-v7-evidence/train \
   --expected-protocol-sha256 <full-protocol-sha256> \
   --protocol-anchor-commit <full-protocol-anchor-commit>
 python3 src/frontends/s31/benchmarks/whole_prover_predictor_v7.py \
   --expected-protocol-sha256 <full-protocol-sha256> \
   --protocol-anchor-commit <full-protocol-anchor-commit> \
-  fit zig-out/s31-v7-train/whole-prover-corpus.json \
+  fit zig-out/s31-v7-evidence/train/whole-prover-corpus.json \
   --out design/s31/measurements/language/whole-prover-cost-v7-model.json
 git add design/s31/measurements/language/whole-prover-cost-v7-model.json
 git commit -m 'Freeze training-only S31 V7 model'
@@ -88,14 +89,14 @@ Then build, prove, evaluate, and replay the held-out split:
 
 ```sh
 python3 src/frontends/s31/benchmarks/benchmark_whole_prover_cost_v7.py \
-  --split validation --phase build --out zig-out/s31-v7-validation \
+  --split validation --phase build --out zig-out/s31-v7-evidence/validation \
   --model design/s31/measurements/language/whole-prover-cost-v7-model.json \
   --expected-protocol-sha256 <full-protocol-sha256> \
   --protocol-anchor-commit <full-protocol-anchor-commit> \
   --expected-model-sha256 <full-model-sha256> \
   --model-anchor-commit <full-model-anchor-commit>
 python3 src/frontends/s31/benchmarks/benchmark_whole_prover_cost_v7.py \
-  --split validation --phase prove --out zig-out/s31-v7-validation \
+  --split validation --phase prove --out zig-out/s31-v7-evidence/validation \
   --model design/s31/measurements/language/whole-prover-cost-v7-model.json \
   --expected-protocol-sha256 <full-protocol-sha256> \
   --protocol-anchor-commit <full-protocol-anchor-commit> \
@@ -107,18 +108,18 @@ python3 src/frontends/s31/benchmarks/whole_prover_predictor_v7.py \
   --expected-model-sha256 <full-model-sha256> \
   --model-anchor-commit <full-model-anchor-commit> \
   evaluate design/s31/measurements/language/whole-prover-cost-v7-model.json \
-  zig-out/s31-v7-validation/whole-prover-corpus.json \
-  --out zig-out/s31-v7-validation/evaluation.json
+  zig-out/s31-v7-evidence/validation/whole-prover-corpus.json \
+  --out zig-out/s31-v7-evidence/validation/evaluation.json
 python3 src/frontends/s31/benchmarks/publish_whole_prover_cost_v7.py \
-  zig-out/s31-v7-train/whole-prover-corpus.json \
+  zig-out/s31-v7-evidence/train/whole-prover-corpus.json \
   design/s31/measurements/language/whole-prover-cost-v7-model.json \
-  zig-out/s31-v7-validation/whole-prover-corpus.json \
-  zig-out/s31-v7-validation/evaluation.json \
+  zig-out/s31-v7-evidence/validation/whole-prover-corpus.json \
+  zig-out/s31-v7-evidence/validation/evaluation.json \
   --expected-protocol-sha256 <full-protocol-sha256> \
   --protocol-anchor-commit <full-protocol-anchor-commit> \
   --expected-model-sha256 <full-model-sha256> \
   --model-anchor-commit <full-model-anchor-commit> \
-  --out zig-out/s31-v7-audit.json
+  --out zig-out/s31-v7-evidence/validation/audit.json
 ```
 
 The publisher reads package manifests, saved proof hashes, trial reports,
@@ -127,9 +128,36 @@ oracles, anchors, and the frozen model. It refits training and reevaluates the
 held-out gate without rebuilding packages or altering evidence. `--native`
 additionally reruns each saved original and changed public statement against
 its native verifier. Raw package, proof, source, and assignment directories
-must be retained beside the corpus files for replay. The current artifact
-format stores absolute paths, so replay requires the original directory
-layout; portable archive support is future work.
+must be retained beside the corpus files for replay. The ordinary publisher
+expects the original absolute paths. To move evidence between directories,
+create the relative, content-addressed manifest below, record its full SHA
+externally, and move the entire `s31-v7-evidence/` directory. Portable replay
+resolves every artifact relative to the new root, verifies its hash, and
+treats absolute path strings in historical reports as provenance hints. It
+still requires the pinned source checkout and committed freeze anchors;
+native replay also requires compatible saved verifier binaries.
+
+```sh
+python3 src/frontends/s31/benchmarks/cost/portable_v7.py create \
+  --root zig-out/s31-v7-evidence \
+  --protocol-sha256 <full-protocol-sha256> \
+  --model-sha256 <full-model-sha256>
+python3 src/frontends/s31/benchmarks/cost/replay_portable_v7.py \
+  --root <moved-evidence-directory> \
+  --expected-manifest-sha256 <full-portable-manifest-sha256> \
+  --expected-protocol-sha256 <full-protocol-sha256> \
+  --protocol-anchor-commit <full-protocol-anchor-commit> \
+  --expected-model-sha256 <full-model-sha256> \
+  --model-anchor-commit <full-model-anchor-commit>
+```
+
+`--native` on the portable replay reruns original and changed statements. The
+manifest lists all files under `train/` and `validation/`, including packages
+and proofs, and rejects missing files, extra files, path traversal, and
+symlinks. These portable tools enter the V7 tool digest when its protocol is
+eventually frozen; they do not change the frozen V6 inventory. The separate
+`independent_v7_gate.py` recomputes held-out predictions and every gate from
+the serialized model and raw trials without importing the fitting predictor.
 
 ## Acceptance and limits
 

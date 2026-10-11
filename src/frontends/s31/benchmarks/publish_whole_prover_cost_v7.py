@@ -15,6 +15,7 @@ sys.path.insert(0, str(HERE.parent / "python"))
 
 from benchmark_whole_prover_cost_v3 import chip_manifest_binding, s31
 from benchmark_whole_prover_cost_v7 import check_build_inventory
+from independent_v7_gate import check_saved_evaluation
 from oracle import evaluate_relation
 from publish_stage_aware_cost_v1 import audit_corpus, file_hash
 from publish_whole_prover_cost_v3 import audit_case_artifacts
@@ -80,6 +81,7 @@ def publish(train_path: Path, model_path: Path, validation_path: Path,
     if {key: value for key, value in evaluation.items()
         if key not in ("frozen_model_sha256", "validation_corpus_sha256")} != replay:
         raise ValueError("held-out evaluation differs from read-only replay")
+    second_source = check_saved_evaluation(model, validation, protocol, evaluation)
     controls = {}
     program_inventory = {}
     for split, corpus, corpus_path, frozen_sha, model_anchor in (
@@ -129,6 +131,7 @@ def publish(train_path: Path, model_path: Path, validation_path: Path,
             "training_controls": train_controls,
             "validation_controls": validation_controls,
             "artifact_controls": controls, "program_inventory": program_inventory,
+            "independent_held_out_gate_replay": second_source,
             "accuracy": evaluation["accuracy"], "programs": evaluation["programs"],
             "local_accuracy_gate_pass": evaluation["local_accuracy_gate_pass"],
             "automatic_lowering_selection_enabled": False,
