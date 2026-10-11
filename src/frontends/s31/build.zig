@@ -15,13 +15,14 @@ pub fn build(b: *std.Build) void {
         b.path("examples/arithmetic/affine4.s31.json");
     const program_name = b.option([]const u8, "s31-name", "Build artifact name for the selected program") orelse "affine4";
     const source_version = b.option(u32, "s31-version", "Normalized source version (0 or 1)") orelse 0;
-    const lowering = b.option([]const u8, "s31-lowering", "gate, chip, sparse-gate, sparse-chip, sparse-wide-gate, direct-gate, direct-chip, experimental direct-pair/direct-many/direct-mixed/direct-mixed4, sha-joint, sha-shift, or sha-fused proof lowering") orelse "gate";
+    const lowering = b.option([]const u8, "s31-lowering", "gate, chip, sparse-gate, sparse-chip, sparse-wide-gate, direct-gate, direct-chip, experimental direct-pair/direct-many/direct-mixed/direct-mixed4/direct-mixed-general, sha-joint, sha-shift, or sha-fused proof lowering") orelse "gate";
     if (!std.mem.eql(u8, lowering, "gate") and !std.mem.eql(u8, lowering, "chip") and
         !std.mem.eql(u8, lowering, "sparse-gate") and !std.mem.eql(u8, lowering, "sparse-chip") and
         !std.mem.eql(u8, lowering, "sparse-wide-gate") and
         !std.mem.eql(u8, lowering, "direct-gate") and !std.mem.eql(u8, lowering, "direct-chip") and
         !std.mem.eql(u8, lowering, "direct-pair") and !std.mem.eql(u8, lowering, "direct-many") and
         !std.mem.eql(u8, lowering, "direct-mixed") and !std.mem.eql(u8, lowering, "direct-mixed4") and
+        !std.mem.eql(u8, lowering, "direct-mixed-general") and
         !std.mem.eql(u8, lowering, "sha-joint") and !std.mem.eql(u8, lowering, "sha-shift") and
         !std.mem.eql(u8, lowering, "sha-fused"))
         @panic("invalid s31-lowering");
@@ -29,7 +30,8 @@ pub fn build(b: *std.Build) void {
     if ((fri_fold_step != 1 and fri_fold_step != 4) or
         (fri_fold_step != 1 and !std.mem.eql(u8, lowering, "gate") and !std.mem.eql(u8, lowering, "sparse-wide-gate")))
         @panic("FRI fold step 4 requires gate or sparse-wide-gate lowering; supported steps are 1 and 4");
-    const mixed_lowering = std.mem.eql(u8, lowering, "direct-mixed") or std.mem.eql(u8, lowering, "direct-mixed4");
+    const mixed_lowering = std.mem.eql(u8, lowering, "direct-mixed") or std.mem.eql(u8, lowering, "direct-mixed4") or
+        std.mem.eql(u8, lowering, "direct-mixed-general");
     if (mixed_lowering and source_version != 1)
         @panic("experimental direct-mixed requires normalized S31 source version 1");
     if (mixed_lowering and selected_source == null)
@@ -705,9 +707,10 @@ pub fn build(b: *std.Build) void {
 
     if (source_version == 1 and mixed_lowering) {
         const mixed_four = std.mem.eql(u8, lowering, "direct-mixed4");
-        const mixed_prover_root = localEntry(b, if (mixed_four) "runtime/mixed_boundary/n4_prover_main.zig" else "runtime/mixed_boundary/mixed_prover_main.zig", target, optimize);
-        const mixed_verifier_root = localEntry(b, if (mixed_four) "runtime/mixed_boundary/n4_verifier_main.zig" else "runtime/mixed_boundary/mixed_verifier_main.zig", target, optimize);
-        const mixed_manifest_root = localEntry(b, if (mixed_four) "runtime/mixed_boundary/n4_manifest_main.zig" else "runtime/mixed_boundary/mixed_manifest_main.zig", target, optimize);
+        const mixed_general = std.mem.eql(u8, lowering, "direct-mixed-general");
+        const mixed_prover_root = localEntry(b, if (mixed_general) "runtime/mixed_boundary/general_prover_main.zig" else if (mixed_four) "runtime/mixed_boundary/n4_prover_main.zig" else "runtime/mixed_boundary/mixed_prover_main.zig", target, optimize);
+        const mixed_verifier_root = localEntry(b, if (mixed_general) "runtime/mixed_boundary/general_verifier_main.zig" else if (mixed_four) "runtime/mixed_boundary/n4_verifier_main.zig" else "runtime/mixed_boundary/mixed_verifier_main.zig", target, optimize);
+        const mixed_manifest_root = localEntry(b, if (mixed_general) "runtime/mixed_boundary/general_manifest_main.zig" else if (mixed_four) "runtime/mixed_boundary/n4_manifest_main.zig" else "runtime/mixed_boundary/mixed_manifest_main.zig", target, optimize);
         for ([_]*std.Build.Module{ mixed_prover_root, mixed_verifier_root, mixed_manifest_root }) |root| {
             root.addImport("stwo_core", core);
             root.addImport("stwo_circuit_frontend", circuit);
@@ -731,7 +734,7 @@ pub fn build(b: *std.Build) void {
             root.addAnonymousImport("s31_tagged_many_bridge_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/tagged_many_bridge.zig") } });
             root.addAnonymousImport("s31_pair_proof_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/direct_pair_arithmetic.zig") } });
         }
-        const profile_name = if (mixed_four) "mixed4" else "mixed";
+        const profile_name = if (mixed_general) "mixed-general" else if (mixed_four) "mixed4" else "mixed";
         const mixed_prover = b.addExecutable(.{ .name = b.fmt("s31-{s}-{s}-prover", .{ program_name, profile_name }), .root_module = mixed_prover_root });
         const mixed_verifier = b.addExecutable(.{ .name = b.fmt("s31-{s}-{s}-native-verifier", .{ program_name, profile_name }), .root_module = mixed_verifier_root });
         const mixed_manifest = b.addExecutable(.{ .name = b.fmt("s31-{s}-{s}-manifest", .{ program_name, profile_name }), .root_module = mixed_manifest_root });
@@ -743,7 +746,7 @@ pub fn build(b: *std.Build) void {
         b.installArtifact(mixed_verifier);
         b.installArtifact(mixed_manifest);
         b.getInstallStep().dependOn(&mixed_source_check.step);
-        const mixed_programs = b.step("mixed-programs", "Build experimental source-pinned mixed prover, verifier, and component inspector for the selected fixed profile");
+        const mixed_programs = b.step("mixed-programs", "Build experimental source-pinned mixed prover, verifier, and component inspector for the selected profile");
         mixed_programs.dependOn(&mixed_prover.step);
         mixed_programs.dependOn(&mixed_verifier.step);
         mixed_programs.dependOn(&mixed_manifest.step);
