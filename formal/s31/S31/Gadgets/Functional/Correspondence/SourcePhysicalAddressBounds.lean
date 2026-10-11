@@ -111,4 +111,37 @@ theorem expected_source_cells_canonical {final : List Lanes}
     hshape.2.2.2.2, sourceUses] at *
   omega
 
+/-- Successful exact source/normalized byte admission supplies both the
+sixteen-instruction budget and an honest executable trace, so every modeled
+source fixed word is canonical without a caller-provided numeric premise. -/
+theorem checked_direct_source_cells_canonical
+    (sourceBytes normalizedBytes : List Nat) (certificate : Certificate)
+    (hcheck : checkRelation sourceBytes normalizedBytes = some certificate) :
+    ∀ cell ∈ expectedCells certificate (compiledAddRows certificate),
+      cell.in0 < 2147483647 ∧ cell.in1 < 2147483647 ∧
+      cell.out < 2147483647 ∧ cell.mults < 2147483647 := by
+  let input : Lanes := fun _ => 0
+  have hparse : ∃ parsed, parseBytes sourceBytes = some parsed := by
+    unfold checkRelation at hcheck
+    cases hp : parseBytes sourceBytes with
+    | none => simp [hp] at hcheck
+    | some parsed => exact ⟨parsed, rfl⟩
+  obtain ⟨parsed, hparse⟩ := hparse
+  let output := parsed.meaning.eval input
+  have hdenotation : denotation sourceBytes input = some output := by
+    simp [denotation, hparse, output]
+  have hexecute : executeNormalized certificate input = some output := by
+    rw [checked_relation_sound sourceBytes normalizedBytes certificate input hcheck]
+    exact hdenotation
+  rw [execute_normalized_eq_execute] at hexecute
+  unfold execute at hexecute
+  cases hrun : certificate.instructions.foldlM executeStep [input] with
+  | none => simp [hrun] at hexecute
+  | some final =>
+      have htrace : AcceptsTrace [input] certificate.instructions final :=
+        executing_trace_has_air_rows certificate.instructions [input] final hrun
+      exact expected_source_cells_canonical certificate input
+        (checked_relation_instruction_bound sourceBytes normalizedBytes
+          certificate hcheck) htrace
+
 end S31.Functional.Correspondence.SourcePhysicalAddressBounds
