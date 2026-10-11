@@ -7,6 +7,7 @@ const cairo = @import("stwo_cairo_frontend");
 const circuit = @import("stwo_circuit_frontend");
 const cpu = @import("stwo_circuit_cpu_integration");
 const postcard = @import("interop_postcard");
+const direct_component_preflight = @import("direct_component_preflight.zig");
 
 const QM31 = core.fields.qm31.QM31;
 const H = core.vcs_lifted.blake2_merkle.Blake2sPlainMerkleHasher;
@@ -729,6 +730,35 @@ fn verifyDirectProfile(
     const header_len = magic.len + 8 + sum_count * 16;
     if (raw.len < header_len or raw.len > (16 << 20) or !std.mem.eql(u8, raw[0..magic.len], magic))
         return error.InvalidNativeProof;
+    // Inspect the actual verifier handles and bounded proof shape before
+    // allocating for postcard decoding. The source-pinned key was checked by
+    // mvp_runtime before this entrypoint is called.
+    if (manifest_bound and has_chip) {
+        const live = try direct_component_preflight.inspect(
+            allocator,
+            layout,
+            template,
+            pcs,
+            .{ .rounds = chip_spec.?.rounds, .constant = chip_spec.?.constant },
+            private_boundary,
+        );
+        if (live.count != sum_count) return error.InvalidDirectHandleRoster;
+        try postcard.proof_preflight.validateFor(4, raw[header_len..], .{
+            .config = .{
+                .pow_bits = pcs.fri_config.pow_bits,
+                .log_blowup_factor = pcs.fri_config.log_blowup_factor,
+                .n_queries = pcs.fri_config.n_queries,
+                .log_last_layer_degree_bound = pcs.fri_config.log_last_layer_degree_bound,
+                .fold_step = pcs.fri_config.fold_step,
+                .lifting_log_size = null,
+            },
+            .tree_columns = live.tree_columns,
+            .max_column_log_size = live.max_column_log_size,
+            .sample_width_limits = live.sample_width_limits,
+            .hash_size = @sizeOf(H.Hash),
+            .max_wire_bytes = (16 << 20) - header_len,
+        });
+    }
     const nonce = std.mem.readInt(u64, raw[magic.len..][0..8], .little);
     var sums: [3]QM31 = undefined;
     for (sums[0..sum_count], 0..) |*sum, index| {

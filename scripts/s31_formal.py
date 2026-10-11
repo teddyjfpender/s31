@@ -92,6 +92,7 @@ BINDINGS = [
     "src/frontends/s31/language/finalization/constant_base.zig",
     "src/frontends/s31/runtime/mvp_runtime.zig",
     "src/frontends/s31/runtime/component_manifest.zig",
+    "src/frontends/s31/runtime/direct_component_preflight.zig",
     "src/frontends/s31/runtime/bounded_component_manifest.zig",
     "src/frontends/s31/entry/bounded_component_manifest.zig",
     "src/frontends/s31/runtime/component_descriptor_contract.zig",

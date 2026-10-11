@@ -82,6 +82,17 @@ components with their existing explicit code; manifest equality checks that
 the key describes that code's layout. This is a checked schedule, not yet a
 manifest-driven scheduler.
 
+The direct-chip v2 path also checks the generated manifest against actual
+verifier component handles without a witness. Before accepting the key, it
+compares their constraint counts, degree bounds, fixed-column indices, trace
+spans, coefficient offsets and ordered relation IDs. Before allocating for
+proof decoding, the native verifier obtains the handles' column logs, mask
+widths, composition geometry and PCS tree shape and applies bounded proof
+preflight. Relation IDs are checked against pinned chip and bridge source;
+Stwo's generic component interface does not expose lookup tuple schemas.
+This check changes neither the v2 manifest encoding nor the `S31NAT6C` /
+`S31NAT6P` proof bytes. The legacy v1 decoder is unaffected.
+
 The v2 key schema is `s31-verification-key-direct-chip-manifest-v2` and its
 proof envelopes start with `S31NAT6C` (public) or `S31NAT6P` (private). Older
 v1 packages remain readable with their own sealed binaries. The v2 verifier

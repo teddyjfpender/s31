@@ -7,6 +7,7 @@ const cpu = @import("stwo_circuit_cpu_integration");
 const s31 = @import("stwo_s31_prototype");
 const native = @import("native_verifier.zig");
 const component_manifest = @import("component_manifest.zig");
+const direct_component_preflight = @import("direct_component_preflight.zig");
 const proof_execution = @import("proof_execution.zig");
 const recursion_gate = @import("../recursion/recursion_gate.zig");
 const fixed_fold = @import("../recursion/fixed_fold.zig");
@@ -601,6 +602,19 @@ fn bindChipManifest(
         boundary,
     );
     errdefer generated.deinit();
+    var template = try parseAirBundle(allocator);
+    defer template.deinit();
+    const layout = pp.layout();
+    const pcs = try directPcsConfig(pp.traceLogSize(), spec.rounds);
+    const live = try direct_component_preflight.inspect(
+        allocator,
+        &layout,
+        &template,
+        pcs,
+        .{ .rounds = spec.rounds, .constant = M31.fromCanonical(spec.constant) },
+        boundary,
+    );
+    try direct_component_preflight.requireManifest(generated.value, &live);
     const precommitment_digest = component_manifest.precommitmentDigest(generated.value);
     const effective_digest = component_manifest.effectiveSourceDigest(source_digest, generated.value);
     const chip_request: cpu.prove.ChipRequest = .{

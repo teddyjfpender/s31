@@ -89,6 +89,8 @@ def reject_resealed(package: Path, work: Path, name: str, key: dict, proof: Path
 def mutations(private: bool):
     yield "chip-constant", lambda m: m["chip_call"].__setitem__("constant", m["chip_call"]["constant"] + 1)
     yield "trace-log", lambda m: m["components"][1].__setitem__("trace_log_size", m["components"][1]["trace_log_size"] + 1)
+    yield "degree-bound", lambda m: m["components"][1].__setitem__("max_constraint_log_degree_bound", m["components"][1]["max_constraint_log_degree_bound"] + 1)
+    yield "lookup-relation", lambda m: m["components"][1]["lookup_relation_ids"].__setitem__(0, m["components"][1]["lookup_relation_ids"][0] + 1)
     yield "sum-position", lambda m: m["components"][1].__setitem__("claimed_sum_index", 0)
     yield "omitted-component", lambda m: m["components"].pop()
     yield "extra-component", lambda m: m["components"].append(copy.deepcopy(m["components"][-1]))
