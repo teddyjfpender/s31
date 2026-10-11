@@ -40,8 +40,8 @@ Monte Carlo samples of 20 draws from that *unchanged* frozen wall model
 observed N=1 median; 7.09% missed the same 35% median gate in either
 direction. This makes the miss plausible under the model's PoW randomness,
 but it is a lower-tail observation and does not rule out systematic bias.
-The simulation was run after seeing the result and cannot change the
-preregistered failure.
+The [reproduction script](../../../src/frontends/s31/benchmarks/mixed_cost_v5_transfer/sampling_diagnostic.py)
+was run after seeing the result and cannot change the preregistered failure.
 
 ## Native geometry and cold/warm observations
 
