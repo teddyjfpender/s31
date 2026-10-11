@@ -42,6 +42,23 @@ all eight emitted selector/address column hashes, the exact input/source/ABI
 gate allocation and base-256 constant and padding schedule, fixed QM31 basis
 derivation,
 AIR asset hashes and key core.
+It also checks each source instruction directly against the eight **exported
+fixed AIR columns**, using the same row formula as Lean's general
+`SSADirectGateBridge.expectedRows` and `SSAAirColumnCells.expectedCells`.
+For `let a = x .* x; let b = x + a; b`, the modeled rows are:
+
+| Source instruction | Circuit row | Grouped AIR row | Selectors `(add, sub, mul, pointwise)` | `(in0, in1, out, uses)` |
+| --- | ---: | ---: | --- | --- |
+| `a = x .* x` | 6 | 503 | `(0, 0, 0, 1)` | `(22, 22, 23, 1)` |
+| `b = x + a` | 7 | 3 | `(1, 0, 0, 0)` | `(22, 23, 24, 4)` |
+
+The grouped AIR row order differs from source order because the native writer
+groups additions before pointwise products. Address 22 is the packed input;
+23 and 24 are fresh results. The last use count is four because the public
+four-lane output extraction reads `b` four times. The checker recomputes these
+positions, selectors, addresses and counts from source syntax and reads the
+exported column values at those positions. Tests exercise all lengths 1–16,
+both operations, dead results, and mutations of every source fixed-cell field.
 The certificate still marks native Gate lookup and AIR/PCS soundness as assumptions.
 It is a **package-admission** certificate: the standalone native verifier does
 not read it. See the [design brief](../../../../../design/s31/language/DIRECT_GATE_CORRESPONDENCE_CERTIFICATE.md).

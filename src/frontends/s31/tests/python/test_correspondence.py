@@ -19,6 +19,7 @@ sys.path.insert(0, str(S31.parents[2] / "scripts"))
 from package.correspondence import (DIRECT_COLUMN_IDS, M31_MODULUS,
                                     UnsupportedFragment, _check_constant_island,
                                     _qm_mul, canonical_ir_bytes, check_gate_topology,
+                                    check_source_fixed_rows,
                                     digest, parse_source,
                                     read_canonical_json)
 from package.direct_gate_schedule import constant_and_padding, exact_direct_gate_schedule
@@ -332,6 +333,67 @@ class CorrespondenceParserTests(unittest.TestCase):
                 self.assertEqual(full["pointwise_mul"][-4:], [
                     {"in0": address, "in1": 1, "out": address}
                     for address in range(11, 15)])
+
+    def test_source_rows_match_exported_columns_for_every_bounded_length(self) -> None:
+        for count in range(1, 17):
+            for pattern in ("add", "mul", "alternating"):
+                with self.subTest(count=count, pattern=pattern):
+                    statements = []
+                    for index in range(1, count + 1):
+                        previous = "x" if index == 1 else f"y{index - 1}"
+                        op = ("+" if pattern == "add" or
+                              (pattern == "alternating" and index % 2 == 0)
+                              else ".*")
+                        statements.append(f"let y{index} = x {op} {previous};")
+                    # Returning y1 leaves later operations dead; their
+                    # fixed cells still exist with zero multiplicity.
+                    output = "y1" if count % 2 == 0 else f"y{count}"
+                    source = ("circuit sample(public x: [m31; 4]) -> public "
+                              "[m31; 4] { " + " ".join(statements) + f" {output} }}")
+                    _, syntax = parse_source(source.encode())
+                    gates, n_vars, n_rows, _ = exact_direct_gate_schedule(syntax)
+                    uses = [0] * n_vars
+                    for group in gates.values():
+                        for gate in group:
+                            uses[gate["in0"]] += 1
+                            uses[gate["in1"]] += 1
+                    for address in [2, *range(3, 11)]:
+                        uses[address] += 1
+                    rows = []
+                    for flag, group in enumerate(gates.values()):
+                        for gate in group:
+                            rows.append([*(int(flag == index) for index in range(4)),
+                                         gate["in0"], gate["in1"], gate["out"],
+                                         uses[gate["out"]]])
+                    self.assertEqual(len(rows), n_rows)
+                    topology = {**gates, "columns": [
+                        {"id": name, "values": [row[index] for row in rows]}
+                        for index, name in enumerate(DIRECT_COLUMN_IDS)]}
+                    schedule = [
+                        {"qm31_start": 0},
+                        *({"qm31_start": 5 + node["id"]}
+                          for node in syntax["instructions"]),
+                    ]
+                    checked = check_source_fixed_rows(syntax, topology, schedule)
+                    self.assertEqual(len(checked), count)
+                    self.assertEqual([row["circuit_row"] for row in checked],
+                                     list(range(6, 6 + count)))
+                    self.assertEqual(len({row["trace_row"] for row in checked}), count)
+                    if count == 16 and pattern == "alternating":
+                        first = checked[0]["trace_row"]
+                        for column_index in (0, 3, 4, 5, 6, 7):
+                            changed = copy.deepcopy(topology)
+                            changed["columns"][column_index]["values"][first] ^= 1
+                            with self.assertRaisesRegex(ValueError, "source instruction 1"):
+                                check_source_fixed_rows(syntax, changed, schedule)
+                        changed_schedule = copy.deepcopy(schedule)
+                        changed_schedule[1]["qm31_start"] += 1
+                        with self.assertRaisesRegex(ValueError, "source instruction 1"):
+                            check_source_fixed_rows(syntax, topology, changed_schedule)
+                        changed_syntax = copy.deepcopy(syntax)
+                        changed_syntax["instructions"][0]["op"] = "add"
+                        with self.assertRaisesRegex(ValueError, "source instruction 1"):
+                            check_source_fixed_rows(changed_syntax, topology, schedule)
 
     def test_independent_qm31_constant_derivation(self) -> None:
         i = (0, 1, 0, 0)

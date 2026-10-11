@@ -60,7 +60,20 @@ then hashes each column as little-endian M31
 words and compares it with the component manifest. For a source operation
 `let square = x .* x`, the relevant preprocessed row has pointwise selector
 `[0,0,0,1]` and addresses `[x_wire,x_wire,square_wire]`; substituting an add
-selector or an operand changes the checked row plan. The remaining constant
+selector or an operand changes the checked row plan. Separately,
+`check_source_fixed_rows` starts from the
+source SSA and reads the **exported eight fixed columns** at the modeled row
+for every instruction. It requires circuit row `5 + id`, source-add AIR row
+`3 + earlier_adds`, or source-pointwise AIR row
+`total_add_rows + 28 + earlier_pointwise_products`. It compares all four
+selectors, three addresses, and the source-derived use count at that row.
+The fixed group has one subtraction and 27 ordinary multiplications, so the
+pointwise offset is the sum of the preceding three group lengths. This direct
+projection check corresponds to Lean's `expectedRows` and `expectedCells`
+constructors for any admitted 1–16 instruction program, while the existing
+full gate replay separately checks that the exported cells agree with the
+native gate list. The two checks are executable package admission, not a
+Lean proof of Zig emission or commitment binding. The remaining constant
 gates must derive their QM31 values from fixed
 `0`, `1`, and `u`, with `i²=-1` and `u²=2+i`; the pack basis must be the four
 unit vectors and each unpack inverse must multiply its basis vector to one.

@@ -344,6 +344,60 @@ def _require_gate_schedule(kind: str, actual: list[dict[str, int]],
             f"{kind} has {len(actual)} gates, expected {len(expected)}")
 
 
+def check_source_fixed_rows(syntax: dict[str, Any], topology: dict[str, Any],
+                            schedule: list[dict[str, Any]]) -> list[dict[str, int | str]]:
+    """Compare the bounded source schedule directly with exported AIR cells.
+
+    This is the executable counterpart of Lean's `expectedRows` and
+    `expectedCells`. It reads the *exported fixed columns*, rather than
+    reconstructing a row from the native gate list. The full topology replay
+    separately checks those columns against every native gate and manifest
+    digest. Neither check authenticates a PCS commitment by itself.
+    """
+    instructions = syntax["instructions"]
+    columns = topology["columns"]
+    if (len(columns) != len(DIRECT_COLUMN_IDS) or
+            [column.get("id") for column in columns] != list(DIRECT_COLUMN_IDS)):
+        raise ValueError("source fixed-row check requires eight ordered direct columns")
+    values = [column["values"] for column in columns]
+    n_rows = len(values[0])
+    if any(len(column) != n_rows for column in values):
+        raise ValueError("source fixed-row columns have different lengths")
+    if (len(topology["sub"]) != 1 or len(topology["mul"]) != 27 or
+            len(schedule) != len(instructions) + 1):
+        raise ValueError("source fixed-row layout differs from bounded direct profile")
+    add_rows = len(topology["add"])
+    source_uses = {node["id"]: 4 * int(syntax["output"] == node["id"])
+                   for node in instructions}
+    for node in instructions:
+        for operand in (node["lhs"], node["rhs"]):
+            if operand in source_uses:
+                source_uses[operand] += 1
+
+    prior_adds = prior_products = 0
+    checked: list[dict[str, int | str]] = []
+    for node, span in zip(instructions, schedule[1:], strict=True):
+        product = node["op"] == "mul"
+        trace_row = (add_rows + 28 + prior_products if product
+                     else 3 + prior_adds)
+        circuit_row = 5 + node["id"]
+        expected = [int(not product), 0, 0, int(product),
+                    22 + node["lhs"], 22 + node["rhs"],
+                    22 + node["id"], source_uses[node["id"]]]
+        if (trace_row >= n_rows or span["qm31_start"] != circuit_row or
+                [column[trace_row] for column in values] != expected):
+            raise ValueError(
+                f"source instruction {node['id']} differs from exported "
+                "direct AIR selector, address, multiplicity or row position")
+        checked.append({"id": node["id"], "op": node["op"],
+                        "circuit_row": circuit_row, "trace_row": trace_row})
+        prior_products += product
+        prior_adds += not product
+    if len({row["trace_row"] for row in checked}) != len(checked):
+        raise ValueError("source fixed-row trace positions overlap")
+    return checked
+
+
 def check_gate_topology(syntax: dict[str, Any], topology: dict[str, Any],
                         component: dict[str, Any], report: dict[str, Any],
                         relation_sha256: str) -> list[dict[str, Any]]:
@@ -682,6 +736,7 @@ def _checked_material(package: Path) -> tuple[dict[str, Any], dict[str, Any]]:
     schedule = gate_schedule(syntax, report)
     source_gates = check_gate_topology(syntax, topology, component, report,
                                        digest(relation_bytes))
+    check_source_fixed_rows(syntax, topology, schedule)
     if any(report.get(field) != key.get(field) for field in (
             "program_sha256", "canonical_ir_sha256", "profile", "chip",
             "preprocessed_root", "circuit_hash", "padded", "trace_log_size", "fri")):
