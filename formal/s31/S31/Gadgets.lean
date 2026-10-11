@@ -71,6 +71,7 @@ import S31.Gadgets.Air.SourceMixedFixedWeightBridge
 import S31.Gadgets.Air.SourceMixedAddressSchedule
 import S31.Gadgets.Air.SourceMixedChainSemantics
 import S31.Gadgets.Air.SourceMixedPublicClosure
+import S31.Gadgets.Air.SourceMixedFalseClaimBound
 import S31.Gadgets.Air.SourceMixedPackCorrespondence
 import S31.Gadgets.Air.SourceMixedProducerCheck
 import S31.Gadgets.Air.PrivateBridgeChallenge
@@ -184,6 +185,7 @@ import S31.Gadgets.Functional.RecordAbiV2
 import S31.Gadgets.Functional.RecordWordBoundaryV2
 import S31.Gadgets.Functional.RecordLayoutValidationV2
 import S31.Gadgets.Functional.RecordDescriptorValidationV2
+import S31.Gadgets.Functional.RecordDescriptorLexicalV2
 import S31.Gadgets.Functional.GeneratedRecordLayoutCorpusV2
 import S31.Gadgets.Functional.RecordStatementV2
 import S31.Gadgets.Functional.GeneratedRecordStatementCorpusV2

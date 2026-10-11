@@ -50,7 +50,8 @@ This closes descriptor-level *shape* premises for the abstract layout model.
 The module does not separately prove that the token encoding is injective;
 the formal nominal theorem states equality of its arity-tagged streams.
 The model has no claim that the production parser yields this exact tree.
-Native JSON syntax, identifier spelling, canonical descriptor bytes,
+The [lexical layer](RecordDescriptorLexicalV2.md) now checks native identifier
+spelling for the already parsed tree. Native JSON syntax, canonical descriptor bytes,
 nominal-code equality with native JSON serialization, ordered leaf paths and
 wire references, relation inputs and outputs, and proof authentication still
 require separate refinement arguments. The public-bit value check and

@@ -147,6 +147,8 @@ BINDINGS = [
     "src/frontends/s31/tests/acceptance/record_abi/lean_native_bridge_v2.py",
     "src/frontends/s31/tests/acceptance/record_abi/general_statement_refinement_v2.py",
     "src/frontends/s31/tests/acceptance/record_abi/native_proof_corpus_v2.py",
+    "src/frontends/s31/tests/acceptance/record_abi/native_descriptor_corpus.zig",
+    "src/frontends/s31/tests/acceptance/record_abi/whole_descriptor_shape_v2.py",
     "src/frontends/s31/benchmarks/pow_workers/phase_equivalence.py",
     "src/frontends/s31/tests/acceptance/compiler_correspondence/generated_native_subset.py",
     "src/frontends/s31/tests/python/generated/test_source_mutation_correspondence.py",

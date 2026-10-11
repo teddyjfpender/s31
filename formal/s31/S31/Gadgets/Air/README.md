@@ -711,6 +711,13 @@ replaces the abstract global producer-uniqueness premise by a successful
 scan of every logical active row output and baseline yield, ignoring mere
 repetition from lookup multiplicity. The source-to-Lean producer roster,
 exact lookup balance, and accepted-proof-to-row authentication remain open.
+[`SourceMixedFalseClaimBound.lean`](SourceMixedFalseClaimBound.md) composes
+that local public-output theorem with the numeric lookup bound. A false sum
+or product word excludes exact joint balance under the stated source, row,
+packing, and producer premises. If its fixed ideal reciprocal lists still
+close, the challenge pair belongs to the explicit bounded exception set.
+Native proof acceptance, committed-row authentication, and transcript
+sampling are still separate obligations.
 `TaggedPairChallenge.lean` supplies the ideal seven-coordinate challenge
 reduction for the **joint** Gate/chip event support. It proves that distinct
 seven-word tuples collide for at most six compression challenges, derives an
