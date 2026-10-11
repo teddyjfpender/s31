@@ -56,6 +56,10 @@ class StageDiagnosticTests(unittest.TestCase):
             parse_prover_stage(stage_line(total=20), MANIFEST, b"proof", b"abc")
         with self.assertRaisesRegex(ValueError, "exactly one"):
             parse_prover_stage(stage_line() * 2, MANIFEST, b"proof", b"abc")
+        duplicate = stage_line().replace(b'"proof_bytes": 5,',
+                                         b'"proof_bytes": 5, "proof_bytes": 5,')
+        with self.assertRaisesRegex(ValueError, "duplicate JSON field"):
+            parse_prover_stage(duplicate, MANIFEST, b"proof", b"abc")
 
     def test_external_verification_required_before_report(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -87,6 +91,12 @@ class StageDiagnosticTests(unittest.TestCase):
                 measure(prover, verifier, inspector, assignment, typed,
                         root / "rejected")
             self.assertFalse((root / "rejected/report.json").exists())
+            executable(verifier, "import pathlib,sys\n"
+                       "pathlib.Path(sys.argv[1]).write_bytes(b'changed')\n")
+            with self.assertRaisesRegex(ValueError, "changed during verification"):
+                measure(prover, verifier, inspector, assignment, typed,
+                        root / "mutated")
+            self.assertFalse((root / "mutated/report.json").exists())
 
 
 if __name__ == "__main__":

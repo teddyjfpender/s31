@@ -29,6 +29,15 @@ def digest(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+def unique_object(pairs: list[tuple[str, object]]) -> dict:
+    value = {}
+    for key, item in pairs:
+        if key in value:
+            raise ValueError(f"duplicate JSON field: {key}")
+        value[key] = item
+    return value
+
+
 def invoke(argv: list[str]) -> tuple[subprocess.CompletedProcess[bytes], int]:
     start = time.perf_counter_ns()
     result = subprocess.run(argv, capture_output=True, check=False)
@@ -45,7 +54,7 @@ def parse_prover_stage(stderr: bytes, manifest: dict, proof: bytes,
              if line.startswith(PREFIX)]
     if len(lines) != 1:
         raise ValueError("expected exactly one mixed prover stage line")
-    report = json.loads(lines[0])
+    report = json.loads(lines[0], object_pairs_hook=unique_object)
     if set(report) != {"schema", "source_sha256", "registry_manifest_sha256",
                        "circuit_identity_sha256", "proof_bytes", "statement_bytes",
                        "stages_ns", "external_native_verification_ns"}:
@@ -77,7 +86,7 @@ def measure(prover: Path, verifier: Path, inspector: Path, assignment: Path,
     supplied = typed_statement.read_bytes()
     assignment_bytes = assignment.read_bytes()
     inspector_result, _ = invoke([str(inspector)])
-    manifest = json.loads(inspector_result.stdout)
+    manifest = json.loads(inspector_result.stdout, object_pairs_hook=unique_object)
     if (manifest.get("schema") != "s31-mixed-component-inspection-general-v3" or
             any(type(manifest.get(field)) is not str or len(manifest[field]) != 64 or
                 any(character not in "0123456789abcdef" for character in manifest[field])
@@ -99,6 +108,10 @@ def measure(prover: Path, verifier: Path, inspector: Path, assignment: Path,
         raise ValueError("reported internal package time exceeds measured prover process wall")
     verifier_result, verifier_wall = invoke([str(verifier), str(proof_path),
                                             str(statement_path)])
+    if (proof_path.read_bytes() != proof or statement_path.read_bytes() != statement or
+            assignment.read_bytes() != assignment_bytes or
+            typed_statement.read_bytes() != supplied):
+        raise ValueError("mixed diagnostic input or artifact changed during verification")
     if any(digest(path.read_bytes()) != binaries[name] for name, path in
            (("prover", prover), ("verifier", verifier), ("inspector", inspector))):
         raise ValueError("a mixed executable changed during the diagnostic")
