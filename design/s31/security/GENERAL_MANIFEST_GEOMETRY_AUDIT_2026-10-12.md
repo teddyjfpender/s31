@@ -12,12 +12,18 @@ The independent acceptance checker verifies that each tree height agrees
 with its PCS configuration, that fixed/main/interaction column counts agree
 with the component roster, and that the local AIR dependency digest equals a
 fresh SHA-256 over the seven exact engine source files in their registered
-order. Four static mutations exercise these checks. It also requires a
-well-formed, nonzero mask-point digest. The complete mask-point bytes are not
-in the JSON report, so this checker cannot independently recompute that
-digest from the report alone. The source-pinned verifier still reconstructs
-the native handles and PCS schedule before decoding and verifying a proof.
+order. Four static mutations exercise these checks. A separate Python audit
+decodes the pinned Gate bytecode's ordered per-column offsets, applies the
+closed pair/many chip and bridge masks, derives the deterministic circle
+point and canonical step over M31, and hashes the exact little-endian point
+limbs in native tree/column order. It rejects a well-formed but incorrect
+`mask_points_sha256`. The source-pinned verifier still reconstructs the native
+handles and PCS schedule before decoding and verifying a proof.
 
-This closes a manifest visibility and local dependency audit gap. The JSON
-report remains a diagnostic artifact, not a verifier key or a proof of
-source-to-native compiler correspondence, AIR soundness, or PCS/FRI soundness.
+This closes a manifest visibility and digest-recomputation gap for the bounded
+mixed roster. The audit trusts the installed AIR bundle, the checked Gate
+bytecode decoder, and the stated circle generator and pair/many mask policies.
+It does not derive those policies from the native implementation or prove the
+Zig field arithmetic correct. The JSON report remains a diagnostic artifact,
+not a verifier key or a proof of source-to-native compiler correspondence,
+AIR soundness, or PCS/FRI soundness.

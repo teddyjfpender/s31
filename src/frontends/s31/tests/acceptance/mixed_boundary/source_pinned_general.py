@@ -14,6 +14,7 @@ import tempfile
 from pathlib import Path
 
 from registry_manifest_digest import digest as registry_manifest_digest
+from mask_points_digest import recompute as mask_points_digest
 
 S31 = Path(__file__).resolve().parents[3]
 MODULUS = 2_147_483_647
@@ -63,6 +64,12 @@ def check_native_geometry_audit(manifest: dict) -> None:
             set(mask_digest) - set("0123456789abcdef") or
             mask_digest == "0" * 64):
         raise AssertionError("mixed mask-point digest is missing or malformed")
+    try:
+        expected_mask_digest = mask_points_digest(manifest)
+    except (KeyError, ValueError) as exc:
+        raise AssertionError("mixed mask-point schedule differs") from exc
+    if mask_digest != expected_mask_digest:
+        raise AssertionError("mixed mask-point digest differs from AIR and constructor schedule")
     if manifest["local_air_dependency_sha256"] != local_air_dependency_digest():
         raise AssertionError("mixed local AIR dependency closure differs")
 
@@ -236,10 +243,14 @@ def check_source_call_mapping_mutations(source: dict, manifest: dict) -> int:
 def static_geometry_checks() -> int:
     """Exercise report checks without compiling or proving a native circuit."""
     fixture = {
+        "call_count": 1,
         "slots": [
-            {"main_columns": 12, "interaction_columns": 8, "trace_log_size": 9},
-            {"main_columns": 9, "interaction_columns": 8, "trace_log_size": 4},
-            {"main_columns": 8, "interaction_columns": 20, "trace_log_size": 4},
+            {"registry_key": "bundled_circuit", "source_kind": "bundled_circuit",
+             "main_columns": 12, "interaction_columns": 8, "trace_log_size": 9},
+            {"registry_key": "pair_chip", "source_kind": "pair_chip",
+             "main_columns": 9, "interaction_columns": 8, "trace_log_size": 4},
+            {"registry_key": "pair_bridge", "source_kind": "pair_bridge",
+             "main_columns": 8, "interaction_columns": 20, "trace_log_size": 4},
         ],
         "tree_columns": [8, 29, 36, 8],
         "tree_lifting_log_sizes": [10, 12, 12, 12],
@@ -247,14 +258,15 @@ def static_geometry_checks() -> int:
         "composition_split": 1,
         "composition_log_size": 9,
         "max_column_log_size": 9,
-        "mask_points_sha256": "a" * 64,
+        "mask_points_sha256": "",
         "local_air_dependency_sha256": local_air_dependency_digest(),
     }
+    fixture["mask_points_sha256"] = mask_points_digest(fixture)
     check_native_geometry_audit(fixture)
     cases = (
         ("tree-columns", lambda m: m["tree_columns"].__setitem__(2, 35)),
         ("tree-height", lambda m: m["tree_lifting_log_sizes"].__setitem__(2, 11)),
-        ("mask-digest", lambda m: m.__setitem__("mask_points_sha256", "0" * 64)),
+        ("mask-digest", lambda m: m.__setitem__("mask_points_sha256", "f" * 64)),
         ("air-dependency", lambda m: m.__setitem__("local_air_dependency_sha256", "0" * 64)),
     )
     for label, mutate in cases:
