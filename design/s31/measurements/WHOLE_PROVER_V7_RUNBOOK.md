@@ -1,7 +1,8 @@
 # V7r1 prospective whole-prover cost study
 
-Status: **V7r1 tooling prepared; new protocol and model not frozen; no V7r1
-native observations**. The first V7 protocol was anchored at
+Status: **V7r1 completed; the predeclared local accuracy gate failed**. The
+saved artifacts and native verifier controls passed independent replay.
+Automatic lowering remains disabled. The first V7 protocol was anchored at
 `5bb640ac69c74e5adae02e55735232ea8b7a0689`, then stopped after four
 training package builds and an interrupted fifth build. It produced no
 proofs, model, or validation artifacts. Its protocol and anchor remain in
@@ -12,6 +13,56 @@ the predeclared workloads and gates, and restarts measurements from zero.
 The V6 model failed the changed-stack [transfer diagnostic](WHOLE_PROVER_TRANSFER_V1.md).
 Do not use V6 wall predictions to choose current S31 lowerings. This runbook
 implements the [V7 design](WHOLE_PROVER_V7_PLAN.md) without changing V6 files.
+
+## Recorded run and outcome
+
+The V7r1 protocol was anchored at commit
+`16da6a3981ac8d9ff237c4555114d1cbb3f25f77` with SHA-256
+`94b1bd57a49c3fdbd7ef8931ba21b3452efdfd5573693796a57035aeb3f7a891`.
+Its full hash and anchor commit were externally recorded at
+2026-10-11 03:31:52 UTC before the first native build. The training-only model
+was anchored at commit `a807e5210f21611a31ed03f4a9b3e0ad04a77be2` with
+SHA-256 `461994df2b47d8c7d2a5358c7918f25cb6973f4110f433328a5d789e2bc65593`.
+Both identifiers were externally recorded at 2026-10-11 04:03:57 UTC before
+the first held-out build.
+
+The training and held-out corpora each contain 20 fresh packages and 2,000
+distinct trials, five programs per family. Their SHA-256 digests are
+`9a600ff137d844350ef8121fb6812dfbcc14555a9da5983755cd8b600f067856`
+and `7617f4dcbcc901620de286e0751e5f6d4702707ba802e3eb64c353ed6a5ac3a1`.
+The saved held-out evaluation has SHA-256
+`459e9c86fe67052d8713001ff2558f5e6986451cecd6d0c0c626c7e47d343660`.
+The committed [pinned audit](language/whole-prover-cost-v7r1-audit.json) has
+SHA-256 `9b871ec1618128c8d10f74d60fad46150d62ade58164aab7a2b88eb388e175a6`.
+
+The predeclared gate **failed**: chip-family prover RSS interval coverage was
+75.2% against the 80% minimum. Individual RSS interval coverage was 0% for
+`chip_8192` and 3% for `hash_13`, both below the 70% per-program minimum.
+All wall-time, proof-byte, and process-stage gates passed. The native publisher
+confirmed all 4,000 saved proofs and changed claims, and its independent
+second implementation reproduced the failed gate. A content-addressed copy
+was replayed at a different path with native verification: 28,466 files,
+4,000 proofs, and 8,000 original/changed verifier controls passed. The
+portable manifest SHA-256 is
+`f087ea2dba1175bfe973fd0d7f0f74169d69f1554b29a80c85014424c375dbed`;
+it was externally recorded before relocation. The raw evidence remains under
+`zig-out/s31-v7r1-evidence/` and is not part of this Git commit.
+Because the accuracy gate had already failed, the native publisher and
+relocated replay were run with `--native` and without `--require-pass`; both
+exited successfully after auditing artifacts and independently confirming
+`local_accuracy_gate_pass=false`. The release-gate commands below retain
+`--require-pass` and therefore exit nonzero on this frozen result.
+
+This result is specific to source base commit
+`264e0f77a6806f9276327caea5108a1b95a07ad0`, compiler fingerprint
+`d43ede036820a67281925d89d64b1bf8200da636f83d9a2a4b0a6390fc505edf`,
+measurement-tool digest
+`8691897011496b0228e300ef396fb98db75700372f75f8bd4c6b81049624df1d`,
+engine commit `2a0960dd8b57c6bff5c10ea241bd559e15cd95b9`, and the recorded
+Apple M5 Max host (macOS 26.7.1, Python 3.14.6, Zig 0.15.2). The small RSS
+point errors alongside under-covering intervals are a diagnostic for a new,
+separately frozen study. They do not license changing this model or rescoring
+these held-out trials.
 
 ## What V7r1 predicts
 
@@ -169,14 +220,15 @@ checks that the changed claim is a canonical ABI value produced by the
 declared one-word mutation. The
 manifest lists all files under `train/` and `validation/`, including packages
 and proofs, and rejects missing files, extra files, path traversal, and
-symlinks. These portable tools enter the V7r1 tool digest when its protocol is
-eventually frozen; they do not change the frozen V6 inventory. The separate
+symlinks. These portable tools are included in the frozen V7r1 tool digest;
+they do not change the frozen V6 inventory. The separate
 `independent_v7_gate.py` recomputes held-out predictions and every gate from
 the serialized model and raw trials without importing the fitting predictor.
 The publisher and portable replay exit successfully by default when the
 evidence is internally consistent, even if `local_accuracy_gate_pass` is
-`false`. Use `--require-pass` in CI or inspect the audit boolean directly when
-cost accuracy is a release gate. The fitted features (`raw`, `padded`,
+`false`. On this run, `--require-pass` exits nonzero because the frozen
+accuracy gate failed; use `--native` without it to audit the preserved proof
+artifacts. The fitted features (`raw`, `padded`,
 `preprocessed_cells`, profile, and visible FRI settings) must also match each
 package's sealed cost report.
 
