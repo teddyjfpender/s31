@@ -1,14 +1,13 @@
 # Public record ABI v2: implementation contract
 
 Status: M31-leaf v2 record outputs and record-valued public/private inputs
-are implemented for the direct-gate profile. A source-bounded extension for
-the public one-call direct-chip profile is implemented in code and has a
-dedicated native acceptance gate awaiting execution. The native verifier
-checks the typed statement, embedded relation descriptor, sealed key digest,
-and source-derived component roster. Private record chip endpoints, other
-proof profiles, and non-M31 boundary leaves remain disabled. The direct-gate
-input slice passed its local native proof and mutation acceptance; CI remains
-the release gate.
+are implemented for the direct-gate profile. Source-bounded extensions for
+the public one-call direct-chip profile and the experimental one-to-eight-call
+mixed profile are implemented and passed local native acceptance. The native verifier
+checks the typed statement, embedded relation descriptor, sealed key digest
+or embedded source identity, and source-derived component roster. Private
+record chip endpoints, other proof profiles, and non-M31 boundary leaves
+remain disabled. CI and broader soundness review remain release gates.
 
 ## Source-bounded public one-call chip
 
@@ -36,12 +35,14 @@ the one-call public profile; no extra arithmetic rows are introduced by
 record grouping.
 
 The [native acceptance script](../../../src/frontends/s31/tests/acceptance/acceptance_record_chip_v2.py)
-must pass before this slice is called release-ready. It compares flat and
+passed locally on the pinned engine revision. It compares flat and
 record AIR geometry, verifies both proofs, rejects changed paths, alias
 claims, public values, noncanonical words, rehashed sidecars, independently
 resealed bad ABI/manifest keys, a visibility-swapped embedded descriptor,
-and cross-version proof replay. This script has not yet run while the V7r1
-timed cost study owns the native build slot.
+and cross-version proof replay. The mixed extension has a separate
+[N=1 and N=8 native gate](../../../src/frontends/s31/tests/acceptance/mixed_boundary/record_general_v2.py)
+for changed public words, paths, duplicate keys, and statement/assignment
+mismatch. Its final validation-order edit still needs an integrated rerun.
 
 ## Minimal first release
 

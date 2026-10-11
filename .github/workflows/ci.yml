@@ -353,6 +353,11 @@ jobs:
           mkdir -p zig-out/s31/acceptance
           python3 src/frontends/s31/tests/acceptance/mixed_boundary/source_pinned_general.py |
             tee zig-out/s31/acceptance/mixed-general-source-pinned.json
+      - name: Public record ABI v2 native proof controls
+        run: |
+          set -euo pipefail
+          python3 src/frontends/s31/tests/acceptance/mixed_boundary/record_general_v2.py |
+            tee zig-out/s31/acceptance/mixed-general-record-v2.json
       - name: Preserve general mixed boundary evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

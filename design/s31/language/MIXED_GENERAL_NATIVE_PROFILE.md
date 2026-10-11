@@ -1,7 +1,7 @@
 # Bounded general mixed native proof profile
 
-Status: **draft isolated profile; native compilation, proof acceptance and CI
-must pass before admission**. The fixed N=3 and N=4 profiles retain their
+Status: **native local acceptance passed for N=1..8; CI and full soundness
+review remain open**. The fixed N=3 and N=4 profiles retain their
 existing transcript tags and proof bytes. This profile extends their source
 derived pair/many composition to one through eight calls with its own
 transcript tag `0x5333314d49580301`, `V3` identity domains, and `S31MIX07`
@@ -44,16 +44,19 @@ unblinded and this profile makes no witness confidentiality claim.
 
 ## Release gates
 
-The native engine and source-pinned wrapper tests prove and verify all eight
-call counts and mutate public values, claims, unused sums, roles and header
-identity. The black-box CLI suite additionally checks every call count,
-independently recomputes the generated manifest digest, mutates every
-serialized claim, rejects changed sources and malformed public statements,
-and checks incorrect witness or output assignments. The dedicated CI job
-must run those tests on the pinned engine revision. An independent static
-review found no concrete source-authentication flaw in the draft, but it did
-not compile or execute native proofs. The 1–8 call lookup compression bound
-is conditional on source output shape and the stated AIR, transcript and
-public-output admission assumptions; it is not a global STARK soundness
-claim. Full compiler correspondence and cross-profile security analysis
-remain separate obligations.
+On the pinned engine revision `7d544c6839497ca19b6c7ef9b982e464f10cfeed`,
+three selected engine tests passed, including the general N=1..8 native
+proof and mutation cases. The source-pinned wrapper tests passed for all
+eight call counts, and the black-box CLI suite passed each call count with
+source binding, malformed-statement, wrong-assignment and changed-claim
+controls. That suite independently recomputed the generated manifest digest
+from its JSON fields. The legacy N=3 and N=4 native suites also passed.
+
+These are **local** results. The dedicated CI job must still pass on the
+pinned revision before release admission. The independent static review
+found no concrete source-authentication flaw in its reviewed draft; its
+original scope did not include the later native runs. The 1–8 call lookup
+compression bound is conditional on source output shape and the stated AIR,
+transcript and public-output admission assumptions; it is not a global
+STARK soundness claim. Full compiler correspondence and cross-profile
+security analysis remain separate obligations.
