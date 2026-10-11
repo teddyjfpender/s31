@@ -1,0 +1,121 @@
+{
+  "calibration_sha256": "85ed27e398b7d39b26bc3273b9e3d9470f2e8a15d445fae7984768689aadc8b9",
+  "counts": [
+    96,
+    256,
+    448
+  ],
+  "diagnostic_limits": {
+    "first_first_verified_wall_seconds_trial_coverage_min": 0.6666666666666666,
+    "later_after_reported_pow_seconds_program_median_error_max": 0.15,
+    "later_after_reported_pow_seconds_trial_coverage_min": 0.8,
+    "later_after_reported_pow_seconds_upper_to_center_max": 1.5,
+    "later_first_verified_wall_seconds_trial_coverage_min": 0.75,
+    "later_first_verified_wall_seconds_upper_to_center_max": 8.0,
+    "later_proof_bytes_program_median_error_max": 0.1,
+    "later_proof_bytes_trial_coverage_min": 0.8,
+    "later_prover_peak_rss_bytes_program_median_error_max": 0.1,
+    "later_prover_peak_rss_bytes_trial_coverage_min": 0.8
+  },
+  "family": "lagged-alternating-two-prior-wires",
+  "historical_stage_ledger_sha256": "1f25924ae8d40e8e758c291eb0f6bd1542600dedd1d495707f5afb67efd3af0c",
+  "identity": {
+    "compiler_sha256": "893ce1f78d19783eaafac3094dbbe847bdbb61de9a4b2055d3c8ff50b2e4dd1b",
+    "engine_commit": "7d544c6839497ca19b6c7ef9b982e464f10cfeed",
+    "history_extractor_sha256": "4a126e9181b3b913f97c17ac21c03907cbc5b675a0513e409a3c1894487723f1",
+    "host": {
+      "machine": "arm64",
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "python": "3.14.6",
+      "zig": "0.15.2"
+    },
+    "independent_oracle_provenance": {
+      "python_version": "3.14.6",
+      "source_sha256": {
+        "deps/stwo-zig/src/frontends/riscv/air/memory_commitment/poseidon2_constants.zig": "d02b32f2f5302d21a440fbace2112d3232603e759cd0b24691c32e81d2bd4cfd",
+        "src/frontends/s31/python/oracle.py": "e66dde1d05d16db3e5acf026d53ddf94c1c4fdf93be4cbf24ef7ded6b08d0176",
+        "src/frontends/s31/python/poseidon2_oracle.py": "4be69f85c8bba203b17c51612a025eb75f4061e5328b207ead8ad83e0a2a3a37"
+      }
+    },
+    "independent_scorer_sha256": "f21734d1c03c7bd0a1a668a7b5315b9f2f2c7baee7c33e9d2bafca91ee796ba6",
+    "model_sha256": "916af5033d0691ab334ab96a2d4e6910a7f48160d7564574123c5592560e5a82",
+    "study_sha256": "3668ce4aa2022d2769de72ac710803891ac465065b35d579d81be5c54a1a60e8"
+  },
+  "lowering": "direct-gate",
+  "phase": "sealed-before-new-family-native-build",
+  "prediction_rule": "Frozen per-gate stage medians from alternating+add sources; first-use process residual separately modeled; whole-target first/later ratio bands calibrated only from all-multiply sources. No held-out refit.",
+  "samples_per_program": 12,
+  "schema": "s31-stage-resolved-prospective-v1",
+  "scope": "One host/compiler/engine direct-gate heldout topology; >16 gates outside bounded release correspondence certificate; no automatic lowering decision.",
+  "sources": {
+    "256": {
+      "assignment_sha256": [
+        "acbff0ef68be71cd714aead5d856141e73db239c944b85240338d8728c182629",
+        "1b378fd3ca0acc3e34fa6daf3bd4dd4c1cac3f4328289d347f05699130128622",
+        "7847e14afc9a5f9710df41b65737b78e6faf7249d27ab90ec578c785bdf43deb",
+        "86f5c2f21ddcfe0ce23b458a0bc0b12ba68fbceae9197a90876356871eb82cdb",
+        "ccc4b60bd61d922b868b3071f1dca5541217c4bce1db7652748b7921e648078c",
+        "191c10ddfe398636201419fc4eac560129c55743790c52695cd842202d5c4085",
+        "f6d327a71dee3cf2d6825e35c0cd3305bb9926a5633fc6af7a01df0c401bf735",
+        "47549d39ec562625719ce98fdcf0e4e5740cb2542ac5b18a1d4c57ac29a1d311",
+        "537f8b2035f6a217bd6fc7934d24fa81774c60e0a284c3abeb3b96b5f87c694d",
+        "f3f54c319f105ee7677f635b69cd1f139edf67d82af074b702eef25e562d7bdd",
+        "6af7a693c45ea791a900ed25c95d1846ba0090ff1a143acb6331c9c991949413",
+        "d6a4073ce42568362ad69e756719aff38e00d841c65be4538e66aebe81f30661"
+      ],
+      "expected_padded_qm31_rows": 1024,
+      "source_sha256": "d6401b17676c1ef4900f21b691de1c743a9da35caddc57962cec6d45dddc7fc4"
+    },
+    "448": {
+      "assignment_sha256": [
+        "5f974909817b3cecacbe33319412f16be46158bcfd454d09ad8408f4280c0b62",
+        "774f6cd70afbbc77e5b0ffa77bbd2cc77fb89ae71bcaf70435c0dce8800c4b9e",
+        "aeb5209c4f4839024f287da813d98564484da4111de2a727ab310d620649d13f",
+        "e9cc2ce310aa70fe9cdac2a99afdc7491cee16ad096d72a89a4ef676e3b48891",
+        "c0d4a160c287fc686cf256cce001f65bac4e2a1d29ed775584c1c284a9ef3d42",
+        "68b1b6f02afadc9675961a841a565b9a8921e42010f2a9fba2a1b334d3b87c15",
+        "c225df4cc5c3b0856a13093842f5814d17ead87fe83a8946575ce6fb6c7ad007",
+        "3d51096cb53036eaec745c501c86a9e844e96e22c19eea2eac1485ce64cf4585",
+        "9802f981bad2ea31204591eb0306b3a5973eadedb945346aa967a556f603f409",
+        "aa643c1faa802a72c06c15c99fde4035a8496494045b62d46a97ad67eb046f49",
+        "dbd92de24aac68a8427bfa45b9f3fdc1c16b64805f2adb5c85f1c348903b171d",
+        "0d22bca1a614759f432313d7388eb08495ffb37f74b1e138c07781557af8f9ca"
+      ],
+      "expected_padded_qm31_rows": 1024,
+      "source_sha256": "c1f70652a6a703b75cbcf48aec26b029c29a140658e06c16b644c391ce7ec1ba"
+    },
+    "96": {
+      "assignment_sha256": [
+        "7ac7dd62909c2eb94071dcf93875eaf86233612794d55b250b4464a1a7747874",
+        "c97f58fac5f83e4b360f91b74de54a624d458f9b93aa10bfdfec30ce48be99ab",
+        "48d6e770a76fb5fb202f8248e78b4682674b6267523085578dcffdc40c36f0ae",
+        "b07fd5d5e4e035c8135ec20119a169883664856cad8712598c59e4b24ec1f46e",
+        "63f28692eb84697f2d94cfa70504904f7ff5f2db93babcb716f7c56b7e993873",
+        "7951722e784da686c4aaa407e44ae057206803366af79e2811c43124b7751895",
+        "bb6a4b3ba10aab2bf752d0823f145a7248418b8ed42d6c9bceab810f9f5485ef",
+        "3f10a29d1e64633c70ffaf9f2928eb1f42f9e9f0c71320279ce4cb73ab0471a2",
+        "95b4a9e1edfbcd989663187202935f659e633a9bf9c6ed8490ec90ac5cd640e0",
+        "e33031d9ef02aa78b8703a994f17152d99e6e1a153892704b61dc58a0d786900",
+        "4e8785b5c5ed8ca0d48b73d80a061b54305a243b0b6dd3dac36002512e642319",
+        "05afad48089ef14942a9b538ccb352e13ec841d1b921f34664308181b9f31c9e"
+      ],
+      "expected_padded_qm31_rows": 512,
+      "source_sha256": "f2ec6ebfc658dbb62bcb97ca1b66e0d32025b3c4dd7f4d5019e596f914307bbb"
+    }
+  },
+  "stage_names": [
+    "witness",
+    "setup",
+    "native_nonpow_prove",
+    "native_pow",
+    "runtime_other",
+    "prover_process_residual",
+    "external_verifier"
+  ],
+  "targets": [
+    "first_verified_wall_seconds",
+    "after_reported_pow_seconds",
+    "proof_bytes",
+    "prover_peak_rss_bytes"
+  ]
+}
