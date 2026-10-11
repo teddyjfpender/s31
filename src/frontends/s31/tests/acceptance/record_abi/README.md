@@ -124,6 +124,52 @@ mapping for every source program, or that native proof acceptance implies the
 Lean descriptor and claim premises. The native proof corpus below checks
 representative verified proofs separately.
 
+[`text_lowering_correspondence_v2.py`](text_lowering_correspondence_v2.py)
+starts one step earlier, at actual `.s31` text. Its handwritten baseline is:
+
+```s31
+struct Inner { a: [m31; 1], b: [m31; 1] }
+struct Request { inner: Inner, flag: bit }
+struct Secret { delta: [m31; 1] }
+struct Result { first: [m31; 1], second: [m31; 1] }
+circuit map(public req: Request, private secret: Secret) -> public Result {
+    let x = req.inner.a + secret.delta;
+    Result { first: x, second: req.inner.b }
+}
+```
+
+The test compiles **12 text variants** and compares each normalized relation
+with handwritten ordered path, kind, width, visibility, and relation-wire
+expectations. The variants rename or reorder fields, add tuple nesting, widen
+an M31 leaf to two words, change the output alias, reorder or nest result
+fields, expose the formerly private root, rename either root, and change a
+`bit` to an M31 leaf. Each compiled descriptor then reaches the native digest
+and eight-word statement projection. Six corruptions of *each* normalized
+descriptor—leaf order, width, visibility, path, result wire, and result kind—
+must fail specifically at `InvalidRecordAbi`: **12 accepted / 72 rejected**.
+The text frontend must also reject a private record containing the `bit` leaf.
+
+With one fixed value seed, the baseline projects to
+`[494, 507, 1, 533, 507, 0, 0, 0]`. Reordering the result fields projects to
+`[494, 507, 1, 507, 533, 0, 0, 0]`, because output slots follow declaration
+order. Making `secret` public adds its input before the outputs:
+`[494, 507, 1, 533, 546, 507, 0, 0]`. Widening the first input and first
+result leaves to two words produces seven occupied slots:
+`[494, 495, 507, 1, 533, 534, 507, 0]`. Source text SHA-256 is
+`c43501bb95e8892d23aa17a428fd4b8e8744b9608e59cc31388f9f966a530218`;
+the native input corpus SHA-256 is
+`b43e2f3003d77fbfe90c220d0de63270952e43e4f276e25ab9da072d551bc04e`.
+
+```sh
+python3 -B src/frontends/s31/tests/acceptance/record_abi/text_lowering_correspondence_v2.py
+python3 -B src/frontends/s31/tests/acceptance/record_abi/text_lowering_correspondence_v2.py --native
+```
+
+This is a finite text compiler/native parser differential. The statement
+values are ABI fixtures; the audit does not prove that those values satisfy
+each circuit, nor does it produce or verify STARK proofs. General source
+lowering correspondence and authenticated proof-to-Lean premises remain open.
+
 [`nested_alias_v2.py`](nested_alias_v2.py) covers a versioned public record
 whose input contains a tuple and a nested record, whose result contains a
 tuple and nested records, and whose private input is another record. The
