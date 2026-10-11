@@ -126,6 +126,7 @@ BINDINGS = [
     "deps/stwo-zig/src/core/air/components.zig",
     "deps/stwo-zig/src/core/proof.zig",
     "deps/stwo-zig/src/core/circle.zig",
+    "deps/stwo-zig/src/core/poly/circle/canonic.zig",
     "deps/stwo-zig/src/core/verifier_types.zig",
     "deps/stwo-zig/src/core/fields/qm31.zig",
     "deps/stwo-zig/src/core/channel/lookup_transcript.zig",

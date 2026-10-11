@@ -284,9 +284,14 @@ def main() -> None:
         if render_bytecode_pcs_opening_link(honest) != pcs_opening_golden.read_text():
             raise AssertionError("Gate OODS-to-PCS source link differs from checked Lean export")
         core_dir = REPO / "deps/stwo-zig/src/core"
-        pcs_sources = [(core_dir / path).read_text() for path in (
-            "verifier.zig", "pcs/verifier.zig",
-            "pcs/quotients/fri_answers.zig", "pcs/quotients/samples.zig")]
+        pcs_sources = [path.read_text() for path in (
+            core_dir / "verifier.zig", core_dir / "pcs/verifier.zig",
+            core_dir / "pcs/quotients/fri_answers.zig",
+            core_dir / "pcs/quotients/samples.zig",
+            REPO / "deps/stwo-zig/src/frontends/cairo/witness/resident_verifier.zig",
+            REPO / "deps/stwo-zig/src/frontends/cairo/witness/resident_geometry.zig",
+            core_dir / "circle.zig", core_dir / "poly/circle/canonic.zig",
+            core_dir / "air/components.zig")]
         for index, old, new in (
             (0, "&proof.commitment_scheme_proof.sampled_values,",
                 "&other_proof.commitment_scheme_proof.sampled_values,"),
@@ -295,6 +300,15 @@ def main() -> None:
             (1, "proof.sampled_values,", "alternate.samples,"),
             (2, "buildColumnSampleBatchesFromParallelInputs(",
                 "buildColumnSampleBatchesFromOtherInputs("),
+            (4, "canonic.CanonicCoset.new(max_log_degree_bound).step()",
+                "canonic.CanonicCoset.new(component.trace_log_size).step()"),
+            (5, "sample_point.* = point.add(step.mulSigned(offset));",
+                "sample_point.* = point;"),
+            (6, "return self.conjugate().mul(@intCast(-off));",
+                "return self.mul(@intCast(-off));"),
+            (7, "return self.coset_value.step;",
+                "return self.coset_value.initial;"),
+            (8, "col.*[0] = point;", "col.*[0] = Point.zero();"),
         ):
             altered = pcs_sources.copy()
             if old not in altered[index]:

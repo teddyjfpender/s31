@@ -6,6 +6,11 @@
 -- PCS verifier SHA-256: a7b4e1977dc29feb9341eacceda8e09bd77a6a11dcdb7d0e4c1eb18445570581
 -- FRI answers SHA-256: 5280b74c1762860fad733066a40d96dada813908532e3b8854e0a3f02f182181
 -- PCS samples SHA-256: 18848c2e180236b0d6807a4d2863f127a8830366ac1df038f5042359e9401e2e
+-- Resident Gate verifier SHA-256: 675eda24a90e6c5b456daf5188a596e596437375119e35c641c10c11beacece2
+-- Resident Gate geometry SHA-256: 2e9c87238f412f2da892937cd4576dbf45266842d5c13aedd17451fdb77e4c35
+-- Circle group SHA-256: 71176ae60dc3bb2b799d0463c50b27f65ed908fd05e4405cdcda44f2e3aac5cf
+-- Canonical coset SHA-256: 291ba8b2cc71a62098ca3b8306679e36b1d0e5756972d3f8306ac69831dd251c
+-- Component masks SHA-256: eb8b2103a3146b998a193a31b061aaf7d3dac47ba934c9b4c53278401326dc26
 -- This theorem is conditional on PCS opening authentication; it does not prove it.
 import S31.Gadgets.Air.DirectGatePcsOpeningLink
 
@@ -23,10 +28,15 @@ open S31.Gadgets.Air.GeneratedDirectGateTranscriptParams
 /-- The native verifier's shared proof-sample dataflow permits this
 reduction only under an authenticated PCS-opening assumption. -/
 theorem selected_gate_accepted_of_authenticated (samples : Samples)
-    (compositionTree : List (List QM)) (openings : PolynomialOpenings)
-    (auth : PcsOpeningAssumption samples compositionTree openings)
+    (compositionTree : List (List QM)) (roots : TreeRoots)
+    (polys : PolynomialInventory)
+    (commitmentBinds : TreeRoots → PolynomialInventory → Prop)
+    (maxLogDegreeBound : Nat)
     (seed z alpha claimed coefficient zeroifier : QM)
     (compositionLogSize : Nat) (hsize : 2 ≤ compositionLogSize)
+    (hbound : 1 ≤ maxLogDegreeBound ∧ maxLogDegreeBound ≤ 31)
+    (auth : PcsOpeningAssumption samples compositionTree roots polys
+      commitmentBinds seed maxLogDegreeBound)
     (seedAccepted : checkedFromSeed seed = some (fromSeed seed))
     (hzero : zeroifier ≠ 0)
     (accepted : extractSplitOne
@@ -34,12 +44,13 @@ theorem selected_gate_accepted_of_authenticated (samples : Samples)
       compositionTree = some (quotientFold coefficient zeroifier⁻¹
         (transcriptRoots (cellsOfSamples samples) z alpha claimed))) :
     extractSplitOne (factor seed compositionLogSize)
-      (expectedCompositionTree openings) =
+      (expectedCompositionTree polys seed) =
       some (S31.Gadgets.Air.CompositionFold.fold coefficient
-        (pureRoots (expectedCells openings) alpha z (claimed / 512)) /
+        (pureRoots (expectedCells polys seed maxLogDegreeBound)
+          alpha z (claimed / 512)) /
         zeroifier) := by
-  exact accepted_of_authenticated_openings samples compositionTree openings
-    auth seed z alpha claimed coefficient zeroifier compositionLogSize
-    hsize seedAccepted hzero accepted
+  exact accepted_of_authenticated_openings samples compositionTree roots
+    polys commitmentBinds maxLogDegreeBound seed z alpha claimed coefficient
+    zeroifier compositionLogSize hsize hbound auth seedAccepted hzero accepted
 
 end S31.Gadgets.Air.GeneratedDirectGatePcsOpeningLink

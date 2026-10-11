@@ -870,7 +870,10 @@ def render_circle_factor(package: Path) -> str:
 
 
 def check_pcs_opening_source_contract(core: str, pcs: str,
-                                      fri_answers: str, samples: str) -> None:
+                                      fri_answers: str, samples: str,
+                                      resident: str, geometry: str,
+                                      circle: str, canonic: str,
+                                      components: str) -> None:
     """Check the native dataflow that passes one proof's OODS values to PCS.
 
     This is a reviewed source contract, not a cryptographic or Zig refinement
@@ -924,6 +927,36 @@ def check_pcs_opening_source_contract(core: str, pcs: str,
             "for (points_per_col, values_per_col) |point, value|" in samples and
             "if (points_per_col.len != values_per_col.len) return error.ShapeMismatch;" in samples,
             "PCS point/value column pairing changed")
+    require("const oods_point = try pointFromOodsSeed(oods_seed);" in verifier and
+            "var sample_points = try components.maskPoints(\n        allocator,\n        oods_point,\n        max_log_degree_bound," in verifier,
+            "OODS seed or selected maximum bound mask input changed")
+    mask = resident.split("    fn maskPoints(", 1)[-1].split(
+        "    fn preprocessedColumnIndices(", 1)[0]
+    require("canonic.CanonicCoset.new(max_log_degree_bound).step()" in mask and
+            "QM31.fromBase(trace_step_m31.x)" in mask and
+            "QM31.fromBase(trace_step_m31.y)" in mask and
+            "pointsFromOffsets(allocator, base_offsets, point, trace_step)" in mask and
+            "pointsFromOffsets(allocator, interaction_offsets, point, trace_step)" in mask,
+            "resident Gate canonical trace step or mask points changed")
+    require("sample_point.* = point.add(step.mulSigned(offset));" in geometry and
+            "pub fn mulSigned(self: Self, off: isize) Self" in circle and
+            "return self.conjugate().mul(@intCast(-off));" in circle and
+            "pub inline fn conjugate(self: Self) Self" in circle and
+            "return .{ .x = self.x, .y = self.y.neg() };" in circle and
+            "const x = lhs.x.mul(rhs.x).sub(lhs.y.mul(rhs.y));" in circle and
+            "const y = lhs.x.mul(rhs.y).add(lhs.y.mul(rhs.x));" in circle,
+            "native circle offset/group law changed")
+    require("return .{ .coset_value = Coset.odds(log_size) };" in canonic and
+            "return self.coset_value.step;" in canonic and
+            "CirclePointIndex.subgroupGen(log_size)" in circle and
+            "M31_CIRCLE_LOG_ORDER - log_size" in circle and
+            ".x = M31.fromCanonical(2)" in circle and
+            ".y = M31.fromCanonical(1_268_011_823)" in circle,
+            "canonical circle step derivation changed")
+    require("col.*[0] = point;" in components and
+            "new_preprocessed[idx] = replacement;" in components and
+            "col.*[0] = oods_point;" in core,
+            "fixed or composition OODS mask point changed")
 
 
 def render_pcs_opening_link(package: Path) -> str:
@@ -939,7 +972,11 @@ def render_pcs_opening_link(package: Path) -> str:
     engine = ROOT / "deps/stwo-zig/src/core"
     paths = [engine / "verifier.zig", engine / "pcs/verifier.zig",
              engine / "pcs/quotients/fri_answers.zig",
-             engine / "pcs/quotients/samples.zig"]
+             engine / "pcs/quotients/samples.zig",
+             ROOT / "deps/stwo-zig/src/frontends/cairo/witness/resident_verifier.zig",
+             ROOT / "deps/stwo-zig/src/frontends/cairo/witness/resident_geometry.zig",
+             engine / "circle.zig", engine / "poly/circle/canonic.zig",
+             engine / "air/components.zig"]
     sources = [path.read_text() for path in paths]
     check_pcs_opening_source_contract(*sources)
     lines = [
@@ -950,7 +987,10 @@ def render_pcs_opening_link(package: Path) -> str:
     ]
     lines += [f"-- {label} SHA-256: {hashlib.sha256(source.encode()).hexdigest()}"
               for label, source in zip(("Core verifier", "PCS verifier", "FRI answers",
-                                        "PCS samples"), sources, strict=True)]
+                                        "PCS samples", "Resident Gate verifier",
+                                        "Resident Gate geometry", "Circle group",
+                                        "Canonical coset", "Component masks"),
+                                       sources, strict=True)]
     lines += [
         "-- This theorem is conditional on PCS opening authentication; it does not prove it.",
         "import S31.Gadgets.Air.DirectGatePcsOpeningLink", "",
@@ -966,10 +1006,15 @@ def render_pcs_opening_link(package: Path) -> str:
         "/-- The native verifier's shared proof-sample dataflow permits this",
         "reduction only under an authenticated PCS-opening assumption. -/",
         "theorem selected_gate_accepted_of_authenticated (samples : Samples)",
-        "    (compositionTree : List (List QM)) (openings : PolynomialOpenings)",
-        "    (auth : PcsOpeningAssumption samples compositionTree openings)",
+        "    (compositionTree : List (List QM)) (roots : TreeRoots)",
+        "    (polys : PolynomialInventory)",
+        "    (commitmentBinds : TreeRoots → PolynomialInventory → Prop)",
+        "    (maxLogDegreeBound : Nat)",
         "    (seed z alpha claimed coefficient zeroifier : QM)",
         "    (compositionLogSize : Nat) (hsize : 2 ≤ compositionLogSize)",
+        "    (hbound : 1 ≤ maxLogDegreeBound ∧ maxLogDegreeBound ≤ 31)",
+        "    (auth : PcsOpeningAssumption samples compositionTree roots polys",
+        "      commitmentBinds seed maxLogDegreeBound)",
         "    (seedAccepted : checkedFromSeed seed = some (fromSeed seed))",
         "    (hzero : zeroifier ≠ 0)",
         "    (accepted : extractSplitOne",
@@ -977,13 +1022,14 @@ def render_pcs_opening_link(package: Path) -> str:
         "      compositionTree = some (quotientFold coefficient zeroifier⁻¹",
         "        (transcriptRoots (cellsOfSamples samples) z alpha claimed))) :",
         "    extractSplitOne (factor seed compositionLogSize)",
-        "      (expectedCompositionTree openings) =",
+        "      (expectedCompositionTree polys seed) =",
         "      some (S31.Gadgets.Air.CompositionFold.fold coefficient",
-        "        (pureRoots (expectedCells openings) alpha z (claimed / 512)) /",
+        "        (pureRoots (expectedCells polys seed maxLogDegreeBound)",
+        "          alpha z (claimed / 512)) /",
         "        zeroifier) := by",
-        "  exact accepted_of_authenticated_openings samples compositionTree openings",
-        "    auth seed z alpha claimed coefficient zeroifier compositionLogSize",
-        "    hsize seedAccepted hzero accepted", "",
+        "  exact accepted_of_authenticated_openings samples compositionTree roots",
+        "    polys commitmentBinds maxLogDegreeBound seed z alpha claimed coefficient",
+        "    zeroifier compositionLogSize hsize hbound auth seedAccepted hzero accepted", "",
         "end S31.Gadgets.Air.GeneratedDirectGatePcsOpeningLink", "",
     ]
     return "\n".join(lines)

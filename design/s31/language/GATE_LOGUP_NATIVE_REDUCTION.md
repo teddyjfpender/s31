@@ -577,21 +577,39 @@ FRI. In this selected Gate proof, the 40 sampled QM31 values are eight fixed,
 interaction columns each carry `[previous, current]` in that order.
 
 [`DirectGatePcsOpeningLink.lean`](../../../formal/s31/S31/Gadgets/Air/DirectGatePcsOpeningLink.lean)
-defines the precise assumption that those 40 values evaluate the committed
-column polynomials at their selected mask points. It proves that the sampled
-Gate cells and split-one composition tree reduce to the corresponding pure
-polynomial-opening equation, including the fixed-column permutation and
-previous/current interaction slots. The
+models each column as a finite bivariate polynomial restricted to the circle.
+Its evaluation function substitutes an explicit circle point into the finite
+sum of monomials. Four roots and four polynomial families are separate inputs.
+The opening premise says those *exact roots* bind those polynomial families
+and that each of the 40 supplied values equals the matching evaluation. This
+is an assumed relation: Lean does not derive it from a native verifier flag.
+
+The OODS point is calculated from the accepted transcript seed. Fixed, main,
+current interaction, and composition slots use that point. The first slot of
+each of the last four interaction columns uses `oods + (-step)`, where `step`
+is the canonical coset step for the verifier's **maximum degree bound**, not
+the individual column's log size. The model derives that step by repeated
+doubling of the M31 circle generator. The theorem requires the native bound
+range `1..31`. Given the opening premise, Lean transports the sampled Gate
+cells and split-one composition tree to an equation at those polynomial
+evaluations, including the fixed-column permutation and previous/current
+interaction slots. The
 [`generated selected instance`](../../../formal/s31/S31/Gadgets/Air/GeneratedDirectGatePcsOpeningLink.lean)
-is bound to the installed Gate bytecode, package source, and the core PCS/FRI
-source files. The exporter rejects changes to the native shared-sample path;
-the native constant-polynomial PCS fixture rejects a changed OODS sample.
+is bound to the installed Gate bytecode, package source, core PCS/FRI source,
+and native circle/mask geometry source. The exporter rejects changes to the
+shared-sample path, maximum-bound step, previous-point shift, and fixed or
+composition mask point. The native constant-polynomial PCS fixture rejects a
+changed OODS sample.
 
 This is a **conditional** opening link. Lean does not prove that a successful
-Merkle/FRI verification implies the opening assumption, that transcript
-challenges are unpredictable, or that Zig execution refines the reviewed
-source statements. The next proof obligation is that cryptographic PCS
-soundness bridge, followed by whole-program and all-row compiler refinement.
+Merkle/FRI verification implies the opening assumption, that the finite
+bivariate polynomial model refines Stwo's circle-basis degree limits, that
+transcript challenges are unpredictable, or that Zig execution refines the
+reviewed source statements. In particular, OODS values are checked through
+the DEEP quotient and FRI protocol; this theorem does not interpret a Merkle
+path as a direct opening at the OODS point. The next proof obligation is the
+cryptographic PCS soundness bridge, followed by whole-program and all-row
+compiler refinement.
 
 Recheck the bounded export and theorem with:
 
