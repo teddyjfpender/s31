@@ -1,5 +1,10 @@
 # 6. Packages, native verification, and audit
 
+Input visibility describes the public ABI. An ordinary `circuit` uses the
+legacy transparent proof mode; `private` alone does not establish zero
+knowledge. See [proof privacy](proof-privacy.md) for the explicit experimental
+`blinded circuit` mode and its current security boundary.
+
 ## Build, prove, verify
 
 This sequence starts with a checked-in text program and assignment. Run it
@@ -52,7 +57,7 @@ native verifier still decides proof acceptance.
 | --- | --- |
 | `bin/s31-NAME-prover` | Program-specific witness construction and proving. |
 | `bin/s31-NAME-native-verifier` | Program-specific native proof checker. |
-| `verification-key.json` | Profile, program/canonical-IR hashes, circuit hash, preprocessed root, padded geometry, pinned AIR asset hashes, FRI parameters, optional chip parameters. |
+| `verification-key.json` | Profile, program/canonical-IR hashes, circuit hash, preprocessed root, padded geometry, pinned AIR asset hashes, FRI parameters, optional chip parameters and blinding policy. |
 | `recursive-verification-key.json` | For `gate` and `sparse-wide-gate` packages: sealed outer verifier layout, root, hash, child-key digest and pinned AIR asset hashes. Sparse-wide key v3 also binds outer FRI fold step 4; its leaf defaults to step 1 and can be built with step 4. The native verifier embeds this key. |
 | `recursive-verification-key-level2.json` | Sealed second wrapper layout and child-key digest for both recursive profiles. |
 | `fixed-fold-verification-key.json` | Sealed repeatable fold AIR and root. Gate v3 and sparse-wide v4 use the constrained `u32` counter; the wide key binds the second wrapper key and fourfold FRI schedule. The [worked fold](recursion-wide-fold.md) explains its claim and limits. |
@@ -82,6 +87,28 @@ To decide which program's claim to trust, obtain the native verifier and
 verification key through a trusted distribution path and check their
 identity. Re-lowering also does not prove that the compiler translated the
 source with the semantics the programmer intended.
+
+For an untrusted package, `s31 verify-pinned` requires SHA-256 digests of the
+normalized source, verification key, native prover, and native verifier from
+a separate trusted channel. A text package also requires the exact `.s31`
+source digest. It copies the package to a private temporary directory, then
+checks and executes that snapshot:
+
+```sh
+python3 src/frontends/s31/python/s31.py verify-pinned PACKAGE PROOF \
+  --source-sha256 SOURCE_DIGEST --key-sha256 KEY_DIGEST \
+  --prover-sha256 PROVER_DIGEST --verifier-sha256 VERIFIER_DIGEST \
+  --text-sha256 TEXT_DIGEST
+```
+
+Omit `--text-sha256` only for a normalized-JSON package with no `source.s31`.
+Pins copied from the package's own manifest provide no external
+authentication. Snapshotting fixes the checked bytes for this invocation;
+pinning does not sandbox its executable or sign a release. The
+`verify-pinned` command covers base proofs; recursive and fold verification
+still require an independently trusted package or installed verifier. The
+[standalone control](../../../../design/s31/security/controls/pinned_package.py)
+uses the same production admission code for audits without running a proof.
 
 ## What the verifier checks
 
@@ -171,8 +198,9 @@ gives the exact specialized-chip row constraints; the generic AIR bundle
 remains a pinned build asset. A symbolic exporter with an identity check
 against that asset is still needed for term-by-term audit.
 
-S31 also lacks a private circuit-to-chip boundary for mixed programs,
-automatic chip selection, a dedicated Poseidon2 batch chip, and recursive
-verifier generation. Current performance records apply to their specified
-programs, host, and protocol configurations; row counts alone do not prove
-an end-to-end speedup over Cairo.
+S31 has an authenticated direct-chip boundary for one supported private
+four-lane recurrence. It does not yet admit arbitrary mixed programs or
+multiple chip calls through that boundary. Automatic chip selection and a
+dedicated Poseidon2 batch chip remain open. Current performance records apply
+to their specified programs, host, and protocol configurations; row counts
+alone do not prove an end-to-end speedup over Cairo.

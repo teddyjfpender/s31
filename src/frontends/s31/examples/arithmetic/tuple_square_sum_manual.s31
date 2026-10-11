@@ -1,0 +1,6 @@
+use std@1;
+
+circuit tuple_square_sum(private x: [m31; 4]) -> public [m31; 4] {
+    let result = (x .* x) + (x + x);
+    result
+}

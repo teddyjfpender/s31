@@ -1,0 +1,7 @@
+use std@1;
+
+// 250 * 7 = 1750 = 214 + 256*6. The final carry is discarded.
+circuit u8_wrapping(private a: u8, private b: u8) -> public u8 {
+    let product = std::int::mul_wrapping(a, b);
+    product
+}

@@ -6,11 +6,15 @@ const circuit = @import("stwo_circuit_frontend");
 const cpu = @import("stwo_circuit_cpu_integration");
 const s31 = @import("stwo_s31_prototype");
 const native = @import("native_verifier.zig");
+const component_manifest = @import("component_manifest.zig");
+const proof_execution = @import("proof_execution.zig");
 const recursion_gate = @import("../recursion/recursion_gate.zig");
 const fixed_fold = @import("../recursion/fixed_fold.zig");
 const state_fold = @import("../recursion/state_fold.zig");
 const recursion_sparse_wide = @import("../recursion/recursion_sparse_wide.zig");
 const relation = s31.relation;
+const record_abi = @import("../language/record_abi.zig");
+const privacy = s31.proof_privacy;
 
 const QM31 = core.fields.qm31.QM31;
 const PcsConfigV2 = core.pcs.config_v2.PcsConfigV2;
@@ -43,8 +47,12 @@ const ChipKey = struct {
 const Key = struct {
     schema: []const u8,
     profile: []const u8 = "circuit-v1",
+    proof_privacy: ?privacy.Policy = null,
     chip: ?ChipKey = null,
     private_boundary: ?circuit.common.direct_arithmetic.PrivateBoundary = null,
+    component_manifest: ?component_manifest.Manifest = null,
+    manifest_precommitment_sha256: ?[]const u8 = null,
+    public_abi_sha256: ?[]const u8 = null,
     name: []const u8,
     program_sha256: []const u8,
     canonical_ir_sha256: []const u8,
@@ -197,8 +205,12 @@ const InputPacking = struct { name: []const u8, lanes: u32, qm31_wires: usize };
 const Report = struct {
     name: []const u8,
     profile: []const u8,
+    proof_privacy: ?privacy.Policy,
     chip: ?ChipKey,
     private_boundary: ?circuit.common.direct_arithmetic.PrivateBoundary,
+    component_manifest: ?component_manifest.Manifest,
+    manifest_precommitment_sha256: ?[]const u8,
+    public_abi_sha256: ?[]const u8,
     repeated_step: ?relation.ChipSpec,
     state_fold_step: ?relation.StateFoldSpec,
     program_sha256: []const u8,
@@ -209,6 +221,7 @@ const Report = struct {
     padded: Rows,
     preprocessed_columns: usize,
     preprocessed_cells: usize,
+    constant_min_base: u32,
     fixed_table_max_log_size: u32,
     trace_log_size: u32,
     input_packing: []const InputPacking,
@@ -219,7 +232,29 @@ const Report = struct {
     fri: struct { pow_bits: u32, log_blowup_factor: u32, last_layer_degree_bound: u32, queries: u32, fold_step: u32 },
 };
 
+/// Value-free builder gates and the exact direct AIR preprocessed columns.
+/// This is an inspection artifact, not a verifier key or a PCS commitment.
+const DirectTopologyColumn = struct { id: []const u8, values: []const u32 };
+const DirectTopology = struct {
+    schema: []const u8 = "s31-direct-gate-topology-v1",
+    program_sha256: []const u8,
+    n_vars: usize,
+    output: []const u32,
+    add: []const circuit.builder.circuit.BinaryGate,
+    sub: []const circuit.builder.circuit.BinaryGate,
+    mul: []const circuit.builder.circuit.BinaryGate,
+    pointwise_mul: []const circuit.builder.circuit.BinaryGate,
+    permutation_ends: []const u32,
+    permutation_inputs: []const u32,
+    permutation_outputs: []const u32,
+    first_permutation_row: usize,
+    columns: [circuit.common.direct_arithmetic.N_COLUMNS]DirectTopologyColumn,
+};
+
 pub fn main() !void {
+    // Check the source request before dispatching to specialized runtimes.
+    var source_guard = try parsedProgram(std.heap.page_allocator);
+    defer source_guard.deinit();
     if (sha_joint_mode) return @import("../sha/package/sha_package_runtime.zig").main();
     if (sha_shift_mode) return @import("../sha/package/sha_shift_package_runtime.zig").main();
     if (sha_fused_mode) return @import("../sha/package/sha_fused_package_runtime.zig").main();
@@ -232,10 +267,15 @@ pub fn main() !void {
     const command = args[1];
     var parsed = try parsedProgram(allocator);
     defer parsed.deinit();
+    if (parsed.value.proof_mode == .blinded and
+        !std.mem.eql(u8, command, "check") and !std.mem.eql(u8, command, "run") and
+        !std.mem.eql(u8, command, "inspect") and !std.mem.eql(u8, command, "prove"))
+        return error.UnsupportedBlindingCommand;
     if (chip_mode and sourceChipSpec(parsed.value) == null)
         return error.UnsupportedChipRelation;
     if (direct_mode) for (parsed.value.inputs) |input| {
-        if (input.kind != .m31) return error.UnsupportedDirectRelation;
+        if (input.kind != .m31 and !s31.relation_compiler.directFixedInput(parsed.value, input))
+            return error.UnsupportedDirectRelation;
     };
     if (std.mem.eql(u8, command, "check") and args.len == 2) {
         std.debug.print("S31 {s}: relation valid\n", .{parsed.value.name});
@@ -246,6 +286,8 @@ pub fn main() !void {
         printWords(words);
     } else if (std.mem.eql(u8, command, "inspect") and args.len == 2) {
         try inspect(allocator, parsed.value);
+    } else if (std.mem.eql(u8, command, "inspect-topology") and args.len == 2 and direct_mode and !chip_mode) {
+        try inspectDirectTopology(allocator, parsed.value);
     } else if (std.mem.eql(u8, command, "prove") and args.len == 4) {
         try prove(allocator, parsed.value, args[2], args[3], null, false, null, null, false);
     } else if (std.mem.eql(u8, command, "recurse-check") and args.len == 5 and !chip_mode and !sparse_mode and !direct_mode) {
@@ -330,6 +372,8 @@ fn sourceChipSpec(source: relation.Program) ?relation.ChipSpec {
 /// Entry point of the separately installed verifier binary. Its accepted
 /// program is fixed by `embedded_source` at compile time.
 pub fn verifierMain(embedded_key: []const u8, embedded_recursive_key: []const u8, embedded_recursive_next_key: []const u8, embedded_fold_key: []const u8, embedded_state_fold_key: []const u8) !void {
+    var source_guard = try parsedProgram(std.heap.page_allocator);
+    defer source_guard.deinit();
     if (sha_joint_mode) return @import("../sha/package/sha_package_runtime.zig").verifierMain();
     if (sha_shift_mode) return @import("../sha/package/sha_shift_package_runtime.zig").verifierMain();
     if (sha_fused_mode) return @import("../sha/package/sha_fused_package_runtime.zig").verifierMain();
@@ -338,6 +382,10 @@ pub fn verifierMain(embedded_key: []const u8, embedded_recursive_key: []const u8
     const allocator = gpa_state.allocator();
     const args = try std.process.argsAlloc(allocator);
     defer std.process.argsFree(allocator, args);
+    if (source_guard.value.proof_mode == .blinded and args.len > 1 and
+        (std.mem.startsWith(u8, args[1], "recurse-") or
+            std.mem.eql(u8, args[1], "fold-verify") or std.mem.eql(u8, args[1], "state-fold-verify")))
+        return error.UnsupportedBlindingCommand;
     if (args.len == 4 and std.mem.eql(u8, args[1], "recurse-verify"))
         return verifyOuter(allocator, args[2], args[3], embedded_key, embedded_recursive_key);
     if (args.len == 4 and std.mem.eql(u8, args[1], "recurse-verify-next"))
@@ -366,7 +414,7 @@ fn parseInspectStep(args: []const []const u8, base_len: usize) !u32 {
 }
 
 fn usage() error{InvalidArguments} {
-    std.debug.print("usage: s31-program check | inspect | run ASSIGNMENT.json | prove ASSIGNMENT.json PROOF\n", .{});
+    std.debug.print("usage: s31-program check | inspect | inspect-topology (bounded direct-gate only) | run ASSIGNMENT.json | prove ASSIGNMENT.json PROOF\n", .{});
     std.debug.print("       recurse-check ASSIGNMENT.json CHILD-PROOF CHILD-KEY.json | recurse-prove ASSIGNMENT.json CHILD-PROOF OUTER-PROOF CHILD-KEY.json [--low-memory]\n", .{});
     std.debug.print("       recurse-wrap CHILD-PROOF CHILD-STATEMENT.json OUTER-PROOF CHILD-KEY.json [--low-memory]\n", .{});
     std.debug.print("       recurse-wrap-next OUTER-PROOF OUTER-STATEMENT.json NEXT-PROOF CHILD-KEY.json RECURSIVE-KEY.json NEXT-KEY.json [--low-memory]\n", .{});
@@ -388,7 +436,17 @@ fn usage() error{InvalidArguments} {
 }
 
 fn parsedProgram(allocator: std.mem.Allocator) !relation.ParsedProgram {
-    return relation.parseProgram(allocator, embedded_source);
+    var parsed = try relation.parseProgram(allocator, embedded_source);
+    errdefer parsed.deinit();
+    _ = try proofPrivacy(parsed.value);
+    if (parsed.value.version == 2 and (!direct_mode or chip_mode or
+        parsed.value.proof_mode != .transparent)) return error.UnsupportedRecordBoundaryProfile;
+    return parsed;
+}
+
+fn proofPrivacy(source: relation.Program) !?privacy.Policy {
+    return privacy.forMode(source.proof_mode, !chip_mode and !sparse_mode and !direct_mode and
+        !sha_joint_mode and !sha_shift_mode and !sha_fused_mode, fri_fold_step);
 }
 
 fn readAssignment(allocator: std.mem.Allocator, path: []const u8) !relation.ParsedAssignment {
@@ -472,6 +530,7 @@ fn sameItems(a: anytype, b: @TypeOf(a)) bool {
 fn topology(allocator: std.mem.Allocator, source: relation.Program) !preprocessed.PreprocessedCircuit {
     var ctx = try s31.relation_compiler.compile(circuit.builder.NoValue, allocator, source, null);
     defer ctx.deinit();
+    try privacy.blindTopology(&ctx, try proofPrivacy(source));
     try circuit.common.finalize.padContext(circuit.builder.NoValue, &ctx);
     try preprocessed.CircuitView.fromBuilder(&ctx.circuit).validate();
     return preprocessed.PreprocessedCircuit.fromBuilderCircuit(allocator, &ctx.circuit);
@@ -494,6 +553,65 @@ fn padForProfile(comptime V: type, ctx: *circuit.builder.Context(V)) !void {
         return error.InvalidDirectYieldTopology;
 }
 
+const ChipManifestBinding = struct {
+    generated: component_manifest.Generated,
+    effective_digest: [32]u8,
+    precommitment_digest: [32]u8,
+    circuit_hash: [32]u8,
+
+    fn deinit(self: *ChipManifestBinding) void {
+        self.generated.deinit();
+    }
+};
+
+fn bindChipManifest(
+    allocator: std.mem.Allocator,
+    pp: *const circuit.common.direct_arithmetic.Circuit,
+    source_digest: [32]u8,
+    ir_digest: [32]u8,
+    root: [32]u8,
+    spec: relation.ChipSpec,
+    boundary: ?circuit.common.direct_arithmetic.PrivateBoundary,
+) !ChipManifestBinding {
+    var generated = try component_manifest.directChip(
+        allocator,
+        pp,
+        air_program_bytes,
+        source_digest,
+        ir_digest,
+        root,
+        [_]u8{0} ** 32,
+        spec.rounds,
+        spec.constant,
+        boundary,
+    );
+    errdefer generated.deinit();
+    const precommitment_digest = component_manifest.precommitmentDigest(generated.value);
+    const effective_digest = component_manifest.effectiveSourceDigest(source_digest, generated.value);
+    const chip_request: cpu.prove.ChipRequest = .{
+        .source_digest = effective_digest,
+        .rounds = spec.rounds,
+        .constant = M31.fromCanonical(spec.constant),
+        .initial = @splat(M31.zero()),
+        .final = @splat(M31.zero()),
+    };
+    const circuit_hash = cpu.direct_arithmetic.identityHashWithPrivateBoundary(
+        effective_digest,
+        root,
+        pp.traceLogSize(),
+        1,
+        chip_request,
+        boundary,
+    );
+    try component_manifest.setCircuitHash(&generated, circuit_hash);
+    return .{
+        .generated = generated,
+        .effective_digest = effective_digest,
+        .precommitment_digest = precommitment_digest,
+        .circuit_hash = circuit_hash,
+    };
+}
+
 fn inspect(allocator: std.mem.Allocator, source: relation.Program) !void {
     var ir = try s31.canonical.build(allocator, source);
     defer ir.deinit();
@@ -507,6 +625,7 @@ fn inspect(allocator: std.mem.Allocator, source: relation.Program) !void {
         try s31.relation_compiler.compileWithSpans(circuit.builder.NoValue, allocator, source, null, &maps);
     defer ctx.deinit();
     const raw = circuit.common.finalize.rawComponentSizes(preprocessed.CircuitView.fromBuilder(&ctx.circuit));
+    try privacy.blindTopology(&ctx, try proofPrivacy(source));
     try padForProfile(circuit.builder.NoValue, &ctx);
     const padded = circuit.common.finalize.rawComponentSizes(preprocessed.CircuitView.fromBuilder(&ctx.circuit));
     var preprocessed_cells: usize = 0;
@@ -517,6 +636,9 @@ fn inspect(allocator: std.mem.Allocator, source: relation.Program) !void {
     var circuit_hash: [32]u8 = undefined;
     var trace_log: u32 = undefined;
     var preprocessed_columns: usize = undefined;
+    var generated_manifest: ?component_manifest.Generated = null;
+    var manifest_digest: ?[32]u8 = null;
+    defer if (generated_manifest) |*owned| owned.deinit();
     if (direct_mode) {
         const boundary = if (privateChip(source)) maps.private_boundary orelse return error.MissingPrivateBoundary else null;
         var pp = if (boundary) |item|
@@ -540,14 +662,31 @@ fn inspect(allocator: std.mem.Allocator, source: relation.Program) !void {
                 .final = @splat(M31.zero()),
             };
         } else null;
-        circuit_hash = cpu.direct_arithmetic.identityHashWithPrivateBoundary(
-            source_digest,
-            root,
-            layout.traceLogSize(),
-            1,
-            chip_request,
-            boundary,
-        );
+        generated_manifest = if (chip_mode) blk: {
+            const spec = sourceChipSpec(source) orelse return error.UnsupportedChipRelation;
+            const binding = try bindChipManifest(allocator, &pp, source_digest, ir.sha256, root, spec, boundary);
+            circuit_hash = binding.circuit_hash;
+            manifest_digest = binding.precommitment_digest;
+            break :blk binding.generated;
+        } else blk: {
+            circuit_hash = cpu.direct_arithmetic.identityHashWithPrivateBoundary(
+                source_digest,
+                root,
+                layout.traceLogSize(),
+                1,
+                chip_request,
+                boundary,
+            );
+            break :blk try component_manifest.directGate(
+                allocator,
+                &pp,
+                air_program_bytes,
+                source_digest,
+                ir.sha256,
+                root,
+                circuit_hash,
+            );
+        };
         trace_log = @max(pp.traceLogSize(), if (chip_mode)
             try cpu.repeated_step_chip.validateRounds(sourceChipSpec(source).?.rounds)
         else
@@ -616,6 +755,8 @@ fn inspect(allocator: std.mem.Allocator, source: relation.Program) !void {
     const ir_hex = std.fmt.bytesToHex(ir.sha256, .lower);
     const root_hex = std.fmt.bytesToHex(root, .lower);
     const hash_hex = std.fmt.bytesToHex(circuit_hash, .lower);
+    var manifest_hex: [64]u8 = undefined;
+    if (manifest_digest) |digest| manifest_hex = std.fmt.bytesToHex(digest, .lower);
     const source_map = try allocator.alloc(SourceSpan, ir.source_map.len);
     defer allocator.free(source_map);
     for (ir.source_map, source_map) |item, *mapped| {
@@ -644,12 +785,19 @@ fn inspect(allocator: std.mem.Allocator, source: relation.Program) !void {
     };
     const report: Report = .{
         .name = source.name,
-        .profile = if (privateChip(source)) "direct-m31-private-v5" else if (direct_mode) "direct-m31-v4" else if (wide_mode) "sparse-wide-v5" else if (sparse_mode) "sparse-v3" else if (chip_mode) "hybrid-step-v2" else "circuit-v1",
+        .profile = if (source.proof_mode == .blinded) "circuit-blinded-v1" else if (privateChip(source)) "direct-m31-private-v5" else if (direct_mode) "direct-m31-v4" else if (wide_mode) "sparse-wide-v5" else if (sparse_mode) "sparse-v3" else if (chip_mode) "hybrid-step-v2" else "circuit-v1",
+        .proof_privacy = try proofPrivacy(source),
         .chip = if (chip_mode) blk: {
             const spec = sourceChipSpec(source).?;
             break :blk .{ .rounds = spec.rounds, .constant = spec.constant, .relation_id = cpu.repeated_step_chip.relation_id };
         } else null,
         .private_boundary = if (privateChip(source)) maps.private_boundary else null,
+        .component_manifest = if (generated_manifest) |owned| owned.value else null,
+        .manifest_precommitment_sha256 = if (manifest_digest != null) &manifest_hex else null,
+        .public_abi_sha256 = if (source.version == 2) blk: {
+            const abi_digest = try record_abi.digest(allocator, source);
+            break :blk try std.fmt.allocPrint(allocator, "{s}", .{std.fmt.bytesToHex(abi_digest, .lower)});
+        } else null,
         .repeated_step = sourceChipSpec(source),
         .state_fold_step = source.stateFoldStep(),
         .program_sha256 = &source_hex,
@@ -660,6 +808,7 @@ fn inspect(allocator: std.mem.Allocator, source: relation.Program) !void {
         .padded = .{ .eq = padded.eq, .qm31_ops = padded.qm31_ops, .triple_xor = padded.triple_xor, .m31_to_u32 = padded.m31_to_u32, .blake_g = padded.blake_g_gate },
         .preprocessed_columns = preprocessed_columns,
         .preprocessed_cells = preprocessed_cells,
+        .constant_min_base = s31.relation_compiler.selectedConstantMinBase(source),
         .fixed_table_max_log_size = max_preprocessed_log,
         .trace_log_size = trace_log,
         .input_packing = packing,
@@ -671,6 +820,47 @@ fn inspect(allocator: std.mem.Allocator, source: relation.Program) !void {
     };
     const encoded = try std.json.Stringify.valueAlloc(allocator, report, .{});
     defer allocator.free(encoded);
+    std.debug.print("{s}\n", .{encoded});
+}
+
+fn inspectDirectTopology(allocator: std.mem.Allocator, source: relation.Program) !void {
+    // The command is deliberately bounded: package admission invokes it only
+    // for the small, independently parsed source fragment.
+    if (source.version != 1 or source.inputs.len != 1 or source.nodes.len > 16 or
+        source.proof_mode != .transparent) return error.UnsupportedTopologyInspection;
+    var ctx = try s31.relation_compiler.compileDirect(circuit.builder.NoValue, allocator, source, null, false);
+    defer ctx.deinit();
+    try padForProfile(circuit.builder.NoValue, &ctx);
+    var pp = try circuit.common.direct_arithmetic.Circuit.fromBuilderCircuit(allocator, &ctx.circuit);
+    defer pp.deinit(allocator);
+    if (pp.columns[0].values.len > 1024) return error.UnsupportedTopologyInspection;
+    var arena = std.heap.ArenaAllocator.init(allocator);
+    defer arena.deinit();
+    const temp = arena.allocator();
+    var columns: [circuit.common.direct_arithmetic.N_COLUMNS]DirectTopologyColumn = undefined;
+    for (pp.columns, &columns) |column, *item| {
+        const values = try temp.alloc(u32, column.values.len);
+        for (column.values, values) |value, *word| word.* = value.toU32();
+        item.* = .{ .id = column.id, .values = values };
+    }
+    var source_digest: [32]u8 = undefined;
+    std.crypto.hash.sha2.Sha256.hash(embedded_source, &source_digest, .{});
+    const source_hex = std.fmt.bytesToHex(source_digest, .lower);
+    const exported: DirectTopology = .{
+        .program_sha256 = &source_hex,
+        .n_vars = ctx.circuit.n_vars,
+        .output = ctx.circuit.output.items,
+        .add = ctx.circuit.add.items,
+        .sub = ctx.circuit.sub.items,
+        .mul = ctx.circuit.mul.items,
+        .pointwise_mul = ctx.circuit.pointwise_mul.items,
+        .permutation_ends = ctx.circuit.permutation.ends.items,
+        .permutation_inputs = ctx.circuit.permutation.inputs.items,
+        .permutation_outputs = ctx.circuit.permutation.outputs.items,
+        .first_permutation_row = pp.first_permutation_row,
+        .columns = columns,
+    };
+    const encoded = try std.json.Stringify.valueAlloc(temp, exported, .{});
     std.debug.print("{s}\n", .{encoded});
 }
 
@@ -698,17 +888,18 @@ fn prove(allocator: std.mem.Allocator, source: relation.Program, assignment_path
     defer topology_ctx.deinit();
     if (!sameTopology(&value_ctx.circuit, &topology_ctx.circuit)) return error.ValueDependentTopology;
     const raw = circuit.common.finalize.rawComponentSizes(preprocessed.CircuitView.fromBuilder(&topology_ctx.circuit));
+    const policy = try proofPrivacy(source);
+    try privacy.blindWitness(&value_ctx, policy);
+    try privacy.blindTopology(&topology_ctx, policy);
+    if (!sameTopology(&value_ctx.circuit, &topology_ctx.circuit)) return error.ValueDependentTopology;
     try padForProfile(QM31, &value_ctx);
     try padForProfile(circuit.builder.NoValue, &topology_ctx);
     if (!sameTopology(&value_ctx.circuit, &topology_ctx.circuit)) return error.ValueDependentTopology;
     if (!try value_ctx.isCircuitValid()) return error.UnsatisfiedCircuit;
-    var air_digest: [32]u8 = undefined;
-    std.crypto.hash.sha2.Sha256.hash(air_program_bytes, &air_digest, .{});
-    if (!std.mem.eql(u8, &std.fmt.bytesToHex(air_digest, .lower), cpu.air.bundle_sha256)) return error.AirBundleMismatch;
-    var bundle = try cpu.air.parse(allocator, air_program_bytes);
+    var bundle = try parseAirBundle(allocator);
     defer bundle.deinit();
 
-    const chip_request: ?cpu.prove.ChipRequest = if (chip_mode) blk: {
+    var chip_request: ?cpu.prove.ChipRequest = if (chip_mode) blk: {
         const spec = sourceChipSpec(source) orelse return error.UnsupportedChipRelation;
         var source_digest: [32]u8 = undefined;
         std.crypto.hash.sha2.Sha256.hash(embedded_source, &source_digest, .{});
@@ -749,6 +940,24 @@ fn prove(allocator: std.mem.Allocator, source: relation.Program, assignment_path
         const pcs = try directPcsConfig(pp.traceLogSize(), if (chip_request) |item| item.rounds else null);
         var committed = try cpu.direct_arithmetic.PreprocessedCommitment.build(allocator, &pp, pcs);
         defer committed.deinit(allocator);
+        var proof_digest = source_digest;
+        var chip_binding: ?ChipManifestBinding = null;
+        defer if (chip_binding) |*binding| binding.deinit();
+        if (chip_mode) {
+            var ir = try s31.canonical.build(allocator, source);
+            defer ir.deinit();
+            chip_binding = try bindChipManifest(
+                allocator,
+                &pp,
+                source_digest,
+                ir.sha256,
+                committed.root(),
+                sourceChipSpec(source).?,
+                boundary,
+            );
+            proof_digest = chip_binding.?.effective_digest;
+            chip_request.?.source_digest = proof_digest;
+        }
         setup_ns = total_timer.read() - witness_ns;
         var timer = try std.time.Timer.start();
         var proof = try cpu.direct_arithmetic.prove(
@@ -757,18 +966,17 @@ fn prove(allocator: std.mem.Allocator, source: relation.Program, assignment_path
             &pp,
             &bundle,
             pcs,
-            .{ .source_digest = source_digest, .chip_request = chip_request, .private_boundary = boundary, .preprocessed_commitment = &committed, .test_mutation = mutation, .interaction_pow_time_ns = &sparse_pow_ns, .fri_pow_time_ns = &sparse_fri_pow_ns },
+            .{ .source_digest = proof_digest, .chip_request = chip_request, .private_boundary = boundary, .preprocessed_commitment = &committed, .test_mutation = mutation, .interaction_pow_time_ns = &sparse_pow_ns, .fri_pow_time_ns = &sparse_fri_pow_ns },
         );
         defer proof.deinit();
         prove_ns = timer.read();
         encoded = if (boundary != null)
-            try native.serializeDirectPrivate(allocator, &proof)
-        else
-            try native.serializeDirect(allocator, &proof, chip_mode);
+            try native.serializeDirectPrivateBound(allocator, &proof)
+        else if (chip_mode) try native.serializeDirectBound(allocator, &proof) else try native.serializeDirect(allocator, &proof, false);
         const layout = pp.layout();
         const root = committed.root();
         const hash = cpu.direct_arithmetic.identityHashWithPrivateBoundary(
-            source_digest,
+            proof_digest,
             root,
             layout.traceLogSize(),
             pcs.fri_config.log_blowup_factor,
@@ -776,11 +984,11 @@ fn prove(allocator: std.mem.Allocator, source: relation.Program, assignment_path
             boundary,
         );
         const spec: ?native.HybridSpec = if (chip_request) |item| .{
-            .source_digest = source_digest,
+            .source_digest = proof_digest,
             .rounds = item.rounds,
             .constant = item.constant,
         } else null;
-        if (boundary) |item| try native.verifyDirectPrivate(
+        if (boundary) |item| try native.verifyDirectPrivateBound(
             allocator,
             &layout,
             &bundle,
@@ -789,9 +997,20 @@ fn prove(allocator: std.mem.Allocator, source: relation.Program, assignment_path
             hash,
             public_words,
             encoded,
-            source_digest,
+            proof_digest,
             spec.?,
             item,
+        ) else if (chip_mode) try native.verifyDirectBound(
+            allocator,
+            &layout,
+            &bundle,
+            pcs,
+            root,
+            hash,
+            public_words,
+            encoded,
+            proof_digest,
+            spec.?,
         ) else try native.verifyDirect(
             allocator,
             &layout,
@@ -801,8 +1020,8 @@ fn prove(allocator: std.mem.Allocator, source: relation.Program, assignment_path
             hash,
             public_words,
             encoded,
-            source_digest,
-            spec,
+            proof_digest,
+            null,
         );
     } else if (wide_mode) {
         var pp = try circuit.common.sparse_wide.Circuit.fromBuilderCircuit(allocator, &topology_ctx.circuit);
@@ -882,12 +1101,14 @@ fn prove(allocator: std.mem.Allocator, source: relation.Program, assignment_path
         defer committed.deinit(allocator);
         setup_ns = total_timer.read() - witness_ns;
         var timer = try std.time.Timer.start();
+        var observer = try proof_execution.PhaseObserver.init();
         var proof = try cpu.Internal.prove(allocator, value_ctx.values(), &pp, &bundle, pcs, .{
             .preprocessed_commitment = &committed,
             .chip = chip_request,
-        }, {});
+        }, &observer);
         defer proof.deinit();
         prove_ns = timer.read();
+        observer.print();
         encoded = if (chip_mode)
             try native.serializeHybrid(allocator, &proof)
         else
@@ -919,7 +1140,11 @@ fn prove(allocator: std.mem.Allocator, source: relation.Program, assignment_path
                 public_words,
                 encoded,
             );
-        } else try verifyBytes(allocator, source, &pp, assignment.value, encoded);
+        } else try proof_execution.verifyCommitted(allocator, &pp, &bundle, pcs, committed.root(), public_words, encoded, if (chip_request) |item| native.HybridSpec{
+            .source_digest = item.source_digest,
+            .rounds = item.rounds,
+            .constant = item.constant,
+        } else null);
         if (recurse_check) {
             const layout = pp.layout();
             const root = committed.root();
@@ -3279,10 +3504,8 @@ fn auditSparseWide(allocator: std.mem.Allocator, source: relation.Program, proof
 fn verify(allocator: std.mem.Allocator, path: []const u8, statement_path: []const u8, key_path: []const u8, embedded_key: []const u8) !void {
     var parsed = try parsedProgram(allocator);
     defer parsed.deinit();
-    var statement = try readAssignment(allocator, statement_path);
-    defer statement.deinit();
-    if (statement.value.private_inputs != null) return error.InvalidPublicStatement;
-    const external_key = try std.fs.cwd().readFileAlloc(allocator, key_path, 4096);
+    // The direct-gate manifest adds eight column digests to the sealed key.
+    const external_key = try std.fs.cwd().readFileAlloc(allocator, key_path, 16 << 10);
     defer allocator.free(external_key);
     if (!std.mem.eql(u8, external_key, embedded_key)) return error.InvalidVerificationKey;
     var key_parsed = try std.json.parseFromSlice(Key, allocator, embedded_key, .{ .ignore_unknown_fields = false });
@@ -3295,7 +3518,16 @@ fn verify(allocator: std.mem.Allocator, path: []const u8, statement_path: []cons
     _ = try std.fmt.hexToBytes(&hash, key.circuit_hash);
     const encoded = try std.fs.cwd().readFileAlloc(allocator, path, 16 << 20);
     defer allocator.free(encoded);
-    const public_words = try relation.claimedWords(allocator, parsed.value, statement.value);
+    const public_words = if (parsed.value.version == 2) blk: {
+        const statement_bytes = try std.fs.cwd().readFileAlloc(allocator, statement_path, 1 << 20);
+        defer allocator.free(statement_bytes);
+        break :blk try record_abi.claimedWords(allocator, parsed.value, statement_bytes);
+    } else blk: {
+        var statement = try readAssignment(allocator, statement_path);
+        defer statement.deinit();
+        if (statement.value.private_inputs != null) return error.InvalidPublicStatement;
+        break :blk try relation.claimedWords(allocator, parsed.value, statement.value);
+    };
     var bundle = try parseAirBundle(allocator);
     defer bundle.deinit();
     if (direct_mode) {
@@ -3303,40 +3535,61 @@ fn verify(allocator: std.mem.Allocator, path: []const u8, statement_path: []cons
             key.padded.blake_g != 0 or key.padded.m31_to_u32 != 0)
             return error.InvalidVerificationKey;
         const layout = try circuit.common.direct_arithmetic.Layout.fromSize(key.padded.qm31_ops);
+        // validateKey has already reconstructed this typed roster from the
+        // sealed relation and AIR. Use its chip call/log for the native schedule.
+        const sealed_call: ?component_manifest.ChipCall = if (chip_mode)
+            (key.component_manifest orelse return error.InvalidVerificationKey).chip_call orelse return error.InvalidVerificationKey
+        else
+            null;
         const expected_trace_log = @max(layout.traceLogSize(), if (chip_mode)
-            try cpu.repeated_step_chip.validateRounds(sourceChipSpec(parsed.value).?.rounds)
+            (key.component_manifest orelse return error.InvalidVerificationKey).components[1].trace_log_size
         else
             @as(u32, 0));
         if (expected_trace_log != key.trace_log_size) return error.InvalidVerificationKey;
         var source_digest: [32]u8 = undefined;
         std.crypto.hash.sha2.Sha256.hash(embedded_source, &source_digest, .{});
+        const proof_digest = if (chip_mode)
+            component_manifest.effectiveSourceDigest(source_digest, key.component_manifest orelse return error.InvalidVerificationKey)
+        else
+            source_digest;
         const spec: ?native.HybridSpec = if (chip_mode) blk: {
-            const shape = sourceChipSpec(parsed.value) orelse return error.UnsupportedChipRelation;
-            break :blk .{ .source_digest = source_digest, .rounds = shape.rounds, .constant = M31.fromCanonical(shape.constant) };
+            const call = sealed_call.?;
+            break :blk .{ .source_digest = proof_digest, .rounds = call.rounds, .constant = M31.fromCanonical(call.constant) };
         } else null;
-        if (privateChip(parsed.value)) try native.verifyDirectPrivate(
+        if (privateChip(parsed.value)) try native.verifyDirectPrivateBound(
             allocator,
             &layout,
             &bundle,
-            try directPcsConfig(layout.traceLogSize(), sourceChipSpec(parsed.value).?.rounds),
+            try directPcsConfig(layout.traceLogSize(), sealed_call.?.rounds),
             root,
             hash,
             public_words,
             encoded,
-            source_digest,
+            proof_digest,
             spec.?,
             key.private_boundary orelse return error.InvalidVerificationKey,
+        ) else if (chip_mode) try native.verifyDirectBound(
+            allocator,
+            &layout,
+            &bundle,
+            try directPcsConfig(layout.traceLogSize(), sealed_call.?.rounds),
+            root,
+            hash,
+            public_words,
+            encoded,
+            proof_digest,
+            spec.?,
         ) else try native.verifyDirect(
             allocator,
             &layout,
             &bundle,
-            try directPcsConfig(layout.traceLogSize(), if (chip_mode) sourceChipSpec(parsed.value).?.rounds else null),
+            try directPcsConfig(layout.traceLogSize(), null),
             root,
             hash,
             public_words,
             encoded,
             source_digest,
-            spec,
+            null,
         );
     } else if (wide_mode) {
         if (key.padded.eq < 16 or key.padded.triple_xor != 0 or key.padded.blake_g != 0)
@@ -3410,6 +3663,13 @@ fn verify(allocator: std.mem.Allocator, path: []const u8, statement_path: []cons
 }
 
 fn validateKey(allocator: std.mem.Allocator, source: relation.Program, key: Key) !void {
+    if (source.version == 2) {
+        const actual = key.public_abi_sha256 orelse return error.InvalidVerificationKey;
+        const expected = try record_abi.digest(allocator, source);
+        if (!std.mem.eql(u8, actual, &std.fmt.bytesToHex(expected, .lower)))
+            return error.InvalidVerificationKey;
+    } else if (key.public_abi_sha256 != null) return error.InvalidVerificationKey;
+    if (!std.meta.eql(try proofPrivacy(source), key.proof_privacy)) return error.InvalidVerificationKey;
     const expected_stdlib = @import("s31_options").stdlib_lock_sha256;
     if (expected_stdlib.len == 0) {
         if (key.stdlib_lock_sha256 != null) return error.InvalidVerificationKey;
@@ -3417,8 +3677,8 @@ fn validateKey(allocator: std.mem.Allocator, source: relation.Program, key: Key)
         const pinned_stdlib = key.stdlib_lock_sha256 orelse return error.InvalidVerificationKey;
         if (!std.mem.eql(u8, pinned_stdlib, expected_stdlib)) return error.InvalidVerificationKey;
     }
-    if (!std.mem.eql(u8, key.schema, if (privateChip(source)) "s31-verification-key-v5p" else if (direct_mode) "s31-verification-key-v4" else if (wide_mode) "s31-verification-key-v5" else if (sparse_mode) "s31-verification-key-v3" else if (chip_mode) "s31-verification-key-v2" else "s31-verification-key-v1") or
-        !std.mem.eql(u8, key.profile, if (privateChip(source)) "direct-m31-private-v5" else if (direct_mode) "direct-m31-v4" else if (wide_mode) "sparse-wide-v5" else if (sparse_mode) "sparse-v3" else if (chip_mode) "hybrid-step-v2" else "circuit-v1") or
+    if (!std.mem.eql(u8, key.schema, if (source.version == 2) "s31-verification-key-direct-record-v2" else if (source.proof_mode == .blinded) "s31-verification-key-blinded-v1" else if (direct_mode and chip_mode) "s31-verification-key-direct-chip-manifest-v2" else if (direct_mode) "s31-verification-key-direct-manifest-v1" else if (wide_mode) "s31-verification-key-v5" else if (sparse_mode) "s31-verification-key-v3" else if (chip_mode) "s31-verification-key-v2" else "s31-verification-key-v1") or
+        !std.mem.eql(u8, key.profile, if (source.proof_mode == .blinded) "circuit-blinded-v1" else if (privateChip(source)) "direct-m31-private-v5" else if (direct_mode) "direct-m31-v4" else if (wide_mode) "sparse-wide-v5" else if (sparse_mode) "sparse-v3" else if (chip_mode) "hybrid-step-v2" else "circuit-v1") or
         !std.mem.eql(u8, key.name, source.name))
         return error.InvalidVerificationKey;
     if (chip_mode) {
@@ -3429,6 +3689,8 @@ fn validateKey(allocator: std.mem.Allocator, source: relation.Program, key: Key)
             return error.InvalidVerificationKey;
     } else if (key.chip != null) return error.InvalidVerificationKey;
     if ((key.private_boundary == null) != !privateChip(source)) return error.InvalidVerificationKey;
+    if (!direct_mode and key.component_manifest != null) return error.InvalidVerificationKey;
+    if ((!direct_mode or !chip_mode) and key.manifest_precommitment_sha256 != null) return error.InvalidVerificationKey;
     var program_digest: [32]u8 = undefined;
     std.crypto.hash.sha2.Sha256.hash(embedded_source, &program_digest, .{});
     if (!std.mem.eql(u8, key.program_sha256, &std.fmt.bytesToHex(program_digest, .lower))) return error.InvalidVerificationKey;
@@ -3441,13 +3703,13 @@ fn validateKey(allocator: std.mem.Allocator, source: relation.Program, key: Key)
         key.fri.pow_bits != 26 or key.fri.log_blowup_factor != 1 or
         key.fri.last_layer_degree_bound != 1 or key.fri.queries != 70 or
         key.fri.fold_step != fri_fold_step) return error.InvalidVerificationKey;
-    try validateCompiledKey(allocator, source, key, program_digest);
+    try validateCompiledKey(allocator, source, key, program_digest, ir.sha256);
 }
 
 /// The embedded source must determine the fixed circuit in the embedded key.
 /// A source digest alone cannot establish this: a key could carry a different
 /// circuit's commitment while retaining the expected source and IR digests.
-fn validateCompiledKey(allocator: std.mem.Allocator, source: relation.Program, key: Key, source_digest: [32]u8) !void {
+fn validateCompiledKey(allocator: std.mem.Allocator, source: relation.Program, key: Key, source_digest: [32]u8, ir_digest: [32]u8) !void {
     var maps = s31.relation_compiler.Maps{};
     defer maps.deinit(allocator);
     var ctx = if (direct_mode)
@@ -3457,6 +3719,7 @@ fn validateCompiledKey(allocator: std.mem.Allocator, source: relation.Program, k
     else
         try s31.relation_compiler.compile(circuit.builder.NoValue, allocator, source, null);
     defer ctx.deinit();
+    try privacy.blindTopology(&ctx, try proofPrivacy(source));
     try padForProfile(circuit.builder.NoValue, &ctx);
     const sizes = circuit.common.finalize.rawComponentSizes(preprocessed.CircuitView.fromBuilder(&ctx.circuit));
     const padded: Rows = .{
@@ -3490,14 +3753,39 @@ fn validateCompiledKey(allocator: std.mem.Allocator, source: relation.Program, k
                 .final = @splat(M31.zero()),
             };
         } else null;
-        expected_hash = cpu.direct_arithmetic.identityHashWithPrivateBoundary(
-            source_digest,
-            expected_root,
-            pp.traceLogSize(),
-            1,
-            chip_request,
-            boundary,
-        );
+        {
+            const sealed = key.component_manifest orelse return error.InvalidVerificationKey;
+            var generated = if (chip_mode) blk: {
+                const spec = sourceChipSpec(source) orelse return error.UnsupportedChipRelation;
+                const binding = try bindChipManifest(allocator, &pp, source_digest, ir_digest, expected_root, spec, boundary);
+                expected_hash = binding.circuit_hash;
+                const actual_digest = key.manifest_precommitment_sha256 orelse return error.InvalidVerificationKey;
+                if (!std.mem.eql(u8, actual_digest, &std.fmt.bytesToHex(binding.precommitment_digest, .lower)))
+                    return error.InvalidVerificationKey;
+                break :blk binding.generated;
+            } else blk: {
+                expected_hash = cpu.direct_arithmetic.identityHashWithPrivateBoundary(
+                    source_digest,
+                    expected_root,
+                    pp.traceLogSize(),
+                    1,
+                    chip_request,
+                    boundary,
+                );
+                break :blk try component_manifest.directGate(
+                    allocator,
+                    &pp,
+                    air_program_bytes,
+                    source_digest,
+                    ir_digest,
+                    expected_root,
+                    expected_hash,
+                );
+            };
+            defer generated.deinit();
+            if (!try component_manifest.matches(allocator, sealed, generated.value))
+                return error.InvalidVerificationKey;
+        }
         expected_trace_log = @max(pp.traceLogSize(), if (chip_mode)
             try cpu.repeated_step_chip.validateRounds(sourceChipSpec(source).?.rounds)
         else
@@ -3550,27 +3838,6 @@ fn validateCompiledKey(allocator: std.mem.Allocator, source: relation.Program, k
         !std.mem.eql(u8, key.preprocessed_root, &std.fmt.bytesToHex(expected_root, .lower)) or
         !std.mem.eql(u8, key.circuit_hash, &std.fmt.bytesToHex(expected_hash, .lower)))
         return error.InvalidVerificationKey;
-}
-
-fn verifyBytes(allocator: std.mem.Allocator, source: relation.Program, pp: *const preprocessed.PreprocessedCircuit, assignment: relation.Assignment, encoded: []const u8) !void {
-    const public_words = try relation.claimedWords(allocator, source, assignment);
-    var bundle = try parseAirBundle(allocator);
-    defer bundle.deinit();
-    const pcs = try showcasePcsConfig(pp.traceLogSize());
-    const layout = pp.layout();
-    const logs = try circuit.common.component_list.circuitComponentLogSizes(&layout);
-    const root = try pp.preprocessedRoot(allocator, pcs.fri_config.log_blowup_factor);
-    const hash = try circuit.common.circuit_hash.hostCircuitHash(logs, pcs.fri_config.log_blowup_factor, root);
-    if (chip_mode) {
-        var digest: [32]u8 = undefined;
-        std.crypto.hash.sha2.Sha256.hash(embedded_source, &digest, .{});
-        const spec = sourceChipSpec(source) orelse return error.UnsupportedChipRelation;
-        try native.verifyHybrid(allocator, &layout, &bundle, pcs, root, hash, public_words, encoded, .{
-            .source_digest = digest,
-            .rounds = spec.rounds,
-            .constant = M31.fromCanonical(spec.constant),
-        });
-    } else try native.verify(allocator, &layout, &bundle, pcs, root, hash, public_words, encoded);
 }
 
 fn parseAirBundle(allocator: std.mem.Allocator) !cpu.air.Bundle {

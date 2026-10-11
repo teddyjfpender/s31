@@ -42,6 +42,10 @@ proof byte strings.
 
 ## Syntax and staging
 
+The exact accepted token, declaration, type and expression forms are in the
+[versioned text grammar](GRAMMAR_V1.md). Parser nesting and token limits are
+documented there alongside the located diagnostic contract.
+
 ```text
 fn step(v: [m31; 4]) -> [m31; 4] {
     v .* v + splat<4>(7_m31)
@@ -53,13 +57,15 @@ circuit arith4_m31(public x: [m31; 4]) -> public [m31; 4] {
 }
 ```
 
-A file may begin with `use std@1;`, then has zero or more top-level `fn`
-declarations followed by one `circuit`. Without `use`, existing sources use
+A file may begin with `use std@1;`, then has zero or more top-level `struct`
+and `fn` declarations followed by one `circuit`. A struct type must be
+declared before a function uses it. Without `use`, existing sources use
 the same compiler-owned standard library version implicitly. Other packages
 and versions are rejected.
 Functions and circuit bodies contain immutable `let` statements, optional
 `assert_eq(a, b);` statements, and a final expression. Supported expressions
-are names, `_m31` field literals, `+`, `-`, unary `-`, lane-wise `.*`, calls, parentheses, and
+are names, `_m31` field literals, `+`, `-`, unary `-`, lane-wise `.*`, calls,
+`if bit then value else value`, parentheses, and
 static array literals such as `[sibling_0, sibling_1]` and nested fixed
 reference arrays such as `[[a, b], [c, d]]`. A `let` can bind a static array;
 it becomes a compile-time reference group, not a witness array. Comments start with
@@ -67,6 +73,28 @@ it becomes a compile-time reference group, not a witness array. Comments start w
 integers are used only as the compile-time `N` in `splat<N>`, `iterate<N>`,
 and `std::math::pow<N>`;
 circuit arithmetic uses canonical field literals.
+The [record guide](../records.md) shows named struct fields that erase into
+static products before relation emission. A function may accept or return a
+record. The versioned public-record ABI also permits nominal record circuit
+inputs and outputs with M31 leaves under `direct-gate`; tuples remain inside
+records or source helpers rather than top-level proof roots. The
+[functional core](../functional-language.md) adds expression-level
+`let name = expression in expression`, typed
+`fun(name: Type) -> Type => expression`, and static function types
+`Fn(Type) -> Type`. Function values are specialized away at calls, cannot
+cross circuit inputs or outputs, and add no relation nodes by themselves.
+Recursive calls are rejected. Whole-program elaboration type checks every
+function and lambda body, including unused ones.
+For a witness-dependent `if`, both arms must have the same selectable
+first-order or static product type and be total on well-typed values. Both arms
+are emitted, followed by one constrained `select` or `bool_select` node per
+first-order leaf. The compiler
+rejects partial inverse, division, checked arithmetic and other potentially
+failing operations transitively through function calls in either arm. See
+the [functional language guide](../functional-language.md#witness-dependent-conditionals)
+for a worked example and the exact effect rule.
+Selecting u16-backed values such as `Bytes32` requires a u16-capable proving
+profile such as `sparse-wide-gate`; `direct-gate` accepts only M31 inputs.
 Unary `-` binds tighter than `.*`, which binds tighter than `+` and `-`; binary
 operators associate left, so `-a .* b - c - d` is `((-a) .* b - c) - d`.
 `a - b` and `-a` are spellings of `std::math::sub(a, b)` and
@@ -83,6 +111,10 @@ existing relation permits 1–16 such steps and 1–32768 rounds. The current ch
 is narrower: only the four-lane, public, square-then-add form at power-of-two
 round counts 16–32768. Select the chip explicitly with `--lowering direct-chip`
 or another chip profile; an unsupported shape fails instead of falling back.
+The generic circuit lowering admits at most 1,048,576 aggregate lane-step
+equivalents across eagerly expanded `iterate` nodes. A `mix4` step counts as
+eight lane steps. The native compiler checks this before expansion for text and
+JSON relations; authenticated chip calls use their separate admission rules.
 
 The example above lowers to one `repeat` node with a `square` and `add_const 7`
 body. With `--lowering direct-chip`, its chip rows constrain
@@ -111,6 +143,7 @@ relation and canonical IR digest.
 | `bit` | `m31[1]` | An input used by a Boolean operation or `select` has `b²=b`; `std::field::is_zero`, Boolean operations, and `std::math::le_u256` produce constrained bits. A computed bit can be returned as `[m31; 1]`. |
 | `Digest<Poseidon2>` | `m31[8]` | Nominal type for the pinned field-native digest. |
 | `Digest<Blake2sReduced>` | `m31[8]` | Nominal type for eight reduced BLAKE2s words. |
+| `struct Name { field: Type, ... }` | No record node; statically projected field values retain their own relation types | Nominal, closed source record; construction and access are checked then erased. |
 
 These digest types prevent text programs from mixing hash families even though
 both erase to `m31[8]` in relation v1. They do **not** claim that any arbitrary
@@ -127,15 +160,15 @@ zero-row view for byte and integer operations.
 | `a - b`, `-a` | Same as `std::math::sub(a, b)` and `std::math::neg(a)` | `[m31; N]`; binary form needs equal shapes. |
 | `splat<N>(c_m31)` | Compile-time uniform constant | Canonical M31 literal; materialized only if needed. |
 | `m31_from_u16(x)` | `cast_m31` | Explicit value-preserving conversion. |
-| `select(bit, a, b)` | `select` | Same M31 array, digest, or `UInt256` type; bit is a constrained input or computed bit. |
+| `select(bit, a, b)` | `select` | Same selectable type: M31/u16 array, digest, `Bytes32`, `BlockHash`, `Bytes80`, `UInt256`, `Target`, `Work`, `ChainWork`, or fixed-width integer. Bit is a constrained input or computed bit. |
 | `std::field::is_zero(x)` | `is_zero` | Scalar `[m31; 1]`; two equations force the bit to be one exactly at zero. |
 | `std::bool::not(a)`, `and(a,b)`, `or(a,b)`, `xor(a,b)` | `bool_not`, `bool_and`, `bool_or`, `bool_xor` | Typed `bit` operands and result; every operand is Boolean-constrained. |
 | `std::bool::select(s,a,b)` | `bool_select` | Three typed bits; returns `a` at `s=0` and `b` at `s=1`. |
-| `std::field::select(s,a,b)` | `select` | Scalar typed bit `s`; equal M31 array, digest, or `UInt256` operands; chooses `b` at `s=1`. Selected `UInt256` limbs equal range-checked input limbs. |
+| `std::field::select(s,a,b)` | `select` | Scalar typed bit `s`; equally typed selectable operands; chooses `b` at `s=1`. A selected u16 limb equals one of two range-checked input limbs, including nominal byte and wide values. |
 | `poseidon2_leaf(x)`, `blake2s_leaf(x)` | Corresponding leaf hash node | 4, 8, 12, or 16 M31 words. |
 | `poseidon2_pair(a,b)`, `blake2s_pair(a,b)` | Ordered-pair hash node | Two digests of the selected family. |
 | `merkle_path_poseidon2(leaf, siblings, directions)` and `merkle_path_blake2s(...)` | Optional leaf hash, then two selects and one ordered pair per level | Raw M31 leaf or same-family digest; static arrays of 1–16 digest and bit inputs. |
-| `assert_eq(a,b);` | Relation assertion | Equally typed operands; checked as a proof constraint. |
+| `assert_eq(a,b);` | Relation assertion | Equal first-order types, matching tuples, or the same nominal record; every product leaf is checked, with repeated or reversed realized wire pairs deduplicated. |
 | `std::bytes::to_u256_le(x)`, `from_u256_le(x)` | No node; change nominal type | Explicit little-endian interpretation of `Bytes32` or `UInt256`. |
 | `std::bytes::limbs_m31(x)` | `cast_m31` | `Bytes32` or `UInt256`; preserves all sixteen limb values. |
 | `std::hash::sha256d_header(header)` | `hash_sha256d_header` | `Bytes80` to byte-exact `Bytes32`; two first-pass and one second-pass SHA-256 blocks are fully constrained. |
@@ -198,10 +231,16 @@ There is no general module loader or third-party package system yet.
 | `std::math::lt_u256`, `gt_u256`, `ge_u256`, `eq_u256`, `ne_u256` | Existing `u256_le` comparisons and Boolean nodes | Two `UInt256` values; typed `bit` result. |
 | `std::math::min_u256`, `max_u256` | `u256_le` followed by a `select` of sixteen limbs | Two `UInt256` values; result `UInt256`. |
 | `std::int::add_checked`, `add_wrapping`, `sub_checked`, `sub_wrapping` | Width-tagged integer node with per-limb carry or borrow equations | Equal nominal fixed-width types; checked mode rejects overflow. |
+| `std::int::mul_checked`, `mul_wrapping` | Width-tagged byte-product node | Equal nominal types; checked mode proves the complete product fits, wrapping mode returns low bits. |
+| `std::int::div_rem` | One `int_div_rem` node with quotient and remainder in adjacent limb segments; source projects a pair | Equal nominal fixed-width types; division by zero and signed quotient overflow reject. Signed quotient rounds toward zero. |
+| `std::int::div_checked`, `rem_checked` | Select one result of `int_div_rem` | The other result remains constrained. Use one `div_rem` call to share work when both are used. |
 | `std::int::le`, `lt`, `ge`, `gt`, `eq`, `ne` | `int_le` plus Boolean composition as needed | Equal nominal fixed-width types; signed types use proved sign bits. |
 | `std::int::from_limbs_u8` through `from_limbs_i128` | Width-tagged `int_view` | Exact `[u16; L]` shape; byte types prove the high byte zero. |
 | `std::int::limbs` | No node; typed view | Fixed-width scalar to its little-endian `[u16; L]` bit pattern. |
 | `std::int::reinterpret_u8` through `reinterpret_i128` | Width-tagged `int_view` | Same width; changes signed interpretation, not bits. |
+| `std::int::cast_checked_u8` through `cast_checked_i128` | `int_cast_checked` with source and target tags | Numeric widening or narrowing; sign extension and discarded bits are constrained, and out-of-range values reject. |
+| `std::int::bit_and`, `bit_or`, `bit_xor`, `bit_not` | Width-tagged `int_bit_*` with Boolean bit decomposition and packing | Exact bit-pattern operation at the nominal width; binary calls require equal nominal types. |
+| `std::int::{shl,shr_logical,shr_arithmetic,rotl,rotr}<N>` | Width-tagged static integer shift or rotation with canonical `index=N` | One fixed-width operand; arithmetic right shift requires a signed type; count is source-time only. |
 
 The [wide-value worked example](../wide-values.md) gives the exact integer
 equations, source, assignment, and current Bitcoin boundary. Its `u16`

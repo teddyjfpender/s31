@@ -6,13 +6,15 @@ beside its checked normalized `.s31.json` relation and matching assignment
 
 | Directory | Programs |
 | --- | --- |
-| [`arithmetic/`](arithmetic/) | Field arithmetic, polynomials, reductions, and simple recurrences. |
+| [`arithmetic/`](arithmetic/) | Field arithmetic, polynomials, and reductions. |
+| [`recurrence/`](recurrence/) | Higher-order static steps that retain the dedicated recurrence chip. |
 | [`boundary/`](boundary/) | A private four-lane circuit-to-chip recurrence with one public aggregate. |
 | [`arrays/`](arrays/) | Static arrays, views, slices, and matrix operations. |
 | [`control/`](control/) | Boolean values, selection, and mixed computations. |
 | [`hashes/`](hashes/) | Preimages, Merkle trees, BLAKE2s, and Poseidon2. |
 | [`wide/`](wide/) | Checked and wrapping 256-bit operations. |
 | [`math/`](math/) | Fixed-width scalar integer operations and typed overflow modes. |
+| [`payments/`](payments/) | Hash-based Tongo-style note ownership, checked value conservation, delivery and replay protection; validity prototype, without a proof confidentiality guarantee. |
 | [`bitcoin/`](bitcoin/) | Header hashing, proof of work, linked headers, and a checked ChainWork transition. |
 | [`keys/`](keys/) | Placeholder keys for build-time examples. |
 

@@ -1,0 +1,8 @@
+use std@1;
+
+// Horner form of 2*x^2 + 3*x + 7, written directly in the circuit.
+circuit functional_poly4(private x: [m31; 4]) -> public [m31; 4] {
+    let result = ((splat<4>(2_m31) .* x) + splat<4>(3_m31)) .* x
+        + splat<4>(7_m31);
+    result
+}

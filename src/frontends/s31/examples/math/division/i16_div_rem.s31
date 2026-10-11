@@ -1,0 +1,8 @@
+use std@1;
+
+// Signed division truncates toward zero: -32,768 = (-10,922)*3 - 2.
+circuit i16_div_rem(private numerator: i16, private divisor: i16) -> public [u16; 2] {
+    let (quotient, remainder) = std::int::div_rem(numerator, divisor);
+    let result = std::array::concat(std::int::limbs(quotient), std::int::limbs(remainder));
+    result
+}

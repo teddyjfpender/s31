@@ -1,0 +1,17 @@
+use std@1;
+
+struct Pair {
+    first: [m31; 1],
+    nested: ([m31; 1], [m31; 1]),
+}
+
+circuit record_choice(private x: [m31; 1], private y: [m31; 1]) -> public Pair {
+    let b = std::field::is_zero(x);
+    let a = Pair { first: x + x, nested: (x, y) };
+    let c = Pair { first: y + y, nested: (y, x) };
+    Pair {
+        first: if b then a.first else c.first,
+        nested: (if b then a.nested.0 else c.nested.0,
+                 if b then a.nested.1 else c.nested.1),
+    }
+}

@@ -1,0 +1,49 @@
+{
+  "assertions": [],
+  "inputs": [
+    {
+      "kind": "m31",
+      "length": 1,
+      "name": "choice",
+      "visibility": "public"
+    },
+    {
+      "kind": "m31",
+      "length": 1,
+      "name": "x",
+      "visibility": "private"
+    },
+    {
+      "kind": "m31",
+      "length": 1,
+      "name": "y",
+      "visibility": "public"
+    }
+  ],
+  "name": "total_if",
+  "nodes": [
+    {
+      "lhs": "x",
+      "name": "_s31_0",
+      "op": "mul",
+      "rhs": "x"
+    },
+    {
+      "constant": 1,
+      "lhs": "y",
+      "name": "_s31_1",
+      "op": "add_const"
+    },
+    {
+      "lhs": "_s31_1",
+      "name": "result",
+      "op": "select",
+      "rhs": "_s31_0",
+      "selector": "choice"
+    }
+  ],
+  "public_outputs": [
+    "result"
+  ],
+  "version": 1
+}

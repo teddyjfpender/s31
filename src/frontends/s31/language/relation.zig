@@ -7,9 +7,36 @@ const core = @import("stwo_core");
 const M31 = core.fields.m31.M31;
 const P = core.fields.m31.Modulus;
 const poseidon2 = @import("../library/hash/poseidon2.zig");
+const record_abi = @import("record_abi.zig");
 
 pub const Kind = enum { u16, m31 };
+pub const max_input_words: u64 = 65_536;
+pub const max_relation_items: u64 = 100_000;
+pub const max_program_source_bytes: usize = 8 * 1024 * 1024;
+pub const max_assignment_source_bytes: usize = 8 * 1024 * 1024;
+pub const max_evaluator_repeat_lane_steps: u64 = 16_777_216;
+/// Early, conservative admission before either native compiler expands nodes.
+/// This is a work heuristic, not an upper bound on circuit gates; the compiler
+/// also checks its actual recorded gate and variable counts after every node.
+pub const max_shape_work: u64 = 8_388_608;
+
+fn chargeShapeWork(total: *u64, amount: u64) !void {
+    total.* = std.math.add(u64, total.*, amount) catch return error.ShapeWorkLimitExceeded;
+    if (total.* > max_shape_work) return error.ShapeWorkLimitExceeded;
+}
 pub const Visibility = enum { public, private };
+/// ABI visibility and proof blinding are independent. `blinded` is the
+/// experimental pinned random-row construction, not a general ZK guarantee.
+pub const ProofMode = enum {
+    transparent,
+    blinded,
+
+    pub fn jsonParse(allocator: std.mem.Allocator, source: anytype, options: std.json.ParseOptions) !@This() {
+        if (try source.peekNextTokenType() != .string) return error.UnexpectedToken;
+        const name = try std.json.innerParse([]const u8, allocator, source, options);
+        return std.meta.stringToEnum(@This(), name) orelse error.InvalidEnumTag;
+    }
+};
 pub const Input = struct {
     name: []const u8,
     kind: Kind,
@@ -43,7 +70,7 @@ pub fn applyStep(values: []M31, step: Step) !void {
         },
     }
 }
-pub const Op = enum { constant, cast_m31, add, mul, add_const, mul_const, repeat, hash_blake2s, hash_blake2s_leaf, hash_blake2s_pair, select, hash_poseidon2_leaf, hash_poseidon2_pair, sum_lanes, u256_add, u256_le, u256_add_checked, hash_sha256d_header, bitcoin_target_mainnet, bitcoin_prev_hash, bitcoin_header_bits, bitcoin_genesis_hash_mainnet, bitcoin_header_time, u32_lt, inv, is_zero, u256_sub, u256_sub_checked, array_get, array_concat, array_slice, bool_not, bool_and, bool_or, bool_xor, bool_select, bitcoin_block_work, int_view, int_add_checked, int_add_wrapping, int_sub_checked, int_sub_wrapping, int_le };
+pub const Op = enum { constant, cast_m31, add, mul, add_const, mul_const, repeat, hash_blake2s, hash_blake2s_leaf, hash_blake2s_pair, select, hash_poseidon2_leaf, hash_poseidon2_pair, sum_lanes, u256_add, u256_le, u256_add_checked, hash_sha256d_header, bitcoin_target_mainnet, bitcoin_prev_hash, bitcoin_header_bits, bitcoin_genesis_hash_mainnet, bitcoin_header_time, u32_lt, inv, is_zero, u256_sub, u256_sub_checked, array_get, array_concat, array_slice, bool_not, bool_and, bool_or, bool_xor, bool_select, bitcoin_block_work, int_view, int_add_checked, int_add_wrapping, int_sub_checked, int_sub_wrapping, int_le, int_mul_wrapping, int_mul_checked, int_cast_checked, int_bit_and, int_bit_or, int_bit_xor, int_bit_not, int_shl, int_shr_logical, int_shr_arithmetic, int_rotl, int_rotr, int_div_rem };
 /// The node constant binds an integer's width and signedness into canonical IR.
 /// The source-level scalar is carried as little-endian u16 words; an 8-bit
 /// scalar uses one u16 word with an additional circuit-enforced byte bound.
@@ -61,6 +88,21 @@ pub const IntegerSpec = struct {
         if (value != width and value != width + 256) return null;
         if (width != 8 and width != 16 and width != 32 and width != 64 and width != 128) return null;
         return .{ .width = width, .signed = value >= 256 };
+    }
+};
+/// Two nine-bit IntegerSpec tags, source first. A cast changes the numeric
+/// value's representation only if the value fits the destination range.
+pub const IntegerCastSpec = struct {
+    source: IntegerSpec,
+    target: IntegerSpec,
+
+    pub fn decode(encoded: ?u32) ?IntegerCastSpec {
+        const value = encoded orelse return null;
+        if (value >= (1 << 18)) return null;
+        return .{
+            .source = IntegerSpec.decode(value & 0x1ff) orelse return null,
+            .target = IntegerSpec.decode(value >> 9) orelse return null,
+        };
     }
 };
 pub const mainnet_genesis_hash_raw: [32]u8 = .{ 0x6f, 0xe2, 0x8c, 0x0a, 0xb6, 0xf1, 0xb3, 0x72, 0xc1, 0xa6, 0xa2, 0x46, 0xae, 0x63, 0xf7, 0x4f, 0x93, 0x1e, 0x83, 0x65, 0xe1, 0x5a, 0x08, 0x9c, 0x68, 0xd6, 0x19, 0x00, 0x00, 0x00, 0x00, 0x00 };
@@ -86,11 +128,77 @@ pub const Shape = struct {
     kind: Kind,
     length: usize,
 };
-pub const ChipSpec = struct { rounds: u32, constant: u32 };
+pub const ChipSpec = struct {
+    rounds: u32,
+    constant: u32,
+    /// Private endpoint map s = input_scale * x + input_shift. The inverse
+    /// map is x = inverse_scale * (s - input_shift). All values are in M31.
+    input_scale: u32 = 1,
+    input_shift: u32 = 0,
+    inverse_scale: u32 = 1,
+    order: enum { square_then_add, add_then_square, affine_one_square } = .square_then_add,
+};
+
+/// An affine prefix followed by one square and an affine suffix has the form
+/// T(x) = C(Ax+B)^2 + D. For nonzero A and C, the invertible map
+/// s = C*A^2*x + C*A*B gives s' = s^2 + (C*A^2*D + C*A*B).
+/// The four lanes share these static coefficients; mix4 and a second square
+/// need their own chip AIR and are deliberately excluded.
+fn affineOneSquareChip(body: []const Step, rounds: u32) ?ChipSpec {
+    var before_scale = M31.one();
+    var before_shift = M31.zero();
+    var after_scale = M31.one();
+    var after_shift = M31.zero();
+    var seen_square = false;
+    for (body) |step| switch (step.op) {
+        .square => {
+            if (seen_square or step.constant != null) return null;
+            seen_square = true;
+        },
+        .add_const => {
+            const value = step.constant orelse return null;
+            if (value >= P) return null;
+            const constant = M31.fromCanonical(value);
+            if (seen_square) after_shift = after_shift.add(constant) else before_shift = before_shift.add(constant);
+        },
+        .mul_const => {
+            const value = step.constant orelse return null;
+            if (value >= P) return null;
+            const constant = M31.fromCanonical(value);
+            if (seen_square) {
+                after_scale = after_scale.mul(constant);
+                after_shift = after_shift.mul(constant);
+            } else {
+                before_scale = before_scale.mul(constant);
+                before_shift = before_shift.mul(constant);
+            }
+        },
+        .mix4 => return null,
+    };
+    if (!seen_square or before_scale.isZero() or after_scale.isZero()) return null;
+    const scale = after_scale.mul(before_scale.square());
+    const shift = after_scale.mul(before_scale).mul(before_shift);
+    const chip_constant = scale.mul(after_shift).add(shift);
+    return .{
+        .rounds = rounds,
+        .constant = chip_constant.toU32(),
+        .input_scale = scale.toU32(),
+        .input_shift = shift.toU32(),
+        .inverse_scale = scale.invUncheckedNonZero().toU32(),
+        .order = if (body.len == 2 and body[0].op == .square and body[1].op == .add_const)
+            .square_then_add
+        else if (body.len == 2 and body[0].op == .add_const and body[1].op == .square)
+            .add_then_square
+        else
+            .affine_one_square,
+    };
+}
 pub const StateFoldSpec = struct { rounds: u32, body: []const Step };
 pub const Program = struct {
     version: u32,
     name: []const u8,
+    proof_mode: ProofMode = .transparent,
+    public_abi: ?std.json.Value = null,
     inputs: []Input,
     nodes: []Node,
     assertions: []Assertion,
@@ -144,6 +252,8 @@ pub const Program = struct {
     /// A direct-M31 chip may take its four endpoints from private circuit
     /// wires. The repeat is the first source node; later nodes may compute a
     /// public claim from the final state without publishing either endpoint.
+    /// A static, nondegenerate affine/square/affine step is admitted through
+    /// a constrained affine change of variables at both endpoints.
     pub fn privateRepeatedStepChip(self: Program) ?ChipSpec {
         if (self.inputs.len != 1 or self.nodes.len < 2 or self.public_outputs.len == 0)
             return null;
@@ -158,26 +268,75 @@ pub const Program = struct {
         const rounds = repeated.rounds.?;
         const body = repeated.body.?;
         if (rounds < 16 or rounds > 32768 or !std.math.isPowerOfTwo(rounds) or
-            body.len != 2 or body[0].op != .square or body[1].op != .add_const or
-            body[1].constant == null)
+            body.len == 0 or body.len > 16)
             return null;
         for (self.nodes[1..]) |node| if (node.op == .repeat) return null;
         for (self.public_outputs) |name| {
             if (std.mem.eql(u8, name, input.name) or std.mem.eql(u8, name, repeated.name))
                 return null;
         }
-        return .{ .rounds = rounds, .constant = body[1].constant.? };
+        return affineOneSquareChip(body, rounds);
+    }
+
+    /// Initial source profile for the authenticated two-call direct chip.
+    /// Two distinct private four-lane inputs feed the first two source nodes;
+    /// each node is exactly `square; add_const`. The final nodes publish the
+    /// lane-wise sum and product of both chip outputs. The public ABI has
+    /// exactly these two four-word results and no public inputs.
+    /// This deliberately excludes affine conjugation until pair lowering has
+    /// the same endpoint correspondence checks as the one-call profile.
+    pub fn privateRepeatedStepPair(self: Program) ?[2]ChipSpec {
+        if (self.version != 1 or self.proof_mode != .transparent or
+            self.inputs.len != 2 or self.nodes.len != 4 or self.assertions.len != 0 or self.public_outputs.len != 2)
+            return null;
+        var result: [2]ChipSpec = undefined;
+        for (self.inputs, 0..) |input, id| {
+            if (input.visibility != .private or input.kind != .m31 or input.length != 4)
+                return null;
+            const node = self.nodes[id];
+            if (node.op != .repeat or !std.mem.eql(u8, node.lhs orelse return null, input.name))
+                return null;
+            const rounds = node.rounds orelse return null;
+            if (rounds < 16 or rounds > 32768 or !std.math.isPowerOfTwo(rounds))
+                return null;
+            const body = node.body orelse return null;
+            if (body.len != 2 or body[0].op != .square or body[0].constant != null or
+                body[1].op != .add_const or body[1].constant == null or body[1].constant.? >= P)
+                return null;
+            result[id] = .{ .rounds = rounds, .constant = body[1].constant.? };
+        }
+        for (self.nodes[2..], 0..) |node, index| {
+            if (node.op != (if (index == 0) Op.add else Op.mul) or
+                !std.mem.eql(u8, node.name, self.public_outputs[index])) return null;
+            const lhs = node.lhs orelse return null;
+            const rhs = node.rhs orelse return null;
+            const left = self.nodes[0].name;
+            const right = self.nodes[1].name;
+            if (!((std.mem.eql(u8, lhs, left) and std.mem.eql(u8, rhs, right)) or
+                (std.mem.eql(u8, lhs, right) and std.mem.eql(u8, rhs, left)))) return null;
+        }
+        return result;
     }
 
     pub fn validate(self: Program, allocator: std.mem.Allocator) !void {
-        if (self.version != 1) return error.UnsupportedVersion;
+        if (self.version != 1 and self.version != 2) return error.UnsupportedVersion;
+        if (self.version == 1 and self.public_abi != null) return error.InvalidRecordAbi;
+        if (self.version == 2 and self.public_abi == null) return error.InvalidRecordAbi;
         if (!validName(self.name)) return error.InvalidProgramName;
+        const item_count = std.math.add(u64, @intCast(self.inputs.len), @intCast(self.nodes.len)) catch return error.RelationItemLimitExceeded;
+        const total_items = std.math.add(u64, item_count, @intCast(self.assertions.len)) catch return error.RelationItemLimitExceeded;
+        if (total_items > max_relation_items) return error.RelationItemLimitExceeded;
         var shapes = std.StringHashMapUnmanaged(Shape){};
         defer shapes.deinit(allocator);
         var public_words: usize = 0;
+        var input_words: u64 = 0;
+        var shape_work: u64 = 0;
         for (self.inputs) |input| {
             if (!validName(input.name) or shapes.contains(input.name)) return error.DuplicateOrInvalidName;
             if (input.length == 0 or input.length > 4096) return error.InvalidArrayLength;
+            input_words = std.math.add(u64, input_words, input.length) catch return error.InputWordLimitExceeded;
+            if (input_words > max_input_words) return error.InputWordLimitExceeded;
+            try chargeShapeWork(&shape_work, @as(u64, input.length) * (if (input.kind == .u16) @as(u64, 128) else 8));
             if (input.visibility == .public) public_words += input.length;
             try shapes.put(allocator, input.name, .{ .kind = input.kind, .length = input.length });
         }
@@ -187,7 +346,9 @@ pub const Program = struct {
             const rhs: ?Shape = if (node.rhs) |name| shapes.get(name) orelse return error.UnknownOperand else null;
             const selector: ?Shape = if (node.selector) |name| shapes.get(name) orelse return error.UnknownOperand else null;
             if (node.op != .select and node.op != .bool_select and selector != null) return error.InvalidNode;
-            if (node.op != .array_get and node.op != .array_slice and node.index != null) return error.InvalidNode;
+            if (node.op != .array_get and node.op != .array_slice and node.op != .int_shl and
+                node.op != .int_shr_logical and node.op != .int_shr_arithmetic and
+                node.op != .int_rotl and node.op != .int_rotr and node.index != null) return error.InvalidNode;
             var result: Shape = undefined;
             switch (node.op) {
                 .array_get => {
@@ -261,17 +422,35 @@ pub const Program = struct {
                     else
                         .{ .kind = .m31, .length = 1 };
                 },
-                .int_view, .int_add_checked, .int_add_wrapping, .int_sub_checked, .int_sub_wrapping, .int_le => {
+                .int_view, .int_add_checked, .int_add_wrapping, .int_sub_checked, .int_sub_wrapping, .int_le, .int_mul_wrapping, .int_mul_checked, .int_bit_and, .int_bit_or, .int_bit_xor, .int_bit_not, .int_div_rem => {
                     const spec = IntegerSpec.decode(node.constant) orelse return error.InvalidIntegerSpec;
                     if (lhs == null or lhs.?.kind != .u16 or lhs.?.length != spec.limbCount() or
                         node.selector != null or node.index != null or node.length != null or
                         node.rounds != null or node.body != null) return error.InvalidNode;
-                    if (node.op == .int_view) {
+                    if (node.op == .int_view or node.op == .int_bit_not) {
                         if (rhs != null) return error.InvalidNode;
                     } else if (rhs == null or rhs.?.kind != .u16 or rhs.?.length != spec.limbCount()) {
                         return error.InvalidNode;
                     }
-                    result = if (node.op == .int_le) .{ .kind = .m31, .length = 1 } else lhs.?;
+                    result = if (node.op == .int_le) .{ .kind = .m31, .length = 1 } else if (node.op == .int_div_rem) .{ .kind = .u16, .length = 2 * spec.limbCount() } else lhs.?;
+                },
+                .int_shl, .int_shr_logical, .int_shr_arithmetic, .int_rotl, .int_rotr => {
+                    const spec = IntegerSpec.decode(node.constant) orelse return error.InvalidIntegerSpec;
+                    const count = node.index orelse return error.InvalidNode;
+                    if (lhs == null or lhs.?.kind != .u16 or lhs.?.length != spec.limbCount() or
+                        rhs != null or node.selector != null or node.length != null or
+                        node.rounds != null or node.body != null or
+                        (node.op == .int_shr_arithmetic and !spec.signed) or
+                        (if (node.op == .int_rotl or node.op == .int_rotr) count >= spec.width else count > spec.width))
+                        return error.InvalidNode;
+                    result = lhs.?;
+                },
+                .int_cast_checked => {
+                    const spec = IntegerCastSpec.decode(node.constant) orelse return error.InvalidIntegerSpec;
+                    if (lhs == null or lhs.?.kind != .u16 or lhs.?.length != spec.source.limbCount() or
+                        rhs != null or node.selector != null or node.index != null or node.length != null or
+                        node.rounds != null or node.body != null) return error.InvalidNode;
+                    result = .{ .kind = .u16, .length = spec.target.limbCount() };
                 },
                 .bitcoin_block_work => {
                     if (lhs == null or lhs.?.kind != .u16 or lhs.?.length != 16 or
@@ -331,18 +510,35 @@ pub const Program = struct {
                     result = .{ .kind = .m31, .length = 8 };
                 },
             }
+            const ordinary_length = switch (node.op) {
+                .array_get, .cast_m31 => @as(usize, 1),
+                .array_slice, .array_concat => result.length,
+                else => @max(result.length, @max(if (lhs) |v| v.length else 0, if (rhs) |v| v.length else 0)),
+            };
+            const fixed_credit: u64 = switch (node.op) {
+                .hash_sha256d_header => 1_048_576,
+                .bitcoin_target_mainnet, .bitcoin_block_work => 131_072,
+                .hash_poseidon2_leaf, .hash_poseidon2_pair => 16_384,
+                .hash_blake2s, .hash_blake2s_leaf, .hash_blake2s_pair => 8_192,
+                .int_div_rem => 65_536,
+                .int_mul_checked, .int_mul_wrapping => 8_192,
+                else => 0,
+            };
+            try chargeShapeWork(&shape_work, @as(u64, @intCast(ordinary_length)) * 8 + fixed_credit);
             try shapes.put(allocator, node.name, result);
         }
         for (self.assertions) |assertion| {
             const lhs = shapes.get(assertion.lhs) orelse return error.UnknownOperand;
             const rhs = shapes.get(assertion.rhs) orelse return error.UnknownOperand;
             if (lhs.kind != rhs.kind or lhs.length != rhs.length) return error.AssertionShapeMismatch;
+            try chargeShapeWork(&shape_work, @as(u64, @intCast(lhs.length)) * 8);
         }
         for (self.public_outputs) |name| {
             const shape = shapes.get(name) orelse return error.UnknownOutput;
             public_words += shape.length;
         }
         if (public_words == 0 or public_words > 8) return error.PublicAbiTooWide;
+        if (self.version == 2) try record_abi.validate(allocator, self);
     }
 
     pub fn shapeOf(self: Program, allocator: std.mem.Allocator, name: []const u8) !?Shape {
@@ -364,12 +560,14 @@ pub const Program = struct {
                 .hash_sha256d_header, .bitcoin_target_mainnet, .bitcoin_genesis_hash_mainnet, .bitcoin_block_work => 16,
                 .bitcoin_prev_hash => 16,
                 .bitcoin_header_bits, .bitcoin_header_time => 2,
+                .int_cast_checked => (IntegerCastSpec.decode(node.constant) orelse return error.InvalidIntegerSpec).target.limbCount(),
+                .int_div_rem => 2 * (IntegerSpec.decode(node.constant) orelse return error.InvalidIntegerSpec).limbCount(),
                 .hash_blake2s, .hash_blake2s_leaf, .hash_blake2s_pair, .hash_poseidon2_leaf, .hash_poseidon2_pair => 8,
                 else => (shapes.get(node.lhs orelse return error.InvalidNode) orelse return error.UnknownOperand).length,
             };
             const shape: Shape = .{ .kind = if (node.op == .array_get or node.op == .array_concat or node.op == .array_slice or node.op == .select)
                 (shapes.get(node.lhs.?) orelse return error.UnknownOperand).kind
-            else if (node.op == .int_view or node.op == .int_add_checked or node.op == .int_add_wrapping or node.op == .int_sub_checked or node.op == .int_sub_wrapping or node.op == .u256_add or node.op == .u256_add_checked or node.op == .u256_sub or node.op == .u256_sub_checked or node.op == .hash_sha256d_header or node.op == .bitcoin_target_mainnet or node.op == .bitcoin_prev_hash or node.op == .bitcoin_header_bits or node.op == .bitcoin_header_time or node.op == .bitcoin_genesis_hash_mainnet or node.op == .bitcoin_block_work) .u16 else .m31, .length = length };
+            else if (node.op == .int_view or node.op == .int_add_checked or node.op == .int_add_wrapping or node.op == .int_sub_checked or node.op == .int_sub_wrapping or node.op == .int_mul_wrapping or node.op == .int_mul_checked or node.op == .int_cast_checked or node.op == .int_div_rem or node.op == .int_bit_and or node.op == .int_bit_or or node.op == .int_bit_xor or node.op == .int_bit_not or node.op == .int_shl or node.op == .int_shr_logical or node.op == .int_shr_arithmetic or node.op == .int_rotl or node.op == .int_rotr or node.op == .u256_add or node.op == .u256_add_checked or node.op == .u256_sub or node.op == .u256_sub_checked or node.op == .hash_sha256d_header or node.op == .bitcoin_target_mainnet or node.op == .bitcoin_prev_hash or node.op == .bitcoin_header_bits or node.op == .bitcoin_header_time or node.op == .bitcoin_genesis_hash_mainnet or node.op == .bitcoin_block_work) .u16 else .m31, .length = length };
             if (std.mem.eql(u8, node.name, name)) return shape;
             try shapes.put(allocator, node.name, shape);
         }
@@ -386,13 +584,80 @@ pub const ParsedProgram = std.json.Parsed(Program);
 pub const ParsedAssignment = std.json.Parsed(Assignment);
 
 pub fn parseProgram(allocator: std.mem.Allocator, source: []const u8) !ParsedProgram {
+    if (source.len > max_program_source_bytes) return error.ProgramSourceTooLarge;
     var parsed = try std.json.parseFromSlice(Program, allocator, source, .{ .ignore_unknown_fields = false });
     errdefer parsed.deinit();
     try parsed.value.validate(allocator);
     return parsed;
 }
 
+test "native relation rejects aggregate input and wide-node work" {
+    const allocator = std.testing.allocator;
+    var names: [17][16]u8 = undefined;
+    var inputs: [17]Input = undefined;
+    for (&inputs, 0..) |*input, i| {
+        input.* = .{
+            .name = try std.fmt.bufPrint(&names[i], "x{d}", .{i}),
+            .kind = .m31,
+            .length = 4096,
+            .visibility = .private,
+        };
+    }
+    var nodes = [_]Node{.{ .name = "out", .op = .constant, .constant = 0, .length = 1 }};
+    var outputs = [_][]const u8{"out"};
+    var program: Program = .{
+        .version = 1,
+        .name = "bounded_inputs",
+        .inputs = inputs[0..16],
+        .nodes = &nodes,
+        .assertions = &.{},
+        .public_outputs = &outputs,
+    };
+    try program.validate(allocator);
+    program.inputs = &inputs;
+    try std.testing.expectError(error.InputWordLimitExceeded, program.validate(allocator));
+
+    program.inputs = inputs[0..1];
+    var view_nodes: [300]Node = undefined;
+    var view_names: [300][16]u8 = undefined;
+    for (&view_nodes, 0..) |*node, i| {
+        node.* = .{
+            .name = try std.fmt.bufPrint(&view_names[i], "v{d}", .{i}),
+            .op = .array_get,
+            .lhs = inputs[0].name,
+            .index = @intCast(i),
+        };
+    }
+    program.nodes = &view_nodes;
+    outputs[0] = view_nodes[299].name;
+    try program.validate(allocator);
+
+    var wide_nodes: [300]Node = undefined;
+    var wide_names: [300][16]u8 = undefined;
+    for (&wide_nodes, 0..) |*node, i| {
+        node.* = .{
+            .name = try std.fmt.bufPrint(&wide_names[i], "n{d}", .{i}),
+            .op = .mul,
+            .lhs = if (i == 0) inputs[0].name else wide_nodes[i - 1].name,
+            .rhs = inputs[0].name,
+        };
+    }
+    // Admission rejects during the chain, before output shape or circuit work.
+    program.nodes = &wide_nodes;
+    outputs[0] = wide_nodes[299].name;
+    try std.testing.expectError(error.ShapeWorkLimitExceeded, program.validate(allocator));
+}
+
+test "unknown proof mode is rejected rather than downgraded" {
+    const source =
+        \\{"version":1,"name":"bad_mode","proof_mode":"zk","inputs":[],"nodes":[],"assertions":[],"public_outputs":[]}
+    ;
+    try std.testing.expectError(error.InvalidEnumTag, parseProgram(std.testing.allocator, source));
+    try std.testing.expectError(error.UnexpectedToken, parseProgram(std.testing.allocator, "{\"version\":1,\"name\":\"bad_mode\",\"proof_mode\":1,\"inputs\":[],\"nodes\":[],\"assertions\":[],\"public_outputs\":[]}"));
+}
+
 pub fn parseAssignment(allocator: std.mem.Allocator, source: []const u8) !ParsedAssignment {
+    if (source.len > max_assignment_source_bytes) return error.AssignmentSourceTooLarge;
     var parsed = try std.json.parseFromSlice(Assignment, allocator, source, .{ .ignore_unknown_fields = false });
     errdefer parsed.deinit();
     if (parsed.value.public_inputs != .object or parsed.value.public_outputs != .object) return error.InvalidAssignment;
@@ -439,6 +704,7 @@ pub fn claimedWords(allocator: std.mem.Allocator, program: Program, assignment: 
 
 pub fn evaluate(allocator: std.mem.Allocator, program: Program, assignment: Assignment) ![8]u32 {
     try program.validate(allocator);
+    var repeat_lane_steps: u64 = 0;
     var expected_private_inputs: usize = 0;
     for (program.inputs) |input| if (input.visibility == .private) {
         expected_private_inputs += 1;
@@ -453,7 +719,7 @@ pub fn evaluate(allocator: std.mem.Allocator, program: Program, assignment: Assi
     }
     for (program.inputs) |input| try values.put(allocator, input.name, try inputValues(allocator, assignment, input));
     for (program.nodes) |node| {
-        const length: usize = if (node.op == .constant or node.op == .array_slice) node.length.? else if (node.op == .array_get or node.op == .sum_lanes or node.op == .u256_le or node.op == .u32_lt or node.op == .int_le or node.op == .is_zero or node.op == .bool_not or node.op == .bool_and or node.op == .bool_or or node.op == .bool_xor or node.op == .bool_select) 1 else if (node.op == .array_concat) (values.get(node.lhs.?) orelse return error.UnknownOperand).len + (values.get(node.rhs.?) orelse return error.UnknownOperand).len else if (node.op == .hash_sha256d_header or node.op == .bitcoin_target_mainnet or node.op == .bitcoin_prev_hash or node.op == .bitcoin_genesis_hash_mainnet or node.op == .bitcoin_block_work) 16 else if (node.op == .bitcoin_header_bits or node.op == .bitcoin_header_time) 2 else if (node.op == .hash_blake2s or node.op == .hash_blake2s_leaf or node.op == .hash_blake2s_pair or node.op == .hash_poseidon2_leaf or node.op == .hash_poseidon2_pair) 8 else (values.get(node.lhs.?) orelse return error.UnknownOperand).len;
+        const length: usize = if (node.op == .constant or node.op == .array_slice) node.length.? else if (node.op == .array_get or node.op == .sum_lanes or node.op == .u256_le or node.op == .u32_lt or node.op == .int_le or node.op == .is_zero or node.op == .bool_not or node.op == .bool_and or node.op == .bool_or or node.op == .bool_xor or node.op == .bool_select) 1 else if (node.op == .array_concat) (values.get(node.lhs.?) orelse return error.UnknownOperand).len + (values.get(node.rhs.?) orelse return error.UnknownOperand).len else if (node.op == .int_cast_checked) (IntegerCastSpec.decode(node.constant) orelse return error.InvalidIntegerSpec).target.limbCount() else if (node.op == .int_div_rem) 2 * (IntegerSpec.decode(node.constant) orelse return error.InvalidIntegerSpec).limbCount() else if (node.op == .hash_sha256d_header or node.op == .bitcoin_target_mainnet or node.op == .bitcoin_prev_hash or node.op == .bitcoin_genesis_hash_mainnet or node.op == .bitcoin_block_work) 16 else if (node.op == .bitcoin_header_bits or node.op == .bitcoin_header_time) 2 else if (node.op == .hash_blake2s or node.op == .hash_blake2s_leaf or node.op == .hash_blake2s_pair or node.op == .hash_poseidon2_leaf or node.op == .hash_poseidon2_pair) 8 else (values.get(node.lhs.?) orelse return error.UnknownOperand).len;
         const out = try allocator.alloc(M31, length);
         errdefer allocator.free(out);
         const lhs = if (node.lhs) |name| values.get(name) orelse return error.UnknownOperand else null;
@@ -513,8 +779,63 @@ pub fn evaluate(allocator: std.mem.Allocator, program: Program, assignment: Assi
             try values.put(allocator, node.name, out);
             continue;
         }
-        if (node.op == .int_view or node.op == .int_add_checked or node.op == .int_add_wrapping or
-            node.op == .int_sub_checked or node.op == .int_sub_wrapping or node.op == .int_le)
+        if (node.op == .int_cast_checked) {
+            const spec = IntegerCastSpec.decode(node.constant) orelse return error.InvalidIntegerSpec;
+            var pattern: u256 = 0;
+            for (lhs.?, 0..) |word, i| pattern |= @as(u256, word.v) << @as(u8, @intCast(16 * i));
+            const source_limit: u256 = @as(u256, 1) << @as(u8, @intCast(spec.source.width));
+            if (pattern >= source_limit) return error.IntegerOutOfRange;
+            const source_negative = spec.source.signed and pattern >= source_limit / 2;
+            const value: i256 = @as(i256, @intCast(pattern)) - if (source_negative) @as(i256, @intCast(source_limit)) else 0;
+            const target_limit: i256 = @as(i256, 1) << @as(u8, @intCast(spec.target.width));
+            const minimum: i256 = if (spec.target.signed) -(target_limit >> 1) else 0;
+            const maximum: i256 = if (spec.target.signed) (target_limit >> 1) - 1 else target_limit - 1;
+            if (value < minimum or value > maximum) return error.IntegerOverflow;
+            const output_pattern: u256 = @intCast(if (value < 0) value + target_limit else value);
+            for (out, 0..) |*slot, i| slot.* = M31.fromCanonical(@intCast((output_pattern >> @as(u8, @intCast(16 * i))) & 0xffff));
+            try values.put(allocator, node.name, out);
+            continue;
+        }
+        if (node.op == .int_div_rem) {
+            const spec = IntegerSpec.decode(node.constant) orelse return error.InvalidIntegerSpec;
+            const base: u32 = if (spec.width == 8) 256 else 65536;
+            var numerator: u128 = 0;
+            var denominator: u128 = 0;
+            for (lhs.?, rhs.?, 0..) |a, b, i| {
+                if (a.v >= base or b.v >= base) return error.IntegerOutOfRange;
+                const shift: u7 = @intCast(16 * i);
+                numerator |= @as(u128, a.v) << shift;
+                denominator |= @as(u128, b.v) << shift;
+            }
+            const mask: u128 = if (spec.width == 128) std.math.maxInt(u128) else (@as(u128, 1) << @as(u7, @intCast(spec.width))) - 1;
+            const half: u128 = @as(u128, 1) << @as(u7, @intCast(spec.width - 1));
+            const numerator_negative = spec.signed and numerator & half != 0;
+            const denominator_negative = spec.signed and denominator & half != 0;
+            const numerator_magnitude = if (numerator_negative) ((~numerator) +% 1) & mask else numerator;
+            const denominator_magnitude = if (denominator_negative) ((~denominator) +% 1) & mask else denominator;
+            if (denominator_magnitude == 0) return error.ZeroDivisor;
+            const quotient_magnitude = numerator_magnitude / denominator_magnitude;
+            const remainder_magnitude = numerator_magnitude % denominator_magnitude;
+            const quotient_negative = numerator_negative != denominator_negative;
+            if (spec.signed and quotient_magnitude > (if (quotient_negative) half else half - 1)) return error.IntegerOverflow;
+            const quotient = if (quotient_negative) ((~quotient_magnitude) +% 1) & mask else quotient_magnitude;
+            const remainder = if (numerator_negative) ((~remainder_magnitude) +% 1) & mask else remainder_magnitude;
+            const limb_count = spec.limbCount();
+            for (0..limb_count) |i| {
+                const shift: u7 = @intCast(16 * i);
+                out[i] = M31.fromCanonical(@intCast((quotient >> shift) & (base - 1)));
+                out[limb_count + i] = M31.fromCanonical(@intCast((remainder >> shift) & (base - 1)));
+            }
+            try values.put(allocator, node.name, out);
+            continue;
+        }
+        if (node.op == .int_view or node.op == .int_bit_and or node.op == .int_bit_or or
+            node.op == .int_bit_xor or node.op == .int_bit_not or node.op == .int_shl or
+            node.op == .int_shr_logical or node.op == .int_shr_arithmetic or
+            node.op == .int_rotl or node.op == .int_rotr or
+            node.op == .int_add_checked or node.op == .int_add_wrapping or
+            node.op == .int_sub_checked or node.op == .int_sub_wrapping or node.op == .int_le or
+            node.op == .int_mul_wrapping or node.op == .int_mul_checked)
         {
             const spec = IntegerSpec.decode(node.constant) orelse return error.InvalidIntegerSpec;
             const base: u32 = if (spec.width == 8) 256 else 65536;
@@ -524,6 +845,39 @@ pub fn evaluate(allocator: std.mem.Allocator, program: Program, assignment: Assi
             };
             if (node.op == .int_view) {
                 @memcpy(out, lhs.?);
+            } else if (node.op == .int_bit_and or node.op == .int_bit_or or
+                node.op == .int_bit_xor or node.op == .int_bit_not or node.op == .int_shl or
+                node.op == .int_shr_logical or node.op == .int_shr_arithmetic or
+                node.op == .int_rotl or node.op == .int_rotr)
+            {
+                var left_pattern: u128 = 0;
+                var right_pattern: u128 = 0;
+                for (lhs.?, 0..) |word, index| left_pattern |= @as(u128, word.v) << @as(u7, @intCast(16 * index));
+                if (rhs) |right| for (right, 0..) |word, index| {
+                    right_pattern |= @as(u128, word.v) << @as(u7, @intCast(16 * index));
+                };
+                const mask: u128 = if (spec.width == 128) std.math.maxInt(u128) else (@as(u128, 1) << @as(u7, @intCast(spec.width))) - 1;
+                const count = node.index orelse 0;
+                const result_bits: u128 = switch (node.op) {
+                    .int_bit_and => left_pattern & right_pattern,
+                    .int_bit_or => left_pattern | right_pattern,
+                    .int_bit_xor => left_pattern ^ right_pattern,
+                    .int_bit_not => ~left_pattern & mask,
+                    .int_shl => if (count >= spec.width) 0 else (left_pattern << @as(u7, @intCast(count))) & mask,
+                    .int_shr_logical => if (count >= spec.width) 0 else left_pattern >> @as(u7, @intCast(count)),
+                    .int_shr_arithmetic => blk: {
+                        const sign = left_pattern & (@as(u128, 1) << @as(u7, @intCast(spec.width - 1))) != 0;
+                        if (count >= spec.width) break :blk if (sign) mask else 0;
+                        const shifted = left_pattern >> @as(u7, @intCast(count));
+                        break :blk if (sign and count != 0) shifted | (mask ^ (mask >> @as(u7, @intCast(count)))) else shifted;
+                    },
+                    .int_rotl => if (count == 0) left_pattern else ((left_pattern << @as(u7, @intCast(count))) |
+                        (left_pattern >> @as(u7, @intCast(spec.width - count)))) & mask,
+                    .int_rotr => if (count == 0) left_pattern else ((left_pattern >> @as(u7, @intCast(count))) |
+                        (left_pattern << @as(u7, @intCast(spec.width - count)))) & mask,
+                    else => unreachable,
+                };
+                for (out, 0..) |*slot, index| slot.* = M31.fromCanonical(@intCast((result_bits >> @as(u7, @intCast(16 * index))) & (base - 1)));
             } else if (node.op == .int_le) {
                 const sign_mask: u32 = base / 2;
                 const left_sign = spec.signed and (lhs.?[lhs.?.len - 1].v & sign_mask != 0);
@@ -540,6 +894,34 @@ pub fn evaluate(allocator: std.mem.Allocator, program: Program, assignment: Assi
                     }
                 }
                 out[0] = M31.fromCanonical(@intFromBool(le));
+            } else if (node.op == .int_mul_wrapping or node.op == .int_mul_checked) {
+                var left_bits: u128 = 0;
+                var right_bits: u128 = 0;
+                for (lhs.?, rhs.?, 0..) |a, b, index| {
+                    const shift: u7 = @intCast(16 * index);
+                    left_bits |= @as(u128, a.v) << shift;
+                    right_bits |= @as(u128, b.v) << shift;
+                }
+                const product = left_bits *% right_bits;
+                if (node.op == .int_mul_checked) {
+                    const mask: u128 = if (spec.width == 128) std.math.maxInt(u128) else (@as(u128, 1) << @as(u7, @intCast(spec.width))) - 1;
+                    if (!spec.signed) {
+                        if (right_bits != 0 and left_bits > mask / right_bits) return error.IntegerOverflow;
+                    } else {
+                        const half: u128 = @as(u128, 1) << @as(u7, @intCast(spec.width - 1));
+                        const left_negative = left_bits & half != 0;
+                        const right_negative = right_bits & half != 0;
+                        const left_magnitude = if (left_negative) ((~left_bits) +% 1) & mask else left_bits;
+                        const right_magnitude = if (right_negative) ((~right_bits) +% 1) & mask else right_bits;
+                        const limit = if (left_negative != right_negative) half else half - 1;
+                        if (right_magnitude != 0 and left_magnitude > limit / right_magnitude)
+                            return error.IntegerOverflow;
+                    }
+                }
+                for (out, 0..) |*slot, index| {
+                    const shift: u7 = @intCast(16 * index);
+                    slot.* = M31.fromCanonical(@intCast((product >> shift) & (base - 1)));
+                }
             } else {
                 const subtract = node.op == .int_sub_checked or node.op == .int_sub_wrapping;
                 var carry: u32 = 0;
@@ -630,6 +1012,19 @@ pub fn evaluate(allocator: std.mem.Allocator, program: Program, assignment: Assi
             continue;
         }
         if (node.op == .repeat) {
+            var step_weight: u64 = 0;
+            for (node.body.?) |step| {
+                step_weight = std.math.add(u64, step_weight, if (step.op == .mix4) 8 else 1) catch
+                    return error.EvaluatorRepeatWorkLimitExceeded;
+            }
+            const lanes = std.math.mul(u64, @intCast(out.len), node.rounds.?) catch
+                return error.EvaluatorRepeatWorkLimitExceeded;
+            const work = std.math.mul(u64, lanes, step_weight) catch
+                return error.EvaluatorRepeatWorkLimitExceeded;
+            repeat_lane_steps = std.math.add(u64, repeat_lane_steps, work) catch
+                return error.EvaluatorRepeatWorkLimitExceeded;
+            if (repeat_lane_steps > max_evaluator_repeat_lane_steps)
+                return error.EvaluatorRepeatWorkLimitExceeded;
             @memcpy(out, lhs.?);
             for (0..node.rounds.?) |_| for (node.body.?) |step| try applyStep(out, step);
             try values.put(allocator, node.name, out);
@@ -673,7 +1068,7 @@ pub fn evaluate(allocator: std.mem.Allocator, program: Program, assignment: Assi
                 if (bit > 1) return error.InvalidSelector;
                 break :blk if (bit == 0) lhs.?[i] else rhs.?[i];
             },
-            .hash_blake2s, .hash_blake2s_leaf, .hash_blake2s_pair, .hash_poseidon2_leaf, .hash_poseidon2_pair, .u256_add, .u256_le, .u256_add_checked, .u256_sub, .u256_sub_checked, .u32_lt, .hash_sha256d_header, .bitcoin_target_mainnet, .bitcoin_block_work, .bitcoin_prev_hash, .bitcoin_header_bits, .bitcoin_header_time, .bitcoin_genesis_hash_mainnet, .array_get, .array_concat, .array_slice, .int_view, .int_add_checked, .int_add_wrapping, .int_sub_checked, .int_sub_wrapping, .int_le => unreachable,
+            .hash_blake2s, .hash_blake2s_leaf, .hash_blake2s_pair, .hash_poseidon2_leaf, .hash_poseidon2_pair, .u256_add, .u256_le, .u256_add_checked, .u256_sub, .u256_sub_checked, .u32_lt, .hash_sha256d_header, .bitcoin_target_mainnet, .bitcoin_block_work, .bitcoin_prev_hash, .bitcoin_header_bits, .bitcoin_header_time, .bitcoin_genesis_hash_mainnet, .array_get, .array_concat, .array_slice, .int_view, .int_add_checked, .int_add_wrapping, .int_sub_checked, .int_sub_wrapping, .int_le, .int_mul_wrapping, .int_mul_checked, .int_cast_checked, .int_bit_and, .int_bit_or, .int_bit_xor, .int_bit_not, .int_shl, .int_shr_logical, .int_shr_arithmetic, .int_rotl, .int_rotr, .int_div_rem => unreachable,
         };
         try values.put(allocator, node.name, out);
     }
@@ -738,6 +1133,29 @@ fn validName(name: []const u8) bool {
     return true;
 }
 
+test "two-call source profile rejects changed call shape and public endpoint" {
+    var parsed = try parseProgram(std.testing.allocator, @embedFile("../examples/boundary/private_pair16_32.s31.json"));
+    defer parsed.deinit();
+    const program = &parsed.value;
+    const admitted = program.privateRepeatedStepPair() orelse return error.TestUnexpectedResult;
+    try std.testing.expectEqual(@as(u32, 16), admitted[0].rounds);
+    try std.testing.expectEqual(@as(u32, 32), admitted[1].rounds);
+    const original_rounds = program.nodes[1].rounds;
+    program.nodes[1].rounds = 24;
+    try std.testing.expect(program.privateRepeatedStepPair() == null);
+    program.nodes[1].rounds = original_rounds;
+    const original_output = program.public_outputs[0];
+    program.public_outputs[0] = program.nodes[0].name;
+    try std.testing.expect(program.privateRepeatedStepPair() == null);
+    program.public_outputs[0] = original_output;
+    const original_op = program.nodes[3].op;
+    program.nodes[3].op = .add;
+    try std.testing.expect(program.privateRepeatedStepPair() == null);
+    program.nodes[3].op = original_op;
+    program.proof_mode = .blinded;
+    try std.testing.expect(program.privateRepeatedStepPair() == null);
+}
+
 test "state fold extracts the source body but refuses private or side relations" {
     const source =
         \\{"version":1,"name":"general_fold","inputs":[{"name":"x","kind":"m31","length":4,"visibility":"public"}],"nodes":[{"name":"y","op":"repeat","lhs":"x","rounds":3,"body":[{"op":"square"},{"op":"mul_const","constant":3},{"op":"add_const","constant":5}]}],"assertions":[],"public_outputs":["y"]}
@@ -764,6 +1182,50 @@ test "state fold extracts the source body but refuses private or side relations"
     var side_program = parsed.value;
     side_program.assertions = &side_assertion;
     try std.testing.expect(side_program.stateFoldStep() == null);
+}
+
+test "private chip admits nondegenerate affine one-square steps" {
+    var original = try parseProgram(std.testing.allocator, @embedFile("../examples/boundary/private_step16.s31.json"));
+    defer original.deinit();
+    const square_add = original.value.privateRepeatedStepChip() orelse return error.TestUnexpectedResult;
+    try std.testing.expectEqual(.square_then_add, square_add.order);
+    try std.testing.expectEqual(@as(u32, 13), square_add.constant);
+
+    var shifted = try parseProgram(std.testing.allocator, @embedFile("../examples/boundary/private_add_square16.s31.json"));
+    defer shifted.deinit();
+    const add_square = shifted.value.privateRepeatedStepChip() orelse return error.TestUnexpectedResult;
+    try std.testing.expectEqual(.add_then_square, add_square.order);
+    try std.testing.expectEqual(@as(u32, 13), add_square.constant);
+    shifted.value.nodes[0].body.?[1].op = .mul_const;
+    shifted.value.nodes[0].body.?[1].constant = 2;
+    try std.testing.expect(shifted.value.privateRepeatedStepChip() == null);
+
+    var affine = try parseProgram(std.testing.allocator, @embedFile("../examples/boundary/private_affine_square16.s31.json"));
+    defer affine.deinit();
+    const general = affine.value.privateRepeatedStepChip() orelse return error.TestUnexpectedResult;
+    try std.testing.expectEqual(.affine_one_square, general.order);
+    try std.testing.expectEqual(@as(u32, 63), general.input_scale);
+    try std.testing.expectEqual(@as(u32, 105), general.input_shift);
+    try std.testing.expectEqual(@as(u32, 798), general.constant);
+    try std.testing.expect(M31.fromCanonical(general.input_scale).mul(M31.fromCanonical(general.inverse_scale)).isOne());
+    for ([_]u32{ 0, 1, 3, P - 1 }) |sample| {
+        var lane = [_]M31{M31.fromCanonical(sample)} ** 4;
+        for (affine.value.nodes[0].body.?) |step| try applyStep(&lane, step);
+        const x = M31.fromCanonical(sample);
+        const state = M31.fromCanonical(general.input_scale).mul(x).add(M31.fromCanonical(general.input_shift));
+        const next = state.square().add(M31.fromCanonical(general.constant));
+        try std.testing.expect(lane[0].mul(M31.fromCanonical(general.input_scale)).add(M31.fromCanonical(general.input_shift)).eql(next));
+    }
+    const steps = affine.value.nodes[0].body.?;
+    steps[0].constant = 0;
+    try std.testing.expect(affine.value.privateRepeatedStepChip() == null);
+    steps[0].constant = 3;
+    steps[3].constant = 0;
+    try std.testing.expect(affine.value.privateRepeatedStepChip() == null);
+    steps[3].constant = 7;
+    steps[4].op = .square;
+    steps[4].constant = null;
+    try std.testing.expect(affine.value.privateRepeatedStepChip() == null);
 }
 
 test "malformed relation nodes cannot introduce unconstrained operands or metadata" {

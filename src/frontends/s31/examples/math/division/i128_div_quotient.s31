@@ -1,0 +1,7 @@
+use std@1;
+
+// The remainder is computed and constrained even when only q is public.
+circuit i128_div_quotient(private numerator: i128, private divisor: i128) -> public i128 {
+    let (quotient, remainder) = std::int::div_rem(numerator, divisor);
+    quotient
+}

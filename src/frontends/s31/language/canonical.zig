@@ -5,9 +5,10 @@
 const std = @import("std");
 const core = @import("stwo_core");
 const relation = @import("relation.zig");
+const record_abi = @import("record_abi.zig");
 const M31 = core.fields.m31.M31;
 
-pub const Tag = enum { input, constant, cast_m31, add, mul, add_const, mul_const, repeat, hash_blake2s, hash_blake2s_leaf, hash_blake2s_pair, select, hash_poseidon2_leaf, hash_poseidon2_pair, sum_lanes, u256_add, u256_le, u256_add_checked, hash_sha256d_header, bitcoin_target_mainnet, bitcoin_prev_hash, bitcoin_header_bits, bitcoin_genesis_hash_mainnet, bitcoin_header_time, u32_lt, inv, is_zero, u256_sub, u256_sub_checked, array_get, array_concat, array_slice, bool_not, bool_and, bool_or, bool_xor, bool_select, bitcoin_block_work, int_view, int_add_checked, int_add_wrapping, int_sub_checked, int_sub_wrapping, int_le };
+pub const Tag = enum { input, constant, cast_m31, add, mul, add_const, mul_const, repeat, hash_blake2s, hash_blake2s_leaf, hash_blake2s_pair, select, hash_poseidon2_leaf, hash_poseidon2_pair, sum_lanes, u256_add, u256_le, u256_add_checked, hash_sha256d_header, bitcoin_target_mainnet, bitcoin_prev_hash, bitcoin_header_bits, bitcoin_genesis_hash_mainnet, bitcoin_header_time, u32_lt, inv, is_zero, u256_sub, u256_sub_checked, array_get, array_concat, array_slice, bool_not, bool_and, bool_or, bool_xor, bool_select, bitcoin_block_work, int_view, int_add_checked, int_add_wrapping, int_sub_checked, int_sub_wrapping, int_le, int_mul_wrapping, int_mul_checked, int_cast_checked, int_bit_and, int_bit_or, int_bit_xor, int_bit_not, int_shl, int_shr_logical, int_shr_arithmetic, int_rotl, int_rotr, int_div_rem };
 pub const Node = struct {
     tag: Tag,
     kind: relation.Kind,
@@ -114,6 +115,8 @@ pub fn build(allocator: std.mem.Allocator, program: relation.Program) !IR {
             .sum_lanes, .u256_le, .u32_lt, .int_le, .is_zero, .bool_not, .bool_and, .bool_or, .bool_xor, .bool_select => 1,
             .hash_sha256d_header, .bitcoin_target_mainnet, .bitcoin_prev_hash, .bitcoin_genesis_hash_mainnet, .bitcoin_block_work => 16,
             .bitcoin_header_bits, .bitcoin_header_time => 2,
+            .int_cast_checked => @intCast((relation.IntegerCastSpec.decode(raw.constant) orelse return error.InvalidIntegerSpec).target.limbCount()),
+            .int_div_rem => 2 * @as(u32, @intCast((relation.IntegerSpec.decode(raw.constant) orelse return error.InvalidIntegerSpec).limbCount())),
             .hash_blake2s, .hash_blake2s_leaf, .hash_blake2s_pair, .hash_poseidon2_leaf, .hash_poseidon2_pair => 8,
             else => nodes.items[lhs.?].length,
         };
@@ -121,7 +124,7 @@ pub fn build(allocator: std.mem.Allocator, program: relation.Program) !IR {
             .tag = @enumFromInt(@as(u8, @intFromEnum(raw.op)) + 1),
             .kind = if (raw.op == .array_get or raw.op == .array_concat or raw.op == .array_slice or raw.op == .select)
                 nodes.items[lhs.?].kind
-            else if (raw.op == .int_view or raw.op == .int_add_checked or raw.op == .int_add_wrapping or raw.op == .int_sub_checked or raw.op == .int_sub_wrapping or raw.op == .u256_add or raw.op == .u256_add_checked or raw.op == .u256_sub or raw.op == .u256_sub_checked or raw.op == .hash_sha256d_header or raw.op == .bitcoin_target_mainnet or raw.op == .bitcoin_prev_hash or raw.op == .bitcoin_header_bits or raw.op == .bitcoin_header_time or raw.op == .bitcoin_genesis_hash_mainnet or raw.op == .bitcoin_block_work) .u16 else .m31,
+            else if (raw.op == .int_view or raw.op == .int_add_checked or raw.op == .int_add_wrapping or raw.op == .int_sub_checked or raw.op == .int_sub_wrapping or raw.op == .int_mul_wrapping or raw.op == .int_mul_checked or raw.op == .int_cast_checked or raw.op == .int_div_rem or raw.op == .int_bit_and or raw.op == .int_bit_or or raw.op == .int_bit_xor or raw.op == .int_bit_not or raw.op == .int_shl or raw.op == .int_shr_logical or raw.op == .int_shr_arithmetic or raw.op == .int_rotl or raw.op == .int_rotr or raw.op == .u256_add or raw.op == .u256_add_checked or raw.op == .u256_sub or raw.op == .u256_sub_checked or raw.op == .hash_sha256d_header or raw.op == .bitcoin_target_mainnet or raw.op == .bitcoin_prev_hash or raw.op == .bitcoin_header_bits or raw.op == .bitcoin_header_time or raw.op == .bitcoin_genesis_hash_mainnet or raw.op == .bitcoin_block_work) .u16 else .m31,
             .length = length,
             .lhs = lhs,
             .rhs = rhs,
@@ -216,7 +219,17 @@ pub fn build(allocator: std.mem.Allocator, program: relation.Program) !IR {
     };
     defer allocator.free(encoded);
     var digest: [32]u8 = undefined;
-    std.crypto.hash.sha2.Sha256.hash(encoded, &digest, .{});
+    var hasher = std.crypto.hash.sha2.Sha256.init(.{});
+    // Keep legacy transparent digests byte-for-byte stable. A privacy request
+    // must change the verifier identity even when the arithmetic graph agrees.
+    if (program.proof_mode == .blinded) hasher.update("S31-PROOF-MODE:blinded-v1\x00");
+    if (program.version == 2) {
+        hasher.update("S31-RECORD-ABI-V2\x00");
+        const abi_digest = try record_abi.digest(allocator, program);
+        hasher.update(&abi_digest);
+    }
+    hasher.update(encoded);
+    hasher.final(&digest);
     const owned_nodes = try nodes.toOwnedSlice(allocator);
     errdefer allocator.free(owned_nodes);
     const owned_source = try source.toOwnedSlice(allocator);
@@ -337,6 +350,21 @@ test "integer width and signedness are distinct canonical verifier identities" {
     try std.testing.expect(!std.mem.eql(u8, &unsigned_ir.sha256, &wider_ir.sha256));
 }
 
+test "division canonical node retains both integer results" {
+    const source_text =
+        \\{"version":1,"name":"division_shape","inputs":[{"name":"a","kind":"u16","length":1,"visibility":"private"},{"name":"b","kind":"u16","length":1,"visibility":"private"}],"nodes":[{"name":"q_and_r","op":"int_div_rem","lhs":"a","rhs":"b","constant":8},{"name":"remainder","op":"array_slice","lhs":"q_and_r","index":1,"length":1}],"assertions":[],"public_outputs":["remainder"]}
+    ;
+    var parsed = try relation.parseProgram(std.testing.allocator, source_text);
+    defer parsed.deinit();
+    var ir = try build(std.testing.allocator, parsed.value);
+    defer ir.deinit();
+    try std.testing.expectEqual(@as(usize, 4), ir.nodes.len);
+    try std.testing.expectEqual(relation.Kind.u16, ir.nodes[2].kind);
+    try std.testing.expectEqual(@as(u32, 2), ir.nodes[2].length);
+    try std.testing.expectEqual(relation.Kind.u16, ir.nodes[3].kind);
+    try std.testing.expectEqual(@as(u32, 1), ir.nodes[3].length);
+}
+
 test "canonical graph folds constants and shares repeated expressions" {
     const source_text =
         \\{"version":1,"name":"optimizer","inputs":[{"name":"x","kind":"m31","length":4,"visibility":"public"}],"nodes":[{"name":"a","op":"constant","constant":7,"length":4},{"name":"b","op":"add_const","lhs":"a","constant":3},{"name":"c","op":"mul","lhs":"x","rhs":"b"},{"name":"d","op":"mul","lhs":"b","rhs":"x"}],"assertions":[{"lhs":"c","rhs":"d"}],"public_outputs":["c"]}
@@ -387,4 +415,16 @@ test "legacy arithmetic canonical digest remains stable after select extension" 
     defer ir.deinit();
     const actual = std.fmt.bytesToHex(ir.sha256, .lower);
     try std.testing.expectEqualStrings("afdd4467b3e476e55b583f0f570d0ecbf71687fb4bdf6d3935b1d130ce57cfad", &actual);
+}
+
+test "proof mode is bound independently of ABI visibility" {
+    var parsed = try relation.parseProgram(std.testing.allocator, @embedFile("../examples/arithmetic/arith4.s31.json"));
+    defer parsed.deinit();
+    var transparent = try build(std.testing.allocator, parsed.value);
+    defer transparent.deinit();
+    parsed.value.proof_mode = .blinded;
+    var blinded = try build(std.testing.allocator, parsed.value);
+    defer blinded.deinit();
+    try std.testing.expectEqual(transparent.nodes.len, blinded.nodes.len);
+    try std.testing.expect(!std.mem.eql(u8, &transparent.sha256, &blinded.sha256));
 }

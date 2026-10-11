@@ -1,0 +1,7 @@
+use std@1;
+
+// The sign bit fills every output limb for a full-width arithmetic shift.
+circuit i128_sar128(private a: i128) -> public i128 {
+    let result = std::int::shr_arithmetic<128>(a);
+    result
+}

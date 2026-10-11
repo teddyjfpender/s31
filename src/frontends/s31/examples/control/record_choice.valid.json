@@ -1,0 +1,6 @@
+{
+  "version": 2,
+  "public_inputs": {},
+  "private_inputs": {"x": [0], "y": [7]},
+  "result": {"first": [0], "nested": [[0], [7]]}
+}

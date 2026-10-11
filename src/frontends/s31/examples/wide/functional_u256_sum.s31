@@ -1,0 +1,18 @@
+use std@1;
+
+fn apply3(
+    f: Fn(UInt256, UInt256, UInt256) -> UInt256,
+    x: UInt256, y: UInt256, z: UInt256
+) -> UInt256 {
+    f(x, y, z)
+}
+
+circuit functional_u256_sum(
+    private a: UInt256, private b: UInt256, private c: UInt256
+) -> public Digest<Poseidon2> {
+    let add = fun(x: UInt256, y: UInt256, z: UInt256) -> UInt256 =>
+        std::math::sum_u256_checked([x, y, z]);
+    let total = apply3(add, a, b, c);
+    let root = std::hash::poseidon2_leaf(std::bytes::limbs_m31(total));
+    root
+}

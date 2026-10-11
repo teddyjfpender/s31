@@ -1,0 +1,7 @@
+use std@1;
+
+// All four discarded high limbs must be the sign extension of -5.
+circuit i128_to_i64(private value: i128) -> public i64 {
+    let result = std::int::cast_checked_i64(value);
+    result
+}

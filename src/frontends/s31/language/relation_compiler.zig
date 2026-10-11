@@ -4,18 +4,87 @@
 const std = @import("std");
 const core = @import("stwo_core");
 const circuit = @import("stwo_circuit_frontend");
+const cpu = @import("stwo_circuit_cpu_integration");
 const relation = @import("relation.zig");
 const canonical = @import("canonical.zig");
+const bounded_admission = @import("bounded_call_admission.zig");
 const poseidon2 = @import("../library/hash/poseidon2.zig");
 const sha256d = @import("../library/hash/sha256d.zig");
 const bitcoin_target = @import("../bitcoin/consensus/bitcoin_target.zig");
 const bitcoin_work = @import("../bitcoin/consensus/bitcoin_work.zig");
+const integer_multiply = @import("gadgets/integer_multiply.zig");
+const integer_bits = @import("gadgets/integer_bits.zig");
+const integer_division = @import("gadgets/integer_division.zig");
+const constant_base = @import("finalization/constant_base.zig");
 
 const M31 = core.fields.m31.M31;
 const QM31 = core.fields.qm31.QM31;
 const Var = circuit.builder.Var;
 const Simd = circuit.builder.simd.Simd;
 const N_RESERVED = circuit.common.component_list.N_RESERVED;
+/// Bounds eager generic repeat expansion; authenticated chip calls have their
+/// own admission rules and are charged only if they fall through to gates.
+const max_generic_repeat_lane_steps: u64 = 1_048_576;
+const max_circuit_gates: u64 = 2_097_152;
+const max_circuit_vars: u64 = 16_777_216;
+
+/// Count the circuit actually recorded by either value or topology lowering.
+/// Pending guessed variables each add a finalization gate, so include them
+/// before the finalization pass as well as checking the finished circuit.
+fn checkCircuitBudget(comptime V: type, ctx: *const circuit.builder.Context(V), pending_guesses: bool) !void {
+    var gates: u64 = @intCast(ctx.circuit.nQm31OpsRows());
+    const extra = [_]usize{
+        ctx.circuit.eq.items.len,
+        ctx.circuit.triple_xor.items.len,
+        ctx.circuit.m31_to_u32.items.len,
+        ctx.circuit.blake_g_gate.items.len,
+        if (pending_guesses) ctx.guessed_vars.items.len else 0,
+    };
+    for (extra) |count| gates = std.math.add(u64, gates, @intCast(count)) catch return error.CircuitGateLimitExceeded;
+    if (gates > max_circuit_gates) return error.CircuitGateLimitExceeded;
+    if (ctx.circuit.n_vars > max_circuit_vars) return error.CircuitVariableLimitExceeded;
+}
+
+fn chargeGenericRepeat(total: *u64, length: usize, rounds: u32, body: []const relation.Step) !void {
+    var step_weight: u64 = 0;
+    for (body) |step| {
+        step_weight = std.math.add(u64, step_weight, if (step.op == .mix4) 8 else 1) catch
+            return error.RepeatWorkBudgetExceeded;
+    }
+    const lanes = std.math.mul(u64, @intCast(length), @as(u64, rounds)) catch
+        return error.RepeatWorkBudgetExceeded;
+    const work = std.math.mul(u64, lanes, step_weight) catch
+        return error.RepeatWorkBudgetExceeded;
+    const next = std.math.add(u64, total.*, work) catch
+        return error.RepeatWorkBudgetExceeded;
+    if (next > max_generic_repeat_lane_steps) return error.RepeatWorkBudgetExceeded;
+    total.* = next;
+}
+
+test "generic repeat admission bounds both native compiler paths" {
+    const allocator = std.testing.allocator;
+    const source =
+        \\{"version":1,"name":"large_repeat","inputs":[{"name":"x","kind":"m31","length":4096,"visibility":"private"}],"nodes":[{"name":"r","op":"repeat","lhs":"x","rounds":32768,"body":[{"op":"square"}]},{"name":"out","op":"array_get","lhs":"r","index":0}],"assertions":[],"public_outputs":["out"]}
+    ;
+    var parsed = try relation.parseProgram(allocator, source);
+    defer parsed.deinit();
+    try parsed.value.validate(allocator);
+    try std.testing.expectError(error.RepeatWorkBudgetExceeded, compileRaw(circuit.builder.NoValue, allocator, parsed.value, null));
+    try std.testing.expectError(error.RepeatWorkBudgetExceeded, compileWithSpans(circuit.builder.NoValue, allocator, parsed.value, null, null));
+
+    const one = [_]relation.Step{.{ .op = .square }};
+    const mix = [_]relation.Step{.{ .op = .mix4 }};
+    var work: u64 = 0;
+    try chargeGenericRepeat(&work, 4, 32768, &one);
+    try std.testing.expectEqual(@as(u64, 131072), work);
+    try chargeGenericRepeat(&work, 4, 28672, &mix);
+    try std.testing.expectEqual(max_generic_repeat_lane_steps, work);
+    try std.testing.expectError(error.RepeatWorkBudgetExceeded, chargeGenericRepeat(&work, 1, 1, &one));
+}
+
+pub fn selectedConstantMinBase(program: relation.Program) u32 {
+    return constant_base.selectedBase(program) orelse circuit.builder.finalize_constants.default_min_base;
+}
 
 const Entry = struct {
     shape: relation.Shape,
@@ -27,6 +96,100 @@ const Entry = struct {
     integer_spec: ?u32 = null,
 };
 
+const BitCache = struct {
+    entries: std.AutoHashMapUnmanaged(u64, []Var) = .{},
+
+    fn key(word: Var, per_limb: usize) u64 {
+        return (@as(u64, word.idx) << 5) | @as(u64, @intCast(per_limb));
+    }
+
+    fn deinit(self: *BitCache, allocator: std.mem.Allocator) void {
+        self.entries.deinit(allocator);
+    }
+
+    fn rememberRepeated(self: *BitCache, allocator: std.mem.Allocator, word: Var, bit: Var, per_limb: usize) !void {
+        const bits = try allocator.alloc(Var, per_limb);
+        for (bits) |*slot| slot.* = bit;
+        try self.entries.put(allocator, key(word, per_limb), bits);
+    }
+
+    fn get(self: *BitCache, comptime V: type, ctx: *circuit.builder.Context(V), words: []const Var, width: u32) ![]Var {
+        const per_limb: usize = if (width == 8) 8 else 16;
+        if (words.len * per_limb != @as(usize, @intCast(width))) return error.InvalidIntegerBits;
+        const bits = try ctx.scratch().alloc(Var, @intCast(width));
+        for (words, 0..) |word, i| {
+            const chunk = self.entries.get(key(word, per_limb)) orelse blk: {
+                if (word.idx == ctx.zero().idx) {
+                    try self.rememberRepeated(ctx.scratch(), word, ctx.zero(), per_limb);
+                    break :blk self.entries.get(key(word, per_limb)).?;
+                }
+                const fresh = try integer_bits.decomposeWord(V, ctx, word, per_limb);
+                try self.entries.put(ctx.scratch(), key(word, per_limb), fresh);
+                break :blk fresh;
+            };
+            @memcpy(bits[i * per_limb ..][0..per_limb], chunk);
+        }
+        return bits;
+    }
+
+    fn remember(self: *BitCache, allocator: std.mem.Allocator, words: []const Var, bits: []Var, width: u32) !void {
+        const per_limb: usize = if (width == 8) 8 else 16;
+        if (words.len * per_limb != bits.len or bits.len != @as(usize, @intCast(width))) return error.InvalidIntegerBits;
+        for (words, 0..) |word, i| {
+            try self.entries.put(allocator, key(word, per_limb), bits[i * per_limb ..][0..per_limb]);
+        }
+    }
+
+    fn getArithmetic(self: *BitCache, comptime V: type, ctx: *circuit.builder.Context(V), word: Var, width: usize) ![]Var {
+        if (self.entries.get(key(word, width))) |bits| return bits;
+        const bits = try integer_bits.decomposeWordArithmetic(V, ctx, word, width);
+        try self.entries.put(ctx.scratch(), key(word, width), bits);
+        return bits;
+    }
+};
+
+fn hasDivisionWidth(program: relation.Program, width: u32) bool {
+    for (program.nodes) |node| {
+        if (node.op != .int_div_rem) continue;
+        const spec = relation.IntegerSpec.decode(node.constant) orelse continue;
+        if (spec.width == width) return true;
+    }
+    return false;
+}
+
+/// A raw u16 array may skip the fixed table only when every direct use is
+/// an integer view of one supported width. Arithmetic bit decomposition
+/// proves every source limb's range. Wide arithmetic is admitted only for
+/// division in the direct profile.
+fn arithmeticInputWidth(program: relation.Program, input: relation.Input, allow_wide: bool) ?u32 {
+    if (input.kind != .u16) return null;
+    var width: ?u32 = null;
+    for (program.nodes) |node| {
+        if (node.lhs) |name| {
+            if (std.mem.eql(u8, name, input.name)) {
+                const spec = if (node.op == .int_view) relation.IntegerSpec.decode(node.constant) else null;
+                if (spec == null or input.length != spec.?.limbCount()) return null;
+                if (spec.?.width != 8 and spec.?.width != 16 and
+                    !(allow_wide and (spec.?.width == 32 or spec.?.width == 64 or spec.?.width == 128))) return null;
+                if (width != null and width.? != spec.?.width) return null;
+                width = spec.?.width;
+            }
+        }
+        if (node.rhs) |name| if (std.mem.eql(u8, name, input.name)) return null;
+        if (node.selector) |name| if (std.mem.eql(u8, name, input.name)) return null;
+    }
+    for (program.assertions) |assertion| {
+        if (std.mem.eql(u8, assertion.lhs, input.name) or std.mem.eql(u8, assertion.rhs, input.name)) return null;
+    }
+    for (program.public_outputs) |name| if (std.mem.eql(u8, name, input.name)) return null;
+    if (width) |w| if (hasDivisionWidth(program, w)) return w;
+    return null;
+}
+
+pub fn directFixedInput(program: relation.Program, input: relation.Input) bool {
+    return arithmeticInputWidth(program, input, true) != null;
+}
+
 pub fn compileRaw(comptime V: type, allocator: std.mem.Allocator, program: relation.Program, assignment: ?relation.Assignment) !circuit.builder.Context(V) {
     try program.validate(allocator);
     if (comptime V == QM31) {
@@ -35,10 +198,14 @@ pub fn compileRaw(comptime V: type, allocator: std.mem.Allocator, program: relat
     var ctx = try circuit.builder.Context(V).init(allocator, N_RESERVED);
     errdefer ctx.deinit();
     const scratch = ctx.scratch();
+    var bit_cache = BitCache{};
+    defer bit_cache.deinit(scratch);
     var values = std.StringHashMapUnmanaged(Entry){};
     defer values.deinit(scratch);
+    var generic_repeat_work: u64 = 0;
 
     for (program.inputs) |input| {
+        const arithmetic_width = arithmeticInputWidth(program, input, false);
         const length: usize = input.length;
         const source_values: ?[]M31 = if (comptime V == QM31) try relation.inputValues(allocator, assignment.?, input) else null;
         defer if (source_values) |owned| allocator.free(owned);
@@ -48,9 +215,14 @@ pub fn compileRaw(comptime V: type, allocator: std.mem.Allocator, program: relat
             const value = if (source_values) |provided| provided[i] else M31.zero();
             const hint = circuit.builder.ivalue.fromQm31(V, QM31.fromBase(value));
             wire.* = switch (input.kind) {
-                .u16 => (try circuit.builder.wrappers.guessU16(V, &ctx, .newUnsafe(hint))).get(),
+                .u16 => if (arithmetic_width != null) try ctx.guess(hint) else (try circuit.builder.wrappers.guessU16(V, &ctx, .newUnsafe(hint))).get(),
                 .m31 => (try circuit.builder.wrappers.guessM31(V, &ctx, .newUnsafe(hint))).get(),
             };
+            if (arithmetic_width) |width| {
+                const limb_width: usize = if (width == 8) 8 else 16;
+                const bits = try integer_bits.decomposeWordArithmetic(V, &ctx, wire.*, limb_width);
+                try bit_cache.remember(scratch, &.{wire.*}, bits, @intCast(limb_width));
+            }
             wrapped.* = .newUnsafe(wire.*);
         }
         const lanes = try circuit.builder.simd.pack(V, &ctx, wrappers);
@@ -58,14 +230,16 @@ pub fn compileRaw(comptime V: type, allocator: std.mem.Allocator, program: relat
             .shape = .{ .kind = input.kind, .length = length },
             .lanes = lanes,
             .raw = raw,
+            .integer_spec = arithmetic_width,
         });
+        try checkCircuitBudget(V, &ctx, false);
     }
 
     for (program.nodes) |node| {
         const lhs: ?Entry = if (node.lhs) |name| values.get(name) orelse return error.UnknownOperand else null;
         const rhs: ?Entry = if (node.rhs) |name| values.get(name) orelse return error.UnknownOperand else null;
         const selector: ?Entry = if (node.selector) |name| values.get(name) orelse return error.UnknownOperand else null;
-        const length: usize = if (node.op == .constant or node.op == .array_slice) node.length.? else if (node.op == .array_get or node.op == .sum_lanes or node.op == .u256_le or node.op == .u32_lt or node.op == .int_le or node.op == .bool_not or node.op == .bool_and or node.op == .bool_or or node.op == .bool_xor or node.op == .bool_select) 1 else if (node.op == .array_concat) lhs.?.shape.length + rhs.?.shape.length else if (node.op == .bitcoin_genesis_hash_mainnet) 16 else if (node.op == .hash_blake2s or node.op == .hash_blake2s_leaf or node.op == .hash_blake2s_pair or node.op == .hash_poseidon2_leaf or node.op == .hash_poseidon2_pair) 8 else lhs.?.shape.length;
+        const length: usize = if (node.op == .constant or node.op == .array_slice) node.length.? else if (node.op == .array_get or node.op == .sum_lanes or node.op == .u256_le or node.op == .u32_lt or node.op == .int_le or node.op == .bool_not or node.op == .bool_and or node.op == .bool_or or node.op == .bool_xor or node.op == .bool_select) 1 else if (node.op == .array_concat) lhs.?.shape.length + rhs.?.shape.length else if (node.op == .int_div_rem) 2 * lhs.?.shape.length else if (node.op == .bitcoin_genesis_hash_mainnet) 16 else if (node.op == .hash_blake2s or node.op == .hash_blake2s_leaf or node.op == .hash_blake2s_pair or node.op == .hash_poseidon2_leaf or node.op == .hash_poseidon2_pair) 8 else lhs.?.shape.length;
         const entry: Entry = switch (node.op) {
             .array_get => try arrayGet(V, &ctx, lhs.?, node.index.?),
             .array_slice => try arraySlice(V, &ctx, lhs.?, node.index.?, node.length.?),
@@ -97,6 +271,19 @@ pub fn compileRaw(comptime V: type, allocator: std.mem.Allocator, program: relat
             .int_sub_checked => try intBinary(V, &ctx, lhs.?, rhs.?, node.constant.?, .sub_checked),
             .int_sub_wrapping => try intBinary(V, &ctx, lhs.?, rhs.?, node.constant.?, .sub),
             .int_le => try intBinary(V, &ctx, lhs.?, rhs.?, node.constant.?, .le),
+            .int_mul_wrapping => try intMultiplyWrapping(V, &ctx, lhs.?, rhs.?, node.constant.?),
+            .int_mul_checked => try intMultiplyChecked(V, &ctx, lhs.?, rhs.?, node.constant.?),
+            .int_div_rem => try intDivRem(V, &ctx, &bit_cache, lhs.?, rhs.?, node.constant.?, false),
+            .int_cast_checked => try intCastChecked(V, &ctx, lhs.?, node.constant.?),
+            .int_bit_and => try intBitwise(V, &ctx, &bit_cache, lhs.?, rhs.?, node.constant.?, .and_),
+            .int_bit_or => try intBitwise(V, &ctx, &bit_cache, lhs.?, rhs.?, node.constant.?, .or_),
+            .int_bit_xor => try intBitwise(V, &ctx, &bit_cache, lhs.?, rhs.?, node.constant.?, .xor_),
+            .int_bit_not => try intBitwise(V, &ctx, &bit_cache, lhs.?, null, node.constant.?, .not_),
+            .int_shl => try intStaticShift(V, &ctx, &bit_cache, lhs.?, node.constant.?, node.index.?, .shl),
+            .int_shr_logical => try intStaticShift(V, &ctx, &bit_cache, lhs.?, node.constant.?, node.index.?, .shr_logical),
+            .int_shr_arithmetic => try intStaticShift(V, &ctx, &bit_cache, lhs.?, node.constant.?, node.index.?, .shr_arithmetic),
+            .int_rotl => try intStaticShift(V, &ctx, &bit_cache, lhs.?, node.constant.?, node.index.?, .rotl),
+            .int_rotr => try intStaticShift(V, &ctx, &bit_cache, lhs.?, node.constant.?, node.index.?, .rotr),
             .hash_sha256d_header => try sha256dHeader(V, &ctx, lhs.?),
             .bitcoin_target_mainnet => try mainnetTarget(V, &ctx, lhs.?),
             .bitcoin_block_work => try blockWorkEntry(V, &ctx, lhs.?),
@@ -104,6 +291,7 @@ pub fn compileRaw(comptime V: type, allocator: std.mem.Allocator, program: relat
             .bitcoin_header_bits => try headerSlice(V, &ctx, lhs.?, 36, 2),
             .bitcoin_header_time => try headerSlice(V, &ctx, lhs.?, 34, 2),
             .repeat => blk: {
+                try chargeGenericRepeat(&generic_repeat_work, length, node.rounds.?, node.body.?);
                 const constants = try scratch.alloc(?Simd, node.body.?.len);
                 for (node.body.?, constants) |step, *slot| slot.* = if (step.constant) |value| try circuit.builder.simd.repeat(V, &ctx, M31.fromCanonical(value), length) else null;
                 var current = lhs.?.lanes;
@@ -128,12 +316,14 @@ pub fn compileRaw(comptime V: type, allocator: std.mem.Allocator, program: relat
             .hash_poseidon2_pair => .{ .shape = .{ .kind = .m31, .length = 8 }, .lanes = try poseidon2.pairCircuit(V, &ctx, lhs.?.lanes, rhs.?.lanes) },
         };
         try values.put(scratch, node.name, entry);
+        try checkCircuitBudget(V, &ctx, false);
     }
 
     for (program.assertions) |assertion| {
         const lhs = values.get(assertion.lhs) orelse return error.UnknownOperand;
         const rhs = values.get(assertion.rhs) orelse return error.UnknownOperand;
         try circuit.builder.simd.eq(V, &ctx, lhs.lanes, rhs.lanes);
+        try checkCircuitBudget(V, &ctx, false);
     }
 
     var outputs = [_]Var{ctx.zero()} ** N_RESERVED;
@@ -154,7 +344,9 @@ pub fn compileRaw(comptime V: type, allocator: std.mem.Allocator, program: relat
         }
     }
     try ctx.setOutputs(&outputs);
-    try ctx.finalize(false);
+    try checkCircuitBudget(V, &ctx, true);
+    try constant_base.finish(V, &ctx, program);
+    try checkCircuitBudget(V, &ctx, false);
     return ctx;
 }
 
@@ -188,12 +380,25 @@ pub const FinalizationSpan = struct { qm31_start: usize, qm31_end: usize, m31_to
 /// Canonical circuit Gate addresses consumed by one SHA caller AIR instance.
 /// The first 40 belong to the byte-exact header, the final 16 to its digest.
 pub const ShaBoundaryMap = struct { node_id: u32, addresses: [56]u32 };
+/// Source-ordered, compiler-owned endpoint wires for the staged 1..8-call
+/// profile. These addresses are topology, never provided by a witness/key.
+pub const BoundedCallMap = struct {
+    call_id: u32,
+    source_node_id: u32,
+    input_node_id: u32,
+    input: [4]u32,
+    output: [4]u32,
+};
 pub const Maps = struct {
     nodes: std.ArrayListUnmanaged(Span) = .empty,
     assertions: std.ArrayListUnmanaged(AssertionSpan) = .empty,
     bindings: std.ArrayListUnmanaged(BindingSpan) = .empty,
     sha_boundaries: std.ArrayListUnmanaged(ShaBoundaryMap) = .empty,
+    bounded_calls: std.ArrayListUnmanaged(BoundedCallMap) = .empty,
     private_boundary: ?circuit.common.direct_arithmetic.PrivateBoundary = null,
+    /// Source-derived only. The pair prover must never accept guessed call
+    /// addresses in place of this compiler map.
+    private_pair_plan: ?cpu.private_pair_boundary.Plan = null,
     finalization: ?FinalizationSpan = null,
 
     pub fn deinit(self: *Maps, allocator: std.mem.Allocator) void {
@@ -201,6 +406,7 @@ pub const Maps = struct {
         self.assertions.deinit(allocator);
         self.bindings.deinit(allocator);
         self.sha_boundaries.deinit(allocator);
+        self.bounded_calls.deinit(allocator);
         self.* = undefined;
     }
 };
@@ -210,50 +416,141 @@ pub fn compile(comptime V: type, allocator: std.mem.Allocator, program: relation
 }
 
 pub fn compileWithSpans(comptime V: type, allocator: std.mem.Allocator, program: relation.Program, assignment: ?relation.Assignment, maps: ?*Maps) !circuit.builder.Context(V) {
-    return compileWithSpansMode(V, allocator, program, assignment, maps, false, false, false);
+    return compileWithSpansMode(V, allocator, program, assignment, maps, false, false, false, false, false);
 }
 
 pub fn compileChip(comptime V: type, allocator: std.mem.Allocator, program: relation.Program, assignment: ?relation.Assignment) !circuit.builder.Context(V) {
-    return compileWithSpansMode(V, allocator, program, assignment, null, true, false, false);
+    return compileWithSpansMode(V, allocator, program, assignment, null, true, false, false, false, false);
 }
 
 pub fn compileChipWithSpans(comptime V: type, allocator: std.mem.Allocator, program: relation.Program, assignment: ?relation.Assignment, maps: ?*Maps) !circuit.builder.Context(V) {
-    return compileWithSpansMode(V, allocator, program, assignment, maps, true, false, false);
+    return compileWithSpansMode(V, allocator, program, assignment, maps, true, false, false, false, false);
 }
 
 pub fn compileDirect(comptime V: type, allocator: std.mem.Allocator, program: relation.Program, assignment: ?relation.Assignment, chip_mode: bool) !circuit.builder.Context(V) {
-    return compileWithSpansMode(V, allocator, program, assignment, null, chip_mode, true, false);
+    return compileWithSpansMode(V, allocator, program, assignment, null, chip_mode, true, false, false, false);
 }
 
 pub fn compileDirectWithSpans(comptime V: type, allocator: std.mem.Allocator, program: relation.Program, assignment: ?relation.Assignment, maps: ?*Maps, chip_mode: bool) !circuit.builder.Context(V) {
-    return compileWithSpansMode(V, allocator, program, assignment, maps, chip_mode, true, false);
+    return compileWithSpansMode(V, allocator, program, assignment, maps, chip_mode, true, false, false, false);
+}
+
+pub fn compileDirectPairWithSpans(comptime V: type, allocator: std.mem.Allocator, program: relation.Program, assignment: ?relation.Assignment, maps: *Maps) !circuit.builder.Context(V) {
+    return compileWithSpansMode(V, allocator, program, assignment, maps, false, true, false, true, false);
+}
+
+/// Extract concrete endpoints for every admitted canonical call. This is a
+/// topology compiler only; no N-call proof path consumes the map yet.
+pub fn compileDirectBoundedWithSpans(comptime V: type, allocator: std.mem.Allocator, program: relation.Program, assignment: ?relation.Assignment, maps: *Maps) !circuit.builder.Context(V) {
+    return compileWithSpansMode(V, allocator, program, assignment, maps, false, true, false, false, true);
+}
+
+fn sourceId(ir: *const canonical.IR, name: []const u8) ?u32 {
+    for (ir.source_map) |entry| if (std.mem.eql(u8, entry.name, name)) return entry.id;
+    return null;
+}
+
+fn padPairTest(comptime V: type, ctx: *circuit.builder.Context(V)) !void {
+    const raw = circuit.common.finalize.rawComponentSizes(circuit.common.preprocessed.CircuitView.fromBuilder(&ctx.circuit));
+    try std.testing.expectEqual(@as(usize, 0), raw.eq + raw.triple_xor + raw.m31_to_u32 + raw.blake_g_gate);
+    try circuit.common.finalize.padToTargets(V, ctx, .{
+        .eq = 0,
+        .qm31_ops = circuit.common.finalize.paddedSize(raw.qm31_ops),
+        .m31_to_u32 = 0,
+        .triple_xor = 0,
+        .blake_g_gate = 0,
+    });
+}
+
+test "direct pair derives one canonical plan from witness and witness-free compilation" {
+    const a = std.testing.allocator;
+    var parsed = try relation.parseProgram(a, @embedFile("../examples/boundary/private_pair16_32.s31.json"));
+    defer parsed.deinit();
+    var assignment = try relation.parseAssignment(a, @embedFile("../examples/boundary/private_pair16_32.valid.json"));
+    defer assignment.deinit();
+    const specs = parsed.value.privateRepeatedStepPair() orelse return error.TestUnexpectedResult;
+    try std.testing.expectEqual(@as(u32, 16), specs[0].rounds);
+    try std.testing.expectEqual(@as(u32, 32), specs[1].rounds);
+    var value_maps = Maps{};
+    defer value_maps.deinit(a);
+    var value_ctx = try compileDirectPairWithSpans(QM31, a, parsed.value, assignment.value, &value_maps);
+    defer value_ctx.deinit();
+    var topology_maps = Maps{};
+    defer topology_maps.deinit(a);
+    var topology_ctx = try compileDirectPairWithSpans(circuit.builder.NoValue, a, parsed.value, null, &topology_maps);
+    defer topology_ctx.deinit();
+    const value_plan = value_maps.private_pair_plan orelse return error.MissingPairPlan;
+    const topology_plan = topology_maps.private_pair_plan orelse return error.MissingPairPlan;
+    try std.testing.expect(std.meta.eql(value_plan, topology_plan));
+    try std.testing.expectEqual(@as(u32, 0), value_plan.calls[0].call_id);
+    try std.testing.expectEqual(@as(u32, 1), value_plan.calls[1].call_id);
+    try std.testing.expect(value_plan.calls[0].input[0] != value_plan.calls[0].input[1]);
+
+    try padPairTest(QM31, &value_ctx);
+    try padPairTest(circuit.builder.NoValue, &topology_ctx);
+    var value_pp = try value_plan.preprocessed(a, circuit.common.preprocessed.CircuitView.fromBuilder(&value_ctx.circuit));
+    defer value_pp.deinit(a);
+    var topology_pp = try topology_plan.preprocessed(a, circuit.common.preprocessed.CircuitView.fromBuilder(&topology_ctx.circuit));
+    defer topology_pp.deinit(a);
+    try std.testing.expectEqual(value_pp.columns.len, topology_pp.columns.len);
+    for (value_pp.columns, topology_pp.columns) |left, right| {
+        try std.testing.expectEqualStrings(left.id, right.id);
+        try std.testing.expectEqualSlices(M31, left.values, right.values);
+    }
+
+    const original = parsed.value.nodes[3];
+    parsed.value.nodes[3].lhs = parsed.value.nodes[0].name;
+    parsed.value.nodes[3].rhs = parsed.value.nodes[0].name;
+    try std.testing.expect(parsed.value.privateRepeatedStepPair() == null);
+    try std.testing.expectError(error.UnsupportedPairRelation, compileDirectPairWithSpans(circuit.builder.NoValue, a, parsed.value, null, &topology_maps));
+    parsed.value.nodes[3] = original;
 }
 
 /// Replace generic SHA gates with 16 range-constrained digest witnesses and
 /// report the exact private circuit addresses for an external SHA caller AIR.
 /// This circuit is sound only as one component of the joint SHA proof.
 pub fn compileShaChipWithSpans(comptime V: type, allocator: std.mem.Allocator, program: relation.Program, assignment: ?relation.Assignment, maps: *Maps) !circuit.builder.Context(V) {
-    return compileWithSpansMode(V, allocator, program, assignment, maps, false, false, true);
+    return compileWithSpansMode(V, allocator, program, assignment, maps, false, false, true, false, false);
 }
 
-fn compileWithSpansMode(comptime V: type, allocator: std.mem.Allocator, program: relation.Program, assignment: ?relation.Assignment, maps: ?*Maps, chip_mode: bool, direct_output: bool, sha_chip_mode: bool) !circuit.builder.Context(V) {
+fn compileWithSpansMode(comptime V: type, allocator: std.mem.Allocator, program: relation.Program, assignment: ?relation.Assignment, maps: ?*Maps, chip_mode: bool, direct_output: bool, sha_chip_mode: bool, pair_mode: bool, bounded_mode: bool) !circuit.builder.Context(V) {
     const private_chip = chip_mode and direct_output and program.privateRepeatedStepChip() != null;
+    const bounded_plan: ?bounded_admission.Plan = if (bounded_mode) try bounded_admission.extract(allocator, program) else null;
+    const pair_specs: ?[2]relation.ChipSpec = if (pair_mode) blk: {
+        break :blk program.privateRepeatedStepPair() orelse return error.UnsupportedPairRelation;
+    } else null;
     if (chip_mode and program.repeatedStepChip() == null and !private_chip) return error.UnsupportedChipRelation;
+    if (pair_mode and (chip_mode or sha_chip_mode or !direct_output or maps == null)) return error.InvalidPairCompilerMode;
+    if (bounded_mode and (chip_mode or pair_mode or sha_chip_mode or !direct_output or maps == null)) return error.InvalidBoundedCompilerMode;
     if (sha_chip_mode and (chip_mode or direct_output or maps == null)) return error.InvalidShaChipCompilerMode;
     if (direct_output) for (program.inputs) |input| {
-        if (input.kind != .m31) return error.UnsupportedDirectRelation;
+        if (input.kind != .m31 and arithmeticInputWidth(program, input, true) == null) return error.UnsupportedDirectRelation;
     };
     if (comptime V == QM31) {
         if (assignment == null) return error.MissingAssignment;
     }
     var ir = try canonical.build(allocator, program);
     defer ir.deinit();
+    if (bounded_plan) |plan| if (!std.meta.eql(plan.canonical_ir_sha256, ir.sha256)) return error.BoundedCanonicalIrMismatch;
+    var pair_ids: [2]u32 = undefined;
+    var pair_seen = [_]bool{false} ** 2;
+    var bounded_seen = [_]bool{false} ** bounded_admission.max_calls;
+    if (pair_mode) {
+        for (program.nodes[0..2], 0..) |source_node, call_id| {
+            pair_ids[call_id] = sourceId(&ir, source_node.name) orelse return error.UnsupportedPairRelation;
+            if (ir.nodes[pair_ids[call_id]].tag != .repeat) return error.UnsupportedPairRelation;
+        }
+        if (pair_ids[0] == pair_ids[1]) return error.UnsupportedPairRelation;
+    }
     var ctx = try circuit.builder.Context(V).init(allocator, N_RESERVED);
     errdefer ctx.deinit();
     const scratch = ctx.scratch();
+    var bit_cache = BitCache{};
+    defer bit_cache.deinit(scratch);
     const entries = try scratch.alloc(Entry, ir.nodes.len);
     const bit_sources = try scratch.alloc(bool, ir.nodes.len);
     @memset(bit_sources, false);
+    var generic_repeat_work: u64 = 0;
     for (ir.nodes) |node| {
         if (node.tag == .select or node.tag == .bool_select) bit_sources[node.selector.?] = true;
         if (node.tag == .bool_not or node.tag == .bool_and or node.tag == .bool_or or node.tag == .bool_xor or node.tag == .bool_select) {
@@ -278,12 +575,13 @@ fn compileWithSpansMode(comptime V: type, allocator: std.mem.Allocator, program:
                 const source_values: ?[]M31 = if (comptime V == QM31) try relation.inputValues(allocator, assignment.?, input) else null;
                 defer if (source_values) |owned| allocator.free(owned);
                 const boolean = direct_output and bit_sources[id];
+                const arithmetic_width = arithmeticInputWidth(program, input, direct_output);
                 // A QM31 witness is already four M31 coordinates. For a
                 // private array, guessing the packed wire directly avoids
                 // four scalar guesses and their six packing gates. Public
                 // inputs retain scalar wires for their ABI bindings; direct
                 // selectors retain the self-product that proves b² = b.
-                if (node.kind == .m31 and node.visibility.? == .private and !boolean and !private_chip) {
+                if (node.kind == .m31 and node.visibility.? == .private and !boolean and !private_chip and !pair_mode and !bounded_mode) {
                     const packed_wires = try scratch.alloc(Var, (node.length + 3) / 4);
                     for (packed_wires, 0..) |*wire, chunk| {
                         var coordinates = [_]M31{M31.zero()} ** 4;
@@ -308,12 +606,17 @@ fn compileWithSpansMode(comptime V: type, allocator: std.mem.Allocator, program:
                         try ctx.mulInto(bit_wire, bit_wire, bit_wire);
                         break :bit bit_wire;
                     } else switch (node.kind) {
-                        .u16 => (try circuit.builder.wrappers.guessU16(V, &ctx, .newUnsafe(hint))).get(),
+                        .u16 => if (arithmetic_width != null) try ctx.guess(hint) else (try circuit.builder.wrappers.guessU16(V, &ctx, .newUnsafe(hint))).get(),
                         .m31 => (try circuit.builder.wrappers.guessM31(V, &ctx, .newUnsafe(hint))).get(),
                     };
+                    if (arithmetic_width) |width| {
+                        const limb_width: usize = if (width == 8) 8 else 16;
+                        const bits = try integer_bits.decomposeWordArithmetic(V, &ctx, wire.*, limb_width);
+                        try bit_cache.remember(scratch, &.{wire.*}, bits, @intCast(limb_width));
+                    }
                     wrapped.* = .newUnsafe(wire.*);
                 }
-                break :blk .{ .shape = .{ .kind = node.kind, .length = node.length }, .lanes = try circuit.builder.simd.pack(V, &ctx, wrappers), .raw = raw, .boolean = boolean };
+                break :blk .{ .shape = .{ .kind = node.kind, .length = node.length }, .lanes = try circuit.builder.simd.pack(V, &ctx, wrappers), .raw = raw, .boolean = boolean, .integer_spec = arithmetic_width };
             },
             .constant => blk: {
                 if (direct_output and node.length == 1 and node.constant.? <= 1 and bit_sources[id]) {
@@ -352,6 +655,19 @@ fn compileWithSpansMode(comptime V: type, allocator: std.mem.Allocator, program:
             .int_sub_checked => try intBinary(V, &ctx, entries[node.lhs.?], entries[node.rhs.?], node.constant.?, .sub_checked),
             .int_sub_wrapping => try intBinary(V, &ctx, entries[node.lhs.?], entries[node.rhs.?], node.constant.?, .sub),
             .int_le => try intBinary(V, &ctx, entries[node.lhs.?], entries[node.rhs.?], node.constant.?, .le),
+            .int_mul_wrapping => try intMultiplyWrapping(V, &ctx, entries[node.lhs.?], entries[node.rhs.?], node.constant.?),
+            .int_mul_checked => try intMultiplyChecked(V, &ctx, entries[node.lhs.?], entries[node.rhs.?], node.constant.?),
+            .int_div_rem => try intDivRem(V, &ctx, &bit_cache, entries[node.lhs.?], entries[node.rhs.?], node.constant.?, direct_output),
+            .int_cast_checked => try intCastChecked(V, &ctx, entries[node.lhs.?], node.constant.?),
+            .int_bit_and => try intBitwise(V, &ctx, &bit_cache, entries[node.lhs.?], entries[node.rhs.?], node.constant.?, .and_),
+            .int_bit_or => try intBitwise(V, &ctx, &bit_cache, entries[node.lhs.?], entries[node.rhs.?], node.constant.?, .or_),
+            .int_bit_xor => try intBitwise(V, &ctx, &bit_cache, entries[node.lhs.?], entries[node.rhs.?], node.constant.?, .xor_),
+            .int_bit_not => try intBitwise(V, &ctx, &bit_cache, entries[node.lhs.?], null, node.constant.?, .not_),
+            .int_shl => try intStaticShift(V, &ctx, &bit_cache, entries[node.lhs.?], node.constant.?, node.index.?, .shl),
+            .int_shr_logical => try intStaticShift(V, &ctx, &bit_cache, entries[node.lhs.?], node.constant.?, node.index.?, .shr_logical),
+            .int_shr_arithmetic => try intStaticShift(V, &ctx, &bit_cache, entries[node.lhs.?], node.constant.?, node.index.?, .shr_arithmetic),
+            .int_rotl => try intStaticShift(V, &ctx, &bit_cache, entries[node.lhs.?], node.constant.?, node.index.?, .rotl),
+            .int_rotr => try intStaticShift(V, &ctx, &bit_cache, entries[node.lhs.?], node.constant.?, node.index.?, .rotr),
             .hash_sha256d_header => blk: {
                 if (!sha_chip_mode) break :blk try sha256dHeader(V, &ctx, entries[node.lhs.?]);
                 const input = entries[node.lhs.?];
@@ -370,33 +686,97 @@ fn compileWithSpansMode(comptime V: type, allocator: std.mem.Allocator, program:
             .bitcoin_header_bits => try headerSlice(V, &ctx, entries[node.lhs.?], 36, 2),
             .bitcoin_header_time => try headerSlice(V, &ctx, entries[node.lhs.?], 34, 2),
             .repeat => blk: {
-                if (chip_mode) {
-                    const spec = if (private_chip) program.privateRepeatedStepChip().? else program.repeatedStepChip().?;
+                if (chip_mode or pair_mode or bounded_mode) {
+                    const pair_call_id: ?usize = if (!pair_mode) null else if (id == pair_ids[0]) 0 else if (id == pair_ids[1]) 1 else return error.UnsupportedPairRelation;
+                    const bounded_call_id: ?usize = if (!bounded_mode) null else call_lookup: {
+                        for (bounded_plan.?.callSlice(), 0..) |call, call_id| if (call.source_node_id == id) break :call_lookup call_id;
+                        return error.UnplannedBoundedRepeat;
+                    };
+                    const spec: relation.ChipSpec = if (bounded_call_id) |call_id|
+                        .{ .rounds = bounded_plan.?.calls[call_id].rounds, .constant = bounded_plan.?.calls[call_id].constant }
+                    else if (pair_mode) pair_specs.?[pair_call_id.?] else if (private_chip) program.privateRepeatedStepChip().? else program.repeatedStepChip().?;
                     const input_raw = entries[node.lhs.?].raw orelse return error.UnsupportedChipRelation;
                     if (node.length != 4 or input_raw.len != 4) return error.UnsupportedChipRelation;
+                    const scaled = private_chip and spec.input_scale != 1;
+                    const shifted = private_chip and spec.input_shift != 0;
+                    const inverse_scaled = private_chip and spec.inverse_scale != 1;
+                    const scale_wire = if (scaled)
+                        try ctx.constant(QM31.fromBase(M31.fromCanonical(spec.input_scale)))
+                    else
+                        ctx.one();
+                    const shift_wire = if (shifted)
+                        try ctx.constant(QM31.fromBase(M31.fromCanonical(spec.input_shift)))
+                    else
+                        ctx.zero();
+                    const inverse_wire = if (inverse_scaled)
+                        try ctx.constant(QM31.fromBase(M31.fromCanonical(spec.inverse_scale)))
+                    else
+                        ctx.one();
+                    var chip_input: [4]Var = undefined;
+                    for (0..4) |lane| {
+                        const scaled_input = if (scaled) try ctx.mul(input_raw[lane], scale_wire) else input_raw[lane];
+                        chip_input[lane] = if (shifted) try ctx.add(scaled_input, shift_wire) else scaled_input;
+                    }
                     const raw = try scratch.alloc(Var, 4);
+                    var chip_output: [4]Var = undefined;
                     const wrappers = try scratch.alloc(circuit.builder.wrappers.M31Wrapper(Var), 4);
                     for (raw, wrappers, 0..) |*wire, *wrapped, lane| {
                         var result = if (comptime V == QM31)
-                            ctx.get(input_raw[lane]).toM31Array()[0]
+                            ctx.get(chip_input[lane]).toM31Array()[0]
                         else
                             M31.zero();
                         for (0..spec.rounds) |_|
                             result = result.mul(result).add(M31.fromCanonical(spec.constant));
                         const hint = circuit.builder.ivalue.fromQm31(V, QM31.fromBase(result));
-                        wire.* = (try circuit.builder.wrappers.guessM31(V, &ctx, .newUnsafe(hint))).get();
+                        chip_output[lane] = (try circuit.builder.wrappers.guessM31(V, &ctx, .newUnsafe(hint))).get();
+                        const unshifted = if (shifted) try ctx.sub(chip_output[lane], shift_wire) else chip_output[lane];
+                        wire.* = if (inverse_scaled) try ctx.mul(unshifted, inverse_wire) else unshifted;
                         wrapped.* = .newUnsafe(wire.*);
                     }
                     if (private_chip) if (maps) |out| {
                         var boundary: circuit.common.direct_arithmetic.PrivateBoundary = undefined;
                         for (0..4) |lane| {
-                            boundary.input[lane] = input_raw[lane].idx;
-                            boundary.output[lane] = raw[lane].idx;
+                            boundary.input[lane] = chip_input[lane].idx;
+                            boundary.output[lane] = chip_output[lane].idx;
                         }
                         out.private_boundary = boundary;
                     };
+                    if (pair_call_id) |call_id| {
+                        const out = maps.?;
+                        if (out.private_pair_plan == null) out.private_pair_plan = .{ .calls = undefined };
+                        var call: cpu.private_pair_boundary.Call = .{
+                            .call_id = @intCast(call_id),
+                            .rounds = spec.rounds,
+                            .constant = M31.fromCanonical(spec.constant),
+                            .input = undefined,
+                            .output = undefined,
+                        };
+                        for (0..4) |lane| {
+                            call.input[lane] = chip_input[lane].idx;
+                            call.output[lane] = chip_output[lane].idx;
+                        }
+                        out.private_pair_plan.?.calls[call_id] = call;
+                        pair_seen[call_id] = true;
+                    }
+                    if (bounded_call_id) |call_id| {
+                        const source_call = bounded_plan.?.calls[call_id];
+                        var compiled: BoundedCallMap = .{
+                            .call_id = source_call.call_id,
+                            .source_node_id = source_call.source_node_id,
+                            .input_node_id = source_call.input_node_id,
+                            .input = undefined,
+                            .output = undefined,
+                        };
+                        for (0..4) |lane| {
+                            compiled.input[lane] = chip_input[lane].idx;
+                            compiled.output[lane] = chip_output[lane].idx;
+                        }
+                        try maps.?.bounded_calls.append(allocator, compiled);
+                        bounded_seen[call_id] = true;
+                    }
                     break :blk .{ .shape = .{ .kind = .m31, .length = 4 }, .lanes = try circuit.builder.simd.pack(V, &ctx, wrappers), .raw = raw };
                 }
+                try chargeGenericRepeat(&generic_repeat_work, node.length, node.rounds.?, node.body.?);
                 const constants = try scratch.alloc(?Simd, node.body.?.len);
                 for (node.body.?, constants) |step, *slot| slot.* = if (step.constant) |value| try circuit.builder.simd.repeat(V, &ctx, M31.fromCanonical(value), node.length) else null;
                 var current = entries[node.lhs.?].lanes;
@@ -448,12 +828,14 @@ fn compileWithSpansMode(comptime V: type, allocator: std.mem.Allocator, program:
             .blake_g_start = blake_start,
             .blake_g_end = ctx.circuit.blake_g_gate.items.len,
         });
+        try checkCircuitBudget(V, &ctx, false);
     }
 
     for (ir.assertions, 0..) |assertion, index| {
         const qm31_start = ctx.circuit.nQm31OpsRows();
         const eq_start = ctx.circuit.eq.items.len;
         try circuit.builder.simd.eq(V, &ctx, entries[assertion.lhs].lanes, entries[assertion.rhs].lanes);
+        try checkCircuitBudget(V, &ctx, false);
         if (maps) |out| try out.assertions.append(allocator, .{
             .index = index,
             .qm31_start = qm31_start,
@@ -504,13 +886,26 @@ fn compileWithSpansMode(comptime V: type, allocator: std.mem.Allocator, program:
     }
     const binding_base = ctx.circuit.nQm31OpsRows();
     try ctx.setOutputs(&outputs);
+    try checkCircuitBudget(V, &ctx, true);
     if (maps) |out| for (out.bindings.items) |*binding| {
         binding.binding_qm31_start = binding_base + binding.word_start;
         binding.binding_qm31_end = binding.binding_qm31_start + binding.word_count;
     };
     const finalize_qm31_start = ctx.circuit.nQm31OpsRows();
     const finalize_m31_start = ctx.circuit.m31_to_u32.items.len;
-    try ctx.finalize(false);
+    try constant_base.finish(V, &ctx, program);
+    try checkCircuitBudget(V, &ctx, false);
+    if (pair_mode and (!pair_seen[0] or !pair_seen[1] or maps.?.private_pair_plan == null))
+        return error.UnsupportedPairRelation;
+    if (bounded_mode) {
+        if (maps.?.bounded_calls.items.len != bounded_plan.?.call_count) return error.MissingBoundedCalls;
+        for (bounded_plan.?.callSlice(), 0..) |call, call_id| {
+            if (!bounded_seen[call_id] or maps.?.bounded_calls.items[call_id].call_id != call.call_id or
+                maps.?.bounded_calls.items[call_id].source_node_id != call.source_node_id or
+                maps.?.bounded_calls.items[call_id].input_node_id != call.input_node_id)
+                return error.BoundedCallOrderMismatch;
+        }
+    }
     if (sha_chip_mode and (maps.?.sha_boundaries.items.len == 0 or maps.?.sha_boundaries.items.len > 2))
         return error.UnsupportedShaChipRelation;
     if (direct_output and try ctx.circuit.firstYieldViolation(allocator) != null)
@@ -545,9 +940,10 @@ fn arrayGet(comptime V: type, ctx: *circuit.builder.Context(V), entry: Entry, in
 
 fn arraySlice(comptime V: type, ctx: *circuit.builder.Context(V), entry: Entry, start: usize, length: usize) !Entry {
     const raw: ?[]Var = if (entry.raw) |words| words[start..][0..length] else null;
+    const word_spec: ?u32 = if (entry.integer_spec) |spec| if (((spec & 0xff) == 8 or (spec & 0xff) == 16) and length == 1) spec else null else null;
     if (start % 4 == 0) {
         const packed_wires = entry.lanes.data[start / 4 ..][0 .. (length + 3) / 4];
-        return .{ .shape = .{ .kind = entry.shape.kind, .length = length }, .lanes = Simd.fromPacked(packed_wires, length), .raw = raw, .boolean = entry.boolean and length == 1 };
+        return .{ .shape = .{ .kind = entry.shape.kind, .length = length }, .lanes = Simd.fromPacked(packed_wires, length), .raw = raw, .boolean = entry.boolean and length == 1, .integer_spec = word_spec };
     }
     // A shifted view cannot borrow QM31 coordinates as a packed word. Unpack
     // the selected source coordinates and constrain their new packing.
@@ -558,6 +954,7 @@ fn arraySlice(comptime V: type, ctx: *circuit.builder.Context(V), entry: Entry, 
         .lanes = try circuit.builder.simd.pack(V, ctx, wrappers),
         .raw = raw,
         .boolean = entry.boolean and length == 1,
+        .integer_spec = word_spec,
     };
 }
 
@@ -708,6 +1105,11 @@ fn integerSign(comptime V: type, ctx: *circuit.builder.Context(V), word: Var, wi
     return sign;
 }
 
+fn integerSignArithmetic(comptime V: type, ctx: *circuit.builder.Context(V), cache: *BitCache, word: Var, width: u32) !Var {
+    const bits = try cache.getArithmetic(V, ctx, word, width);
+    return bits[width - 1];
+}
+
 fn intView(comptime V: type, ctx: *circuit.builder.Context(V), input: Entry, encoded: u32) !Entry {
     const spec = relation.IntegerSpec.decode(encoded) orelse return error.InvalidIntegerSpec;
     const raw = input.raw orelse return error.InvalidIntegerOperand;
@@ -717,6 +1119,342 @@ fn intView(comptime V: type, ctx: *circuit.builder.Context(V), input: Entry, enc
     var viewed = input;
     viewed.integer_spec = encoded;
     return viewed;
+}
+
+/// Numeric cast, with sign extension or exact discarded-bit checks. Every
+/// equation is on values below 2^24 < p, so the M31 equalities are integer
+/// equalities. A source i8 is first byte-bounded even for forged relation IR.
+fn intCastChecked(comptime V: type, ctx: *circuit.builder.Context(V), input: Entry, encoded: u32) !Entry {
+    const spec = relation.IntegerCastSpec.decode(encoded) orelse return error.InvalidIntegerSpec;
+    const source = input.raw orelse return error.InvalidIntegerOperand;
+    if (input.shape.kind != .u16 or source.len != spec.source.limbCount()) return error.InvalidIntegerOperand;
+    if (spec.source.width == 8 and (input.integer_spec == null or (input.integer_spec.? & 0xff) != 8))
+        try constrainByte(V, ctx, source[0]);
+
+    const source_sign = if (spec.source.signed and
+        (spec.source.width != spec.target.width or !spec.target.signed))
+        try integerSign(V, ctx, source[source.len - 1], spec.source.width)
+    else
+        ctx.zero();
+    if (spec.source.signed and !spec.target.signed) try assertZeroArithmetic(V, ctx, source_sign);
+
+    const target = try ctx.scratch().alloc(Var, spec.target.limbCount());
+    const high_fill = if (spec.source.signed and spec.target.signed and source.len != target.len)
+        try ctx.mul(source_sign, try ctx.constant(QM31.fromBase(M31.fromCanonical(65535))))
+    else
+        ctx.zero();
+    if (spec.source.width < spec.target.width) {
+        if (spec.source.width == 8) {
+            const extension = if (spec.source.signed and spec.target.signed)
+                try ctx.mul(source_sign, try ctx.constant(QM31.fromBase(M31.fromCanonical(65280))))
+            else
+                ctx.zero();
+            target[0] = try ctx.add(source[0], extension);
+        } else {
+            @memcpy(target[0..source.len], source);
+        }
+        for (target[source.len..]) |*digit| digit.* = high_fill;
+    } else if (spec.source.width > spec.target.width) {
+        if (spec.target.width == 8) {
+            const value: u32 = if (comptime V == QM31) ctx.get(source[0]).toM31Array()[0].v else 0;
+            target[0] = try ctx.guessU16(circuit.builder.ivalue.fromQm31(V, QM31.fromBase(M31.fromCanonical(value & 255))));
+            try constrainByte(V, ctx, target[0]);
+            const upper = try ctx.guessU16(circuit.builder.ivalue.fromQm31(V, QM31.fromBase(M31.fromCanonical(value >> 8))));
+            const byte_base = try ctx.constant(QM31.fromBase(M31.fromCanonical(256)));
+            try ctx.eq(source[0], try ctx.add(target[0], try ctx.mul(upper, byte_base)));
+            const expected_upper = if (spec.source.signed)
+                try ctx.mul(source_sign, try ctx.constant(QM31.fromBase(M31.fromCanonical(255))))
+            else
+                ctx.zero();
+            try ctx.eq(upper, expected_upper);
+        } else {
+            @memcpy(target, source[0..target.len]);
+        }
+        for (source[target.len..]) |digit| try ctx.eq(digit, high_fill);
+    } else {
+        @memcpy(target, source);
+    }
+
+    // Narrowing to a signed type, or changing unsigned to signed at the same
+    // width, also requires the destination's top bit to match source sign.
+    if (spec.target.signed and spec.source.width >= spec.target.width and
+        (spec.source.width != spec.target.width or !spec.source.signed))
+    {
+        const target_sign = try integerSign(V, ctx, target[target.len - 1], spec.target.width);
+        try ctx.eq(target_sign, source_sign);
+    }
+
+    const wrappers = try ctx.scratch().alloc(circuit.builder.wrappers.M31Wrapper(Var), target.len);
+    for (wrappers, target) |*wrapped, digit| wrapped.* = .newUnsafe(digit);
+    return .{ .shape = .{ .kind = .u16, .length = target.len }, .lanes = try circuit.builder.simd.pack(V, ctx, wrappers), .raw = target, .integer_spec = (if (spec.target.signed) @as(u32, 256) else 0) + spec.target.width };
+}
+
+/// A static multiple-of-limb shift is a wire permutation plus zero/sign-fill
+/// wires. Other counts select proved Boolean bits and pack them once. The
+/// source count has already been normalized and is committed in node.index.
+fn intStaticShift(comptime V: type, ctx: *circuit.builder.Context(V), cache: *BitCache, lhs: Entry, encoded: u32, count: u32, mode: integer_bits.ShiftMode) !Entry {
+    const spec = relation.IntegerSpec.decode(encoded) orelse return error.InvalidIntegerSpec;
+    const source = lhs.raw orelse return error.InvalidIntegerOperand;
+    if (lhs.shape.kind != .u16 or source.len != spec.limbCount()) return error.InvalidIntegerOperand;
+    if (count > spec.width or ((mode == .rotl or mode == .rotr) and count >= spec.width) or
+        (mode == .shr_arithmetic and !spec.signed)) return error.InvalidIntegerShift;
+    if (spec.width == 8 and (lhs.integer_spec == null or (lhs.integer_spec.? & 0xff) != 8))
+        try constrainByte(V, ctx, source[0]);
+    if (count == 0) {
+        var same = lhs;
+        same.integer_spec = encoded;
+        return same;
+    }
+
+    const per_limb: u32 = if (spec.width == 8) 8 else 16;
+    var raw: []Var = undefined;
+    if (count % per_limb == 0) {
+        raw = try ctx.scratch().alloc(Var, source.len);
+        const moved: usize = @intCast(count / per_limb);
+        const fill: Var = if (mode == .shr_arithmetic) blk: {
+            const sign = try integerSign(V, ctx, source[source.len - 1], spec.width);
+            const top = try ctx.constant(QM31.fromBase(M31.fromCanonical(if (spec.width == 8) 255 else 65535)));
+            const word = try ctx.mul(sign, top);
+            try cache.rememberRepeated(ctx.scratch(), word, sign, @intCast(per_limb));
+            break :blk word;
+        } else ctx.zero();
+        for (raw, 0..) |*word, j| {
+            word.* = switch (mode) {
+                .shl => if (j < moved) ctx.zero() else source[j - moved],
+                .shr_logical => if (j + moved >= source.len) ctx.zero() else source[j + moved],
+                .shr_arithmetic => if (j + moved >= source.len) fill else source[j + moved],
+                .rotl => source[(j + source.len - moved) % source.len],
+                .rotr => source[(j + moved) % source.len],
+            };
+        }
+    } else {
+        const source_bits = try cache.get(V, ctx, source, spec.width);
+        const shifted = try integer_bits.shiftedBits(V, ctx, source_bits, @intCast(count), mode);
+        raw = try integer_bits.pack(V, ctx, shifted, spec.width);
+        try cache.remember(ctx.scratch(), raw, shifted, spec.width);
+    }
+    const wrappers = try ctx.scratch().alloc(circuit.builder.wrappers.M31Wrapper(Var), raw.len);
+    for (wrappers, raw) |*wrapped, word| wrapped.* = .newUnsafe(word);
+    return .{ .shape = .{ .kind = .u16, .length = raw.len }, .lanes = try circuit.builder.simd.pack(V, ctx, wrappers), .raw = raw, .integer_spec = encoded };
+}
+
+fn intBitwise(comptime V: type, ctx: *circuit.builder.Context(V), cache: *BitCache, lhs: Entry, rhs: ?Entry, encoded: u32, mode: integer_bits.Mode) !Entry {
+    const spec = relation.IntegerSpec.decode(encoded) orelse return error.InvalidIntegerSpec;
+    const left = lhs.raw orelse return error.InvalidIntegerOperand;
+    if (lhs.shape.kind != .u16 or left.len != spec.limbCount()) return error.InvalidIntegerOperand;
+    const left_bits = try cache.get(V, ctx, left, spec.width);
+    const right_bits: ?[]const Var = if (rhs) |right_entry| blk: {
+        const right = right_entry.raw orelse return error.InvalidIntegerOperand;
+        if (right_entry.shape.kind != .u16 or right.len != spec.limbCount()) return error.InvalidIntegerOperand;
+        break :blk try cache.get(V, ctx, right, spec.width);
+    } else null;
+    const bits = try integer_bits.combine(V, ctx, left_bits, right_bits, mode);
+    const raw = try integer_bits.pack(V, ctx, bits, spec.width);
+    try cache.remember(ctx.scratch(), raw, bits, spec.width);
+    const wrappers = try ctx.scratch().alloc(circuit.builder.wrappers.M31Wrapper(Var), raw.len);
+    for (wrappers, raw) |*wrapped, word| wrapped.* = .newUnsafe(word);
+    return .{ .shape = .{ .kind = .u16, .length = raw.len }, .lanes = try circuit.builder.simd.pack(V, ctx, wrappers), .raw = raw, .integer_spec = encoded };
+}
+
+fn intMultiplyWrapping(comptime V: type, ctx: *circuit.builder.Context(V), lhs: Entry, rhs: Entry, encoded: u32) !Entry {
+    const spec = relation.IntegerSpec.decode(encoded) orelse return error.InvalidIntegerSpec;
+    const left = lhs.raw orelse return error.InvalidIntegerOperand;
+    const right = rhs.raw orelse return error.InvalidIntegerOperand;
+    if (lhs.shape.kind != .u16 or rhs.shape.kind != .u16 or
+        left.len != spec.limbCount() or right.len != spec.limbCount())
+        return error.InvalidIntegerOperand;
+    const left_byte_bounded = lhs.integer_spec != null and (lhs.integer_spec.? & 0xff) == 8;
+    const right_byte_bounded = rhs.integer_spec != null and (rhs.integer_spec.? & 0xff) == 8;
+    const raw = try integer_multiply.wrapping(V, ctx, left, right, spec.width, left_byte_bounded, right_byte_bounded);
+    const wrappers = try ctx.scratch().alloc(circuit.builder.wrappers.M31Wrapper(Var), raw.len);
+    for (wrappers, raw) |*wrapped, wire| wrapped.* = .newUnsafe(wire);
+    return .{ .shape = .{ .kind = .u16, .length = raw.len }, .lanes = try circuit.builder.simd.pack(V, ctx, wrappers), .raw = raw, .integer_spec = encoded };
+}
+
+fn intDivRem(comptime V: type, ctx: *circuit.builder.Context(V), cache: *BitCache, lhs: Entry, rhs: Entry, encoded: u32, direct_arithmetic: bool) !Entry {
+    const spec = relation.IntegerSpec.decode(encoded) orelse return error.InvalidIntegerSpec;
+    const left = lhs.raw orelse return error.InvalidIntegerOperand;
+    const right = rhs.raw orelse return error.InvalidIntegerOperand;
+    if (lhs.shape.kind != .u16 or rhs.shape.kind != .u16 or
+        left.len != spec.limbCount() or right.len != spec.limbCount())
+        return error.InvalidIntegerOperand;
+    const left_byte_bounded = lhs.integer_spec != null and (lhs.integer_spec.? & 0xff) == 8;
+    const right_byte_bounded = rhs.integer_spec != null and (rhs.integer_spec.? & 0xff) == 8;
+    const division = if (spec.signed) blk: {
+        const direct_word = spec.width == 8 or spec.width == 16;
+        const direct_wide = direct_arithmetic and spec.width > 16;
+        const sa = if (direct_word) try integerSignArithmetic(V, ctx, cache, left[0], spec.width) else if (direct_wide) try integerSignArithmetic(V, ctx, cache, left[left.len - 1], 16) else try integerSign(V, ctx, left[left.len - 1], spec.width);
+        const sb = if (direct_word) try integerSignArithmetic(V, ctx, cache, right[0], spec.width) else if (direct_wide) try integerSignArithmetic(V, ctx, cache, right[right.len - 1], 16) else try integerSign(V, ctx, right[right.len - 1], spec.width);
+        const numerator = if (direct_word) try intConditionalNegateArithmetic(V, ctx, cache, left[0], sa, spec.width) else if (direct_wide) try intConditionalNegateWideArithmetic(V, ctx, cache, left, sa, spec.width) else try intConditionalNegate(V, ctx, left, sa, spec.width);
+        const denominator = if (direct_word) try intConditionalNegateArithmetic(V, ctx, cache, right[0], sb, spec.width) else if (direct_wide) try intConditionalNegateWideArithmetic(V, ctx, cache, right, sb, spec.width) else try intConditionalNegate(V, ctx, right, sb, spec.width);
+        const magnitude = if (direct_wide) try integer_division.divRemArithmetic(V, ctx, numerator, denominator, spec.width) else try integer_division.divRem(V, ctx, numerator, denominator, spec.width, true, true);
+        const both = try ctx.mul(sa, sb);
+        const quotient_negative = try ctx.sub(try ctx.add(sa, sb), try ctx.add(both, both));
+        // A positive signed quotient cannot have the top bit set. This is
+        // the MIN / -1 overflow case; negative MIN itself remains valid.
+        const quotient_top = if (direct_word) try integerSignArithmetic(V, ctx, cache, magnitude.quotient[0], spec.width) else if (direct_wide) try integerSignArithmetic(V, ctx, cache, magnitude.quotient[magnitude.quotient.len - 1], 16) else try integerSign(V, ctx, magnitude.quotient[magnitude.quotient.len - 1], spec.width);
+        try assertZeroArithmetic(V, ctx, try ctx.mul(quotient_top, try ctx.sub(ctx.one(), quotient_negative)));
+        break :blk integer_division.Division{
+            .quotient = if (direct_word) try intConditionalNegateArithmetic(V, ctx, cache, magnitude.quotient[0], quotient_negative, spec.width) else if (direct_wide) try intConditionalNegateWideArithmetic(V, ctx, cache, magnitude.quotient, quotient_negative, spec.width) else try intConditionalNegate(V, ctx, magnitude.quotient, quotient_negative, spec.width),
+            .remainder = if (direct_word) try intConditionalNegateArithmetic(V, ctx, cache, magnitude.remainder[0], sa, spec.width) else if (direct_wide) try intConditionalNegateWideArithmetic(V, ctx, cache, magnitude.remainder, sa, spec.width) else try intConditionalNegate(V, ctx, magnitude.remainder, sa, spec.width),
+        };
+    } else if (direct_arithmetic and spec.width > 16)
+        try integer_division.divRemArithmetic(V, ctx, left, right, spec.width)
+    else
+        try integer_division.divRem(V, ctx, left, right, spec.width, left_byte_bounded, right_byte_bounded);
+    const raw = try ctx.scratch().alloc(Var, left.len * 2);
+    @memcpy(raw[0..left.len], division.quotient);
+    @memcpy(raw[left.len..], division.remainder);
+    const wrappers = try ctx.scratch().alloc(circuit.builder.wrappers.M31Wrapper(Var), raw.len);
+    for (wrappers, raw) |*wrapped, wire| wrapped.* = .newUnsafe(wire);
+    return .{ .shape = .{ .kind = .u16, .length = raw.len }, .lanes = try circuit.builder.simd.pack(V, ctx, wrappers), .raw = raw, .integer_spec = if (spec.width == 8 or spec.width == 16) encoded else null };
+}
+
+/// Select `x` or its two's-complement negation with a proved Boolean sign.
+/// Every output word and carry is bounded; the terminal carry is discarded
+/// because negating zero wraps back to zero.
+fn intConditionalNegateArithmetic(comptime V: type, ctx: *circuit.builder.Context(V), cache: *BitCache, word: Var, sign: Var, width: u32) ![]Var {
+    if (width != 8 and width != 16) return error.InvalidIntegerSpec;
+    const word_base: u32 = if (width == 8) 256 else 65536;
+    const mask = word_base - 1;
+    const source_value: u32 = if (comptime V == QM31) ctx.get(word).toM31Array()[0].v else 0;
+    const sign_value: u32 = if (comptime V == QM31) ctx.get(sign).toM31Array()[0].v else 0;
+    if (source_value >= word_base or sign_value > 1) return error.IntegerOutOfRange;
+    const selected_value = if (sign_value == 0) source_value else mask - source_value;
+    const total = selected_value + sign_value;
+    const digit = try ctx.guess(circuit.builder.ivalue.fromQm31(V, QM31.fromBase(M31.fromCanonical(total & mask))));
+    const bits = try integer_bits.decomposeWordArithmetic(V, ctx, digit, width);
+    try cache.remember(ctx.scratch(), &.{digit}, bits, width);
+    const carry = try ctx.guess(circuit.builder.ivalue.fromQm31(V, QM31.fromBase(M31.fromCanonical(total / word_base))));
+    try assertZeroArithmetic(V, ctx, try ctx.sub(try ctx.mul(sign, sign), sign));
+    try assertZeroArithmetic(V, ctx, try ctx.sub(try ctx.mul(carry, carry), carry));
+    const maximum = try ctx.constant(QM31.fromBase(M31.fromCanonical(mask)));
+    const base = try ctx.constant(QM31.fromBase(M31.fromCanonical(word_base)));
+    const complement = try ctx.sub(maximum, word);
+    const selected = try ctx.add(word, try ctx.mul(sign, try ctx.sub(complement, word)));
+    const lhs = try ctx.add(selected, sign);
+    const rhs = try ctx.add(digit, try ctx.mul(carry, base));
+    try assertZeroArithmetic(V, ctx, try ctx.sub(lhs, rhs));
+    const output = try ctx.scratch().alloc(Var, 1);
+    output[0] = digit;
+    return output;
+}
+
+/// Prove a width-wide conditional two's complement using 16-bit limbs.
+/// Each equation has both sides below M31 after the Boolean sign and carry
+/// constraints; the terminal carry is discarded for modular negation.
+fn intConditionalNegateWideArithmetic(comptime V: type, ctx: *circuit.builder.Context(V), cache: *BitCache, source: []const Var, sign: Var, width: u32) ![]Var {
+    if ((width != 32 and width != 64 and width != 128) or source.len != width / 16)
+        return error.InvalidIntegerSpec;
+    const base_value: u32 = 65536;
+    const base = try ctx.constant(QM31.fromBase(M31.fromCanonical(base_value)));
+    const maximum = try ctx.constant(QM31.fromBase(M31.fromCanonical(base_value - 1)));
+    const sign_value: u32 = if (comptime V == QM31) ctx.get(sign).toM31Array()[0].v else 0;
+    if (sign_value > 1) return error.IntegerOutOfRange;
+    try assertZeroArithmetic(V, ctx, try ctx.sub(try ctx.mul(sign, sign), sign));
+    const output = try ctx.scratch().alloc(Var, source.len);
+    var incoming = sign;
+    var carry_value = sign_value;
+    for (source, output) |word, *digit| {
+        const value: u32 = if (comptime V == QM31) ctx.get(word).toM31Array()[0].v else 0;
+        if (value >= base_value) return error.IntegerOutOfRange;
+        const selected_value = if (sign_value == 0) value else base_value - 1 - value;
+        const total_value = selected_value + carry_value;
+        digit.* = try ctx.guess(circuit.builder.ivalue.fromQm31(V, QM31.fromBase(M31.fromCanonical(total_value & (base_value - 1)))));
+        _ = try cache.getArithmetic(V, ctx, digit.*, 16);
+        const next_value: u32 = total_value / base_value;
+        const outgoing = try ctx.guess(circuit.builder.ivalue.fromQm31(V, QM31.fromBase(M31.fromCanonical(next_value))));
+        try assertZeroArithmetic(V, ctx, try ctx.sub(try ctx.mul(outgoing, outgoing), outgoing));
+        const complemented = try ctx.sub(maximum, word);
+        const selected = try ctx.add(word, try ctx.mul(sign, try ctx.sub(complemented, word)));
+        try assertZeroArithmetic(V, ctx, try ctx.sub(try ctx.add(selected, incoming), try ctx.add(digit.*, try ctx.mul(outgoing, base))));
+        incoming = outgoing;
+        carry_value = next_value;
+    }
+    return output;
+}
+
+fn intConditionalNegate(comptime V: type, ctx: *circuit.builder.Context(V), source: []const Var, sign: Var, width: u32) ![]Var {
+    const base_value: u32 = if (width == 8) 256 else 65536;
+    const base = try ctx.constant(QM31.fromBase(M31.fromCanonical(base_value)));
+    const maximum = try ctx.constant(QM31.fromBase(M31.fromCanonical(base_value - 1)));
+    const sign_value: u32 = if (comptime V == QM31) ctx.get(sign).toM31Array()[0].v else 0;
+    const output = try ctx.scratch().alloc(Var, source.len);
+    var incoming = sign;
+    var carry_value = sign_value;
+    for (source, output) |word, *digit| {
+        const value: u32 = if (comptime V == QM31) ctx.get(word).toM31Array()[0].v else 0;
+        if (value >= base_value or sign_value > 1) return error.IntegerOutOfRange;
+        const selected_value = if (sign_value == 0) value else base_value - 1 - value;
+        const total_value = selected_value + carry_value;
+        digit.* = try ctx.guessU16(circuit.builder.ivalue.fromQm31(V, QM31.fromBase(M31.fromCanonical(total_value & (base_value - 1)))));
+        if (width == 8) try constrainByte(V, ctx, digit.*);
+        const next_value: u32 = total_value / base_value;
+        const outgoing = try ctx.guess(circuit.builder.ivalue.fromQm31(V, QM31.fromBase(M31.fromCanonical(next_value))));
+        try ctx.eq(try ctx.mul(outgoing, outgoing), outgoing);
+        const complemented = try ctx.sub(maximum, word);
+        const selected = try ctx.add(word, try ctx.mul(sign, try ctx.sub(complemented, word)));
+        try ctx.eq(try ctx.add(selected, incoming), try ctx.add(digit.*, try ctx.mul(outgoing, base)));
+        incoming = outgoing;
+        carry_value = next_value;
+    }
+    return output;
+}
+
+fn intMultiplyChecked(comptime V: type, ctx: *circuit.builder.Context(V), lhs: Entry, rhs: Entry, encoded: u32) !Entry {
+    const spec = relation.IntegerSpec.decode(encoded) orelse return error.InvalidIntegerSpec;
+    const left = lhs.raw orelse return error.InvalidIntegerOperand;
+    const right = rhs.raw orelse return error.InvalidIntegerOperand;
+    if (lhs.shape.kind != .u16 or rhs.shape.kind != .u16 or
+        left.len != spec.limbCount() or right.len != spec.limbCount())
+        return error.InvalidIntegerOperand;
+    const left_byte_bounded = lhs.integer_spec != null and (lhs.integer_spec.? & 0xff) == 8;
+    const right_byte_bounded = rhs.integer_spec != null and (rhs.integer_spec.? & 0xff) == 8;
+    const product = try integer_multiply.fullProduct(V, ctx, left, right, spec.width, left_byte_bounded, right_byte_bounded);
+    if (!spec.signed) {
+        // The complete unsigned product must fit in exactly W bits.
+        for (product.high) |word| try assertZeroArithmetic(V, ctx, word);
+    } else {
+        // A signed W-bit value is its unsigned bit pattern minus sign*2^W.
+        // If U=A*B=low+2^W*high, the signed product fits exactly when
+        // high + carry*2^W = sign(A)*B + sign(B)*A +
+        // sign(low)*(2^W-1), with carry = sign(A)*sign(B)+sign(low).
+        const sa = try integerSign(V, ctx, left[left.len - 1], spec.width);
+        const sb = try integerSign(V, ctx, right[right.len - 1], spec.width);
+        const sr = try integerSign(V, ctx, product.low[product.low.len - 1], spec.width);
+        const base_value: u32 = if (spec.width == 8) 256 else 65536;
+        const base = try ctx.constant(QM31.fromBase(M31.fromCanonical(base_value)));
+        const base_minus_one = try ctx.constant(QM31.fromBase(M31.fromCanonical(base_value - 1)));
+        const one = ctx.one();
+        const two = try ctx.constant(QM31.fromBase(M31.fromCanonical(2)));
+        const three = try ctx.constant(QM31.fromBase(M31.fromCanonical(3)));
+        const sa_value: u32 = if (comptime V == QM31) ctx.get(sa).toM31Array()[0].v else 0;
+        const sb_value: u32 = if (comptime V == QM31) ctx.get(sb).toM31Array()[0].v else 0;
+        const sr_value: u32 = if (comptime V == QM31) ctx.get(sr).toM31Array()[0].v else 0;
+        var incoming = ctx.zero();
+        var carry_value: u32 = 0;
+        for (left, right, product.high) |a, b, high| {
+            const av: u32 = if (comptime V == QM31) ctx.get(a).toM31Array()[0].v else 0;
+            const bv: u32 = if (comptime V == QM31) ctx.get(b).toM31Array()[0].v else 0;
+            const total_value = sa_value * bv + sb_value * av + sr_value * (base_value - 1) + carry_value;
+            const outgoing_value = total_value / base_value;
+            const outgoing = try ctx.guess(circuit.builder.ivalue.fromQm31(V, QM31.fromBase(M31.fromCanonical(outgoing_value))));
+            // A four-value polynomial keeps both sides of the field equation
+            // below p, so no modular wrap can satisfy a false high word.
+            const zero_to_three = try ctx.mul(try ctx.mul(outgoing, try ctx.sub(outgoing, one)), try ctx.mul(try ctx.sub(outgoing, two), try ctx.sub(outgoing, three)));
+            try ctx.eq(zero_to_three, ctx.zero());
+            const sum = try ctx.add(try ctx.add(try ctx.add(incoming, try ctx.mul(sa, b)), try ctx.mul(sb, a)), try ctx.mul(sr, base_minus_one));
+            try ctx.eq(sum, try ctx.add(high, try ctx.mul(outgoing, base)));
+            incoming = outgoing;
+            carry_value = outgoing_value;
+        }
+        // Fixing this carry converts the modular high-word comparison into
+        // an exact signed integer equality, including at MIN * -1.
+        try ctx.eq(incoming, try ctx.add(try ctx.mul(sa, sb), sr));
+    }
+    const wrappers = try ctx.scratch().alloc(circuit.builder.wrappers.M31Wrapper(Var), product.low.len);
+    for (wrappers, product.low) |*wrapped, wire| wrapped.* = .newUnsafe(wire);
+    return .{ .shape = .{ .kind = .u16, .length = product.low.len }, .lanes = try circuit.builder.simd.pack(V, ctx, wrappers), .raw = product.low, .integer_spec = encoded };
 }
 
 fn intBinary(comptime V: type, ctx: *circuit.builder.Context(V), lhs: Entry, rhs: Entry, encoded: u32, mode: U256Mode) !Entry {
@@ -939,7 +1677,31 @@ fn booleanNode(comptime V: type, ctx: *circuit.builder.Context(V), kind: Boolean
 /// profile's lookup closure; writing into the constant mask would give that
 /// variable two producers and would not safely constrain the product.
 fn inverseLanes(comptime V: type, ctx: *circuit.builder.Context(V), input: Simd) !Simd {
-    const inverse = try circuit.builder.simd.guessInvOrZero(V, ctx, input);
+    // The generic hint inverts all four coordinates, including inactive
+    // padding. Our AIR mask requires their products to be zero. Keep the
+    // generic fast path for complete words and zero the inverse hint only in
+    // the short final word; this adds no gates.
+    const inverse = if (input.len % 4 == 0) try circuit.builder.simd.guessInvOrZero(V, ctx, input) else blk: {
+        const full_words = input.data.len - 1;
+        const wires = try ctx.scratch().alloc(Var, input.data.len);
+        if (full_words > 0) {
+            const prefix = try circuit.builder.simd.guessInvOrZero(
+                V,
+                ctx,
+                Simd.fromPacked(input.data[0..full_words], full_words * 4),
+            );
+            @memcpy(wires[0..full_words], prefix.data);
+        }
+        var coordinates = [_]M31{M31.zero()} ** 4;
+        if (comptime V == QM31) {
+            const source = ctx.get(input.data[full_words]).toM31Array();
+            for (0..input.len % 4) |i| {
+                if (!source[i].isZero()) coordinates[i] = try source[i].inv();
+            }
+        }
+        wires[full_words] = try ctx.guess(circuit.builder.ivalue.fromQm31(V, QM31.fromM31Array(coordinates)));
+        break :blk Simd.fromPacked(wires, input.len);
+    };
     for (input.data, inverse.data, 0..) |x, inv, group| {
         const active = @min(@as(usize, 4), input.len - 4 * group);
         const expected = try ctx.constant(QM31.fromU32Unchecked(
@@ -1411,7 +2173,7 @@ test "runtime slices borrow aligned packed words and constrain shifted words" {
         var maps = Maps{};
         defer maps.deinit(std.testing.allocator);
         var ctx = if (std.mem.eql(u8, case[0], "array_slice_u16"))
-            try compileWithSpansMode(QM31, std.testing.allocator, program.value, assignment.value, &maps, false, false, false)
+            try compileWithSpansMode(QM31, std.testing.allocator, program.value, assignment.value, &maps, false, false, false, false, false)
         else
             try compileDirectWithSpans(QM31, std.testing.allocator, program.value, assignment.value, &maps, false);
         defer ctx.deinit();
@@ -1445,6 +2207,37 @@ test "u16 array views keep bounded words in the generic circuit" {
     try std.testing.expect(try values.isCircuitValid());
     try std.testing.expectEqual(values.circuit.n_vars, topology.circuit.n_vars);
     try std.testing.expect(std.meta.eql(values.gate_counts, topology.gate_counts));
+}
+
+test "signed byte division rejects MIN over negative one in circuit constraints" {
+    const allocator = std.testing.allocator;
+    const source =
+        \\{"version":1,"name":"signed_division","inputs":[{"name":"a","kind":"u16","length":1,"visibility":"private"},{"name":"b","kind":"u16","length":1,"visibility":"private"}],"nodes":[{"name":"pair","op":"int_div_rem","lhs":"a","rhs":"b","constant":264}],"assertions":[],"public_outputs":["pair"]}
+    ;
+    var program = try relation.parseProgram(allocator, source);
+    defer program.deinit();
+    const valid_json =
+        \\{"public_inputs":{},"private_inputs":{"a":[249],"b":[3]},"public_outputs":{"pair":[254,255]}}
+    ;
+    const overflow_json =
+        \\{"public_inputs":{},"private_inputs":{"a":[128],"b":[255]},"public_outputs":{"pair":[128,0]}}
+    ;
+    const assignments = [_]struct { json: []const u8, valid: bool }{
+        .{ .json = valid_json, .valid = true },
+        .{ .json = overflow_json, .valid = false },
+    };
+    for (assignments) |item| {
+        var assignment = try relation.parseAssignment(allocator, item.json);
+        defer assignment.deinit();
+        var ctx = try compile(QM31, allocator, program.value, assignment.value);
+        defer ctx.deinit();
+        try std.testing.expectEqual(item.valid, try ctx.isCircuitValid());
+    }
+    var zero = try relation.parseAssignment(allocator,
+        \\{"public_inputs":{},"private_inputs":{"a":[249],"b":[0]},"public_outputs":{"pair":[0,0]}}
+    );
+    defer zero.deinit();
+    try std.testing.expectError(error.ZeroDivisor, compile(QM31, allocator, program.value, zero.value));
 }
 
 test "strict u32 comparison constrains equality, borrow, and limb boundary" {
@@ -1648,6 +2441,79 @@ test "sum_lanes packed linear functional masks unused coordinates and reduces ga
     }
 }
 
+test "inverse_lanes masks nonzero inactive padding without extra gates" {
+    for ([_]usize{ 1, 2, 3, 4, 5 }) |len| {
+        var ctx = try circuit.builder.Context(QM31).init(std.testing.allocator, 0);
+        defer ctx.deinit();
+        const first = try ctx.guess(QM31.fromU32Unchecked(2, 3, 5, 7));
+        const second = try ctx.guess(QM31.fromU32Unchecked(11, 13, 17, 19));
+        const data = [_]Var{ first, second };
+        const before = ctx.circuit.nQm31OpsRows();
+        const inverse = try inverseLanes(QM31, &ctx, Simd.fromPacked(data[0 .. (len + 3) / 4], len));
+        try std.testing.expectEqual(3 * inverse.data.len, ctx.circuit.nQm31OpsRows() - before);
+        for (inverse.data, 0..) |wire, group| {
+            const actual = ctx.get(wire).toM31Array();
+            const source = ctx.get(data[group]).toM31Array();
+            const active = @min(@as(usize, 4), len - 4 * group);
+            for (actual, 0..) |coordinate, lane| {
+                const expected = if (lane < active) try source[lane].inv() else M31.zero();
+                try std.testing.expectEqual(expected.v, coordinate.v);
+            }
+        }
+        try ctx.finalize(false);
+        try std.testing.expect(try ctx.isCircuitValid());
+
+        var topology = try circuit.builder.Context(circuit.builder.NoValue).init(std.testing.allocator, 0);
+        defer topology.deinit();
+        const topology_data = [_]Var{ try topology.guess(.{}), try topology.guess(.{}) };
+        _ = try inverseLanes(circuit.builder.NoValue, &topology, Simd.fromPacked(topology_data[0 .. (len + 3) / 4], len));
+        try topology.finalize(false);
+        try std.testing.expectEqual(ctx.circuit.n_vars, topology.circuit.n_vars);
+        inline for (.{ "pointwise_mul", "sub", "add" }) |field| {
+            try std.testing.expectEqualSlices(
+                @TypeOf(@field(ctx.circuit, field).items[0]),
+                @field(ctx.circuit, field).items,
+                @field(topology.circuit, field).items,
+            );
+        }
+    }
+}
+
+test "SIMD extraction produces the modeled scalar in one or two arithmetic rows" {
+    const words = [_]u32{ 8, 13, 21, 34 };
+    for (0..4) |lane| {
+        var ctx = try circuit.builder.Context(QM31).init(std.testing.allocator, 0);
+        defer ctx.deinit();
+        const packed_word = try ctx.guess(QM31.fromU32Unchecked(words[0], words[1], words[2], words[3]));
+        const data = [_]Var{packed_word};
+        const before = ctx.circuit.nQm31OpsRows();
+        const scalar = try circuit.builder.simd.unpackIdx(QM31, &ctx, Simd.fromPacked(&data, 4), lane);
+        try std.testing.expectEqual(@as(usize, if (lane == 0) 1 else 2), ctx.circuit.nQm31OpsRows() - before);
+        const actual = ctx.get(scalar).toM31Array();
+        try std.testing.expectEqual(words[lane], actual[0].v);
+        for (actual[1..]) |coordinate| try std.testing.expect(coordinate.isZero());
+        try ctx.finalize(false);
+        try std.testing.expect(try ctx.isCircuitValid());
+    }
+}
+
+test "short SIMD equality ignores inactive padding and rejects a forged active lane" {
+    for ([_]bool{ false, true }) |forged| {
+        var ctx = try circuit.builder.Context(QM31).init(std.testing.allocator, 0);
+        defer ctx.deinit();
+        const left = try ctx.guess(QM31.fromU32Unchecked(2, 3, 71, 99));
+        const right = try ctx.guess(QM31.fromU32Unchecked(2, if (forged) 4 else 3, 5, 6));
+        const lhs = [_]Var{left};
+        const rhs = [_]Var{right};
+        const before = ctx.circuit.nQm31OpsRows();
+        try circuit.builder.simd.eq(QM31, &ctx, Simd.fromPacked(&lhs, 2), Simd.fromPacked(&rhs, 2));
+        try std.testing.expectEqual(@as(usize, 2), ctx.circuit.nQm31OpsRows() - before);
+        try std.testing.expectEqual(@as(usize, 1), ctx.circuit.eq.items.len);
+        try ctx.finalize(false);
+        try std.testing.expectEqual(!forged, try ctx.isCircuitValid());
+    }
+}
+
 test "mix4 packed diffusion matches scalar M31 at field boundaries" {
     const p = core.fields.m31.Modulus;
     for ([_][4]u32{
@@ -1845,6 +2711,250 @@ test "fixed integer byte bounds, signed overflow and width-specific carry are ci
     try std.testing.expect(!try invalid_byte.isCircuitValid());
 }
 
+test "fixed integer wrapping multiplication constrains bytes, carries, and public result" {
+    const allocator = std.testing.allocator;
+    const byte_source =
+        \\{"version":1,"name":"u8_mul","inputs":[{"name":"a","kind":"u16","length":1,"visibility":"private"},{"name":"b","kind":"u16","length":1,"visibility":"private"}],"nodes":[{"name":"product","op":"int_mul_wrapping","lhs":"a","rhs":"b","constant":8}],"assertions":[],"public_outputs":["product"]}
+    ;
+    const byte_valid =
+        \\{"public_inputs":{},"private_inputs":{"a":[250],"b":[7]},"public_outputs":{"product":[214]}}
+    ;
+    const byte_forged =
+        \\{"public_inputs":{},"private_inputs":{"a":[250],"b":[7]},"public_outputs":{"product":[213]}}
+    ;
+    const byte_out_of_range =
+        \\{"public_inputs":{},"private_inputs":{"a":[256],"b":[7]},"public_outputs":{"product":[0]}}
+    ;
+    var byte_program = try relation.parseProgram(allocator, byte_source);
+    defer byte_program.deinit();
+    inline for (.{ byte_valid, byte_forged, byte_out_of_range }, 0..) |data, index| {
+        var assignment = try relation.parseAssignment(allocator, data);
+        defer assignment.deinit();
+        var compiled = try compile(QM31, allocator, byte_program.value, assignment.value);
+        defer compiled.deinit();
+        // Public claims bind during package/proof verification, while this
+        // local circuit check tests the private arithmetic witnesses only.
+        try std.testing.expectEqual(index != 2, try compiled.isCircuitValid());
+        if (index == 0) {
+            _ = try relation.evaluate(allocator, byte_program.value, assignment.value);
+        } else {
+            try std.testing.expectError(if (index == 1) error.PublicOutputMismatch else error.IntegerOutOfRange, relation.evaluate(allocator, byte_program.value, assignment.value));
+        }
+    }
+    const wide_source =
+        \\{"version":1,"name":"u128_mul","inputs":[{"name":"a","kind":"u16","length":8,"visibility":"private"},{"name":"b","kind":"u16","length":8,"visibility":"private"}],"nodes":[{"name":"product","op":"int_mul_wrapping","lhs":"a","rhs":"b","constant":128}],"assertions":[],"public_outputs":["product"]}
+    ;
+    const wide_valid =
+        \\{"public_inputs":{},"private_inputs":{"a":[65535,65535,65535,65535,65535,65535,65535,65535],"b":[2,0,0,0,0,0,0,0]},"public_outputs":{"product":[65534,65535,65535,65535,65535,65535,65535,65535]}}
+    ;
+    var wide_program = try relation.parseProgram(allocator, wide_source);
+    defer wide_program.deinit();
+    var wide_assignment = try relation.parseAssignment(allocator, wide_valid);
+    defer wide_assignment.deinit();
+    _ = try relation.evaluate(allocator, wide_program.value, wide_assignment.value);
+    var wide_compiled = try compile(QM31, allocator, wide_program.value, wide_assignment.value);
+    defer wide_compiled.deinit();
+    try std.testing.expect(try wide_compiled.isCircuitValid());
+    var topology = try compile(circuit.builder.NoValue, allocator, wide_program.value, null);
+    defer topology.deinit();
+    try std.testing.expectEqual(wide_compiled.circuit.n_vars, topology.circuit.n_vars);
+}
+
+test "checked integer multiplication rejects unsigned and signed overflow" {
+    const allocator = std.testing.allocator;
+    inline for (.{
+        .{ .spec = 8, .left = 25, .right = 10, .output = 250, .valid = true },
+        .{ .spec = 8, .left = 25, .right = 11, .output = 19, .valid = false },
+        .{ .spec = 264, .left = 255, .right = 2, .output = 254, .valid = true },
+        .{ .spec = 264, .left = 128, .right = 1, .output = 128, .valid = true },
+        .{ .spec = 264, .left = 128, .right = 255, .output = 128, .valid = false },
+    }) |case| {
+        const source = try std.fmt.allocPrint(allocator, "{{\"version\":1,\"name\":\"checked_product\",\"inputs\":[{{\"name\":\"a\",\"kind\":\"u16\",\"length\":1,\"visibility\":\"private\"}},{{\"name\":\"b\",\"kind\":\"u16\",\"length\":1,\"visibility\":\"private\"}}],\"nodes\":[{{\"name\":\"product\",\"op\":\"int_mul_checked\",\"lhs\":\"a\",\"rhs\":\"b\",\"constant\":{d}}}],\"assertions\":[],\"public_outputs\":[\"product\"]}}", .{case.spec});
+        defer allocator.free(source);
+        const data = try std.fmt.allocPrint(allocator, "{{\"public_inputs\":{{}},\"private_inputs\":{{\"a\":[{d}],\"b\":[{d}]}},\"public_outputs\":{{\"product\":[{d}]}}}}", .{ case.left, case.right, case.output });
+        defer allocator.free(data);
+        var program = try relation.parseProgram(allocator, source);
+        defer program.deinit();
+        var assignment = try relation.parseAssignment(allocator, data);
+        defer assignment.deinit();
+        var compiled = try compile(QM31, allocator, program.value, assignment.value);
+        defer compiled.deinit();
+        try std.testing.expectEqual(case.valid, try compiled.isCircuitValid());
+        if (case.valid) {
+            _ = try relation.evaluate(allocator, program.value, assignment.value);
+        } else {
+            try std.testing.expectError(error.IntegerOverflow, relation.evaluate(allocator, program.value, assignment.value));
+        }
+        var topology = try compile(circuit.builder.NoValue, allocator, program.value, null);
+        defer topology.deinit();
+        try std.testing.expectEqual(compiled.circuit.n_vars, topology.circuit.n_vars);
+    }
+}
+
+test "checked integer casts constrain byte narrowing and sign extension" {
+    const allocator = std.testing.allocator;
+    inline for (.{
+        .{ .source = 264, .target = 272, .input = 255, .output = 65535, .valid = true }, // i8(-1) to i16
+        .{ .source = 272, .target = 264, .input = 65408, .output = 128, .valid = true }, // i16(-128) to i8
+        .{ .source = 272, .target = 264, .input = 65407, .output = 127, .valid = false }, // i16(-129) to i8
+        .{ .source = 16, .target = 264, .input = 127, .output = 127, .valid = true }, // u16(127) to i8
+        .{ .source = 16, .target = 264, .input = 128, .output = 128, .valid = false }, // u16(128) to i8
+        .{ .source = 272, .target = 32, .input = 65535, .output = 65535, .valid = false }, // i16(-1) to u32
+    }) |case| {
+        const encoded = case.source | (case.target << 9);
+        const source = try std.fmt.allocPrint(allocator, "{{\"version\":1,\"name\":\"checked_cast\",\"inputs\":[{{\"name\":\"input\",\"kind\":\"u16\",\"length\":1,\"visibility\":\"private\"}}],\"nodes\":[{{\"name\":\"result\",\"op\":\"int_cast_checked\",\"lhs\":\"input\",\"constant\":{d}}}],\"assertions\":[],\"public_outputs\":[\"result\"]}}", .{encoded});
+        defer allocator.free(source);
+        const output_text = if (case.target == 32) try std.fmt.allocPrint(allocator, "[{d},0]", .{case.output}) else try std.fmt.allocPrint(allocator, "[{d}]", .{case.output});
+        defer allocator.free(output_text);
+        const assigned = try std.fmt.allocPrint(allocator, "{{\"public_inputs\":{{}},\"private_inputs\":{{\"input\":[{d}]}},\"public_outputs\":{{\"result\":{s}}}}}", .{ case.input, output_text });
+        defer allocator.free(assigned);
+        var program = try relation.parseProgram(allocator, source);
+        defer program.deinit();
+        var assignment = try relation.parseAssignment(allocator, assigned);
+        defer assignment.deinit();
+        var compiled = try compile(QM31, allocator, program.value, assignment.value);
+        defer compiled.deinit();
+        try std.testing.expectEqual(case.valid, try compiled.isCircuitValid());
+        if (case.valid) {
+            _ = try relation.evaluate(allocator, program.value, assignment.value);
+        } else {
+            try std.testing.expectError(error.IntegerOverflow, relation.evaluate(allocator, program.value, assignment.value));
+        }
+        var topology = try compile(circuit.builder.NoValue, allocator, program.value, null);
+        defer topology.deinit();
+        try std.testing.expectEqual(compiled.circuit.n_vars, topology.circuit.n_vars);
+    }
+}
+
+test "bitwise integer chain constrains bits and reuses input decomposition" {
+    const allocator = std.testing.allocator;
+    const source =
+        \\{"version":1,"name":"byte_bits","inputs":[{"name":"a","kind":"u16","length":1,"visibility":"private"},{"name":"b","kind":"u16","length":1,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":8},{"name":"bv","op":"int_view","lhs":"b","constant":8},{"name":"both","op":"int_bit_and","lhs":"av","rhs":"bv","constant":8},{"name":"different","op":"int_bit_xor","lhs":"av","rhs":"bv","constant":8},{"name":"inverse","op":"int_bit_not","lhs":"both","constant":8},{"name":"result","op":"int_bit_or","lhs":"different","rhs":"inverse","constant":8}],"assertions":[],"public_outputs":["result"]}
+    ;
+    const valid_text =
+        \\{"public_inputs":{},"private_inputs":{"a":[170],"b":[204]},"public_outputs":{"result":[119]}}
+    ;
+    const false_text =
+        \\{"public_inputs":{},"private_inputs":{"a":[170],"b":[204]},"public_outputs":{"result":[118]}}
+    ;
+    var program = try relation.parseProgram(allocator, source);
+    defer program.deinit();
+    var valid = try relation.parseAssignment(allocator, valid_text);
+    defer valid.deinit();
+    var false_claim = try relation.parseAssignment(allocator, false_text);
+    defer false_claim.deinit();
+    _ = try relation.evaluate(allocator, program.value, valid.value);
+    try std.testing.expectError(error.PublicOutputMismatch, relation.evaluate(allocator, program.value, false_claim.value));
+    var values = try compile(QM31, allocator, program.value, valid.value);
+    defer values.deinit();
+    var topology = try compile(circuit.builder.NoValue, allocator, program.value, null);
+    defer topology.deinit();
+    try std.testing.expect(try values.isCircuitValid());
+    try std.testing.expectEqual(values.circuit.n_vars, topology.circuit.n_vars);
+    try std.testing.expect(std.meta.eql(values.gate_counts, topology.gate_counts));
+    // Two input bytes account for sixteen Boolean checks and two
+    // reconstruction equalities. The chain should not decompose them again.
+    try std.testing.expect(values.circuit.eq.items.len < 40);
+}
+
+test "aligned static rotation rewires limbs while unaligned rotation proves bits" {
+    const allocator = std.testing.allocator;
+    const aligned_source =
+        \\{"version":1,"name":"aligned_rotate","inputs":[{"name":"a","kind":"u16","length":2,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":32},{"name":"result","op":"int_rotl","lhs":"av","constant":32,"index":16}],"assertions":[],"public_outputs":["result"]}
+    ;
+    const unaligned_source =
+        \\{"version":1,"name":"unaligned_rotate","inputs":[{"name":"a","kind":"u16","length":2,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":32},{"name":"result","op":"int_rotr","lhs":"av","constant":32,"index":4}],"assertions":[],"public_outputs":["result"]}
+    ;
+    const aligned_text =
+        \\{"public_inputs":{},"private_inputs":{"a":[22136,4660]},"public_outputs":{"result":[4660,22136]}}
+    ;
+    const unaligned_text =
+        \\{"public_inputs":{},"private_inputs":{"a":[22136,4660]},"public_outputs":{"result":[17767,33059]}}
+    ;
+    var aligned_program = try relation.parseProgram(allocator, aligned_source);
+    defer aligned_program.deinit();
+    var unaligned_program = try relation.parseProgram(allocator, unaligned_source);
+    defer unaligned_program.deinit();
+    var aligned_input = try relation.parseAssignment(allocator, aligned_text);
+    defer aligned_input.deinit();
+    var unaligned_input = try relation.parseAssignment(allocator, unaligned_text);
+    defer unaligned_input.deinit();
+    _ = try relation.evaluate(allocator, aligned_program.value, aligned_input.value);
+    _ = try relation.evaluate(allocator, unaligned_program.value, unaligned_input.value);
+    var aligned = try compile(QM31, allocator, aligned_program.value, aligned_input.value);
+    defer aligned.deinit();
+    var unaligned = try compile(QM31, allocator, unaligned_program.value, unaligned_input.value);
+    defer unaligned.deinit();
+    try std.testing.expect(try aligned.isCircuitValid());
+    try std.testing.expect(try unaligned.isCircuitValid());
+    try std.testing.expect(aligned.circuit.eq.items.len + 24 < unaligned.circuit.eq.items.len);
+    var topology = try compile(circuit.builder.NoValue, allocator, unaligned_program.value, null);
+    defer topology.deinit();
+    try std.testing.expectEqual(unaligned.circuit.n_vars, topology.circuit.n_vars);
+}
+
+test "arithmetic right shift binds the signed fill bit" {
+    const allocator = std.testing.allocator;
+    const source =
+        \\{"version":1,"name":"signed_shift","inputs":[{"name":"a","kind":"u16","length":1,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":264},{"name":"result","op":"int_shr_arithmetic","lhs":"av","constant":264,"index":8}],"assertions":[],"public_outputs":["result"]}
+    ;
+    const valid_text =
+        \\{"public_inputs":{},"private_inputs":{"a":[253]},"public_outputs":{"result":[255]}}
+    ;
+    const false_text =
+        \\{"public_inputs":{},"private_inputs":{"a":[253]},"public_outputs":{"result":[0]}}
+    ;
+    var program = try relation.parseProgram(allocator, source);
+    defer program.deinit();
+    var valid = try relation.parseAssignment(allocator, valid_text);
+    defer valid.deinit();
+    var false_claim = try relation.parseAssignment(allocator, false_text);
+    defer false_claim.deinit();
+    _ = try relation.evaluate(allocator, program.value, valid.value);
+    try std.testing.expectError(error.PublicOutputMismatch, relation.evaluate(allocator, program.value, false_claim.value));
+    var circuit_values = try compile(QM31, allocator, program.value, valid.value);
+    defer circuit_values.deinit();
+    try std.testing.expect(try circuit_values.isCircuitValid());
+}
+
+test "shift chains reuse constant zero and sign-fill bit wires" {
+    const allocator = std.testing.allocator;
+    const zero_chain =
+        \\{"version":1,"name":"zero_chain","inputs":[{"name":"a","kind":"u16","length":2,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":32},{"name":"moved","op":"int_shl","lhs":"av","constant":32,"index":16},{"name":"result","op":"int_rotr","lhs":"moved","constant":32,"index":4}],"assertions":[],"public_outputs":["result"]}
+    ;
+    const zero_input =
+        \\{"public_inputs":{},"private_inputs":{"a":[22136,4660]},"public_outputs":{"result":[32768,1383]}}
+    ;
+    const sign_chain =
+        \\{"version":1,"name":"sign_chain","inputs":[{"name":"a","kind":"u16","length":1,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":264},{"name":"filled","op":"int_shr_arithmetic","lhs":"av","constant":264,"index":8},{"name":"result","op":"int_bit_not","lhs":"filled","constant":264}],"assertions":[],"public_outputs":["result"]}
+    ;
+    const sign_input =
+        \\{"public_inputs":{},"private_inputs":{"a":[253]},"public_outputs":{"result":[0]}}
+    ;
+    var zero_program = try relation.parseProgram(allocator, zero_chain);
+    defer zero_program.deinit();
+    var zero_assignment = try relation.parseAssignment(allocator, zero_input);
+    defer zero_assignment.deinit();
+    _ = try relation.evaluate(allocator, zero_program.value, zero_assignment.value);
+    var zero_circuit = try compile(QM31, allocator, zero_program.value, zero_assignment.value);
+    defer zero_circuit.deinit();
+    try std.testing.expect(try zero_circuit.isCircuitValid());
+    // Only the surviving 16-bit input word needs decomposition; the zero
+    // limb is a proven constant and contributes no Boolean checks.
+    try std.testing.expect(zero_circuit.circuit.eq.items.len < 24);
+
+    var sign_program = try relation.parseProgram(allocator, sign_chain);
+    defer sign_program.deinit();
+    var sign_assignment = try relation.parseAssignment(allocator, sign_input);
+    defer sign_assignment.deinit();
+    _ = try relation.evaluate(allocator, sign_program.value, sign_assignment.value);
+    var sign_circuit = try compile(QM31, allocator, sign_program.value, sign_assignment.value);
+    defer sign_circuit.deinit();
+    try std.testing.expect(try sign_circuit.isCircuitValid());
+    // The repeated fill bits come from the already proved sign wire.
+    try std.testing.expect(sign_circuit.circuit.eq.items.len < 10);
+}
+
 test "signed i128 full carry is valid and signed overflow is rejected" {
     const allocator = std.testing.allocator;
     const source =
@@ -1888,4 +2998,113 @@ test "public u8 input above 255 cannot satisfy integer view" {
     var ctx = try compile(QM31, allocator, program.value, assignment.value);
     defer ctx.deinit();
     try std.testing.expect(!try ctx.isCircuitValid());
+}
+
+test "direct byte admission requires exclusive byte views" {
+    const allocator = std.testing.allocator;
+    const source =
+        \\{"version":1,"name":"byte_views","inputs":[{"name":"a","kind":"u16","length":1,"visibility":"private"},{"name":"b","kind":"u16","length":1,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":8},{"name":"bv","op":"int_view","lhs":"b","constant":8},{"name":"pair","op":"int_div_rem","lhs":"av","rhs":"bv","constant":8}],"assertions":[],"public_outputs":["pair"]}
+    ;
+    var allowed = try relation.parseProgram(allocator, source);
+    defer allowed.deinit();
+    try std.testing.expect(directFixedInput(allowed.value, allowed.value.inputs[0]));
+    try std.testing.expect(directFixedInput(allowed.value, allowed.value.inputs[1]));
+
+    const raw_exposed =
+        \\{"version":1,"name":"raw_exposed","inputs":[{"name":"a","kind":"u16","length":1,"visibility":"private"},{"name":"b","kind":"u16","length":1,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":8},{"name":"bv","op":"int_view","lhs":"b","constant":8},{"name":"pair","op":"int_div_rem","lhs":"av","rhs":"bv","constant":8}],"assertions":[],"public_outputs":["pair","a"]}
+    ;
+    var denied = try relation.parseProgram(allocator, raw_exposed);
+    defer denied.deinit();
+    try std.testing.expect(!directFixedInput(denied.value, denied.value.inputs[0]));
+    try std.testing.expect(directFixedInput(denied.value, denied.value.inputs[1]));
+}
+
+test "direct 16-bit admission rejects a mixed-width raw input" {
+    const allocator = std.testing.allocator;
+    const source =
+        \\{"version":1,"name":"word_views","inputs":[{"name":"a","kind":"u16","length":1,"visibility":"private"},{"name":"b","kind":"u16","length":1,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":16},{"name":"bv","op":"int_view","lhs":"b","constant":16},{"name":"pair","op":"int_div_rem","lhs":"av","rhs":"bv","constant":16}],"assertions":[],"public_outputs":["pair"]}
+    ;
+    var allowed = try relation.parseProgram(allocator, source);
+    defer allowed.deinit();
+    try std.testing.expect(directFixedInput(allowed.value, allowed.value.inputs[0]));
+    try std.testing.expect(directFixedInput(allowed.value, allowed.value.inputs[1]));
+
+    const mixed =
+        \\{"version":1,"name":"mixed_views","inputs":[{"name":"a","kind":"u16","length":1,"visibility":"private"},{"name":"b","kind":"u16","length":1,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":16},{"name":"small","op":"int_view","lhs":"a","constant":8},{"name":"bv","op":"int_view","lhs":"b","constant":16},{"name":"pair","op":"int_div_rem","lhs":"av","rhs":"bv","constant":16}],"assertions":[],"public_outputs":["pair"]}
+    ;
+    var denied = try relation.parseProgram(allocator, mixed);
+    defer denied.deinit();
+    try std.testing.expect(!directFixedInput(denied.value, denied.value.inputs[0]));
+    try std.testing.expect(directFixedInput(denied.value, denied.value.inputs[1]));
+}
+
+test "direct wide admission accepts matching signed and unsigned views" {
+    const allocator = std.testing.allocator;
+    const source =
+        \\{"version":1,"name":"u32_views","inputs":[{"name":"a","kind":"u16","length":2,"visibility":"private"},{"name":"b","kind":"u16","length":2,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":32},{"name":"bv","op":"int_view","lhs":"b","constant":32},{"name":"pair","op":"int_div_rem","lhs":"av","rhs":"bv","constant":32}],"assertions":[],"public_outputs":["pair"]}
+    ;
+    var unsigned = try relation.parseProgram(allocator, source);
+    defer unsigned.deinit();
+    try std.testing.expect(directFixedInput(unsigned.value, unsigned.value.inputs[0]));
+    try std.testing.expect(directFixedInput(unsigned.value, unsigned.value.inputs[1]));
+
+    const signed =
+        \\{"version":1,"name":"i32_views","inputs":[{"name":"a","kind":"u16","length":2,"visibility":"private"},{"name":"b","kind":"u16","length":2,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":288},{"name":"bv","op":"int_view","lhs":"b","constant":288},{"name":"pair","op":"int_div_rem","lhs":"av","rhs":"bv","constant":288}],"assertions":[],"public_outputs":["pair"]}
+    ;
+    var signed_32 = try relation.parseProgram(allocator, signed);
+    defer signed_32.deinit();
+    try std.testing.expect(directFixedInput(signed_32.value, signed_32.value.inputs[0]));
+    try std.testing.expect(directFixedInput(signed_32.value, signed_32.value.inputs[1]));
+
+    const signed_64_source =
+        \\{"version":1,"name":"i64_views","inputs":[{"name":"a","kind":"u16","length":4,"visibility":"private"},{"name":"b","kind":"u16","length":4,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":320},{"name":"bv","op":"int_view","lhs":"b","constant":320},{"name":"pair","op":"int_div_rem","lhs":"av","rhs":"bv","constant":320}],"assertions":[],"public_outputs":["pair"]}
+    ;
+    var signed_64 = try relation.parseProgram(allocator, signed_64_source);
+    defer signed_64.deinit();
+    try std.testing.expect(directFixedInput(signed_64.value, signed_64.value.inputs[0]));
+    try std.testing.expect(directFixedInput(signed_64.value, signed_64.value.inputs[1]));
+}
+
+test "direct signed wide division rejects MIN over negative one in circuit constraints" {
+    const allocator = std.testing.allocator;
+    const cases = [_]struct { source: []const u8, valid: []const u8, overflow: []const u8 }{
+        .{
+            .source =
+            \\{"version":1,"name":"direct_i32","inputs":[{"name":"a","kind":"u16","length":2,"visibility":"private"},{"name":"b","kind":"u16","length":2,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":288},{"name":"bv","op":"int_view","lhs":"b","constant":288},{"name":"pair","op":"int_div_rem","lhs":"av","rhs":"bv","constant":288}],"assertions":[],"public_outputs":["pair"]}
+            ,
+            .valid =
+            \\{"public_inputs":{},"private_inputs":{"a":[7616,65534],"b":[300,0]},"public_outputs":{"pair":[65125,65535,65380,65535]}}
+            ,
+            .overflow =
+            \\{"public_inputs":{},"private_inputs":{"a":[0,32768],"b":[65535,65535]},"public_outputs":{"pair":[0,32768,0,0]}}
+            ,
+        },
+        .{
+            .source =
+            \\{"version":1,"name":"direct_i128","inputs":[{"name":"a","kind":"u16","length":8,"visibility":"private"},{"name":"b","kind":"u16","length":8,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":384},{"name":"bv","op":"int_view","lhs":"b","constant":384},{"name":"pair","op":"int_div_rem","lhs":"av","rhs":"bv","constant":384},{"name":"quotient","op":"array_slice","lhs":"pair","index":0,"length":8}],"assertions":[],"public_outputs":["quotient"]}
+            ,
+            .valid =
+            \\{"public_inputs":{},"private_inputs":{"a":[0,0,0,0,0,0,0,32768],"b":[2,0,0,0,0,0,0,0]},"public_outputs":{"quotient":[0,0,0,0,0,0,0,49152]}}
+            ,
+            .overflow =
+            \\{"public_inputs":{},"private_inputs":{"a":[0,0,0,0,0,0,0,32768],"b":[65535,65535,65535,65535,65535,65535,65535,65535]},"public_outputs":{"quotient":[0,0,0,0,0,0,0,32768]}}
+            ,
+        },
+    };
+    for (cases) |case| {
+        var program = try relation.parseProgram(allocator, case.source);
+        defer program.deinit();
+        for ([_]struct { json: []const u8, valid: bool }{
+            .{ .json = case.valid, .valid = true },
+            .{ .json = case.overflow, .valid = false },
+        }) |item| {
+            var assignment = try relation.parseAssignment(allocator, item.json);
+            defer assignment.deinit();
+            var ctx = try compileDirect(QM31, allocator, program.value, assignment.value, false);
+            defer ctx.deinit();
+            try std.testing.expectEqual(item.valid, try ctx.isCircuitValid());
+            try std.testing.expectEqual(@as(usize, 0), ctx.circuit.eq.items.len);
+            try std.testing.expectEqual(@as(usize, 0), ctx.circuit.m31_to_u32.items.len);
+        }
+    }
 }

@@ -14,7 +14,7 @@ The root contains the package build files and [`mod.zig`](mod.zig), the Zig modu
 | [`bitcoin/`](bitcoin/) | Consensus arithmetic, recursive chain folds, CLI, verifiers, and tests. |
 | [`recursion/`](recursion/) | Generic state-fold and recursive proof relations. |
 | [`runtime/`](runtime/) | Package runtime, prover and verifier entry points. |
-| [`python/`](python/) | Text frontend, oracle, and standard/math library implementation; invoke `python/s31.py`. |
+| [`python/`](python/) | CLI, independent oracle, and standard/math library; [`python/language/`](python/language/README.md) separates text syntax, parsing and specialization. Invoke `python/s31.py`. |
 | [`tests/`](tests/) | Acceptance, Python unit, and cross-component proof tests. |
 | [`benchmarks/`](benchmarks/) | Repeatable comparison and measurement drivers. |
 | [`tools/`](tools/) | Source generators, inspectors, and record utilities. |
@@ -23,13 +23,24 @@ The root contains the package build files and [`mod.zig`](mod.zig), the Zig modu
 
 The matching [design dossier](../../../design/s31/README.md) keeps proposals and measurements separate from maintained source. Historical measurements remain pinned records; moved records retain their original contents.
 
+The [Lean package](../../../formal/s31/README.md) tracks 56 normalized
+operation families and proves local semantic and constraint properties for
+reviewed fragments, reusing the repository's M31 and Poseidon S-box semantics.
+Its operation map, source bindings and CI audit keep the claim bounded:
+production compiler/AIR correspondence, STARK soundness and zero knowledge
+remain separate obligations.
+
 **Start with the [S31 documentation](docs/README.md).** It follows handwritten programs through typed source, normalized relations, circuit gates, AIR rows and polynomials, hashes, proof artifacts, and native verification. Its examples and local links are checked by `python3 src/frontends/s31/docs/check.py`.
 
 For `.s31` editor support, see the [S31 TextMate grammar and neon theme](../../../editors/vscode-s31/README.md). GitHub currently highlights `.s31` files through a Cairo language override; a distinct S31 name and pink language color require upstream Linguist registration.
 
 The earlier [source-to-AIR implementation guide](docs/reference/LANGUAGE_AND_AIR.md) remains available for backend detail.
 
-The compiler accepts normalized JSON and a [limited typed `.s31` text language](docs/reference/TEXT_LANGUAGE.md) that lowers to the same relation. Inputs have `u16` or `m31` relation type, fixed length, and public or private visibility. The text language has nominal `Bytes32`, `UInt256`, `BlockHash`, `Target`, `Work`, and `ChainWork` values backed by sixteen `u16` limbs and `Bytes80` backed by forty. Nodes are topologically ordered. Supported normalized operations include arithmetic, constrained 256-bit addition/subtraction/comparison, static repeats, selection, BLAKE2s and Poseidon2 hashes, byte-exact Bitcoin header SHA256d, and mainnet compact-target decoding. BLAKE2s hash inputs are canonical M31 words encoded little endian as 32-bit words; its eight digest words are reduced modulo M31. Poseidon2 outputs eight canonical M31 state words directly. Assertions constrain equal arrays. Public inputs and outputs occupy at most eight direct words: `u32` in the original profile, canonical M31 in direct-v4. Witnesses cannot change graph shape.
+The compiler accepts normalized JSON and a [typed `.s31` text language](docs/reference/TEXT_LANGUAGE.md) that lowers to the same relation. Its [static functional core](docs/functional-language.md) specializes typed lambdas, closures, and higher-order calls without representing function values in the circuit. [Nominal records](docs/records.md) give named fields to source-time products with no added arithmetic; a versioned public record ABI now preserves named M31 input and output paths in `direct-gate` packages. Other proof profiles still use first-order boundaries. Inputs have `u16` or `m31` relation type, fixed length, and public or private visibility. The text language has nominal `Bytes32`, `UInt256`, `BlockHash`, `Target`, `Work`, and `ChainWork` values backed by sixteen `u16` limbs and `Bytes80` backed by forty. It also has [ten fixed-width scalar integer types](docs/fixed-width-integers.md), with checked and wrapping arithmetic, division with quotient and remainder, comparisons, checked numeric casts, bitwise AND/OR/XOR/NOT, and compile-time shifts and rotations. Nodes are topologically ordered. Supported normalized operations include arithmetic, constrained 256-bit addition/subtraction/comparison, static repeats, selection, BLAKE2s and Poseidon2 hashes, byte-exact Bitcoin header SHA256d, and mainnet compact-target decoding. BLAKE2s hash inputs are canonical M31 words encoded little endian as 32-bit words; its eight digest words are reduced modulo M31. Poseidon2 outputs eight canonical M31 state words directly. Assertions constrain equal arrays. Public inputs and outputs occupy at most eight direct words: `u32` in the original profile, canonical M31 in direct-v4. Witnesses cannot change graph shape.
+
+`s31 source-layout program.s31` reports nominal struct fields, flattened leaf
+paths, function types, and the SHA-256 of the exact normalized relation JSON
+without building a proof package.
 
 To use the text frontend and inspect its exact lowering:
 
@@ -142,6 +153,20 @@ division. `std::math::div` reuses the checked inverse and remains on the
 native-verifier adversarial checks. [`computed_choice.s31`](examples/control/computed_choice.s31)
 uses a constrained `std::field::is_zero` bit to choose between two values;
 `python3 src/frontends/s31/tests/acceptance/acceptance_computed_bit_v1.py` proves both branches.
+[`u8_div_rem.s31`](examples/math/division/u8_div_rem.s31),
+[`i8_div_rem.s31`](examples/math/division/i8_div_rem.s31), their
+[`u16`/`i16` companions](examples/math/division/README.md), and unsigned
+[`u32_div_rem.s31`](examples/math/division/u32_div_rem.s31),
+[`u64_div_rem.s31`](examples/math/division/u64_div_rem.s31), and
+[`u128_div_quotient.s31`](examples/math/division/u128_div_quotient.s31) prove quotient and
+remainder in the arithmetic-only `direct-gate` profile, including value range,
+strict remainder, and signed overflow checks. The [division walkthrough](docs/fixed-width-integers.md#division-and-remainder-by-hand)
+derives the constraints, and the [paired measurement](../../../design/s31/measurements/language/direct-fixed-division-2026-10-10.json)
+compares 20 verified witnesses per profile for 8- and 16-bit programs. The
+[unsigned 32-bit](../../../design/s31/measurements/language/direct-u32-division-2026-10-10.json),
+[64-bit](../../../design/s31/measurements/language/direct-u64-division-2026-10-10.json),
+and [128-bit](../../../design/s31/measurements/language/direct-u128-division-2026-10-10.json)
+records use the same method.
 `equations` exposes semantic field equations and source positions, with the
 generic AIR's lookup and public-binding terms documented separately in
 [the guide](docs/walkthrough.md).
@@ -345,11 +370,19 @@ python3 src/frontends/s31/python/s31.py prove zig-out/s31/arith4-sparse-chip src
 python3 src/frontends/s31/python/s31.py verify zig-out/s31/arith4-sparse-chip zig-out/s31/arith4-sparse-chip.proof
 ```
 
-The ten modes are `gate` (the original eleven-component circuit), `chip` (that circuit plus one linked step AIR), `sparse-gate`/`sparse-chip` (three arithmetic circuit components, optionally with the step AIR), `sparse-wide-gate` (Eq plus those three components for wide integers), `direct-gate`/`direct-chip` (one QM31 arithmetic component, optionally with the step AIR), and `sha-joint`, `sha-shift`, and `sha-fused` (one private Bitcoin header joined to three SHA compression calls). The repeated-step chip modes accept only the exact four-lane square-then-add recurrence and 16–32768 power-of-two rounds. `direct-chip` also accepts a private four-lane input: source-derived circuit wires connect to the chip endpoints inside the same proof, while the public statement contains only declared output claims. Sparse arithmetic retains M31-to-`u32` conversion and the 16-bit range table. Direct mode accepts all-M31 arithmetic relations, binds canonical public M31 words directly, and omits that converter and table. Each selected chip and circuit share one STARK proof and one native verifier invocation.
+The ten modes are `gate` (the original eleven-component circuit), `chip` (that circuit plus one linked step AIR), `sparse-gate`/`sparse-chip` (three arithmetic circuit components, optionally with the step AIR), `sparse-wide-gate` (Eq plus those three components for wide integers), `direct-gate`/`direct-chip` (one QM31 arithmetic component, optionally with the step AIR), and `sha-joint`, `sha-shift`, and `sha-fused` (one private Bitcoin header joined to three SHA compression calls). The repeated-step chip AIR implements the exact four-lane square-then-add recurrence for 16–32768 power-of-two rounds. `direct-chip` also accepts a private four-lane source step made from nondegenerate affine operations around exactly one square, using circuit-constrained affine endpoint conversion; this restricted family uses one chip instance and the same AIR. Source-derived circuit wires connect to the chip endpoints inside the same proof, while the public statement contains only declared output claims. Sparse arithmetic retains M31-to-`u32` conversion and the 16-bit range table. Direct mode accepts all-M31 arithmetic relations and division at all ten fixed-width integer types when raw inputs are proved through exclusive matching-width integer views; it omits that converter and table. Each selected chip and circuit share one STARK proof and one native verifier invocation.
 
 The direct-M31 example is [`examples/arithmetic/arith4_m31.s31.json`](examples/arithmetic/arith4_m31.s31.json). Build it with `--lowering direct-chip` and use [`examples/arithmetic/arith4.valid.json`](examples/arithmetic/arith4.valid.json) as the assignment. The [source-to-AIR guide](docs/reference/LANGUAGE_AND_AIR.md#direct-m31-public-values) explains the different public encoding and constraint profile.
 
 The private-boundary example is [`examples/boundary/private_step16.s31`](examples/boundary/private_step16.s31), with [`examples/boundary/private_step16.valid.json`](examples/boundary/private_step16.valid.json) as its assignment and a [checked normalized relation](examples/boundary/private_step16.s31.json). Build the text source with `--lowering direct-chip`. Its sealed `direct-m31-private-v5` key records the eight circuit wire addresses, and its public statement contains one aggregate output rather than the four input and four final values. The [private-boundary guide](docs/private-boundary.md) specifies the lookup connection and source restrictions.
+
+The separate [experimental fixed mixed N=3 commands](runtime/mixed_boundary/README.md)
+compile a normalized source file into a source-embedded prover, verifier, and
+seven-component manifest inspector with `-Ds31-lowering=direct-mixed`. The
+[three-call example](examples/boundary/private_mixed3.s31.json) uses two pair
+chips and one many chip in a single proof. This Zig build target is not yet a
+general Python package lowering; its exact supported shape and assurance
+limits are in the linked README.
 
 The hash suite includes [`examples/hashes/merkle2.s31.json`](examples/hashes/merkle2.s31.json), which hashes two private leaves into a public root, and [`examples/hashes/merkle_path1.s31.json`](examples/hashes/merkle_path1.s31.json), which proves a one-level path with a constrained direction bit. Use `--lowering gate` for both. The [hash section of the language guide](docs/reference/LANGUAGE_AND_AIR.md#hashes-tree-nodes-and-conditional-paths) specifies every byte and field conversion.
 The [hash library brief](../../../design/s31/language/HASH_LIBRARY.md) records the cryptographic encoding, proof cost and next efficiency work.

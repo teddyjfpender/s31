@@ -1,0 +1,6 @@
+circuit early_output(public x: [m31; 4]) -> public [m31; 4] {
+  let a = x .* x;
+  let b = x + a;
+  let c = a .* b;
+  a
+}

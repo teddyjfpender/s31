@@ -100,11 +100,14 @@ sizes and times do not establish a speed difference.
 
 The compiler checks types and canonical field constants before relation emission.
 `pow<K>` requires a compile-time exponent `0 <= K < p`, where
-`p = 2^31 - 1`, and defines `x^0 = 1` even for `x = 0`. It uses left-to-right
-binary exponentiation: for nonconstant `x`, `K > 0` takes at most
-`floor(log2 K) + popcount(K) - 1` multiplication nodes. This is a transparent
-upper bound, not a proof of an optimal addition chain. Constant inputs fold at
-compile time.
+`p = 2^31 - 1`, and defines `x^0 = 1` even for `x = 0`. For exponents through
+255, it searches a bounded deterministic star addition chain and adopts it
+only when it uses fewer multiplications than left-to-right binary powering.
+Search exhaustion and larger exponents use that binary schedule, giving the
+upper bound `floor(log2 K) + popcount(K) - 1` for nonconstant `x`, `K > 0`.
+This does not claim a globally optimal chain. Constant inputs fold at compile
+time. The [worked `pow<15>` circuit](../../../src/frontends/s31/docs/library.md#static-powers-become-multiplication-circuits)
+uses five gates against the prior binary schedule's six.
 
 For example, [`math_polynomial4.s31`](../../../src/frontends/s31/examples/arithmetic/math_polynomial4.s31)
 computes `f(x) = x^5 + 3x - 7` in four independent lanes. The source expression
@@ -270,11 +273,15 @@ whole chain from genesis.
 The package supports useful field, static vector, bit, byte, hash, Merkle,
 and Bitcoin work programs today. The library MVP is a **supported subset**,
 not a general-purpose mathematical package or a production light client.
-The next math-library family is the ten
+The implemented fixed-width slice includes the ten
 [fixed-width unsigned and signed scalar types](FIXED_WIDTH_INTEGERS.md):
 `u8` through `u128` and `i8` through `i128`, with explicit range, cast,
-ordering, and overflow contracts. They are designed but not implemented;
-the current `[u16; N]` limbs and M31 values do not supply those semantics.
+ordering, and overflow contracts for checked/wrapping addition, subtraction,
+and multiplication through byte-constrained product circuits.
+Its explicit conversions cover equal-width signedness reinterpretation and
+exactly sized limb views. Division, shifts, bitwise
+operations, cross-width numeric casts and the full per-width native release matrix remain
+open. A raw `[u16; N]` or M31 value still does not carry integer semantics.
 The main additions beyond this bar are:
 
 1. Deterministic named-module imports and a version policy for third-party
@@ -283,8 +290,9 @@ The main additions beyond this bar are:
 2. Witness-dependent indexing and broader vector kernels, each with measured
    costs and negative proof cases. Current `get<K>` and slices have static
    indices and lengths.
-3. The fixed-width integer family above, plus general source-level `UInt256`
-   multiplication and quotient/remainder beyond the special proved
+3. Broader fixed-width integer operations and the per-width native release
+   matrix above, plus general source-level `UInt256` multiplication and
+   quotient/remainder beyond the special proved
    `block_work` calculation. A faster wide-arithmetic chip needs a measured
    crossover and sound private boundary.
 4. Larger independent proof corpora and a formal review of the chip, lookup,

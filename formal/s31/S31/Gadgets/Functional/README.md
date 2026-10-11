@@ -1,0 +1,201 @@
+# Functional language proofs
+
+These modules connect the intrinsically typed [source core](../../Semantics/Functional.lean)
+to strict field graphs and selected executable normalized relation nodes.
+Lean module names follow the directory, for example
+`S31.Gadgets.Functional.ArrayNodes`; theorem names remain in
+`S31.Functional`.
+
+| Module | Proof boundary |
+| --- | --- |
+| `Graph.lean` | Residual field polynomial emission, valid wires, strict graph soundness and completeness. |
+| `Outputs.lean` | One graph binds every claimed field output, including aliases. |
+| `Arrays.lean` | Shape-indexed arrays and every output lane in a strict graph. |
+| `ArithmeticNodes.lean` | Pointwise array `add`/`mul` agree with concrete normalized evaluator nodes. |
+| `CompilerCorrespondence.lean` | For arbitrary nested four-lane M31 add/mul trees, typed source denotation, executable normalized `evaluateNode` calls, strict graph acceptance, and packed QM31 AIR rows accept exactly the same output, for arbitrary intermediate witnesses. Static lambda application erases to the direct graph. This is a compositional formal fragment; the production Python/Zig translation and flattened program wiring remain unproved. |
+| `SSACertificate.lean` | An executable positional SSA emitter and independent checker for four-lane add/mul with de Bruijn `let` sharing. The checker enforces fresh wire IDs and backward references, reconstructs the source term, and proves every accepted certificate's field and normalized-node evaluation equals the source for all inputs. A two-multiplication shared-square certificate is accepted; wrong operands/outputs, duplicate names, forward reads, and missing outputs are rejected. Production Python/Zig serialization is not covered. |
+| `SSAEmitterProof.lean` | Proves that the deterministic emitter produces an accepted positional SSA certificate for every source term in the add/mul/static-let fragment, including nested shared lets; its normalized execution equals source denotation for all four-lane inputs. |
+| `SSANamedProgram.lean` | Encodes checked SSA as actual normalized `Program.nodes` with canonical names and output. Exact-encoding checking plus real `Program.validate` reject reordered, duplicate, unbound, and malformed-output graphs. The shared-square named node list evaluates correctly for arbitrary inputs through real name lookup and `evaluateNode`; the generic result is in `SSANamedExecution`. |
+| `SSANamedExecution.lean` | Proves generic actual `Program.nodes` fold and `Program.environment` execution agree with every checked source term in the four-lane add/mul/static-let fragment, under an executable finite name-uniqueness check, normalized validation, and accepted input assignment. The deterministic compiler satisfies this for every source meeting those explicit bounds. Production Python parsing/serialization and Zig AIR lowering remain open. |
+| `SSANamedPublicClaim.lean` | Proves that successful normalized `Program.evaluate` acceptance forces the declared public output to equal the checked source value for the same four-lane fragment. This closes the modeled public-claim step; production parser, serializer, AIR lowering, and verifier binding remain open. |
+| `SSAAirRows.lean` | Carries the accepted SSA fragment through every packed add/pointwise-multiply AIR row, proving local row soundness, honest row completeness, whole-trace execution and claimed-output equality for arbitrary nested source terms. Addressed operand authentication and production row emission remain separate obligations. |
+| `SSAConcreteGateSchedule.lean` | Models an exact native semantic-row roster with one row per checked SSA instruction, canonical opcode and operand addresses, fresh output addresses, and values authenticated to prior wires. Proves that any such accepted roster has no extra semantic rows and its claimed output equals source denotation. The package checker, native emitter, LogUp, and PCS links remain separate obligations. |
+| `SSALocalPipeline.lean` | Composes checked named-program execution, complete packed arithmetic-row traces, and `Program.evaluate` public-output checking for every accepted four-lane add/mul/static-let certificate. Arbitrary accepted row witnesses, named environment output, and public claim agree with source semantics; accepted certificates also have honest rows. Gate operand authentication and native emission remain separate. |
+| `MathLibrary.lean` | Nonempty sum and dot, plus Horner polynomial evaluation: source denotations and arbitrary-witness strict field-graph acceptance. This models mathematical meaning, not Python's balanced reduction schedule. |
+| `WorkedQuadratic.lean` | A captured, four-lane Horner closure specializes to the same residual polynomial as its direct form; strict graph acceptance binds all four outputs. The checked `.s31` example and native compiler remain separate evidence. |
+| `CurriedApplication.lean` | A function returning a function specializes through two applications to one field addition; the one-gate strict graph binds its claimed output. |
+| `HigherOrderRoutes.lean` | A captured returned function, local static binding and higher-order helper erase to the same two-node `x*x + y` graph; strict graph acceptance includes honest and forged claims. |
+| `PowerChains.lean` | Five-gate `x^15` addition chain and six-gate binary schedule, each proved equal to canonical M31 exponentiation; strict graph acceptance rejects false outputs for the optimized chain. |
+| `TupleValues.lean` | Typed products, projections and nested destructuring models; static pair structure erases and arbitrary accepted witnesses bind the claimed sums. |
+| `RecordValues.lean` | Named record construction, projection, and pattern desugaring elaborate to a typed product; specializing the worked sources leaves exactly the direct arithmetic polynomial and binds accepted outputs. A separate generic `Except` model proves an unused field failure survives projection and the first declared failure wins. Correspondence to Python's effect checker remains an executable frontend obligation. |
+| `ArrayNodes.lean` | `get`, `concat`, `take` and `drop` agree with normalized array nodes and bounds. |
+| `Assertions.lean` | Source equality assertions checked against independently witnessed graph outputs. |
+| `Conditional.lean` | Total scalar branches share a graph and a bit-constrained selector. |
+| `ArrayConditional.lean` | Total array branches share a graph; the selected value agrees with a normalized `select` node. |
+| `Effects.lean` | A conservative totality rule and the inactive partial-branch counterexample. |
+| `TextSquare4.lean` and `TextSquare4Proof.lean` | Compiler-generated IR for the real `functional_square4.s31` source, checked for shape, validation and all-input node semantics. |
+| `TextSquare4Air.lean` | Both packed multiplication AIR rows for that source, including arbitrary intermediate and result row witnesses. |
+| `TextSquare4Statement.lean` | The generated program's assignment parser and public-output comparison bind an accepted claim to the computed fourth powers. |
+| `TextSquare4CompilerChain.lean` | Checks the generated square-four normalized program against the accepted shared-let SSA certificate up to explicit live-wire renaming, then connects actual named-node execution, two packed arithmetic AIR rows, and the accepted public claim to the formal source value. This is one source-bound instance, not a general production parser or emitter theorem. |
+| `TextSquare4Native.lean` and `TextSquare4NativeProof.lean` | Native Zig direct-compiler gate IDs and adjacent node spans, regenerated from the source program and interpreted in the local AIR model. |
+| `TextSquare4NativeBoundary.lean` | Exact native input binding, pack, arithmetic, unpack and output gate rows imply the public four-lane fourth-power claim. |
+| `TextSquare4GateJoin.lean` | Conditional exact Gate balance and unique producers construct the shared wire map used by the native public-boundary theorem. |
+| `TextSquare4ChallengeJoin.lean` | Checked Gate counters and good LogUp challenges force the exported circuit's public claim; a forged claim has nonzero reciprocal closure. |
+| `TextSquare4TraceRows.lean` | Source-checked preprocessed AIR positions for the selected gates imply their Gate-path membership. |
+| `TextSquare4TraceValues.lean` | Native-style trace gathers discharge arithmetic yield value coverage; external component yields remain explicit. |
+| `TextSquare4ProducerRoster.lean` | Source-exported active producer addresses give arbitrary-trace uniqueness and a conditional forged-claim challenge bound. |
+| `TextSquare4Witness.lean` | A concrete honest zero-input witness satisfies every selected local circuit row and public boundary. |
+| `TextSquare4WitnessAll.lean` | A constructive witness for every four-word input; selected native AIR rows accept exactly the correct fourth-power public claims. |
+| `TextSquare4RawSoundness.lean` | For a fixed forged claim, source-extracted raw Gate interaction AIR accepts on at most the explicit exceptional challenge-pair bound. |
+
+The dependency order starts with `Graph`, then `Outputs`, then `Arrays`.
+Arithmetic and array-node bridges depend on `Arrays`; conditionals depend on
+`Outputs` or `Arrays`. `Effects` builds on scalar conditionals. The package
+entry point `S31.Gadgets` imports every module, so the theorem inventory,
+axiom audit and kernel replay include all of them.
+
+These are proofs about a formal typed source core, strict graph constraints,
+and concrete normalized evaluator nodes. The Python parser and specializer,
+production Zig AIR generation, STARK soundness and zero knowledge are separate
+obligations. The [package README](../../../README.md) records the current
+evidence and exact audit commands.
+
+`TextSquare4.lean` is regenerated by running the Python text compiler on
+`functional_square4.s31`. The proof checks that the output has exactly two
+`mul` nodes: a named first square, then one multiplication of that saved value
+by itself. Lean validates the resulting program and proves the nodes compute
+`x⁴` in every lane for arbitrary M31 inputs. A hand-written typed expression
+has the same denotation. This is a concrete compiler-output certificate for
+one source file; it does not prove the parser or specializer correct for every
+S31 program.
+
+`TextSquare4Air.two_rows_iff` proves that two accepted pointwise multiply
+rows force the final packed output to be the fourth power of all four input
+lanes, regardless of the intermediate row witness. Its converse constructs
+both row witnesses. `compiled_nodes_iff_two_rows` connects those two rows to
+the generated normalized node execution for every input and every claimed
+result. This proves local row constraints for the whole arithmetic sample;
+the Gate lookup and STARK protocol still have separate proof obligations.
+
+`TextSquare4Statement.successful_output_is_fourth` adds the public statement
+boundary. For any canonical four-word input accepted by the assignment parser,
+successful evaluation of the generated program implies that its claimed
+`result` parses as the exact four fourth powers. This uses the real normalized
+program evaluator and the general output-binding theorem. It does not assume
+the claimed output is honest. `forged_output_rejected` states the negative
+case explicitly: if a canonical claim differs from the fourth powers, no
+successful evaluation exists.
+
+`TextSquare4Native.lean` is generated by compiling the Python frontend's fresh
+normalized IR with the real Zig direct compiler. The exporter checks that
+both source arithmetic nodes occupy one adjacent row each and that their
+recorded pointwise-multiply gates form the same wire chain. The current
+compiler emits gate `22 .* 22 = 23`, followed by `23 .* 23 = 24`.
+`TextSquare4NativeProof.native_rows_sound` proves that any packed field
+assignment satisfying those two local row constraints makes wire `24` the
+four-lane fourth power. The same native certificate now includes the three
+basis multiplications and three additions that produce wire `22`; the Lean
+proof derives its packed value from their local constraints and the four
+canonical scalar input values.
+`TextSquare4NativeBoundary.native_public_claim_sound` extends that path
+through the actual public input copy gates, four coordinate masks, three
+inverse-basis multiplications and four public output copy gates. For **any**
+assignment to all intermediate QM31 wires, accepted local rows along this
+input-to-output path and correctly pinned zero/basis wires force the public
+result to be the fourth power of the four public inputs. The gate IDs are
+extracted from the native compiler. The compiler also emits other gates,
+including range and representation checks; those extra constraints can only
+reduce the accepted witness set if their rows are enforced. The theorem
+models wires as one value per address; connecting
+that equality to committed trace reads still depends on the separate Gate
+lookup/source-correspondence and STARK soundness obligations.
+`TextSquare4GateJoin.native_public_claim_of_gate_balance` removes the assumed
+shared wire map: it constructs one from the exact Gate event multiset. Its
+premises require balanced reads/yields, one produced value per address,
+accepted rows for the 23 exported arithmetic gates, and produced constant and
+public events. These premises are explicit because the native trace-to-event
+correspondence, challenge reduction, and verifier protocol are still separate
+tasks. Other native rows may be present.
+`native_public_claim_of_checked_declared` needs uniqueness only below address
+35: the emitted example's selected gate addresses are all 0–34, as checked by
+Lean against the regenerated topology. A successful modeled producer scan and
+coverage of these low-address events imply the needed uniqueness, even if
+unrelated permutation scratch addresses have several producer events. The
+coverage of actual native trace events by the checked list remains an explicit
+source-to-model premise only for addresses 0–34.
+The native exporter now also runs the engine's single-yield validation on all
+declared variables and rejects permutation scratch rows for this source. It
+reports 322 declared variables and 322 arithmetic rows. Lean proves the
+reported declared bound is canonical and includes every selected path address.
+The exporter independently enumerates producer outputs and checks they are
+exactly the range `0..321`; Lean evaluates its modeled producer scan on that
+generated range. `native_public_claim_of_exported_producers` therefore needs
+only coverage of actual Gate events by the value-bearing declared event list.
+That value-level trace correspondence remains explicit only at the selected
+path addresses 0–34.
+The exporter checks the selected gates against the engine's **padded**
+preprocessed AIR columns. The source circuit has 322 arithmetic gates; padding
+gives 512 arithmetic rows and 608 declared variables. The two pointwise
+square rows are at indices 502 and 503. `TextSquare4TraceRows.selected_rows_imply_path`
+derives the selected-gate path from those positions. Committed witness values
+must still satisfy the local AIR equations.
+`TextSquare4TraceValues.native_claim_of_gathered_padded_rows` models the
+native writer filling each ordinary arithmetic row's three value columns
+from one address-indexed value table. The selected 512-row schedule, accepted
+local rows and Gate balance then imply the public claim without a separate
+value-coverage assumption for arithmetic yields. External component yields
+still need to match that table. The Lean gather model mirrors the source-bound
+Zig trace writer; this is not a formal proof of Zig execution.
+`forged_claim_gathered_padded_card_le` carries the same gather model into the
+fixed-forged-witness Gate LogUp bound. Arithmetic yield coverage is derived
+from the common value table; external yields, selected AIR rows, public pins,
+canonical addresses and bounded counts remain explicit.
+This gather condition describes an honest native trace writer. A malicious
+prover can commit row values that were never gathered by that writer, so this
+conditional result does not replace the arbitrary-trace Gate lookup or STARK
+soundness obligations.
+`TextSquare4ProducerRoster` avoids the honest-gather condition. The native
+exporter enumerates every padded arithmetic output address with positive
+Gate multiplicity and checks that this program has no other component
+producers. Lean checks the generated active address roster has no duplicates.
+The exporter also emits all 512 padded output-address/multiplicity pairs;
+Lean proves that filtering these pairs gives precisely the active roster.
+If modeled committed rows match these preprocessed fixed columns, exact Gate
+balance and the selected AIR rows force the
+public result. For a fixed forged claim, the source-extracted raw Gate AIR
+accepts on at most `(5s² + 2s + 1536) · |QM31|` ideal challenge pairs.
+Fixed-column/trace correspondence, public pins, canonical addresses,
+bounded counts, and proof-protocol soundness remain separate obligations.
+`TextSquare4Witness.zero_claim_has_native_path_witness` supplies a concrete
+QM31 value for each wire on the selected path, including the basis inverses,
+and proves the zero-input/zero-output case satisfies its 23 local rows. This
+checks non-vacuity of the path theorem; it does not model unrelated native
+range rows or a complete proof transcript. A companion theorem rejects a
+one-valued forged public output for that same wire assignment.
+`TextSquare4WitnessAll.native_path_iff` strengthens this local result to all
+inputs and claims: the 23 selected rows and public bindings have a satisfying
+wire assignment if and only if the claim is the input's fourth power. The
+reverse direction constructs each packed input, intermediate square,
+coordinate extract, and output wire. It does not assert that unrelated native
+component rows or the full STARK transcript have a witness.
+`TextSquare4ChallengeJoin.public_claim_of_checked_logup_closure` adds the
+modeled compressed use/yield counter walks and the fixed-list LogUp reduction.
+When the address/count checks pass, the challenges avoid the explicit bad
+sets, and the reciprocal sum closes, the produced public result is `x⁴`.
+`forged_claim_rejected_at_good_challenges` states the contrapositive for an
+incorrect claim. This is an algebraic challenge theorem. It still requires
+the native committed trace and verifier to realize the modeled events and
+constraints, plus Fiat-Shamir challenge sampling and PCS/STARK soundness.
+`TextSquare4RawSoundness.forged_claim_native_raw_acceptance_card_le` goes from
+the actual source-extracted Gate LogUp residual model to a finite challenge
+bound for a fixed false fourth-power claim. Let `s` be the number of distinct
+Gate event tuples and `n` the number of padded arithmetic rows. Under the
+stated canonical-address, event-count, selected-row, public-event and
+declared-event coverage premises, at most `(5s² + 2s + 3n) · |QM31|` challenge pairs
+can satisfy the modeled raw AIR, out of `|QM31|²` ideal pairs. The theorem
+does not establish Fiat-Shamir sampling or native trace/PCS correspondence.
+The emitted-row variant fixes `n = 512`, replaces the row term with
+`3n = 1536`, and names the checked row positions in its premise.
+The source binding regenerates the native artifact on every formal audit;
+there is still no machine-checked proof of the whole Zig compiler or STARK
+protocol.

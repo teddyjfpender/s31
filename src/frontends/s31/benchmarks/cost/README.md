@@ -1,0 +1,86 @@
+# Whole-prover model transfer
+
+## Prospective V7 study tooling
+
+The V6 wall predictor failed the later same-host transfer. V7 is a new,
+**unfrozen and unmeasured** study on a future settled compiler/engine stack.
+See [the V7 workflow](../../../../../design/s31/measurements/WHOLE_PROVER_V7_RUNBOOK.md).
+`v7_protocol.py` fixes the two workload splits and their 4,000 assignment
+digests before native work, pins every benchmark and frontend Python source
+(including the RSS predictor and both value oracles), and rejects overlap with
+the V6 or transfer corpora. The V7 collector, predictor, and publisher do not
+alter any V6 protocol, model, audit, or raw artifact.
+
+`portable_v7.py` writes a relative, content-addressed manifest over retained
+train/validation artifacts. `replay_portable_v7.py` checks it after the
+evidence directory is moved, then replays proofs, statements, oracles, the
+training fit, and validation. `independent_v7_gate.py` separately recomputes
+the held-out gate math from the frozen model and raw trials.
+
+Automatic lowering remains disabled. A future V7 pass would describe only the
+exact pinned host, compiler, engine, proof profile, and workload family.
+
+## V6 transfer diagnostic
+
+`transfer_v1.py` checks whether the frozen V6 whole-prover predictor still
+describes the changed S31 compiler on the same host. Its eight generated
+programs cover arithmetic, direct chip, hash, and fixed-width division.
+The script does not fit a new model or select lowering automatically.
+
+The `freeze` phase writes the protocol, including exact source and assignment
+digests, compiler and engine revisions, tool bytes, host identity, V6 audit
+digest, target list, and accuracy thresholds. Commit that protocol before
+running a native build. The `run` phase checks the committed bytes and pins,
+builds fresh packages, and runs ten independent assignments per program.
+Each trial verifies a native proof, rejects a changed public claim, and checks
+the result with an independent value oracle. Raw artifacts remain under
+`--out`; the resulting `audit.json` is a compact summary.
+
+```sh
+python3 src/frontends/s31/benchmarks/cost/transfer_v1.py freeze --out zig-out/s31-cost-transfer-v1
+git add design/s31/measurements/language/whole-prover-transfer-v1.json
+git commit -m 'Freeze V6 transfer protocol'
+python3 src/frontends/s31/benchmarks/cost/transfer_v1.py run --out zig-out/s31-cost-transfer-v1
+```
+
+A passing diagnostic is evidence only for this host, these eight programs,
+these ten trials per program, and this compiler revision. It cannot certify
+cross-host performance, tail latency, or automatic lowering decisions.
+
+## Replay saved evidence
+
+After `run` has completed, `replay_transfer_v1.py` checks the protocol against
+freeze commit `5fbf2fc`, requires the Python code used by the study and oracle
+to match that commit, and reopens all eight sources, 80 assignments, saved
+proofs, trial reports, statements, package manifests, and cost reports. It
+recomputes V6 predictions and diagnostic gates independently of `transfer_v1.py`.
+
+```sh
+python3 src/frontends/s31/benchmarks/cost/replay_transfer_v1.py --out zig-out/s31-cost-transfer-v1
+python3 src/frontends/s31/benchmarks/cost/replay_transfer_v1.py --out zig-out/s31-cost-transfer-v1 --native
+```
+
+The default run verifies hashes, source and assignment disjointness from both
+V6 splits, saved statement mutation, and the Python value oracle. `--native`
+also reruns each saved proof against its original and changed public statement.
+Neither mode builds packages or changes the frozen runner, protocol, thresholds,
+or saved evidence. A successful replay reports what was checked; it does not
+turn a failed diagnostic into a pass or establish compiler or proof soundness.
+The freeze commit preceded the first local native build, but its full hash was
+not independently timestamped before observation, so this remains a local
+same-host diagnostic rather than a fully anchored prospective acceptance gate.
+
+## Diagnose the wall-time miss
+
+After replay, `diagnose_transfer_stages.py` compares each saved trial's
+process and runtime stages with the frozen V6 stage predictions. It does not
+refit the model or change a gate:
+
+```sh
+python3 src/frontends/s31/benchmarks/cost/diagnose_transfer_stages.py \
+  design/s31/measurements/language/transfer-v1/first-corpus.json
+```
+
+Use `repeat-corpus.json` for the second run. The output includes each
+program's predicted and observed stage mean plus minimum, median, and maximum
+residuals across programs.

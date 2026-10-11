@@ -1,0 +1,5 @@
+{
+  "public_inputs": {"x": [0, 1, 2, 7]},
+  "private_inputs": {},
+  "public_outputs": {"result": [0, 1, 16, 2401]}
+}

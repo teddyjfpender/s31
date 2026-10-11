@@ -1,0 +1,14 @@
+use std@1;
+
+// Applying a source function emits the polynomial's field operations only.
+fn apply4(f: Fn([m31; 4]) -> [m31; 4], value: [m31; 4]) -> [m31; 4] {
+    f(value)
+}
+
+circuit functional_poly4(private x: [m31; 4]) -> public [m31; 4] {
+    let constant = splat<4>(7_m31);
+    let quadratic = fun(v: [m31; 4]) -> [m31; 4] =>
+        std::math::poly_eval(v, [constant, splat<4>(3_m31), splat<4>(2_m31)]);
+    let result = apply4(quadratic, x);
+    result
+}

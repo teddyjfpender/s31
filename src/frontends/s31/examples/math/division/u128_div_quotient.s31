@@ -1,0 +1,7 @@
+use std@1;
+
+// (2^128-1) / (2^64+1) = 2^64-1 with zero remainder.
+circuit u128_div_quotient(private numerator: u128, private divisor: u128) -> public u128 {
+    let (quotient, remainder) = std::int::div_rem(numerator, divisor);
+    quotient
+}

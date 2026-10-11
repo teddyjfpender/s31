@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "name": "private_pair16_32",
+  "inputs": [
+    {"name": "left", "kind": "m31", "length": 4, "visibility": "private"},
+    {"name": "right", "kind": "m31", "length": 4, "visibility": "private"}
+  ],
+  "nodes": [
+    {"name": "left_final", "op": "repeat", "lhs": "left", "rounds": 16,
+      "body": [{"op": "square"}, {"op": "add_const", "constant": 13}]},
+    {"name": "right_final", "op": "repeat", "lhs": "right", "rounds": 32,
+      "body": [{"op": "square"}, {"op": "add_const", "constant": 17}]},
+    {"name": "sum", "op": "add", "lhs": "left_final", "rhs": "right_final"},
+    {"name": "product", "op": "mul", "lhs": "left_final", "rhs": "right_final"}
+  ],
+  "assertions": [],
+  "public_outputs": ["sum", "product"]
+}

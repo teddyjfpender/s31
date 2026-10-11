@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "name": "private_mixed3",
+  "inputs": [
+    {"name": "x", "kind": "m31", "length": 4, "visibility": "private"}
+  ],
+  "nodes": [
+    {"name": "r0", "op": "repeat", "lhs": "x", "rounds": 16,
+      "body": [{"op": "square"}, {"op": "add_const", "constant": 13}]},
+    {"name": "r1", "op": "repeat", "lhs": "x", "rounds": 16,
+      "body": [{"op": "square"}, {"op": "add_const", "constant": 14}]},
+    {"name": "r2", "op": "repeat", "lhs": "x", "rounds": 16,
+      "body": [{"op": "square"}, {"op": "add_const", "constant": 15}]},
+    {"name": "s01", "op": "add", "lhs": "r0", "rhs": "r1"},
+    {"name": "sum", "op": "add", "lhs": "s01", "rhs": "r2"},
+    {"name": "product", "op": "mul", "lhs": "r2", "rhs": "x"}
+  ],
+  "assertions": [],
+  "public_outputs": ["sum", "product"]
+}

@@ -1,0 +1,7 @@
+use std@1;
+
+// -2 * 3 = -6; all eight output limbs retain the two's-complement sign.
+circuit i128_checked_product(private a: i128, private b: i128) -> public i128 {
+    let product = std::int::mul_checked(a, b);
+    product
+}

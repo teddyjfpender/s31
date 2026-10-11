@@ -52,6 +52,11 @@ tests, documentation check, library MVP acceptance, native proof acceptance,
 and inspect source/key/proof identity changes before committing the new pin.
 No proving engine source is copied into S31.
 
+The `src/core`, `src/frontends/circuit`, `src/frontends/riscv`, `formal/riscv-refinement`,
+and `vectors` symlinks are read-only paths into that pinned submodule. They keep
+the reviewed source names in formal inventories and older record tooling stable;
+the Zig build imports the dependency directly.
+
 S31 proof blinding, private witness handling, and recursive verification have
 profile-specific limits. Read the corresponding docs before interpreting a
 proof as confidential or deploying an application.

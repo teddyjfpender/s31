@@ -1,0 +1,358 @@
+# Generated component manifests: direct M31 profiles
+
+The first generated manifest covered `direct-gate` (`direct-m31-v4`). It is
+derived from the sealed relation after topology compilation and padding, the
+actual direct preprocessed circuit, and the rebound AIR program. A package
+contains the manifest as `component-manifest.json`; the same typed value is
+embedded in the verification key and reported by `inspect`. The native verifier
+recompiles the sealed relation and reconstructs the manifest before reading a
+proof. A package reader also checks the artifact, key, and report agree.
+
+For this profile the ordered component list has exactly one entry,
+`qm31_ops`. Its source AIR bundle index is 1, but its selected proof index is
+0. The manifest records its trace and evaluation log sizes, 12 base trace
+columns, 8 interaction trace columns, its constraint count and random
+coefficient offset, its ordered preprocessed indices, and a cryptographic
+program binding. The latter hashes the pinned AIR bundle bytes, source index,
+and rebound component part semantic hashes. The pinned bundle hash is also
+recorded separately. These values describe the exact selected AIR; the native
+verifier still binds and executes the AIR from the pinned bundle.
+
+The ordered preprocessed list has the eight QM31 operation flags and address /
+multiplicity columns. Each entry contains its commitment index, log size, row
+count, and SHA-256 of its canonical little-endian M31 values. The existing
+preprocessed Merkle root remains the proof's commitment. Per-column digests
+make the fixed data independently inspectable and expose altered values even
+when an attacker rehashes package metadata. The manifest also records the
+source and canonical IR digests, circuit identity, preprocessed root, and the
+one claimed sum. It has no fixed lookup table or chip component.
+
+The proof envelope structure and transcript algorithm are unchanged for this
+slice. The `direct-gate` key schema is
+`s31-verification-key-direct-manifest-v1`; old and new key files are not
+interchangeable in newly built verifiers. The schema change alone does not
+prevent replay of an otherwise valid proof for the same source and public
+statement. A key without this manifest is rejected by newly built verifiers.
+An already sealed legacy verifier remains able to read its own legacy key and
+proof. Other profiles retain their current keys until each is migrated. The verifier
+checks the manifest against the sealed source and pinned AIR rather than
+trusting a package-provided digest. Its existing key equality check prevents
+substituting a different external key for the embedded one.
+
+## One-call direct-chip roster
+
+The current schema, `s31-component-manifest-direct-chip-v2`, describes the
+existing one-call `direct-chip` proof. The public variant has two components
+in proof and claimed-sum order: `qm31_ops`, `repeated_step_chip`. The private
+variant adds `private_boundary_bridge` as component and sum index 2. The
+bridge's eight endpoint addresses come from compiler topology and are
+included in the manifest; proof bytes cannot choose them. The call ID is
+fixed at zero because the current six-field chip lookup tuple has no call ID.
+Consequently this schema permits exactly one call.
+
+| Component | Main columns | Interaction columns | Log size | Constraints | Lookup relations |
+| --- | ---: | ---: | --- | ---: | --- |
+| `qm31_ops` | `[0,12)` | `[0,8)` | circuit log | selected AIR count | circuit Gate |
+| `repeated_step_chip` | `[12,21)` | `[8,16)` | `log2(rounds)` | 6 | chip state |
+| `private_boundary_bridge` | `[21,29)` | `[16,36)` | 4 | 5 | circuit Gate, chip state |
+
+These are offsets in commitment trees 1 and 2. Tree 0 still contains the
+eight fixed QM31 circuit columns; the chip and bridge have no fixed columns.
+Each roster row records its ordered claimed-sum index, degree bound, trace
+spans, source index, and a SHA-256 binding of the selected AIR source and
+parameters. The circuit row retains the pinned AIR bundle binding. The
+verifier recomputes the manifest from sealed source and AIR before it reads
+proof bytes. The native prover and verifier still construct the selected
+components with their existing explicit code; manifest equality checks that
+the key describes that code's layout. This is a checked schedule, not yet a
+manifest-driven scheduler.
+
+The v2 key schema is `s31-verification-key-direct-chip-manifest-v2` and its
+proof envelopes start with `S31NAT6C` (public) or `S31NAT6P` (private). Older
+v1 packages remain readable with their own sealed binaries. The v2 verifier
+rejects a v1 key or proof tag. The source identity in the key remains the
+SHA-256 of the literal program bytes.
+
+Before proving, the compiler hashes a typed, length-delimited encoding of
+the generated manifest, including ordered components, sum indices, offsets,
+fixed columns, chip parameters, and private endpoint addresses. It omits
+`circuit_hash` because that value depends on the transcript binding. The
+preprocessed root is safe to include: it is computed from fixed circuit data
+first. The key and `inspect` expose this hash as
+`manifest_precommitment_sha256`. The engine receives a separate effective
+source digest:
+
+```text
+manifest_digest = SHA256("S31-COMPONENT-MANIFEST-PRECOMMIT-V2\0" || typed_manifest_without_circuit_hash)
+effective_digest = SHA256("S31-DIRECT-CHIP-MANIFEST-TRANSCRIPT-V2\0" || true_source_digest || manifest_digest)
+```
+
+The encoding is fixed and typed: strings are UTF-8 with a little-endian
+`u64` byte length; list lengths and `usize` fields are little-endian `u64`;
+`u32` fields are little-endian four-byte words; optional values start with a
+one-byte `0` or `1`. The ordered fields are:
+
+1. schema, profile, source digest, canonical IR digest, AIR bundle digest,
+   preprocessed root, composition plan hash, claimed-sum count;
+2. component count, then for each component: name, source and proof indices,
+   trace and evaluation logs, base and interaction widths, constraint count,
+   coefficient offset, ordered trace spans, ordered fixed-column indices,
+   AIR binding digest, optional claimed-sum index, optional main and
+   interaction spans, optional degree bound, and optional ordered lookup IDs;
+3. fixed-column count, then for each column: ID, commitment index, log size,
+   row count, and values digest;
+4. optional chip call: call ID, relation ID, rounds, constant, and optional
+   four input plus four output boundary addresses.
+
+Each span is three `u32` words `(tree, start, end)`. `circuit_hash` is
+excluded. The Python package reader independently reconstructs this digest
+from the sidecar and compares it with the key and report.
+
+The engine mixes `effective_digest` before its first witness/base commitment
+and uses it in the circuit identity. The verifier regenerates the typed manifest from
+its sealed source and pinned AIR, checks the key's digest, and derives the
+same effective digest before it verifies the proof. The digest contains no
+witness values. This is a precommitment to the one-call roster, while the
+engine's component constructors remain explicit code. A future multi-call
+profile needs a new lookup tuple with call ID and its own versioned transcript.
+
+### What `source_index` identifies
+
+The sealed v1/v2 JSON inherited one integer called `source_index`, but it
+encodes two different source classes. `qm31_ops` has `source_index: 1`: it is
+selected from the pinned AIR bundle at index 1 and placed at proof index 0.
+The chip and bridge have `source_index: 0`: zero is a **native AIR sentinel**,
+not another bundle index. Their `name` and `program_binding_sha256` distinguish
+the pinned Zig AIR and its parameters. For example:
+
+| Proof index | Name | `source_index` | Internal source role |
+| ---: | --- | ---: | --- |
+| 0 | `qm31_ops` | 1 | Bundled AIR 1 |
+| 1 | `repeated_step_chip` | 0 | Native repeated-step AIR |
+| 2, if private | `private_boundary_bridge` | 0 | Native bridge AIR |
+
+The manifest generator and key matcher now resolve these pairs to an internal
+tagged source role and reject an unknown native name, wrong source index, or
+wrong proof/claimed-sum position. This adds a fail-closed check without
+changing existing sealed JSON, key schemas, digest domains, or proof tags.
+It does **not** make `source_index: 0` a sufficient identity for a general
+scheduler. A future versioned manifest must serialize an explicit source
+kind and stable program identity and derive the constructed component from
+that typed reference. The staged two-call profile also uses the legacy
+sentinel for its native tagged chip and bridge; it is not a released general
+manifest scheduler.
+
+For that fixed two-call profile, the typed roster check also reconstructs
+native component geometry from call rounds and circuit shape. It checks each
+main and interaction span, row log, degree bound, constraint count and
+coefficient offset, plus the exact Gate and tagged-chip lookup dependencies.
+A changed span or missing bridge relation is rejected before the sealed key
+is compared with the source-derived manifest. Variable-call scheduling
+requires a new versioned source-kind manifest.
+
+## Bounded-call V4 plan artifact
+
+The bounded V4 profile now has experimental source-pinned native proving and
+verification for 1–8 calls. This section records how its manifest is derived
+and checked; [the bounded boundary design](BOUNDED_MULTI_CALL_BOUNDARY.md)
+describes the current proof envelope, tests, scheduler authority, and release
+gates. The manifest is still a checked description of engine-selected live
+handles, rather than the sole constructor of those handles.
+
+`runtime/bounded_component_manifest.zig` defines a separate, versioned
+`s31-component-manifest-bounded-call-plan-v4` artifact. It takes literal
+normalized source through `language/bounded_call_admission.zig`, which accepts
+one through eight live canonical square/add-constant repeats. The roster has
+exactly `1 + 2N` entries in this order: bundled `qm31_ops`, all `N` tagged
+chips in canonical call-ID order, then all `N` tagged bridges in that order.
+Each entry has its own proof and claimed-sum index; main and interaction spans
+are disjoint, contiguous, and computed with checked `u32` addition. The
+coefficient offsets are checked the same way. For a circuit with `C`
+constraints, total constraints are `C + 19N`; with circuit widths `M` and
+`I`, main and interaction widths are `M + 17N` and `I + 28N`. The current
+direct circuit has `M=12`, `I=8`, but V4 takes those as circuit facts until
+the selected AIR handle is rebound. A bridge depends on both the circuit
+Gate relation and the tagged Chip relation; the circuit and each chip list
+their own relation dependencies.
+
+V4 uses an explicit tagged source identity. The circuit entry names bundled
+AIR index 1, the bundle SHA-256, and the selected program SHA-256 supplied by
+the rebound-circuit caller. Native entries name the chip or bridge kind and
+hash the pinned native AIR **template** source together with the canonical
+call ID, source node IDs, rounds and constant. The artifact also records the
+literal source hash, canonical IR hash, pinned native template hash, and
+preprocessed root. Its V4 typed digest has its own domain and includes every
+field. No V1/V2 or pair V3 JSON field, digest, key, or proof byte is changed.
+The typed V4 call payload includes an optional set of four input and four
+output circuit addresses; the digest encodes an explicit absence/presence tag
+and all eight addresses when present. Source-only plans leave them absent.
+
+The ordered public output ABI records each name, canonical node ID, M31 kind,
+length and word offset. Admission caps eight output names and the manifest
+caps eight words, matching the circuit's fixed public output slots. A
+two-output four-lane program therefore records offsets 0 and
+4, rather than treating two names as two scalar words. Source regeneration
+compares the complete V4 artifact, so rehashing altered call order, source
+kind, native identity, lookup dependencies, spans, output shape, or sum count
+cannot make it match the admitted source and caller-supplied circuit facts.
+`matchesSource` checks the source-only form, including absent endpoints;
+`matchesTwoCallInspection` below checks the compiled-address form.
+The focused `zig build test-bounded-component-manifest` step checks one-,
+two-, and eight-call rosters, coefficient overflow, and these mutations
+without building proofs.
+
+**The source-only plan API is a blueprint, not an admission key.** Its
+`CircuitFacts` (selected AIR identity, logs, widths, constraint count,
+fixed-column order and preprocessed root) are supplied inputs. A package
+cannot make those facts authoritative by providing them or a digest.
+`inspectMany` instead recompiles the source, obtains the selected AIR and
+fixed root, attaches compiled endpoints, and checks the complete roster
+against live native handles. The experimental V4 prover and dedicated
+source-pinned verifier use that inspection to admit a distinct `S31MNY04`
+proof envelope. Native proofs pass for every count 1–8, including call IDs
+0–7. The engine still constructs component arrays from its typed Plan; the
+manifest checks that schedule against source and live handles. A general
+package profile and external verification-key schema remain disabled.
+
+### Compiled endpoints and executable inspection
+
+`runtime/bounded_compiled_binding.zig` adds a separate inspection path. It
+compiles an admitted one- through eight-call source in circuit topology mode
+and extracts each chip input and output as four **actual circuit variable
+addresses**, in canonical call order. It checks that each address is in the
+field range, is not a reserved public slot, has exactly one circuit producer,
+and is counted with checked multiplicity even if an address occurs in more
+than one endpoint. A witness compilation can be compared with the topology
+compilation for the same source, addresses, variable count, and padded row
+count. Thus an address is not taken from user-supplied manifest JSON.
+
+For **exactly two calls accepted by the live V3 pair grammar**,
+`inspectTwoCall` additionally constructs the
+existing native pair plan from those addresses, computes its preprocessed
+root, selects AIR bundle component 1, and constructs both tagged chip and
+bridge handles. It derives the V4 circuit facts from that selected AIR and
+compares all five roster entries against the actual native handle geometry:
+proof and claimed-sum order, trace logs, spans, constraint and coefficient
+offsets, ordered fixed-column indices, and lookup relation IDs. The selected
+AIR's fixed-column order is `[0, 2, 3, 1, 4, 5, 6, 7]` for the pinned
+bundle; assuming numerical order would incorrectly pass a plan-level check.
+`matchesTwoCallInspection` regenerates these facts from the source and pinned
+AIR, so changing two fixed-column indices and recomputing the candidate V4
+digest still fails. A malformed AIR bundle, altered endpoint address, or
+altered component offset also fails the focused tests.
+The inspected V4 call payload contains the compiled addresses, which are
+checked against both the native handle and the live V3 Plan. Rehashing a
+changed endpoint in that payload still fails regeneration. The source-only
+payload remains explicitly unbound to circuit addresses and cannot be used
+for proof admission. The compiled V4 native bridge binding and complete
+inspected manifest digest both include the instantiated endpoint addresses;
+the source-only template does not. The dedicated V4 verifier recompiles and
+rebinds those addresses, checks its live bridge handle, and mixes the
+source-derived typed manifest digest into the transcript before witness
+commitments.
+
+The two-call inspection also runs `pair_source_binding.derive`, the source
+binding used by the live V3 verifier, as an independent lowering path. It
+rejects disagreement in literal source or canonical IR digest, either call's
+tag, rounds, constant or eight circuit endpoint addresses, the committed
+preprocessed root, circuit trace log, or the selected AIR identity and full
+component manifest geometry. The V4 path does not treat a self-consistent
+V4 manifest as evidence that its lowering agrees with the live verifier.
+The test injects a wrong V3 endpoint and also checks IR, root, and selected
+AIR geometry mismatches. This is a differential implementation guard, not a
+formal proof that both compilers are correct.
+
+`inspectTwoCall` itself accepts **no proof bytes** and issues no key. It is a
+differential comparison with the older fixed V3 pair schedule, whose two-call
+component arrays and PCS order remain separate from V4. `inspectMany` is the
+new V4 inspection path for 1–8 calls: it derives native handle geometry and
+provides the source-owned manifest digest used by the experimental V4
+transcript. `compileManyWitness` checks the witness-mode fixed-column root
+against source topology before proving. The dedicated V4 byte verifier
+reconstructs this inspection from embedded source and official AIR bytes;
+it does not take a caller-supplied manifest or endpoint map. Proof tests now
+cover all admitted counts 1–8; no general package verifier admits V4. The
+source-pinned package checks the PCS geometry before bounded proof decoding.
+
+### Versioned descriptor check at the V4 adapter
+
+`runtime/component_descriptor_contract.zig` defines a small version-1,
+ordered identity roster. Every entry carries a proof index, claimed-sum
+index, optional call ID, and a **tagged** bundled or native AIR source. A
+bundled source has a bundle index, bundle digest, and selected-program digest.
+A native source has a profile-owned program ID and version plus its program
+binding digest. The V4 adapter assigns ID 1 to the tagged chip and ID 2 to
+the tagged bridge, both at program version 4. The contract rejects unknown
+schema versions, noncanonical positions, source-kind substitutions, program
+substitutions, and changed roster order. Its diagnostic SHA-256 uses a
+separate domain and fixed-width little-endian fields; JSON field order and
+Zig struct padding are not hash inputs. The encoded order is domain,
+`u32` version, 32-byte source and manifest digests, `u32` entry count, then
+for each entry `u32` proof and sum positions, one-byte call-presence tag
+and optional `u32` call ID, one-byte source-kind tag, and that source's
+bundle index and two digests or native program ID, version and digest.
+A fixed golden digest test pins this byte order.
+
+Immediately before the source-pinned prover or verifier passes descriptors
+to the engine, `bounded_compiled_binding.manyProvenance` projects the
+regenerated V4 manifest and the selected schedule into these rosters and
+requires exact typed equality. It also recomputes the existing V4 manifest
+precommitment. In particular, changing the circuit component's program
+binding in a mutable selected schedule now fails at this adapter, as does
+changing the selected manifest digest. The verifier obtains the expected
+manifest from embedded source, pinned AIR, compiled topology, and live
+preflight; a candidate roster or its hash cannot nominate a new trust root.
+
+This extra contract changes **no V4 key, proof envelope, transcript input,
+or proof byte**. Its own digest is diagnostic; the established typed V4
+manifest precommitment remains the transcript binding. The generic contract
+only covers source identity, order, call ID and sum position. The V4-specific
+code still checks geometry, PCS settings, endpoints, fixed columns, and
+lookup relations against live handles. The public engine
+`SelectedSchedule` remains mutable and is not independently authenticated
+outside the sealed S31 wrapper.
+
+The fixed cases to remove for a general chip API are concrete:
+
+1. `bounded_call_admission.zig` admits only the current repeated
+   square/add-constant call shape and at most eight calls.
+2. `bounded_component_manifest.zig` constructs exactly circuit, all chips,
+   then all bridges, uses an eight-column direct circuit and fixed PCS
+   profile, and hashes an explicit list of native source files.
+3. `bounded_compiled_binding.zig` maps only those roles into engine slots and
+   obtains the selected circuit program from the direct AIR bundle.
+4. Engine `private_many_boundary.zig` and `direct_many_schedule.zig` retain a
+   fixed roster constructor; `direct_many_provenance.zig` checks native
+   program bindings but relies on the S31 wrapper to authenticate the
+   selected circuit program and full manifest digest.
+5. `many_native_package.zig` has a source-embedded V4 verifier, not a
+   portable authenticated component registry or general verification key.
+
+A general version needs a verifier-owned registry of component constructors
+and versions, explicit digest binding of every selected program, generated
+geometry for heterogeneous chip sets, and a key/transcript version that
+binds that registry and roster. This version-1 descriptor is a checked
+identity projection for V4, not that general scheduler.
+
+## Remaining work
+
+- Extend to sparse, wide, full circuit, SHA and recursive profiles. These need
+  explicit lookup dependency closure, fixed-table digests, all selected
+  component orders, and the exact composition coefficient schedule.
+- Make the manifest authoritative for constructing prover and verifier trees,
+  rather than a checked description of the existing direct profile layout.
+- Publish an authenticated versioned V4 key and package flow; the current
+  source-pinned binary and distinct proof envelope are experimental.
+
+These slices establish source-derived manifest reconstruction and an
+experimental bounded multi-call boundary for direct arithmetic. They do not
+yet provide a general component selector across heterogeneous chips and
+profiles.
+
+## Single-call security boundary
+
+For multiple chip calls, the roster needs an instance index and explicit
+multiset multiplicities; the current single-call bridge cannot supply that
+information. The private bridge authenticates a private endpoint but its
+opened columns can reveal that value. No secrecy guarantee follows from this
+manifest.

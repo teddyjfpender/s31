@@ -8,17 +8,20 @@ pub fn build(b: *std.Build) void {
     const core = cpu.import_table.get("stwo_core") orelse @panic("circuit CPU module is missing core");
     const circuit = cpu.import_table.get("stwo_circuit_frontend") orelse @panic("circuit CPU module is missing frontend");
     const wire = cpu.import_table.get("stwo_circuit_recursion_wire") orelse @panic("circuit CPU module is missing wire");
-    const source_asset: std.Build.LazyPath = if (b.option([]const u8, "s31-source", "Absolute path to a normalized S31 source file")) |path|
+    const selected_source = b.option([]const u8, "s31-source", "Absolute path to a normalized S31 source file");
+    const source_asset: std.Build.LazyPath = if (selected_source) |path|
         .{ .cwd_relative = path }
     else
         b.path("examples/arithmetic/affine4.s31.json");
     const program_name = b.option([]const u8, "s31-name", "Build artifact name for the selected program") orelse "affine4";
     const source_version = b.option(u32, "s31-version", "Normalized source version (0 or 1)") orelse 0;
-    const lowering = b.option([]const u8, "s31-lowering", "gate, chip, sparse-gate, sparse-chip, sparse-wide-gate, direct-gate, direct-chip, sha-joint, sha-shift, or sha-fused proof lowering") orelse "gate";
+    const lowering = b.option([]const u8, "s31-lowering", "gate, chip, sparse-gate, sparse-chip, sparse-wide-gate, direct-gate, direct-chip, experimental direct-pair/direct-many/direct-mixed/direct-mixed4, sha-joint, sha-shift, or sha-fused proof lowering") orelse "gate";
     if (!std.mem.eql(u8, lowering, "gate") and !std.mem.eql(u8, lowering, "chip") and
         !std.mem.eql(u8, lowering, "sparse-gate") and !std.mem.eql(u8, lowering, "sparse-chip") and
         !std.mem.eql(u8, lowering, "sparse-wide-gate") and
         !std.mem.eql(u8, lowering, "direct-gate") and !std.mem.eql(u8, lowering, "direct-chip") and
+        !std.mem.eql(u8, lowering, "direct-pair") and !std.mem.eql(u8, lowering, "direct-many") and
+        !std.mem.eql(u8, lowering, "direct-mixed") and !std.mem.eql(u8, lowering, "direct-mixed4") and
         !std.mem.eql(u8, lowering, "sha-joint") and !std.mem.eql(u8, lowering, "sha-shift") and
         !std.mem.eql(u8, lowering, "sha-fused"))
         @panic("invalid s31-lowering");
@@ -26,8 +29,13 @@ pub fn build(b: *std.Build) void {
     if ((fri_fold_step != 1 and fri_fold_step != 4) or
         (fri_fold_step != 1 and !std.mem.eql(u8, lowering, "gate") and !std.mem.eql(u8, lowering, "sparse-wide-gate")))
         @panic("FRI fold step 4 requires gate or sparse-wide-gate lowering; supported steps are 1 and 4");
+    const mixed_lowering = std.mem.eql(u8, lowering, "direct-mixed") or std.mem.eql(u8, lowering, "direct-mixed4");
+    if (mixed_lowering and source_version != 1)
+        @panic("experimental direct-mixed requires normalized S31 source version 1");
+    if (mixed_lowering and selected_source == null)
+        @panic("experimental direct-mixed requires -Ds31-source=/absolute/path/to/source.s31.json");
     const s31_options = b.addOptions();
-    s31_options.addOption(bool, "chip_mode", std.mem.eql(u8, lowering, "chip") or std.mem.eql(u8, lowering, "sparse-chip") or std.mem.eql(u8, lowering, "direct-chip"));
+    s31_options.addOption(bool, "chip_mode", std.mem.eql(u8, lowering, "chip") or std.mem.eql(u8, lowering, "sparse-chip") or std.mem.eql(u8, lowering, "direct-chip") or std.mem.eql(u8, lowering, "direct-pair") or std.mem.eql(u8, lowering, "direct-many") or mixed_lowering);
     s31_options.addOption(bool, "sparse_mode", std.mem.startsWith(u8, lowering, "sparse-"));
     s31_options.addOption(bool, "wide_mode", std.mem.eql(u8, lowering, "sparse-wide-gate"));
     s31_options.addOption(bool, "direct_mode", std.mem.startsWith(u8, lowering, "direct-"));
@@ -65,6 +73,100 @@ pub fn build(b: *std.Build) void {
     const tests = b.addRunArtifact(b.addTest(.{ .root_module = frontend }));
     const test_step = b.step("test", "Test the S31 prototype parser, evaluator and circuit compiler");
     test_step.dependOn(&tests.step);
+    const pair_source_test_root = localEntry(b, "tests/proofs/private_pair_source_test.zig", target, optimize);
+    pair_source_test_root.addImport("stwo_core", core);
+    pair_source_test_root.addImport("stwo_circuit_frontend", circuit);
+    pair_source_test_root.addImport("stwo_circuit_cpu_integration", cpu);
+    pair_source_test_root.addImport("stwo_s31_prototype", frontend);
+    pair_source_test_root.addImport("stwo_cairo_frontend", cpu.import_table.get("stwo_cairo_frontend") orelse @panic("missing Cairo frontend"));
+    pair_source_test_root.addImport("interop_postcard", sha_postcard);
+    pair_source_test_root.addImport("s31_air_programs", official_air);
+    pair_source_test_root.addImport("s31_sha_provider", sha_provider);
+    pair_source_test_root.addImport("s31_poseidon_ref", sha_provider);
+    pair_source_test_root.addAnonymousImport("s31_chip_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/repeated_step_chip.zig") } });
+    pair_source_test_root.addAnonymousImport("s31_pair_boundary_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/private_pair_boundary.zig") } });
+    pair_source_test_root.addAnonymousImport("s31_tagged_pair_chip_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/tagged_pair_chip.zig") } });
+    pair_source_test_root.addAnonymousImport("s31_tagged_pair_bridge_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/tagged_pair_bridge.zig") } });
+    pair_source_test_root.addAnonymousImport("s31_pair_proof_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/direct_pair_arithmetic.zig") } });
+    const pair_source_tests = b.addRunArtifact(b.addTest(.{ .root_module = pair_source_test_root, .filters = &.{"two-call source derives canonical plan"} }));
+    b.step("test-pair-source", "Test source-derived two-call plan and typed V3 manifest").dependOn(&pair_source_tests.step);
+    const pair_native_tests = b.addRunArtifact(b.addTest(.{ .root_module = pair_source_test_root, .filters = &.{"sealed pair native proof accepts"} }));
+    b.step("test-pair-native", "Prove and natively verify the source-derived sealed two-call envelope").dependOn(&pair_native_tests.step);
+    const pair_native_long_tests = b.addRunArtifact(b.addTest(.{ .root_module = pair_source_test_root, .filters = &.{"sealed pair native long-round lifting"} }));
+    b.step("test-pair-native-long", "Check two-call PCS lifting when chip traces exceed the circuit trace").dependOn(&pair_native_long_tests.step);
+    const many_call_source_root = localEntry(b, "language/bounded_call_admission.zig", target, optimize);
+    many_call_source_root.addImport("stwo_core", core);
+    const many_call_source_tests = b.addRunArtifact(b.addTest(.{ .root_module = many_call_source_root }));
+    b.step("test-bounded-call-source", "Test source-only bounded multi-call admission")
+        .dependOn(&many_call_source_tests.step);
+    const bounded_manifest_root = localEntry(b, "entry/bounded_component_manifest.zig", target, optimize);
+    bounded_manifest_root.addImport("stwo_core", core);
+    bounded_manifest_root.addImport("stwo_circuit_frontend", circuit);
+    bounded_manifest_root.addImport("stwo_circuit_cpu_integration", cpu);
+    bounded_manifest_root.addAnonymousImport("s31_pair_boundary_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/private_pair_boundary.zig") } });
+    bounded_manifest_root.addAnonymousImport("s31_many_boundary_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/private_many_boundary.zig") } });
+    bounded_manifest_root.addAnonymousImport("s31_many_preflight_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/direct_many_preflight.zig") } });
+    bounded_manifest_root.addAnonymousImport("s31_many_direct_circuit_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/frontends/circuit/common/direct_arithmetic.zig") } });
+    bounded_manifest_root.addAnonymousImport("s31_tagged_pair_chip_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/tagged_pair_chip.zig") } });
+    bounded_manifest_root.addAnonymousImport("s31_tagged_pair_bridge_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/tagged_pair_bridge.zig") } });
+    bounded_manifest_root.addAnonymousImport("s31_tagged_many_chip_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/tagged_many_chip.zig") } });
+    bounded_manifest_root.addAnonymousImport("s31_tagged_many_bridge_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/tagged_many_bridge.zig") } });
+    const bounded_manifest_tests = b.addRunArtifact(b.addTest(.{ .root_module = bounded_manifest_root }));
+    const descriptor_contract_root = localEntry(b, "runtime/component_descriptor_contract.zig", target, optimize);
+    const descriptor_contract_tests = b.addRunArtifact(b.addTest(.{ .root_module = descriptor_contract_root }));
+    const bounded_manifest_step = b.step("test-bounded-component-manifest", "Test source-derived 1..8-call V4 roster and descriptor contract");
+    bounded_manifest_step.dependOn(&bounded_manifest_tests.step);
+    bounded_manifest_step.dependOn(&descriptor_contract_tests.step);
+    const bounded_binding_root = localEntry(b, "entry/bounded_compiled_binding.zig", target, optimize);
+    bounded_binding_root.addImport("stwo_core", core);
+    bounded_binding_root.addImport("stwo_circuit_frontend", circuit);
+    bounded_binding_root.addImport("stwo_circuit_cpu_integration", cpu);
+    bounded_binding_root.addImport("s31_sha_provider", sha_provider);
+    bounded_binding_root.addImport("s31_poseidon_ref", sha_provider);
+    bounded_binding_root.addImport("interop_postcard", sha_postcard);
+    bounded_binding_root.addAnonymousImport("s31_chip_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/repeated_step_chip.zig") } });
+    bounded_binding_root.addAnonymousImport("s31_pair_boundary_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/private_pair_boundary.zig") } });
+    bounded_binding_root.addAnonymousImport("s31_many_boundary_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/private_many_boundary.zig") } });
+    bounded_binding_root.addAnonymousImport("s31_many_preflight_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/direct_many_preflight.zig") } });
+    bounded_binding_root.addAnonymousImport("s31_many_direct_circuit_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/frontends/circuit/common/direct_arithmetic.zig") } });
+    bounded_binding_root.addAnonymousImport("s31_tagged_pair_chip_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/tagged_pair_chip.zig") } });
+    bounded_binding_root.addAnonymousImport("s31_tagged_pair_bridge_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/tagged_pair_bridge.zig") } });
+    bounded_binding_root.addAnonymousImport("s31_tagged_many_chip_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/tagged_many_chip.zig") } });
+    bounded_binding_root.addAnonymousImport("s31_tagged_many_bridge_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/tagged_many_bridge.zig") } });
+    bounded_binding_root.addAnonymousImport("s31_pair_proof_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/direct_pair_arithmetic.zig") } });
+    bounded_binding_root.addAnonymousImport("s31_air_programs", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/vectors/circuit/official/circuit_air.air_programs_v1.bin") } });
+    const bounded_binding_tests = b.addRunArtifact(b.addTest(.{ .root_module = bounded_binding_root, .filters = &.{"bounded"} }));
+    b.step("test-bounded-compiled-binding", "Test compiled V4 endpoints and experimental native proof admission")
+        .dependOn(&bounded_binding_tests.step);
+    const many_native_matrix_tests = b.addRunArtifact(b.addTest(.{ .root_module = bounded_binding_root, .filters = &.{"V4 native count matrix"} }));
+    b.step("test-many-native-matrix", "Prove and verify bounded V4 native envelopes for every count 2 through 8")
+        .dependOn(&many_native_matrix_tests.step);
+    const mixed_admission_tests = b.addRunArtifact(b.addTest(.{ .root_module = bounded_binding_root, .filters = &.{"mixed composition admission"} }));
+    b.step("test-mixed-composition-admission", "Inspect source-bound mixed pair/many AIR roster without proof admission")
+        .dependOn(&mixed_admission_tests.step);
+    const mixed_descriptor_tests = b.addRunArtifact(b.addTest(.{ .root_module = bounded_binding_root, .filters = &.{"mixed descriptor"} }));
+    b.step("test-mixed-descriptor", "Check source-bound mixed component descriptors for every bounded call count")
+        .dependOn(&mixed_descriptor_tests.step);
+    const mixed_n4_witness_tests = b.addRunArtifact(b.addTest(.{ .root_module = bounded_binding_root, .filters = &.{"mixed N4 witness audit"} }));
+    b.step("test-mixed-n4-witness", "Audit source-bound N4 circuit, chip, and bridge base handoffs without proving")
+        .dependOn(&mixed_n4_witness_tests.step);
+    const mixed_native_tests = b.addRunArtifact(b.addTest(.{ .root_module = bounded_binding_root, .filters = &.{"mixed sealed N3 native"} }));
+    b.step("test-mixed-native", "Prove and verify source-pinned mixed N3 native envelopes")
+        .dependOn(&mixed_native_tests.step);
+    const mixed_n4_native_tests = b.addRunArtifact(b.addTest(.{ .root_module = bounded_binding_root, .filters = &.{"mixed sealed N4 native"} }));
+    b.step("test-mixed-n4-native", "Prove and verify source-pinned mixed N4 native envelopes")
+        .dependOn(&mixed_n4_native_tests.step);
+    const square_export_root = localEntry(b, "tools/formal/export_square4_topology.zig", target, optimize);
+    square_export_root.addImport("stwo_s31_prototype", frontend);
+    square_export_root.addImport("stwo_circuit_frontend", circuit);
+    square_export_root.addImport("stwo_core", core);
+    const square_export = b.addRunArtifact(b.addExecutable(.{
+        .name = "s31-export-square4-topology-lean",
+        .root_module = square_export_root,
+    }));
+    square_export.addFileArg(source_asset);
+    b.step("export-square4-topology-lean", "Print compiled square4 circuit topology as Lean source")
+        .dependOn(&square_export.step);
     const bitcoin_step_inspector_root = localEntry(b, "tools/inspect/inspect_bitcoin_fold_step.zig", target, optimize);
     bitcoin_step_inspector_root.addImport("stwo_s31_prototype", frontend);
     bitcoin_step_inspector_root.addImport("stwo_circuit_frontend", circuit);
@@ -595,6 +697,133 @@ pub fn build(b: *std.Build) void {
     }));
     b.step("test-sha-batch", "Prove and verify a six-call SHA256d AIR batch").dependOn(&sha_batch_tests.step);
 
+    if (source_version == 1 and mixed_lowering) {
+        const mixed_four = std.mem.eql(u8, lowering, "direct-mixed4");
+        const mixed_prover_root = localEntry(b, if (mixed_four) "runtime/mixed_boundary/n4_prover_main.zig" else "runtime/mixed_boundary/mixed_prover_main.zig", target, optimize);
+        const mixed_verifier_root = localEntry(b, if (mixed_four) "runtime/mixed_boundary/n4_verifier_main.zig" else "runtime/mixed_boundary/mixed_verifier_main.zig", target, optimize);
+        const mixed_manifest_root = localEntry(b, if (mixed_four) "runtime/mixed_boundary/n4_manifest_main.zig" else "runtime/mixed_boundary/mixed_manifest_main.zig", target, optimize);
+        for ([_]*std.Build.Module{ mixed_prover_root, mixed_verifier_root, mixed_manifest_root }) |root| {
+            root.addImport("stwo_core", core);
+            root.addImport("stwo_circuit_frontend", circuit);
+            root.addImport("stwo_circuit_cpu_integration", cpu);
+            root.addImport("stwo_circuit_recursion_wire", wire);
+            root.addImport("stwo_s31_prototype", frontend);
+            root.addImport("stwo_cairo_frontend", cpu.import_table.get("stwo_cairo_frontend") orelse @panic("missing Cairo frontend"));
+            root.addImport("interop_postcard", sha_postcard);
+            root.addImport("s31_air_programs", official_air);
+            root.addImport("s31_sha_provider", sha_provider);
+            root.addImport("s31_poseidon_ref", sha_provider);
+            root.addAnonymousImport("s31_program_source", .{ .root_source_file = source_asset });
+            root.addAnonymousImport("s31_chip_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/repeated_step_chip.zig") } });
+            root.addAnonymousImport("s31_pair_boundary_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/private_pair_boundary.zig") } });
+            root.addAnonymousImport("s31_many_boundary_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/private_many_boundary.zig") } });
+            root.addAnonymousImport("s31_many_preflight_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/direct_many_preflight.zig") } });
+            root.addAnonymousImport("s31_many_direct_circuit_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/frontends/circuit/common/direct_arithmetic.zig") } });
+            root.addAnonymousImport("s31_tagged_pair_chip_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/tagged_pair_chip.zig") } });
+            root.addAnonymousImport("s31_tagged_pair_bridge_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/tagged_pair_bridge.zig") } });
+            root.addAnonymousImport("s31_tagged_many_chip_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/tagged_many_chip.zig") } });
+            root.addAnonymousImport("s31_tagged_many_bridge_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/tagged_many_bridge.zig") } });
+            root.addAnonymousImport("s31_pair_proof_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/direct_pair_arithmetic.zig") } });
+        }
+        const profile_name = if (mixed_four) "mixed4" else "mixed";
+        const mixed_prover = b.addExecutable(.{ .name = b.fmt("s31-{s}-{s}-prover", .{ program_name, profile_name }), .root_module = mixed_prover_root });
+        const mixed_verifier = b.addExecutable(.{ .name = b.fmt("s31-{s}-{s}-native-verifier", .{ program_name, profile_name }), .root_module = mixed_verifier_root });
+        const mixed_manifest = b.addExecutable(.{ .name = b.fmt("s31-{s}-{s}-manifest", .{ program_name, profile_name }), .root_module = mixed_manifest_root });
+        const mixed_source_check = b.addRunArtifact(mixed_manifest);
+        mixed_source_check.addArg("--check");
+        mixed_prover.step.dependOn(&mixed_source_check.step);
+        mixed_verifier.step.dependOn(&mixed_source_check.step);
+        b.installArtifact(mixed_prover);
+        b.installArtifact(mixed_verifier);
+        b.installArtifact(mixed_manifest);
+        b.getInstallStep().dependOn(&mixed_source_check.step);
+        const mixed_programs = b.step("mixed-programs", "Build experimental source-pinned mixed prover, verifier, and component inspector for the selected fixed profile");
+        mixed_programs.dependOn(&mixed_prover.step);
+        mixed_programs.dependOn(&mixed_verifier.step);
+        mixed_programs.dependOn(&mixed_manifest.step);
+        mixed_programs.dependOn(&mixed_source_check.step);
+        return;
+    }
+    if (source_version == 1 and std.mem.eql(u8, lowering, "direct-many")) {
+        const many_prover_root = localEntry(b, "runtime/many_prover_main.zig", target, optimize);
+        const many_verifier_root = localEntry(b, "runtime/many_verifier_main.zig", target, optimize);
+        const many_manifest_root = localEntry(b, "runtime/many_manifest_main.zig", target, optimize);
+        for ([_]*std.Build.Module{ many_prover_root, many_verifier_root, many_manifest_root }) |root| {
+            root.addImport("stwo_core", core);
+            root.addImport("stwo_circuit_frontend", circuit);
+            root.addImport("stwo_circuit_cpu_integration", cpu);
+            root.addImport("stwo_s31_prototype", frontend);
+            root.addImport("stwo_cairo_frontend", cpu.import_table.get("stwo_cairo_frontend") orelse @panic("missing Cairo frontend"));
+            root.addImport("interop_postcard", sha_postcard);
+            root.addImport("s31_air_programs", official_air);
+            root.addImport("s31_sha_provider", sha_provider);
+            root.addImport("s31_poseidon_ref", sha_provider);
+            root.addAnonymousImport("s31_program_source", .{ .root_source_file = source_asset });
+            root.addAnonymousImport("s31_chip_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/repeated_step_chip.zig") } });
+            root.addAnonymousImport("s31_pair_boundary_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/private_pair_boundary.zig") } });
+            root.addAnonymousImport("s31_many_boundary_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/private_many_boundary.zig") } });
+            root.addAnonymousImport("s31_many_preflight_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/direct_many_preflight.zig") } });
+            root.addAnonymousImport("s31_many_direct_circuit_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/frontends/circuit/common/direct_arithmetic.zig") } });
+            root.addAnonymousImport("s31_tagged_pair_chip_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/tagged_pair_chip.zig") } });
+            root.addAnonymousImport("s31_tagged_pair_bridge_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/tagged_pair_bridge.zig") } });
+            root.addAnonymousImport("s31_tagged_many_chip_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/tagged_many_chip.zig") } });
+            root.addAnonymousImport("s31_tagged_many_bridge_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/tagged_many_bridge.zig") } });
+            root.addAnonymousImport("s31_pair_proof_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/direct_pair_arithmetic.zig") } });
+        }
+        const many_prover = b.addExecutable(.{ .name = b.fmt("s31-{s}-many-prover", .{program_name}), .root_module = many_prover_root });
+        b.installArtifact(many_prover);
+        const many_verifier = b.addExecutable(.{ .name = b.fmt("s31-{s}-many-native-verifier", .{program_name}), .root_module = many_verifier_root });
+        b.installArtifact(many_verifier);
+        const many_manifest = b.addExecutable(.{ .name = b.fmt("s31-{s}-many-manifest", .{program_name}), .root_module = many_manifest_root });
+        b.installArtifact(many_manifest);
+        const many_programs = b.step("many-programs", "Build experimental source-pinned V4 bounded prover, verifier, and component inspector");
+        many_programs.dependOn(&many_prover.step);
+        many_programs.dependOn(&many_verifier.step);
+        many_programs.dependOn(&many_manifest.step);
+        return;
+    }
+    if (source_version == 1 and std.mem.eql(u8, lowering, "direct-pair")) {
+        const pair_prover_root = localEntry(b, "runtime/pair_prover_main.zig", target, optimize);
+        pair_prover_root.addImport("stwo_core", core);
+        pair_prover_root.addImport("stwo_circuit_frontend", circuit);
+        pair_prover_root.addImport("stwo_circuit_cpu_integration", cpu);
+        pair_prover_root.addImport("stwo_s31_prototype", frontend);
+        pair_prover_root.addImport("stwo_cairo_frontend", cpu.import_table.get("stwo_cairo_frontend") orelse @panic("missing Cairo frontend"));
+        pair_prover_root.addImport("interop_postcard", sha_postcard);
+        pair_prover_root.addImport("s31_air_programs", official_air);
+        pair_prover_root.addImport("s31_sha_provider", sha_provider);
+        pair_prover_root.addImport("s31_poseidon_ref", sha_provider);
+        pair_prover_root.addAnonymousImport("s31_program_source", .{ .root_source_file = source_asset });
+        pair_prover_root.addAnonymousImport("s31_chip_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/repeated_step_chip.zig") } });
+        pair_prover_root.addAnonymousImport("s31_pair_boundary_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/private_pair_boundary.zig") } });
+        pair_prover_root.addAnonymousImport("s31_tagged_pair_chip_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/tagged_pair_chip.zig") } });
+        pair_prover_root.addAnonymousImport("s31_tagged_pair_bridge_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/tagged_pair_bridge.zig") } });
+        pair_prover_root.addAnonymousImport("s31_pair_proof_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/direct_pair_arithmetic.zig") } });
+        const pair_prover = b.addExecutable(.{ .name = b.fmt("s31-{s}-pair-prover", .{program_name}), .root_module = pair_prover_root });
+        b.installArtifact(pair_prover);
+        const pair_verifier_root = localEntry(b, "runtime/pair_verifier_main.zig", target, optimize);
+        pair_verifier_root.addImport("stwo_core", core);
+        pair_verifier_root.addImport("stwo_circuit_frontend", circuit);
+        pair_verifier_root.addImport("stwo_circuit_cpu_integration", cpu);
+        pair_verifier_root.addImport("stwo_s31_prototype", frontend);
+        pair_verifier_root.addImport("stwo_cairo_frontend", cpu.import_table.get("stwo_cairo_frontend") orelse @panic("missing Cairo frontend"));
+        pair_verifier_root.addImport("interop_postcard", sha_postcard);
+        pair_verifier_root.addImport("s31_air_programs", official_air);
+        pair_verifier_root.addImport("s31_sha_provider", sha_provider);
+        pair_verifier_root.addImport("s31_poseidon_ref", sha_provider);
+        pair_verifier_root.addAnonymousImport("s31_program_source", .{ .root_source_file = source_asset });
+        pair_verifier_root.addAnonymousImport("s31_chip_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/repeated_step_chip.zig") } });
+        pair_verifier_root.addAnonymousImport("s31_pair_boundary_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/private_pair_boundary.zig") } });
+        pair_verifier_root.addAnonymousImport("s31_tagged_pair_chip_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/tagged_pair_chip.zig") } });
+        pair_verifier_root.addAnonymousImport("s31_tagged_pair_bridge_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/tagged_pair_bridge.zig") } });
+        pair_verifier_root.addAnonymousImport("s31_pair_proof_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/direct_pair_arithmetic.zig") } });
+        const pair_verifier = b.addExecutable(.{ .name = b.fmt("s31-{s}-pair-native-verifier", .{program_name}), .root_module = pair_verifier_root });
+        b.installArtifact(pair_verifier);
+        const pair_programs = b.step("pair-programs", "Build the experimental source-pinned two-call prover and verifier");
+        pair_programs.dependOn(&pair_prover.step);
+        pair_programs.dependOn(&pair_verifier.step);
+        return;
+    }
     if (source_version == 1) {
         const cairo = cpu.import_table.get("stwo_cairo_frontend") orelse @panic("circuit CPU module is missing Cairo AIR runtime");
         const key_asset: std.Build.LazyPath = if (b.option([]const u8, "s31-key", "Absolute path to the sealed verification key")) |path|
@@ -632,6 +861,12 @@ pub fn build(b: *std.Build) void {
         const projection_asset: std.Build.LazyPath = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/vectors/circuit/official/compiled_air_constraints_v1.bin") };
         prover_root.addAnonymousImport("s31_air_projection", .{ .root_source_file = projection_asset });
         prover_root.addImport("s31_air_programs", official_air);
+        prover_root.addAnonymousImport("s31_chip_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/repeated_step_chip.zig") } });
+        prover_root.addAnonymousImport("s31_bridge_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/private_boundary_bridge.zig") } });
+        prover_root.addAnonymousImport("s31_pair_boundary_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/private_pair_boundary.zig") } });
+        prover_root.addAnonymousImport("s31_tagged_pair_chip_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/tagged_pair_chip.zig") } });
+        prover_root.addAnonymousImport("s31_tagged_pair_bridge_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/tagged_pair_bridge.zig") } });
+        prover_root.addAnonymousImport("s31_pair_proof_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/direct_pair_arithmetic.zig") } });
         prover_root.addAnonymousImport("s31_verification_key", .{ .root_source_file = key_asset });
         prover_root.addAnonymousImport("s31_recursive_key", .{ .root_source_file = recursive_key_asset });
         prover_root.addAnonymousImport("s31_recursive_next_key", .{ .root_source_file = recursive_next_key_asset });
@@ -654,6 +889,12 @@ pub fn build(b: *std.Build) void {
         native_root.addAnonymousImport("s31_program_source", .{ .root_source_file = source_asset });
         native_root.addAnonymousImport("s31_air_projection", .{ .root_source_file = projection_asset });
         native_root.addImport("s31_air_programs", official_air);
+        native_root.addAnonymousImport("s31_chip_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/repeated_step_chip.zig") } });
+        native_root.addAnonymousImport("s31_bridge_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/private_boundary_bridge.zig") } });
+        native_root.addAnonymousImport("s31_pair_boundary_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/private_pair_boundary.zig") } });
+        native_root.addAnonymousImport("s31_tagged_pair_chip_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/tagged_pair_chip.zig") } });
+        native_root.addAnonymousImport("s31_tagged_pair_bridge_air_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/tagged_pair_bridge.zig") } });
+        native_root.addAnonymousImport("s31_pair_proof_source", .{ .root_source_file = .{ .cwd_relative = b.pathFromRoot("../../../deps/stwo-zig/src/integrations/circuit_cpu/direct_pair_arithmetic.zig") } });
         native_root.addAnonymousImport("s31_verification_key", .{ .root_source_file = key_asset });
         native_root.addAnonymousImport("s31_recursive_key", .{ .root_source_file = recursive_key_asset });
         native_root.addAnonymousImport("s31_recursive_next_key", .{ .root_source_file = recursive_next_key_asset });

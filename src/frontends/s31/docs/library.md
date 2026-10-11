@@ -46,6 +46,13 @@ AIR. No helper is a host-only calculation or a new specialized AIR chip.
 | `std::math::min_u256(a,b)`, `max_u256(a,b)` | Select the smaller or larger value | Two `UInt256` values; one `u256_le` and one range-preserving `select`. Equal inputs return the same value. |
 | `std::int::add_checked(a,b)`, `sub_checked(a,b)` | Exact fixed-width result, rejecting signed or unsigned overflow | Equally typed `u8`–`u128` or `i8`–`i128` operands. |
 | `std::int::add_wrapping(a,b)`, `sub_wrapping(a,b)` | Low $W$ bits of the result | Equally typed fixed-width operands. |
+| `std::int::mul_wrapping(a,b)` | Low $W$ bits of the product | Equally typed `u8`–`u128` or `i8`–`i128` operands; byte-constrained convolution. |
+| `std::int::mul_checked(a,b)` | Exact fixed-width product; rejects unsigned or signed overflow | Equally typed fixed-width operands; complete $2W$-bit convolution and upper-word constraints. |
+| `std::int::div_rem(a,b)` | Static pair of circuit values `(quotient, remainder)` with truncation toward zero for signed types | Equal nominal fixed-width types; zero divisor and signed `MIN / -1` reject. One fused quotient-product-remainder circuit proves both results. |
+| `std::int::div_checked(a,b)`, `rem_checked(a,b)` | Quotient or remainder projection | Same checked division relation; use `div_rem` to share one division when both values are needed. |
+| `std::int::{bit_and,bit_or,bit_xor}(a,b)`, `bit_not(a)` | AND, OR, XOR, or NOT of exactly $W$ bits | Equally typed fixed-width operands for binary calls; proved Boolean decomposition, with reusable input bits. |
+| `std::int::{shl,shr_logical,rotl,rotr}<N>(a)` | Static zero-fill shift or rotation of $W$ bits | One fixed-width scalar; counts normalized to $W$ for shifts or modulo $W$ for rotations. |
+| `std::int::shr_arithmetic<N>(a)` | Static sign-fill right shift | Signed `i8`–`i128` only; source sign bit is constrained. |
 | `std::int::{le,lt,ge,gt,eq,ne}(a,b)` | Typed ordering or equality; returns constrained `bit` | Equally typed fixed-width operands. |
 | `std::int::from_limbs_u8(raw)` through `from_limbs_i128(raw)` | Explicitly construct a fixed-width scalar from little-endian limbs | Exact `[u16; L]` shape; byte types gain an extra 8-bit proof constraint. |
 | `std::int::limbs(x)` | Explicit bit-pattern view as `[u16; L]` | One fixed-width scalar; no arithmetic node. |
@@ -81,6 +88,58 @@ eight public field words. The [native acceptance](../tests/acceptance/acceptance
 recomputes SHA256d, compact target, work, addition, and Poseidon2 separately;
 it rejects overflow, invalid proof of work, changed claims, and proof/key
 tampering.
+
+### Static powers become multiplication circuits
+
+[`pow15.s31`](../examples/arithmetic/powers/pow15.s31) contains a normal library call:
+
+```s31
+use std@1;
+circuit pow15(private x: [m31; 4]) -> public [m31; 4] {
+    let result = std::math::pow<15>(x);
+    result
+}
+```
+
+The compiler chooses the addition chain $1,2,4,5,10,15$. It lowers the call
+to the same five gates as the [handwritten circuit](../examples/arithmetic/powers/pow15_manual.s31):
+
+| Gate | Exponent | Constraint in each lane |
+| --- | ---: | --- |
+| `x2` | 2 | $x_2=x\cdot x$ |
+| `x4` | 4 | $x_4=x_2\cdot x_2$ |
+| `x5` | 5 | $x_5=x_4\cdot x$ |
+| `x10` | 10 | $x_{10}=x_5\cdot x_5$ |
+| `result` | 15 | $result=x_{10}\cdot x_5$ |
+
+A *lane* is one coordinate of the four-element input array. Each gate applies
+the same field equation separately to all four coordinates; the coordinates
+are not multiplied together. For $x[3]=7$, the gate values are $49$, $2401$,
+$16807$, $282475249$, and $1622650073$, all modulo $p=2^{31}-1$. The
+[`pow15.valid.json`](../examples/arithmetic/powers/pow15.valid.json) fixture also
+checks inputs $0$, $1$, and $2$. The public statement is the resulting
+four-element array; the private input and intermediate values are witness
+values. The AIR constrains each multiplication, and the native verifier
+checks the proof against the public result.
+
+The older [binary schedule](../examples/arithmetic/powers/pow15_binary.s31) uses six
+multiplications: $1,2,3,6,7,14,15$. The bounded compiler search considers
+static exponents through 255 and adopts a chain only when it uses fewer gates
+than this binary schedule. Larger exponents and searches that hit their fixed
+work limit use the binary schedule. Thus the optimization does not add a new
+witness operation, and a search failure never raises circuit cost. This is an
+arithmetic gate count guarantee; proof time depends on padding and the rest
+of the circuit.
+
+For this four-lane fixture, native `direct-gate` builds give the library call
+and handwritten five-gate source the **same canonical IR digest**. They each
+use 316 raw QM31 operation rows; the six-gate binary source uses 317. All
+three pad to 512 rows, so this small example does not demonstrate a proof-size
+or prover-time win. The optimized source produces a 54,378-byte native proof;
+the verifier accepts it and rejects a changed public result. Lean's
+[`PowerChains.lean`](../../../../formal/s31/S31/Gadgets/Functional/PowerChains.lean)
+independently proves both graph schedules equal canonical M31 exponentiation
+and that strict graph acceptance binds the optimized output to that value.
 
 The group in brackets is a compile-time list of existing circuit values,
 not a witness array that can be indexed. Each item may be an input,
@@ -578,8 +637,9 @@ the package identities can differ.
 ## What a package pins
 
 A text build writes `stdlib-lock.json` with package/version, whether the
-import was explicit, and SHA-256 hashes of `s31_stdlib.py` and
-`s31_mathlib.py`. Its own digest is in the package manifest and the
+import was explicit, and SHA-256 hashes of the compatibility imports
+`s31_stdlib.py` and `s31_mathlib.py` plus the implementations under
+`python/library/`. Its own digest is in the package manifest and the
 verification key. The generated native verifier is compiled with that digest
 and rejects a key bearing another one. The normalized relation and source
 text are separately hashed in the package; the proof still establishes the
@@ -606,7 +666,7 @@ they do not expose a witness-selected lane as a source value.
 The scalar-integer family is described with a handwritten circuit and AIR
 example in [fixed-width integers](fixed-width-integers.md). It includes all
 ten widths/signs, checked and wrapping addition and subtraction, ordering,
-and bit-pattern views. Fixed-width multiplication, division, bitwise
+wrapping/checked multiplication, and bit-pattern views. Division, bitwise
 operations, and cross-width numeric casts remain to be implemented.
 
 ## Library MVP release gate

@@ -105,6 +105,107 @@ def check_examples() -> None:
         (2 * x + 3 * (2 * x**3 + 3 * x**2 + 5 * x + 7) + 11) % P
         for x in library_assignment["public_inputs"]["x"]
     ]
+    worked_poly, _ = compile_text(
+        text_block_containing(DOCS / "worked-functional-polynomial.md",
+                              "circuit functional_poly4"),
+        "worked-functional-polynomial.md",
+    )
+    poly_source = S31 / "examples/arithmetic/functional_poly4.s31"
+    poly_direct = S31 / "examples/arithmetic/functional_poly4_manual.s31"
+    assert worked_poly == compile_text(poly_source.read_text())[0]
+    assert worked_poly == compile_text(poly_direct.read_text())[0]
+    assert [node["op"] for node in worked_poly["nodes"]] == [
+        "mul_const", "add_const", "mul", "add_const"]
+    poly_assignment = json.loads(poly_source.with_suffix(".valid.json").read_text())
+    x_words = poly_assignment["private_inputs"]["x"]
+    expected = [(2 * x * x + 3 * x + 7) % P for x in x_words]
+    assert expected == [7, 12, 21, 126]
+    assert poly_assignment["public_outputs"] == {"result": expected}
+    assert evaluate_relation(worked_poly, poly_assignment) == {"result": expected}
+    poly_assignment["public_outputs"]["result"][0] += 1
+    try:
+        evaluate_relation(worked_poly, poly_assignment)
+    except OracleError:
+        pass
+    else:
+        raise AssertionError("worked functional polynomial accepted a false public claim")
+    curried, _ = compile_text(
+        text_block_containing(DOCS / "functional-language.md", "circuit curried_sum"),
+        "functional-language.md",
+    )
+    curried_source = S31 / "examples/arithmetic/curried_sum.s31"
+    curried_direct = S31 / "examples/arithmetic/curried_sum_manual.s31"
+    assert curried == compile_text(curried_source.read_text())[0]
+    assert curried == compile_text(curried_direct.read_text())[0]
+    assert [node["op"] for node in curried["nodes"]] == ["add"]
+    curried_assignment = json.loads(curried_source.with_suffix(".valid.json").read_text())
+    assert curried_assignment["public_outputs"] == {"result": [1]}
+    assert evaluate_relation(curried, curried_assignment) == {"result": [1]}
+    named, _ = compile_text(
+        text_block_containing(DOCS / "functional-language.md", "circuit named_square4"),
+        "functional-language.md",
+    )
+    named_source = S31 / "examples/arithmetic/named_square4.s31"
+    named_direct = S31 / "examples/arithmetic/named_square4_manual.s31"
+    assert named == compile_text(named_source.read_text())[0]
+    assert named == compile_text(named_direct.read_text())[0]
+    assert named["nodes"] == [{"name": "result", "op": "mul", "lhs": "x", "rhs": "x"}]
+    named_assignment = json.loads(named_source.with_suffix(".valid.json").read_text())
+    x_words = named_assignment["private_inputs"]["x"]
+    assert named_assignment["public_outputs"] == {
+        "result": [(x * x) % P for x in x_words]}
+    assert evaluate_relation(named, named_assignment) == named_assignment["public_outputs"]
+    tuple_from_docs, _ = compile_text(
+        text_block_containing(DOCS / "functional-language.md", "circuit tuple_square_sum"),
+        "functional-language.md",
+    )
+    tuple_source = S31 / "examples/arithmetic/tuple_square_sum.s31"
+    tuple_direct = S31 / "examples/arithmetic/tuple_square_sum_manual.s31"
+    assert tuple_from_docs == compile_text(tuple_source.read_text())[0]
+    assert tuple_from_docs == compile_text(tuple_direct.read_text())[0]
+    assert [node["op"] for node in tuple_from_docs["nodes"]] == ["mul", "add", "add"]
+    tuple_assignment = json.loads(tuple_source.with_suffix(".valid.json").read_text())
+    x_words = tuple_assignment["private_inputs"]["x"]
+    assert tuple_assignment["public_outputs"] == {
+        "result": [(x * x + x + x) % P for x in x_words]}
+    assert evaluate_relation(tuple_from_docs, tuple_assignment) == tuple_assignment["public_outputs"]
+    step_from_docs, _ = compile_text(
+        text_block_containing(DOCS / "functional-language.md", "circuit functional_step16"),
+        "functional-language.md",
+    )
+    recurrence = S31 / "examples/recurrence"
+    named_step, _ = compile_text((recurrence / "functional_step16.s31").read_text())
+    manual_step, _ = compile_text((recurrence / "functional_step16_manual.s31").read_text())
+    assert step_from_docs == named_step == manual_step
+    captured_step, _ = compile_text((recurrence / "captured_step16.s31").read_text())
+    captured_manual, _ = compile_text((recurrence / "captured_step16_manual.s31").read_text())
+    assert captured_step == captured_manual
+    assert captured_step["nodes"] == named_step["nodes"]
+    captured_assignment = json.loads((recurrence / "captured_step16.valid.json").read_text())
+    state = captured_assignment["public_inputs"]["x"][:]
+    for _ in range(16):
+        state = [(value * value + 7) % P for value in state]
+    assert captured_assignment["public_outputs"] == {"result": state}
+    assert evaluate_relation(captured_step, captured_assignment) == {"result": state}
+    mixed_from_docs, _ = compile_text(
+        text_block_containing(DOCS / "functional-language.md", "circuit returned_mix4_3"),
+        "functional-language.md",
+    )
+    mixed_source = recurrence / "returned_mix4_3.s31"
+    mixed_direct = recurrence / "returned_mix4_3_manual.s31"
+    mixed_relation, _ = compile_text(mixed_source.read_text())
+    assert mixed_from_docs == mixed_relation == compile_text(mixed_direct.read_text())[0]
+    assert mixed_relation["nodes"] == [{
+        "name": "result", "op": "repeat", "lhs": "x", "rounds": 3,
+        "body": [{"op": "mix4"}],
+    }]
+    mixed_assignment = json.loads(mixed_source.with_suffix(".valid.json").read_text())
+    mixed_state = mixed_assignment["public_inputs"]["x"][:]
+    for _ in range(3):
+        total = sum(mixed_state) % P
+        mixed_state = [(value + total) % P for value in mixed_state]
+    assert mixed_assignment["public_outputs"] == {"result": mixed_state}
+    assert evaluate_relation(mixed_relation, mixed_assignment) == {"result": mixed_state}
     matrix_source = text_block_containing(DOCS / "library.md", "circuit static_matvec")
     matrix_relation, _ = compile_text(matrix_source, "library.md")
     assert matrix_relation == json.loads((S31 / "examples/arrays/static_matvec.s31.json").read_text())

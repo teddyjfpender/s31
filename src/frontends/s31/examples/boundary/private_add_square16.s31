@@ -1,0 +1,13 @@
+// The private iterate is add-then-square; its chip state is secret + 13.
+use std@1;
+
+fn step(v: [m31; 4]) -> [m31; 4] {
+    let shifted = v + splat<4>(13_m31);
+    shifted .* shifted
+}
+
+circuit private_add_square16(private secret: [m31; 4]) -> public [m31; 1] {
+    let state = iterate<16>(step, secret);
+    let total = std::math::sum_lanes(state);
+    total
+}
