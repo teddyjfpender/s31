@@ -1,10 +1,12 @@
 # Mixed circuit-to-chip admission prototype
 
-Status: **source-bound selected schedule inspection only**. No proof format,
-prover, verifier, transcript, or verification key accepts this roster. The
-existing V3 pair and V4 bounded proofs are unchanged. This prototype tests
-the next scheduler boundary with two source-distinct native AIR families that
-share lower-level arithmetic and boundary code.
+Status: **source-bound selected schedule inspection API**. This API does not
+consume or produce proof bytes. The separate [experimental mixed N=3
+profile](MIXED_NATIVE_N3_PROFILE.md) now proves this exact roster through a
+source-embedded verifier. The existing V3 pair and V4 bounded proofs are
+unchanged. This inspection path tests the scheduler boundary with two
+source-distinct native AIR families that share lower-level arithmetic and
+boundary code.
 
 ## Concrete program and roster
 
@@ -23,7 +25,7 @@ addresses per call. The version-1 policy assigns the existing **pair** chip
 and bridge AIR sources to calls 0 and 1, then the existing **many** chip and
 bridge AIR sources to call 2. All four native kinds have distinct pinned
 source hashes; the pair chip accepts IDs 0–1, while the many chip accepts
-IDs 0–7. The prospective component order is interleaved:
+IDs 0–7. The selected N=3 component order is interleaved:
 
 | Proof index | Source kind | Main columns | Interaction columns | Constraints |
 | ---: | --- | ---: | ---: | ---: |
@@ -61,10 +63,10 @@ API reconstructs all fields from source; re-sealing a forged slot digest does
 not make it admissible. Tests mutate source kind, relation ID, endpoint, native
 program binding, and source constant, then require rejection.
 
-The next executable gate is
+The next inspection gate is
 [`direct_mixed_schedule.zig`](../../../deps/stwo-zig/src/integrations/circuit_cpu/direct_mixed_schedule.zig).
 It constructs the **combined** circuit/pair/many verifier handles in the
-prospective interleaved order. It asks those live handles for column log sizes,
+interleaved order. It asks those live handles for column log sizes,
 mask sample points, composition degree/split, and exact tree widths. It checks
 every PCS lifting height against the extended column logs and records a
 canonical digest of sample-point coordinates at a deterministic audit point.
@@ -85,27 +87,28 @@ relation IDs remain a reviewed registry contract rather than automatically
 extracted evaluator dependencies. Independent formula review is still a
 release obligation.
 
-This is a real increase in **component-source composition**: the prospective
-roster contains both pair and many native AIR implementations in one program.
-It does not add a new arithmetic function, and it does not establish that the
-two implementations are interchangeable inside one STARK proof. No proof
-bytes are consumed or produced by this prototype.
+This is a real increase in **component-source composition**: the roster
+contains both pair and many native AIR implementations in one program. The
+separate N=3 profile establishes proof acceptance for this exact roster in one
+STARK. Neither path adds a new arithmetic function or establishes arbitrary
+component interchangeability. This inspection API itself consumes and
+produces no proof bytes.
 
 ## Native proof gate
 
-A proof-backed profile needs a new magic, transcript tag, manifest schema, and
-program-binding domain. The verifier must regenerate this selected schedule
-from sealed source **before proof decoding** and bind its manifest digest
-before the first commitment. The prover must
-write and commit the matching interleaved base and interaction columns, mix
-the seven claimed sums in that same order, and use one lookup challenge pair.
-The new native tests must accept an honest three-call proof and reject a
-changed source, call kind/order, endpoint, relation ID, source hash, claimed
-sum (including compensating chip/bridge deltas), commitment, and cross-profile
-replay. Independent equation review and end-to-end compiler correspondence
-remain required.
+A proof-backed profile now uses distinct magic, transcript and manifest
+domains. Its source-embedded verifier regenerates this selected schedule
+**before proof decoding** and binds the manifest digest before the first
+commitment. The prover commits matching interleaved base and interaction
+columns, mixes seven claimed sums in that order, and uses one lookup challenge
+pair. Focused native tests accept an honest three-call proof and reject
+changed source, call order, endpoint, claimed sums (including compensating
+chip/bridge deltas), commitment roots, and cross-profile replay. The
+inspection tests separately reject changed source kind, relation ID, and AIR
+dependency hash. Independent full AIR equation review and end-to-end compiler
+correspondence remain required.
 
-The implementation sequence is deliberately narrow:
+The fixed-profile implementation follows this narrow sequence:
 
 1. Freeze a new profile/version and derive one selected schedule from source,
    the AIR bundle, and live verifier handles. The schedule owns component
@@ -121,10 +124,10 @@ The implementation sequence is deliberately narrow:
    bytes. Commit the new manifest digest into the transcript before the first
    tree commitment; derive quotient/PCS composition and claimed-sum order
    solely from this schedule.
-4. Compare honest proof bytes against a frozen fixture for this **new**
-   profile, run the mutation matrix above in Debug and ReleaseFast, then
-   obtain independent review of pair/many lookup equations and the compiler's
-   endpoint binding. Existing V4 fixtures must remain byte identical.
+4. Run honest and mutation tests in Debug and ReleaseFast, preserve existing
+   V4 proof bytes, and obtain [independent admission review](../security/INDEPENDENT_REVIEW_MIXED_N3_2026-10-11.md).
+   A frozen mixed proof-byte fixture and full independent pair/many lookup
+   equation review remain open.
 
 The prototype reuses V4's source-derived circuit slot as an audit anchor,
 but it cannot reuse V4's grouped component manifest as the new proof
@@ -135,7 +138,9 @@ marked `private` is hidden from the public ABI, but this design makes **no
 witness-confidentiality claim**.
 
 The refreshed formal source inventory records the engine revision. It does
-not contain a Lean theorem about this mixed inspection path or a mixed proof.
+not contain a Lean theorem about this mixed inspection path or the mixed
+proof. The [N=3 profile](MIXED_NATIVE_N3_PROFILE.md) describes the supported
+proof-byte entrypoint and its limits.
 
 Run the prototype controls with:
 
