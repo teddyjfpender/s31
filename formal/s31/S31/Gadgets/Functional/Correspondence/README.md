@@ -22,6 +22,13 @@ the same output as the source for every four-lane M31 input. Its proof derives
 commutativity from the implemented M31 modular arithmetic, and runs both
 programs through the existing normalized relation evaluator. Kernel-checked
 mutations reject a changed operation and a wrong output mapping.
+The structural theorem `optimize_exists_of_valid` separately proves that the
+optimizer itself emits a compact certificate for **every** bounded positional
+SSA whose instruction IDs are fresh, operands read earlier wires, and output
+is in range. `findKey_sound`, `found_existing_instruction`, and
+`fold_keys_match` prove that a CSE hit selects the first instruction with the
+same canonical operation and ordered operands. These facts do not by
+themselves prove the independent symbolic audit accepts every such source.
 
 This is a fail-closed semantic checker, not a completeness theorem saying the
 audit accepts every valid source program. It does not establish byte equality

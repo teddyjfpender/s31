@@ -210,6 +210,49 @@ theorem step_keys_match (state next : State) (raw : Instruction)
                 exact hvalid
   · simp [hid] at hstep
 
+theorem step_source_length (state next : State) (raw : Instruction)
+    (hstep : step state raw = some next) :
+    next.sourceToCanonical.length = state.sourceToCanonical.length + 1 := by
+  unfold step at hstep
+  by_cases hid : raw.id = state.sourceToCanonical.length
+  · cases hlhs : state.sourceToCanonical[raw.lhs]? with
+    | none => simp [hid, hlhs] at hstep
+    | some lhs =>
+        cases hrhs : state.sourceToCanonical[raw.rhs]? with
+        | none => simp [hid, hlhs, hrhs] at hstep
+        | some rhs =>
+            let key : Key := (raw.multiply, min lhs rhs, max lhs rhs)
+            cases hfind : findKey key state.keys with
+            | none =>
+                have hnext : next.sourceToCanonical =
+                    state.sourceToCanonical ++ [state.instructions.length + 1] := by
+                  simpa [step, hid, hlhs, hrhs, key, hfind] using
+                    congrArg (fun item => item.map State.sourceToCanonical) hstep.symm
+                simp [hnext]
+            | some existing =>
+                have hnext : next.sourceToCanonical =
+                    state.sourceToCanonical ++ [existing + 1] := by
+                  simpa [step, hid, hlhs, hrhs, key, hfind] using
+                    congrArg (fun item => item.map State.sourceToCanonical) hstep.symm
+                simp [hnext]
+  · simp [hid] at hstep
+
+theorem step_exists (state : State) (raw : Instruction)
+    (hid : raw.id = state.sourceToCanonical.length)
+    (hlhs : raw.lhs < state.sourceToCanonical.length)
+    (hrhs : raw.rhs < state.sourceToCanonical.length) :
+    ∃ next, step state raw = some next := by
+  have hleft : ∃ lhs, state.sourceToCanonical[raw.lhs]? = some lhs := by
+    exact ⟨state.sourceToCanonical[raw.lhs]'hlhs, by simp⟩
+  have hright : ∃ rhs, state.sourceToCanonical[raw.rhs]? = some rhs := by
+    exact ⟨state.sourceToCanonical[raw.rhs]'hrhs, by simp⟩
+  obtain ⟨lhs, hleft⟩ := hleft
+  obtain ⟨rhs, hright⟩ := hright
+  unfold step
+  simp [hid, hleft, hright]
+  cases findKey (raw.multiply, min lhs rhs, max lhs rhs) state.keys <;>
+    simp
+
 theorem fold_keys_match (instructions : List Instruction)
     (state next : State) (hvalid : state.keysMatchInstructions)
     (hfold : instructions.foldlM step state = some next) :
@@ -227,6 +270,50 @@ theorem fold_keys_match (instructions : List Instruction)
           exact ih middle (step_keys_match state middle instruction hvalid hstep)
             (by simpa [hstep] using hfold)
 
+theorem fold_source_length (instructions : List Instruction)
+    (state next : State)
+    (hfold : instructions.foldlM step state = some next) :
+    next.sourceToCanonical.length =
+      state.sourceToCanonical.length + instructions.length := by
+  induction instructions generalizing state with
+  | nil =>
+      have hsame : state = next := by simpa using hfold
+      subst next
+      simp
+  | cons instruction rest ih =>
+      simp only [List.foldlM_cons] at hfold
+      cases hstep : step state instruction with
+      | none => simp [hstep] at hfold
+      | some middle =>
+          have htail := ih middle (by simpa [hstep] using hfold)
+          have hhead := step_source_length state middle instruction hstep
+          simp only [List.length_cons]
+          omega
+
+/-- Positional SSA well-formedness independent of any particular input. -/
+def validScheduleFrom : Nat → List Instruction → Prop
+  | _, [] => True
+  | nextId, instruction :: rest =>
+      instruction.id = nextId ∧
+      instruction.lhs < nextId ∧ instruction.rhs < nextId ∧
+      validScheduleFrom (nextId + 1) rest
+
+theorem fold_exists_of_valid (instructions : List Instruction)
+    (state : State)
+    (hvalid : validScheduleFrom state.sourceToCanonical.length instructions) :
+    ∃ final, instructions.foldlM step state = some final := by
+  induction instructions generalizing state with
+  | nil => exact ⟨state, rfl⟩
+  | cons instruction rest ih =>
+      obtain ⟨hid, hlhs, hrhs, hrest⟩ := hvalid
+      obtain ⟨middle, hstep⟩ := step_exists state instruction hid hlhs hrhs
+      have hlength := step_source_length state middle instruction hstep
+      have hvalidRest :
+          validScheduleFrom middle.sourceToCanonical.length rest := by
+        simpa [hlength] using hrest
+      obtain ⟨final, hfinal⟩ := ih middle hvalidRest
+      exact ⟨final, by simp [List.foldlM_cons, hstep, hfinal]⟩
+
 /-- A bounded compact DAG for one-input SSA. The upper bound matches the
 currently proved direct-gate text-byte fragment. -/
 def optimize (raw : Certificate) : Option Certificate := do
@@ -234,6 +321,29 @@ def optimize (raw : Certificate) : Option Certificate := do
   let state ← raw.instructions.foldlM step {}
   let output ← state.sourceToCanonical[raw.output]?
   return { instructions := state.instructions, output }
+
+def validCertificate (raw : Certificate) : Prop :=
+  raw.instructions.length ≤ 16 ∧
+  validScheduleFrom 1 raw.instructions ∧
+  raw.output < raw.instructions.length + 1
+
+/-- The structural optimizer is total for every bounded, fresh,
+backward-referencing positional SSA with a bound output. -/
+theorem optimize_exists_of_valid (raw : Certificate)
+    (hvalid : validCertificate raw) :
+    ∃ compact, optimize raw = some compact := by
+  obtain ⟨hcount, hschedule, houtput⟩ := hvalid
+  obtain ⟨state, hfold⟩ :=
+    fold_exists_of_valid raw.instructions ({} : State) hschedule
+  have hlength := fold_source_length raw.instructions ({} : State) state hfold
+  have hbound : raw.output < state.sourceToCanonical.length := by
+    simpa [hlength, Nat.add_comm] using houtput
+  have hlookup : ∃ output, state.sourceToCanonical[raw.output]? = some output := by
+    exact ⟨state.sourceToCanonical[raw.output]'hbound, by simp⟩
+  obtain ⟨output, hlookup⟩ := hlookup
+  unfold optimize
+  have hsmall : ¬raw.instructions.length > 16 := by omega
+  simp [hsmall, hfold, hlookup]
 
 /-- Independently reconstruct both expanded expression trees. It fails
 closed if either positional program is malformed or the optimizer changed
