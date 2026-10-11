@@ -34,6 +34,7 @@ from export_s31_direct_gate_bytecode_arithmetic import (
     render_circle_factor as render_bytecode_circle_factor,
     render_pcs_opening_link as render_bytecode_pcs_opening_link,
     render_base_vm as render_bytecode_base_vm,
+    render_ext_vm as render_bytecode_ext_vm,
     check_pcs_opening_source_contract,
 )
 from export_s31_direct_gate_evaluator_fixture import (
@@ -260,6 +261,10 @@ def main() -> None:
                           "GeneratedDirectGateBaseVm.lean")
         if render_bytecode_base_vm(honest) != base_vm_golden.read_text():
             raise AssertionError("installed Gate base VM differs from checked Lean export")
+        ext_vm_golden = (REPO / "formal/s31/S31/Gadgets/Air/"
+                         "GeneratedDirectGateExtVm.lean")
+        if render_bytecode_ext_vm(honest) != ext_vm_golden.read_text():
+            raise AssertionError("installed Gate extension VM differs from checked Lean export")
         logup_golden = (REPO / "formal/s31/S31/Gadgets/Air/"
                         "GeneratedDirectGateBytecodeLogUp.lean")
         if render_bytecode_logup(honest) != logup_golden.read_text():
@@ -489,6 +494,7 @@ def main() -> None:
             "evaluator_fixture_matches_checked_package": True,
             "installed_gate_bytecode_arithmetic_matches_checked_package": True,
             "installed_gate_base_vm_matches_checked_package": True,
+            "installed_gate_extension_vm_matches_checked_package": True,
             "installed_gate_bytecode_logup_matches_checked_package": True,
             "installed_gate_composition_matches_checked_package": True,
             "installed_gate_transcript_params_match_checked_package": True,

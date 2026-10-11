@@ -491,6 +491,164 @@ def render_base_vm(package: Path) -> str:
     return "\n".join(lines)
 
 
+def check_ext_vm_source_contract(verifier: str) -> None:
+    """Pin the unique active extension loop, including writes after switch."""
+    source = active_zig_source(verifier)
+    functions = list(re.finditer(r"\bfn\s+evaluateProgram\s*\(", source))
+    require(len(functions) == 1, "native Gate extension opcode source contract changed")
+    function, _ = braced_body(source, source.find("{", functions[0].end()))
+    loops = list(re.finditer(
+        r"\bfor\s*\(\s*program\.ext_insts\s*\)\s*\|\s*instruction\s*\|\s*\{",
+        function))
+    require(len(loops) == 1, "native Gate extension opcode source contract changed")
+    loop, _ = braced_body(function, loops[0].end() - 1)
+    expected = """extension[instruction.dst] = switch (instruction.op) {
+                .secure_col => QM31.fromPartialEvals(.{
+                    base[instruction.a],
+                    base[instruction.b],
+                    base[instruction.c],
+                    base[instruction.d],
+                }),
+                .param => ext_params[instruction.a],
+                .constant => QM31.fromU32Unchecked(
+                    instruction.a,
+                    instruction.b,
+                    instruction.c,
+                    instruction.d,
+                ),
+                .add => extension[instruction.a].add(extension[instruction.b]),
+                .sub => extension[instruction.a].sub(extension[instruction.b]),
+                .mul => extension[instruction.a].mul(extension[instruction.b]),
+                .neg => extension[instruction.a].neg(),
+            };
+            if (std.process.hasEnvVarConstant("STWO_ZIG_SN2_LOG_VERIFIER_LOGUP_INPUTS") and
+                self.captured.random_coefficient_offset == 0 and
+                (instruction.op == .secure_col or instruction.op == .param))
+            {
+                std.debug.print(
+                    "verifier_logup_ext op={s} dst={} slot={} value={any}\\n",
+                    .{ @tagName(instruction.op), instruction.dst, instruction.a, qm31Words(extension[instruction.dst]) },
+                );
+            }"""
+    require(re.sub(r"\s+", "", loop) ==
+            re.sub(r"\s+", "", active_zig_source(expected)),
+            "native Gate extension opcode source contract changed")
+
+
+def render_ext_vm(package: Path) -> str:
+    """Reflect selected extension opcodes 9–96 into Lean QM31 interpreter."""
+    checked = check_package(package)
+    base, extension, roots = decoded_program(gate_program(BUNDLE.read_bytes()))
+    require(roots[-2:] == (88, 96), "selected Gate LogUp roots changed")
+    verifier = (ROOT / "deps/stwo-zig/src/frontends/cairo/witness/resident_verifier.zig").read_text()
+    check_ext_vm_source_contract(verifier)
+    used_base = sorted({slot for op, _, _, a, b, c, d in extension[9:]
+                        if op == 0 for slot in (a, b, c, d)})
+    require(used_base == [*range(4, 20), 25, *range(122, 134)],
+            "selected extension base dependencies changed")
+    base_reads = []
+    for index in used_base:
+        op, tree, _dst, a, _b, imm = base[index]
+        if op == 3:
+            require(index == 25 and a == 0, "selected extension zero register changed")
+            expression = "0"
+        else:
+            require(op == 0, "selected extension base register is not a read")
+            if tree == 0:
+                require(imm == 0, "shifted fixed read in extension")
+                expression = f"cells.localFixed {a}"
+            elif tree == 1:
+                require(imm == 0, "shifted main read in extension")
+                expression = f"cells.main {a}"
+            else:
+                require(tree == 2 and imm in (0, -1), "unsupported interaction read")
+                expression = (f"cells.previousInteraction {a}" if imm == -1
+                              else f"cells.interaction {a}")
+        base_reads.append(f"  | {index} => {expression}")
+    op_names = {3: "add", 4: "sub", 5: "mul"}
+    instructions = []
+    for op, _reserved, dst, a, b, c, d in extension[9:]:
+        if op == 0:
+            operation = f".secure {a} {b} {c} {d}"
+        elif op == 1:
+            operation = f".param {a}"
+        elif op == 2:
+            require(b == c == d == 0, "selected extension constant is nonbase")
+            operation = f".constant {a}"
+        elif op in op_names:
+            operation = f".{op_names[op]} {a} {b}"
+        else:
+            require(op == 6, "unsupported selected extension opcode")
+            operation = f".neg {a}"
+        instructions.append(f"  ⟨{dst}, {operation}⟩")
+    lines = [
+        "-- Generated from checked STWZEVA/1 Gate extension instructions 9–96.",
+        f"-- Bundle SHA-256: {AIR_BUNDLE_SHA256}",
+        f"-- Gate program SHA-256: {GATE_PROGRAM_SHA256}",
+        f"-- Source SHA-256: {checked['source_sha256']}",
+        "-- Native extension loop is source checked; Zig execution remains external.",
+        "import S31.Gadgets.Air.GeneratedDirectGateBytecodeLogUp", "",
+        "namespace S31.Gadgets.Air.GeneratedDirectGateExtVm", "",
+        "open S31.Gadgets.Air.DirectGateOodsArithmetic", "",
+        "open S31.Gadgets.Air.DirectGateOodsLogUp", "",
+        "set_option maxRecDepth 2048",
+        "set_option maxHeartbeats 3000000", "",
+        "inductive ExtOp where",
+        "  | secure (a b c d : Nat)",
+        "  | param (slot : Nat)",
+        "  | constant (value : Nat)",
+        "  | add (left right : Nat)",
+        "  | sub (left right : Nat)",
+        "  | mul (left right : Nat)",
+        "  | neg (source : Nat)", "",
+        "structure Instruction where",
+        "  dst : Nat",
+        "  op : ExtOp", "",
+        "def baseRead (cells : Cells) : Nat → QM",
+        *base_reads,
+        "  | _ => 0", "",
+        "def paramRead (alpha z claimedScaled : QM) : Nat → QM",
+        "  | 0 => alpha ^ 1",
+        "  | 1 => alpha ^ 2",
+        "  | 2 => alpha ^ 3",
+        "  | 3 => alpha ^ 4",
+        "  | 4 => alpha ^ 5",
+        "  | 5 => z",
+        "  | 6 => claimedScaled",
+        "  | _ => 0", "",
+        "def execute (cells : Cells) (alpha z claimedScaled : QM)",
+        "    (registers : Nat → QM) (instruction : Instruction) : Nat → QM :=",
+        "  let value := match instruction.op with",
+        "    | .secure a b c d => fromPartialEvals",
+        "        (baseRead cells a) (baseRead cells b)",
+        "        (baseRead cells c) (baseRead cells d)",
+        "    | .param slot => paramRead alpha z claimedScaled slot",
+        "    | .constant n => (n : QM)",
+        "    | .add left right => registers left + registers right",
+        "    | .sub left right => registers left - registers right",
+        "    | .mul left right => registers left * registers right",
+        "    | .neg source => -registers source",
+        "  fun index => if index == instruction.dst then value else registers index", "",
+        "def extensionProgram : List Instruction := [",
+        ",\n".join(instructions),
+        "]", "",
+        "def logupRoots (cells : Cells) (alpha z claimedScaled : QM) : QM × QM :=",
+        "  let registers := extensionProgram.foldl",
+        "    (execute cells alpha z claimedScaled) (fun _ => 0)",
+        "  (registers 88, registers 96)", "",
+        "/-- The interpreted selected extension suffix yields exactly the two",
+        "source-bound LogUp roots at arbitrary QM31 OODS cells. -/",
+        "theorem logupRoots_eq_generated (cells : Cells)",
+        "    (alpha z claimedScaled : QM) :",
+        "    logupRoots cells alpha z claimedScaled =",
+        "      GeneratedDirectGateBytecodeLogUp.bytecodeLogup cells alpha z claimedScaled := by",
+        "  simp [logupRoots, extensionProgram, execute, baseRead, paramRead,",
+        "    GeneratedDirectGateBytecodeLogUp.bytecodeLogup]", "",
+        "end S31.Gadgets.Air.GeneratedDirectGateExtVm", "",
+    ]
+    return "\n".join(lines)
+
+
 def render_logup(package: Path) -> str:
     """Emit the selected two QM31 LogUp roots from the same pinned program."""
     checked = check_package(package)
@@ -1265,6 +1423,8 @@ def main() -> None:
                         help="also regenerate the conditional PCS opening link")
     parser.add_argument("--base-vm-output", type=Path,
                         help="also regenerate the selected Gate base opcode interpreter")
+    parser.add_argument("--ext-vm-output", type=Path,
+                        help="also regenerate the selected Gate extension opcode interpreter")
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
     result = render(args.package)
@@ -1282,6 +1442,7 @@ def main() -> None:
     pcs_opening = (render_pcs_opening_link(args.package)
                    if args.pcs_opening_output is not None else None)
     base_vm = render_base_vm(args.package) if args.base_vm_output is not None else None
+    ext_vm = render_ext_vm(args.package) if args.ext_vm_output is not None else None
     if args.check:
         if not args.output.is_file() or args.output.read_text() != result:
             raise SystemExit("installed Gate bytecode Lean export changed")
@@ -1317,6 +1478,11 @@ def main() -> None:
             args.base_vm_output.read_text() != base_vm
         ):
             raise SystemExit("installed Gate base VM Lean export changed")
+        if ext_vm is not None and (
+            not args.ext_vm_output.is_file() or
+            args.ext_vm_output.read_text() != ext_vm
+        ):
+            raise SystemExit("installed Gate extension VM Lean export changed")
     else:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(result)
@@ -1344,6 +1510,9 @@ def main() -> None:
         if base_vm is not None:
             args.base_vm_output.parent.mkdir(parents=True, exist_ok=True)
             args.base_vm_output.write_text(base_vm)
+        if ext_vm is not None:
+            args.ext_vm_output.parent.mkdir(parents=True, exist_ok=True)
+            args.ext_vm_output.write_text(ext_vm)
 
 
 if __name__ == "__main__":

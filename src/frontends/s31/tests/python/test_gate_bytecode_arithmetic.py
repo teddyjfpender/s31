@@ -16,6 +16,7 @@ from export_s31_direct_gate_bytecode_arithmetic import (  # noqa: E402
     check_composition_opening_source_contract,
     check_circle_factor_source_contract,
     check_base_vm_source_contract,
+    check_ext_vm_source_contract,
     check_transcript_parameter_source_contract, check_oods_opening_source_contract,
     decoded_program, evaluate_row,
     gate_program,
@@ -249,6 +250,28 @@ class GateBytecodeArithmeticTest(unittest.TestCase):
             ValueError, "native Gate base opcode source contract changed"
         ):
             check_base_vm_source_contract(changed)
+
+    def test_ext_vm_rejects_decoy_and_post_switch_clobber(self) -> None:
+        verifier = (ROOT / "deps/stwo-zig/src/frontends/cairo/witness/"
+                    "resident_verifier.zig").read_text()
+        check_ext_vm_source_contract(verifier)
+        old = ".add => extension[instruction.a].add(extension[instruction.b])"
+        changed = verifier.replace(old,
+                                   ".add => extension[instruction.a].mul(extension[instruction.b])",
+                                   1) + f"\n// {old}\n"
+        with self.assertRaisesRegex(
+            ValueError, "native Gate extension opcode source contract changed"
+        ):
+            check_ext_vm_source_contract(changed)
+        end = ".neg => extension[instruction.a].neg(),\n            };"
+        self.assertEqual(verifier.count(end), 1)
+        clobber = verifier.replace(end,
+                                   end + "\n            extension[instruction.dst] = QM31.zero();",
+                                   1)
+        with self.assertRaisesRegex(
+            ValueError, "native Gate extension opcode source contract changed"
+        ):
+            check_ext_vm_source_contract(clobber)
 
     def test_logup_roots_over_nonbase_oods_cells(self) -> None:
         """All sampled columns may be nonbase at the verifier's OODS point."""

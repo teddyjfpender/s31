@@ -405,6 +405,17 @@ Acceptance checks the generated Lean file byte for byte. This theorem covers
 the selected arithmetic prefix; registers 122–133, extension opcodes, actual
 Zig execution, and proof authentication remain separate correspondence work.
 
+[`GeneratedDirectGateExtVm.lean`](../../../formal/s31/S31/Gadgets/Air/GeneratedDirectGateExtVm.lean)
+reflects installed extension instructions 9–96, the suffix that computes the
+two LogUp roots. Its QM31 interpreter executes secure-column assembly,
+challenge parameters, constants, arithmetic, and destination writes, then
+proves registers 88 and 96 equal `bytecodeLogup` for arbitrary OODS cells and
+challenges. The exporter checks every referenced base-register read and the
+whole native extension loop after masking comments and strings. The source
+guard rejects an arithmetic-arm decoy and a post-switch register overwrite.
+The nine arithmetic-root extension injections and native Zig execution remain
+separate from this suffix theorem.
+
 The exporter checks all selected interaction reads and the unique offset list
 derived by native `resident_geometry.componentOffsets`: columns 0–3 use
 `[0]`, while columns 4–7 use `[-1, 0]`. Its generated Lean `mask_slots` and
@@ -679,10 +690,12 @@ python3 scripts/export_s31_direct_gate_bytecode_arithmetic.py PACKAGE \
   --composition-opening-output formal/s31/S31/Gadgets/Air/GeneratedDirectGateCompositionOpening.lean \
   --circle-factor-output formal/s31/S31/Gadgets/Air/GeneratedDirectGateCircleFactor.lean \
   --pcs-opening-output formal/s31/S31/Gadgets/Air/GeneratedDirectGatePcsOpeningLink.lean \
-  --base-vm-output formal/s31/S31/Gadgets/Air/GeneratedDirectGateBaseVm.lean --check
+  --base-vm-output formal/s31/S31/Gadgets/Air/GeneratedDirectGateBaseVm.lean \
+  --ext-vm-output formal/s31/S31/Gadgets/Air/GeneratedDirectGateExtVm.lean --check
 python3 -m unittest src/frontends/s31/tests/python/test_gate_bytecode_arithmetic.py
 (cd formal/s31 && lake build S31.Gadgets.Air.GeneratedDirectGateBytecodeLogUp)
 (cd formal/s31 && lake build S31.Gadgets.Air.GeneratedDirectGateBaseVm)
+(cd formal/s31 && lake build S31.Gadgets.Air.GeneratedDirectGateExtVm)
 (cd formal/s31 && lake build S31.Gadgets.Air.DirectGateOodsMask)
 (cd formal/s31 && lake build S31.Gadgets.Air.GeneratedDirectGateComposition)
 (cd formal/s31 && lake build S31.Gadgets.Air.GeneratedDirectGateTranscriptParams)
