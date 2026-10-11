@@ -66,14 +66,17 @@ transcript version.
 Run the focused compiler tests and
 [`arithmetic_chip_input.py`](../../../src/frontends/s31/tests/acceptance/mixed_boundary/arithmetic_chip_input.py)
 after the paired timing study releases CPU capacity. The native script checks
-both source fixtures, an independent M31 integer oracle, source-derived
-manifest hashes and address fan-out, honest proofs, changed public words and
-assignments, every claimed-sum slot, a compensated sum pair, proof corruption,
-a changed source with resealed statement identities, and a dead-call build
-rejection. Unit tests compare witness values at the four constrained ports,
+both source fixtures and all four admitted arithmetic feeder operators, an
+independent M31 integer oracle, source-derived manifest hashes and address
+fan-out, honest proofs, changed public words and assignments, every claimed-sum
+slot, a compensated sum pair, proof corruption, a semantics-preserving source
+change with resealed statement and proof-envelope identities, and a dead-call
+build rejection. Unit tests compare witness values at the four constrained ports,
 the witness and topology maps, one producer per port, and exact multiplicity
-two for the shared fork ports. Review must additionally confirm unchanged
-proof bytes for the prior one-to-eight source family.
+two for the shared fork ports. The
+[old-family proof-byte gate](../../../src/frontends/s31/tests/acceptance/mixed_boundary/PROOF_BYTE_COMPATIBILITY.md)
+must additionally confirm unchanged proof bytes for the prior one-to-eight
+source family; no frozen baseline exists yet.
 
 These tests do not discharge the proof-system assumptions: the selected AIR
 must constrain every Gate and chip row and its claimed LogUp fractions; the
