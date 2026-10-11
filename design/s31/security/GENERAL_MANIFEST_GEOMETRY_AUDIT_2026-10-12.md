@@ -5,7 +5,9 @@ source-rebuilt native geometry: `tree_lifting_log_sizes`,
 `mask_points_sha256`, and `local_air_dependency_sha256`. The selected-schedule
 digest already covers these facts. Publishing them lets an auditor see which
 PCS tree heights, mask-point schedule, and local chip/bridge AIR dependency
-closure the verifier reconstructed. It does not change the proof envelope,
+set the verifier reconstructed. The dependency digest covers seven registered
+local AIR source files in a fixed order; it is not a transitive import hash.
+It does not change the proof envelope,
 the registry-manifest digest, or the native transcript.
 
 The independent acceptance checker verifies that each tree height agrees
