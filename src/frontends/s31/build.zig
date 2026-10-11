@@ -187,8 +187,8 @@ pub fn build(b: *std.Build) void {
     const mixed_n4_witness_tests = b.addRunArtifact(b.addTest(.{ .root_module = bounded_binding_root, .filters = &.{"mixed N4 witness audit"} }));
     b.step("test-mixed-n4-witness", "Audit source-bound N4 circuit, chip, and bridge base handoffs without proving")
         .dependOn(&mixed_n4_witness_tests.step);
-    const mixed_trace_correspondence_tests = b.addRunArtifact(b.addTest(.{ .root_module = bounded_binding_root, .filters = &.{"mixed N1 and N8 source witness"} }));
-    b.step("test-mixed-trace-correspondence", "Check exact N1/N8 source-to-native chip and bridge base rows")
+    const mixed_trace_correspondence_tests = b.addRunArtifact(b.addTest(.{ .root_module = bounded_binding_root, .filters = &.{"mixed N1 and N8 source base rows and proof envelope"} }));
+    b.step("test-mixed-trace-correspondence", "Check exact N1/N8 native base rows and verified proof envelopes")
         .dependOn(&mixed_trace_correspondence_tests.step);
     const mixed_native_tests = b.addRunArtifact(b.addTest(.{ .root_module = bounded_binding_root, .filters = &.{"mixed sealed N3 native"} }));
     b.step("test-mixed-native", "Prove and verify source-pinned mixed N3 native envelopes")

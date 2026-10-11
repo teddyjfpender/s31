@@ -23,7 +23,16 @@ It independently calculates each field recurrence and checks:
    tuples match the boundary words.
 4. The circuit base trace's eight public output words match an independent
    calculation of the final `sum` and `product` nodes.
+5. The production mixed package proves these exact source bytes, and its
+   embedded-source native verifier accepts the serialized proof with the eight
+   independently calculated public words. The proof header carries the same
+   source digest, generated registry manifest digest, and circuit identity as
+   the reconstructed schedule.
+6. Changing any one of those three header digests, the interaction nonce, a
+   claimed-sum byte, a proof-body byte, a public word, or the embedded source
+   causes native verification to reject the proof.
 
-This is a concrete witness construction check for two source fixtures. It
-does not inspect committed proof bytes, prove that the AIR authenticates the
-base trace, or establish compiler correspondence for arbitrary programs.
+This joins a concrete base-trace construction check to a serialized proof and
+native verifier for two fixtures. It does not extract committed polynomial
+values from the proof, establish AIR soundness independently of the Stwo
+engine, or prove compiler correspondence for arbitrary programs.

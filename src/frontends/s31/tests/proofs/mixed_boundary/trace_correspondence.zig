@@ -1,9 +1,9 @@
 //! Concrete N=1/N=8 source-to-native-base-trace fixture.
 //!
 //! These are the same base writers called by general_package.proveSealed via
-//! direct_mixed_general_arithmetic.proveSourceBound. This test checks witness
-//! construction, not a proof commitment, LogUp collision bound, or a general
-//! compiler correspondence theorem.
+//! direct_mixed_general_arithmetic.proveSourceBound. The fixture also proves
+//! and verifies the exact pinned sources, then changes proof-envelope fields.
+//! It does not establish a general compiler correspondence theorem.
 const std = @import("std");
 const core = @import("stwo_core");
 const circuit = @import("stwo_circuit_frontend");
@@ -12,10 +12,20 @@ const relation = @import("../../../language/relation.zig");
 const binding = @import("../../../runtime/bounded_compiled_binding.zig");
 const mixed = @import("../../../runtime/mixed_boundary/inspection.zig");
 const family = @import("../../../runtime/mixed_boundary/test_source.zig");
+const package = @import("../../../runtime/mixed_boundary/general_package.zig");
 
 const M31 = core.fields.m31.M31;
 const QM31 = core.fields.qm31.QM31;
 const p = core.fields.m31.Modulus;
+
+fn pinnedSource(comptime count: usize) []const u8 {
+    const original = family.forCount(count);
+    const old = "\"name\":\"mixed_descriptor_matrix\"";
+    const at = comptime std.mem.indexOf(u8, original, old) orelse @compileError("missing fixture name");
+    return original[0..at] ++
+        std.fmt.comptimePrint("\"name\":\"mixed_general_{d}\"", .{count}) ++
+        original[at + old.len ..];
+}
 
 fn step(words: *[4]u32, constant: u32) void {
     for (words) |*word|
@@ -58,16 +68,8 @@ fn rejectChangedBridgeRow(columns: anytype, addresses: [8]u32, expected: [8]u32)
 
 fn fixture(comptime count: usize) !void {
     const allocator = std.testing.allocator;
-    // The reusable Zig family has a different name. Replace only that field
-    // to match the exact canonical bytes used by the Python N1/N8 fixture.
-    const source = try std.mem.replaceOwned(
-        u8,
-        allocator,
-        family.forCount(count),
-        "\"name\":\"mixed_descriptor_matrix\"",
-        comptime std.fmt.comptimePrint("\"name\":\"mixed_general_{d}\"", .{count}),
-    );
-    defer allocator.free(source);
+    // These compile-time bytes are also the embedded verifier authority below.
+    const source = comptime pinnedSource(count);
     const expected_source_sha256 = if (count == 1)
         "8c5296ef964e3be770e442cd28b66eed3051e210bdd6a97e265a4cd2c5962f75"
     else
@@ -195,9 +197,61 @@ fn fixture(comptime count: usize) !void {
         }
     }
     if (!std.meta.eql(state, final)) return error.WrongFixtureFinal;
+
+    // Prove through the production package after checking the exact base
+    // writers. Its engine consumes the same compiler witness and source-bound
+    // plan; the native verifier rebuilds the plan and manifest from `source`.
+    const proof_allocator = std.heap.smp_allocator;
+    const sealed = try package.proveSealedAndInspect(proof_allocator, source, air_bytes, assignment.value);
+    defer proof_allocator.free(sealed.bytes);
+    if (!std.meta.eql(selected, sealed.inspection.schedule)) return error.WrongProofSchedule;
+    const words = sum ++ product;
+    const verified = try package.verifyEmbeddedAndInspect(source, air_bytes, proof_allocator, words, sealed.bytes);
+    if (!std.meta.eql(verified.schedule, selected) or
+        !std.meta.eql(verified.registry_manifest_sha256, sealed.inspection.registry_manifest_sha256) or
+        !std.meta.eql(verified.circuit_identity_sha256, sealed.inspection.circuit_identity_sha256))
+        return error.WrongVerifiedSchedule;
+
+    const magic = "S31MIX07";
+    const source_at = magic.len + 4;
+    const manifest_at = source_at + 32;
+    const identity_at = manifest_at + 32;
+    const nonce_at = identity_at + 32;
+    const sums_at = nonce_at + 8;
+    const proof_at = sums_at + 16 * selected.slot_count;
+    if (sealed.bytes.len <= proof_at or
+        !std.mem.eql(u8, sealed.bytes[0..magic.len], magic) or
+        sealed.bytes[magic.len] != count or
+        sealed.bytes[magic.len + 1] != selected.slot_count or
+        !std.mem.eql(u8, sealed.bytes[source_at..manifest_at], &selected.source_sha256) or
+        !std.mem.eql(u8, sealed.bytes[manifest_at..identity_at], &verified.registry_manifest_sha256) or
+        !std.mem.eql(u8, sealed.bytes[identity_at..nonce_at], &verified.circuit_identity_sha256))
+        return error.WrongProofEnvelope;
+
+    // Every mutation must fail native verification under the same embedded
+    // source and public statement. The proof-body flip exercises decoding or
+    // cryptographic verification, rather than only the envelope preflight.
+    for ([_]usize{ source_at, manifest_at, identity_at, nonce_at, sums_at, sealed.bytes.len - 1 }) |at| {
+        const changed = try proof_allocator.dupe(u8, sealed.bytes);
+        defer proof_allocator.free(changed);
+        changed[at] ^= 1;
+        if (package.verifyEmbedded(source, air_bytes, proof_allocator, words, changed)) |_| {
+            return error.AcceptedChangedProofByte;
+        } else |_| {}
+    }
+    var changed_words = words;
+    changed_words[0] = (changed_words[0] + 1) % p;
+    if (package.verifyEmbedded(source, air_bytes, proof_allocator, changed_words, sealed.bytes)) |_| {
+        return error.AcceptedChangedPublicWord;
+    } else |_| {}
+    // A different embedded source with the same recurrence still has a
+    // different source digest, manifest, and verifier circuit identity.
+    if (package.verifyEmbedded(family.forCount(count), air_bytes, proof_allocator, words, sealed.bytes)) |_| {
+        return error.AcceptedChangedEmbeddedSource;
+    } else |_| {}
 }
 
-test "mixed N1 and N8 source witness matches native bridge and chip base rows" {
+test "mixed N1 and N8 source base rows and proof envelope match native verification" {
     try fixture(1);
     try fixture(8);
 }
