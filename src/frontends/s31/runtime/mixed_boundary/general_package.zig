@@ -233,6 +233,24 @@ pub fn verifyEmbeddedWithDescriptor(
     _ = try verifySourceBound(allocator, source, air_bytes, public_words, raw);
 }
 
+/// Expensive, opt-in full-witness sidecar audit for a proof admitted by the
+/// embedded-source verifier. The caller supplies the private assignment; the
+/// audit reconstructs and binds its fixed/main/interaction traces to the
+/// verified proof roots. Ordinary succinct verification does not require or
+/// reveal this assignment.
+pub fn verifyEmbeddedWithTraceAudit(
+    comptime source: []const u8,
+    comptime air_bytes: []const u8,
+    allocator: std.mem.Allocator,
+    public_words: [8]u32,
+    raw: []const u8,
+    assignment: relation.Assignment,
+) !engine.TraceAudit {
+    var audit: engine.TraceAudit = undefined;
+    _ = try verifySourceBoundWithWitness(allocator, source, air_bytes, public_words, raw, assignment, &audit);
+    return audit;
+}
+
 fn verifySourceBound(
     allocator: std.mem.Allocator,
     source: []const u8,
@@ -240,6 +258,19 @@ fn verifySourceBound(
     public_words: [8]u32,
     raw: []const u8,
 ) !Inspection {
+    return verifySourceBoundWithWitness(allocator, source, air_bytes, public_words, raw, null, null);
+}
+
+fn verifySourceBoundWithWitness(
+    allocator: std.mem.Allocator,
+    source: []const u8,
+    air_bytes: []const u8,
+    public_words: [8]u32,
+    raw: []const u8,
+    assignment: ?relation.Assignment,
+    audit: ?*engine.TraceAudit,
+) !Inspection {
+    if ((assignment == null) != (audit == null)) return error.InvalidMixedTraceAuditRequest;
     if (raw.len < fixed_header_len or raw.len > max_wire_bytes or
         !std.mem.eql(u8, raw[0..magic.len], magic) or
         raw[magic.len] == 0 or raw[magic.len] > engine.max_calls or
@@ -307,22 +338,43 @@ fn verifySourceBound(
     var stark = try postcard.deserializeProof(H, bounded.allocator(), stream.reader());
     defer stark.deinit(bounded.allocator());
     if (stream.pos != raw.len - at) return error.InvalidMixedNativeEnvelope;
-    try engine.verifySourceBoundBorrowed(
-        allocator,
-        circuit.common.preprocessed.CircuitView.fromBuilder(&compiled.circuit),
-        source,
-        air_bytes,
-        &selected,
-        public_words,
-        .{
-            .output_values = &outputs,
-            .interaction_pow_nonce = nonce,
-            .claimed_sums = sums,
-            .sum_count = schedule.slot_count,
-            .stark_proof = &stark,
-            .circuit_hash = identity,
-        },
-    );
+    const borrowed: engine.BorrowedProof = .{
+        .output_values = &outputs,
+        .interaction_pow_nonce = nonce,
+        .claimed_sums = sums,
+        .sum_count = schedule.slot_count,
+        .stark_proof = &stark,
+        .circuit_hash = identity,
+    };
+    const view = circuit.common.preprocessed.CircuitView.fromBuilder(&compiled.circuit);
+    if (assignment) |witness_assignment| {
+        var program = try relation.parseProgram(allocator, source);
+        defer program.deinit();
+        const evaluated = try relation.evaluate(allocator, program.value, witness_assignment);
+        if (!std.meta.eql(evaluated, public_words)) return error.InvalidMixedTraceAuditPublic;
+        var witness = try binding.compileManyWitness(allocator, source, witness_assignment, topology);
+        defer witness.deinit();
+        audit.?.* = try engine.auditVerifiedSourceBoundWitness(
+            allocator,
+            view,
+            witness.values(),
+            source,
+            air_bytes,
+            &selected,
+            public_words,
+            borrowed,
+        );
+    } else {
+        try engine.verifySourceBoundBorrowed(
+            allocator,
+            view,
+            source,
+            air_bytes,
+            &selected,
+            public_words,
+            borrowed,
+        );
+    }
     return .{ .schedule = schedule, .registry_manifest_sha256 = selected.manifest_sha256, .circuit_identity_sha256 = identity };
 }
 
@@ -389,6 +441,88 @@ test "mixed general sealed native proofs authenticate one through eight source c
             return error.AcceptedChangedGeneralMixedPublicWord;
         } else |_| {}
     }
+}
+
+test "mixed general witness sidecar binds verified roots" {
+    const allocator = std.heap.smp_allocator;
+    const air_bytes = @embedFile("s31_air_programs");
+    const p: u64 = core.fields.m31.Modulus;
+    inline for (.{ 1, 8 }) |count| {
+        const source = comptime @import("test_source.zig").forCount(count);
+        const initial = [4]u32{ 1, 2, 3, 4 };
+        var final = initial;
+        for (0..count) |id| for (0..16) |_| {
+            for (&final) |*word|
+                word.* = @intCast((@as(u64, word.*) * word.* + 13 + id) % p);
+        };
+        var sum: [4]u32 = undefined;
+        var product: [4]u32 = undefined;
+        for (initial, final, &sum, &product) |start, end, *s, *m| {
+            s.* = @intCast((@as(u64, start) + end) % p);
+            m.* = @intCast((@as(u64, start) * end) % p);
+        }
+        const bytes = try std.fmt.allocPrint(allocator, "{{\"public_inputs\":{{}},\"private_inputs\":{{\"x\":[1,2,3,4]}},\"public_outputs\":{{\"sum\":[{d},{d},{d},{d}],\"product\":[{d},{d},{d},{d}]}}}}", .{ sum[0], sum[1], sum[2], sum[3], product[0], product[1], product[2], product[3] });
+        defer allocator.free(bytes);
+        var assignment = try relation.parseAssignment(allocator, bytes);
+        defer assignment.deinit();
+        const words = [8]u32{ sum[0], sum[1], sum[2], sum[3], product[0], product[1], product[2], product[3] };
+        const sealed = try proveSealedAndInspect(allocator, source, air_bytes, assignment.value);
+        defer allocator.free(sealed.bytes);
+        const audit = try verifyEmbeddedWithTraceAudit(source, air_bytes, allocator, words, sealed.bytes, assignment.value);
+        try std.testing.expectEqual(sealed.inspection.schedule.fixed_root, audit.fixed_root);
+        try std.testing.expectEqual(@as(usize, 512), audit.circuit_rows);
+        try std.testing.expectEqual(@as(usize, 16 * count), audit.chip_rows);
+        try std.testing.expectEqual(@as(usize, 16 * count), audit.bridge_rows);
+
+        // The same verified proof cannot certify a changed private assignment.
+        const changed = try std.mem.replaceOwned(u8, allocator, bytes, "\"x\":[1,2,3,4]", "\"x\":[1,2,3,5]");
+        defer allocator.free(changed);
+        var other = try relation.parseAssignment(allocator, changed);
+        defer other.deinit();
+        if (verifyEmbeddedWithTraceAudit(source, air_bytes, allocator, words, sealed.bytes, other.value)) |_|
+            return error.AcceptedChangedMixedTraceSidecar
+        else |_| {}
+        const changed_claim = try allocator.dupe(u8, sealed.bytes);
+        defer allocator.free(changed_claim);
+        changed_claim[fixed_header_len] ^= 1;
+        if (verifyEmbeddedWithTraceAudit(source, air_bytes, allocator, words, changed_claim, assignment.value)) |_|
+            return error.AcceptedChangedMixedTraceClaim
+        else |_| {}
+    }
+}
+
+test "mixed equal-public sidecar rejects wrong private selector" {
+    const allocator = std.heap.smp_allocator;
+    const source = @embedFile("../../examples/boundary/private_selected_chip_feeder.s31.json");
+    const air_bytes = @embedFile("s31_air_programs");
+    const p: u64 = core.fields.m31.Modulus;
+    var first = [_]u32{0} ** 4;
+    for (0..16) |_| for (&first) |*word| {
+        word.* = @intCast((@as(u64, word.*) * word.* + 13) % p);
+    };
+    var second = first;
+    for (0..16) |_| for (&second) |*word| {
+        word.* = @intCast((@as(u64, word.*) * word.* + 17) % p);
+    };
+    var sum: [4]u32 = undefined;
+    for (first, second, &sum) |a, b, *word| word.* = @intCast((@as(u64, a) + b) % p);
+    const words = sum ++ second;
+    const bytes0 = try std.fmt.allocPrint(allocator, "{{\"public_inputs\":{{}},\"private_inputs\":{{\"x\":[0,0,0,0],\"y\":[1,1,1,1],\"bit\":[0]}},\"public_outputs\":{{\"sum\":[{d},{d},{d},{d}],\"product\":[{d},{d},{d},{d}]}}}}", .{ sum[0], sum[1], sum[2], sum[3], second[0], second[1], second[2], second[3] });
+    defer allocator.free(bytes0);
+    const bytes1 = try std.mem.replaceOwned(u8, allocator, bytes0, "\"bit\":[0]", "\"bit\":[1]");
+    defer allocator.free(bytes1);
+    var parsed0 = try relation.parseAssignment(allocator, bytes0);
+    defer parsed0.deinit();
+    var parsed1 = try relation.parseAssignment(allocator, bytes1);
+    defer parsed1.deinit();
+    var program = try relation.parseProgram(allocator, source);
+    defer program.deinit();
+    try std.testing.expectEqualDeep(words, try relation.evaluate(allocator, program.value, parsed0.value));
+    try std.testing.expectEqualDeep(words, try relation.evaluate(allocator, program.value, parsed1.value));
+    const sealed = try proveSealedAndInspect(allocator, source, air_bytes, parsed0.value);
+    defer allocator.free(sealed.bytes);
+    _ = try verifyEmbeddedWithTraceAudit(source, air_bytes, allocator, words, sealed.bytes, parsed0.value);
+    try std.testing.expectError(error.InvalidMixedTraceAuditMainRoot, verifyEmbeddedWithTraceAudit(source, air_bytes, allocator, words, sealed.bytes, parsed1.value));
 }
 
 test "mixed selected feeder native proof binds both private bit branches" {

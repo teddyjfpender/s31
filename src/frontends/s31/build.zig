@@ -228,6 +228,18 @@ pub fn build(b: *std.Build) void {
     const mixed_general_native_tests = b.addRunArtifact(b.addTest(.{ .root_module = bounded_binding_root, .filters = &.{"mixed general sealed native"} }));
     b.step("test-mixed-general-native", "Prove and verify source-pinned mixed one-to-eight-call native envelopes")
         .dependOn(&mixed_general_native_tests.step);
+    const mixed_trace_audit_tests = b.addRunArtifact(b.addTest(.{ .root_module = bounded_binding_root, .filters = &.{"mixed general witness sidecar binds verified roots"} }));
+    b.step("test-mixed-trace-audit", "Verify proof roots against an opt-in full-witness mixed trace audit")
+        .dependOn(&mixed_trace_audit_tests.step);
+    const mixed_trace_mutation_tests = b.addRunArtifact(b.addTest(.{ .root_module = bounded_binding_root, .filters = &.{"mixed trace audit rejects interaction and bridge mutations"} }));
+    b.step("test-mixed-trace-mutations", "Reject changed LogUp, bit-reversed chip, bridge, and interaction rows")
+        .dependOn(&mixed_trace_mutation_tests.step);
+    const mixed_circuit_mutation_tests = b.addRunArtifact(b.addTest(.{ .root_module = bounded_binding_root, .filters = &.{"mixed trace audit checks reserved public and every gate row"} }));
+    b.step("test-mixed-circuit-mutations", "Reject changed reserved, Gate, fixed, and main cells")
+        .dependOn(&mixed_circuit_mutation_tests.step);
+    const mixed_equal_public_sidecar_tests = b.addRunArtifact(b.addTest(.{ .root_module = bounded_binding_root, .filters = &.{"mixed equal-public sidecar rejects wrong private selector"} }));
+    b.step("test-mixed-equal-public-sidecar", "Reject a different private trace with the same public result at the main root")
+        .dependOn(&mixed_equal_public_sidecar_tests.step);
     const mixed_selected_feeder_tests = b.addRunArtifact(b.addTest(.{ .root_module = bounded_binding_root, .filters = &.{"mixed selected feeder native"} }));
     b.step("test-mixed-selected-feeder", "Prove and verify both private-bit circuit-to-chip branches")
         .dependOn(&mixed_selected_feeder_tests.step);

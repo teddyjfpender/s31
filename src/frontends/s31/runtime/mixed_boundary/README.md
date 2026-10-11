@@ -238,6 +238,14 @@ endpoint values, source, component order and role, a resealed descriptor
 binding, and a claimed public output. The audit alone is not proof admission;
 `n4_package.zig` supplies the separate proof-backed N=4 path.
 
+The general package also exposes an expensive
+`verifyEmbeddedWithTraceAudit` entrypoint for an auditor with the complete
+private assignment. It verifies the proof, reconstructs the circuit/chip/bridge
+traces, checks row equations and lookup event bags, then compares recomputed
+fixed/main/interaction commitment roots with the verified proof. See
+[TRACE_AUDIT.md](TRACE_AUDIT.md) for the precise binding claim, assumptions,
+limits, and focused tests.
+
 ```sh
 zig build --build-file src/frontends/s31/build.zig test-mixed-n4-witness -Doptimize=Debug -j1
 ```
