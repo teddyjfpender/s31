@@ -12,7 +12,8 @@ import argparse
 import json
 from pathlib import Path
 
-from anchors import evaluate_heldout, fit_train, train_model_admission
+from anchors import (check_heldout_report_anchor, evaluate_heldout, fit_train,
+                     train_model_admission)
 from cohort import design
 from evidence import audit_split, build_split, prove_split
 from protocol import check
@@ -32,7 +33,8 @@ def add_train_model(parser: argparse.ArgumentParser) -> None:
 
 
 def admission(args: argparse.Namespace) -> tuple[dict, dict] | tuple[None, None]:
-    if getattr(args, "split", "train") != "heldout" and args.command != "evaluate":
+    if getattr(args, "split", "train") != "heldout" and args.command not in (
+            "evaluate", "report-check"):
         return None, None
     return train_model_admission(
         args.train_out, args.expected_protocol_sha256,
@@ -68,6 +70,13 @@ def main() -> None:
     evaluate.add_argument("--expected-heldout-phase-root-sha256", required=True)
     evaluate.add_argument("--heldout-phase-anchor-commit", required=True)
     add_train_model(evaluate)
+    report = commands.add_parser("report-check")
+    add_freeze(report)
+    report.add_argument("--heldout-out", required=True, type=Path)
+    report.add_argument("--expected-heldout-phase-root-sha256", required=True)
+    report.add_argument("--heldout-phase-anchor-commit", required=True)
+    report.add_argument("--report-anchor-commit", required=True)
+    add_train_model(report)
     args = parser.parse_args()
     check(args.expected_protocol_sha256, args.protocol_anchor_commit)
     if args.command == "fit":
@@ -76,13 +85,20 @@ def main() -> None:
                                             args.expected_train_phase_root_sha256,
                                             args.train_phase_anchor_commit)}
     else:
-        if args.command == "evaluate":
+        if args.command in ("evaluate", "report-check"):
             _, model = admission(args)
-            result = evaluate_heldout(args.heldout_out, model,
-                                      args.expected_protocol_sha256,
-                                      args.expected_heldout_phase_root_sha256,
-                                      args.heldout_phase_anchor_commit,
-                                      args.model_anchor_commit)
+            if args.command == "evaluate":
+                result = evaluate_heldout(args.heldout_out, model,
+                                          args.expected_protocol_sha256,
+                                          args.expected_heldout_phase_root_sha256,
+                                          args.heldout_phase_anchor_commit,
+                                          args.model_anchor_commit)
+            else:
+                result = check_heldout_report_anchor(
+                    args.heldout_out, model, args.expected_protocol_sha256,
+                    args.expected_heldout_phase_root_sha256,
+                    args.heldout_phase_anchor_commit, args.expected_model_sha256,
+                    args.model_anchor_commit, args.report_anchor_commit)
         else:
             if args.split == "heldout" and not all((args.train_out,
                     args.expected_train_phase_root_sha256, args.train_phase_anchor_commit,

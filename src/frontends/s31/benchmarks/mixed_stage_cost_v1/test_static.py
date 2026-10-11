@@ -8,6 +8,7 @@ import os
 import subprocess
 import tempfile
 import unittest
+from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import patch
 
@@ -116,6 +117,86 @@ class ProspectiveMixedCostTests(unittest.TestCase):
         with patch.dict(os.environ, {"ZIG_LOCAL_CACHE_DIR": "temporary-cache"}):
             self.assertEqual(zig_cache_path("ZIG_LOCAL_CACHE_DIR", Path("unused")),
                              ROOT / "temporary-cache")
+
+    def test_report_anchor_rejects_post_audit_edit(self) -> None:
+        protocol_sha, inventory_sha, compiler_sha = "p" * 64, "i" * 64, "c" * 64
+        engine_commit, model_sha = "e" * 40, "m" * 64
+        host = {"host": "test"}
+        model = fit_model(synthetic_records([1, 3, 5, 7]), protocol_sha,
+                          inventory_sha, host, compiler_sha, engine_commit)
+        records = synthetic_records([2, 4, 6, 8])
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary) / "repo"
+            out = Path(temporary) / "evidence"
+            root.mkdir()
+            out.mkdir()
+            (out / "raw.marker").write_bytes(b"retained raw phase")
+            phase_bytes = canonical(phase_root(out, "heldout", protocol_sha))
+            (out / "phase-root.json").write_bytes(phase_bytes)
+            phase_sha = sha(phase_bytes)
+            corpus = {"schema": "s31-mixed-stage-cost-v1-audited-corpus",
+                      "split": "heldout", "protocol_sha256": protocol_sha,
+                      "phase_root_sha256": phase_sha, "host": host,
+                      "compiler_sha256": compiler_sha,
+                      "engine_gitlink_commit": engine_commit,
+                      "inventory_sha256": inventory_sha, "records": records}
+            (out / "corpus.json").write_bytes(canonical(corpus))
+            audit = {"schema": "s31-mixed-stage-cost-v1-audit", "split": "heldout",
+                     "phase_root_sha256": phase_sha,
+                     "corpus_sha256": sha((out / "corpus.json").read_bytes()),
+                     "native_verified_proofs": 400,
+                     "changed_input_and_result_rejected": True}
+            (out / "audit.json").write_bytes(canonical(audit))
+            result = evaluate(model, records, protocol_sha256=protocol_sha,
+                              inventory_sha256=inventory_sha, host=host,
+                              compiler_sha256=compiler_sha,
+                              engine_gitlink_commit=engine_commit)
+            (out / "evaluation.json").write_bytes(canonical(result))
+            subprocess.run(["git", "init", "-q", str(root)], check=True)
+            for key, value in (("user.name", "S31 test"),
+                               ("user.email", "s31-test@example.invalid")):
+                subprocess.run(["git", "-C", str(root), "config", key, value], check=True)
+            directory = root / "design/s31/measurements/language"
+            directory.mkdir(parents=True)
+            timestamp = datetime.now(timezone.utc).isoformat()
+            phase_anchor = directory / "mixed-stage-cost-v1-heldout-phase-anchor.json"
+            phase_anchor.write_bytes(canonical({
+                "schema": "s31-mixed-stage-cost-v1-phase-anchor", "split": "heldout",
+                "protocol_sha256": protocol_sha, "phase_root_sha256": phase_sha,
+                "recorded_at_utc": timestamp}))
+            subprocess.run(["git", "-C", str(root), "add", "."], check=True)
+            subprocess.run(["git", "-C", str(root), "commit", "-qm", "phase anchor"],
+                           check=True)
+            phase_commit = subprocess.check_output(
+                ["git", "-C", str(root), "rev-parse", "HEAD"], text=True).strip()
+            report_anchor = directory / "mixed-stage-cost-v1-heldout-report-anchor.json"
+            report_anchor.write_bytes(canonical({
+                "schema": "s31-mixed-stage-cost-v1-heldout-report-anchor",
+                "split": "heldout", "protocol_sha256": protocol_sha,
+                "phase_root_sha256": phase_sha,
+                "phase_anchor_commit": phase_commit,
+                "model_sha256": model_sha, "model_anchor_commit": phase_commit,
+                "audit_sha256": sha((out / "audit.json").read_bytes()),
+                "corpus_sha256": sha((out / "corpus.json").read_bytes()),
+                "evaluation_sha256": sha((out / "evaluation.json").read_bytes()),
+                "recorded_at_utc": timestamp}))
+            subprocess.run(["git", "-C", str(root), "add", "."], check=True)
+            subprocess.run(["git", "-C", str(root), "commit", "-qm", "report anchor"],
+                           check=True)
+            report_commit = subprocess.check_output(
+                ["git", "-C", str(root), "rev-parse", "HEAD"], text=True).strip()
+            arguments = (out, model, protocol_sha, phase_sha, phase_commit,
+                         model_sha, phase_commit, report_commit)
+            with patch.object(anchors, "ROOT", root), patch.object(protocol, "ROOT", root):
+                self.assertTrue(anchors.check_heldout_report_anchor(*arguments)
+                                ["local_accuracy_gate_pass"])
+                for name in ("audit", "corpus", "evaluation"):
+                    path = out / f"{name}.json"
+                    saved = path.read_bytes()
+                    path.write_bytes(saved + b" ")
+                    with self.assertRaisesRegex(ValueError, "report anchor"):
+                        anchors.check_heldout_report_anchor(*arguments)
+                    path.write_bytes(saved)
 
     def test_tool_inventory_covers_transitive_oracle_and_frontend(self) -> None:
         paths = {path.relative_to(ROOT).as_posix()

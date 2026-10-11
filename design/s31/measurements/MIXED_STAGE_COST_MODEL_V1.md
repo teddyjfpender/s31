@@ -133,8 +133,18 @@ whole-prover predictor until source-shape and host transfer pass separately.
    `study.py evaluate` once with the full held-out phase-root hash and its
    committed anchor; it checks every frozen identity and reports all
    eight gates and per-program observed build accounting. Anchor the held-out
-   audit/corpus/evaluation hashes before publishing a result. Never pool the
-   prior paired study's N3/N5/N7/N8 results into this fit or interval.
+   audit/corpus/evaluation hashes before publishing a result. The committed
+   `language/mixed-stage-cost-v1-heldout-report-anchor.json` uses schema
+   `s31-mixed-stage-cost-v1-heldout-report-anchor`, split `heldout`, full
+   protocol and phase-root hashes, phase-anchor commit, full model hash and
+   model-anchor commit, SHA-256 of each of `audit.json`, `corpus.json`, and
+   `evaluation.json`, and UTC `recorded_at_utc`. Commit it after evaluation,
+   externally record its full commit ID, and run `study.py report-check` with
+   all freeze, train-model, held-out-phase and report-anchor arguments. This
+   command checks the committed chronology and exact report bytes and
+   independently recomputes the evaluation from the frozen model and audited
+   corpus. Never pool the prior paired study's N3/N5/N7/N8 results into this
+   fit or interval.
 
 Both phase starts require at least **12 GiB** free on the evidence, Zig local
 and global cache, and temporary filesystems. Every build, proof, and native

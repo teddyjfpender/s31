@@ -9,10 +9,12 @@ from pathlib import Path
 
 from cohort import ROOT, canonical, sha
 from model import evaluate, fit_model
-from protocol import committed
+from protocol import HEX40, committed
 
 
 def anchored(path: Path, commit: str, schema: str) -> dict:
+    if not HEX40.fullmatch(commit or ""):
+        raise ValueError("full externally recorded cost anchor commit required")
     committed(path, commit)
     if subprocess.run(["git", "-C", str(ROOT), "merge-base", "--is-ancestor",
                        commit, "HEAD"], check=False).returncode:
@@ -162,3 +164,77 @@ def evaluate_heldout(heldout_out: Path, model: dict, protocol_sha256: str,
         raise ValueError("held-out evaluation already exists; never re-evaluate in place")
     target.write_bytes(canonical(result))
     return result
+
+
+def check_heldout_report_anchor(heldout_out: Path, model: dict, protocol_sha256: str,
+                                phase_root_sha256: str, phase_anchor_commit: str,
+                                model_sha256: str, model_anchor_commit: str,
+                                report_anchor_commit: str) -> dict:
+    """Check the committed post-audit report seal before publishing a result."""
+    phase_path = ROOT / "design/s31/measurements/language/mixed-stage-cost-v1-heldout-phase-anchor.json"
+    phase = anchored(phase_path, phase_anchor_commit,
+                     "s31-mixed-stage-cost-v1-phase-anchor")
+    anchor_path = ROOT / "design/s31/measurements/language/mixed-stage-cost-v1-heldout-report-anchor.json"
+    anchor = anchored(anchor_path, report_anchor_commit,
+                      "s31-mixed-stage-cost-v1-heldout-report-anchor")
+    if (subprocess.run(["git", "-C", str(ROOT), "merge-base", "--is-ancestor",
+                       phase_anchor_commit, report_anchor_commit],
+                      check=False).returncode or
+            subprocess.run(["git", "-C", str(ROOT), "merge-base", "--is-ancestor",
+                            model_anchor_commit, report_anchor_commit],
+                           check=False).returncode):
+        raise ValueError("mixed cost report anchor must follow phase and model anchors")
+    phase_time = datetime.fromisoformat(phase["recorded_at_utc"].replace("Z", "+00:00"))
+    report_time = datetime.fromisoformat(anchor["recorded_at_utc"].replace("Z", "+00:00"))
+    if (phase.get("split") != "heldout" or
+            phase.get("protocol_sha256") != protocol_sha256 or
+            phase.get("phase_root_sha256") != phase_root_sha256 or
+            report_time < phase_time or
+            set(anchor) != {"schema", "split", "protocol_sha256", "phase_root_sha256",
+                            "phase_anchor_commit", "model_sha256", "model_anchor_commit",
+                            "audit_sha256", "corpus_sha256", "evaluation_sha256",
+                            "recorded_at_utc"} or
+            anchor.get("split") != "heldout" or
+            anchor.get("protocol_sha256") != protocol_sha256 or
+            anchor.get("phase_root_sha256") != phase_root_sha256 or
+            anchor.get("phase_anchor_commit") != phase_anchor_commit or
+            anchor.get("model_sha256") != model_sha256 or
+            anchor.get("model_anchor_commit") != model_anchor_commit):
+        raise ValueError("mixed cost report anchor differs from frozen phase or model")
+    from evidence import phase_root
+    root_bytes = (heldout_out / "phase-root.json").read_bytes()
+    if (sha(root_bytes) != phase_root_sha256 or
+            root_bytes != canonical(phase_root(heldout_out, "heldout", protocol_sha256))):
+        raise ValueError("mixed cost raw phase differs from report anchor")
+    files = {}
+    for name in ("audit", "corpus", "evaluation"):
+        raw = (heldout_out / f"{name}.json").read_bytes()
+        value = json.loads(raw)
+        if (raw != canonical(value) or anchor.get(f"{name}_sha256") != sha(raw)):
+            raise ValueError(f"{name} differs from committed mixed cost report anchor")
+        files[name] = value
+    audit, corpus, saved = (files[name] for name in ("audit", "corpus", "evaluation"))
+    if (audit.get("schema") != "s31-mixed-stage-cost-v1-audit" or
+            audit.get("split") != "heldout" or
+            audit.get("phase_root_sha256") != phase_root_sha256 or
+            audit.get("corpus_sha256") != anchor["corpus_sha256"] or
+            audit.get("native_verified_proofs") != 400 or
+            audit.get("changed_input_and_result_rejected") is not True or
+            corpus.get("schema") != "s31-mixed-stage-cost-v1-audited-corpus" or
+            corpus.get("split") != "heldout" or
+            corpus.get("protocol_sha256") != protocol_sha256 or
+            corpus.get("phase_root_sha256") != phase_root_sha256 or
+            saved.get("schema") != "s31-mixed-stage-cost-v1-evaluation" or
+            saved.get("protocol_sha256") != protocol_sha256 or
+            saved.get("inventory_sha256") != corpus.get("inventory_sha256")):
+        raise ValueError("mixed cost reports do not bind audited held-out corpus")
+    expected = evaluate(model, corpus["records"], protocol_sha256=protocol_sha256,
+                        inventory_sha256=corpus["inventory_sha256"], host=corpus["host"],
+                        compiler_sha256=corpus["compiler_sha256"],
+                        engine_gitlink_commit=corpus["engine_gitlink_commit"])
+    if (heldout_out / "evaluation.json").read_bytes() != canonical(expected):
+        raise ValueError("mixed cost evaluation differs from anchored model and corpus")
+    return {"schema": "s31-mixed-stage-cost-v1-report-check",
+            "report_anchor_commit": report_anchor_commit,
+            "report_anchor_sha256": sha(anchor_path.read_bytes()),
+            "local_accuracy_gate_pass": expected["local_accuracy_gate_pass"]}

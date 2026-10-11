@@ -6,7 +6,8 @@ Zig. `model.py` implements the predeclared stage fit and held-out gate.
 `protocol.py` drafts or checks the separate committed protocol freeze.
 `study.py` builds source-embedded packages, collects proofs through the
 source-bound stage diagnostic, audits saved evidence with native verifier and
-changed-claim controls, fits the training model, and evaluates held-out data.
+changed-claim controls, fits the training model, evaluates held-out data, and
+checks a separately committed held-out report anchor before publication.
 
 **Current status:** tooling and prospective design only. No protocol anchor,
 model anchor, or new timed corpus exists. `study.py` refuses native work without
