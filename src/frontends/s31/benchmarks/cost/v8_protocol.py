@@ -247,6 +247,19 @@ def require_protocol(expected_sha: str, anchor_commit: str, output: Path | None 
             "prospective_design": DESIGN["paired_mixed_vs_generic"]} or
         protocol.get("automatic_lowering_selection_enabled") is not False):
         raise ValueError("wrong or unfrozen V8 protocol")
+    baseline = json.loads((ROOT / "design/s31/measurements/whole-prover-cost-v6.json").read_bytes())
+    for key, expected in {
+        "profiles": baseline["profiles"],
+        "stage_features": baseline["stage_features"],
+        "chip_stage_features": baseline["chip_stage_features"],
+        "minimum_available_disk_bytes_before_native_phase": MIN_FREE_BYTES,
+        "pow_bits_required": 26,
+        "selection_policy": "Automatic lowering disabled; local pinned-stack prediction only",
+        "process_wrapper": "fresh prover and native verifier OS processes per trial; Python perf_counter; native runtime timers recorded separately",
+        "native_build_mode": "zig build install -Doptimize=ReleaseFast -Ds31-version=1 -Ds31-fri-fold-step=1; fresh package paths and native prover/verifier processes",
+    }.items():
+        if protocol.get(key) != expected:
+            raise ValueError(f"V8 frozen protocol changed {key}")
     anchor = committed_anchor(PROTOCOL_ANCHOR, anchor_commit,
                               "s31-whole-prover-v8-protocol-freeze")
     require_committed(PROTOCOL, anchor_commit)

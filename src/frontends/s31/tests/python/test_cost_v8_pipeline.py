@@ -55,6 +55,20 @@ class CostV8PipelineTests(unittest.TestCase):
                   self.assertRaisesRegex(ValueError, "full externally recorded protocol SHA")):
                 collector.run(args)
 
+    def test_protocol_rejects_changed_pow_policy_before_anchor_check(self):
+        with tempfile.TemporaryDirectory(prefix="s31-v8-protocol-") as directory:
+            path = Path(directory) / "protocol.json"
+            with (patch.object(v8_protocol.s31, "compiler_fingerprint", return_value="f" * 64),
+                  patch.object(v8_protocol, "host_identity", return_value={"host": "static-test"}),
+                  patch.object(v8_protocol, "tool_paths", return_value=[])):
+                protocol = v8_protocol.protocol_template()
+            protocol["pow_bits_required"] = 0
+            s31.write_json(path, protocol)
+            with (patch.object(v8_protocol, "PROTOCOL", path),
+                  patch.object(v8_protocol, "require_committed"),
+                  self.assertRaisesRegex(ValueError, "changed pow_bits_required")):
+                v8_protocol.require_protocol(s31.file_hash(path), "a" * 40)
+
     def test_rss_fit_uses_fixed_floor_and_matches_independent_prediction(self):
         records = []
         for i, rows in enumerate((16, 32, 64, 128, 256, 512)):
