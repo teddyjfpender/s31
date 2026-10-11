@@ -3,9 +3,11 @@
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
@@ -77,7 +79,13 @@ def build(source: Path, prefix: Path, *, accept: bool = True) -> tuple[Path, Pat
 
 
 def verify_rejects(verifier: Path, proof: Path, statement: Path) -> None:
-    run(str(verifier), str(proof), str(statement), accept=False)
+    result = subprocess.run((str(verifier), str(proof), str(statement)),
+                            text=True, capture_output=True, check=False, timeout=30)
+    if result.returncode == 0 or result.returncode < 0:
+        raise AssertionError(
+            f"native verifier accepted or crashed on changed proof or statement "
+            f"(exit {result.returncode}): {proof}, {statement}"
+        )
 
 
 def exercise(work: Path, count: int) -> dict:
@@ -145,6 +153,36 @@ def exercise(work: Path, count: int) -> dict:
         altered = work / f"bad-{count}-{field}.json"
         altered.write_text(json.dumps({**saved, field: value}))
         verify_rejects(verifier, proof, altered)
+    if count in (1, 3, 8):
+        for lane, original in enumerate(saved["public_words"]):
+            words = saved["public_words"].copy()
+            words[lane] = (original + 1) % MODULUS
+            altered = work / f"bad-{count}-public-word-{lane}.json"
+            altered.write_text(json.dumps({**saved, "public_words": words}))
+            verify_rejects(verifier, proof, altered)
+        # Preserve the total QM31 claimed sum while changing two individual
+        # component claims. The transcript and installed AIR claims must still
+        # reject this coordinated mutation.
+        compensated = bytearray(raw)
+        first = int.from_bytes(compensated[SUMS_OFFSET:SUMS_OFFSET + 4], "little")
+        second_at = SUMS_OFFSET + 16
+        second = int.from_bytes(compensated[second_at:second_at + 4], "little")
+        compensated[SUMS_OFFSET:SUMS_OFFSET + 4] = ((first + 1) % MODULUS).to_bytes(4, "little")
+        compensated[second_at:second_at + 4] = ((second - 1) % MODULUS).to_bytes(4, "little")
+        altered = work / f"bad-{count}-compensated-sums.bin"
+        altered.write_bytes(compensated)
+        verify_rejects(verifier, altered, statement)
+        header_end = SUMS_OFFSET + 16 * (1 + 2 * count)
+        for label, data in (
+            ("truncated-header", raw[:header_end - 1]),
+            ("truncated-postcard", raw[:-1]),
+            ("trailing-postcard", raw + b"\x00"),
+            ("malformed-postcard", raw[:header_end] + b"\xff" * 64),
+            ("oversized-wire", raw + b"\x00" * ((16 << 20) + 1 - len(raw))),
+        ):
+            altered = work / f"bad-{count}-{label}.bin"
+            altered.write_bytes(data)
+            verify_rejects(verifier, altered, statement)
     malformed = work / f"malformed-{count}.json"
     malformed.write_text(json.dumps({**saved, "unknown_field": 1}))
     verify_rejects(verifier, proof, malformed)
@@ -163,7 +201,7 @@ def exercise(work: Path, count: int) -> dict:
     invalid["public_outputs"]["sum"][0] = (invalid["public_outputs"]["sum"][0] + 1) % MODULUS
     wrong.write_text(json.dumps(invalid))
     run(str(prover), str(wrong), str(work / "bad.proof"), str(work / "bad.statement"), accept=False)
-    if count == 8:
+    if count in (1, 3, 8):
         changed_source = work / "changed-source.s31.json"
         changed_source.write_bytes(source.read_bytes() + b" ")
         _, other_verifier, other_manifest_bin = build(changed_source, work / "changed-source")
@@ -176,13 +214,31 @@ def exercise(work: Path, count: int) -> dict:
                     "circuit_identity_sha256": other_manifest["circuit_identity_sha256"]}
         malformed.write_text(json.dumps(resealed))
         verify_rejects(other_verifier, proof, malformed)
+        resealed_proof = bytearray(raw)
+        for field, offset in (
+            ("source_sha256", len(MAGIC) + 4),
+            ("registry_manifest_sha256", len(MAGIC) + 36),
+            ("circuit_identity_sha256", len(MAGIC) + 68),
+        ):
+            resealed_proof[offset:offset + 32] = bytes.fromhex(resealed[field])
+        resealed_path = work / f"bad-{count}-resealed-source.bin"
+        resealed_path.write_bytes(resealed_proof)
+        verify_rejects(other_verifier, resealed_path, malformed)
     return {"calls": count, "proof_bytes": len(raw), "proof_sha256": hashlib.sha256(raw).hexdigest()}
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--counts", nargs="+", type=int, default=list(range(1, 9)))
+    args = parser.parse_args()
+    if len(set(args.counts)) != len(args.counts) or any(not 1 <= count <= 8 for count in args.counts):
+        parser.error("counts must be distinct values in 1..8")
     with tempfile.TemporaryDirectory(prefix="s31-mixed-general-") as directory:
         work = Path(directory)
-        results = [exercise(work, count) for count in range(1, 9)]
+        results = []
+        for count in args.counts:
+            print(f"checking {count}-call mixed profile", file=sys.stderr, flush=True)
+            results.append(exercise(work, count))
         print(json.dumps({"schema": "s31-mixed-general-acceptance-v3",
                           "profiles": results, "accepted": True}, sort_keys=True))
 

@@ -252,7 +252,16 @@ def zeroExternal : List S31.Gadgets.Air.GateLookup.Event :=
     (List.range 4).map (fun i => (3 + i, base 0)) ++
     (List.range 4).map (fun i => (7 + i, base 0))
 
-def zeroMainTrace : Trace 9 := squareTrace zeroExternal
+/-- Public feeder values are uses of the Gate relation. The synthetic
+zero-main trace keeps its separate external producers for local nonvacuity;
+unlike the production witness, it intentionally is not Gate balanced. -/
+def zeroFeederUses : List S31.Gadgets.Air.GateLookup.Event :=
+  [(2, unit ⟨2, by decide⟩)] ++
+    (List.range 4).map (fun i => (3 + i, base 0)) ++
+    (List.range 4).map (fun i => (7 + i, base 0))
+
+def zeroMainTrace : Trace 9 :=
+  { squareTrace zeroExternal with externalUses := zeroFeederUses }
 
 private theorem pairwise_implies_unique
     (events : List S31.Gadgets.Air.GateLookup.Event)

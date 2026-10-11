@@ -55,7 +55,8 @@ theorem input_boundary_of_exact_gate
     (hbasis2 : (2, unit ⟨2, by decide⟩) ∈ allYields rows externalYields)
     (hbasis3 : (16, unit ⟨3, by decide⟩) ∈ allYields rows externalYields)
     (hpublicPins : ∀ i : Fin 4,
-      (3 + i.val, base (Field.toZMod (input i))) ∈ externalYields) :
+      (3 + i.val, base (Field.toZMod (input i))) ∈
+        allYields rows externalYields) :
     InputBoundary certificate totalAddRows
       (wireOfProduced (allYields rows externalYields)) input := by
   let produced := allYields rows externalYields
@@ -86,7 +87,6 @@ theorem input_boundary_of_exact_gate
     exact hrow
   · intro i
     apply wire_of_produced_event produced hunique
-    apply List.mem_append_right
     exact hpublicPins i
   · intro i
     have hcell : expectedPackMulCell totalAddRows i.val ∈ observedCells := by
@@ -139,7 +139,8 @@ theorem packed_input_yield_of_exact_gate
     (hbasis2 : (2, unit ⟨2, by decide⟩) ∈ allYields rows externalYields)
     (hbasis3 : (16, unit ⟨3, by decide⟩) ∈ allYields rows externalYields)
     (hpublicPins : ∀ i : Fin 4,
-      (3 + i.val, base (Field.toZMod (input i))) ∈ externalYields) :
+      (3 + i.val, base (Field.toZMod (input i))) ∈
+        allYields rows externalYields) :
     (address 0, packM31 input) ∈ allYields rows externalYields := by
   let produced := allYields rows externalYields
   have hboundary := input_boundary_of_exact_gate certificate totalAddRows
@@ -202,9 +203,11 @@ theorem bytecode_exact_gate_public_io_sound
         unitInverse ⟨i.val + 1, by omega⟩) ∈
           allYields rows externalYields)
     (hpublicInputPins : ∀ i : Fin 4,
-      (3 + i.val, base (Field.toZMod (input i))) ∈ externalYields)
+      (3 + i.val, base (Field.toZMod (input i))) ∈
+        allYields rows externalYields)
     (hpublicOutputPins : ∀ i : Fin 4,
-      (7 + i.val, base (Field.toZMod (claimed i))) ∈ externalYields) :
+      (7 + i.val, base (Field.toZMod (claimed i))) ∈
+        allYields rows externalYields) :
     denotation sourceBytes input = some claimed := by
   have hinputYield := packed_input_yield_of_exact_gate certificate
     totalAddRows inputCells input rows externalUses externalYields

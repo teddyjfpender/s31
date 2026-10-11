@@ -1050,9 +1050,11 @@ theorem decoded_public_io_sound {logSize : Nat} (trace : Trace logSize)
         unitInverse ⟨i.val + 1, by omega⟩) ∈
           allYields (nativeRows trace) externalYields)
     (hpublicInputPins : ∀ i : Fin 4,
-      (3 + i.val, base (Field.toZMod (input i))) ∈ externalYields)
+      (3 + i.val, base (Field.toZMod (input i))) ∈
+        allYields (nativeRows trace) externalYields)
     (hpublicOutputPins : ∀ i : Fin 4,
-      (7 + i.val, base (Field.toZMod (claimed i))) ∈ externalYields) :
+      (7 + i.val, base (Field.toZMod (claimed i))) ∈
+        allYields (nativeRows trace) externalYields) :
     denotation sourceBytes input = some claimed := by
   have hinputUse := checked_relation_source_input_used sourceBytes
     normalizedBytes certificate hrelation

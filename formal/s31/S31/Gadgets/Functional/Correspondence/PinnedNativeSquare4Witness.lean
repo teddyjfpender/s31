@@ -77,7 +77,36 @@ theorem mainAt_exact (i : Fin 512) (c : Fin 12) :
     (mainRows[i.val]!)[c.val]!
   exact Nat.mod_eq_of_lt (main_cells_canonical i c)
 
-def trace : Trace 9 := PinnedFullFixedRoster.trace mainAt
+/-- The native component's public feeder consumes the unit at address 2 and
+the four public input/output scalar words at addresses 3–10. The matching
+copy and basis values are produced by native arithmetic rows. -/
+def feederUses : List S31.Gadgets.Air.GateLookup.Event :=
+  [(2, unit ⟨2, by decide⟩),
+   (3, base 0), (4, base 1), (5, base 2), (6, base 7),
+   (7, base 0), (8, base 1), (9, base 16), (10, base 2401)]
+
+def trace : Trace 9 :=
+  { PinnedFullFixedRoster.trace mainAt with externalUses := feederUses }
+
+def publicInput (i : Fin 4) : F :=
+  ([0, 1, 2, 7] : List Nat)[i.val]!
+
+def publicOutput (i : Fin 4) : F :=
+  ([0, 1, 16, 2401] : List Nat)[i.val]!
+
+theorem external_gate_feeder_exact :
+    trace.externalUses = feederUses ∧ trace.externalYields = [] := by
+  exact ⟨rfl, rfl⟩
+
+theorem public_feeder_uses :
+    (2, unit ⟨2, by decide⟩) ∈ trace.externalUses ∧
+    (∀ i : Fin 4, (3 + i.val, base (publicInput i)) ∈ trace.externalUses) ∧
+    (∀ i : Fin 4, (7 + i.val, base (publicOutput i)) ∈ trace.externalUses) := by
+  refine ⟨by decide, ?_, ?_⟩
+  · intro i
+    fin_cases i <;> decide
+  · intro i
+    fin_cases i <;> decide
 
 /-- The complete fixed roster is the source-derived direct-gate fixture,
 while every main cell is the native prover's concrete base evaluation. -/
@@ -130,8 +159,7 @@ theorem source_square_rows :
   decide
 
 /-- The two actual source-product rows satisfy the installed nine local AIR
-polynomials. The independent executable checker covers all 512 rows; a
-kernel proof of the complete native base trace is still pending. -/
+polynomials. The complete all-row result follows below. -/
 theorem source_rows_arithmetic :
     (∀ root ∈ bytecodeArithmetic (fromTrace trace ⟨502, by decide⟩), root = 0) ∧
     (∀ root ∈ bytecodeArithmetic (fromTrace trace ⟨503, by decide⟩), root = 0) := by
@@ -149,11 +177,25 @@ theorem source_rows_arithmetic :
     rw [bytecode_arithmetic_eq, arithmetic_from_trace]
     exact (native_accepts_iff _ _ _ _).mpr ⟨.pointwiseMul, hflags, hout⟩
 
-def publicInput (i : Fin 4) : F :=
-  ([0, 1, 2, 7] : List Nat)[i.val]!
+private def nativeRowRootsZero (i : Fin 512) : Bool :=
+  (bytecodeArithmetic (fromTrace trace i)).all (fun root => decide (root = 0))
 
-def publicOutput (i : Fin 4) : F :=
-  ([0, 1, 16, 2401] : List Nat)[i.val]!
+private theorem all_native_rows_boolean :
+    (List.ofFn nativeRowRootsZero).all id = true := by
+  decide
+
+/-- All nine installed arithmetic bytecode roots vanish at every one of the
+512 pinned native base rows. The finite Boolean reduction is checked by the
+Lean kernel and then converted to the exact `allArithmeticRootsZero` predicate.
+It checks this honest assignment; it does not authenticate proof openings. -/
+theorem all_native_arithmetic_roots_zero :
+    allArithmeticRootsZero trace := by
+  intro i root hroot
+  have hi : nativeRowRootsZero i = true :=
+    (List.all_eq_true.mp all_native_rows_boolean) _
+      (List.mem_ofFn.mpr ⟨i, rfl⟩)
+  have hzero := (List.all_eq_true.mp hi) root hroot
+  simpa [nativeRowRootsZero] using hzero
 
 /-- The eight source-owned public copy rows in the actual native main trace
 yield exactly the public input and output words at addresses 3–10. The
@@ -186,6 +228,94 @@ theorem public_copy_events_covered :
       fin_cases i <;> decide
     rw [← hv]
     exact row_output_yield (nativeRows trace) [] (row trace ix) hr hm
+
+private theorem feeder_all_produced :
+    feederUses.all (fun event =>
+      decide (event ∈ allYields (nativeRows trace) [])) = true := by
+  decide
+
+/-- Every one of the nine externally consumed public events is produced by
+a native row of this pinned base trace. In particular, the public copy rows
+at 3–10 produce their statement values and the basis row produces address
+2; no external yield is added. This is a concrete witness property, not a
+general soundness assumption for an arbitrary opened trace. -/
+theorem feeder_uses_produced :
+    ∀ event ∈ trace.externalUses,
+      event ∈ allYields (nativeRows trace) trace.externalYields := by
+  intro event hevent
+  have h := (List.all_eq_true.mp feeder_all_produced) event
+  change event ∈ feederUses at hevent
+  change event ∈ allYields (nativeRows trace) []
+  simpa using h hevent
+
+/-- Both event lists have the same length before their values are compared.
+The independent executable diagnostic checks the full multiset equality;
+this cardinality alone does not establish ideal Gate balance. -/
+theorem native_gate_event_lengths :
+    (allUses (nativeRows trace) trace.externalUses).length = 1033 ∧
+    (allYields (nativeRows trace) trace.externalYields).length = 1033 := by
+  decide
+
+set_option maxHeartbeats 10000000
+
+/-- The *entire* pinned native base assignment closes the ideal Gate
+multiset: 512 rows contribute 1024 reads, the public feeder contributes
+nine more, and the 512 native output multiplicities yield exactly the same
+1033 address/value events. `List.isPerm_iff` links the finite Boolean
+permutation check to the mathematical `List.Perm` relation; `decide` runs
+inside Lean's kernel and does not use `native_decide` or an oracle.
+
+This proves honest-witness consistency for one square4 assignment. It does
+not show that verifier acceptance authenticates these rows or external
+events, nor the probabilistic LogUp-to-exact-Gate implication. -/
+theorem native_ideal_gate_balanced :
+    balanced (nativeRows trace) trace.externalUses trace.externalYields := by
+  exact List.isPerm_iff.mp (by decide)
+
+/-- One native square4 base trace satisfies every installed local arithmetic
+root, exact ideal Gate balance with the nine public feeder uses, and producer
+uniqueness. This is an honest-witness consistency theorem. It does not turn
+verifier acceptance into these premises or cover interaction/PCS checks. -/
+theorem native_base_air_gate_consistent :
+    allArithmeticRootsZero trace ∧
+    balanced (nativeRows trace) trace.externalUses trace.externalYields ∧
+    uniqueProduced (allYields (nativeRows trace) trace.externalYields) := by
+  exact ⟨all_native_arithmetic_roots_zero, native_ideal_gate_balanced,
+    native_producers_unique⟩
+
+/-- Keep the same native fixed/main rows but change the public output word
+at address 10 from 2401 to 2400. Only the feeder's claimed value changes. -/
+def wrongClaimTrace : Trace 9 :=
+  { trace with externalUses :=
+    [(2, unit ⟨2, by decide⟩),
+     (3, base 0), (4, base 1), (5, base 2), (6, base 7),
+     (7, base 0), (8, base 1), (9, base 16), (10, base 2400)] }
+
+/-- Exact Gate balance rejects the false public word even though every
+native row and all its local arithmetic values remain unchanged. The wrong
+external use cannot match the unique row producer at address 10. -/
+theorem wrong_public_claim_unbalanced :
+    ¬ balanced (nativeRows wrongClaimTrace)
+      wrongClaimTrace.externalUses wrongClaimTrace.externalYields := by
+  intro hbalance
+  have hwrongUse : (10, base 2400) ∈
+      allUses (nativeRows wrongClaimTrace) wrongClaimTrace.externalUses := by
+    apply List.mem_append_right
+    decide
+  have hwrongYield : (10, base 2400) ∈
+      allYields (nativeRows wrongClaimTrace) wrongClaimTrace.externalYields :=
+    hbalance.mem_iff.mp hwrongUse
+  have htrueYield : (10, base 2401) ∈
+      allYields (nativeRows wrongClaimTrace) wrongClaimTrace.externalYields := by
+    simpa [wrongClaimTrace, publicOutput] using
+      (public_copy_events_covered.2 ⟨3, by decide⟩)
+  have hunique : uniqueProduced
+      (allYields (nativeRows wrongClaimTrace)
+        wrongClaimTrace.externalYields) := by
+    simpa [wrongClaimTrace] using native_producers_unique
+  have hfalse : (base 2400 : Quad) ≠ base 2401 := by decide
+  exact hfalse (hunique 10 (base 2400) (base 2401) hwrongYield htrueYield)
+
 def mutatedTrace : Trace 9 :=
   { trace with main := fun i c =>
       if i.val = 503 ∧ c.val = 8 then 1 else mainAt i c }

@@ -344,9 +344,11 @@ theorem bytecode_exact_gate_public_io_allow_dead_sound
         unitInverse ⟨i.val + 1, by omega⟩) ∈
           allYields rows externalYields)
     (hpublicInputPins : ∀ i : Fin 4,
-      (3 + i.val, base (Field.toZMod (input i))) ∈ externalYields)
+      (3 + i.val, base (Field.toZMod (input i))) ∈
+        allYields rows externalYields)
     (hpublicOutputPins : ∀ i : Fin 4,
-      (7 + i.val, base (Field.toZMod (claimed i))) ∈ externalYields) :
+      (7 + i.val, base (Field.toZMod (claimed i))) ∈
+        allYields rows externalYields) :
     denotation sourceBytes input = some claimed := by
   have hinputYield := packed_input_yield_of_exact_gate certificate
     totalAddRows inputCells input rows externalUses externalYields

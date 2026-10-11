@@ -207,7 +207,8 @@ theorem output_boundary_of_exact_gate
         unitInverse ⟨i.val + 1, by omega⟩) ∈
           allYields rows externalYields)
     (hpublicPins : ∀ i : Fin 4,
-      (7 + i.val, base (Field.toZMod (claimed i))) ∈ externalYields) :
+      (7 + i.val, base (Field.toZMod (claimed i))) ∈
+        allYields rows externalYields) :
     OutputBoundary certificate totalAddRows
       (wireOfProduced (allYields rows externalYields)) claimed := by
   let produced := allYields rows externalYields
@@ -241,7 +242,6 @@ theorem output_boundary_of_exact_gate
     exact ⟨i.val, by simpa using i.isLt, rfl⟩
   · intro i
     apply wire_of_produced_event produced hunique
-    apply List.mem_append_right
     exact hpublicPins i
 
 /-- Installed source-row bytecode roots, installed public output-row roots,
@@ -270,7 +270,8 @@ theorem bytecode_exact_gate_public_claim_sound
         unitInverse ⟨i.val + 1, by omega⟩) ∈
           allYields rows externalYields)
     (hpublicPins : ∀ i : Fin 4,
-      (7 + i.val, base (Field.toZMod (claimed i))) ∈ externalYields) :
+      (7 + i.val, base (Field.toZMod (claimed i))) ∈
+        allYields rows externalYields) :
     denotation sourceBytes input = some claimed := by
   obtain ⟨_, output, hsource, hselected⟩ :=
     checked_source_output_of_bytecode_and_exact_gate sourceBytes

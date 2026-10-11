@@ -66,6 +66,7 @@ theorem early_return_public_io_sound (input claimed : Lanes)
     observed_input_cells_match hinputRows
     observed_output_cells_match houtputRows hbalance hunique
     hzero hbasis1 hbasis2 hbasis3 hmaskBasis hinverseBasis
-    hpublicInputPins hpublicOutputPins
+    (fun i => List.mem_append_right _ (hpublicInputPins i))
+    (fun i => List.mem_append_right _ (hpublicOutputPins i))
 
 end S31.Functional.SSADeadRowMixedReturn

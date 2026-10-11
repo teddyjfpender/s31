@@ -161,6 +161,18 @@ physical and lookup premises are not derived from native proof acceptance.
 LogUp's random challenge check, committed-column opening, PCS/FRI and
 Fiat-Shamir remain outside this compiler refinement.
 
+For the pinned square4 assignment `x = [0,1,2,7]`, Lean now proves the
+complete **ideal** Gate event balance of the exported 512-row native base
+trace: 1,033 uses equal 1,033 yields, including nine external verifier uses.
+It checks all nine installed arithmetic roots on each of the 512 rows
+(4,608 roots), proves unique produced values, and rejects changing only the last
+public output word from 2401 to 2400 while keeping every native row fixed.
+The separate fresh-native CI gate rebuilds the package and compares its
+exported fixed and main rows with the checked Lean fixture. These are
+concrete witness and compiler reproducibility checks; they do not show that
+arbitrary accepted proofs authenticate those rows or that LogUp/PCS implies
+the ideal multiset premise.
+
 ## Concrete Lean bridge
 
 [`export_s31_direct_gate_bridge.py`](../../../scripts/export_s31_direct_gate_bridge.py)

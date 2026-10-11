@@ -14,6 +14,14 @@ Lean compilation passed the record-public CI job on the pinned engine. Private
 parser-to-verifier correspondence and broader soundness review remain release
 gates.
 
+The [general Lean word-boundary model](../../../formal/s31/S31/Gadgets/Functional/RecordWordBoundaryV2.md)
+now proves that validated nested record/tuple paths are unique and that
+declared widths decode one exact canonical M31 public-word vector. It also
+models distinct named output paths that share a proof wire. The theorem starts
+after type-tree and wire-reference validation; Python/Zig descriptor parsing,
+canonical bytes and digest, native verifier refinement, and the public `bit`
+leaf's extra Boolean range rule remain separate obligations.
+
 ## Source-bounded public one-call chip
 
 The direct-chip v2 slice accepts exactly one public `m31[4]` flat input wire,

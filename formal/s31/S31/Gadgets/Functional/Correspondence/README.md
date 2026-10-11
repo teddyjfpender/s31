@@ -108,10 +108,13 @@ two-product alias square with zero public input and output. It proves every
 field of `AliasFixedTraceContext`: exact alias-byte/normalized-byte admission,
 the 512-row partition, all 27 projected fixed cells, all-row local arithmetic
 roots, producer-value uniqueness, basis and inverse events, and four input
-and output pins. This shows those **stated premises** can hold together.
+and output pins. The pins are external Gate **uses**, matching the native
+public feeder; exact balance forces matching producer values. This shows
+those **stated premises** can hold together.
 
 The fixture deliberately assigns synthetic zero-multiplicity add rows outside
-the 27 projected cells. It is **not** the production trace. The module proves
+the 27 projected cells and supplies separate synthetic external yields. It is
+**not** the production trace. The module proves
 both distinctions: Gate balance fails because a basis row reads zero where
 the basis producer yields a nonzero unit, and fixed row 11 differs from the
 native direct-gate export (`mults = 0` versus `11`). This prevents the context witness
@@ -172,14 +175,23 @@ and the 12 column-major main evaluations hash to
 `3181458839c78d755d55bf7e80e9e43eed0d1f6354258ac18f82e5b92fcf42c3`.
 
 The Lean kernel checks all 4096 fixed and 6144 checked-in main literals as
-canonical field values, the selected fixed-cell premise, the complete 512-row output
-address/multiplicity projection and producer uniqueness. It proves local AIR
-arithmetic for source rows 502 and 503, eight public copy events at
-addresses 3–10, and rejection of a mutation to the second square's output.
-The independent Python checker checks all **4608 arithmetic roots** across
-all 512 rows. It also checks exact ideal Gate multiset balance against nine
-pinned external uses: the unit at address 2 and the eight public scalar words
-at addresses 3–10. It checks unique active producer values and rejects five
+canonical field values, the selected fixed-cell premise, the complete 512-row
+output address/multiplicity projection and producer uniqueness. It proves
+local AIR arithmetic for source rows 502 and 503, eight native public copy
+producers at addresses 3–10, all nine public feeder uses are native row
+yields, and rejection of a mutation to the second square's output. A finite
+kernel checked theorem verifies **all 4608 installed arithmetic roots**
+across all 512 rows. The independent Python checker repeats that all-row
+arithmetic check from the JSON report. Lean also proves **exact ideal Gate
+multiset balance** for all
+1033 concrete uses and yields via `List.isPerm_iff` and a kernel evaluated
+Boolean permutation check. The 512 rows contribute 1024 uses; the nine
+external uses are the unit at address 2 and the eight public scalar words
+at addresses 3–10. There are no external yields in this native witness.
+Lean also proves that changing just the feeder's final public output word
+from `2401` to `2400` makes exact Gate balance impossible while all 512 native
+rows remain unchanged. The independent checker also checks unique active
+producer values and rejects five
 fixed, main, pin, claim, and lookup-only mutations.
 The formal CI job rechecks the report and compares its generated Lean literal
 byte for byte with the committed module. A separate native CI job builds a
@@ -191,18 +203,18 @@ rendered Lean fixture byte for byte. Run the same gate locally with
 `python3 formal/s31/scripts/check_fresh_square4_native_witness.py`.
 
 The report records uncommitted prover evaluations from one inspected run.
-The fresh native CI job re-extracts those evaluations on each run. The all-row
-arithmetic and ideal Gate balance statements are executable evidence, not yet
-Lean theorems. The local
+The fresh native CI job re-extracts those evaluations on each run. All-row
+arithmetic and exact ideal Gate balance are Lean theorems for this one pinned
+base trace. The local
 arithmetic equations alone do not determine the main trace: arithmetic
 padding row 11 has fixed tuple
 `[1, 0, 0, 0, 0, 0, 0, 11]` and a checked-in all-zero main tuple. Replacing
 its first input with `1`, second input with `2`, and output with `3` satisfies
 the same local add equation, but the enhanced report checker rejects it for
 failing exact ideal Gate balance. Its output has Gate multiplicity 11.
-Interaction columns, a Lean derivation of exact Gate balance and native feeder signs, the
-cryptographic binding from a proof's commitments to these rows, and PCS/FRI
-soundness are not established by this fixture. The Lean metadata strings
+Interaction columns, the native feeder's authenticated sign/contribution
+semantics, the cryptographic binding from a proof's commitments to these
+rows, and PCS/FRI soundness are not established by this fixture. The Lean metadata strings
 alone do not prove a hash or key-root relation; the independent package
 checker performs the native key/source comparison when regenerating the
 report.
@@ -218,4 +230,5 @@ lake build S31.Gadgets.Functional.Correspondence.AliasProjectedExportBridge
 lake build S31.Gadgets.Functional.Correspondence.PinnedFullOutputRoster
 lake build S31.Gadgets.Functional.Correspondence.PinnedFullFixedRoster
 lake build S31.Gadgets.Functional.Correspondence.PinnedNativeSquare4Witness
+lake env leanchecker S31.Gadgets.Functional.Correspondence.PinnedNativeSquare4Witness
 ```

@@ -72,10 +72,12 @@ structure PhysicalTraceContext (trace : Trace 9) (certificate : Certificate)
     ((expectedInverseCell certificate totalAddRows i.val).in1,
       unitInverse ⟨i.val + 1, by omega⟩) ∈
         allYields (nativeRows trace) trace.externalYields
+  /-- The verifier's public words are Gate uses; native copy rows produce
+  their matching values. Exact balance carries these uses to producers. -/
   inputPins : ∀ i : Fin 4,
-    (3 + i.val, base (Field.toZMod (input i))) ∈ trace.externalYields
+    (3 + i.val, base (Field.toZMod (input i))) ∈ trace.externalUses
   outputPins : ∀ i : Fin 4,
-    (7 + i.val, base (Field.toZMod (claimed i))) ∈ trace.externalYields
+    (7 + i.val, base (Field.toZMod (claimed i))) ∈ trace.externalUses
 
 /-- Original direct-gate source grammar, bound to exact normalized bytes. -/
 structure FixedTraceContext (trace : Trace 9)
@@ -108,11 +110,21 @@ theorem physical_balanced_certificate_claim (trace : Trace 9)
       hinputPositive
       (expected_output_cells_positive certificate totalAddRows)
       h.fixed h.arithmetic
+  have hinputPinsProduced : ∀ i : Fin 4,
+      (3 + i.val, base (Field.toZMod (input i))) ∈
+        allYields (nativeRows trace) trace.externalYields := by
+    intro i
+    exact hbalance.mem_iff.mp (List.mem_append_right _ (h.inputPins i))
+  have houtputPinsProduced : ∀ i : Fin 4,
+      (7 + i.val, base (Field.toZMod (claimed i))) ∈
+        allYields (nativeRows trace) trace.externalYields := by
+    intro i
+    exact hbalance.mem_iff.mp (List.mem_append_right _ (h.outputPins i))
   have hinputYield := packed_input_yield_of_exact_gate certificate
     totalAddRows (expectedInputCells certificate totalAddRows) input
     (nativeRows trace) trace.externalUses trace.externalYields
     rfl hinputRows hbalance h.unique h.zero h.basis1 h.basis2
-    h.basis3 h.inputPins
+    h.basis3 hinputPinsProduced
   let produced := allYields (nativeRows trace) trace.externalYields
   let wire := wireOfProduced produced
   have hinput : wire (address 0) = packM31 input :=
@@ -128,7 +140,7 @@ theorem physical_balanced_certificate_claim (trace : Trace 9)
     totalAddRows (expectedOutputCells certificate totalAddRows) claimed
     (nativeRows trace) trace.externalUses trace.externalYields
     rfl houtputRows hbalance h.unique h.zero h.maskBasis h.inverseBasis
-    h.outputPins
+    houtputPinsProduced
   have hclaim : wire (address certificate.output) = packM31 claimed :=
     output_boundary_claim certificate totalAddRows wire claimed hboundary
   have hpacked : packM31 output = packM31 claimed :=
@@ -174,7 +186,9 @@ theorem balanced_implies_source_claim (trace : Trace 9)
     (expectedOutputCells certificate totalAddRows) input claimed
     trace.externalUses trace.externalYields h.relation rfl rfl rfl
     h.fixed h.arithmetic hbalance h.unique h.zero h.basis1 h.basis2
-    h.basis3 h.maskBasis h.inverseBasis h.inputPins h.outputPins
+    h.basis3 h.maskBasis h.inverseBasis
+    (fun i => hbalance.mem_iff.mp (List.mem_append_right _ (h.inputPins i)))
+    (fun i => hbalance.mem_iff.mp (List.mem_append_right _ (h.outputPins i)))
 
 /-- A fixed false claim makes the decoded trace's ideal Gate event multiset
 unbalanced. This is the key arbitrary-witness reduction used by the raw AIR

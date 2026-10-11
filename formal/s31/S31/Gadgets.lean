@@ -167,6 +167,7 @@ import S31.Gadgets.Functional.TupleValues
 import S31.Gadgets.Functional.RecordValues
 import S31.Gadgets.Functional.RecordBoundary
 import S31.Gadgets.Functional.RecordAbiV2
+import S31.Gadgets.Functional.RecordWordBoundaryV2
 import S31.Gadgets.Functional.RecordPinnedPairAliasV2
 import S31.Gadgets.Functional.StaticRecurrence
 import S31.Gadgets.Functional.WorkedMix4
