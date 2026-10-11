@@ -36,7 +36,7 @@ def sha(data: bytes) -> str:
 def design() -> dict:
     value = json.loads(DESIGN_PATH.read_bytes())
     if (value.get("schema") != "s31-paired-record-v2-prospective-v1" or
-            value.get("status") != "designed-not-frozen-no-native-observations" or
+            value.get("status") != "prefreeze-native-admission-only-no-timed-observations" or
             value.get("train_call_counts") != [1, 2, 4, 6] or
             value.get("heldout_call_counts") != [3, 5, 7, 8] or
             value.get("assignments_per_call_count") != 100 or
@@ -56,6 +56,12 @@ def design() -> dict:
                 value.get("phase_integrity_gate", "") or
             "audit rederives every reported build duration" not in
                 value.get("build_integrity_gate", "") or
+            "every held-out phase requires the externally anchored train phase root" not in
+                value.get("train_before_heldout_gate", "") or
+            "commit and externally timestamp a report anchor" not in
+                value.get("post_audit_report_gate", "") or
+            "before each build/proof unit" not in
+                value.get("disk_guard_scope", "") or
             "identical complete FriConfigV2 and interaction PoW bits" not in
                 value.get("live_security_config_gate", "") or
             value.get("automatic_lowering_selection_enabled") is not False or

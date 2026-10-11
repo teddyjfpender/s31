@@ -1,9 +1,13 @@
 # Paired public-record v2 direct-gate versus mixed-general study
 
-Status: **prospective tooling only; no paired native timing result**. This
-study is separate from the frozen V8 ordinary whole-prover baseline. Do not
-run its native build or trial phases while V8 owns the machine. Automatic
-lowering remains disabled regardless of this study's eventual result.
+Status: **prefreeze tooling under review; no paired native timing result**.
+Untimed generic N=1 and mixed N=1/N=8 admission controls passed. The first
+unanchored protocol candidate (`2d5914a8f8f6436b9fca57515e42cae0979b235a`)
+was withdrawn after review found missing train
+and report gates. A corrected protocol requires a new source/tool digest,
+review, and external timestamp before any timed build. This study is separate
+from the V8r1 ordinary whole-prover baseline. Automatic lowering remains
+disabled regardless of this study's eventual result.
 
 ## Question and fair measurement boundary
 
@@ -107,8 +111,12 @@ before this replay.
 anchor. It rejects absent proofs, changed bytes, failed native replay, changed
 public claims accepted by either verifier, same-geometry alternate-source
 proofs accepted, a modified proof-header manifest digest accepted, altered
-valid public claims mishandled, and mismatched protocol or trial order. All phases fail
-closed below 8 GiB free. The build gate requires an exact live `FriConfigV2`
+valid public claims mishandled, and mismatched protocol or trial order. The
+runner checks at least 8 GiB free on the evidence, Zig local/global caches, and
+temporary-file filesystems at phase start, before each build arm, before each
+proof arm, and before audit control builds. It does not poll during an
+individual native process; a failed unit leaves partial evidence that must be
+discarded. The build gate requires an exact live `FriConfigV2`
 and matching interaction PoW bits across arms, while preserving and reporting
 each arm's full PCS configuration, including potentially different lifting.
 The collector also requires supported `/usr/bin/time` RSS output and fails
@@ -152,9 +160,50 @@ python3 src/frontends/s31/benchmarks/paired_record_v2/runner.py \
   --phase-anchor-commit <full-phase-anchor-commit>
 ```
 
+The phase-root anchor seals the raw timed corpus, but the later audit and
+analysis need their own seal. Create
+`design/s31/measurements/language/paired-record-v2-train-report-anchor.json`
+with schema `s31-paired-record-v2-report-anchor-v1`, split `train`, the full
+`protocol_sha256`, `phase_root_sha256`, `phase_anchor_commit`, SHA-256 of the
+canonical saved `audit.json` and `analysis.json` as `audit_sha256` and
+`analysis_sha256`, and a real UTC `recorded_at_utc` after the phase anchor.
+Commit it and externally record both full report hashes and the full report
+anchor commit **before** the first held-out build. Run the read-only report
+check before using any train conclusion:
+
+```sh
+python3 src/frontends/s31/benchmarks/paired_record_v2/runner.py \
+  --split train --phase report-check --out zig-out/s31-paired-record-v2/train \
+  --expected-protocol-sha256 <full-hash> --anchor-commit <full-commit> \
+  --expected-phase-root-sha256 <full-train-phase-root-hash> \
+  --phase-anchor-commit <full-train-phase-anchor-commit> \
+  --report-anchor-commit <full-train-report-anchor-commit>
+```
+
+`report-check` replays every reported trial against the anchored raw ledger,
+proof bytes, process/resource logs, source and package artifacts; rederives
+the analysis from the sealed corpus and build ledger; and compares the exact
+audit and analysis bytes with the committed report hashes. It does not rerun
+the native negative controls from `audit`: their passed result is bound by the
+report hash and remains a trusted observation of the pinned collector.
+
 Repeat for `--split heldout` with its own fresh `.../heldout` path and
-`paired-record-v2-heldout-phase-anchor.json`, only after the
-train corpus is sealed and reviewed. The runner saves proof bytes, canonical
+`paired-record-v2-heldout-phase-anchor.json`, only after train phase and
+report anchors are externally recorded. **Every** held-out `build`, `prove`,
+`audit`, and `report-check` invocation must add:
+
+```sh
+  --train-out zig-out/s31-paired-record-v2/train \
+  --expected-train-phase-root-sha256 <full-train-phase-root-hash> \
+  --train-phase-anchor-commit <full-train-phase-anchor-commit> \
+  --train-report-anchor-commit <full-train-report-anchor-commit>
+```
+
+The held-out build records the train admission digest in its build root; later
+phases recheck the exact anchored train evidence and admission bytes. After
+held-out audit, create, commit, and externally record the analogous held-out
+report anchor, then run held-out `report-check` before publishing any ratio.
+The runner saves proof bytes, canonical
 typed statements, changed-claim controls, per-arm process times/RSS, package
 attestations, the raw ledger and phase root, complete corpus, replay audit,
 and analysis. Audit reconstructs every reported timing, RSS, proof size,

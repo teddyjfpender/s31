@@ -10,12 +10,14 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import os
 import random
 import re
 import shutil
 import statistics
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 
@@ -32,7 +34,7 @@ from package.context import parse_source_json
 from registry_manifest_digest import digest as registry_digest
 from design import canonical, case, design, flat, sha
 from integrity import (BUILD_EVENT_SCHEMA, EVENT_SCHEMA, GENESIS, append_event,
-                       build_root, check_phase_anchor, durable_write,
+                       build_root, check_phase_anchor, check_report_anchor, durable_write,
                        fsync_existing, observed_invoke, phase_root,
                        read_ledger, replay_process)
 from protocol import check
@@ -45,6 +47,24 @@ FRI_FIELDS = {"pow_bits", "log_blowup_factor", "log_last_layer_degree_bound",
 
 def saved_json(path: Path, value: object) -> None:
     path.write_bytes(canonical(value))
+
+
+def check_disk_space(out: Path, minimum: int) -> None:
+    """Check each filesystem used for packages, global Zig cache, and temp files."""
+    global_cache = os.environ.get("ZIG_GLOBAL_CACHE_DIR") or str(Path.home() / ".cache/zig")
+    locations = (out.parent, S31 / ".zig-cache", Path(global_cache),
+                 Path(tempfile.gettempdir()))
+    devices = set()
+    for location in locations:
+        path = location.resolve()
+        while not path.exists():
+            path = path.parent
+        device = path.stat().st_dev
+        if device in devices:
+            continue
+        devices.add(device)
+        if shutil.disk_usage(path).free < minimum:
+            raise ValueError(f"paired native unit requires at least 8 GiB free on {path}")
 
 
 def require_static_case(directory: Path, count: int, index: int, cfg: dict, expected: dict) -> None:
@@ -183,6 +203,7 @@ def build_case(directory: Path, count: int, cfg: dict, expected: dict,
     materialize(directory, count, cfg, expected)
     source_path = directory / "source.s31.json"
     name = json.loads(source_path.read_bytes())["name"]
+    check_disk_space(directory, protocol["minimum_available_disk_bytes_before_native_phase"])
     generic_start_ns = time.perf_counter_ns()
     s31.build(source_path, directory / "generic", "direct-gate")
     generic_end_ns = time.perf_counter_ns()
@@ -192,6 +213,7 @@ def build_case(directory: Path, count: int, cfg: dict, expected: dict,
         "-Ds31-lowering=direct-mixed-general", f"-Ds31-source={source_path}",
         f"-Ds31-name={name}", "-j1", "--prefix", str(directory / "mixed"),
     ]
+    check_disk_space(directory, protocol["minimum_available_disk_bytes_before_native_phase"])
     mixed_start_ns = time.perf_counter_ns()
     subprocess.run(mixed_command, cwd=ROOT, check=True)
     mixed_end_ns = time.perf_counter_ns()
@@ -386,6 +408,39 @@ def paired_summary(corpus: dict, cfg: dict) -> dict:
     }
 
 
+def analysis_from_corpus(corpus: dict, cfg: dict, entries: dict,
+                         build_costs: dict, out: Path,
+                         phase_root_sha256: str, phase_anchor_commit: str) -> dict:
+    analysis = paired_summary(corpus, cfg)
+    analysis["phase_root_sha256"] = phase_root_sha256
+    analysis["phase_anchor_commit"] = phase_anchor_commit
+    analysis["build_cost_scope"] = (
+        "observed warm-cache workflows: generic full s31.build package; "
+        "mixed direct Zig install; not a symmetric or cold compiler benchmark"
+    )
+    analysis["build_costs"] = build_costs
+    analysis["live_security_profiles"] = {}
+    for key in entries:
+        package = json.loads((out / f"n{key}/package-attestation.json").read_bytes())
+        generic_pcs = package["generic_live_pcs"]
+        mixed_pcs = package["mixed_live_pcs"]
+        analysis["live_security_profiles"][key] = {
+            "generic_pcs": generic_pcs,
+            "mixed_pcs": mixed_pcs,
+            "generic_interaction_pow_bits": package["generic_interaction_pow_bits"],
+            "mixed_interaction_pow_bits": package["mixed_interaction_pow_bits"],
+            "matching_fri_config": generic_pcs["fri_config"] == mixed_pcs["fri_config"],
+            "matching_interaction_pow_bits": package["generic_interaction_pow_bits"] ==
+                                             package["mixed_interaction_pow_bits"],
+            "different_pcs_lifting_or_geometry": generic_pcs != mixed_pcs,
+        }
+    analysis["soundness_note"] = (
+        "Matched visible FRI/PoW parameters do not prove equal soundness. "
+        "Each AIR/component profile needs its own soundness analysis."
+    )
+    return analysis
+
+
 def arm_commands(directory: Path, index: int, arm: str) -> tuple[list[str], list[str], Path | None]:
     source_path = directory / "source.s31.json"
     name = json.loads(source_path.read_bytes())["name"]
@@ -550,21 +605,165 @@ def event_record(event: dict, directory: Path, split: str, count: int,
     }
 
 
+def checked_report(out: Path, split: str, protocol: dict, cfg: dict,
+                   protocol_sha256: str, protocol_anchor_commit: str,
+                   phase_root_sha256: str, phase_anchor_commit: str,
+                   report_anchor_commit: str) -> dict:
+    entries = protocol["inventory"][split]
+    events = check_phase_anchor(out, split, protocol_sha256, protocol_anchor_commit,
+                                2 * sum(len(item["order"]) for item in entries.values()),
+                                list(entries), phase_root_sha256, phase_anchor_commit)
+    audit, analysis = check_report_anchor(out, split, protocol_sha256,
+                                          phase_root_sha256, phase_anchor_commit,
+                                          report_anchor_commit)
+    for field in ("raw_ledger_replayed_before_summary", "all_saved_proofs_native_replayed",
+                  "all_changed_public_claims_rejected",
+                  "same_geometry_alternate_source_controls_passed",
+                  "proof_header_manifest_digest_control_rejected",
+                  "altered_valid_public_assignment_controls_passed"):
+        if audit.get(field) is not True:
+            raise ValueError(f"{split}: anchored audit control did not pass: {field}")
+    first = out / f"n{next(iter(entries))}"
+    first_name = json.loads((first / "source.s31.json").read_bytes())["name"]
+    alternate_name = f"{first_name}_same_geometry_alternate"
+    controls = out / "audit-controls"
+    control_files = {
+        "alternate_source_sha256": controls / "same-count-alternate.s31.json",
+        "alternate_generic_verifier_sha256": controls / "alternate-generic/bin" /
+            f"s31-{alternate_name}-native-verifier",
+        "alternate_mixed_verifier_sha256": controls / "alternate-mixed/bin" /
+            f"s31-{alternate_name}-mixed-general-native-verifier",
+        "altered_assignment_sha256": controls / "altered-valid-assignment.json",
+        "altered_statement_sha256": controls / "altered-valid-statement.json",
+        "altered_generic_proof_sha256": controls / "altered-generic.proof",
+        "altered_mixed_proof_sha256": controls / "altered-mixed.proof",
+        "modified_manifest_header_proof_sha256": controls / "wrong-manifest-header.proof",
+    }
+    for field, path in control_files.items():
+        if audit.get(field) != sha(path.read_bytes()):
+            raise ValueError(f"{split}: anchored audit control artifact changed: {field}")
+    corpus = json.loads((out / "corpus.json").read_bytes())
+    replay_corpus(out, split, entries, protocol_sha256, protocol_anchor_commit,
+                  events, corpus, native=False)
+    for key, expected in entries.items():
+        directory = out / f"n{key}"
+        for index in range(cfg["assignments_per_call_count"]):
+            require_static_case(directory, int(key), index, cfg, expected)
+        require_package_identity(directory, int(key), expected, protocol["compiler_sha256"])
+    build_costs = replay_build_evidence(out, split, entries, protocol,
+                                        protocol_sha256, protocol_anchor_commit)
+    expected_analysis = analysis_from_corpus(corpus, cfg, entries, build_costs,
+                                             out, phase_root_sha256, phase_anchor_commit)
+    if analysis != expected_analysis:
+        raise ValueError(f"{split}: anchored analysis differs from deterministic replay")
+    return {"split": split, "phase_root_sha256": phase_root_sha256,
+            "phase_anchor_commit": phase_anchor_commit,
+            "report_anchor_commit": report_anchor_commit,
+            "audit_sha256": sha((out / "audit.json").read_bytes()),
+            "analysis_sha256": sha((out / "analysis.json").read_bytes())}
+
+
+def replay_corpus(out: Path, split: str, entries: dict, protocol_sha256: str,
+                  protocol_anchor_commit: str, events: list[dict], corpus: dict,
+                  *, native: bool) -> dict:
+    """Reconstruct the sealed corpus from raw events; optionally rerun verifiers."""
+    if (corpus.get("schema") != "s31-paired-record-v2-corpus-v1" or
+            corpus.get("split") != split or
+            corpus.get("protocol_sha256") != protocol_sha256 or
+            corpus.get("anchor_commit") != protocol_anchor_commit or
+            corpus.get("cases", {}).keys() != entries.keys()):
+        raise ValueError("paired corpus differs from frozen roster")
+    derived = {"schema": "s31-paired-record-v2-corpus-v1", "split": split,
+               "protocol_sha256": protocol_sha256,
+               "anchor_commit": protocol_anchor_commit, "cases": {}}
+    event_at = 0
+    previous_arm_end_ns = None
+    for key, expected in entries.items():
+        directory = out / f"n{key}"
+        name = json.loads((directory / "source.s31.json").read_bytes())["name"]
+        derived_rows = []
+        for index, row in enumerate(corpus["cases"][key]):
+            if row.get("index") != index or row.get("order") != expected["order"][index]:
+                raise ValueError("paired trial order differs from freeze")
+            typed = directory / f"statements/{index:02d}.json"
+            order = expected["order"][index]
+            arms = ("generic", "mixed") if order == "generic-first" else ("mixed", "generic")
+            reconstructed = {"index": index, "order": order}
+            for arm in arms:
+                event = events[event_at]
+                event_at += 1
+                if previous_arm_end_ns is not None and \
+                        event["prover"]["start_monotonic_ns"] < previous_arm_end_ns:
+                    raise ValueError("raw arm timing order differs from sequential frozen trial order")
+                reconstructed[arm] = event_record(event, directory, split,
+                                                   int(key), index, order, arm, expected)
+                previous_arm_end_ns = event["verifier"]["end_monotonic_ns"]
+                if native:
+                    proof = directory / f"trials/{index:02d}/{arm}/proof.bin"
+                    verifier = (generic_bins(directory, name)[1] if arm == "generic"
+                                else mixed_bins(directory, name)[1])
+                    command = [str(verifier), str(proof), str(typed)]
+                    if arm == "generic":
+                        command.append(str(generic_bins(directory, name)[2]))
+                    subprocess.run(command, cwd=ROOT, check=True, capture_output=True)
+                    for leaf in (0, 1):
+                        changed = directory / f"trials/{index:02d}/{arm}/changed-{'input' if leaf == 0 else 'result'}.json"
+                        if changed.read_bytes() != changed_claim(typed.read_bytes(), leaf):
+                            raise ValueError("changed-claim control bytes differ from expectation")
+                        altered = command[:]
+                        altered[2] = str(changed)
+                        if not rejected(altered):
+                            raise ValueError("saved verifier accepted a changed typed claim")
+            derived_rows.append(reconstructed)
+        derived["cases"][key] = derived_rows
+    if event_at != len(events) or corpus != derived:
+        raise ValueError("corpus timing, RSS, bytes, arm, source, or order differs from raw phase ledger")
+    return derived
+
+
+def heldout_train_admission(args: argparse.Namespace, out: Path,
+                            protocol: dict, cfg: dict) -> dict:
+    if not all((args.train_out, args.expected_train_phase_root_sha256,
+                args.train_phase_anchor_commit, args.train_report_anchor_commit)):
+        raise ValueError("held-out phase requires anchored and reviewed train phase/report")
+    train_out = args.train_out.resolve()
+    if train_out == out or not train_out.is_dir():
+        raise ValueError("held-out phase requires a distinct existing train evidence path")
+    return checked_report(train_out, "train", protocol, cfg,
+                          args.expected_protocol_sha256, args.anchor_commit,
+                          args.expected_train_phase_root_sha256,
+                          args.train_phase_anchor_commit,
+                          args.train_report_anchor_commit)
+
+
 def run(args: argparse.Namespace) -> None:
     protocol = check(args.expected_protocol_sha256, args.anchor_commit)
     cfg = design()
     split = args.split
     entries = protocol["inventory"][split]
     out = args.out.resolve()
+    train_admission = heldout_train_admission(args, out, protocol, cfg) if split == "heldout" else None
+    if args.phase == "report-check":
+        if not all((args.expected_phase_root_sha256, args.phase_anchor_commit,
+                    args.report_anchor_commit)):
+            raise ValueError("report-check requires full phase and report anchors")
+        print(json.dumps(checked_report(out, split, protocol, cfg,
+                                        args.expected_protocol_sha256, args.anchor_commit,
+                                        args.expected_phase_root_sha256,
+                                        args.phase_anchor_commit, args.report_anchor_commit),
+                         sort_keys=True))
+        return
     out.parent.mkdir(parents=True, exist_ok=True)
-    if shutil.disk_usage(out.parent).free < protocol["minimum_available_disk_bytes_before_native_phase"]:
-        raise ValueError("paired native phase requires at least 8 GiB free before work")
+    check_disk_space(out, protocol["minimum_available_disk_bytes_before_native_phase"])
     if args.phase == "build":
         out.mkdir(parents=True, exist_ok=False)
+        if train_admission is not None:
+            durable_write(out / "train-admission.json", canonical(train_admission))
         build_ledger = out / "build-ledger.ndjson"
         previous = GENESIS
         sequence = 0
         for key, expected in entries.items():
+            check_disk_space(out, protocol["minimum_available_disk_bytes_before_native_phase"])
             events = build_case(out / f"n{key}", int(key), cfg, expected,
                                 protocol, split)
             for event in events:
@@ -579,6 +778,8 @@ def run(args: argparse.Namespace) -> None:
         return
     if not out.is_dir():
         raise ValueError("paired build evidence is absent")
+    if train_admission is not None and (out / "train-admission.json").read_bytes() != canonical(train_admission):
+        raise ValueError("held-out train admission changed after package build")
     for key, expected in entries.items():
         directory = out / f"n{key}"
         count = int(key)
@@ -602,10 +803,12 @@ def run(args: argparse.Namespace) -> None:
             (directory / "trials").mkdir(exist_ok=False)
             results = []
             for index, order in enumerate(expected["order"]):
+                check_disk_space(out, protocol["minimum_available_disk_bytes_before_native_phase"])
                 first, second = (("generic", "mixed") if order == "generic-first"
                                  else ("mixed", "generic"))
                 arms = {}
                 for arm in (first, second):
+                    check_disk_space(out, protocol["minimum_available_disk_bytes_before_native_phase"])
                     event = arm_trial(directory, split, int(key), index, order, arm, expected)
                     arms[arm] = event_record(event, directory, split, int(key),
                                              index, order, arm, expected)
@@ -631,55 +834,9 @@ def run(args: argparse.Namespace) -> None:
             2 * sum(len(item["order"]) for item in entries.values()),
             list(entries), args.expected_phase_root_sha256, args.phase_anchor_commit)
         corpus = json.loads((out / "corpus.json").read_bytes())
-        if (corpus.get("schema") != "s31-paired-record-v2-corpus-v1" or
-                corpus.get("split") != split or
-                corpus.get("protocol_sha256") != args.expected_protocol_sha256 or
-                corpus.get("anchor_commit") != args.anchor_commit or
-                corpus.get("cases", {}).keys() != entries.keys()):
-            raise ValueError("paired corpus differs from frozen roster")
-        derived = {"schema": "s31-paired-record-v2-corpus-v1", "split": split,
-                   "protocol_sha256": args.expected_protocol_sha256,
-                   "anchor_commit": args.anchor_commit, "cases": {}}
-        event_at = 0
-        previous_arm_end_ns = None
-        for key, expected in entries.items():
-            directory = out / f"n{key}"
-            name = json.loads((directory / "source.s31.json").read_bytes())["name"]
-            derived_rows = []
-            for index, row in enumerate(corpus["cases"][key]):
-                if row.get("index") != index or row.get("order") != expected["order"][index]:
-                    raise ValueError("paired trial order differs from freeze")
-                typed = directory / f"statements/{index:02d}.json"
-                order = expected["order"][index]
-                arms = ("generic", "mixed") if order == "generic-first" else ("mixed", "generic")
-                reconstructed = {"index": index, "order": order}
-                for arm in arms:
-                    event = events[event_at]
-                    event_at += 1
-                    if previous_arm_end_ns is not None and \
-                            event["prover"]["start_monotonic_ns"] < previous_arm_end_ns:
-                        raise ValueError("raw arm timing order differs from sequential frozen trial order")
-                    reconstructed[arm] = event_record(event, directory, split,
-                                                       int(key), index, order, arm, expected)
-                    previous_arm_end_ns = event["verifier"]["end_monotonic_ns"]
-                    proof = directory / f"trials/{index:02d}/{arm}/proof.bin"
-                    verifier = generic_bins(directory, name)[1] if arm == "generic" else mixed_bins(directory, name)[1]
-                    command = [str(verifier), str(proof), str(typed)]
-                    if arm == "generic":
-                        command.append(str(generic_bins(directory, name)[2]))
-                    subprocess.run(command, cwd=ROOT, check=True, capture_output=True)
-                    for leaf in (0, 1):
-                        changed = directory / f"trials/{index:02d}/{arm}/changed-{'input' if leaf == 0 else 'result'}.json"
-                        if changed.read_bytes() != changed_claim(typed.read_bytes(), leaf):
-                            raise ValueError("changed-claim control bytes differ from expectation")
-                        altered = command[:]
-                        altered[2] = str(changed)
-                        if not rejected(altered):
-                            raise ValueError("saved verifier accepted a changed typed claim")
-                derived_rows.append(reconstructed)
-            derived["cases"][key] = derived_rows
-        if event_at != len(events) or corpus != derived:
-            raise ValueError("corpus timing, RSS, bytes, arm, source, or order differs from raw phase ledger")
+        check_disk_space(out, protocol["minimum_available_disk_bytes_before_native_phase"])
+        derived = replay_corpus(out, split, entries, args.expected_protocol_sha256,
+                                args.anchor_commit, events, corpus, native=True)
         # Independent, untimed controls exercise source identity at identical
         # geometry, proof-header binding, and a *valid* altered public claim.
         first_key = next(iter(entries))
@@ -688,6 +845,7 @@ def run(args: argparse.Namespace) -> None:
         first_source = parse_source_json(first_source_bytes)
         first_name = first_source["name"]
         controls = out / "audit-controls"
+        check_disk_space(out, protocol["minimum_available_disk_bytes_before_native_phase"])
         controls.mkdir(exist_ok=False)
         first_statement = first / "statements/00.json"
         generic_proof = first / "trials/00/generic/proof.bin"
@@ -707,6 +865,7 @@ def run(args: argparse.Namespace) -> None:
                 alternate_generic_manifest["lowering"] != "direct-gate"):
             raise ValueError("alternate generic verifier is not bound to altered source")
         alternate_mixed = controls / "alternate-mixed"
+        check_disk_space(out, protocol["minimum_available_disk_bytes_before_native_phase"])
         subprocess.run([
             "zig", "build", "--build-file", str(S31 / "build.zig"), "install",
             "-Doptimize=ReleaseFast", "-Ds31-version=2",
@@ -789,6 +948,7 @@ def run(args: argparse.Namespace) -> None:
         durable_write(altered_assignment, altered_assignment_bytes)
         durable_write(altered_statement, altered_statement_bytes)
         generic_prover = generic_bins(first, first_name)[0]
+        check_disk_space(out, protocol["minimum_available_disk_bytes_before_native_phase"])
         altered_generic_proof = controls / "altered-generic.proof"
         subprocess.run([
             str(generic_prover), "prove-for-external-verification",
@@ -802,6 +962,7 @@ def run(args: argparse.Namespace) -> None:
                          str(first_statement), str(first_generic_key)]):
             raise ValueError("generic native verifier accepted original claim for altered valid proof")
         mixed_prover = mixed_bins(first, first_name)[0]
+        check_disk_space(out, protocol["minimum_available_disk_bytes_before_native_phase"])
         altered_mixed_proof = controls / "altered-mixed.proof"
         altered_mixed_output = controls / "altered-mixed.statement.json"
         subprocess.run([str(mixed_prover), str(altered_assignment),
@@ -842,45 +1003,30 @@ def run(args: argparse.Namespace) -> None:
                                             "altered_generic_proof_sha256": sha(altered_generic_proof.read_bytes()),
                                             "altered_mixed_proof_sha256": sha(altered_mixed_proof.read_bytes()),
                                             "modified_manifest_header_proof_sha256": sha(wrong_manifest_header.read_bytes())})
-        analysis = paired_summary(derived, cfg)
-        analysis["phase_root_sha256"] = args.expected_phase_root_sha256
-        analysis["phase_anchor_commit"] = args.phase_anchor_commit
-        analysis["build_cost_scope"] = (
-            "observed warm-cache workflows: generic full s31.build package; "
-            "mixed direct Zig install; not a symmetric or cold compiler benchmark"
-        )
-        analysis["build_costs"] = build_costs
-        analysis["live_security_profiles"] = {}
-        for key in entries:
-            package = json.loads((out / f"n{key}/package-attestation.json").read_bytes())
-            generic_pcs = package["generic_live_pcs"]
-            mixed_pcs = package["mixed_live_pcs"]
-            analysis["live_security_profiles"][key] = {
-                "generic_pcs": generic_pcs,
-                "mixed_pcs": mixed_pcs,
-                "generic_interaction_pow_bits": package["generic_interaction_pow_bits"],
-                "mixed_interaction_pow_bits": package["mixed_interaction_pow_bits"],
-                "matching_fri_config": generic_pcs["fri_config"] == mixed_pcs["fri_config"],
-                "matching_interaction_pow_bits": package["generic_interaction_pow_bits"] ==
-                                                 package["mixed_interaction_pow_bits"],
-                "different_pcs_lifting_or_geometry": generic_pcs != mixed_pcs,
-            }
-        analysis["soundness_note"] = (
-            "Matched visible FRI/PoW parameters do not prove equal soundness. "
-            "Each AIR/component profile needs its own soundness analysis."
-        )
-        saved_json(out / "analysis.json", analysis)
+        saved_json(out / "analysis.json", analysis_from_corpus(
+            derived, cfg, entries, build_costs, out,
+            args.expected_phase_root_sha256, args.phase_anchor_commit))
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--split", choices=("train", "heldout"), required=True)
-    parser.add_argument("--phase", choices=("build", "prove", "audit"), required=True)
+    parser.add_argument("--phase", choices=("build", "prove", "audit", "report-check"), required=True)
     parser.add_argument("--expected-protocol-sha256", required=True)
     parser.add_argument("--anchor-commit", required=True)
     parser.add_argument("--expected-phase-root-sha256",
                         help="full externally recorded phase-root SHA-256; required by audit")
     parser.add_argument("--phase-anchor-commit",
                         help="committed split-specific UTC phase anchor; required by audit")
+    parser.add_argument("--report-anchor-commit",
+                        help="committed split-specific report anchor; required by report-check")
+    parser.add_argument("--train-out", type=Path,
+                        help="sealed train evidence path; required by every held-out phase")
+    parser.add_argument("--expected-train-phase-root-sha256",
+                        help="externally recorded train phase root; required by every held-out phase")
+    parser.add_argument("--train-phase-anchor-commit",
+                        help="committed train phase anchor; required by every held-out phase")
+    parser.add_argument("--train-report-anchor-commit",
+                        help="externally recorded train report anchor; required by every held-out phase")
     parser.add_argument("--out", type=Path, required=True)
     run(parser.parse_args())

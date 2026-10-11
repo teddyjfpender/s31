@@ -24,6 +24,7 @@ BUILD_EVENT_SCHEMA = "s31-paired-record-v2-raw-build-event-v1"
 BUILD_ROOT_SCHEMA = "s31-paired-record-v2-build-root-v1"
 ROOT_SCHEMA = "s31-paired-record-v2-phase-root-v1"
 ANCHOR_SCHEMA = "s31-paired-record-v2-phase-anchor-v1"
+REPORT_ANCHOR_SCHEMA = "s31-paired-record-v2-report-anchor-v1"
 GENESIS = "0" * 64
 
 
@@ -181,7 +182,7 @@ def build_root(directory: Path, split: str, protocol_sha256: str,
                                 event_schema=BUILD_EVENT_SCHEMA)
     if len(events) != 2 * len(counts):
         raise ValueError("paired build ledger does not cover both arms for each frozen case")
-    return {
+    root = {
         "schema": BUILD_ROOT_SCHEMA,
         "split": split,
         "protocol_sha256": protocol_sha256,
@@ -197,6 +198,9 @@ def build_root(directory: Path, split: str, protocol_sha256: str,
             for key in counts
         },
     }
+    if split == "heldout":
+        root["train_admission_sha256"] = sha((directory / "train-admission.json").read_bytes())
+    return root
 
 
 def phase_root(directory: Path, split: str, protocol_sha256: str,
@@ -265,3 +269,51 @@ def check_phase_anchor(directory: Path, split: str, protocol_sha256: str,
         raise ValueError("paired phase root differs from chained raw evidence or corpus")
     events, _ = read_ledger(directory / "phase-ledger.ndjson")
     return events
+
+
+def check_report_anchor(directory: Path, split: str, protocol_sha256: str,
+                        phase_root_sha256: str, phase_anchor_commit: str,
+                        report_anchor_commit: str) -> tuple[dict, dict]:
+    """Bind post-audit reports to a later committed and timestamped digest."""
+    if not HEX40.fullmatch(report_anchor_commit or ""):
+        raise ValueError("full externally recorded report anchor commit required")
+    anchor_path = ROOT / f"design/s31/measurements/language/paired-record-v2-{split}-report-anchor.json"
+    require_committed(anchor_path, report_anchor_commit)
+    if (subprocess.run(["git", "-C", str(ROOT), "merge-base", "--is-ancestor",
+                       report_anchor_commit, "HEAD"], check=False).returncode or
+            subprocess.run(["git", "-C", str(ROOT), "merge-base", "--is-ancestor",
+                            phase_anchor_commit, report_anchor_commit], check=False).returncode):
+        raise ValueError("report anchor must descend from phase anchor and current HEAD")
+    anchor = json.loads(anchor_path.read_bytes())
+    phase_path = ROOT / f"design/s31/measurements/language/paired-record-v2-{split}-phase-anchor.json"
+    phase = json.loads(phase_path.read_bytes())
+    try:
+        timestamp = datetime.fromisoformat(anchor["recorded_at_utc"].replace("Z", "+00:00"))
+        phase_timestamp = datetime.fromisoformat(phase["recorded_at_utc"].replace("Z", "+00:00"))
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ValueError("report anchor needs a UTC timestamp") from exc
+    if (anchor.get("schema") != REPORT_ANCHOR_SCHEMA or anchor.get("split") != split or
+            anchor.get("protocol_sha256") != protocol_sha256 or
+            anchor.get("phase_root_sha256") != phase_root_sha256 or
+            anchor.get("phase_anchor_commit") != phase_anchor_commit or
+            timestamp.utcoffset() is None or timestamp.utcoffset().total_seconds() != 0 or
+            timestamp < phase_timestamp or timestamp > datetime.now(timezone.utc)):
+        raise ValueError("report anchor differs from phase or UTC chronology")
+    reports = []
+    for name in ("audit", "analysis"):
+        path = directory / f"{name}.json"
+        raw = path.read_bytes()
+        value = json.loads(raw)
+        if raw != canonical(value) or anchor.get(f"{name}_sha256") != sha(raw):
+            raise ValueError(f"{name} differs from externally recorded report digest")
+        reports.append(value)
+    audit, analysis = reports
+    if (audit.get("schema") != "s31-paired-record-v2-audit-v1" or
+            audit.get("protocol_sha256") != protocol_sha256 or
+            audit.get("phase_root_sha256") != phase_root_sha256 or
+            audit.get("phase_anchor_commit") != phase_anchor_commit or
+            audit.get("corpus_sha256") != sha((directory / "corpus.json").read_bytes()) or
+            analysis.get("phase_root_sha256") != phase_root_sha256 or
+            analysis.get("phase_anchor_commit") != phase_anchor_commit):
+        raise ValueError("report bytes do not bind the anchored phase and corpus")
+    return audit, analysis

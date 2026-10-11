@@ -5,16 +5,20 @@ from __future__ import annotations
 import json
 import tempfile
 import unittest
+from datetime import datetime, timezone
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
 
 from design import ROOT, S31, canonical, case, design, inventory, sha
 from integrity import (BUILD_EVENT_SCHEMA, EVENT_SCHEMA, GENESIS,
-                       append_event, build_root, phase_root, read_ledger,
+                       append_event, build_root, check_report_anchor, phase_root, read_ledger,
                        replay_process)
 from protocol import check
-from runner import (altered_valid_assignment, build_event_seconds,
-                    changed_claim, materialize, paired_summary,
+from runner import (altered_valid_assignment, build_event_seconds, check_disk_space,
+                    changed_claim, heldout_train_admission, materialize, paired_summary,
                     replay_build_evidence, require_static_case)
+import integrity
 
 
 class PairedRecordDesign(unittest.TestCase):
@@ -88,6 +92,61 @@ class PairedRecordDesign(unittest.TestCase):
     def test_unfrozen_design_cannot_authorize_native_runner(self) -> None:
         with self.assertRaisesRegex(ValueError, "externally recorded"):
             check("0" * 64, "short")
+
+    def test_heldout_requires_reviewed_train_anchor_before_any_phase(self) -> None:
+        args = SimpleNamespace(train_out=None, expected_train_phase_root_sha256=None,
+                               train_phase_anchor_commit=None, train_report_anchor_commit=None)
+        with self.assertRaisesRegex(ValueError, "anchored and reviewed train"):
+            heldout_train_admission(args, Path("/tmp/heldout"), {}, {})
+
+    def test_disk_guard_rejects_below_floor_before_native_unit(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            minimum = 8 * (1 << 30)
+            with patch("runner.shutil.disk_usage",
+                       return_value=SimpleNamespace(free=minimum - 1)):
+                with self.assertRaisesRegex(ValueError, "at least 8 GiB"):
+                    check_disk_space(Path(temporary) / "evidence", minimum)
+
+    def test_report_anchor_detects_post_audit_edit(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            reports = root / "evidence"
+            reports.mkdir()
+            design_dir = root / "design/s31/measurements/language"
+            design_dir.mkdir(parents=True)
+            protocol_sha, phase_sha = "a" * 64, "b" * 64
+            phase_commit, report_commit = "c" * 40, "d" * 40
+            now = datetime.now(timezone.utc).isoformat()
+            (design_dir / "paired-record-v2-train-phase-anchor.json").write_bytes(canonical({
+                "recorded_at_utc": now}))
+            corpus = canonical({"cases": {}})
+            (reports / "corpus.json").write_bytes(corpus)
+            audit = canonical({"schema": "s31-paired-record-v2-audit-v1",
+                               "protocol_sha256": protocol_sha,
+                               "phase_root_sha256": phase_sha,
+                               "phase_anchor_commit": phase_commit,
+                               "corpus_sha256": sha(corpus)})
+            analysis = canonical({"phase_root_sha256": phase_sha,
+                                  "phase_anchor_commit": phase_commit})
+            (reports / "audit.json").write_bytes(audit)
+            (reports / "analysis.json").write_bytes(analysis)
+            anchor = canonical({"schema": "s31-paired-record-v2-report-anchor-v1",
+                                "split": "train", "protocol_sha256": protocol_sha,
+                                "phase_root_sha256": phase_sha,
+                                "phase_anchor_commit": phase_commit,
+                                "audit_sha256": sha(audit), "analysis_sha256": sha(analysis),
+                                "recorded_at_utc": now})
+            (design_dir / "paired-record-v2-train-report-anchor.json").write_bytes(anchor)
+            with patch.object(integrity, "ROOT", root), \
+                    patch.object(integrity, "require_committed"), \
+                    patch.object(integrity.subprocess, "run",
+                                 return_value=SimpleNamespace(returncode=0)):
+                check_report_anchor(reports, "train", protocol_sha, phase_sha,
+                                    phase_commit, report_commit)
+                (reports / "analysis.json").write_bytes(analysis + b" ")
+                with self.assertRaisesRegex(ValueError, "analysis differs"):
+                    check_report_anchor(reports, "train", protocol_sha, phase_sha,
+                                        phase_commit, report_commit)
 
     def test_summary_uses_paired_assignment_unit(self) -> None:
         cfg = design()
@@ -222,6 +281,12 @@ class PairedRecordDesign(unittest.TestCase):
                     out, "train", "d" * 64, "e" * 40, ["1"])))
             reseal()
             replay_build_evidence(out, "train", entries, protocol, "d" * 64, "e" * 40)
+            admission = out / "train-admission.json"
+            admission.write_bytes(canonical({"report_anchor_commit": "f" * 40}))
+            heldout_root = build_root(out, "heldout", "d" * 64, "e" * 40, ["1"])
+            admission.write_bytes(canonical({"report_anchor_commit": "a" * 40}))
+            self.assertNotEqual(build_root(out, "heldout", "d" * 64,
+                                           "e" * 40, ["1"]), heldout_root)
             with self.assertRaises(ValueError):
                 build_event_seconds({**events[0], "arm": "mixed"}, directory,
                                     "train", 1, "generic", entries["1"], protocol)

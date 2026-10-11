@@ -106,6 +106,9 @@ def draft() -> str:
         "first_verified_proof_boundary": cfg["first_verified_proof_boundary"],
         "phase_integrity_gate": cfg["phase_integrity_gate"],
         "build_integrity_gate": cfg["build_integrity_gate"],
+        "train_before_heldout_gate": cfg["train_before_heldout_gate"],
+        "post_audit_report_gate": cfg["post_audit_report_gate"],
+        "disk_guard_scope": cfg["disk_guard_scope"],
         "live_security_config_gate": cfg["live_security_config_gate"],
         "bootstrap_seed": cfg["bootstrap_seed"],
         "bootstrap_resamples": cfg["bootstrap_resamples"],
@@ -161,6 +164,9 @@ def check(expected_protocol_sha256: str, anchor_commit: str) -> dict:
             value.get("first_verified_proof_boundary") != cfg["first_verified_proof_boundary"] or
             value.get("phase_integrity_gate") != cfg["phase_integrity_gate"] or
             value.get("build_integrity_gate") != cfg["build_integrity_gate"] or
+            value.get("train_before_heldout_gate") != cfg["train_before_heldout_gate"] or
+            value.get("post_audit_report_gate") != cfg["post_audit_report_gate"] or
+            value.get("disk_guard_scope") != cfg["disk_guard_scope"] or
             value.get("live_security_config_gate") != cfg["live_security_config_gate"] or
             value.get("bootstrap_seed") != cfg["bootstrap_seed"] or
             value.get("bootstrap_resamples") != cfg["bootstrap_resamples"] or
