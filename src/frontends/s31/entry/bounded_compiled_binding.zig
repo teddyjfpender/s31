@@ -10,4 +10,5 @@ test {
     _ = @import("src/runtime/mixed_boundary/n4_package.zig");
     _ = @import("src/runtime/mixed_boundary/general_package.zig");
     _ = @import("src/runtime/mixed_boundary/witness_audit.zig");
+    _ = @import("src/tests/proofs/mixed_boundary/trace_correspondence.zig");
 }

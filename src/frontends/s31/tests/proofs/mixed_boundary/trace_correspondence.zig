@@ -1,0 +1,203 @@
+//! Concrete N=1/N=8 source-to-native-base-trace fixture.
+//!
+//! These are the same base writers called by general_package.proveSealed via
+//! direct_mixed_general_arithmetic.proveSourceBound. This test checks witness
+//! construction, not a proof commitment, LogUp collision bound, or a general
+//! compiler correspondence theorem.
+const std = @import("std");
+const core = @import("stwo_core");
+const circuit = @import("stwo_circuit_frontend");
+const cpu = @import("stwo_circuit_cpu_integration");
+const relation = @import("../../../language/relation.zig");
+const binding = @import("../../../runtime/bounded_compiled_binding.zig");
+const mixed = @import("../../../runtime/mixed_boundary/inspection.zig");
+const family = @import("../../../runtime/mixed_boundary/test_source.zig");
+
+const M31 = core.fields.m31.M31;
+const QM31 = core.fields.qm31.QM31;
+const p = core.fields.m31.Modulus;
+
+fn step(words: *[4]u32, constant: u32) void {
+    for (words) |*word|
+        word.* = @intCast((@as(u64, word.*) * word.* + constant) % p);
+}
+
+fn wordsAt(values: []const QM31, addresses: [4]u32) ![4]u32 {
+    var result: [4]u32 = undefined;
+    for (addresses, &result) |address, *word| {
+        if (address >= values.len) return error.InvalidFixtureEndpoint;
+        word.* = (try values[address].tryIntoM31()).toU32();
+    }
+    return result;
+}
+
+fn checkBridge(columns: anytype, addresses: [8]u32, expected: [8]u32) !void {
+    if (columns.len != 8) return error.WrongFixtureBridgeWidth;
+    for (columns, addresses, expected) |column, address, word| {
+        if (column.log_size != 4 or column.values.len != 16)
+            return error.WrongFixtureBridgeRows;
+        // The committed bridge has one constant column per endpoint; its
+        // Gate event gets the address from the source-derived call plan.
+        const native_gate = cpu.private_many_boundary.gateTuple(address, M31.fromCanonical(column.values[0].toU32()));
+        if (native_gate[0].toU32() != circuit.common.component_list.GATE_RELATION_ID or
+            native_gate[1].toU32() != address or native_gate[2].toU32() != word)
+            return error.WrongFixtureGateTuple;
+        for (native_gate[3..]) |zero| if (!zero.isZero()) return error.WrongFixtureGateTuple;
+        for (column.values) |value|
+            if (value.toU32() != word) return error.WrongFixtureBridgeWord;
+    }
+}
+
+fn rejectChangedBridgeRow(columns: anytype, addresses: [8]u32, expected: [8]u32) !void {
+    const mutable = @constCast(columns[0].values);
+    const original = mutable[1];
+    defer mutable[1] = original;
+    mutable[1] = M31.fromCanonical((expected[0] + 1) % p);
+    try std.testing.expectError(error.WrongFixtureBridgeWord, checkBridge(columns, addresses, expected));
+}
+
+fn fixture(comptime count: usize) !void {
+    const allocator = std.testing.allocator;
+    // The reusable Zig family has a different name. Replace only that field
+    // to match the exact canonical bytes used by the Python N1/N8 fixture.
+    const source = try std.mem.replaceOwned(
+        u8,
+        allocator,
+        family.forCount(count),
+        "\"name\":\"mixed_descriptor_matrix\"",
+        comptime std.fmt.comptimePrint("\"name\":\"mixed_general_{d}\"", .{count}),
+    );
+    defer allocator.free(source);
+    const expected_source_sha256 = if (count == 1)
+        "8c5296ef964e3be770e442cd28b66eed3051e210bdd6a97e265a4cd2c5962f75"
+    else
+        "08b5c20367e910261a194658bc3753038037fb85bc8f16dbc7f9191c7d1f45ff";
+    var source_hash: [32]u8 = undefined;
+    std.crypto.hash.sha2.Sha256.hash(source, &source_hash, .{});
+    const source_hash_hex = std.fmt.bytesToHex(source_hash, .lower);
+    if (!std.mem.eql(u8, &source_hash_hex, expected_source_sha256))
+        return error.WrongFixtureSourceBytes;
+    const air_bytes = @embedFile("s31_air_programs");
+    const initial = [4]u32{ 1, 2, 3, 4 };
+    var final = initial;
+    for (0..count) |id| for (0..16) |_| step(&final, @intCast(13 + id));
+    var sum: [4]u32 = undefined;
+    var product: [4]u32 = undefined;
+    for (final, initial, &sum, &product) |a, b, *s, *m| {
+        s.* = @intCast((@as(u64, a) + b) % p);
+        m.* = @intCast((@as(u64, a) * b) % p);
+    }
+    const assignment_json = try std.json.Stringify.valueAlloc(allocator, .{
+        .public_inputs = struct {}{},
+        .private_inputs = .{ .x = initial },
+        .public_outputs = .{ .sum = sum, .product = product },
+    }, .{});
+    defer allocator.free(assignment_json);
+    var assignment = try relation.parseAssignment(allocator, assignment_json);
+    defer assignment.deinit();
+    const selected = try mixed.inspectSource(allocator, source, air_bytes);
+    const topology = try binding.compileSourceTopology(allocator, source);
+    if (selected.call_count != count or topology.call_count != count or
+        !std.meta.eql(selected.source_sha256, topology.source_sha256) or
+        !std.meta.eql(selected.fixed_root, topology.fixed_root))
+        return error.WrongFixtureSource;
+    var witness = try binding.compileManyWitness(allocator, source, assignment.value, topology);
+    defer witness.deinit();
+    const values = witness.values();
+    const view = circuit.common.preprocessed.CircuitView.fromBuilder(&witness.circuit);
+    var plan: cpu.private_many_boundary.Plan = .{ .count = count };
+    for (selected.calls[0..count], plan.calls[0..count], 0..) |call, *slot, id| {
+        if (call.call_id != id or call.rounds != 16 or call.constant != 13 + id or
+            !std.meta.eql(call.input, topology.calls[id].input) or
+            !std.meta.eql(call.output, topology.calls[id].output))
+            return error.WrongFixtureCall;
+        // Independently pinned allocation for this exact source family:
+        // initial scalar guesses 11..14, first result 23..26, then +10/call.
+        for (0..4) |lane| {
+            const want_input: u32 = if (id == 0) @intCast(11 + lane) else @intCast(23 + 10 * (id - 1) + lane);
+            const want_output: u32 = @intCast(23 + 10 * id + lane);
+            if (call.input[lane] != want_input or call.output[lane] != want_output)
+                return error.WrongFixtureAddress;
+        }
+        slot.* = .{
+            .call_id = call.call_id,
+            .rounds = call.rounds,
+            .constant = M31.fromCanonical(call.constant),
+            .input = call.input,
+            .output = call.output,
+        };
+    }
+    var pp = try plan.preprocessed(allocator, view);
+    defer pp.deinit(allocator);
+    if (!std.meta.eql(try pp.preprocessedRoot(allocator, 1), selected.fixed_root))
+        return error.WrongFixtureFixedRoot;
+    var circuit_base = try circuit.witness.direct_arithmetic.writeBase(allocator, values, &pp);
+    defer circuit_base.deinit();
+    if (circuit_base.output_values.len != 8) return error.WrongFixturePublicWidth;
+    for (sum ++ product, circuit_base.output_values) |word, actual|
+        if ((try actual.tryIntoM31()).toU32() != word) return error.WrongFixturePublicWord;
+
+    var state = initial;
+    for (selected.calls[0..count], 0..) |call, id| {
+        const input = state;
+        if (!std.meta.eql(try wordsAt(values, call.input), input)) return error.WrongFixtureInput;
+        var native_input: [4]M31 = undefined;
+        for (input, &native_input) |word, *out| out.* = M31.fromCanonical(word);
+        var chip_base = if (id < 2)
+            try cpu.tagged_pair_chip.writeBase(allocator, native_input, M31.fromCanonical(call.constant), call.rounds)
+        else
+            try cpu.tagged_many_chip.writeBase(allocator, native_input, M31.fromCanonical(call.constant), call.rounds);
+        defer chip_base.deinit();
+        if (chip_base.columns.len != 9) return error.WrongFixtureChipWidth;
+        for (0..16) |step_id| {
+            const row = cpu.repeated_step_chip.storageIndex(step_id, 4);
+            if (chip_base.columns[0].values[row].toU32() != step_id)
+                return error.WrongFixtureChipStep;
+            for (state, 0..) |word, lane|
+                if (chip_base.columns[1 + lane].values[row].toU32() != word)
+                    return error.WrongFixtureChipInput;
+            step(&state, call.constant);
+            for (state, 0..) |word, lane|
+                if (chip_base.columns[5 + lane].values[row].toU32() != word)
+                    return error.WrongFixtureChipOutput;
+        }
+        if (!std.meta.eql(try wordsAt(values, call.output), state))
+            return error.WrongFixtureOutput;
+        for (chip_base.final, state) |actual, word|
+            if (actual.toU32() != word) return error.WrongFixtureChipFinal;
+        // The seven-field chip tuples contain the same endpoints as the
+        // source-shaped typed Boundary.start and Boundary.finish events.
+        const start = cpu.private_many_boundary.chipTuple(call.call_id, 0, native_input);
+        var native_final: [4]M31 = undefined;
+        for (state, &native_final) |word, *out| out.* = M31.fromCanonical(word);
+        const finish = cpu.private_many_boundary.chipTuple(call.call_id, call.rounds, native_final);
+        if (start[0].toU32() != cpu.private_many_boundary.relation_id or
+            start[1].toU32() != id or start[2].toU32() != 0 or
+            finish[0].toU32() != cpu.private_many_boundary.relation_id or
+            finish[1].toU32() != id or finish[2].toU32() != 16)
+            return error.WrongFixtureChipTuple;
+        for (0..4) |lane| if (start[3 + lane].toU32() != input[lane] or
+            finish[3 + lane].toU32() != state[lane]) return error.WrongFixtureChipTuple;
+
+        const native_call = plan.calls[id];
+        const addresses = native_call.input ++ native_call.output;
+        const expected = input ++ state;
+        if (id < 2) {
+            var bridge = try cpu.tagged_pair_bridge.writeBase(allocator, values, native_call);
+            defer bridge.deinit();
+            try checkBridge(bridge.columns, addresses, expected);
+            if (id == 0) try rejectChangedBridgeRow(bridge.columns, addresses, expected);
+        } else {
+            var bridge = try cpu.tagged_many_bridge.writeBase(allocator, values, native_call);
+            defer bridge.deinit();
+            try checkBridge(bridge.columns, addresses, expected);
+            if (id == 2) try rejectChangedBridgeRow(bridge.columns, addresses, expected);
+        }
+    }
+    if (!std.meta.eql(state, final)) return error.WrongFixtureFinal;
+}
+
+test "mixed N1 and N8 source witness matches native bridge and chip base rows" {
+    try fixture(1);
+    try fixture(8);
+}
