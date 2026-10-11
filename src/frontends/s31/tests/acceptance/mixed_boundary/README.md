@@ -67,6 +67,15 @@ carry identical values across their shared addresses. Equality of this model
 to the production compiler still comes from the native inspector test, while
 authenticating producer uniqueness from a proof remains open.
 
+`formal/s31/S31/Gadgets/Air/SourceMixedChainSemantics.lean` then proves an
+inductive source meaning for every call up to eight: starting from the four
+private input words, call `c` applies `w ↦ w² + (13+c)` exactly 16 times, and
+the result is the next call's input. Its joint-event theorem derives every
+call's source prefix from exact Gate/chip event balance, the chip row rules,
+the reviewed address schedule, and unique Gate producers. Those premises are
+visible in the theorem statement; an accepted native proof is not yet shown
+to imply them.
+
 ```sh
 python3 src/frontends/s31/tests/acceptance/mixed_boundary/typed_boundary_correspondence.py
 ```
