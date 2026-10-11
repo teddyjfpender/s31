@@ -160,3 +160,44 @@ descriptor validation and JSON/digest checks. This corpus compares the source
 compiler, Python decoder, independent projection, Lean model, and, with
 `--native`, Zig statement parser. It does not prove native STARK verification
 for all 13 shapes.
+
+## Representative proof binding across record layouts
+
+[`native_proof_corpus_v2.py`](native_proof_corpus_v2.py) takes four programs
+directly from the 13-layout source corpus and runs their generated native
+provers and verifiers. It first checks that the source corpus still renders
+the exact checked-in Lean fixture:
+
+| Layout | Eight public proof words | Feature exercised |
+| --- | --- | --- |
+| `pair_4` | `[2, 3, 5, 7, 2, 3, 5, 7]` | Four-lane input repeated in two named result fields |
+| `tuple_2_2` | `[11, 13, 17, 19, 11, 13, 17, 19]` | Nested tuple paths and two result aliases |
+| `bit_3` | `[1, 23, 29, 31, 23, 29, 31, 0]` | Public Boolean input alongside three M31 lanes |
+| `private_2` | `[2147483646, 5, 37, 41, 1, 12, 0, 0]` | Two private lanes, modular wraparound, repeated result alias |
+
+Each package must seal the exact compiled source and record ABI digest. For
+each proof, its canonical statement bytes must agree with the assignment
+encoder, the Python decoder, and the independent source-derived projection.
+The separate value oracle checks the outputs, and the generated verifier
+accepts the proof. The harness then changes a public claim consistently at
+every aliased leaf. Both statement decoders must accept that new claim and
+project it to different proof words; the verifier must reject the *original*
+proof after parsing, at proof binding. This avoids counting a malformed alias
+as evidence of proof binding. In the current verifier, all four changed claims
+fail at `InvalidInteractionNonce`; that is transcript binding evidence, not a
+check of every later PCS or FRI stage.
+
+The flat proof word vector keeps the declared public input slots followed by
+the distinct result-wire slots. An output that aliases an input still occupies
+its own result slot; only repeated named result leaves share an output slot.
+
+Run one layout for a short edit loop, or all four:
+
+```sh
+python3 -B src/frontends/s31/tests/acceptance/record_abi/native_proof_corpus_v2.py --case pair_4
+python3 -B src/frontends/s31/tests/acceptance/record_abi/native_proof_corpus_v2.py
+```
+
+The four cases test a bounded subset of the 13 source layouts. They do not
+establish full compiler correspondence or the soundness of the underlying
+STARK verifier.
