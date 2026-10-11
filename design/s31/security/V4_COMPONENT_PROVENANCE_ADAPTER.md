@@ -86,6 +86,14 @@ standalone public `Plan.validate` API still checks unique producers before
 bounding rows and variables. Direct callers of that API need a separate
 resource limit until a versioned V4 template update can move the guard there.
 
+The standalone version-2 `BoundedPlan` admission façade supplies that early
+limit for new callers and rechecks it on both `validate` and `preprocessed`;
+its public fields are never treated as a sealed capability. It does not
+introduce a proof profile or change the V4 template. The closed registry now
+also supplies the canonical circuit → all chips → all bridges source-kind
+order for schedule selection, so a candidate roster cannot nominate its own
+kind sequence. Geometry and constraint bounds still come from live handles.
+
 ## Versioning and extension rule
 
 Version 1 is closed over `bundled_circuit`, `tagged_chip`, and `tagged_bridge`.
