@@ -32,9 +32,10 @@ aliased result wires once.
 
 ## Precisely what the model assumes
 
-- `WordBlock` contains canonical M31 words as an abstract element type. Lean
-  checks the payload length against the declared width; it does not prove
-  `0 ≤ word < 2³¹−1` for native `u32` words.
+- `WordBlock` models M31 words using an abstract element type. Lean checks
+  the payload length against the declared width; it does not prove
+  `0 ≤ word < 2³¹−1` for native `u32` words, or that each declared leaf width
+  lies in the production range `1..8`.
 - A `ValidatedPaths` value carries injectivity as evidence. The module proves
   it for a concrete two-field layout with unequal names. It does not yet
   derive injectivity for every nested record/tuple layout from the production
