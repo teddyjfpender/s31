@@ -367,8 +367,8 @@ on its actual twelve main columns at every row. From those column-level facts
 it derives the three physical-row predicates required by
 `early_return_public_io_sound`. The source plan fixes used-row multiplicities;
 the fixture's fourteen input and eleven output cells have positive
-multiplicity. The focused Lean file compiles; an aggregate build and source
-binding audit remain for integration. The diagnostic
+multiplicity. The focused Lean file, aggregate build, and source-binding
+audit pass. The diagnostic
 [`check_early_return_native_rows.py`](../../../formal/s31/scripts/check_early_return_native_rows.py)
 checks those column facts against a native `writeBase` export and rejects fixed,
 main, and public-pin mutations. The export is not a committed proof opening:
@@ -470,7 +470,7 @@ It does not prove that the Python checker implements its native-row model or
 authenticate committed AIR columns. The bridge formally checks the embedded
 bytes' bounded source/normalized relation pairing and their SSA/source-gate
 row and projected-column mapping; it is not a general compiler-correctness
-theorem. The outer Python checker checks every native row and binds the
+theorem. The outer Python checker checks every native **fixed** row and binds the
 projected cells to the exported columns and manifest hashes. Lean does not
 read the package itself or prove those columns are the verifier's committed
 preprocessed columns. In particular, the total add-row count and all

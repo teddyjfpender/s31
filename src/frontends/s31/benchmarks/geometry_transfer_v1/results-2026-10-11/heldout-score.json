@@ -1,0 +1,187 @@
+{
+  "all_diagnostic_gates_pass": true,
+  "calibration_sha256_before_heldout": "825f3d351a6a437a199db234a1ba86b0c2c36a8d34350991cc6238a8fdee8045",
+  "cases": {
+    "256": {
+      "metrics": {
+        "paired_after_pow_seconds": {
+          "descriptive_training_range_covered_trials": 11,
+          "observed": {
+            "max": 0.4653142080002548,
+            "median": 0.04175579200025541,
+            "median_absolute_deviation": 0.0016410210004202952,
+            "min": 0.02552141599914362,
+            "observations": 12,
+            "p90_interpolated": 0.04430426279991427
+          },
+          "predicted_center": 0.042873000499937884,
+          "relative_median_error": 0.026755773179338662
+        },
+        "paired_wall_seconds": {
+          "descriptive_training_range_covered_trials": 12,
+          "observed": {
+            "max": 0.5617982080002548,
+            "median": 0.11755825000000186,
+            "median_absolute_deviation": 0.06998616700002458,
+            "min": 0.04701783299969975,
+            "observations": 12,
+            "p90_interpolated": 0.24516748630012444
+          },
+          "predicted_center": 0.09373939650049579,
+          "relative_median_error": 0.2026132023869503
+        },
+        "proof_bytes": {
+          "descriptive_training_range_covered_trials": 11,
+          "observed": {
+            "max": 75433.0,
+            "median": 72146.0,
+            "median_absolute_deviation": 1134.5,
+            "min": 66120.0,
+            "observations": 12,
+            "p90_interpolated": 74303.6
+          },
+          "predicted_center": 72903.5,
+          "relative_median_error": 0.010499542594184015
+        },
+        "prover_peak_rss_bytes": {
+          "descriptive_training_range_covered_trials": 10,
+          "observed": {
+            "max": 11059200.0,
+            "median": 10764288.0,
+            "median_absolute_deviation": 98304.0,
+            "min": 10567680.0,
+            "observations": 12,
+            "p90_interpolated": 11029708.8
+          },
+          "predicted_center": 10846208.0,
+          "relative_median_error": 0.0076103500761035
+        }
+      },
+      "padded_qm31_rows": 1024
+    },
+    "448": {
+      "metrics": {
+        "paired_after_pow_seconds": {
+          "descriptive_training_range_covered_trials": 12,
+          "observed": {
+            "max": 0.4186089170001632,
+            "median": 0.042663728499983344,
+            "median_absolute_deviation": 0.0009368330001330166,
+            "min": 0.036428833000530604,
+            "observations": 12,
+            "p90_interpolated": 0.044326479198947916
+          },
+          "predicted_center": 0.042873000499937884,
+          "relative_median_error": 0.004905150283679999
+        },
+        "paired_wall_seconds": {
+          "descriptive_training_range_covered_trials": 12,
+          "observed": {
+            "max": 0.45183191700016323,
+            "median": 0.15811095850040147,
+            "median_absolute_deviation": 0.08945443750008053,
+            "min": 0.051506833000530605,
+            "observations": 12,
+            "p90_interpolated": 0.3022061448999921
+          },
+          "predicted_center": 0.09373939650049579,
+          "relative_median_error": 0.40712903527014055
+        },
+        "proof_bytes": {
+          "descriptive_training_range_covered_trials": 10,
+          "observed": {
+            "max": 75178.0,
+            "median": 73143.0,
+            "median_absolute_deviation": 1659.5,
+            "min": 69616.0,
+            "observations": 12,
+            "p90_interpolated": 75123.8
+          },
+          "predicted_center": 72903.5,
+          "relative_median_error": 0.003274407667172525
+        },
+        "prover_peak_rss_bytes": {
+          "descriptive_training_range_covered_trials": 10,
+          "observed": {
+            "max": 11255808.0,
+            "median": 10969088.0,
+            "median_absolute_deviation": 81920.0,
+            "min": 10862592.0,
+            "observations": 12,
+            "p90_interpolated": 11242700.8
+          },
+          "predicted_center": 10846208.0,
+          "relative_median_error": 0.011202389843166542
+        }
+      },
+      "padded_qm31_rows": 1024
+    },
+    "96": {
+      "metrics": {
+        "paired_after_pow_seconds": {
+          "descriptive_training_range_covered_trials": 11,
+          "observed": {
+            "max": 0.4488369159996455,
+            "median": 0.03892947900037491,
+            "median_absolute_deviation": 0.002165042500610233,
+            "min": 0.03446562499989075,
+            "observations": 12,
+            "p90_interpolated": 0.04447983780040048
+          },
+          "predicted_center": 0.03852560399967635,
+          "relative_median_error": 0.010374528790757119
+        },
+        "paired_wall_seconds": {
+          "descriptive_training_range_covered_trials": 11,
+          "observed": {
+            "max": 0.5563279159996455,
+            "median": 0.10661831300058111,
+            "median_absolute_deviation": 0.02517839600022853,
+            "min": 0.048443624999890744,
+            "observations": 12,
+            "p90_interpolated": 0.14886345390041242
+          },
+          "predicted_center": 0.1255559267501667,
+          "relative_median_error": 0.17762064711605746
+        },
+        "proof_bytes": {
+          "descriptive_training_range_covered_trials": 12,
+          "observed": {
+            "max": 56703.0,
+            "median": 54918.5,
+            "median_absolute_deviation": 964.5,
+            "min": 51986.0,
+            "observations": 12,
+            "p90_interpolated": 56113.2
+          },
+          "predicted_center": 54673.5,
+          "relative_median_error": 0.004461156076731885
+        },
+        "prover_peak_rss_bytes": {
+          "descriptive_training_range_covered_trials": 12,
+          "observed": {
+            "max": 9764864.0,
+            "median": 9658368.0,
+            "median_absolute_deviation": 65536.0,
+            "min": 9535488.0,
+            "observations": 12,
+            "p90_interpolated": 9714073.6
+          },
+          "predicted_center": 9789440.0,
+          "relative_median_error": 0.013570822731128074
+        }
+      },
+      "padded_qm31_rows": 512
+    }
+  },
+  "diagnostic_gates": {
+    "paired_after_pow_seconds": true,
+    "paired_wall_seconds": true,
+    "proof_bytes": true,
+    "prover_peak_rss_bytes": true
+  },
+  "heldout_report_sha256": "0cbbaa55457f467de16483dae9bd3b07fdc4837fc87dcfbadfc60e31df9aba19",
+  "phase": "local-heldout-diagnostic",
+  "plan_sha256": "363e07741fb98be940c4ba30e805fc4846ebd3fccff48bce9417e9ace629f351",
+  "schema": "s31-direct-gate-geometry-transfer-v1"
+}

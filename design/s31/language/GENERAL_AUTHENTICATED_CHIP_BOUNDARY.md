@@ -1,7 +1,7 @@
 # General authenticated circuit-to-chip boundary
 
-Status: **released one-call profile; experimental fixed two-call and bounded
-V4 profiles; general boundary remains a design**. The fixed two-call profile
+Status: **released one-call profile; experimental fixed two-call, bounded
+V4, and one-to-eight-call mixed profiles**. The fixed two-call profile
 has a tagged chip AIR, bridge AIR, source-derived five-component manifest,
 sealed proof bytes, and a dedicated source-pinned verifier. Its formal
 soundness and witness-confidentiality obligations remain open.
@@ -12,10 +12,18 @@ source-derived calls. The 2–8 matrix checks each claimed-sum position;
 selected/legacy proof-byte equality is checked at counts 1 and 8. The 8-call
 envelope is 173,058 bytes.
 An [independent review](../security/INDEPENDENT_REVIEW_GUARDED_V4_AND_EVALUATOR_2026-10-11.md)
-found no new false-proof admission through the sealed V4 verifier. Full
-source-to-verifier correspondence, a general mixed-chip boundary, and witness
-confidentiality remain open. The V4 path is experimental and separate from the
-general package facade.
+found no new false-proof admission through the sealed V4 verifier. The later
+[`direct-mixed-general` profile](../../../src/frontends/s31/runtime/mixed_boundary/README.md)
+admits one through eight source-derived calls using pair AIRs for the first
+two calls and many AIRs thereafter. It rebuilds a typed registry manifest
+from embedded source and live handles, binds its digest into a distinct native
+transcript, and checks the exact eight-word public statement. An
+[independent provenance review](../security/REVIEW_GENERAL_BOUNDARY_PROVENANCE_2026-10-11.md)
+found no concrete statement or source substitution path in that experimental
+profile. Its chip-family selection remains a closed positional policy rather
+than an arbitrary source-selected chip scheduler. Full source-to-verifier
+correspondence, an end-to-end AIR/lookup/PCS soundness reduction, and witness
+confidentiality remain open.
 
 The bounded variable-call successor to the staged two-call profile is specified
 in [Bounded multi-call authenticated boundary](BOUNDED_MULTI_CALL_BOUNDARY.md).

@@ -1,11 +1,13 @@
 # General authenticated circuit-to-chip boundary
 
-Status: engineering contract for the next profile. The source-pinned V4
-one-kind profile proves 1–8 tagged square/add calls. Distinct source-pinned
-mixed N=3 and N=4 profiles prove their fixed pair/pair/many and
-pair/pair/many/many rosters. Neither fixed roster is a general component
-scheduler. A source-derived 1–8-call registry manifest is an inspection
-increment; it does not admit new proof rosters.
+Status: engineering contract with an **experimental bounded implementation**.
+The source-pinned V4 one-kind profile proves 1–8 tagged square/add calls.
+Distinct source-pinned mixed N=3 and N=4 profiles prove fixed rosters. The
+later `direct-mixed-general` profile proves one through eight source-derived
+calls with a typed registry manifest and a distinct transcript-bound digest.
+Its closed registry chooses pair chip/bridge AIRs for calls 0–1 and many
+chip/bridge AIRs for calls 2–7. It is not an arbitrary source-selected chip
+scheduler, and its full compiler/AIR/PCS soundness reduction remains open.
 
 ## Claim and trust root
 
@@ -97,13 +99,13 @@ argument must bound those collisions, zero denominators and false closure
 probability for the actual challenge field and event counts. Repeated Gate
 addresses retain their full multiplicity.
 
-## Release sequence
+## Release sequence and current state
 
-1. Admit a new bounded **1–8-call mixed** profile using the existing pair and
+1. **Implemented experimentally.** Admit a bounded **1–8-call mixed** profile using the existing pair and
    many registry entries. The kind policy is source-derived and explicit;
    first preserve the N=3 and N=4 behavior under a new transcript tag. Make
    count, component arrays, envelope and preflight dynamic within fixed caps.
-2. Generate one typed roster and manifest from the same registry used to
+2. **Implemented for the closed pair/many registry.** Generate one typed roster and manifest from the same registry used to
    instantiate prover and verifier handles. Reject changed role, order,
    source binding, relation list, address, span, sum index, fixed root, PCS
    geometry and unused claim slots before native proof admission.

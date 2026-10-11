@@ -3,8 +3,10 @@
 `canonical_ir_digest.zig` is a tiny native oracle used by
 `../acceptance_canonical_ir_fidelity.py`. The acceptance check compares the
 independent Python reconstruction of compact canonical IR with Zig's actual
-`relation.parseProgram` and `canonical.build` digest across seven bounded
-direct-gate fixtures. It runs without building a proof package:
+`relation.parseProgram` and `canonical.build` digest across seven handpicked
+fixtures and 512 generated bounded programs. Each generated program is checked
+in both direct and zero-cost-alias spellings. It runs without building a proof
+package:
 
 ```sh
 python3 src/frontends/s31/tests/acceptance/acceptance_canonical_ir_fidelity.py

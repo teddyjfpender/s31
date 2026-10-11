@@ -1,0 +1,80 @@
+{
+  "model": {
+    "1024": {
+      "paired_after_pow_seconds": {
+        "center": 0.042873000499937884,
+        "descriptive_training_max": 0.5088921249990997,
+        "descriptive_training_min": 0.025944166999886997,
+        "training_program_medians": {
+          "384": 0.042873000499937884
+        }
+      },
+      "paired_wall_seconds": {
+        "center": 0.09373939650049579,
+        "descriptive_training_max": 0.5920521249990998,
+        "descriptive_training_min": 0.039048082999215694,
+        "training_program_medians": {
+          "384": 0.09373939650049579
+        }
+      },
+      "proof_bytes": {
+        "center": 72903.5,
+        "descriptive_training_max": 76839.0,
+        "descriptive_training_min": 70402.0,
+        "training_program_medians": {
+          "384": 72903.5
+        }
+      },
+      "prover_peak_rss_bytes": {
+        "center": 10846208.0,
+        "descriptive_training_max": 11124736.0,
+        "descriptive_training_min": 10616832.0,
+        "training_program_medians": {
+          "384": 10846208.0
+        }
+      }
+    },
+    "512": {
+      "paired_after_pow_seconds": {
+        "center": 0.03852560399967635,
+        "descriptive_training_max": 0.4485416669996141,
+        "descriptive_training_min": 0.027378207999930432,
+        "training_program_medians": {
+          "192": 0.03949091649939501,
+          "32": 0.037560291499957675
+        }
+      },
+      "paired_wall_seconds": {
+        "center": 0.1255559267501667,
+        "descriptive_training_max": 0.5083016669996141,
+        "descriptive_training_min": 0.0392208320008649,
+        "training_program_medians": {
+          "192": 0.09169247899990296,
+          "32": 0.15941937450043042
+        }
+      },
+      "proof_bytes": {
+        "center": 54673.5,
+        "descriptive_training_max": 58741.0,
+        "descriptive_training_min": 51822.0,
+        "training_program_medians": {
+          "192": 54730.5,
+          "32": 54616.5
+        }
+      },
+      "prover_peak_rss_bytes": {
+        "center": 9789440.0,
+        "descriptive_training_max": 10240000.0,
+        "descriptive_training_min": 9289728.0,
+        "training_program_medians": {
+          "192": 10125312.0,
+          "32": 9453568.0
+        }
+      }
+    }
+  },
+  "phase": "sealed-before-heldout-build",
+  "plan_sha256": "363e07741fb98be940c4ba30e805fc4846ebd3fccff48bce9417e9ace629f351",
+  "schema": "s31-direct-gate-geometry-transfer-v1",
+  "train_report_sha256": "d3496834ebf91371ea55634f42251fefb7eb2e46dde0fa6077486535d804d0d4"
+}
