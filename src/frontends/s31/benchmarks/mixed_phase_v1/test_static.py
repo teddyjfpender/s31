@@ -1,0 +1,49 @@
+"""Native-free checks for the paired mixed phase protocol and accounting."""
+
+from __future__ import annotations
+
+import unittest
+
+from study import ASSIGNMENTS, COUNTS, case, changed_result, phase_check, sha
+
+
+class PhaseStudyTests(unittest.TestCase):
+    def test_fresh_claims_are_distinct_and_public_mutation_changes_bytes(self) -> None:
+        assignments, statements = set(), set()
+        for count in COUNTS:
+            source_hashes = set()
+            for index in range(ASSIGNMENTS):
+                source, assignment, statement = case(count, index)
+                source_hashes.add(sha(source))
+                assignments.add(sha(assignment))
+                statements.add(sha(statement))
+                self.assertNotEqual(statement, changed_result(statement))
+            self.assertEqual(len(source_hashes), 1)
+        self.assertEqual(len(assignments), 60)
+        self.assertEqual(len(statements), 60)
+
+    def test_phase_accounting_rejects_wrong_identity_and_overflow(self) -> None:
+        parts = {"profile_rebuild_ns": 2, "semantic_evaluation_ns": 3,
+                 "topology_compile_ns": 4, "witness_compile_ns": 5,
+                 "native_prove_including_setup_ns": 100,
+                 "envelope_and_serialization_ns": 6, "package_total_ns": 120}
+        stage = {"schema": "s31-mixed-general-prover-stages-v1",
+                 "source_sha256": "a" * 64, "circuit_identity_sha256": "b" * 64,
+                 "stages_ns": parts}
+        phase = {"schema": "s31-mixed-native-phase-v1",
+                 "source_sha256": "a" * 64, "circuit_identity_sha256": "b" * 64,
+                 "native_prove_including_setup_ns": 100, "prove_body_ns": 80,
+                 "interaction_pow_ns": 10, "pcs_prove_ns": 50, "fri_pow_ns": 20,
+                 "pcs_without_fri_pow_ns": 30, "native_without_reported_pow_ns": 70}
+        self.assertEqual(phase_check(stage, phase, 130)["fri_pow_ns"], 20)
+        phase["circuit_identity_sha256"] = "c" * 64
+        with self.assertRaisesRegex(ValueError, "identity"):
+            phase_check(stage, phase, 130)
+        phase["circuit_identity_sha256"] = "b" * 64
+        phase["fri_pow_ns"] = 95
+        with self.assertRaisesRegex(ValueError, "accounting"):
+            phase_check(stage, phase, 130)
+
+
+if __name__ == "__main__":
+    unittest.main()
