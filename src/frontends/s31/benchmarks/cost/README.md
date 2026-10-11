@@ -24,3 +24,26 @@ python3 src/frontends/s31/benchmarks/cost/transfer_v1.py run --out zig-out/s31-c
 A passing diagnostic is evidence only for this host, these eight programs,
 these ten trials per program, and this compiler revision. It cannot certify
 cross-host performance, tail latency, or automatic lowering decisions.
+
+## Replay saved evidence
+
+After `run` has completed, `replay_transfer_v1.py` checks the protocol against
+freeze commit `5fbf2fc`, requires the Python code used by the study and oracle
+to match that commit, and reopens all eight sources, 80 assignments, saved
+proofs, trial reports, statements, package manifests, and cost reports. It
+recomputes V6 predictions and diagnostic gates independently of `transfer_v1.py`.
+
+```sh
+python3 src/frontends/s31/benchmarks/cost/replay_transfer_v1.py --out zig-out/s31-cost-transfer-v1
+python3 src/frontends/s31/benchmarks/cost/replay_transfer_v1.py --out zig-out/s31-cost-transfer-v1 --native
+```
+
+The default run verifies hashes, source and assignment disjointness from both
+V6 splits, saved statement mutation, and the Python value oracle. `--native`
+also reruns each saved proof against its original and changed public statement.
+Neither mode builds packages or changes the frozen runner, protocol, thresholds,
+or saved evidence. A successful replay reports what was checked; it does not
+turn a failed diagnostic into a pass or establish compiler or proof soundness.
+The freeze commit preceded the first local native build, but its full hash was
+not independently timestamped before observation, so this remains a local
+same-host diagnostic rather than a fully anchored prospective acceptance gate.
