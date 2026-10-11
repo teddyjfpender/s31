@@ -49,14 +49,25 @@ constructs the checked all-row trace outside the exceptional set. The
 schedule and explicit chip/bridge event projection with that trace: if one
 public word is false, the challenge pair lies in the exceptional set.
 
+`SourceMixedRawEventAlignment.lean` derives the two global event-list
+permutations from five local, per-call equalities: the bridge's eight Gate
+reads, the chip input and output tuples, and the bridge start and finish
+tuples. The fixed Gate row roster and public output words then determine the
+circuit side of those lists. Its checked-projection theorem reuses those same
+five equalities after the raw pole conversion. The local-certificate theorem
+takes raw component rows, those five equalities, fixed source mappings, and
+the claimed-sum fold; it derives the global permutations and checked trace
+internally.
+
 For the pinned one-to-eight-call source shape, the set has at most
 `36,494,846 × |QM31|` pairs. This is a finite **fixed-witness algebraic**
 bound. It becomes a probability bound only with a suitable independent
 challenge draw after the relevant trace is committed.
 
-The theorem does not derive its event permutations, event projection, source
-row identity, or claim fold from native proof acceptance. Those are the next
-compiler and committed-trace correspondence obligations. It also does not
+The theorem does not derive the five local tuple equalities, source row
+identity, public word mapping, or claim fold from native proof acceptance.
+Those are the next compiler and committed-trace correspondence obligations.
+It also does not
 prove Fiat–Shamir independence, Merkle/PCS extraction, FRI soundness, or
 witness confidentiality. In particular, the raw false-word theorem without
 the scheduled variant takes `LocalPublicPath` as a premise; its Gate

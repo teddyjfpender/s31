@@ -87,7 +87,7 @@
     "src/frontends/s31/language/canonical.zig": "1ec72b702fdad3b79f67e748498a8df08cea0ae291149c1d53ec88beecf270dd",
     "src/frontends/s31/language/record_abi.zig": "04307fb49ceac6b89e7b6c413e9fba6bb7f5b1784d263c5dfe0e84d25d0bd048",
     "src/frontends/s31/language/relation_compiler.zig": "f005d4024244b529e4775a3203f1770e640982d6e7058af532cbe864de626187",
-    "src/frontends/s31/language/bounded_call_admission.zig": "89cad68112d5986884bca2a71129c9ca082af7e15a06ff97574188bed5dcce87",
+    "src/frontends/s31/language/bounded_call_admission.zig": "c6d8653285ec05f5a6ba917098878ec94af0dcbd81d1bdab918d43e35503a92a",
     "src/frontends/s31/language/bounded_call_admission_v2.zig": "aa53ed7de73575f5fa55c6b8b8da9692a16b7efcb3bcbf573f0c4f7c818ca14a",
     "src/frontends/s31/entry/bounded_call_admission_v2.zig": "b403c2af07c45670f1abfb796f43bd411b503ba423a1537f16468aa67563c858",
     "src/frontends/s31/language/gadgets/integer_multiply.zig": "c63b6fe6329a42c377d5c87613d37ed98669b5907c0f6e18d572c4819f555c15",

@@ -20,9 +20,12 @@ open S31.Gadgets.Air.IndexedManyTaggedTupleBridge
 open S31.Gadgets.Air.SourceMixedPath
 open S31.Gadgets.Air.SourceMixedRoster
 open S31.Gadgets.Air.SourceMixedLookupBound
+open S31.Gadgets.Air.SourceMixedFalseClaimBound
 open S31.Gadgets.Air.SourceMixedPoleClosure
 open S31.Gadgets.Air.SourceMixedBridgePoleClosure
 open S31.Gadgets.Air.SourceMixedRawTraceClosure
+open S31.Gadgets.Air.SourceMixedEventAlignment
+open S31.Gadgets.Air.SourceMixedScheduledPublicPath
 
 /-- The five local component projections. The raw rows remain independent of
 the selected challenge except for their AIR residual fields. -/
@@ -269,5 +272,101 @@ def RawEventProjection.assembleOfShape {N : Nat}
     RawAuthenticatedMixedTrace boundary rows alpha z :=
   RawEventProjection.assemble gate chip bridge words projection hrows
     hshape.baselineUses hshape.baselineYields hwords hfold
+
+/-- The same five local tuple identifications also supply the checked
+`EventProjection` after the raw rows are converted outside the pole set.
+This removes a second, independently trusted event projection from the
+scheduled false-claim theorem. -/
+def RawEventProjection.toCheckedProjection {N : Nat}
+    {boundary : Boundary N}
+    {rows : ∀ call, Fin (boundary.rounds call) → NativeRow}
+    {alpha z : GateSecure}
+    (hshape : SourceShape boundary)
+    (raw : RawAuthenticatedMixedTrace boundary rows alpha z)
+    (projection : RawEventProjection boundary rows alpha z
+      raw.chip raw.bridge)
+    (hgood : (alpha, z) ∉
+      mixedErrorPairs boundary rows raw.gate.rows) :
+    EventProjection boundary rows alpha z
+      (raw.toChecked hgood).gate
+      (raw.toChecked hgood).chip
+      (raw.toChecked hgood).bridge
+      (raw.toChecked hgood).publicWords := by
+  apply EventProjection.ofSourceRows boundary rows alpha z
+    (raw.toChecked hgood).gate
+    (raw.toChecked hgood).chip
+    (raw.toChecked hgood).bridge
+    (raw.toChecked hgood).publicWords
+  · exact raw.gateRowsEq
+  · exact hshape.baselineUses
+  · exact hshape.baselineYields
+  · exact raw.publicWordsEq
+  · exact projection.bridgeGates
+  · exact projection.chipInputs
+  · exact projection.bridgeFinish
+  · exact projection.chipOutputs
+  · exact projection.bridgeStart
+
+/-- A false public word is exceptional from raw Gate/bridge AIR rows, checked
+chip rows, a source schedule, and the five local tuple projections. -/
+theorem raw_scheduled_false_word_from_local_events_is_exceptional {N : Nat}
+    (hN : N ≤ 8) (hpositive : 0 < N)
+    (boundary : Boundary N)
+    (rows : ∀ call, Fin (boundary.rounds call) → NativeRow)
+    (initial : State)
+    (hshape : SourceShape boundary)
+    (schedule : LocalPublicSchedule hN hpositive boundary rows initial)
+    (product : Bool) (lane : Fin 4)
+    (hfalse : FalsePublicWord boundary initial product lane)
+    (alpha z : GateSecure)
+    (raw : RawAuthenticatedMixedTrace boundary rows alpha z)
+    (projection : RawEventProjection boundary rows alpha z
+      raw.chip raw.bridge)
+    (hconstant : ∀ call,
+      (raw.chip call).constant = boundary.constants call) :
+    (alpha, z) ∈ mixedErrorPairs boundary rows raw.gate.rows ∧
+      (mixedErrorPairs boundary rows raw.gate.rows).card ≤
+        36494846 * Fintype.card GateSecure :=
+  raw_scheduled_false_word_is_exceptional hN hpositive boundary rows initial
+    hshape schedule product lane hfalse alpha z raw
+    (fun hgood => projection.toCheckedProjection hshape raw hgood)
+    hconstant
+
+/-- Expose the complete local algebraic certificate: physical Gate and bridge
+rows, chip rows, the source row/public mappings, five per-call tuple
+equalities, and the native claimed-sum fold. Global event permutations and
+the checked trace are derived internally. -/
+theorem raw_rows_local_projection_false_word_is_exceptional {N : Nat}
+    (hN : N ≤ 8) (hpositive : 0 < N)
+    (boundary : Boundary N)
+    (rows : ∀ call, Fin (boundary.rounds call) → NativeRow)
+    (initial : State)
+    (hshape : SourceShape boundary)
+    (schedule : LocalPublicSchedule hN hpositive boundary rows initial)
+    (product : Bool) (lane : Fin 4)
+    (hfalse : FalsePublicWord boundary initial product lane)
+    (alpha z : GateSecure)
+    (gate : RawGateRows alpha z)
+    (chip : Fin N → ChipRows 8 (by decide) alpha z)
+    (bridge : Fin N → RawBridgeRows alpha z)
+    (words : List Quad)
+    (projection : RawEventProjection boundary rows alpha z chip bridge)
+    (hrows : List.ofFn gate.rows = boundary.jointGateSource.gateRows)
+    (hwords : words = List.ofFn (fun output : Fin 8 =>
+      base (boundary.publicOutputs output)))
+    (hfold : gate.claim +
+      ((List.finRange N).map (fun call =>
+        (chip call).claim + (bridge call).claim)).sum +
+      productionReciprocalSum7 (publicOutputYields words) alpha z = 0)
+    (hconstant : ∀ call,
+      (chip call).constant = boundary.constants call) :
+    (alpha, z) ∈ mixedErrorPairs boundary rows gate.rows ∧
+      (mixedErrorPairs boundary rows gate.rows).card ≤
+        36494846 * Fintype.card GateSecure := by
+  let raw := projection.assembleOfShape hshape gate chip bridge words
+    hrows hwords hfold
+  exact raw_scheduled_false_word_from_local_events_is_exceptional
+    hN hpositive boundary rows initial hshape schedule product lane hfalse
+    alpha z raw projection hconstant
 
 end S31.Gadgets.Air.SourceMixedRawEventAlignment
