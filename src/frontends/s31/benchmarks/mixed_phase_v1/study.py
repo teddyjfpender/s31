@@ -220,9 +220,8 @@ def changed_result(source_bytes: bytes, statement: bytes) -> bytes:
 
 
 def proof_layer_rejection(result: subprocess.CompletedProcess[bytes]) -> bool:
-    return (result.returncode > 0 and result.stderr.strip() in
-            (b"error: InvalidMixedInteractionNonce",
-             b"error: InvalidMixedPublicStatement"))
+    return (result.returncode > 0 and
+            result.stderr.strip() == b"error: InvalidMixedInteractionNonce")
 
 
 def stage_check(stage: dict, wall_ns: int) -> int:

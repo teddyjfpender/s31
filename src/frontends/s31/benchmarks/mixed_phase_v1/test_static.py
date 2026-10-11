@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import unittest
+import json
 
 from subprocess import CompletedProcess
+from study import LANGUAGE
 
 from study import (ASSIGNMENTS, COUNTS, case, changed_result, phase_check,
                    proof_layer_rejection, sha, statement_words)
@@ -27,12 +29,19 @@ class PhaseStudyTests(unittest.TestCase):
             self.assertEqual(len(source_hashes), 1)
         self.assertEqual(len(assignments), 60)
         self.assertEqual(len(statements), 60)
+        old = json.loads((LANGUAGE / "mixed-stage-cost-v1-protocol.json").read_bytes())
+        prior = {digest for split in old["inventory"].values() for row in split.values()
+                 for field in ("assignment_sha256", "typed_statement_sha256")
+                 for digest in row[field]}
+        self.assertFalse((assignments | statements) & prior)
 
     def test_rejection_must_reach_proof_binding(self) -> None:
         self.assertTrue(proof_layer_rejection(CompletedProcess([], 1, b"",
             b"error: InvalidMixedInteractionNonce\n")))
         self.assertFalse(proof_layer_rejection(CompletedProcess([], 1, b"",
             b"error: InvalidRecordStatement\n")))
+        self.assertFalse(proof_layer_rejection(CompletedProcess([], 1, b"",
+            b"error: InvalidMixedPublicStatement\n")))
         self.assertFalse(proof_layer_rejection(CompletedProcess([], 0, b"", b"")))
 
     def test_phase_accounting_rejects_wrong_identity_and_overflow(self) -> None:

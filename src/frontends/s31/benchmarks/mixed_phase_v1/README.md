@@ -13,10 +13,12 @@ and 60 new assignment and typed-statement hashes. The roster has 30 distinct
 statements each for two and six live 16-round chips. None of these statements
 or assignments is reused from the earlier mixed transfer cohort. The
 protocol SHA-256 is
-`7c80fa897c5f9255c192e141b527786d9f9f36506e80831abbc42686c2203692`.
-The earlier protocol commit `7722767` was superseded before any native build:
-the final runner additionally proves that each changed public result is a
-valid eight-word ABI statement and requires a proof-binding rejection error.
+`7d6d0962f3289968ec423953c459f8d335e276b3fd603a0181a8dbdf17fad060`.
+The earlier protocol commits `7722767` and `309b091` were superseded before
+any native build. The final runner proves each changed public result is a
+valid eight-word ABI statement and requires the exact transcript nonce
+rejection `InvalidMixedInteractionNonce`. An output equality rejection alone
+does not satisfy this control.
 
 For each statement, the runner alternates process order by assignment index,
 executes timed and untimed proving using the **same binary**, verifies both
