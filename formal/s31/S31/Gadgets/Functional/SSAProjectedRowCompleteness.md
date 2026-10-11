@@ -40,9 +40,10 @@ theorems transfer both facts to fixed-column cells and to an observed list
 that equals that projection. A repeated observed trace index is rejected.
 
 These theorems concern the **modeled** row schedule. They assume the
-16-instruction bound and, for the range result, the partition equation. The
-production source parser and package checker enforce those conditions, but
-their correspondence to these Lean premises is not proved here. Neither is
-Zig emitter fidelity, the preprocessed commitment opening, Gate lookup, or
-PCS/FRI verifier soundness. Those are the remaining links before a full
-compiler-to-proof correspondence theorem.
+16-instruction bound and, for the range result, the partition equation.
+`SSAGeneralDecodedTraceBridge.lean` separately proves that successful Lean
+byte admission supplies the instruction bound. The package checker checks
+the partition equation against the native export, but this module does not
+prove that the exported count is authenticated by the verifier. Zig emitter
+fidelity, the preprocessed commitment opening, Gate lookup, and PCS/FRI
+verifier soundness also remain outside this theorem.
