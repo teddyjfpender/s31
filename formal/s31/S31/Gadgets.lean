@@ -80,6 +80,11 @@ import S31.Gadgets.Air.SourceMixedRawEventAlignment
 import S31.Gadgets.Air.SourceMixedEventAlignment
 import S31.Gadgets.Air.SourceMixedChipRowProjection
 import S31.Gadgets.Air.SourceMixedScheduledPublicPath
+import S31.Gadgets.Air.SourceMixedFixedScheduleBridge
+import S31.Gadgets.Air.SourceMixedFixedLocalCertificate
+import S31.Gadgets.Air.SourceMixedDecodedBoundary
+import S31.Gadgets.Air.SourceMixedPinnedMainCells
+import S31.Gadgets.Air.Manifest.InterleavedRoster
 import S31.Gadgets.Air.SourceMixedPackCorrespondence
 import S31.Gadgets.Air.SourceMixedProducerCheck
 import S31.Gadgets.Air.PrivateBridgeChallenge
@@ -170,6 +175,7 @@ import S31.Gadgets.Functional.Correspondence.AliasRawGateSoundness
 import S31.Gadgets.Functional.Correspondence.AliasCanonicalIrBytes
 import S31.Gadgets.Functional.Correspondence.AliasCanonicalAirBridge
 import S31.Gadgets.Functional.Correspondence.CanonicalDagOptimization
+import S31.Gadgets.Functional.Correspondence.CanonicalDagCompleteness
 import S31.Gadgets.Functional.Correspondence.OptimizedTextBytes
 import S31.Gadgets.Functional.Correspondence.ZeroPhysicalTraceWitness
 import S31.Gadgets.Functional.Correspondence.AliasProjectedExportBridge

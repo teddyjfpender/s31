@@ -32,6 +32,11 @@ PROOF_FIELD_PROJECTIONS_V1 = {
     "formal/s31/S31/Gadgets/Functional/SSATextBytes.lean": {
         "S31.Functional.SSATextBytes.Parsed": ("checked",),
     },
+    "formal/s31/S31/Gadgets/Functional/Correspondence/OptimizedTextBytes.lean": {
+        "S31.Functional.Correspondence.OptimizedTextBytes.Parsed": (
+            "checkedOptimization", "checkedRaw",
+        ),
+    },
     "formal/s31/S31/Gadgets/Functional/SSAPublicInputBinding.lean": {
         "S31.Functional.SSAPublicInputBinding.InputBoundary": (
             "zero", "copies", "pins", "basis1", "basis2", "basis3", "packMuls", "packAdds",
@@ -109,6 +114,43 @@ PROOF_FIELD_PROJECTIONS_V1 = {
         "S31.Gadgets.Air.SourceMixedEventAlignment.EventProjection": (
             "circuitUses", "circuitYields", "chipInputs", "bridgeFinish",
             "chipOutputs", "bridgeStart",
+        ),
+    },
+    "formal/s31/S31/Gadgets/Air/SourceMixedBridgePoleClosure.lean": {
+        "S31.Gadgets.Air.SourceMixedBridgePoleClosure.AnchorEvents": (
+            "finish", "gateEven", "gateOdd", "start",
+        ),
+        "S31.Gadgets.Air.SourceMixedBridgePoleClosure.RawBridgeRows": (
+            "interactionAccepted", "mainAccepted", "sixteenNonzero",
+        ),
+    },
+    "formal/s31/S31/Gadgets/Air/SourceMixedPinnedMainCells.lean": {
+        "S31.Gadgets.Air.SourceMixedPinnedMainCells.N1MainPins": (
+            "inverse", "packedFinal", "packedInitial", "unit", "zero",
+        ),
+        "S31.Gadgets.Air.SourceMixedPinnedMainCells.N8MainPins": (
+            "inverse", "packedFinal", "packedInitial", "unit", "zero",
+        ),
+    },
+    "formal/s31/S31/Gadgets/Air/SourceMixedPoleClosure.lean": {
+        "S31.Gadgets.Air.SourceMixedPoleClosure.RawGateRows": (
+            "arithmeticResidual", "pairResidual", "yieldResidual",
+        ),
+    },
+    "formal/s31/S31/Gadgets/Air/SourceMixedRawEventAlignment.lean": {
+        "S31.Gadgets.Air.SourceMixedRawEventAlignment.RawEventProjection": (
+            "bridgeFinish", "bridgeGates", "bridgeStart", "chipInputs", "chipOutputs",
+        ),
+    },
+    "formal/s31/S31/Gadgets/Air/SourceMixedRawTraceClosure.lean": {
+        "S31.Gadgets.Air.SourceMixedRawTraceClosure.RawAuthenticatedMixedTrace": (
+            "claimFoldZero", "gateRowsEq", "negativeAligned", "positiveAligned",
+            "publicWordsEq",
+        ),
+    },
+    "formal/s31/S31/Gadgets/Air/Manifest/InterleavedRoster.lean": {
+        "S31.Gadgets.Air.Manifest.InterleavedRoster.CheckedProjection": (
+            "call_eq", "key_eq", "proof_eq", "relation_eq", "role_eq", "sum_eq",
         ),
     },
 }
