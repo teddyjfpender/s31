@@ -81,8 +81,9 @@ tail: two packed Gate rows compute the sum and product, eight lane paths
 extract the scalar words, and eight add-with-zero rows bind them to public
 addresses 3–10. The theorem derives the public words from local AIR
 acceptance, exact event balance, and unique Gate values without assuming row
-operands or results. Its packed-wire and row-presence premises still need a
-compiler-to-model proof.
+operands or results. `SourceMixedPackCorrespondence.lean` derives the packed
+wire values from scalar bridge events and selected six-row `simd.pack` paths.
+The selected compiler rows and native proof authentication remain premises.
 Its [worked example](../../../../../../formal/s31/S31/Gadgets/Air/SourceMixedPublicClosure.md)
 shows the addresses and the arithmetic. The compiler-to-model and native
 proof-to-event reductions remain explicit requirements.
