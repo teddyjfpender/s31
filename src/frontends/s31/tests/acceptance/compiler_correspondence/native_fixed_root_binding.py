@@ -73,11 +73,15 @@ def check_evidence(report: dict, metadata: dict, fixed: list[tuple[int, ...]],
         if values[address] != physical:
             raise ValueError(f"Lean/native output value differs at address {address}")
     root = metadata["preprocessed_root"]
+    declared_roots = re.findall(
+        r'(?m)^def preprocessedRoot : String := "([0-9a-f]{64})"$', main_lean)
     if (type(root) is not str or re.fullmatch(r"[0-9a-f]{64}", root) is None or
-            f'def preprocessedRoot : String := "{root}"' not in main_lean):
+            declared_roots != [root]):
         raise ValueError("Lean main witness root differs from fixed-column fixture")
     digest = hashlib.sha256(REPORT.read_bytes()).hexdigest()
-    if f"-- Source physical SHA-256: {digest}" not in values_lean:
+    declared_digests = re.findall(
+        r"(?m)^-- Source physical SHA-256: ([0-9a-f]{64})$", values_lean)
+    if declared_digests != [digest]:
         raise ValueError("Lean address-value source digest differs from physical report")
     return {"schema": "s31-square4-native-fixed-root-binding-v1",
             "fixed_cells": 4096, "address_values": 512,
@@ -113,6 +117,19 @@ def reject_static_mutations(report: dict, evidence: dict) -> int:
     altered_values[0] = tuple(quad)
     altered_metadata = dict(evidence["metadata"])
     altered_metadata["preprocessed_root"] = "00" * 32
+    root_line = (f'def preprocessedRoot : String := '
+                 f'"{evidence["metadata"]["preprocessed_root"]}"')
+    spoofed_root_source = evidence["main_lean"].replace(
+        root_line, 'def preprocessedRoot : String := "' + "00" * 32 +
+        '"\n-- ' + root_line, 1)
+    if spoofed_root_source == evidence["main_lean"]:
+        raise AssertionError("Lean root declaration missing from mutation fixture")
+    digest_line = "-- Source physical SHA-256: " + hashlib.sha256(REPORT.read_bytes()).hexdigest()
+    spoofed_digest_source = evidence["values_lean"].replace(
+        digest_line, "-- Source physical SHA-256: " + "00" * 32 +
+        "\n" + digest_line, 1)
+    if spoofed_digest_source == evidence["values_lean"]:
+        raise AssertionError("Lean physical digest missing from mutation fixture")
     changes = (
         (altered_report, evidence["metadata"], evidence["formal_rows"], evidence["values"],
          evidence["main_lean"], evidence["values_lean"]),
@@ -122,6 +139,10 @@ def reject_static_mutations(report: dict, evidence: dict) -> int:
          evidence["main_lean"], evidence["values_lean"]),
         (report, altered_metadata, evidence["formal_rows"], evidence["values"],
          evidence["main_lean"], evidence["values_lean"]),
+        (report, evidence["metadata"], evidence["formal_rows"], evidence["values"],
+         spoofed_root_source, evidence["values_lean"]),
+        (report, evidence["metadata"], evidence["formal_rows"], evidence["values"],
+         evidence["main_lean"], spoofed_digest_source),
     )
     for index, (changed, metadata, rows, values, main_lean, values_lean) in enumerate(changes):
         try:

@@ -18,11 +18,12 @@ from that chain:
    512×8 Lean literal used by `PinnedFullFixedRoster`.
 2. The physical output addresses are exactly a permutation of 0..511. Each
    address-indexed four-limb output equals the Lean
-   `PinnedSquare4ConstantValues.nativeValues` literal. The literal's source
-   SHA-256 matches the complete physical report.
-3. The Lean main-witness fixture's `preprocessedRoot` string equals the native
-   fixed-column fixture root. Four altered fixed/value/root artifacts are
-   rejected by the static checker.
+   `PinnedSquare4ConstantValues.nativeValues` literal. Its unique source
+   SHA-256 declaration matches the complete physical report.
+3. The Lean main-witness fixture's unique `preprocessedRoot` declaration
+   equals the native fixed-column fixture root. Six altered fixed/value/root
+   artifacts, including misleading duplicate text, are rejected by the
+   static checker.
 4. With `--native`, a fresh compiler build must reproduce the fixture. Its
    generated native verifier accepts a real square4 proof. The checker locates
    the unique serialized preprocessed root after the direct-Gate proof header,
@@ -37,7 +38,7 @@ python3 src/frontends/s31/tests/acceptance/compiler_correspondence/native_fixed_
 ```
 
 On 2026-10-12 the static check matched 4,096 fixed cells and 512
-address-indexed values, and rejected four altered artifacts. The fresh native
+address-indexed values, and rejected six altered artifacts. The fresh native
 check produced and accepted a 54,831-byte proof. The pinned root was
 `c0ea49c8f9027d5bdf9ce7a59ded3fb3a1f6b541a0ed1bb6c65b3c7d1175570a`;
 its unique serialized occurrence began at byte 39. A one-byte change there
@@ -51,7 +52,8 @@ claim, other commitments, public statement, and verification key.
 
 ## Exact limit
 
-The fixed roster and physical report are uncommitted diagnostic exports. The
+The fixed roster and physical report are checked-in diagnostic exports, not
+authenticated proof openings. The
 Lean fixed-row/value theorems are about those pinned literals. This evidence
 links those literals to the native package's root and demonstrates that the
 native verifier rejects another root. It is **not** a Lean proof that the
