@@ -93,6 +93,22 @@ existing audit fields. Their wire formats, selected-schedule digest domains
 and proof transcript tags remain distinct and unchanged. The registry digest
 does **not** enter either current proof transcript.
 
+The JSON reports include every **direct input** to the registry digest:
+`registry_manifest_version`, root `registry_version`, source and IR hashes,
+fixed root, `manifest_sha256`, `descriptor_sha256`, calls, ordered slots and
+their registry identities, spans, lookup relations and AIR bindings, plus the
+three geometry totals. The call, slot, fixed-column and relation counts come
+from their JSON array lengths. Integers use little-endian unsigned bytes (`u8` for enum tags,
+presence flags and list lengths, `u32` for other numbers); SHA-256 fields
+decode from hexadecimal; the domain is
+`S31-MIXED-REGISTRY-MANIFEST-V1\0`. The independent Python helper in
+`tests/acceptance/mixed_boundary/registry_manifest_digest.py` recomputes
+the digest from either fixed-profile report. The selected schedule digest
+(`manifest_sha256`) and descriptor digest are **inputs** to this calculation;
+deriving those two from first principles still requires the authenticated
+S31 source, official AIR bundle, pinned engine and live PCS geometry. The
+JSON itself is not verifier authority.
+
 This is a generated audit manifest and shared admission policy, not a
 generalized 1–8-call native proof adapter. Only N=3 and N=4 have source-pinned
 mixed native proof admission. Counts 1, 2 and 5–8 have source-bound inspection

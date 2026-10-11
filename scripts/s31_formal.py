@@ -121,6 +121,7 @@ BINDINGS = [
     "src/frontends/s31/examples/boundary/mixed_four.valid.json",
     "src/frontends/s31/tests/acceptance/mixed_boundary/source_pinned_n4.py",
     "src/frontends/s31/tests/acceptance/mixed_boundary/source_pinned.py",
+    "src/frontends/s31/tests/acceptance/mixed_boundary/registry_manifest_digest.py",
     "src/frontends/s31/runtime/many_statement.zig",
     "src/frontends/s31/runtime/many_prover_main.zig",
     "src/frontends/s31/runtime/many_verifier_main.zig",
