@@ -190,9 +190,10 @@ partition. For the bounded direct-gate profile, an explicit premise
 the native layout: three input-pack adds, source adds, four input copies, and
 four output copies. Under that premise, byte admission proves a stronger
 modeled row roster: all source, public input, and public output projected
-trace positions are pairwise distinct and below the 512-row capacity. The
-source-row theorem also preserves opcode, order, circuit position, and
-operand/output addresses. The eleven-row count equality, exporter fidelity,
+trace positions are pairwise distinct and below the 512-row capacity.
+`checked_relation_modeled_exact_row_roster` collects this result with exact
+source instruction order, opcode, circuit position, operand/output addresses,
+and projected selector flags. The eleven-row count equality, exporter fidelity,
 remaining nonprojected rows, and committed-column correspondence remain
 separate obligations; the roster theorem does not silently assume them.
 `Functional/SSATextBytes` independently

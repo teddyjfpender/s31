@@ -767,6 +767,46 @@ theorem checked_relation_modeled_row_roster
     · exact checked_public_cells_within_512 sourceBytes normalizedBytes
         certificate totalAddRows hrelation hadd cell hpublicCell
 
+/-- A single admission theorem collects exact modeled source instruction
+order, opcode, circuit position, addresses, projected selector flags, and the
+capacity-safe pairwise-distinct source/public row roster. Every equality here
+is about `expectedRows` and projected `ColumnCell`s. Native emitter fidelity,
+the nonprojected cells, and committed-column equality remain external. -/
+theorem checked_relation_modeled_exact_row_roster
+    (sourceBytes normalizedBytes : List Nat) (certificate : Certificate)
+    (totalAddRows : Nat)
+    (hrelation : checkRelation sourceBytes normalizedBytes = some certificate)
+    (hadd : totalAddRows = 11 + sourceAddCount certificate) :
+    (∀ pair ∈ certificate.instructions.zip
+        (expectedRows certificate totalAddRows),
+      pair.2.circuitRow = 5 + pair.1.id ∧
+      pair.2.multiply = pair.1.multiply ∧
+      pair.2.in0 = address pair.1.lhs ∧
+      pair.2.in1 = address pair.1.rhs ∧
+      pair.2.out = address pair.1.id) ∧
+    ((expectedRows certificate totalAddRows).map
+      NativeSourceRow.multiply =
+        certificate.instructions.map Instruction.multiply) ∧
+    ((expectedCells certificate totalAddRows).map
+      (fun cell => (cell.addFlag, cell.pointwiseMulFlag)) =
+        certificate.instructions.map (fun instruction =>
+          (if instruction.multiply then 0 else 1,
+           if instruction.multiply then 1 else 0))) ∧
+    SourcePlan certificate (expectedCells certificate totalAddRows) ∧
+    (((expectedCells certificate totalAddRows ++
+        (expectedInputCells certificate totalAddRows ++
+          expectedOutputCells certificate totalAddRows)).map
+      ColumnCell.traceRow)).Nodup ∧
+    (∀ cell ∈ expectedCells certificate totalAddRows ++
+        (expectedInputCells certificate totalAddRows ++
+          expectedOutputCells certificate totalAddRows),
+      cell.traceRow < 2 ^ 9) := by
+  exact ⟨expected_rows_opcode_and_addresses certificate totalAddRows,
+    expected_rows_opcode_sequence certificate totalAddRows,
+    expected_cells_opcode_flags certificate totalAddRows,
+    checked_relation_modeled_row_roster sourceBytes normalizedBytes
+      certificate totalAddRows hrelation hadd⟩
+
 /-- Output masks, inverse-basis products, and public copies each yield once
 by construction, independently of the source program's instruction count. -/
 theorem expected_output_cells_positive (certificate : Certificate)
