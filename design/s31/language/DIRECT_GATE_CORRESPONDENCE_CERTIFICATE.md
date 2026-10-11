@@ -337,13 +337,16 @@ public events.
 The parameterized
 [`SSAGeneralDecodedTraceBridge.lean`](../../../formal/s31/S31/Gadgets/Functional/SSAGeneralDecodedTraceBridge.lean)
 extends the column-to-row argument to any checked bounded SSA certificate and
-decoded direct-Gate trace. It proves, by induction over the compiler's
-`expectedRows` emitter, that every source instruction has its expected
-operand and result addresses in the projected cell plan. It proves all output
+decoded direct-Gate trace satisfying its stated fixed-column premises. An
+induction over the modeled `expectedRows` construction proves positional
+address alignment and the existence of a matching projected cell for each
+source instruction. It does not prove uniqueness or independently establish
+that native emitted trace positions or opcodes agree with this model; exact
+`fixedMatches` against the decoded trace is a separate premise. It proves all output
 boundary cells have positive multiplicity and derives positive input-cell
 multiplicity from the admitted source's required first instruction. Given exact
-fixed-column matches and zero values
-for the first nine installed arithmetic roots, it derives all three
+fixed-column matches and zero values for the first nine installed arithmetic
+roots, it derives all three
 physical-row predicates, including zero-use source rows, then joins
 source-byte checking to the public claim through the existing ideal Gate
 theorem. This removes three separately assumed physical-row families and the
@@ -351,8 +354,9 @@ independent source-plan premise from the general source-to-claim statement.
 The bounded source parser accepts one to sixteen arithmetic instructions and
 rejects returning the input name directly. Lean now derives
 `sourceInputUses > 0` from successful `checkRelation`: its first checked
-instruction can only read the sole initial input wire. For example, a hypothetical empty
-certificate returning input wire `0` would have `sourceInputUses = 0`, but
+instruction can only read the sole initial input wire. For example, a
+hypothetical empty certificate returning input wire `0` would have
+`sourceInputUses = 0`, but
 that source is outside the bounded grammar. Native circuit multiplicities
 count all gate reads, including public output copies; this edge does not
 establish a production bug. Binding the decoded trace to native verifier

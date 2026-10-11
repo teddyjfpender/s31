@@ -4,8 +4,8 @@ import S31.Gadgets.Air.DirectGateEvaluatorCells
 /-!
 A parameterized bridge from a decoded direct-Gate trace to the bounded SSA
 source, input, and output row predicates. A single trace supplies all physical
-row values. The source plan identifies the checked certificate's instructions
-with projected fixed cells; the exact fixed projection and installed nine
+row values. The source plan associates each checked instruction with a
+projected fixed cell; the exact fixed projection and installed nine
 arithmetic roots are premises about that trace, not independently chosen
 logical wires.
 
@@ -55,8 +55,8 @@ def allArithmeticRootsZero {logSize : Nat} (trace : Trace logSize) : Prop :=
   ∀ i : Fin (2 ^ logSize),
     ∀ root ∈ bytecodeArithmetic (fromTrace trace i), root = 0
 
-/-- The plan has exactly one certificate-derived arithmetic cell for every
-source instruction; it also works for a zero-use result. -/
+/-- Every source instruction has a matching projected arithmetic cell,
+including a zero-use result. This predicate does not assert uniqueness. -/
 def SourcePlan (certificate : Certificate) (sourceCells : List ColumnCell) :
     Prop :=
   ∀ instruction ∈ certificate.instructions,
@@ -112,8 +112,9 @@ private theorem fold_rows_shape (totalAddRows : Nat)
       simpa [List.foldl_cons, emitStep, newRow, List.append_assoc] using
         (ih (prior ++ [instruction]) _ _ (rows ++ [newRow]) hnext)
 
-/-- The generated native source-row schedule preserves instruction operands
-and output addresses at every position, even for a zero-use instruction. -/
+/-- Within the modeled `expectedRows` schedule, each position has the
+instruction's operand and output addresses, even for a zero-use result.
+This lemma does not compare the schedule with native emitted rows. -/
 private theorem expected_rows_shape (certificate : Certificate)
     (totalAddRows : Nat) :
     List.Forall₂ rowShape certificate.instructions
@@ -142,10 +143,10 @@ private theorem forall₂_rows_plan (instructions : List Instruction)
       · obtain ⟨other, hpair, hother⟩ := ih item htail
         exact ⟨other, by simp [hpair], hother⟩
 
-/-- The compiler's deterministic source-row schedule itself supplies the
-source-plan premise; callers need not posit an unrelated cell-to-instruction
-matching. The package's observed-to-expected fixed-column equality remains
-an explicit separate check. -/
+/-- The modeled deterministic `expectedRows` schedule supplies a matching
+projected cell for each instruction. It does not prove uniqueness, native
+trace-row placement, or native opcode correspondence; those latter fields
+are connected only under the separate `fixedMatches` premise. -/
 theorem source_plan_expected (certificate : Certificate)
     (totalAddRows : Nat) :
     SourcePlan certificate (expectedCells certificate totalAddRows) := by
