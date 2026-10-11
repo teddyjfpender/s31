@@ -57,6 +57,9 @@ a changed normalized opcode or changed canonical IR bytes. The native package
 checker separately compares those bytes and IR digests with the files and
 manifest actually used to construct the proofs. SHA-256 is computed outside
 Lean, so that digest comparison remains an implementation test.
+The two distinct sixteen-operation spellings, one using aliases and one using
+comments, are also checked to produce identical normalized and canonical IR
+bytes. This states the zero-cost syntax property for those exact source files.
 Regenerate and verify it with:
 
 ```sh

@@ -201,7 +201,27 @@ def render() -> str:
                 f"      ({prefix}CanonicalBytes ++ [32]) = none := by decide",
                 "",
             ]
-    lines += ["end S31.Functional.Correspondence.GeneratedMutationRows", ""]
+    alias16 = selected["15:aliases"]
+    comments16 = selected["15:comments"]
+    assert alias16.steps == comments16.steps
+    assert alias16.return_id == comments16.return_id
+    assert alias16.source != comments16.source
+    assert compile_text(alias16.source)[0] == compile_text(comments16.source)[0]
+    lines += [
+        "/-- The same sixteen-producer DAG has alias and comment spellings.",
+        "Their distinct source bytes induce identical normalized and canonical IR bytes. -/",
+        "theorem alias_comments_same_compiled_bytes :",
+        "    (parseAliasBytes case15Bytes).bind",
+        "      SSANormalizedBytes.encodeNormalized =",
+        "      (parseAliasBytes case16Bytes).bind",
+        "        SSANormalizedBytes.encodeNormalized ∧",
+        "    (parseAliasBytes case15Bytes).map",
+        "      S31.Functional.SSACanonicalIrBytes.encodeCanonical =",
+        "      (parseAliasBytes case16Bytes).map",
+        "        S31.Functional.SSACanonicalIrBytes.encodeCanonical := by decide",
+        "",
+        "end S31.Functional.Correspondence.GeneratedMutationRows", "",
+    ]
     return "\n".join(lines)
 
 

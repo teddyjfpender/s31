@@ -2425,4 +2425,16 @@ theorem case16CanonicalChecks :
     checkAliasCanonical case16Bytes case16NormalizedBytes
       (case16CanonicalBytes ++ [32]) = none := by decide
 
+/-- The same sixteen-producer DAG has alias and comment spellings.
+Their distinct source bytes induce identical normalized and canonical IR bytes. -/
+theorem alias_comments_same_compiled_bytes :
+    (parseAliasBytes case15Bytes).bind
+      SSANormalizedBytes.encodeNormalized =
+      (parseAliasBytes case16Bytes).bind
+        SSANormalizedBytes.encodeNormalized ∧
+    (parseAliasBytes case15Bytes).map
+      S31.Functional.SSACanonicalIrBytes.encodeCanonical =
+      (parseAliasBytes case16Bytes).map
+        S31.Functional.SSACanonicalIrBytes.encodeCanonical := by decide
+
 end S31.Functional.Correspondence.GeneratedMutationRows
