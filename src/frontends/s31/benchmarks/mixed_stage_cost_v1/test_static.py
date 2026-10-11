@@ -8,10 +8,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from cohort import canonical, case, design, inventory, sha
+from cohort import ROOT, canonical, case, design, inventory, sha
 from evidence import bins, check_materialized, materialize, phase_root, replay_trial
 from model import components, evaluate, fit_model, predict
-from protocol import check
+from protocol import check, tool_paths
 
 
 def synthetic_report(count: int, index: int, *, slowdown: float = 1.0) -> dict:
@@ -58,6 +58,14 @@ def synthetic_records(counts: list[int], slowdown: float = 1.0) -> list[dict]:
 
 
 class ProspectiveMixedCostTests(unittest.TestCase):
+    def test_tool_inventory_covers_transitive_oracle_and_frontend(self) -> None:
+        paths = {path.relative_to(ROOT).as_posix()
+                 for path in tool_paths()}
+        self.assertIn("src/frontends/s31/python/oracle.py", paths)
+        self.assertIn("src/frontends/s31/python/abi/binding_v2.py", paths)
+        self.assertIn("src/frontends/s31/python/package/context.py", paths)
+        self.assertIn("src/frontends/s31/benchmarks/paired_record_v2/diagnose_stages_v1.py", paths)
+
     def test_cohort_is_distinct_and_deterministic(self) -> None:
         cfg = design()
         rows = inventory(cfg)

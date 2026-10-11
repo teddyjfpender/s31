@@ -49,11 +49,12 @@ def committed(path: Path, revision: str = "HEAD") -> None:
 
 
 def tool_paths() -> list[Path]:
-    local = sorted(path for path in (S31 / "benchmarks/mixed_stage_cost_v1").glob("*.py")
-                   if not path.name.startswith("test_"))
-    return [*local, S31 / "benchmarks/paired_record_v2/design.py",
-            S31 / "benchmarks/paired_record_v2/diagnose_stages_v1.py",
-            S31 / "tests/acceptance/mixed_boundary/registry_manifest_digest.py"]
+    # The cohort and auditor import Python ABI, oracle, package, and benchmark
+    # helpers transitively. Pin the full source envelope so a changed oracle
+    # cannot silently alter a frozen native study.
+    return sorted({*(S31 / "benchmarks").rglob("*.py"),
+                   *(S31 / "python").rglob("*.py"),
+                   S31 / "tests/acceptance/mixed_boundary/registry_manifest_digest.py"})
 
 
 def tool_sha256() -> str:
