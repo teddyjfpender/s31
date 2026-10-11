@@ -1,9 +1,11 @@
 # General authenticated circuit-to-chip boundary
 
 Status: engineering contract for the next profile. The source-pinned V4
-one-kind profile proves 1–8 tagged square/add calls. The mixed N=3 profile
-proves the fixed pair/pair/many roster; the distinct N=4 profile is being
-admitted separately. Neither fixed roster is a general component scheduler.
+one-kind profile proves 1–8 tagged square/add calls. Distinct source-pinned
+mixed N=3 and N=4 profiles prove their fixed pair/pair/many and
+pair/pair/many/many rosters. Neither fixed roster is a general component
+scheduler. A source-derived 1–8-call registry manifest is an inspection
+increment; it does not admit new proof rosters.
 
 ## Claim and trust root
 
