@@ -417,7 +417,27 @@ jobs:
 
   functional-library-native-proofs:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 75
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: functional-library
+            script: functional/library.py
+            report: functional-library.json
+          - name: fixed-width-multiplication
+            script: math/multiplication.py
+            report: fixed-width-multiplication.json
+          - name: fixed-width-casts
+            script: math/casts.py
+            report: fixed-width-casts.json
+          - name: fixed-width-bitwise
+            script: math/bitwise.py
+            report: fixed-width-bitwise.json
+          - name: fixed-width-shifts
+            script: math/shifts.py
+            report: fixed-width-shifts.json
+    name: functional-library-native-proofs (${{ matrix.name }})
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
@@ -432,43 +452,18 @@ jobs:
         run: |
           test -z "$(git submodule status | grep '^[-+]')"
           test -z "$(git -C deps/stwo-zig status --porcelain --untracked-files=no)"
-      - name: Functional math and hash native proofs
+      - name: Native proof and negative controls (${{ matrix.name }})
         run: |
           set -euo pipefail
           mkdir -p zig-out/s31/acceptance
-          python3 src/frontends/s31/tests/acceptance/functional/library.py |
-            tee zig-out/s31/acceptance/functional-library.json
-      - name: Fixed-width multiplication native proofs
-        run: |
-          set -euo pipefail
-          python3 src/frontends/s31/tests/acceptance/math/multiplication.py |
-            tee zig-out/s31/acceptance/fixed-width-multiplication.json
-      - name: Checked integer cast native proofs
-        run: |
-          set -euo pipefail
-          python3 src/frontends/s31/tests/acceptance/math/casts.py |
-            tee zig-out/s31/acceptance/fixed-width-casts.json
-      - name: Fixed-width bitwise native proofs
-        run: |
-          set -euo pipefail
-          python3 src/frontends/s31/tests/acceptance/math/bitwise.py |
-            tee zig-out/s31/acceptance/fixed-width-bitwise.json
-      - name: Fixed-width static shift native proofs
-        run: |
-          set -euo pipefail
-          python3 src/frontends/s31/tests/acceptance/math/shifts.py |
-            tee zig-out/s31/acceptance/fixed-width-shifts.json
-      - name: Preserve library proof evidence
+          python3 src/frontends/s31/tests/acceptance/${{ matrix.script }} |
+            tee zig-out/s31/acceptance/${{ matrix.report }}
+      - name: Preserve native proof evidence (${{ matrix.name }})
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: s31-functional-library-evidence
-          path: |
-            zig-out/s31/acceptance/functional-library.json
-            zig-out/s31/acceptance/fixed-width-multiplication.json
-            zig-out/s31/acceptance/fixed-width-casts.json
-            zig-out/s31/acceptance/fixed-width-bitwise.json
-            zig-out/s31/acceptance/fixed-width-shifts.json
+          name: s31-${{ matrix.name }}-evidence
+          path: zig-out/s31/acceptance/${{ matrix.report }}
           if-no-files-found: warn
 
   fixed-width-division-native-proofs:
