@@ -8,9 +8,11 @@ checks the typed statement, embedded relation descriptor, sealed key digest
 or embedded source identity, and source-derived component roster. Private
 record chip endpoints and other proof profiles remain disabled. A narrow
 direct-gate public `bit` leaf extension is implemented in source, Python ABI,
-native ABI parser, and an abstract Lean range model; native acceptance and
-Lean compilation remain pending. Private `bit` and all `u16` record leaves
-remain disabled. CI and broader soundness review remain release gates.
+native ABI parser, and an abstract Lean range model. Its native acceptance and
+Lean compilation passed the record-public CI job on the pinned engine. Private
+`bit` and all `u16` record leaves remain disabled. The full production
+parser-to-verifier correspondence and broader soundness review remain release
+gates.
 
 ## Source-bounded public one-call chip
 
@@ -45,7 +47,8 @@ resealed bad ABI/manifest keys, a visibility-swapped embedded descriptor,
 and cross-version proof replay. The mixed extension has a separate
 [N=1 and N=8 native gate](../../../src/frontends/s31/tests/acceptance/mixed_boundary/record_general_v2.py)
 for changed public words, paths, duplicate keys, and statement/assignment
-mismatch. Its final validation-order edit still needs an integrated rerun.
+mismatch. The mixed-general CI job passed on the preceding PR head; changes
+after that head still require their own integrated run.
 
 ## Minimal first release
 

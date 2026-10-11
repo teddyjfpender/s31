@@ -278,10 +278,13 @@ The implemented fixed-width slice includes the ten
 `u8` through `u128` and `i8` through `i128`, with explicit range, cast,
 ordering, and overflow contracts for checked/wrapping addition, subtraction,
 and multiplication through byte-constrained product circuits.
-Its explicit conversions cover equal-width signedness reinterpretation and
-exactly sized limb views. Division, shifts, bitwise
-operations, cross-width numeric casts and the full per-width native release matrix remain
-open. A raw `[u16; N]` or M31 value still does not carry integer semantics.
+Its explicit conversions cover equal-width signedness reinterpretation,
+exactly sized limb views, and checked cross-width numeric casts. Fused
+quotient/remainder division, bitwise operations, and static shifts and
+rotations are implemented and have focused native acceptance gates. The full
+edge-case and negative-proof release matrix for every width and signedness
+remains open. A raw `[u16; N]` or M31 value still does not carry integer
+semantics.
 The main additions beyond this bar are:
 
 1. Deterministic named-module imports and a version policy for third-party
@@ -290,8 +293,8 @@ The main additions beyond this bar are:
 2. Witness-dependent indexing and broader vector kernels, each with measured
    costs and negative proof cases. Current `get<K>` and slices have static
    indices and lengths.
-3. Broader fixed-width integer operations and the per-width native release
-   matrix above, plus general source-level `UInt256` multiplication and
+3. The full per-width native release matrix above, plus general source-level
+   `UInt256` multiplication and
    quotient/remainder beyond the special proved
    `block_work` calculation. A faster wide-arithmetic chip needs a measured
    crossover and sound private boundary.
