@@ -11,7 +11,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TypeAlias
 
-from s31_stdlib import P, Type, TypeErrorS31
+from abi.record_v2 import MAX_LAYOUT_LEAVES
+from s31_stdlib import MAX_INPUT_WORDS, P, Type, TypeErrorS31
 from language.builtin_types import BIT, M31_ONE, circuit, infer_builtin
 from language.builtins import MAX_CALL_DEPTH, STANDARD_ALIASES
 from language.products import assertable_types, selectable_type
@@ -433,6 +434,25 @@ class Elaborator:
         result = self.block(self.circuit.statements, self.circuit.body, env, allow_assert=True)
         record_boundary = isinstance(self.circuit.result, RecordType) or any(
             isinstance(typ, RecordType) for _, typ, _ in self.circuit.params)
+        if record_boundary:
+            # The v2 ABI validates this again after lowering. Check before
+            # circuit_input expands every record leaf into a relation input,
+            # so a compact source cannot allocate an unbounded input graph.
+            def leaf_count(typ: Type | RecordType | TupleType) -> int:
+                if isinstance(typ, Type):
+                    return 1
+                if isinstance(typ, RecordType):
+                    return sum(leaf_count(child) for _, child in typ.fields)
+                return sum(leaf_count(child) for child in typ.elements)
+
+            boundary_leaves = leaf_count(self.circuit.result)
+            for _, typ, _ in self.circuit.params:
+                boundary_leaves += leaf_count(typ)
+                if boundary_leaves > MAX_LAYOUT_LEAVES:
+                    break
+            if boundary_leaves > MAX_LAYOUT_LEAVES:
+                raise self.error(self.circuit.body,
+                                 f"public record v2 boundary exceeds {MAX_LAYOUT_LEAVES} leaves")
         bit_as_field = isinstance(self.circuit.result, Type) and result == BIT and self.circuit.result == M31_ONE
         if record_boundary and bit_as_field:
             raise self.error(self.circuit.body,
@@ -457,6 +477,10 @@ class Elaborator:
             return sum(result_words(item) for item in typ.elements)
 
         result_leaf_words = result_words(self.circuit.result)
+        input_words = sum(result_words(typ) for _, typ, _ in self.circuit.params)
+        if input_words > MAX_INPUT_WORDS:
+            raise self.error(self.circuit.body,
+                             f"aggregate relation inputs exceed {MAX_INPUT_WORDS} words")
         public_words = sum(result_words(typ) for _, typ, visibility in self.circuit.params
                            if visibility == "public")
         if record_boundary:

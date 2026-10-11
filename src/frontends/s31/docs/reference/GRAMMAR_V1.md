@@ -135,8 +135,9 @@ whole record or tuple is accepted when both branches have the same type and
 every leaf has a constrained selector. The compiler emits both branches and
 then one selector per leaf in declaration order. A function-valued leaf is
 rejected. `assert_eq` over equal nominal records or equally typed tuples
-expands to one assertion per first-order leaf. This gives the same relation
-as writing those selectors or assertions field by field.
+visits every first-order leaf and emits each distinct realized wire pair once.
+Repeated or reversed equalities over the same wires share one relation assertion. This
+gives the same relation as writing those selectors or assertions field by field.
 
 `let Powers { square, doubled } = powers(x);` binds named fields without
 creating a relation node. A record pattern may list a subset of fields but
@@ -182,6 +183,20 @@ Struct declarations are capped at 128 types, 64 fields per type, 32 levels of
 nested product layout, and 1,024 flattened first-order fields per type. These
 limits bound parser work and reject deep source trees before later
 recursive compiler passes.
+
+The normalized relation admits at most **65,536 aggregate input words**,
+**100,000 total inputs, nodes and assertions**, and **8 MiB each of program
+and assignment JSON** through the native parser. Its shape pass uses an
+8,388,608-unit early work
+budget; both native lowering routes additionally stop if the recorded raw
+circuit exceeds 2,097,152 gates or 16,777,216 variables. Generic repeats
+have a separate aggregate 1,048,576 lane-step budget; authenticated chip
+calls use their own admission rules. The shape budget is an early resource
+heuristic, while the gate and variable checks count the actual unpadded
+circuit as it is constructed. The standalone relation evaluator has its own
+16,777,216 aggregate repeat lane-step limit, which admits the bounded chip
+profiles it may evaluate. These are resource limits, not proof soundness
+parameters.
 
 The grammar does not assert that all well-typed programs are cheap to prove.
 Use `s31 explain` and the package cost report to inspect the actual selected

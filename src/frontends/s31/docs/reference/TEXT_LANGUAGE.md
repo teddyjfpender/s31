@@ -111,6 +111,10 @@ existing relation permits 1–16 such steps and 1–32768 rounds. The current ch
 is narrower: only the four-lane, public, square-then-add form at power-of-two
 round counts 16–32768. Select the chip explicitly with `--lowering direct-chip`
 or another chip profile; an unsupported shape fails instead of falling back.
+The generic circuit lowering admits at most 1,048,576 aggregate lane-step
+equivalents across eagerly expanded `iterate` nodes. A `mix4` step counts as
+eight lane steps. The native compiler checks this before expansion for text and
+JSON relations; authenticated chip calls use their separate admission rules.
 
 The example above lowers to one `repeat` node with a `square` and `add_const 7`
 body. With `--lowering direct-chip`, its chip rows constrain
@@ -164,7 +168,7 @@ zero-row view for byte and integer operations.
 | `poseidon2_leaf(x)`, `blake2s_leaf(x)` | Corresponding leaf hash node | 4, 8, 12, or 16 M31 words. |
 | `poseidon2_pair(a,b)`, `blake2s_pair(a,b)` | Ordered-pair hash node | Two digests of the selected family. |
 | `merkle_path_poseidon2(leaf, siblings, directions)` and `merkle_path_blake2s(...)` | Optional leaf hash, then two selects and one ordered pair per level | Raw M31 leaf or same-family digest; static arrays of 1–16 digest and bit inputs. |
-| `assert_eq(a,b);` | Relation assertion | Equal first-order types, matching tuples, or the same nominal record; each product leaf is checked as a proof constraint. |
+| `assert_eq(a,b);` | Relation assertion | Equal first-order types, matching tuples, or the same nominal record; every product leaf is checked, with repeated or reversed realized wire pairs deduplicated. |
 | `std::bytes::to_u256_le(x)`, `from_u256_le(x)` | No node; change nominal type | Explicit little-endian interpretation of `Bytes32` or `UInt256`. |
 | `std::bytes::limbs_m31(x)` | `cast_m31` | `Bytes32` or `UInt256`; preserves all sixteen limb values. |
 | `std::hash::sha256d_header(header)` | `hash_sha256d_header` | `Bytes80` to byte-exact `Bytes32`; two first-pass and one second-pass SHA-256 blocks are fully constrained. |

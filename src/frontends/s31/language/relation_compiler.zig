@@ -22,6 +22,65 @@ const QM31 = core.fields.qm31.QM31;
 const Var = circuit.builder.Var;
 const Simd = circuit.builder.simd.Simd;
 const N_RESERVED = circuit.common.component_list.N_RESERVED;
+/// Bounds eager generic repeat expansion; authenticated chip calls have their
+/// own admission rules and are charged only if they fall through to gates.
+const max_generic_repeat_lane_steps: u64 = 1_048_576;
+const max_circuit_gates: u64 = 2_097_152;
+const max_circuit_vars: u64 = 16_777_216;
+
+/// Count the circuit actually recorded by either value or topology lowering.
+/// Pending guessed variables each add a finalization gate, so include them
+/// before the finalization pass as well as checking the finished circuit.
+fn checkCircuitBudget(comptime V: type, ctx: *const circuit.builder.Context(V), pending_guesses: bool) !void {
+    var gates: u64 = @intCast(ctx.circuit.nQm31OpsRows());
+    const extra = [_]usize{
+        ctx.circuit.eq.items.len,
+        ctx.circuit.triple_xor.items.len,
+        ctx.circuit.m31_to_u32.items.len,
+        ctx.circuit.blake_g_gate.items.len,
+        if (pending_guesses) ctx.guessed_vars.items.len else 0,
+    };
+    for (extra) |count| gates = std.math.add(u64, gates, @intCast(count)) catch return error.CircuitGateLimitExceeded;
+    if (gates > max_circuit_gates) return error.CircuitGateLimitExceeded;
+    if (ctx.circuit.n_vars > max_circuit_vars) return error.CircuitVariableLimitExceeded;
+}
+
+fn chargeGenericRepeat(total: *u64, length: usize, rounds: u32, body: []const relation.Step) !void {
+    var step_weight: u64 = 0;
+    for (body) |step| {
+        step_weight = std.math.add(u64, step_weight, if (step.op == .mix4) 8 else 1) catch
+            return error.RepeatWorkBudgetExceeded;
+    }
+    const lanes = std.math.mul(u64, @intCast(length), @as(u64, rounds)) catch
+        return error.RepeatWorkBudgetExceeded;
+    const work = std.math.mul(u64, lanes, step_weight) catch
+        return error.RepeatWorkBudgetExceeded;
+    const next = std.math.add(u64, total.*, work) catch
+        return error.RepeatWorkBudgetExceeded;
+    if (next > max_generic_repeat_lane_steps) return error.RepeatWorkBudgetExceeded;
+    total.* = next;
+}
+
+test "generic repeat admission bounds both native compiler paths" {
+    const allocator = std.testing.allocator;
+    const source =
+        \\{"version":1,"name":"large_repeat","inputs":[{"name":"x","kind":"m31","length":4096,"visibility":"private"}],"nodes":[{"name":"r","op":"repeat","lhs":"x","rounds":32768,"body":[{"op":"square"}]},{"name":"out","op":"array_get","lhs":"r","index":0}],"assertions":[],"public_outputs":["out"]}
+    ;
+    var parsed = try relation.parseProgram(allocator, source);
+    defer parsed.deinit();
+    try parsed.value.validate(allocator);
+    try std.testing.expectError(error.RepeatWorkBudgetExceeded, compileRaw(circuit.builder.NoValue, allocator, parsed.value, null));
+    try std.testing.expectError(error.RepeatWorkBudgetExceeded, compileWithSpans(circuit.builder.NoValue, allocator, parsed.value, null, null));
+
+    const one = [_]relation.Step{.{ .op = .square }};
+    const mix = [_]relation.Step{.{ .op = .mix4 }};
+    var work: u64 = 0;
+    try chargeGenericRepeat(&work, 4, 32768, &one);
+    try std.testing.expectEqual(@as(u64, 131072), work);
+    try chargeGenericRepeat(&work, 4, 28672, &mix);
+    try std.testing.expectEqual(max_generic_repeat_lane_steps, work);
+    try std.testing.expectError(error.RepeatWorkBudgetExceeded, chargeGenericRepeat(&work, 1, 1, &one));
+}
 
 pub fn selectedConstantMinBase(program: relation.Program) u32 {
     return constant_base.selectedBase(program) orelse circuit.builder.finalize_constants.default_min_base;
@@ -143,6 +202,7 @@ pub fn compileRaw(comptime V: type, allocator: std.mem.Allocator, program: relat
     defer bit_cache.deinit(scratch);
     var values = std.StringHashMapUnmanaged(Entry){};
     defer values.deinit(scratch);
+    var generic_repeat_work: u64 = 0;
 
     for (program.inputs) |input| {
         const arithmetic_width = arithmeticInputWidth(program, input, false);
@@ -172,6 +232,7 @@ pub fn compileRaw(comptime V: type, allocator: std.mem.Allocator, program: relat
             .raw = raw,
             .integer_spec = arithmetic_width,
         });
+        try checkCircuitBudget(V, &ctx, false);
     }
 
     for (program.nodes) |node| {
@@ -230,6 +291,7 @@ pub fn compileRaw(comptime V: type, allocator: std.mem.Allocator, program: relat
             .bitcoin_header_bits => try headerSlice(V, &ctx, lhs.?, 36, 2),
             .bitcoin_header_time => try headerSlice(V, &ctx, lhs.?, 34, 2),
             .repeat => blk: {
+                try chargeGenericRepeat(&generic_repeat_work, length, node.rounds.?, node.body.?);
                 const constants = try scratch.alloc(?Simd, node.body.?.len);
                 for (node.body.?, constants) |step, *slot| slot.* = if (step.constant) |value| try circuit.builder.simd.repeat(V, &ctx, M31.fromCanonical(value), length) else null;
                 var current = lhs.?.lanes;
@@ -254,12 +316,14 @@ pub fn compileRaw(comptime V: type, allocator: std.mem.Allocator, program: relat
             .hash_poseidon2_pair => .{ .shape = .{ .kind = .m31, .length = 8 }, .lanes = try poseidon2.pairCircuit(V, &ctx, lhs.?.lanes, rhs.?.lanes) },
         };
         try values.put(scratch, node.name, entry);
+        try checkCircuitBudget(V, &ctx, false);
     }
 
     for (program.assertions) |assertion| {
         const lhs = values.get(assertion.lhs) orelse return error.UnknownOperand;
         const rhs = values.get(assertion.rhs) orelse return error.UnknownOperand;
         try circuit.builder.simd.eq(V, &ctx, lhs.lanes, rhs.lanes);
+        try checkCircuitBudget(V, &ctx, false);
     }
 
     var outputs = [_]Var{ctx.zero()} ** N_RESERVED;
@@ -280,7 +344,9 @@ pub fn compileRaw(comptime V: type, allocator: std.mem.Allocator, program: relat
         }
     }
     try ctx.setOutputs(&outputs);
+    try checkCircuitBudget(V, &ctx, true);
     try constant_base.finish(V, &ctx, program);
+    try checkCircuitBudget(V, &ctx, false);
     return ctx;
 }
 
@@ -484,6 +550,7 @@ fn compileWithSpansMode(comptime V: type, allocator: std.mem.Allocator, program:
     const entries = try scratch.alloc(Entry, ir.nodes.len);
     const bit_sources = try scratch.alloc(bool, ir.nodes.len);
     @memset(bit_sources, false);
+    var generic_repeat_work: u64 = 0;
     for (ir.nodes) |node| {
         if (node.tag == .select or node.tag == .bool_select) bit_sources[node.selector.?] = true;
         if (node.tag == .bool_not or node.tag == .bool_and or node.tag == .bool_or or node.tag == .bool_xor or node.tag == .bool_select) {
@@ -709,6 +776,7 @@ fn compileWithSpansMode(comptime V: type, allocator: std.mem.Allocator, program:
                     }
                     break :blk .{ .shape = .{ .kind = .m31, .length = 4 }, .lanes = try circuit.builder.simd.pack(V, &ctx, wrappers), .raw = raw };
                 }
+                try chargeGenericRepeat(&generic_repeat_work, node.length, node.rounds.?, node.body.?);
                 const constants = try scratch.alloc(?Simd, node.body.?.len);
                 for (node.body.?, constants) |step, *slot| slot.* = if (step.constant) |value| try circuit.builder.simd.repeat(V, &ctx, M31.fromCanonical(value), node.length) else null;
                 var current = entries[node.lhs.?].lanes;
@@ -760,12 +828,14 @@ fn compileWithSpansMode(comptime V: type, allocator: std.mem.Allocator, program:
             .blake_g_start = blake_start,
             .blake_g_end = ctx.circuit.blake_g_gate.items.len,
         });
+        try checkCircuitBudget(V, &ctx, false);
     }
 
     for (ir.assertions, 0..) |assertion, index| {
         const qm31_start = ctx.circuit.nQm31OpsRows();
         const eq_start = ctx.circuit.eq.items.len;
         try circuit.builder.simd.eq(V, &ctx, entries[assertion.lhs].lanes, entries[assertion.rhs].lanes);
+        try checkCircuitBudget(V, &ctx, false);
         if (maps) |out| try out.assertions.append(allocator, .{
             .index = index,
             .qm31_start = qm31_start,
@@ -816,6 +886,7 @@ fn compileWithSpansMode(comptime V: type, allocator: std.mem.Allocator, program:
     }
     const binding_base = ctx.circuit.nQm31OpsRows();
     try ctx.setOutputs(&outputs);
+    try checkCircuitBudget(V, &ctx, true);
     if (maps) |out| for (out.bindings.items) |*binding| {
         binding.binding_qm31_start = binding_base + binding.word_start;
         binding.binding_qm31_end = binding.binding_qm31_start + binding.word_count;
@@ -823,6 +894,7 @@ fn compileWithSpansMode(comptime V: type, allocator: std.mem.Allocator, program:
     const finalize_qm31_start = ctx.circuit.nQm31OpsRows();
     const finalize_m31_start = ctx.circuit.m31_to_u32.items.len;
     try constant_base.finish(V, &ctx, program);
+    try checkCircuitBudget(V, &ctx, false);
     if (pair_mode and (!pair_seen[0] or !pair_seen[1] or maps.?.private_pair_plan == null))
         return error.UnsupportedPairRelation;
     if (bounded_mode) {

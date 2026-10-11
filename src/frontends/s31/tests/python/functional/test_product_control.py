@@ -51,7 +51,9 @@ circuit eq(private x: [m31; 1], private y: [m31; 1]) -> public [m31; 1] {
     assert_eq(a.nested.1, c.nested.1);
     x }""")
         self.assertEqual(product, fieldwise)
-        self.assertEqual(len(product["assertions"]), 3)
+        # The three leaves require the same x=y fact; duplicates and reversed
+        # equalities share one normalized relation assertion.
+        self.assertEqual(product["assertions"], [{"lhs": "x", "rhs": "y"}])
         self.assertEqual(evaluate_relation(product, {
             "public_inputs": {}, "private_inputs": {"x": [7], "y": [7]},
             "public_outputs": {"x": [7]},

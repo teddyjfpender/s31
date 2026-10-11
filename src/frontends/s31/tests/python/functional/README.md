@@ -30,6 +30,11 @@ gate under `tests/acceptance/functional/product_control.py` proves both
 selector values and pins equal complete AIR geometry at 299 raw and 512
 padded QM31 rows.
 
+`test_resource_bounds.py` checks that repeated record parameter types share
+one abstract effect shape, the 1,024-leaf record ABI budget is enforced before
+input expansion, and repeated product assertions are deduplicated and charged
+against a bounded expansion budget.
+
 Run through the repository's Python discovery command:
 
 ```sh

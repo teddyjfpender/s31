@@ -108,19 +108,29 @@ class TotalityChecker:
         self.filename = filename
         self.stack: list[str] = []
         self.visits = 0
+        # Record declarations are immutable and their types are shared by the
+        # parser. Reuse one abstract product shape per type object: a function
+        # with many parameters of the same nested record must not allocate a
+        # fresh expanded tree for every parameter before any visit cap applies.
+        self.parameter_shapes: dict[int, tuple[object, AbstractValue]] = {}
 
     def error(self, expr: Expr, message: str) -> SourceError:
         return SourceError(f"{self.filename}:{expr.token.line}:{expr.token.column}: {message}")
 
-    @staticmethod
-    def parameter(typ: object) -> AbstractValue:
+    def parameter(self, typ: object) -> AbstractValue:
+        cached = self.parameter_shapes.get(id(typ))
+        if cached is not None and cached[0] is typ:
+            return cached[1]
         if isinstance(typ, TupleType):
-            return TupleValue(tuple(TotalityChecker.parameter(item) for item in typ.elements))
-        if isinstance(typ, RecordType):
-            fields = tuple((name, TotalityChecker.parameter(field_type))
+            result: AbstractValue = TupleValue(tuple(self.parameter(item) for item in typ.elements))
+        elif isinstance(typ, RecordType):
+            fields = tuple((name, self.parameter(field_type))
                            for name, field_type in typ.fields)
-            return RecordValue(typ, fields)
-        return OPAQUE_FUNCTION if isinstance(typ, FunctionType) else FIRST_ORDER
+            result = RecordValue(typ, fields)
+        else:
+            result = OPAQUE_FUNCTION if isinstance(typ, FunctionType) else FIRST_ORDER
+        self.parameter_shapes[id(typ)] = (typ, result)
+        return result
 
     def block(self, statements: tuple[Statement, ...], body: Expr,
               env: dict[str, AbstractValue]) -> Effect:

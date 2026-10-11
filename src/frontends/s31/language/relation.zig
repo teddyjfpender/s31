@@ -10,6 +10,20 @@ const poseidon2 = @import("../library/hash/poseidon2.zig");
 const record_abi = @import("record_abi.zig");
 
 pub const Kind = enum { u16, m31 };
+pub const max_input_words: u64 = 65_536;
+pub const max_relation_items: u64 = 100_000;
+pub const max_program_source_bytes: usize = 8 * 1024 * 1024;
+pub const max_assignment_source_bytes: usize = 8 * 1024 * 1024;
+pub const max_evaluator_repeat_lane_steps: u64 = 16_777_216;
+/// Early, conservative admission before either native compiler expands nodes.
+/// This is a work heuristic, not an upper bound on circuit gates; the compiler
+/// also checks its actual recorded gate and variable counts after every node.
+pub const max_shape_work: u64 = 8_388_608;
+
+fn chargeShapeWork(total: *u64, amount: u64) !void {
+    total.* = std.math.add(u64, total.*, amount) catch return error.ShapeWorkLimitExceeded;
+    if (total.* > max_shape_work) return error.ShapeWorkLimitExceeded;
+}
 pub const Visibility = enum { public, private };
 /// ABI visibility and proof blinding are independent. `blinded` is the
 /// experimental pinned random-row construction, not a general ZK guarantee.
@@ -309,12 +323,20 @@ pub const Program = struct {
         if (self.version == 1 and self.public_abi != null) return error.InvalidRecordAbi;
         if (self.version == 2 and self.public_abi == null) return error.InvalidRecordAbi;
         if (!validName(self.name)) return error.InvalidProgramName;
+        const item_count = std.math.add(u64, @intCast(self.inputs.len), @intCast(self.nodes.len)) catch return error.RelationItemLimitExceeded;
+        const total_items = std.math.add(u64, item_count, @intCast(self.assertions.len)) catch return error.RelationItemLimitExceeded;
+        if (total_items > max_relation_items) return error.RelationItemLimitExceeded;
         var shapes = std.StringHashMapUnmanaged(Shape){};
         defer shapes.deinit(allocator);
         var public_words: usize = 0;
+        var input_words: u64 = 0;
+        var shape_work: u64 = 0;
         for (self.inputs) |input| {
             if (!validName(input.name) or shapes.contains(input.name)) return error.DuplicateOrInvalidName;
             if (input.length == 0 or input.length > 4096) return error.InvalidArrayLength;
+            input_words = std.math.add(u64, input_words, input.length) catch return error.InputWordLimitExceeded;
+            if (input_words > max_input_words) return error.InputWordLimitExceeded;
+            try chargeShapeWork(&shape_work, @as(u64, input.length) * (if (input.kind == .u16) @as(u64, 128) else 8));
             if (input.visibility == .public) public_words += input.length;
             try shapes.put(allocator, input.name, .{ .kind = input.kind, .length = input.length });
         }
@@ -488,12 +510,28 @@ pub const Program = struct {
                     result = .{ .kind = .m31, .length = 8 };
                 },
             }
+            const ordinary_length = switch (node.op) {
+                .array_get, .cast_m31 => @as(usize, 1),
+                .array_slice, .array_concat => result.length,
+                else => @max(result.length, @max(if (lhs) |v| v.length else 0, if (rhs) |v| v.length else 0)),
+            };
+            const fixed_credit: u64 = switch (node.op) {
+                .hash_sha256d_header => 1_048_576,
+                .bitcoin_target_mainnet, .bitcoin_block_work => 131_072,
+                .hash_poseidon2_leaf, .hash_poseidon2_pair => 16_384,
+                .hash_blake2s, .hash_blake2s_leaf, .hash_blake2s_pair => 8_192,
+                .int_div_rem => 65_536,
+                .int_mul_checked, .int_mul_wrapping => 8_192,
+                else => 0,
+            };
+            try chargeShapeWork(&shape_work, @as(u64, @intCast(ordinary_length)) * 8 + fixed_credit);
             try shapes.put(allocator, node.name, result);
         }
         for (self.assertions) |assertion| {
             const lhs = shapes.get(assertion.lhs) orelse return error.UnknownOperand;
             const rhs = shapes.get(assertion.rhs) orelse return error.UnknownOperand;
             if (lhs.kind != rhs.kind or lhs.length != rhs.length) return error.AssertionShapeMismatch;
+            try chargeShapeWork(&shape_work, @as(u64, @intCast(lhs.length)) * 8);
         }
         for (self.public_outputs) |name| {
             const shape = shapes.get(name) orelse return error.UnknownOutput;
@@ -546,10 +584,68 @@ pub const ParsedProgram = std.json.Parsed(Program);
 pub const ParsedAssignment = std.json.Parsed(Assignment);
 
 pub fn parseProgram(allocator: std.mem.Allocator, source: []const u8) !ParsedProgram {
+    if (source.len > max_program_source_bytes) return error.ProgramSourceTooLarge;
     var parsed = try std.json.parseFromSlice(Program, allocator, source, .{ .ignore_unknown_fields = false });
     errdefer parsed.deinit();
     try parsed.value.validate(allocator);
     return parsed;
+}
+
+test "native relation rejects aggregate input and wide-node work" {
+    const allocator = std.testing.allocator;
+    var names: [17][16]u8 = undefined;
+    var inputs: [17]Input = undefined;
+    for (&inputs, 0..) |*input, i| {
+        input.* = .{
+            .name = try std.fmt.bufPrint(&names[i], "x{d}", .{i}),
+            .kind = .m31,
+            .length = 4096,
+            .visibility = .private,
+        };
+    }
+    var nodes = [_]Node{.{ .name = "out", .op = .constant, .constant = 0, .length = 1 }};
+    var outputs = [_][]const u8{"out"};
+    var program: Program = .{
+        .version = 1,
+        .name = "bounded_inputs",
+        .inputs = inputs[0..16],
+        .nodes = &nodes,
+        .assertions = &.{},
+        .public_outputs = &outputs,
+    };
+    try program.validate(allocator);
+    program.inputs = &inputs;
+    try std.testing.expectError(error.InputWordLimitExceeded, program.validate(allocator));
+
+    program.inputs = inputs[0..1];
+    var view_nodes: [300]Node = undefined;
+    var view_names: [300][16]u8 = undefined;
+    for (&view_nodes, 0..) |*node, i| {
+        node.* = .{
+            .name = try std.fmt.bufPrint(&view_names[i], "v{d}", .{i}),
+            .op = .array_get,
+            .lhs = inputs[0].name,
+            .index = @intCast(i),
+        };
+    }
+    program.nodes = &view_nodes;
+    outputs[0] = view_nodes[299].name;
+    try program.validate(allocator);
+
+    var wide_nodes: [300]Node = undefined;
+    var wide_names: [300][16]u8 = undefined;
+    for (&wide_nodes, 0..) |*node, i| {
+        node.* = .{
+            .name = try std.fmt.bufPrint(&wide_names[i], "n{d}", .{i}),
+            .op = .mul,
+            .lhs = if (i == 0) inputs[0].name else wide_nodes[i - 1].name,
+            .rhs = inputs[0].name,
+        };
+    }
+    // Admission rejects during the chain, before output shape or circuit work.
+    program.nodes = &wide_nodes;
+    outputs[0] = wide_nodes[299].name;
+    try std.testing.expectError(error.ShapeWorkLimitExceeded, program.validate(allocator));
 }
 
 test "unknown proof mode is rejected rather than downgraded" {
@@ -561,6 +657,7 @@ test "unknown proof mode is rejected rather than downgraded" {
 }
 
 pub fn parseAssignment(allocator: std.mem.Allocator, source: []const u8) !ParsedAssignment {
+    if (source.len > max_assignment_source_bytes) return error.AssignmentSourceTooLarge;
     var parsed = try std.json.parseFromSlice(Assignment, allocator, source, .{ .ignore_unknown_fields = false });
     errdefer parsed.deinit();
     if (parsed.value.public_inputs != .object or parsed.value.public_outputs != .object) return error.InvalidAssignment;
@@ -607,6 +704,7 @@ pub fn claimedWords(allocator: std.mem.Allocator, program: Program, assignment: 
 
 pub fn evaluate(allocator: std.mem.Allocator, program: Program, assignment: Assignment) ![8]u32 {
     try program.validate(allocator);
+    var repeat_lane_steps: u64 = 0;
     var expected_private_inputs: usize = 0;
     for (program.inputs) |input| if (input.visibility == .private) {
         expected_private_inputs += 1;
@@ -914,6 +1012,19 @@ pub fn evaluate(allocator: std.mem.Allocator, program: Program, assignment: Assi
             continue;
         }
         if (node.op == .repeat) {
+            var step_weight: u64 = 0;
+            for (node.body.?) |step| {
+                step_weight = std.math.add(u64, step_weight, if (step.op == .mix4) 8 else 1) catch
+                    return error.EvaluatorRepeatWorkLimitExceeded;
+            }
+            const lanes = std.math.mul(u64, @intCast(out.len), node.rounds.?) catch
+                return error.EvaluatorRepeatWorkLimitExceeded;
+            const work = std.math.mul(u64, lanes, step_weight) catch
+                return error.EvaluatorRepeatWorkLimitExceeded;
+            repeat_lane_steps = std.math.add(u64, repeat_lane_steps, work) catch
+                return error.EvaluatorRepeatWorkLimitExceeded;
+            if (repeat_lane_steps > max_evaluator_repeat_lane_steps)
+                return error.EvaluatorRepeatWorkLimitExceeded;
             @memcpy(out, lhs.?);
             for (0..node.rounds.?) |_| for (node.body.?) |step| try applyStep(out, step);
             try values.put(allocator, node.name, out);

@@ -17,6 +17,7 @@ from typing import Any
 P = (1 << 31) - 1
 STDLIB_ABI_VERSION = 1
 MAX_NODES = 100_000
+MAX_INPUT_WORDS = 65_536
 INT_TYPES = {f"int_{sign}{width}": (width, sign == "i")
              for sign in ("u", "i") for width in (8, 16, 32, 64, 128)}
 SELECTABLE_KINDS = frozenset({
@@ -83,8 +84,11 @@ class Builder:
     def __init__(self, name: str) -> None:
         self.name = name
         self.inputs: list[dict[str, Any]] = []
+        self.input_words = 0
         self.nodes: list[dict[str, Any]] = []
         self.assertions: list[dict[str, str]] = []
+        self.assertion_pairs: set[tuple[str, str]] = set()
+        self.assertion_expansions = 0
         self.used_names: set[str] = set()
         self.reserved_names: set[str] = set()
         self.source_map: dict[str, dict[str, int]] = {}
@@ -111,9 +115,12 @@ class Builder:
         return name
 
     def input(self, name: str, typ: Type, visibility: str) -> Value:
-        self.unique(name)
         kind, length = typ.relation_shape()
+        if self.input_words + length > MAX_INPUT_WORDS:
+            raise TypeErrorS31(f"aggregate relation inputs exceed {MAX_INPUT_WORDS} words")
+        self.unique(name)
         self.inputs.append({"name": name, "kind": kind, "length": length, "visibility": visibility})
+        self.input_words += length
         if typ.kind == "bit":
             self.bit_inputs.add(name)
         value = Value(typ, ref=name)
@@ -210,8 +217,8 @@ class Builder:
 
     def emit(self, op: str, typ: Type, *, wanted: str | None = None,
              span: dict[str, int] | None = None, **fields: Any) -> Value:
-        if len(self.nodes) >= MAX_NODES:
-            raise TypeErrorS31("node expansion limit exceeded")
+        if len(self.nodes) + len(self.assertions) >= MAX_NODES:
+            raise TypeErrorS31("relation item expansion limit exceeded")
         name = self.unique(wanted)
         self.nodes.append({"name": name, "op": op, **fields})
         if span is not None:
@@ -615,10 +622,21 @@ class Builder:
                          lhs=self.realize(start).ref, rounds=rounds, body=list(steps))
 
     def assert_equal(self, lhs: Value, rhs: Value) -> None:
+        self.assertion_expansions += 1
+        if self.assertion_expansions > MAX_NODES:
+            raise TypeErrorS31("assertion expansion limit exceeded")
         bit_field = {lhs.typ.kind, rhs.typ.kind} == {"bit", "m31"} and lhs.typ.length == rhs.typ.length == 1
         if lhs.typ != rhs.typ and not bit_field:
             raise TypeErrorS31("assert_eq requires two values of the same relation type")
-        self.assertions.append({"lhs": self.realize(lhs).ref, "rhs": self.realize(rhs).ref})
+        left, right = self.realize(lhs).ref, self.realize(rhs).ref
+        assert left is not None and right is not None
+        pair = tuple(sorted((left, right)))
+        if pair in self.assertion_pairs:
+            return
+        if len(self.nodes) + len(self.assertions) >= MAX_NODES:
+            raise TypeErrorS31("relation item expansion limit exceeded")
+        self.assertion_pairs.add(pair)
+        self.assertions.append({"lhs": left, "rhs": right})
 
     def merkle_path(self, family: str, leaf: Value, siblings: StaticGroup, directions: StaticGroup,
                     *, wanted: str | None = None, span: dict[str, int] | None = None) -> Value:

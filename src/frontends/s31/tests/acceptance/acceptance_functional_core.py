@@ -29,6 +29,15 @@ EXPECTED_GEOMETRY = {
                "qm31_ops": 512, "triple_xor": 0},
     "preprocessed_cells": 4096,
 }
+EXPECTED_CIRCUIT_GEOMETRY = {
+    "profile": "circuit-v1",
+    "chip": None,
+    "raw": {"blake_g": 0, "eq": 0, "m31_to_u32": 8,
+            "qm31_ops": 322, "triple_xor": 0},
+    "padded": {"blake_g": 16, "eq": 16, "m31_to_u32": 16,
+               "qm31_ops": 512, "triple_xor": 16},
+    "preprocessed_cells": 4_248_656,
+}
 EXPECTED_CHIP_GEOMETRY = {
     "canonical_ir_sha256": "4745fc8a96df2874399ca1b9ef0bfea6e9861d9461ec7a19b084fc8a0237583e",
     "profile": "direct-m31-v4",
@@ -71,6 +80,28 @@ def compare_cost(functional_cost: dict, manual_cost: dict,
                         if functional_cost[name] != value]
     if changed_geometry:
         raise AssertionError(f"{description} baseline geometry changed: {changed_geometry}")
+
+
+def check_circuit_gate(work: Path, functional: Path, manual: Path,
+                       assignment_path: Path) -> dict:
+    """Qualify source-function erasure through the general circuit AIR path."""
+    functional_package = s31.build(functional, work / "functional-circuit", "gate")
+    manual_package = s31.build(manual, work / "manual-circuit", "gate")
+    cost = json.loads((functional_package / "cost-report.json").read_text())
+    manual_cost = json.loads((manual_package / "cost-report.json").read_text())
+    compare_cost(cost, manual_cost, EXPECTED_CIRCUIT_GEOMETRY, "functional circuit AIR")
+    trial = s31.trial(functional_package, assignment_path, work / "circuit-trial")
+    if (not trial["native_verifier_accepted"] or
+            not trial["changed_public_statement_rejected"] or
+            trial["independent_value_oracle"]["status"] != "passed"):
+        raise AssertionError("functional circuit AIR verifier or oracle failed")
+    return {"canonical_ir_sha256": cost["canonical_ir_sha256"],
+            "profile": cost["profile"], "raw": cost["raw"],
+            "padded": cost["padded"],
+            "preprocessed_cells": cost["preprocessed_cells"],
+            "proof_bytes": trial["proof_bytes"],
+            "native_verifier_accepted": True,
+            "changed_public_statement_rejected": True}
 
 
 def check_chip(work: Path) -> dict:
@@ -255,6 +286,7 @@ def main() -> None:
                 not trial["changed_public_statement_rejected"] or
                 trial["independent_value_oracle"]["status"] != "passed"):
             raise AssertionError("native verifier acceptance or claim rejection missing")
+        circuit_report = check_circuit_gate(work, functional, manual, assignment_path)
         chip_report = check_chip(work)
         captured_chip_report = check_captured_chip(work)
         wide_report = check_sparse_wide(work)
@@ -269,6 +301,7 @@ def main() -> None:
                 "native_verifier_accepted": True,
                 "changed_public_statement_rejected": trial["changed_public_statement_rejected"],
             },
+            "circuit_air": circuit_report,
             "recurrence_chip": chip_report,
             "captured_recurrence_chip": captured_chip_report,
             "sparse_wide": wide_report,

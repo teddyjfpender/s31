@@ -26,7 +26,9 @@ pass retains failures from every component, including an unselected one, so
 projection cannot hide a partial operation in an inactive conditional arm.
 Witness-dependent selection of a tuple or nominal record visits its selectable
 leaves in order and emits the same primitive selectors as explicit fieldwise
-source. Product assertions likewise become the existing leaf assertions.
+source. Product assertions likewise become the existing leaf assertions;
+identical or reversed realized wire pairs share one relation constraint. The compiler
+bounds total assertion expansion, including duplicates, before emission.
 Function-valued leaves cannot be selected or asserted, and partial operations
 in either branch remain visible to the effect pass.
 Circuit inputs and outputs reject tuple types; helper functions may accept or
@@ -40,7 +42,9 @@ eager component effects and zero tuple-specific AIR work. Nested patterns
 and expression-level `let … in` use the same lowering.
 Pattern nesting stops at 32 levels, and generated binder/projection AST nodes
 are capped at 100,000 per file so compact deep patterns cannot expand without
-bound.
+bound. The record ABI's 1,024-leaf aggregate boundary is checked before
+circuit inputs are expanded. Effect analysis reuses immutable abstract shapes
+for repeated parameter types.
 Postfix application allows `(fun(...) -> ... => body)(value)` and
 `factory(value)(next)`. An unshadowed top-level `fn` name is also a static
 function value, so `apply(square, x)` and `(square)(x)` emit only the
@@ -56,6 +60,8 @@ reduces to the chip's straight-line operations; dynamic captures and
 unsupported effects are rejected. The effect pass evaluates the step-value
 expression and resolves its body, including when a helper passes it through
 a `Fn` parameter, before an inactive conditional can hide a failure.
+The native compiler caps aggregate work for `repeat` nodes that expand into
+generic circuit gates. Dedicated chip calls have separate admission checks.
 Elaboration summarizes returned static functions and propagates step context
 through named factories, identity helpers, and lexical aliases. This permits
 `mix4` inside a factory or local closure only when that value is used as an

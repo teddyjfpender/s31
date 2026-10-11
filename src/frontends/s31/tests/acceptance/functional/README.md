@@ -1,5 +1,19 @@
 # Functional native acceptance
 
+`../acceptance_functional_core.py` is the source-to-proof profile matrix for
+the first functional subset. It compares the functional four-lane square with
+its handwritten form under both generic `gate` and `direct-gate`, plus a
+recurrence under `direct-chip` and checked `UInt256` arithmetic under
+`sparse-wide-gate`. Each case pins the full reported AIR geometry, checks an
+independent value, accepts a native proof, and rejects a changed public claim.
+The generic square currently has 4,248,656 preprocessed cells; the same
+relation under `direct-gate` has 4,096. These are geometry observations for
+one program, not a universal speed ratio.
+
+```sh
+python3 src/frontends/s31/tests/acceptance/acceptance_functional_core.py
+```
+
 `library.py` builds functional and explicitly first-order forms of the
 [worked quadratic](../../../examples/arithmetic/functional_poly4.s31), the
 [curried sum](../../../examples/arithmetic/curried_sum.s31), one generated
