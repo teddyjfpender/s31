@@ -1,7 +1,7 @@
 # Mixed cost v4: prospective distributional protocol proposal
 
-**Status: executable runner implemented; final native protocol and v4 timing
-data are pending.** The
+**Status: completed after this preregistration; see the
+[v4 result](MIXED_COST_V4_RESULT.md).** The
 [native-free inventory](language/mixed-cost-v4-prospective-inventory.json)
 fixes eight new source programs, 640 unique public claims, the model
 implementation hash, fit/calibration split, and acceptance gates. This is

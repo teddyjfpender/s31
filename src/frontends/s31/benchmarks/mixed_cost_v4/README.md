@@ -14,6 +14,7 @@ Run the native-free checks first:
 python3 -B src/frontends/s31/benchmarks/mixed_cost_v4/test_static.py -q
 python3 -B src/frontends/s31/benchmarks/mixed_cost_v4/test_model.py -q
 python3 -B src/frontends/s31/benchmarks/mixed_cost_v4/test_study.py -q
+python3 -B src/frontends/s31/benchmarks/mixed_cost_v4/test_adversarial.py -q
 python3 -B src/frontends/s31/benchmarks/mixed_cost_v4/prospective.py preview
 ```
 
