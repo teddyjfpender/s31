@@ -17,6 +17,7 @@ S31 = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(S31 / "python"))
 REPO = S31.parents[2]
 sys.path.insert(0, str(REPO / "scripts"))
+sys.path.insert(0, str(REPO / "formal/s31/scripts"))
 
 import s31
 from package import verify as package_verify
@@ -41,6 +42,7 @@ from export_s31_direct_gate_bytecode_arithmetic import (
 from export_s31_direct_gate_evaluator_fixture import (
     render as render_evaluator_fixture, validate_component_geometry,
 )
+from check_early_return_native_rows import check_package_trace, check_negative_controls
 
 
 def reseal_emitted_columns(topology: dict, component: dict) -> None:
@@ -312,6 +314,11 @@ def main() -> None:
         if not s31.trial(mixed, mixed_assignment,
                          work / "mixed-earlier-output-proof")["native_verifier_accepted"]:
             raise AssertionError("mixed earlier-output direct-gate proof was rejected")
+        physical = check_package_trace(mixed, mixed_assignment)
+        if physical != {"trace_rows": 512, "source_rows": 3, "input_rows": 14,
+                        "output_rows": 11, "dead_source_rows": 1}:
+            raise AssertionError(f"mixed early-return physical row bridge changed: {physical}")
+        check_negative_controls()
         evaluator_golden = (REPO / "formal/s31/S31/Gadgets/Air/"
                             "GeneratedDirectGateEvaluatorFixture.lean")
         evaluator_rendered = render_evaluator_fixture(honest, assignment)

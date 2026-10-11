@@ -1072,6 +1072,36 @@ LogUp, PCS/FRI, or the compiler imply those premises. The dummy rows and
 external events are legal in the theorem's abstract model; their identity
 with production components remains an external proof obligation.
 
+For the generated `early_output` package, the fixture-only
+`inspect-physical-rows ASSIGNMENT.json` diagnostic calls the same direct
+`writeBase` routine used by the native prover and exports its 12 main trace
+columns alongside the eight preprocessed columns. Run:
+
+```sh
+python3 formal/s31/scripts/check_early_return_native_rows.py \
+  --package PACKAGE --assignment ASSIGNMENT.json
+```
+
+Every column has 512 M31 entries. At row `r`, the fixed-column order is
+`[addFlag, subFlag, mulFlag, pointwiseMulFlag, in0Address, in1Address,
+outAddress, multiplicity]`; the main-column order is
+`[in0.a, in0.b, in0.c, in0.d, in1.a, in1.b, in1.c, in1.d,
+out.a, out.b, out.c, out.d]`. Addresses name Gate wires, while each group
+of four main values is a QM31 element. The exporter uses the same `writeBase`
+row order and field-limb encoding as the direct prover. The checker binds
+reported public words to the requested assignment and the full fixed columns
+to the package's source-derived topology.
+
+The checker compares that native export with the generated Lean fixed-cell
+fixture at all 28 source/input/output rows and checks the nine arithmetic
+roots at all 512 rows. `--controls` checks that a changed fixed cell,
+main value, or selected public claim is rejected. This closes hand-authored
+physical row *values* for the tested public assignment. The diagnostic is
+restricted by the exact normalized-source digest so it cannot export private
+values from arbitrary S31 packages. It does not prove that a verifier's PCS
+openings equal this uncommitted diagnostic trace, or that the native LogUp
+argument implies the ideal exact Gate premises.
+
 ## Reproduce the gate
 
 Run from the repository root with Zig 0.15.2 and the pinned Lean toolchain

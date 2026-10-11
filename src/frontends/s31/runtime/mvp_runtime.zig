@@ -252,6 +252,16 @@ const DirectTopology = struct {
     columns: [circuit.common.direct_arithmetic.N_COLUMNS]DirectTopologyColumn,
 };
 
+/// Fixture-only diagnostic projection of the exact base trace writer used by
+/// the direct prover. These are uncommitted witness values, not proof openings.
+const DirectPhysicalTrace = struct {
+    schema: []const u8 = "s31-direct-gate-early-return-physical-v1",
+    program_sha256: []const u8,
+    public_words: [8]u32,
+    fixed_columns: [circuit.common.direct_arithmetic.N_COLUMNS][]const u32,
+    main_columns: [circuit.witness.direct_arithmetic.main_width][]const u32,
+};
+
 pub fn main() !void {
     // Check the source request before dispatching to specialized runtimes.
     var source_guard = try parsedProgram(std.heap.page_allocator);
@@ -289,6 +299,8 @@ pub fn main() !void {
         try inspect(allocator, parsed.value);
     } else if (std.mem.eql(u8, command, "inspect-topology") and args.len == 2 and direct_mode and !chip_mode) {
         try inspectDirectTopology(allocator, parsed.value);
+    } else if (std.mem.eql(u8, command, "inspect-physical-rows") and args.len == 3 and direct_mode and !chip_mode) {
+        try inspectEarlyReturnPhysicalRows(allocator, parsed.value, args[2]);
     } else if (std.mem.eql(u8, command, "prove") and args.len == 4) {
         try prove(allocator, parsed.value, args[2], args[3], null, false, null, null, false);
     } else if (std.mem.eql(u8, command, "recurse-check") and args.len == 5 and !chip_mode and !sparse_mode and !direct_mode) {
@@ -415,7 +427,7 @@ fn parseInspectStep(args: []const []const u8, base_len: usize) !u32 {
 }
 
 fn usage() error{InvalidArguments} {
-    std.debug.print("usage: s31-program check | inspect | inspect-topology (bounded direct-gate only) | run ASSIGNMENT.json | prove ASSIGNMENT.json PROOF\n", .{});
+    std.debug.print("usage: s31-program check | inspect | inspect-topology (bounded direct-gate only) | inspect-physical-rows ASSIGNMENT.json (early-return fixture only) | run ASSIGNMENT.json | prove ASSIGNMENT.json PROOF\n", .{});
     std.debug.print("       recurse-check ASSIGNMENT.json CHILD-PROOF CHILD-KEY.json | recurse-prove ASSIGNMENT.json CHILD-PROOF OUTER-PROOF CHILD-KEY.json [--low-memory]\n", .{});
     std.debug.print("       recurse-wrap CHILD-PROOF CHILD-STATEMENT.json OUTER-PROOF CHILD-KEY.json [--low-memory]\n", .{});
     std.debug.print("       recurse-wrap-next OUTER-PROOF OUTER-STATEMENT.json NEXT-PROOF CHILD-KEY.json RECURSIVE-KEY.json NEXT-KEY.json [--low-memory]\n", .{});
@@ -894,6 +906,62 @@ fn inspectDirectTopology(allocator: std.mem.Allocator, source: relation.Program)
         .columns = columns,
     };
     const encoded = try std.json.Stringify.valueAlloc(temp, exported, .{});
+    std.debug.print("{s}\n", .{encoded});
+}
+
+fn inspectEarlyReturnPhysicalRows(allocator: std.mem.Allocator, source: relation.Program, assignment_path: []const u8) !void {
+    // This diagnostic exposes public-input witness values. Pin the complete
+    // normalized source bytes so it cannot be used on a private S31 package.
+    var source_digest: [32]u8 = undefined;
+    std.crypto.hash.sha2.Sha256.hash(embedded_source, &source_digest, .{});
+    const source_hex = std.fmt.bytesToHex(source_digest, .lower);
+    if (source.version != 1 or source.proof_mode != .transparent or
+        !std.mem.eql(u8, &source_hex, "93bd19fc72c1e4526ad8bfe788f506bfea4c1787114df6e119dd95760efd888f"))
+        return error.UnsupportedPhysicalRowInspection;
+
+    var assignment = try readAssignment(allocator, assignment_path);
+    defer assignment.deinit();
+    const public_words = try relation.evaluate(allocator, source, assignment.value);
+    var value_ctx = try s31.relation_compiler.compileDirect(QM31, allocator, source, assignment.value, false);
+    defer value_ctx.deinit();
+    var topology_ctx = try s31.relation_compiler.compileDirect(circuit.builder.NoValue, allocator, source, null, false);
+    defer topology_ctx.deinit();
+    if (!sameTopology(&value_ctx.circuit, &topology_ctx.circuit)) return error.ValueDependentTopology;
+    try padForProfile(QM31, &value_ctx);
+    try padForProfile(circuit.builder.NoValue, &topology_ctx);
+    if (!sameTopology(&value_ctx.circuit, &topology_ctx.circuit)) return error.ValueDependentTopology;
+    if (!try value_ctx.isCircuitValid()) return error.UnsatisfiedCircuit;
+    var pp = try circuit.common.direct_arithmetic.Circuit.fromBuilderCircuit(allocator, &topology_ctx.circuit);
+    defer pp.deinit(allocator);
+    if (pp.columns[0].values.len != 512) return error.UnsupportedPhysicalRowInspection;
+    var base_trace = try circuit.witness.direct_arithmetic.writeBase(allocator, value_ctx.values(), &pp);
+    defer base_trace.deinit();
+    if (base_trace.columns.len != circuit.witness.direct_arithmetic.main_width)
+        return error.InvalidDirectTraceShape;
+
+    var arena = std.heap.ArenaAllocator.init(allocator);
+    defer arena.deinit();
+    const temp = arena.allocator();
+    var fixed: [circuit.common.direct_arithmetic.N_COLUMNS][]const u32 = undefined;
+    for (pp.columns, &fixed) |column, *out| {
+        const words = try temp.alloc(u32, column.values.len);
+        for (column.values, words) |value, *word| word.* = value.toU32();
+        out.* = words;
+    }
+    var main: [circuit.witness.direct_arithmetic.main_width][]const u32 = undefined;
+    for (base_trace.columns, &main) |column, *out| {
+        if (column.values.len != 512) return error.InvalidDirectTraceShape;
+        const words = try temp.alloc(u32, column.values.len);
+        for (column.values, words) |value, *word| word.* = value.toU32();
+        out.* = words;
+    }
+    const report: DirectPhysicalTrace = .{
+        .program_sha256 = &source_hex,
+        .public_words = public_words,
+        .fixed_columns = fixed,
+        .main_columns = main,
+    };
+    const encoded = try std.json.Stringify.valueAlloc(temp, report, .{});
     std.debug.print("{s}\n", .{encoded});
 }
 
