@@ -222,6 +222,13 @@ pub fn build(b: *std.Build) void {
     const mixed_trace_correspondence_tests = b.addRunArtifact(b.addTest(.{ .root_module = bounded_binding_root, .filters = &.{"mixed N1 and N8 source base rows and proof envelope"} }));
     b.step("test-mixed-trace-correspondence", "Check exact N1/N8 native base rows and verified proof envelopes")
         .dependOn(&mixed_trace_correspondence_tests.step);
+    const mixed_opening_authentication_tests = b.addRunArtifact(b.addTest(.{
+        .root_module = bounded_binding_root,
+        .filters = &.{"mixed fixed main and interaction queried openings authenticate to their roots"},
+        .test_runner = .{ .path = b.path("tests/proofs/mixed_boundary/opening_test_runner.zig"), .mode = .simple },
+    }));
+    b.step("test-mixed-opening-authentication", "Reject structurally valid changed fixed/main/interaction PCS queried values")
+        .dependOn(&mixed_opening_authentication_tests.step);
     const mixed_producer_roster_tests = b.addRunArtifact(b.addTest(.{ .root_module = bounded_binding_root, .filters = &.{"mixed N1 through N8 source logical producer roster"} }));
     const mixed_fork_multiplicity_tests = b.addRunArtifact(b.addTest(.{ .root_module = bounded_binding_root, .filters = &.{"mixed fork counts every shared circuit-to-chip input in fixed multiplicity"} }));
     const mixed_producer_roster_step = b.step("test-mixed-producer-roster", "Check N1..8 and forked compiled Gate producer multiplicities against native fixed columns");

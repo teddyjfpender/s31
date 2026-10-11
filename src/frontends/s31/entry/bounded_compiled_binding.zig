@@ -11,6 +11,10 @@ test {
     _ = @import("src/runtime/mixed_boundary/general_package.zig");
     _ = @import("src/runtime/mixed_boundary/witness_audit.zig");
     _ = @import("src/tests/proofs/mixed_boundary/trace_correspondence.zig");
+    // This negative proof test needs its dedicated runner to account for the
+    // verifier's expected Merkle error logs.
+    if (@hasDecl(@import("root"), "s31_opening_authentication"))
+        _ = @import("src/tests/proofs/mixed_boundary/opening_authentication.zig");
     _ = @import("src/tests/proofs/mixed_boundary/fixed_column_correspondence.zig");
     _ = @import("src/tests/proofs/mixed_boundary/producer_roster_correspondence.zig");
 }
