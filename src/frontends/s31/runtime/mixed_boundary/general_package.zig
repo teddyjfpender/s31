@@ -72,6 +72,20 @@ pub const Inspection = struct {
 pub const Sealed = struct {
     bytes: []u8,
     inspection: Inspection,
+    stages: ProveStages,
+};
+
+/// Monotonic wall-clock intervals inside the source-pinned mixed package.
+/// The engine owns preprocessing and PoW inside proveSourceBound, so neither
+/// can be separated from native_prove_including_setup_ns here.
+pub const ProveStages = struct {
+    profile_rebuild_ns: u64,
+    semantic_evaluation_ns: u64,
+    topology_compile_ns: u64,
+    witness_compile_ns: u64,
+    native_prove_including_setup_ns: u64,
+    envelope_and_serialization_ns: u64,
+    package_total_ns: u64,
 };
 
 pub fn inspectProfile(allocator: std.mem.Allocator, source: []const u8, air_bytes: []const u8) !Inspection {
@@ -100,15 +114,20 @@ pub fn proveSealedAndInspect(
     air_bytes: []const u8,
     assignment: relation.Assignment,
 ) !Sealed {
+    var timer = try std.time.Timer.start();
     const schedule = try mixed.inspectSource(allocator, source, air_bytes);
     const selected = try selectedFromSource(&schedule);
+    const profile_end = timer.read();
     var parsed = try relation.parseProgram(allocator, source);
     defer parsed.deinit();
     const words = try relation.evaluate(allocator, parsed.value, assignment);
     const expected_public = try publicValues(words);
+    const semantic_end = timer.read();
     const topology = try binding.compileSourceTopology(allocator, source);
+    const topology_end = timer.read();
     var witness = try binding.compileManyWitness(allocator, source, assignment, topology);
     defer witness.deinit();
+    const witness_end = timer.read();
     var proof = try engine.proveSourceBound(
         allocator,
         circuit.common.preprocessed.CircuitView.fromBuilder(&witness.circuit),
@@ -118,6 +137,7 @@ pub fn proveSealedAndInspect(
         &selected,
     );
     defer proof.deinit();
+    const native_end = timer.read();
     const identity = selected.circuitIdentity();
     if (proof.sum_count != schedule.slot_count or proof.output_values.len != 8 or
         !std.meta.eql(proof.circuit_hash, identity))
@@ -143,9 +163,20 @@ pub fn proveSealedAndInspect(
     };
     try postcard.serializeProof(H, bytes.writer(allocator), proof.stark_proof.proof);
     if (bytes.items.len > max_wire_bytes) return error.InvalidMixedNativeEnvelope;
+    const owned = try bytes.toOwnedSlice(allocator);
+    const envelope_end = timer.read();
     return .{
-        .bytes = try bytes.toOwnedSlice(allocator),
+        .bytes = owned,
         .inspection = .{ .schedule = schedule, .registry_manifest_sha256 = selected.manifest_sha256, .circuit_identity_sha256 = identity },
+        .stages = .{
+            .profile_rebuild_ns = profile_end,
+            .semantic_evaluation_ns = semantic_end - profile_end,
+            .topology_compile_ns = topology_end - semantic_end,
+            .witness_compile_ns = witness_end - topology_end,
+            .native_prove_including_setup_ns = native_end - witness_end,
+            .envelope_and_serialization_ns = envelope_end - native_end,
+            .package_total_ns = envelope_end,
+        },
     };
 }
 

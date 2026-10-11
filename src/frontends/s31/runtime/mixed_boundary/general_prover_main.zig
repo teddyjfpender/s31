@@ -5,6 +5,17 @@ const record_abi = @import("../../language/record_abi.zig");
 const package = @import("general_package.zig");
 const statement = @import("general_statement.zig");
 
+const StageReport = struct {
+    schema: []const u8 = "s31-mixed-general-prover-stages-v1",
+    source_sha256: []const u8,
+    registry_manifest_sha256: []const u8,
+    circuit_identity_sha256: []const u8,
+    proof_bytes: usize,
+    statement_bytes: usize,
+    stages_ns: package.ProveStages,
+    external_native_verification_ns: ?u64 = null,
+};
+
 pub fn main() !void {
     const allocator = std.heap.smp_allocator;
     const args = try std.process.argsAlloc(allocator);
@@ -50,7 +61,21 @@ pub fn main() !void {
         .public_words = public_words,
     }, .{}) else null;
     defer if (flat_statement_bytes) |bytes| allocator.free(bytes);
+    const emitted_statement = supplied_v2 orelse flat_statement_bytes.?;
     try std.fs.cwd().writeFile(.{ .sub_path = args[2], .data = sealed.bytes });
-    try std.fs.cwd().writeFile(.{ .sub_path = args[3], .data = supplied_v2 orelse flat_statement_bytes.? });
+    try std.fs.cwd().writeFile(.{ .sub_path = args[3], .data = emitted_statement });
+    const stage_json = try std.json.Stringify.valueAlloc(allocator, StageReport{
+        .source_sha256 = &source_hex,
+        .registry_manifest_sha256 = &registry_hex,
+        .circuit_identity_sha256 = &identity_hex,
+        .proof_bytes = sealed.bytes.len,
+        .statement_bytes = emitted_statement.len,
+        .stages_ns = sealed.stages,
+    }, .{});
+    defer allocator.free(stage_json);
+    // The proof and statement above are unverified until the independent
+    // source-embedded native verifier accepts them. This line is diagnostic
+    // output and is not part of the proof transcript or wire format.
+    std.debug.print("S31_MIXED_STAGE_V1 {s}\n", .{stage_json});
     std.debug.print("proved\n", .{});
 }

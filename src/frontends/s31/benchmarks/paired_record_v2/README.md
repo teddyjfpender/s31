@@ -19,3 +19,7 @@ finds no whole-workflow speedup for mixed on this pinned relation family.
 Untimed generic N=1 and mixed N=1/N=8 native admission controls passed; those
 proofs are separate from the paired timing corpus. Automatic lowering remains
 disabled.
+
+A later, separate [mixed stage diagnostic](../../../../../design/s31/measurements/MIXED_STAGE_DIAGNOSTIC_V1.md)
+measures new source-pinned mixed prover intervals and the external native
+verifier process. It does not alter or backfill this anchored study.
