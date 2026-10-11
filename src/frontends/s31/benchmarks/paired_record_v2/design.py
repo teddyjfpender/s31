@@ -54,6 +54,8 @@ def design() -> dict:
                 value.get("first_verified_proof_boundary", "") or
             "externally timestamp the full phase-root digest before audit or summary" not in
                 value.get("phase_integrity_gate", "") or
+            "audit rederives every reported build duration" not in
+                value.get("build_integrity_gate", "") or
             "identical complete FriConfigV2 and interaction PoW bits" not in
                 value.get("live_security_config_gate", "") or
             value.get("automatic_lowering_selection_enabled") is not False or

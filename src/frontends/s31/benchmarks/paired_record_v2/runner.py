@@ -28,9 +28,10 @@ sys.path.insert(0, str(S31 / "tests/acceptance/mixed_boundary"))
 import s31
 from registry_manifest_digest import digest as registry_digest
 from design import canonical, case, design, sha
-from integrity import (EVENT_SCHEMA, GENESIS, append_event, check_phase_anchor,
-                       durable_write, fsync_existing, observed_invoke,
-                       phase_root, replay_process)
+from integrity import (BUILD_EVENT_SCHEMA, EVENT_SCHEMA, GENESIS, append_event,
+                       build_root, check_phase_anchor, durable_write,
+                       fsync_existing, observed_invoke, phase_root,
+                       read_ledger, replay_process)
 from protocol import check
 
 P = (1 << 31) - 1
@@ -175,28 +176,122 @@ def require_package_identity(directory: Path, count: int, expected: dict, compil
 
 
 def build_case(directory: Path, count: int, cfg: dict, expected: dict,
-               protocol: dict) -> None:
+               protocol: dict, split: str) -> list[dict]:
     materialize(directory, count, cfg, expected)
     source_path = directory / "source.s31.json"
     name = json.loads(source_path.read_bytes())["name"]
-    build_start = time.perf_counter()
+    generic_start_ns = time.perf_counter_ns()
     s31.build(source_path, directory / "generic", "direct-gate")
-    generic_seconds = time.perf_counter() - build_start
-    build_start = time.perf_counter()
-    subprocess.run([
+    generic_end_ns = time.perf_counter_ns()
+    mixed_command = [
         "zig", "build", "--build-file", str(S31 / "build.zig"), "install",
         "-Doptimize=ReleaseFast", "-Ds31-version=2",
         "-Ds31-lowering=direct-mixed-general", f"-Ds31-source={source_path}",
         f"-Ds31-name={name}", "-j1", "--prefix", str(directory / "mixed"),
-    ], cwd=ROOT, check=True)
-    mixed_seconds = time.perf_counter() - build_start
+    ]
+    mixed_start_ns = time.perf_counter_ns()
+    subprocess.run(mixed_command, cwd=ROOT, check=True)
+    mixed_end_ns = time.perf_counter_ns()
     mixed_manifest = mixed_bins(directory, name)[2]
     saved_json(directory / "mixed-inspection.json",
                json.loads(subprocess.check_output([str(mixed_manifest)], text=True)))
     attestation = package_identity(directory, count, expected, protocol["compiler_sha256"])
     saved_json(directory / "package-attestation.json", attestation)
-    saved_json(directory / "build-times.json", {"generic_seconds": generic_seconds,
-                                                 "mixed_seconds": mixed_seconds})
+    package_digest = sha((directory / "package-attestation.json").read_bytes())
+    common = {
+        "schema": BUILD_EVENT_SCHEMA, "split": split, "count": count,
+        "source_sha256": expected["source_sha256"],
+        "compiler_sha256": protocol["compiler_sha256"],
+        "engine_gitlink_commit": protocol["engine_gitlink_commit"],
+        "package_attestation_sha256": package_digest,
+        "outcome": "success",
+    }
+    events = [
+        {**common, "arm": "generic", "operation": {
+            "api": "s31.build", "source": str(source_path),
+            "output": str(directory / "generic"), "lowering": "direct-gate"},
+         "start_monotonic_ns": generic_start_ns, "end_monotonic_ns": generic_end_ns},
+        {**common, "arm": "mixed", "operation": {"argv": mixed_command,
+                                                    "cwd": str(ROOT)},
+         "start_monotonic_ns": mixed_start_ns, "end_monotonic_ns": mixed_end_ns},
+    ]
+    build_times = {
+        "schema": "s31-paired-record-v2-build-times-v1",
+        "generic_seconds": build_event_seconds(events[0], directory, split,
+                                                count, "generic", expected, protocol),
+        "mixed_seconds": build_event_seconds(events[1], directory, split,
+                                              count, "mixed", expected, protocol),
+    }
+    durable_write(directory / "build-times.json", canonical(build_times))
+    return events
+
+
+def build_event_seconds(event: dict, directory: Path, split: str, count: int,
+                        arm: str, expected: dict, protocol: dict) -> float:
+    """Derive build duration only from a source/package-bound raw event."""
+    source_path = directory / "source.s31.json"
+    name = json.loads(source_path.read_bytes())["name"]
+    mixed_command = [
+        "zig", "build", "--build-file", str(S31 / "build.zig"), "install",
+        "-Doptimize=ReleaseFast", "-Ds31-version=2",
+        "-Ds31-lowering=direct-mixed-general", f"-Ds31-source={source_path}",
+        f"-Ds31-name={name}", "-j1", "--prefix", str(directory / "mixed"),
+    ]
+    operation = ({"api": "s31.build", "source": str(source_path),
+                  "output": str(directory / "generic"), "lowering": "direct-gate"}
+                 if arm == "generic" else {"argv": mixed_command, "cwd": str(ROOT)})
+    if (set(event) != {"schema", "split", "count", "arm", "source_sha256",
+                       "compiler_sha256", "engine_gitlink_commit",
+                       "package_attestation_sha256", "outcome", "operation",
+                       "start_monotonic_ns", "end_monotonic_ns"} or
+            event["schema"] != BUILD_EVENT_SCHEMA or event["split"] != split or
+            event["count"] != count or event["arm"] != arm or
+            event["source_sha256"] != expected["source_sha256"] or
+            event["compiler_sha256"] != protocol["compiler_sha256"] or
+            event["engine_gitlink_commit"] != protocol["engine_gitlink_commit"] or
+            event["package_attestation_sha256"] !=
+                sha((directory / "package-attestation.json").read_bytes()) or
+            event["outcome"] != "success" or event["operation"] != operation or
+            type(event["start_monotonic_ns"]) is not int or
+            type(event["end_monotonic_ns"]) is not int or
+            event["start_monotonic_ns"] < 0 or
+            event["end_monotonic_ns"] <= event["start_monotonic_ns"]):
+        raise ValueError(f"N={count}/{arm}: raw build event identity or clock changed")
+    return (event["end_monotonic_ns"] - event["start_monotonic_ns"]) / 1e9
+
+
+def replay_build_evidence(out: Path, split: str, entries: dict,
+                          protocol: dict, protocol_sha256: str,
+                          protocol_anchor_commit: str) -> dict:
+    saved = json.loads((out / "build-root.json").read_bytes())
+    actual = build_root(out, split, protocol_sha256,
+                        protocol_anchor_commit, list(entries))
+    if (out / "build-root.json").read_bytes() != canonical(saved) or saved != actual:
+        raise ValueError("paired build root differs from raw build ledger or package artifacts")
+    events, _ = read_ledger(out / "build-ledger.ndjson",
+                            event_schema=BUILD_EVENT_SCHEMA)
+    at = 0
+    previous_end_ns = None
+    derived_costs = {}
+    for key, expected in entries.items():
+        directory = out / f"n{key}"
+        times = {"schema": "s31-paired-record-v2-build-times-v1"}
+        for arm in ("generic", "mixed"):
+            event = events[at]
+            at += 1
+            if previous_end_ns is not None and \
+                    event["start_monotonic_ns"] < previous_end_ns:
+                raise ValueError("raw build event order differs from frozen generic/mixed roster")
+            seconds = build_event_seconds(event, directory, split, int(key),
+                                          arm, expected, protocol)
+            previous_end_ns = event["end_monotonic_ns"]
+            times[f"{arm}_seconds"] = seconds
+        if (directory / "build-times.json").read_bytes() != canonical(times):
+            raise ValueError(f"N={key}: saved build times differ from raw monotonic build events")
+        derived_costs[key] = times
+    if at != len(events):
+        raise ValueError("paired build ledger has extra or omitted arm events")
+    return derived_costs
 
 
 def changed_claim(original: bytes, leaf_index: int) -> bytes:
@@ -436,8 +531,21 @@ def run(args: argparse.Namespace) -> None:
         raise ValueError("paired native phase requires at least 8 GiB free before work")
     if args.phase == "build":
         out.mkdir(parents=True, exist_ok=False)
+        build_ledger = out / "build-ledger.ndjson"
+        previous = GENESIS
+        sequence = 0
         for key, expected in entries.items():
-            build_case(out / f"n{key}", int(key), cfg, expected, protocol)
+            events = build_case(out / f"n{key}", int(key), cfg, expected,
+                                protocol, split)
+            for event in events:
+                previous = append_event(build_ledger, event, sequence, previous,
+                                        event_schema=BUILD_EVENT_SCHEMA)
+                sequence += 1
+        durable_write(out / "build-root.json", canonical(build_root(
+            out, split, args.expected_protocol_sha256,
+            args.anchor_commit, list(entries))))
+        replay_build_evidence(out, split, entries, protocol,
+                              args.expected_protocol_sha256, args.anchor_commit)
         return
     if not out.is_dir():
         raise ValueError("paired build evidence is absent")
@@ -447,6 +555,8 @@ def run(args: argparse.Namespace) -> None:
         for index in range(cfg["assignments_per_call_count"]):
             require_static_case(directory, count, index, cfg, expected)
         require_package_identity(directory, count, expected, protocol["compiler_sha256"])
+    build_costs = replay_build_evidence(out, split, entries, protocol,
+                                        args.expected_protocol_sha256, args.anchor_commit)
     if args.phase == "prove":
         if any((out / name).exists() for name in (
                 "phase-ledger.ndjson", "phase-root.json", "corpus.partial.json", "corpus.json")):
@@ -477,7 +587,8 @@ def run(args: argparse.Namespace) -> None:
         durable_write(out / "corpus.json", canonical(corpus))
         (out / "corpus.partial.json").unlink()
         root = phase_root(out, split, args.expected_protocol_sha256,
-                          args.anchor_commit, 2 * sum(len(item["order"]) for item in entries.values()))
+                          args.anchor_commit, 2 * sum(len(item["order"]) for item in entries.values()),
+                          list(entries))
         durable_write(out / "phase-root.json", canonical(root))
         print(sha((out / "phase-root.json").read_bytes()))
         return
@@ -488,7 +599,7 @@ def run(args: argparse.Namespace) -> None:
         events = check_phase_anchor(
             out, split, args.expected_protocol_sha256, args.anchor_commit,
             2 * sum(len(item["order"]) for item in entries.values()),
-            args.expected_phase_root_sha256, args.phase_anchor_commit)
+            list(entries), args.expected_phase_root_sha256, args.phase_anchor_commit)
         corpus = json.loads((out / "corpus.json").read_bytes())
         if (corpus.get("schema") != "s31-paired-record-v2-corpus-v1" or
                 corpus.get("split") != split or
@@ -603,6 +714,11 @@ def run(args: argparse.Namespace) -> None:
         analysis = paired_summary(derived, cfg)
         analysis["phase_root_sha256"] = args.expected_phase_root_sha256
         analysis["phase_anchor_commit"] = args.phase_anchor_commit
+        analysis["build_cost_scope"] = (
+            "observed warm-cache workflows: generic full s31.build package; "
+            "mixed direct Zig install; not a symmetric or cold compiler benchmark"
+        )
+        analysis["build_costs"] = build_costs
         analysis["live_security_profiles"] = {}
         for key in entries:
             package = json.loads((out / f"n{key}/package-attestation.json").read_bytes())

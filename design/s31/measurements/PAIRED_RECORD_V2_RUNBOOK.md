@@ -91,7 +91,17 @@ fingerprints, engine gitlink, host, design, and regenerated inventory.
 An uncommitted or merely prospective design cannot authorize measurements.
 
 `build` rejects an existing evidence directory. `prove` rejects absent or
-changed build attestations and any existing partial or completed corpus.
+changed build attestations and any existing partial or completed corpus. The
+build phase records monotonic start/end nanoseconds for each exact package
+workflow in a separate fsynced hash-chain ledger. Its canonical build root
+binds the ledger, every `build-times.json` byte sequence, and every package
+attestation. The later externally anchored proof phase root binds that entire
+build root and repeats its per-case hashes. `prove` and `audit` require the
+build ledger's exact generic-then-mixed roster; `audit` rederives each duration
+and rejects any saved build-time mismatch, even if a local build root was
+recomputed. The package identities are independently regenerated from the
+current generic binaries/key/manifest and source-embedded mixed inspector
+before this replay.
 `audit` additionally requires a committed, externally timestamped phase-root
 anchor. It rejects absent proofs, changed bytes, failed native replay, changed
 public claims accepted by either verifier, wrong-source/component/witness
@@ -152,7 +162,11 @@ Failed controls abort the phase; do not extract a speedup from a partial corpus.
 analysis is independent of training and is not used to tune the protocol.
 The prefreeze admission builds warm Zig's cache before package-build timing. Report
 those build times as observed warm-cache package costs, with cache state and
-host disclosed; they are not cold-compiler speed comparisons.
+host disclosed. The generic build is the full `s31.build` package workflow;
+the mixed build is one direct Zig install of the source-embedded bundle. These
+different shipped workflows and warm cache make the numbers unsuitable for a
+pure compiler or cold-build speed comparison. The pinned collector and host
+monotonic clock remain trusted inputs to build timing as well as proof timing.
 
 ## Native admission controls
 

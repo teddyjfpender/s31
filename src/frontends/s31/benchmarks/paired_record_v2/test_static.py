@@ -7,11 +7,13 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from design import canonical, case, design, inventory, sha
-from integrity import (EVENT_SCHEMA, GENESIS, append_event, phase_root,
-                       read_ledger, replay_process)
+from design import ROOT, S31, canonical, case, design, inventory, sha
+from integrity import (BUILD_EVENT_SCHEMA, EVENT_SCHEMA, GENESIS,
+                       append_event, build_root, phase_root, read_ledger,
+                       replay_process)
 from protocol import check
-from runner import changed_claim, materialize, paired_summary, require_static_case
+from runner import (build_event_seconds, changed_claim, materialize, paired_summary,
+                    replay_build_evidence, require_static_case)
 
 
 class PairedRecordDesign(unittest.TestCase):
@@ -102,7 +104,22 @@ class PairedRecordDesign(unittest.TestCase):
                    "proof_bytes": 64}
             corpus = {"cases": {"1": [{"generic": row}]}}
             (directory / "corpus.json").write_bytes(canonical(corpus))
-            sealed = phase_root(directory, "train", "b" * 64, "c" * 40, 1)
+            (directory / "n1").mkdir()
+            (directory / "n1/build-times.json").write_bytes(canonical({
+                "generic_seconds": 1.0, "mixed_seconds": 2.0}))
+            (directory / "n1/package-attestation.json").write_bytes(canonical({
+                "source_sha256": "a" * 64}))
+            build_ledger = directory / "build-ledger.ndjson"
+            previous = GENESIS
+            for index, arm in enumerate(("generic", "mixed")):
+                previous = append_event(build_ledger, {
+                    "schema": BUILD_EVENT_SCHEMA, "arm": arm,
+                    "start_monotonic_ns": index * 10,
+                    "end_monotonic_ns": index * 10 + 5,
+                }, index, previous, event_schema=BUILD_EVENT_SCHEMA)
+            (directory / "build-root.json").write_bytes(canonical(build_root(
+                directory, "train", "b" * 64, "c" * 40, ["1"])))
+            sealed = phase_root(directory, "train", "b" * 64, "c" * 40, 1, ["1"])
             self.assertEqual(len(read_ledger(ledger)[0]), 1)
             for field, changed in (("prove_wall_seconds", 2.0),
                                    ("prover_peak_rss_bytes", 8192),
@@ -112,7 +129,11 @@ class PairedRecordDesign(unittest.TestCase):
                 altered = {"cases": {"1": [{"generic": {**row, field: changed}}]}}
                 (directory / "corpus.json").write_bytes(canonical(altered))
                 self.assertNotEqual(phase_root(directory, "train", "b" * 64,
-                                                "c" * 40, 1), sealed)
+                                                "c" * 40, 1, ["1"]), sealed)
+            (directory / "n1/build-times.json").write_bytes(canonical({
+                "generic_seconds": 999.0, "mixed_seconds": 2.0}))
+            with self.assertRaises(ValueError):
+                phase_root(directory, "train", "b" * 64, "c" * 40, 1, ["1"])
             line = ledger.read_text()
             ledger.write_text(line.replace('"arm":"generic"', '"arm":"mixed"'))
             with self.assertRaises(ValueError):
@@ -142,6 +163,64 @@ class PairedRecordDesign(unittest.TestCase):
             (directory / "prover.stdout").write_bytes(b"changed\n")
             with self.assertRaises(ValueError):
                 replay_process(observation, directory, "prover", ["/pinned/prover"])
+
+    def test_build_ledger_rederives_times_and_rejects_reanchored_edits(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            out = Path(temporary)
+            directory = out / "n1"
+            directory.mkdir()
+            source = directory / "source.s31.json"
+            source.write_bytes(canonical({"name": "test"}))
+            attestation = directory / "package-attestation.json"
+            attestation.write_bytes(canonical({"source_sha256": "a" * 64}))
+            protocol = {"compiler_sha256": "b" * 64,
+                        "engine_gitlink_commit": "c" * 40}
+            entries = {"1": {"source_sha256": "a" * 64}}
+            common = {"schema": BUILD_EVENT_SCHEMA, "split": "train", "count": 1,
+                      "source_sha256": "a" * 64,
+                      "compiler_sha256": protocol["compiler_sha256"],
+                      "engine_gitlink_commit": protocol["engine_gitlink_commit"],
+                      "package_attestation_sha256": sha(attestation.read_bytes()),
+                      "outcome": "success"}
+            events = [
+                {**common, "arm": "generic", "operation": {
+                    "api": "s31.build", "source": str(source),
+                    "output": str(directory / "generic"), "lowering": "direct-gate"},
+                 "start_monotonic_ns": 0, "end_monotonic_ns": 1_000_000_000},
+                {**common, "arm": "mixed", "operation": {"argv": [
+                    "zig", "build", "--build-file", str(S31 / "build.zig"), "install",
+                    "-Doptimize=ReleaseFast", "-Ds31-version=2",
+                    "-Ds31-lowering=direct-mixed-general", f"-Ds31-source={source}",
+                    "-Ds31-name=test", "-j1", "--prefix", str(directory / "mixed"),
+                ], "cwd": str(ROOT)},
+                 "start_monotonic_ns": 1_000_000_000,
+                 "end_monotonic_ns": 3_000_000_000},
+            ]
+            ledger = out / "build-ledger.ndjson"
+            previous = GENESIS
+            for index, event in enumerate(events):
+                previous = append_event(ledger, event, index, previous,
+                                        event_schema=BUILD_EVENT_SCHEMA)
+            times = {"schema": "s31-paired-record-v2-build-times-v1",
+                     "generic_seconds": 1.0, "mixed_seconds": 2.0}
+            (directory / "build-times.json").write_bytes(canonical(times))
+            def reseal() -> None:
+                (out / "build-root.json").write_bytes(canonical(build_root(
+                    out, "train", "d" * 64, "e" * 40, ["1"])))
+            reseal()
+            replay_build_evidence(out, "train", entries, protocol, "d" * 64, "e" * 40)
+            with self.assertRaises(ValueError):
+                build_event_seconds({**events[0], "arm": "mixed"}, directory,
+                                    "train", 1, "generic", entries["1"], protocol)
+            with self.assertRaises(ValueError):
+                build_event_seconds({**events[0], "source_sha256": "f" * 64},
+                                    directory, "train", 1, "generic", entries["1"], protocol)
+            (directory / "build-times.json").write_bytes(canonical({
+                **times, "generic_seconds": 7.0}))
+            reseal()
+            with self.assertRaisesRegex(ValueError, "differ from raw monotonic"):
+                replay_build_evidence(out, "train", entries, protocol,
+                                      "d" * 64, "e" * 40)
 
 
 if __name__ == "__main__":

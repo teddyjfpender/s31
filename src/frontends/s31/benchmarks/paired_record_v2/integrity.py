@@ -20,6 +20,8 @@ from protocol import ANCHOR, HEX40, HEX64, require_committed
 
 LEDGER_SCHEMA = "s31-paired-record-v2-ledger-entry-v1"
 EVENT_SCHEMA = "s31-paired-record-v2-raw-arm-event-v1"
+BUILD_EVENT_SCHEMA = "s31-paired-record-v2-raw-build-event-v1"
+BUILD_ROOT_SCHEMA = "s31-paired-record-v2-build-root-v1"
 ROOT_SCHEMA = "s31-paired-record-v2-phase-root-v1"
 ANCHOR_SCHEMA = "s31-paired-record-v2-phase-anchor-v1"
 GENESIS = "0" * 64
@@ -130,8 +132,9 @@ def replay_process(observation: dict, directory: Path, label: str,
     return wall, peak, log.decode("utf-8", "replace")
 
 
-def append_event(path: Path, event: dict, sequence: int, previous: str) -> str:
-    if event.get("schema") != EVENT_SCHEMA or not HEX64.fullmatch(previous):
+def append_event(path: Path, event: dict, sequence: int, previous: str,
+                 *, event_schema: str = EVENT_SCHEMA) -> str:
+    if event.get("schema") != event_schema or not HEX64.fullmatch(previous):
         raise ValueError("invalid raw arm event or previous ledger digest")
     body = {"schema": LEDGER_SCHEMA, "sequence": sequence,
             "previous_sha256": previous, "event": event}
@@ -148,7 +151,7 @@ def append_event(path: Path, event: dict, sequence: int, previous: str) -> str:
     return digest
 
 
-def read_ledger(path: Path) -> tuple[list[dict], str]:
+def read_ledger(path: Path, *, event_schema: str = EVENT_SCHEMA) -> tuple[list[dict], str]:
     raw = path.read_bytes()
     if not raw or not raw.endswith(b"\n"):
         raise ValueError("paired phase ledger is empty or truncated")
@@ -164,7 +167,7 @@ def read_ledger(path: Path) -> tuple[list[dict], str]:
         if (entry["schema"] != LEDGER_SCHEMA or
                 entry["sequence"] != sequence or
                 entry["previous_sha256"] != previous or
-                entry["event"].get("schema") != EVENT_SCHEMA or
+                entry["event"].get("schema") != event_schema or
                 entry["entry_sha256"] != sha(canonical(body))):
             raise ValueError("paired phase ledger chain or sequence changed")
         previous = entry["entry_sha256"]
@@ -172,11 +175,42 @@ def read_ledger(path: Path) -> tuple[list[dict], str]:
     return events, previous
 
 
+def build_root(directory: Path, split: str, protocol_sha256: str,
+               protocol_anchor_commit: str, counts: list[str]) -> dict:
+    events, final = read_ledger(directory / "build-ledger.ndjson",
+                                event_schema=BUILD_EVENT_SCHEMA)
+    if len(events) != 2 * len(counts):
+        raise ValueError("paired build ledger does not cover both arms for each frozen case")
+    return {
+        "schema": BUILD_ROOT_SCHEMA,
+        "split": split,
+        "protocol_sha256": protocol_sha256,
+        "protocol_anchor_commit": protocol_anchor_commit,
+        "events": len(events),
+        "final_chain_sha256": final,
+        "ledger_sha256": sha((directory / "build-ledger.ndjson").read_bytes()),
+        "build_times_sha256": {
+            key: sha((directory / f"n{key}/build-times.json").read_bytes()) for key in counts
+        },
+        "package_attestation_sha256": {
+            key: sha((directory / f"n{key}/package-attestation.json").read_bytes())
+            for key in counts
+        },
+    }
+
+
 def phase_root(directory: Path, split: str, protocol_sha256: str,
-               protocol_anchor_commit: str, expected_events: int) -> dict:
+               protocol_anchor_commit: str, expected_events: int,
+               counts: list[str]) -> dict:
     events, final = read_ledger(directory / "phase-ledger.ndjson")
     if len(events) != expected_events:
         raise ValueError("paired phase ledger does not cover the frozen roster")
+    build_path = directory / "build-root.json"
+    saved_build = json.loads(build_path.read_bytes())
+    actual_build = build_root(directory, split, protocol_sha256,
+                              protocol_anchor_commit, counts)
+    if build_path.read_bytes() != canonical(saved_build) or saved_build != actual_build:
+        raise ValueError("saved paired build root differs from raw build evidence")
     return {
         "schema": ROOT_SCHEMA,
         "split": split,
@@ -186,12 +220,17 @@ def phase_root(directory: Path, split: str, protocol_sha256: str,
         "final_chain_sha256": final,
         "ledger_sha256": sha((directory / "phase-ledger.ndjson").read_bytes()),
         "corpus_sha256": sha((directory / "corpus.json").read_bytes()),
+        "build_root_sha256": sha(build_path.read_bytes()),
+        "build_ledger_sha256": actual_build["ledger_sha256"],
+        "build_times_sha256": actual_build["build_times_sha256"],
+        "package_attestation_sha256": actual_build["package_attestation_sha256"],
     }
 
 
 def check_phase_anchor(directory: Path, split: str, protocol_sha256: str,
                        protocol_anchor_commit: str, expected_events: int,
-                       expected_root_sha256: str, anchor_commit: str) -> list[dict]:
+                       counts: list[str], expected_root_sha256: str,
+                       anchor_commit: str) -> list[dict]:
     if not HEX64.fullmatch(expected_root_sha256 or "") or \
             not HEX40.fullmatch(anchor_commit or ""):
         raise ValueError("full externally recorded phase-root SHA and phase anchor commit required")
@@ -222,7 +261,7 @@ def check_phase_anchor(directory: Path, split: str, protocol_sha256: str,
     saved = json.loads(root_path.read_bytes())
     if root_path.read_bytes() != canonical(saved) or \
             saved != phase_root(directory, split, protocol_sha256,
-                           protocol_anchor_commit, expected_events):
+                                protocol_anchor_commit, expected_events, counts):
         raise ValueError("paired phase root differs from chained raw evidence or corpus")
     events, _ = read_ledger(directory / "phase-ledger.ndjson")
     return events
