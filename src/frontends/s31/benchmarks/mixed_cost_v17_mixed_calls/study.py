@@ -26,6 +26,30 @@ SCORE = p.LANGUAGE / "mixed-cost-v17-mixed-calls-score.json"
 ATTEMPT = p.LANGUAGE / "mixed-cost-v17-mixed-calls-attempt.jsonl"
 
 
+def check_calls(calls: list[dict], expected: list[dict]) -> None:
+    if type(calls) is not list or len(calls) != len(expected):
+        raise ValueError("native call count differs from frozen source")
+    previous_output = None
+    used_addresses: set[int] = set()
+    for call, source_call in zip(calls, expected, strict=True):
+        if (type(call) is not dict or
+                {key: call.get(key) for key in source_call} != source_call):
+            raise ValueError("native call identity, feeder, rounds or constant differs")
+        inputs, outputs = call.get("input"), call.get("output")
+        for addresses in (inputs, outputs):
+            if (type(addresses) is not list or len(addresses) != 4 or
+                    any(type(address) is not int or address < 0 for address in addresses) or
+                    len(set(addresses)) != 4):
+                raise ValueError("native call lane addresses are malformed")
+        if previous_output is not None and inputs != previous_output:
+            raise ValueError("sequential native call address chain differs")
+        if any(address in used_addresses for address in outputs):
+            raise ValueError("native call output address is not fresh")
+        used_addresses.update(inputs)
+        used_addresses.update(outputs)
+        previous_output = outputs
+
+
 def check_manifest(manifest: dict, expected: dict) -> None:
     count = expected["call_count"]
     pcs = manifest.get("pcs", {})
@@ -47,13 +71,18 @@ def check_manifest(manifest: dict, expected: dict) -> None:
             manifest.get("composition_log_size") != geometry["composition_log_size"] or
             [slot.get("trace_log_size") for slot in slots] !=
                 geometry["slot_trace_logs"] or
+            [slot.get("n_constraints") for slot in slots] !=
+                geometry["slot_constraints"] or
+            [{key: slot.get(key) for key in frozen_slot}
+             for slot, frozen_slot in zip(slots, geometry["slot_layout"], strict=True)] !=
+                geometry["slot_layout"] or
             type(calls) is not list or len(calls) != count or
-            [call.get("rounds") for call in calls] != expected["chip_rounds"] or
             sum(slot["n_constraints"] for slot in slots) != manifest.get("total_constraints") or
             manifest.get("main_columns") != trees[1] or
             manifest.get("interaction_columns") != trees[2] or
             manifest.get("registry_manifest_sha256") != registry_manifest_digest(manifest)):
         raise ValueError("native source identity, component geometry or PoW differs")
+    check_calls(calls, expected["expected_calls"])
 
 
 def bins(directory: Path, name: str) -> dict[str, Path]:

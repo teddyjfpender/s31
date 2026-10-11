@@ -73,6 +73,11 @@ class MixedCallsStaticTest(unittest.TestCase):
                              [spec["ops"].bit_length()] +
                              [entry for rounds in spec["rounds"]
                               for entry in (rounds.bit_length() - 1, 4)])
+            self.assertEqual(geometry["slot_constraints"],
+                             [11] + [value for _ in spec["rounds"] for value in (6, 13)])
+            self.assertEqual(expected["expected_calls"], p.source_calls(p.source(name)))
+            self.assertEqual(geometry["slot_layout"], p.slot_layout(
+                spec["ops"].bit_length(), list(spec["rounds"])))
             self.assertEqual(geometry["composition_log_size"],
                              max(geometry["slot_trace_logs"]))
             self.assertEqual(expected["source_sha256"], p.sha(p.source(name)))
@@ -107,11 +112,11 @@ class MixedCallsStaticTest(unittest.TestCase):
                         "source_sha256": expected["source_sha256"], "call_count": count,
                         "slot_count": geometry["slots"], "interaction_pow_bits": 20,
                         "pcs": {"fri_config": {"pow_bits": 26}},
-                        "slots": [{"trace_log_size": log, "n_constraints": n}
-                                  for log, n in zip(geometry["slot_trace_logs"],
-                                                    [11] + [value for _ in range(count)
-                                                            for value in (6, 13)], strict=True)],
-                        "calls": [{"rounds": rounds} for rounds in expected["chip_rounds"]],
+                        "slots": copy.deepcopy(geometry["slot_layout"]),
+                        "calls": [{**call,
+                                   "input": [1000 + index * 10 + lane for lane in range(4)],
+                                   "output": [1010 + index * 10 + lane for lane in range(4)]}
+                                  for index, call in enumerate(expected["expected_calls"])],
                         "tree_columns": geometry["tree_columns"],
                         "total_constraints": geometry["constraints"],
                         "main_columns": geometry["tree_columns"][1],
@@ -129,6 +134,35 @@ class MixedCallsStaticTest(unittest.TestCase):
             bad["slots"][1]["trace_log_size"] = 11
             with self.assertRaises(ValueError):
                 study.check_manifest(bad, expected)
+            balanced = copy.deepcopy(manifest)
+            balanced["slots"][0]["n_constraints"] += 1
+            balanced["slots"][2]["n_constraints"] -= 1
+            self.assertEqual(sum(slot["n_constraints"] for slot in balanced["slots"]),
+                             geometry["constraints"])
+            with self.assertRaises(ValueError):
+                study.check_manifest(balanced, expected)
+            with self.assertRaises(ValueError):
+                audit.independently_check_slots(balanced["slots"], geometry["slot_layout"])
+            for field, replacement in (("call_id", 0), ("constant", -1),
+                                       ("source_node_id", -1), ("input_node_id", -1)):
+                changed = copy.deepcopy(manifest)
+                changed["calls"][1][field] = replacement
+                with self.assertRaises(ValueError):
+                    study.check_manifest(changed, expected)
+                with self.assertRaises(ValueError):
+                    audit.independently_check_calls(changed["calls"], expected["expected_calls"])
+            changed = copy.deepcopy(manifest)
+            changed["calls"][1]["input"][0] += 1
+            with self.assertRaises(ValueError):
+                study.check_manifest(changed, expected)
+            with self.assertRaises(ValueError):
+                audit.independently_check_calls(changed["calls"], expected["expected_calls"])
+            changed = copy.deepcopy(manifest)
+            changed["slots"][1]["registry_role"] = "bridge"
+            with self.assertRaises(ValueError):
+                study.check_manifest(changed, expected)
+            with self.assertRaises(ValueError):
+                audit.independently_check_slots(changed["slots"], geometry["slot_layout"])
         finally:
             study.registry_manifest_digest = original
 

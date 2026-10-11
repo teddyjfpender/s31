@@ -221,6 +221,65 @@ def case(name: str, index: int) -> tuple[bytes, bytes, bytes]:
     return raw_source, canonical(assignment), statement
 
 
+def source_calls(raw_source: bytes) -> list[dict]:
+    """Derive semantic native-call identities from the frozen source node order."""
+    relation = v2.parse(raw_source)
+    node_ids = {item["name"]: index for index, item in
+                enumerate(relation["nodes"], start=1)}
+    node_ids[relation["inputs"][0]["name"]] = 0
+    calls = []
+    for node in relation["nodes"]:
+        if node["op"] == "repeat":
+            calls.append({"call_id": len(calls),
+                          "source_node_id": node_ids[node["name"]],
+                          "input_node_id": node_ids[node["lhs"]],
+                          "rounds": node["rounds"],
+                          "constant": node["body"][1]["constant"]})
+    return calls
+
+
+def slot_layout(circuit_log: int, rounds: list[int]) -> list[dict]:
+    """Predict every deterministic registry slot field before native admission."""
+    slots = []
+    main, interaction, constraint = 0, 0, 0
+    for index in range(1 + 2 * len(rounds)):
+        if index == 0:
+            call_id, key, registry_id, role = None, "bundled_circuit", 0, "circuit"
+            trace_log, evaluation_log = circuit_log, circuit_log + 1
+            main_columns, interaction_columns, n_constraints = 12, 8, 11
+            relations, preprocessed = [378353459], [0, 2, 3, 1, 4, 5, 6, 7]
+        else:
+            call_id = (index - 1) // 2
+            chip = index % 2 == 1
+            family = "pair" if call_id < 2 else "many"
+            key = f"{family}_{'chip' if chip else 'bridge'}"
+            registry_id = (1 if chip else 2) + (0 if family == "pair" else 2)
+            role = "chip" if chip else "bridge"
+            trace_log = rounds[call_id].bit_length() - 1 if chip else 4
+            evaluation_log = trace_log + 1 if chip else 6
+            main_columns, interaction_columns, n_constraints = (
+                (9, 8, 6) if chip else (8, 20, 13))
+            relations = [1395863811] if chip else [378353459, 1395863811]
+            preprocessed = []
+        slots.append({"source_kind": key, "registry_key": key,
+                      "registry_id": registry_id, "registry_role": role,
+                      "registry_version": 1, "call_id": call_id,
+                      "proof_index": index, "claimed_sum_index": index,
+                      "trace_log_size": trace_log,
+                      "evaluation_log_size": evaluation_log,
+                      "main_offset": main, "main_columns": main_columns,
+                      "interaction_offset": interaction,
+                      "interaction_columns": interaction_columns,
+                      "constraint_offset": constraint,
+                      "n_constraints": n_constraints,
+                      "preprocessed_indices": preprocessed,
+                      "relation_ids": relations})
+        main += main_columns
+        interaction += interaction_columns
+        constraint += n_constraints
+    return slots
+
+
 def previous_claims_and_sources() -> tuple[set[str], set[str]]:
     sources = {sha((PROBES / f"{name}.s31.json").read_bytes())
                for name in ("gates256", "rounds1024")}
@@ -269,14 +328,23 @@ def prepare_value() -> dict:
         new_sources.add(digest)
         new_claims.update(all_claims)
         count = len(spec["rounds"])
+        expected_calls = source_calls(rows[0][0])
+        if ([call["rounds"] for call in expected_calls] != list(spec["rounds"]) or
+                [call["call_id"] for call in expected_calls] != list(range(count))):
+            raise ValueError("source-derived call roster differs from design")
         slot_logs = [spec["ops"].bit_length()] + [entry for rounds in spec["rounds"]
                                                      for entry in (rounds.bit_length() - 1, 4)]
+        expected_slots = slot_layout(spec["ops"].bit_length(), list(spec["rounds"]))
+        if ([slot["trace_log_size"] for slot in expected_slots] != slot_logs or
+                sum(slot["n_constraints"] for slot in expected_slots) != 11 + 19 * count):
+            raise ValueError("source-derived slot layout differs from design")
         mul_count = sum((index + branch) % spec["mul_every"] == 0
                         for index in range(spec["ops"] // spec["branches"])
                         for branch in range(spec["branches"]))
         roster[name] = {
             "source_sha256": digest, "call_count": count,
             "chip_rounds": list(spec["rounds"]), "live_arithmetic_nodes": spec["ops"],
+            "expected_calls": expected_calls,
             "live_mul_nodes": mul_count,
             "live_add_nodes": spec["ops"] - mul_count,
             "topology": f"sixteen live {spec['ops'] // 16}-operation branches with one-fifth multiplication, joined as a balanced binary tree before mixed-length chip calls",
@@ -285,6 +353,9 @@ def prepare_value() -> dict:
                 "slots": 1 + 2 * count, "constraints": 11 + 19 * count,
                 "tree_columns": [8, 12 + 17 * count, 8 + 28 * count, 8],
                 "slot_trace_logs": slot_logs,
+                "slot_constraints": [11] + [value for _ in range(count)
+                                            for value in (6, 13)],
+                "slot_layout": expected_slots,
                 "max_column_log_size": max(slot_logs),
                 "composition_log_size": max(slot_logs)},
             "assignment_sha256": assignments, "statement_sha256": statements,
@@ -308,6 +379,7 @@ def prepare_value() -> dict:
         "nonpow_residual_guard": "every cold and scored trial must have positive FRI/interaction PoW durations and their sum strictly below measured verified prover-plus-external-verifier process wall; scorer and independent audit reject any nonpositive residual before division",
         "proof_negative_error": "InvalidMixedInteractionNonce",
         "native_builds_before_scored_proofs": "all three packages built and manifested before any claim-0 or scored proof",
+        "native_manifest_admission": "exact source-derived ordered call IDs/source and feeder node IDs/rounds/constants; complete deterministic slot layout including per-slot constraints, registry roles, offsets, relation and preprocessed IDs; compiler-assigned numeric addresses checked for four-lane shape, fresh outputs and consecutive call-chain equality but not forecast numerically",
         "one_prospective_run_only": True,
         "fixed_attempt_marker": "design/s31/measurements/language/mixed-cost-v17-mixed-calls-attempt.jsonl",
         "attempt_semantics": "before any native build, atomically create the fixed marker with O_EXCL and fsync file/directory; reject all subsequent invocations regardless of output path; append completed or failed terminal metadata, retaining a started-only marker after hard interruption",

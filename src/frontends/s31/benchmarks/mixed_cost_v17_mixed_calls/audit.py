@@ -20,6 +20,36 @@ AUDIT = p.LANGUAGE / "mixed-cost-v17-mixed-calls-audit.json"
 ATTEMPT = p.LANGUAGE / "mixed-cost-v17-mixed-calls-attempt.jsonl"
 
 
+def independently_check_calls(calls: list[dict], frozen_calls: list[dict]) -> None:
+    if len(calls) != len(frozen_calls):
+        raise ValueError("saved native call count differs")
+    prior_outputs = None
+    seen_addresses: set[int] = set()
+    for observed, expected in zip(calls, frozen_calls, strict=True):
+        if any(observed.get(field) != value for field, value in expected.items()):
+            raise ValueError("saved native call semantics differ from frozen source")
+        inputs, outputs = observed.get("input"), observed.get("output")
+        if any(type(group) is not list or len(group) != 4 or
+               any(type(address) is not int or address < 0 for address in group) or
+               len(set(group)) != 4 for group in (inputs, outputs)):
+            raise ValueError("saved native call addresses malformed")
+        if prior_outputs is not None and inputs != prior_outputs:
+            raise ValueError("saved native call chain differs")
+        if seen_addresses.intersection(outputs):
+            raise ValueError("saved native call output address was reused")
+        seen_addresses.update(inputs)
+        seen_addresses.update(outputs)
+        prior_outputs = outputs
+
+
+def independently_check_slots(slots: list[dict], frozen_slots: list[dict]) -> None:
+    if len(slots) != len(frozen_slots):
+        raise ValueError("saved native slot count differs")
+    for observed, expected in zip(slots, frozen_slots, strict=True):
+        if any(observed.get(field) != value for field, value in expected.items()):
+            raise ValueError("saved native slot layout differs from frozen prediction")
+
+
 def calculated_score(rows: list[dict], prediction: dict, gates: dict) -> dict:
     scored = rows[2:]
     if len(scored) != p.CLAIMS or sorted(row["claim_index"] for row in scored) != list(
@@ -162,14 +192,17 @@ def run(out: Path, native: bool) -> dict:
                 manifest["tree_columns"] != geometry["tree_columns"] or
                 [slot["trace_log_size"] for slot in manifest["slots"]] !=
                 geometry["slot_trace_logs"] or
+                [slot["n_constraints"] for slot in manifest["slots"]] !=
+                geometry["slot_constraints"] or
                 manifest["max_column_log_size"] != geometry["max_column_log_size"] or
                 manifest["composition_log_size"] != geometry["composition_log_size"] or
-                [call["rounds"] for call in manifest["calls"]] != expected["chip_rounds"] or
                 manifest["interaction_pow_bits"] != 20 or
                 manifest["pcs"]["fri_config"]["pow_bits"] != 26 or
                 manifest["registry_manifest_sha256"] !=
                 registry_manifest_digest(manifest)):
             raise ValueError(f"saved native manifest differs: {name}")
+        independently_check_slots(manifest["slots"], geometry["slot_layout"])
+        independently_check_calls(manifest["calls"], expected["expected_calls"])
         scored_indices = [task for task in protocol["scored_schedule"] if task["name"] == name]
         if [row["claim_index"] for row in record["trials"][2:]] != [
                 task["claim_index"] for task in scored_indices]:
