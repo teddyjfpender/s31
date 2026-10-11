@@ -272,6 +272,94 @@ theorem rootedNominalPath_distinct_roots (firstRoot secondRoot : String)
     | .root name => name
     | _ => "") sameTag
 
+/-!
+`record_abi.zig`'s `typeTree` walks record fields and tuple elements in their
+declared order. The n-ary tree retains the source path; the first-order
+relation retains only the ordered leaf blocks. The following conversion
+constructs a right-associated binary product for precisely that leaf order.
+It is a semantic bridge, not a proof that the Zig JSON parser implements the
+walk or validates its bounds.
+-/
+
+/-- Depth-first positions: at each node visit children in increasing
+declaration/index order. This is the logical shape of Zig's `for (fields)`
+and `for (elements, 0..)` loops. -/
+def orderedPositions : (tree : NominalTree) → List (LeafPosition tree)
+  | .leaf => [()]
+  | .node arity _ child =>
+      (List.finRange arity).flatMap fun index =>
+        (orderedPositions (child index)).map fun tail => ⟨index, tail⟩
+
+/-- Every emitted path is the already proved injective `nominalPath` of the
+corresponding ordered leaf position; values do not influence its path. -/
+def orderedNominalLeaves {α : Type} (tree : NominalTree)
+    (values : LeafPosition tree → α) : List (List Segment × α) :=
+  (orderedPositions tree).map fun position =>
+    (nominalPath tree position, values position)
+
+def orderedRootLeaves {α : Type} (root : String) (tree : NominalTree)
+    (values : LeafPosition tree → α) : List (List Segment × α) :=
+  (orderedNominalLeaves tree values).map fun entry =>
+    (.root root :: entry.1, entry.2)
+
+theorem orderedRootLeaves_paths {α : Type} (root : String)
+    (tree : NominalTree) (values : LeafPosition tree → α) :
+    (orderedRootLeaves root tree values).map Prod.fst =
+      (orderedPositions tree).map (rootedNominalPath root tree) := by
+  simp [orderedRootLeaves, orderedNominalLeaves, rootedNominalPath,
+    List.map_map]
+
+/-- Any nonempty first-order leaf sequence has a canonical right-associated
+binary product. Parenthesization contributes no AIR arithmetic. -/
+def binaryChain {α : Type} (first : α) :
+    (rest : List α) → Σ layout : Layout, Value α layout
+  | [] => ⟨.leaf, first⟩
+  | next :: tail =>
+      let suffix := binaryChain next tail
+      ⟨.pair .leaf suffix.1, (first, suffix.2)⟩
+
+theorem binaryChain_flatten {α : Type} (first : α) (rest : List α) :
+    flatten (binaryChain first rest).1 (binaryChain first rest).2 =
+      first :: rest := by
+  induction rest generalizing first with
+  | nil => rfl
+  | cons next tail ih =>
+      simp [binaryChain, flatten, ih]
+
+/-- The native type-tree validator rejects empty tuple/record nodes. The
+`none` case keeps the raw Lean tree honest about its unrestricted arity. -/
+def binaryOfOrderedLeaves {α : Type} (leaves : List (List Segment × α)) :
+    Option (Σ layout : Layout, Value α layout) :=
+  match leaves.map Prod.snd with
+  | [] => none
+  | first :: rest => some (binaryChain first rest)
+
+theorem binaryOfOrderedLeaves_flatten {α : Type}
+    (leaves : List (List Segment × α))
+    (binary : Σ layout : Layout, Value α layout)
+    (accepted : binaryOfOrderedLeaves leaves = some binary) :
+    flatten binary.1 binary.2 = leaves.map Prod.snd := by
+  unfold binaryOfOrderedLeaves at accepted
+  cases words : leaves.map Prod.snd with
+  | nil => simp [words] at accepted
+  | cons first rest =>
+      have same : binaryChain first rest = binary :=
+        Option.some.inj (by simpa [words] using accepted)
+      rw [← same]
+      simpa [words] using binaryChain_flatten first rest
+
+/-- After the n-ary path walk has chosen its exact ordered leaf blocks, the
+binary product flattens to the same M31 words, including every block width. -/
+theorem orderedRootLeaves_binary_words {α : Type}
+    (root : String) (tree : NominalTree)
+    (values : LeafPosition tree → WordBlock α)
+    (binary : Σ layout : Layout, Value (WordBlock α) layout)
+    (accepted : binaryOfOrderedLeaves
+      (orderedRootLeaves root tree values) = some binary) :
+    concatBlocks (flatten binary.1 binary.2) =
+      concatBlocks ((orderedRootLeaves root tree values).map Prod.snd) := by
+  rw [binaryOfOrderedLeaves_flatten _ _ accepted]
+
 /-- An explicit record containing a three-element tuple and a scalar. The
 two fields have distinct names, and the tuple has canonical child indices. -/
 def nestedFixture : NominalTree :=

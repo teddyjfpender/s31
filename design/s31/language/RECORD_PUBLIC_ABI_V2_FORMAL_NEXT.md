@@ -67,6 +67,54 @@ n-ary tree satisfying `WellTagged` have different tagged suffixes.
 difference. This is a theorem about the Lean type tree and path function,
 not yet a theorem about the native parser's execution.
 
+## Ordered n-ary walk to binary first-order layout
+
+The native `typeTree` loop visits fields in descriptor order and tuple
+elements from index zero upward. It appends one tagged segment before
+descending into a child, checks the next leaf descriptor's complete path,
+then advances the leaf cursor. The Python `binding_v2._leaves` and
+`record_v2._flatten_value` loops use the same order. A focused three-element
+tuple test compares the typed value encoder to the descriptor builder,
+including a trailing record field, and checks that swapping two descriptors
+is rejected.
+
+`orderedPositions` now models that depth-first n-ary order. The path of each
+position is computed by the existing `nominalPath`, rather than being supplied
+independently. `orderedRootLeaves_paths` identifies the complete rooted paths
+of the ordered leaves with those of the path-injectivity theorem.
+`binaryChain` converts any nonempty ordered leaf list into a right-associated
+binary product. `binaryChain_flatten` and
+`binaryOfOrderedLeaves_flatten` prove that `RecordBoundary.flatten` returns
+exactly the original leaf sequence. `orderedRootLeaves_binary_words` applies
+this to width-checked M31 blocks, so concatenating the binary leaves gives
+the same first-order word vector as concatenating the ordered n-ary leaves.
+The binary grouping is a proof device: it preserves leaf and word order and
+does not add circuit operations.
+
+For `request: { items: (m31, m31, m31), salt: m31 }`, suppose the leaves
+contain `[3]`, `[5]`, `[8]`, `[13]`. Both traversals yield:
+
+```text
+path                                   leaf block   first-order word offset
+request.items.0                        [3]          0
+request.items.1                        [5]          1
+request.items.2                        [8]          2
+request.salt                           [13]         3
+
+binary grouping: (3, (5, (8, 13)))
+flattened words: [3, 5, 8, 13]
+```
+
+This bridge is conditional on the accepted descriptor's tree and leaf values
+being represented by the Lean `NominalTree` and `WordBlock` values. It does
+not itself prove that Zig's JSON parser, `matchingPath`, and `typeTree`
+instantiate the Lean model. In particular, the Lean tree has no native
+1..64 child bound, depth-32 bound, 1..8 leaf-width bound, or identifier
+grammar. Its binary conversion returns `none` for an empty leaf sequence;
+native validation rejects empty record and tuple nodes. The Zig validator
+checks nominal layout reuse, input wire order/visibility, result shapes,
+output first-appearance order, and canonical descriptor hashing separately.
+
 ## Precisely what the model assumes
 
 - `WordBlock` models M31 words using an abstract element type. Lean checks
@@ -77,8 +125,9 @@ not yet a theorem about the native parser's execution.
   injectivity as evidence. The separate n-ary `NominalTree` derives complete
   path injectivity from the separate local `WellTagged` predicate without
   assuming global injectivity.
-  It has not been connected to the binary flattening model or proved to
-  reflect every accepted production Zig `typeTree` walk.
+  `orderedRootLeaves_binary_words` now connects ordered n-ary leaves to a
+  binary flattening with identical first-order words. It has not been proved
+  to reflect every accepted production Zig `typeTree` walk.
 - `InputRoot` visibility and result wire references are assumed to be the
   already validated relation descriptors. The theorem proves word-order
   agreement for those descriptors, not source parsing or key admission.
@@ -89,10 +138,11 @@ not yet a theorem about the native parser's execution.
 
 ## Remaining refinement obligations
 
-1. Connect the n-ary path theorem to the binary flattening order and prove
-   that native `typeTree` and `matchingPath` acceptance instantiate exactly
-   this model. The model does not enforce native node-size and depth limits,
-   identifier syntax, canonical JSON, or first-order leaf widths.
+1. Prove native `typeTree` and `matchingPath` acceptance instantiates the
+   ordered n-ary model, including node-size and depth limits, identifier
+   syntax, canonical JSON, first-order leaf widths, and descriptor cursor
+   coverage. Prove `orderedPositions` contains each valid leaf position
+   exactly once to carry path injectivity to the complete emitted list.
 2. Prove canonical statement parsing, SHA-256 ABI digest/key binding,
    duplicate-key rejection, M31 range checks, alias equality, and the
    eight-word limit against the production verifier.
