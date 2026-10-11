@@ -43,3 +43,17 @@ and candidate commit. It does not cover newly permitted arithmetic-fed chip
 inputs or establish prover soundness. Any later mixed runtime or build change
 requires a fresh candidate receipt against this frozen baseline, with any
 intentional byte change reviewed rather than silently refreshing the fixture.
+
+## Post-queue candidate
+
+After the mixed prover staging changes, the same eight-profile acceptance was
+rerun at clean S31 commit `6d5edb7d0170be5ceee7c79e256959f5e97a23a6`
+with the same engine gitlink, Zig 0.15.2 binary, host, script, and build flags.
+The [post-queue candidate receipt](../../../src/frontends/s31/tests/acceptance/mixed_boundary/baselines/2026-10-11/candidate-6d5edb7.json)
+has SHA-256
+`34aa0d5041b91fc3b7c688baa56e1186ebb8d01e3125aedd4b89bf0064fa8c99`:
+it is byte-for-byte identical to both baseline receipts. The unchanged
+`proof_byte_regression.py` gate again passed all eight call counts, all native
+acceptance controls completed, and stderr was empty. The
+[followup provenance](../../../src/frontends/s31/tests/acceptance/mixed_boundary/baselines/2026-10-11/post-queue-6d5edb7.provenance.json)
+pins the candidate and receipt. The checkout remained clean.
