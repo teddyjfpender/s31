@@ -25,7 +25,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src/frontends/s31/python"))
 
 from package.correspondence import (  # noqa: E402
-    DIRECT_COLUMN_IDS, check_package, parse_canonical_json,
+    DIRECT_COLUMN_IDS, canonical_ir_bytes, check_package, parse_canonical_json,
 )
 
 
@@ -337,6 +337,27 @@ def render_bridge(package: Path, namespace: str = "GeneratedDirectGateBridge") -
         raise ValueError("checked normalized relation lacks first source opcode")
     changed_normalized_bytes = normalized_bytes.replace(first_op_bytes, flipped_op_bytes, 1)
     normalized_byte_list = _byte_list(normalized_bytes)
+    canonical_bytes = canonical_ir_bytes(checked["source_ssa"])
+    canonical_digest = hashlib.sha256(canonical_bytes).hexdigest()
+    if canonical_digest != checked["key_core"]["canonical_ir_sha256"]:
+        raise ValueError("checked canonical IR digest differs from source SSA")
+    canonical_byte_list = _byte_list(canonical_bytes)
+    opcode_marker = b'{"tag":"' + instructions[0]["op"].encode("ascii") + b'"'
+    opcode_start = canonical_bytes.find(opcode_marker)
+    operand_marker = b'"lhs":0,"rhs":0'
+    operand_start = canonical_bytes.find(operand_marker)
+    output_marker_ir = b'"id":' + str(output_id).encode("ascii") + b'}]}'
+    output_start = canonical_bytes.find(output_marker_ir)
+    input_marker = b'"input_name":"' + checked["source_ssa"]["input"].encode("ascii") + b'"'
+    input_start = canonical_bytes.find(input_marker)
+    if min(opcode_start, operand_start, output_start, input_start) < 0:
+        raise ValueError("canonical IR mutation control marker is absent")
+    opcode_offset = opcode_start + len(b'{"tag":"')
+    operand_offset = operand_start + len(b'"lhs":')
+    output_offset = output_start + len(b'"id":')
+    input_offset = input_start + len(b'"input_name":"')
+    changed_opcode_byte = ord('a') if canonical_bytes[opcode_offset] != ord('a') else ord('m')
+    changed_input_byte = ord('z') if canonical_bytes[input_offset] != ord('z') else ord('y')
     changed_normalized_byte_list = _byte_list(changed_normalized_bytes)
     output_name = checked["source_ssa"]["output_name"].encode("ascii")
     output_marker = b'"public_outputs": [\n    "' + output_name + b'"'
@@ -353,6 +374,7 @@ import S31.Gadgets.Functional.SSADirectGateBridge
 import S31.Gadgets.Functional.SSAAirRows
 import S31.Gadgets.Functional.SSATextBytes
 import S31.Gadgets.Functional.SSANormalizedBytes
+import S31.Gadgets.Functional.SSACanonicalIrBytes
 import S31.Gadgets.Functional.SSAAirColumnCells
 import S31.Gadgets.Functional.SSAOutputAirCells
 import S31.Gadgets.Functional.SSAInputAirCells
@@ -367,6 +389,7 @@ open S31.Functional.SSADirectGateBridge
 open S31.Functional.SSAAirRows
 open S31.Functional.SSATextBytes
 open S31.Functional.SSANormalizedBytes
+open S31.Functional.SSACanonicalIrBytes
 open S31.Functional.SSAAirColumnCells
 open S31.Functional.SSAOutputAirCells
 open S31.Functional.SSAInputAirCells
@@ -382,6 +405,17 @@ def changedSourceBytes : List Nat := {changed_byte_list}
 def normalizedBytes : List Nat := {normalized_byte_list}
 -- Informational digest from the outer package checker; Lean does not hash normalizedBytes.
 def normalizedSha256 : String := "{normalized_digest}"
+def canonicalIrBytes : List Nat := {canonical_byte_list}
+-- SHA-256 is checked by the independent package checker, not computed in Lean.
+def canonicalIrSha256 : String := "{canonical_digest}"
+def changedCanonicalOpcodeBytes : List Nat :=
+  canonicalIrBytes.set {opcode_offset} {changed_opcode_byte}
+def changedCanonicalOperandBytes : List Nat :=
+  canonicalIrBytes.set {operand_offset} 49
+def changedCanonicalOutputBytes : List Nat :=
+  canonicalIrBytes.set {output_offset} 48
+def changedCanonicalInputBytes : List Nat :=
+  canonicalIrBytes.set {input_offset} {changed_input_byte}
 def changedNormalizedOpcodeBytes : List Nat := {changed_normalized_byte_list}
 def changedNormalizedOutputBytes : List Nat := {changed_output_byte_list}
 
@@ -475,6 +509,14 @@ theorem bytes_parse_all_wire_names :
       some [{lean_wire_tokens}] := by decide
 theorem normalized_bytes_check :
     checkRelation sourceBytes normalizedBytes = some certificate := by decide
+theorem canonical_ir_bytes_check :
+    checkCanonical sourceBytes normalizedBytes canonicalIrBytes =
+      some certificate := by decide
+theorem changed_canonical_ir_rejected :
+    checkCanonical sourceBytes normalizedBytes changedCanonicalOpcodeBytes = none ∧
+    checkCanonical sourceBytes normalizedBytes changedCanonicalOperandBytes = none ∧
+    checkCanonical sourceBytes normalizedBytes changedCanonicalOutputBytes = none ∧
+    checkCanonical sourceBytes normalizedBytes changedCanonicalInputBytes = none := by decide
 theorem changed_normalized_opcode_rejected :
     checkRelation sourceBytes changedNormalizedOpcodeBytes = none := by decide
 theorem changed_normalized_public_output_rejected :
@@ -580,6 +622,16 @@ theorem checked_bytes_sound (input : Lanes) :
     executeNormalized certificate input = denotation sourceBytes input :=
   checked_relation_sound sourceBytes normalizedBytes certificate input
     normalized_bytes_check
+
+/-- The independently reconstructed compact canonical SSA bytes also match
+the parsed source and relation bytes. Zig reports only their SHA-256 digest,
+which the package checker compares outside Lean. -/
+theorem checked_canonical_ir_bytes_sound (input : Lanes) :
+    (∃ parsed, parseBytes sourceBytes = some parsed ∧
+      canonicalIrBytes = encodeCanonical parsed) ∧
+    executeNormalized certificate input = denotation sourceBytes input := by
+  exact (checked_canonical_bytes_sound sourceBytes normalizedBytes
+    canonicalIrBytes certificate input canonical_ir_bytes_check).2
 
 /-- The captured normalized JSON runs through the actual named evaluator.
 The admission test checks the package before rendering these constants;

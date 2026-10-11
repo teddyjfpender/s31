@@ -18,7 +18,8 @@ sys.path.insert(0, str(S31.parents[2] / "scripts"))
 
 from package.correspondence import (DIRECT_COLUMN_IDS, M31_MODULUS,
                                     UnsupportedFragment, _check_constant_island,
-                                    _qm_mul, check_gate_topology, parse_source,
+                                    _qm_mul, canonical_ir_bytes, check_gate_topology,
+                                    digest, parse_source,
                                     read_canonical_json)
 from package.direct_gate_schedule import constant_and_padding, exact_direct_gate_schedule
 from text_frontend import compile_text
@@ -26,6 +27,48 @@ from export_s31_direct_gate_bridge import render_bridge
 
 
 class CorrespondenceParserTests(unittest.TestCase):
+    def test_exact_canonical_ir_identity_and_source_mutations(self) -> None:
+        source = ("circuit square(public x: [m31; 4]) -> public [m31; 4] "
+                  "{ let once = x .* x; let result = once .* once; result }")
+
+        def identity(text: str) -> str:
+            _, syntax = parse_source(text.encode())
+            return digest(canonical_ir_bytes(syntax))
+
+        baseline = identity(source)
+        # This is the Zig canonical.build digest of the checked production
+        # direct-gate square4 fixture, not a hash computed from this test.
+        self.assertEqual(baseline,
+                         "e7c40b96e601b8ea21557ae6c459f2315152b2aca812b0e8d876798c7e0a63a9")
+        changed = (
+            source.replace("once = x .* x", "once = x + x"),
+            source.replace("result = once .* once", "result = x .* once"),
+            source.replace("public x:", "public input:").replace(
+                "once = x .* x", "once = input .* input"),
+            source.replace("result }", "once }"),
+            source.replace("let once = x .* x; let result = once .* once;",
+                           "let result = x .* x; let once = result .* result;"),
+        )
+        for mutant in changed:
+            with self.subTest(mutant=mutant):
+                self.assertNotEqual(identity(mutant), baseline)
+        # The source map retains local names, but the canonical verifier
+        # identity deliberately quotients alpha-renaming of nonpublic lets.
+        renamed = source.replace("once", "intermediate")
+        self.assertEqual(identity(renamed), baseline)
+
+        # A second native fixture exercises two-digit SSA IDs and mixed
+        # operation order at the fragment's 16-step limit.
+        steps = []
+        for index in range(1, 17):
+            previous = "x" if index == 1 else f"y{index - 1}"
+            operator = ".*" if index % 2 else "+"
+            steps.append(f"let y{index} = x {operator} {previous};")
+        long_source = ("circuit arithmetic(public x: [m31; 4]) -> public "
+                       "[m31; 4] { " + " ".join(steps) + " y16 }")
+        self.assertEqual(identity(long_source),
+                         "62ec751ee84f07845a0e6afb4021805860b2cfea18c373b356ee7682b52dd695")
+
     def test_lean_export_rejects_topology_changed_after_admission(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             package = Path(directory)

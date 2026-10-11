@@ -178,9 +178,15 @@ that byte denotation for every input. `Functional/SSANormalizedBytes` encodes
 the exact canonical JSON relation from the parsed names and instructions;
 its checker admits a source/normalized byte pair only when the entire JSON
 byte sequence matches, and its theorem transfers source denotation to the
-admitted certificate. The generated instance kernel-checks both actual byte
-arrays, the public names, exact source-gate positions, and literal source or
-normalized opcode and public-output mutation controls.
+admitted certificate. `Functional/SSACanonicalIrBytes` encodes the compact
+`LegacyNode` SSA identity for this same fragment, including the source-derived
+public input name, output name and output ID. The independent package checker
+hashes those exact bytes and compares the result with the manifest, key,
+report and component claims. Lean checks the reconstructed compact byte sequence
+and changed opcode, operand, input name and output ID controls; it does not
+implement SHA-256. The generated instance also kernel-checks both actual
+source and normalized byte arrays, public names, exact source-gate positions,
+and literal source or normalized opcode and public-output mutation controls.
 `Functional/SSAAirColumnCells` projects the eight native preprocessed cells
 at each source gate's grouped AIR row and computes the expected selector,
 addresses, and use count from the parsed SSA. The generated shared-square

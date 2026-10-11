@@ -92,6 +92,21 @@ additional, independently executed semantic check for its narrower ASCII
 fragment; equivalence between the Python and Lean parsers for all Python
 accepted inputs remains unproved.
 
+For this exact fragment, the checker also reconstructs the compact bytes
+hashed by Zig's `canonical.build` legacy SSA path. The reconstructed JSON has
+one public M31 input node, one add or multiply node per checked let, and the
+selected public output name and ID. It preserves the serializer's field order
+and explicit `null` fields. The grammar rejects repeated expressions and
+reversed operands, so Zig's common-subexpression elimination and operand
+sorting cannot change this positional SSA. The independently computed SHA-256
+must equal the digest in the package manifest, verification key, cost report,
+and component manifest. Mutually resealing those four claims with a wrong
+digest is rejected. Circuit names and local let names are deliberately absent
+from the canonical IR identity; input and public output names are included.
+This check covers normalized relation version 1, independent of the
+`-Ds31-version` backend build selector. It does not establish that Zig's
+parser and serializer are correct for other language fragments.
+
 ## Concrete Lean bridge
 
 [`export_s31_direct_gate_bridge.py`](../../../scripts/export_s31_direct_gate_bridge.py)
@@ -117,7 +132,13 @@ encodes the full canonical normalized JSON byte sequence from those parsed
 names and instructions. Lean checks that this sequence equals the actual
 embedded `source.s31.json` bytes. This catches added fields, duplicate keys,
 changed visibility or output, reordered nodes, changed operands or opcodes,
-and any other byte change in the bounded relation. It separately checks the
+and any other byte change in the bounded relation. The companion
+[`SSACanonicalIrBytes.lean`](../../../formal/s31/S31/Gadgets/Functional/SSACanonicalIrBytes.lean)
+encodes the compact canonical SSA bytes from that same parsed certificate.
+Both generated instances check the captured bytes and reject changed opcode,
+operand, public input name, and output ID bytes. The SHA-256 match itself is
+performed by the independent Python checker; Lean checks byte equality, not
+the SHA-256 implementation. It separately checks the
 deterministic source-term emitter and each observed source gate's circuit
 address and grouped AIR row.
 
@@ -379,6 +400,13 @@ control recomputes all eight columns, their manifest hashes, the package
 key/report, and the certificate/artifact hashes. Package admission rejects
 all four on semantic grounds. These controls exercise topology replay
 separately from the normalized-relation checker.
+
+A separate adversarial control changes the claimed canonical IR SHA-256 in
+the manifest, key, report, component manifest and correspondence certificate,
+then reseals the package artifact hashes. The package checker rejects it
+against the independently reconstructed bytes. Source-only controls compare
+the compiler's native fixture digests at two and sixteen SSA nodes and test
+opcode, operand, input/output name, source order, and local alpha-renaming.
 
 ## Focused validation
 
