@@ -67,8 +67,15 @@ class FormalGateTests(unittest.TestCase):
                 if field.isidentifier():
                     fields.add(prefix + field)
         self.assertEqual(fields, expected)
-        self.assertEqual(set(checks.DERIVED_THEOREMS[path]), expected)
+        self.assertEqual(set(checks.proof_field_projection_names(
+            source, path, s31_formal.lean_code)), expected)
         self.assertTrue(expected <= self.theorems)
+
+    def test_old_derived_roster_contains_no_proof_field_projections(self) -> None:
+        self.assertEqual(sum(map(len, checks.DERIVED_THEOREMS.values())), 3)
+        self.assertFalse(any(".InputBoundary." in name or ".ChipRows." in name
+                             or ".BridgeRows." in name or ".Parsed.checked" in name
+                             for names in checks.DERIVED_THEOREMS.values() for name in names))
 
     def test_reviewed_proof_field_projections_bind_to_source_fields(self) -> None:
         all_names = set()
@@ -88,7 +95,26 @@ class FormalGateTests(unittest.TestCase):
             self.assertNotEqual(changed, source)
             with self.subTest(path=path), self.assertRaises(checks.FormalError):
                 checks.proof_field_projection_names(changed, path, s31_formal.lean_code)
-        self.assertEqual(len(all_names), 19)
+        self.assertEqual(len(all_names), 39)
+
+    def test_old_input_boundary_projection_rejects_renamed_or_commented_field_spoof(self) -> None:
+        path = "formal/s31/S31/Gadgets/Functional/SSAPublicInputBinding.lean"
+        source = (ROOT / path).read_text()
+        field = "  basis1 : wire 15 = unit ⟨1, by decide⟩\n"
+        self.assertEqual(source.count(field), 1)
+        for replacement in (
+            field.replace("basis1", "renamedBasis1"),
+            "  /- retired proof field /- nested -/\n" + field + "  -/\n",
+        ):
+            changed = source.replace(field, replacement, 1).replace(
+                "end S31.Functional.SSAPublicInputBinding\n",
+                "theorem InputBoundary.basis1 : True := by trivial\n\n"
+                "end S31.Functional.SSAPublicInputBinding\n", 1)
+            self.assertIn("S31.Functional.SSAPublicInputBinding.InputBoundary.basis1",
+                          checks.theorem_names(changed, s31_formal.lean_code))
+            with self.subTest(replacement=replacement), self.assertRaisesRegex(
+                    checks.FormalError, "stale proof-field projection roster"):
+                checks.proof_field_projection_names(changed, path, s31_formal.lean_code)
 
     def test_commented_proof_field_cannot_be_spoofed_by_named_lemma(self) -> None:
         path = "formal/s31/S31/Gadgets/Functional/RecordAbiV2.lean"

@@ -12,46 +12,38 @@ REUSED = (
     "formal/riscv-refinement/RiscvRefinement/Field/M31.lean",
     "formal/riscv-refinement/RiscvRefinement/Recursion/CompactPoseidon.lean",
 )
-# Lean's source-range audit also sees proof projections, a Prop-valued
-# instance and Mathlib's generated extensionality iff theorem. Name these
-# explicitly rather than silently dropping non-`theorem` declarations.
+# Lean's source-range audit also sees a Prop-valued instance and Mathlib's
+# generated extensionality iff theorem. Proof-field projections belong in the
+# source-aware roster below, never in this name-only derived declaration list.
 DERIVED_THEOREMS = {
     REUSED[0]: ("RiscvRefinement.M31.isLt",),
     "formal/s31/S31/Gadgets/Field.lean": ("S31.Field.instFactPrimeOfNatNat_s31",),
     "formal/s31/S31/Gadgets/Packed.lean": ("S31.Gadgets.Packed.Quad.ext_iff",),
-    "formal/s31/S31/Gadgets/Functional/SSATextBytes.lean": (
-        "S31.Functional.SSATextBytes.Parsed.checked",),
-    "formal/s31/S31/Gadgets/Functional/SSAPublicInputBinding.lean": (
-        "S31.Functional.SSAPublicInputBinding.InputBoundary.basis1",
-        "S31.Functional.SSAPublicInputBinding.InputBoundary.basis2",
-        "S31.Functional.SSAPublicInputBinding.InputBoundary.basis3",
-        "S31.Functional.SSAPublicInputBinding.InputBoundary.copies",
-        "S31.Functional.SSAPublicInputBinding.InputBoundary.packAdds",
-        "S31.Functional.SSAPublicInputBinding.InputBoundary.packMuls",
-        "S31.Functional.SSAPublicInputBinding.InputBoundary.pins",
-        "S31.Functional.SSAPublicInputBinding.InputBoundary.zero",
-    ),
-    "formal/s31/S31/Gadgets/Air/TaggedPairSourceComposition.lean": (
-        "S31.Gadgets.Air.TaggedPairSourceComposition.BridgeRows.interactionAccepted",
-        "S31.Gadgets.Air.TaggedPairSourceComposition.BridgeRows.mainAccepted",
-        "S31.Gadgets.Air.TaggedPairSourceComposition.BridgeRows.nonzeroD0",
-        "S31.Gadgets.Air.TaggedPairSourceComposition.BridgeRows.nonzeroD1",
-        "S31.Gadgets.Air.TaggedPairSourceComposition.BridgeRows.nonzeroFirst",
-        "S31.Gadgets.Air.TaggedPairSourceComposition.BridgeRows.nonzeroLast",
-        "S31.Gadgets.Air.TaggedPairSourceComposition.BridgeRows.sixteenNonzero",
-        "S31.Gadgets.Air.TaggedPairSourceComposition.ChipRows.arithmeticAccepted",
-        "S31.Gadgets.Air.TaggedPairSourceComposition.ChipRows.bitReverseInvolutive",
-        "S31.Gadgets.Air.TaggedPairSourceComposition.ChipRows.interactionAccepted",
-        "S31.Gadgets.Air.TaggedPairSourceComposition.ChipRows.rowCountNonzero",
-    ),
 }
 # Versioned, reviewed roster of Lean-generated theorem projections for proof
 # fields. Each entry binds a kernel declaration to a concrete source structure
 # and field. Unknown generated theorems still fail the exact live audit; a
-# removed or renamed source field fails inventory generation. These 19 fields
-# are separate from explicit `theorem` declarations and the older derived
-# declaration roster above.
+# removed or renamed source field fails inventory generation. These 39 fields
+# are separate from explicit `theorem` declarations and the three non-field
+# derived declarations above.
 PROOF_FIELD_PROJECTIONS_V1 = {
+    "formal/s31/S31/Gadgets/Functional/SSATextBytes.lean": {
+        "S31.Functional.SSATextBytes.Parsed": ("checked",),
+    },
+    "formal/s31/S31/Gadgets/Functional/SSAPublicInputBinding.lean": {
+        "S31.Functional.SSAPublicInputBinding.InputBoundary": (
+            "zero", "copies", "pins", "basis1", "basis2", "basis3", "packMuls", "packAdds",
+        ),
+    },
+    "formal/s31/S31/Gadgets/Air/TaggedPairSourceComposition.lean": {
+        "S31.Gadgets.Air.TaggedPairSourceComposition.ChipRows": (
+            "bitReverseInvolutive", "rowCountNonzero", "arithmeticAccepted", "interactionAccepted",
+        ),
+        "S31.Gadgets.Air.TaggedPairSourceComposition.BridgeRows": (
+            "sixteenNonzero", "mainAccepted", "interactionAccepted", "nonzeroD0", "nonzeroD1",
+            "nonzeroFirst", "nonzeroLast",
+        ),
+    },
     "formal/s31/S31/Gadgets/Functional/RecordAbiV2.lean": {
         "S31.Functional.RecordAbiV2.WordBlock": ("exactWidth",),
         "S31.Functional.RecordAbiV2.ValidatedPaths": ("injective",),
