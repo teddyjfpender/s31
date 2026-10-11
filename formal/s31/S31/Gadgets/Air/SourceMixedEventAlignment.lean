@@ -12,9 +12,12 @@ namespace S31.Gadgets.Air.SourceMixedEventAlignment
 open S31.Gadgets.Air.GateChallenge
 open S31.Gadgets.Air.TaggedPairChallenge
 open S31.Gadgets.Air.SourceMixedPath
+open S31.Gadgets.Air.SourceMixedRoster
+open S31.Gadgets.Air.GateLookup
 open S31.Gadgets.Air.SourceMixedAuthenticatedTrace
 open S31.Gadgets.Air.TaggedPairSourceComposition
 open S31.Gadgets.Air.TaggedPairSourceCorrespondence
+open S31.Gadgets.Air.TaggedPairConditionalCorrespondence
 open S31.Gadgets.Air.IndexedManyTaggedTupleBridge
 
 structure EventProjection {N : Nat}
@@ -40,6 +43,121 @@ structure EventProjection {N : Nat}
       nativeTuple call ((rows call row).step + 1) (rows call row).output)
   bridgeStart : ∀ call,
     (bridge call).startEvents = [nativeTuple call 0 (boundary.start call)]
+
+/-- Once the source has no baseline Gate producers, row identity alone fixes
+the whole circuit yield list. There is no verifier-supplied extra producer. -/
+theorem circuit_yields_of_source_rows {N : Nat}
+    (boundary : Boundary N) {alpha z : GateSecure}
+    (gate : GateRows alpha z)
+    (hrows : List.ofFn gate.rows = boundary.jointGateSource.gateRows)
+    (hbaseline : boundary.baselineYields = []) :
+    boundary.jointGateSource.circuitYields = gate.yields := by
+  calc
+    boundary.jointGateSource.circuitYields =
+        (allYields boundary.jointGateSource.gateRows []).map
+          embedGateEvent := by
+            simp [GateSource.circuitYields,
+              GateSource.gateExternalYields, Boundary.jointGateSource,
+              hbaseline]
+    _ = gate.yields := by
+      rw [← hrows]
+      rfl
+
+/-- The circuit's Gate-use list is fully source-determined once its emitted
+rows, public words, and each call's eight bridge Gate reads are identified.
+The compiler does not get a separate unconstrained Gate-use suffix. -/
+theorem circuit_uses_of_source_rows {N : Nat}
+    (boundary : Boundary N) {alpha z : GateSecure}
+    (gate : GateRows alpha z)
+    (bridge : Fin N → BridgeRows alpha z)
+    (words : List S31.Gadgets.Packed.Quad)
+    (hrows : List.ofFn gate.rows = boundary.jointGateSource.gateRows)
+    (hbaseline : boundary.baselineUses = [])
+    (hwords : words = List.ofFn (fun output : Fin 8 =>
+      S31.Gadgets.Packed.base (boundary.publicOutputs output)))
+    (hbridge : ∀ call,
+      (bridge call).gateEvents =
+        ((boundary.callBridgeGates call).map CanonicalEvent.toGate).map
+          embedGateEvent) :
+    boundary.jointGateSource.circuitUses =
+      (gate.uses ++ publicOutputYields words) ++
+        (List.finRange N).flatMap (fun call => (bridge call).gateEvents) := by
+  have hpublic := boundary.publicFeeder_native_events
+  rw [← hwords] at hpublic
+  have hbridgeList :
+      ((boundary.bridgeGates.map CanonicalEvent.toGate).map
+        embedGateEvent) =
+      (List.finRange N).flatMap (fun call => (bridge call).gateEvents) := by
+    simp only [Boundary.bridgeGates, List.map_flatMap]
+    exact List.flatMap_congr (fun call _ => (hbridge call).symm)
+  calc
+    boundary.jointGateSource.circuitUses =
+        gate.uses ++
+          ((boundary.publicFeeder.map CanonicalEvent.toGate).map
+            embedGateEvent) ++
+          ((boundary.bridgeGates.map CanonicalEvent.toGate).map
+            embedGateEvent) := by
+              change (allUses boundary.jointGateSource.gateRows
+                boundary.jointGateSource.gateExternalUses).map
+                  embedGateEvent = _
+              rw [← hrows]
+              have hext : boundary.jointGateSource.gateExternalUses =
+                  (boundary.publicFeeder ++ boundary.bridgeGates).map
+                    CanonicalEvent.toGate := by
+                simp [GateSource.gateExternalUses,
+                  Boundary.jointGateSource, hbaseline]
+              rw [hext]
+              simp only [allUses, GateRows.uses, List.append_nil,
+                List.map_append, List.append_assoc]
+    _ = (gate.uses ++ publicOutputYields words) ++
+          (List.finRange N).flatMap fun call =>
+            (bridge call).gateEvents := by
+              rw [hpublic, hbridgeList]
+
+/-- Build the projection from the source row roster, public ABI words, and
+the five local per-call tuple identifications. The two circuit-list fields
+are consequences rather than extra trusted global equalities. -/
+def EventProjection.ofSourceRows {N : Nat}
+    (boundary : Boundary N)
+    (rows : ∀ call, Fin (boundary.rounds call) → NativeRow)
+    (alpha z : GateSecure)
+    (gate : GateRows alpha z)
+    (chip : Fin N → ChipRows 8 (by decide) alpha z)
+    (bridge : Fin N → BridgeRows alpha z)
+    (words : List S31.Gadgets.Packed.Quad)
+    (hrows : List.ofFn gate.rows = boundary.jointGateSource.gateRows)
+    (hbaselineUses : boundary.baselineUses = [])
+    (hbaselineYields : boundary.baselineYields = [])
+    (hwords : words = List.ofFn (fun output : Fin 8 =>
+      S31.Gadgets.Packed.base (boundary.publicOutputs output)))
+    (hbridgeGate : ∀ call,
+      (bridge call).gateEvents =
+        ((boundary.callBridgeGates call).map CanonicalEvent.toGate).map
+          embedGateEvent)
+    (hchipInputs : ∀ call,
+      (chip call).inputEvents =
+        List.ofFn (fun row : Fin (boundary.rounds call) =>
+          nativeTuple call (rows call row).step (rows call row).input))
+    (hbridgeFinish : ∀ call,
+      (bridge call).finishEvents =
+        [nativeTuple call (boundary.rounds call) (boundary.finish call)])
+    (hchipOutputs : ∀ call,
+      (chip call).outputEvents =
+        List.ofFn (fun row : Fin (boundary.rounds call) =>
+          nativeTuple call ((rows call row).step + 1)
+            (rows call row).output))
+    (hbridgeStart : ∀ call,
+      (bridge call).startEvents =
+        [nativeTuple call 0 (boundary.start call)]) :
+    EventProjection boundary rows alpha z gate chip bridge words :=
+  { circuitUses := circuit_uses_of_source_rows boundary gate bridge words
+      hrows hbaselineUses hwords hbridgeGate
+    circuitYields := circuit_yields_of_source_rows boundary gate
+      hrows hbaselineYields
+    chipInputs := hchipInputs
+    bridgeFinish := hbridgeFinish
+    chipOutputs := hchipOutputs
+    bridgeStart := hbridgeStart }
 
 /-- The per-call positive order is Gate reads, chip inputs, then terminal
 endpoint. Native `callUses` puts the terminal endpoint before chip inputs;

@@ -17,10 +17,17 @@ both global permutations from a smaller source/component contract:
 - Each call identifies its chip input/output events and bridge start/finish
   events with the source-shaped native row tuples.
 
-`EventProjection.assemble` then constructs the full trace contract from the
-per-call projections, source row identity, public word identity, and claim
-fold. The five per-call projections and circuit list equations remain
-compiler/committed-trace obligations. The native optional full-trace audit
+`EventProjection.ofSourceRows` derives both circuit list equations from the
+source row roster, empty baseline lists, public words, and each bridge's
+eight Gate events. `EventProjection.assemble` then constructs the full trace
+contract from that projection, source row identity, public word identity, and
+claim fold. The five per-call projections remain compiler/committed-trace
+obligations. The native optional full-trace audit
 checks a value-bearing Gate event bag and the complete chip and bridge rows;
 ordinary succinct verification still needs a PCS/FRI soundness argument to
 authenticate those rows.
+
+The public result also needs the separate `LocalPublicSchedule` premises:
+address selection, unique producers, packed input/final state memberships,
+and output unpack/copy paths. Merely comparing a sidecar assignment with
+`relation.evaluate` does not prove those circuit paths.
