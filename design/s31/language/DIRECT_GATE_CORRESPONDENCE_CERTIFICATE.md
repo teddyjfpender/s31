@@ -107,18 +107,17 @@ This check covers normalized relation version 1, independent of the
 `-Ds31-version` backend build selector. It does not establish that Zig's
 parser and serializer are correct for other language fragments.
 
-The formal `SSACanonicalGateChain` theorem composes that byte admission with
-the source-projected physical AIR cells and an **ideal exact** Gate multiset
-join for **live source rows only**. Its conclusion identifies the selected
-native wire with the source result for every four-lane input. The theorem
-requires each source instruction to have a positive `sourceUses` count;
-accepted source can contain dead instructions, so this is a genuine domain
-restriction. It also requires exact exported fixed cells, physical rows with
-the selected local AIR relation and positive multiplicity, exact Gate event
-balance, unique produced values, and the packed public input yield. Neither
-the package checker nor this theorem derives these physical and lookup
-premises from a native proof. LogUp's random challenge check, committed-column
-opening, PCS/FRI and Fiat-Shamir remain outside this compiler refinement.
+The current `SSADeadRowGateJoin` theorem composes byte admission with
+source-projected physical AIR cells and an **ideal exact** Gate multiset join.
+It covers an earlier returned wire even when later source rows have zero output
+multiplicity. Every source row is locally checked; only a row whose result is
+used must yield a Gate event. Operand uses and the four selected-output mask
+uses make the needed multiplicities positive. The theorem also requires exact
+exported fixed cells, physical input and output rows, exact Gate event balance,
+unique produced values, fixed constant events, and public scalar pins. These
+physical and lookup premises are not derived from native proof acceptance.
+LogUp's random challenge check, committed-column opening, PCS/FRI and
+Fiat-Shamir remain outside this compiler refinement.
 
 ## Concrete Lean bridge
 
@@ -154,10 +153,11 @@ performed by the independent Python checker; Lean checks byte equality, not
 the SHA-256 implementation. The square fixture checks that every source row
 is live and applies the conditional canonical-to-Gate theorem to its source
 and exported source-cell plan. The early-return fixture has an unused final
-let; it remains a byte/IR admission control and proves that its final row has
-zero `sourceUses`. Handling dead-code liveness in the physical Gate refinement
-is an open obligation. Physical-row authentication premises stay as arguments
-to the square theorem. The bridge separately checks the
+let and proves that its final row has zero `sourceUses`.
+`SSADeadRowMixedReturn.early_return_public_io_sound` covers this actual
+fixture, including its source, input, and output cells, under explicit
+physical-row, exact-Gate, and public-event premises. The bridge separately
+checks the
 deterministic source-term emitter and each observed source gate's circuit
 address and grouped AIR row.
 
@@ -280,7 +280,6 @@ changed source operand address. Its premises and open joins are:
    fixed cells and trace values through its commitments and PCS/FRI checks.
    This is outside the Lean theorem.
 
-The draft
 [`SSAInstalledBytecodeRows.lean`](../../../formal/s31/S31/Gadgets/Functional/SSAInstalledBytecodeRows.lean)
 connects that local residual premise to the **selected installed Gate
 bytecode**. It constructs the bytecode's eight local fixed cells in the
@@ -293,8 +292,7 @@ normalized-byte checker. The accompanying
 uses the 121-byte `early_output` program above: all three observed rows
 are covered, including the dead later work and the six-use earlier result.
 For `x=3`, changing its first square selector to add while retaining output
-`9` makes bytecode arithmetic acceptance impossible. **These new modules
-are pending a Lean build in this isolated draft.** Their theorem premises
+`9` makes bytecode arithmetic acceptance impossible. Their theorem premises
 still require coherent addressed wire values, public pins, zero roots at
 the authenticated rows, and package-to-Lean artifact binding. They do not
 turn a package certificate into standalone native-verifier admission.
@@ -317,6 +315,24 @@ proof's Gate claimed sum at proof-envelope byte offset `16` and requires
 the native verifier's `InvalidLookupSum` rejection. This tests the installed
 closure check; it does not establish the LogUp soundness reduction or
 PCS/FRI authentication of the committed row values.
+
+The fixture-specific
+[`SSADecodedTraceBridge.lean`](../../../formal/s31/S31/Gadgets/Functional/SSADecodedTraceBridge.lean)
+is a further column-to-row bridge. It decodes one 512-row direct-Gate trace,
+requires the 28 projected source/input/output cells to match its eight fixed
+columns, and assumes the first nine installed arithmetic bytecode roots vanish
+on its actual twelve main columns at every row. From those column-level facts
+it derives the three physical-row predicates required by
+`early_return_public_io_sound`. The source plan fixes used-row multiplicities;
+the fixture's fourteen input and eleven output cells have positive
+multiplicity. The focused Lean file compiles; an aggregate build and source
+binding audit remain for integration. The diagnostic
+[`check_early_return_native_rows.py`](../../../formal/s31/scripts/check_early_return_native_rows.py)
+checks those column facts against a native `writeBase` export and rejects fixed,
+main, and public-pin mutations. The export is not a committed proof opening:
+neither the diagnostic nor this Lean bridge shows that verifier acceptance
+authenticates the trace, proves ideal exact Gate balance, or fixes external
+public events.
 
 [`SSAOutputAirCells.lean`](../../../formal/s31/S31/Gadgets/Functional/SSAOutputAirCells.lean)
 continues from source wire `24` to the four public result words. It derives
