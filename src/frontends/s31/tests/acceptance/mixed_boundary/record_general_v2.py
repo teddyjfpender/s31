@@ -116,29 +116,103 @@ def exercise(work: Path, count: int) -> dict:
     assert proof_bytes[44:76].hex() == manifest["registry_manifest_sha256"]
     assert proof_bytes[76:108].hex() == manifest["circuit_identity_sha256"]
 
-    for name, root, word_index in (("public_input", 0, 0), ("public_result", 1, 0)):
-        changed = copy.deepcopy(json.loads(typed))
-        changed["leaves"][root]["words"][word_index] = (
-            changed["leaves"][root]["words"][word_index] + 1) % P
-        altered = work / f"changed-{count}-{name}.json"
-        altered.write_bytes(encode_typed_public_statement(source, {
-            **claim,
-            "public_inputs": {"x": {"words": changed["leaves"][0]["words"]}},
-            "result": {"words": changed["leaves"][1]["words"]},
-        }))
-        rejected = run(str(verifier), str(proof), str(altered), accept=False)
-        assert any(error in rejected.stderr for error in (
-            "InvalidMixedPublicStatement", "InvalidMixedInteractionNonce",
-            "InvalidMixedLookupSum", "VerificationFailed")), rejected.stderr
+    for name, root in (("public_input", 0), ("public_result", 1)):
+        for word_index in range(4):
+            changed = copy.deepcopy(json.loads(typed))
+            changed["leaves"][root]["words"][word_index] = (
+                changed["leaves"][root]["words"][word_index] + 1) % P
+            altered = work / f"changed-{count}-{name}-{word_index}.json"
+            altered.write_bytes(encode_typed_public_statement(source, {
+                **claim,
+                "public_inputs": {"x": {"words": changed["leaves"][0]["words"]}},
+                "result": {"words": changed["leaves"][1]["words"]},
+            }))
+            rejected = run(str(verifier), str(proof), str(altered), accept=False)
+            assert any(error in rejected.stderr for error in (
+                "InvalidMixedPublicStatement", "InvalidMixedInteractionNonce",
+                "InvalidMixedLookupSum", "VerificationFailed")), rejected.stderr
 
     malformed = json.loads(typed)
     malformed["leaves"][0]["path"][1]["field"] = "forged"
     changed_path = work / f"changed-{count}-path.json"
     changed_path.write_bytes((json.dumps(malformed, sort_keys=True, separators=(",", ":")) + "\n").encode())
     run(str(verifier), str(proof), str(changed_path), accept=False)
+    wrong_digest = json.loads(typed)
+    wrong_digest["abi_sha256"] = "0" * 64
+    changed_digest = work / f"changed-{count}-abi.json"
+    changed_digest.write_bytes((json.dumps(wrong_digest, sort_keys=True, separators=(",", ":")) + "\n").encode())
+    run(str(verifier), str(proof), str(changed_digest), accept=False)
+    reordered = json.loads(typed)
+    reordered["leaves"].reverse()
+    changed_order = work / f"changed-{count}-order.json"
+    changed_order.write_bytes((json.dumps(reordered, sort_keys=True, separators=(",", ":")) + "\n").encode())
+    run(str(verifier), str(proof), str(changed_order), accept=False)
     duplicate = work / f"duplicate-{count}.json"
     duplicate.write_bytes(typed.replace(b'"version":2', b'"version":2,"version":2'))
     run(str(verifier), str(proof), str(duplicate), accept=False)
+    noncanonical = json.loads(typed)
+    noncanonical["leaves"][0]["words"][0] = P
+    noncanonical_path = work / f"noncanonical-{count}.json"
+    noncanonical_path.write_bytes((json.dumps(
+        noncanonical, sort_keys=True, separators=(",", ":")) + "\n").encode())
+    run(str(verifier), str(proof), str(noncanonical_path), accept=False)
+    for label, offset in (("source", 12), ("manifest", 44),
+                          ("identity", 76), ("proof_tail", len(proof_bytes) - 1)):
+        changed_proof = bytearray(proof_bytes)
+        changed_proof[offset] ^= 1
+        altered_proof = work / f"changed-{count}-{label}.proof"
+        altered_proof.write_bytes(changed_proof)
+        run(str(verifier), str(altered_proof), str(statement), accept=False)
+    for slot in range(1 + 2 * count):
+        changed_proof = bytearray(proof_bytes)
+        changed_proof[116 + 16 * slot] ^= 1
+        altered_proof = work / f"changed-{count}-sum-{slot}.proof"
+        altered_proof.write_bytes(changed_proof)
+        run(str(verifier), str(altered_proof), str(statement), accept=False)
+    noncanonical_sum = bytearray(proof_bytes)
+    noncanonical_sum[116:120] = P.to_bytes(4, "little")
+    bad_sum = work / f"noncanonical-sum-{count}.proof"
+    bad_sum.write_bytes(noncanonical_sum)
+    run(str(verifier), str(bad_sum), str(statement), accept=False)
+    for label, body in (("missing-sums", proof_bytes[:116]),
+                        ("truncated-postcard", proof_bytes[:-1]),
+                        ("trailing-byte", proof_bytes + b"\x00")):
+        malformed_proof = work / f"{label}-{count}.proof"
+        malformed_proof.write_bytes(body)
+        run(str(verifier), str(malformed_proof), str(statement), accept=False)
+
+    if count == 1:
+        changed_source = copy.deepcopy(source)
+        changed_source["nodes"][0]["body"][1]["constant"] += 1
+        changed_source_path = work / "changed-source-1.s31.json"
+        changed_source_path.write_text(json.dumps(changed_source, separators=(",", ":")))
+        changed_prefix = work / "changed-source-build-1"
+        run("zig", "build", "--build-file", str(S31 / "build.zig"), "install",
+            "-Doptimize=ReleaseFast", "-Ds31-version=2",
+            "-Ds31-lowering=direct-mixed-general", f"-Ds31-source={changed_source_path}",
+            "-Ds31-name=record", "-j1", "--prefix", str(changed_prefix))
+        changed_verifier = changed_prefix / "bin" / "s31-record-mixed-general-native-verifier"
+        run(str(changed_verifier), str(proof), str(statement), accept=False)
+
+        renamed = copy.deepcopy(source)
+        renamed["public_abi"]["inputs"][0]["type"]["record"] = "LanesRenamed"
+        renamed_path = work / "renamed-abi-1.s31.json"
+        renamed_path.write_text(json.dumps(renamed, separators=(",", ":")))
+        renamed_prefix = work / "renamed-abi-build-1"
+        run("zig", "build", "--build-file", str(S31 / "build.zig"), "install",
+            "-Doptimize=ReleaseFast", "-Ds31-version=2",
+            "-Ds31-lowering=direct-mixed-general", f"-Ds31-source={renamed_path}",
+            "-Ds31-name=record", "-j1", "--prefix", str(renamed_prefix))
+        renamed_verifier = (renamed_prefix / "bin" /
+                            "s31-record-mixed-general-native-verifier")
+        run(str(renamed_verifier), str(proof), str(statement), accept=False)
+        renamed_claim = {
+            **claim,
+            "abi_sha256": binding_digest(flat_relation(renamed), renamed["public_abi"]),
+        }
+        renamed_typed = work / "renamed-typed-1.json"
+        renamed_typed.write_bytes(encode_typed_public_statement(renamed, renamed_claim))
+        run(str(renamed_verifier), str(proof), str(renamed_typed), accept=False)
 
     wrong_assignment = copy.deepcopy(assignment)
     wrong_assignment["public_inputs"][source["inputs"][0]["name"]][0] += 1
@@ -154,6 +228,13 @@ def main() -> None:
     with tempfile.TemporaryDirectory(prefix="s31-record-mixed-v2-") as directory:
         work = Path(directory)
         results = [exercise(work, count) for count in (1, 8)]
+        assert (json.loads((work / "statement-1.json").read_text())["abi_sha256"] ==
+                json.loads((work / "statement-8.json").read_text())["abi_sha256"])
+        for proof_count, verifier_count in ((1, 8), (8, 1)):
+            verifier = (work / f"build-{verifier_count}" / "bin" /
+                        "s31-record-mixed-general-native-verifier")
+            run(str(verifier), str(work / f"proof-{proof_count}.bin"),
+                str(work / f"statement-{proof_count}.json"), accept=False)
         print(json.dumps({"schema": "s31-record-mixed-general-v2-acceptance",
                           "profiles": results}, sort_keys=True))
 

@@ -116,7 +116,7 @@ pub fn extract(allocator: std.mem.Allocator, program: relation.Program) !Plan {
             if (input_id >= index or ir.nodes[input_id].kind != .m31 or ir.nodes[input_id].length != 4)
                 return error.UnsupportedChipInput;
             // The current direct compiler records scalar endpoint addresses
-            // only for private inputs and earlier chip outputs. Arithmetic
+            // for four-lane input nodes and earlier chip outputs. Arithmetic
             // nodes have packed lanes but no `raw` scalar address array.
             // Admit those inputs only after a constrained unpacking path is
             // implemented and the value/topology maps are checked again.
@@ -280,4 +280,34 @@ test "source byte cap rejects before JSON parsing" {
     defer std.testing.allocator.free(too_large);
     @memset(too_large, 'x');
     try std.testing.expectError(error.ManyCallSourceTooLarge, extractSource(std.testing.allocator, too_large));
+}
+
+test "record ABI v2 mixed admission has one public input and one derived result" {
+    const a = std.testing.allocator;
+    var parsed = try relation.parseProgram(a, @embedFile("../examples/boundary/record_mixed1.s31.json"));
+    defer parsed.deinit();
+    const plan = try extract(a, parsed.value);
+    try std.testing.expectEqual(@as(usize, 1), plan.call_count);
+    try std.testing.expectEqual(@as(usize, 1), plan.public_output_count);
+
+    parsed.value.inputs[0].visibility = .private;
+    try std.testing.expectError(error.UnsupportedManyCallSource, extract(a, parsed.value));
+    parsed.value.inputs[0].visibility = .public;
+
+    const original_inputs = parsed.value.inputs;
+    var extra_inputs = [_]relation.Input{ original_inputs[0], original_inputs[0] };
+    parsed.value.inputs = &extra_inputs;
+    try std.testing.expectError(error.UnsupportedManyCallSource, extract(a, parsed.value));
+    parsed.value.inputs = original_inputs;
+
+    const original_outputs = parsed.value.public_outputs;
+    var extra_outputs = [_][]const u8{ original_outputs[0], original_outputs[0] };
+    parsed.value.public_outputs = &extra_outputs;
+    try std.testing.expectError(error.UnsupportedManyCallSource, extract(a, parsed.value));
+    parsed.value.public_outputs = original_outputs;
+
+    const original_abi = parsed.value.public_abi;
+    parsed.value.public_abi = null;
+    try std.testing.expectError(error.UnsupportedManyCallSource, extract(a, parsed.value));
+    parsed.value.public_abi = original_abi;
 }

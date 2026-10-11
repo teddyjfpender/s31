@@ -26,14 +26,24 @@ all eight public words into the transcript and the lookup closure.
 
 The [N1/N8 acceptance gate](../../../src/frontends/s31/tests/acceptance/mixed_boundary/record_general_v2.py)
 tests honest verification, a changed input word, a changed output word,
-malformed paths, duplicate statement version and a wrong assignment. Before
-release, wire this new Python gate into CI (the current workflow runs
-`source_pinned_general.py` but does not invoke `record_general_v2.py`). Extend
-it with cross-source and cross-count verifier replay, ABI digest mutation,
+malformed paths, duplicate statement version and a wrong assignment. At the
+reviewed commit, the workflow ran `source_pinned_general.py` but did not yet
+invoke `record_general_v2.py`. The reviewer recommended extending the gate
+with cross-source and cross-count verifier replay, ABI digest mutation,
 other word positions, proof corruption, direct-gate key mutation and mixed
 proof-header manifest mutation.
 The existing [general mixed review](INDEPENDENT_REVIEW_MIXED_GENERAL_DRAFT_2026-10-11.md)
 records engine-level soundness assumptions and proof limits.
+
+After this read-only review, S31 commit `41d022f` wired the v2 gate into
+CI. The expanded local gate now passes native N1/N8 proofs (69,488 and
+163,853 bytes). It rejects mutations of every public word and claimed-sum
+slot, the ABI digest and nominal record name, source/manifest/identity
+headers, proof tail, leaf order and path, same-count changed arithmetic
+source, cross-count replay, noncanonical M31 words and sums, truncated and
+trailing proof bytes, and wrong assignments. The expanded gate still needs
+CI on its final pushed revision. Direct-gate key mutation remains part of
+the separate paired-package admission gate.
 
 ## Minimum safe paired-cost admission
 

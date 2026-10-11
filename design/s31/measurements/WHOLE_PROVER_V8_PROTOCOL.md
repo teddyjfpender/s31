@@ -1,7 +1,8 @@
 # Prospective V8 whole-prover cost study
 
-Status: **baseline protocol frozen and externally timestamped before native
-training; training is in progress; no V8 accuracy result yet**.
+Status: **the frozen V8 fit gate failed before a model was produced; no V8
+accuracy result or held-out observation exists**. A separately versioned V8r1
+repair must be frozen before any new native data is collected.
 The machine-readable [prospective design](language/whole-prover-cost-v8-prospective.json)
 and its [static inventory generator](../../../src/frontends/s31/benchmarks/cost/v8_design.py)
 fix the workload menus, disjointness rule, uncertainty method, and gates. The
@@ -16,6 +17,16 @@ completed package or timed corpus, then training restarted from clean
 evidence paths as recorded in the runbook. The general mixed profile must be
 packaged as an equivalent generic/mixed pair before the paired comparison
 can be frozen or measured.
+
+The clean V8 training restart built all 23 packages and verified 100 proofs
+per program, with corpus SHA-256
+`6de6546243f81d80bf862d99f8acd191dd6fa828bb92d17b5fe6a25daa475d95`.
+The frozen fitter then rejected the program roster: its inherited V3 check
+read `signed_128_output`, while the V8 protocol used `signed_128_result` and
+the corpus correctly contained `signed_quotient_128`. It exited before model
+output. No held-out package was built. The V8 training data and failed gate
+remain preserved as diagnostic evidence; they are not an accuracy result and
+must not be silently reused by a repaired protocol.
 
 ## Why V8 is a new study
 
@@ -102,6 +113,13 @@ packages must be built from one committed semantic S31 source per pair, on
 the same compiler, engine, host, FRI settings and optimization mode. Different
 AIRs and proof profiles are recorded explicitly; neither verifier can borrow
 the other's source or component manifest.
+
+The current generic CLI verifies its freshly created proof inside the prover
+process before writing it; the general mixed CLI does not. Their raw prover
+process wall times therefore include different work. A paired speed claim
+requires aligned phase instrumentation or an explicitly matched self-check
+policy before freeze. Until then, any exploratory wall times must be labeled
+as those two different CLI behaviors and cannot establish a prover speedup.
 
 The prospective train call counts are 1, 2, 4, 6; the held-out counts are
 3, 5, 7, 8. Each pair uses 100 fresh assignments and public claims. Both

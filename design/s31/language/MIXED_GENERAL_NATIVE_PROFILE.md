@@ -1,7 +1,8 @@
 # Bounded general mixed native proof profile
 
-Status: **native local acceptance passed for N=1..8; CI and full soundness
-review remain open**. The fixed N=3 and N=4 profiles retain their
+Status: **v1 native local acceptance passed for N=1..8; v2 public record
+acceptance passed at N=1 and N=8; CI and full soundness review remain open**.
+The fixed N=3 and N=4 profiles retain their
 existing transcript tags and proof bytes. This profile extends their source
 derived pair/many composition to one through eight calls with its own
 transcript tag `0x5333314d49580301`, `V3` identity domains, and `S31MIX07`
@@ -9,9 +10,13 @@ proof envelope.
 
 ## Source and proof contract
 
-The current source shape has one four-lane M31 input, one to eight
-`square; add_const` repeat calls, and two four-lane public output leaves. The
-circuit exposes eight public M31 words and its internal public unit value;
+The version-1 source shape has one private four-lane M31 input, one to eight
+`square; add_const` repeat calls, and two four-lane public output leaves. A
+narrow version-2 shape instead has one **public record** input containing
+four M31 words and one derived public record result containing four M31
+words. The native verifier derives the canonical eight-word projection from
+the embedded v2 ABI descriptor and typed statement. Both shapes expose eight
+public M31 words and the circuit's internal public unit value;
 the latter makes the native output array nine values. The source inspector
 rebuilds the call order, rounds, constants, input and output addresses, the
 fixed root and the live selected geometry. The generated typed registry
@@ -51,6 +56,9 @@ eight call counts, and the black-box CLI suite passed each call count with
 source binding, malformed-statement, wrong-assignment and changed-claim
 controls. That suite independently recomputed the generated manifest digest
 from its JSON fields. The legacy N=3 and N=4 native suites also passed.
+The version-2 public record slice has separate local native proof and
+mutation acceptance at N=1 and N=8. Intermediate v2 call counts share the
+bounded profile but have not been separately exercised by that focused gate.
 
 These are **local** results. The dedicated CI job must still pass on the
 pinned revision before release admission. The independent static review
