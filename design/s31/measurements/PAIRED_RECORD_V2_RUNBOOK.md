@@ -1,17 +1,16 @@
 # Paired public-record v2 direct-gate versus mixed-general study
 
-Status: **corrected protocol anchored; external timestamp and timed corpus
-pending**. The protocol SHA-256 is
+Status: **anchored study complete**. The [result](PAIRED_RECORD_V2_RESULT.md)
+reports native-audited train and held-out measurements. The protocol SHA-256 is
 `c1177e83d3e0fb7f37fc232601cc3d20ea6ebe06eda229bee34950968d4cd302`,
 and its anchor commit is `6091a0773a02e9445946402df0435ab38e1f06a9`.
-There is no paired native timing result.
 Untimed generic N=1 and mixed N=1/N=8 admission controls passed. The first
 unanchored protocol candidate (`2d5914a8f8f6436b9fca57515e42cae0979b235a`)
 was withdrawn after review found missing train and report gates. Its successor
 (`5797738098e828390399e4bd2bfde89a73cc64c3`) was withdrawn when review
-found incomplete disk mount and cache override coverage. A corrected protocol
-requires a new source/tool digest,
-review, and external timestamp before any timed build. This study is separate
+found incomplete disk mount and cache override coverage. The corrected protocol
+received a new source/tool digest, independent review, and an external
+timestamp before the first timed build. This study is separate
 from the V8r1 ordinary whole-prover baseline. Automatic lowering remains
 disabled regardless of this study's eventual result.
 

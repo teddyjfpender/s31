@@ -10,11 +10,12 @@ ledgers and requires a separately timestamped phase root before audit or
 summary. `test_static.py`
 checks inventory uniqueness, balanced order and mutation rejection.
 
-Status: **anchored protocol; no timed paired result or speed claim**. The
+Status: **anchored and audited paired study complete**. The
 corrected prospective protocol SHA-256 is
 `c1177e83d3e0fb7f37fc232601cc3d20ea6ebe06eda229bee34950968d4cd302`
 and its anchor commit is `6091a0773a02e9445946402df0435ab38e1f06a9`.
-The independent external timestamp and exclusive timing handoff are still
-pending. Untimed generic N=1 and mixed N=1/N=8 native admission controls
-passed; those proofs are not part of a paired timing corpus. Automatic
-lowering remains disabled.
+The [result](../../../../../design/s31/measurements/PAIRED_RECORD_V2_RESULT.md)
+finds no whole-workflow speedup for mixed on this pinned relation family.
+Untimed generic N=1 and mixed N=1/N=8 native admission controls passed; those
+proofs are separate from the paired timing corpus. Automatic lowering remains
+disabled.
