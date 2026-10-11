@@ -192,23 +192,24 @@ source-projected fixed-cell plan and an ideal exact Gate multiset join for
 **live source rows**. Its conclusion fixes the selected native packed wire to
 the source denotation for every input. Every instruction's positive
 `sourceUses` is an explicit premise; accepted source does not guarantee it.
-`Functional/SSADeadRowGateJoin` is a draft refinement for accepted programs
-with zero-use instructions: it joins physical installed-bytecode rows to the
+`Functional/SSADeadRowGateJoin` extends this refinement to accepted programs
+with zero-use instructions. It joins physical installed-bytecode rows to the
 coherent Gate map only when their source-derived output multiplicity is
 positive. Its SSA induction carries only used wire values, so a dead result
-needs no Gate yield. `SSADeadRowMixedReturn` applies that conditional theorem
-to the generated early-return source and checks its selected-use and
-dependency premises by finite computation. This draft still requires Lean
-kernel validation; its physical rows, exact balance, unique producer values,
-fixed events, and public pin events remain explicit assumptions.
-Physical row identification and local AIR acceptance, exact balance, unique
-producers and the packed public input yield remain additional premises. The
-generated square fixture checks its own liveness and fixed cells before
-applying the theorem with those physical premises. The early-return fixture
-checks byte/IR admission and proves its unused final row has zero
-`sourceUses`; dead-code liveness in the physical Gate refinement remains an
-open obligation. This does not prove that the installed verifier authenticates
-the physical premises.
+needs no Gate yield. `SSAAirColumnCells` proves generically that every operand
+read has positive `sourceUses` and the selected output has four public-mask
+uses; the dead-row join derives both facts rather than taking them as premises.
+`SSADeadRowMixedReturn` applies the conditional theorem to the generated
+early-return source, checks byte/IR admission, and proves its unused final
+row has zero `sourceUses`. Physical row identification and local AIR roots,
+exact Gate balance, unique producers, fixed events, and public pins remain
+explicit premises. The installed verifier's authentication of those premises
+is not established here.
+
+The all-row `SSACanonicalGateChain` still requires every instruction's positive
+`sourceUses` as an explicit premise. Its generated square fixture checks that
+liveness condition and its fixed cells before applying the theorem with its
+physical and exact-Gate premises.
 `Functional/SSAAirColumnCells` projects the eight native preprocessed cells
 at each source gate's grouped AIR row and computes the expected selector,
 addresses, and use count from the parsed SSA. The generated shared-square
