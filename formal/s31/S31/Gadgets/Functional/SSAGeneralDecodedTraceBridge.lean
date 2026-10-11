@@ -39,6 +39,101 @@ open S31.Functional.SSAInstalledBytecodeGateJoin
 open S31.Functional.SSAInstalledBytecodePublicOutput
 open S31.Functional.SSADeadRowGateJoin
 
+private def finishLet (state : State) (name left : Token)
+    (multiply : Bool) (rest : List Token) : Option State := do
+  let (right, rest) ← takeName rest
+  let rest ← expect (token ";") rest
+  let lhs ← findName left state.names
+  let rhs ← findName right state.names
+  if lhs > rhs then none else
+  let expression := (multiply, lhs, rhs)
+  if state.expressions.contains expression then none else
+  let instruction : Instruction :=
+    { id := state.names.length, lhs, rhs, multiply }
+  return {
+    remaining := rest,
+    names := state.names ++ [name],
+    expressions := state.expressions ++ [expression],
+    instructions := state.instructions ++ [instruction] }
+
+private theorem finishLet_instructions_length (state next : State)
+    (name left : Token) (multiply : Bool) (rest : List Token)
+    (hfinish : finishLet state name left multiply rest = some next) :
+    next.instructions.length = state.instructions.length + 1 := by
+  simp [finishLet, bind, Option.bind_eq_some_iff] at hfinish
+  aesop
+
+/-- Each accepted `let` appends exactly one positional SSA instruction. -/
+theorem parseLet_instructions_length (state next : State)
+    (hparse : parseLet state = some next) :
+    next.instructions.length = state.instructions.length + 1 := by
+  simp [parseLet, bind, Option.bind_eq_some_iff] at hparse
+  rcases hparse with ⟨_, _, name, _, _, _, _, _, left, operations, _, htail⟩
+  cases operations with
+  | nil => simp at htail
+  | cons operation tail =>
+      by_cases hadd : operation = token "+"
+      · simp [hadd] at htail
+        apply finishLet_instructions_length state next name left false tail
+        simpa [finishLet, bind] using htail
+      · by_cases hmul : operation = token ".*"
+        · simp [hmul, token] at htail
+          apply finishLet_instructions_length state next name left true tail
+          simpa [finishLet, bind] using htail
+        · simp [hadd, hmul] at htail
+
+/-- Successful fuel-bounded parsing cannot append more instructions than its
+fuel, regardless of the token stream or initial parser state. -/
+theorem parseLetsFuel_instruction_bound (fuel : Nat) (state next : State)
+    (hparse : parseLetsFuel fuel state = some next) :
+    next.instructions.length ≤ state.instructions.length + fuel := by
+  induction fuel generalizing state with
+  | zero =>
+      simp [parseLetsFuel] at hparse
+      rcases hparse with ⟨_, rfl⟩
+      simp
+  | succ fuel ih =>
+      simp only [parseLetsFuel] at hparse
+      split at hparse
+      · obtain ⟨middle, hstep, hrest⟩ :=
+          Option.bind_eq_some_iff.mp hparse
+        have hlen := parseLet_instructions_length state middle hstep
+        have hbound := ih middle hrest
+        omega
+      · simp_all
+
+/-- Admission of source bytes carries the parser's actual 16-instruction
+budget. This does not assume an independently supplied certificate bound. -/
+theorem parseBytes_instruction_bound (bytes : List Nat) (parsed : Parsed)
+    (hparse : parseBytes bytes = some parsed) :
+    parsed.certificate.instructions.length ≤ 16 := by
+  simp [parseBytes, Option.bind] at hparse
+  repeat (split at hparse <;> simp_all)
+  obtain ⟨_, _, _, _, _, hparsed⟩ := hparse
+  subst parsed
+  have hbudget := parseLetsFuel_instruction_bound 16 _ _ (by assumption)
+  simpa using hbudget
+
+/-- The exact source/normalized-byte relation inherits the 16-instruction
+limit from the successful source parser, rather than from a free premise. -/
+theorem checked_relation_instruction_bound
+    (sourceBytes normalizedBytes : List Nat) (certificate : Certificate)
+    (hrelation : checkRelation sourceBytes normalizedBytes = some certificate) :
+    certificate.instructions.length ≤ 16 := by
+  unfold checkRelation at hrelation
+  cases hsource : parseBytes sourceBytes with
+  | none => simp [hsource] at hrelation
+  | some parsed =>
+      cases hencoded : encodeNormalized parsed with
+      | none => simp [hsource, hencoded] at hrelation
+      | some expected =>
+          by_cases hmatch : expected = normalizedBytes
+          · have hcertificate : parsed.certificate = certificate := by
+              simpa [hsource, hencoded, hmatch] using hrelation
+            subst certificate
+            exact parseBytes_instruction_bound sourceBytes parsed hsource
+          · simp [hsource, hencoded, hmatch] at hrelation
+
 def nativeRows {logSize : Nat} (trace : Trace logSize) : List Row :=
   List.ofFn (row trace)
 
@@ -344,6 +439,24 @@ theorem source_plan_expected (certificate : Certificate)
   · exact hshape.2.2.2.1
   · exact hshape.2.2.2.2
   · rfl
+
+/-- A successful exact byte relation supplies both a complete modeled
+source-cell plan and distinct modeled source row positions. The statement
+does not identify those positions with native emitted or committed rows. -/
+theorem checked_relation_modeled_source_schedule
+    (sourceBytes normalizedBytes : List Nat) (certificate : Certificate)
+    (totalAddRows : Nat)
+    (hrelation : checkRelation sourceBytes normalizedBytes = some certificate) :
+    SourcePlan certificate (expectedCells certificate totalAddRows) ∧
+    ((expectedRows certificate totalAddRows).map
+      NativeSourceRow.traceRow).Nodup ∧
+    ((expectedCells certificate totalAddRows).map ColumnCell.traceRow).Nodup := by
+  have hbudget := checked_relation_instruction_bound sourceBytes
+    normalizedBytes certificate hrelation
+  refine ⟨source_plan_expected certificate totalAddRows,
+    expected_rows_trace_rows_nodup_of_budget certificate totalAddRows hbudget,
+    expected_cells_trace_rows_nodup certificate totalAddRows ?_⟩
+  omega
 
 /-- Output masks, inverse-basis products, and public copies each yield once
 by construction, independently of the source program's instruction count. -/

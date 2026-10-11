@@ -176,10 +176,13 @@ preserves every instruction's ordered opcode, circuit position and addresses;
 its projected cells carry the matching add/pointwise-multiply selectors.
 Modeled source trace rows are pairwise distinct under the explicit gap
 `3 + instruction_count ≤ totalAddRows + 28`. A separate corollary derives
-this gap from an assumed `instruction_count ≤ 16`. The parser uses a 16-step
-fuel limit, but this formal bridge does not yet derive the budget from byte
-admission. It also does not prove that the native emitter or committed columns
-match the modeled schedule.
+this gap from `instruction_count ≤ 16`. The same Lean bridge now proves that
+each successful `parseLet` appends exactly one instruction, that successful
+`parseLetsFuel 16` cannot append more than 16, and that successful `parseBytes`
+and `checkRelation` admission inherit this bound. Therefore the admitted
+certificate has distinct modeled source-row positions and projected source
+cell positions without an extra budget assumption. These theorems do not
+prove that the native emitter or committed columns match the modeled schedule.
 `Functional/SSATextBytes` independently
 parses the embedded bytes for the restricted ASCII four-lane add/mul grammar,
 reconstructs its SSA meaning, and proves normalized execution agrees with

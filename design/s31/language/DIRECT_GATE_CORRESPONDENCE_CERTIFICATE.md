@@ -344,10 +344,14 @@ AIR selectors, and the existence of a matching cell for each source
 instruction. It also proves that source trace-row indices are pairwise
 distinct when `3 + instruction_count ≤ totalAddRows + 28`; an assumed
 `instruction_count ≤ 16` suffices for this inequality at any nonnegative
-`totalAddRows`. The Lean bridge has not yet derived that budget
-from `parseBytes` success. These are facts about the modeled schedule and do
-not independently establish that native emitted trace positions or opcodes
-agree with it; exact
+`totalAddRows`. The Lean bridge derives this budget from successful
+`parseBytes` parsing: each successful `parseLet` appends exactly one
+instruction and the parser admits at most 16 such steps. Its
+`checked_relation_modeled_source_schedule` theorem combines exact
+source/normalized-byte admission, the modeled source-cell plan, and distinct
+modeled source row and projected-cell positions. These are facts about the
+modeled schedule and do not independently establish that native emitted trace
+positions or opcodes agree with it; exact
 `fixedMatches` against the decoded trace is a separate premise. It proves all output
 boundary cells have positive multiplicity and derives positive input-cell
 multiplicity from the admitted source's required first instruction. Given exact
