@@ -1,0 +1,50 @@
+{
+  "acceptance_script_sha256": "898c027b5b575708bf943ad602725440b975304dbd1fd1727581bb967c0da8f6",
+  "baseline_engine_checkout": {
+    "mode": "detached sparse Git worktree at exact engine gitlink",
+    "paths": [
+      "src",
+      "build_support",
+      "third_party",
+      "vectors/circuit/official"
+    ],
+    "status": "clean"
+  },
+  "baseline_s31_commit": "96a95c6cbe266fd54f6a3ab57c7c314ea013a709",
+  "build_flags": [
+    "-Doptimize=ReleaseFast",
+    "-Ds31-version=1",
+    "-Ds31-lowering=direct-mixed-general",
+    "-Ds31-name=general",
+    "-j1"
+  ],
+  "candidate_engine_checkout": {
+    "mode": "initialized submodule at exact engine gitlink",
+    "status": "clean"
+  },
+  "candidate_s31_commit": "6ab79173fee0945c32168a616e365841fc03d84b",
+  "date_utc": "2026-10-11",
+  "engine_gitlink_commit": "7d544c6839497ca19b6c7ef9b982e464f10cfeed",
+  "gate_script_sha256": "c95f28f6b9628556735a976350124c084dae71e4e8937861978677bf9e496286",
+  "profiles_equal": true,
+  "proof_byte_gate": "old-family proof bytes unchanged for all eight call counts",
+  "receipts": {
+    "baseline-first.json": "34aa0d5041b91fc3b7c688baa56e1186ebb8d01e3125aedd4b89bf0064fa8c99",
+    "baseline-repeat.json": "34aa0d5041b91fc3b7c688baa56e1186ebb8d01e3125aedd4b89bf0064fa8c99",
+    "candidate.json": "34aa0d5041b91fc3b7c688baa56e1186ebb8d01e3125aedd4b89bf0064fa8c99"
+  },
+  "result": "pass",
+  "schema": "s31-old-family-proof-byte-gate-v1",
+  "stderr_bytes": {
+    "baseline-first": 0,
+    "baseline-repeat": 0,
+    "candidate": 0
+  },
+  "toolchain": {
+    "machine": "arm64",
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "zig_binary_sha256": "5c57faf6de2baa001be8cc3084d32ded7daf5a227ede514ca7f1161515aafa76",
+    "zig_path": "/opt/homebrew/bin/zig",
+    "zig_version": "0.15.2"
+  }
+}
