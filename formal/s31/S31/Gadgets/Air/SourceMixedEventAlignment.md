@@ -29,5 +29,7 @@ authenticate those rows.
 
 The public result also needs the separate `LocalPublicSchedule` premises:
 address selection, unique producers, packed input/final state memberships,
-and output unpack/copy paths. Merely comparing a sidecar assignment with
+and output unpack/copy paths. Its chip transition equation follows from the
+projected row tuples, chip AIR arithmetic, and a fixed-constant binding in
+`SourceMixedChipRowProjection.lean`. Merely comparing a sidecar assignment with
 `relation.evaluate` does not prove those circuit paths.

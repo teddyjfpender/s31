@@ -721,7 +721,7 @@ sampling are still separate obligations.
 [`SourceMixedAuthenticatedTrace.lean`](SourceMixedAuthenticatedTrace.md)
 packages all 512 Gate arithmetic and interaction rows, chip arithmetic/
 interaction, and bridge residual
-premises with exact source event-list alignment and the native claim fold.
+premises with source event-list permutations and the native claim fold.
 It derives the ideal
 reciprocal closure consumed by the false-word theorem and hence exceptional
 pair membership for a false public word. The contract is not derived from
@@ -735,6 +735,10 @@ leaves row selection, producer uniqueness, and proof authentication explicit.
 permutations to account for native grouping of bridge Gate reads and chip
 endpoints. It derives the two global alignments from source circuit lists
 and per-call component projections; exact list order would be too strong.
+[`SourceMixedChipRowProjection.lean`](SourceMixedScheduledPublicPath.md)
+turns those ordered chip input/output tuple projections and the chip AIR
+arithmetic into the native-row `x²+c` transition equation. Its fixed-constant
+binding remains an explicit compiler/verifier premise.
 `TaggedPairChallenge.lean` supplies the ideal seven-coordinate challenge
 reduction for the **joint** Gate/chip event support. It proves that distinct
 seven-word tuples collide for at most six compression challenges, derives an

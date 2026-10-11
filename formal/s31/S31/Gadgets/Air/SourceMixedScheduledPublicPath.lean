@@ -1,4 +1,4 @@
-import S31.Gadgets.Air.SourceMixedAuthenticatedTrace
+import S31.Gadgets.Air.SourceMixedChipRowProjection
 
 /-!
 The public-path contract can select source rows by their fixed addresses,
@@ -20,6 +20,8 @@ open S31.Gadgets.Air.SourceMixedChainSemantics
 open S31.Gadgets.Air.SourceMixedPublicClosure
 open S31.Gadgets.Air.SourceMixedFalseClaimBound
 open S31.Gadgets.Air.SourceMixedAuthenticatedTrace
+open S31.Gadgets.Air.SourceMixedEventAlignment
+open S31.Gadgets.Air.SourceMixedChipRowProjection
 open S31.Gadgets.Air.IndexedManyTaggedTupleBridge
 
 /-- The same source-owned unpack/copy schedule as `OutputPath`, with row
@@ -55,9 +57,9 @@ theorem scheduled_output_path_accepted {N : Nat}
     exact ⟨hinverse.1,
       trace.scheduled_row_accepted _ _ _ _ hinverse.2⟩
 
-/-- Source/public correspondence data with no selected-row AIR premise.
-The global Gate AIR contract supplies those residuals when converting to
-`LocalPublicPath`. -/
+/-- Source/public correspondence data with no selected-row Gate AIR premise
+and no independent chip-step premise. Gate arithmetic comes from the all-row
+trace, and the chip step comes from event projection plus chip AIR. -/
 structure LocalPublicSchedule {N : Nat} (hN : N ≤ 8)
     (hpositive : 0 < N) (boundary : Boundary N)
     (rows : ∀ call, Fin (boundary.rounds call) → NativeRow)
@@ -67,8 +69,6 @@ structure LocalPublicSchedule {N : Nat} (hN : N ≤ 8)
   unique : uniqueProduced (produced boundary)
   first : boundary.start ⟨0, hpositive⟩ = initial
   constants : ∀ call, boundary.constants call = (13 + call.val : F)
-  step : ∀ call row,
-    (rows call row).output = boundary.step call (rows call row).input
   packedInitial : ValueAt boundary 22 (packState initial)
   packedFinal : ValueAt boundary (22 + 10 * N)
     (packState (boundary.finish ⟨N - 1, by omega⟩))
@@ -85,14 +85,19 @@ theorem LocalPublicSchedule.toLocalPublicPath {N : Nat}
     {rows : ∀ call, Fin (boundary.rounds call) → NativeRow}
     {initial : State} {alpha z : GateSecure}
     (schedule : LocalPublicSchedule hN hpositive boundary rows initial)
-    (trace : AuthenticatedMixedTrace boundary rows alpha z) :
+    (trace : AuthenticatedMixedTrace boundary rows alpha z)
+    (projection : EventProjection boundary rows alpha z trace.gate
+      trace.chip trace.bridge trace.publicWords)
+    (hconstant : ∀ call,
+      (trace.chip call).constant = boundary.constants call) :
     LocalPublicPath hN hpositive boundary rows initial := by
   exact {
     addresses := schedule.addresses
     unique := schedule.unique
     first := schedule.first
     constants := schedule.constants
-    step := schedule.step
+    step := SourceMixedChipRowProjection.EventProjection.chip_step
+      projection hconstant
     packedInitial := schedule.packedInitial
     packedFinal := schedule.packedFinal
     zero := schedule.zero
@@ -104,8 +109,8 @@ theorem LocalPublicSchedule.toLocalPublicPath {N : Nat}
   }
 
 /-- A false public word in a source-shaped, all-row-AIR checked trace can
-close only at an exceptional challenge pair. Unlike the earlier path theorem,
-the local schedule carries no independent arithmetic AIR assumptions. -/
+close only at an exceptional challenge pair. The local schedule carries
+neither selected Gate AIR facts nor chip transition equations independently. -/
 theorem false_word_trace_from_schedule_is_exceptional {N : Nat}
     (hN : N ≤ 8) (hpositive : 0 < N)
     (boundary : Boundary N)
@@ -116,14 +121,19 @@ theorem false_word_trace_from_schedule_is_exceptional {N : Nat}
     (product : Bool) (lane : Fin 4)
     (hfalse : FalsePublicWord boundary initial product lane)
     (alpha z : GateSecure)
-    (trace : AuthenticatedMixedTrace boundary rows alpha z) :
+    (trace : AuthenticatedMixedTrace boundary rows alpha z)
+    (projection : EventProjection boundary rows alpha z trace.gate
+      trace.chip trace.bridge trace.publicWords)
+    (hconstant : ∀ call,
+      (trace.chip call).constant = boundary.constants call) :
     (alpha, z) ∈ TaggedPairConditionalCorrespondence.imbalancePairs7
       (boundary.jointGateSource.circuitUses ++
         jointUses rows boundary.finish)
       (boundary.jointGateSource.circuitYields ++
         jointYields rows boundary.start) := by
   exact false_word_trace_is_exceptional hN hpositive boundary rows initial
-    hshape (schedule.toLocalPublicPath trace) product lane hfalse
+    hshape (schedule.toLocalPublicPath trace projection hconstant)
+    product lane hfalse
     alpha z trace
 
 end S31.Gadgets.Air.SourceMixedScheduledPublicPath
