@@ -1,7 +1,7 @@
 # V8 baseline whole-prover runbook
 
-Status: **protocol frozen and externally timestamped; training paused before
-any completed native V8 observation**.
+Status: **protocol frozen and externally timestamped; training restarted after
+two disclosed build-phase interruptions**.
 The [prospective design](WHOLE_PROVER_V8_PROTOCOL.md) discloses V7r1's failed
 RSS coverage, the training-only V8 interval rule, fresh split menus, and the
 conditional authenticated mixed comparison. The commands here run only the
@@ -36,6 +36,21 @@ excluded from every model and timing claim; no V8 protocol or tool source was
 changed. It may have warmed the global Zig compiler cache. Subsequent package
 build times therefore describe **fresh package paths under the observed
 cache state**, not cold-cache builds.
+
+An exclusive-slot training build then completed 13 of 23 package builds. At
+approximately 2026-10-11 05:37:10–05:37:31 UTC, an unrelated
+`python3 scripts/s31_formal.py` static binding/inventory check ran for about
+12 seconds and overlapped the `hash_2` package build. It failed a stale
+binding check; it did not start a Zig or Lean build or a proof. Before
+inspecting any package timing or model result, we chose a non-selective
+policy: SIGINT the entire training build (collector exit 130), quarantine
+all 13 completed packages plus the partial `hash_3` package under
+`zig-out/s31-v8-quarantined-static-overlap-train`, and restart **all 23**
+packages at the now-empty canonical evidence path. There was no training
+proof, corpus, model, or held-out native observation from this interrupted
+run. Quarantined package timing records are excluded from every V8 model and
+accuracy claim. The fresh restart still measures package builds under the
+observed global cache state; it is not a cold-cache benchmark.
 
 ## Prepare and freeze
 
