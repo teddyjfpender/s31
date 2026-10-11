@@ -44,6 +44,67 @@ def sourceUses (certificate : Certificate) (id : Nat) : Nat :=
         (if instruction.rhs == id then 1 else 0)) 0 +
     (if certificate.output == id then 4 else 0)
 
+private theorem source_read_fold_ge (instructions : List Instruction)
+    (id start : Nat) :
+    start ≤ instructions.foldl
+      (fun count instruction =>
+        count + (if instruction.lhs == id then 1 else 0) +
+          (if instruction.rhs == id then 1 else 0)) start := by
+  induction instructions generalizing start with
+  | nil => simp
+  | cons instruction rest ih =>
+      simp only [List.foldl_cons]
+      have hstep : start ≤
+          start + (if instruction.lhs == id then 1 else 0) +
+            (if instruction.rhs == id then 1 else 0) := by omega
+      exact hstep.trans (ih _)
+
+private theorem source_read_fold_pos_of_operand
+    (instructions : List Instruction) (id start : Nat)
+    (selected : Instruction) (hmember : selected ∈ instructions)
+    (hoperand : selected.lhs = id ∨ selected.rhs = id) :
+    0 < instructions.foldl
+      (fun count instruction =>
+        count + (if instruction.lhs == id then 1 else 0) +
+          (if instruction.rhs == id then 1 else 0)) start := by
+  induction instructions generalizing start with
+  | nil => simp at hmember
+  | cons instruction rest ih =>
+      simp only [List.foldl_cons]
+      rcases List.mem_cons.mp hmember with heq | htail
+      · subst instruction
+        have hstep : 0 <
+            start + (if selected.lhs == id then 1 else 0) +
+              (if selected.rhs == id then 1 else 0) := by
+          rcases hoperand with hleft | hright
+          · simp [hleft]
+          · simp [hright]
+        exact lt_of_lt_of_le hstep (source_read_fold_ge rest id _)
+      · exact ih _ htail
+
+/-- Every physical operand read contributes at least one to its producer's
+source-derived Gate multiplicity. This needs only list membership, not a
+well-formedness assumption about the instruction result. -/
+theorem sourceUses_operand_pos (certificate : Certificate)
+    (instruction : Instruction) (hmember : instruction ∈ certificate.instructions) :
+    0 < sourceUses certificate instruction.lhs ∧
+      0 < sourceUses certificate instruction.rhs := by
+  constructor
+  · have hread := source_read_fold_pos_of_operand certificate.instructions
+      instruction.lhs 0 instruction hmember (Or.inl rfl)
+    simp only [sourceUses]
+    omega
+  · have hread := source_read_fold_pos_of_operand certificate.instructions
+      instruction.rhs 0 instruction hmember (Or.inr rfl)
+    simp only [sourceUses]
+    omega
+
+/-- The four public output-mask reads make the selected SSA output used even
+when no later source instruction reads it. -/
+theorem sourceUses_selected_pos (certificate : Certificate) :
+    0 < sourceUses certificate certificate.output := by
+  simp [sourceUses]
+
 def expectedCell (certificate : Certificate) (instruction : Instruction)
     (row : NativeSourceRow) : ColumnCell :=
   { traceRow := row.traceRow,

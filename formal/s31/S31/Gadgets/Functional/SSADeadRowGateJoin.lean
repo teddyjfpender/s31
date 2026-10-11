@@ -8,10 +8,9 @@ once, so it does not cover those accepted programs.
 
 This module joins only source rows with positive `sourceUses` to the unique
 Gate producer map. All source rows still have physical installed-bytecode
-roots in the premise, including zero-multiplicity rows. A finite dependency
-closure premise says that a used instruction's operands are also used; the
-selected output must be used. Both properties are decidable on a checked
-certificate and are intended to be proved for the bounded source grammar.
+roots in the premise, including zero-multiplicity rows. Source-use counting
+itself makes every instruction operand positive, while four public-mask reads
+make the selected output positive.
 The proof remains conditional on ideal exact Gate balance, fixed cells,
 physical rows, public pins, and unique producer values. It does not derive
 those premises from native proof verification.
@@ -37,14 +36,18 @@ open S31.Functional.SSAInstalledBytecodeGateJoin
 open S31.Functional.SSAInstalledBytecodePublicOutput
 open S31.Functional.SSAInstalledBytecodePublicInput
 
-/-- Every instruction whose result can enter the selected computation has a
-positive source-derived use count. This premise is deliberately stated in
-terms of `sourceUses`, the exact exported multiplicity formula. -/
+/-- A dependency property stated in terms of `sourceUses`, the exact exported
+multiplicity formula. It follows for every certificate from operand counting. -/
 def usedDependencies (certificate : Certificate) : Prop :=
   ∀ instruction ∈ certificate.instructions,
     0 < sourceUses certificate instruction.id →
       0 < sourceUses certificate instruction.lhs ∧
         0 < sourceUses certificate instruction.rhs
+
+theorem usedDependencies_of_sourceUses (certificate : Certificate) :
+    usedDependencies certificate := by
+  intro instruction hmember _
+  exact sourceUses_operand_pos certificate instruction hmember
 
 /-- Only values that are used later or publicly selected need a producer-map
 entry. A zero-use SSA result may have a locally accepted physical row without
@@ -162,8 +165,8 @@ private theorem used_rows_refine_execution (certificate : Certificate)
                     htailSubset htail hrun
 
 /-- Local arithmetic acceptance only for positive-use source results is
-enough to determine the source-selected value. The closure and selected-use
-premises will ultimately be discharged from the bounded source-use formula. -/
+enough to determine the source-selected value. The exported join discharges
+the closure and selected-use premises from the source-use formula. -/
 theorem selected_wire_matches_used_rows (certificate : Certificate)
     (wire : Nat → Quad) (input output : Lanes)
     (hinput : wire (address 0) = packM31 input)
@@ -279,8 +282,6 @@ theorem checked_source_output_of_used_gate
     (hrelation : checkRelation sourceBytes normalizedBytes = some certificate)
     (hcells : observedCells = expectedCells certificate totalAddRows)
     (hphysical : sourceGateBytecodeRowsAllowDead certificate observedCells rows)
-    (hdependencies : usedDependencies certificate)
-    (hselected : 0 < sourceUses certificate certificate.output)
     (hbalance : balanced rows externalUses externalYields)
     (hunique : uniqueProduced (allYields rows externalYields))
     (hinputYield : (address 0, packM31 input) ∈
@@ -310,7 +311,8 @@ theorem checked_source_output_of_used_gate
     exact hdenotation
   exact ⟨hcells, output, hdenotation,
     selected_wire_matches_used_rows certificate wire input output hinput
-      hdependencies hselected hrows hexecute⟩
+      (usedDependencies_of_sourceUses certificate)
+      (sourceUses_selected_pos certificate) hrows hexecute⟩
 
 /-- Public input packing and public output unpacking close the selected claim
 without requiring any zero-use source result to produce a Gate event. Fixed
@@ -325,8 +327,6 @@ theorem bytecode_exact_gate_public_io_allow_dead_sound
     (hrelation : checkRelation sourceBytes normalizedBytes = some certificate)
     (hsourceCells : sourceCells = expectedCells certificate totalAddRows)
     (hsourceRows : sourceGateBytecodeRowsAllowDead certificate sourceCells rows)
-    (hdependencies : usedDependencies certificate)
-    (hselected : 0 < sourceUses certificate certificate.output)
     (hinputCells : inputCells = expectedInputCells certificate totalAddRows)
     (hinputRows : physicalGateBytecodeRows inputCells rows)
     (houtputCells : outputCells = expectedOutputCells certificate totalAddRows)
@@ -355,8 +355,8 @@ theorem bytecode_exact_gate_public_io_allow_dead_sound
   obtain ⟨_, output, hsource, hselectedValue⟩ :=
     checked_source_output_of_used_gate sourceBytes normalizedBytes
       certificate totalAddRows sourceCells input rows externalUses
-      externalYields hrelation hsourceCells hsourceRows hdependencies
-      hselected hbalance hunique hinputYield
+      externalYields hrelation hsourceCells hsourceRows hbalance hunique
+      hinputYield
   have houtputBoundary := output_boundary_of_exact_gate certificate
     totalAddRows outputCells claimed rows externalUses externalYields
     houtputCells houtputRows hbalance hunique hzero hmaskBasis

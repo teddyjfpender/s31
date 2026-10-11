@@ -25,14 +25,12 @@ open S31.Functional.SSAInstalledBytecodePublicOutput
 open S31.Functional.SSADeadRowGateJoin
 open S31.Functional.GeneratedDirectGateMixedReturn
 
-theorem generated_used_dependencies : usedDependencies certificate := by
-  intro instruction hmem
-  simp [certificate] at hmem
-  rcases hmem with rfl | rfl | rfl
-  all_goals decide
+theorem generated_used_dependencies : usedDependencies certificate :=
+  usedDependencies_of_sourceUses certificate
 
 theorem generated_selected_use :
-    0 < sourceUses certificate certificate.output := by decide
+    0 < sourceUses certificate certificate.output :=
+  sourceUses_selected_pos certificate
 
 theorem generated_dead_final_row : sourceUses certificate 3 = 0 :=
   unused_source_row_detected
@@ -65,7 +63,6 @@ theorem early_return_public_io_sound (input claimed : Lanes)
     observedColumnCells observedInputCells observedOutputCells
     input claimed rows externalUses externalYields
     normalized_bytes_check observed_source_columns_match hsourceRows
-    generated_used_dependencies generated_selected_use
     observed_input_cells_match hinputRows
     observed_output_cells_match houtputRows hbalance hunique
     hzero hbasis1 hbasis2 hbasis3 hmaskBasis hinverseBasis
