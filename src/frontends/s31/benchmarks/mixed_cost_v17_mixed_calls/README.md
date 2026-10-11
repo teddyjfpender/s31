@@ -20,3 +20,5 @@ python3 src/frontends/s31/benchmarks/mixed_cost_v17_mixed_calls/audit.py --out /
 ```
 
 An admission or scored-gate failure is retained unchanged. The independent audit checks saved sources, claims, binaries, proof hashes, native geometry/reports, physical timing order, score arithmetic, and honest and changed-result verifier controls.
+
+The fixed `design/s31/measurements/language/mixed-cost-v17-mixed-calls-attempt.jsonl` marker is atomically created and synced before the first build. It blocks every second invocation, including a different `--out` after a failed pre-output attempt. The runner and audit reject any trial whose reported PoW is at least its measured verified-process wall; the non-PoW residual must be strictly positive before a relative error is computed.

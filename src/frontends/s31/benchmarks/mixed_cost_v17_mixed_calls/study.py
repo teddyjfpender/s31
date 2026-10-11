@@ -23,6 +23,7 @@ v2, v3 = p.v2, p.v3
 ROOT, S31 = p.ROOT, p.S31
 RESULT = p.LANGUAGE / "mixed-cost-v17-mixed-calls-result.json"
 SCORE = p.LANGUAGE / "mixed-cost-v17-mixed-calls-score.json"
+ATTEMPT = p.LANGUAGE / "mixed-cost-v17-mixed-calls-attempt.jsonl"
 
 
 def check_manifest(manifest: dict, expected: dict) -> None:
@@ -100,6 +101,11 @@ def score_record(record: dict, expected: dict, gates: dict) -> dict:
     scored = [row for row in trials if row["claim_index"] > 0]
     if len(scored) != p.CLAIMS:
         raise ValueError("wrong scored count")
+    residuals = [row["first_verified_process_wall_ns"] -
+                 row["native_phases_ns"]["fri_pow_ns"] -
+                 row["native_phases_ns"]["interaction_pow_ns"] for row in scored]
+    if any(value <= 0 for value in residuals):
+        raise ValueError("reported PoW must be less than measured verified process wall")
     prediction = expected["prediction"]
     wall = [row["first_verified_process_wall_ns"] for row in scored]
     proof = [row["proof_bytes"] for row in scored]
@@ -140,10 +146,7 @@ def score_record(record: dict, expected: dict, gates: dict) -> dict:
         "external_verifier_peak_rss_median_bytes": verifier_rss,
         "prover_rss_median_relative_error": abs(prover_rss - prover_rss_prediction) / prover_rss,
         "verifier_rss_median_relative_error": abs(verifier_rss - verifier_rss_prediction) / verifier_rss,
-        "verified_wall_minus_reported_pow_median_ns": statistics.median(
-            row["first_verified_process_wall_ns"] -
-            row["native_phases_ns"]["fri_pow_ns"] -
-            row["native_phases_ns"]["interaction_pow_ns"] for row in scored),
+        "verified_wall_minus_reported_pow_median_ns": statistics.median(residuals),
         "observed_native_package_phase_medians_ns": {
             key: statistics.median(row["package_stages_ns"][key] for row in scored)
             for key in p.cost_model.PHASES
@@ -179,10 +182,46 @@ def score_record(record: dict, expected: dict, gates: dict) -> dict:
     return {**metrics, "gates": checks, "all_gates_pass": all(checks.values())}
 
 
+def start_attempt(out: Path, protocol_sha: str) -> None:
+    """Atomic fixed marker; even an empty interrupted file blocks a retry."""
+    fd = os.open(ATTEMPT, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
+    with os.fdopen(fd, "wb") as marker:
+        marker.write(p.canonical({"schema": "s31-mixed-cost-v17-attempt-v1",
+                                  "event": "started", "protocol_sha256": protocol_sha,
+                                  "output_dir": str(out.resolve()), "time_ns": time.time_ns()}))
+        marker.flush()
+        os.fsync(marker.fileno())
+    directory_fd = os.open(ATTEMPT.parent, os.O_RDONLY)
+    try:
+        os.fsync(directory_fd)
+    finally:
+        os.close(directory_fd)
+
+
+def finish_attempt(event: dict) -> None:
+    with ATTEMPT.open("ab") as marker:
+        marker.write(p.canonical({**event, "time_ns": time.time_ns()}))
+        marker.flush()
+        os.fsync(marker.fileno())
+
+
 def run(out: Path) -> dict:
     protocol, protocol_sha = p.frozen()
     if RESULT.exists() or SCORE.exists() or out.exists():
         raise ValueError("one prospective run only: output already exists")
+    start_attempt(out, protocol_sha)
+    try:
+        score = run_after_attempt(out, protocol, protocol_sha)
+    except BaseException as exc:
+        finish_attempt({"event": "failed", "error_type": type(exc).__name__,
+                        "error_message": str(exc)})
+        raise
+    finish_attempt({"event": "completed", "score_sha256": p.sha(SCORE.read_bytes()),
+                    "all_gates_pass": score["all_gates_pass"]})
+    return score
+
+
+def run_after_attempt(out: Path, protocol: dict, protocol_sha: str) -> dict:
     out.mkdir(parents=True)
     env = os.environ.copy()
     env.pop("STWO_ZIG_POW_WORKERS", None)
@@ -265,6 +304,10 @@ def run(out: Path) -> dict:
         if (stage["source_sha256"] != expected["source_sha256"] or
                 stage["proof_bytes"] != proof_path.stat().st_size):
             raise ValueError("source/proof differs from native stage report")
+        if (phase["fri_pow_ns"] <= 0 or phase["interaction_pow_ns"] <= 0 or
+                phase["fri_pow_ns"] + phase["interaction_pow_ns"] >=
+                prove_wall["duration"] + verify_wall["duration"]):
+            raise ValueError("reported PoW must be positive and below measured verified wall")
         record["trials"].append({
             "ordinal": len(record["trials"]), "scored_ordinal": scored_ordinal,
             "claim_index": index, "repeat": repeat,

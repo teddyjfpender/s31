@@ -17,6 +17,7 @@ from registry_manifest_digest import digest as registry_manifest_digest
 RESULT = p.LANGUAGE / "mixed-cost-v17-mixed-calls-result.json"
 SCORE = p.LANGUAGE / "mixed-cost-v17-mixed-calls-score.json"
 AUDIT = p.LANGUAGE / "mixed-cost-v17-mixed-calls-audit.json"
+ATTEMPT = p.LANGUAGE / "mixed-cost-v17-mixed-calls-attempt.jsonl"
 
 
 def calculated_score(rows: list[dict], prediction: dict, gates: dict) -> dict:
@@ -24,6 +25,11 @@ def calculated_score(rows: list[dict], prediction: dict, gates: dict) -> dict:
     if len(scored) != p.CLAIMS or sorted(row["claim_index"] for row in scored) != list(
             range(1, p.CLAIMS + 1)):
         raise ValueError("scored claim roster differs")
+    residuals = [row["first_verified_process_wall_ns"] -
+                 row["native_phases_ns"]["fri_pow_ns"] -
+                 row["native_phases_ns"]["interaction_pow_ns"] for row in scored]
+    if any(value <= 0 for value in residuals):
+        raise ValueError("nonpositive independently recomputed non-PoW residual")
     walls = [row["first_verified_process_wall_ns"] for row in scored]
     sizes = [row["proof_bytes"] for row in scored]
     observed_wall = statistics.median(walls)
@@ -44,9 +50,7 @@ def calculated_score(rows: list[dict], prediction: dict, gates: dict) -> dict:
     verifier_rss = statistics.median(row["external_verifier_process_monotonic_ns"]["peak_rss_bytes"] for row in scored)
     prover_rss_error = abs(prover_rss - prediction["prover_peak_rss_median_bytes"]) / prover_rss
     verifier_rss_error = abs(verifier_rss - prediction["verifier_peak_rss_median_bytes"]) / verifier_rss
-    nonpow = statistics.median(
-        row["first_verified_process_wall_ns"] - row["native_phases_ns"]["fri_pow_ns"] -
-        row["native_phases_ns"]["interaction_pow_ns"] for row in scored)
+    nonpow = statistics.median(residuals)
     nonpow_error = abs(nonpow - prediction["nonpow_whole_process_center_ns"]) / nonpow
     phase_medians = {key: statistics.median(row["package_stages_ns"][key] for row in scored)
                      for key in p.cost_model.PHASES}
@@ -104,6 +108,24 @@ def run(out: Path, native: bool) -> dict:
             (out / "result.json").read_bytes() != result_raw or
             set(score["sources"]) != set(protocol["source_roster"])):
         raise ValueError("frozen identity or canonical result/score differs")
+    marker_raw = ATTEMPT.read_bytes()
+    marker_lines = marker_raw.splitlines(keepends=True)
+    if len(marker_lines) != 2:
+        raise ValueError("fixed one-run marker must contain exactly start and terminal records")
+    started, ended = [p.v2.parse(line) for line in marker_lines]
+    if (any(line != p.canonical(value) for line, value in zip(
+            marker_lines, (started, ended), strict=True)) or
+            started.get("schema") != "s31-mixed-cost-v17-attempt-v1" or
+            started.get("event") != "started" or
+            started.get("protocol_sha256") != p.sha(protocol_raw) or
+            started.get("output_dir") != str(out.resolve()) or
+            not isinstance(started.get("time_ns"), int) or started["time_ns"] <= 0 or
+            ended.get("event") != "completed" or
+            ended.get("score_sha256") != p.sha(score_raw) or
+            ended.get("all_gates_pass") != score["all_gates_pass"] or
+            not isinstance(ended.get("time_ns"), int) or
+            ended["time_ns"] < started["time_ns"]):
+        raise ValueError("fixed one-run marker does not match scored artifacts")
     checked = 0
     scored = {}
     global_timing_order = []
@@ -196,16 +218,18 @@ def run(out: Path, native: bool) -> dict:
                 raise ValueError(f"native report/control differs: {name}/{prefix}")
             prove = row["prover_process_monotonic_ns"]
             verify = row["external_verifier_process_monotonic_ns"]
-            if any(set(endpoint) != {"start", "end", "duration", "peak_rss_bytes", "peak_rss_method"} or
-                   endpoint["end"] - endpoint["start"] != endpoint["duration"] or
-                   endpoint["duration"] <= 0 or
-                   not isinstance(endpoint["peak_rss_bytes"], int) or
-                   endpoint["peak_rss_bytes"] <= 0 or
-                   endpoint["peak_rss_method"] not in
-                   {"darwin-time-max-rss-bytes", "gnu-time-max-rss-kib"}
-                   for endpoint in (prove, verify)) or \
+            if (any(set(endpoint) != {"start", "end", "duration", "peak_rss_bytes", "peak_rss_method"} or
+                    endpoint["end"] - endpoint["start"] != endpoint["duration"] or
+                    endpoint["duration"] <= 0 or
+                    not isinstance(endpoint["peak_rss_bytes"], int) or
+                    endpoint["peak_rss_bytes"] <= 0 or
+                    endpoint["peak_rss_method"] not in
+                    {"darwin-time-max-rss-bytes", "gnu-time-max-rss-kib"}
+                    for endpoint in (prove, verify)) or
                     prove["duration"] + verify["duration"] != row[
-                        "first_verified_process_wall_ns"]:
+                        "first_verified_process_wall_ns"] or
+                    phase["fri_pow_ns"] + phase["interaction_pow_ns"] >= row[
+                        "first_verified_process_wall_ns"]):
                 raise ValueError(f"monotonic timing endpoints differ: {name}/{prefix}")
             if scored_ordinal is not None:
                 global_timing_order.append((prove["start"], scored_ordinal))
@@ -274,6 +298,7 @@ def run(out: Path, native: bool) -> dict:
                                         all(expected_aggregate["gates"].values()))):
         raise ValueError("proof totals or aggregate gate differ")
     return {"schema": "s31-mixed-cost-v17-mixed-calls-audit",
+            "attempt_marker_sha256": p.sha(marker_raw),
             "protocol_sha256": p.sha(protocol_raw),
             "model_sha256": p.sha(model_raw),
             "result_sha256": p.sha(result_raw),

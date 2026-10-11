@@ -5,7 +5,9 @@ from __future__ import annotations
 
 import copy
 import importlib.util
+import tempfile
 import unittest
+from pathlib import Path
 
 import model as m
 import protocol as p
@@ -161,6 +163,55 @@ class MixedCallsStaticTest(unittest.TestCase):
                       "native_package_phase_relative_errors"):
             self.assertEqual(official[field], independent[field])
         self.assertEqual(official["all_gates_pass"], independent["all_gates_pass"])
+        invalid = copy.deepcopy(rows)
+        invalid[2]["native_phases_ns"]["fri_pow_ns"] = wall
+        with self.assertRaisesRegex(ValueError, "PoW must be less"):
+            study.score_record({"trials": invalid, "build_wall_ns": 1}, expected, p.GATES)
+        with self.assertRaisesRegex(ValueError, "nonpositive"):
+            audit.calculated_score(invalid, prediction, p.GATES)
+
+    def test_fixed_marker_blocks_second_output_after_failed_attempt(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="s31-v17-attempt-test-") as temporary:
+            root = Path(temporary)
+            originals = (study.ATTEMPT, study.RESULT, study.SCORE,
+                         study.run_after_attempt, p.frozen)
+            calls = []
+            try:
+                study.ATTEMPT = root / "attempt.jsonl"
+                study.RESULT = root / "result.json"
+                study.SCORE = root / "score.json"
+                p.frozen = lambda: ({}, "a" * 64)
+
+                def fail_before_output(*args: object) -> dict:
+                    calls.append(args)
+                    raise RuntimeError("synthetic pre-output admission failure")
+
+                study.run_after_attempt = fail_before_output
+                with self.assertRaisesRegex(RuntimeError, "synthetic pre-output"):
+                    study.run(root / "first-output")
+                lines = [p.v2.parse(line) for line in study.ATTEMPT.read_bytes().splitlines()]
+                self.assertEqual([line["event"] for line in lines], ["started", "failed"])
+                self.assertEqual(lines[1]["error_type"], "RuntimeError")
+                with self.assertRaises(FileExistsError):
+                    study.run(root / "different-output")
+                self.assertEqual(len(calls), 1)
+            finally:
+                (study.ATTEMPT, study.RESULT, study.SCORE,
+                 study.run_after_attempt, p.frozen) = originals
+
+    def test_started_only_marker_blocks_retry_after_hard_interruption(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="s31-v17-interrupt-test-") as temporary:
+            original = study.ATTEMPT
+            try:
+                study.ATTEMPT = Path(temporary) / "attempt.jsonl"
+                study.start_attempt(Path(temporary) / "first-output", "b" * 64)
+                with self.assertRaises(FileExistsError):
+                    study.start_attempt(Path(temporary) / "different-output", "b" * 64)
+                lines = study.ATTEMPT.read_bytes().splitlines()
+                self.assertEqual(len(lines), 1)
+                self.assertEqual(p.v2.parse(lines[0])["event"], "started")
+            finally:
+                study.ATTEMPT = original
 
 
 if __name__ == "__main__":
