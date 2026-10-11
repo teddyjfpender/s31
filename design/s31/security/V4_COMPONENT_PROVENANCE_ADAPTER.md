@@ -93,6 +93,11 @@ introduce a proof profile or change the V4 template. The closed registry now
 also supplies the canonical circuit → all chips → all bridges source-kind
 order for schedule selection, so a candidate roster cannot nominate its own
 kind sequence. Geometry and constraint bounds still come from live handles.
+All experimental engine V4 proof entrypoints now route preprocessing through
+this façade, and selected adapters check the bound before reading selected
+schedule fields. The direct legacy `Plan.validate` and `Plan.preprocessed`
+methods remain callable and still require a caller-imposed resource limit;
+their own code cannot be changed without a new V4 template identity.
 
 ## Versioning and extension rule
 
