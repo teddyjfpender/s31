@@ -143,6 +143,7 @@ BINDINGS = [
     "src/frontends/s31/tests/acceptance/mixed_boundary/registry_manifest_digest.py",
     "src/frontends/s31/tests/acceptance/record_abi/differential_mutations_v2.py",
     "src/frontends/s31/tests/acceptance/record_abi/lean_native_bridge_v2.py",
+    "src/frontends/s31/tests/acceptance/record_abi/general_statement_refinement_v2.py",
     "src/frontends/s31/tests/acceptance/compiler_correspondence/generated_native_subset.py",
     "src/frontends/s31/tests/python/generated/test_source_mutation_correspondence.py",
     "src/frontends/s31/tests/python/generated/render_lean_source_row_fixture.py",
