@@ -70,6 +70,22 @@ formally prove that compiled machine code equals those source files; this
 remains a build-integrity assumption. The concrete handle checks run after
 ordinary live-handle geometry checks and before PCS proving or verification.
 
+The V4 engine registry is closed over the bundled circuit, tagged chip, and
+tagged bridge. It pins the two native AIR file hashes, component widths and
+constraint counts, and the exact lookup relation dependency list for each
+kind. Schedule selection compares these registered entries with live verifier
+handle facts; the S31 generated manifest independently supplies its ordered
+relation lists. This is a reviewed dependency map, not formula introspection
+or a proof of the lookup equations. New AIR kinds require a profile/version
+review rather than a caller-supplied relation list.
+
+The guarded prove and verify adapters also reject V4 circuits with more than
+65,536 rows or more than `4 × rows + 32` variables before the public Plan's
+producer bitmap or direct preprocessing can allocate from `n_vars`. The
+standalone public `Plan.validate` API still checks unique producers before
+bounding rows and variables. Direct callers of that API need a separate
+resource limit until a versioned V4 template update can move the guard there.
+
 ## Versioning and extension rule
 
 Version 1 is closed over `bundled_circuit`, `tagged_chip`, and `tagged_bridge`.
