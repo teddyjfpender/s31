@@ -20,8 +20,12 @@ from embedded source and live handles, binds its digest into a distinct native
 transcript, and checks the exact eight-word public statement. An
 [independent provenance review](../security/REVIEW_GENERAL_BOUNDARY_PROVENANCE_2026-10-11.md)
 found no concrete statement or source substitution path in that experimental
-profile. Its chip-family selection remains a closed positional policy rather
-than an arbitrary source-selected chip scheduler. Full source-to-verifier
+profile. The [live geometry audit](../security/GENERAL_MANIFEST_GEOMETRY_AUDIT_2026-10-12.md)
+records PCS tree heights and the selected mask and local AIR dependency
+digests in its generated report; its checker independently recomputes the
+local AIR digest and geometry spans, while the mask-point digest remains a
+native reported value. Its chip-family selection remains a closed positional
+policy rather than an arbitrary source-selected chip scheduler. Full source-to-verifier
 correspondence, an end-to-end AIR/lookup/PCS soundness reduction, and witness
 confidentiality remain open.
 
