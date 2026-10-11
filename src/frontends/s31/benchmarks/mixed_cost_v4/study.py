@@ -89,6 +89,7 @@ def protocol_value() -> dict:
 def prepare() -> dict:
     if PROTOCOL.exists():
         raise ValueError("v4 final protocol already exists")
+    head_before = v2.git("rev-parse", "HEAD")
     # A changed compiler, engine gitlink, or tool invalidates the final freeze.
     if v2.git("status", "--porcelain", "--", "src/frontends/s31", "deps/stwo-zig").strip():
         raise ValueError("commit frontend and native engine changes before freeze")
@@ -96,6 +97,9 @@ def prepare() -> dict:
         if not committed(ROOT / relative):
             raise ValueError(f"commit v4 tool before freeze: {relative}")
     value = protocol_value()
+    if (head_before != v2.git("rev-parse", "HEAD") or
+            v2.git("status", "--porcelain", "--", "src/frontends/s31", "deps/stwo-zig").strip()):
+        raise ValueError("source checkout changed during protocol preparation")
     PROTOCOL.write_bytes(v2.canonical(value))
     return {"protocol_sha256": digest(PROTOCOL), "sources": 8, "proofs_planned": 648}
 
