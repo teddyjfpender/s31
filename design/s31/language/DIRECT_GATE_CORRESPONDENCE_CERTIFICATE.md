@@ -341,7 +341,7 @@ decoded direct-Gate trace. It proves, by induction over the compiler's
 `expectedRows` emitter, that every source instruction has its expected
 operand and result addresses in the projected cell plan. It proves all output
 boundary cells have positive multiplicity and derives positive input-cell
-multiplicity from one explicit `sourceInputUses > 0` premise. Given exact
+multiplicity from the admitted source's required first instruction. Given exact
 fixed-column matches and zero values
 for the first nine installed arithmetic roots, it derives all three
 physical-row predicates, including zero-use source rows, then joins
@@ -349,9 +349,9 @@ source-byte checking to the public claim through the existing ideal Gate
 theorem. This removes three separately assumed physical-row families and the
 independent source-plan premise from the general source-to-claim statement.
 The bounded source parser accepts one to sixteen arithmetic instructions and
-rejects returning the input name directly, so its valid sources do use the
-input in the first instruction. A Lean theorem deriving `sourceInputUses > 0`
-from `checkRelation` is still missing. For example, a hypothetical empty
+rejects returning the input name directly. Lean now derives
+`sourceInputUses > 0` from successful `checkRelation`: its first checked
+instruction can only read the sole initial input wire. For example, a hypothetical empty
 certificate returning input wire `0` would have `sourceInputUses = 0`, but
 that source is outside the bounded grammar. Native circuit multiplicities
 count all gate reads, including public output copies; this edge does not

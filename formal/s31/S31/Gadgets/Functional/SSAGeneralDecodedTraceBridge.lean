@@ -9,8 +9,9 @@ with projected fixed cells; the exact fixed projection and installed nine
 arithmetic roots are premises about that trace, not independently chosen
 logical wires.
 
-The theorem is valid for any trace log size and any checked certificate whose
-source input is read at least once. It does not establish that verifier
+The theorem is valid for any trace log size and any byte-admitted certificate.
+The bounded parser's required first arithmetic instruction proves the source
+input is read. It does not establish that verifier
 acceptance authenticates the trace, that
 challenge-compressed LogUp implies exact Gate balance, or PCS/FRI/Fiat--Shamir
 soundness. Those premises stay explicit in the final source-to-claim theorem.
@@ -191,6 +192,96 @@ theorem expected_input_cells_positive (certificate : Certificate)
     by_cases hi : index = 2 <;> simp [hi, huse]
   all_goals subst cell; simp
 
+private theorem input_read_fold_ge (instructions : List Instruction)
+    (start : Nat) :
+    start ≤ instructions.foldl
+      (fun count instruction =>
+        count + (if instruction.lhs == 0 then 1 else 0) +
+          (if instruction.rhs == 0 then 1 else 0)) start := by
+  induction instructions generalizing start with
+  | nil => simp
+  | cons instruction rest ih =>
+      simp only [List.foldl_cons]
+      have hstep : start ≤
+          start + (if instruction.lhs == 0 then 1 else 0) +
+            (if instruction.rhs == 0 then 1 else 0) := by omega
+      exact hstep.trans (ih _)
+
+private theorem first_checked_step_reads_input (instruction : Instruction)
+    (next : List Term)
+    (hstep : checkStep [.input] instruction = some next) :
+    instruction.lhs = 0 ∧ instruction.rhs = 0 := by
+  have hleft : [Term.input][instruction.lhs]? ≠ none := by
+    intro hnone
+    simp [checkStep, hnone] at hstep
+  have hright : [Term.input][instruction.rhs]? ≠ none := by
+    intro hnone
+    simp [checkStep, hnone] at hstep
+  constructor
+  · simpa using hleft
+  · simpa using hright
+
+/-- A nonempty checked SSA execution has a first step, and its only initial
+wire is input zero. Consequently the source input has a positive arithmetic
+use count. -/
+theorem source_input_used_of_checked_nonempty (certificate : Certificate)
+    (meaning : Term)
+    (hterm : termFor certificate = some meaning)
+    (hnonempty : certificate.instructions ≠ []) :
+    0 < sourceInputUses certificate := by
+  cases hins : certificate.instructions with
+  | nil => exact False.elim (hnonempty hins)
+  | cons instruction rest =>
+      have hfirst : ∃ next, checkStep [.input] instruction = some next := by
+        unfold termFor at hterm
+        simp only [hins, List.foldlM_cons] at hterm
+        cases hstep : checkStep [.input] instruction with
+        | none => simp [hstep] at hterm
+        | some next => exact ⟨next, rfl⟩
+      obtain ⟨next, hstep⟩ := hfirst
+      have hzero := (first_checked_step_reads_input instruction next hstep).1
+      simp only [sourceInputUses, hins, List.foldl_cons]
+      have hpositive : 0 <
+          (0 + (if instruction.lhs == 0 then 1 else 0) +
+            (if instruction.rhs == 0 then 1 else 0)) := by
+        simp [hzero]
+      exact lt_of_lt_of_le hpositive (input_read_fold_ge rest _)
+
+private theorem parsed_nonempty (bytes : List Nat) (parsed : Parsed)
+    (hparse : parseBytes bytes = some parsed) :
+    parsed.certificate.instructions ≠ [] := by
+  simp [parseBytes, Option.bind] at hparse
+  repeat (split at hparse <;> simp_all)
+  have hnonempty := hparse.2.2.1
+  have hparsed := hparse.2.2.2.2.2
+  intro hnil
+  exact hnonempty ((congrArg (fun p : Parsed => p.certificate.instructions)
+    hparsed).trans hnil)
+
+/-- Successful exact source/normalized-byte admission forces a first checked
+instruction. The first instruction can only read the sole initial input wire,
+so the public input pack's final producer multiplicity is positive. -/
+theorem checked_relation_source_input_used
+    (sourceBytes normalizedBytes : List Nat)
+    (certificate : Certificate)
+    (hrelation : checkRelation sourceBytes normalizedBytes = some certificate) :
+    0 < sourceInputUses certificate := by
+  unfold checkRelation at hrelation
+  cases hsource : parseBytes sourceBytes with
+  | none => simp [hsource] at hrelation
+  | some parsed =>
+      cases hencoded : encodeNormalized parsed with
+      | none => simp [hsource, hencoded] at hrelation
+      | some expected =>
+          by_cases hmatch : expected = normalizedBytes
+          · have hcertificate : parsed.certificate = certificate := by
+              simpa [hsource, hencoded, hmatch] using hrelation
+            subst certificate
+            exact source_input_used_of_checked_nonempty
+              parsed.certificate parsed.meaning parsed.checked
+              (parsed_nonempty sourceBytes parsed hsource)
+          · simp [hsource, hencoded, hmatch] at hrelation
+
 private theorem native_rows_lookup {logSize : Nat} (trace : Trace logSize)
     (i : Fin (2 ^ logSize)) :
     (nativeRows trace)[i.val]? = some (row trace i) := by
@@ -274,10 +365,10 @@ theorem decoded_rows {logSize : Nat} (trace : Trace logSize)
       (by intro cell hcell; exact hfixed cell (by simp [hcell]))
       hpositiveOutput hroots
 
-/-- Generic source-to-public semantics from one decoded trace. The positive
-`sourceInputUses` premise is exact for the input pack's last row; the bounded
-source grammar admits one or more arithmetic instructions and forbids a
-direct output alias of the input. Ideal Gate and constant/public-event
+/-- Generic source-to-public semantics from one decoded trace. Successful
+bounded source/normalized-byte admission proves the public input's use count
+positive, and row constructors prove the remaining public multiplicities.
+Ideal Gate and constant/public-event
 premises remain separate from native verifier acceptance. -/
 theorem decoded_public_io_sound {logSize : Nat} (trace : Trace logSize)
     (sourceBytes normalizedBytes : List Nat) (certificate : Certificate)
@@ -289,7 +380,6 @@ theorem decoded_public_io_sound {logSize : Nat} (trace : Trace logSize)
     (hsourceCells : sourceCells = expectedCells certificate totalAddRows)
     (hinputCells : inputCells = expectedInputCells certificate totalAddRows)
     (houtputCells : outputCells = expectedOutputCells certificate totalAddRows)
-    (hinputUsed : 0 < sourceInputUses certificate)
     (hfixed : ∀ cell ∈ sourceCells ++ inputCells ++ outputCells,
       fixedMatches trace cell)
     (hroots : allArithmeticRootsZero trace)
@@ -314,11 +404,12 @@ theorem decoded_public_io_sound {logSize : Nat} (trace : Trace logSize)
     (hpublicOutputPins : ∀ i : Fin 4,
       (7 + i.val, base (Field.toZMod (claimed i))) ∈ externalYields) :
     denotation sourceBytes input = some claimed := by
+  have hinputUse := checked_relation_source_input_used sourceBytes
+    normalizedBytes certificate hrelation
   obtain ⟨hsource, hinput, houtput⟩ :=
     decoded_rows trace certificate sourceCells inputCells outputCells
       (by rw [hsourceCells]; exact source_plan_expected certificate totalAddRows)
-      (by rw [hinputCells]; exact
-        expected_input_cells_positive certificate totalAddRows hinputUsed)
+      (by rw [hinputCells]; exact expected_input_cells_positive certificate totalAddRows hinputUse)
       (by rw [houtputCells]; exact expected_output_cells_positive certificate totalAddRows)
       hfixed hroots
   exact bytecode_exact_gate_public_io_allow_dead_sound
