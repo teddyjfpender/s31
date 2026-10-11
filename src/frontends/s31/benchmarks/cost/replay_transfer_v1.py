@@ -94,11 +94,11 @@ def frozen_inputs() -> tuple[dict, dict]:
          "src/frontends/s31/python", "src/frontends/s31/benchmarks"], text=True,
     ).splitlines())
     frozen_python = {name for name in frozen_python if name.endswith(".py")}
-    current_python = {path.relative_to(ROOT).as_posix()
-                      for directory in (S31_DIR / "python", S31_DIR / "benchmarks")
-                      for path in directory.rglob("*.py")
-                      if path.resolve() != Path(__file__).resolve()}
-    require(current_python == frozen_python, "Python source roster changed after freeze")
+    # Later measurement tooling may add new Python files. The V1 runner and
+    # oracle could only import files present at its frozen commit, so require
+    # every one of those exact files to remain byte-identical while allowing
+    # unrelated later additions. This check does not claim that a newly added
+    # file is part of the frozen V1 toolchain.
     for name in frozen_python:
         relative = Path(name)
         require((ROOT / relative).read_bytes() == committed_bytes(relative),
