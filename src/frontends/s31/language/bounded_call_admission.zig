@@ -1,9 +1,8 @@
-//! Source-only admission for a future bounded tagged-chip profile.
+//! Source-only admission for the bounded tagged square/add-chip profile.
 //!
-//! This file is deliberately not exported from `mod.zig` or connected to any
-//! proof path. It identifies live, canonical repeat nodes; a later compiler
-//! must derive and compare their actual circuit endpoint addresses in both
-//! value and topology modes before this can become a native proof profile.
+//! This plan alone cannot authorize a proof. The mixed verifier reconstructs
+//! scalar endpoint addresses, live AIR handles and the component manifest
+//! from its embedded source before accepting native proof bytes.
 const std = @import("std");
 const relation = @import("relation.zig");
 const canonical = @import("canonical.zig");
@@ -115,13 +114,13 @@ pub fn extract(allocator: std.mem.Allocator, program: relation.Program) !Plan {
             const input_id = node.lhs orelse return error.UnsupportedChipInput;
             if (input_id >= index or ir.nodes[input_id].kind != .m31 or ir.nodes[input_id].length != 4)
                 return error.UnsupportedChipInput;
-            // The current direct compiler records scalar endpoint addresses
-            // for four-lane input nodes and earlier chip outputs. Arithmetic
-            // nodes have packed lanes but no `raw` scalar address array.
-            // Admit those inputs only after a constrained unpacking path is
-            // implemented and the value/topology maps are checked again.
-            if (ir.nodes[input_id].tag != .input and ir.nodes[input_id].tag != .repeat)
-                return error.UnsupportedChipInput;
+            // Only these circuit arithmetic nodes may feed a chip. The
+            // bounded compiler extracts their packed M31 coordinates into
+            // constrained scalar Gate producers before recording endpoints.
+            switch (ir.nodes[input_id].tag) {
+                .input, .repeat, .add, .mul, .add_const, .mul_const => {},
+                else => return error.UnsupportedChipInput,
+            }
             const source_id = sourceId(&ir, source_repeat_names[plan.call_count]) orelse
                 return error.NoncanonicalChipCalls;
             if (source_id != index) return error.NoncanonicalChipCalls;
@@ -259,7 +258,7 @@ test "unsupported chip bodies, rounds, and public inputs fail closed" {
     try std.testing.expectError(error.UnsupportedManyCallSource, extract(a, one));
 }
 
-test "repeat after arithmetic is rejected until scalar endpoints are materialized" {
+test "repeat after four-lane arithmetic has a canonical chip input" {
     var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
     const a = arena.allocator();
@@ -272,7 +271,21 @@ test "repeat after arithmetic is rejected until scalar endpoints are materialize
     widened[2].lhs = "shifted";
     widened[3] = two.nodes[2];
     two.nodes = widened;
-    try std.testing.expectError(error.UnsupportedChipInput, extract(a, two));
+    const plan = try extract(a, two);
+    try std.testing.expectEqual(@as(usize, 2), plan.call_count);
+    var ir = try canonical.build(a, two);
+    defer ir.deinit();
+    try std.testing.expectEqual(canonical.Tag.add_const, ir.nodes[plan.calls[1].input_node_id].tag);
+}
+
+test "arithmetic-fed calls may share one live circuit result" {
+    const a = std.testing.allocator;
+    var parsed = try relation.parseProgram(a, @embedFile("../examples/boundary/private_arithmetic_chip_fork.s31.json"));
+    defer parsed.deinit();
+    const plan = try extract(a, parsed.value);
+    try std.testing.expectEqual(@as(usize, 3), plan.call_count);
+    try std.testing.expectEqual(plan.calls[1].input_node_id, plan.calls[2].input_node_id);
+    try std.testing.expect(plan.calls[1].source_node_id != plan.calls[2].source_node_id);
 }
 
 test "source byte cap rejects before JSON parsing" {

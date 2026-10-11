@@ -1133,6 +1133,61 @@ test "bounded native inspection fails closed outside exact two-call schedule" {
     }
 }
 
+test "arithmetic-fed chip ports match constrained circuit values in both compiler modes" {
+    const allocator = std.testing.allocator;
+    const source = @embedFile("../examples/boundary/private_arithmetic_chip_input.s31.json");
+    var parsed = try relation.parseAssignment(allocator, @embedFile("../examples/boundary/private_arithmetic_chip_input.valid.json"));
+    defer parsed.deinit();
+    const topology = try compileSourceTopology(allocator, source);
+    try std.testing.expectEqual(@as(usize, 2), topology.call_count);
+    var witness = try compileManyWitness(allocator, source, parsed.value, topology);
+    defer witness.deinit();
+    const inputs = [_]u32{ 0, 1, core.fields.m31.Modulus - 1, 7 };
+    for (inputs, 0..) |word, lane| {
+        var first = M31.fromCanonical(word);
+        for (0..16) |_| first = first.mul(first).add(M31.fromCanonical(13));
+        const middle = first.add(M31.fromCanonical(word));
+        const actual = witness.get(.{ .idx = topology.calls[1].input[lane] }).toM31Array();
+        try std.testing.expectEqual(middle, actual[0]);
+        for (actual[1..]) |limb| try std.testing.expectEqual(M31.zero(), limb);
+        var second = middle;
+        for (0..16) |_| second = second.mul(second).add(M31.fromCanonical(17));
+        const output = witness.get(.{ .idx = topology.calls[1].output[lane] }).toM31Array();
+        try std.testing.expectEqual(second, output[0]);
+    }
+    var changed = topology;
+    changed.calls[1].input[0] = topology.calls[0].input[0];
+    try std.testing.expectError(error.BoundedWitnessTopologyMismatch, compileManyWitness(allocator, source, parsed.value, changed));
+}
+
+test "two chip calls reuse an arithmetic-produced address with two boundary occurrences" {
+    const allocator = std.testing.allocator;
+    const source = @embedFile("../examples/boundary/private_arithmetic_chip_fork.s31.json");
+    var parsed = try relation.parseAssignment(allocator, @embedFile("../examples/boundary/private_arithmetic_chip_fork.valid.json"));
+    defer parsed.deinit();
+    const topology = try compileSourceTopology(allocator, source);
+    try std.testing.expectEqual(@as(usize, 3), topology.call_count);
+    try std.testing.expectEqualDeep(topology.calls[1].input, topology.calls[2].input);
+    var witness = try compileManyWitness(allocator, source, parsed.value, topology);
+    defer witness.deinit();
+    const plan = try manyPlan(topology.callSlice());
+    var preprocessed = try plan.preprocessed(allocator, circuit.common.preprocessed.CircuitView.fromBuilder(&witness.circuit));
+    defer preprocessed.deinit(allocator);
+    const output_addresses = preprocessed.columnValues("qm31_ops_out_address") orelse unreachable;
+    const multiplicities = preprocessed.columnValues("qm31_ops_mults") orelse unreachable;
+    for (topology.calls[1].input) |address| {
+        const value = witness.get(.{ .idx = address }).toM31Array();
+        for (value[1..]) |limb| try std.testing.expectEqual(M31.zero(), limb);
+        var producers: usize = 0;
+        for (output_addresses, multiplicities) |producer, count| {
+            if (producer.toU32() != address) continue;
+            producers += 1;
+            try std.testing.expectEqual(@as(u32, 2), count.toU32());
+        }
+        try std.testing.expectEqual(@as(usize, 1), producers);
+    }
+}
+
 test "bounded V4 selected geometry rejects reordered and altered manifest slots" {
     const allocator = std.testing.allocator;
     const source = @embedFile("../examples/boundary/private_many1.s31.json");

@@ -19,6 +19,15 @@ outside that target's admitted source shape. The general target requires
 one to eight calls and exactly eight public M31 words. Its full profile remains
 experimental while native and independent soundness gates continue.
 
+The general profile also has an experimental arithmetic-to-chip input
+extension. A four-lane `add`, `mul`, `add_const` or `mul_const` result can feed a
+later square/add chip after the compiler emits four constrained scalar Gate
+ports. The [worked example and audit contract](../../../../../design/s31/language/ARITHMETIC_FED_CHIP_PORTS.md)
+show the produced addresses, repeated-address multiplicity and required
+native mutation controls. Existing pair/many chip AIRs and the `S31MIX07`
+wire format are unchanged; native acceptance of the new source shape is
+pending.
+
 The command implementations and statement schema live here; the tiny files in
 `entry/` are required only by Zig's module-root import rule.
 

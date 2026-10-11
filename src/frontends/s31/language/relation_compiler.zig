@@ -439,10 +439,34 @@ pub fn compileDirectPairWithSpans(comptime V: type, allocator: std.mem.Allocator
     return compileWithSpansMode(V, allocator, program, assignment, maps, false, true, false, true, false);
 }
 
-/// Extract concrete endpoints for every admitted canonical call. This is a
-/// topology compiler only; no N-call proof path consumes the map yet.
+/// Extract concrete endpoints for every admitted canonical call in both
+/// topology and value compilation. The source-bound mixed proof uses this map.
 pub fn compileDirectBoundedWithSpans(comptime V: type, allocator: std.mem.Allocator, program: relation.Program, assignment: ?relation.Assignment, maps: *Maps) !circuit.builder.Context(V) {
     return compileWithSpansMode(V, allocator, program, assignment, maps, false, true, false, false, true);
+}
+
+test "bounded arithmetic chip input emits the same constrained scalar ports in both modes" {
+    const allocator = std.testing.allocator;
+    var program = try relation.parseProgram(allocator, @embedFile("../examples/boundary/private_arithmetic_chip_input.s31.json"));
+    defer program.deinit();
+    var assignment = try relation.parseAssignment(allocator, @embedFile("../examples/boundary/private_arithmetic_chip_input.valid.json"));
+    defer assignment.deinit();
+    const plan = try bounded_admission.extract(allocator, program.value);
+    var topology_map: Maps = .{};
+    defer topology_map.deinit(allocator);
+    var topology = try compileDirectBoundedWithSpans(circuit.builder.NoValue, allocator, program.value, null, &topology_map);
+    defer topology.deinit();
+    var value_map: Maps = .{};
+    defer value_map.deinit(allocator);
+    var value = try compileDirectBoundedWithSpans(QM31, allocator, program.value, assignment.value, &value_map);
+    defer value.deinit();
+    try std.testing.expectEqualDeep(topology_map.bounded_calls.items, value_map.bounded_calls.items);
+    try std.testing.expectEqual(@as(usize, 2), topology_map.bounded_calls.items.len);
+    const arithmetic_id = plan.calls[1].input_node_id;
+    const span = topology_map.nodes.items[arithmetic_id];
+    try std.testing.expect(span.qm31_end > span.qm31_start + 1);
+    for (topology_map.bounded_calls.items[1].input) |address|
+        try std.testing.expect(address < topology.circuit.n_vars);
 }
 
 fn sourceId(ir: *const canonical.IR, name: []const u8) ?u32 {
@@ -550,6 +574,12 @@ fn compileWithSpansMode(comptime V: type, allocator: std.mem.Allocator, program:
     const entries = try scratch.alloc(Entry, ir.nodes.len);
     const bit_sources = try scratch.alloc(bool, ir.nodes.len);
     @memset(bit_sources, false);
+    const bounded_input_ports: ?[]bool = if (bounded_plan) |plan| ports: {
+        const selected = try scratch.alloc(bool, ir.nodes.len);
+        @memset(selected, false);
+        for (plan.callSlice()) |call| selected[call.input_node_id] = true;
+        break :ports selected;
+    } else null;
     var generic_repeat_work: u64 = 0;
     for (ir.nodes) |node| {
         if (node.tag == .select or node.tag == .bool_select) bit_sources[node.selector.?] = true;
@@ -815,6 +845,18 @@ fn compileWithSpansMode(comptime V: type, allocator: std.mem.Allocator, program:
             .hash_poseidon2_leaf => .{ .shape = .{ .kind = .m31, .length = 8 }, .lanes = try poseidon2.leafCircuit(V, &ctx, entries[node.lhs.?].lanes) },
             .hash_poseidon2_pair => .{ .shape = .{ .kind = .m31, .length = 8 }, .lanes = try poseidon2.pairCircuit(V, &ctx, entries[node.lhs.?].lanes, entries[node.rhs.?].lanes) },
         };
+        // An arithmetic result is one packed QM31 wire. A chip boundary
+        // needs four actual M31 Gate addresses, so extract the four lanes with
+        // constrained circuit operations exactly once at the source node.
+        // Reusing this node for several calls reuses these same addresses;
+        // the boundary preprocessor counts each occurrence separately.
+        if (bounded_input_ports) |selected| {
+            if (selected[id] and entry.raw == null) {
+                if (entry.shape.kind != .m31 or entry.shape.length != 4)
+                    return error.UnsupportedChipInput;
+                entry.raw = try circuit.builder.simd.unpack(V, &ctx, entry.lanes);
+            }
+        }
         if (maps) |out| try out.nodes.append(allocator, .{
             .id = @intCast(id),
             .qm31_start = qm31_start,

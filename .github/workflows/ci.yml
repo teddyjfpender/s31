@@ -358,6 +358,11 @@ jobs:
           set -euo pipefail
           python3 src/frontends/s31/tests/acceptance/mixed_boundary/record_general_v2.py |
             tee zig-out/s31/acceptance/mixed-general-record-v2.json
+      - name: Arithmetic-produced chip port proof controls
+        run: |
+          set -euo pipefail
+          python3 src/frontends/s31/tests/acceptance/mixed_boundary/arithmetic_chip_input.py |
+            tee zig-out/s31/acceptance/mixed-general-arithmetic-input.json
       - name: Preserve general mixed boundary evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

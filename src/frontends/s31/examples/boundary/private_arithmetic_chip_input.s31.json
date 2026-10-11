@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "name": "private_arithmetic_chip_input",
+  "inputs": [
+    { "name": "x", "kind": "m31", "length": 4, "visibility": "private" }
+  ],
+  "nodes": [
+    { "name": "a", "op": "repeat", "lhs": "x", "rounds": 16, "body": [{ "op": "square" }, { "op": "add_const", "constant": 13 }] },
+    { "name": "middle", "op": "add", "lhs": "a", "rhs": "x" },
+    { "name": "b", "op": "repeat", "lhs": "middle", "rounds": 16, "body": [{ "op": "square" }, { "op": "add_const", "constant": 17 }] },
+    { "name": "sum", "op": "add", "lhs": "b", "rhs": "x" },
+    { "name": "product", "op": "mul", "lhs": "b", "rhs": "middle" }
+  ],
+  "assertions": [],
+  "public_outputs": ["sum", "product"]
+}
