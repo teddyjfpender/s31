@@ -1,5 +1,36 @@
 # Independent review: mixed public closure versus emitted Gate tail
 
+## Follow-up on corrected theorem `646f685`
+
+The theorem was revised to use the actual packed path. In this fixed
+one-to-eight-call family I found no further row-shape premise that contradicts
+the compiler:
+
+- The packed input address is 22 and the final packed result is `22+10N`.
+  `.add` and `.mul` lower to packed Gate rows with outputs `23+10N` and
+  `24+10N`; `.mul` uses the pointwise multiplication flag.
+- Each public lane passes through `simd.unpackIdx`: a pointwise basis-mask
+  row, followed for lanes 1–3 by an extension multiplication with the inverse
+  basis constant. `setOutputs` then creates the `scalar + 0 = reserved` add
+  row at addresses 3–10. The revised `OutputPath` models these flags and
+  address relationships. The basis, inverse-basis and zero values are
+  interned constants whose rows are yielded by `finalize_constants.zig`.
+- `canonical.zig` preserves the declared public-output order. The fixed
+  source declares `sum` then `product`, so the four sum lanes bind to 3–6
+  and the four product lanes to 7–10. Each selected row output is used by its
+  next row or the public-output term, satisfying the positive-multiplicity
+  shape expected by the model.
+
+The theorem still **assumes** `ValueAt 22 (packState initial)` and
+`ValueAt (22+10N) (packState final)`. These are plausible for the compiler's
+six-row packing sequences, but no current theorem derives them from the four
+scalar chip bridge words and actual pack rows. Exact Gate/chip event balance,
+global producer uniqueness, and proof-committed row authentication likewise
+remain conditional. Thus the corrected theorem is a useful source-tail
+semantic result, not yet an accepted-proof-to-source theorem. This follow-up
+supersedes the original row-shape finding below, which applies to the first
+`TailRow` formulation in commit `3ccd731`.
+
 **Finding: the new `TailRow` premise does not describe a Gate row emitted by
 the current compiler for the reviewed N1/N8 mixed source family.** The Lean
 theorem is a valid conditional statement, but its eight required `TailRow`
