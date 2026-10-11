@@ -12,7 +12,8 @@ ROOT = Path(__file__).resolve().parents[5]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from export_s31_direct_gate_bytecode_arithmetic import (  # noqa: E402
-    BUNDLE, decoded_program, evaluate_row, gate_program,
+    BUNDLE, check_composition_source_contract, decoded_program, evaluate_row,
+    gate_program,
 )
 from export_s31_direct_gate_evaluator_fixture import (  # noqa: E402
     add, arithmetic, base, denominator, interaction_residuals, mul, scale, sub,
@@ -235,6 +236,46 @@ class GateBytecodeArithmeticTest(unittest.TestCase):
                       conversion)
         self.assertIn("1 => .{ .at_oods = samples[0], .at_prev = null }",
                       conversion)
+
+    def test_selected_composition_quotient_and_fold_order(self) -> None:
+        """Recheck the selected eleven-root order and common zeroifier factor."""
+        fixed, main, current, previous = first_row()
+        roots = evaluate_row(self.program, fixed, main, current, previous,
+                             (2, 3, 5, 7), (11, 13, 17, 19),
+                             (23, 29, 31, 37), 512)
+        coefficient, inverse = (41, 43, 47, 53), (59, 61, 67, 71)
+
+        def fold(values):
+            total = base(0)
+            for value in values:
+                total = add(mul(total, coefficient), value)
+            return total
+
+        self.assertEqual(fold(tuple(mul(root, inverse) for root in roots)),
+                         mul(fold(roots), inverse))
+        reordered = (*roots[:9], roots[10], roots[9])
+        self.assertNotEqual(fold(roots), fold(reordered))
+        engine = ROOT / "deps/stwo-zig/src"
+        verifier = (engine / "frontends/cairo/witness/resident_verifier.zig").read_text()
+        accumulator = (engine / "core/air/accumulation.zig").read_text()
+        component_fold = (engine / "core/air/components.zig").read_text()
+        check_composition_source_contract(verifier, accumulator, component_fold)
+        self.assertIn("const denominator_inverse = try zeroifier.inv();", verifier)
+        self.assertIn("const evaluation = extension[root].mul(denominator_inverse);",
+                      verifier)
+        self.assertIn("accumulator.accumulate(evaluation);", verifier)
+        self.assertIn("self.accumulation = self.accumulation.mul(self.random_coeff).add(evaluation);",
+                      accumulator)
+        with self.assertRaisesRegex(ValueError, "native Gate quotient accumulation source changed"):
+            check_composition_source_contract(
+                verifier.replace("extension[root].mul(denominator_inverse)",
+                                 "extension[root]"), accumulator, component_fold)
+        with self.assertRaisesRegex(ValueError, "native Gate quotient accumulation source changed"):
+            check_composition_source_contract(
+                verifier,
+                accumulator.replace("self.accumulation.mul(self.random_coeff).add(evaluation)",
+                                    "self.accumulation.add(evaluation).mul(self.random_coeff)"),
+                component_fold)
 
     def test_changed_installed_bundle_is_rejected(self) -> None:
         mutation = bytearray(self.bundle)

@@ -391,15 +391,50 @@ committed columns or prove random composition, Fiat–Shamir, PCS, or FRI. Nor
 does a zero value at one OODS point by itself imply zero constraints on every
 M31 row. Those are separate obligations in a whole-prover soundness proof.
 
+## The selected Gate contribution to composition
+
+The production direct Gate package contains one `qm31_ops` component with
+eleven roots and composition offset zero. The installed bytecode lists roots
+`0…8, 88, 96`: nine arithmetic residuals, the pair LogUp residual, then the
+running-sum residual. The native resident verifier evaluates those roots at
+the supplied QM31 OODS samples. It computes the inverse of its zeroifier
+`V(ζ)`, multiplies each root by that inverse, and passes the results in order
+to the accumulator. The accumulator starts at zero and repeats
+`acc ← acc · ρ + quotientRoot`, where `ρ` is the composition coefficient.
+
+For a small hand calculation with three roots `r₀,r₁,r₂`, the resulting value
+is `((r₀/V) · ρ + r₁/V) · ρ + r₂/V`, which equals
+`(r₀ · ρ² + r₁ · ρ + r₂)/V`. The eleven-root Gate contribution has exactly
+the same form, with powers from `ρ¹⁰` down to `ρ⁰`.
+
+[`GeneratedDirectGateComposition.lean`](../../../formal/s31/S31/Gadgets/Air/GeneratedDirectGateComposition.lean)
+is regenerated only after checking the package source, manifest, verification
+key, selected bytecode root order, one-component shape, and pinned native
+quotient/accumulator source statements. It proves the bytecode root list equals
+the pure eleven-residual list at arbitrary supplied QM31 samples.
+[`DirectGateOodsComposition.lean`](../../../formal/s31/S31/Gadgets/Air/DirectGateOodsComposition.lean)
+proves the common inverse zeroifier factors out of this Horner fold. The
+generated theorem therefore identifies the selected Gate contribution with
+`fold(ρ, pureRoots) / V(ζ)` when `V(ζ) ≠ 0`. Native `zeroifier.inv()` rejects
+zero; the algebraic factorization itself works for any common factor.
+
+This is a local evaluator and accumulator correspondence. The source check
+binds the reviewed native statements but is not a verified Zig interpreter.
+The theorem assumes the supplied coefficient, zeroifier, and samples are the
+ones used by the proof. Transcript ordering, committed opening authentication,
+and the random composition, PCS, and FRI soundness arguments remain separate.
+
 Recheck the bounded export and theorem with:
 
 ```sh
 python3 scripts/export_s31_direct_gate_bytecode_arithmetic.py PACKAGE \
   formal/s31/S31/Gadgets/Air/GeneratedDirectGateBytecodeArithmetic.lean \
-  --logup-output formal/s31/S31/Gadgets/Air/GeneratedDirectGateBytecodeLogUp.lean --check
+  --logup-output formal/s31/S31/Gadgets/Air/GeneratedDirectGateBytecodeLogUp.lean \
+  --composition-output formal/s31/S31/Gadgets/Air/GeneratedDirectGateComposition.lean --check
 python3 -m unittest src/frontends/s31/tests/python/test_gate_bytecode_arithmetic.py
 (cd formal/s31 && lake build S31.Gadgets.Air.GeneratedDirectGateBytecodeLogUp)
 (cd formal/s31 && lake build S31.Gadgets.Air.DirectGateOodsMask)
+(cd formal/s31 && lake build S31.Gadgets.Air.GeneratedDirectGateComposition)
 zig test --dep stwo_utils \
   -Mroot=src/frontends/s31/tests/proofs/gate_mask_native_test.zig \
   -Mstwo_utils=deps/stwo-zig/src/core/utils.zig

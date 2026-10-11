@@ -27,6 +27,7 @@ from package.correspondence import (DIRECT_COLUMN_IDS, KEY_FIELDS, canonical, ch
 from export_s31_direct_gate_bridge import render_bridge
 from export_s31_direct_gate_bytecode_arithmetic import (
     render as render_bytecode_arithmetic, render_logup as render_bytecode_logup,
+    render_composition as render_bytecode_composition,
 )
 from export_s31_direct_gate_evaluator_fixture import (
     render as render_evaluator_fixture, validate_component_geometry,
@@ -249,6 +250,10 @@ def main() -> None:
                         "GeneratedDirectGateBytecodeLogUp.lean")
         if render_bytecode_logup(honest) != logup_golden.read_text():
             raise AssertionError("installed Gate LogUp bytecode differs from checked Lean export")
+        composition_golden = (REPO / "formal/s31/S31/Gadgets/Air/"
+                              "GeneratedDirectGateComposition.lean")
+        if render_bytecode_composition(honest) != composition_golden.read_text():
+            raise AssertionError("installed Gate composition differs from checked Lean export")
         component = json.loads((honest / "component-manifest.json").read_text())["components"][0]
         for kind in ("fixed", "main", "interaction"):
             changed = copy.deepcopy(component)
@@ -413,6 +418,7 @@ def main() -> None:
             "evaluator_fixture_matches_checked_package": True,
             "installed_gate_bytecode_arithmetic_matches_checked_package": True,
             "installed_gate_bytecode_logup_matches_checked_package": True,
+            "installed_gate_composition_matches_checked_package": True,
             "native_gate_512_row_previous_mask_matches_lean_formula": True,
             "resealed_component_column_maps_rejected": True,
             "resealed_gate_program_binding_rejected": True,

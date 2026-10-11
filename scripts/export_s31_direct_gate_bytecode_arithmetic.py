@@ -2,15 +2,17 @@
 """Export the pinned STWZEVA/1 Gate arithmetic prefix into checked Lean.
 
 This decoder intentionally supports one bounded native program. Its generated
-Lean artifacts prove identities for all eleven roots at arbitrary QM31 cells
-and record the exact interaction offset order. Authentication of OODS samples,
-composition folding, and PCS/FRI remain explicit correspondence obligations.
+Lean artifacts prove identities for all eleven roots at arbitrary QM31 cells,
+record the exact interaction offset order, and reduce the selected component's
+quotient-root Horner fold. Authentication of OODS samples, transcript binding,
+and PCS/FRI remain explicit correspondence obligations.
 """
 
 from __future__ import annotations
 
 import argparse
 import hashlib
+import json
 import struct
 import sys
 from pathlib import Path
@@ -404,28 +406,112 @@ def render_logup(package: Path) -> str:
     return "\n".join(lines)
 
 
+def check_composition_source_contract(verifier: str, accumulator: str,
+                                      component_fold: str) -> None:
+    """Fail closed on changes to the pinned native quotient-fold statements."""
+    require("const denominator_inverse = try zeroifier.inv();" in verifier and
+            "for (program.constraint_roots, 0..) |root, root_index|" in verifier and
+            "const evaluation = extension[root].mul(denominator_inverse);" in verifier and
+            "accumulator.accumulate(evaluation);" in verifier and
+            ".accumulation = QM31.zero()," in accumulator and
+            "self.accumulation = self.accumulation.mul(self.random_coeff).add(evaluation);" in accumulator and
+            "PointEvaluationAccumulator.init(random_coeff)" in component_fold and
+            "for (self.components, 0..) |component, ordinal|" in component_fold,
+            "native Gate quotient accumulation source changed")
+
+
+def render_composition(package: Path) -> str:
+    """Emit the selected Gate quotient-root and Horner composition link."""
+    checked = check_package(package)
+    _base, _ext, roots = decoded_program(gate_program(BUNDLE.read_bytes()))
+    manifest = json.loads((package / "component-manifest.json").read_text())
+    components = manifest["components"]
+    require(len(components) == 1 and
+            components[0]["name"] == "qm31_ops" and
+            components[0]["source_index"] == 1 and
+            components[0]["proof_index"] == 0 and
+            components[0]["trace_log_size"] == 9 and
+            components[0]["n_constraints"] == 11 and
+            components[0]["random_coefficient_offset"] == 0 and
+            roots == (*range(9), 88, 96),
+            "selected direct Gate composition shape changed")
+    verifier = (ROOT / "deps/stwo-zig/src/frontends/cairo/witness/resident_verifier.zig").read_text()
+    accumulator = (ROOT / "deps/stwo-zig/src/core/air/accumulation.zig").read_text()
+    component_fold = (ROOT / "deps/stwo-zig/src/core/air/components.zig").read_text()
+    check_composition_source_contract(verifier, accumulator, component_fold)
+    lines = [
+        "-- Generated from the checked one-component STWZEVA/1 direct Gate package.",
+        f"-- Bundle SHA-256: {AIR_BUNDLE_SHA256}",
+        f"-- Gate program SHA-256: {GATE_PROGRAM_SHA256}",
+        f"-- Source SHA-256: {checked['source_sha256']}",
+        "-- Root order: extension registers 0..8 (base injections), then 88 and 96.",
+        "-- Native quotient/accumulator statements are checked source contracts.",
+        "import S31.Gadgets.Air.GeneratedDirectGateBytecodeLogUp",
+        "import S31.Gadgets.Air.DirectGateOodsComposition", "",
+        "namespace S31.Gadgets.Air.GeneratedDirectGateComposition", "",
+        "open S31.Gadgets.Air.DirectGateOodsArithmetic",
+        "open S31.Gadgets.Air.DirectGateOodsLogUp",
+        "open S31.Gadgets.Air.DirectGateOodsComposition", "",
+        "/-- The installed root order of the selected direct Gate component. -/",
+        "def bytecodeRoots (cells : Cells) (alpha z claimedScaled : QM) : List QM :=",
+        "  installedArithmeticRoots (arithmeticCells cells) ++",
+        "    [(GeneratedDirectGateBytecodeLogUp.bytecodeLogup cells alpha z claimedScaled).1,",
+        "     (GeneratedDirectGateBytecodeLogUp.bytecodeLogup cells alpha z claimedScaled).2]", "",
+        "theorem bytecode_roots_eq_pure (cells : Cells) (alpha z claimedScaled : QM) :",
+        "    bytecodeRoots cells alpha z claimedScaled =",
+        "      pureRoots cells alpha z claimedScaled := by",
+        "  simp [bytecodeRoots, pureRoots,",
+        "    installed_arithmetic_roots_eq_oods_polynomials,",
+        "    GeneratedDirectGateBytecodeLogUp.bytecode_logup_eq]", "",
+        "/-- Native `zeroifier.inv()` succeeds only when the zeroifier is",
+        "nonzero. The selected component's eleven ordered quotient evaluations",
+        "then contribute this exact Horner fold. -/",
+        "theorem bytecode_composition_eq_pure (cells : Cells)",
+        "    (alpha z claimedScaled coefficient zeroifier : QM)",
+        "    (_hzero : zeroifier ≠ 0) :",
+        "    quotientFold coefficient zeroifier⁻¹",
+        "      (bytecodeRoots cells alpha z claimedScaled) =",
+        "      S31.Gadgets.Air.CompositionFold.fold coefficient",
+        "        (pureRoots cells alpha z claimedScaled) / zeroifier := by",
+        "  rw [bytecode_roots_eq_pure, quotient_fold_factor]",
+        "  rfl", "",
+        "end S31.Gadgets.Air.GeneratedDirectGateComposition", "",
+    ]
+    return "\n".join(lines)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("package", type=Path)
     parser.add_argument("output", type=Path)
     parser.add_argument("--logup-output", type=Path,
                         help="also regenerate the selected two-root QM31 LogUp theorem")
+    parser.add_argument("--composition-output", type=Path,
+                        help="also regenerate the selected direct Gate composition theorem")
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
     result = render(args.package)
     logup = render_logup(args.package) if args.logup_output is not None else None
+    composition = (render_composition(args.package)
+                   if args.composition_output is not None else None)
     if args.check:
         if not args.output.is_file() or args.output.read_text() != result:
             raise SystemExit("installed Gate bytecode Lean export changed")
         if logup is not None and (not args.logup_output.is_file() or
                                   args.logup_output.read_text() != logup):
             raise SystemExit("installed Gate LogUp bytecode Lean export changed")
+        if composition is not None and (not args.composition_output.is_file() or
+                                        args.composition_output.read_text() != composition):
+            raise SystemExit("installed Gate composition Lean export changed")
     else:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(result)
         if logup is not None:
             args.logup_output.parent.mkdir(parents=True, exist_ok=True)
             args.logup_output.write_text(logup)
+        if composition is not None:
+            args.composition_output.parent.mkdir(parents=True, exist_ok=True)
+            args.composition_output.write_text(composition)
 
 
 if __name__ == "__main__":
