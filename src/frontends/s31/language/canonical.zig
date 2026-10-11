@@ -378,6 +378,58 @@ test "canonical graph folds constants and shares repeated expressions" {
     try std.testing.expectEqual(ir.source_map[3].id, ir.source_map[4].id);
 }
 
+test "canonical reversed CSE exact legacy bytes and digest" {
+    // This is the normalized relation produced from the Lean
+    // `OptimizedTextBytes.reversedAndRepeatedBytes` source spelling.
+    const source_text =
+        \\{"version":1,"name":"reverse_share","inputs":[{"name":"x","kind":"m31","length":4,"visibility":"public"}],"nodes":[{"name":"a","op":"add","lhs":"x","rhs":"x"},{"name":"b","op":"mul","lhs":"x","rhs":"x"},{"name":"c","op":"add","lhs":"a","rhs":"b"},{"name":"d","op":"add","lhs":"b","rhs":"a"}],"assertions":[],"public_outputs":["d"]}
+    ;
+    const expected_bytes =
+        \\{"version":1,"nodes":[{"tag":"input","kind":"m31","length":4,"lhs":null,"rhs":null,"constant":null,"rounds":null,"body":null,"input_name":"x","visibility":"public"},{"tag":"add","kind":"m31","length":4,"lhs":0,"rhs":0,"constant":null,"rounds":null,"body":null,"input_name":null,"visibility":null},{"tag":"mul","kind":"m31","length":4,"lhs":0,"rhs":0,"constant":null,"rounds":null,"body":null,"input_name":null,"visibility":null},{"tag":"add","kind":"m31","length":4,"lhs":1,"rhs":2,"constant":null,"rounds":null,"body":null,"input_name":null,"visibility":null}],"assertions":[],"public_outputs":[{"name":"d","id":3}]}
+    ;
+    var parsed = try relation.parseProgram(std.testing.allocator, source_text);
+    defer parsed.deinit();
+    var ir = try build(std.testing.allocator, parsed.value);
+    defer ir.deinit();
+    try std.testing.expectEqual(@as(usize, 4), ir.nodes.len);
+    try std.testing.expectEqual(@as(usize, 5), ir.source_map.len);
+    const expected_ids = [_]u32{ 0, 1, 2, 3, 3 };
+    const expected_names = [_][]const u8{ "x", "a", "b", "c", "d" };
+    for (ir.source_map, expected_ids, expected_names) |entry, expected_id, expected_name| {
+        try std.testing.expectEqualStrings(expected_name, entry.name);
+        try std.testing.expectEqual(expected_id, entry.id);
+    }
+    try std.testing.expectEqual(Tag.add, ir.nodes[3].tag);
+    try std.testing.expectEqual(@as(?u32, 1), ir.nodes[3].lhs);
+    try std.testing.expectEqual(@as(?u32, 2), ir.nodes[3].rhs);
+
+    const legacy_nodes = try std.testing.allocator.alloc(LegacyNode, ir.nodes.len);
+    defer std.testing.allocator.free(legacy_nodes);
+    for (ir.nodes, legacy_nodes) |node, *legacy| legacy.* = .{
+        .tag = node.tag,
+        .kind = node.kind,
+        .length = node.length,
+        .lhs = node.lhs,
+        .rhs = node.rhs,
+        .constant = node.constant,
+        .rounds = node.rounds,
+        .body = node.body,
+        .input_name = node.input_name,
+        .visibility = node.visibility,
+    };
+    const actual_bytes = try std.json.Stringify.valueAlloc(std.testing.allocator, .{
+        .version = @as(u32, 1),
+        .nodes = legacy_nodes,
+        .assertions = ir.assertions,
+        .public_outputs = ir.public_outputs,
+    }, .{});
+    defer std.testing.allocator.free(actual_bytes);
+    try std.testing.expectEqualStrings(expected_bytes, actual_bytes);
+    var expected_digest: [32]u8 = undefined;
+    std.crypto.hash.sha2.Sha256.hash(expected_bytes, &expected_digest, .{});
+    try std.testing.expectEqualSlices(u8, &expected_digest, &ir.sha256);
+}
+
 test "deep source chain canonicalizes without recursive shape lookup" {
     var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();

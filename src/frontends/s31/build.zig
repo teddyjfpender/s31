@@ -97,6 +97,12 @@ pub fn build(b: *std.Build) void {
     const tests = b.addRunArtifact(b.addTest(.{ .root_module = frontend }));
     const test_step = b.step("test", "Test the S31 prototype parser, evaluator and circuit compiler");
     test_step.dependOn(&tests.step);
+    const canonical_cse_tests = b.addRunArtifact(b.addTest(.{
+        .root_module = frontend,
+        .filters = &.{"canonical reversed CSE exact legacy bytes and digest"},
+    }));
+    b.step("test-canonical-cse", "Check source-to-canonical CSE bytes and verifier digest")
+        .dependOn(&canonical_cse_tests.step);
     const record_parser_corpus_root = b.createModule(.{
         .root_source_file = b.path("tests/acceptance/record_abi/native_parser_corpus.zig"),
         .target = target,

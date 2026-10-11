@@ -31,14 +31,67 @@ same canonical operation and ordered operands. These facts do not by
 themselves prove the independent symbolic audit accepts every such source.
 
 This is a fail-closed semantic checker, not a completeness theorem saying the
-audit accepts every valid source program. It does not establish byte equality
-with Zig's IR serializer or digest, and it does not cover constants, casts,
-other operation tags, source text parsing, or native AIR emission. Those edges
-remain separate correspondence obligations. The focused check is:
+audit accepts every valid source program. It does not cover constants, casts,
+other operation tags, or native AIR emission. Those edges remain separate
+correspondence obligations. The focused check is:
 
 ```sh
 (cd formal/s31 && lake build S31.Gadgets.Functional.Correspondence.CanonicalDagOptimization)
 (cd formal/s31 && lake env leanchecker S31.Gadgets.Functional.Correspondence.CanonicalDagOptimization)
+```
+
+### Reversed operands and CSE from source bytes
+
+`OptimizedTextBytes.lean` adds a **separate, bounded byte grammar** for the
+direct four-lane add/mul fragment. It admits reversed operands and repeated
+expressions, which the older `SSATextBytes.parseLet` rejects. For example:
+
+```s31
+circuit reverse_share(public x: [m31; 4]) -> public [m31; 4] {
+  let a = x + x;
+  let b = x .* x;
+  let c = a + b;
+  let d = b + a;
+  d
+}
+```
+
+The parser retains four source instructions. The checked optimizer emits
+three arithmetic nodes and maps source names `x,a,b,c,d` to canonical IDs
+`0,1,2,3,3`. The final add's compact operands are `(1,2)`, so the reversed
+source form shares `c`'s node. `parsed_bytes_sound` proves that any accepted
+source has the same four-lane M31 output as its compact certificate for all
+inputs. `checked_bytes_sound` adds exact normalized JSON and canonical IR
+byte comparisons as premises of that semantic result. A kernel-checked
+example proves this source compacts to the three-node certificate and the
+older byte parser rejects it.
+
+The native `language/canonical.zig` fixture runs the production canonical
+builder on this source's normalized relation. It checks the complete
+source-name-to-ID map, the exact compact legacy IR serialization, and the
+SHA-256 digest of those bytes. The Python differential fixture checks that
+the production text frontend emits the normalized JSON pinned in Lean and
+that the Zig fixture's expected canonical bytes equal the Lean literal. The
+canonical digest for this fixture is
+`2088c1bad15f2ba5b52f0214e9d3d66744b9c84aa6218aa336d8b337157e7132`.
+These are focused executable checks across implementations, not a universal
+Lean theorem about the Zig serializer. In particular, the large pinned byte
+literals are not kernel-proved to satisfy `checkBytes`; the universal theorem
+applies whenever that checker accepts its three byte inputs.
+
+The **production canonical builder** accepts this reversed/CSE form, but the
+current opt-in Python release correspondence checker still rejects it. The
+new Lean grammar is an extension model, not an expansion of that release
+gate. Admitting this form in the release checker still requires a checked
+source-to-canonical ID map, topology validation against it, and tamper tests.
+The structural optimizer's audit-completeness theorem and authentication of
+the resulting AIR and proof remain open.
+
+```sh
+(cd formal/s31 && lake build S31.Gadgets.Functional.Correspondence.OptimizedTextBytes)
+(cd formal/s31 && lake env leanchecker S31.Gadgets.Functional.Correspondence.OptimizedTextBytes)
+(cd src/frontends/s31 && zig build test-canonical-cse -Doptimize=ReleaseFast)
+PYTHONPATH=src/frontends/s31/python python3 -m unittest src/frontends/s31/tests/python/test_canonical_optimizer_fixture.py
 ```
 
 `RawGateSoundness.lean` composes the executable source-byte/normalized-byte
