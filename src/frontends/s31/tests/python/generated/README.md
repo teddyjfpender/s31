@@ -96,6 +96,20 @@ aliases must change the verifier identity and gate schedule; duplicate names
 and forward references must fail closed. This checks the bounded direct-gate
 profile, not the full functional language or native proof execution.
 
+`test_source_mutation_correspondence.py` adds a separate 64-graph,
+384-source corpus with a pinned SHA-256 digest. Six spellings per graph cover
+comments inside expressions, ASCII whitespace, parentheses, zero-cost alias
+lets, internal producer renaming, and eager arithmetic after an earlier
+returned wire. For every admitted source it compares the independent bounded
+parser with the production compiler, then compares canonical IR bytes and the
+exact positional native gate schedule across equivalent spellings. Targeted
+boundaries include invalid syntax, valid S31 forms excluded from certification,
+the 16,384-byte and 256-token limits, and the 128-character producer-name
+limit. A handwritten three-gate example checks that a dead later calculation
+still occupies an arithmetic row and that retargeting the public return changes
+the verifier identity. This is a fast Python-only differential gate; native
+proof execution and general compiler correctness require separate checks.
+
 Run with the normal Python suite:
 
 ```sh
