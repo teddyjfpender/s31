@@ -121,6 +121,7 @@ import S31.Gadgets.Functional.SSAConcreteGateSchedule
 import S31.Gadgets.Functional.SSAConcreteGateLookup
 import S31.Gadgets.Functional.SSANativeTopologyCheck
 import S31.Gadgets.Functional.SSAGeneralNamedTopology
+import S31.Gadgets.Functional.SSAGeneralNamedExecution
 import S31.Gadgets.Functional.SSALocalPipeline
 import S31.Gadgets.Functional.SSATextBytes
 import S31.Gadgets.Functional.SSANormalizedBytes

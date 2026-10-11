@@ -251,6 +251,22 @@ instantiates that theorem.
 
 The Python checker binds the byte array/digest and the remaining constant,
 padding, selector, multiplicity, and public ABI rows to the exported package.
+
+[`SSAGeneralNamedExecution.lean`](../../../formal/s31/S31/Gadgets/Functional/SSAGeneralNamedExecution.lean)
+closes a separate semantic gap for **arbitrary admitted wire names**. For any
+length of checked four-lane add/mul SSA, including a `let` result read more
+than once, its `name_table_distinct` theorem derives name injectivity from
+the checker’s complete, duplicate-free name table. Its induction then runs
+the named nodes through the actual `evaluateNode` and `Program.environment`
+fold, proving that the returned name contains the source value. If
+`Program.evaluate` accepts an assignment, `checked_named_public_claim_sound`
+also proves that the assigned public result equals that value. A final
+conditional theorem joins this result to authenticated native source rows.
+The executable examples accept a renamed square/fourth-power program and
+reject a changed output, a forward read, and a repeated name. This is a
+general checked-SSA theorem, rather than a proof that the production Python
+parser or serializer emits the modeled Lean `Program` for every `.s31` text.
+
 The embedded SHA-256 strings are **not verified in Lean**. Lean does not prove
 the production Python or Zig parser equivalent to its byte parser, nor that
 the production JSON readers implement the same exact-byte relation model.
