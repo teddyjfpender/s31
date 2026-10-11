@@ -159,6 +159,9 @@ pub fn build(b: *std.Build) void {
     const mixed_n4_native_tests = b.addRunArtifact(b.addTest(.{ .root_module = bounded_binding_root, .filters = &.{"mixed sealed N4 native"} }));
     b.step("test-mixed-n4-native", "Prove and verify source-pinned mixed N4 native envelopes")
         .dependOn(&mixed_n4_native_tests.step);
+    const mixed_general_native_tests = b.addRunArtifact(b.addTest(.{ .root_module = bounded_binding_root, .filters = &.{"mixed general sealed native"} }));
+    b.step("test-mixed-general-native", "Prove and verify source-pinned mixed one-to-eight-call native envelopes")
+        .dependOn(&mixed_general_native_tests.step);
     const square_export_root = localEntry(b, "tools/formal/export_square4_topology.zig", target, optimize);
     square_export_root.addImport("stwo_s31_prototype", frontend);
     square_export_root.addImport("stwo_circuit_frontend", circuit);

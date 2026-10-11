@@ -8,5 +8,6 @@ test {
     _ = @import("src/runtime/mixed_boundary/registry_manifest.zig");
     _ = @import("src/runtime/mixed_boundary/package.zig");
     _ = @import("src/runtime/mixed_boundary/n4_package.zig");
+    _ = @import("src/runtime/mixed_boundary/general_package.zig");
     _ = @import("src/runtime/mixed_boundary/witness_audit.zig");
 }
