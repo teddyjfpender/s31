@@ -16,7 +16,7 @@ sys.path.insert(0, str(S31 / "python"))
 sys.path.insert(0, str(S31 / "tests/python/generated"))
 
 import s31
-from package.correspondence import check_package, parse_source
+from package.correspondence import canonical_ir_bytes, check_package, parse_source
 from test_source_mutation_correspondence import CORPUS_SHA256, corpus, corpus_digest
 from text_frontend import compile_text
 
@@ -59,7 +59,8 @@ def check_static(sample) -> dict:
     return {"sample": sample.label, "gates": sample.gate_count,
             "returned_gate": sample.return_id,
             "expected_public_words": expected_words(sample),
-            "normalized_sha256": hashlib.sha256(normalized_bytes(sample)).hexdigest()}
+            "normalized_sha256": hashlib.sha256(normalized_bytes(sample)).hexdigest(),
+            "canonical_ir_sha256": hashlib.sha256(canonical_ir_bytes(syntax)).hexdigest()}
 
 
 def check_static_mutations(sample) -> int:
@@ -94,6 +95,9 @@ def exercise(work: Path, sample) -> dict:
                         "direct-gate")
     if (package / "source.s31.json").read_bytes() != normalized_bytes(sample):
         raise AssertionError("native package normalized bytes differ from Lean fixture")
+    manifest = json.loads((package / "manifest.json").read_text())
+    if manifest.get("canonical_ir_sha256") != expected["canonical_ir_sha256"]:
+        raise AssertionError("native manifest IR digest differs from Lean byte fixture")
     certificate = check_package(package)
     if (certificate["source_ssa"]["output"] != sample.return_id or
             certificate["source_ssa"]["instructions"] != expected_instructions(sample)):

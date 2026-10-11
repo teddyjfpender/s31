@@ -52,9 +52,11 @@ output multiplicity. Each sample changes the return or an operation and proves
 the altered bytes do not parse to the original certificate. The source-byte
 corpus digest and selected-source digest are pinned in the generated file.
 For the four native proof samples, Lean also checks every byte of the canonical
-normalized JSON against its source parser and rejects a changed normalized
-opcode. The native package checker separately compares those canonical bytes
-with the files actually used to construct the proofs.
+normalized JSON and compact canonical IR against its source parser. It rejects
+a changed normalized opcode or changed canonical IR bytes. The native package
+checker separately compares those bytes and IR digests with the files and
+manifest actually used to construct the proofs. SHA-256 is computed outside
+Lean, so that digest comparison remains an implementation test.
 Regenerate and verify it with:
 
 ```sh

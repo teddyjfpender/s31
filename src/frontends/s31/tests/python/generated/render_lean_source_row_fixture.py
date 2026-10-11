@@ -19,7 +19,7 @@ S31 = Path(__file__).resolve().parents[3]
 ROOT = S31.parents[2]
 sys.path.insert(0, str(S31 / "python"))
 
-from package.correspondence import parse_source
+from package.correspondence import canonical_ir_bytes, parse_source
 from package.direct_gate_schedule import exact_direct_gate_schedule
 from test_source_mutation_correspondence import (CORPUS_SHA256, _spell,
                                                  corpus, corpus_digest)
@@ -87,6 +87,7 @@ def render() -> str:
     lines = [
         "import S31.Gadgets.Functional.SSAAliasTextBytes",
         "import S31.Gadgets.Functional.SSAAirColumnCells",
+        "import S31.Gadgets.Functional.Correspondence.AliasCanonicalIrBytes",
         "",
         "/-!",
         "Kernel-reduced samples for the bounded direct-Gate source grammar.",
@@ -99,8 +100,8 @@ def render() -> str:
         "The `totalAddRows` values come from the independent Python schedule.",
         "The native exporter equality, actual AIR fixed columns, proof",
         "authentication, and verifier soundness remain external obligations.",
-        "The four native samples additionally check their exact normalized",
-        "JSON bytes, including a changed-opcode negative control.",
+        "The four native samples additionally check exact normalized JSON",
+        "and compact canonical IR bytes with negative controls.",
         "-/",
         "",
         "namespace S31.Functional.Correspondence.GeneratedMutationRows",
@@ -109,6 +110,7 @@ def render() -> str:
         "open S31.Functional.SSAAliasTextBytes",
         "open S31.Functional.SSADirectGateBridge",
         "open S31.Functional.SSAAirColumnCells",
+        "open S31.Functional.Correspondence.AliasCanonicalIrBytes",
         "",
         "set_option maxRecDepth 8192",
         "set_option maxHeartbeats 2000000",
@@ -175,6 +177,7 @@ def render() -> str:
         if label in NATIVE_SELECTION:
             normalized, _ = compile_text(sample.source)
             normalized_bytes = (json.dumps(normalized, indent=2, sort_keys=True) + "\n").encode()
+            canonical_bytes = canonical_ir_bytes(syntax)
             old = b'"op": "add"' if b'"op": "add"' in normalized_bytes else b'"op": "mul"'
             new = b'"op": "mul"' if old.endswith(b'"add"') else b'"op": "add"'
             changed_bytes = normalized_bytes.replace(old, new, 1)
@@ -184,11 +187,18 @@ def render() -> str:
                 f"{hashlib.sha256(normalized_bytes).hexdigest()}",
                 f"def {prefix}NormalizedBytes : List Nat := {lean_bytes(normalized_bytes)}",
                 f"def {prefix}ChangedNormalizedBytes : List Nat := {lean_bytes(changed_bytes)}",
+                f"-- Canonical IR SHA-256: {hashlib.sha256(canonical_bytes).hexdigest()}",
+                f"def {prefix}CanonicalBytes : List Nat := {lean_bytes(canonical_bytes)}",
                 f"theorem {prefix}NormalizedChecks :",
                 f"    checkAliasRelation {prefix}Bytes {prefix}NormalizedBytes =",
                 f"      some {prefix}Certificate ∧",
                 f"    checkAliasRelation {prefix}Bytes {prefix}ChangedNormalizedBytes =",
                 "      none := by decide",
+                f"theorem {prefix}CanonicalChecks :",
+                f"    checkAliasCanonical {prefix}Bytes {prefix}NormalizedBytes",
+                f"      {prefix}CanonicalBytes = some {prefix}Certificate ∧",
+                f"    checkAliasCanonical {prefix}Bytes {prefix}NormalizedBytes",
+                f"      ({prefix}CanonicalBytes ++ [32]) = none := by decide",
                 "",
             ]
     lines += ["end S31.Functional.Correspondence.GeneratedMutationRows", ""]
