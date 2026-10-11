@@ -63,4 +63,33 @@ theorem checked_direct_full_modeled_trace
     CheckedGateAddressLedger.check_sound
       (joinedCells certificate island) wire externalUses externalYields hledger⟩
 
+/-- Literal-byte admission entry point for the full modeled composition.
+Mapping `UInt8` values to `Nat` supplies the parser's canonical byte domain. -/
+theorem checked_u8_direct_full_modeled_trace
+    (sourceBytes normalizedBytes : List UInt8) (certificate : Certificate)
+    (input : Lanes) (island : List ColumnCell) (values : List Quad)
+    (externalUses externalYields : List Nat)
+    (hcheck : checkRelation (sourceBytes.map UInt8.toNat)
+      (normalizedBytes.map UInt8.toNat) = some certificate)
+    (hisland : NativeConstantIslandCertificate.check certificate island values = true)
+    (hledger : CheckedGateAddressLedger.check
+      (joinedCells certificate island) externalUses externalYields = true) :
+    ∃ (wire : Nat → Quad) (output : Lanes),
+      denotation (sourceBytes.map UInt8.toNat) input = some output ∧
+      (joinedCells certificate island).length = 512 ∧
+      (∀ row : Fin 512, ∃ cell ∈ joinedCells certificate island,
+        cell.traceRow = row.val) ∧
+      (∀ cell ∈ joinedCells certificate island,
+        fixedMatches (trace (joinedCells certificate island) wire) cell) ∧
+      allArithmeticRootsZero (trace (joinedCells certificate island) wire) ∧
+      wire (address certificate.output) =
+        S31.Gadgets.Air.Qm31Ops.packM31 output ∧
+      balanced (gateRows (joinedCells certificate island) wire)
+        (wireEvents wire externalUses)
+        (wireEvents wire externalYields) :=
+  checked_direct_full_modeled_trace
+    (sourceBytes.map UInt8.toNat) (normalizedBytes.map UInt8.toNat)
+    certificate input island values externalUses externalYields
+    hcheck hisland hledger
+
 end S31.Functional.Correspondence.CheckedDirectGateModeledComposition

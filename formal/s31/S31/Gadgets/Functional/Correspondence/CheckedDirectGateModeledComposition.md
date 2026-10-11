@@ -14,6 +14,8 @@ with complete row coverage, matching selected fixed cells, zero installed
 local arithmetic roots, the selected public output, and exact ideal Gate event
 balance for that same wire. The shared source/public/constant addresses are
 derived from boundary contracts; there is no separate agreement hypothesis.
+`checked_u8_direct_full_modeled_trace` gives the same result for literal
+`List UInt8` source and normalized bytes.
 
 The island and ledger checks remain explicit premises. In particular, the
 external address lists are caller supplied, and the theorem's `gateRows`
