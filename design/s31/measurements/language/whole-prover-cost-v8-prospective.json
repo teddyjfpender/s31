@@ -1,0 +1,85 @@
+{
+  "schema": "s31-whole-prover-cost-v8-prospective-design",
+  "status": "designed-not-frozen-no-native-observations",
+  "revision": "8",
+  "prefreeze_pins": {
+    "source_base_commit": null,
+    "compiler_sha256": null,
+    "engine_gitlink_commit": null,
+    "measurement_tool_sha256": null,
+    "host_identity": null,
+    "generated_inventory_sha256": null,
+    "admitted_general_mixed_manifest_sha256": null
+  },
+  "freeze_requirements": "A separate immutable protocol must pin the clean committed source base, compiler fingerprint over every source byte it reads, exact engine gitlink and clean checkout, complete transitive Python tool path/digest inventory, host, FRI/PoW settings, generated source and assignment digests, admitted general mixed profile and sealed component manifest, split menus, gates and model algorithm before native build; external protocol SHA/anchor timestamp must precede training; external model SHA/anchor timestamp must precede held-out build.",
+  "historical_v7r1_protocol_sha256": "94b1bd57a49c3fdbd7ef8931ba21b3452efdfd5573693796a57035aeb3f7a891",
+  "historical_v7r1_audit_sha256": "9b871ec1618128c8d10f74d60fad46150d62ade58164aab7a2b88eb388e175a6",
+  "v7r1_diagnostic_disclosure": {
+    "accuracy_gate_passed": false,
+    "chip_family_rss_trial_coverage": 0.752,
+    "chip_family_rss_trial_coverage_minimum": 0.8,
+    "chip_8192_rss_trial_coverage": 0.0,
+    "hash_13_rss_trial_coverage": 0.03,
+    "use_of_v7r1_validation": "motivated the prospective uncertainty method and size-stratified design only; no V7r1 held-out trial, coefficient, interval, or gate result may enter V8 fitting or calibration"
+  },
+  "samples_per_program": 100,
+  "minimum_available_disk_bytes_before_native_phase": 8589934592,
+  "splits": {
+    "train": {
+      "arithmetic_rounds": [16, 80, 320, 1280, 5120, 12288],
+      "chip_rounds": [16, 32, 64, 256, 1024, 8192],
+      "hash_depths": [2, 3, 5, 7, 10, 14],
+      "signed_widths": [8, 16, 32, 64, 128],
+      "fixed_width_result": "div_rem_below_128",
+      "signed_128_result": "quotient",
+      "arithmetic_constant": 71,
+      "chip_constant": 79,
+      "assignment_index_base": 3410000
+    },
+    "validation": {
+      "arithmetic_rounds": [32, 120, 480, 1920, 7680],
+      "chip_rounds": [128, 512, 2048, 4096, 16384],
+      "hash_depths": [4, 6, 8, 11, 13],
+      "signed_widths": [8, 16, 32, 64, 128],
+      "fixed_width_result": "div_rem_below_128",
+      "signed_128_result": "remainder",
+      "arithmetic_constant": 73,
+      "chip_constant": 83,
+      "assignment_index_base": 3910000
+    }
+  },
+  "predictive_accuracy_gate": {
+    "minimum_train_programs_per_family": 5,
+    "minimum_validation_programs_per_family": 5,
+    "minimum_validation_trials_per_program": 100,
+    "per_family_whole_wall_program_mean_p90_relative_error_max": 0.25,
+    "per_family_whole_wall_trial_interval_coverage_min": 0.8,
+    "per_family_whole_wall_median_interval_upper_to_measured_mean_max": 8.0,
+    "per_family_proof_bytes_program_median_p90_relative_error_max": 0.1,
+    "per_family_prover_rss_program_median_p90_relative_error_max": 0.1,
+    "per_family_proof_bytes_and_rss_trial_interval_coverage_min": 0.8,
+    "per_program_rss_trial_interval_coverage_min": 0.7,
+    "per_program_rss_interval_upper_to_measured_median_max": 1.5,
+    "per_program_process_stage_mean_relative_error_max": 0.25,
+    "per_program_process_stage_mean_absolute_error_seconds_max": 0.02
+  },
+  "rss_uncertainty": {
+    "method": "symmetric-max-training-LOO-absolute-and-relative-envelope",
+    "fixed_absolute_floor_bytes": 2097152,
+    "center_fit": "V7 family-specific point fits, refit from fresh V8 training observations only",
+    "calibration": "For each training program, fit the center on other V8 training programs, collect every trial residual, and take max(abs(p05),abs(p95)); radius is max of those absolute radii, their residual-to-center relative radii times the prediction center, and the fixed absolute floor. Clip lower at zero.",
+    "selected_before_v8_native_observation": true
+  },
+  "paired_mixed_vs_generic": {
+    "status": "blocked-until-general-mixed-profile-admitted-and-packaged",
+    "train_call_counts": [1, 2, 4, 6],
+    "validation_call_counts": [3, 5, 7, 8],
+    "assignments_per_pair": 100,
+    "comparison": "same committed semantic S31 source, same assignment and public claim; separate generic and authenticated-general-mixed packages and native verifiers",
+    "order": "deterministic balanced AB/BA order, 50 assignments each; record order and process start times",
+    "reported_targets": ["prove_process_wall_seconds", "native_verify_process_wall_seconds", "paired_prove_and_verify_wall_seconds", "proof_bytes", "prover_peak_rss_bytes", "package_build_seconds"],
+    "summary": "per-pair median log(generic/mixed) and 95% paired bootstrap interval, paired by assignment; report absolute costs too",
+    "automatic_lowering_selection_enabled": false
+  },
+  "automatic_lowering_selection_enabled": false
+}
