@@ -75,9 +75,10 @@ pub const Sealed = struct {
     stages: ProveStages,
 };
 
+pub const NativeTiming = engine.Timing;
+
 /// Monotonic wall-clock intervals inside the source-pinned mixed package.
-/// The engine owns preprocessing and PoW inside proveSourceBound, so neither
-/// can be separated from native_prove_including_setup_ns here.
+/// The ordinary API measures the whole native prove including setup.
 pub const ProveStages = struct {
     profile_rebuild_ns: u64,
     semantic_evaluation_ns: u64,
@@ -114,6 +115,18 @@ pub fn proveSealedAndInspect(
     air_bytes: []const u8,
     assignment: relation.Assignment,
 ) !Sealed {
+    return proveSealedAndInspectWithTiming(allocator, source, air_bytes, assignment, null);
+}
+
+/// Optional timing goes only to the caller; it is absent from proof bytes,
+/// statement bytes, manifest, source identity, and verifier inputs.
+pub fn proveSealedAndInspectWithTiming(
+    allocator: std.mem.Allocator,
+    source: []const u8,
+    air_bytes: []const u8,
+    assignment: relation.Assignment,
+    native_timing: ?*NativeTiming,
+) !Sealed {
     var timer = try std.time.Timer.start();
     const schedule = try mixed.inspectSource(allocator, source, air_bytes);
     const selected = try selectedFromSource(&schedule);
@@ -128,13 +141,14 @@ pub fn proveSealedAndInspect(
     var witness = try binding.compileManyWitness(allocator, source, assignment, topology);
     defer witness.deinit();
     const witness_end = timer.read();
-    var proof = try engine.proveSourceBound(
+    var proof = try engine.proveSourceBoundWithTiming(
         allocator,
         circuit.common.preprocessed.CircuitView.fromBuilder(&witness.circuit),
         witness.values(),
         source,
         air_bytes,
         &selected,
+        native_timing,
     );
     defer proof.deinit();
     const native_end = timer.read();

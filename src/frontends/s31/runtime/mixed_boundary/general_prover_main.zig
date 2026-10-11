@@ -16,6 +16,19 @@ const StageReport = struct {
     external_native_verification_ns: ?u64 = null,
 };
 
+const NativePhaseReport = struct {
+    schema: []const u8 = "s31-mixed-native-phase-v1",
+    source_sha256: []const u8,
+    circuit_identity_sha256: []const u8,
+    native_prove_including_setup_ns: u64,
+    prove_body_ns: u64,
+    interaction_pow_ns: u64,
+    pcs_prove_ns: u64,
+    fri_pow_ns: u64,
+    pcs_without_fri_pow_ns: u64,
+    native_without_reported_pow_ns: u64,
+};
+
 pub fn main() !void {
     const allocator = std.heap.smp_allocator;
     const args = try std.process.argsAlloc(allocator);
@@ -45,7 +58,24 @@ pub fn main() !void {
         break :blk supplied;
     } else null;
     defer if (supplied_v2) |bytes| allocator.free(bytes);
-    const sealed = try package.proveSealedAndInspect(allocator, source, air, assignment.value);
+    const timing_setting = std.process.getEnvVarOwned(allocator, "S31_MIXED_NATIVE_PHASES") catch |err| switch (err) {
+        error.EnvironmentVariableNotFound => null,
+        else => return err,
+    };
+    defer if (timing_setting) |setting| allocator.free(setting);
+    const time_native = if (timing_setting) |setting| blk: {
+        if (std.mem.eql(u8, setting, "1")) break :blk true;
+        if (std.mem.eql(u8, setting, "0")) break :blk false;
+        return error.InvalidMixedNativePhaseSetting;
+    } else false;
+    var native_timing: package.NativeTiming = undefined;
+    const sealed = try package.proveSealedAndInspectWithTiming(
+        allocator,
+        source,
+        air,
+        assignment.value,
+        if (time_native) &native_timing else null,
+    );
     defer allocator.free(sealed.bytes);
     const inspected = sealed.inspection;
     const source_hex = std.fmt.bytesToHex(inspected.schedule.source_sha256, .lower);
@@ -77,5 +107,26 @@ pub fn main() !void {
     // source-embedded native verifier accepts them. This line is diagnostic
     // output and is not part of the proof transcript or wire format.
     std.debug.print("S31_MIXED_STAGE_V1 {s}\n", .{stage_json});
+    if (time_native) {
+        const outer = sealed.stages.native_prove_including_setup_ns;
+        if (native_timing.prove_body_ns > outer or
+            native_timing.interaction_pow_ns > outer or
+            native_timing.fri_pow_ns > outer - native_timing.interaction_pow_ns or
+            native_timing.fri_pow_ns > native_timing.pcs_prove_ns)
+            return error.InvalidMixedNativePhaseTiming;
+        const phase_json = try std.json.Stringify.valueAlloc(allocator, NativePhaseReport{
+            .source_sha256 = &source_hex,
+            .circuit_identity_sha256 = &identity_hex,
+            .native_prove_including_setup_ns = outer,
+            .prove_body_ns = native_timing.prove_body_ns,
+            .interaction_pow_ns = native_timing.interaction_pow_ns,
+            .pcs_prove_ns = native_timing.pcs_prove_ns,
+            .fri_pow_ns = native_timing.fri_pow_ns,
+            .pcs_without_fri_pow_ns = native_timing.pcs_prove_ns - native_timing.fri_pow_ns,
+            .native_without_reported_pow_ns = outer - native_timing.interaction_pow_ns - native_timing.fri_pow_ns,
+        }, .{});
+        defer allocator.free(phase_json);
+        std.debug.print("S31_MIXED_NATIVE_PHASE_V1 {s}\n", .{phase_json});
+    }
     std.debug.print("proved\n", .{});
 }

@@ -80,8 +80,11 @@ python3 src/frontends/s31/benchmarks/pow_workers/fresh_assignments.py \
 python3 -m unittest discover -s src/frontends/s31/benchmarks/pow_workers -p 'test_*.py'
 ```
 
-The next measurement step is separate, non-transcript timers around the
-20-bit interaction grind and PCS/FRI grind in an isolated engine branch. If
+The updated engine and S31 general mixed prover expose optional,
+non-transcript timers around the 20-bit interaction grind and PCS/FRI grind.
+See the [phase timing checkpoint](PHASE_TIMING_PLAN.md) and run its
+`phase_equivalence.py` control before using any timer output. These timers
+do not score the old transfer study. If
 a host-local worker policy is changed later, it may alter only the search
 schedule:
 the canonical smallest-valid lattice nonce, PoW difficulty, verifier,

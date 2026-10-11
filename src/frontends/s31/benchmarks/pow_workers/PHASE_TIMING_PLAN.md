@@ -1,15 +1,40 @@
 # Mixed prover phase timing: exact next seam
 
-## What the current binary reports
+## Implemented diagnostic checkpoint
+
+The engine commit `f889c2a03` adds `proveSourceBoundWithTiming` while retaining
+the ordinary `proveSourceBound` API. The S31 general mixed prover enables the
+new path only with `S31_MIXED_NATIVE_PHASES=1`. It emits a separate
+`S31_MIXED_NATIVE_PHASE_V1` JSON line with the interaction PoW interval,
+the entire PCS prove interval, and the FRI PoW interval observed by the PCS
+stage recorder. It also reports the complete native interval measured by S31.
+The two subtraction fields are accounting differences, not separately timed
+stages. Values never enter the transcript or proof envelope.
+
+Run the same built N=2 source once normally and once with timing enabled,
+verify both proofs, require byte-identical proof and statement files, and
+check timing arithmetic:
+
+```sh
+python3 src/frontends/s31/benchmarks/pow_workers/phase_equivalence.py --count 2
+```
+
+The previous 480-trial worker corpus and 360-trial transfer corpus were built
+against the earlier engine and remain separate. A new predeclared, frozen
+training and held-out evaluation is still required for a predictive model.
+The current timing API divides only the two PoW intervals and the PCS prove
+block; it does not separately time every setup and trace phase listed below.
+
+## What the earlier binary reports
 
 The source-pinned mixed package reports profile rebuild, semantic evaluation,
 topology compilation, witness compilation, **one opaque native prove including
 setup**, and envelope serialization. The native interval starts immediately
 before `engine.proveSourceBound` and ends immediately after it returns in
 [`general_package.zig`](../../runtime/mixed_boundary/general_package.zig).
-The production binary has no runtime flag for either native PoW timer.
+The earlier frozen binary had no runtime flag for either native PoW timer.
 
-The pinned engine's
+The earlier pinned engine's
 [`proveSourceBound`](../../../../../deps/stwo-zig/src/integrations/circuit_cpu/direct_mixed_general_arithmetic.zig)
 calls `channel.grind(INTERACTION_POW_BITS)` directly, then calls
 `Engine.prove` without a stage recorder. There is therefore no sound way to
