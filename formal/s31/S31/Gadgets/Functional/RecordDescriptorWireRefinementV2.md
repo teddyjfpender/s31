@@ -2,9 +2,10 @@
 
 `RecordDescriptorWireRefinementV2.lean` joins two existing models after a
 descriptor has been parsed: the whole-descriptor shape and lexical checker,
-and the public statement claim checker. It checks one selected public input
-root at a time. The theorem requires that the root actually belongs to the
-checked descriptor's input list.
+and the public statement claim checker. The first bridge checks one selected
+public input root and requires membership in the descriptor. The second bridge
+(`checkDescriptorBinding` and `checkDescriptorClaims`) traverses the entire
+descriptor itself, so it has no selected-root membership premise.
 
 For a root with type tree `T`, `expectedLeaves` walks all leaves in declaration
 order. Each leaf becomes one statement descriptor with four fields:
@@ -29,6 +30,40 @@ The theorem derives positional path/width/range agreement and repeated-wire
 payload agreement. `checked_expected_wire_lookup` shows that first-occurrence
 wire projection returns the words of every accepted leaf occurrence, including
 aliases.
+
+## Whole public statement
+
+`expectedDescriptorLeaves` filters the descriptor's input roots by public
+visibility, emits each public root's leaves in root and tree declaration order,
+then appends **all** leaves of the result root. This is the order of the native
+`claimedWords` walk. Private roots still participate in descriptor shape,
+name, and nominal checks; they contribute no public claims. The result is an
+output root and has no input visibility flag.
+
+The executable `checkDescriptorBinding` compares the *entire* supplied
+relation leaf list against that projection. It checks exact paths, leaf kinds,
+widths, wire references, root order, and result inclusion. The reference maps
+are supplied per input root and for the result root. They are explicit
+first-order relation boundary inputs, not derived from the type tree.
+`checkDescriptorClaims` then checks positional claim shape and value ranges,
+plus agreement when public input and result paths refer to the same wire.
+
+For example, take these roots in descriptor order:
+
+```text
+x      : public  Pair { value : m31[1] }  -> relation wire 0
+secret : private Pair { value : m31[1] }  -> no statement claim
+y      : public  Pair { value : m31[1] }  -> relation wire 1
+result :         Pair { value : m31[1] }  -> relation wire 1
+```
+
+The expected claims are `x.value=[7]`, `y.value=[9]`, and
+`result.value=[9]`, in that order. The result and `y` alias wire 1, so the
+statement projection with public input wires `[0,1]` and output wire `[1]`
+is `[7,9,9,0,0,0,0,0]`. Lean examples check acceptance and reject an inserted
+`secret` claim, omitted result, reordered public inputs, changed result wire,
+changed result kind or width, and a result payload of `[8]` conflicting with
+`y.value=[9]`.
 
 ## Hand calculation
 
@@ -56,8 +91,12 @@ This model starts from a parsed `NamedLayout`; it does not prove that native
 JSON parsing constructs it. It does not derive relation references from S31
 source or bind native byte serialization and digest to this model. It also
 does not authenticate a prover trace or prove verifier acceptance. The
-`root ∈ descriptor.inputs` premise identifies the selected descriptor root;
-the executable binding check then covers every emitted leaf for that root.
-Both that membership premise and the `refs` relation-wire map are external to
-the executable check. The result and all other input roots require their own
-binding checks; this theorem makes no whole-statement coverage claim.
+`root ∈ descriptor.inputs` identifies the selected root only for the older
+single-root theorem. The whole-descriptor checker gets its roots directly from
+its descriptor argument and covers every *public* input leaf and every result
+leaf. Both checks still take relation-wire reference maps as external inputs.
+The theorem does not establish that the native validator's `program.inputs` or
+`program.public_outputs` produced those maps, or that those lists select the
+same wires for final eight-word projection. Those require a separate native
+relation correspondence proof. JSON parser/type-code equivalence, canonical
+bytes and digest, and proof authentication are also separate obligations.
