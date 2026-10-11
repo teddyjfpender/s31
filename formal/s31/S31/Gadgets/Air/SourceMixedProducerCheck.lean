@@ -71,9 +71,9 @@ theorem all_public_outputs_from_checked_roster {N : Nat}
     (hfirst : boundary.start ⟨0, hpositive⟩ = initial)
     (hrounds : ∀ call, boundary.rounds call = 16)
     (hconstants : ∀ call, boundary.constants call = (13 + call.val : F))
-    (hjoint : ((boundary.jointGateSource).circuitYields ++
+    (hjoint : ((boundary.jointGateSource).circuitUses ++
       jointUses rows boundary.finish).Perm
-      ((boundary.jointGateSource).circuitUses ++
+      ((boundary.jointGateSource).circuitYields ++
         jointYields rows boundary.start))
     (hstep : ∀ call row,
       (rows call row).output =

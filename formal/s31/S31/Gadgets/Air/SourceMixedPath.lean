@@ -135,9 +135,9 @@ theorem joint_gate_and_every_chip_path {N : Nat}
     (rows : ∀ call, Fin (boundary.rounds call) → NativeRow)
     (hpositive : ∀ call, 0 < boundary.rounds call)
     (hR : ∀ call, boundary.rounds call < 2147483647)
-    (hjoint : ((boundary.jointGateSource).circuitYields ++
+    (hjoint : ((boundary.jointGateSource).circuitUses ++
       jointUses rows boundary.finish).Perm
-      ((boundary.jointGateSource).circuitUses ++
+      ((boundary.jointGateSource).circuitYields ++
         jointYields rows boundary.start))
     (hstep : ∀ call row,
       (rows call row).output =
@@ -150,19 +150,39 @@ theorem joint_gate_and_every_chip_path {N : Nat}
           (boundary.start call) := by
   constructor
   · exact boundary.jointGateSource.exact_joint_implies_gate_balance
-      (jointUses rows boundary.finish) (jointYields rows boundary.start)
-      (jointUses_chip_only rows boundary.finish)
-      (jointYields_chip_only rows boundary.start) hjoint
-  · exact every_call_complete_path_of_gate_prefixed_joint hN rows
-      boundary.start boundary.finish boundary.step
-      boundary.jointGateSource.circuitYields
+      (jointYields rows boundary.start) (jointUses rows boundary.finish)
+      (jointYields_chip_only rows boundary.start)
+      (jointUses_chip_only rows boundary.finish) hjoint.symm
+  · have hchip := chip_balance_of_gate_prefixed_joint rows
+      boundary.start boundary.finish
       boundary.jointGateSource.circuitUses
-      boundary.jointGateSource.circuit_yields_gate_tag
+      boundary.jointGateSource.circuitYields
       boundary.jointGateSource.circuit_uses_gate_tag
-      hpositive hR hjoint hstep
+      boundary.jointGateSource.circuit_yields_gate_tag hjoint
+    exact every_call_complete_path_of_joint hN rows
+      boundary.start boundary.finish boundary.step
+      hpositive hR hchip hstep
 
-/-- Conditional rational-compression version. `hgood` excludes the explicit
-collision/pole set for the *entire* joint tuple support. The accepted native
+/-- An honest exact joint event balance has no false-closure challenge pair;
+the conditional good-challenge premise is then true for every pair. -/
+theorem exact_joint_has_no_imbalance_pairs {N : Nat}
+    (boundary : Boundary N)
+    (rows : ∀ call, Fin (boundary.rounds call) → NativeRow)
+    (hjoint : ((boundary.jointGateSource).circuitUses ++
+      jointUses rows boundary.finish).Perm
+      ((boundary.jointGateSource).circuitYields ++
+        jointYields rows boundary.start)) :
+    imbalancePairs7
+      (boundary.jointGateSource.circuitUses ++
+        jointUses rows boundary.finish)
+      (boundary.jointGateSource.circuitYields ++
+        jointYields rows boundary.start) = ∅ :=
+  imbalancePairs7_empty_of_balance _ _ hjoint
+
+/-- Conditional rational-compression version in the native claim-fold sign
+order. `imbalancePairs7` is empty for an exactly balanced witness; for an
+unbalanced witness it is the explicit false-closure set. Thus the good
+challenge premise is satisfiable on honest traces. The accepted native
 proof-to-`hclosed` and good-challenge links are not established here. -/
 theorem joint_gate_and_every_chip_path_of_good_challenge
     {N : Nat} (hN : N ≤ 8) (boundary : Boundary N)
@@ -170,16 +190,16 @@ theorem joint_gate_and_every_chip_path_of_good_challenge
     (hpositive : ∀ call, 0 < boundary.rounds call)
     (hR : ∀ call, boundary.rounds call < 2147483647)
     (alpha z : GateSecure)
-    (hgood : (alpha, z) ∉ badPairs7
-      (boundary.jointGateSource.circuitYields ++
-        jointUses rows boundary.finish)
+    (hgood : (alpha, z) ∉ imbalancePairs7
       (boundary.jointGateSource.circuitUses ++
+        jointUses rows boundary.finish)
+      (boundary.jointGateSource.circuitYields ++
         jointYields rows boundary.start))
     (hclosed : productionReciprocalSum7
-      (boundary.jointGateSource.circuitYields ++
+      (boundary.jointGateSource.circuitUses ++
         jointUses rows boundary.finish) alpha z =
       productionReciprocalSum7
-        (boundary.jointGateSource.circuitUses ++
+        (boundary.jointGateSource.circuitYields ++
           jointYields rows boundary.start) alpha z)
     (hstep : ∀ call row,
       (rows call row).output =
@@ -191,7 +211,7 @@ theorem joint_gate_and_every_chip_path_of_good_challenge
         iterateStep (boundary.step call) (boundary.rounds call)
           (boundary.start call) := by
   exact joint_gate_and_every_chip_path hN boundary rows hpositive hR
-    (exact_joint_events_outside_badPairs7 _ _ alpha z hgood hclosed)
+    (closed_pair_balance_outside_error _ _ alpha z hclosed hgood)
     hstep
 
 end S31.Gadgets.Air.SourceMixedPath

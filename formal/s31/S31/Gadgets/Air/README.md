@@ -678,9 +678,12 @@ event, ties a bridge or public use to a yielded circuit value.
 It proves an `8N` bridge-event count, a per-event equality with the native
 seven-coordinate bridge Gate encoding, and the public feeder's ordered
 equality with the native claim-fold tuple model. Given an **exact** joint event
-permutation and local chip equations, it derives Gate multiset balance and
-every chip path. A second theorem applies the conditional good-challenge
-reciprocal identity. It still does not identify the typed boundary with
+permutation in native sign order—Gate uses plus chip uses against Gate yields
+plus chip yields—and local chip equations, it derives Gate multiset balance
+and every chip path. A second theorem applies the conditional reciprocal
+identity outside `imbalancePairs7`; that exceptional set is empty on an
+exactly balanced trace, so its good-challenge premise is not vacuous for
+honest proofs. It still does not identify the typed boundary with
 compiler-emitted rows, fixed columns, statement words, or source/manifest
 fields; it does not prove Gate local arithmetic or producer uniqueness; and it
 does not derive exact balance or row equations from an accepted native proof.
