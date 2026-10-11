@@ -704,6 +704,7 @@ pub fn claimedWords(allocator: std.mem.Allocator, program: Program, assignment: 
 
 pub fn evaluate(allocator: std.mem.Allocator, program: Program, assignment: Assignment) ![8]u32 {
     try program.validate(allocator);
+    if (program.version == 2) try record_abi.validateAssignedPublicBits(program, assignment);
     var repeat_lane_steps: u64 = 0;
     var expected_private_inputs: usize = 0;
     for (program.inputs) |input| if (input.visibility == .private) {
@@ -1290,5 +1291,37 @@ test "public statement binds exact fields and canonical M31 words" {
         if (claimedWords(std.testing.allocator, program.value, assignment.value)) |_| {
             return error.TestUnexpectedResult;
         } else |_| {}
+    }
+}
+
+test "record v2 prover assignments reject public bit values before evaluation" {
+    const allocator = std.testing.allocator;
+    const source =
+        \\{"version":2,"name":"bit_assignment","inputs":[{"name":"flag","kind":"m31","length":1,"visibility":"public"},{"name":"value","kind":"m31","length":1,"visibility":"public"}],"nodes":[],"assertions":[],"public_outputs":["flag","value"],"public_abi":{"schema":"s31-public-record-boundary-v2","inputs":[{"name":"request","visibility":"public","type":{"record":"Request","fields":[{"name":"flag","type":{"kind":"bit","length":1}},{"name":"value","type":{"kind":"m31","length":1}}]},"leaves":[{"path":[{"root":"request"},{"field":"flag"}],"wire":"flag","kind":"bit","length":1},{"path":[{"root":"request"},{"field":"value"}],"wire":"value","kind":"m31","length":1}]}],"result":{"name":"result","type":{"record":"Response","fields":[{"name":"flag","type":{"kind":"bit","length":1}},{"name":"value","type":{"kind":"m31","length":1}}]},"leaves":[{"path":[{"root":"result"},{"field":"flag"}],"wire":"flag","kind":"bit","length":1},{"path":[{"root":"result"},{"field":"value"}],"wire":"value","kind":"m31","length":1}]}}}
+    ;
+    var parsed = try parseProgram(allocator, source);
+    defer parsed.deinit();
+    const valid = [_][]const u8{
+        \\{"public_inputs":{"flag":[0],"value":[2]},"public_outputs":{"flag":[0],"value":[2]}}
+        ,
+        \\{"public_inputs":{"flag":[1],"value":[2]},"public_outputs":{"flag":[1],"value":[2]}}
+        ,
+    };
+    for (valid) |raw| {
+        var assignment = try parseAssignment(allocator, raw);
+        defer assignment.deinit();
+        const words = try evaluate(allocator, parsed.value, assignment.value);
+        try std.testing.expectEqual(@as(u32, 2), words[1]);
+    }
+    const invalid = [_][]const u8{
+        \\{"public_inputs":{"flag":[2],"value":[2]},"public_outputs":{"flag":[2],"value":[2]}}
+        ,
+        \\{"public_inputs":{"flag":[0],"value":[2]},"public_outputs":{"flag":[2],"value":[2]}}
+        ,
+    };
+    for (invalid) |raw| {
+        var assignment = try parseAssignment(allocator, raw);
+        defer assignment.deinit();
+        try std.testing.expectError(error.InvalidAssignedBit, evaluate(allocator, parsed.value, assignment.value));
     }
 }

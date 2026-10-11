@@ -288,6 +288,33 @@ pub fn digest(allocator: std.mem.Allocator, program: anytype) ![32]u8 {
     return output;
 }
 
+/// Reject a flat prover assignment that cannot be represented by the sealed
+/// typed v2 statement. The relation IR erases `bit` to M31, so an otherwise
+/// unused public bit has no Boolean circuit gate. Program validation must
+/// precede this check; it establishes that every descriptor names the exact
+/// input/output wire and shape in the relation.
+pub fn validateAssignedPublicBits(program: anytype, assignment: anytype) !void {
+    const abi = program.public_abi orelse return error.InvalidRecordAbi;
+    for (try array(try field(abi, "inputs"))) |root_descriptor| {
+        if (!std.mem.eql(u8, try name(try field(root_descriptor, "visibility")), "public")) continue;
+        try validateAssignedBitLeaves(root_descriptor, assignment.public_inputs);
+    }
+    try validateAssignedBitLeaves(try field(abi, "result"), assignment.public_outputs);
+}
+
+fn validateAssignedBitLeaves(root_descriptor: Value, assigned: Value) !void {
+    if (assigned != .object) return error.InvalidAssignedBit;
+    for (try array(try field(root_descriptor, "leaves"))) |leaf| {
+        if (!std.mem.eql(u8, try name(try field(leaf, "kind")), "bit")) continue;
+        const wire = try name(try field(leaf, "wire"));
+        const value = assigned.object.get(wire) orelse return error.InvalidAssignedBit;
+        if (value != .array or value.array.items.len != 1 or
+            value.array.items[0] != .integer or
+            (value.array.items[0].integer != 0 and value.array.items[0].integer != 1))
+            return error.InvalidAssignedBit;
+    }
+}
+
 pub fn claimedWords(allocator: std.mem.Allocator, program: anytype, encoded: []const u8) ![8]u32 {
     if (encoded.len == 0 or encoded.len > 1_000_000) return error.InvalidRecordStatement;
     try validate(allocator, program);

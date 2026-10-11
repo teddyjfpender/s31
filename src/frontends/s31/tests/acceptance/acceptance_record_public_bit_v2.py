@@ -46,6 +46,24 @@ def reject(verifier: Path, proof: Path, statement: Path, key: Path,
                              f"exit={result.returncode} {result.stderr}")
 
 
+def reject_raw_prover_bit(package: Path, work: Path, flat: dict,
+                          wire: str, section: str, label: str) -> None:
+    """Both native prover entrypoints must reject before writing proof bytes."""
+    changed = copy.deepcopy(flat)
+    changed[section][wire] = [2]
+    assignment = work / f"bad-{label}.json"
+    write_json(assignment, changed)
+    prover = package / "bin/s31-bits-prover"
+    for command in ("prove", "prove-for-external-verification"):
+        proof = work / f"bad-{label}-{command}.proof"
+        result = subprocess.run((str(prover), command, str(assignment), str(proof)),
+                                capture_output=True, text=True)
+        if (result.returncode != 1 or "error: InvalidAssignedBit" not in result.stderr
+                or proof.exists()):
+            raise AssertionError(f"native {command} mishandled {label}: "
+                                 f"exit={result.returncode} {result.stderr}")
+
+
 def changed_public_tag(relation: dict, index: int, expected: str,
                        replacement: str) -> tuple[dict, str]:
     """Make a structurally valid but differently typed descriptor."""
@@ -269,6 +287,11 @@ def main() -> None:
             flat = flat_assignment_from_typed(relation, canonical(typed))
             flat_path = work / f"flat-{flag}.json"
             write_json(flat_path, flat)
+            if flag == 0:
+                reject_raw_prover_bit(package, work, flat, input_leaves[0]["wire"],
+                                      "public_inputs", "input-bit")
+                reject_raw_prover_bit(package, work, flat, output_leaves[0]["wire"],
+                                      "public_outputs", "output-bit")
             trial_dir = work / f"record-trial-{flag}"
             flat_trial_dir = work / f"flat-trial-{flag}"
             trial = s31.trial(package, typed_path, trial_dir)
