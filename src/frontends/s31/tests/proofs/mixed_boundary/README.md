@@ -1,7 +1,7 @@
 # Mixed boundary native base trace fixture
 
-`trace_correspondence.zig` checks the exact `N=1` and `N=8` square/add chain
-used by the [typed boundary correspondence fixture](../../acceptance/mixed_boundary/typed_boundary_correspondence.py).
+`trace_correspondence.zig` checks the exact `N=1..8` square/add chain used by
+the [typed boundary correspondence fixture](../../acceptance/mixed_boundary/typed_boundary_correspondence.py).
 
 Run the focused test from the S31 repository root:
 
@@ -11,7 +11,8 @@ zig build --build-file src/frontends/s31/build.zig test-mixed-trace-corresponden
 
 The test compiles the pinned source and witness, then calls the **same native
 base trace writers** as `direct_mixed_general_arithmetic.proveSourceBound`.
-It independently calculates each field recurrence and checks:
+It independently calculates each field recurrence and checks all 512 fixed
+rows, all 512×12 main cells, every gate equation, and:
 
 1. The source-derived endpoint addresses, including the exact allocation for
    this chain family; all eight Gate endpoint words per call are read from the
@@ -23,12 +24,12 @@ It independently calculates each field recurrence and checks:
    tuples match the boundary words.
 4. The circuit base trace's eight public output words match an independent
    calculation of the final `sum` and `product` nodes.
-5. The production mixed package proves these exact source bytes, and its
+5. For `N=1` and `N=8`, the production mixed package proves these exact source bytes, and its
    embedded-source native verifier accepts the serialized proof with the eight
    independently calculated public words. The proof header carries the same
    source digest, generated registry manifest digest, and circuit identity as
    the reconstructed schedule.
-6. Changing any one of those three header digests, the interaction nonce, a
+6. For those two proofs, changing any one of those three header digests, the interaction nonce, a
    claimed-sum byte, a proof-body byte, a public word, or the embedded source
    causes native verification to reject the proof.
 7. Changing the main Merkle commitment root inside a decoded proof, then

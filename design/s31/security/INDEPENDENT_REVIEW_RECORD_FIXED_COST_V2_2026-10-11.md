@@ -76,9 +76,8 @@ compiler correspondence or a reliable general cost predictor.
    or rebuilding and rerunning. Next: publish a content-addressed raw
    artifact with its SHA-256 manifest if external replay is required.
 
-The current working tree had a concurrent edit to
-`src/frontends/s31/tests/proofs/mixed_boundary/trace_correspondence.zig` when
-I called `frozen()`, so the compiler fingerprint guard correctly refused to
-validate the **working tree** against the measurement protocol. The committed
-model-anchor check succeeded. This working-tree mismatch is not evidence that
-the committed measurement used changed compiler bytes.
+The study pins all `src/**/*.zig` bytes. Later edits to those files make
+`frozen()` correctly refuse the newer checkout, even if they only change
+tests. Replay against the original compiler requires the frozen source
+revision; the committed model-anchor check succeeded. A later-checkout
+fingerprint mismatch does not imply that measurement used changed bytes.

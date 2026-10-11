@@ -166,6 +166,8 @@ BINDINGS = [
     "src/frontends/s31/runtime/pair_verifier_main.zig",
     "src/frontends/s31/tests/proofs/private_pair_source_test.zig",
     "src/frontends/s31/tests/proofs/mixed_boundary/trace_correspondence.zig",
+    "src/frontends/s31/tests/proofs/mixed_boundary/producer_roster_correspondence.zig",
+    "src/frontends/s31/runtime/mixed_boundary/test_source.zig",
     "src/frontends/s31/entry/export_mixed_fixed_rows.zig",
     "src/frontends/s31/tools/formal/export_mixed_fixed_rows.zig",
     "src/frontends/s31/tests/python/generated/render_lean_mixed_fixed_fixture.py",
