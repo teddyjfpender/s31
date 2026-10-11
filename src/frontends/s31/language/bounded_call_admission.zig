@@ -69,11 +69,17 @@ pub fn extract(allocator: std.mem.Allocator, program: relation.Program) !Plan {
         program.inputs[0].visibility != .public or
         program.public_outputs.len != 1))
         return error.UnsupportedManyCallSource;
+    var scalar_selectors: usize = 0;
     for (program.inputs) |input| {
         if ((program.version == 1 and input.visibility != .private) or
-            input.kind != .m31 or input.length != 4)
+            input.kind != .m31 or
+            (input.length != 4 and (program.version != 1 or input.length != 1)))
             return error.UnsupportedManyCallSource;
+        if (input.length == 1) scalar_selectors += 1;
     }
+    // Keep the scalar selector ABI small while its source-to-chip coverage is
+    // limited to one conditional feeder. A dead selector is rejected below.
+    if (scalar_selectors > 1) return error.UnsupportedManyCallSource;
 
     var source_repeat_names: [max_calls][]const u8 = undefined;
     var source_repeat_count: usize = 0;
@@ -83,7 +89,7 @@ pub fn extract(allocator: std.mem.Allocator, program: relation.Program) !Plan {
             source_repeat_names[source_repeat_count] = node.name;
             source_repeat_count += 1;
         },
-        .add, .mul, .add_const, .mul_const, .sum_lanes => {},
+        .add, .mul, .add_const, .mul_const, .sum_lanes, .select => {},
         else => return error.UnsupportedManyCallNode,
     };
     if (source_repeat_count == 0) return error.NoChipCalls;
@@ -100,6 +106,13 @@ pub fn extract(allocator: std.mem.Allocator, program: relation.Program) !Plan {
 
     var plan: Plan = .{ .canonical_ir_sha256 = ir.sha256 };
     for (ir.nodes, 0..) |node, index| {
+        if (node.tag == .select) {
+            const selector = node.selector orelse return error.UnsupportedChipSelector;
+            if (node.kind != .m31 or node.length != 4 or selector >= index or
+                ir.nodes[selector].tag != .input or ir.nodes[selector].kind != .m31 or
+                ir.nodes[selector].length != 1 or ir.nodes[selector].visibility.? != .private)
+                return error.UnsupportedChipSelector;
+        }
         if (node.tag == .repeat) {
             if (plan.call_count == source_repeat_count) return error.NoncanonicalChipCalls;
             const body = node.body orelse return error.UnsupportedChipBody;
@@ -114,11 +127,12 @@ pub fn extract(allocator: std.mem.Allocator, program: relation.Program) !Plan {
             const input_id = node.lhs orelse return error.UnsupportedChipInput;
             if (input_id >= index or ir.nodes[input_id].kind != .m31 or ir.nodes[input_id].length != 4)
                 return error.UnsupportedChipInput;
-            // Only these circuit arithmetic nodes may feed a chip. The
-            // bounded compiler extracts their packed M31 coordinates into
-            // constrained scalar Gate producers before recording endpoints.
+            // Only these circuit nodes may feed a chip. The bounded compiler
+            // extracts their packed M31 coordinates into constrained scalar
+            // Gate producers before recording endpoints. Select uses a
+            // Boolean selector constrained by the direct circuit compiler.
             switch (ir.nodes[input_id].tag) {
-                .input, .repeat, .add, .mul, .add_const, .mul_const => {},
+                .input, .repeat, .add, .mul, .add_const, .mul_const, .select => {},
                 else => return error.UnsupportedChipInput,
             }
             const source_id = sourceId(&ir, source_repeat_names[plan.call_count]) orelse
@@ -159,9 +173,26 @@ pub fn extract(allocator: std.mem.Allocator, program: relation.Program) !Plan {
         const node = ir.nodes[id];
         if (node.lhs) |lhs| live[lhs] = true;
         if (node.rhs) |rhs| live[rhs] = true;
+        if (node.selector) |selector| live[selector] = true;
     }
     for (plan.callSlice()) |call|
         if (!live[call.source_node_id]) return error.DeadChipCall;
+    for (ir.nodes, 0..) |node, id| {
+        if (node.tag == .input and !live[id]) return error.DeadChipInput;
+        if (node.tag != .input or node.length != 1) continue;
+        const input_id: u32 = @intCast(id);
+        var used_as_selector = false;
+        for (ir.nodes, 0..) |consumer, consumer_id| {
+            if (!live[consumer_id]) continue;
+            if (consumer.lhs == input_id or consumer.rhs == input_id)
+                return error.UnsupportedChipSelector;
+            if (consumer.selector == input_id) {
+                if (consumer.tag != .select) return error.UnsupportedChipSelector;
+                used_as_selector = true;
+            }
+        }
+        if (!used_as_selector) return error.UnsupportedChipSelector;
+    }
     return plan;
 }
 
@@ -286,6 +317,39 @@ test "arithmetic-fed calls may share one live circuit result" {
     try std.testing.expectEqual(@as(usize, 3), plan.call_count);
     try std.testing.expectEqual(plan.calls[1].input_node_id, plan.calls[2].input_node_id);
     try std.testing.expect(plan.calls[1].source_node_id != plan.calls[2].source_node_id);
+}
+
+test "a private scalar bit selects a live four-lane chip feeder" {
+    const source =
+        \\{"version":1,"name":"selected_feeder","inputs":[{"name":"x","kind":"m31","length":4,"visibility":"private"},{"name":"y","kind":"m31","length":4,"visibility":"private"},{"name":"bit","kind":"m31","length":1,"visibility":"private"}],"nodes":[{"name":"a","op":"repeat","lhs":"x","rounds":16,"body":[{"op":"square"},{"op":"add_const","constant":13}]},{"name":"left","op":"add","lhs":"a","rhs":"x"},{"name":"right","op":"mul","lhs":"a","rhs":"y"},{"name":"chosen","op":"select","selector":"bit","lhs":"left","rhs":"right"},{"name":"b","op":"repeat","lhs":"chosen","rounds":16,"body":[{"op":"square"},{"op":"add_const","constant":17}]},{"name":"sum","op":"add","lhs":"b","rhs":"a"},{"name":"product","op":"mul","lhs":"b","rhs":"y"}],"assertions":[],"public_outputs":["sum","product"]}
+    ;
+    var parsed = try relation.parseProgram(std.testing.allocator, source);
+    defer parsed.deinit();
+    const plan = try extract(std.testing.allocator, parsed.value);
+    try std.testing.expectEqual(@as(usize, 2), plan.call_count);
+    var ir = try canonical.build(std.testing.allocator, parsed.value);
+    defer ir.deinit();
+    const selected = ir.nodes[plan.calls[1].input_node_id];
+    try std.testing.expectEqual(canonical.Tag.select, selected.tag);
+    try std.testing.expectEqual(canonical.Tag.input, ir.nodes[selected.selector.?].tag);
+    try std.testing.expectEqual(@as(u32, 1), ir.nodes[selected.selector.?].length);
+
+    // A private scalar is admitted only as a live Boolean selector.
+    parsed.value.nodes[3].selector = "x";
+    try std.testing.expectError(error.InvalidNode, extract(std.testing.allocator, parsed.value));
+    parsed.value.nodes[3].selector = "bit";
+    const original_inputs = parsed.value.inputs;
+    var with_dead = [_]relation.Input{ original_inputs[0], original_inputs[1], original_inputs[2], .{ .name = "dead", .kind = .m31, .length = 4, .visibility = .private } };
+    parsed.value.inputs = &with_dead;
+    try std.testing.expectError(error.DeadChipInput, extract(std.testing.allocator, parsed.value));
+    parsed.value.inputs = original_inputs;
+}
+
+test "a live private scalar used as arithmetic is not a selector" {
+    const source =
+        \\{"version":1,"name":"scalar_nonselector","inputs":[{"name":"x","kind":"m31","length":4,"visibility":"private"},{"name":"bit","kind":"m31","length":1,"visibility":"private"}],"nodes":[{"name":"a","op":"repeat","lhs":"x","rounds":16,"body":[{"op":"square"},{"op":"add_const","constant":13}]},{"name":"scalar","op":"sum_lanes","lhs":"a"},{"name":"claimed","op":"add","lhs":"scalar","rhs":"bit"}],"assertions":[],"public_outputs":["claimed"]}
+    ;
+    try std.testing.expectError(error.UnsupportedChipSelector, extractSource(std.testing.allocator, source));
 }
 
 test "source byte cap rejects before JSON parsing" {

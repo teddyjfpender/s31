@@ -376,3 +376,58 @@ test "mixed general sealed native proofs authenticate one through eight source c
         } else |_| {}
     }
 }
+
+test "mixed selected feeder native proof binds both private bit branches" {
+    const allocator = std.heap.smp_allocator;
+    const source = @embedFile("../../examples/boundary/private_selected_chip_feeder.s31.json");
+    const air_bytes = @embedFile("s31_air_programs");
+    const x = [4]M31{ M31.zero(), M31.one(), M31.fromCanonical(core.fields.m31.Modulus - 1), M31.fromCanonical(7) };
+    const y = [4]M31{ M31.fromCanonical(2), M31.fromCanonical(3), M31.fromCanonical(5), M31.fromCanonical(11) };
+    var first = x;
+    for (0..16) |_| {
+        for (&first) |*word| word.* = word.*.mul(word.*).add(M31.fromCanonical(13));
+    }
+    const profile = try inspectProfile(allocator, source, air_bytes);
+    try std.testing.expectEqual(@as(u8, 2), profile.schedule.call_count);
+    for (0..2) |bit| {
+        var final: [4]M31 = undefined;
+        var sums: [4]u32 = undefined;
+        var products: [4]u32 = undefined;
+        for (&final, x, y, first) |*word, left, right, computed| {
+            word.* = if (bit == 0) computed.add(left) else computed.mul(right);
+        }
+        for (0..16) |_| {
+            for (&final) |*word| word.* = word.*.mul(word.*).add(M31.fromCanonical(17));
+        }
+        for (final, first, y, &sums, &products) |end, computed, right, *sum, *product| {
+            sum.* = end.add(computed).toU32();
+            product.* = end.mul(right).toU32();
+        }
+        const assignment_bytes = try std.fmt.allocPrint(allocator, "{{\"public_inputs\":{{}},\"private_inputs\":{{\"x\":[0,1,{d},7],\"y\":[2,3,5,11],\"bit\":[{d}]}},\"public_outputs\":{{\"sum\":[{d},{d},{d},{d}],\"product\":[{d},{d},{d},{d}]}}}}", .{ core.fields.m31.Modulus - 1, bit, sums[0], sums[1], sums[2], sums[3], products[0], products[1], products[2], products[3] });
+        defer allocator.free(assignment_bytes);
+        var assignment = try relation.parseAssignment(allocator, assignment_bytes);
+        defer assignment.deinit();
+        var program = try relation.parseProgram(allocator, source);
+        defer program.deinit();
+        const words = try relation.evaluate(allocator, program.value, assignment.value);
+        try std.testing.expectEqualSlices(u32, &.{ sums[0], sums[1], sums[2], sums[3], products[0], products[1], products[2], products[3] }, &words);
+        const sealed = try proveSealedAndInspect(allocator, source, air_bytes, assignment.value);
+        defer allocator.free(sealed.bytes);
+        try verifyEmbedded(source, air_bytes, allocator, words, sealed.bytes);
+        var changed_words = words;
+        changed_words[0] = (changed_words[0] + 1) % core.fields.m31.Modulus;
+        if (verifyEmbedded(source, air_bytes, allocator, changed_words, sealed.bytes)) |_| {
+            return error.AcceptedChangedSelectedFeederClaim;
+        } else |_| {}
+
+        // The semantic evaluator rejects a non-bit before proof construction;
+        // the direct circuit independently enforces b² = b on that input.
+        if (bit == 0) {
+            const invalid = try std.mem.replaceOwned(u8, allocator, assignment_bytes, "\"bit\":[0]", "\"bit\":[2]");
+            defer allocator.free(invalid);
+            var invalid_assignment = try relation.parseAssignment(allocator, invalid);
+            defer invalid_assignment.deinit();
+            try std.testing.expectError(error.InvalidSelector, proveSealedAndInspect(allocator, source, air_bytes, invalid_assignment.value));
+        }
+    }
+}
