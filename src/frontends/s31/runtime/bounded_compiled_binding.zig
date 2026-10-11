@@ -1302,6 +1302,64 @@ test "bounded V4 guarded adapter recomputes jointly forged circuit program bindi
     bound.components[0].parts[0].semantic_hash = original_semantic_hash;
 }
 
+test "bounded V4 guarded adapter binds concrete native AIR handles" {
+    const allocator = std.testing.allocator;
+    const source = @embedFile("../examples/boundary/private_many1.s31.json");
+    const air_bytes = @embedFile("s31_air_programs");
+    var inspection = try inspectMany(allocator, source, air_bytes);
+    defer inspection.deinit();
+    var descriptors = try manyProvenance(&inspection);
+    const pin = descriptors.pin(source, air_bytes);
+    const selected = &inspection.selected_schedule;
+    const call = selected.geometry.calls[0];
+    const chip_slot = selected.geometry.slots[1];
+    const bridge_slot = selected.geometry.slots[2];
+    const chips = [1]cpu.tagged_many_chip.Component{.{
+        .log_size = chip_slot.trace_log_size,
+        .call_id = call.call_id,
+        .constant = call.constant,
+        .main_offset = chip_slot.main_offset,
+        .interaction_offset = chip_slot.interaction_offset,
+        .elements = .init(QM31.one(), QM31.one()),
+        .claimed_sum = QM31.zero(),
+    }};
+    const bridges = [1]cpu.tagged_many_bridge.Component{.{
+        .main_offset = bridge_slot.main_offset,
+        .interaction_offset = bridge_slot.interaction_offset,
+        .boundary = call,
+        .elements = .init(QM31.one(), QM31.one()),
+        .claimed_sum = QM31.zero(),
+    }};
+    try cpu.direct_many_provenance.validate(selected, pin);
+    try cpu.direct_many_provenance.validateBoundNativeComponents(selected, pin, &chips, &bridges);
+
+    var changed_chips = chips;
+    changed_chips[0].constant = M31.fromCanonical(call.constant.toU32() + 1);
+    try std.testing.expectError(error.InvalidManyProvenance, cpu.direct_many_provenance.validateBoundNativeComponents(selected, pin, &changed_chips, &bridges));
+    changed_chips = chips;
+    changed_chips[0].log_size += 1;
+    try std.testing.expectError(error.InvalidManyProvenance, cpu.direct_many_provenance.validateBoundNativeComponents(selected, pin, &changed_chips, &bridges));
+
+    var changed_bridges = bridges;
+    changed_bridges[0].boundary.output[0] += 1;
+    try std.testing.expectError(error.InvalidManyProvenance, cpu.direct_many_provenance.validateBoundNativeComponents(selected, pin, &chips, &changed_bridges));
+    // Jointly editing both native handle parameters cannot rewrite the
+    // source-pinned selected call or its compiled endpoint address.
+    changed_chips = chips;
+    changed_bridges = bridges;
+    changed_chips[0].constant = M31.fromCanonical(call.constant.toU32() + 1);
+    changed_bridges[0].boundary.constant = changed_chips[0].constant;
+    try std.testing.expectError(error.InvalidManyProvenance, cpu.direct_many_provenance.validateBoundNativeComponents(selected, pin, &changed_chips, &changed_bridges));
+
+    const original_chip = descriptors.descriptors[1];
+    const original_bridge = descriptors.descriptors[2];
+    descriptors.descriptors[1].source_node_id.? += 1;
+    descriptors.descriptors[2].source_node_id.? += 1;
+    try std.testing.expectError(error.InvalidManyProvenance, cpu.direct_many_provenance.validateBoundNativeComponents(selected, descriptors.pin(source, air_bytes), &chips, &bridges));
+    descriptors.descriptors[1] = original_chip;
+    descriptors.descriptors[2] = original_bridge;
+}
+
 test "bounded V4 source-derived one-call native proof verifies a public statement" {
     // This exercises the source-owned in-memory adapter. It is deliberately
     // absent from the S31 proof-byte API until a source-pinned V4 envelope

@@ -41,6 +41,10 @@ Before native proving or verification, the guarded adapter checks:
 4. Each native descriptor's canonical source/input node IDs, selected call
    parameters, compiled input/output addresses, embedded AIR source bytes, and
    native-template digest reproduce the existing V4 program-binding hash.
+   Immediately before PCS, the guarded prover and verifier repeat this check
+   from the concrete chip and bridge component objects used as AIR handles.
+   Chip ID, constant, height, and trace offsets must agree with the bridge's
+   live call boundary and the source-derived selected slots.
    The guarded adapter also recomputes the circuit slot-0 binding from the
    pinned AIR bytes, selected bundle index, and semantic hashes of the bound
    direct-gate parts. It compares this independently with both the descriptor
@@ -59,6 +63,12 @@ it does not repeat the expensive circuit binding. S31 still owns the statement
 that source syntax, canonical node IDs, compiled endpoints, and the complete
 manifest digest correspond to that bound circuit. The engine cannot establish
 those source semantics by hashing AIR bytes alone.
+
+The native check binds the registered chip and bridge *source files* and their
+runtime parameters. It does not cryptographically hash a compiler binary or
+formally prove that compiled machine code equals those source files; this
+remains a build-integrity assumption. The concrete handle checks run after
+ordinary live-handle geometry checks and before PCS proving or verification.
 
 ## Versioning and extension rule
 
