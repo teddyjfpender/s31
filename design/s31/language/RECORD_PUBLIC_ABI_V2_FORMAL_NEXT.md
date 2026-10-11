@@ -30,16 +30,55 @@ give distinct tagged paths. `concatBlocks_length` proves that the word count
 is the sum of checked leaf widths; the eight-word predicate therefore counts
 aliased result wires once.
 
+## General n-ary path uniqueness model
+
+The new `NominalTree` model follows the shape of the ABI's path walk more
+closely than the binary product used for flattening. A node has any finite
+number of children. Each child contributes exactly one tagged segment:
+`{ "field": name }` for a record or `{ "tuple": index }` for a tuple.
+`namedRecord_wellTagged` derives local validity from distinct sibling field
+names, and `indexedTuple_wellTagged` derives it from zero-based indices.
+The raw tree stores no injectivity evidence; `WellTagged` states exactly the
+local validation obligation. Neither local lemma assumes complete-path
+injectivity.
+
+For example, the nested layout
+
+```text
+request: { items: (m31, m31, m31), salt: m31 }
+          |        |      |      |
+          |        0      1      2
+          +-- field "items" or field "salt"
+```
+
+has these paths:
+
+```text
+items[1] = [root "request", field "items", tuple 1]
+items[2] = [root "request", field "items", tuple 2]
+salt     = [root "request", field "salt"]
+```
+
+`nominalPath_injective` proves that any two positions in **any finite depth**
+n-ary tree satisfying `WellTagged` have different tagged suffixes.
+`rootedNominalPath_injective` prepends a fixed root and preserves that result;
+`rootedNominalPath_distinct_roots` handles different root names. The worked
+`nestedFixture` checks both a tuple-index difference and a record-field
+difference. This is a theorem about the Lean type tree and path function,
+not yet a theorem about the native parser's execution.
+
 ## Precisely what the model assumes
 
 - `WordBlock` models M31 words using an abstract element type. Lean checks
   the payload length against the declared width; it does not prove
   `0 ≤ word < 2³¹−1` for native `u32` words, or that each declared leaf width
   lies in the production range `1..8`.
-- A `ValidatedPaths` value carries injectivity as evidence. The module proves
-  it for a concrete two-field layout with unequal names. It does not yet
-  derive injectivity for every nested record/tuple layout from the production
-  Zig `typeTree` walk.
+- `ValidatedPaths` for the earlier binary product model still carries
+  injectivity as evidence. The separate n-ary `NominalTree` derives complete
+  path injectivity from the separate local `WellTagged` predicate without
+  assuming global injectivity.
+  It has not been connected to the binary flattening model or proved to
+  reflect every accepted production Zig `typeTree` walk.
 - `InputRoot` visibility and result wire references are assumed to be the
   already validated relation descriptors. The theorem proves word-order
   agreement for those descriptors, not source parsing or key admission.
@@ -50,9 +89,10 @@ aliased result wires once.
 
 ## Remaining refinement obligations
 
-1. Model the complete n-ary record/tuple type tree, prove path injectivity
-   from unique field names and tuple indices, and connect this to native
-   `matchingPath` and `typeTree` acceptance.
+1. Connect the n-ary path theorem to the binary flattening order and prove
+   that native `typeTree` and `matchingPath` acceptance instantiate exactly
+   this model. The model does not enforce native node-size and depth limits,
+   identifier syntax, canonical JSON, or first-order leaf widths.
 2. Prove canonical statement parsing, SHA-256 ABI digest/key binding,
    duplicate-key rejection, M31 range checks, alias equality, and the
    eight-word limit against the production verifier.
