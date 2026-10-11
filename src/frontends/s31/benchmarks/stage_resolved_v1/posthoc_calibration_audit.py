@@ -170,7 +170,7 @@ def replay() -> dict:
         "calibration_sha256": digest(calibration_file),
         "fit_programs": 6, "fit_trials": 72,
         "interval_calibration_programs": 3, "interval_calibration_trials": 36,
-        "stage_centers_replayed": len(COUNTS) * len(STAGES),
+        "stage_records_replayed": len(COUNTS) * len(STAGES),
         "target_centers_replayed": len(COUNTS) * 2 * len(TARGETS),
         "ratio_bands_replayed": 2 * len(TARGETS),
         "exact_replay_passed": True,

@@ -9,6 +9,6 @@
   "phase": "post-hoc-second-source-historical-calibration-audit",
   "prospectively_pinned": false,
   "ratio_bands_replayed": 8,
-  "stage_centers_replayed": 21,
+  "stage_records_replayed": 21,
   "target_centers_replayed": 24
 }

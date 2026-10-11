@@ -92,7 +92,8 @@ replay native verification without those binaries/proofs.
 
 The historical calibration was also checked by a **separate second-source
 replay written after the new-family measurement**. It reproduced all 21
-stage centers, 24 first/later target centers and eight empirical ratio bands
+stage records (including separate first/later process residual centers), 24
+first/later target centers and eight empirical ratio bands
 from the previously saved 108-trial historical ledger. Its
 [saved audit](../../../src/frontends/s31/benchmarks/stage_resolved_v1/results-2026-10-11/posthoc-calibration-audit.json)
 is an extra consistency check, **not prospectively pinned code**. The
