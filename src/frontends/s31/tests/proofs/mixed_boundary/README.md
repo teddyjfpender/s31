@@ -31,6 +31,9 @@ It independently calculates each field recurrence and checks:
 6. Changing any one of those three header digests, the interaction nonce, a
    claimed-sum byte, a proof-body byte, a public word, or the embedded source
    causes native verification to reject the proof.
+7. Changing the main Merkle commitment root inside a decoded proof, then
+   reserializing it, still passes the exact structural proof preflight. Native
+   verification rejects this well-formed changed commitment.
 
 This joins a concrete base-trace construction check to a serialized proof and
 native verifier for two fixtures. It does not extract committed polynomial

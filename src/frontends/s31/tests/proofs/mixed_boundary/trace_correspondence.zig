@@ -8,6 +8,7 @@ const std = @import("std");
 const core = @import("stwo_core");
 const circuit = @import("stwo_circuit_frontend");
 const cpu = @import("stwo_circuit_cpu_integration");
+const postcard = @import("interop_postcard");
 const relation = @import("../../../language/relation.zig");
 const binding = @import("../../../runtime/bounded_compiled_binding.zig");
 const mixed = @import("../../../runtime/mixed_boundary/inspection.zig");
@@ -17,6 +18,7 @@ const package = @import("../../../runtime/mixed_boundary/general_package.zig");
 const M31 = core.fields.m31.M31;
 const QM31 = core.fields.qm31.QM31;
 const p = core.fields.m31.Modulus;
+const H = core.vcs_lifted.blake2_merkle.Blake2sPlainMerkleHasher;
 
 fn pinnedSource(comptime count: usize) []const u8 {
     const original = family.forCount(count);
@@ -239,6 +241,52 @@ fn fixture(comptime count: usize) !void {
             return error.AcceptedChangedProofByte;
         } else |_| {}
     }
+    // Change the main Merkle root inside a decoded proof and serialize it
+    // again. This is a well-formed proof body with unchanged envelope and
+    // shape, so rejection exercises transcript/commitment verification rather
+    // than a malformed postcard or an envelope digest mismatch.
+    var stream = std.io.fixedBufferStream(sealed.bytes[proof_at..]);
+    var stark = try postcard.deserializeProof(H, proof_allocator, stream.reader());
+    defer stark.deinit(proof_allocator);
+    if (stream.pos != sealed.bytes.len - proof_at or
+        stark.commitment_scheme_proof.commitments.items.len != 4)
+        return error.WrongDecodedProof;
+    const original_main_root = stark.commitment_scheme_proof.commitments.items[1];
+    stark.commitment_scheme_proof.commitments.items[1][0] ^= 1;
+    if (std.meta.eql(original_main_root, stark.commitment_scheme_proof.commitments.items[1]))
+        return error.UnchangedMainCommitment;
+    var changed_commitment: std.ArrayList(u8) = .empty;
+    defer changed_commitment.deinit(proof_allocator);
+    try changed_commitment.appendSlice(proof_allocator, sealed.bytes[0..proof_at]);
+    try postcard.serializeProof(H, changed_commitment.writer(proof_allocator), stark);
+    if (changed_commitment.items.len != sealed.bytes.len or
+        std.mem.eql(u8, changed_commitment.items, sealed.bytes))
+        return error.WrongChangedCommitmentEncoding;
+    const geometry = selected.native_geometry orelse return error.MissingFixtureGeometry;
+    const pcs = geometry.pcs;
+    var sample_width_limits: [4]u32 = .{ 0, 0, 0, 1 };
+    for (geometry.tree_columns[0..3], 0..) |width, tree| {
+        for (geometry.columns[tree][0..width]) |column|
+            sample_width_limits[tree] = @max(sample_width_limits[tree], column.mask_width);
+    }
+    try postcard.proof_preflight.validateFor(4, changed_commitment.items[proof_at..], .{
+        .config = .{
+            .pow_bits = pcs.fri_config.pow_bits,
+            .log_blowup_factor = pcs.fri_config.log_blowup_factor,
+            .n_queries = pcs.fri_config.n_queries,
+            .log_last_layer_degree_bound = pcs.fri_config.log_last_layer_degree_bound,
+            .fold_step = pcs.fri_config.fold_step,
+            .lifting_log_size = null,
+        },
+        .tree_columns = geometry.tree_columns,
+        .max_column_log_size = geometry.max_column_log_size,
+        .sample_width_limits = sample_width_limits,
+        .hash_size = @sizeOf(H.Hash),
+        .max_wire_bytes = (16 << 20) - proof_at,
+    });
+    if (package.verifyEmbedded(source, air_bytes, proof_allocator, words, changed_commitment.items)) |_| {
+        return error.AcceptedChangedMainCommitment;
+    } else |_| {}
     var changed_words = words;
     changed_words[0] = (changed_words[0] + 1) % p;
     if (package.verifyEmbedded(source, air_bytes, proof_allocator, changed_words, sealed.bytes)) |_| {
