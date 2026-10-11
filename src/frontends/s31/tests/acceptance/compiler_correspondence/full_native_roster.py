@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Check two complete native direct-Gate base traces against an independent plan.
+"""Check four complete native direct-Gate base traces against a checked plan.
 
-The default path checks checked-in diagnostic exports; --native rebuilds both
+The default path checks checked-in diagnostic exports; --native rebuilds all
 source-bound packages and checks their fresh uncommitted writeBase exports.
 Neither path authenticates proof openings or establishes PCS/FRI soundness.
 """
@@ -29,6 +29,7 @@ sys.path.insert(0, str(ROOT / "formal/s31/scripts"))
 
 import s31  # noqa: E402
 import check_early_return_nonvacuity as model  # noqa: E402
+from text_frontend import compile_text  # noqa: E402
 from package.correspondence import (  # noqa: E402
     DIRECT_COLUMN_IDS, canonical_ir_bytes, check_package, parse_source,
 )
@@ -48,10 +49,16 @@ INV_I = (0, P - 1, 0, 0)
 INV_U = (0, 0, 2 * INV5 % P, -INV5 % P)
 INV_IU = (0, 0, -INV5 % P, -2 * INV5 % P)
 INPUT = (0, 1, 2, 7)
-SELECTED = (("00:direct", "case00"), ("15:comments", "case16"))
+SELECTED = (("00:direct", "case00"), ("07:aliases", "case07"),
+            ("14:direct", "case14"), ("15:comments", "case16"))
 FIXTURES = HERE / "fixtures"
 SNAPSHOT = ROOT / "formal/s31/fixtures/correspondence/native_source_cells.json"
+PRIVATE_SOURCE = S31 / "examples/arithmetic/named_square4_manual.s31"
 SCHEMA = "s31-direct-gate-public-functional-physical-v1"
+# Public words are mixed into the Fiat-Shamir channel before the verifier's
+# interaction nonce check. These deterministic trial bytes reject here; a
+# different changed transcript could by chance pass the nonce and fail later.
+CHANGED_RESULT_ERROR = "InvalidInteractionNonce"
 FIELDS = model.FIELDS[1:]
 KINDS = ("add", "sub", "mul", "pointwise_mul")
 
@@ -132,6 +139,66 @@ def expected_fixed(syntax: dict) -> tuple[list[list[int]], dict, int]:
     return [[row[column] for row in rows_fixed] for column in range(8)], gates, n_vars
 
 
+def check_static_plan(sample, pinned: dict) -> dict:
+    """Check source, projected roles, and every fixed cell without native work.
+
+    This binds the host-side schedule to an earlier native fixed-column digest.
+    It cannot check main values, the exporter, or a fresh sealed key.
+    """
+    relation, syntax, source_cells, projected = source_plan(sample)
+    source_sha = sha(sample.source.encode())
+    normalized = (json.dumps(relation, indent=2, sort_keys=True) + "\n").encode()
+    fixed, _, n_vars = expected_fixed(syntax)
+    encoded = b"".join(struct.pack("<I", word) for column in fixed for word in column)
+    if (pinned.get("source_sha256") != source_sha or
+            pinned.get("normalized_sha256") != sha(normalized) or
+            pinned.get("canonical_ir_sha256") != sha(canonical_ir_bytes(syntax)) or
+            pinned.get("source_rows") != source_cells or
+            pinned.get("all_fixed_columns_sha256") != sha(encoded)):
+        raise ValueError(f"{sample.label}: static source or fixed schedule differs from pinned native export")
+    projected_rows = {cell.traceRow for cell in projected}
+    for cell in projected:
+        if [column[cell.traceRow] for column in fixed] != [getattr(cell, name) for name in FIELDS]:
+            raise ValueError(f"{sample.label}: projected fixed role differs at row {cell.traceRow}")
+    n = sample.gate_count
+    n_add = sum(op == "+" for op, _, _ in sample.steps)
+    add_rows = 476 - (n - n_add)
+    constant_rows = (set(range(11 + n_add, add_rows)) | {add_rows} |
+                     set(range(add_rows + 7, add_rows + 28)))
+    if (projected_rows & constant_rows or
+            projected_rows | constant_rows != set(range(512)) or
+            len(constant_rows) != 487 - n):
+        raise ValueError(f"{sample.label}: projected and constant rows do not partition 512 rows")
+    shared_seeds = {0, 1, 2, 15, 16, 25 + n, 28 + n, 31 + n}
+    for row in constant_rows:
+        ports = fixed[4][row], fixed[5][row], fixed[6][row]
+        if any(address not in shared_seeds and address < 33 + n for address in ports):
+            raise ValueError(f"{sample.label}: constant island touches a projected-only address")
+        opcode = next(index for index in range(4) if fixed[index][row] == 1)
+        wanted = 1 if row == add_rows else 2 if add_rows + 7 <= row < add_rows + 28 else 0
+        if opcode != wanted:
+            raise ValueError(f"{sample.label}: constant island opcode differs at row {row}")
+    return {"label": sample.label, "source_gates": n, "selected_return": sample.return_id,
+            "alias_source": ":aliases" in sample.label, "rows": n_vars,
+            "projected_rows": len(projected), "constant_rows": len(constant_rows),
+            "fixed_columns_sha256": sha(encoded)}
+
+
+def check_private_guard_source() -> dict:
+    """Identify an existing private M31×4 direct source for the CLI control."""
+    relation, _ = compile_text(PRIVATE_SOURCE.read_text())
+    if (relation.get("name") != "named_square4" or relation.get("version") != 1 or
+            relation.get("proof_mode", "transparent") != "transparent" or
+            relation.get("inputs") != [{"name": "x", "kind": "m31", "length": 4,
+                                        "visibility": "private"}] or
+            relation.get("nodes") != [{"name": "result", "op": "mul",
+                                       "lhs": "x", "rhs": "x"}] or
+            relation.get("public_outputs") != ["result"]):
+        raise ValueError("private guard source is not the expected one-gate M31×4 program")
+    return {"source": str(PRIVATE_SOURCE.relative_to(ROOT)),
+            "source_sha256": sha(PRIVATE_SOURCE.read_bytes())}
+
+
 def columns(raw: object, count: int, label: str) -> list[list[int]]:
     if (type(raw) is not list or len(raw) != count or
             any(type(column) is not list or len(column) != 512 for column in raw) or
@@ -162,6 +229,7 @@ def gate_balance(fixed: list[list[int]], main: list[list[int]], public: list[int
 
 
 def check_case(data: dict, sample, pinned: dict) -> dict:
+    check_static_plan(sample, pinned)
     relation, syntax, source_cells, projected = source_plan(sample)
     source_sha = sha(sample.source.encode())
     normalized = (json.dumps(relation, indent=2, sort_keys=True) + "\n").encode()
@@ -315,7 +383,48 @@ def reject_mutations(data: dict, sample, pinned: dict) -> int:
     return len(tests) + 1
 
 
-def native_case(work: Path, sample, prefix: str, pinned: dict) -> dict:
+def native_proof_binding(package: Path, assigned: Path, work: Path, sample) -> dict:
+    """Verify one honest proof and one ABI-valid changed-result statement."""
+    manifest = s31.verify_package(package)
+    abi = json.loads((package / "public-abi.json").read_bytes())
+    result_name = f"p{sample.return_id}"
+    if (abi.get("schema") != "s31-public-abi-v1" or
+            abi.get("public_inputs") != [{"name": "x", "kind": "m31", "length": 4}] or
+            abi.get("public_outputs") != [{"name": result_name, "kind": "m31", "length": 4}]):
+        raise ValueError("native package public ABI differs from admitted four-lane source")
+    trial_dir = work / f"trial-{sample.label.replace(':', '-')}"
+    trial = s31.trial(package, assigned, trial_dir)
+    field = f"public_outputs.{result_name}[0]"
+    if (trial.get("native_verifier_accepted") is not True or
+            trial.get("changed_public_statement_rejected") != field or
+            trial.get("proof_bytes", 0) <= 0):
+        raise ValueError("honest proof or changed-result native trial failed")
+    honest = json.loads((trial_dir / "statement.json").read_bytes())
+    changed = json.loads((trial_dir / "changed-statement.json").read_bytes())
+    expected = {"public_inputs": {"x": list(INPUT)},
+                "public_outputs": {result_name: list(evaluate(sample)[1])}}
+    wanted = copy.deepcopy(expected)
+    wanted["public_outputs"][result_name][0] = (wanted["public_outputs"][result_name][0] + 1) % P
+    if honest != expected or changed != wanted:
+        raise ValueError("changed-result statement is not the exact ABI-valid M31 mutation")
+    verifier = package / "bin" / f"s31-{manifest['name']}-native-verifier"
+    denied = subprocess.run((str(verifier), str(trial_dir / "proof.bin"),
+                             str(trial_dir / "changed-statement.json"),
+                             str(package / "verification-key.json")),
+                            capture_output=True, text=True, timeout=120, check=False)
+    # Zig prints `error: Name` in its CLI; preserve a strict single-error
+    # requirement while accepting the older `error.Name` spelling in logs.
+    errors = re.findall(r"(?m)^error(?:\.|: )([A-Za-z][A-Za-z0-9_]*)$", denied.stderr)
+    if denied.returncode == 0 or errors != [CHANGED_RESULT_ERROR]:
+        raise ValueError(f"changed-result native rejection differs: {errors}, exit {denied.returncode}")
+    return {"proof_bytes": trial["proof_bytes"],
+            "proof_sha256": trial["proof_sha256"],
+            "native_verifier_accepted": True,
+            "changed_public_result_rejected_at": field,
+            "changed_public_result_error": errors[0]}
+
+
+def native_case(work: Path, sample, prefix: str, pinned: dict) -> tuple[dict, dict]:
     source = work / f"{prefix}.s31"
     source.write_bytes(sample.source.encode())
     package = s31.build(source, work / f"package-{prefix}", "direct-gate")
@@ -345,53 +454,92 @@ def native_case(work: Path, sample, prefix: str, pinned: dict) -> dict:
     denied_result = subprocess.run((str(prover), "inspect-physical-rows", str(denied_path)),
                                    capture_output=True, text=True, timeout=120, check=False)
     if (denied_result.returncode == 0 or
-            "PrivatePhysicalRowsUnavailable" not in denied_result.stderr):
+            "PrivatePhysicalRowsUnavailable" not in denied_result.stderr or
+            any(key in denied_result.stdout + denied_result.stderr
+                for key in ('"fixed_columns"', '"main_columns"'))):
         raise ValueError("native inspect CLI did not reject nonempty private assignment")
     data = {"schema": "s31-full-native-roster-diagnostic-v1", "label": sample.label,
             "source_sha256": sha(sample.source.encode()),
             "sealed_key_root": key["preprocessed_root"],
             "topology": topology, "physical": physical}
     check_case(data, sample, pinned)
-    return data
+    return data, native_proof_binding(package, assigned, work, sample)
 
 
-def run_native(work: Path, write: bool) -> list[dict]:
+def native_private_source_rejection(work: Path) -> dict:
+    """Exercise the CLI source guard using a real private-input package."""
+    source = check_private_guard_source()
+    package = s31.build(PRIVATE_SOURCE, work / "package-private-guard", "direct-gate")
+    manifest = s31.verify_package(package)
+    if manifest.get("source_text_sha256") != source["source_sha256"]:
+        raise ValueError("private guard package does not bind the selected source")
+    prover = package / "bin" / f"s31-{manifest['name']}-prover"
+    assigned = work / "assignment-private-guard.json"
+    assigned.write_text(json.dumps({"public_inputs": {}, "private_inputs": {"x": list(INPUT)},
+                                    "public_outputs": {"result": [0, 1, 4, 49]}},
+                                   sort_keys=True) + "\n")
+    result = subprocess.run((str(prover), "inspect-physical-rows", str(assigned)),
+                            capture_output=True, text=True, timeout=120, check=False)
+    if (result.returncode == 0 or
+            "UnsupportedPhysicalRowInspection" not in result.stderr or
+            any(key in result.stdout + result.stderr
+                for key in ('"fixed_columns"', '"main_columns"'))):
+        raise ValueError("private-input source reached the uncommitted physical-row exporter")
+    return {**source, "native_cli_rejected": True}
+
+
+def run_native(work: Path, write: bool) -> tuple[list[dict], dict]:
     work.mkdir(parents=True, exist_ok=True)
     pinned = pinned_cases()
     results = []
+    pending_writes: list[tuple[Path, bytes]] = []
     for sample, prefix in selected_samples():
         print(f"native full-roster export: {sample.label}", file=sys.stderr, flush=True)
-        data = native_case(work, sample, prefix, pinned[sample.label])
+        data, proof_binding = native_case(work, sample, prefix, pinned[sample.label])
         result = check_case(data, sample, pinned[sample.label])
+        result.update(proof_binding)
         result["mutations_rejected"] = reject_mutations(data, sample, pinned[sample.label])
         result["native_cli_private_assignment_rejected"] = True
         path = FIXTURES / f"{prefix}-full-native-roster.json"
         encoded = (json.dumps(data, separators=(",", ":"), sort_keys=True) + "\n").encode()
         if write:
-            FIXTURES.mkdir(parents=True, exist_ok=True)
-            path.write_bytes(encoded)
+            pending_writes.append((path, encoded))
         elif path.read_bytes() != encoded:
             raise ValueError(f"fresh native export differs from pinned diagnostic {prefix}")
         results.append(result)
-    return results
+    private_guard = native_private_source_rejection(work)
+    if pending_writes:
+        FIXTURES.mkdir(parents=True, exist_ok=True)
+        for path, encoded in pending_writes:
+            path.write_bytes(encoded)
+    return results, private_guard
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--native", action="store_true", help="build and inspect fresh native packages")
+    parser.add_argument("--plan-only", action="store_true",
+                        help="check source, row-role partition, and pinned fixed digest without native exports")
     parser.add_argument("--write", action="store_true", help="update fixtures from fresh native exports")
     parser.add_argument("--work", type=Path, help="retain fresh packages and assignments")
     args = parser.parse_args()
+    if args.plan_only and (args.native or args.write or args.work):
+        parser.error("--plan-only cannot be combined with native export options")
     if args.write and not args.native:
         parser.error("--write requires --native")
     if args.work and not args.native:
         parser.error("--work requires --native")
-    if args.native:
+    if args.plan_only:
+        pinned = pinned_cases()
+        results = [check_static_plan(sample, pinned[sample.label])
+                   for sample, _ in selected_samples()]
+        private_guard = check_private_guard_source()
+    elif args.native:
         if args.work:
-            results = run_native(args.work.resolve(), args.write)
+            results, private_guard = run_native(args.work.resolve(), args.write)
         else:
             with tempfile.TemporaryDirectory(prefix="s31-full-native-roster-") as directory:
-                results = run_native(Path(directory), args.write)
+                results, private_guard = run_native(Path(directory), args.write)
     else:
         pinned = pinned_cases()
         results = []
@@ -399,8 +547,10 @@ def main() -> None:
             data = json.loads((FIXTURES / f"{prefix}-full-native-roster.json").read_bytes())
             results.append({**check_case(data, sample, pinned[sample.label]),
                             "mutations_rejected": reject_mutations(data, sample, pinned[sample.label])})
-    print(json.dumps({"schema": "s31-full-native-roster-check-v1",
-                      "cases": results}, sort_keys=True))
+        private_guard = check_private_guard_source()
+    print(json.dumps({"schema": "s31-full-native-roster-plan-v1" if args.plan_only
+                      else "s31-full-native-roster-check-v1",
+                      "cases": results, "private_guard": private_guard}, sort_keys=True))
 
 
 if __name__ == "__main__":

@@ -48,11 +48,14 @@ mutation are reproducible diagnostics. They do not independently recompute the
 Blake2s PCS root from circle evaluations or prove that all authenticated proof
 openings equal the uncommitted physical-row export.
 
-## Complete modeled direct-Gate roster on two other programs
+## Complete modeled direct-Gate roster on four programs
 
-`full_native_roster.py` checks the 1-gate direct multiplication and a 16-gate
-comment-spelled program that returns gate 8 while later gates are still
-computed. For each program it evaluates the generator's positional source DAG
+`full_native_roster.py` checks a 1-gate direct multiplication, an 8-gate
+alias-spelled program that returns gate 4, a 15-gate direct program, and a
+16-gate comment-spelled program that returns gate 8 while later gates are still
+computed. `--plan-only` checks all four source/schedule plans against the
+earlier native fixed-column digests without building packages or reading
+physical-row fixtures. For each full diagnostic it evaluates the generator's positional source DAG
 and uses the host-side `package.direct_gate_schedule` model to construct all
 512 fixed rows. That schedule is also used by the package correspondence
 checker; it is separate from the Zig native emitter, but is not a second
@@ -69,25 +72,40 @@ fixed-column digest and preprocessed root. Seven export/key mutations plus
 one extra-feeder ledger control per program must be rejected.
 
 ```sh
+python3 src/frontends/s31/tests/acceptance/compiler_correspondence/full_native_roster.py --plan-only
 python3 src/frontends/s31/tests/acceptance/compiler_correspondence/full_native_roster.py
 python3 src/frontends/s31/tests/acceptance/compiler_correspondence/full_native_roster.py --native
 zig build --build-file src/frontends/s31/build.zig test-public-physical-guard
 ```
 
-`--native` builds both source-bound packages, checks each package certificate,
+`--native` builds all four source-bound packages, checks each package certificate,
 compares `inspect-topology` with the sealed topology and verification key,
 then compares fresh `inspect-physical-rows` output byte-for-byte with the
 checked-in diagnostic exports. `--native --write` is only for intentional
 fixture refreshes after inspecting compiler changes. `--work PATH` retains
-packages and assignments for debugging. The fresh-native path also invokes
+packages and assignments for debugging. Each case also produces one honest
+proof, requires its generated native verifier to accept it against that
+package's sealed key, and requires `InvalidInteractionNonce` for an exact,
+canonical M31 change to the named public result with the same proof and key.
+The changed public word enters the verifier transcript before the interaction
+nonce check, so these deterministic proof/statement bytes check transcript
+binding at that point. A changed transcript could by chance pass that nonce
+check and fail later, so the named error is a pinned regression result rather
+than a universal verifier rule. The native
+run reports proof byte counts and hashes. The fresh-native path also invokes
 each prover with a nonempty private assignment and requires the CLI to return
-`PrivatePhysicalRowsUnavailable` before writing diagnostic rows.
+`PrivatePhysicalRowsUnavailable` before writing diagnostic rows. It builds the
+existing private-input `named_square4_manual.s31` package and requires its
+`inspect-physical-rows` command to fail with `UnsupportedPhysicalRowInspection`
+without returning fixed or main columns.
 
 The physical-row command is limited to transparent, public-only four-lane M31
 programs with 1–16 add/multiply source nodes and no assertions. It exports
 uncommitted fixed and main evaluations from `writeBase`. Even if a native
 proof verifies, this export does not authenticate PCS openings, prove LogUp
-soundness, or establish a verifier-to-trace correspondence theorem.
+soundness, or establish a verifier-to-trace correspondence theorem. The proof
+acceptance checks authenticate the proof against its sealed key and public
+statement; they do not connect uncommitted exported rows to proof openings.
 The Zig guard tests require rejection of a private input, a nonempty private
 assignment, wrong input and output shape, assertions, constant/repeat nodes,
 and a 17-node source.
