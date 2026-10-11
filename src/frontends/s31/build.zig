@@ -14,7 +14,7 @@ pub fn build(b: *std.Build) void {
     else
         b.path("examples/arithmetic/affine4.s31.json");
     const program_name = b.option([]const u8, "s31-name", "Build artifact name for the selected program") orelse "affine4";
-    const source_version = b.option(u32, "s31-version", "Normalized source version (0, 1, or record ABI v2 for direct-mixed-general)") orelse 0;
+    const source_version = b.option(u32, "s31-version", "Normalized source version (0, 1, or record ABI v2 for direct-gate/direct-mixed-general)") orelse 0;
     const lowering = b.option([]const u8, "s31-lowering", "gate, chip, sparse-gate, sparse-chip, sparse-wide-gate, direct-gate, direct-chip, experimental direct-pair/direct-many/direct-mixed/direct-mixed4/direct-mixed-general, sha-joint, sha-shift, or sha-fused proof lowering") orelse "gate";
     const gate_manifest_version = b.option(u32, "s31-direct-gate-manifest-version", "Direct-gate manifest/proof envelope version (1 or 2)") orelse 1;
     if ((gate_manifest_version != 1 and gate_manifest_version != 2) or
@@ -36,22 +36,26 @@ pub fn build(b: *std.Build) void {
         @panic("FRI fold step 4 requires gate or sparse-wide-gate lowering; supported steps are 1 and 4");
     const mixed_lowering = std.mem.eql(u8, lowering, "direct-mixed") or std.mem.eql(u8, lowering, "direct-mixed4") or
         std.mem.eql(u8, lowering, "direct-mixed-general");
+    const record_gate_lowering = source_version == 2 and std.mem.eql(u8, lowering, "direct-gate");
     if (mixed_lowering and source_version != 1 and
         !(source_version == 2 and std.mem.eql(u8, lowering, "direct-mixed-general")))
         @panic("experimental direct-mixed requires normalized S31 source version 1; general also admits record ABI v2");
-    if (mixed_lowering and selected_source == null)
-        @panic("experimental direct-mixed requires -Ds31-source=/absolute/path/to/source.s31.json");
-    if (mixed_lowering) {
+    if ((mixed_lowering or record_gate_lowering) and selected_source == null)
+        @panic("record or mixed lowering requires -Ds31-source=/absolute/path/to/source.s31.json");
+    if (mixed_lowering or record_gate_lowering) {
         const source_bytes = std.fs.cwd().readFileAlloc(b.allocator, selected_source.?, 1 << 20) catch
-            @panic("cannot read bounded mixed source");
+            @panic("cannot read bounded source");
         defer b.allocator.free(source_bytes);
         var declared = std.json.parseFromSlice(struct { version: u32 }, b.allocator, source_bytes, .{
             .ignore_unknown_fields = true,
             .duplicate_field_behavior = .@"error",
-        }) catch @panic("mixed source is not normalized JSON with one version field");
+        }) catch @panic("source is not normalized JSON with one version field");
         defer declared.deinit();
-        if (declared.value.version != source_version)
-            @panic("-Ds31-version differs from embedded mixed source version");
+        if (declared.value.version != source_version) {
+            if (mixed_lowering)
+                @panic("-Ds31-version differs from embedded mixed source version");
+            @panic("-Ds31-version differs from embedded record source version");
+        }
     }
     const s31_options = b.addOptions();
     s31_options.addOption(bool, "chip_mode", std.mem.eql(u8, lowering, "chip") or std.mem.eql(u8, lowering, "sparse-chip") or std.mem.eql(u8, lowering, "direct-chip") or std.mem.eql(u8, lowering, "direct-pair") or std.mem.eql(u8, lowering, "direct-many") or mixed_lowering);
@@ -858,7 +862,7 @@ pub fn build(b: *std.Build) void {
         pair_programs.dependOn(&pair_verifier.step);
         return;
     }
-    if (source_version == 1) {
+    if (source_version == 1 or (source_version == 2 and std.mem.eql(u8, lowering, "direct-gate"))) {
         const cairo = cpu.import_table.get("stwo_cairo_frontend") orelse @panic("circuit CPU module is missing Cairo AIR runtime");
         const key_asset: std.Build.LazyPath = if (b.option([]const u8, "s31-key", "Absolute path to the sealed verification key")) |path|
             .{ .cwd_relative = path }

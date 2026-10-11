@@ -85,7 +85,7 @@ def build_json(source_path: Path, output: Path, lowering: str = "gate",
         name = source["name"]
         invoke(
             "zig", "build", "--build-file", str(BUILD_FILE), "install",
-            "-Doptimize=ReleaseFast", "-Ds31-version=1",
+            "-Doptimize=ReleaseFast", f"-Ds31-version={source['version']}",
             *gate_manifest_option,
             f"-Ds31-lowering={lowering}", f"-Ds31-fri-fold-step={fri_fold_step}",
             f"-Ds31-source={source_path}", f"-Ds31-name={name}",
@@ -180,7 +180,7 @@ def build_json(source_path: Path, output: Path, lowering: str = "gate",
                 state_fold_option = (f"-Ds31-state-fold-key={state_fold_key}",)
         invoke(
             "zig", "build", "--build-file", str(BUILD_FILE), "install",
-            "-Doptimize=ReleaseFast", "-Ds31-version=1",
+            "-Doptimize=ReleaseFast", f"-Ds31-version={source['version']}",
             *gate_manifest_option,
             f"-Ds31-lowering={lowering}", f"-Ds31-fri-fold-step={fri_fold_step}",
             f"-Ds31-source={source_path}", f"-Ds31-name={name}",
