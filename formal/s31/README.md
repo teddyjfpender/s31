@@ -211,6 +211,13 @@ rows from an ideal exact Gate event balance and one produced value per address;
 it proves a locally valid forged read cannot satisfy that balance. The exact
 balance and source-row membership remain explicit premises, since production
 LogUp is challenge-compressed and PCS/FRI authentication is not formalized.
+`Functional/SSAInstalledBytecodeGateJoin` projects the installed nine
+arithmetic-bytecode roots onto each physical source Gate row, derives that
+row's local arithmetic acceptance, and composes this with the exact Gate
+wire-map result. Its selected-claim theorem additionally assumes a packed
+claim yield at the selected source address; binding the four public output
+pins through the unpack/copy rows to that yield is still open. The module is
+currently a static draft pending Lean compilation and inventory replay.
 The Python package checker supplies the
 package-to-embedded-byte/digest binding
 and validates other native rows. Lean does not verify the embedded SHA-256 strings, prove
