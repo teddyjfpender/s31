@@ -23,6 +23,7 @@ open S31
 open S31.Gadgets.Packed
 open S31.Gadgets.Air.Qm31Ops
 open S31.Gadgets.Air.GateLookup
+open S31.Gadgets.Air.GeneratedDirectGateBytecodeArithmetic
 open S31.Functional.SSACertificate
 open S31.Functional.SSATextBytes
 open S31.Functional.SSANormalizedBytes
@@ -222,19 +223,19 @@ theorem output_boundary_of_exact_gate
     apply heval
     rw [hcells, expectedOutputCells]
     apply List.mem_append_left
-    apply List.mem_map.mpr
-    exact ⟨i.val, by simpa using i.isLt, rfl⟩
-  · intro i
-    apply heval
-    rw [hcells, expectedOutputCells]
-    apply List.mem_append_right
     apply List.mem_append_left
     apply List.mem_map.mpr
     exact ⟨i.val, by simpa using i.isLt, rfl⟩
   · intro i
     apply heval
     rw [hcells, expectedOutputCells]
+    apply List.mem_append_left
     apply List.mem_append_right
+    apply List.mem_map.mpr
+    exact ⟨i.val, by simpa using i.isLt, rfl⟩
+  · intro i
+    apply heval
+    rw [hcells, expectedOutputCells]
     apply List.mem_append_right
     apply List.mem_map.mpr
     exact ⟨i.val, by simpa using i.isLt, rfl⟩
