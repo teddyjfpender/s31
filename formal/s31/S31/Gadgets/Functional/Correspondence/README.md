@@ -202,6 +202,18 @@ compares the entire JSON report with the committed report, and compares the
 rendered Lean fixture byte for byte. Run the same gate locally with
 `python3 formal/s31/scripts/check_fresh_square4_native_witness.py`.
 
+`PinnedNativeSquare4Context.lean` uses these kernel checked native facts to
+instantiate every field of `PhysicalTraceContext` for the concrete input
+`[0, 1, 2, 7]` and claim `[0, 1, 16, 2401]`. It checks the zero, four basis,
+and three inverse producers, plus all eight public words in the external
+**use** list. This establishes that the arbitrary-trace algebraic soundness
+context is satisfiable by one native base assignment. A corollary applies
+`physical_balanced_certificate_claim` to this context: any result of the
+positional square4 certificate on this input equals the feeder's public
+claim. The module also checks that the certificate interpreter actually
+returns the claimed four words. The full source-to-native name/IR link and
+verifier authentication still require separate work.
+
 The report records uncommitted prover evaluations from one inspected run.
 The fresh native CI job re-extracts those evaluations on each run. All-row
 arithmetic and exact ideal Gate balance are Lean theorems for this one pinned
@@ -231,4 +243,6 @@ lake build S31.Gadgets.Functional.Correspondence.PinnedFullOutputRoster
 lake build S31.Gadgets.Functional.Correspondence.PinnedFullFixedRoster
 lake build S31.Gadgets.Functional.Correspondence.PinnedNativeSquare4Witness
 lake env leanchecker S31.Gadgets.Functional.Correspondence.PinnedNativeSquare4Witness
+lake build S31.Gadgets.Functional.Correspondence.PinnedNativeSquare4Context
+lake env leanchecker S31.Gadgets.Functional.Correspondence.PinnedNativeSquare4Context
 ```

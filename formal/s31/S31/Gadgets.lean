@@ -33,6 +33,7 @@ import S31.Gadgets.Air.AffineChipBoundary
 import S31.Gadgets.Air.GenericChipBoundary
 import S31.Gadgets.Air.IndexedChipPath
 import S31.Gadgets.Air.RawChipIndexCoverage
+import S31.Gadgets.Air.IndexedManyChipPath
 import S31.Gadgets.Air.TaggedPairBridgeRows
 import S31.Gadgets.Air.TaggedPairChallenge
 import S31.Gadgets.Air.TaggedPairAirClosure
@@ -155,6 +156,7 @@ import S31.Gadgets.Functional.Correspondence.AliasProjectedExportBridge
 import S31.Gadgets.Functional.Correspondence.PinnedFullOutputRoster
 import S31.Gadgets.Functional.Correspondence.PinnedFullFixedRoster
 import S31.Gadgets.Functional.Correspondence.PinnedNativeSquare4Witness
+import S31.Gadgets.Functional.Correspondence.PinnedNativeSquare4Context
 import S31.Gadgets.Functional.GeneratedDirectGateBridge
 import S31.Gadgets.Functional.GeneratedDirectGateMixedReturn
 import S31.Gadgets.Functional.MathLibrary

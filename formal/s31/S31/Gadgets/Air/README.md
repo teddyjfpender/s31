@@ -648,6 +648,14 @@ bijection. The full value-bearing event permutation then forces the start,
 all adjacent row joins, and the end; a locally enforced step rule yields the
 `R`-step result for both tagged calls. This is an exact-multiset theorem. The
 accepted native proof-to-logical-row, event extraction, and PCS links to its premise remain unproved.
+[`IndexedManyChipPath.lean`](IndexedManyChipPath.lean) generalizes the exact
+tagged-event step from two calls to any finite roster with different round
+counts and local transitions. A joint permutation filters to one exact
+per-call permutation because each event carries its verifier-fixed call tag;
+the existing arbitrary-row theorem then forces every endpoint. The
+[handwritten three-call ledger](IndexedManyChipPath.md) shows the event
+accounting. This is an ideal multiset theorem and does not derive its premise
+from the source-pinned mixed verifier or its compressed LogUp proof.
 `TaggedPairChallenge.lean` supplies the ideal seven-coordinate challenge
 reduction for the **joint** Gate/chip event support. It proves that distinct
 seven-word tuples collide for at most six compression challenges, derives an

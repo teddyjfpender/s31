@@ -104,7 +104,7 @@
     "src/frontends/s31/runtime/bounded_compiled_binding.zig": "eb923058cab6ccf3564535ce7e7e09a75ed637123f033237f358c7df8cad0be9",
     "src/frontends/s31/entry/bounded_compiled_binding.zig": "a12d73bde97f68f3d573ba3f8377cae8d82fa9ebed784e8358e62f957aedb2ca",
     "src/frontends/s31/runtime/many_native_package.zig": "79af9d787d23fc6f0309036b5b4930c87e78fd2109577a1c413b46c95a66caad",
-    "src/frontends/s31/runtime/mixed_boundary/inspection.zig": "23dc1b70efdad64f00b02f9a63fa112b31373a7d2967a84ecbe68ec4638006dc",
+    "src/frontends/s31/runtime/mixed_boundary/inspection.zig": "9ec4665b2d0267a7e144a60695795228db6e563fbf4d1863b4726548ad48e61e",
     "src/frontends/s31/runtime/mixed_boundary/lookup_budget.zig": "9c9547a7265e18a6330b3342b6e5763d7b68fbe341dd4f6c8968921e21b02bc6",
     "src/frontends/s31/runtime/mixed_boundary/registry.zig": "15b368ca4d161321c0b32e3c64324a32fb297064bc532580249876c084aef699",
     "src/frontends/s31/runtime/mixed_boundary/descriptor.zig": "bf6aaeae9e16751032d3241c9e982bc7601ff1b09689711aacd1f081c8b3b536",
