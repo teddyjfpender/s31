@@ -192,6 +192,8 @@ import S31.Gadgets.Functional.Correspondence.CheckedFullLocalArithmeticCompositi
 import S31.Gadgets.Functional.Correspondence.HonestConstantIslandAgreement
 import S31.Gadgets.Functional.Correspondence.CheckedFullGateBalanceComposition
 import S31.Gadgets.Functional.Correspondence.CheckedDirectGateModeledComposition
+import S31.Gadgets.Functional.Correspondence.CheckedDecodedGateLedgerCorrespondence
+import S31.Gadgets.Functional.Correspondence.CheckedPhysicalModeledComposition
 import S31.Gadgets.Functional.Correspondence.GeneratedNativeSourceCells
 import S31.Gadgets.Functional.Correspondence.GeneratedNativeFullRowRoles
 import S31.Gadgets.Functional.Correspondence.CanonicalDagOptimization
