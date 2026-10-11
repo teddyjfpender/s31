@@ -23,13 +23,21 @@ values. The chip's arithmetic residuals then give
 chip constant must equal the source boundary's constant; that binding remains
 an explicit source-to-native obligation.
 
+The schedule also carries a successful scan of the complete logical Gate
+producer roster instead of an abstract value-uniqueness premise. The scan
+checks output addresses once per active row, including rows whose lookup
+output is repeated by multiplicity. `SourceMixedProducerCheck` proves that
+this decidable scan implies the value uniqueness needed by the packed and
+bridge path theorems. Relating the modeled roster to native emitted rows
+remains a compiler/trace obligation.
+
 The final theorem says a false public word can close the source-shaped
 reciprocal equation only at a challenge pair in the explicit exceptional set,
 given this complete arithmetic trace contract and the source schedule.
 
 This is still conditional on the source row list being the committed row list,
-on the five per-call event projections, the source schedule and
-producer-uniqueness premises, and on the all-row trace contract. The ordinary
+on the five per-call event projections, the source schedule and checked
+producer roster, and on the all-row trace contract. The ordinary
 succinct native verifier does not export such a trace;
 its acceptance has not yet been proved to imply these premises. The optional
 full-trace native audit is a separate executable check of an attached witness.

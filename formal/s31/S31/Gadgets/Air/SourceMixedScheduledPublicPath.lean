@@ -1,4 +1,5 @@
 import S31.Gadgets.Air.SourceMixedChipRowProjection
+import S31.Gadgets.Air.SourceMixedProducerCheck
 
 /-!
 The public-path contract can select source rows by their fixed addresses,
@@ -22,6 +23,7 @@ open S31.Gadgets.Air.SourceMixedFalseClaimBound
 open S31.Gadgets.Air.SourceMixedAuthenticatedTrace
 open S31.Gadgets.Air.SourceMixedEventAlignment
 open S31.Gadgets.Air.SourceMixedChipRowProjection
+open S31.Gadgets.Air.SourceMixedProducerCheck
 open S31.Gadgets.Air.IndexedManyTaggedTupleBridge
 
 /-- The same source-owned unpack/copy schedule as `OutputPath`, with row
@@ -66,7 +68,9 @@ structure LocalPublicSchedule {N : Nat} (hN : N ≤ 8)
     (initial : State) : Prop where
   addresses : ∀ call slot,
     boundary.addresses call slot = canonicalAddress hN call slot
-  unique : uniqueProduced (produced boundary)
+  producerScan : ∃ bound result,
+    S31.Gadgets.Air.GateProducerCheck.scan
+      bound ∅ ((checkedRoster boundary).map Prod.fst) = some result
   first : boundary.start ⟨0, hpositive⟩ = initial
   constants : ∀ call, boundary.constants call = (13 + call.val : F)
   packedInitial : ValueAt boundary 22 (packState initial)
@@ -91,9 +95,11 @@ theorem LocalPublicSchedule.toLocalPublicPath {N : Nat}
     (hconstant : ∀ call,
       (trace.chip call).constant = boundary.constants call) :
     LocalPublicPath hN hpositive boundary rows initial := by
+  obtain ⟨producerBound, producerResult, hscan⟩ := schedule.producerScan
   exact {
     addresses := schedule.addresses
-    unique := schedule.unique
+    unique := unique_produced_of_checked_roster boundary
+      producerBound producerResult hscan
     first := schedule.first
     constants := schedule.constants
     step := SourceMixedChipRowProjection.EventProjection.chip_step

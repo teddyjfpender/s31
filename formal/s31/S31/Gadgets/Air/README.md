@@ -730,7 +730,9 @@ through PCS/FRI remains the next end-to-end soundness step.
 [`SourceMixedScheduledPublicPath.lean`](SourceMixedScheduledPublicPath.md)
 uses that all-row Gate arithmetic premise to fill the selected add, multiply,
 unpack, and copy row AIR facts from a source address/opcode schedule. It
-leaves row selection, producer uniqueness, and proof authentication explicit.
+derives producer uniqueness from a checked logical-roster scan and chip row
+semantics from projected chip events. Row selection and proof authentication
+remain explicit.
 [`SourceMixedEventAlignment.lean`](SourceMixedEventAlignment.md) uses event
 permutations to account for native grouping of bridge Gate reads and chip
 endpoints. It derives the two global alignments from source circuit lists
