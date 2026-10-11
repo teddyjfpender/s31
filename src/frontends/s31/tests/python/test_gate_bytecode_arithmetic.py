@@ -204,6 +204,12 @@ class GateBytecodeArithmeticTest(unittest.TestCase):
         for old, new in (
             ("base[instruction.dst] = switch (instruction.op)",
              "base[instruction.a] = switch (instruction.op)"),
+            ("                    instruction.a,\n"
+             "                    instruction.imm,\n"
+             "                )",
+             "                    instruction.b,\n"
+             "                    instruction.imm,\n"
+             "                )"),
             (".constant => QM31.fromBase(M31.fromCanonical(instruction.a))",
              ".constant => QM31.fromBase(M31.fromCanonical(instruction.b))"),
             (".add => base[instruction.a].add(base[instruction.b])",

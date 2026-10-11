@@ -284,6 +284,14 @@ def render(package: Path) -> str:
 def check_base_vm_source_contract(verifier: str) -> None:
     """Pin the native base register write and arithmetic opcode switch."""
     require("base[instruction.dst] = switch (instruction.op)" in verifier and
+            ".trace_col, .preprocessed_col => try self.traceValue(\n"
+            "                    mask,\n"
+            "                    base_offsets,\n"
+            "                    interaction_offsets,\n"
+            "                    instruction.interaction,\n"
+            "                    instruction.a,\n"
+            "                    instruction.imm,\n"
+            "                )" in verifier and
             ".constant => QM31.fromBase(M31.fromCanonical(instruction.a))" in verifier and
             ".add => base[instruction.a].add(base[instruction.b])" in verifier and
             ".sub => base[instruction.a].sub(base[instruction.b])" in verifier and
@@ -292,10 +300,10 @@ def check_base_vm_source_contract(verifier: str) -> None:
 
 
 def render_base_vm(package: Path) -> str:
-    """Reflect the selected Gate's first 38 base opcodes into a Lean VM.
+    """Reflect the selected Gate's arithmetic base opcodes into a Lean VM.
 
-    This prefix covers the five flag/one-hot roots. Its instruction bytes are
-    checked by the same pinned bundle/program digest as the other exports.
+    The first 38 cover flags; the first 122 cover all arithmetic roots. Their
+    bytes are checked by the pinned bundle/program digest as other exports.
     """
     checked = check_package(package)
     base, _extension, _roots = decoded_program(gate_program(BUNDLE.read_bytes()))
@@ -303,18 +311,18 @@ def render_base_vm(package: Path) -> str:
     check_base_vm_source_contract(verifier)
     constructors = {4: "add", 5: "sub", 6: "mul"}
     instructions = []
-    for op, tree, dst, a, b, imm in base[:38]:
+    for op, tree, dst, a, b, imm in base[:122]:
         if op == 0:
-            require(imm == 0 and tree in (0, 1), "flag prefix has unsupported trace read")
+            require(imm == 0 and tree in (0, 1), "arithmetic prefix has unsupported trace read")
             operation = f".{'fixed' if tree == 0 else 'main'} {a}"
         elif op == 3:
             operation = f".constant {a}"
         else:
-            require(op in constructors, "flag prefix has unsupported opcode")
+            require(op in constructors, "arithmetic prefix has unsupported opcode")
             operation = f".{constructors[op]} {a} {b}"
         instructions.append(f"  ⟨{dst}, {operation}⟩")
     lines = [
-        "-- Generated from the checked first 38 STWZEVA/1 Gate base instructions.",
+        "-- Generated from the checked first 122 STWZEVA/1 Gate base instructions.",
         f"-- Bundle SHA-256: {AIR_BUNDLE_SHA256}",
         f"-- Gate program SHA-256: {GATE_PROGRAM_SHA256}",
         f"-- Source SHA-256: {checked['source_sha256']}",
@@ -322,6 +330,8 @@ def render_base_vm(package: Path) -> str:
         "import S31.Gadgets.Air.GeneratedDirectGateBytecodeArithmetic", "",
         "namespace S31.Gadgets.Air.GeneratedDirectGateBaseVm", "",
         "open S31.Gadgets.Air.DirectGatePolynomial", "",
+        "set_option maxRecDepth 2048",
+        "set_option maxHeartbeats 3000000", "",
         "inductive BaseOp where",
         "  | fixed (column : Fin 8)",
         "  | main (column : Fin 12)",
@@ -347,8 +357,13 @@ def render_base_vm(package: Path) -> str:
         "  instructions.foldl (execute cells) (fun _ => 0)", "",
         "/-- Exactly the installed base instruction prefix through register 37. -/",
         "def flagPrefix : List Instruction := [",
-        ",\n".join(instructions),
+        ",\n".join(instructions[:38]),
         "]", "",
+        "/-- Remaining arithmetic instructions, before interaction reads. -/",
+        "def arithmeticTail : List Instruction := [",
+        ",\n".join(instructions[38:]),
+        "]", "",
+        "def arithmeticProgram : List Instruction := flagPrefix ++ arithmeticTail", "",
         "def flagRoots {K : Type*} [CommRing K] (cells : ArithmeticCells K) : List K :=",
         "  let registers := executeAll cells flagPrefix",
         "  [registers 24, registers 28, registers 31, registers 34, registers 37]", "",
@@ -366,6 +381,25 @@ def render_base_vm(package: Path) -> str:
         "    (cells : ArithmeticCells K) :",
         "    flagRoots cells = (modeledArithmetic cells).take 5 := by",
         "  rw [flagRoots_eq_generated,",
+        "    GeneratedDirectGateBytecodeArithmetic.bytecode_arithmetic_over_eq]", "",
+        "def arithmeticRoots {K : Type*} [CommRing K]",
+        "    (cells : ArithmeticCells K) : List K :=",
+        "  let registers := executeAll cells arithmeticProgram",
+        "  [registers 24, registers 28, registers 31, registers 34, registers 37,",
+        "   registers 61, registers 85, registers 103, registers 121]", "",
+        "/-- The reflected 122-opcode base interpreter gives all nine",
+        "selected arithmetic roots for arbitrary ring-valued cells. -/",
+        "theorem arithmeticRoots_eq_generated {K : Type*} [CommRing K]",
+        "    (cells : ArithmeticCells K) :",
+        "    arithmeticRoots cells =",
+        "      GeneratedDirectGateBytecodeArithmetic.bytecodeArithmeticOver cells := by",
+        "  simp [arithmeticRoots, arithmeticProgram, arithmeticTail, flagPrefix,",
+        "    executeAll, execute,",
+        "    GeneratedDirectGateBytecodeArithmetic.bytecodeArithmeticOver]", "",
+        "theorem arithmeticRoots_eq_modeled {K : Type*} [CommRing K]",
+        "    (cells : ArithmeticCells K) :",
+        "    arithmeticRoots cells = modeledArithmetic cells := by",
+        "  rw [arithmeticRoots_eq_generated,",
         "    GeneratedDirectGateBytecodeArithmetic.bytecode_arithmetic_over_eq]", "",
         "end S31.Gadgets.Air.GeneratedDirectGateBaseVm", "",
     ]
