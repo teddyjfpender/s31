@@ -107,6 +107,19 @@ This check covers normalized relation version 1, independent of the
 `-Ds31-version` backend build selector. It does not establish that Zig's
 parser and serializer are correct for other language fragments.
 
+The formal `SSACanonicalGateChain` theorem composes that byte admission with
+the source-projected physical AIR cells and an **ideal exact** Gate multiset
+join for **live source rows only**. Its conclusion identifies the selected
+native wire with the source result for every four-lane input. The theorem
+requires each source instruction to have a positive `sourceUses` count;
+accepted source can contain dead instructions, so this is a genuine domain
+restriction. It also requires exact exported fixed cells, physical rows with
+the selected local AIR relation and positive multiplicity, exact Gate event
+balance, unique produced values, and the packed public input yield. Neither
+the package checker nor this theorem derives these physical and lookup
+premises from a native proof. LogUp's random challenge check, committed-column
+opening, PCS/FRI and Fiat-Shamir remain outside this compiler refinement.
+
 ## Concrete Lean bridge
 
 [`export_s31_direct_gate_bridge.py`](../../../scripts/export_s31_direct_gate_bridge.py)
@@ -138,7 +151,13 @@ encodes the compact canonical SSA bytes from that same parsed certificate.
 Both generated instances check the captured bytes and reject changed opcode,
 operand, public input name, and output ID bytes. The SHA-256 match itself is
 performed by the independent Python checker; Lean checks byte equality, not
-the SHA-256 implementation. It separately checks the
+the SHA-256 implementation. The square fixture checks that every source row
+is live and applies the conditional canonical-to-Gate theorem to its source
+and exported source-cell plan. The early-return fixture has an unused final
+let; it remains a byte/IR admission control and proves that its final row has
+zero `sourceUses`. Handling dead-code liveness in the physical Gate refinement
+is an open obligation. Physical-row authentication premises stay as arguments
+to the square theorem. The bridge separately checks the
 deterministic source-term emitter and each observed source gate's circuit
 address and grouped AIR row.
 

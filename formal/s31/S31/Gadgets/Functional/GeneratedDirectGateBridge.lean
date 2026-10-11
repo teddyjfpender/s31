@@ -5,6 +5,7 @@ import S31.Gadgets.Functional.SSAAirRows
 import S31.Gadgets.Functional.SSATextBytes
 import S31.Gadgets.Functional.SSANormalizedBytes
 import S31.Gadgets.Functional.SSACanonicalIrBytes
+import S31.Gadgets.Functional.SSACanonicalGateChain
 import S31.Gadgets.Functional.SSAAirColumnCells
 import S31.Gadgets.Functional.SSAOutputAirCells
 import S31.Gadgets.Functional.SSAInputAirCells
@@ -20,6 +21,7 @@ open S31.Functional.SSAAirRows
 open S31.Functional.SSATextBytes
 open S31.Functional.SSANormalizedBytes
 open S31.Functional.SSACanonicalIrBytes
+open S31.Functional.SSACanonicalGateChain
 open S31.Functional.SSAAirColumnCells
 open S31.Functional.SSAOutputAirCells
 open S31.Functional.SSAInputAirCells
@@ -637,6 +639,42 @@ theorem checked_canonical_ir_bytes_sound (input : Lanes) :
     executeNormalized certificate input = denotation sourceBytes input := by
   exact (checked_canonical_bytes_sound sourceBytes normalizedBytes
     canonicalIrBytes certificate input canonical_ir_bytes_check).2
+
+/-- Liveness is checked for this concrete source. It is not guaranteed by the
+accepted source grammar. -/
+theorem all_source_rows_live :
+    ∀ instruction ∈ certificate.instructions,
+      0 < sourceUses certificate instruction.id := by decide
+
+/-- This live source, canonical SSA identity and exported fixed-cell projection
+feed the conditional exact-Gate theorem. Authentication of physical rows,
+exact balance, unique producers and the packed input yield stay explicit. -/
+theorem checked_live_canonical_gate_chain (input : Lanes)
+    (rows : List S31.Gadgets.Air.GateLookup.Row)
+    (externalUses externalYields : List S31.Gadgets.Air.GateLookup.Event)
+    (hsource : SSAGateLookupWireMap.sourceGateRows certificate
+      observedColumnCells rows)
+    (hbalance : S31.Gadgets.Air.GateLookup.balanced rows
+      externalUses externalYields)
+    (hunique : S31.Gadgets.Air.GateLookup.uniqueProduced
+      (S31.Gadgets.Air.GateLookup.allYields rows externalYields))
+    (hinputYield : (SSADirectGateBridge.address 0,
+      S31.Gadgets.Air.Qm31Ops.packM31 input) ∈
+      S31.Gadgets.Air.GateLookup.allYields rows externalYields) :
+    ∃ parsed, parseBytes sourceBytes = some parsed ∧
+      canonicalIrBytes = encodeCanonical parsed ∧
+      (∃ output : Lanes, denotation sourceBytes input = some output ∧
+        SSAGateLookupWireMap.wireOfProduced
+          (S31.Gadgets.Air.GateLookup.allYields rows externalYields)
+          (SSADirectGateBridge.address certificate.output) =
+            S31.Gadgets.Air.Qm31Ops.packM31 output) := by
+  obtain ⟨parsed, hparse, hcanonical, _, result⟩ :=
+    checked_live_canonical_source_output_of_exact_gate
+      sourceBytes normalizedBytes canonicalIrBytes certificate
+      observedAddRows observedColumnCells input rows externalUses
+      externalYields canonical_ir_bytes_check all_source_rows_live
+      observed_source_columns_match hsource hbalance hunique hinputYield
+  exact ⟨parsed, hparse, hcanonical, result⟩
 
 /-- The captured normalized JSON runs through the actual named evaluator.
 The admission test checks the package before rendering these constants;

@@ -187,6 +187,19 @@ and changed opcode, operand, input name and output ID controls; it does not
 implement SHA-256. The generated instance also kernel-checks both actual
 source and normalized byte arrays, public names, exact source-gate positions,
 and literal source or normalized opcode and public-output mutation controls.
+`Functional/SSACanonicalGateChain` then composes byte admission with the
+source-projected fixed-cell plan and an ideal exact Gate multiset join for
+**live source rows**. Its conclusion fixes the selected native packed wire to
+the source denotation for every input. Every instruction's positive
+`sourceUses` is an explicit premise; accepted source does not guarantee it.
+Physical row identification and local AIR acceptance, exact balance, unique
+producers and the packed public input yield remain additional premises. The
+generated square fixture checks its own liveness and fixed cells before
+applying the theorem with those physical premises. The early-return fixture
+checks byte/IR admission and proves its unused final row has zero
+`sourceUses`; dead-code liveness in the physical Gate refinement remains an
+open obligation. This does not prove that the installed verifier authenticates
+the physical premises.
 `Functional/SSAAirColumnCells` projects the eight native preprocessed cells
 at each source gate's grouped AIR row and computes the expected selector,
 addresses, and use count from the parsed SSA. The generated shared-square

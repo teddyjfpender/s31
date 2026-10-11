@@ -5,6 +5,7 @@ import S31.Gadgets.Functional.SSAAirRows
 import S31.Gadgets.Functional.SSATextBytes
 import S31.Gadgets.Functional.SSANormalizedBytes
 import S31.Gadgets.Functional.SSACanonicalIrBytes
+import S31.Gadgets.Functional.SSACanonicalGateChain
 import S31.Gadgets.Functional.SSAAirColumnCells
 import S31.Gadgets.Functional.SSAOutputAirCells
 import S31.Gadgets.Functional.SSAInputAirCells
@@ -20,6 +21,7 @@ open S31.Functional.SSAAirRows
 open S31.Functional.SSATextBytes
 open S31.Functional.SSANormalizedBytes
 open S31.Functional.SSACanonicalIrBytes
+open S31.Functional.SSACanonicalGateChain
 open S31.Functional.SSAAirColumnCells
 open S31.Functional.SSAOutputAirCells
 open S31.Functional.SSAInputAirCells
@@ -653,6 +655,11 @@ theorem checked_canonical_ir_bytes_sound (input : Lanes) :
     executeNormalized certificate input = denotation sourceBytes input := by
   exact (checked_canonical_bytes_sound sourceBytes normalizedBytes
     canonicalIrBytes certificate input canonical_ir_bytes_check).2
+
+/-- Accepted source can contain dead instructions; the current source-row
+Gate refinement cannot be applied to this fixture. -/
+theorem unused_source_row_detected :
+    sourceUses certificate 3 = 0 := by decide
 
 /-- The captured normalized JSON runs through the actual named evaluator.
 The admission test checks the package before rendering these constants;
