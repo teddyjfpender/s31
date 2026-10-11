@@ -250,15 +250,21 @@ pub fn matchesSource(allocator: std.mem.Allocator, candidate: *const SelectedSch
 
 /// Each repeat creates four fresh scalar output guesses. Input ports may
 /// alias across calls (and may gain within-call broadcasts in future), but a
-/// call must not label an input or another output as one of its new outputs.
+/// call must not label any already-live input or output as a new output.
 /// This guards the compiler-owned endpoint map before chip/bridge selection.
 pub fn requireFreshOutputPorts(calls: []const Call) !void {
-    for (calls) |call| {
+    for (calls, 0..) |call, call_index| {
         for (call.output, 0..) |output, lane| {
             for (call.input) |input|
                 if (output == input) return error.InvalidMixedOutputPortAlias;
             for (call.output[0..lane]) |earlier|
                 if (output == earlier) return error.InvalidMixedOutputPortAlias;
+            for (calls[0..call_index]) |earlier_call| {
+                for (earlier_call.input) |earlier|
+                    if (output == earlier) return error.InvalidMixedOutputPortAlias;
+                for (earlier_call.output) |earlier|
+                    if (output == earlier) return error.InvalidMixedOutputPortAlias;
+            }
         }
     }
 }
@@ -274,6 +280,25 @@ test "mixed composition admission keeps fresh outputs and permits forked inputs"
     try requireFreshOutputPorts(inspected.calls[0..inspected.call_count]);
 
     var changed = inspected;
+    // Reusing an earlier output as a later input is a valid dependent chain.
+    changed.calls[1].input[0] = changed.calls[0].output[0];
+    // Repeated input addresses remain valid; only output ports are fresh.
+    changed.calls[1].input[1] = changed.calls[1].input[0];
+    try requireFreshOutputPorts(changed.calls[0..changed.call_count]);
+
+    changed = inspected;
+    changed.calls[2].output[0] = changed.calls[1].output[0];
+    changed.digest = digestSelectedSchedule(&changed);
+    try std.testing.expect(hasCurrentDigest(&changed));
+    try std.testing.expectError(error.InvalidMixedOutputPortAlias, requireFreshOutputPorts(changed.calls[0..changed.call_count]));
+
+    changed = inspected;
+    changed.calls[2].output[0] = changed.calls[0].input[0];
+    changed.digest = digestSelectedSchedule(&changed);
+    try std.testing.expect(hasCurrentDigest(&changed));
+    try std.testing.expectError(error.InvalidMixedOutputPortAlias, requireFreshOutputPorts(changed.calls[0..changed.call_count]));
+
+    changed = inspected;
     changed.calls[0].output[1] = changed.calls[0].output[0];
     changed.digest = digestSelectedSchedule(&changed);
     try std.testing.expect(hasCurrentDigest(&changed));
