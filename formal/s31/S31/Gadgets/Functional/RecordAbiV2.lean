@@ -55,6 +55,14 @@ theorem decodeChecked_flatten {α : Type} (layout : Layout)
 def concatBlocks {α : Type} (leaves : List (WordBlock α)) : List α :=
   leaves.flatMap WordBlock.words
 
+/-- The flattened word count is the sum of checked leaf widths. -/
+theorem concatBlocks_length {α : Type} (leaves : List (WordBlock α)) :
+    (concatBlocks leaves).length = (leaves.map WordBlock.width).sum := by
+  induction leaves with
+  | nil => rfl
+  | cons head tail ih =>
+      simp [concatBlocks, head.exactWidth, ih]
+
 /-- Typed public roots plus distinct result references use the same first
 order word order as the native projection over tagged relation inputs. -/
 def typedPublicWords {α : Type} {n : Nat} (roots : List (InputRoot (WordBlock α)))
@@ -74,6 +82,20 @@ theorem typedPublicWords_eq_nativeProjection {α : Type} {n : Nat}
       nativeProjectedWords roots wires resultRefs := by
   simp [typedPublicWords, nativeProjectedWords, boundaryProofWords,
     concatBlocks, publicInputWords_eq_visible_flatten]
+
+/-- The native eight-word gate can be checked from descriptor widths without
+counting repeated output aliases twice. -/
+def withinEightWords {α : Type} {n : Nat}
+    (roots : List (InputRoot (WordBlock α))) (wires : Fin n → WordBlock α)
+    (resultRefs : List (Fin n)) : Prop :=
+  (typedPublicWords roots wires resultRefs).length ≤ 8
+
+theorem withinEightWords_iff_width_sum {α : Type} {n : Nat}
+    (roots : List (InputRoot (WordBlock α))) (wires : Fin n → WordBlock α)
+    (resultRefs : List (Fin n)) :
+    withinEightWords roots wires resultRefs ↔
+      ((boundaryProofWords roots wires resultRefs).map WordBlock.width).sum ≤ 8 := by
+  simp [withinEightWords, typedPublicWords, concatBlocks_length]
 
 /-- This is the semantic obligation discharged by the production type-tree
 walk: two leaves of one root cannot receive the same tagged source path. -/
@@ -138,6 +160,10 @@ def fixtureWires : Fin 1 → WordBlock Nat := fun _ => block [13, 14]
 theorem fixture_public_words :
     typedPublicWords fixtureRoots fixtureWires [0, 0] = [3, 4, 5, 13, 14] := by
   decide
+
+theorem fixture_fits_eight_words :
+    withinEightWords fixtureRoots fixtureWires [0, 0] := by
+  simp [withinEightWords, fixture_public_words]
 
 theorem fixture_native_words :
     nativeProjectedWords fixtureRoots fixtureWires [0, 0] = [3, 4, 5, 13, 14] := by

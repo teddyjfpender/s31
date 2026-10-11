@@ -26,7 +26,9 @@ The fixture theorems establish that the typed projection and the native
 first-order projection yield this five-word vector. The checked decoder
 rejects a descriptor that changes the second input leaf width from one to
 two. A concrete two-field path theorem proves that distinct field names
-give distinct tagged paths.
+give distinct tagged paths. `concatBlocks_length` proves that the word count
+is the sum of checked leaf widths; the eight-word predicate therefore counts
+aliased result wires once.
 
 ## Precisely what the model assumes
 
