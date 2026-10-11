@@ -15,6 +15,23 @@ This is a black-box command test. The AIR equations and STARK core have their
 own focused tests and review; passing this script does not establish a general
 mixed boundary or witness confidentiality.
 
+`preprocessed_root_binding.py` checks the native verifier's fixed-column
+commitment boundary for N=1 and N=8. It first verifies both original proofs,
+then swaps only the 32-byte preprocessed commitment root inside each proof's
+serialized PCS body with the other valid package's root. Each generated verifier
+must reject the structurally intact proof specifically with
+`InvalidMixedPreprocessedRoot`. The source-derived inspector supplies the
+expected roots; the test confirms each root occurs once in the original PCS
+body before changing it.
+
+```sh
+python3 src/frontends/s31/tests/acceptance/mixed_boundary/preprocessed_root_binding.py
+```
+
+This establishes a concrete native rejection path for these two packages.
+It is not a formal proof of the commitment scheme, collision resistance, or
+the compiler's fixed-column semantics; those require separate arguments.
+
 `arithmetic_chip_input.py` exercises every admitted four-lane arithmetic
 feeder (`add`, `mul`, `add_const`, `mul_const`) with independently computed M31
 claims, native proofs and mutation controls. Its source-pin check uses a
