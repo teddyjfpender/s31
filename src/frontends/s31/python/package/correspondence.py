@@ -363,10 +363,20 @@ def check_source_fixed_rows(syntax: dict[str, Any], topology: dict[str, Any],
     n_rows = len(values[0])
     if any(len(column) != n_rows for column in values):
         raise ValueError("source fixed-row columns have different lengths")
-    if (len(topology["sub"]) != 1 or len(topology["mul"]) != 27 or
+    source_adds = sum(node["op"] == "add" for node in instructions)
+    source_products = len(instructions) - source_adds
+    add_rows = len(topology["add"])
+    # Native padding is in the add partition. The source/public add rows
+    # occupy its prefix; the ordinary-mul and pointwise partitions begin
+    # after *all* constant and padding adds. This is the exact row equation
+    # consumed by Lean's modeled roster theorem for the 512-row profile.
+    if (n_rows != 512 or len(topology["sub"]) != 1 or
+            len(topology["mul"]) != 27 or
+            len(topology["pointwise_mul"]) != source_products + 8 or
+            add_rows + 1 + 27 + source_products + 8 != n_rows or
+            add_rows < 11 + source_adds or
             len(schedule) != len(instructions) + 1):
         raise ValueError("source fixed-row layout differs from bounded direct profile")
-    add_rows = len(topology["add"])
     source_uses = {node["id"]: 4 * int(syntax["output"] == node["id"])
                    for node in instructions}
     for node in instructions:

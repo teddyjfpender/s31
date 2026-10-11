@@ -185,15 +185,22 @@ cell positions without an extra budget assumption. These theorems do not
 prove that the native emitter or committed columns match the modeled schedule.
 The same bridge now counts actual source add and pointwise-multiply operations
 from the certificate and proves that each source row lies in its gate-kind
-partition. For the bounded direct-gate profile, an explicit premise
-`totalAddRows = 11 + sourceAddCount` connects the modeled add partition to
-the native layout: three input-pack adds, source adds, four input copies, and
-four output copies. Under that premise, byte admission proves a stronger
+partition. The eleven source/public add rows are only a prefix of the native
+add partition: constant derivation and padding add hundreds more. The
+native-profile premise is
+`totalAddRows + 1 + 27 + sourceMulCount + 8 = 512`, accounting for the one
+sub row, 27 ordinary mul rows, and eight fixed pointwise rows in addition to
+source pointwise rows. The package checker compares these counts with the
+exported gate topology and all eight fixed columns; the generated Lean
+square4 and mixed instances prove the numeric partition for their checked
+packages, and acceptance checks it against fresh native packages. Under this
+premise, byte
+admission proves a stronger
 modeled row roster: all source, public input, and public output projected
 trace positions are pairwise distinct and below the 512-row capacity.
 `checked_relation_modeled_exact_row_roster` collects this result with exact
 source instruction order, opcode, circuit position, operand/output addresses,
-and projected selector flags. The eleven-row count equality, exporter fidelity,
+and projected selector flags. The native row-count premise, exporter fidelity,
 remaining nonprojected rows, and committed-column correspondence remain
 separate obligations; the roster theorem does not silently assume them.
 `Functional/SSATextBytes` independently

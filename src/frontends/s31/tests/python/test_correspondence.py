@@ -375,6 +375,10 @@ class CorrespondenceParserTests(unittest.TestCase):
                           for node in syntax["instructions"]),
                     ]
                     checked = check_source_fixed_rows(syntax, topology, schedule)
+                    source_products = sum(node["op"] == "mul" for node in syntax["instructions"])
+                    source_adds = count - source_products
+                    self.assertEqual(len(topology["add"]), 476 - source_products)
+                    self.assertGreaterEqual(len(topology["add"]), 11 + source_adds)
                     self.assertEqual(len(checked), count)
                     self.assertEqual([row["circuit_row"] for row in checked],
                                      list(range(6, 6 + count)))
@@ -392,8 +396,14 @@ class CorrespondenceParserTests(unittest.TestCase):
                             check_source_fixed_rows(syntax, topology, changed_schedule)
                         changed_syntax = copy.deepcopy(syntax)
                         changed_syntax["instructions"][0]["op"] = "add"
-                        with self.assertRaisesRegex(ValueError, "source instruction 1"):
+                        with self.assertRaisesRegex(ValueError, "source fixed-row layout"):
                             check_source_fixed_rows(changed_syntax, topology, schedule)
+                        for kind in ("add", "sub", "mul", "pointwise_mul"):
+                            changed = copy.deepcopy(topology)
+                            changed[kind].pop()
+                            with self.subTest(changed_kind=kind), self.assertRaisesRegex(
+                                    ValueError, "source fixed-row layout"):
+                                check_source_fixed_rows(syntax, changed, schedule)
 
     def test_independent_qm31_constant_derivation(self) -> None:
         i = (0, 1, 0, 0)

@@ -282,6 +282,18 @@ def main() -> None:
             raise AssertionError("duplicate JSON keys were admitted")
         honest = s31.build(source, work / "honest", "direct-gate")
         checked = check_package(honest)
+        def check_native_row_partition(material: dict) -> None:
+            """Match the exported gate counts to Lean's 512-row premise."""
+            instructions = material["source_ssa"]["instructions"]
+            products = sum(node["op"] == "mul" for node in instructions)
+            adds = len(instructions) - products
+            counts = material["gate_counts"]
+            if (counts != {"add": 476 - products, "sub": 1, "mul": 27,
+                           "pointwise_mul": products + 8} or
+                    counts["add"] < 11 + adds or
+                    material["key_core"]["padded"]["qm31_ops"] != 512):
+                raise AssertionError("exported native row partition differs from Lean premise")
+        check_native_row_partition(checked)
         golden_bridge = (REPO / "formal/s31/S31/Gadgets/Functional/"
                          "GeneratedDirectGateBridge.lean")
         rendered_bridge = render_bridge(honest)
@@ -296,6 +308,7 @@ def main() -> None:
         mixed_assignment = S31 / "examples/arithmetic/functional_early_return_mixed.valid.json"
         mixed = s31.build(mixed_source, work / "mixed-earlier-output", "direct-gate")
         mixed_checked = check_package(mixed)
+        check_native_row_partition(mixed_checked)
         if (len(mixed_checked["source_ssa"]["instructions"]) != 3 or
                 mixed_checked["source_ssa"]["output"] != 1 or
                 {node["op"] for node in mixed_checked["source_ssa"]["instructions"]} !=

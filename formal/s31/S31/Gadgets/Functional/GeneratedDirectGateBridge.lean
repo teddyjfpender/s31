@@ -9,6 +9,7 @@ import S31.Gadgets.Functional.SSACanonicalGateChain
 import S31.Gadgets.Functional.SSAAirColumnCells
 import S31.Gadgets.Functional.SSAOutputAirCells
 import S31.Gadgets.Functional.SSAInputAirCells
+import S31.Gadgets.Functional.SSAGeneralDecodedTraceBridge
 import S31.Gadgets.Functional.SSAGeneralNamedExecution
 
 set_option maxRecDepth 4096
@@ -25,6 +26,7 @@ open S31.Functional.SSACanonicalGateChain
 open S31.Functional.SSAAirColumnCells
 open S31.Functional.SSAOutputAirCells
 open S31.Functional.SSAInputAirCells
+open S31.Functional.SSAGeneralDecodedTraceBridge
 open S31.Functional.SSAGeneralNamedTopology
 open S31.Functional.SSAGeneralNamedExecution
 open S31.Functional.SSANativeTopologyCheck
@@ -494,8 +496,21 @@ def changedInputSelfMultiplicity : List ColumnCell :=
   ]
 
 def observedAddRows : Nat := 474
+def observedSubRows : Nat := 1
+def observedMulRows : Nat := 27
+def observedPointwiseRows : Nat := 10
 def observedGateRows : Nat := 512
 def observedVariables : Nat := 512
+
+-- These counts are rendered from the package-checker's exported gate lists.
+-- The package checker independently replays all fixed columns and source
+-- rows. This equation alone does not authenticate a native commitment.
+theorem observed_native_arithmetic_partition :
+    observedSubRows = 1 ∧ observedMulRows = 27 ∧
+    observedPointwiseRows = sourceMulCount certificate + 8 ∧
+    observedAddRows + observedSubRows + observedMulRows +
+      observedPointwiseRows = observedGateRows ∧
+    observedGateRows = 2 ^ 9 := by decide
 
 theorem source_byte_count : sourceBytes.length = 207 := by decide
 theorem source_digest_length : sourceSha256.length = 64 := by decide
@@ -510,6 +525,25 @@ theorem bytes_parse_all_wire_names :
       some [token "x", token "once", token "result"] := by decide
 theorem normalized_bytes_check :
     checkRelation sourceBytes normalizedBytes = some certificate := by decide
+
+-- This composes the checked source/normalized bytes with the exported-count
+-- instance. It describes modeled projected rows, not an authenticated trace.
+theorem observed_modeled_row_roster :
+    SourcePlan certificate (expectedCells certificate observedAddRows) ∧
+    (((expectedCells certificate observedAddRows ++
+      (expectedInputCells certificate observedAddRows ++
+        expectedOutputCells certificate observedAddRows)).map
+      ColumnCell.traceRow)).Nodup ∧
+    (∀ cell ∈ expectedCells certificate observedAddRows ++
+      (expectedInputCells certificate observedAddRows ++
+        expectedOutputCells certificate observedAddRows),
+      cell.traceRow < 2 ^ 9) := by
+  rcases observed_native_arithmetic_partition with
+    ⟨hsub, hmul, hpoint, htotal, hsize⟩
+  have hrows : observedAddRows + 1 + 27 +
+      sourceMulCount certificate + 8 = 2 ^ 9 := by omega
+  exact checked_relation_modeled_row_roster sourceBytes normalizedBytes
+    certificate observedAddRows normalized_bytes_check hrows
 theorem canonical_ir_bytes_check :
     checkCanonical sourceBytes normalizedBytes canonicalIrBytes =
       some certificate := by decide

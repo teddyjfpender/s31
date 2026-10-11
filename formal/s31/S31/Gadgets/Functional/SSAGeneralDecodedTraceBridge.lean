@@ -445,15 +445,17 @@ theorem source_mul_count_bounded (certificate : Certificate) :
   simpa [sourceMulCount] using
     mul_count_bounded certificate.instructions 0
 
-/-- The actual bounded direct-gate layout has eleven fixed add rows around
-the source add partition. Successful byte admission therefore places every
-modeled source row inside the 512-row trace. Equality of this row count with
-the native emitted or committed trace remains a separate premise. -/
+/-- The bounded native profile has 512 arithmetic rows: `totalAddRows` add
+rows, one sub row, 27 ordinary mul rows, source pointwise rows, and eight
+fixed pointwise rows. Constant derivation and padding contribute hundreds of
+add rows, so `totalAddRows` is *not* eleven plus the source add count.
+Equality of these counts with the native emitted or committed trace remains
+a separate premise. -/
 theorem checked_source_rows_within_512
     (sourceBytes normalizedBytes : List Nat) (certificate : Certificate)
     (totalAddRows : Nat)
     (hrelation : checkRelation sourceBytes normalizedBytes = some certificate)
-    (hadd : totalAddRows = 11 + sourceAddCount certificate) :
+    (hrows : totalAddRows + 1 + 27 + sourceMulCount certificate + 8 = 2 ^ 9) :
     ∀ row ∈ expectedRows certificate totalAddRows,
       row.traceRow < 2 ^ 9 := by
   have hbudget := checked_relation_instruction_bound sourceBytes
@@ -462,7 +464,7 @@ theorem checked_source_rows_within_512
   have hm := source_mul_count_bounded certificate
   intro row hrow
   have hrange := expected_rows_partition certificate totalAddRows row hrow
-  cases hkind : row.multiply <;> simp [hkind] at hrange <;> norm_num <;> omega
+  cases hkind : row.multiply <;> simp [hkind] at hrange <;> norm_num at hrows ⊢ <;> omega
 
 /-- Cell projection preserves every modeled source trace position. -/
 theorem expected_cells_trace_rows_eq (certificate : Certificate)
@@ -539,13 +541,11 @@ private theorem public_cells_band (certificate : Certificate)
       simp [publicRowBand, expectedCopyCell]
       omega
 
-/-- The exact source-cell positions and all modeled public input/output
-positions are disjoint when `totalAddRows` equals the native bounded profile's
-eleven fixed add rows plus the number of source adds. This remains a statement
-about projected rows, not an assertion about the committed trace. -/
+/-- Source and public projected positions are disjoint if the native add
+partition extends beyond the eleven source/public add rows. -/
 theorem expected_source_public_rows_disjoint (certificate : Certificate)
     (totalAddRows : Nat)
-    (hadd : totalAddRows = 11 + sourceAddCount certificate) :
+    (hspace : 11 + sourceAddCount certificate ≤ totalAddRows) :
     ∀ sourceCell ∈ expectedCells certificate totalAddRows,
       ∀ publicCell ∈ expectedInputCells certificate totalAddRows ++
           expectedOutputCells certificate totalAddRows,
@@ -566,11 +566,11 @@ theorem expected_source_public_rows_disjoint (certificate : Certificate)
     simp [hkind] at hsourceBand <;> omega
 
 /-- The twenty-five modeled public input/output cells have distinct trace
-positions. The arithmetic uses the actual source add and multiply counts and
-the direct-gate eleven-add-row layout. -/
+positions when the native add partition leaves room for constant/padding
+adds after the source and public copy adds. -/
 theorem expected_public_rows_nodup (certificate : Certificate)
     (totalAddRows : Nat)
-    (hadd : totalAddRows = 11 + sourceAddCount certificate) :
+    (hspace : 11 + sourceAddCount certificate ≤ totalAddRows) :
     (((expectedInputCells certificate totalAddRows ++
         expectedOutputCells certificate totalAddRows).map
       ColumnCell.traceRow)).Nodup := by
@@ -584,7 +584,7 @@ theorem checked_public_cells_within_512
     (sourceBytes normalizedBytes : List Nat) (certificate : Certificate)
     (totalAddRows : Nat)
     (hrelation : checkRelation sourceBytes normalizedBytes = some certificate)
-    (hadd : totalAddRows = 11 + sourceAddCount certificate) :
+    (hrows : totalAddRows + 1 + 27 + sourceMulCount certificate + 8 = 2 ^ 9) :
     ∀ cell ∈ expectedInputCells certificate totalAddRows ++
         expectedOutputCells certificate totalAddRows,
       cell.traceRow < 2 ^ 9 := by
@@ -594,7 +594,7 @@ theorem checked_public_cells_within_512
   have hm := source_mul_count_bounded certificate
   intro cell hcell
   have hband := public_cells_band certificate totalAddRows cell hcell
-  rcases hband with h | h | h | h <;> norm_num <;> omega
+  rcases hband with h | h | h | h <;> norm_num at hrows ⊢ <;> omega
 
 private theorem fold_rows_unique (totalAddRows : Nat)
     (remaining : List Instruction) (priorAdds priorMuls : Nat)
@@ -714,18 +714,19 @@ theorem checked_relation_modeled_source_schedule
     expected_cells_trace_rows_nodup certificate totalAddRows ?_⟩
   omega
 
-/-- Exact legal row roster for the modeled bounded direct-gate profile.
+/-- Exact projected row roster for the modeled bounded direct-gate profile.
 Every byte-admitted source instruction retains its order, opcode, circuit
 wire, and operand/output addresses by `expected_rows_opcode_and_addresses`;
 this theorem adds global row uniqueness and 512-row capacity for all source,
-input, and output projections. The native emitter count equality `hadd` is
-explicit. Committed-column equality and remaining nonprojected native rows
-are outside this theorem. -/
+input, and output projections. `hrows` states the actual native arithmetic
+partition counts, including constant and padding adds; source admission alone
+does not establish it. Committed-column equality and remaining nonprojected
+native rows are outside this theorem. -/
 theorem checked_relation_modeled_row_roster
     (sourceBytes normalizedBytes : List Nat) (certificate : Certificate)
     (totalAddRows : Nat)
     (hrelation : checkRelation sourceBytes normalizedBytes = some certificate)
-    (hadd : totalAddRows = 11 + sourceAddCount certificate) :
+    (hrows : totalAddRows + 1 + 27 + sourceMulCount certificate + 8 = 2 ^ 9) :
     SourcePlan certificate (expectedCells certificate totalAddRows) ∧
     (((expectedCells certificate totalAddRows ++
         (expectedInputCells certificate totalAddRows ++
@@ -737,7 +738,14 @@ theorem checked_relation_modeled_row_roster
       cell.traceRow < 2 ^ 9) := by
   have hsource := checked_relation_modeled_source_schedule
     sourceBytes normalizedBytes certificate totalAddRows hrelation
-  have hpublic := expected_public_rows_nodup certificate totalAddRows hadd
+  have hbudget := checked_relation_instruction_bound sourceBytes
+    normalizedBytes certificate hrelation
+  have ha := source_add_count_bounded certificate
+  have hm := source_mul_count_bounded certificate
+  have hspace : 11 + sourceAddCount certificate ≤ totalAddRows := by
+    norm_num at hrows
+    omega
+  have hpublic := expected_public_rows_nodup certificate totalAddRows hspace
   have hdisjoint : List.Disjoint
       ((expectedCells certificate totalAddRows).map ColumnCell.traceRow)
       ((expectedInputCells certificate totalAddRows ++
@@ -747,7 +755,7 @@ theorem checked_relation_modeled_row_roster
       List.mem_map.mp hsourceRow
     obtain ⟨publicCell, hpublicCell, hpublicEq⟩ :=
       List.mem_map.mp hpublicRow
-    exact expected_source_public_rows_disjoint certificate totalAddRows hadd
+    exact expected_source_public_rows_disjoint certificate totalAddRows hspace
       sourceCell hsourceCell publicCell hpublicCell
       (hsourceEq.trans hpublicEq.symm)
   refine ⟨hsource.1, ?_, ?_⟩
@@ -762,10 +770,10 @@ theorem checked_relation_modeled_row_roster
         exact List.mem_map_of_mem hsourceCell
       obtain ⟨sourceRow, hrow, htrace⟩ := List.mem_map.mp hsourceRow
       have hbound := checked_source_rows_within_512 sourceBytes
-        normalizedBytes certificate totalAddRows hrelation hadd sourceRow hrow
+        normalizedBytes certificate totalAddRows hrelation hrows sourceRow hrow
       omega
     · exact checked_public_cells_within_512 sourceBytes normalizedBytes
-        certificate totalAddRows hrelation hadd cell hpublicCell
+        certificate totalAddRows hrelation hrows cell hpublicCell
 
 /-- A single admission theorem collects exact modeled source instruction
 order, opcode, circuit position, addresses, projected selector flags, and the
@@ -776,7 +784,7 @@ theorem checked_relation_modeled_exact_row_roster
     (sourceBytes normalizedBytes : List Nat) (certificate : Certificate)
     (totalAddRows : Nat)
     (hrelation : checkRelation sourceBytes normalizedBytes = some certificate)
-    (hadd : totalAddRows = 11 + sourceAddCount certificate) :
+    (hrows : totalAddRows + 1 + 27 + sourceMulCount certificate + 8 = 2 ^ 9) :
     (∀ pair ∈ certificate.instructions.zip
         (expectedRows certificate totalAddRows),
       pair.2.circuitRow = 5 + pair.1.id ∧
@@ -805,7 +813,7 @@ theorem checked_relation_modeled_exact_row_roster
     expected_rows_opcode_sequence certificate totalAddRows,
     expected_cells_opcode_flags certificate totalAddRows,
     checked_relation_modeled_row_roster sourceBytes normalizedBytes
-      certificate totalAddRows hrelation hadd⟩
+      certificate totalAddRows hrelation hrows⟩
 
 /-- Output masks, inverse-basis products, and public copies each yield once
 by construction, independently of the source program's instruction count. -/
