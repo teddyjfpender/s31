@@ -41,6 +41,7 @@ jobs:
           python3 -B src/frontends/s31/benchmarks/mixed_stage_cost_v1/cohort.py
           python3 -B src/frontends/s31/benchmarks/mixed_stage_cost_v1/test_static.py
           python3 -B src/frontends/s31/benchmarks/paired_record_v2/test_diagnose_stages_v1.py
+          python3 -B -m unittest discover -s src/frontends/s31/benchmarks/direct_gate_release_cost -p 'test_*.py' -q
       - name: Documentation consistency
         run: python3 src/frontends/s31/docs/check.py
       - name: Native proof smoke
@@ -119,6 +120,11 @@ jobs:
           mkdir -p zig-out/s31/acceptance
           python3 src/frontends/s31/tests/acceptance/acceptance_public_record_v2.py |
             tee zig-out/s31/acceptance/public-record-v2.json
+      - name: Pinned Pair record refinement and native alias proof controls
+        run: |
+          set -euo pipefail
+          python3 src/frontends/s31/tests/acceptance/acceptance_record_pair_refinement.py |
+            tee zig-out/s31/acceptance/record-pair-refinement.json
       - name: Record-valued input ABI native proof and visibility controls
         run: |
           set -euo pipefail
@@ -201,6 +207,11 @@ jobs:
           set -euo pipefail
           python3 src/frontends/s31/tests/acceptance/acceptance_compiler_correspondence.py |
             tee zig-out/s31/acceptance/compiler-correspondence.json
+      - name: Cross-check canonical IR against the native builder
+        run: |
+          set -euo pipefail
+          python3 src/frontends/s31/tests/acceptance/acceptance_canonical_ir_fidelity.py |
+            tee zig-out/s31/acceptance/canonical-ir-fidelity.log
       - name: Direct-chip component roster and sealed-key controls
         run: |
           set -euo pipefail

@@ -6,6 +6,11 @@ import json
 from pathlib import Path
 
 from package.context import invoke
+from package.trust import unpinned_snapshot
+from runtime.proof_inputs import proof_inputs_snapshot
+
+
+MAX_STATEMENT_BYTES = 4096
 
 
 def replay_state_step(previous: list[int], body: list[dict]) -> list[int]:
@@ -32,7 +37,16 @@ def replay_state_step(previous: list[int], body: list[dict]) -> list[int]:
 
 def audit_fold_chain(package: Path, manifest: dict, proofs: list[Path], state: bool,
                      max_step: int | None) -> dict:
-    """Verify every checkpoint and replay its public claim continuity."""
+    """Verify an untrusted package and every saved checkpoint as one audit."""
+    with unpinned_snapshot(package) as (snapshot, admitted_manifest):
+        if manifest != admitted_manifest:
+            raise ValueError("fold audit manifest changed before package admission")
+        return _audit_fold_chain_admitted(snapshot, admitted_manifest, proofs, state, max_step)
+
+
+def _audit_fold_chain_admitted(package: Path, manifest: dict, proofs: list[Path],
+                               state: bool, max_step: int | None) -> dict:
+    """Audit from a private package copy already admitted by the caller."""
     if not proofs:
         raise ValueError("a fold chain needs at least one proof")
     if max_step is not None and not (0 <= max_step <= 0xffffffff):
@@ -56,27 +70,31 @@ def audit_fold_chain(package: Path, manifest: dict, proofs: list[Path], state: b
         body = key["step_body"]
     previous = None
     for index, raw_proof in enumerate(proofs):
-        proof = raw_proof.resolve()
-        statement_path = Path(str(proof) + ".statement.json")
-        item = json.loads(statement_path.read_text())
-        if item.get("schema") != expected_schema or type(item.get("step")) is not int or item["step"] != index:
-            raise ValueError(f"fold checkpoint must have contiguous step {index}: {proof}")
-        if previous is not None:
-            for field in (key_field, "fold_preprocessed_root", "fold_circuit_hash",
-                          "leaf_public_words", "base_public_words"):
-                if item[field] != previous[field]:
-                    raise ValueError(f"fold checkpoint changed {field} at step {index}")
-        if state:
-            if item["initial_state"] != item["leaf_public_words"][4:8]:
-                raise ValueError("state-fold initial state differs from leaf output")
-            if index == 0:
-                if item["current_state"] != item["initial_state"]:
-                    raise ValueError("state-fold base current state differs from initial state")
-            elif (item["initial_state"] != previous["initial_state"] or
-                  item["current_state"] != replay_state_step(previous["current_state"], body)):
-                raise ValueError(f"state-fold transition mismatch at step {index}")
-        invoke(str(verifier), native_command, str(proof), str(statement_path),
-               *(("--max-step", str(max_step)) if max_step is not None else ()))
+        # Apply the same no-follow, bounded, single-open capture used by base
+        # verification. Resolve neither the proof nor its adjacent statement:
+        # a linked proof must not silently select the link target's statement.
+        proof = Path(raw_proof)
+        with proof_inputs_snapshot(proof, statement_limit=MAX_STATEMENT_BYTES) as (
+                captured_proof, captured_statement):
+            item = json.loads(captured_statement.read_bytes())
+            if item.get("schema") != expected_schema or type(item.get("step")) is not int or item["step"] != index:
+                raise ValueError(f"fold checkpoint must have contiguous step {index}: {proof}")
+            if previous is not None:
+                for field in (key_field, "fold_preprocessed_root", "fold_circuit_hash",
+                              "leaf_public_words", "base_public_words"):
+                    if item[field] != previous[field]:
+                        raise ValueError(f"fold checkpoint changed {field} at step {index}")
+            if state:
+                if item["initial_state"] != item["leaf_public_words"][4:8]:
+                    raise ValueError("state-fold initial state differs from leaf output")
+                if index == 0:
+                    if item["current_state"] != item["initial_state"]:
+                        raise ValueError("state-fold base current state differs from initial state")
+                elif (item["initial_state"] != previous["initial_state"] or
+                      item["current_state"] != replay_state_step(previous["current_state"], body)):
+                    raise ValueError(f"state-fold transition mismatch at step {index}")
+            invoke(str(verifier), native_command, str(captured_proof), str(captured_statement),
+                   *(("--max-step", str(max_step)) if max_step is not None else ()))
         previous = item
     result = {
         "schema": "s31-fold-chain-audit-v1",

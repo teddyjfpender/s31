@@ -312,6 +312,15 @@ def build_text(source_path: Path, output: Path, lowering: str = "gate", fri_fold
                 write_json(certificate_path, certificate)
                 manifest["artifacts"][certificate_path.name] = file_hash(certificate_path)
                 write_json(manifest_path, manifest)
+        # The JSON build is only an intermediate artifact at this point. Check
+        # the complete text package and, for the direct-gate profile, ask the
+        # installed verifier to independently reconstruct its embedded source,
+        # key, component manifest, fixed root, and AIR binding. Never publish a
+        # certificate whose final package or native verifier cannot admit it.
+        verify_package(package)
+        if lowering == "direct-gate":
+            invoke(str(package / "bin" / f"s31-{manifest['name']}-native-verifier"),
+                   "check-key", str(package / "verification-key.json"))
         os.rename(package, output)
     return output
 

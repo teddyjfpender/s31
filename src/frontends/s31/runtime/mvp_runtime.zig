@@ -263,7 +263,7 @@ const DirectTopology = struct {
 /// Fixture-only diagnostic projection of the exact base trace writer used by
 /// the direct prover. These are uncommitted witness values, not proof openings.
 const DirectPhysicalTrace = struct {
-    schema: []const u8 = "s31-direct-gate-early-return-physical-v1",
+    schema: []const u8,
     program_sha256: []const u8,
     public_words: [8]u32,
     fixed_columns: [circuit.common.direct_arithmetic.N_COLUMNS][]const u32,
@@ -308,7 +308,7 @@ pub fn main() !void {
     } else if (std.mem.eql(u8, command, "inspect-topology") and args.len == 2 and direct_mode and !chip_mode) {
         try inspectDirectTopology(allocator, parsed.value);
     } else if (std.mem.eql(u8, command, "inspect-physical-rows") and args.len == 3 and direct_mode and !chip_mode) {
-        try inspectEarlyReturnPhysicalRows(allocator, parsed.value, args[2]);
+        try inspectBoundedPhysicalRows(allocator, parsed.value, args[2]);
     } else if (std.mem.eql(u8, command, "prove") and args.len == 4) {
         try prove(allocator, parsed.value, args[2], args[3], null, false, null, null, false, false);
     } else if (std.mem.eql(u8, command, "prove-for-external-verification") and args.len == 4 and
@@ -413,6 +413,8 @@ pub fn verifierMain(embedded_key: []const u8, embedded_recursive_key: []const u8
         (std.mem.startsWith(u8, args[1], "recurse-") or
             std.mem.eql(u8, args[1], "fold-verify") or std.mem.eql(u8, args[1], "state-fold-verify")))
         return error.UnsupportedBlindingCommand;
+    if (args.len == 3 and std.mem.eql(u8, args[1], "check-key"))
+        return checkSealedVerifierKey(allocator, args[2], embedded_key);
     if (args.len == 4 and std.mem.eql(u8, args[1], "recurse-verify"))
         return verifyOuter(allocator, args[2], args[3], embedded_key, embedded_recursive_key);
     if (args.len == 4 and std.mem.eql(u8, args[1], "recurse-verify-next"))
@@ -422,10 +424,28 @@ pub fn verifierMain(embedded_key: []const u8, embedded_recursive_key: []const u8
     if ((args.len == 4 or args.len == 6) and std.mem.eql(u8, args[1], "state-fold-verify"))
         return verifyStateFold(allocator, args[2], args[3], embedded_key, embedded_recursive_key, embedded_state_fold_key, try parseMaxFoldStep(args));
     if (args.len != 4) {
-        std.debug.print("usage: s31-PROGRAM-native-verifier PROOF PUBLIC-STATEMENT.json VERIFICATION-KEY.json\n       recurse-verify PROOF STATEMENT.json | recurse-verify-next PROOF CHAIN.json\n       fold-verify|state-fold-verify PROOF STATEMENT.json [--max-step N]\n", .{});
+        std.debug.print("usage: s31-PROGRAM-native-verifier PROOF PUBLIC-STATEMENT.json VERIFICATION-KEY.json\n       check-key VERIFICATION-KEY.json\n       recurse-verify PROOF STATEMENT.json | recurse-verify-next PROOF CHAIN.json\n       fold-verify|state-fold-verify PROOF STATEMENT.json [--max-step N]\n", .{});
         return error.InvalidArguments;
     }
     try verify(allocator, args[1], args[2], args[3], embedded_key);
+}
+
+/// Run the same source-to-key reconstruction as proof verification without
+/// needing a proof. Package construction uses this before publication. This
+/// authenticates only the verifier's own embedded relation and key; it does
+/// not validate a Python correspondence certificate or an external signer.
+fn checkSealedVerifierKey(allocator: std.mem.Allocator, key_path: []const u8, embedded_key: []const u8) !void {
+    const external_key = try std.fs.cwd().readFileAlloc(allocator, key_path, 16 << 10);
+    defer allocator.free(external_key);
+    if (!std.mem.eql(u8, external_key, embedded_key)) return error.InvalidVerificationKey;
+    var parsed = try parsedProgram(allocator);
+    defer parsed.deinit();
+    var key_parsed = try std.json.parseFromSlice(Key, allocator, embedded_key, .{ .ignore_unknown_fields = false });
+    defer key_parsed.deinit();
+    try validateKey(allocator, parsed.value, key_parsed.value);
+    var bundle = try parseAirBundle(allocator);
+    defer bundle.deinit();
+    std.debug.print("S31 {s}: sealed source, key and AIR binding valid\n", .{parsed.value.name});
 }
 
 fn parseMaxFoldStep(args: []const []const u8) !?u32 {
@@ -441,7 +461,7 @@ fn parseInspectStep(args: []const []const u8, base_len: usize) !u32 {
 }
 
 fn usage() error{InvalidArguments} {
-    std.debug.print("usage: s31-program check | inspect | inspect-topology (bounded direct-gate only) | inspect-physical-rows ASSIGNMENT.json (early-return fixture only) | run ASSIGNMENT.json | prove ASSIGNMENT.json PROOF\n", .{});
+    std.debug.print("usage: s31-program check | inspect | inspect-topology (bounded direct-gate only) | inspect-physical-rows ASSIGNMENT.json (pinned bounded fixtures only) | run ASSIGNMENT.json | prove ASSIGNMENT.json PROOF\n", .{});
     std.debug.print("       prove-for-external-verification ASSIGNMENT.json PROOF (record direct-gate v2 only; output is UNVERIFIED until separate native verifier accepts)\n", .{});
     std.debug.print("       recurse-check ASSIGNMENT.json CHILD-PROOF CHILD-KEY.json | recurse-prove ASSIGNMENT.json CHILD-PROOF OUTER-PROOF CHILD-KEY.json [--low-memory]\n", .{});
     std.debug.print("       recurse-wrap CHILD-PROOF CHILD-STATEMENT.json OUTER-PROOF CHILD-KEY.json [--low-memory]\n", .{});
@@ -959,14 +979,16 @@ fn inspectDirectTopology(allocator: std.mem.Allocator, source: relation.Program)
     std.debug.print("{s}\n", .{encoded});
 }
 
-fn inspectEarlyReturnPhysicalRows(allocator: std.mem.Allocator, source: relation.Program, assignment_path: []const u8) !void {
+fn inspectBoundedPhysicalRows(allocator: std.mem.Allocator, source: relation.Program, assignment_path: []const u8) !void {
     // This diagnostic exposes public-input witness values. Pin the complete
     // normalized source bytes so it cannot be used on a private S31 package.
     var source_digest: [32]u8 = undefined;
     std.crypto.hash.sha2.Sha256.hash(embedded_source, &source_digest, .{});
     const source_hex = std.fmt.bytesToHex(source_digest, .lower);
+    const early_return = std.mem.eql(u8, &source_hex, "93bd19fc72c1e4526ad8bfe788f506bfea4c1787114df6e119dd95760efd888f");
+    const square4 = std.mem.eql(u8, &source_hex, "b7d744dd89f487742f2b72cf71fa76c6c37c2f5b01b74b58befa24e8c749979c");
     if (source.version != 1 or source.proof_mode != .transparent or
-        !std.mem.eql(u8, &source_hex, "93bd19fc72c1e4526ad8bfe788f506bfea4c1787114df6e119dd95760efd888f"))
+        source.inputs.len != 1 or source.nodes.len > 16 or (!early_return and !square4))
         return error.UnsupportedPhysicalRowInspection;
 
     var assignment = try readAssignment(allocator, assignment_path);
@@ -1006,6 +1028,7 @@ fn inspectEarlyReturnPhysicalRows(allocator: std.mem.Allocator, source: relation
         out.* = words;
     }
     const report: DirectPhysicalTrace = .{
+        .schema = if (square4) "s31-direct-gate-square4-physical-v1" else "s31-direct-gate-early-return-physical-v1",
         .program_sha256 = &source_hex,
         .public_words = public_words,
         .fixed_columns = fixed,

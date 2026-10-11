@@ -1,6 +1,7 @@
 """Independent exact gate schedule for the bounded four-lane direct profile.
 
-Only add/mul source lets are admitted. They request no constants, so the
+Only add/mul SSA nodes are admitted; source alias lets are erased before this
+schedule. They request no constants, so the
 builder's constant set is fixed: 0, 1, u, i, iu, and the inverses of i, u,
 and iu. This module computes the resulting base-256 derivation and padding
 without invoking the Zig compiler or reading its exported gate lists.

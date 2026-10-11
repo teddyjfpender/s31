@@ -11,8 +11,10 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import os
 import re
 import shutil
+import stat
 import tempfile
 from contextlib import contextmanager
 from pathlib import Path
@@ -24,6 +26,58 @@ from package.verify import verify_package
 PIN_RE = re.compile(r"[0-9a-f]{64}\Z")
 NAME_RE = re.compile(r"[A-Za-z0-9_-]+\Z")
 MAX_MANIFEST_BYTES = 4 * 1024 * 1024
+# Admission copies untrusted directories before validation. Bound the copy
+# itself, including files absent from the self-authored artifact manifest.
+MAX_PACKAGE_BYTES = 256 * 1024 * 1024
+MAX_PACKAGE_FILE_BYTES = 128 * 1024 * 1024
+MAX_PACKAGE_ENTRIES = 512
+COPY_CHUNK_BYTES = 1024 * 1024
+
+
+def _bounded_package_copy(package: Path, snapshot: Path) -> None:
+    """Copy a package with hard resource limits enforced during the read.
+
+    ``copytree`` preserves linked entries so the later symlink check can reject
+    them. Its ignore callback counts directory entries before descent; the
+    copy callback reads regular files in bounded chunks, including files that
+    the manifest does not list. No untrusted size declaration is relied on.
+    """
+    entries = 0
+    copied = 0
+
+    def count_entries(_directory: str, names: list[str]) -> set[str]:
+        nonlocal entries
+        entries += len(names)
+        if entries > MAX_PACKAGE_ENTRIES:
+            raise ValueError("package snapshot exceeds the entry limit")
+        return set()
+
+    def copy_file(source: str, target: str) -> str:
+        nonlocal copied
+        flags = os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK
+        try:
+            descriptor = os.open(source, flags)
+        except OSError as exc:
+            raise ValueError("package snapshot contains an inaccessible or linked file") from exc
+        with os.fdopen(descriptor, "rb") as original:
+            source_stat = os.fstat(original.fileno())
+            if not stat.S_ISREG(source_stat.st_mode):
+                raise ValueError("package snapshot contains a nonregular file")
+            file_bytes = 0
+            with open(target, "xb") as captured:
+                while chunk := original.read(COPY_CHUNK_BYTES):
+                    file_bytes += len(chunk)
+                    copied += len(chunk)
+                    if file_bytes > MAX_PACKAGE_FILE_BYTES or copied > MAX_PACKAGE_BYTES:
+                        raise ValueError("package snapshot exceeds the byte limit")
+                    captured.write(chunk)
+                os.fchmod(captured.fileno(), stat.S_IMODE(source_stat.st_mode) & 0o777)
+        return target
+
+    shutil.copytree(package, snapshot, symlinks=True,
+                    ignore=count_entries, copy_function=copy_file)
+    if any(path.is_symlink() for path in snapshot.rglob("*")):
+        raise ValueError("package snapshot contains a symlink")
 
 
 def _inside_without_symlinks(package: Path, path: Path) -> bool:
@@ -100,9 +154,7 @@ def unpinned_snapshot(package: Path) -> Iterator[tuple[Path, dict]]:
     """
     with tempfile.TemporaryDirectory(prefix="s31-unpinned-package-") as temporary:
         snapshot = Path(temporary) / "package"
-        shutil.copytree(package, snapshot, symlinks=True)
-        if any(path.is_symlink() for path in snapshot.rglob("*")):
-            raise ValueError("package snapshot contains a symlink")
+        _bounded_package_copy(package, snapshot)
         manifest = verify_package(snapshot)
         yield snapshot, manifest
 
@@ -112,8 +164,6 @@ def admitted_snapshot(package: Path, pins: dict[str, str]) -> Iterator[tuple[Pat
     """Verify and execute from private copied bytes, not the mutable input tree."""
     with tempfile.TemporaryDirectory(prefix="s31-pinned-package-") as temporary:
         snapshot = Path(temporary) / "package"
-        shutil.copytree(package, snapshot, symlinks=True)
-        if any(path.is_symlink() for path in snapshot.rglob("*")):
-            raise ValueError("pinned package snapshot contains a symlink")
+        _bounded_package_copy(package, snapshot)
         _, manifest = admit_pinned_package(snapshot, pins)
         yield snapshot, manifest

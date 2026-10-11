@@ -62,6 +62,7 @@ pub const Manifest = struct {
 /// This function has no authority on a caller-supplied schedule by itself.
 pub fn fromSchedule(schedule: *const mixed.SelectedSchedule) !Manifest {
     const identities = try descriptor.fromSchedule(schedule);
+    try mixed.requireFreshOutputPorts(schedule.calls[0..schedule.call_count]);
     const admitted = schedule.lookup_envelope orelse return error.InvalidMixedLookupBudget;
     var rounds: [registry.max_calls]u32 = undefined;
     for (schedule.calls[0..schedule.call_count], rounds[0..schedule.call_count]) |call, *round_count|
@@ -294,6 +295,22 @@ test "mixed registry manifest is source-derived and ordered for all bounded coun
             @intCast(altered_schedule.native_geometry.?.columns[0].len + 1);
         try std.testing.expectError(error.InvalidMixedRegistryManifest, fromSchedule(&altered_schedule));
     }
+}
+
+test "mixed registry manifest refuses aliased repeat output ports" {
+    const allocator = std.testing.allocator;
+    const source = @import("test_source.zig").forCount(1);
+    const air_bytes = @embedFile("s31_air_programs");
+    const selected = try mixed.inspectSource(allocator, source, air_bytes);
+    _ = try fromSchedule(&selected);
+
+    var changed = selected;
+    changed.calls[0].output[1] = changed.calls[0].output[0];
+    try std.testing.expectError(error.InvalidMixedOutputPortAlias, fromSchedule(&changed));
+
+    changed = selected;
+    changed.calls[0].output[1] = changed.calls[0].input[0];
+    try std.testing.expectError(error.InvalidMixedOutputPortAlias, fromSchedule(&changed));
 }
 
 test "mixed registry manifest rejects changed public and private source at N4" {

@@ -109,6 +109,7 @@ pub fn inspectSource(allocator: std.mem.Allocator, source: []const u8, air_bytes
             .output = endpoints.output,
         };
     }
+    try requireFreshOutputPorts(result.calls[0..count]);
     var main_at: u32 = 0;
     var interaction_at: u32 = 0;
     var constraint_at: u32 = 0;
@@ -245,6 +246,44 @@ pub fn inspectSource(allocator: std.mem.Allocator, source: []const u8, air_bytes
 pub fn matchesSource(allocator: std.mem.Allocator, candidate: *const SelectedSchedule, source: []const u8, air_bytes: []const u8) !bool {
     const expected = try inspectSource(allocator, source, air_bytes);
     return std.meta.eql(candidate.*, expected);
+}
+
+/// Each repeat creates four fresh scalar output guesses. Input ports may
+/// alias across calls (and may gain within-call broadcasts in future), but a
+/// call must not label an input or another output as one of its new outputs.
+/// This guards the compiler-owned endpoint map before chip/bridge selection.
+pub fn requireFreshOutputPorts(calls: []const Call) !void {
+    for (calls) |call| {
+        for (call.output, 0..) |output, lane| {
+            for (call.input) |input|
+                if (output == input) return error.InvalidMixedOutputPortAlias;
+            for (call.output[0..lane]) |earlier|
+                if (output == earlier) return error.InvalidMixedOutputPortAlias;
+        }
+    }
+}
+
+test "mixed composition admission keeps fresh outputs and permits forked inputs" {
+    const allocator = std.testing.allocator;
+    const air_bytes = @embedFile("s31_air_programs");
+    const source = @embedFile("../../examples/boundary/private_arithmetic_chip_fork.s31.json");
+    const inspected = try inspectSource(allocator, source, air_bytes);
+    try std.testing.expectEqual(@as(u8, 3), inspected.call_count);
+    // The two later calls intentionally consume the same four circuit ports.
+    try std.testing.expectEqualDeep(inspected.calls[1].input, inspected.calls[2].input);
+    try requireFreshOutputPorts(inspected.calls[0..inspected.call_count]);
+
+    var changed = inspected;
+    changed.calls[0].output[1] = changed.calls[0].output[0];
+    changed.digest = digestSelectedSchedule(&changed);
+    try std.testing.expect(hasCurrentDigest(&changed));
+    try std.testing.expectError(error.InvalidMixedOutputPortAlias, requireFreshOutputPorts(changed.calls[0..changed.call_count]));
+
+    changed = inspected;
+    changed.calls[0].output[1] = changed.calls[0].input[0];
+    changed.digest = digestSelectedSchedule(&changed);
+    try std.testing.expect(hasCurrentDigest(&changed));
+    try std.testing.expectError(error.InvalidMixedOutputPortAlias, requireFreshOutputPorts(changed.calls[0..changed.call_count]));
 }
 
 /// Check that a mutable inspection value still carries the digest of its

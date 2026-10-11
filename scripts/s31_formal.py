@@ -554,6 +554,8 @@ def generated_native_square4_topology() -> str:
     expected = "import S31.Gadgets.Functional.TextSquare4Air\n"
     if not result.stdout.startswith(expected):
         raise FormalError("native square4 topology exporter returned unexpected output")
+    if "def paddedArithmeticFixedRows : List (List Nat) := [\n" not in result.stdout:
+        raise FormalError("native square4 topology exporter omitted full fixed rows")
     return result.stdout
 
 

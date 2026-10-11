@@ -1,0 +1,232 @@
+{
+  "all_diagnostic_gates_pass": true,
+  "calibration_sha256_before_heldout": "61a137e3ccdb0bb20e3660f91e425dd78d7bf2940e6d545b1095e125909b9f1d",
+  "cases": {
+    "12": {
+      "paired_after_pow_seconds": {
+        "descriptive_training_range_covered_trials": 12,
+        "observed": {
+          "max": 0.04376650000039477,
+          "median": 0.03913410400051402,
+          "median_absolute_deviation": 0.0010391045002514157,
+          "min": 0.0378437499998272,
+          "observations": 12,
+          "p90_interpolated": 0.041676666399245325
+        },
+        "predicted_center": 0.03579041699995299,
+        "relative_median_error": 0.0854417671225363,
+        "trials": 12
+      },
+      "paired_wall_seconds": {
+        "descriptive_training_range_covered_trials": 11,
+        "observed": {
+          "max": 0.3360847499998272,
+          "median": 0.1262937910000801,
+          "median_absolute_deviation": 0.031989936000627495,
+          "min": 0.04622120800013363,
+          "observations": 12,
+          "p90_interpolated": 0.24139170859934894
+        },
+        "predicted_center": 0.07360239550052938,
+        "relative_median_error": 0.41721287390539485,
+        "trials": 12
+      },
+      "pow_seconds": {
+        "descriptive_training_range_covered_trials": 11,
+        "observed": {
+          "max": 0.298241,
+          "median": 0.08816850000000001,
+          "median_absolute_deviation": 0.033513500000000015,
+          "min": 0.006942,
+          "observations": 12,
+          "p90_interpolated": 0.2021929
+        },
+        "predicted_center": 0.0447245,
+        "relative_median_error": 0.4927383362538776,
+        "trials": 12
+      },
+      "proof_bytes": {
+        "descriptive_training_range_covered_trials": 11,
+        "observed": {
+          "max": 58773.0,
+          "median": 55355.5,
+          "median_absolute_deviation": 1101.0,
+          "min": 53318.0,
+          "observations": 12,
+          "p90_interpolated": 56667.0
+        },
+        "predicted_center": 55261.5,
+        "relative_median_error": 0.0016981149117973823,
+        "trials": 12
+      },
+      "prover_peak_rss_bytes": {
+        "descriptive_training_range_covered_trials": 12,
+        "observed": {
+          "max": 9388032.0,
+          "median": 9191424.0,
+          "median_absolute_deviation": 16384.0,
+          "min": 9142272.0,
+          "observations": 12,
+          "p90_interpolated": 9250406.4
+        },
+        "predicted_center": 9191424.0,
+        "relative_median_error": 0.0,
+        "trials": 12
+      }
+    },
+    "2": {
+      "paired_after_pow_seconds": {
+        "descriptive_training_range_covered_trials": 11,
+        "observed": {
+          "max": 0.05395704099973908,
+          "median": 0.03730704199988561,
+          "median_absolute_deviation": 0.001974853499802264,
+          "min": 0.03354466599955829,
+          "observations": 12,
+          "p90_interpolated": 0.04005024599947634
+        },
+        "predicted_center": 0.03579041699995299,
+        "relative_median_error": 0.04065251273304579,
+        "trials": 12
+      },
+      "paired_wall_seconds": {
+        "descriptive_training_range_covered_trials": 12,
+        "observed": {
+          "max": 0.25244404099976236,
+          "median": 0.08796806200007268,
+          "median_absolute_deviation": 0.046424895000200195,
+          "min": 0.03843433400015783,
+          "observations": 12,
+          "p90_interpolated": 0.19047579249972843
+        },
+        "predicted_center": 0.07360239550052938,
+        "relative_median_error": 0.16330547897635198,
+        "trials": 12
+      },
+      "pow_seconds": {
+        "descriptive_training_range_covered_trials": 11,
+        "observed": {
+          "max": 0.213534,
+          "median": 0.048989,
+          "median_absolute_deviation": 0.043607999999999994,
+          "min": 0.003474,
+          "observations": 12,
+          "p90_interpolated": 0.1541769
+        },
+        "predicted_center": 0.0447245,
+        "relative_median_error": 0.08705015411623013,
+        "trials": 12
+      },
+      "proof_bytes": {
+        "descriptive_training_range_covered_trials": 10,
+        "observed": {
+          "max": 58140.0,
+          "median": 54920.0,
+          "median_absolute_deviation": 1167.5,
+          "min": 50586.0,
+          "observations": 12,
+          "p90_interpolated": 57158.0
+        },
+        "predicted_center": 55261.5,
+        "relative_median_error": 0.006218135469774217,
+        "trials": 12
+      },
+      "prover_peak_rss_bytes": {
+        "descriptive_training_range_covered_trials": 11,
+        "observed": {
+          "max": 9338880.0,
+          "median": 9175040.0,
+          "median_absolute_deviation": 65536.0,
+          "min": 8945664.0,
+          "observations": 12,
+          "p90_interpolated": 9332326.4
+        },
+        "predicted_center": 9191424.0,
+        "relative_median_error": 0.0017857142857142857,
+        "trials": 12
+      }
+    },
+    "8": {
+      "paired_after_pow_seconds": {
+        "descriptive_training_range_covered_trials": 11,
+        "observed": {
+          "max": 0.05183095900009993,
+          "median": 0.03919066700022612,
+          "median_absolute_deviation": 0.0017038324997237717,
+          "min": 0.03533887500062183,
+          "observations": 12,
+          "p90_interpolated": 0.04104669909966705
+        },
+        "predicted_center": 0.03579041699995299,
+        "relative_median_error": 0.08676172825161453,
+        "trials": 12
+      },
+      "paired_wall_seconds": {
+        "descriptive_training_range_covered_trials": 10,
+        "observed": {
+          "max": 0.4967549590000999,
+          "median": 0.10337658350090351,
+          "median_absolute_deviation": 0.03609406250097891,
+          "min": 0.039955499999450694,
+          "observations": 12,
+          "p90_interpolated": 0.3841206538992993
+        },
+        "predicted_center": 0.07360239550052938,
+        "relative_median_error": 0.2880167538145996,
+        "trials": 12
+      },
+      "pow_seconds": {
+        "descriptive_training_range_covered_trials": 9,
+        "observed": {
+          "max": 0.444924,
+          "median": 0.065243,
+          "median_absolute_deviation": 0.035929499999999996,
+          "min": 0.002885,
+          "observations": 12,
+          "p90_interpolated": 0.3439004000000001
+        },
+        "predicted_center": 0.0447245,
+        "relative_median_error": 0.31449350888217886,
+        "trials": 12
+      },
+      "proof_bytes": {
+        "descriptive_training_range_covered_trials": 10,
+        "observed": {
+          "max": 57743.0,
+          "median": 54308.5,
+          "median_absolute_deviation": 1130.5,
+          "min": 49166.0,
+          "observations": 12,
+          "p90_interpolated": 56505.0
+        },
+        "predicted_center": 55261.5,
+        "relative_median_error": 0.01754789765874587,
+        "trials": 12
+      },
+      "prover_peak_rss_bytes": {
+        "descriptive_training_range_covered_trials": 11,
+        "observed": {
+          "max": 9420800.0,
+          "median": 9158656.0,
+          "median_absolute_deviation": 65536.0,
+          "min": 9027584.0,
+          "observations": 12,
+          "p90_interpolated": 9268428.8
+        },
+        "predicted_center": 9191424.0,
+        "relative_median_error": 0.0035778175313059034,
+        "trials": 12
+      }
+    }
+  },
+  "diagnostic_gates": {
+    "paired_after_pow_seconds": true,
+    "paired_wall_seconds": true,
+    "proof_bytes": true,
+    "prover_peak_rss_bytes": true
+  },
+  "heldout_report_sha256": "e25f692e6772b49eb84f4089b867c835aa57939b3b35f91ee113c844a9aa75de",
+  "plan_sha256": "72ba0038e227f439e6de078ad94a11e21bae76d352991252c2fbba6993e3dd75",
+  "schema": "s31-bounded-direct-gate-prospective-v1",
+  "status": "local-heldout-diagnostic"
+}

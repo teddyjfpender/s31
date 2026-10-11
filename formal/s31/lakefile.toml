@@ -18,3 +18,7 @@ globs = ["S31", "S31.+"]
 [[lean_exe]]
 name = "s31-check"
 root = "S31.Check"
+
+[[lean_exe]]
+name = "s31-alias-relation-check"
+root = "S31.Audit.AliasRelationCheck"

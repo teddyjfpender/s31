@@ -36,6 +36,14 @@ def verify_package(package: Path) -> dict:
     }
     if not required_artifacts.issubset(artifacts):
         raise ValueError("S31 package is missing required artifacts")
+    text_artifacts = {"source.s31", "source-map.json", "typed-interface.json"}
+    has_text = "source_text_sha256" in manifest
+    if (any(name in artifacts or (package / name).exists() or (package / name).is_symlink()
+            for name in text_artifacts) and
+            not has_text):
+        raise ValueError("S31 text artifacts require source binding metadata")
+    if has_text and manifest.get("text_frontend_version") != 1:
+        raise ValueError("S31 text package requires frontend version 1")
     source = parse_source_json((package / "source.s31.json").read_bytes())
     if source.get("version") not in (1, 2):
         raise ValueError("unsupported S31 relation version")
@@ -300,9 +308,7 @@ def verify_package(package: Path) -> dict:
         if file_hash(package / "stdlib-lock.json") != manifest_lock:
             raise ValueError("S31 package standard library lock changed")
     if "source_text_sha256" in manifest:
-        required = {"source.s31", "source-map.json"}
-        if manifest.get("text_frontend_version") == 1:
-            required.add("typed-interface.json")
+        required = text_artifacts
         if not required.issubset(manifest["artifacts"]):
             raise ValueError("S31 text package is missing source artifacts")
         if file_hash(package / "source.s31") != manifest["source_text_sha256"]:
@@ -317,30 +323,29 @@ def verify_package(package: Path) -> dict:
                           "source_sha256": manifest["source_text_sha256"],
                           "nodes": expected_locations}:
             raise ValueError("S31 text source map does not match compiler output")
-        if manifest.get("text_frontend_version") == 1:
-            from text_frontend import Parser
+        from text_frontend import Parser
 
-            parser = Parser((package / "source.s31").read_text(), str(package / "source.s31"))
-            _, circuit = parser.parse()
-            expected_interface = text_interface(circuit, parser.stdlib_explicit)
-            actual_interface = json.loads((package / "typed-interface.json").read_text())
-            if manifest_lock is None:
-                expected_interface.pop("stdlib")
-            if actual_interface != expected_interface:
-                raise ValueError("S31 typed interface does not match text source")
-            if manifest_lock is not None:
-                lock = json.loads((package / "stdlib-lock.json").read_text())
-                sources = lock.get("sources", {})
-                if (lock.get("schema") != "s31-stdlib-lock-v1" or
-                        lock.get("package") != "std" or
-                        lock.get("version") != expected_interface["stdlib"]["version"] or
-                        lock.get("explicit_import") != parser.stdlib_explicit or
-                        not isinstance(sources, dict) or
-                        set(sources) != set(LIBRARY_SOURCE_FILES) or
-                        any(not isinstance(value, str) or len(value) != 64 or
-                                any(char not in "0123456789abcdef" for char in value)
-                                for value in sources.values())):
-                    raise ValueError("S31 standard library lock does not match text source")
+        parser = Parser((package / "source.s31").read_text(), str(package / "source.s31"))
+        _, circuit = parser.parse()
+        expected_interface = text_interface(circuit, parser.stdlib_explicit)
+        actual_interface = json.loads((package / "typed-interface.json").read_text())
+        if manifest_lock is None:
+            expected_interface.pop("stdlib")
+        if actual_interface != expected_interface:
+            raise ValueError("S31 typed interface does not match text source")
+        if manifest_lock is not None:
+            lock = json.loads((package / "stdlib-lock.json").read_text())
+            sources = lock.get("sources", {})
+            if (lock.get("schema") != "s31-stdlib-lock-v1" or
+                    lock.get("package") != "std" or
+                    lock.get("version") != expected_interface["stdlib"]["version"] or
+                    lock.get("explicit_import") != parser.stdlib_explicit or
+                    not isinstance(sources, dict) or
+                    set(sources) != set(LIBRARY_SOURCE_FILES) or
+                    any(not isinstance(value, str) or len(value) != 64 or
+                            any(char not in "0123456789abcdef" for char in value)
+                            for value in sources.values())):
+                raise ValueError("S31 standard library lock does not match text source")
     from package.correspondence import UnsupportedFragment, check_package, parse_source
 
     certificate_path = package / "correspondence-certificate.json"

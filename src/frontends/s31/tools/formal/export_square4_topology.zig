@@ -66,6 +66,28 @@ fn writeOutputRows(writer: *std.Io.Writer, columns: NativeRowColumns) !void {
     try writer.writeAll("\n]\n");
 }
 
+/// Export every native preprocessed qm31_ops cell in semantic column order.
+/// Each inner list is one physical AIR row: add, sub, mul, pointwise_mul,
+/// in0 address, in1 address, output address, output multiplicity.
+fn writeFixedRows(writer: *std.Io.Writer, columns: NativeRowColumns) !void {
+    const row_count = columns.output.len;
+    if (columns.input0.len != row_count or columns.input1.len != row_count or
+        columns.multiplicity.len != row_count)
+        return error.InconsistentNativeFixedColumnLength;
+    for (columns.flags) |flag| {
+        if (flag.len != row_count) return error.InconsistentNativeFixedColumnLength;
+    }
+    try writer.writeAll("def paddedArithmeticFixedRows : List (List Nat) := [");
+    for (0..row_count) |row| {
+        if (row != 0) try writer.writeAll(",");
+        try writer.print(
+            "\n  [{d}, {d}, {d}, {d}, {d}, {d}, {d}, {d}]",
+            .{ columns.flags[0][row].toU32(), columns.flags[1][row].toU32(), columns.flags[2][row].toU32(), columns.flags[3][row].toU32(), columns.input0[row].toU32(), columns.input1[row].toU32(), columns.output[row].toU32(), columns.multiplicity[row].toU32() },
+        );
+    }
+    try writer.writeAll("\n]\n");
+}
+
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
     const args = try std.process.argsAlloc(allocator);
@@ -202,8 +224,10 @@ pub fn main() !void {
             return error.UnexpectedPublicOutputOrder;
     }
 
-    // The production AIR receives the finalized, padded circuit. Compile it
-    // independently so the unpadded gate slices above remain stable.
+    // The direct-gate AIR pads only QM31 ops. Generic padContext also pads
+    // empty auxiliary components, which changes zero-wire multiplicity and
+    // does not describe the production direct-gate proving key.
+    // Compile independently so the unpadded gate slices above remain stable.
     var padded_ctx = try s31.relation_compiler.compileDirect(circuit.builder.NoValue, allocator, program, null, false);
     defer padded_ctx.deinit();
     if (padded_ctx.circuit.n_vars != ctx.circuit.n_vars or
@@ -212,13 +236,19 @@ pub fn main() !void {
         padded_ctx.circuit.mul.items.len != ctx.circuit.mul.items.len or
         padded_ctx.circuit.pointwise_mul.items.len != ctx.circuit.pointwise_mul.items.len)
         return error.TopologyChangedBetweenCompilers;
-    try circuit.common.finalize.padContext(circuit.builder.NoValue, &padded_ctx);
-    if (try padded_ctx.circuit.firstYieldViolation(allocator)) |_| return error.NonUniquePaddedProducer;
     const preprocessed = circuit.common.preprocessed;
-    var native = try preprocessed.PreprocessedCircuit.fromCircuit(
-        allocator,
-        preprocessed.CircuitView.fromBuilder(&padded_ctx.circuit),
-    );
+    const raw = circuit.common.finalize.rawComponentSizes(preprocessed.CircuitView.fromBuilder(&padded_ctx.circuit));
+    if (raw.eq != 0 or raw.m31_to_u32 != 0 or raw.triple_xor != 0 or raw.blake_g_gate != 0)
+        return error.UnsupportedDirectAuxiliaryComponent;
+    try circuit.common.finalize.padToTargets(circuit.builder.NoValue, &padded_ctx, .{
+        .eq = 0,
+        .qm31_ops = circuit.common.finalize.paddedSize(raw.qm31_ops),
+        .m31_to_u32 = 0,
+        .triple_xor = 0,
+        .blake_g_gate = 0,
+    });
+    if (try padded_ctx.circuit.firstYieldViolation(allocator)) |_| return error.NonUniquePaddedProducer;
+    var native = try circuit.common.direct_arithmetic.Circuit.fromBuilderCircuit(allocator, &padded_ctx.circuit);
     defer native.deinit(allocator);
     if (native.first_permutation_row != padded_ctx.circuit.nQm31OpsRows())
         return error.UnexpectedNativeArithmeticRowCount;
@@ -300,6 +330,7 @@ pub fn main() !void {
     try writeAddresses(writer, "activeArithmeticProducerAddresses", active_arithmetic_addresses.items);
     try writeAddresses(writer, "externalProducerAddresses", external_producer_addresses.items);
     try writeOutputRows(writer, columns);
+    try writeFixedRows(writer, columns);
     try writer.print(
         "def inputPackMul : List Gate := " ++
             "[⟨{d}, {d}, {d}⟩, ⟨{d}, {d}, {d}⟩, ⟨{d}, {d}, {d}⟩]\n",

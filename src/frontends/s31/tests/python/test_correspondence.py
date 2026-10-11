@@ -17,17 +17,59 @@ sys.path.insert(0, str(S31 / "python"))
 sys.path.insert(0, str(S31.parents[2] / "scripts"))
 
 from package.correspondence import (DIRECT_COLUMN_IDS, M31_MODULUS,
+                                    PLAIN_BUILTIN_NAMES,
                                     UnsupportedFragment, _check_constant_island,
                                     _qm_mul, canonical_ir_bytes, check_gate_topology,
                                     check_exported_root, check_source_fixed_rows,
                                     digest, parse_source,
                                     read_canonical_json)
 from package.direct_gate_schedule import constant_and_padding, exact_direct_gate_schedule
-from text_frontend import compile_text
+from language.builtins import BUILTINS
+from library.stdlib import TypeErrorS31
+from text_frontend import SourceError, compile_text
 from export_s31_direct_gate_bridge import render_bridge
 
 
 class CorrespondenceParserTests(unittest.TestCase):
+    def test_circuit_builtin_inventory_matches_production_namespace(self) -> None:
+        # The checker keeps its own small, reviewed reserved-name inventory.
+        # A new builtin must update that inventory before release admission.
+        self.assertEqual(PLAIN_BUILTIN_NAMES,
+                         {name for name in BUILTINS if name.isidentifier()})
+        for name in sorted(PLAIN_BUILTIN_NAMES):
+            source = (f"circuit {name}(public x: [m31; 4]) -> public [m31; 4] "
+                      "{ let y = x .* x; y }")
+            with self.subTest(name=name), self.assertRaisesRegex(
+                    UnsupportedFragment, "reserved by the compiler"):
+                parse_source(source.encode())
+
+    def test_relation_name_limit_matches_production_and_aliases_are_free(self) -> None:
+        def source(input_name: str, producer: str, alias: str | None = None) -> str:
+            return (f"circuit ordinary(public {input_name}: [m31; 4]) "
+                    "-> public [m31; 4] { "
+                    f"let {producer} = {input_name} .* {input_name}; "
+                    + (f"let {alias} = {producer}; {alias}" if alias else producer)
+                    + " }")
+
+        bounded_input = "x" * 128
+        bounded_producer = "y" * 128
+        long_alias = "a" * 129
+        for text in (source(bounded_input, "y"),
+                     source("x", bounded_producer),
+                     source("x", "y", long_alias)):
+            with self.subTest(text=text[:80]):
+                checked, _ = parse_source(text.encode())
+                produced, _ = compile_text(text)
+                self.assertEqual(checked, produced)
+        for text, error in ((source("x" * 129, "y"), "input name"),
+                            (source("x", "y" * 129), "producer name")):
+            with self.subTest(error=error), self.assertRaisesRegex(
+                    UnsupportedFragment, error):
+                parse_source(text.encode())
+            with self.assertRaisesRegex((SourceError, TypeErrorS31),
+                                        "relation names may contain"):
+                compile_text(text)
+
     def test_exported_fixed_root_matches_sealed_key(self) -> None:
         root = "1a" * 32
         topology = {"schema": "s31-direct-gate-topology-v2",
@@ -124,15 +166,114 @@ class CorrespondenceParserTests(unittest.TestCase):
                 self.assertEqual(independent, produced)
                 self.assertEqual(len(syntax["instructions"]), len(produced["nodes"]))
 
+    def test_zero_cost_aliases_and_parentheses_match_production(self) -> None:
+        cases = (
+            "let a = x; let y = a .* a; y",
+            "let a = (x); let y = ((a)) + ((a)); (y);",
+            "let a = x + x; let b = (a); let y = ((x) .* (b)); ((y))",
+            "let y = x .* x; let z = y; z;",
+            "let a = x; let y = (a .* (a)); let z = (y); (z);",
+            "let a = x + x; let b = a; let c = b .* b; let d = c; a",
+        )
+        for body in cases:
+            source = ("circuit arithmetic(public x: [m31; 4]) -> public "
+                      f"[m31; 4] {{ {body} }}")
+            with self.subTest(body=body):
+                independent, syntax = parse_source(source.encode())
+                produced, source_map = compile_text(source)
+                self.assertEqual(independent, produced)
+                self.assertEqual(set(source_map),
+                                 {node["name"] for node in independent["nodes"]})
+                self.assertEqual(len(syntax["instructions"]), len(independent["nodes"]))
+                self.assertEqual(syntax["output_name"], independent["public_outputs"][0])
+                # Aliases and parentheses consume no extra canonical IR
+                # nodes or native gates: both representations have the same
+                # verifier identity as the direct arithmetic spelling.
+                direct = " ".join(
+                    f"let {node['name']} = {node['lhs']} "
+                    f"{'+' if node['op'] == 'add' else '.*'} {node['rhs']};"
+                    for node in independent["nodes"])
+                baseline = ("circuit arithmetic(public x: [m31; 4]) -> public "
+                            "[m31; 4] { " + direct + " " + syntax["output_name"] + " }")
+                baseline_relation, baseline_syntax = parse_source(baseline.encode())
+                self.assertEqual(independent, baseline_relation)
+                self.assertEqual(canonical_ir_bytes(syntax),
+                                 canonical_ir_bytes(baseline_syntax))
+                self.assertEqual(exact_direct_gate_schedule(syntax),
+                                 exact_direct_gate_schedule(baseline_syntax))
+
+    def test_alias_chains_preserve_producer_identity_across_operator_pairs(self) -> None:
+        checked = 0
+        for first_op, second_op in itertools.product(("+", ".*"), repeat=2):
+            for aliases in range(5):
+                chain = ["x"]
+                statements = []
+                for index in range(aliases):
+                    name = f"alias{index}"
+                    statements.append(f"let {name} = ({chain[-1]});")
+                    chain.append(name)
+                statements.append(
+                    f"let first = (({chain[-1]}) {first_op} ({chain[-1]}));")
+                statements.append("let first_alias = ((first));")
+                statements.append(
+                    f"let second = (({chain[-1]}) {second_op} (first_alias));")
+                statements.append("let result_alias = (second);")
+                for output in ("first_alias", "result_alias"):
+                    source = ("circuit arithmetic(public x: [m31; 4]) -> public "
+                              "[m31; 4] { " + " ".join(statements) + f" ({output}); }}")
+                    expected, syntax = parse_source(source.encode())
+                    produced, source_map = compile_text(source)
+                    self.assertEqual(expected, produced)
+                    self.assertEqual(set(source_map), {"first", "second"})
+                    self.assertEqual(
+                        syntax["output_name"],
+                        "first" if output == "first_alias" else "second")
+                    self.assertEqual([step["id"] for step in syntax["instructions"]],
+                                     [1, 2])
+                    checked += 1
+        self.assertEqual(checked, 40)
+
+    def test_alias_retargeting_changes_checked_relation_and_ir(self) -> None:
+        source = ("circuit arithmetic(public x: [m31; 4]) -> public [m31; 4] "
+                  "{ let first = x + x; let second = x .* x; "
+                  "let chosen = first; let out = chosen .* second; "
+                  "let returned = out; returned }")
+        original, original_ssa = parse_source(source.encode())
+        changed_operand, operand_ssa = parse_source(
+            source.replace("chosen = first", "chosen = second").encode())
+        changed_output, output_ssa = parse_source(
+            source.replace("returned = out", "returned = first").encode())
+        self.assertNotEqual(original, changed_operand)
+        self.assertNotEqual(original, changed_output)
+        self.assertNotEqual(canonical_ir_bytes(original_ssa),
+                            canonical_ir_bytes(operand_ssa))
+        self.assertNotEqual(canonical_ir_bytes(original_ssa),
+                            canonical_ir_bytes(output_ssa))
+        for changed, text in ((changed_operand, source.replace(
+                "chosen = first", "chosen = second")),
+                (changed_output, source.replace("returned = out", "returned = first"))):
+            with self.subTest(text=text):
+                produced, _ = compile_text(text)
+                self.assertEqual(changed, produced)
+
     def test_rejects_forward_duplicate_and_unsupported_syntax(self) -> None:
         cases = (
             "let result = later .* x; let later = x .* x; result",
             "let result = x .* x; let result = result + x; result",
-            "let result = (x .* x); result",
             "let result = std::math::pow<2>(x); result",
             "let unused = x .* x; x",
             "let a = x + x; let b = a .* x; b",
+            "let a = x + x; let b = a; let y = b .* x; y",
             "let a = x + x; let b = x + x; b",
+            "let a = x; let a = x .* x; a",
+            "let a = later; let later = x .* x; later",
+            "let y = x .* x; let z = y; z + y",
+            "let y = (x .* x; y",
+            "let y = x .* (x + x); y",
+            "let y = ((x .* x) .* x); y",
+            "let y = x .* x; let alias = x; alias",
+            "let if = x .* x; if",
+            "let fn = x .* x; fn",
         )
         for body in cases:
             source = ("circuit arithmetic(public x: [m31; 4]) -> public "

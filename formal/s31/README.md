@@ -33,6 +33,7 @@ theorem does not establish zero knowledge.
 | `S31/Gadgets/IntegerShift` | Width-generic pointwise shifts and rotations, including arithmetic sign fill. |
 | `S31/Gadgets/IntegerDivision` | Unique unsigned quotient/remainder, strict zero-divisor exclusion, fused bounded-column equality, signed sign reconstruction, and direct 8-/16-bit, wide-column, and signed 16-bit-limb no-wrap lemmas. |
 | `S31/Evidence/` | Checked operation coverage, non-vacuity/invalid-boundary theorems and live axiom enumeration. |
+| [`S31/Audit/`](S31/Audit/README.md) | Optional executable exact-byte source/relation check for the proved bounded alias fragment; not part of native release verification. |
 | `coverage.json` | Reviewed mapping of every operation to semantics, local gadget theorems and production source functions. |
 | `source-bindings.json`, `proof-inventory.json` | Generated exact source identities and the complete theorem inventory, including reused modules and reviewed Lean-generated proof projections. |
 | `scripts/s31_formal.py`, `scripts/s31_formal_lib/` | Regeneration, escape/inventory checks, independent parity and adversarial proof controls. |

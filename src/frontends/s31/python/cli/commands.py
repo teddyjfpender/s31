@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import shutil
 import sys
 import tempfile
 from pathlib import Path
@@ -18,9 +17,11 @@ from inspection.reports import equations as report_equations, explain as report_
 from inspection.source_layout import source_layout
 from package.build import build, package_for
 from package.context import invoke, load_source, lower_text, write_json
+from package.release_admission import bounded_direct_gate_snapshot
 from package.trust import admitted_snapshot, unpinned_snapshot
 from package.verify import verify_package
-from runtime.folds import audit_fold_chain
+from runtime.folds import _audit_fold_chain_admitted
+from runtime.proof_inputs import proof_inputs_snapshot
 from runtime.trials import independent_value_check, trial, tune
 
 
@@ -50,31 +51,50 @@ def _external_pins(args: argparse.Namespace) -> dict[str, str]:
 
 def _verified_record_claim(snapshot: Path, manifest: dict, proof: Path,
                            statement: Path) -> dict:
-    """Verify and decode one record claim from the same captured bytes."""
+    """Verify and decode one record claim from pre-admission captured bytes."""
     source_path = snapshot / "source.s31.json"
     source_bytes = source_path.read_bytes()
     relation = json.loads(source_bytes)
     if relation.get("version") != 2 or manifest["lowering"] not in {"direct-gate", "direct-chip"}:
         raise ValueError("record proof inspection requires a direct-gate or direct-chip record ABI v2 package")
-    with tempfile.TemporaryDirectory(prefix="s31-inspect-record-") as temporary:
-        proof_snapshot = Path(temporary) / "proof.bin"
-        statement_snapshot = Path(temporary) / "statement.json"
-        shutil.copyfile(proof, proof_snapshot)
-        shutil.copyfile(statement, statement_snapshot)
-        proof_digest = _file_sha256(proof_snapshot)
-        statement_bytes = statement_snapshot.read_bytes()
-        key_path = snapshot / "verification-key.json"
-        key_bytes = key_path.read_bytes()
-        executable = snapshot / "bin" / f"s31-{manifest['name']}-native-verifier"
-        verifier_digest = _file_sha256(executable)
-        invoke(str(executable), str(proof_snapshot), str(statement_snapshot), str(key_path))
-        if (source_path.read_bytes() != source_bytes or
-                key_path.read_bytes() != key_bytes or
-                _file_sha256(executable) != verifier_digest or
-                _file_sha256(proof_snapshot) != proof_digest or
-                statement_snapshot.read_bytes() != statement_bytes):
-            raise ValueError("verified record snapshot changed during native verification")
-        return decode_typed_public_statement(relation, statement_bytes)
+    proof_digest = _file_sha256(proof)
+    statement_bytes = statement.read_bytes()
+    key_path = snapshot / "verification-key.json"
+    key_bytes = key_path.read_bytes()
+    executable = snapshot / "bin" / f"s31-{manifest['name']}-native-verifier"
+    verifier_digest = _file_sha256(executable)
+    invoke(str(executable), str(proof), str(statement), str(key_path))
+    if (source_path.read_bytes() != source_bytes or
+            key_path.read_bytes() != key_bytes or
+            _file_sha256(executable) != verifier_digest or
+            _file_sha256(proof) != proof_digest or
+            statement.read_bytes() != statement_bytes):
+        raise ValueError("verified record snapshot changed during native verification")
+    return decode_typed_public_statement(relation, statement_bytes)
+
+
+def _verify_recursive_or_fold(args: argparse.Namespace, snapshot: Path,
+                              manifest: dict, proof: Path, statement: Path) -> str:
+    """Run every recursive verifier from the package bytes just admitted."""
+    command = args.command
+    if command == "verify-state-fold":
+        if manifest["lowering"] != "gate" or "state-fold-verification-key.json" not in manifest["artifacts"]:
+            raise ValueError("verify-state-fold requires a supported gate-profile recurrence package")
+    elif manifest["lowering"] not in {"gate", "sparse-wide-gate"}:
+        raise ValueError(f"{command} requires a gate or sparse-wide package")
+    executable = snapshot / "bin" / f"s31-{manifest['name']}-native-verifier"
+    native_command = {
+        "verify-recursive": "recurse-verify",
+        "verify-recursive-next": "recurse-verify-next",
+        "verify-fold": "fold-verify",
+        "verify-state-fold": "state-fold-verify",
+    }[command]
+    max_step: tuple[str, str] = ()
+    if command in {"verify-fold", "verify-state-fold"} and args.max_step is not None:
+        if not 0 <= args.max_step <= 0xffffffff:
+            raise ValueError("--max-step must fit u32")
+        max_step = ("--max-step", str(args.max_step))
+    return invoke(str(executable), native_command, str(proof), str(statement), *max_step)
 
 
 def main() -> None:
@@ -158,26 +178,52 @@ def dispatch(args: argparse.Namespace) -> None:
         return
 
     package = args.package.resolve()
-    if args.command == "verify-pinned":
+    if args.command in {"verify-pinned", "verify-release"}:
         pins = _external_pins(args)
-        proof = args.proof.resolve()
-        statement = args.statement.resolve() if args.statement else Path(str(proof) + ".statement.json")
-        with admitted_snapshot(package, pins) as (snapshot, manifest):
-            executable = snapshot / "bin" / f"s31-{manifest['name']}-native-verifier"
-            print(invoke(str(executable), str(proof), str(statement),
-                         str(snapshot / "verification-key.json")), end="")
+        snapshot_context = (bounded_direct_gate_snapshot(package, pins)
+                            if args.command == "verify-release"
+                            else admitted_snapshot(package, pins))
+        with proof_inputs_snapshot(args.proof, args.statement) as (proof, statement):
+            with snapshot_context as admitted:
+                snapshot, manifest = admitted[:2]
+                executable = snapshot / "bin" / f"s31-{manifest['name']}-native-verifier"
+                result = invoke(str(executable), str(proof), str(statement),
+                                str(snapshot / "verification-key.json"))
+        print(result, end="")
         return
     if args.command in ("inspect-record-proof", "inspect-record-proof-pinned"):
-        proof = args.proof.resolve()
-        statement = args.statement.resolve() if args.statement else Path(str(proof) + ".statement.json")
         snapshot_context = (admitted_snapshot(package, _external_pins(args))
                             if args.command == "inspect-record-proof-pinned"
                             else unpinned_snapshot(package))
-        with snapshot_context as (snapshot, manifest):
-            claim = _verified_record_claim(snapshot, manifest, proof, statement)
+        with proof_inputs_snapshot(args.proof, args.statement) as (proof, statement):
+            with snapshot_context as (snapshot, manifest):
+                claim = _verified_record_claim(snapshot, manifest, proof, statement)
         print(json.dumps({"schema": "s31-verified-record-claim-v1",
                           "program": manifest["name"], "proof_verified": True,
                           "claim": claim}, indent=2, sort_keys=True))
+        return
+    if args.command == "verify":
+        # Capture proof inputs first; package admission may run while the
+        # caller changes the original paths. Native sees only private copies.
+        with proof_inputs_snapshot(args.proof, args.statement) as (proof, statement):
+            with unpinned_snapshot(package) as (snapshot, manifest):
+                executable = snapshot / "bin" / f"s31-{manifest['name']}-native-verifier"
+                result = invoke(str(executable), str(proof), str(statement),
+                                str(snapshot / "verification-key.json"))
+        print(result, end="")
+        return
+    if args.command in {"verify-recursive", "verify-recursive-next",
+                        "verify-fold", "verify-state-fold"}:
+        with proof_inputs_snapshot(args.proof, args.statement, statement_limit=4096) as (proof, statement):
+            with unpinned_snapshot(package) as (snapshot, manifest):
+                result = _verify_recursive_or_fold(args, snapshot, manifest, proof, statement)
+        print(result, end="")
+        return
+    if args.command in {"audit-fold-chain", "audit-state-fold-chain"}:
+        with unpinned_snapshot(package) as (snapshot, manifest):
+            result = _audit_fold_chain_admitted(snapshot, manifest, args.proofs,
+                                                args.command == "audit-state-fold-chain", args.max_step)
+            print(json.dumps(result, sort_keys=True))
         return
     manifest = verify_package(package)
     if args.command == "prove":
@@ -425,49 +471,6 @@ def dispatch(args: argparse.Namespace) -> None:
                      str(package / "recursive-verification-key.json"),
                      *((str(package / "recursive-verification-key-level2.json"),) if wide_fold else ()),
                      str(package / key_name)), end="")
-    elif args.command == "verify":
-        proof = args.proof.resolve()
-        statement = args.statement.resolve() if args.statement else Path(str(proof) + ".statement.json")
-        executable = package / "bin" / f"s31-{manifest['name']}-native-verifier"
-        print(invoke(str(executable), str(proof), str(statement), str(package / "verification-key.json")), end="")
-    elif args.command == "verify-recursive":
-        if manifest["lowering"] not in {"gate", "sparse-wide-gate"}:
-            raise ValueError("verify-recursive requires a gate or sparse-wide package")
-        proof = args.proof.resolve()
-        statement = args.statement.resolve() if args.statement else Path(str(proof) + ".statement.json")
-        executable = package / "bin" / f"s31-{manifest['name']}-native-verifier"
-        print(invoke(str(executable), "recurse-verify", str(proof), str(statement)), end="")
-    elif args.command == "verify-recursive-next":
-        if manifest["lowering"] not in {"gate", "sparse-wide-gate"}:
-            raise ValueError("verify-recursive-next requires a gate or sparse-wide package")
-        proof = args.proof.resolve()
-        statement = args.statement.resolve() if args.statement else Path(str(proof) + ".statement.json")
-        executable = package / "bin" / f"s31-{manifest['name']}-native-verifier"
-        print(invoke(str(executable), "recurse-verify-next", str(proof), str(statement)), end="")
-    elif args.command == "verify-fold":
-        if manifest["lowering"] not in {"gate", "sparse-wide-gate"}:
-            raise ValueError("verify-fold requires a gate or sparse-wide package")
-        proof = args.proof.resolve()
-        statement = args.statement.resolve() if args.statement else Path(str(proof) + ".statement.json")
-        executable = package / "bin" / f"s31-{manifest['name']}-native-verifier"
-        if args.max_step is not None and not (0 <= args.max_step <= 0xffffffff):
-            raise ValueError("--max-step must fit u32")
-        max_step = ("--max-step", str(args.max_step)) if args.max_step is not None else ()
-        print(invoke(str(executable), "fold-verify", str(proof), str(statement), *max_step), end="")
-    elif args.command == "verify-state-fold":
-        if manifest["lowering"] != "gate" or "state-fold-verification-key.json" not in manifest["artifacts"]:
-            raise ValueError("verify-state-fold requires a supported gate-profile recurrence package")
-        proof = args.proof.resolve()
-        statement = args.statement.resolve() if args.statement else Path(str(proof) + ".statement.json")
-        executable = package / "bin" / f"s31-{manifest['name']}-native-verifier"
-        if args.max_step is not None and not (0 <= args.max_step <= 0xffffffff):
-            raise ValueError("--max-step must fit u32")
-        max_step = ("--max-step", str(args.max_step)) if args.max_step is not None else ()
-        print(invoke(str(executable), "state-fold-verify", str(proof), str(statement), *max_step), end="")
-    elif args.command in {"audit-fold-chain", "audit-state-fold-chain"}:
-        result = audit_fold_chain(package, manifest, args.proofs,
-                                  args.command == "audit-state-fold-chain", args.max_step)
-        print(json.dumps(result, sort_keys=True))
     elif args.command == "inspect-fold":
         wide_fold = manifest["lowering"] == "sparse-wide-gate"
         if manifest["lowering"] != "gate" and not wide_fold:

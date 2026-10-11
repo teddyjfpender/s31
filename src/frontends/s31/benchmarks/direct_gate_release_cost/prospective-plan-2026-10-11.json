@@ -1,0 +1,136 @@
+{
+  "compiler_sha256": "98de7c870009451ba75afd00775cd7000f7a839e1c4b6adb8a316bf7f67e377d",
+  "diagnostic_relative_median_error_limits": {
+    "paired_after_pow_seconds": 0.25,
+    "paired_wall_seconds": 0.5,
+    "proof_bytes": 0.1,
+    "prover_peak_rss_bytes": 0.1
+  },
+  "heldout": [
+    2,
+    8,
+    12
+  ],
+  "host": {
+    "machine": "arm64",
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "python": "3.14.6",
+    "zig": "0.15.2"
+  },
+  "measurement_script_sha256": "1efc98fefd5dea5d8e28ef5550972cbf67e926d4b1932ccd40b45f8b0a518d13",
+  "prediction_rule": "For each metric, predict the median of three training-program medians; use pooled training-trial min/max only as a descriptive range. No coefficients, selection, or refitting.",
+  "prospective_script_sha256": "45e8685f2793f9a950a62a8a3664a52eedc74a02c58d28a29d08aaf7d725cd72",
+  "samples_per_program": 12,
+  "schema": "s31-bounded-direct-gate-prospective-v1",
+  "sources": {
+    "1": {
+      "assignment_sha256": [
+        "37ee07f22347a01af8eecd9033889180cd33c042ee012b7dee16f63aada257b5",
+        "4dd6c725d88a222a9447559d6951865594ddaa41d513a0771c55444e73a7be04",
+        "0a49d8a47d8d74f48d418dd149af034e5bc1e686704937ce7502e67a833bde0d",
+        "5faad8cca5969a2d1b3660258d23453a80e37421f484c0d83e4b3188fc04b075",
+        "87ac0db768c61864e7c08f28f28b516f05ea4d0112988bf43200e5ce8968d83c",
+        "04cb41a8fa0055be8046e9e4baf4ca37605e7c2e2a1c55b3e614a88fc8710d9d",
+        "15e513530966a2b1d5bc9dc159263a80e798d61b2014212725fca1baad349852",
+        "c49795a6289238763d90f7c57d8212b4487ef266638a05aa9c1b748ea5939349",
+        "ea65112bc1e2ec4d03235c53d76d23d3da338f89c893848952040cd4e76ec1c9",
+        "4e0c75cfdb7d6163052b443a81228f8be8675a2d90c3aed047c3acb0c5d1c783",
+        "c61a21c7be19beb6384dc8eb9ae6ff65e26e5beba6a13ad2e3494dcb67072986",
+        "4bd2a19025e74bdb43ec2bc88b60ea0114e18fdf2f8c86a83acf4358a0b66e40"
+      ],
+      "source_sha256": "8de2911fe64183b9a21f57f01d41cfcff9a9c84d5045e12a93f97c9e9966fd2c"
+    },
+    "12": {
+      "assignment_sha256": [
+        "bf578fca3f29cbe2d98100a581b63269c628e9ab7e99f903c4ee0fa95dbb46c8",
+        "ec8ff2c61ec69fb75a01b4b1e321d4b23f6a4aec6e1f53e7dc1a5a08fe35da28",
+        "1bef26b4e63131cf69d831f3d2de20aa0de72ea475930660cde940644f9a052e",
+        "7c3de9825fa643a0f2848b9ec2ddfded4413d98136212e8ee92a76a971da5e4b",
+        "486cd5dbdd028920239f0dd84322ac29796b6d7ae18a18cf437a5f56c04fa5fb",
+        "5cc454a23977bc4b71d897d7acdf3a229d6d52d2008d4729a7174f0178c6fb7d",
+        "227269b0582843aada93ad03850f6912c16051b9eac4e827292177628f1c1ee6",
+        "14748426ca514f6e9e769ba3fd1b9371d2e007ec02f2afd0d899903786994e24",
+        "fe422f3170a4fba7c9805c39f0eec1cfcccfa877861830f6175ea50b81dc1bf3",
+        "a0f479cd0175e5ce1ff273dd61e1ee2808f79380a90a7f46f8d9131bfb10816b",
+        "59a7b0f185a2876b3523e4f1de1bb6ab767d6d2482eb254ff21c0e43048bf15a",
+        "0505b729c859d2b5a190606cdb5d6413442bda945faae6ab473f03f35013729a"
+      ],
+      "source_sha256": "07b3d46986d2b38b2d388561cf651618a1a259aa53af427a367ae6ede5e85291"
+    },
+    "16": {
+      "assignment_sha256": [
+        "79d75d56595a9382815f386433b655531b36866c601b2510a982a808d789a367",
+        "6c72bb30f9b8109753c53edc01bde3cd513af2fac1df6f4c0e435df23217ae1c",
+        "5f431cf3b7fc7d625be74e2b9f5d35f87299b9c526b01e0b96353792c3819a64",
+        "2f1bf0b6f49e0a6fdddfe6d9d9a9364bc3d706f65a645fb8baaa512733e63276",
+        "5b17188b0ea27865327295c7605b618d3ea2922b2b749977b45f6f4eba30f7d9",
+        "b9b8cef83c6b277fa68b116a55fdf8a8427796c2393be8e213efa314b1e8c3c0",
+        "3ca112ea8b185db5a9d2a8802d007e7cd51ab99a437694419e6f69f3921fb0d2",
+        "6709641d26e33ae53c75f5ec4d19cc985efb53125427f714720e4ed792445f5b",
+        "f9710a495578f84545745efb41a255a976f78c4346308e27a01b1be0073b5f6a",
+        "544e0888871393beb1baa896d38c7e42c8cc486542643dd21d571f4acf3d97f3",
+        "d02f4d3fba3a1266d9e621f115efba9629f10e49b1c82dfad24322d9d0a36733",
+        "3069d455a9fdbe1d722e796999c7e9dc2f27f5a17c610b7015185fcb6a526591"
+      ],
+      "source_sha256": "13a6e10bf350a7979723adb637ae089590a14289a49afc88e7a515077e238c53"
+    },
+    "2": {
+      "assignment_sha256": [
+        "42f0aee7829c50ad0ef83ab4b696134acbde274b572f5b2520258ce8490a8728",
+        "ea6b3cbab87accd9a1456daeb0aeeae0f8966cd40a519d490f194577c4c9cd15",
+        "52ae21b8630317776de5058d8b2ed3a95762e6b0b750838cb83fcc1cfd170cfb",
+        "f52743ead6169460edadd002ad4211f5e1993ecd1bf018d9328769a3bfdee2a5",
+        "d58cd387bce2ddb0637adccdbe571ecbbb5590d94aea7895fd3483851f189ab1",
+        "96935a33c0ff62d9a7a970e9f352cd38f81bd7eaa9daa0d4738000eec5e6169c",
+        "aedbf6677455a9949e217070a01038174837557d5f2e2465c87c622af398ae2a",
+        "badf0048816ae707fe66e73040129c22519202efe95c83e001d55f7ea0e11bbc",
+        "97f8b0b6d4ceee6abcb5c139829ad23741cd3994c923173343ec006bdc41ebdd",
+        "fca865b1501cd90c6f20718670217972e5f31a2276bae6fc91a44c5619848d37",
+        "dfb04b22069158f72d4c38be45940e86626e55875aa7d93d18f35d921d314c73",
+        "12d38ea7bb9901a45652984d5e46d05d0455876bec5d2dc9cc38518a5ef91f84"
+      ],
+      "source_sha256": "6dad211112062aaf38f66957f42087704c2d9760f76c51adbe4be4a7c54f9cbf"
+    },
+    "4": {
+      "assignment_sha256": [
+        "31768dc2947e08166fee5d0747bb2adfdcd591bde7a6b2d934bfb3b2dbb5c75c",
+        "b272c860721219962c4c7dabc85a6c9221b241625a6e9586db047759d8700a84",
+        "fe0ef06628d5c8ced517a57d2c14f12cf9e64665ca16e12f8a7825c3a39fb44b",
+        "6f2184f345bb482ee2e2674d351f5edf42d949f32880b4e63e0377f1d25fd11b",
+        "dda7025966b75833d97a1e580701be6654956a9c7f7f7c9a923341ea77eed806",
+        "a8831fa6b9c2c636b2d6241e6ead112e66464d2f20849c8c11c52a81e3b98fd7",
+        "0f77447685f2dd1313bfc2875e1106defce60d21adc8cdfca6a1793de352c58d",
+        "65cabfb2e669001099b1a3df6809ba90967dbd4316d0dbacbffdb1c8c51db466",
+        "0c816f2484ce0f35858a7b13645133243242ed590448a48d6f173b87276c5cdb",
+        "a3e924c264e93f0818e9a3facf8c44f8c1b578a9d8ba5b695f718996cba090d8",
+        "0df2e3c985df532e841ae2bee66002c88cc5840e8057dfb03a8c38ec00a8b0ad",
+        "320d5acfd01f9877dca2ce27f5041860e5cc93964dd3bc1ab955baa05807cc5c"
+      ],
+      "source_sha256": "da679d28d479a32647f2307000ffbb0d2b2d7fde02b000feb21cc34626f3049c"
+    },
+    "8": {
+      "assignment_sha256": [
+        "4b3b2b0ae32e6e81ef5029712ec6616cb43d2a3e1097f8df51a6637188a16e98",
+        "386170ecd6be9e7eac9d9328462ad69818026f3276cecac3300f60f0361bc7bf",
+        "8f48c0d699a6d3199d2ee86644128c6530ac9a26503b452f76f30b7c9ac81db6",
+        "4a71f26324d3d15a388091aa4cc695b762ef032444d68737c5eaffbfc0df2005",
+        "efa75f3c52b7f838ec2b8ca3a5d9dfdc2f4f1f8cf7c64f1f77c880b7d8938a42",
+        "74168f0f5d093f743f73a025aeebdd55458de6e21ffb3a792999de1c0f9c2a0b",
+        "cdd6d372d6ea4de99404806772dc76ee7bee594a50a81624c62a9d29faac782b",
+        "5e1ed0b76758035bf5db3507a8eedb156bf39f42bd335118c98d97b2d3bbb49e",
+        "b37907ec184eed779a86770a9d3579a60e2e7130d78e8dc4340fc96ffe91515b",
+        "a4e743d1d6efa236f4dff183b6325b1f5cdb498fc86b862ec9d20c55f37493ef",
+        "0072cecda645266a8c912f689cc43e4663c5fd9c3eaedc5c69c3c55e80bd8453",
+        "608ec3b8290eddaf85b74f6b1a52d87e2d1171dfc281bf6bbe313ee4e0b09bce"
+      ],
+      "source_sha256": "924e2652b5810e3dcb9bd31c861e9b9cb903f65b39642a0ffe4606c7932e7e81"
+    }
+  },
+  "status": "local-premeasurement-plan",
+  "status_limit": "The gates are local diagnostics on three related held-out programs, not a general accuracy certificate.",
+  "train": [
+    1,
+    4,
+    16
+  ]
+}

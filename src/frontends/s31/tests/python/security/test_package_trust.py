@@ -40,6 +40,8 @@ class PinnedPackageTests(unittest.TestCase):
             (self.package / path).write_bytes(contents)
         self.pins = {kind: digest(path)
                      for kind, path in pinned_paths(self.package).items()}
+        (self.package / "proof.bin").write_bytes(b"original proof")
+        (self.package / "proof.bin.statement.json").write_bytes(b"original statement")
 
     def test_exact_external_pins_admit_then_validate_package(self) -> None:
         with patch("package.trust.verify_package", return_value={"name": "unit"}) as validate:
@@ -135,8 +137,9 @@ class PinnedPackageTests(unittest.TestCase):
             self.assertNotEqual(snapshot, self.package.resolve())
             self.assertEqual(digest(binary), self.pins["verifier"])
             self.assertEqual(digest(Path(key)), self.pins["key"])
-            self.assertEqual(proof_arg, str(proof.resolve()))
-            self.assertEqual(statement, str(Path(str(proof) + ".statement.json").resolve()))
+            self.assertNotEqual(Path(proof_arg), proof)
+            self.assertEqual(Path(proof_arg).read_bytes(), b"original proof")
+            self.assertEqual(Path(statement).read_bytes(), b"original statement")
             (self.package / "bin/s31-unit-native-verifier").write_bytes(b"mutated original")
             self.assertEqual(digest(binary), self.pins["verifier"])
             return "accepted"

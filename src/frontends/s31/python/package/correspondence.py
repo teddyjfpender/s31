@@ -1,12 +1,13 @@
 """Independent, fail-closed checker for a small direct-gate S31 fragment.
 
 The accepted grammar has one public [m31; 4] input and one public [m31; 4]
-output. Its body contains 1..16 fresh `let name = left + right;` or
-`let name = left .* right;` statements followed by a returned wire name.
-Operands must name the input or an earlier let, appear in canonical operand
-order, and create distinct arithmetic expressions. No imports, calls,
-constants, assertions, private inputs, or implicit coercions enter this
-certificate.
+output. Its body contains 1..16 fresh arithmetic lets (`+` or `.*`),
+interleaved with zero-cost alias lets, followed by a returned wire name.
+Redundant parentheses around these expressions and names are admitted.
+Operands must resolve to the input or an earlier arithmetic let, appear in
+canonical operand order, and create distinct arithmetic expressions. No
+imports, calls, constants, assertions, private inputs, or implicit coercions
+enter this certificate.
 
 This checks source bytes against normalized relation and the published native
 row schedule. It does not derive the native circuit hash or prove Gate lookup,
@@ -33,9 +34,25 @@ class UnsupportedFragment(ValueError):
 ASCII_SPACE = frozenset(" \t\n\v\f\r")
 TOKEN = re.compile(r"[ \t\n\v\f\r]+|//[^\n]*|->|\.\*|[()\[\];:{}=+]|[A-Za-z_][A-Za-z_0-9]*|[0-9]+")
 NAME = re.compile(r"[A-Za-z_][A-Za-z_0-9]*\Z")
+SOURCE_KEYWORDS = frozenset({
+    "use", "let", "in", "if", "then", "else", "fun", "Fn", "fn", "struct",
+    "circuit", "blinded", "public", "private", "assert_eq", "m31",
+})
 SCHEMA = "s31-direct-gate-correspondence-v2"
 M31_MODULUS = 2**31 - 1
 MAX_SOURCE_BYTES = 16_384
+MAX_RELATION_NAME_CHARS = 128
+# Reviewed plain-name subset of language.builtins.BUILTINS. The production
+# parser reserves these as circuit names; keep this independent inventory in
+# sync with that namespace through the differential test.
+PLAIN_BUILTIN_NAMES = frozenset({
+    "accumulate_chainwork", "blake2s_leaf", "blake2s_pair", "block_work",
+    "chainwork_from_work", "chainwork_u256", "genesis_hash_mainnet",
+    "header_bits", "header_time", "is_zero", "iterate", "lt_u32",
+    "m31_from_u16", "merkle_path_blake2s", "merkle_path_poseidon2",
+    "poseidon2_leaf", "poseidon2_pair", "pow_valid", "prev_hash", "select",
+    "sha256d_header", "splat", "target_mainnet", "target_u256", "work_u256",
+})
 DIRECT_COLUMN_IDS = (
     "qm31_ops_add_flag", "qm31_ops_sub_flag", "qm31_ops_mul_flag",
     "qm31_ops_pointwise_mul_flag", "qm31_ops_in0_address",
@@ -122,7 +139,7 @@ def parse_source(data: bytes) -> tuple[dict[str, Any], dict[str, Any]]:
 
     def identifier() -> str:
         value = take()
-        if NAME.fullmatch(value) is None or value in {"circuit", "public", "let", "m31"}:
+        if NAME.fullmatch(value) is None or value in SOURCE_KEYWORDS:
             raise UnsupportedFragment("expected a non-keyword identifier")
         return value
 
@@ -130,11 +147,64 @@ def parse_source(data: bytes) -> tuple[dict[str, Any], dict[str, Any]]:
         for token in ("[", "m31", ";", "4", "]"):
             take(token)
 
+    def strip_parens(expression: list[str]) -> list[str]:
+        """Remove only parentheses enclosing the *whole* expression.
+
+        Nested arithmetic is intentionally excluded: the production compiler
+        allocates unnamed intermediates for it, outside this checked profile.
+        The global token bound also bounds the work here.
+        """
+        while len(expression) >= 2 and expression[0] == "(":
+            depth = 0
+            enclosing = False
+            for index, token in enumerate(expression):
+                depth += (token == "(") - (token == ")")
+                if depth < 0:
+                    raise UnsupportedFragment("unbalanced source parentheses")
+                if depth == 0:
+                    enclosing = index == len(expression) - 1
+                    break
+            if not enclosing:
+                break
+            expression = expression[1:-1]
+        return expression
+
+    def reference(expression: list[str]) -> str:
+        plain = strip_parens(expression)
+        if len(plain) != 1 or NAME.fullmatch(plain[0]) is None:
+            raise UnsupportedFragment("expected an earlier wire name")
+        return plain[0]
+
+    def binding_rhs(expression: list[str]) -> tuple[str, str, str | None]:
+        """Recognize an alias or one binary gate after syntactic erasure."""
+        plain = strip_parens(expression)
+        depth = 0
+        operators: list[int] = []
+        for index, token in enumerate(plain):
+            depth += (token == "(") - (token == ")")
+            if depth < 0:
+                raise UnsupportedFragment("unbalanced source parentheses")
+            if depth == 0 and token in {"+", ".*"}:
+                operators.append(index)
+        if depth != 0:
+            raise UnsupportedFragment("unbalanced source parentheses")
+        if not operators:
+            return reference(plain), "alias", None
+        if len(operators) != 1:
+            raise UnsupportedFragment("only one binary gate per let is supported")
+        position = operators[0]
+        return (reference(plain[:position]), plain[position],
+                reference(plain[position + 1:]))
+
     take("circuit")
     circuit = identifier()
+    if circuit in PLAIN_BUILTIN_NAMES:
+        raise UnsupportedFragment("circuit name is reserved by the compiler")
     take("(")
     take("public")
     input_name = identifier()
+    if len(input_name) > MAX_RELATION_NAME_CHARS:
+        raise UnsupportedFragment("relation input name exceeds compiler limit")
     take(":")
     lane_type()
     take(")")
@@ -143,6 +213,9 @@ def parse_source(data: bytes) -> tuple[dict[str, Any], dict[str, Any]]:
     lane_type()
     take("{")
     wires = {input_name: 0}
+    # Aliases share a positional wire. Only the producer name is present in
+    # the normalized relation and native source map.
+    producer_names = [input_name]
     expressions: set[tuple[str, int, int]] = set()
     nodes: list[dict[str, str]] = []
     ssa: list[dict[str, Any]] = []
@@ -152,42 +225,60 @@ def parse_source(data: bytes) -> tuple[dict[str, Any], dict[str, Any]]:
         if name in wires:
             raise UnsupportedFragment("duplicate wire name")
         take("=")
-        left = identifier()
-        op_token = take()
-        if op_token not in {"+", ".*"}:
-            raise UnsupportedFragment("only binary add and pointwise multiply are supported")
-        right = identifier()
+        rhs: list[str] = []
+        while cursor < len(tokens) and tokens[cursor] != ";":
+            rhs.append(take())
         take(";")
-        if left not in wires or right not in wires:
+        left, op_token, right = binding_rhs(rhs)
+        if left not in wires or (right is not None and right not in wires):
             raise UnsupportedFragment("forward or unbound operand")
+        if op_token == "alias":
+            wires[name] = wires[left]
+            continue
         op = "add" if op_token == "+" else "mul"
+        assert right is not None
         lhs_id, rhs_id = wires[left], wires[right]
         if lhs_id > rhs_id:
             raise UnsupportedFragment("commutative operands are not in canonical order")
         expression = (op, lhs_id, rhs_id)
         if expression in expressions:
             raise UnsupportedFragment("canonical common-subexpression elimination would merge lets")
+        if len(name) > MAX_RELATION_NAME_CHARS:
+            raise UnsupportedFragment("relation producer name exceeds compiler limit")
         expressions.add(expression)
-        ssa.append({"id": len(wires), "name": name, "op": op,
+        new_id = len(producer_names)
+        ssa.append({"id": new_id, "name": name, "op": op,
                     "lhs": lhs_id, "rhs": rhs_id})
-        nodes.append({"name": name, "op": op, "lhs": left, "rhs": right})
-        wires[name] = len(wires)
+        nodes.append({"name": name, "op": op,
+                      "lhs": producer_names[lhs_id],
+                      "rhs": producer_names[rhs_id]})
+        wires[name] = new_id
+        producer_names.append(name)
         if len(nodes) > 16:
             raise UnsupportedFragment("more than 16 arithmetic operations")
     if not nodes:
         raise UnsupportedFragment("at least one arithmetic operation is required")
-    output = identifier()
+    output_tokens: list[str] = []
+    while cursor < len(tokens) and tokens[cursor] != "}":
+        output_tokens.append(take())
+    if output_tokens and output_tokens[-1] == ";":
+        output_tokens.pop()
+    output = reference(output_tokens)
     take("}")
     if cursor != len(tokens) or output not in wires or output == input_name:
         raise UnsupportedFragment("trailing tokens or output is not a bound let wire")
+    output_id = wires[output]
+    if output_id == 0:
+        raise UnsupportedFragment("output must resolve to an arithmetic let")
+    output_name = producer_names[output_id]
     relation = {
         "version": 1, "name": circuit,
         "inputs": [{"name": input_name, "kind": "m31", "length": 4,
                     "visibility": "public"}],
-        "nodes": nodes, "assertions": [], "public_outputs": [output],
+        "nodes": nodes, "assertions": [], "public_outputs": [output_name],
     }
     syntax = {"input": input_name, "instructions": ssa,
-              "output": wires[output], "output_name": output}
+              "output": output_id, "output_name": output_name}
     return relation, syntax
 
 

@@ -73,6 +73,27 @@ third-party fuzzing dependency. They cover this functional subset, not the
 full standard library or production AIR emission. Native proof and AIR
 geometry gates live in `tests/acceptance/` and run in CI.
 
+`test_language_mutations_generated.py` extends the robustness gate to seven
+checked-in programs spanning functions, records, arrays, hashes, and
+fixed-width integers. It makes 280 deterministic token mutations and requires
+each result to compile or fail with a source line and column. The corpus digest
+and accepted/rejected counts are pinned. This catches uncaught parser or
+elaborator exceptions; it does not establish semantic preservation. Another
+84 formatting variants insert whitespace or comments at token boundaries and
+must emit the exact same normalized relation, so source trivia has no circuit
+cost.
+
+`test_direct_alias_correspondence_generated.py` adds 512 deterministic
+programs in the independently checked direct-gate fragment. It builds a
+positional arithmetic DAG, spells it with aliases and parentheses, and
+compares the independent source parser with the production compiler. A direct
+spelling must produce identical normalized relation, canonical IR bytes, and
+the independently modeled native gate schedule. The corpus spans one through
+sixteen gates and pins the SHA-256 digest of both spellings. Retargeted output
+aliases must change the verifier identity and gate schedule; duplicate names
+and forward references must fail closed. This checks the bounded direct-gate
+profile, not the full functional language or native proof execution.
+
 Run with the normal Python suite:
 
 ```sh

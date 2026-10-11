@@ -110,6 +110,30 @@ still require an independently trusted package or installed verifier. The
 [standalone control](../../../../design/s31/security/controls/pinned_package.py)
 uses the same production admission code for audits without running a proof.
 
+For the bounded direct-gate source fragment, use `verify-release` with all
+five external pins. It additionally requires a rooted correspondence
+certificate, recomputes the source-to-normalized relation and exported fixed
+Gate rows, asks the installed verifier to reconstruct its sealed key, and
+verifies the proof from that same package snapshot:
+
+```sh
+python3 src/frontends/s31/python/s31.py verify-release PACKAGE PROOF \
+  --source-sha256 SOURCE_DIGEST --key-sha256 KEY_DIGEST \
+  --prover-sha256 PROVER_DIGEST --verifier-sha256 VERIFIER_DIGEST \
+  --text-sha256 TEXT_DIGEST
+```
+
+This strict command accepts one public `[m31; 4]` input, one to sixteen
+canonical add/multiply lets, zero-cost aliases and parentheses, and a public
+`[m31; 4]` output. Other S31 programs can still use `verify-pinned`; their
+source-to-AIR correspondence is outside this particular certificate.
+Auditors with the pinned Lean toolchain can also run the
+[proved byte checker](../../../../formal/s31/S31/Audit/README.md) on a
+package's `source.s31` and `source.s31.json`, and can supply the compact
+canonical IR bytes as a third file. That optional check exercises the exact
+Lean parser and encoders used in the bounded correspondence theorem; native
+proof verification does not invoke it.
+
 ## What the verifier checks
 
 The verifier is built with the source relation and sealed key. It checks the

@@ -23,6 +23,7 @@ import s31
 from package import verify as package_verify
 from package.build import build_json
 from package.context import file_hash, invoke, sha256, write_json
+from package.trust import pinned_paths
 from package.manifest_digest import direct_gate_v2_digest
 from package.correspondence import (DIRECT_COLUMN_IDS, KEY_FIELDS, canonical, check_package,
                                     digest, read_canonical_json)
@@ -295,6 +296,30 @@ def main() -> None:
             raise AssertionError("duplicate JSON keys were admitted")
         honest = s31.build(source, work / "honest", "direct-gate")
         checked = check_package(honest)
+        # This source exercises the independently checked zero-cost spelling
+        # extension through a real native package. Aliases and parentheses
+        # disappear before the normalized relation, canonical IR and AIR plan.
+        alias_source = work / "alias-square4.s31"
+        alias_source.write_text("""
+circuit functional_square4(public x: [m31; 4]) -> public [m31; 4] {
+    let base = (x);
+    let once = ((base) .* (base));
+    let saved = (once);
+    let result = ((saved) .* (saved));
+    let returned = (result);
+    (returned);
+}
+""")
+        alias_package = s31.build(alias_source, work / "alias-square4", "direct-gate")
+        alias_checked = check_package(alias_package)
+        if ((alias_package / "source.s31.json").read_bytes() !=
+                (honest / "source.s31.json").read_bytes() or
+                alias_checked["source_ssa"] != checked["source_ssa"] or
+                alias_checked["gate_schedule"] != checked["gate_schedule"] or
+                alias_checked["source_gates"] != checked["source_gates"] or
+                alias_checked["key_core"]["canonical_ir_sha256"] !=
+                checked["key_core"]["canonical_ir_sha256"]):
+            raise AssertionError("alias spelling changed the certified relation or AIR plan")
         def check_native_row_partition(material: dict) -> None:
             """Match the exported gate counts to Lean's 512-row premise."""
             instructions = material["source_ssa"]["instructions"]
@@ -461,6 +486,15 @@ def main() -> None:
         native_verifier = honest / "bin" / f"s31-{manifest['name']}-native-verifier"
         proof_path = work / "honest-proof/proof.bin"
         statement_path = work / "honest-proof/statement.json"
+        # Exercise the strict release CLI with a real native proof. These
+        # locally computed pins test the command wiring; production callers
+        # must obtain pins through an independent trusted release channel.
+        release_pins = {kind: file_hash(path) for kind, path in pinned_paths(honest).items()}
+        release_flags = [item for kind, digest in release_pins.items()
+                         for item in (f"--{kind}-sha256", digest)]
+        invoke(sys.executable, str(S31 / "python/s31.py"), "verify-release",
+               str(honest), str(proof_path), "--statement", str(statement_path),
+               *release_flags)
         try:
             invoke(str(native_verifier), str(proof_path),
                    str(changed_input_path), str(honest / "verification-key.json"))
@@ -582,7 +616,7 @@ def main() -> None:
 
         print(json.dumps({
             "schema": "s31-compiler-correspondence-acceptance-v1",
-            "fragment": "public four-lane direct-gate add/mul/static-let",
+            "fragment": "public four-lane direct-gate add/mul with zero-cost aliases and parentheses",
             "honest_native_proof_accepted": True,
             "changed_public_input_native_statement_rejected": True,
             "changed_gate_claim_native_lookup_sum_rejected": True,

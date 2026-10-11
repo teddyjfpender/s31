@@ -1,0 +1,91 @@
+{
+  "binary": "square4-fixed-columns.u32le",
+  "binary_bytes": 16384,
+  "binary_sha256": "cb0e835c505fe2c672cfb79db9a60cc63fc6dea0013b101d6512eac0a23343b0",
+  "columns": [
+    {
+      "byte_offset": 0,
+      "id": "qm31_ops_add_flag",
+      "index": 0,
+      "rows": 512,
+      "values_sha256": "7733da96a59606931dae442b013b534409e028babd1795ae1d28e49e4ddc050c"
+    },
+    {
+      "byte_offset": 2048,
+      "id": "qm31_ops_sub_flag",
+      "index": 1,
+      "rows": 512,
+      "values_sha256": "e044f0feab72a4475fef3270ade497cbc709cbb099e16aea356b2f6ce474762e"
+    },
+    {
+      "byte_offset": 4096,
+      "id": "qm31_ops_mul_flag",
+      "index": 2,
+      "rows": 512,
+      "values_sha256": "759ee04d22bb774c71518c1b1c196a0830af281aa9f06d61c2f2179080031d85"
+    },
+    {
+      "byte_offset": 6144,
+      "id": "qm31_ops_pointwise_mul_flag",
+      "index": 3,
+      "rows": 512,
+      "values_sha256": "c4af6e2fbd24429fc367bc50a341f344c258fa41aa4e21ec616a0e87e55a97d4"
+    },
+    {
+      "byte_offset": 8192,
+      "id": "qm31_ops_in0_address",
+      "index": 4,
+      "rows": 512,
+      "values_sha256": "aa33cc33a10a1a3c56fe4e87f4106e8c122e6346fa17952802171bfb4c89d967"
+    },
+    {
+      "byte_offset": 10240,
+      "id": "qm31_ops_in1_address",
+      "index": 5,
+      "rows": 512,
+      "values_sha256": "15a1bcbc418c7c85270778bccbe04b7a857d35d6cb3edce0d83eb1183b6cbb1b"
+    },
+    {
+      "byte_offset": 12288,
+      "id": "qm31_ops_out_address",
+      "index": 6,
+      "rows": 512,
+      "values_sha256": "055d0293f850981c6c6012be1385ab28dc26ab073ae7f2470d70ad29347a511f"
+    },
+    {
+      "byte_offset": 14336,
+      "id": "qm31_ops_mults",
+      "index": 7,
+      "rows": 512,
+      "values_sha256": "9f634cc9dc80ed81d23632993362b5d588d6776055660974cb6653878b4c47f5"
+    }
+  ],
+  "gate_counts": {
+    "add": 474,
+    "mul": 27,
+    "pointwise_mul": 10,
+    "sub": 1
+  },
+  "layout": "column-major little-endian u32; M31 canonical words",
+  "preprocessed_root": "c0ea49c8f9027d5bdf9ce7a59ded3fb3a1f6b541a0ed1bb6c65b3c7d1175570a",
+  "program_sha256": "b7d744dd89f487742f2b72cf71fa76c6c37c2f5b01b74b58befa24e8c749979c",
+  "rows_per_column": 512,
+  "schema": "s31-direct-gate-square4-fixed-columns-v1",
+  "scope": "Native fixed/preprocessed cells only. Main and interaction columns, quotient checks and PCS openings are outside this fixture.",
+  "source": "src/frontends/s31/examples/arithmetic/functional_square4_manual.s31",
+  "source_fixed_rows": [
+    {
+      "circuit_row": 6,
+      "id": 1,
+      "op": "mul",
+      "trace_row": 502
+    },
+    {
+      "circuit_row": 7,
+      "id": 2,
+      "op": "mul",
+      "trace_row": 503
+    }
+  ],
+  "source_sha256": "2555767fb91b626f6ad959eb87bb2a83626f1aaacab3ad63179d966eeedfd1f6"
+}

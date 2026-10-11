@@ -1,0 +1,701 @@
+{
+  "cases": {
+    "1": {
+      "assignment_sha256": [
+        "37ee07f22347a01af8eecd9033889180cd33c042ee012b7dee16f63aada257b5",
+        "4dd6c725d88a222a9447559d6951865594ddaa41d513a0771c55444e73a7be04",
+        "0a49d8a47d8d74f48d418dd149af034e5bc1e686704937ce7502e67a833bde0d",
+        "5faad8cca5969a2d1b3660258d23453a80e37421f484c0d83e4b3188fc04b075",
+        "87ac0db768c61864e7c08f28f28b516f05ea4d0112988bf43200e5ce8968d83c",
+        "04cb41a8fa0055be8046e9e4baf4ca37605e7c2e2a1c55b3e614a88fc8710d9d",
+        "15e513530966a2b1d5bc9dc159263a80e798d61b2014212725fca1baad349852",
+        "c49795a6289238763d90f7c57d8212b4487ef266638a05aa9c1b748ea5939349",
+        "ea65112bc1e2ec4d03235c53d76d23d3da338f89c893848952040cd4e76ec1c9",
+        "4e0c75cfdb7d6163052b443a81228f8be8675a2d90c3aed047c3acb0c5d1c783",
+        "c61a21c7be19beb6384dc8eb9ae6ff65e26e5beba6a13ad2e3494dcb67072986",
+        "4bd2a19025e74bdb43ec2bc88b60ea0114e18fdf2f8c86a83acf4358a0b66e40"
+      ],
+      "compiler_sha256": "98de7c870009451ba75afd00775cd7000f7a839e1c4b6adb8a316bf7f67e377d",
+      "cost_report": {
+        "fri": {
+          "fold_step": 1,
+          "last_layer_degree_bound": 1,
+          "log_blowup_factor": 1,
+          "pow_bits": 26,
+          "queries": 70
+        },
+        "padded": {
+          "blake_g": 0,
+          "eq": 0,
+          "m31_to_u32": 0,
+          "qm31_ops": 512,
+          "triple_xor": 0
+        },
+        "preprocessed_cells": 4096,
+        "profile": "direct-m31-v4",
+        "raw": {
+          "blake_g": 0,
+          "eq": 0,
+          "m31_to_u32": 0,
+          "qm31_ops": 321,
+          "triple_xor": 0
+        }
+      },
+      "diagnostic_paired_wall_after_reported_pow_seconds": {
+        "max": 0.03924958299943401,
+        "median": 0.0289619999997869,
+        "median_absolute_deviation": 0.003531104000201648,
+        "min": 0.0231623749994298,
+        "observations": 12,
+        "p90_interpolated": 0.03866625419990293
+      },
+      "observed_cost_model": {
+        "measurement_policy": {
+          "paired_total": "prover process wall plus native verifier process wall, excluding package build and audit utilities",
+          "peak_rss": "OS high-water mark for one native process tree; null if unavailable",
+          "process_wall": "includes process startup and resource-wrapper overhead",
+          "proof_of_work": "included in prover process wall and runtime prove; separately reported only when native timers exist",
+          "setup": "cold native setup in every fresh prover process",
+          "uncertainty": "median, median absolute deviation and interpolated p90 describe this observed corpus only"
+        },
+        "metrics": {
+          "native_verify_process_wall_seconds": {
+            "max": 0.019396165999751247,
+            "median": 0.013365395999699103,
+            "median_absolute_deviation": 0.002305437499217078,
+            "min": 0.010602416999972775,
+            "observations": 12,
+            "p90_interpolated": 0.019136858299498273
+          },
+          "paired_prove_and_verify_wall_seconds": {
+            "max": 0.17564658299943403,
+            "median": 0.07360239550052938,
+            "median_absolute_deviation": 0.025712520500746905,
+            "min": 0.0344533749994298,
+            "observations": 12,
+            "p90_interpolated": 0.1581740124996941
+          },
+          "proof_bytes": {
+            "max": 56839,
+            "median": 54480.0,
+            "median_absolute_deviation": 1584.5,
+            "min": 52552,
+            "observations": 12,
+            "p90_interpolated": 56366.0
+          },
+          "prove_process_wall_seconds": {
+            "max": 0.15690249999988737,
+            "median": 0.06173683300039556,
+            "median_absolute_deviation": 0.02492647949975435,
+            "min": 0.023850957999457023,
+            "observations": 12,
+            "p90_interpolated": 0.13879941309996868
+          },
+          "prover_peak_rss_bytes": {
+            "max": 9273344,
+            "median": 9191424.0,
+            "median_absolute_deviation": 49152.0,
+            "min": 9060352,
+            "observations": 12,
+            "p90_interpolated": 9240576.0
+          },
+          "prover_process_unattributed_seconds": {
+            "max": 0.01711149999988737,
+            "median": 0.011556604499924808,
+            "median_absolute_deviation": 0.0018432295002319427,
+            "min": 0.009043957999457022,
+            "observations": 12,
+            "p90_interpolated": 0.016656000000158638
+          },
+          "runtime_fri_pow_seconds": {
+            "max": 0.135885,
+            "median": 0.041613,
+            "median_absolute_deviation": 0.0239875,
+            "min": 0.010917,
+            "observations": 12,
+            "p90_interpolated": 0.1219182
+          },
+          "runtime_interaction_pow_seconds": {
+            "max": 0.004776,
+            "median": 0.0023680000000000003,
+            "median_absolute_deviation": 0.001329,
+            "min": 0.000262,
+            "observations": 12,
+            "p90_interpolated": 0.0037338000000000002
+          },
+          "runtime_prove_excluding_pow_seconds": {
+            "max": 0.001473000000000002,
+            "median": 0.0013200000000000017,
+            "median_absolute_deviation": 4.599999999999743e-05,
+            "min": 0.0012090000000000017,
+            "observations": 12,
+            "p90_interpolated": 0.0014158000000000018
+          },
+          "runtime_prove_seconds": {
+            "max": 0.137736,
+            "median": 0.046117500000000006,
+            "median_absolute_deviation": 0.023649000000000003,
+            "min": 0.012618,
+            "observations": 12,
+            "p90_interpolated": 0.12421750000000002
+          },
+          "runtime_runtime_other_seconds": {
+            "max": 0.0012770000000000004,
+            "median": 0.0011875000000000028,
+            "median_absolute_deviation": 2.8499999999997278e-05,
+            "min": 0.0010900000000000007,
+            "observations": 12,
+            "p90_interpolated": 0.001247200000000001
+          },
+          "runtime_setup_seconds": {
+            "max": 0.001026,
+            "median": 0.000767,
+            "median_absolute_deviation": 3.250000000000003e-05,
+            "min": 0.000732,
+            "observations": 12,
+            "p90_interpolated": 0.0008687
+          },
+          "runtime_total_through_verification_seconds": {
+            "max": 0.139791,
+            "median": 0.0483325,
+            "median_absolute_deviation": 0.023774,
+            "min": 0.014807,
+            "observations": 12,
+            "p90_interpolated": 0.12632890000000002
+          },
+          "runtime_witness_seconds": {
+            "max": 0.000176,
+            "median": 0.00011999999999999999,
+            "median_absolute_deviation": 1.6000000000000003e-05,
+            "min": 9.4e-05,
+            "observations": 12,
+            "p90_interpolated": 0.0001635
+          },
+          "verifier_peak_rss_bytes": {
+            "max": 5505024,
+            "median": 5423104.0,
+            "median_absolute_deviation": 0.0,
+            "min": 5406720,
+            "observations": 12,
+            "p90_interpolated": 5488640.0
+          }
+        },
+        "schema": "s31-observed-whole-prover-cost-v1",
+        "verified_trials": 12
+      },
+      "package_build_cache": "uncontrolled Zig cache",
+      "package_build_wall_seconds": 53.6822376250002,
+      "package_manifest_sha256": "98bbda122941ca32db7bb579280aa6896fcf4271f4bb184df766b8f5eb3a8f38",
+      "package_reused": false,
+      "proof_sha256": [
+        "26a031c476481d366a278037201e6861681321ea72b0d4092ef5de6e310870da",
+        "76da4f002538e6212f7748c34fe23550db875c4770bc730a4df5b738f0515bbc",
+        "2e7a6baf670e71179abd26028b422c4d7a64f2f56ec0a45c871543f79371ee3f",
+        "7da7a0b11261d26a5035f2c985b13f4dd71cc5e874783de3e3a85d7ab7173ebd",
+        "7a309302d62571eef8f3edf15d6f67d7b93996561c931a6d54ac0c5d3aae7653",
+        "1ee2d21ebe34a8413c225a0fe032203946acdfb1681c11f153f859f4cabcc7b3",
+        "fba592023ec2058bb94f55c7d72af838c1f7f6a452d02c39c7b068e894a3c8bc",
+        "154e4ae36f01996c57ea8bfaea7ce3328272ca1bdff4e2337e05090c3d4ce502",
+        "3b46de425ebbc32fa9da821a5898519b6fb3189dab534405ee531514edb73793",
+        "82847853bb6a471e456302c3078f2fe2e43d971ff54813689758178c97d0bd71",
+        "dc1e30783da33da7b1a1bf194fe525e274119937121465abd478f6c4c51660af",
+        "368f22cf16a2223b938950c61b2d86c1f17385e33fa6fe9fefd75aff5a89babc"
+      ],
+      "source": "gates-01/exploratory_1.s31",
+      "source_sha256": "8de2911fe64183b9a21f57f01d41cfcff9a9c84d5045e12a93f97c9e9966fd2c",
+      "trial_report_sha256": [
+        "08803a682bbfab84011aad48fc23c00506a7a04d364d49590251a83887418f39",
+        "c37b079ee8c442d8a1a9dae84c3b322ce44855479d306329e24914da6b4657d0",
+        "86c8bb32c4a2f5ba006d927c40e8ca382d33337394b2dc94b2c02cb9b422cead",
+        "e2a1759f3729ef90a938c7cf378682e6090624e52eb8a33ae3f267f04833a068",
+        "b6cfded7783fc61e062f1f2f52520e12cf64a873d1f35ae37be2f363ba3ca7f0",
+        "5191f95c75bae50d1978fa8537c3144dd699a6a0326d41fb5f9e60eecf9186a6",
+        "3e78ebd802049969894cb0114bf3b3fa524ffc679673644cb5a744475ae9d2cc",
+        "1ce1d4b558db361e1881f6186977cad07a6b0acb0c4122c2d5e0d14d2cd4c7c8",
+        "336b38ad60565c4a949e5372387bff347853e85295c5c60c6c87e6085891d746",
+        "a28a77a5b76c32d860b908647195937622ace1bc373d767d8b730f9c7071d529",
+        "4f2980e0f672ba5bf183fe5fb633786a823f63cb4f6f9c40d6a923be32fdc61d",
+        "7bae0f75c35e64ac0282b9b5d65168b60503ee2e1df8f95d617d5ecbc8016ca0"
+      ]
+    },
+    "16": {
+      "assignment_sha256": [
+        "79d75d56595a9382815f386433b655531b36866c601b2510a982a808d789a367",
+        "6c72bb30f9b8109753c53edc01bde3cd513af2fac1df6f4c0e435df23217ae1c",
+        "5f431cf3b7fc7d625be74e2b9f5d35f87299b9c526b01e0b96353792c3819a64",
+        "2f1bf0b6f49e0a6fdddfe6d9d9a9364bc3d706f65a645fb8baaa512733e63276",
+        "5b17188b0ea27865327295c7605b618d3ea2922b2b749977b45f6f4eba30f7d9",
+        "b9b8cef83c6b277fa68b116a55fdf8a8427796c2393be8e213efa314b1e8c3c0",
+        "3ca112ea8b185db5a9d2a8802d007e7cd51ab99a437694419e6f69f3921fb0d2",
+        "6709641d26e33ae53c75f5ec4d19cc985efb53125427f714720e4ed792445f5b",
+        "f9710a495578f84545745efb41a255a976f78c4346308e27a01b1be0073b5f6a",
+        "544e0888871393beb1baa896d38c7e42c8cc486542643dd21d571f4acf3d97f3",
+        "d02f4d3fba3a1266d9e621f115efba9629f10e49b1c82dfad24322d9d0a36733",
+        "3069d455a9fdbe1d722e796999c7e9dc2f27f5a17c610b7015185fcb6a526591"
+      ],
+      "compiler_sha256": "98de7c870009451ba75afd00775cd7000f7a839e1c4b6adb8a316bf7f67e377d",
+      "cost_report": {
+        "fri": {
+          "fold_step": 1,
+          "last_layer_degree_bound": 1,
+          "log_blowup_factor": 1,
+          "pow_bits": 26,
+          "queries": 70
+        },
+        "padded": {
+          "blake_g": 0,
+          "eq": 0,
+          "m31_to_u32": 0,
+          "qm31_ops": 512,
+          "triple_xor": 0
+        },
+        "preprocessed_cells": 4096,
+        "profile": "direct-m31-v4",
+        "raw": {
+          "blake_g": 0,
+          "eq": 0,
+          "m31_to_u32": 0,
+          "qm31_ops": 336,
+          "triple_xor": 0
+        }
+      },
+      "diagnostic_paired_wall_after_reported_pow_seconds": {
+        "max": 0.04446766600025562,
+        "median": 0.03579041699995299,
+        "median_absolute_deviation": 0.004257750000430244,
+        "min": 0.02408641700043826,
+        "observations": 12,
+        "p90_interpolated": 0.0404555080002487
+      },
+      "observed_cost_model": {
+        "measurement_policy": {
+          "paired_total": "prover process wall plus native verifier process wall, excluding package build and audit utilities",
+          "peak_rss": "OS high-water mark for one native process tree; null if unavailable",
+          "process_wall": "includes process startup and resource-wrapper overhead",
+          "proof_of_work": "included in prover process wall and runtime prove; separately reported only when native timers exist",
+          "setup": "cold native setup in every fresh prover process",
+          "uncertainty": "median, median absolute deviation and interpolated p90 describe this observed corpus only"
+        },
+        "metrics": {
+          "native_verify_process_wall_seconds": {
+            "max": 0.019978958000137936,
+            "median": 0.018053041999792185,
+            "median_absolute_deviation": 0.0009879995004666853,
+            "min": 0.010230124999907275,
+            "observations": 12,
+            "p90_interpolated": 0.01908040830066966
+          },
+          "paired_prove_and_verify_wall_seconds": {
+            "max": 0.20786941700043826,
+            "median": 0.08832472950052761,
+            "median_absolute_deviation": 0.035323666999829584,
+            "min": 0.04153775000031601,
+            "observations": 12,
+            "p90_interpolated": 0.16278547860028994
+          },
+          "proof_bytes": {
+            "max": 58140,
+            "median": 55356.5,
+            "median_absolute_deviation": 636.0,
+            "min": 53861,
+            "observations": 12,
+            "p90_interpolated": 56467.1
+          },
+          "prove_process_wall_seconds": {
+            "max": 0.19763929200053099,
+            "median": 0.07017466700017394,
+            "median_absolute_deviation": 0.03625574999978198,
+            "min": 0.024943458000052487,
+            "observations": 12,
+            "p90_interpolated": 0.1442453618997206
+          },
+          "prover_peak_rss_bytes": {
+            "max": 9388032,
+            "median": 9191424.0,
+            "median_absolute_deviation": 106496.0,
+            "min": 9027584,
+            "observations": 12,
+            "p90_interpolated": 9368371.2
+          },
+          "prover_process_unattributed_seconds": {
+            "max": 0.02036729099964893,
+            "median": 0.015377625000145606,
+            "median_absolute_deviation": 0.002367437500125611,
+            "min": 0.009019791999739832,
+            "observations": 12,
+            "p90_interpolated": 0.0180791375004033
+          },
+          "runtime_fri_pow_seconds": {
+            "max": 0.183313,
+            "median": 0.047756999999999994,
+            "median_absolute_deviation": 0.0354515,
+            "min": 0.005755,
+            "observations": 12,
+            "p90_interpolated": 0.11700730000000001
+          },
+          "runtime_interaction_pow_seconds": {
+            "max": 0.005645,
+            "median": 0.0010245,
+            "median_absolute_deviation": 0.0005375,
+            "min": 0.000397,
+            "observations": 12,
+            "p90_interpolated": 0.0023027000000000004
+          },
+          "runtime_prove_excluding_pow_seconds": {
+            "max": 0.002212999999999979,
+            "median": 0.0012414999999999987,
+            "median_absolute_deviation": 4.549999999999693e-05,
+            "min": 0.001141999999999999,
+            "observations": 12,
+            "p90_interpolated": 0.001299200000000001
+          },
+          "runtime_prove_seconds": {
+            "max": 0.185075,
+            "median": 0.050786,
+            "median_absolute_deviation": 0.036274,
+            "min": 0.007365,
+            "observations": 12,
+            "p90_interpolated": 0.12134810000000001
+          },
+          "runtime_runtime_other_seconds": {
+            "max": 0.0014119999999999966,
+            "median": 0.001184499999999998,
+            "median_absolute_deviation": 3.500000000000551e-05,
+            "min": 0.0010680000000000012,
+            "observations": 12,
+            "p90_interpolated": 0.0012962000000000266
+          },
+          "runtime_setup_seconds": {
+            "max": 0.00161,
+            "median": 0.0007804999999999999,
+            "median_absolute_deviation": 1.850000000000007e-05,
+            "min": 0.00074,
+            "observations": 12,
+            "p90_interpolated": 0.000799
+          },
+          "runtime_total_through_verification_seconds": {
+            "max": 0.18729,
+            "median": 0.052881,
+            "median_absolute_deviation": 0.036393999999999996,
+            "min": 0.009373,
+            "observations": 12,
+            "p90_interpolated": 0.12452650000000001
+          },
+          "runtime_witness_seconds": {
+            "max": 0.000278,
+            "median": 0.0001115,
+            "median_absolute_deviation": 3.000000000000005e-06,
+            "min": 0.000103,
+            "observations": 12,
+            "p90_interpolated": 0.00012220000000000002
+          },
+          "verifier_peak_rss_bytes": {
+            "max": 5472256,
+            "median": 5455872.0,
+            "median_absolute_deviation": 0.0,
+            "min": 5439488,
+            "observations": 12,
+            "p90_interpolated": 5470617.6
+          }
+        },
+        "schema": "s31-observed-whole-prover-cost-v1",
+        "verified_trials": 12
+      },
+      "package_build_cache": "uncontrolled Zig cache",
+      "package_build_wall_seconds": 53.54007470800025,
+      "package_manifest_sha256": "7f26c8e6a5ecebdfe65ebbbe6e44627a047090d5f458d186e040c6ff93abd4e6",
+      "package_reused": false,
+      "proof_sha256": [
+        "14655a227f903848107a1737e4f3a8ca60cbfa20d349c2eb97a134f7e73c297a",
+        "2cec8474aa3113fcad07204f0219298e84afa0042713b514734e0d90208963fd",
+        "9844dcd00498d9e5bb03117f0ae2fc7653028faebad549b026d8e2925a54674e",
+        "2626630619bcb869059f9b56b09db2514c7642848f9af27c399466fb1bc67a0e",
+        "5902184906d7ba5fb99c77dab04f03cf99c10bf8bf0fd8d28bb8c4b523c2cd90",
+        "a7f00c1fdb183dca05dba51091086ab1e08c23d2e7aad1febfc3bb968294e2e9",
+        "247aea1318f68554d64ae7543d0eb622ad1f5908c917bb9c845772675fceb614",
+        "c546507b21745731d112f924d08518cf239fa15c98c89c650ee8078e72f1510f",
+        "6f9147b934805505950fc0b8880c2dcad2338b6de36e99daf2f5ed0b36f24c8b",
+        "ba1e9180982e3d1fe6b0b08314dcfabb069565b91aaf4ff3a61a80927be01403",
+        "132fdb4359fc10a0cb7b1cf7f2ecf94f9e7674ce4fbaa1b43d399367f5cd906f",
+        "b5d3bceb431319b26ae79fe13225fff400b01d87eb55ea704519f08833417f2a"
+      ],
+      "source": "gates-16/exploratory_16.s31",
+      "source_sha256": "13a6e10bf350a7979723adb637ae089590a14289a49afc88e7a515077e238c53",
+      "trial_report_sha256": [
+        "88bc70445c46cbf51fa22fe35a5ee02227324184cac425dfa671efc71332f23b",
+        "87ef0a24b4a8c8dbeeb6cc75902c6128a443b369988646ad9de8d26f6ac964c5",
+        "5037bb1da89d347a2437982c2da117216461bc01bac732ba6f6f07347f828724",
+        "2584c1114bd4c76356281b674c3fb3e1ee3b093066c8e30d5490e82a883e5aba",
+        "5452029dcbb5401630fc505b71f115f3ed7602f0c269fc409b0b5334d9bdaaa3",
+        "305a5ded73a694350a081cbaadea55c6ca45eb2eacd1d43659e53de0f6ddac7e",
+        "f0ac01de34dc2a536d0cebb087a42029ec35c48aafce59fa85c21c93afa3fa19",
+        "aae0926a1cbf3eeecda3a97d46d9abc85794625fb0c7f19823de2f1a1166a344",
+        "ab13bf913d3dca7028de6899d5e0c334cfa7fd1c5f1ed188fa64ce47032e6b50",
+        "a36669706358bdcb1e618759b944e722c7e53855efd3a746432e33df473bf8d1",
+        "1e541627027e86cf2c5ae8d44a9303971a262b3fa768d23d39a300aec06043f4",
+        "fa23d36a7fbbae61b0376c74d584e6295bfc003bd149cc8cc1d8a25bc0989d4a"
+      ]
+    },
+    "4": {
+      "assignment_sha256": [
+        "31768dc2947e08166fee5d0747bb2adfdcd591bde7a6b2d934bfb3b2dbb5c75c",
+        "b272c860721219962c4c7dabc85a6c9221b241625a6e9586db047759d8700a84",
+        "fe0ef06628d5c8ced517a57d2c14f12cf9e64665ca16e12f8a7825c3a39fb44b",
+        "6f2184f345bb482ee2e2674d351f5edf42d949f32880b4e63e0377f1d25fd11b",
+        "dda7025966b75833d97a1e580701be6654956a9c7f7f7c9a923341ea77eed806",
+        "a8831fa6b9c2c636b2d6241e6ead112e66464d2f20849c8c11c52a81e3b98fd7",
+        "0f77447685f2dd1313bfc2875e1106defce60d21adc8cdfca6a1793de352c58d",
+        "65cabfb2e669001099b1a3df6809ba90967dbd4316d0dbacbffdb1c8c51db466",
+        "0c816f2484ce0f35858a7b13645133243242ed590448a48d6f173b87276c5cdb",
+        "a3e924c264e93f0818e9a3facf8c44f8c1b578a9d8ba5b695f718996cba090d8",
+        "0df2e3c985df532e841ae2bee66002c88cc5840e8057dfb03a8c38ec00a8b0ad",
+        "320d5acfd01f9877dca2ce27f5041860e5cc93964dd3bc1ab955baa05807cc5c"
+      ],
+      "compiler_sha256": "98de7c870009451ba75afd00775cd7000f7a839e1c4b6adb8a316bf7f67e377d",
+      "cost_report": {
+        "fri": {
+          "fold_step": 1,
+          "last_layer_degree_bound": 1,
+          "log_blowup_factor": 1,
+          "pow_bits": 26,
+          "queries": 70
+        },
+        "padded": {
+          "blake_g": 0,
+          "eq": 0,
+          "m31_to_u32": 0,
+          "qm31_ops": 512,
+          "triple_xor": 0
+        },
+        "preprocessed_cells": 4096,
+        "profile": "direct-m31-v4",
+        "raw": {
+          "blake_g": 0,
+          "eq": 0,
+          "m31_to_u32": 0,
+          "qm31_ops": 324,
+          "triple_xor": 0
+        }
+      },
+      "diagnostic_paired_wall_after_reported_pow_seconds": {
+        "max": 0.04703558300010599,
+        "median": 0.037271353999851736,
+        "median_absolute_deviation": 0.0016877290004356782,
+        "min": 0.03376708299963928,
+        "observations": 12,
+        "p90_interpolated": 0.040760599700518624
+      },
+      "observed_cost_model": {
+        "measurement_policy": {
+          "paired_total": "prover process wall plus native verifier process wall, excluding package build and audit utilities",
+          "peak_rss": "OS high-water mark for one native process tree; null if unavailable",
+          "process_wall": "includes process startup and resource-wrapper overhead",
+          "proof_of_work": "included in prover process wall and runtime prove; separately reported only when native timers exist",
+          "setup": "cold native setup in every fresh prover process",
+          "uncertainty": "median, median absolute deviation and interpolated p90 describe this observed corpus only"
+        },
+        "metrics": {
+          "native_verify_process_wall_seconds": {
+            "max": 0.019711833000656043,
+            "median": 0.01739131249996717,
+            "median_absolute_deviation": 0.0011479164995762403,
+            "min": 0.015012374999969325,
+            "observations": 12,
+            "p90_interpolated": 0.0194389790994137
+          },
+          "paired_prove_and_verify_wall_seconds": {
+            "max": 0.26040308299980097,
+            "median": 0.07215568699984942,
+            "median_absolute_deviation": 0.02179256300041743,
+            "min": 0.04086945800008834,
+            "observations": 12,
+            "p90_interpolated": 0.21162660800009692
+          },
+          "proof_bytes": {
+            "max": 58463,
+            "median": 55261.5,
+            "median_absolute_deviation": 415.5,
+            "min": 53191,
+            "observations": 12,
+            "p90_interpolated": 57871.9
+          },
+          "prove_process_wall_seconds": {
+            "max": 0.24295895799969003,
+            "median": 0.05262481249974371,
+            "median_absolute_deviation": 0.020871604500371177,
+            "min": 0.024005332999877282,
+            "observations": 12,
+            "p90_interpolated": 0.1950372835999588
+          },
+          "prover_peak_rss_bytes": {
+            "max": 9355264,
+            "median": 9207808.0,
+            "median_absolute_deviation": 81920.0,
+            "min": 9043968,
+            "observations": 12,
+            "p90_interpolated": 9330688.0
+          },
+          "prover_process_unattributed_seconds": {
+            "max": 0.02467804199994908,
+            "median": 0.016243104000016523,
+            "median_absolute_deviation": 0.0014365625003270946,
+            "min": 0.01254287499951763,
+            "observations": 12,
+            "p90_interpolated": 0.01794562079997739
+          },
+          "runtime_fri_pow_seconds": {
+            "max": 0.221431,
+            "median": 0.0312905,
+            "median_absolute_deviation": 0.0211005,
+            "min": 0.003825,
+            "observations": 12,
+            "p90_interpolated": 0.16239710000000002
+          },
+          "runtime_interaction_pow_seconds": {
+            "max": 0.004652,
+            "median": 0.00126,
+            "median_absolute_deviation": 0.0006645,
+            "min": 0.00051,
+            "observations": 12,
+            "p90_interpolated": 0.0035456
+          },
+          "runtime_prove_excluding_pow_seconds": {
+            "max": 0.0023029999999999995,
+            "median": 0.0012560000000000036,
+            "median_absolute_deviation": 2.800000000000068e-05,
+            "min": 0.0012099999999999997,
+            "observations": 12,
+            "p90_interpolated": 0.0012970000000000052
+          },
+          "runtime_prove_seconds": {
+            "max": 0.223238,
+            "median": 0.035398,
+            "median_absolute_deviation": 0.022441000000000003,
+            "min": 0.006305,
+            "observations": 12,
+            "p90_interpolated": 0.16786250000000003
+          },
+          "runtime_runtime_other_seconds": {
+            "max": 0.0014050000000000173,
+            "median": 0.0011595000000000025,
+            "median_absolute_deviation": 7.400000000000288e-05,
+            "min": 0.0010849999999999992,
+            "observations": 12,
+            "p90_interpolated": 0.0013518999999999975
+          },
+          "runtime_setup_seconds": {
+            "max": 0.001586,
+            "median": 0.000785,
+            "median_absolute_deviation": 1.3000000000000045e-05,
+            "min": 0.000729,
+            "observations": 12,
+            "p90_interpolated": 0.0007996
+          },
+          "runtime_total_through_verification_seconds": {
+            "max": 0.225436,
+            "median": 0.037374000000000004,
+            "median_absolute_deviation": 0.022548000000000002,
+            "min": 0.008239,
+            "observations": 12,
+            "p90_interpolated": 0.17104430000000004
+          },
+          "runtime_witness_seconds": {
+            "max": 0.000299,
+            "median": 9.6e-05,
+            "median_absolute_deviation": 5.999999999999997e-06,
+            "min": 8.8e-05,
+            "observations": 12,
+            "p90_interpolated": 0.0001058
+          },
+          "verifier_peak_rss_bytes": {
+            "max": 5439488,
+            "median": 5423104.0,
+            "median_absolute_deviation": 0.0,
+            "min": 5406720,
+            "observations": 12,
+            "p90_interpolated": 5439488.0
+          }
+        },
+        "schema": "s31-observed-whole-prover-cost-v1",
+        "verified_trials": 12
+      },
+      "package_build_cache": "uncontrolled Zig cache",
+      "package_build_wall_seconds": 54.47066833400004,
+      "package_manifest_sha256": "4544e36b962085976d52a1d595e37a7f08e79469cc1bd794f5f447d3e3c0eef3",
+      "package_reused": false,
+      "proof_sha256": [
+        "04dd0ecdc836abf947a5aaf1a3a9cf840962d8c0dda8fa4f77ef34b25c30c7b9",
+        "a5d149ddbbc71b926ab8e7509d7f792804306a9260d381d218f8648aa3620974",
+        "9818613d4af6e5d316660dd2c6711405345e5aaff27f85b3509be6bd3bea2f8e",
+        "8cb6c0b7719aa5007e81cd70ba49f6ebdc30bc82e8acc4afc02d054aecee6e04",
+        "ca90cff4a37405f3355619f4a6fba63265a029e79e8d68bd733c98056672a23b",
+        "349d30991254a6b92ae554fa905b4f5eab7817435bc9b480180683690a2e75ff",
+        "5b45bccc379f1f417b5552d92f7e683a68902de59c488ccf4469c668746f5622",
+        "a083387307f4683ab98f2acd4576cc54b0ba52361480aa1eddd190d769ecc129",
+        "22a49449c199290d5b85036f90784735a375e66d521d5409c2e7db7e58c666e9",
+        "13dc552add88e7c57cb28c94bc8f114e6f89d1410dc11db3455f7b60ca249a4a",
+        "cf4c518115dfd5d66f56f4f5afd2aaf918949d8307670c6d0d83baf26c6d2547",
+        "b7f6880d4d9a712ee588d102972d679e472647315a78c42547f826d80d45e03f"
+      ],
+      "source": "gates-04/exploratory_4.s31",
+      "source_sha256": "da679d28d479a32647f2307000ffbb0d2b2d7fde02b000feb21cc34626f3049c",
+      "trial_report_sha256": [
+        "86bd25d9735fd1f7909b238c233d568a917ab716a692905f3e83ba5adfc6381f",
+        "760120548261ed8819e427ef02e8e5933f7feeddabe85f68ae2f887489cca8d4",
+        "e04e0dfcb5c0d999d80702f1ec7f2a5fdb1278aef7c0385cbf7c7f5862c96bb4",
+        "6546677a099ed31c5c6052faefebad983bbd0af082aa186655f7e62177c07586",
+        "c4d2d0c1791929c25db707ca4068a87a6fd359223608af9985b2302f7ba56667",
+        "1abbdf2092d303bb64caf88b160934f9584d125975138073eab4e0d63018aa21",
+        "66456e4d5d3a6b35ed699121cd027e893d132a7084be1a0e18c9da0770b8d648",
+        "19eb1dd502ba27a443590861cc7e96f831045dfb9324d1e925ba865eea873d1f",
+        "4408f75178c3f2c6ef1e0389cee326977a129f3ea30b8e896bd7ee41047e446c",
+        "cdd2b7dc232384a2a601d4369e59226aa231cbc58ecce25d6e7d58f36123931b",
+        "f84c08db1d4c3c15780300f3809ca9c268a2764e5f068ba91bebbfd4d077ddd5",
+        "b553ea6e8caaf761823646f0c5348da6b26f5c285829af7324ae91081dde7223"
+      ]
+    }
+  },
+  "comparison": [
+    {
+      "gates": 1,
+      "padded_qm31_ops_rows": 512,
+      "paired_wall_after_reported_pow_median_seconds": 0.0289619999997869,
+      "paired_wall_median_seconds": 0.07360239550052938,
+      "preprocessed_cells": 4096,
+      "proof_bytes_median": 54480.0,
+      "prover_peak_rss_median_bytes": 9191424.0,
+      "raw_qm31_ops_rows": 321
+    },
+    {
+      "gates": 4,
+      "padded_qm31_ops_rows": 512,
+      "paired_wall_after_reported_pow_median_seconds": 0.037271353999851736,
+      "paired_wall_median_seconds": 0.07215568699984942,
+      "preprocessed_cells": 4096,
+      "proof_bytes_median": 55261.5,
+      "prover_peak_rss_median_bytes": 9207808.0,
+      "raw_qm31_ops_rows": 324
+    },
+    {
+      "gates": 16,
+      "padded_qm31_ops_rows": 512,
+      "paired_wall_after_reported_pow_median_seconds": 0.03579041699995299,
+      "paired_wall_median_seconds": 0.08832472950052761,
+      "preprocessed_cells": 4096,
+      "proof_bytes_median": 55356.5,
+      "prover_peak_rss_median_bytes": 9191424.0,
+      "raw_qm31_ops_rows": 336
+    }
+  ],
+  "host": {
+    "machine": "arm64",
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "python": "3.14.6",
+    "zig": "0.15.2"
+  },
+  "measurement_script_sha256": "1efc98fefd5dea5d8e28ef5550972cbf67e926d4b1932ccd40b45f8b0a518d13",
+  "samples_per_case": 12,
+  "schema": "s31-exploratory-bounded-direct-gate-cost-v1",
+  "scope": "One host, generated public four-lane +/.* recurrences, fresh native prover and verifier processes. Cost reports provide AIR geometry and FRI parameters, not wall-time, proof-byte or RSS predictions. No held-out calibration, extrapolation or automatic lowering. PoW-adjusted wall is a descriptive timer subtraction, not a measurement of a separate native process.",
+  "status": "exploratory-local-observation"
+}

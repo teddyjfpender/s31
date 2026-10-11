@@ -48,6 +48,8 @@ class RecordProofSnapshotTests(unittest.TestCase):
                 (package / "source.s31.json").write_text('{"version":1}')
                 (package / "verification-key.json").write_bytes(b"changed-key")
                 binary.write_bytes(b"changed-verifier")
+                proof.write_bytes(b"changed-proof-during-admission")
+                statement.write_bytes(b"changed-statement-during-admission")
                 self.assertEqual(json.loads((snapshot / "source.s31.json").read_text()),
                                  original_relation)
                 return {"name": "demo", "lowering": "direct-gate"}

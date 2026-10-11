@@ -145,6 +145,16 @@ import S31.Gadgets.Functional.SSADeadRowGateJoin
 import S31.Gadgets.Functional.SSADeadRowMixedReturn
 import S31.Gadgets.Functional.SSADecodedTraceBridge
 import S31.Gadgets.Functional.SSAGeneralDecodedTraceBridge
+import S31.Gadgets.Functional.SSAAliasTextBytes
+import S31.Gadgets.Functional.Correspondence.RawGateSoundness
+import S31.Gadgets.Functional.Correspondence.AliasRawGateSoundness
+import S31.Gadgets.Functional.Correspondence.AliasCanonicalIrBytes
+import S31.Gadgets.Functional.Correspondence.AliasCanonicalAirBridge
+import S31.Gadgets.Functional.Correspondence.ZeroPhysicalTraceWitness
+import S31.Gadgets.Functional.Correspondence.AliasProjectedExportBridge
+import S31.Gadgets.Functional.Correspondence.PinnedFullOutputRoster
+import S31.Gadgets.Functional.Correspondence.PinnedFullFixedRoster
+import S31.Gadgets.Functional.Correspondence.PinnedNativeSquare4Witness
 import S31.Gadgets.Functional.GeneratedDirectGateBridge
 import S31.Gadgets.Functional.GeneratedDirectGateMixedReturn
 import S31.Gadgets.Functional.MathLibrary
@@ -157,6 +167,7 @@ import S31.Gadgets.Functional.TupleValues
 import S31.Gadgets.Functional.RecordValues
 import S31.Gadgets.Functional.RecordBoundary
 import S31.Gadgets.Functional.RecordAbiV2
+import S31.Gadgets.Functional.RecordPinnedPairAliasV2
 import S31.Gadgets.Functional.StaticRecurrence
 import S31.Gadgets.Functional.WorkedMix4
 import S31.Gadgets.Functional.Assertions

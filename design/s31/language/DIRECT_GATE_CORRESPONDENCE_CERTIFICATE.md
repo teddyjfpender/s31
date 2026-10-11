@@ -9,10 +9,13 @@ native verifier's accepted proof language.
 The checker independently tokenizes the exact UTF-8 `.s31` bytes. Outside
 `//` comments, only ASCII whitespace and tokens are admitted. It accepts
 one public `[m31; 4]` input and one public `[m31; 4]` output, 1–16 fresh
-`let` bindings of `earlier + earlier` or `earlier .* earlier`, then a returned
-`let` wire. Comments and whitespace are allowed. Imports, functions, constants,
-private inputs, assertions, casts, and nested expressions are outside this
-version. Each use must reference the input or a previous binding.
+arithmetic `let` bindings of `earlier + earlier` or `earlier .* earlier`,
+interleaved with alias bindings `let alias = earlier;`, then a returned
+arithmetic wire or its alias. Redundant parentheses and an optional final
+semicolon are allowed and create no additional SSA node or gate. Comments
+and whitespace are allowed. Imports, functions, constants, private inputs,
+assertions, casts, and nested arithmetic are outside this version. Each use
+must reference the input or a previous binding.
 The exact source is limited to 16,384 UTF-8 bytes and 256 tokens.
 Commutative operands must appear in increasing positional-wire order, and
 no two bindings may repeat the same operation on the same operand pair. The
@@ -35,6 +38,13 @@ both four lanes wide, and a public `result` output. The static sharing is
 preserved: wire 1 is used twice by the second operation. For each lane, the
 local arithmetic obligations are `square - x*x = 0` and
 `result - square*square = 0` over M31.
+
+`let input_alias = (x); let square = ((input_alias) .* (input_alias));`
+has the same single arithmetic node, canonical IR bytes, and native gate
+schedule as `let square = x .* x;`. The independent checker resolves aliases
+to their producer wire IDs and compares the emitted relation against the
+producer names. An alias of the result can be returned, but the public output
+name remains that producer's name.
 
 ## What the checker compares
 
@@ -113,13 +123,20 @@ The machine-readable status is:
 
 The Python parser and checker are independent of the production Python text
 compiler. They are not Lean-verified. The Lean byte parser below gives an
-additional, independently executed semantic check for its narrower ASCII
-fragment; equivalence between the Python and Lean parsers for all Python
-accepted inputs remains unproved.
+additional, independently executed semantic check for the bounded direct-gate
+fragment. `SSAAliasTextBytes` accepts alias lets and redundant parentheses,
+erases them before constructing producer-only SSA, and proves that checked
+normalized bytes preserve its source-byte denotation. The original
+`SSATextBytes` direct-let parser remains for older theorems. The new
+`Correspondence/AliasRawGateSoundness` theorem carries the alias certificate
+to arbitrary physical Gate rows under explicit fixed-cell, event, and balance
+premises. Equivalence between the Python and Lean parsers for every Python
+accepted byte string, and authentication of those physical rows by the PCS,
+remain unproved.
 
 For this exact fragment, the checker also reconstructs the compact bytes
 hashed by Zig's `canonical.build` legacy SSA path. The reconstructed JSON has
-one public M31 input node, one add or multiply node per checked let, and the
+one public M31 input node, one add or multiply node per arithmetic let, and the
 selected public output name and ID. It preserves the serializer's field order
 and explicit `null` fields. The grammar rejects repeated expressions and
 reversed operands, so Zig's common-subexpression elimination and operand
