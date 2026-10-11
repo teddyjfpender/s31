@@ -1,5 +1,21 @@
 # Whole-prover model transfer
 
+## Prospective V7 study tooling
+
+The V6 wall predictor failed the later same-host transfer. V7 is a new,
+**unfrozen and unmeasured** study on a future settled compiler/engine stack.
+See [the V7 workflow](../../../../../design/s31/measurements/WHOLE_PROVER_V7_RUNBOOK.md).
+`v7_protocol.py` fixes the two workload splits and their 4,000 assignment
+digests before native work, pins every benchmark and frontend Python source
+(including the RSS predictor and both value oracles), and rejects overlap with
+the V6 or transfer corpora. The V7 collector, predictor, and publisher do not
+alter any V6 protocol, model, audit, or raw artifact.
+
+Automatic lowering remains disabled. A future V7 pass would describe only the
+exact pinned host, compiler, engine, proof profile, and workload family.
+
+## V6 transfer diagnostic
+
 `transfer_v1.py` checks whether the frozen V6 whole-prover predictor still
 describes the changed S31 compiler on the same host. Its eight generated
 programs cover arithmetic, direct chip, hash, and fixed-width division.
