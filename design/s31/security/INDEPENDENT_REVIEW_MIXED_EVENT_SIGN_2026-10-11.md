@@ -28,9 +28,9 @@ The earlier `SourceMixedPath.lean` rational-closure premise paired `circuitYield
 
 The earlier good-challenge premise used raw `badPairs7`. That set includes every non-pole challenge when an honest witness already has exact event balance, so it could not be instantiated on an honest trace. The patched conditional theorem uses `imbalancePairs7`, defined as empty for exact balance and as the false-closure set for imbalance. `exact_joint_has_no_imbalance_pairs` makes honest-trace non-vacuity explicit. A numerical soundness bound still requires the separate event-count bounds and a proof linking the native Fiat–Shamir challenge to the modeled exception event.
 
-## Earlier pair theorem naming caveat
+## Earlier pair theorem circuit sign convention
 
-`TaggedPairSourceComposition.source_pair_claims_imply_exact_events` states its circuit-claim premise as `sum(circuitYields) − sum(circuitUses)`. These are abstract parameters: to match the native Qm31 claim, its `circuitYields` argument must be the **positive physical row-input uses**, and its `circuitUses` argument must be the **negative physical row-output yields**. Those names are opposite `GateSource`'s physical meaning. This is a correspondence hazard, not a contradiction in the abstract conditional theorem. The mixed repair does not instantiate that theorem by matching those names.
+`TaggedPairSourceComposition.source_pair_claims_imply_exact_events` states its circuit-claim premise as `sum(circuitPositiveInputs) − sum(circuitNegativeOutputs)`. These abstract parameters now name the native Qm31 orientation: positive physical row-input uses and negative physical row-output yields. This renames only the theorem binders; it does not provide native compiler-to-event correspondence. Downstream pair modules still use the older abstract names `circuitYields` and `circuitUses`; a caller must pass positive physical row-input events to the former. The mixed repair does not instantiate the pair theorem.
 
 ## Remaining limits
 

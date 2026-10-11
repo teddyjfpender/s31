@@ -1067,7 +1067,7 @@ The Python parity corpus is regression evidence for the executable semantics,
 not a proof of compiler or cryptographic correctness. Hash parity includes
 Python `hashlib` and the existing independent Poseidon2 implementation.
 The source inventory includes both reused Lean modules, whose theorems are
-also included in the live axiom audit. In the current inventory, 1,480
+also included in the live axiom audit. In the current inventory, 1,965
 declarations are explicit or in the two-entry non-field `DERIVED_THEOREMS`
 name list; **40 additional** kernel theorems are Lean-generated projections
 of proof fields in ten structures across eight source files, including the
@@ -1078,7 +1078,7 @@ lexer to remove nested block comments, line comments and strings before
 source enumeration. A commented field plus a hand-written same-name lemma
 cannot stand in for a
 generated projection. The static inventory and live audit both require all
-1,520 names: an unknown or missing generated projection fails the gate, and
+2,005 names: an unknown or missing generated projection fails the gate, and
 every projection receives the same kernel theorem-kind and axiom check as an
 explicit theorem. This is a source-to-kernel inventory check, not a proof of
 the production compiler or its emitted constraints.

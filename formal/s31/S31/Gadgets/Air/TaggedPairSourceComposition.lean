@@ -225,30 +225,30 @@ theorem source_pair_claims_imply_exact_events
     (chip₀ : ChipRows m₀ hm₀ alpha z)
     (chip₁ : ChipRows m₁ hm₁ alpha z)
     (bridge₀ bridge₁ : BridgeRows alpha z)
-    (circuitYields circuitUses : List JointTuple)
+    (circuitPositiveInputs circuitNegativeOutputs : List JointTuple)
     (outputs : List Quad) (circuitClaim : GateSecure)
     (hcircuit : circuitClaim =
-      productionReciprocalSum7 circuitYields alpha z -
-      productionReciprocalSum7 circuitUses alpha z)
+      productionReciprocalSum7 circuitPositiveInputs alpha z -
+      productionReciprocalSum7 circuitNegativeOutputs alpha z)
     (hverify : verifierClaimFold outputs
       (pairClaims circuitClaim chip₀.claim chip₁.claim
         bridge₀.claim bridge₁.claim) alpha z = 0)
     (hgood : (alpha,z) ∉ badPairs7
-      ((circuitYields ++ publicOutputYields outputs) ++
+      ((circuitPositiveInputs ++ publicOutputYields outputs) ++
         (bridge₀.gateEvents ++ bridge₁.gateEvents) ++
         (chip₀.inputEvents ++ chip₁.inputEvents) ++
         (bridge₀.finishEvents ++ bridge₁.finishEvents))
-      (circuitUses ++ (chip₀.outputEvents ++ chip₁.outputEvents) ++
+      (circuitNegativeOutputs ++ (chip₀.outputEvents ++ chip₁.outputEvents) ++
         (bridge₀.startEvents ++ bridge₁.startEvents))) :
     (∀ row lane,
       chip₀.output row lane = chip₀.input row lane ^ 2 + chip₀.constant) ∧
     (∀ row lane,
       chip₁.output row lane = chip₁.input row lane ^ 2 + chip₁.constant) ∧
-    ((circuitYields ++ publicOutputYields outputs) ++
+    ((circuitPositiveInputs ++ publicOutputYields outputs) ++
       (bridge₀.gateEvents ++ bridge₁.gateEvents) ++
       (chip₀.inputEvents ++ chip₁.inputEvents) ++
       (bridge₀.finishEvents ++ bridge₁.finishEvents)).Perm
-      (circuitUses ++ (chip₀.outputEvents ++ chip₁.outputEvents) ++
+      (circuitNegativeOutputs ++ (chip₀.outputEvents ++ chip₁.outputEvents) ++
         (bridge₀.startEvents ++ bridge₁.startEvents)) := by
   refine ⟨chip₀.arithmetic_sound, chip₁.arithmetic_sound, ?_⟩
   have hfold := pairClaims_fold outputs circuitClaim chip₀.claim
@@ -258,7 +258,7 @@ theorem source_pair_claims_imply_exact_events
       productionReciprocalSum7 (publicOutputYields outputs) alpha z = 0 :=
     hfold ▸ hverify
   exact five_claimed_sums_imply_exact_joint_events
-    circuitYields circuitUses (publicOutputYields outputs)
+    circuitPositiveInputs circuitNegativeOutputs (publicOutputYields outputs)
     bridge₀.gateEvents bridge₁.gateEvents
     chip₀.inputEvents chip₁.inputEvents
     chip₀.outputEvents chip₁.outputEvents

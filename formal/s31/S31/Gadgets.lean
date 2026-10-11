@@ -166,6 +166,7 @@ import S31.Gadgets.Functional.Correspondence.PinnedNativeSquare4Witness
 import S31.Gadgets.Functional.Correspondence.PinnedNativeSquare4Context
 import S31.Gadgets.Functional.Correspondence.GeneratedMutationRows
 import S31.Gadgets.Functional.Correspondence.GeneratedNativeClaims
+import S31.Gadgets.Functional.Correspondence.GeneratedMixedFixedRows
 import S31.Gadgets.Functional.GeneratedDirectGateBridge
 import S31.Gadgets.Functional.GeneratedDirectGateMixedReturn
 import S31.Gadgets.Functional.MathLibrary
@@ -179,6 +180,8 @@ import S31.Gadgets.Functional.RecordValues
 import S31.Gadgets.Functional.RecordBoundary
 import S31.Gadgets.Functional.RecordAbiV2
 import S31.Gadgets.Functional.RecordWordBoundaryV2
+import S31.Gadgets.Functional.RecordLayoutValidationV2
+import S31.Gadgets.Functional.GeneratedRecordLayoutCorpusV2
 import S31.Gadgets.Functional.RecordStatementV2
 import S31.Gadgets.Functional.GeneratedRecordStatementCorpusV2
 import S31.Gadgets.Functional.RecordPinnedPairAliasV2
