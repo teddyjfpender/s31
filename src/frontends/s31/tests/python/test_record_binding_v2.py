@@ -203,11 +203,12 @@ class RecordBindingV2Tests(unittest.TestCase):
                 ("request", self.request, "public", ["a", "b"]),
                 ("witness", private, "private", ["secret"]),
             ], ("result", Type("m31", 1), ["sum"]))
-        result = RecordType("BitResult", (("flag", Type("bit", 1)),))
+        result = RecordType("BitResult", (("flag", Type("bit", 1)),
+                                          ("copy", Type("m31", 1))))
         binding = make_binding(self.relation, [
             ("request", self.request, "public", ["a", "b"]),
             ("witness", Type("m31", 1), "private", ["secret"]),
-        ], ("result", result, ["sum"]))
+        ], ("result", result, ["sum", "b"]))
         changed = copy.deepcopy(binding)
         changed["result"]["type"]["fields"][0]["type"]["length"] = 2
         changed["result"]["leaves"][0]["length"] = 2

@@ -36,7 +36,9 @@ circuit bits(public request: Request, private other: [m31; 1]) -> public Respons
                  "result": {"flag": [1], "chosen": [7]}}
         flat = flat_assignment_from_typed(relation,
                                           (json.dumps(typed, sort_keys=True) + "\n").encode())
-        self.assertEqual(evaluate_relation(relation, flat), flat["public_outputs"])
+        first_order = {**relation, "version": 1}
+        del first_order["public_abi"]
+        self.assertEqual(evaluate_relation(first_order, flat), flat["public_outputs"])
         typed["result"]["flag"] = [2]
         with self.assertRaises(AbiError):
             flat_assignment_from_typed(relation,

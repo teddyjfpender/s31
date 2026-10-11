@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import copy
 import json
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -14,8 +15,9 @@ S31 = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(S31 / "python"))
 
 import s31
-from abi.binding_v2 import flat_assignment_from_typed
-from package.context import write_json
+from abi.binding_v2 import binding_digest, flat_assignment_from_typed
+from package.context import BUILD_FILE, file_hash, write_json
+from package.verify import verify_package
 from text_frontend import compile_text
 
 
@@ -42,6 +44,133 @@ def reject(verifier: Path, proof: Path, statement: Path, key: Path,
             expected is not None and f"error: {expected}" not in result.stderr):
         raise AssertionError(f"native verifier mishandled {label}: "
                              f"exit={result.returncode} {result.stderr}")
+
+
+def changed_public_tag(relation: dict, index: int, expected: str,
+                       replacement: str) -> tuple[dict, str]:
+    """Make a structurally valid but differently typed descriptor."""
+    changed = copy.deepcopy(relation["public_abi"])
+    field = changed["result"]["type"]["fields"][index]["type"]
+    leaf = changed["result"]["leaves"][index]
+    if (field != {"kind": expected, "length": 1} or
+            leaf["kind"] != expected or replacement == expected):
+        raise AssertionError("unexpected public field tag for forged ABI control")
+    field["kind"] = leaf["kind"] = replacement
+    base = {**relation, "version": 1}
+    del base["public_abi"]
+    return changed, binding_digest(base, changed)
+
+
+def adversarial_package_controls(work: Path, package: Path, relation: dict,
+                                 proof: Path, statement: Path) -> None:
+    for label, index, expected, replacement in (
+            ("bit-to-m31", 0, "bit", "m31"),
+            ("m31-to-bit", 1, "m31", "bit")):
+        changed, forged_digest = changed_public_tag(
+            relation, index, expected, replacement)
+        altered = work / f"altered-{label}-sidecar"
+        shutil.copytree(package, altered)
+        sidecar = json.loads((altered / "public-abi.json").read_text())
+        sidecar["boundary"] = changed
+        sidecar["boundary_sha256"] = forged_digest
+        write_json(altered / "public-abi.json", sidecar)
+        manifest = json.loads((altered / "manifest.json").read_text())
+        manifest["artifacts"]["public-abi.json"] = file_hash(altered / "public-abi.json")
+        write_json(altered / "manifest.json", manifest)
+        try:
+            verify_package(altered)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"package reader accepted a rehashed {label} ABI sidecar")
+
+        key = json.loads((package / "verification-key.json").read_text())
+        key["public_abi_sha256"] = forged_digest
+        forged_key = work / f"resealed-{label}-key.json"
+        write_json(forged_key, key)
+        prefix = work / f"resealed-{label}"
+        options = ([f"-Ds31-stdlib-sha256={key['stdlib_lock_sha256']}"]
+                   if key.get("stdlib_lock_sha256") else [])
+        s31.invoke("zig", "build", "--build-file", str(BUILD_FILE), "install",
+                   "-Doptimize=ReleaseFast", "-Ds31-version=1", "-Ds31-lowering=direct-gate",
+                   f"-Ds31-source={(package / 'source.s31.json').resolve()}",
+                   "-Ds31-name=bits", f"-Ds31-key={forged_key}", *options,
+                   "--prefix", str(prefix))
+        verifier = prefix / "bin/s31-bits-native-verifier"
+        result = subprocess.run((str(verifier), str(proof), str(statement), str(forged_key)),
+                                capture_output=True, text=True)
+        if result.returncode != 1 or "error: InvalidVerificationKey" not in result.stderr:
+            raise AssertionError(f"resealed {label} key bypassed embedded-source ABI check: "
+                                 f"exit={result.returncode} {result.stderr}")
+
+
+def raw_relation_controls(work: Path, relation: dict) -> None:
+    """Exercise valid descriptors the source compiler intentionally cannot emit."""
+    alias = copy.deepcopy(relation)
+    alias["name"] = "bits_mixed_alias"
+    output = alias["public_abi"]["result"]
+    flag_wire = output["leaves"][0]["wire"]
+    output["type"]["fields"].append(
+        {"name": "again_as_m31", "type": {"kind": "m31", "length": 1}})
+    output["leaves"].append({"path": [{"root": "result"}, {"field": "again_as_m31"}],
+                             "wire": flag_wire, "kind": "m31", "length": 1})
+    alias_source = work / "bits_mixed_alias.s31.json"
+    write_json(alias_source, alias)
+    alias_package = s31.build(alias_source, work / "mixed-alias-package", "direct-gate")
+    alias_assignment = {"version": 2,
+                        "public_inputs": {"request": {"flag": [0], "value": [7]}},
+                        "private_inputs": {"other": [0]},
+                        "result": {"flag": [1], "chosen": [7], "again_as_m31": [1]}}
+    alias_path = work / "mixed-alias-assignment.json"
+    alias_path.write_bytes(canonical(alias_assignment))
+    alias_trial = s31.trial(alias_package, alias_path, work / "mixed-alias-trial")
+    if not alias_trial["native_verifier_accepted"]:
+        raise AssertionError("valid bit/M31 alias proof failed")
+    alias_statement = json.loads((work / "mixed-alias-trial/statement.json").read_text())
+    if alias["public_outputs"].count(flag_wire) != 1 or len(alias_statement["leaves"]) != 5:
+        raise AssertionError("mixed-kind alias unexpectedly added a proof word")
+    alias_statement["leaves"][4]["words"][0] = 0
+    reject(alias_package / "bin/s31-bits_mixed_alias-native-verifier",
+           work / "mixed-alias-trial/proof.bin", work / "mixed-alias-mutation.json",
+           alias_package / "verification-key.json", canonical(alias_statement),
+           "mixed-kind alias disagreement", "InvalidRecordStatement")
+
+    unused = copy.deepcopy(relation)
+    unused["name"] = "bits_unused_public"
+    unused["inputs"].append({"name": "spare", "kind": "m31", "length": 1,
+                             "visibility": "public"})
+    unused["public_abi"]["inputs"].append(
+        {"name": "spare", "type": {"kind": "bit", "length": 1},
+         "visibility": "public",
+         "leaves": [{"path": [{"root": "spare"}], "wire": "spare",
+                     "kind": "bit", "length": 1}]})
+    unused_source = work / "bits_unused_public.s31.json"
+    write_json(unused_source, unused)
+    unused_package = s31.build(unused_source, work / "unused-bit-package", "direct-gate")
+    for bit in (0, 1):
+        typed = {"version": 2,
+                 "public_inputs": {"request": {"flag": [0], "value": [7]},
+                                   "spare": [bit]},
+                 "private_inputs": {"other": [0]},
+                 "result": {"flag": [1], "chosen": [7]}}
+        assignment_path = work / f"unused-bit-{bit}.json"
+        assignment_path.write_bytes(canonical(typed))
+        trial_dir = work / f"unused-bit-trial-{bit}"
+        trial = s31.trial(unused_package, assignment_path, trial_dir)
+        if not trial["native_verifier_accepted"]:
+            raise AssertionError(f"unused public bit {bit} was not bound to the proof")
+        changed = json.loads((trial_dir / "statement.json").read_text())
+        flipped = copy.deepcopy(changed)
+        flipped["leaves"][2]["words"][0] ^= 1
+        reject(unused_package / "bin/s31-bits_unused_public-native-verifier",
+               trial_dir / "proof.bin", work / f"unused-bit-flipped-{bit}.json",
+               unused_package / "verification-key.json", canonical(flipped),
+               "valid but changed unused public bit")
+        changed["leaves"][2]["words"][0] = 2
+        reject(unused_package / "bin/s31-bits_unused_public-native-verifier",
+               trial_dir / "proof.bin", work / f"unused-bit-mutation-{bit}.json",
+               unused_package / "verification-key.json", canonical(changed),
+               "unused public bit outside Boolean range", "InvalidRecordStatement")
 
 
 def main() -> None:
@@ -74,6 +203,8 @@ def main() -> None:
         verifier = package / "bin/s31-bits-native-verifier"
         key = package / "verification-key.json"
         checked = 0
+        first_proof: Path | None = None
+        first_statement: Path | None = None
         for flag, other, expected_flag, chosen in ((0, 0, 1, 7), (1, 5, 0, 5)):
             typed = {"version": 2,
                      "public_inputs": {"request": {"flag": [flag], "value": [7]}},
@@ -93,6 +224,9 @@ def main() -> None:
                     not flat_trial["native_verifier_accepted"]):
                 raise AssertionError("honest typed or flat bit proof did not verify")
             proof = trial_dir / "proof.bin"
+            if first_proof is None:
+                first_proof = proof
+                first_statement = trial_dir / "statement.json"
             statement = json.loads((trial_dir / "statement.json").read_text())
             for at in (0, 2):
                 for bad in (2, (1 << 31) - 2):
@@ -113,9 +247,18 @@ def main() -> None:
                    "flat v1 statement replay")
             checked += 1
 
+        if first_proof is None or first_statement is None:
+            raise AssertionError("no honest bit proof was produced")
+        adversarial_package_controls(work, package, relation, first_proof, first_statement)
+        raw_relation_controls(work, relation)
+
         print(json.dumps({"schema": "s31-record-public-bit-v2-acceptance",
                           "native_honest_proofs": 2, "flat_parity_proofs": 2,
                           "native_rejected_mutations": checked,
+                          "rehashed_bit_m31_sidecars_rejected": 2,
+                          "resealed_bit_m31_keys_rejected": 2,
+                          "mixed_kind_alias_rejected": True,
+                          "unused_public_bit_range_checked": True,
                           "zero_extra_grouping_rows": True,
                           "raw": record_cost["raw"],
                           "padded": record_cost["padded"]},
