@@ -50,6 +50,10 @@ def build_json(source_path: Path, output: Path, lowering: str = "gate",
         raise ValueError("FRI fold step 4 requires gate or sparse-wide-gate lowering; supported steps are 1 and 4")
     source_path = source_path.resolve()
     source, data = load_source(source_path)
+    # The v2 build selector currently exists only for direct-gate records.
+    # Direct-chip v2 records still use the v1 build route and validate their
+    # embedded v2 descriptor in the native compiler and verifier.
+    build_source_version = 2 if source["version"] == 2 and lowering == "direct-gate" else 1
     gate_manifest_v2 = lowering == "direct-gate" and source["version"] == 1
     gate_manifest_option = ("-Ds31-direct-gate-manifest-version=2",) if gate_manifest_v2 else ()
     if source["version"] == 2:
@@ -85,7 +89,7 @@ def build_json(source_path: Path, output: Path, lowering: str = "gate",
         name = source["name"]
         invoke(
             "zig", "build", "--build-file", str(BUILD_FILE), "install",
-            "-Doptimize=ReleaseFast", f"-Ds31-version={source['version']}",
+            "-Doptimize=ReleaseFast", f"-Ds31-version={build_source_version}",
             *gate_manifest_option,
             f"-Ds31-lowering={lowering}", f"-Ds31-fri-fold-step={fri_fold_step}",
             f"-Ds31-source={source_path}", f"-Ds31-name={name}",
@@ -180,7 +184,7 @@ def build_json(source_path: Path, output: Path, lowering: str = "gate",
                 state_fold_option = (f"-Ds31-state-fold-key={state_fold_key}",)
         invoke(
             "zig", "build", "--build-file", str(BUILD_FILE), "install",
-            "-Doptimize=ReleaseFast", f"-Ds31-version={source['version']}",
+            "-Doptimize=ReleaseFast", f"-Ds31-version={build_source_version}",
             *gate_manifest_option,
             f"-Ds31-lowering={lowering}", f"-Ds31-fri-fold-step={fri_fold_step}",
             f"-Ds31-source={source_path}", f"-Ds31-name={name}",
