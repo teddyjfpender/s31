@@ -69,6 +69,7 @@ pub fn componentSource(schema: []const u8, c: Component) !ComponentSource {
     if (std.mem.eql(u8, c.name, "qm31_ops")) {
         if (c.source_index != 1) return error.InvalidComponentSource;
         if (std.mem.eql(u8, schema, "s31-component-manifest-direct-gate-v1") or
+            std.mem.eql(u8, schema, "s31-component-manifest-direct-gate-v2") or
             std.mem.eql(u8, schema, "s31-component-manifest-direct-chip-v2") or
             std.mem.eql(u8, schema, "s31-component-manifest-direct-pair-v1"))
             return .{ .bundled_air = 1 };
@@ -89,7 +90,8 @@ pub fn componentSource(schema: []const u8, c: Component) !ComponentSource {
 /// source classes and proof/sum positions independently of the generated
 /// fields before serializing or comparing them with a sealed key.
 pub fn validateDirectSourceRoster(manifest: Manifest) !void {
-    const gate = std.mem.eql(u8, manifest.schema, "s31-component-manifest-direct-gate-v1");
+    const gate = std.mem.eql(u8, manifest.schema, "s31-component-manifest-direct-gate-v1") or
+        std.mem.eql(u8, manifest.schema, "s31-component-manifest-direct-gate-v2");
     const chip_profile = std.mem.eql(u8, manifest.schema, "s31-component-manifest-direct-chip-v2");
     if (!gate and !chip_profile) return error.InvalidComponentSource;
     const expected_len: usize = if (gate) 1 else blk: {
@@ -362,6 +364,24 @@ pub fn directGate(
     };
     try validateDirectSourceRoster(value);
     return .{ .arena = arena, .value = value };
+}
+
+/// Keep the v1 generator byte-for-byte stable. The v2 roster has identical
+/// geometry but a distinct schema and a transcript-bound typed precommitment.
+pub fn directGateV2(
+    backing: std.mem.Allocator,
+    pp: *const direct.Circuit,
+    air_bytes: []const u8,
+    program_digest: [32]u8,
+    ir_digest: [32]u8,
+    preprocessed_root: [32]u8,
+    circuit_hash: [32]u8,
+) !Generated {
+    var generated = try directGate(backing, pp, air_bytes, program_digest, ir_digest, preprocessed_root, circuit_hash);
+    errdefer generated.deinit();
+    generated.value.schema = "s31-component-manifest-direct-gate-v2";
+    try validateDirectSourceRoster(generated.value);
+    return generated;
 }
 
 /// Extend the source-derived direct gate manifest with the two native AIRs
@@ -714,8 +734,19 @@ pub fn matchesPair(a: std.mem.Allocator, sealed: PairManifest, generated: PairMa
 /// It contains no witness values. The true source hash remains a separate key
 /// field; the returned effective digest is used only by the native engine.
 pub fn precommitmentDigest(manifest: Manifest) [32]u8 {
+    return precommitmentDigestWithDomain(manifest, "S31-COMPONENT-MANIFEST-PRECOMMIT-V2\x00");
+}
+
+pub fn gatePrecommitmentDigest(manifest: Manifest) ![32]u8 {
+    if (!std.mem.eql(u8, manifest.schema, "s31-component-manifest-direct-gate-v2"))
+        return error.InvalidComponentManifest;
+    try validateDirectSourceRoster(manifest);
+    return precommitmentDigestWithDomain(manifest, "S31-DIRECT-GATE-MANIFEST-PRECOMMIT-V2\x00");
+}
+
+fn precommitmentDigestWithDomain(manifest: Manifest, domain: []const u8) [32]u8 {
     var h = Sha256.init(.{});
-    h.update("S31-COMPONENT-MANIFEST-PRECOMMIT-V2\x00");
+    h.update(domain);
     hashBytes(&h, manifest.schema);
     hashBytes(&h, manifest.profile);
     hashBytes(&h, manifest.program_sha256);
@@ -781,6 +812,17 @@ pub fn effectiveSourceDigest(source_digest: [32]u8, manifest: Manifest) [32]u8 {
     h.update("S31-DIRECT-CHIP-MANIFEST-TRANSCRIPT-V2\x00");
     h.update(&source_digest);
     const digest = precommitmentDigest(manifest);
+    h.update(&digest);
+    var result: [32]u8 = undefined;
+    h.final(&result);
+    return result;
+}
+
+pub fn gateEffectiveSourceDigest(source_digest: [32]u8, manifest: Manifest) ![32]u8 {
+    var h = Sha256.init(.{});
+    h.update("S31-DIRECT-GATE-MANIFEST-TRANSCRIPT-V2\x00");
+    h.update(&source_digest);
+    const digest = try gatePrecommitmentDigest(manifest);
     h.update(&digest);
     var result: [32]u8 = undefined;
     h.final(&result);
@@ -880,6 +922,51 @@ test "legacy component source slots have a typed, closed interpretation" {
     try std.testing.expectError(error.InvalidComponentSource, componentSource(chip_schema, c));
     c.name = "unregistered_native_air";
     try std.testing.expectError(error.InvalidComponentSource, componentSource(pair_schema, c));
+}
+
+test "direct-gate v2 typed identity excludes cyclic hash and binds roster" {
+    const c: Component = .{
+        .name = "qm31_ops",
+        .source_index = 1,
+        .proof_index = 0,
+        .trace_log_size = 9,
+        .evaluation_log_size = 10,
+        .base_trace_columns = 12,
+        .interaction_trace_columns = 8,
+        .n_constraints = 11,
+        .random_coefficient_offset = 0,
+        .trace_spans = &.{},
+        .preprocessed_indices = &.{},
+        .program_binding_sha256 = "program-a",
+    };
+    const value: Manifest = .{
+        .schema = "s31-component-manifest-direct-gate-v2",
+        .profile = "direct-m31-v4",
+        .program_sha256 = "source",
+        .canonical_ir_sha256 = "ir",
+        .air_bundle_sha256 = "air",
+        .preprocessed_root = "root",
+        .circuit_hash = "hash-a",
+        .composition_plan_hash = 17,
+        .claimed_sums = 1,
+        .components = &.{c},
+        .preprocessed_columns = &.{},
+    };
+    const digest = try gatePrecommitmentDigest(value);
+    const chip_digest = precommitmentDigest(value);
+    try std.testing.expect(!std.mem.eql(u8, &digest, &chip_digest));
+    var changed = value;
+    changed.circuit_hash = "hash-b";
+    try std.testing.expectEqualDeep(digest, try gatePrecommitmentDigest(changed));
+    var other = c;
+    other.program_binding_sha256 = "program-b";
+    changed.components = &.{other};
+    const other_digest = try gatePrecommitmentDigest(changed);
+    try std.testing.expect(!std.mem.eql(u8, &digest, &other_digest));
+    const source = [_]u8{7} ** 32;
+    const effective = try gateEffectiveSourceDigest(source, value);
+    const other_effective = try gateEffectiveSourceDigest(source, changed);
+    try std.testing.expect(!std.mem.eql(u8, &effective, &other_effective));
 }
 
 fn hex(allocator: std.mem.Allocator, digest: [32]u8) ![]const u8 {

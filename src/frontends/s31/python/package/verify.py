@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 
 import proof_privacy
-from package.manifest_digest import direct_chip_v2_digest
+from package.manifest_digest import direct_chip_v2_digest, direct_gate_v2_digest
 from package.context import (
     AIR_BUNDLE_SHA256, LIBRARY_SOURCE_FILES, PROJECTION_SHA256, abi, file_hash,
     lower_text, parse_source_json, text_interface,
@@ -154,6 +154,8 @@ def verify_package(package: Path) -> dict:
         expected_abi = abi(source, manifest["lowering"])["boundary_sha256"]
         expected_key_schema = ("s31-verification-key-direct-record-chip-v2"
                                if manifest["lowering"] == "direct-chip"
+                               else "s31-verification-key-direct-manifest-v2"
+                               if key.get("schema") == "s31-verification-key-direct-manifest-v2"
                                else "s31-verification-key-direct-record-v2")
         if (key.get("schema") != expected_key_schema or
                 key.get("public_abi_sha256") != expected_abi or
@@ -175,11 +177,20 @@ def verify_package(package: Path) -> dict:
                 raise ValueError("invalid legacy S31 direct-gate component manifest")
         else:
             declared = key.get("component_manifest")
+            gate_v2 = key.get("schema") == "s31-verification-key-direct-manifest-v2"
+            try:
+                expected_digest = direct_gate_v2_digest(declared) if gate_v2 and isinstance(declared, dict) else None
+            except (KeyError, TypeError, ValueError) as exc:
+                raise ValueError("S31 direct-gate component manifest does not match sealed key") from exc
             if ("component-manifest.json" not in artifacts or
-                    key.get("schema") != ("s31-verification-key-direct-record-v2" if source["version"] == 2 else "s31-verification-key-direct-manifest-v1") or
+                    key.get("schema") != ("s31-verification-key-direct-manifest-v2" if gate_v2 else "s31-verification-key-direct-record-v2" if source["version"] == 2 else "s31-verification-key-direct-manifest-v1") or
                     key.get("profile") != "direct-m31-v4" or
                     not isinstance(declared, dict) or
-                    declared.get("schema") != "s31-component-manifest-direct-gate-v1" or
+                    declared.get("schema") != ("s31-component-manifest-direct-gate-v2" if gate_v2 else "s31-component-manifest-direct-gate-v1") or
+                    (gate_v2 and (key.get("manifest_precommitment_sha256") != expected_digest or
+                                  report.get("manifest_precommitment_sha256") != expected_digest)) or
+                    (not gate_v2 and (key.get("manifest_precommitment_sha256") is not None or
+                                      report.get("manifest_precommitment_sha256") is not None)) or
                     declared.get("profile") != key["profile"] or
                     any(declared.get(field) != key.get(field) for field in (
                         "program_sha256", "canonical_ir_sha256", "preprocessed_root", "circuit_hash",

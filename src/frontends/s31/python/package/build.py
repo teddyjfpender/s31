@@ -25,6 +25,8 @@ def build_json(source_path: Path, output: Path, lowering: str = "gate",
         raise ValueError("FRI fold step 4 requires gate or sparse-wide-gate lowering; supported steps are 1 and 4")
     source_path = source_path.resolve()
     source, data = load_source(source_path)
+    gate_manifest_v2 = lowering == "direct-gate"
+    gate_manifest_option = ("-Ds31-direct-gate-manifest-version=2",) if gate_manifest_v2 else ()
     if source["version"] == 2:
         # Validate the source-derived typed descriptor before invoking Zig.
         # The native compiler and verifier independently repeat this check.
@@ -57,6 +59,7 @@ def build_json(source_path: Path, output: Path, lowering: str = "gate",
         invoke(
             "zig", "build", "--build-file", str(BUILD_FILE), "install",
             "-Doptimize=ReleaseFast", "-Ds31-version=1",
+            *gate_manifest_option,
             f"-Ds31-lowering={lowering}", f"-Ds31-fri-fold-step={fri_fold_step}",
             f"-Ds31-source={source_path}", f"-Ds31-name={name}",
             *lock_option,
@@ -68,8 +71,26 @@ def build_json(source_path: Path, output: Path, lowering: str = "gate",
         inspection = json.loads(invoke(str(prover), "inspect"))
         if inspection["program_sha256"] != sha256(data):
             raise RuntimeError("compiled program does not match source")
+        if gate_manifest_v2:
+            key_schema = "s31-verification-key-direct-manifest-v2"
+        elif source["version"] == 2:
+            key_schema = ("s31-verification-key-direct-record-chip-v2" if lowering == "direct-chip"
+                          else "s31-verification-key-direct-record-v2")
+        elif privacy:
+            key_schema = proof_privacy.KEY_SCHEMA
+        else:
+            key_schema = {
+                "sha-fused": "s31-verification-key-sha-fused-v4",
+                "sha-shift": "s31-verification-key-sha-shift-v3",
+                "sha-joint": "s31-verification-key-sha-joint-v1",
+                "direct-chip": "s31-verification-key-direct-chip-manifest-v2",
+                "direct-gate": "s31-verification-key-direct-manifest-v1",
+                "sparse-wide-gate": "s31-verification-key-v5",
+                "chip": "s31-verification-key-v2",
+            }.get(lowering, "s31-verification-key-v3" if lowering.startswith("sparse-")
+                  else "s31-verification-key-v1")
         key = {
-            "schema": ("s31-verification-key-direct-record-chip-v2" if lowering == "direct-chip" else "s31-verification-key-direct-record-v2") if source["version"] == 2 else proof_privacy.KEY_SCHEMA if privacy else "s31-verification-key-sha-fused-v4" if lowering == "sha-fused" else "s31-verification-key-sha-shift-v3" if lowering == "sha-shift" else "s31-verification-key-sha-joint-v1" if lowering == "sha-joint" else "s31-verification-key-direct-chip-manifest-v2" if lowering == "direct-chip" else "s31-verification-key-direct-manifest-v1" if lowering == "direct-gate" else "s31-verification-key-v5" if lowering == "sparse-wide-gate" else "s31-verification-key-v3" if lowering.startswith("sparse-") else "s31-verification-key-v2" if lowering == "chip" else "s31-verification-key-v1",
+            "schema": key_schema,
             "profile": inspection["profile"],
             "chip": inspection["chip"],
             "name": name,
@@ -105,11 +126,11 @@ def build_json(source_path: Path, output: Path, lowering: str = "gate",
         if lowering in {"direct-gate", "direct-chip"}:
             component_manifest = inspection.get("component_manifest")
             expected_manifest_schema = ("s31-component-manifest-direct-chip-v2" if lowering == "direct-chip"
-                                        else "s31-component-manifest-direct-gate-v1")
+                                        else "s31-component-manifest-direct-gate-v2")
             if not isinstance(component_manifest, dict) or component_manifest.get("schema") != expected_manifest_schema:
                 raise RuntimeError(f"{lowering} compiler did not produce a component manifest")
             key["component_manifest"] = component_manifest
-            if lowering == "direct-chip":
+            if lowering == "direct-chip" or gate_manifest_v2:
                 digest = inspection.get("manifest_precommitment_sha256")
                 if not isinstance(digest, str) or len(digest) != 64:
                     raise RuntimeError("direct-chip compiler omitted typed manifest precommitment")
@@ -150,6 +171,7 @@ def build_json(source_path: Path, output: Path, lowering: str = "gate",
         invoke(
             "zig", "build", "--build-file", str(BUILD_FILE), "install",
             "-Doptimize=ReleaseFast", "-Ds31-version=1",
+            *gate_manifest_option,
             f"-Ds31-lowering={lowering}", f"-Ds31-fri-fold-step={fri_fold_step}",
             f"-Ds31-source={source_path}", f"-Ds31-name={name}",
             f"-Ds31-key={staging / 'verification-key.json'}",

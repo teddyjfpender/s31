@@ -27,17 +27,28 @@ when an attacker rehashes package metadata. The manifest also records the
 source and canonical IR digests, circuit identity, preprocessed root, and the
 one claimed sum. It has no fixed lookup table or chip component.
 
-The proof envelope structure and transcript algorithm are unchanged for this
-slice. The `direct-gate` key schema is
-`s31-verification-key-direct-manifest-v1`; old and new key files are not
-interchangeable in newly built verifiers. The schema change alone does not
-prevent replay of an otherwise valid proof for the same source and public
-statement. A key without this manifest is rejected by newly built verifiers.
-An already sealed legacy verifier remains able to read its own legacy key and
-proof. Other profiles retain their current keys until each is migrated. The verifier
-checks the manifest against the sealed source and pinned AIR rather than
-trusting a package-provided digest. Its existing key equality check prevents
-substituting a different external key for the embedded one.
+The initial v1 manifest was checked against sealed source and pinned AIR but
+left the proof transcript unchanged. New direct-gate packages select v2 with
+key schema `s31-verification-key-direct-manifest-v2`, manifest schema
+`s31-component-manifest-direct-gate-v2`, and proof tag `S31NAT7G`. The native
+prover and verifier independently derive the same typed precommitment before
+the first witness commitment:
+
+```text
+manifest_digest = SHA256("S31-DIRECT-GATE-MANIFEST-PRECOMMIT-V2\0" || typed_manifest_without_circuit_hash)
+effective_digest = SHA256("S31-DIRECT-GATE-MANIFEST-TRANSCRIPT-V2\0" || source_sha256 || manifest_digest)
+```
+
+The typed fields and lengths match the one-call encoding below. The cyclic
+`circuit_hash` is omitted from the precommitment, then recomputed from the
+effective digest and fixed root. The engine mixes that effective digest into
+the Fiat–Shamir channel and circuit identity. The package reader independently
+recomputes the typed digest; the sealed verifier recompiles the source and
+AIR to check the entire roster before proof decoding. `zig build` retains
+manifest version 1 by default for explicit old-format builds; the Python
+package builder passes `-Ds31-direct-gate-manifest-version=2`. Previously
+sealed v1 verifier binaries and their `S31NAT4G` proofs remain unchanged.
+The two envelope tags reject replay across versions.
 
 ## One-call direct-chip roster
 

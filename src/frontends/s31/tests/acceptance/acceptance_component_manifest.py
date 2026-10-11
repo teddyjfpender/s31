@@ -15,6 +15,7 @@ sys.path.insert(0, str(S31 / "python"))
 
 import s31
 from package.context import BUILD_FILE, file_hash, write_json
+from package.manifest_digest import direct_gate_v2_digest
 
 
 def reject(call: tuple[str, ...], expected: str) -> None:
@@ -46,13 +47,18 @@ def mutate_hash(value: dict) -> None:
 def reject_resealed_key(work: Path, source: Path, name: str, original_key: dict,
                         proof: Path, statement: Path, mutation) -> None:
     forged_key = copy.deepcopy(original_key)
-    mutation(forged_key["component_manifest"])
+    if mutation is None:
+        forged_key["manifest_precommitment_sha256"] = "0" * 64
+    else:
+        mutation(forged_key["component_manifest"])
+        forged_key["manifest_precommitment_sha256"] = direct_gate_v2_digest(forged_key["component_manifest"])
     forged_path = work / f"{name}-key.json"
     write_json(forged_path, forged_key)
     prefix = work / f"{name}-sealed"
     s31.invoke(
         "zig", "build", "--build-file", str(BUILD_FILE), "install",
         "-Doptimize=ReleaseFast", "-Ds31-version=1", "-Ds31-lowering=direct-gate",
+        "-Ds31-direct-gate-manifest-version=2",
         f"-Ds31-source={source.resolve()}", "-Ds31-name=math_polynomial4",
         f"-Ds31-key={forged_path}", "--prefix", str(prefix),
     )
@@ -111,9 +117,11 @@ def main() -> None:
         sidecar = json.loads((package / "component-manifest.json").read_text())
         component = sidecar["components"]
         columns = sidecar["preprocessed_columns"]
-        if (key["schema"] != "s31-verification-key-direct-manifest-v1" or
+        if (key["schema"] != "s31-verification-key-direct-manifest-v2" or
                 sidecar != key["component_manifest"] or sidecar != report["component_manifest"] or
-                sidecar["schema"] != "s31-component-manifest-direct-gate-v1" or
+                sidecar["schema"] != "s31-component-manifest-direct-gate-v2" or
+                key["manifest_precommitment_sha256"] != direct_gate_v2_digest(sidecar) or
+                report["manifest_precommitment_sha256"] != key["manifest_precommitment_sha256"] or
                 len(component) != 1 or component[0]["name"] != "qm31_ops" or
                 component[0]["source_index"] != 1 or component[0]["proof_index"] != 0 or
                 component[0]["base_trace_columns"] != 12 or
@@ -125,6 +133,23 @@ def main() -> None:
         trial = s31.trial(package, assignment, work / "trial")
         if not trial["native_verifier_accepted"] or not trial["changed_public_statement_rejected"]:
             raise AssertionError("native direct-gate proof control failed")
+        proof = (work / "trial/proof.bin").read_bytes()
+        if proof[:8] != b"S31NAT7G":
+            raise AssertionError("direct-gate manifest v2 proof used an old envelope")
+        old_tag = work / "old-envelope.proof.bin"
+        old_tag.write_bytes(b"S31NAT4G" + proof[8:])
+        reject((str(package / "bin/s31-math_polynomial4-native-verifier"), str(old_tag),
+                str(work / "trial/statement.json"), str(package / "verification-key.json")),
+               "InvalidNativeProof")
+        for mutation in (mutate_order, mutate_index, mutate_hash):
+            changed = copy.deepcopy(sidecar)
+            mutation(changed)
+            if direct_gate_v2_digest(changed) == key["manifest_precommitment_sha256"]:
+                raise AssertionError("typed manifest digest ignored a changed roster field")
+        without_identity = copy.deepcopy(sidecar)
+        without_identity["circuit_hash"] = "0" * 64
+        if direct_gate_v2_digest(without_identity) != key["manifest_precommitment_sha256"]:
+            raise AssertionError("gate precommitment unexpectedly includes cyclic circuit identity")
 
         for name, mutation in (("order", mutate_order), ("index", mutate_index),
                                ("column-hash", mutate_hash)):
@@ -132,15 +157,17 @@ def main() -> None:
             reject_rehashed_report(work, package, mutation, name)
             reject_resealed_key(work, source, name, key, work / "trial/proof.bin",
                                 work / "trial/statement.json", mutation)
+        reject_resealed_key(work, source, "precommitment", key, work / "trial/proof.bin",
+                            work / "trial/statement.json", None)
         print(json.dumps({
-            "schema": "s31-component-manifest-acceptance-v1",
+            "schema": "s31-component-manifest-acceptance-v2",
             "profile": "direct-m31-v4",
             "key_schema": key["schema"],
             "components": len(component), "preprocessed_columns": len(columns),
             "honest_proof_accepted": True, "changed_claim_rejected": True,
             "rehashed_sidecar_mutations_rejected": 3,
             "rehashed_report_mutations_rejected": 3,
-            "resealed_native_key_mutations_rejected": 3,
+            "resealed_native_key_mutations_rejected": 4,
         }, sort_keys=True, indent=2))
 
 

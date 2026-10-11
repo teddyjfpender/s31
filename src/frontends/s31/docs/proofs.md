@@ -131,7 +131,8 @@ Profile-specific proof headers are:
 | `chip` | `S31NAT2` followed by a NUL byte. |
 | `sparse-gate` / `sparse-chip` | `S31NAT3G` / `S31NAT3C`. |
 | `sparse-wide-gate` | `S31NAT5W`. |
-| `direct-gate` / `direct-chip` | `S31NAT4G` / `S31NAT4C`. |
+| `direct-gate` package v2 / historical v1 | `S31NAT7G` / `S31NAT4G`. |
+| `direct-chip` historical / manifest bound | `S31NAT4C` / `S31NAT6C` (private bridge: `S31NAT6P`). |
 | `sha-joint` | `S31NAT6S`, a sealed key digest, interaction nonce, and twelve canonical LogUp sums. |
 | `sha-shift` | `S31SCJ03`, an interaction nonce, fifteen canonical LogUp sums, a sealed key digest, and one circuit plus shift-register SHA proof. |
 | `sha-fused` | `S31FCJ04`, an interaction nonce, ten canonical LogUp sums, a sealed key digest, and one circuit plus fused SHA schedule and round proof. |

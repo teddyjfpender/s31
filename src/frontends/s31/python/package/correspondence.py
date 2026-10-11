@@ -23,6 +23,7 @@ from pathlib import Path
 from typing import Any
 
 from package.direct_gate_schedule import constant_and_padding, exact_direct_gate_schedule
+from package.manifest_digest import direct_gate_v2_digest
 
 
 class UnsupportedFragment(ValueError):
@@ -44,8 +45,9 @@ KEY_FIELDS = (
     "schema", "profile", "chip", "name", "program_sha256",
     "canonical_ir_sha256", "preprocessed_root", "circuit_hash",
     "padded", "trace_log_size", "projection_sha256", "air_bundle_sha256",
-    "fri", "component_manifest", "stdlib_lock_sha256",
+    "fri", "component_manifest", "manifest_precommitment_sha256", "stdlib_lock_sha256",
 )
+LEGACY_KEY_FIELDS = tuple(field for field in KEY_FIELDS if field != "manifest_precommitment_sha256")
 
 
 def digest(data: bytes) -> str:
@@ -626,18 +628,27 @@ def _checked_material(package: Path) -> tuple[dict[str, Any], dict[str, Any]]:
             key.get("stdlib_lock_sha256") != digest((package / "stdlib-lock.json").read_bytes())):
         raise ValueError("source text artifacts or standard library lock differ from checked package")
     projection_hash, air_hash, gate_program_hash = _assets()
+    gate_v2 = key.get("schema") == "s31-verification-key-direct-manifest-v2"
+    expected_key_schema = ("s31-verification-key-direct-manifest-v2" if gate_v2
+                           else "s31-verification-key-direct-manifest-v1")
+    expected_component_schema = ("s31-component-manifest-direct-gate-v2" if gate_v2
+                                 else "s31-component-manifest-direct-gate-v1")
     if (manifest.get("lowering") != "direct-gate" or manifest.get("fri_fold_step") != 1 or
             manifest.get("name") != relation["name"] or
             manifest.get("source_text_sha256") != digest(source_bytes) or
             manifest.get("program_sha256") != digest(relation_bytes) or
-            key.get("schema") != "s31-verification-key-direct-manifest-v1" or
+            key.get("schema") != expected_key_schema or
             key.get("profile") != "direct-m31-v4" or key.get("chip") is not None or
             key.get("name") != relation["name"] or
             key.get("program_sha256") != digest(relation_bytes) or
             key.get("projection_sha256") != projection_hash or
             key.get("air_bundle_sha256") != air_hash or
             key.get("fri", {}).get("fold_step") != 1 or
-            component.get("schema") != "s31-component-manifest-direct-gate-v1" or
+            component.get("schema") != expected_component_schema or
+            (gate_v2 and (key.get("manifest_precommitment_sha256") != direct_gate_v2_digest(component) or
+                          report.get("manifest_precommitment_sha256") != key.get("manifest_precommitment_sha256"))) or
+            (not gate_v2 and (key.get("manifest_precommitment_sha256") is not None or
+                              report.get("manifest_precommitment_sha256") is not None)) or
             component.get("profile") != "direct-m31-v4" or
             component.get("chip_call") is not None or
             component.get("claimed_sums") != 1 or
@@ -697,7 +708,7 @@ def _checked_material(package: Path) -> tuple[dict[str, Any], dict[str, Any]]:
                         "projection_sha256": projection_hash,
                         "air_bundle_sha256": air_hash,
                         "component_manifest_sha256": digest(canonical(component))},
-        "key_core": {field: key.get(field) for field in KEY_FIELDS},
+        "key_core": {field: key.get(field) for field in (KEY_FIELDS if gate_v2 else LEGACY_KEY_FIELDS)},
     }
     return material, manifest
 

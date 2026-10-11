@@ -22,6 +22,7 @@ import s31
 from package import verify as package_verify
 from package.build import build_json
 from package.context import file_hash, invoke, sha256, write_json
+from package.manifest_digest import direct_gate_v2_digest
 from package.correspondence import (DIRECT_COLUMN_IDS, KEY_FIELDS, canonical, check_package,
                                     digest, read_canonical_json)
 from export_s31_direct_gate_bridge import render_bridge
@@ -88,6 +89,8 @@ def reject_resealed_topology(honest: Path, checked: dict, work: Path,
     report = json.loads((mutant / "cost-report.json").read_text())
     key["component_manifest"] = component
     report["component_manifest"] = component
+    key["manifest_precommitment_sha256"] = direct_gate_v2_digest(component)
+    report["manifest_precommitment_sha256"] = key["manifest_precommitment_sha256"]
     write_json(mutant / "verification-key.json", key)
     write_json(mutant / "cost-report.json", report)
     fake = copy.deepcopy(checked)
@@ -130,6 +133,8 @@ def reject_resealed_component_map(honest: Path, checked: dict, work: Path,
     report = json.loads((mutant / "cost-report.json").read_text())
     key["component_manifest"] = component
     report["component_manifest"] = component
+    key["manifest_precommitment_sha256"] = direct_gate_v2_digest(component)
+    report["manifest_precommitment_sha256"] = key["manifest_precommitment_sha256"]
     write_json(mutant / "verification-key.json", key)
     write_json(mutant / "cost-report.json", report)
     fake = copy.deepcopy(checked)
@@ -198,6 +203,8 @@ def reject_resealed_program_binding(honest: Path, checked: dict, work: Path) -> 
     report = json.loads((mutant / "cost-report.json").read_text())
     key["component_manifest"] = component
     report["component_manifest"] = component
+    key["manifest_precommitment_sha256"] = direct_gate_v2_digest(component)
+    report["manifest_precommitment_sha256"] = key["manifest_precommitment_sha256"]
     write_json(mutant / "verification-key.json", key)
     write_json(mutant / "cost-report.json", report)
     fake = copy.deepcopy(checked)
@@ -429,7 +436,7 @@ def main() -> None:
         else:
             raise AssertionError("native verifier accepted a changed public input word")
         changed_gate_claim = bytearray(proof_path.read_bytes())
-        if changed_gate_claim[:8] != b"S31NAT4G" or len(changed_gate_claim) < 32:
+        if changed_gate_claim[:8] != b"S31NAT7G" or len(changed_gate_claim) < 32:
             raise AssertionError("honest proof is not a direct-gate proof envelope")
         first_limb = struct.unpack_from("<I", changed_gate_claim, 16)[0]
         if first_limb >= (1 << 31) - 1:

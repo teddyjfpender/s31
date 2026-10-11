@@ -1,4 +1,4 @@
-"""Canonical typed digest for the bounded one-call direct-chip manifest v2.
+"""Canonical typed digests for direct-gate and one-call direct-chip v2.
 
 The native compiler owns this format. This independent Python implementation
 lets package inspection catch an altered digest before invoking a verifier.
@@ -9,13 +9,22 @@ from __future__ import annotations
 import hashlib
 
 
-DOMAIN = b"S31-COMPONENT-MANIFEST-PRECOMMIT-V2\0"
+CHIP_DOMAIN = b"S31-COMPONENT-MANIFEST-PRECOMMIT-V2\0"
+GATE_DOMAIN = b"S31-DIRECT-GATE-MANIFEST-PRECOMMIT-V2\0"
 
 
 def direct_chip_v2_digest(manifest: dict) -> str:
-    if manifest.get("schema") != "s31-component-manifest-direct-chip-v2":
-        raise ValueError("unsupported direct-chip manifest digest schema")
-    h = hashlib.sha256(DOMAIN)
+    return _typed_digest(manifest, "s31-component-manifest-direct-chip-v2", CHIP_DOMAIN)
+
+
+def direct_gate_v2_digest(manifest: dict) -> str:
+    return _typed_digest(manifest, "s31-component-manifest-direct-gate-v2", GATE_DOMAIN)
+
+
+def _typed_digest(manifest: dict, schema: str, domain: bytes) -> str:
+    if manifest.get("schema") != schema:
+        raise ValueError("unsupported typed component manifest digest schema")
+    h = hashlib.sha256(domain)
 
     def uint(value: int, width: int) -> None:
         if type(value) is not int or not 0 <= value < 1 << (8 * width):

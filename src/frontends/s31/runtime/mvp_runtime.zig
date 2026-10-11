@@ -33,6 +33,7 @@ const chip_mode = @import("s31_options").chip_mode;
 const sparse_mode = @import("s31_options").sparse_mode;
 const wide_mode = @import("s31_options").wide_mode;
 const direct_mode = @import("s31_options").direct_mode;
+const gate_manifest_v2 = @import("s31_options").gate_manifest_v2;
 const sha_joint_mode = @import("s31_options").sha_joint_mode;
 const sha_shift_mode = @import("s31_options").sha_shift_mode;
 const sha_fused_mode = @import("s31_options").sha_fused_mode;
@@ -614,6 +615,31 @@ fn bindChipManifest(
     };
 }
 
+fn bindGateManifest(
+    allocator: std.mem.Allocator,
+    pp: *const circuit.common.direct_arithmetic.Circuit,
+    source_digest: [32]u8,
+    ir_digest: [32]u8,
+    root: [32]u8,
+) !ChipManifestBinding {
+    var generated = try component_manifest.directGateV2(
+        allocator, pp, air_program_bytes, source_digest, ir_digest, root, [_]u8{0} ** 32,
+    );
+    errdefer generated.deinit();
+    const precommitment_digest = try component_manifest.gatePrecommitmentDigest(generated.value);
+    const effective_digest = try component_manifest.gateEffectiveSourceDigest(source_digest, generated.value);
+    const circuit_hash = cpu.direct_arithmetic.identityHashWithPrivateBoundary(
+        effective_digest, root, pp.traceLogSize(), 1, null, null,
+    );
+    try component_manifest.setCircuitHash(&generated, circuit_hash);
+    return .{
+        .generated = generated,
+        .effective_digest = effective_digest,
+        .precommitment_digest = precommitment_digest,
+        .circuit_hash = circuit_hash,
+    };
+}
+
 fn inspect(allocator: std.mem.Allocator, source: relation.Program) !void {
     var ir = try s31.canonical.build(allocator, source);
     defer ir.deinit();
@@ -667,6 +693,11 @@ fn inspect(allocator: std.mem.Allocator, source: relation.Program) !void {
         generated_manifest = if (chip_mode) blk: {
             const spec = sourceChipSpec(source) orelse return error.UnsupportedChipRelation;
             const binding = try bindChipManifest(allocator, &pp, source_digest, ir.sha256, root, spec, boundary);
+            circuit_hash = binding.circuit_hash;
+            manifest_digest = binding.precommitment_digest;
+            break :blk binding.generated;
+        } else if (gate_manifest_v2) blk: {
+            const binding = try bindGateManifest(allocator, &pp, source_digest, ir.sha256, root);
             circuit_hash = binding.circuit_hash;
             manifest_digest = binding.precommitment_digest;
             break :blk binding.generated;
@@ -945,6 +976,8 @@ fn prove(allocator: std.mem.Allocator, source: relation.Program, assignment_path
         var proof_digest = source_digest;
         var chip_binding: ?ChipManifestBinding = null;
         defer if (chip_binding) |*binding| binding.deinit();
+        var gate_binding: ?ChipManifestBinding = null;
+        defer if (gate_binding) |*binding| binding.deinit();
         if (chip_mode) {
             var ir = try s31.canonical.build(allocator, source);
             defer ir.deinit();
@@ -959,6 +992,11 @@ fn prove(allocator: std.mem.Allocator, source: relation.Program, assignment_path
             );
             proof_digest = chip_binding.?.effective_digest;
             chip_request.?.source_digest = proof_digest;
+        } else if (gate_manifest_v2) {
+            var ir = try s31.canonical.build(allocator, source);
+            defer ir.deinit();
+            gate_binding = try bindGateManifest(allocator, &pp, source_digest, ir.sha256, committed.root());
+            proof_digest = gate_binding.?.effective_digest;
         }
         setup_ns = total_timer.read() - witness_ns;
         var timer = try std.time.Timer.start();
@@ -974,7 +1012,9 @@ fn prove(allocator: std.mem.Allocator, source: relation.Program, assignment_path
         prove_ns = timer.read();
         encoded = if (boundary != null)
             try native.serializeDirectPrivateBound(allocator, &proof)
-        else if (chip_mode) try native.serializeDirectBound(allocator, &proof) else try native.serializeDirect(allocator, &proof, false);
+        else if (chip_mode) try native.serializeDirectBound(allocator, &proof)
+        else if (gate_manifest_v2) try native.serializeDirectGateBound(allocator, &proof)
+        else try native.serializeDirect(allocator, &proof, false);
         const layout = pp.layout();
         const root = committed.root();
         const hash = cpu.direct_arithmetic.identityHashWithPrivateBoundary(
@@ -1013,6 +1053,16 @@ fn prove(allocator: std.mem.Allocator, source: relation.Program, assignment_path
             encoded,
             proof_digest,
             spec.?,
+        ) else if (gate_manifest_v2) try native.verifyDirectGateBound(
+            allocator,
+            &layout,
+            &bundle,
+            pcs,
+            root,
+            hash,
+            public_words,
+            encoded,
+            proof_digest,
         ) else try native.verifyDirect(
             allocator,
             &layout,
@@ -3552,6 +3602,8 @@ fn verify(allocator: std.mem.Allocator, path: []const u8, statement_path: []cons
         std.crypto.hash.sha2.Sha256.hash(embedded_source, &source_digest, .{});
         const proof_digest = if (chip_mode)
             component_manifest.effectiveSourceDigest(source_digest, key.component_manifest orelse return error.InvalidVerificationKey)
+        else if (gate_manifest_v2)
+            try component_manifest.gateEffectiveSourceDigest(source_digest, key.component_manifest orelse return error.InvalidVerificationKey)
         else
             source_digest;
         const spec: ?native.HybridSpec = if (chip_mode) blk: {
@@ -3581,6 +3633,16 @@ fn verify(allocator: std.mem.Allocator, path: []const u8, statement_path: []cons
             encoded,
             proof_digest,
             spec.?,
+        ) else if (gate_manifest_v2) try native.verifyDirectGateBound(
+            allocator,
+            &layout,
+            &bundle,
+            try directPcsConfig(layout.traceLogSize(), null),
+            root,
+            hash,
+            public_words,
+            encoded,
+            proof_digest,
         ) else try native.verifyDirect(
             allocator,
             &layout,
@@ -3679,7 +3741,7 @@ fn validateKey(allocator: std.mem.Allocator, source: relation.Program, key: Key)
         const pinned_stdlib = key.stdlib_lock_sha256 orelse return error.InvalidVerificationKey;
         if (!std.mem.eql(u8, pinned_stdlib, expected_stdlib)) return error.InvalidVerificationKey;
     }
-    if (!std.mem.eql(u8, key.schema, if (source.version == 2 and chip_mode) "s31-verification-key-direct-record-chip-v2" else if (source.version == 2) "s31-verification-key-direct-record-v2" else if (source.proof_mode == .blinded) "s31-verification-key-blinded-v1" else if (direct_mode and chip_mode) "s31-verification-key-direct-chip-manifest-v2" else if (direct_mode) "s31-verification-key-direct-manifest-v1" else if (wide_mode) "s31-verification-key-v5" else if (sparse_mode) "s31-verification-key-v3" else if (chip_mode) "s31-verification-key-v2" else "s31-verification-key-v1") or
+    if (!std.mem.eql(u8, key.schema, if (gate_manifest_v2) "s31-verification-key-direct-manifest-v2" else if (source.version == 2 and chip_mode) "s31-verification-key-direct-record-chip-v2" else if (source.version == 2) "s31-verification-key-direct-record-v2" else if (source.proof_mode == .blinded) "s31-verification-key-blinded-v1" else if (direct_mode and chip_mode) "s31-verification-key-direct-chip-manifest-v2" else if (direct_mode) "s31-verification-key-direct-manifest-v1" else if (wide_mode) "s31-verification-key-v5" else if (sparse_mode) "s31-verification-key-v3" else if (chip_mode) "s31-verification-key-v2" else "s31-verification-key-v1") or
         !std.mem.eql(u8, key.profile, if (source.proof_mode == .blinded) "circuit-blinded-v1" else if (privateChip(source)) "direct-m31-private-v5" else if (direct_mode) "direct-m31-v4" else if (wide_mode) "sparse-wide-v5" else if (sparse_mode) "sparse-v3" else if (chip_mode) "hybrid-step-v2" else "circuit-v1") or
         !std.mem.eql(u8, key.name, source.name))
         return error.InvalidVerificationKey;
@@ -3692,7 +3754,7 @@ fn validateKey(allocator: std.mem.Allocator, source: relation.Program, key: Key)
     } else if (key.chip != null) return error.InvalidVerificationKey;
     if ((key.private_boundary == null) != !privateChip(source)) return error.InvalidVerificationKey;
     if (!direct_mode and key.component_manifest != null) return error.InvalidVerificationKey;
-    if ((!direct_mode or !chip_mode) and key.manifest_precommitment_sha256 != null) return error.InvalidVerificationKey;
+    if ((!direct_mode or (!chip_mode and !gate_manifest_v2)) and key.manifest_precommitment_sha256 != null) return error.InvalidVerificationKey;
     var program_digest: [32]u8 = undefined;
     std.crypto.hash.sha2.Sha256.hash(embedded_source, &program_digest, .{});
     if (!std.mem.eql(u8, key.program_sha256, &std.fmt.bytesToHex(program_digest, .lower))) return error.InvalidVerificationKey;
@@ -3760,6 +3822,14 @@ fn validateCompiledKey(allocator: std.mem.Allocator, source: relation.Program, k
             var generated = if (chip_mode) blk: {
                 const spec = sourceChipSpec(source) orelse return error.UnsupportedChipRelation;
                 const binding = try bindChipManifest(allocator, &pp, source_digest, ir_digest, expected_root, spec, boundary);
+                expected_hash = binding.circuit_hash;
+                const actual_digest = key.manifest_precommitment_sha256 orelse return error.InvalidVerificationKey;
+                if (!std.mem.eql(u8, actual_digest, &std.fmt.bytesToHex(binding.precommitment_digest, .lower)))
+                    return error.InvalidVerificationKey;
+                break :blk binding.generated;
+            } else if (gate_manifest_v2) blk: {
+                var binding = try bindGateManifest(allocator, &pp, source_digest, ir_digest, expected_root);
+                errdefer binding.deinit();
                 expected_hash = binding.circuit_hash;
                 const actual_digest = key.manifest_precommitment_sha256 orelse return error.InvalidVerificationKey;
                 if (!std.mem.eql(u8, actual_digest, &std.fmt.bytesToHex(binding.precommitment_digest, .lower)))
