@@ -27,7 +27,7 @@ from text_frontend import SourceError, compile_text
 
 SEED = 0x531A11A5
 CASES = 512
-CORPUS_SHA256 = "3c75f1ab0294bc73bb4d7946ebdedd4cea52af02cc06d2bbf45eb7d973b61a6e"
+CORPUS_SHA256 = "ef20b2a05bd5d8b12657be40a598fa3eb68e51b11ad8eede59d17f0c50683e42"
 
 
 @dataclass(frozen=True)
@@ -37,6 +37,7 @@ class Case:
     gate_count: int
     alias_count: int
     add_count: int
+    return_id: int
 
 
 def _parenthesize(name: str, depth: int) -> str:
@@ -86,7 +87,11 @@ def generate(index: int, rng: random.Random) -> Case:
         aliases[wire_id] = [producer]
         add_alias_chain(wire_id, alias_limit)
 
-    output = aliases[count][-1]
+    # Some sources return a producer before the end of the eager body. The
+    # later producers still occupy native arithmetic rows and may consume the
+    # returned wire, so source erasure must retain them in the same order.
+    return_id = count // 2 if count > 2 and index % 3 == 0 else count
+    output = aliases[return_id][-1]
     # The final alias is always a distinct name, even when random alias chains
     # happened to be empty. That makes output-alias retargeting testable.
     statements.append(f"let returned = {_parenthesize(output, rng.randrange(paren_choices))};")
@@ -96,8 +101,8 @@ def generate(index: int, rng: random.Random) -> Case:
     prefix = (f"circuit case_{index}(public x: [m31; 4]) "
               "-> public [m31; 4] { ")
     return Case(prefix + " ".join(statements) + f" {returned}{suffix} }}",
-                prefix + " ".join(direct) + f" p{count} }}",
-                count, alias_count, add_count)
+                prefix + " ".join(direct) + f" p{return_id} }}",
+                count, alias_count, add_count, return_id)
 
 
 def corpus() -> list[Case]:
@@ -117,6 +122,9 @@ class GeneratedDirectAliasCorrespondenceTests(unittest.TestCase):
         self.assertGreater(sum(case.alias_count for case in cases), CASES)
         self.assertGreater(sum(case.add_count for case in cases), 100)
         self.assertGreater(sum(case.gate_count - case.add_count for case in cases), 100)
+        self.assertGreater(sum(case.return_id < case.gate_count for case in cases), 100)
+        self.assertTrue(any(case.gate_count == 16 and case.return_id < 16
+                            for case in cases))
 
         for index, case in enumerate(cases):
             with self.subTest(case=index):
@@ -133,6 +141,7 @@ class GeneratedDirectAliasCorrespondenceTests(unittest.TestCase):
                 self.assertEqual(set(source_map),
                                  {node["name"] for node in independent["nodes"]})
                 self.assertEqual(len(syntax["instructions"]), case.gate_count)
+                self.assertEqual(syntax["output"], case.return_id)
                 self.assertEqual(canonical_ir_bytes(syntax),
                                  canonical_ir_bytes(direct_syntax))
                 self.assertEqual(exact_direct_gate_schedule(syntax),
@@ -149,7 +158,8 @@ class GeneratedDirectAliasCorrespondenceTests(unittest.TestCase):
                 continue
             original, syntax = parse_source(case.source.encode())
             head, _, _ = case.source.partition("let returned =")
-            changed = head + "let returned = p1; returned }"
+            changed_id = 2 if case.return_id == 1 else 1
+            changed = head + f"let returned = p{changed_id}; returned }}"
             # Keep the circuit header and all eager source bindings intact.
             mutated, mutated_syntax = parse_source(changed.encode())
             produced, _ = compile_text(changed)

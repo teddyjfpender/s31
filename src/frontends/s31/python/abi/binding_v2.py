@@ -25,8 +25,15 @@ _MAX_STATEMENT_BYTES = 1_000_000
 
 
 def _json_bytes(value: object) -> bytes:
-    return (json.dumps(value, sort_keys=True, separators=(",", ":"),
-                       ensure_ascii=True, allow_nan=False) + "\n").encode("ascii")
+    try:
+        return (json.dumps(value, sort_keys=True, separators=(",", ":"),
+                           ensure_ascii=True, allow_nan=False) + "\n").encode("ascii")
+    except (TypeError, ValueError, OverflowError, RecursionError) as exc:
+        raise AbiError("invalid canonical ABI JSON value") from exc
+
+
+def _reject_json_constant(value: str) -> object:
+    raise AbiError(f"invalid JSON constant: {value}")
 
 
 def _name(value: object) -> str:
@@ -213,7 +220,8 @@ def _unique_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
 def parse_assignment_json(encoded: bytes) -> dict[str, Any]:
     """Reject duplicate object keys before any typed or flat dispatch."""
     try:
-        value = json.loads(encoded, object_pairs_hook=_unique_object)
+        value = json.loads(encoded, object_pairs_hook=_unique_object,
+                           parse_constant=_reject_json_constant)
     except AbiError:
         raise
     except (UnicodeDecodeError, json.JSONDecodeError, ValueError, RecursionError) as exc:
@@ -230,7 +238,8 @@ def decode_public_statement(relation: Mapping[str, Any], binding: dict[str, Any]
     if type(encoded) is not bytes or len(encoded) > _MAX_STATEMENT_BYTES:
         raise AbiError("invalid public statement size")
     try:
-        statement = json.loads(encoded, object_pairs_hook=_unique_object)
+        statement = json.loads(encoded, object_pairs_hook=_unique_object,
+                               parse_constant=_reject_json_constant)
     except AbiError:
         raise
     except (UnicodeDecodeError, json.JSONDecodeError, ValueError, RecursionError) as exc:

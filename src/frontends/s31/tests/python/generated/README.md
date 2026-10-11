@@ -89,7 +89,9 @@ positional arithmetic DAG, spells it with aliases and parentheses, and
 compares the independent source parser with the production compiler. A direct
 spelling must produce identical normalized relation, canonical IR bytes, and
 the independently modeled native gate schedule. The corpus spans one through
-sixteen gates and pins the SHA-256 digest of both spellings. Retargeted output
+sixteen gates, including programs that return an earlier value while later
+arithmetic remains in the eager body, and pins the SHA-256 digest of both
+spellings. Retargeted output
 aliases must change the verifier identity and gate schedule; duplicate names
 and forward references must fail closed. This checks the bounded direct-gate
 profile, not the full functional language or native proof execution.

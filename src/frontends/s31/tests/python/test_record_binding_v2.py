@@ -14,7 +14,8 @@ sys.path.insert(0, str(S31 / "python"))
 from abi.binding_v2 import (binding_digest, decode_public_statement,
                             decode_typed_public_statement, encode_typed_public_statement,
                             flat_assignment_from_typed, statement_from_assignment,
-                            encode_public_statement, make_binding, validate_binding)
+                            encode_public_statement, make_binding, parse_assignment_json,
+                            validate_binding)
 from abi.record_v2 import AbiError, flatten_value
 from language.syntax import RecordType, TupleType
 from s31_stdlib import Type
@@ -273,6 +274,24 @@ class RecordBindingV2Tests(unittest.TestCase):
                                                     b'"version":2,"version":2'))
         with self.assertRaisesRegex(AbiError, "noncanonical"):
             decode_public_statement(self.relation, self.binding, encoded[:-1])
+
+    def test_nonfinite_json_and_excessive_nesting_fail_as_abi_errors(self) -> None:
+        statement = encode_public_statement(self.relation, self.binding,
+                                            [[3], [5], [10], [5], [5]])
+        for constant in (b"NaN", b"Infinity", b"-Infinity"):
+            changed = statement.replace(b'"words":[3]', b'"words":[' + constant + b']', 1)
+            with self.subTest(constant=constant), self.assertRaises(AbiError):
+                decode_public_statement(self.relation, self.binding, changed)
+            with self.subTest(constant=constant), self.assertRaises(AbiError):
+                parse_assignment_json(b'{"value":' + constant + b'}')
+        with self.assertRaises(AbiError):
+            encode_public_statement(self.relation, self.binding,
+                                    [[float("nan")], [5], [10], [5], [5]])
+        nested = b'[' * 1200 + b'0' + b']' * 1200
+        with self.assertRaises(AbiError):
+            decode_public_statement(self.relation, self.binding, nested)
+        with self.assertRaises(AbiError):
+            parse_assignment_json(nested)
 
     def test_typed_record_assignment_lowers_to_exact_native_wires(self) -> None:
         source = {**self.relation, "version": 2, "public_abi": self.binding}
