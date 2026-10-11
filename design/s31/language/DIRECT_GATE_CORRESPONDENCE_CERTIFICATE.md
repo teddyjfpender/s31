@@ -240,6 +240,25 @@ changed source operand address. Its premises and open joins are:
    fixed cells and trace values through its commitments and PCS/FRI checks.
    This is outside the Lean theorem.
 
+The draft
+[`SSAInstalledBytecodeRows.lean`](../../../formal/s31/S31/Gadgets/Functional/SSAInstalledBytecodeRows.lean)
+connects that local residual premise to the **selected installed Gate
+bytecode**. It constructs the bytecode's eight local fixed cells in the
+captured read order `[add, mul, pointwise, sub, in0, in1, out, mults]` and
+its twelve main cells from the three addressed QM31 wire values. It states
+that the first nine bytecode roots equal the nine source-row arithmetic
+residuals, then composes zero roots with the existing exact source-byte and
+normalized-byte checker. The accompanying
+[`SSAInstalledBytecodeMixedReturn.lean`](../../../formal/s31/S31/Gadgets/Functional/SSAInstalledBytecodeMixedReturn.lean)
+uses the 121-byte `early_output` program above: all three observed rows
+are covered, including the dead later work and the six-use earlier result.
+For `x=3`, changing its first square selector to add while retaining output
+`9` makes bytecode arithmetic acceptance impossible. **These new modules
+are pending a Lean build in this isolated draft.** Their theorem premises
+still require coherent addressed wire values, public pins, zero roots at
+the authenticated rows, and package-to-Lean artifact binding. They do not
+turn a package certificate into standalone native-verifier admission.
+
 [`SSAGateLookupWireMap.lean`](../../../formal/s31/S31/Gadgets/Functional/SSAGateLookupWireMap.lean)
 discharges the *logical* coherent-wire premise for the source rows under an
 exact Gate event model. Each physical row is identified at the projected
