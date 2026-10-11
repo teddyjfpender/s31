@@ -42,6 +42,8 @@ pub fn main() !void {
     if (check_only) return;
     const schedule = &inspected.schedule;
     const generated = try registry_manifest.fromSchedule(schedule);
+    if (!std.meta.eql(generated.digest, inspected.registry_manifest_sha256))
+        return error.InvalidMixedRegistryManifest;
     const geometry = schedule.native_geometry.?;
     var slots: [registry.max_components]SlotReport = undefined;
     for (schedule.slots[0..schedule.slot_count], generated.entrySlice(), slots[0..schedule.slot_count]) |slot, entry, *out| {
