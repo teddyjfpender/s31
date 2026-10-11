@@ -236,6 +236,9 @@ pub fn build(b: *std.Build) void {
     const mixed_general_native_tests = b.addRunArtifact(b.addTest(.{ .root_module = bounded_binding_root, .filters = &.{"mixed general sealed native"} }));
     b.step("test-mixed-general-native", "Prove and verify source-pinned mixed one-to-eight-call native envelopes")
         .dependOn(&mixed_general_native_tests.step);
+    const mixed_record_word_domain_tests = b.addRunArtifact(b.addTest(.{ .root_module = bounded_binding_root, .filters = &.{"mixed package raw verifier preserves the admitted public bit domain"} }));
+    b.step("test-mixed-record-word-domain", "Reject out-of-domain record bit claims at the raw mixed proof API")
+        .dependOn(&mixed_record_word_domain_tests.step);
     const mixed_trace_audit_tests = b.addRunArtifact(b.addTest(.{ .root_module = bounded_binding_root, .filters = &.{"mixed general witness sidecar binds verified roots"} }));
     b.step("test-mixed-trace-audit", "Verify proof roots against an opt-in full-witness mixed trace audit")
         .dependOn(&mixed_trace_audit_tests.step);

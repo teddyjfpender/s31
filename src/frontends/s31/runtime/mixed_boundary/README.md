@@ -94,6 +94,16 @@ even if the claimed result is left unchanged. The canonical record statement
 has no separate manifest fields because the verifier rebuilds the source and
 checks the proof header identities before native proof decoding.
 
+The reusable `general_package.verifyEmbedded` API also enforces the admitted
+v2 record bit domain on raw public words. In the eight-word alias shape,
+word 0 and its result alias at word 3 must be the same `0` or `1`. This guard
+matters because the relation circuit represents the record `bit` as M31 and
+has no Boolean Gate for the otherwise unused flag. The focused
+`test-mixed-record-word-domain` constructs a real lower-level native proof
+with flag `2`: the underlying field-proof verifier accepts it, while the S31
+package rejects the serialized proof before native proof decoding. The CLI's
+canonical typed-statement checks remain an additional boundary.
+
 The focused native gate is
 [`record_general_v2.py`](../../tests/acceptance/mixed_boundary/record_general_v2.py).
 It proves one and eight calls and checks changed public input/result words,

@@ -35,6 +35,117 @@ fn publicValues(words: [8]u32) ![8]QM31 {
     return result;
 }
 
+/// The admitted v2 alias shape erases `bit` to M31 in the circuit. A caller of
+/// this package API can supply raw public words without going through the
+/// canonical typed-statement CLI, so enforce its source-level bit contract
+/// here as well. Source admission has already validated the nominal ABI and
+/// limits v2 to either one four-word M31 input or this exact alias shape.
+fn requireAdmittedRecordWordDomains(program: relation.Program, words: [8]u32) !void {
+    if (program.version != 2) return;
+    if (program.inputs.len == 1) return;
+    if (program.inputs.len != 3 or program.public_outputs.len != 2 or
+        program.inputs[0].visibility != .public or program.inputs[0].length != 1 or
+        program.inputs[1].visibility != .public or program.inputs[1].length != 2 or
+        program.inputs[2].visibility != .private or program.inputs[2].length != 4 or
+        !std.mem.eql(u8, program.public_outputs[0], program.inputs[0].name))
+        return error.InvalidMixedPublicStatement;
+    // Flat source order is: public flag, two salt words, result flag, four
+    // result words. The descriptor validator requires both flag aliases to
+    // have kind `bit`; source admission rejects an all-M31 alias descriptor.
+    if (words[0] > 1 or words[3] != words[0])
+        return error.InvalidMixedPublicStatement;
+}
+
+test "mixed package raw verifier preserves the admitted public bit domain" {
+    const allocator = std.testing.allocator;
+    const source = @embedFile("../../tests/acceptance/record_abi/mixed_eight_alias_bit.s31.json");
+    const air_bytes = @embedFile("s31_air_programs");
+    var parsed = try relation.parseProgram(allocator, source);
+    defer parsed.deinit();
+    const inspected = try mixed.inspectSource(allocator, source, air_bytes);
+    const selected = try selectedFromSource(&inspected);
+    var honest = [8]u32{ 1, 5, 6, 1, 7, 8, 9, 10 };
+    try requireAdmittedRecordWordDomains(parsed.value, honest);
+    honest[0] = 0;
+    honest[3] = 0;
+    try requireAdmittedRecordWordDomains(parsed.value, honest);
+
+    // A correctly source-bound envelope with no proof body lets this test
+    // exercise the raw verifier's public-word gate before proof allocation.
+    var header = [_]u8{0} ** headerLen(3);
+    @memcpy(header[0..magic.len], magic);
+    header[magic.len] = 1;
+    header[magic.len + 1] = 3;
+    header[magic.len + 2] = 3;
+    var at: usize = magic.len + 4;
+    @memcpy(header[at..][0..32], &selected.source_sha256);
+    at += 32;
+    @memcpy(header[at..][0..32], &selected.manifest_sha256);
+    at += 32;
+    const identity = selected.circuitIdentity();
+    @memcpy(header[at..][0..32], &identity);
+
+    var non_bit = honest;
+    non_bit[0] = 2;
+    non_bit[3] = 2;
+    try std.testing.expectError(error.InvalidMixedPublicStatement,
+        verifyEmbedded(source, air_bytes, allocator, non_bit, &header));
+    var split_alias = honest;
+    split_alias[3] = 1;
+    try std.testing.expectError(error.InvalidMixedPublicStatement,
+        verifyEmbedded(source, air_bytes, allocator, split_alias, &header));
+
+    // The field circuit itself permits 2 on this source input: it is only
+    // typed as a bit by the record ABI, and the compiler has no Boolean Gate
+    // for this otherwise unused public flag. Construct a real native proof
+    // through the lower-level witness/compiler API to test the boundary that
+    // a caller of verifyEmbedded must enforce independently of the CLI.
+    const proof_allocator = std.heap.smp_allocator;
+    const assigned =
+        \\{"public_inputs":{"_s31_abi_input_0":[2],"_s31_abi_input_1":[5,6]},"private_inputs":{"x":[1,2,3,4]},"public_outputs":{"_s31_abi_input_0":[2],"y":[2076908689,937667208,532178712,555828162]}}
+    ;
+    var assignment = try relation.parseAssignment(proof_allocator, assigned);
+    defer assignment.deinit();
+    const topology = try binding.compileSourceTopology(proof_allocator, source);
+    var witness = try binding.compileManyWitness(proof_allocator, source, assignment.value, topology);
+    defer witness.deinit();
+    var native = try engine.proveSourceBound(
+        proof_allocator, circuit.common.preprocessed.CircuitView.fromBuilder(&witness.circuit),
+        witness.values(), source, air_bytes, &selected);
+    defer native.deinit();
+    const invalid_words = [8]u32{ 2, 5, 6, 2, 2076908689, 937667208, 532178712, 555828162 };
+    const lower_level: engine.BorrowedProof = .{
+        .output_values = native.output_values,
+        .interaction_pow_nonce = native.interaction_pow_nonce,
+        .claimed_sums = native.claimed_sums,
+        .sum_count = native.sum_count,
+        .stark_proof = &native.stark_proof.proof,
+        .circuit_hash = native.circuit_hash,
+    };
+    try engine.verifySourceBoundBorrowed(
+        proof_allocator, circuit.common.preprocessed.CircuitView.fromBuilder(&witness.circuit),
+        source, air_bytes, &selected, invalid_words, lower_level);
+
+    var wire: std.ArrayList(u8) = .empty;
+    defer wire.deinit(proof_allocator);
+    try wire.appendSlice(proof_allocator, magic);
+    try wire.appendSlice(proof_allocator, &.{ 1, 3, 3, 0 });
+    try wire.appendSlice(proof_allocator, &selected.source_sha256);
+    try wire.appendSlice(proof_allocator, &selected.manifest_sha256);
+    try wire.appendSlice(proof_allocator, &identity);
+    var nonce_bytes: [8]u8 = undefined;
+    std.mem.writeInt(u64, &nonce_bytes, native.interaction_pow_nonce, .little);
+    try wire.appendSlice(proof_allocator, &nonce_bytes);
+    for (native.claimed_sums[0..native.sum_count]) |sum| for (sum.toM31Array()) |limb| {
+        var word_bytes: [4]u8 = undefined;
+        std.mem.writeInt(u32, &word_bytes, limb.toU32(), .little);
+        try wire.appendSlice(proof_allocator, &word_bytes);
+    };
+    try postcard.serializeProof(H, wire.writer(proof_allocator), native.stark_proof.proof);
+    try std.testing.expectError(error.InvalidMixedPublicStatement,
+        verifyEmbedded(source, air_bytes, proof_allocator, invalid_words, wire.items));
+}
+
 fn selectedFromSource(source: *const mixed.SelectedSchedule) !engine.Selected {
     if (source.call_count == 0 or source.call_count > engine.max_calls or
         source.slot_count != 1 + 2 * @as(usize, source.call_count))
@@ -183,6 +294,7 @@ pub fn proveSealedAndInspectWithTiming(
     var parsed = try relation.parseProgram(allocator, source);
     defer parsed.deinit();
     const words = try relation.evaluate(allocator, parsed.value, assignment);
+    try requireAdmittedRecordWordDomains(parsed.value, words);
     const expected_public = try publicValues(words);
     const semantic_end = timer.read();
     const topology = try binding.compileSourceTopology(allocator, source);
@@ -362,6 +474,9 @@ fn verifySourceBoundWithWitness(
     at += 32;
     const nonce = std.mem.readInt(u64, raw[at..][0..8], .little);
     at += 8;
+    var parsed_source = try relation.parseProgram(allocator, source);
+    defer parsed_source.deinit();
+    try requireAdmittedRecordWordDomains(parsed_source.value, public_words);
     const outputs = try publicValues(public_words);
     var sums = [_]QM31{QM31.zero()} ** cpu.private_many_boundary.max_components;
     for (sums[0..schedule.slot_count]) |*sum| {
