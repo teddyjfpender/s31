@@ -225,6 +225,31 @@ class GateBytecodeArithmeticTest(unittest.TestCase):
             ):
                 check_base_vm_source_contract(verifier.replace(old, new, 1))
 
+    def test_base_vm_rejects_decoy_comment_and_string_arms(self) -> None:
+        verifier = (ROOT / "deps/stwo-zig/src/frontends/cairo/witness/"
+                    "resident_verifier.zig").read_text()
+        original = ".add => base[instruction.a].add(base[instruction.b])"
+        changed = ".add => base[instruction.a].mul(base[instruction.b])"
+        self.assertIn(original, verifier)
+        for decoy in (f"\n// {original}\n",
+                      f"\n/* {original} */\n",
+                      f'\nconst decoy = "{original}";\n'):
+            with self.subTest(decoy=decoy), self.assertRaisesRegex(
+                ValueError, "native Gate base opcode source contract changed"
+            ):
+                check_base_vm_source_contract(verifier.replace(original, changed, 1) + decoy)
+
+    def test_base_vm_rejects_post_switch_register_clobber(self) -> None:
+        verifier = (ROOT / "deps/stwo-zig/src/frontends/cairo/witness/"
+                    "resident_verifier.zig").read_text()
+        end = ".inv => try base[instruction.a].inv(),\n            };"
+        self.assertEqual(verifier.count(end), 1)
+        changed = verifier.replace(end, end + "\n            base[instruction.dst] = QM31.zero();", 1)
+        with self.assertRaisesRegex(
+            ValueError, "native Gate base opcode source contract changed"
+        ):
+            check_base_vm_source_contract(changed)
+
     def test_logup_roots_over_nonbase_oods_cells(self) -> None:
         """All sampled columns may be nonbase at the verifier's OODS point."""
         for seed in (3, 211, 104729):

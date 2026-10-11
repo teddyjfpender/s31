@@ -397,6 +397,10 @@ constraints. Both instruction slices are proved equal to the generated and
 modeled AIR polynomials. The
 exporter checks the native verifier's corresponding opcode switch statements,
 the complete installed bundle/program digests, and the instruction bytes.
+It extracts the unique active base-instruction loop after masking Zig comments
+and strings, then compares the whole loop body; a changed `add` arm followed by
+a plausible comment or string, and an extra post-switch register write, are
+rejected by the mutation tests.
 Acceptance checks the generated Lean file byte for byte. This theorem covers
 the selected arithmetic prefix; registers 122–133, extension opcodes, actual
 Zig execution, and proof authentication remain separate correspondence work.

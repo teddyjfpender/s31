@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import struct
 import sys
 from pathlib import Path
@@ -281,21 +282,105 @@ def render(package: Path) -> str:
     return "\n".join(lines)
 
 
+def active_zig_source(source: str) -> str:
+    """Mask comments and quoted strings while preserving braces and offsets."""
+    result = list(source)
+    i = 0
+    while i < len(source):
+        if source.startswith("//", i):
+            end = source.find("\n", i)
+            if end < 0:
+                end = len(source)
+            result[i:end] = " " * (end - i)
+            i = end
+        elif source.startswith("/*", i):
+            begin, depth = i, 1
+            i += 2
+            while i < len(source) and depth:
+                if source.startswith("/*", i):
+                    depth += 1
+                    i += 2
+                elif source.startswith("*/", i):
+                    depth -= 1
+                    i += 2
+                else:
+                    i += 1
+            require(depth == 0, "unterminated Zig comment")
+            result[begin:i] = ["\n" if ch == "\n" else " " for ch in source[begin:i]]
+        elif source[i] in ('"', "'"):
+            quote, begin = source[i], i
+            i += 1
+            while i < len(source):
+                if source[i] == "\\":
+                    i += 2
+                elif source[i] == quote:
+                    i += 1
+                    break
+                else:
+                    i += 1
+            require(i <= len(source) and source[i - 1] == quote,
+                    "unterminated Zig quoted literal")
+            result[begin:i] = ["\n" if ch == "\n" else " " for ch in source[begin:i]]
+        else:
+            i += 1
+    return "".join(result)
+
+
+def braced_body(source: str, opening: int) -> tuple[str, int]:
+    """Return the active body and closing brace at a known opening brace."""
+    require(source[opening] == "{", "expected Zig scope opening brace")
+    depth = 1
+    for i in range(opening + 1, len(source)):
+        if source[i] == "{":
+            depth += 1
+        elif source[i] == "}":
+            depth -= 1
+            if depth == 0:
+                return source[opening + 1:i], i
+    raise ValueError("unterminated Zig scope")
+
+
 def check_base_vm_source_contract(verifier: str) -> None:
-    """Pin the native base register write and arithmetic opcode switch."""
-    require("base[instruction.dst] = switch (instruction.op)" in verifier and
-            ".trace_col, .preprocessed_col => try self.traceValue(\n"
-            "                    mask,\n"
-            "                    base_offsets,\n"
-            "                    interaction_offsets,\n"
-            "                    instruction.interaction,\n"
-            "                    instruction.a,\n"
-            "                    instruction.imm,\n"
-            "                )" in verifier and
-            ".constant => QM31.fromBase(M31.fromCanonical(instruction.a))" in verifier and
-            ".add => base[instruction.a].add(base[instruction.b])" in verifier and
-            ".sub => base[instruction.a].sub(base[instruction.b])" in verifier and
-            ".mul => base[instruction.a].mul(base[instruction.b])" in verifier,
+    """Pin the unique active base-instruction loop and its whole switch."""
+    source = active_zig_source(verifier)
+    functions = list(re.finditer(r"\bfn\s+evaluateProgram\s*\(", source))
+    require(len(functions) == 1, "native Gate base opcode source contract changed")
+    function_open = source.find("{", functions[0].end())
+    require(function_open >= 0, "native Gate base opcode source contract changed")
+    function, _ = braced_body(source, function_open)
+    loops = list(re.finditer(
+        r"\bfor\s*\(\s*program\.base_insts\s*\)\s*\|\s*instruction\s*\|\s*\{",
+        function))
+    require(len(loops) == 1, "native Gate base opcode source contract changed")
+    loop, _ = braced_body(function, loops[0].end() - 1)
+    expected = """base[instruction.dst] = switch (instruction.op) {
+                .trace_col, .preprocessed_col => try self.traceValue(
+                    mask,
+                    base_offsets,
+                    interaction_offsets,
+                    instruction.interaction,
+                    instruction.a,
+                    instruction.imm,
+                ),
+                .param => return Error.InvalidProgram,
+                .constant => QM31.fromBase(M31.fromCanonical(instruction.a)),
+                .add => base[instruction.a].add(base[instruction.b]),
+                .sub => base[instruction.a].sub(base[instruction.b]),
+                .mul => base[instruction.a].mul(base[instruction.b]),
+                .neg => base[instruction.a].neg(),
+                .inv => try base[instruction.a].inv(),
+            };
+            if (std.process.hasEnvVarConstant("STWO_ZIG_SN2_LOG_VERIFIER_LOGUP_INPUTS") and
+                self.captured.random_coefficient_offset == 0 and instruction.op == .trace_col and
+                instruction.interaction == 2)
+            {
+                std.debug.print(
+                    "verifier_logup_base dst={} column={} offset={} value={any}\\n",
+                    .{ instruction.dst, instruction.a, instruction.imm, qm31Words(base[instruction.dst]) },
+                );
+            }"""
+    require(re.sub(r"\s+", "", loop) ==
+            re.sub(r"\s+", "", active_zig_source(expected)),
             "native Gate base opcode source contract changed")
 
 
