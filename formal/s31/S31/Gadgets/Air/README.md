@@ -668,6 +668,20 @@ correspondence and proof-verifier authentication are open.
 Its good-challenge corollary also applies the existing seven-word rational
 identity theorem to an arbitrary admitted call roster, with reciprocal
 closure and avoidance of the explicit exceptional set as premises.
+[`SourceMixedPath.lean`](SourceMixedPath.lean) assembles a typed ideal boundary
+for one to eight calls. Each call has eight canonical Gate addresses, eight
+bridge words, a round count, and a square-plus-constant step. The same bridge
+words supply the eight Gate reads and both chip endpoints; its Gate-positive
+side also contains eight public M31 output terms and the fixed `u` term.
+It proves an `8N` bridge-event count, a per-event equality with the native
+seven-coordinate bridge Gate encoding, and the public feeder's ordered
+equality with the native claim-fold tuple model. Given an **exact** joint event
+permutation and local chip equations, it derives Gate multiset balance and
+every chip path. A second theorem applies the conditional good-challenge
+reciprocal identity. It still does not identify the typed boundary with
+compiler-emitted rows, fixed columns, statement words, or source/manifest
+fields; it does not prove Gate local arithmetic or producer uniqueness; and it
+does not derive exact balance or row equations from an accepted native proof.
 `TaggedPairChallenge.lean` supplies the ideal seven-coordinate challenge
 reduction for the **joint** Gate/chip event support. It proves that distinct
 seven-word tuples collide for at most six compression challenges, derives an

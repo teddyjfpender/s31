@@ -184,7 +184,7 @@ theorem selected_call_yields {N : Nat} {R : Fin N → Nat}
   exact select_finRange hN call (callYields rows start)
     (fun tag => callYields_own_call rows start tag)
 
-private theorem jointUses_chip_only {N : Nat} {R : Fin N → Nat}
+theorem jointUses_chip_only {N : Nat} {R : Fin N → Nat}
     (rows : ∀ call, Fin (R call) → NativeRow)
     (finish : Fin N → State) :
     ∀ event ∈ jointUses rows finish, IsChipEvent event := by
@@ -192,7 +192,7 @@ private theorem jointUses_chip_only {N : Nat} {R : Fin N → Nat}
   obtain ⟨call, _, hevent⟩ := List.mem_flatMap.mp hmem
   exact (callUses_own_call rows finish call event hevent).1
 
-private theorem jointYields_chip_only {N : Nat} {R : Fin N → Nat}
+theorem jointYields_chip_only {N : Nat} {R : Fin N → Nat}
     (rows : ∀ call, Fin (R call) → NativeRow)
     (start : Fin N → State) :
     ∀ event ∈ jointYields rows start, IsChipEvent event := by
