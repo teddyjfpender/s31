@@ -192,6 +192,15 @@ source-projected fixed-cell plan and an ideal exact Gate multiset join for
 **live source rows**. Its conclusion fixes the selected native packed wire to
 the source denotation for every input. Every instruction's positive
 `sourceUses` is an explicit premise; accepted source does not guarantee it.
+`Functional/SSADeadRowGateJoin` is a draft refinement for accepted programs
+with zero-use instructions: it joins physical installed-bytecode rows to the
+coherent Gate map only when their source-derived output multiplicity is
+positive. Its SSA induction carries only used wire values, so a dead result
+needs no Gate yield. `SSADeadRowMixedReturn` applies that conditional theorem
+to the generated early-return source and checks its selected-use and
+dependency premises by finite computation. This draft still requires Lean
+kernel validation; its physical rows, exact balance, unique producer values,
+fixed events, and public pin events remain explicit assumptions.
 Physical row identification and local AIR acceptance, exact balance, unique
 producers and the packed public input yield remain additional premises. The
 generated square fixture checks its own liveness and fixed cells before
