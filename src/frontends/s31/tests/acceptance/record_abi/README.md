@@ -134,8 +134,21 @@ checks 13 accepted claims, 13 consistent changed claims with changed public
 words, and 65 malformed rejections. The source corpus SHA-256 is
 `a5e2883c146957858828404f47afec1251a4c8b99929c0ed310bb56a04a2305c`.
 
+With `--native`, the script sends those same 91 source-derived cases to the
+production Zig `relation.parseProgram` and `record_abi.claimedWords` paths in
+one small executable. Zig must return the independently projected eight words
+for all 26 well-formed statements, including each consistently changed claim,
+and must reject all 65 malformed claims specifically as
+`InvalidRecordStatement`. The executable is reusable for other JSON case
+corpora using its documented schema in
+[`native_parser_corpus.zig`](native_parser_corpus.zig). This parser check does
+not generate or verify a proof; an ABI-valid changed claim is expected to be
+admitted by this parser. The exact 91-case native input SHA-256 is
+`1c653b515475bc8e90a4ccff13faf2fe6373d74d31f2a0b9ab6679c0eab270c8`.
+
 ```sh
 python3 -B src/frontends/s31/tests/acceptance/record_abi/general_statement_refinement_v2.py
+python3 -B src/frontends/s31/tests/acceptance/record_abi/general_statement_refinement_v2.py --native
 cd formal/s31
 lake build S31.Gadgets.Functional.RecordStatementV2
 lake env lean S31/Gadgets/Functional/GeneratedRecordStatementCorpusV2.lean
@@ -144,6 +157,6 @@ lake env lean S31/Gadgets/Functional/GeneratedRecordStatementCorpusV2.lean
 The [hand-written bit and alias example](../../../../../../formal/s31/S31/Gadgets/Functional/RecordStatementV2.md)
 shows the exact named claims and padded proof words. The theorem starts after
 descriptor validation and JSON/digest checks. This corpus compares the source
-compiler, Python decoder, independent projection, and Lean model; it does not
-exercise the Zig parser for all 13 generated shapes or prove native STARK
-verification for them.
+compiler, Python decoder, independent projection, Lean model, and, with
+`--native`, Zig statement parser. It does not prove native STARK verification
+for all 13 shapes.

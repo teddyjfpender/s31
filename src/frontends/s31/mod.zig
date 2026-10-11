@@ -1,6 +1,7 @@
 pub const program = @import("language/program.zig");
 pub const compiler = @import("language/compiler.zig");
 pub const relation = @import("language/relation.zig");
+pub const record_abi = @import("language/record_abi.zig");
 pub const relation_compiler = @import("language/relation_compiler.zig");
 pub const sha256d = @import("library/hash/sha256d.zig");
 pub const sha_chip_plan = @import("sha/config/sha_chip_plan.zig");

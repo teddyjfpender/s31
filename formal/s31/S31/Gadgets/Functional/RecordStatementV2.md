@@ -66,14 +66,17 @@ From the repository root:
 
 ```sh
 python3 -B src/frontends/s31/tests/acceptance/record_abi/general_statement_refinement_v2.py
+python3 -B src/frontends/s31/tests/acceptance/record_abi/general_statement_refinement_v2.py --native
 cd formal/s31
 lake build S31.Gadgets.Functional.RecordStatementV2
 lake env lean S31/Gadgets/Functional/GeneratedRecordStatementCorpusV2.lean
 ```
 
-This establishes a parametric theorem about validated descriptors and a
-finite source/decoder/model correspondence corpus. The corpus does not prove
-that Zig parses all JSON bytes like the Lean model, that the descriptor digest
-is computed correctly for every input, or that a native proof authenticates
-these claim words. The existing nested native acceptance covers one concrete
-layout; a parser refinement and proof-verifier theorem remain open.
+The optional native command checks 26 accepted and 65 rejected cases in Zig's
+production record statement parser across all 13 layouts. It is a finite
+source/decoder/model/native correspondence corpus, not a general parser
+refinement. It does not prove that Zig parses all JSON bytes like the Lean
+model, that the descriptor digest is computed correctly for every input, or
+that a native proof authenticates these claim words. The existing nested
+proof acceptance covers one concrete layout; a general parser refinement and
+proof-verifier theorem remain open.

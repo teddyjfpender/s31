@@ -14,7 +14,9 @@ import argparse
 import copy
 import hashlib
 import json
+import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 from lean_native_bridge_v2 import ContractError, lean_list, lean_path, path_parts, projection
@@ -27,6 +29,7 @@ from text_frontend import compile_text  # noqa: E402
 
 LEAN = S31.parents[2] / "formal/s31/S31/Gadgets/Functional/GeneratedRecordStatementCorpusV2.lean"
 P = 2**31 - 1
+NATIVE_CORPUS_SHA256 = "1c653b515475bc8e90a4ccff13faf2fe6373d74d31f2a0b9ab6679c0eab270c8"
 
 
 def sources() -> list[tuple[str, str]]:
@@ -242,15 +245,67 @@ def render() -> tuple[str, dict]:
     }
 
 
+def check_native_parser() -> dict:
+    """Compare the 13 source-derived cases with Zig's real statement parser.
+
+    This invokes relation.parseProgram and record_abi.claimedWords directly. It
+    does not create a proof or treat a changed but well-formed claim as valid
+    for an existing proof.
+    """
+    cases: list[dict] = []
+    for index, (label, source_text) in enumerate(sources()):
+        source, _ = compile_text(source_text)
+        relation, binding = relation_and_binding(source)
+        statement, expected = encoded_claims(relation, binding, index + 1)
+        variants = mutations(relation, binding, statement)
+        changed, changed_words = consistent_change(relation, binding, statement,
+                                                   expected)
+        source_json = canonical(source).decode("ascii")
+        for suffix, claim, words in (("accepted", statement, expected),
+                                     ("consistent_change", changed, changed_words)):
+            cases.append({"label": f"{label}/{suffix}", "source": source_json,
+                          "statement": canonical(claim).decode("ascii"),
+                          "expected_words": words})
+        for suffix, claim in variants.items():
+            cases.append({"label": f"{label}/{suffix}", "source": source_json,
+                          "statement": canonical(claim).decode("ascii"),
+                          "expected_words": None})
+    if len(cases) != 91:
+        raise AssertionError("native parser corpus must contain 13 * 7 cases")
+    with tempfile.TemporaryDirectory(prefix="s31-record-parser-corpus-") as temporary:
+        path = Path(temporary) / "corpus.json"
+        corpus_bytes = canonical({"schema": "s31-record-statement-native-corpus-v2",
+                                  "cases": cases})
+        corpus_sha256 = hashlib.sha256(corpus_bytes).hexdigest()
+        if corpus_sha256 != NATIVE_CORPUS_SHA256:
+            raise AssertionError("native statement corpus bytes differ from pinned SHA-256")
+        path.write_bytes(corpus_bytes)
+        command = ["zig", "build", "--build-file", str(S31 / "build.zig"),
+                   "record-statement-parser-corpus", "-j1", "--", str(path)]
+        completed = subprocess.run(command, cwd=S31.parents[2], capture_output=True,
+                                   text=True, check=False)
+        if completed.returncode:
+            raise AssertionError("native statement parser corpus failed:\n"
+                                 + completed.stderr[-6000:])
+    result = json.loads(completed.stdout)
+    if result != {"accepted": 26, "rejected": 65}:
+        raise AssertionError(f"native parser corpus counts differ: {result}")
+    return {**result, "corpus_sha256": corpus_sha256}
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--write", action="store_true", help="regenerate checked-in Lean corpus")
+    parser.add_argument("--native", action="store_true",
+                        help="run all generated claims through Zig's native statement parser")
     args = parser.parse_args()
     rendered, report = render()
     if args.write:
         LEAN.write_text(rendered)
     elif not LEAN.is_file() or LEAN.read_text() != rendered:
         raise AssertionError("compiled record corpus diverges from checked-in Lean; use --write")
+    if args.native:
+        report["native_parser"] = check_native_parser()
     print(json.dumps(report, indent=2, sort_keys=True))
 
 

@@ -97,6 +97,19 @@ pub fn build(b: *std.Build) void {
     const tests = b.addRunArtifact(b.addTest(.{ .root_module = frontend }));
     const test_step = b.step("test", "Test the S31 prototype parser, evaluator and circuit compiler");
     test_step.dependOn(&tests.step);
+    const record_parser_corpus_root = b.createModule(.{
+        .root_source_file = b.path("tests/acceptance/record_abi/native_parser_corpus.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    record_parser_corpus_root.addImport("stwo_s31_prototype", frontend);
+    const record_parser_corpus = b.addRunArtifact(b.addExecutable(.{
+        .name = "s31-record-statement-parser-corpus",
+        .root_module = record_parser_corpus_root,
+    }));
+    if (b.args) |args| record_parser_corpus.addArgs(args);
+    b.step("record-statement-parser-corpus", "Check compiled record claims in the Zig parser")
+        .dependOn(&record_parser_corpus.step);
     const pair_source_test_root = localEntry(b, "tests/proofs/private_pair_source_test.zig", target, optimize);
     pair_source_test_root.addImport("stwo_core", core);
     pair_source_test_root.addImport("stwo_circuit_frontend", circuit);
