@@ -70,10 +70,11 @@ theorem concatBlocks_length {α : Type} (leaves : List (WordBlock α)) :
       simp [head.exactWidth, ih]
 
 /-!
-Public bit and u16 leaves tag already existing M31 words. This model records
+Public bit, u8, and u16 leaves tag already existing M31 words. This model records
 the additional native statement range checks. The production direct-gate
-compiler separately reconstructs public u16 input words from sixteen Boolean
-bits; neither that compiler link nor JSON parsing follows from this model.
+compiler separately reconstructs public u8 input words from eight Boolean
+bits and public u16 input words from sixteen Boolean bits; neither those
+compiler links nor JSON parsing follow from this model.
 Private bit, u8, and u16 leaves are outside the admitted native ABI subset.
 -/
 

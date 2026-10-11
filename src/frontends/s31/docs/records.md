@@ -159,10 +159,11 @@ record does not hide proof obligations in an unused field.
 
 Records may be passed to and returned from pure `fn` helpers and stored in
 `let` bindings. Circuit parameters may also be nominal records with M31,
-public `bit`, or public `[u16; N]` leaves. A circuit may return either a public record or a first-order M31
-value under the `direct-gate` v2 profile. The native verifier accepts one
+public `bit`, public `u8`, or public `[u16; N]` leaves. A circuit may return
+either a public record or a first-order M31 value under the `direct-gate` v2
+profile. The native verifier accepts one
 canonical typed v2 statement with named input and output paths. Other leaf
-types and private `bit`/`u16` leaves remain outside this boundary.
+types and private `bit`/`u8`/`u16` leaves remain outside this boundary.
 Whole-record `if` and `assert_eq` now traverse first-order leaves in declared
 field order. A record `if` evaluates both branches and emits exactly the
 selectors that a handwritten fieldwise program emits. A record assertion
