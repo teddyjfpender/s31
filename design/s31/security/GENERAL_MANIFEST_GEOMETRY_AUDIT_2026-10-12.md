@@ -20,6 +20,16 @@ limbs in native tree/column order. It rejects a well-formed but incorrect
 `mask_points_sha256`. The source-pinned verifier still reconstructs the native
 handles and PCS schedule before decoding and verifying a proof.
 
+The focused N1 black-box native run matched the independently recomputed
+digest and accepted a 70,105-byte proof. A subsequent N3 run exercised the
+`many` chip and bridge masks as well as the `pair` masks, matched the live
+manifest, accepted a 101,122-byte proof (SHA-256
+`fcad0c86e6e48341e9742a43ba3bf283d6ef712b7143becb2e41c741edf2a799`),
+and passed the existing changed-source, changed-claim, and malformed-proof
+rejection controls. Static source/slot projection and mutation cases cover
+N1, N3, and N8. These observations are local acceptance evidence rather
+than a proof for every possible source or challenge.
+
 This closes a manifest visibility and digest-recomputation gap for the bounded
 mixed roster. The audit trusts the installed AIR bundle, the checked Gate
 bytecode decoder, and the stated circle generator and pair/many mask policies.
