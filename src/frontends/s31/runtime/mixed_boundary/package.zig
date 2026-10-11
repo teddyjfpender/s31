@@ -182,7 +182,7 @@ pub fn verifyEmbeddedWithDescriptor(
 ) !void {
     try descriptor.requireSource(allocator, candidate, source, air_bytes);
     if (candidate.call_count != engine.n_calls) return error.UnsupportedMixedProofCount;
-    return verifySourceBound(allocator, source, air_bytes, public_words, raw);
+    _ = try verifySourceBound(allocator, source, air_bytes, public_words, raw);
 }
 
 fn verifySourceBound(
