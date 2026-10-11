@@ -31,6 +31,18 @@ post-proof descriptions, never predictor inputs. With 20 scored claims each,
 stochastic PoW can materially move a program median; this small study cannot
 separate that effect from other runtime variation with confidence.
 
+**Post-hoc sampling diagnostic (not a score):** the frozen model's one-call
+non-PoW center, using its median calibration residual, is about 28.98 ms;
+the observed N=1 non-PoW median was 28.15 ms. Its fitted FRI exponential
+median is 53.13 ms, versus the observed 31.64 ms. In 100,000 deterministic
+Monte Carlo samples of 20 draws from that *unchanged* frozen wall model
+(random seed `202610116`), 4.19% of sample medians were at or below the
+observed N=1 median; 7.09% missed the same 35% median gate in either
+direction. This makes the miss plausible under the model's PoW randomness,
+but it is a lower-tail observation and does not rule out systematic bias.
+The simulation was run after seeing the result and cannot change the
+preregistered failure.
+
 ## Native geometry and cold/warm observations
 
 Every package reported the configured 20-bit interaction and 26-bit FRI PoW.
