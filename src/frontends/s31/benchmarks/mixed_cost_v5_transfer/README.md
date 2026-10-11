@@ -37,3 +37,14 @@ is retained and the runner refuses a score-selected second run. Twenty scored
 claims per source give only a rough empirical coverage check. This is a
 host-, compiler-, and engine-specific cost-model check, not a Cairo speedup
 claim or a general statistical guarantee.
+
+The single committed run is reported in
+[`MIXED_COST_V5_TRANSFER_RESULT.md`](../../../../../design/s31/measurements/MIXED_COST_V5_TRANSFER_RESULT.md).
+It missed the N=1 warm-wall median gate and passed the other seven gates.
+With the retained local raw bundle, replay its native evidence and recompute
+the frozen score using the post-run auditor:
+
+```sh
+python3 -B src/frontends/s31/benchmarks/mixed_cost_v5_transfer/audit.py \
+  --out zig-out/s31-mixed-cost-v5-transfer --native
+```
