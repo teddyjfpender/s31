@@ -6,8 +6,9 @@ AIR, PCS/FRI, Fiat–Shamir, and proof-of-work soundness need their own bounds.
 
 ## What is sampled
 
-The pinned engine commits the main trace, mixes and verifies the interaction
-proof-of-work nonce, then draws `z` and `alpha` as two QM31 challenge elements.
+The pinned prover commits the main trace and mixes an interaction proof-of-work
+nonce; the verifier checks and mixes that nonce. Both then draw `z` and
+`alpha` as two QM31 challenge elements.
 A tuple `t = (t_0, ..., t_d)` is mapped to
 
 ```text
