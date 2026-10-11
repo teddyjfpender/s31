@@ -22,7 +22,10 @@ pub fn main() !void {
     defer allocator.free(assignment_bytes);
     var assignment = try relation.parseAssignment(allocator, assignment_bytes);
     defer assignment.deinit();
-    const public_words = try relation.evaluate(allocator, parsed.value, assignment.value);
+    // Project the claimed statement here. The package performs the single
+    // semantic evaluation and compares it with the native proof outputs before
+    // returning; evaluating here as well repeats every chip round in the CLI.
+    const public_words = try relation.claimedWords(allocator, parsed.value, assignment.value);
     const supplied_v2: ?[]u8 = if (parsed.value.version == 2) blk: {
         const supplied = try std.fs.cwd().readFileAlloc(allocator, args[4], 1 << 20);
         errdefer allocator.free(supplied);
