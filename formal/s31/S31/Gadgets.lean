@@ -132,6 +132,7 @@ import S31.Gadgets.Functional.SSAPublicInputBinding
 import S31.Gadgets.Functional.SSANativePolynomialRows
 import S31.Gadgets.Functional.SSAGateLookupWireMap
 import S31.Gadgets.Functional.GeneratedDirectGateBridge
+import S31.Gadgets.Functional.GeneratedDirectGateMixedReturn
 import S31.Gadgets.Functional.MathLibrary
 import S31.Gadgets.Functional.WorkedQuadratic
 import S31.Gadgets.Functional.CurriedApplication

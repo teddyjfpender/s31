@@ -267,7 +267,9 @@ def _input_air_rows(checked: dict, topology: dict, *, mutation: str | None = Non
     return "[\n    " + ",\n    ".join(rows) + "\n  ]"
 
 
-def render_bridge(package: Path) -> str:
+def render_bridge(package: Path, namespace: str = "GeneratedDirectGateBridge") -> str:
+    if re.fullmatch(r"[A-Z][A-Za-z_0-9]*", namespace) is None:
+        raise ValueError("Lean bridge namespace must be a single safe identifier")
     checked = check_package(package)
     source_bytes = (package / "source.s31").read_bytes()
     digest = hashlib.sha256(source_bytes).hexdigest()
@@ -358,7 +360,7 @@ import S31.Gadgets.Functional.SSAGeneralNamedExecution
 
 set_option maxRecDepth 4096
 
-namespace S31.Functional.GeneratedDirectGateBridge
+namespace S31.Functional.{namespace}
 
 open S31.Functional.SSACertificate
 open S31.Functional.SSADirectGateBridge
@@ -663,7 +665,7 @@ theorem checked_instance_air_claim (input claimed : Lanes)
     observed_output_cells_match, observed_input_cells_match,
     observed_public_addresses_match, hbytes.symm⟩
 
-end S31.Functional.GeneratedDirectGateBridge
+end S31.Functional.{namespace}
 '''
 
 
@@ -673,8 +675,10 @@ def main() -> None:
     parser.add_argument("output", type=Path)
     parser.add_argument("--check", action="store_true",
                         help="require the output to match regenerated Lean source")
+    parser.add_argument("--namespace", default="GeneratedDirectGateBridge",
+                        help="single Lean namespace identifier for an additional fixture")
     args = parser.parse_args()
-    rendered = render_bridge(args.package)
+    rendered = render_bridge(args.package, namespace=args.namespace)
     if args.check:
         if not args.output.is_file() or args.output.read_text() != rendered:
             raise SystemExit("checked native bridge differs from generated Lean source")

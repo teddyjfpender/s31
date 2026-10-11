@@ -137,6 +137,27 @@ This is a concrete package-to-Lean check. The Python exporter and Zig
 inspector remain outside the Lean proof, and physical address 22 is specific
 to this direct-gate profile.
 
+The checked-in
+[`GeneratedDirectGateMixedReturn.lean`](../../../formal/s31/S31/Gadgets/Functional/GeneratedDirectGateMixedReturn.lean)
+provides a second independent package instance. Its source is:
+
+```s31
+circuit early_output(public x: [m31; 4]) -> public [m31; 4] {
+  let a = x .* x;
+  let b = x + a;
+  let c = a .* b;
+  a
+}
+```
+
+The native circuit still executes all three lets; the public result selects
+`a`. Its producer has six uses: one read by `b`, one by `c`, and four by the
+public unpack masks. The generated Lean check confirms the source bytes,
+three ordered native source gates, mixed selectors, the selected output, and
+the six-use preprocessed row. Package acceptance regenerates this fixture
+from a fresh native build and verifies a proof for `x = [0,1,2,7]`, yielding
+`a = [0,1,4,49]`.
+
 [`SSAAirColumnCells.lean`](../../../formal/s31/S31/Gadgets/Functional/SSAAirColumnCells.lean)
 derives the expected selector, three wire addresses, and output use count
 from the parsed SSA and checks them against the eight cells that the exporter

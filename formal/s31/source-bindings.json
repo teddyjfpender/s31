@@ -121,7 +121,7 @@
     "src/frontends/s31/tests/proofs/gate_mask_native_test.zig": "9544d08ef27cbbc0d5cc5a5cf5afa0e7ee099278bcc0f899a2db2f63a01abf48",
     "src/frontends/s31/tests/proofs/gate_circle_factor_native_test.zig": "556162b1501004d5dc8db9b0dcc3c768716a74da598b5524e6ad65032148cf08",
     "src/frontends/s31/tests/python/test_gate_bytecode_arithmetic.py": "4c13b603eb865fc34ce686d6580fc4a4469db9b26ad96a3ea7322341814b9537",
-    "scripts/export_s31_direct_gate_bridge.py": "c345b09de304603ce91dde010ae1e20331e3e7fa49801a4289ac1f2b39bcb553",
+    "scripts/export_s31_direct_gate_bridge.py": "7cb30826440ab13e5a9a1dbcc1cca926e42d2239060f7318ad3efad7ecbb542b",
     "scripts/export_s31_direct_gate_bytecode_arithmetic.py": "e218d5d1fc74023057052a746645397c6368e89c3eba72b82662859616a03e0e",
     "scripts/export_s31_native_gate_oods_vectors.py": "de1e547bf0b410b25c1f24a49e273edfda53b0ea2540118e5b96db7fc41a2155",
     "deps/stwo-zig/src/frontends/cairo/witness/eval_program.zig": "d0f28de6b7c89d6308b6f47306d9d290a965fee7e98cf53811fede39ea9bbcf7",

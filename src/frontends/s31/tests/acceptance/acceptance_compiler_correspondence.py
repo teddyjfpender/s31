@@ -248,6 +248,28 @@ def main() -> None:
                 fromfile="checked-in Lean", tofile="regenerated Lean"))[:40])
             raise AssertionError("source/native bridge differs from checked Lean instance:\n"
                                  + difference)
+        mixed_source = S31 / "examples/arithmetic/functional_early_return_mixed.s31"
+        mixed_assignment = S31 / "examples/arithmetic/functional_early_return_mixed.valid.json"
+        mixed = s31.build(mixed_source, work / "mixed-earlier-output", "direct-gate")
+        mixed_checked = check_package(mixed)
+        if (len(mixed_checked["source_ssa"]["instructions"]) != 3 or
+                mixed_checked["source_ssa"]["output"] != 1 or
+                {node["op"] for node in mixed_checked["source_ssa"]["instructions"]} !=
+                {"add", "mul"}):
+            raise AssertionError("mixed earlier-output package changed fragment")
+        mixed_golden = (REPO / "formal/s31/S31/Gadgets/Functional/"
+                        "GeneratedDirectGateMixedReturn.lean")
+        mixed_rendered = render_bridge(mixed, namespace="GeneratedDirectGateMixedReturn")
+        if mixed_rendered != mixed_golden.read_text():
+            difference = "".join(list(difflib.unified_diff(
+                mixed_golden.read_text().splitlines(keepends=True),
+                mixed_rendered.splitlines(keepends=True),
+                fromfile="checked-in mixed Lean", tofile="regenerated mixed Lean"))[:40])
+            raise AssertionError("mixed source/native bridge differs from checked Lean instance:\n"
+                                 + difference)
+        if not s31.trial(mixed, mixed_assignment,
+                         work / "mixed-earlier-output-proof")["native_verifier_accepted"]:
+            raise AssertionError("mixed earlier-output direct-gate proof was rejected")
         evaluator_golden = (REPO / "formal/s31/S31/Gadgets/Air/"
                             "GeneratedDirectGateEvaluatorFixture.lean")
         evaluator_rendered = render_evaluator_fixture(honest, assignment)
@@ -491,6 +513,8 @@ def main() -> None:
             "native_gate_counts": checked["gate_counts"],
             "native_exact_constant_schedule_checked": True,
             "lean_bridge_instance_matches_native_package": True,
+            "mixed_earlier_output_bridge_matches_native_package": True,
+            "mixed_earlier_output_native_proof_accepted": True,
             "evaluator_fixture_matches_checked_package": True,
             "installed_gate_bytecode_arithmetic_matches_checked_package": True,
             "installed_gate_base_vm_matches_checked_package": True,
