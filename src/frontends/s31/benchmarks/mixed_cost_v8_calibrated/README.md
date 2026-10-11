@@ -89,3 +89,8 @@ blocks are too few to claim a generally reliable clock distribution. New
 geometry, changed PoW difficulty, process contention, or host thermal/rate
 drift can break the prediction. Such a failure will be retained in the
 committed score.
+
+The single prospective run passed all eight frozen gates; the exact
+[result and limits](../../../../../design/s31/measurements/MIXED_COST_V8_CALIBRATED_RESULT.md)
+are committed with the native replay audit. The V5 and V7 failures remain
+separate historical scores.
