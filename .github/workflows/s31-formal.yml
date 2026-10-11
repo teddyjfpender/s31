@@ -115,3 +115,36 @@ jobs:
           name: s31-formal-evidence
           path: zig-out/s31/formal/
           if-no-files-found: error
+
+  fresh-native-square4-trace:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          submodules: recursive
+      - name: Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.13'
+      - name: Zig for fresh native square4 package
+        uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2
+        with:
+          version: 0.15.2
+          use-cache: false
+      - name: Rebuild, export, compare, and mutate complete square4 base trace
+        run: |
+          set -euo pipefail
+          mkdir -p zig-out/s31/formal/fresh-square4
+          python3 formal/s31/scripts/check_fresh_square4_native_witness.py \
+            --write-report zig-out/s31/formal/fresh-square4/native-physical.json \
+            --write-lean zig-out/s31/formal/fresh-square4/TextSquare4NativeWitness.lean \
+            2>&1 | tee zig-out/s31/formal/fresh-square4/check.log
+      - name: Preserve fresh native trace evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: s31-fresh-native-square4-trace
+          path: zig-out/s31/formal/fresh-square4/
+          if-no-files-found: warn

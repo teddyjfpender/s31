@@ -182,12 +182,18 @@ pinned external uses: the unit at address 2 and the eight public scalar words
 at addresses 3–10. It checks unique active producer values and rejects five
 fixed, main, pin, claim, and lookup-only mutations.
 The formal CI job rechecks the report and compares its generated Lean literal
-byte for byte with the committed module.
+byte for byte with the committed module. A separate native CI job builds a
+fresh `direct-gate` package from the checked-in `.s31` source, exports its
+complete 8 × 512 fixed and 12 × 512 main cells through
+`inspect-physical-rows`, checks all arithmetic roots and five mutations,
+compares the entire JSON report with the committed report, and compares the
+rendered Lean fixture byte for byte. Run the same gate locally with
+`python3 formal/s31/scripts/check_fresh_square4_native_witness.py`.
 
 The report records uncommitted prover evaluations from one inspected run.
-Formal CI rechecks the committed report and its generated Lean literal, but
-does not rerun the native prover. The all-row arithmetic and ideal Gate
-balance statements are executable evidence, not yet Lean theorems. The local
+The fresh native CI job re-extracts those evaluations on each run. The all-row
+arithmetic and ideal Gate balance statements are executable evidence, not yet
+Lean theorems. The local
 arithmetic equations alone do not determine the main trace: arithmetic
 padding row 11 has fixed tuple
 `[1, 0, 0, 0, 0, 0, 0, 11]` and a checked-in all-zero main tuple. Replacing
