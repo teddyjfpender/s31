@@ -39,7 +39,9 @@ theorem observed_source_coverage :
 
 /-- An arbitrary coherent wire map satisfying the selected native arithmetic
 bytecode on the exact source rows gives the result of the original 121 source
-bytes. The public-input boundary and authenticated-root premise are visible. -/
+bytes. The public-input boundary and assumed zero roots over projected cells
+are visible; the theorem does not assert that these are native opened cells
+or bind the result wire to a verifier's public output claim. -/
 theorem mixed_return_bytecode_output (wire : Nat → Quad) (input : Lanes)
     (hboundary : InputBoundary certificate observedAddRows wire input)
     (hzero : ∀ cell ∈ observedColumnCells,

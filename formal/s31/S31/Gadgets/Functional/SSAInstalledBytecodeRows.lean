@@ -10,7 +10,8 @@ residual premise with the nine roots of the selected installed bytecode.
 
 `wire` is still an address-coherent logical value map. Authentication of that
 map by Gate lookup, of these cells by PCS, and of all-row zero roots by the
-native verifier are explicit premises, not conclusions of this theorem.
+native verifier remain separate obligations; this theorem assumes zero roots
+only for cells projected from that logical map.
 -/
 
 namespace S31.Functional.SSAInstalledBytecodeRows
