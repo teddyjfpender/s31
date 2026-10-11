@@ -506,4 +506,72 @@ theorem fixture_paths_distinct :
       twoFieldPath "request" "left" "right" (.right .here) := by
   decide
 
+/-!
+Source-pinned native record acceptance fixture. The four declarations between
+the generated markers are checked against `nested_alias_v2.py` by
+`lean_native_bridge_v2.py`. The remaining definitions are an independent Lean
+model of the declared record/tuple walk and distinct-wire projection. This is
+one concrete compiler/statement fixture, not a parser refinement theorem.
+-/
+
+def nativeAliasRequestTree : NominalTree :=
+  namedRecord 2 (fun i => if i.val = 0 then "pair" else "extra")
+    (fun i => if i.val = 0 then indexedTuple 2 (fun _ => .leaf)
+      else namedRecord 1 (fun _ => "seed") (fun _ => .leaf))
+
+def nativeAliasResultTree : NominalTree :=
+  namedRecord 2 (fun i => if i.val = 0 then "nested" else "copy")
+    (fun i => if i.val = 0 then indexedTuple 2
+      (fun j => if j.val = 0 then namedRecord 1 (fun _ => "seed") (fun _ => .leaf)
+        else .leaf)
+      else namedRecord 1 (fun _ => "seed") (fun _ => .leaf))
+
+-- BEGIN GENERATED NATIVE ALIAS V2 CONTRACT
+def nativeAliasInputPaths : List (List Segment) :=
+  [[.root "req", .field "pair", .tuple 0], [.root "req", .field "pair", .tuple 1], [.root "req", .field "extra", .field "seed"]]
+def nativeAliasResultPaths : List (List Segment) :=
+  [[.root "result", .field "nested", .tuple 0, .field "seed"], [.root "result", .field "nested", .tuple 1], [.root "result", .field "copy", .field "seed"]]
+def nativeAliasClaimWords : List Nat := [2, 3, 5, 17, 2, 17]
+def nativeAliasProofWords : List Nat := [2, 3, 5, 17, 2, 0, 0, 0]
+-- END GENERATED NATIVE ALIAS V2 CONTRACT
+
+theorem nativeAlias_inputPaths :
+    (orderedRootLeaves "req" nativeAliasRequestTree (fun _ => ())).map Prod.fst =
+      nativeAliasInputPaths := by decide
+
+theorem nativeAlias_resultPaths :
+    (orderedRootLeaves "result" nativeAliasResultTree (fun _ => ())).map Prod.fst =
+      nativeAliasResultPaths := by decide
+
+def nativeAliasRoots : List (InputRoot (WordBlock Nat)) :=
+  [⟨.pair (.pair .leaf .leaf) .leaf, .visible,
+      ((block [2], block [3]), block [5])⟩,
+   ⟨.leaf, .secret, block [7]⟩]
+
+def nativeAliasWires : Fin 2 → WordBlock Nat :=
+  fun index => if index.val = 0 then block [17] else block [2]
+
+theorem nativeAlias_claimWords :
+    [2, 3, 5] ++ concatBlocks
+      (([0, 1, 0] : List (Fin 2)).map nativeAliasWires) =
+      nativeAliasClaimWords := by decide
+
+theorem nativeAlias_modelWords :
+    typedPublicWords nativeAliasRoots nativeAliasWires [0, 1, 0] ++ [0, 0, 0] =
+      nativeAliasProofWords := by decide
+
+theorem nativeAlias_nativeProjection :
+    nativeProjectedWords nativeAliasRoots nativeAliasWires [0, 1, 0] ++ [0, 0, 0] =
+      nativeAliasProofWords := by
+  rw [← typedPublicWords_eq_nativeProjection]
+  exact nativeAlias_modelWords
+
+/-- A result field that changes one aliased wire cannot be admitted by the
+same wire assignment, even if its path and word range remain valid. -/
+theorem nativeAlias_splitAlias_rejected :
+    ¬ RecordBoundary.acceptsClaims
+      (fun index : Fin 2 => if index.val = 0 then 17 else 2)
+      [0, 1, 0] [17, 2, 18] := by
+  simp [RecordBoundary.acceptsClaims, RecordBoundary.projectAliases]
+
 end S31.Functional.RecordAbiV2

@@ -88,3 +88,30 @@ the generated verifier on all 168 mutations. It tests parser agreement and
 public-claim proof binding for this one sealed record layout. It is a finite
 adversarial corpus, not a proof that the Python and Zig parsers agree on every
 JSON input or every valid record type.
+
+## Source to Lean/native statement fixture
+
+[`lean_native_bridge_v2.py`](lean_native_bridge_v2.py) checks the same nested
+program against a concrete contract in
+[`RecordAbiV2.lean`](../../../../../../formal/s31/S31/Gadgets/Functional/RecordAbiV2.lean).
+It independently walks the compiled type trees in declaration order, checks
+every six public claim paths and alias, then projects relation public inputs
+and distinct result wires to `[2, 3, 5, 17, 2, 0, 0, 0]`. The script requires
+the exact generated Lean path and word declarations to match the compiled
+source and canonical statement. Lean then proves its own nominal tree walk,
+six claimed words, deduplicated proof words, and an inconsistent result alias
+rejection for this fixture. A valid, consistently changed input/output alias
+is accepted as a *different* five-word public claim.
+
+```sh
+python3 -B src/frontends/s31/tests/acceptance/record_abi/lean_native_bridge_v2.py
+cd formal/s31 && lake env lean S31/Gadgets/Functional/RecordAbiV2.lean
+```
+
+The Python check has eight targeted negative controls for path order, tuple
+index type, split aliases, private leaf leakage, field range and result wire
+order. `--emit` prints the exact source-derived Lean contract when updating the
+fixture. This check ties one admitted source program to the Lean model and to
+the statement words already exercised by the native acceptance. It does not
+prove a general Python/Zig parser refinement, native proof soundness, or
+confidentiality of private inputs.
