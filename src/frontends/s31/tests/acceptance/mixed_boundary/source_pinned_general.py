@@ -170,6 +170,16 @@ def static_mapping_checks() -> dict:
         manifest = {"calls": calls, "call_count": count, "slots": slots}
         check_source_call_mapping(source, manifest)
         check_source_call_mapping_mutations(source, manifest)
+        # This projector checks continuity and freshness, but source text
+        # alone does not expose the compiler's absolute circuit addresses.
+        # A coordinated fresh retarget remains possible in this *static*
+        # model; the sealed native verifier re-inspects actual topology.
+        retargeted = copy.deepcopy(manifest)
+        retargeted["calls"][0]["input"][0] = 10_000
+        retargeted["calls"][0]["output"][0] = 20_000
+        if count > 1:
+            retargeted["calls"][1]["input"][0] = 20_000
+        check_source_call_mapping(source, retargeted)
         changed_source = copy.deepcopy(source)
         changed_source["nodes"][0]["body"][1]["constant"] += 1
         try:
@@ -180,7 +190,8 @@ def static_mapping_checks() -> dict:
             raise AssertionError("source-side chip constant mutation escaped")
     return {"schema": "s31-mixed-source-roster-mapping-static-v1",
             "counts": [1, 3, 8], "manifest_mutations_rejected_per_count": 11,
-            "source_mutations_rejected_per_count": 1}
+            "source_mutations_rejected_per_count": 1,
+            "fresh_absolute_address_retarget_accepted_without_topology": True}
 
 
 def build(source: Path, prefix: Path, *, accept: bool = True) -> tuple[Path, Path, Path]:

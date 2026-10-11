@@ -38,7 +38,10 @@ python3 src/frontends/s31/tests/acceptance/mixed_boundary/source_pinned_general.
 ```
 
 The projection is an independent check of the public inspection report for
-this chain family. Native source reinspection, fixed-column commitments and
-proof verification still carry the authority for a package. The Python
-check does not authenticate trace values or prove the source-to-Lean event
-correspondence.
+this chain family. It cannot derive absolute circuit endpoint addresses from
+source text alone: its static control deliberately accepts a coordinated,
+fresh address retarget while rejecting broken continuity and duplicate
+addresses. Native source reinspection checks the generated topology;
+fixed-column commitments and proof verification carry authority for the
+package. The Python check does not authenticate trace values or prove the
+source-to-Lean event correspondence.
