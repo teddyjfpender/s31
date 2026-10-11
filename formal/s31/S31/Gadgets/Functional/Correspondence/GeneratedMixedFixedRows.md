@@ -68,6 +68,12 @@ N=1 and N=8, and proves that every exported output address is below the
 native 512-variable bound. Main-value `ValueAt` facts, the full producer scan,
 and authentication of the decoded trace remain separate premises.
 
+The next step is
+[`SourceMixedFixedLocalCertificate.lean`](../../Air/SourceMixedFixedLocalCertificate.md):
+the full N=1/N=8 fixed export yields a checked producer-address scan, all
+eight public output row paths, and a conditional construction of the complete
+mixed-chain `LocalPublicSchedule`.
+
 From the S31 repository root:
 
 ```sh

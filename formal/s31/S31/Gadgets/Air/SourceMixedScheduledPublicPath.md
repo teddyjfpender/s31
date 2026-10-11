@@ -48,11 +48,14 @@ packed add and pointwise-multiply tail rows at addresses 33/34 for N=1 and
 addresses are below 512, including inactive rows. This discharges the
 `LocalPublicSchedule.add`, `.mul`, and `.rowAddressRange` facts for either
 pinned source family once that decoded-to-source row equality is supplied.
-The fixture does not construct the whole `LocalPublicSchedule`: its
-`ValueAt` facts depend on main-column values and Gate production, while its
-`producerScan` depends on the complete logical producer roster and baseline
-yields. Authentication of the decoded fixed and main columns remains a
-proof-system obligation.
+The follow-on
+[`SourceMixedFixedLocalCertificate.lean`](SourceMixedFixedLocalCertificate.md)
+uses the complete fixed output-address and multiplicity columns to discharge
+the N=1/N=8 producer scan under an empty baseline-yield premise. It also
+assembles every public mask, inverse, and copy row into `ScheduledOutputPath`.
+It constructs the whole `LocalPublicSchedule` from those fixed facts plus
+explicit main-value and source/trace-identity premises. Authentication of the
+decoded fixed and main columns remains a proof-system obligation.
 
 The `GeneratedMixedEightV2` record ABI fixture is a different one-call
 program. Its eight public words are a bit, two salt words, an aliased bit, and
