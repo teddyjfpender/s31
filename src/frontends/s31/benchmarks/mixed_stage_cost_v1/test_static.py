@@ -4,12 +4,17 @@ from __future__ import annotations
 
 import copy
 import json
+import os
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
+import anchors
+import protocol
 from cohort import ROOT, canonical, case, design, inventory, sha
-from evidence import bins, check_materialized, materialize, phase_root, replay_trial
+from evidence import bins, check_materialized, materialize, phase_root, replay_trial, zig_cache_path
 from model import components, evaluate, fit_model, predict
 from protocol import check, tool_paths
 
@@ -58,6 +63,60 @@ def synthetic_records(counts: list[int], slowdown: float = 1.0) -> list[dict]:
 
 
 class ProspectiveMixedCostTests(unittest.TestCase):
+    def test_protocol_anchor_cannot_precede_protocol_commit(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            subprocess.run(["git", "init", "-q", str(root)], check=True)
+            for key, value in (("user.name", "S31 test"),
+                               ("user.email", "s31-test@example.invalid")):
+                subprocess.run(["git", "-C", str(root), "config", key, value], check=True)
+            freeze = root / "freeze.json"
+            freeze.write_text("{}\n")
+            subprocess.run(["git", "-C", str(root), "add", "freeze.json"], check=True)
+            subprocess.run(["git", "-C", str(root), "commit", "-qm", "anchor first"],
+                           check=True)
+            anchor_commit = subprocess.check_output(
+                ["git", "-C", str(root), "rev-parse", "HEAD"], text=True).strip()
+            prospective = root / "protocol.json"
+            prospective.write_text("{}\n")
+            subprocess.run(["git", "-C", str(root), "add", "protocol.json"], check=True)
+            subprocess.run(["git", "-C", str(root), "commit", "-qm", "protocol later"],
+                           check=True)
+            with patch.object(protocol, "ROOT", root), \
+                    patch.object(protocol, "PROTOCOL", prospective), \
+                    patch.object(protocol, "ANCHOR", freeze):
+                with self.assertRaisesRegex(ValueError, "uncommitted mixed cost source"):
+                    protocol.check(sha(prospective.read_bytes()), anchor_commit)
+
+    def test_evaluation_requires_committed_heldout_phase_anchor(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            subprocess.run(["git", "init", "-q", str(root)], check=True)
+            with patch.object(anchors, "ROOT", root), patch.object(protocol, "ROOT", root):
+                with self.assertRaisesRegex(ValueError, "uncommitted mixed cost source"):
+                    anchors.evaluate_heldout(root, {}, "p" * 64, "r" * 64,
+                                             "a" * 40, "m" * 40)
+
+    def test_clean_stack_rejects_untracked_compiler_source(self) -> None:
+        def fake_git(*args: str, cwd: Path = ROOT) -> str:
+            if args[:1] == ("rev-parse",):
+                return "a" * 40
+            if args[:1] == ("status",) and args[-1:] == ("src",):
+                return "?? src/untracked.zig" if "--untracked-files=all" in args else ""
+            return ""
+
+        with patch.object(protocol, "design", return_value={"source_template": "source"}), \
+                patch.object(protocol, "committed"), \
+                patch.object(protocol, "tool_paths", return_value=[]), \
+                patch.object(protocol, "git", side_effect=fake_git):
+            with self.assertRaisesRegex(ValueError, "uncommitted source files"):
+                protocol.clean_stack()
+
+    def test_relative_zig_cache_guard_uses_build_cwd(self) -> None:
+        with patch.dict(os.environ, {"ZIG_LOCAL_CACHE_DIR": "temporary-cache"}):
+            self.assertEqual(zig_cache_path("ZIG_LOCAL_CACHE_DIR", Path("unused")),
+                             ROOT / "temporary-cache")
+
     def test_tool_inventory_covers_transitive_oracle_and_frontend(self) -> None:
         paths = {path.relative_to(ROOT).as_posix()
                  for path in tool_paths()}

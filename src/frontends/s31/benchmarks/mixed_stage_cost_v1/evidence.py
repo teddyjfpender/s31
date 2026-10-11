@@ -38,9 +38,15 @@ def load_json(path: Path) -> dict:
     return value
 
 
+def zig_cache_path(variable: str, default: Path) -> Path:
+    path = Path(os.environ.get(variable) or default)
+    # The Zig build subprocess runs from ROOT, regardless of the caller's cwd.
+    return path if path.is_absolute() else ROOT / path
+
+
 def disk_guard(out: Path, minimum: int) -> None:
-    locations = (out, Path(os.environ.get("ZIG_LOCAL_CACHE_DIR") or S31 / ".zig-cache"),
-                 Path(os.environ.get("ZIG_GLOBAL_CACHE_DIR") or Path.home() / ".cache/zig"),
+    locations = (out, zig_cache_path("ZIG_LOCAL_CACHE_DIR", S31 / ".zig-cache"),
+                 zig_cache_path("ZIG_GLOBAL_CACHE_DIR", Path.home() / ".cache/zig"),
                  Path(tempfile.gettempdir()))
     devices = set()
     for location in locations:
@@ -363,6 +369,14 @@ def audit_split(out: Path, split: str, expected_protocol_sha256: str,
     anchor_path = ROOT / f"design/s31/measurements/language/mixed-stage-cost-v1-{split}-phase-anchor.json"
     anchor = anchored(anchor_path, phase_anchor_commit,
                       "s31-mixed-stage-cost-v1-phase-anchor")
+    if subprocess.run(["git", "-C", str(ROOT), "merge-base", "--is-ancestor",
+                       protocol_anchor_commit, phase_anchor_commit], check=False).returncode:
+        raise ValueError("mixed cost phase anchor precedes protocol freeze")
+    if split == "heldout" and subprocess.run(
+            ["git", "-C", str(ROOT), "merge-base", "--is-ancestor",
+             admission["model_anchor_commit"], phase_anchor_commit],
+            check=False).returncode:
+        raise ValueError("held-out phase anchor precedes frozen training model")
     if (anchor.get("schema") != "s31-mixed-stage-cost-v1-phase-anchor" or
             anchor.get("split") != split or
             anchor.get("protocol_sha256") != expected_protocol_sha256 or

@@ -121,14 +121,26 @@ def fit_train(train_out: Path, protocol_sha256: str, train_phase_root_sha256: st
     return sha(model_path.read_bytes())
 
 
-def evaluate_heldout(heldout_out: Path, model: dict, protocol_sha256: str) -> dict:
+def evaluate_heldout(heldout_out: Path, model: dict, protocol_sha256: str,
+                     expected_phase_root_sha256: str, phase_anchor_commit: str,
+                     model_anchor_commit: str) -> dict:
+    phase_path = ROOT / "design/s31/measurements/language/mixed-stage-cost-v1-heldout-phase-anchor.json"
+    phase = anchored(phase_path, phase_anchor_commit,
+                     "s31-mixed-stage-cost-v1-phase-anchor")
+    if (phase.get("split") != "heldout" or
+            phase.get("protocol_sha256") != protocol_sha256 or
+            phase.get("phase_root_sha256") != expected_phase_root_sha256 or
+            subprocess.run(["git", "-C", str(ROOT), "merge-base", "--is-ancestor",
+                            model_anchor_commit, phase_anchor_commit],
+                           check=False).returncode):
+        raise ValueError("held-out phase anchor does not descend from frozen model")
     audit_bytes = (heldout_out / "audit.json").read_bytes()
     corpus_bytes = (heldout_out / "corpus.json").read_bytes()
     audit, corpus = json.loads(audit_bytes), json.loads(corpus_bytes)
     if (audit.get("schema") != "s31-mixed-stage-cost-v1-audit" or
             audit.get("split") != "heldout" or
             audit.get("corpus_sha256") != sha(corpus_bytes) or
-            audit.get("phase_root_sha256") != corpus.get("phase_root_sha256") or
+            audit.get("phase_root_sha256") != expected_phase_root_sha256 or
             audit.get("native_verified_proofs") != 400 or
             audit.get("changed_input_and_result_rejected") is not True or
             corpus.get("split") != "heldout" or
@@ -138,7 +150,8 @@ def evaluate_heldout(heldout_out: Path, model: dict, protocol_sha256: str) -> di
     if ((heldout_out / "phase-root.json").read_bytes() != canonical(
             phase_root(heldout_out, "heldout", protocol_sha256)) or
             sha((heldout_out / "phase-root.json").read_bytes()) !=
-                corpus["phase_root_sha256"]):
+                expected_phase_root_sha256 or
+            corpus.get("phase_root_sha256") != expected_phase_root_sha256):
         raise ValueError("held-out raw phase changed after native audit")
     result = evaluate(model, corpus["records"], protocol_sha256=protocol_sha256,
                       inventory_sha256=corpus["inventory_sha256"], host=corpus["host"],

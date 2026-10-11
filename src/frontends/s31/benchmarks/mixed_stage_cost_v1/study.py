@@ -65,6 +65,8 @@ def main() -> None:
     evaluate = commands.add_parser("evaluate")
     add_freeze(evaluate)
     evaluate.add_argument("--heldout-out", required=True, type=Path)
+    evaluate.add_argument("--expected-heldout-phase-root-sha256", required=True)
+    evaluate.add_argument("--heldout-phase-anchor-commit", required=True)
     add_train_model(evaluate)
     args = parser.parse_args()
     check(args.expected_protocol_sha256, args.protocol_anchor_commit)
@@ -77,7 +79,10 @@ def main() -> None:
         if args.command == "evaluate":
             _, model = admission(args)
             result = evaluate_heldout(args.heldout_out, model,
-                                      args.expected_protocol_sha256)
+                                      args.expected_protocol_sha256,
+                                      args.expected_heldout_phase_root_sha256,
+                                      args.heldout_phase_anchor_commit,
+                                      args.model_anchor_commit)
         else:
             if args.split == "heldout" and not all((args.train_out,
                     args.expected_train_phase_root_sha256, args.train_phase_anchor_commit,

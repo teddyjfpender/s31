@@ -72,10 +72,10 @@ def clean_stack() -> None:
         committed(path)
     engine = ROOT / "deps/stwo-zig"
     if (git("rev-parse", "HEAD", cwd=engine) != git("rev-parse", "HEAD:deps/stwo-zig") or
-            git("status", "--porcelain", "--untracked-files=no", cwd=engine)):
+            git("status", "--porcelain", "--untracked-files=all", cwd=engine)):
         raise ValueError("mixed cost engine differs from pinned clean gitlink")
-    if git("status", "--porcelain", "--untracked-files=no", "--", "src"):
-        raise ValueError("mixed cost compiler or collector has uncommitted tracked edits")
+    if git("status", "--porcelain", "--untracked-files=all", "--", "src"):
+        raise ValueError("mixed cost compiler or collector has uncommitted source files")
 
 
 def draft() -> str:
@@ -123,6 +123,8 @@ def check(expected_protocol_sha256: str, anchor_commit: str) -> dict:
     if not PROTOCOL.is_file() or not ANCHOR.is_file():
         raise ValueError("committed mixed cost protocol and freeze anchor required")
     committed(PROTOCOL)
+    # The freeze commit must contain the protocol it purports to freeze.
+    committed(PROTOCOL, anchor_commit)
     committed(ANCHOR, anchor_commit)
     if subprocess.run(["git", "-C", str(ROOT), "merge-base", "--is-ancestor",
                        anchor_commit, "HEAD"], check=False).returncode:

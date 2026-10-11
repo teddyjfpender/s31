@@ -130,7 +130,8 @@ whole-prover predictor until source-shape and host transfer pass separately.
 5. Build, prove and audit the four held-out counts at a **new** path, with
    the frozen train admission bound into the held-out phase root. Commit and
    externally timestamp its phase-root anchor before audit. Run
-   `study.py evaluate` once; it checks every frozen identity and reports all
+   `study.py evaluate` once with the full held-out phase-root hash and its
+   committed anchor; it checks every frozen identity and reports all
    eight gates and per-program observed build accounting. Anchor the held-out
    audit/corpus/evaluation hashes before publishing a result. Never pool the
    prior paired study's N3/N5/N7/N8 results into this fit or interval.
