@@ -57,6 +57,13 @@ the native inspector. This detects the coordinated fresh-address retarget that
 the shape-only projector above deliberately accepts. The static loop runs in
 under a second:
 
+`formal/s31/S31/Gadgets/Air/SourceMixedAddressSchedule.lean` proves the
+modeled address schedule is canonical for every admitted count up to eight,
+that each later input block equals the previous output block, and that
+different calls allocate distinct output blocks. It checks the first and
+eighth concrete bridge address lists by kernel reduction. Equality of this
+model to the production compiler still comes from the native inspector test.
+
 ```sh
 python3 src/frontends/s31/tests/acceptance/mixed_boundary/typed_boundary_correspondence.py
 ```

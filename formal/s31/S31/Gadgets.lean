@@ -66,6 +66,7 @@ import S31.Gadgets.Air.IndexedManyTaggedTupleBridge
 import S31.Gadgets.Air.TaggedPairConditionalCorrespondence
 import S31.Gadgets.Air.SourceMixedRoster
 import S31.Gadgets.Air.SourceMixedPath
+import S31.Gadgets.Air.SourceMixedAddressSchedule
 import S31.Gadgets.Air.PrivateBridgeChallenge
 import S31.Gadgets.Air.PrivateBridgeChallengeMany
 import S31.Gadgets.Air.SelectRows

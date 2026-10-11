@@ -170,6 +170,8 @@ def synthetic(count: int) -> tuple[dict, list[int]]:
 
 
 def static_controls() -> dict:
+    if reviewed_address_schedule(8)[7] != [83, 84, 85, 86, 93, 94, 95, 96]:
+        raise AssertionError("eighth-call address schedule differs from Lean fixture")
     for count in (1, 8):
         manifest, public = synthetic(count)
         boundary = project(count, manifest, public)
