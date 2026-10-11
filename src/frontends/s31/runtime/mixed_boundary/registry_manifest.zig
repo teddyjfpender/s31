@@ -399,6 +399,55 @@ test "mixed registry manifest refuses aliased repeat output ports" {
     try std.testing.expectError(error.InvalidMixedOutputPortAlias, fromSchedule(&changed));
 }
 
+test "mixed registry manifest rejects resealed AIR and polynomial shape substitutions" {
+    const allocator = std.testing.allocator;
+    const source = @import("test_source.zig").forCount(3);
+    const air_bytes = @embedFile("s31_air_programs");
+    const selected = try mixed.inspectSource(allocator, source, air_bytes);
+    const authentic = try fromSchedule(&selected);
+    try requireSource(allocator, &authentic, source, air_bytes);
+
+    // Every candidate has a fresh, internally consistent diagnostic checksum.
+    // Equality with verifier-owned source, rather than that checksum, decides
+    // admission. Cover fields that previously had no direct mutation case.
+    inline for (.{
+        "selected manifest", "canonical IR", "circuit AIR", "circuit program",
+        "fixed index", "chip AIR", "chip program", "trace log", "evaluation log",
+        "main width", "interaction width", "constraint count",
+        "main total", "interaction total", "constraint total",
+    }) |case| {
+        var changed = authentic;
+        if (comptime std.mem.eql(u8, case, "selected manifest")) changed.selected_manifest_sha256[0] ^= 1;
+        if (comptime std.mem.eql(u8, case, "canonical IR")) changed.canonical_ir_sha256[0] ^= 1;
+        if (comptime std.mem.eql(u8, case, "circuit AIR")) changed.entries[0].air_source_sha256[0] ^= 1;
+        if (comptime std.mem.eql(u8, case, "circuit program")) changed.entries[0].program_binding_sha256[0] ^= 1;
+        if (comptime std.mem.eql(u8, case, "fixed index")) changed.entries[0].preprocessed_indices[0] ^= 1;
+        if (comptime std.mem.eql(u8, case, "chip AIR")) changed.entries[1].air_source_sha256[0] ^= 1;
+        if (comptime std.mem.eql(u8, case, "chip program")) changed.entries[1].program_binding_sha256[0] ^= 1;
+        if (comptime std.mem.eql(u8, case, "trace log")) changed.entries[1].trace_log_size += 1;
+        if (comptime std.mem.eql(u8, case, "evaluation log")) changed.entries[1].evaluation_log_size += 1;
+        if (comptime std.mem.eql(u8, case, "main width")) changed.entries[1].main_columns += 1;
+        if (comptime std.mem.eql(u8, case, "interaction width")) changed.entries[1].interaction_columns += 1;
+        if (comptime std.mem.eql(u8, case, "constraint count")) changed.entries[1].n_constraints += 1;
+        if (comptime std.mem.eql(u8, case, "main total")) changed.main_columns += 1;
+        if (comptime std.mem.eql(u8, case, "interaction total")) changed.interaction_columns += 1;
+        if (comptime std.mem.eql(u8, case, "constraint total")) changed.total_constraints += 1;
+        changed.digest = digest(&changed);
+        try std.testing.expectError(error.InvalidMixedRegistryManifest, requireSource(allocator, &changed, source, air_bytes));
+    }
+
+    const live = selected.native_geometry.?;
+    var changed_live = live;
+    changed_live.slots[1].constraint_offset += 1;
+    try std.testing.expectError(error.InvalidMixedLiveManifestBinding, requireNativeGeometry(&authentic, &changed_live));
+    changed_live = live;
+    changed_live.slots[0].preprocessed_indices[0] ^= 1;
+    try std.testing.expectError(error.InvalidMixedLiveManifestBinding, requireNativeGeometry(&authentic, &changed_live));
+    changed_live = live;
+    changed_live.tree_columns[1] += 1;
+    try std.testing.expectError(error.InvalidMixedLiveManifestBinding, requireNativeGeometry(&authentic, &changed_live));
+}
+
 test "mixed registry manifest rejects changed public and private source at N4" {
     const a = std.testing.allocator;
     const air_bytes = @embedFile("s31_air_programs");
