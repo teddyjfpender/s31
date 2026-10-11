@@ -89,12 +89,75 @@ repair a model.
 
 ## Held-out, audit, and portable replay
 
-After the model anchor is externally timestamped, run V8r1 held-out build,
-proof, evaluation, independent gate, publisher with `--native --require-pass`,
-portable manifest creation, relocation, and portable replay with
-`--native --require-pass`. Use the exact CLI help from the pinned V8r1 tools
-for every required SHA and anchor argument. Preserve failed evaluations too;
-if the gate fails, audit and replay without `--require-pass` and report the
-failure rather than refitting on held-out results. The result is limited to
-the pinned compiler, engine, host, source corpus, and toolchain. Automatic
-lowering stays disabled.
+After the model anchor is externally timestamped, build and prove the fresh
+held-out split. Then evaluate the committed model and run the independent
+publisher with both native verification and the accuracy gate required:
+
+```sh
+python3 src/frontends/s31/benchmarks/benchmark_whole_prover_cost_v8r1.py \
+  --split validation --phase build --out zig-out/s31-v8r1-evidence/validation \
+  --model design/s31/measurements/language/whole-prover-cost-v8r1-model.json \
+  --expected-protocol-sha256 <full-protocol-sha256> \
+  --protocol-anchor-commit <full-protocol-anchor-commit> \
+  --expected-model-sha256 <full-model-sha256> \
+  --model-anchor-commit <full-model-anchor-commit>
+python3 src/frontends/s31/benchmarks/benchmark_whole_prover_cost_v8r1.py \
+  --split validation --phase prove --out zig-out/s31-v8r1-evidence/validation \
+  --model design/s31/measurements/language/whole-prover-cost-v8r1-model.json \
+  --expected-protocol-sha256 <full-protocol-sha256> \
+  --protocol-anchor-commit <full-protocol-anchor-commit> \
+  --expected-model-sha256 <full-model-sha256> \
+  --model-anchor-commit <full-model-anchor-commit>
+python3 src/frontends/s31/benchmarks/whole_prover_predictor_v8r1.py \
+  --expected-protocol-sha256 <full-protocol-sha256> \
+  --protocol-anchor-commit <full-protocol-anchor-commit> \
+  --expected-model-sha256 <full-model-sha256> \
+  --model-anchor-commit <full-model-anchor-commit> \
+  evaluate design/s31/measurements/language/whole-prover-cost-v8r1-model.json \
+  zig-out/s31-v8r1-evidence/validation/whole-prover-corpus.json \
+  --out zig-out/s31-v8r1-evidence/validation/evaluation.json
+python3 src/frontends/s31/benchmarks/publish_whole_prover_cost_v8r1.py \
+  zig-out/s31-v8r1-evidence/train/whole-prover-corpus.json \
+  design/s31/measurements/language/whole-prover-cost-v8r1-model.json \
+  zig-out/s31-v8r1-evidence/validation/whole-prover-corpus.json \
+  zig-out/s31-v8r1-evidence/validation/evaluation.json \
+  --expected-protocol-sha256 <full-protocol-sha256> \
+  --protocol-anchor-commit <full-protocol-anchor-commit> \
+  --expected-model-sha256 <full-model-sha256> \
+  --model-anchor-commit <full-model-anchor-commit> \
+  --native --require-pass \
+  --out zig-out/s31-v8r1-evidence/validation/audit.json
+```
+
+The publisher refits from the saved training corpus, recomputes the held-out
+prediction and gate with an independent implementation, checks source and
+assignment hashes and value-oracle results, and reruns native verifiers on
+the saved original and changed public claims. `--require-pass` requires
+`--native`. Preserve failed evaluations too: if the accuracy gate fails,
+rerun the publisher with `--native` and without `--require-pass`; report the
+failure and retain the audit. Never refit or adjust an interval from held-out
+observations.
+
+Create a relative content-addressed manifest over the raw evidence and
+externally record its **full** SHA before moving the directory. Replay at a
+distinct path with native verification:
+
+```sh
+python3 src/frontends/s31/benchmarks/cost/portable_v8r1.py create \
+  --root zig-out/s31-v8r1-evidence \
+  --protocol-sha256 <full-protocol-sha256> \
+  --model-sha256 <full-model-sha256>
+python3 src/frontends/s31/benchmarks/cost/replay_portable_v8r1.py \
+  --root <moved-evidence-directory> \
+  --expected-manifest-sha256 <full-portable-manifest-sha256> \
+  --expected-protocol-sha256 <full-protocol-sha256> \
+  --protocol-anchor-commit <full-protocol-anchor-commit> \
+  --expected-model-sha256 <full-model-sha256> \
+  --model-anchor-commit <full-model-anchor-commit> \
+  --native --require-pass
+```
+
+If the accuracy gate failed, replay with `--native` and without
+`--require-pass`; keep the failed gate separate from artifact integrity.
+The result is limited to the pinned compiler, engine, host, source corpus,
+and toolchain. Automatic lowering stays disabled.
