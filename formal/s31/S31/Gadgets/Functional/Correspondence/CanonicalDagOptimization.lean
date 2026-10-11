@@ -39,6 +39,26 @@ def equivalent : Term → Term → Bool
         (equivalent a d && equivalent b c)
   | _, _ => false
 
+theorem equivalent_refl (term : Term) : equivalent term term = true := by
+  induction term with
+  | input => rfl
+  | add left right ihLeft ihRight =>
+      simp [equivalent, ihLeft, ihRight]
+  | mul left right ihLeft ihRight =>
+      simp [equivalent, ihLeft, ihRight]
+
+theorem equivalent_instruction (multiply : Bool) {a b c d : Term}
+    (hac : equivalent a c = true) (hbd : equivalent b d = true) :
+    equivalent (instructionTerm multiply a b)
+      (instructionTerm multiply c d) = true := by
+  cases multiply <;> simp [instructionTerm, equivalent, hac, hbd]
+
+theorem equivalent_instruction_swap (multiply : Bool) {a b c d : Term}
+    (had : equivalent a d = true) (hbc : equivalent b c = true) :
+    equivalent (instructionTerm multiply a b)
+      (instructionTerm multiply c d) = true := by
+  cases multiply <;> simp [instructionTerm, equivalent, had, hbc]
+
 theorem equivalent_sound {a b : Term} (h : equivalent a b = true)
     (input : Lanes) : a.eval input = b.eval input := by
   induction a generalizing b with
@@ -83,17 +103,56 @@ theorem equivalent_sound {a b : Term} (h : equivalent a b = true)
 for add/mul expression sharing in `canonical.build`. -/
 abbrev Key := Bool × Nat × Nat
 
-/-- First matching node, with ID zero reserved for the public input. -/
+/-- Zero-based index of the first matching arithmetic node. -/
 def findKey (wanted : Key) : List Key → Option Nat
   | [] => none
   | first :: rest =>
-      if first == wanted then some 1 else (findKey wanted rest).map Nat.succ
+      if first == wanted then some 0 else (findKey wanted rest).map Nat.succ
+
+theorem findKey_sound (wanted : Key) (keys : List Key) (id : Nat)
+    (h : findKey wanted keys = some id) :
+    keys[id]? = some wanted := by
+  induction keys generalizing id with
+  | nil => simp [findKey] at h
+  | cons first rest ih =>
+      by_cases hfirst : first = wanted
+      · have hid : id = 0 := by simpa [findKey, hfirst] using h.symm
+        subst id
+        simp [hfirst]
+      · have htail : (findKey wanted rest).map Nat.succ = some id := by
+          simpa [findKey, hfirst] using h
+        cases hlookup : findKey wanted rest with
+        | none => simp [hlookup] at htail
+        | some prior =>
+            have hid : id = prior + 1 := by simpa [hlookup] using htail.symm
+            subst id
+            simpa using ih prior hlookup
 
 structure State where
   instructions : List Instruction := []
   keys : List Key := []
   sourceToCanonical : List Nat := [0]
 deriving Repr
+
+def keyOf (instruction : Instruction) : Key :=
+  (instruction.multiply, instruction.lhs, instruction.rhs)
+
+def State.keysMatchInstructions (state : State) : Prop :=
+  state.keys = state.instructions.map keyOf
+
+theorem found_existing_instruction (state : State) (wanted : Key)
+    (index : Nat) (hvalid : state.keysMatchInstructions)
+    (hfind : findKey wanted state.keys = some index) :
+    ∃ instruction, state.instructions[index]? = some instruction ∧
+      keyOf instruction = wanted := by
+  have hkey := findKey_sound wanted state.keys index hfind
+  rw [hvalid, List.getElem?_map] at hkey
+  cases hlookup : state.instructions[index]? with
+  | none => simp [hlookup] at hkey
+  | some instruction =>
+      have hsame : keyOf instruction = wanted := by
+        simpa [hlookup] using hkey
+      exact ⟨instruction, rfl, hsame⟩
 
 /-- One source instruction is translated after its earlier operands have
 already been mapped. A repeated key aliases its existing canonical node. -/
@@ -106,7 +165,7 @@ def step (state : State) (raw : Instruction) : Option State := do
   let key : Key := (raw.multiply, orderedLhs, orderedRhs)
   match findKey key state.keys with
   | some existing =>
-      some { state with sourceToCanonical := state.sourceToCanonical ++ [existing] }
+      some { state with sourceToCanonical := state.sourceToCanonical ++ [existing + 1] }
   | none =>
       let id := state.instructions.length + 1
       let instruction : Instruction :=
@@ -114,6 +173,59 @@ def step (state : State) (raw : Instruction) : Option State := do
       some { instructions := state.instructions ++ [instruction],
              keys := state.keys ++ [key],
              sourceToCanonical := state.sourceToCanonical ++ [id] }
+
+theorem step_keys_match (state next : State) (raw : Instruction)
+    (hvalid : state.keysMatchInstructions)
+    (hstep : step state raw = some next) :
+    next.keysMatchInstructions := by
+  unfold step at hstep
+  by_cases hid : raw.id = state.sourceToCanonical.length
+  · cases hlhs : state.sourceToCanonical[raw.lhs]? with
+    | none => simp [hid, hlhs] at hstep
+    | some lhs =>
+        cases hrhs : state.sourceToCanonical[raw.rhs]? with
+        | none => simp [hid, hlhs, hrhs] at hstep
+        | some rhs =>
+            let key : Key := (raw.multiply, min lhs rhs, max lhs rhs)
+            cases hfind : findKey key state.keys with
+            | none =>
+                have hnext : next =
+                    { instructions := state.instructions ++
+                        [{ id := state.instructions.length + 1,
+                           lhs := min lhs rhs, rhs := max lhs rhs,
+                           multiply := raw.multiply }],
+                      keys := state.keys ++ [key],
+                      sourceToCanonical := state.sourceToCanonical ++
+                        [state.instructions.length + 1] } := by
+                  simpa [step, hid, hlhs, hrhs, key, hfind] using hstep.symm
+                subst next
+                simpa [State.keysMatchInstructions, List.map_append,
+                  keyOf, key] using hvalid
+            | some existing =>
+                have hnext : next =
+                    { state with sourceToCanonical :=
+                        state.sourceToCanonical ++ [existing + 1] } := by
+                  simpa [step, hid, hlhs, hrhs, key, hfind] using hstep.symm
+                subst next
+                exact hvalid
+  · simp [hid] at hstep
+
+theorem fold_keys_match (instructions : List Instruction)
+    (state next : State) (hvalid : state.keysMatchInstructions)
+    (hfold : instructions.foldlM step state = some next) :
+    next.keysMatchInstructions := by
+  induction instructions generalizing state with
+  | nil =>
+      have hsame : state = next := by simpa using hfold
+      subst next
+      exact hvalid
+  | cons instruction rest ih =>
+      simp only [List.foldlM_cons] at hfold
+      cases hstep : step state instruction with
+      | none => simp [hstep] at hfold
+      | some middle =>
+          exact ih middle (step_keys_match state middle instruction hvalid hstep)
+            (by simpa [hstep] using hfold)
 
 /-- A bounded compact DAG for one-input SSA. The upper bound matches the
 currently proved direct-gate text-byte fragment. -/
