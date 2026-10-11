@@ -635,13 +635,24 @@ fn bindGateManifest(
     root: [32]u8,
 ) !ChipManifestBinding {
     var generated = try component_manifest.directGateV2(
-        allocator, pp, air_program_bytes, source_digest, ir_digest, root, [_]u8{0} ** 32,
+        allocator,
+        pp,
+        air_program_bytes,
+        source_digest,
+        ir_digest,
+        root,
+        [_]u8{0} ** 32,
     );
     errdefer generated.deinit();
     const precommitment_digest = try component_manifest.gatePrecommitmentDigest(generated.value);
     const effective_digest = try component_manifest.gateEffectiveSourceDigest(source_digest, generated.value);
     const circuit_hash = cpu.direct_arithmetic.identityHashWithPrivateBoundary(
-        effective_digest, root, pp.traceLogSize(), 1, null, null,
+        effective_digest,
+        root,
+        pp.traceLogSize(),
+        1,
+        null,
+        null,
     );
     try component_manifest.setCircuitHash(&generated, circuit_hash);
     return .{
@@ -948,8 +959,8 @@ fn inspectEarlyReturnPhysicalRows(allocator: std.mem.Allocator, source: relation
         for (column.values, words) |value, *word| word.* = value.toU32();
         out.* = words;
     }
-    var main: [circuit.witness.direct_arithmetic.main_width][]const u32 = undefined;
-    for (base_trace.columns, &main) |column, *out| {
+    var main_columns: [circuit.witness.direct_arithmetic.main_width][]const u32 = undefined;
+    for (base_trace.columns, &main_columns) |column, *out| {
         if (column.values.len != 512) return error.InvalidDirectTraceShape;
         const words = try temp.alloc(u32, column.values.len);
         for (column.values, words) |value, *word| word.* = value.toU32();
@@ -959,7 +970,7 @@ fn inspectEarlyReturnPhysicalRows(allocator: std.mem.Allocator, source: relation
         .program_sha256 = &source_hex,
         .public_words = public_words,
         .fixed_columns = fixed,
-        .main_columns = main,
+        .main_columns = main_columns,
     };
     const encoded = try std.json.Stringify.valueAlloc(temp, report, .{});
     std.debug.print("{s}\n", .{encoded});
@@ -1080,9 +1091,7 @@ fn prove(allocator: std.mem.Allocator, source: relation.Program, assignment_path
         prove_ns = timer.read();
         encoded = if (boundary != null)
             try native.serializeDirectPrivateBound(allocator, &proof)
-        else if (chip_mode) try native.serializeDirectBound(allocator, &proof)
-        else if (gate_manifest_v2) try native.serializeDirectGateBound(allocator, &proof)
-        else try native.serializeDirect(allocator, &proof, false);
+        else if (chip_mode) try native.serializeDirectBound(allocator, &proof) else if (gate_manifest_v2) try native.serializeDirectGateBound(allocator, &proof) else try native.serializeDirect(allocator, &proof, false);
         const layout = pp.layout();
         const root = committed.root();
         const hash = cpu.direct_arithmetic.identityHashWithPrivateBoundary(
