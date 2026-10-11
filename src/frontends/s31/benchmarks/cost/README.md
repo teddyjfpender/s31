@@ -47,3 +47,18 @@ turn a failed diagnostic into a pass or establish compiler or proof soundness.
 The freeze commit preceded the first local native build, but its full hash was
 not independently timestamped before observation, so this remains a local
 same-host diagnostic rather than a fully anchored prospective acceptance gate.
+
+## Diagnose the wall-time miss
+
+After replay, `diagnose_transfer_stages.py` compares each saved trial's
+process and runtime stages with the frozen V6 stage predictions. It does not
+refit the model or change a gate:
+
+```sh
+python3 src/frontends/s31/benchmarks/cost/diagnose_transfer_stages.py \
+  design/s31/measurements/language/transfer-v1/first-corpus.json
+```
+
+Use `repeat-corpus.json` for the second run. The output includes each
+program's predicted and observed stage mean plus minimum, median, and maximum
+residuals across programs.

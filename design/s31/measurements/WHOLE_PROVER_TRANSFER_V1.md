@@ -53,6 +53,14 @@ the CPU or control OS scheduling. The unchanged overhead in the repeat is a
 reason to investigate process startup and runtime changes, not a basis to
 refit V6 coefficients on these validation observations.
 
+The [stage diagnostic](../../../src/frontends/s31/benchmarks/cost/diagnose_transfer_stages.py)
+recomputes those residuals from the saved corpora. Across the eight programs,
+the first/repeat median verifier-process residuals are **+33.2/+33.7 ms** and
+the median prover-process unattributed residuals are **+46.7/+48.7 ms**.
+The measured FRI PoW residual changes sign across program sizes and runs;
+the common process overhead is the more consistent signal. These medians
+describe only the observed corpus and are not fitted correction constants.
+
 ## Evidence limits and next gate
 
 Independent review found that the V1 tool digest omits the imported affine
