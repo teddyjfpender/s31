@@ -717,8 +717,8 @@ class Compiler:
                         for leaf in collect(child, item)]
 
             leaves = collect(self.circuit.result, result)
-            if any(leaf.typ.kind not in {"m31", "bit"} for leaf in leaves):
-                raise self.located(self.circuit.body, "public record v2 supports only m31 and public bit leaves")
+            if any(leaf.typ.kind not in {"m31", "bit", "u16"} for leaf in leaves):
+                raise self.located(self.circuit.body, "public record v2 supports only m31, public bit, and public u16 leaves")
             relation = self.builder.finish_public_record_v2(
                 leaves,
                 lambda base, refs: make_binding(

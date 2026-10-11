@@ -419,6 +419,17 @@ test "record ABI v2 mixed admission has one public input and one derived result"
     parsed.value.public_abi = original_abi;
 }
 
+test "record ABI v2 mixed admission rejects public u16 input even with a valid cast and repeat" {
+    const allocator = std.testing.allocator;
+    const source = @embedFile("../tests/acceptance/record_abi/public_u16_mixed_rejected.s31.json");
+    var parsed = try relation.parseProgram(allocator, source);
+    defer parsed.deinit();
+    try parsed.value.validate(allocator);
+    try std.testing.expectEqual(relation.Kind.u16, parsed.value.inputs[0].kind);
+    try std.testing.expectError(error.UnsupportedManyCallSource, extract(allocator, parsed.value));
+    try std.testing.expectError(error.UnsupportedManyCallSource, extractSource(allocator, source));
+}
+
 test "record ABI v2 mixed admission binds an eight-word bit and result alias shape" {
     const a = std.testing.allocator;
     var parsed = try relation.parseProgram(a, @embedFile("../tests/acceptance/record_abi/mixed_eight_alias_bit.s31.json"));

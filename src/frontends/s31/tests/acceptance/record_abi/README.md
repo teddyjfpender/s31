@@ -1,5 +1,39 @@
 # Nested public record ABI acceptance
 
+## Public u16 input range under direct-gate
+
+[`record_public_u16.s31`](../../../examples/arithmetic/record_public_u16.s31)
+has a public `u16[1]` field, computes its M31 square plus a public salt, and
+returns the original u16 input wire as a named result field. The direct-gate
+compiler constrains the input with 16 Boolean producer gates and arithmetic
+reconstruction; it does not use the fixed u16 lookup table. The v2 descriptor
+admits only public u16 input leaves and u16 result leaves that alias one of
+those input wires. Private u16 leaves and derived u16 result wires are
+rejected. The direct-chip package gate and the source-only
+direct-mixed-general admission both reject the u16 source shape.
+
+Run the fast text/descriptor/oracle controls, then the focused native proof
+control when compiler and prover CPU is available:
+
+```sh
+python3 -B src/frontends/s31/tests/acceptance/record_abi/public_u16_direct_gate_v2.py
+python3 -B src/frontends/s31/tests/acceptance/record_abi/public_u16_direct_gate_v2.py --native
+zig build --build-file src/frontends/s31/build.zig test-bounded-call-source -Doptimize=ReleaseFast -j1
+```
+
+The native gate verifies honest claims at `0` and `65535`, rejects a
+well-formed changed claim against the old proof, rejects `65536` and
+`p−1` in both statement decoders, rejects an out-of-range flat witness,
+and tests a derived u16 result mutation through the production Zig
+descriptor parser. The mixed admission fixture includes a valid cast from
+four public u16 limbs to M31 before one chip call; the source-only admission
+still rejects it. The Lean
+[`RecordAbiV2.lean`](../../../../../../formal/s31/S31/Gadgets/Functional/RecordAbiV2.lean)
+model proves the 16-bit reconstruction bound and public tag bound, while
+[`RecordDescriptorValidationV2.lean`](../../../../../../formal/s31/S31/Gadgets/Functional/RecordDescriptorValidationV2.lean)
+excludes private u16 leaves. These are model-level statements; the native
+proof acceptance gate supplies executable coverage for this fixture.
+
 ## Eight-word text, statement, native, and Lean correspondence
 
 [`mixed_eight_alias_bit.s31`](mixed_eight_alias_bit.s31) is a small, actual

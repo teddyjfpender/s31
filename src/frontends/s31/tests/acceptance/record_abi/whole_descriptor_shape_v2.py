@@ -31,16 +31,16 @@ EXPECTED_CORPUS_SHA256 = "a1f2fef313d2e3f81f69a854b0978a07065f098c71ba0adc4e711e
 
 
 def layout(tree: object, depth: int, nominals: dict[str, tuple]) -> tuple[int, bool, tuple]:
-    """Return leaf count, presence of a bit, and an arity-delimited type code."""
+    """Return leaf count, presence of a private-forbidden leaf, and a type code."""
     if depth > 32 or type(tree) is not dict:
         raise ValueError("depth or node")
     if set(tree) == {"kind", "length"}:
         kind, width = tree["kind"], tree["length"]
         if (type(width) is not int or
-                not ((kind == "m31" and 1 <= width <= 8) or
+                not ((kind in {"m31", "u16"} and 1 <= width <= 8) or
                      (kind == "bit" and width == 1))):
             raise ValueError("leaf kind or width")
-        return 1, kind == "bit", ("leaf", kind, width)
+        return 1, kind in {"bit", "u16"}, ("leaf", kind, width)
     if set(tree) == {"tuple"}:
         children = tree["tuple"]
         if type(children) is not list or not 1 <= len(children) <= 64:

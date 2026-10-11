@@ -4,10 +4,16 @@ S31's `struct` is a **static record type**. It gives names to fields that
 already hold circuit values. Inside a program, specialization removes the
 record before the arithmetic relation is built. When a circuit returns a
 public record, relation v2 also carries its nominal layout and field paths
-to the native verifier. That metadata adds no arithmetic gate or AIR row.
+to the native verifier. The grouping metadata adds no arithmetic gate or AIR
+row; a `u16` leaf's range proof does add arithmetic gates.
 The direct-gate v2 boundary also admits public `bit` leaves. Each occupies
 one existing M31 proof word, and the native statement parser requires that
 word to be exactly `0` or `1` before proof decoding.
+The `direct-gate` v2 boundary also admits public `[u16; N]` input leaves
+with `1 ≤ N ≤ 8`. Each limb has a 16-bit arithmetic range proof. A `u16`
+result leaf must alias one of those public input wires; derived `u16` results
+and private `u16` record inputs are not yet admitted. `direct-chip` and
+`direct-mixed-general` reject this shape.
 
 ## Public record on the one-call chip
 
@@ -146,11 +152,11 @@ rejects this expression in either arm of a witness-dependent `if`. The
 record does not hide proof obligations in an unused field.
 
 Records may be passed to and returned from pure `fn` helpers and stored in
-`let` bindings. Circuit parameters may also be nominal records with M31 or
-public `bit` leaves. A circuit may return either a public record or a first-order M31
+`let` bindings. Circuit parameters may also be nominal records with M31,
+public `bit`, or public `[u16; N]` leaves. A circuit may return either a public record or a first-order M31
 value under the `direct-gate` v2 profile. The native verifier accepts one
 canonical typed v2 statement with named input and output paths. Other leaf
-types and private `bit` leaves remain outside this boundary.
+types and private `bit`/`u16` leaves remain outside this boundary.
 Whole-record `if` and `assert_eq` now traverse first-order leaves in declared
 field order. A record `if` evaluates both branches and emits exactly the
 selectors that a handwritten fieldwise program emits. A record assertion
@@ -343,6 +349,54 @@ boundary guarantee: a raw v1 relation has no bit tag on its M31 wire, so v1
 source still requires a Boolean operation or select for every bit input.
 Private bit inputs remain disallowed by v2 record ABI because their values
 are absent from the public statement.
+
+## A public 16-bit record field
+
+The [executable source](../examples/arithmetic/record_public_u16.s31) uses a
+typed 16-bit input and returns that same wire beside a computed M31 value:
+
+```s31
+struct Request { digit: [u16; 1], salt: [m31; 1] }
+struct Result { digit: [u16; 1], square: [m31; 1] }
+
+circuit record_public_u16(public req: Request) -> public Result {
+    let field = std::field::from_u16(req.digit);
+    let square = field .* field + req.salt;
+    Result { digit: req.digit, square: square }
+}
+```
+
+The text frontend emits two first-order input wires (`u16[1]`, `m31[1]`), a
+value-preserving `cast_m31`, a multiplication, and an addition. The result's
+`digit` field references the original public input wire. For
+`digit=65535, salt=3`, the public result is
+`{digit: [65535], square: [2147352581]}` because the square is reduced
+modulo `p=2147483647`. The typed v2 statement names four logical words in
+order: `req.digit`, `req.salt`, `result.digit`, `result.square`. The two digit
+paths must carry equal values because they name one wire.
+
+Here is the range proof for one `digit` word. The circuit guesses sixteen
+bits `b₀…b₁₅`, constrains `bᵢ²=bᵢ` for every bit, and constrains
+`digit=Σᵢ 2ⁱbᵢ` in the M31 operation AIR. Thus the reconstructed integer is
+between `0` and `65535`; its maximum is below `p`, so this equality cannot
+hide an integer wrap. The public word also passes the native typed-statement
+check `word < 65536`. The proof's public binding equates that checked claim
+with the range-constrained circuit input. No fixed `u16` lookup table enters
+this direct-gate proof. For this example, the package reports **325 raw**
+and **512 padded** QM31 operation rows and **4096 preprocessing cells**;
+those rows include the 16 Boolean producer gates, bit packing, public
+bindings, and the square/add computation. They are a fixture geometry, not a
+constant overhead promise for every program.
+
+The [acceptance control](../tests/acceptance/record_abi/public_u16_direct_gate_v2.py)
+proves and verifies inputs `0` and `65535`, checks the independent field
+calculation, rejects the in-range changed claim `65534` against the old
+proof, and rejects `65536` and `p−1` at both Python and native statement
+parsers. It also rejects an out-of-range flat prover witness before proof
+construction, a derived `u16` result descriptor, and the same u16 boundary
+under chip and mixed admission. This checks the implementation for the
+fixture; Lean models the 16-bit reconstruction and public tag bound, while
+full compiler-to-AIR and proof-system soundness remain separate work.
 
 ## A record input and scalar result
 

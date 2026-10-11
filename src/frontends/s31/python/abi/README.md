@@ -4,10 +4,15 @@
 for `direct-gate` relations. Its descriptor preserves nominal record names,
 field declaration order, tagged tuple positions, wire references, and
 public/private visibility. The native verifier independently validates the
-descriptor, its key digest, and the canonical statement. M31 leaves and
-public `bit` leaves are admitted. A `bit` occupies one M31 relation/proof
-word but its public statement value must be `0` or `1`. Private `bit` leaves
-and all `u16` leaves remain outside this boundary.
+descriptor, its key digest, and the canonical statement. M31 leaves, public
+`bit` leaves, and public `u16` leaves are admitted under `direct-gate`. A
+`bit` occupies one M31 relation/proof word but its public statement value
+must be `0` or `1`. A public `u16` input word is decomposed into 16 Boolean
+arithmetic gates and reconstructed in the circuit; its claimed statement
+value must be below 65536. A `u16` result leaf must alias one of those
+public input wires. Private `bit`/`u16` leaves and derived `u16` result wires
+remain outside this boundary. `direct-chip` and `direct-mixed-general` do
+not admit this u16 shape.
 The native canonical JSON writer rejects nesting beyond 128 containers;
 valid v2 type trees are limited to 32 record or tuple edges. Malformed deep
 statement values fail before proof decoding.
@@ -21,7 +26,7 @@ The two public readback functions are:
   v2 bytes against the relation's ABI and returns named **public** inputs and
   the result. It never returns private input values.
 - `encode_typed_public_statement(source, claim)` checks exact roots, field
-  shapes, canonical M31 words, public bit values, aliases, version, and ABI digest, then returns
+  shapes, canonical M31/u16 words, public bit values, aliases, version, and ABI digest, then returns
   the same canonical statement bytes.
 
 For a verified readback, use `s31 inspect-record-proof PACKAGE PROOF`. That

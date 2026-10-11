@@ -4,7 +4,7 @@ import S31.Gadgets.Functional.RecordLayoutValidationV2
 An executable whole-descriptor shape check for public record ABI v2. The
 input is an already parsed, explicitly named type tree. `checkDescriptor`
 checks all roots together: local shape, the aggregate leaf budget, root names,
-private `bit` exclusion, and equality of complete type structures sharing a
+private `bit`/`u16` exclusion, and equality of complete type structures sharing a
 nominal record name. It also requires a top-level record boundary, as the
 native v2 validator does.
 
@@ -56,36 +56,66 @@ def nominalOccurrences : NamedLayout → List (String × List TypeToken)
   | .tuple arity child =>
       (List.finRange arity).flatMap fun i => nominalOccurrences (child i)
 
-def noPrivateBit : NamedLayout → Bool
-  | .leaf kind _ => decide (kind ≠ .bit)
+def noPrivateNarrowLeaf : NamedLayout → Bool
+  | .leaf kind _ => decide (kind ≠ .bit ∧ kind ≠ .u16)
   | .record _ arity _ child =>
-      (List.finRange arity).all fun i => noPrivateBit (child i)
+      (List.finRange arity).all fun i => noPrivateNarrowLeaf (child i)
   | .tuple arity child =>
-      (List.finRange arity).all fun i => noPrivateBit (child i)
+      (List.finRange arity).all fun i => noPrivateNarrowLeaf (child i)
 
-theorem noPrivateBit_leaf (layout : NamedLayout)
-    (accepted : noPrivateBit layout = true) :
+theorem noPrivateNarrowLeaf_no_bit (layout : NamedLayout)
+    (accepted : noPrivateNarrowLeaf layout = true) :
     ∀ position : LeafPosition (erase (toRaw layout)),
       leafKindAt (toRaw layout) position ≠ .bit := by
   induction layout with
   | leaf kind width =>
       intro position
       cases position
-      simpa [noPrivateBit, toRaw, leafKindAt] using accepted
+      have allowed : kind ≠ .bit ∧ kind ≠ .u16 := by
+        simpa [noPrivateNarrowLeaf] using accepted
+      exact allowed.1
   | record name arity names child ih =>
       intro position
       rcases position with ⟨i, tail⟩
-      have childAccepted : noPrivateBit (child i) = true := by
+      have childAccepted : noPrivateNarrowLeaf (child i) = true := by
         have h := accepted
-        simp only [noPrivateBit, List.all_eq_true] at h
+        simp only [noPrivateNarrowLeaf, List.all_eq_true] at h
         exact h i (List.mem_finRange i)
       simpa [toRaw, leafKindAt] using ih i childAccepted tail
   | tuple arity child ih =>
       intro position
       rcases position with ⟨i, tail⟩
-      have childAccepted : noPrivateBit (child i) = true := by
+      have childAccepted : noPrivateNarrowLeaf (child i) = true := by
         have h := accepted
-        simp only [noPrivateBit, List.all_eq_true] at h
+        simp only [noPrivateNarrowLeaf, List.all_eq_true] at h
+        exact h i (List.mem_finRange i)
+      simpa [toRaw, leafKindAt] using ih i childAccepted tail
+
+theorem noPrivateNarrowLeaf_no_u16 (layout : NamedLayout)
+    (accepted : noPrivateNarrowLeaf layout = true) :
+    ∀ position : LeafPosition (erase (toRaw layout)),
+      leafKindAt (toRaw layout) position ≠ .u16 := by
+  induction layout with
+  | leaf kind width =>
+      intro position
+      cases position
+      have allowed : kind ≠ .bit ∧ kind ≠ .u16 := by
+        simpa [noPrivateNarrowLeaf] using accepted
+      exact allowed.2
+  | record name arity names child ih =>
+      intro position
+      rcases position with ⟨i, tail⟩
+      have childAccepted : noPrivateNarrowLeaf (child i) = true := by
+        have h := accepted
+        simp only [noPrivateNarrowLeaf, List.all_eq_true] at h
+        exact h i (List.mem_finRange i)
+      simpa [toRaw, leafKindAt] using ih i childAccepted tail
+  | tuple arity child ih =>
+      intro position
+      rcases position with ⟨i, tail⟩
+      have childAccepted : noPrivateNarrowLeaf (child i) = true := by
+        have h := accepted
+        simp only [noPrivateNarrowLeaf, List.all_eq_true] at h
         exact h i (List.mem_finRange i)
       simpa [toRaw, leafKindAt] using ih i childAccepted tail
 
@@ -135,7 +165,7 @@ abbrev ValidDescriptor (descriptor : Descriptor) : Prop :=
   descriptor.inputs.all (fun root => checkNativeRoot (toRaw root.layout)) = true ∧
   checkNativeRoot (toRaw descriptor.result.layout) = true ∧
   descriptor.inputs.all (fun root =>
-    if root.visibility = .priv then noPrivateBit root.layout else true) = true ∧
+    if root.visibility = .priv then noPrivateNarrowLeaf root.layout else true) = true ∧
   (descriptor.inputs.map InputRoot.name).Nodup ∧
   descriptor.result.name = "result" ∧
   descriptor.result.name ∉ descriptor.inputs.map InputRoot.name ∧
@@ -193,7 +223,20 @@ theorem checked_private_input_no_bits (descriptor : Descriptor)
   simp only [List.all_eq_true] at h
   have checked := h root member
   simp [privateRoot] at checked
-  exact noPrivateBit_leaf root.layout checked
+  exact noPrivateNarrowLeaf_no_bit root.layout checked
+
+theorem checked_private_input_no_u16 (descriptor : Descriptor)
+    (accepted : checkDescriptor descriptor = true)
+    (root : InputRoot) (member : root ∈ descriptor.inputs)
+    (privateRoot : root.visibility = .priv) :
+    ∀ position : LeafPosition (erase (toRaw root.layout)),
+      leafKindAt (toRaw root.layout) position ≠ .u16 := by
+  have valid := (checkDescriptor_iff descriptor).mp accepted
+  have h := valid.2.2.1
+  simp only [List.all_eq_true] at h
+  have checked := h root member
+  simp [privateRoot] at checked
+  exact noPrivateNarrowLeaf_no_u16 root.layout checked
 
 theorem checked_global_budget (descriptor : Descriptor)
     (accepted : checkDescriptor descriptor = true) :

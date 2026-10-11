@@ -18,6 +18,25 @@ from text_frontend import SourceError, compile_file, compile_text
 
 
 class RecordTests(unittest.TestCase):
+    def test_public_u16_record_requires_public_input_alias_for_u16_result(self) -> None:
+        source = """struct Request { digit: [u16; 1] }
+struct Result { digit: [u16; 1] }
+circuit range_copy(public req: Request) -> public Result {
+    Result { digit: req.digit }
+}"""
+        relation, _ = compile_text(source)
+        self.assertEqual(relation["inputs"][0]["kind"], "u16")
+        self.assertEqual(relation["public_outputs"], [relation["inputs"][0]["name"]])
+        with self.assertRaisesRegex(AbiError, "private bit and u16"):
+            compile_text(source.replace("public req", "private req"))
+        derived = """struct Request { digit: [u16; 1] }
+struct Result { digit: [u16; 1] }
+circuit range_select(public req: Request, public flag: bit) -> public Result {
+    Result { digit: select(flag, req.digit, req.digit) }
+}"""
+        with self.assertRaisesRegex(AbiError, "u16 result must alias"):
+            compile_text(derived)
+
     def test_public_bit_record_erases_to_m31_and_rejects_private_bit(self) -> None:
         source = """struct Request { flag: bit, value: [m31; 1] }
 struct Response { flag: bit, chosen: [m31; 1] }

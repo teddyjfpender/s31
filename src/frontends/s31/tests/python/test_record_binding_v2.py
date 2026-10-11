@@ -164,13 +164,20 @@ class RecordBindingV2Tests(unittest.TestCase):
         self.assertNotEqual(binding_digest(self.relation, wrong_output),
                             binding_digest(self.relation, self.binding))
 
-    def test_non_m31_and_non_bit_leaf_rejected(self) -> None:
-        for typ in (Type("u16", 1), Type("int_u8", 1)):
-            with self.subTest(typ=typ), self.assertRaisesRegex(AbiError, "v2 supports"):
-                make_binding(self.relation, [
-                    ("request", self.request, "public", ["a", "b"]),
-                    ("witness", Type("m31", 1), "private", ["secret"]),
-                ], ("result", typ, ["sum"]))
+    def test_unsupported_scalar_and_u16_without_range_bound_input_reject(self) -> None:
+        with self.assertRaisesRegex(AbiError, "v2 supports"):
+            make_binding(self.relation, [
+                ("request", self.request, "public", ["a", "b"]),
+                ("witness", Type("m31", 1), "private", ["secret"]),
+            ], ("result", Type("int_u8", 1), ["sum"]))
+        # u16 is an admitted v2 kind only when the relation itself has a
+        # public u16 input with the same wire and shape.
+        scalar_relation = {**self.relation, "public_outputs": ["sum"]}
+        with self.assertRaisesRegex(AbiError, "result wire shape"):
+            make_binding(scalar_relation, [
+                ("request", self.request, "public", ["a", "b"]),
+                ("witness", Type("m31", 1), "private", ["secret"]),
+            ], ("result", Type("u16", 1), ["sum"]))
 
     def test_public_bit_leaves_have_native_compatible_range(self) -> None:
         bit = Type("bit", 1)

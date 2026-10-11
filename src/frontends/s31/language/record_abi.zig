@@ -151,8 +151,10 @@ const State = struct {
         _ = try object(descriptor, &.{ "kind", "length", "path", "wire" });
         const kind = try name(try field(descriptor, "kind"));
         const is_bit = std.mem.eql(u8, kind, "bit");
+        const is_u16 = std.mem.eql(u8, kind, "u16");
         if (!std.mem.eql(u8, kind, expected_kind) or
-            (is_bit and (expected_length != 1 or (input_root and std.mem.eql(u8, visibility, "private")))) or
+            (is_bit and expected_length != 1) or
+            (input_root and (is_bit or is_u16) and std.mem.eql(u8, visibility, "private")) or
             try count(try field(descriptor, "length")) != expected_length)
             return error.InvalidRecordAbi;
         try matchingPath(try field(descriptor, "path"), self.path.items);
@@ -163,13 +165,28 @@ const State = struct {
             if (self.input_at >= program.inputs.len) return error.InvalidRecordAbi;
             const input = program.inputs[self.input_at];
             self.input_at += 1;
-            if (!std.mem.eql(u8, input.name, wire) or input.kind != .m31 or
+            if (!std.mem.eql(u8, input.name, wire) or input.kind != (if (is_u16) @as(@TypeOf(input.kind), .u16) else .m31) or
                 input.length != expected_length or
                 !std.mem.eql(u8, @tagName(input.visibility), visibility))
                 return error.InvalidRecordAbi;
         } else {
             const shape = (try program.shapeOf(self.allocator, wire)) orelse return error.InvalidRecordAbi;
-            if (shape.kind != .m31 or shape.length != expected_length) return error.InvalidRecordAbi;
+            if (shape.kind != (if (is_u16) @as(@TypeOf(shape.kind), .u16) else .m31) or shape.length != expected_length) return error.InvalidRecordAbi;
+            // The direct profile proves public u16 input bits arithmetically.
+            // Until derived u16 producers have an audited range proof, expose
+            // such a result only as an alias of one of those input wires.
+            if (is_u16) {
+                var input_alias = false;
+                for (program.inputs) |input| {
+                    if (input.kind == .u16 and input.visibility == .public and
+                        std.mem.eql(u8, input.name, wire) and input.length == expected_length)
+                    {
+                        input_alias = true;
+                        break;
+                    }
+                }
+                if (!input_alias) return error.InvalidRecordAbi;
+            }
             var seen = false;
             for (self.outputs.items) |prior| if (std.mem.eql(u8, prior, wire)) {
                 seen = true;
@@ -184,7 +201,7 @@ const State = struct {
         if (tree.object.contains("kind")) {
             _ = try object(tree, &.{ "kind", "length" });
             const kind = try name(try field(tree, "kind"));
-            if (!std.mem.eql(u8, kind, "m31") and !std.mem.eql(u8, kind, "bit")) return error.InvalidRecordAbi;
+            if (!std.mem.eql(u8, kind, "m31") and !std.mem.eql(u8, kind, "bit") and !std.mem.eql(u8, kind, "u16")) return error.InvalidRecordAbi;
             const length = try count(try field(tree, "length"));
             if (length == 0 or length > 8 or
                 (std.mem.eql(u8, kind, "bit") and length != 1) or at.* >= leaves.len)
@@ -426,7 +443,7 @@ fn checkClaim(allocator: std.mem.Allocator, descriptor: Value, actual: Value, wi
     if (!std.mem.eql(u8, expected_path, actual_path)) return error.InvalidRecordStatement;
     const length = try count(try field(descriptor, "length"));
     const kind = try name(try field(descriptor, "kind"));
-    const limit: i64 = if (std.mem.eql(u8, kind, "bit")) 2 else P;
+    const limit: i64 = if (std.mem.eql(u8, kind, "bit")) 2 else if (std.mem.eql(u8, kind, "u16")) 65536 else P;
     const words = try array(try field(actual, "words"));
     if (words.len != length) return error.InvalidRecordStatement;
     const value = try allocator.alloc(u32, length);

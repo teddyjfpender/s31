@@ -1,0 +1,11 @@
+struct WordLanes { words: [u16; 4] }
+struct ResultLanes { words: [m31; 4] }
+
+fn step(v: [m31; 4]) -> [m31; 4] {
+    v .* v + splat<4>(13_m31)
+}
+
+circuit public_u16_mixed_rejected(public x: WordLanes) -> public ResultLanes {
+    let start = std::field::from_u16(x.words);
+    ResultLanes { words: iterate<16>(step, start) }
+}

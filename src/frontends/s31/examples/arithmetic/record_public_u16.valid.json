@@ -1,0 +1,6 @@
+{
+  "version": 2,
+  "public_inputs": {"req": {"digit": [65535], "salt": [3]}},
+  "private_inputs": {},
+  "result": {"digit": [65535], "square": [2147352581]}
+}

@@ -187,7 +187,14 @@ fn arithmeticInputWidth(program: relation.Program, input: relation.Input, allow_
 }
 
 pub fn directFixedInput(program: relation.Program, input: relation.Input) bool {
-    return arithmeticInputWidth(program, input, true) != null;
+    return directRecordU16Input(program, input) or arithmeticInputWidth(program, input, true) != null;
+}
+
+/// Record-v2 public u16 input words are range-proved by sixteen Boolean
+/// operation gates and a reconstruction equation, without a fixed lookup.
+/// Program.validate binds this input kind and visibility to the sealed ABI.
+fn directRecordU16Input(program: relation.Program, input: relation.Input) bool {
+    return program.version == 2 and input.kind == .u16 and input.visibility == .public;
 }
 
 pub fn compileRaw(comptime V: type, allocator: std.mem.Allocator, program: relation.Program, assignment: ?relation.Assignment) !circuit.builder.Context(V) {
@@ -582,7 +589,7 @@ fn compileWithSpansMode(comptime V: type, allocator: std.mem.Allocator, program:
     if (bounded_mode and (chip_mode or pair_mode or sha_chip_mode or !direct_output or maps == null)) return error.InvalidBoundedCompilerMode;
     if (sha_chip_mode and (chip_mode or direct_output or maps == null)) return error.InvalidShaChipCompilerMode;
     if (direct_output) for (program.inputs) |input| {
-        if (input.kind != .m31 and arithmeticInputWidth(program, input, true) == null) return error.UnsupportedDirectRelation;
+        if (input.kind != .m31 and !directFixedInput(program, input)) return error.UnsupportedDirectRelation;
     };
     if (comptime V == QM31) {
         if (assignment == null) return error.MissingAssignment;
@@ -639,7 +646,8 @@ fn compileWithSpansMode(comptime V: type, allocator: std.mem.Allocator, program:
                 const source_values: ?[]M31 = if (comptime V == QM31) try relation.inputValues(allocator, assignment.?, input) else null;
                 defer if (source_values) |owned| allocator.free(owned);
                 const boolean = direct_output and bit_sources[id];
-                const arithmetic_width = arithmeticInputWidth(program, input, direct_output);
+                const arithmetic_width: ?u32 = if (direct_output and directRecordU16Input(program, input))
+                    16 else arithmeticInputWidth(program, input, direct_output);
                 // A QM31 witness is already four M31 coordinates. For a
                 // private array, guessing the packed wire directly avoids
                 // four scalar guesses and their six packing gates. Public

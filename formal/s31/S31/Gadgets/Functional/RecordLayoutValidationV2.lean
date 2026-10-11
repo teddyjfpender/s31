@@ -6,7 +6,7 @@ The raw constructors distinguish named record fields from tuple indices and
 carry every leaf's declared kind and width. Unlike `WellTagged`, this input
 contains no path-uniqueness proof. `checkRoot` checks finite local
 obligations from the production type-tree walk: nonempty bounded nodes,
-distinct sibling field names, depth, a per-root leaf bound, and M31/bit
+distinct sibling field names, depth, a per-root leaf bound, and M31/bit/u16
 leaf widths.
 
 The theorems discharge the tag and width premises of the generic nested

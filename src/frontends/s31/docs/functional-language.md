@@ -328,7 +328,8 @@ sixteen limbs of one `Bytes32` input, casts them to M31 words and sums them.
 The two fixtures select `[1,…,16]` or `[101,…,116]`, yielding 136 or 1,736.
 Its [manual selector](../examples/control/byte_choice_manual.s31) emits the
 same relation. Because its inputs are u16-backed, build it with
-`sparse-wide-gate`; `direct-gate` accepts only M31 inputs. The local
+`sparse-wide-gate`; this v1 source is outside the narrow public-u16 record
+ABI v2 direct-gate admission. The local
 [Lean u16 selection theorem](../../../../formal/s31/S31/Gadgets/U16Selection.lean)
 proves that a bit-constrained limb selector returns exactly the chosen input
 and preserves the u16 range, under the stated input bounds.

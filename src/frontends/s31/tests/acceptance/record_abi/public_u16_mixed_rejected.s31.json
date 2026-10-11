@@ -1,0 +1,104 @@
+{
+  "assertions": [],
+  "inputs": [
+    {
+      "kind": "u16",
+      "length": 4,
+      "name": "_s31_abi_input_0",
+      "visibility": "public"
+    }
+  ],
+  "name": "public_u16_mixed_rejected",
+  "nodes": [
+    {
+      "lhs": "_s31_abi_input_0",
+      "name": "start",
+      "op": "cast_m31"
+    },
+    {
+      "body": [
+        {
+          "op": "square"
+        },
+        {
+          "constant": 13,
+          "op": "add_const"
+        }
+      ],
+      "lhs": "start",
+      "name": "_s31_0",
+      "op": "repeat",
+      "rounds": 16
+    }
+  ],
+  "public_abi": {
+    "inputs": [
+      {
+        "leaves": [
+          {
+            "kind": "u16",
+            "length": 4,
+            "path": [
+              {
+                "root": "x"
+              },
+              {
+                "field": "words"
+              }
+            ],
+            "wire": "_s31_abi_input_0"
+          }
+        ],
+        "name": "x",
+        "type": {
+          "fields": [
+            {
+              "name": "words",
+              "type": {
+                "kind": "u16",
+                "length": 4
+              }
+            }
+          ],
+          "record": "WordLanes"
+        },
+        "visibility": "public"
+      }
+    ],
+    "result": {
+      "leaves": [
+        {
+          "kind": "m31",
+          "length": 4,
+          "path": [
+            {
+              "root": "result"
+            },
+            {
+              "field": "words"
+            }
+          ],
+          "wire": "_s31_0"
+        }
+      ],
+      "name": "result",
+      "type": {
+        "fields": [
+          {
+            "name": "words",
+            "type": {
+              "kind": "m31",
+              "length": 4
+            }
+          }
+        ],
+        "record": "ResultLanes"
+      }
+    },
+    "schema": "s31-public-record-boundary-v2"
+  },
+  "public_outputs": [
+    "_s31_0"
+  ],
+  "version": 2
+}

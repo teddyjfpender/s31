@@ -70,20 +70,23 @@ theorem concatBlocks_length {α : Type} (leaves : List (WordBlock α)) :
       simp [head.exactWidth, ih]
 
 /-!
-The public-bit extension tags an already existing M31 word. This model
-records the additional native statement range check; it does not assume that
-the production JSON parser or source compiler implements that check. Private
-bit leaves are outside the admitted native ABI subset.
+Public bit and u16 leaves tag already existing M31 words. This model records
+the additional native statement range checks. The production direct-gate
+compiler separately reconstructs public u16 input words from sixteen Boolean
+bits; neither that compiler link nor JSON parsing follows from this model.
+Private bit and u16 leaves are outside the admitted native ABI subset.
 -/
 
 inductive PublicLeafKind where
   | m31
   | bit
+  | u16
 deriving DecidableEq
 
 def publicLeafBound : PublicLeafKind → Nat
   | .m31 => 2147483647
   | .bit => 2
+  | .u16 => 65536
 
 structure TaggedPublicBlock where
   kind : PublicLeafKind
@@ -107,6 +110,52 @@ theorem tagged_public_bit_range (leaf : TaggedPublicBlock)
   have bounded := leaf.range word present
   simp [isBit, publicLeafBound] at bounded
   omega
+
+/-- A statement-validated public u16 leaf has the exact 16-bit word bound.
+This concerns public claims; the separate Boolean reconstruction gates
+constrain the circuit witness. -/
+theorem tagged_public_u16_range (leaf : TaggedPublicBlock)
+    (isU16 : leaf.kind = .u16) (word : Nat)
+    (present : word ∈ leaf.block.words) : word < 65536 := by
+  simpa [isU16, publicLeafBound] using leaf.range word present
+
+/-- The two canonical edge values are admitted by the u16 word predicate. -/
+theorem u16_edge_words_valid :
+    0 < publicLeafBound .u16 ∧ 65535 < publicLeafBound .u16 := by
+  decide
+
+/-- The first out-of-range word and the largest canonical M31 word fail the
+u16 predicate even though the latter is a valid M31 word. -/
+theorem u16_out_of_range_rejected :
+    ¬ 65536 < publicLeafBound .u16 ∧
+    ¬ 2147483646 < publicLeafBound .u16 := by
+  decide
+
+/-- Arithmetic-only range decomposition, independent of a fixed lookup
+table: each least-significant-first bit is Boolean, and reconstruction uses
+integer addition below the M31 modulus. The production AIR correspondence
+for these gates is a separate obligation. -/
+def bitListValue : List Nat → Nat
+  | [] => 0
+  | bit :: rest => bit + 2 * bitListValue rest
+
+theorem bitListValue_bound (bits : List Nat)
+    (boolean : ∀ bit ∈ bits, bit < 2) : bitListValue bits < 2 ^ bits.length := by
+  induction bits with
+  | nil => simp [bitListValue]
+  | cons bit rest ih =>
+      have head : bit < 2 := boolean bit (by simp)
+      have tail : ∀ item ∈ rest, item < 2 := by
+        intro item present
+        exact boolean item (by simp [present])
+      have bound := ih tail
+      simp only [bitListValue, List.length_cons, pow_succ]
+      omega
+
+theorem reconstructed_sixteen_bits_are_u16 (bits : List Nat)
+    (length : bits.length = 16)
+    (boolean : ∀ bit ∈ bits, bit < 2) : bitListValue bits < 65536 := by
+  simpa [length] using bitListValue_bound bits boolean
 
 /-- Typed public roots plus distinct result references use the same first
 order word order as the native projection over tagged relation inputs. -/

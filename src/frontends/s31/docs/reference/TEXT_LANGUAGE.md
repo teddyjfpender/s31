@@ -77,7 +77,8 @@ circuit arithmetic uses canonical field literals.
 The [record guide](../records.md) shows named struct fields that erase into
 static products before relation emission. A function may accept or return a
 record. The versioned public-record ABI also permits nominal record circuit
-inputs and outputs with M31 leaves under `direct-gate`, and a narrow public
+inputs and outputs with M31 leaves and public `[u16; N]` input leaves under
+`direct-gate` (with arithmetic range gates and input-alias-only u16 results), and a narrow public
 four-lane record input/result under `direct-chip` or
 `direct-mixed-general`. The [one-call mixed example](../../examples/boundary/record_mixed1.s31)
 shows the public input and derived result; its native verifier checks the
@@ -99,8 +100,10 @@ rejects partial inverse, division, checked arithmetic and other potentially
 failing operations transitively through function calls in either arm. See
 the [functional language guide](../functional-language.md#witness-dependent-conditionals)
 for a worked example and the exact effect rule.
-Selecting u16-backed values such as `Bytes32` requires a u16-capable proving
-profile such as `sparse-wide-gate`; `direct-gate` accepts only M31 inputs.
+Selecting general u16-backed values such as `Bytes32` requires a u16-capable
+proving profile such as `sparse-wide-gate`. The only direct-gate raw u16 input
+exception is a public leaf of record ABI v2; its sixteen Boolean arithmetic
+gates prove the range and its u16 result may only alias that input wire.
 Unary `-` binds tighter than `.*`, which binds tighter than `+` and `-`; binary
 operators associate left, so `-a .* b - c - d` is `((-a) .* b - c) - d`.
 `a - b` and `-a` are spellings of `std::math::sub(a, b)` and
