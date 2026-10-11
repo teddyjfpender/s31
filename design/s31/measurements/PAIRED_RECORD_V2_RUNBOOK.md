@@ -102,10 +102,12 @@ and rejects any saved build-time mismatch, even if a local build root was
 recomputed. The package identities are independently regenerated from the
 current generic binaries/key/manifest and source-embedded mixed inspector
 before this replay.
+
 `audit` additionally requires a committed, externally timestamped phase-root
 anchor. It rejects absent proofs, changed bytes, failed native replay, changed
-public claims accepted by either verifier, wrong-source/component/witness
-controls accepted, and mismatched protocol or trial order. All phases fail
+public claims accepted by either verifier, same-geometry alternate-source
+proofs accepted, a modified proof-header manifest digest accepted, altered
+valid public claims mishandled, and mismatched protocol or trial order. All phases fail
 closed below 8 GiB free. The build gate requires an exact live `FriConfigV2`
 and matching interaction PoW bits across arms, while preserving and reporting
 each arm's full PCS configuration, including potentially different lifting.
@@ -179,17 +181,28 @@ executables and then replay them from saved evidence:
 2. Both source-embedded native verifiers accept every saved proof against the
    same typed public claim. Changed public input and changed result are
    rejected for every proof.
-3. A verifier built for one relation rejects a proof from another relation.
-   The mixed verifier rejects a proof with a changed registry-manifest digest.
-   A changed witness cannot establish the original typed statement.
-4. The mixed component inspector's registry digest is recomputed independently
+3. Build alternate generic and mixed verifiers from a source differing only
+   in the top-level program name. Require the same call count, ABI and native
+   geometry, then require each alternate verifier to reject the original
+   source's proof and accept a new proof from its own source. This isolates
+   source-digest binding from a geometry mismatch. Flip the mixed proof
+   header's bound registry-manifest digest byte and require rejection; this
+   tests proof-header binding, not a general AIR substitution.
+4. Increment a public input lane and recompute the matching output using the
+   complete 16-round recurrence. The independent relation oracle must agree.
+   Both provers must successfully produce a proof for the new typed claim;
+   both native verifiers must accept it and reject that proof against the
+   original typed claim. The mixed prover must specifically reject the valid
+   changed assignment paired with the original expected statement as
+   `InvalidMixedPublicStatement`. This source has **no private witness**.
+5. The mixed component inspector's registry digest is recomputed independently
    from its typed slots and schedule; its canonical IR digest must match the
    generic compiler's sealed cost report. The generic package verifier checks
    its sealed key and component manifest before any trial.
    Both arms' actual PCS/FRI/PoW settings must be reported from the live
    source-embedded verifier or manifest and compared before a cost statement;
    do not infer mixed settings from a generic package default.
-5. The study's direct-gate v2 admission needs focused native regression of
+6. The study's direct-gate v2 admission needs focused native regression of
    ordinary v1 `prove`, ordinary v2 self-verifying `prove`, v2
    `prove-for-external-verification` plus external verifier, and mixed v2 N=1
    and N=8. The unchecked command may never be treated as acceptance by

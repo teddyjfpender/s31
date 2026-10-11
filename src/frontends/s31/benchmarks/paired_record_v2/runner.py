@@ -26,8 +26,11 @@ sys.path.insert(0, str(S31 / "python"))
 sys.path.insert(0, str(S31 / "tests/acceptance/mixed_boundary"))
 
 import s31
+from abi.binding_v2 import statement_from_assignment
+from oracle import evaluate_relation
+from package.context import parse_source_json
 from registry_manifest_digest import digest as registry_digest
-from design import canonical, case, design, sha
+from design import canonical, case, design, flat, sha
 from integrity import (BUILD_EVENT_SCHEMA, EVENT_SCHEMA, GENESIS, append_event,
                        build_root, check_phase_anchor, durable_write,
                        fsync_existing, observed_invoke, phase_root,
@@ -298,6 +301,33 @@ def changed_claim(original: bytes, leaf_index: int) -> bytes:
     value = json.loads(original)
     value["leaves"][leaf_index]["words"][0] = (value["leaves"][leaf_index]["words"][0] + 1) % P
     return canonical(value)
+
+
+def altered_valid_assignment(original: bytes, count: int,
+                             relation: dict) -> tuple[bytes, bytes]:
+    """Change a public input and recompute a valid output independently."""
+    assignment = json.loads(original)
+    input_wire = relation["inputs"][0]["name"]
+    output_wire = relation["public_outputs"][0]
+    if (set(assignment["public_inputs"]) != {input_wire} or
+            set(assignment["public_outputs"]) != {output_wire} or
+            assignment["private_inputs"] != {}):
+        raise ValueError("altered control requires the admitted public-only source")
+    words = assignment["public_inputs"][input_wire][:]
+    if len(words) != 4:
+        raise ValueError("altered control requires four public input lanes")
+    words[0] = (words[0] + 1) % P
+    state = words[:]
+    for call in range(count):
+        for _ in range(16):
+            state = [(value * value + 13 + call) % P for value in state]
+    result = [(value + start) % P for value, start in zip(state, words)]
+    assignment["public_inputs"][input_wire] = words
+    assignment["public_outputs"][output_wire] = result
+    if evaluate_relation(flat(relation), assignment) != assignment["public_outputs"]:
+        raise ValueError("altered valid public assignment disagrees with independent relation oracle")
+    typed = statement_from_assignment(relation, assignment)
+    return canonical(assignment), typed
 
 
 def rejected(command: list[str]) -> bool:
@@ -650,58 +680,149 @@ def run(args: argparse.Namespace) -> None:
             derived["cases"][key] = derived_rows
         if event_at != len(events) or corpus != derived:
             raise ValueError("corpus timing, RSS, bytes, arm, source, or order differs from raw phase ledger")
-        # Independent, untimed controls exercise source identity, component
-        # binding, and a witness inconsistent with the original typed claim.
-        first_key, second_key = list(entries)[:2]
+        # Independent, untimed controls exercise source identity at identical
+        # geometry, proof-header binding, and a *valid* altered public claim.
+        first_key = next(iter(entries))
         first = out / f"n{first_key}"
-        second = out / f"n{second_key}"
-        first_name = json.loads((first / "source.s31.json").read_bytes())["name"]
-        second_name = json.loads((second / "source.s31.json").read_bytes())["name"]
+        first_source_bytes = (first / "source.s31.json").read_bytes()
+        first_source = parse_source_json(first_source_bytes)
+        first_name = first_source["name"]
         controls = out / "audit-controls"
-        controls.mkdir(exist_ok=True)
+        controls.mkdir(exist_ok=False)
         first_statement = first / "statements/00.json"
         generic_proof = first / "trials/00/generic/proof.bin"
         mixed_proof = first / "trials/00/mixed/proof.bin"
-        second_generic_verifier = generic_bins(second, second_name)[1]
-        second_generic_key = generic_bins(second, second_name)[2]
-        second_mixed_verifier = mixed_bins(second, second_name)[1]
-        if not rejected([str(second_generic_verifier), str(generic_proof),
-                         str(first_statement), str(second_generic_key)]):
-            raise ValueError("generic verifier accepted wrong-source proof")
-        if not rejected([str(second_mixed_verifier), str(mixed_proof),
+        alternate_name = f"{first_name}_same_geometry_alternate"
+        alternate_source = {**first_source, "name": alternate_name}
+        if ({key: value for key, value in alternate_source.items() if key != "name"} !=
+                {key: value for key, value in first_source.items() if key != "name"}):
+            raise ValueError("alternate source changed more than the top-level name")
+        alternate_source_path = controls / "same-count-alternate.s31.json"
+        durable_write(alternate_source_path, canonical(alternate_source))
+        alternate_generic = s31.build(alternate_source_path,
+                                      controls / "alternate-generic", "direct-gate")
+        alternate_generic_manifest = s31.verify_package(alternate_generic)
+        if (alternate_generic_manifest["program_sha256"] !=
+                sha(alternate_source_path.read_bytes()) or
+                alternate_generic_manifest["lowering"] != "direct-gate"):
+            raise ValueError("alternate generic verifier is not bound to altered source")
+        alternate_mixed = controls / "alternate-mixed"
+        subprocess.run([
+            "zig", "build", "--build-file", str(S31 / "build.zig"), "install",
+            "-Doptimize=ReleaseFast", "-Ds31-version=2",
+            "-Ds31-lowering=direct-mixed-general",
+            f"-Ds31-source={alternate_source_path}",
+            f"-Ds31-name={alternate_name}", "-j1", "--prefix", str(alternate_mixed),
+        ], cwd=ROOT, check=True)
+        alternate_manifest_bin = (alternate_mixed / "bin" /
+                                  f"s31-{alternate_name}-mixed-general-manifest")
+        alternate_mixed_report = json.loads(subprocess.check_output(
+            [str(alternate_manifest_bin)], text=True))
+        original_mixed_report = json.loads((first / "mixed-inspection.json").read_bytes())
+        original_generic_report = json.loads((first / "generic/cost-report.json").read_bytes())
+        alternate_generic_report = json.loads(
+            (alternate_generic / "cost-report.json").read_bytes())
+        generic_geometry = ("raw", "padded", "trace_log_size", "pcs")
+        mixed_geometry = ("call_count", "slot_count", "tree_columns",
+                          "max_column_log_size", "composition_log_size",
+                          "composition_split", "pcs")
+        if (any(original_generic_report[key] != alternate_generic_report[key]
+                for key in generic_geometry) or
+                any(original_mixed_report[key] != alternate_mixed_report[key]
+                    for key in mixed_geometry) or
+                alternate_generic_report["public_abi_sha256"] !=
+                    original_generic_report["public_abi_sha256"] or
+                alternate_mixed_report["source_sha256"] !=
+                    sha(alternate_source_path.read_bytes()) or
+                alternate_mixed_report["registry_manifest_sha256"] !=
+                    registry_digest(alternate_mixed_report)):
+            raise ValueError("same-count alternate source changed native geometry or ABI")
+        alternate_generic_verifier = (alternate_generic / "bin" /
+                                      f"s31-{alternate_name}-native-verifier")
+        alternate_generic_key = alternate_generic / "verification-key.json"
+        alternate_mixed_verifier = (alternate_mixed / "bin" /
+                                    f"s31-{alternate_name}-mixed-general-native-verifier")
+        if not rejected([str(alternate_generic_verifier), str(generic_proof),
+                         str(first_statement), str(alternate_generic_key)]):
+            raise ValueError("same-geometry alternate generic verifier accepted old-source proof")
+        if not rejected([str(alternate_mixed_verifier), str(mixed_proof),
                          str(first_statement)]):
-            raise ValueError("mixed verifier accepted wrong-source proof")
+            raise ValueError("same-geometry alternate mixed verifier accepted old-source proof")
+        first_assignment = first / "assignments/00.json"
+        alternate_generic_proof = controls / "alternate-generic.proof"
+        alternate_generic_prover = (alternate_generic / "bin" /
+                                    f"s31-{alternate_name}-prover")
+        subprocess.run([str(alternate_generic_prover),
+                        "prove-for-external-verification", str(first_assignment),
+                        str(alternate_generic_proof)], cwd=ROOT, check=True,
+                       capture_output=True)
+        subprocess.run([str(alternate_generic_verifier), str(alternate_generic_proof),
+                        str(first_statement), str(alternate_generic_key)],
+                       cwd=ROOT, check=True, capture_output=True)
+        alternate_mixed_prover = (alternate_mixed / "bin" /
+                                  f"s31-{alternate_name}-mixed-general-prover")
+        alternate_mixed_proof = controls / "alternate-mixed.proof"
+        alternate_mixed_statement = controls / "alternate-mixed.statement.json"
+        subprocess.run([str(alternate_mixed_prover), str(first_assignment),
+                        str(alternate_mixed_proof), str(alternate_mixed_statement),
+                        str(first_statement)], cwd=ROOT, check=True, capture_output=True)
+        if alternate_mixed_statement.read_bytes() != first_statement.read_bytes():
+            raise ValueError("alternate mixed prover changed the same typed claim")
+        subprocess.run([str(alternate_mixed_verifier), str(alternate_mixed_proof),
+                        str(first_statement)], cwd=ROOT, check=True, capture_output=True)
         corrupted = bytearray(mixed_proof.read_bytes())
         if not corrupted.startswith(b"S31MIX07") or len(corrupted) < 76:
             raise ValueError("mixed proof envelope lacks expected component identity")
         corrupted[44] ^= 1  # first byte of bound registry manifest digest
-        wrong_component = controls / "wrong-component.proof"
-        wrong_component.write_bytes(corrupted)
+        wrong_manifest_header = controls / "wrong-manifest-header.proof"
+        durable_write(wrong_manifest_header, corrupted)
         first_mixed_verifier = mixed_bins(first, first_name)[1]
-        if not rejected([str(first_mixed_verifier), str(wrong_component), str(first_statement)]):
-            raise ValueError("mixed verifier accepted wrong component digest")
-        wrong_assignment = json.loads((first / "assignments/00.json").read_bytes())
-        input_wire = next(iter(wrong_assignment["public_inputs"]))
-        wrong_assignment["public_inputs"][input_wire][0] = (
-            wrong_assignment["public_inputs"][input_wire][0] + 1) % P
-        wrong_assignment_path = controls / "wrong-witness.json"
-        wrong_assignment_path.write_bytes(canonical(wrong_assignment))
+        if not rejected([str(first_mixed_verifier), str(wrong_manifest_header),
+                         str(first_statement)]):
+            raise ValueError("mixed verifier accepted altered proof-header manifest digest")
+        altered_assignment_bytes, altered_statement_bytes = altered_valid_assignment(
+            first_assignment.read_bytes(), int(first_key), first_source)
+        if altered_statement_bytes == first_statement.read_bytes():
+            raise ValueError("altered valid input unexpectedly has original typed claim")
+        altered_assignment = controls / "altered-valid-assignment.json"
+        altered_statement = controls / "altered-valid-statement.json"
+        durable_write(altered_assignment, altered_assignment_bytes)
+        durable_write(altered_statement, altered_statement_bytes)
         generic_prover = generic_bins(first, first_name)[0]
-        generic_wrong_proof = controls / "wrong-generic.proof"
-        generic_result = subprocess.run([
+        altered_generic_proof = controls / "altered-generic.proof"
+        subprocess.run([
             str(generic_prover), "prove-for-external-verification",
-            str(wrong_assignment_path), str(generic_wrong_proof),
-        ], cwd=ROOT, capture_output=True, check=False)
-        if generic_result.returncode == 0:
-            _, first_generic_verifier, first_generic_key = generic_bins(first, first_name)
-            if not rejected([str(first_generic_verifier), str(generic_wrong_proof),
-                             str(first_statement), str(first_generic_key)]):
-                raise ValueError("generic wrong-witness proof accepted against original claim")
+            str(altered_assignment), str(altered_generic_proof),
+        ], cwd=ROOT, capture_output=True, check=True)
+        _, first_generic_verifier, first_generic_key = generic_bins(first, first_name)
+        subprocess.run([str(first_generic_verifier), str(altered_generic_proof),
+                        str(altered_statement), str(first_generic_key)],
+                       cwd=ROOT, capture_output=True, check=True)
+        if not rejected([str(first_generic_verifier), str(altered_generic_proof),
+                         str(first_statement), str(first_generic_key)]):
+            raise ValueError("generic native verifier accepted original claim for altered valid proof")
         mixed_prover = mixed_bins(first, first_name)[0]
-        if not rejected([str(mixed_prover), str(wrong_assignment_path),
-                         str(controls / "wrong-mixed.proof"),
-                         str(controls / "wrong-mixed.statement"), str(first_statement)]):
-            raise ValueError("mixed prover accepted witness inconsistent with typed claim")
+        altered_mixed_proof = controls / "altered-mixed.proof"
+        altered_mixed_output = controls / "altered-mixed.statement.json"
+        subprocess.run([str(mixed_prover), str(altered_assignment),
+                        str(altered_mixed_proof), str(altered_mixed_output),
+                        str(altered_statement)], cwd=ROOT, capture_output=True, check=True)
+        if altered_mixed_output.read_bytes() != altered_statement_bytes:
+            raise ValueError("mixed prover did not emit the valid altered typed claim")
+        subprocess.run([str(first_mixed_verifier), str(altered_mixed_proof),
+                        str(altered_statement)], cwd=ROOT, capture_output=True, check=True)
+        if not rejected([str(first_mixed_verifier), str(altered_mixed_proof),
+                         str(first_statement)]):
+            raise ValueError("mixed verifier accepted original claim for altered valid proof")
+        mixed_old_claim = subprocess.run([
+            str(mixed_prover), str(altered_assignment),
+            str(controls / "altered-old-claim.proof"),
+            str(controls / "altered-old-claim.statement.json"),
+            str(first_statement),
+        ], cwd=ROOT, capture_output=True, check=False)
+        if mixed_old_claim.returncode == 0 or \
+                b"InvalidMixedPublicStatement" not in mixed_old_claim.stderr:
+            raise ValueError("mixed prover failed to reject old typed claim at public-statement check")
         saved_json(out / "audit.json", {"schema": "s31-paired-record-v2-audit-v1",
                                             "protocol_sha256": args.expected_protocol_sha256,
                                             "phase_root_sha256": args.expected_phase_root_sha256,
@@ -710,7 +831,17 @@ def run(args: argparse.Namespace) -> None:
                                             "raw_ledger_replayed_before_summary": True,
                                             "all_saved_proofs_native_replayed": True,
                                             "all_changed_public_claims_rejected": True,
-                                            "wrong_source_component_witness_controls_rejected": True})
+                                            "same_geometry_alternate_source_controls_passed": True,
+                                            "proof_header_manifest_digest_control_rejected": True,
+                                            "altered_valid_public_assignment_controls_passed": True,
+                                            "alternate_source_sha256": sha(alternate_source_path.read_bytes()),
+                                            "alternate_generic_verifier_sha256": sha(alternate_generic_verifier.read_bytes()),
+                                            "alternate_mixed_verifier_sha256": sha(alternate_mixed_verifier.read_bytes()),
+                                            "altered_assignment_sha256": sha(altered_assignment_bytes),
+                                            "altered_statement_sha256": sha(altered_statement_bytes),
+                                            "altered_generic_proof_sha256": sha(altered_generic_proof.read_bytes()),
+                                            "altered_mixed_proof_sha256": sha(altered_mixed_proof.read_bytes()),
+                                            "modified_manifest_header_proof_sha256": sha(wrong_manifest_header.read_bytes())})
         analysis = paired_summary(derived, cfg)
         analysis["phase_root_sha256"] = args.expected_phase_root_sha256
         analysis["phase_anchor_commit"] = args.phase_anchor_commit

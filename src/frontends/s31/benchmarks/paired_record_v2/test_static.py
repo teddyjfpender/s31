@@ -12,7 +12,8 @@ from integrity import (BUILD_EVENT_SCHEMA, EVENT_SCHEMA, GENESIS,
                        append_event, build_root, phase_root, read_ledger,
                        replay_process)
 from protocol import check
-from runner import (build_event_seconds, changed_claim, materialize, paired_summary,
+from runner import (altered_valid_assignment, build_event_seconds,
+                    changed_claim, materialize, paired_summary,
                     replay_build_evidence, require_static_case)
 
 
@@ -54,6 +55,18 @@ class PairedRecordDesign(unittest.TestCase):
                              next(iter(assignment["public_outputs"].values())))
             self.assertNotEqual(typed, changed_claim(typed, 0))
             self.assertNotEqual(typed, changed_claim(typed, 1))
+
+    def test_altered_public_input_recomputes_valid_output_and_typed_claim(self) -> None:
+        cfg = design()
+        for count in range(1, 9):
+            source_bytes, assignment_bytes, typed = case(count, 0, cfg)
+            changed_assignment, changed_typed = altered_valid_assignment(
+                assignment_bytes, count, json.loads(source_bytes))
+            self.assertNotEqual(changed_assignment, assignment_bytes)
+            self.assertNotEqual(changed_typed, typed)
+            old = json.loads(assignment_bytes)
+            changed = json.loads(changed_assignment)
+            self.assertNotEqual(changed["public_inputs"], old["public_inputs"])
 
     def test_saved_source_witness_or_claim_mutation_fails_static_replay(self) -> None:
         cfg = design()
