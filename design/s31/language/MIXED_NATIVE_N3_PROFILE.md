@@ -62,8 +62,10 @@ The focused tests prove and verify one honest source in Debug and ReleaseFast.
 They reject each sum-position mutation, compensated chip/bridge sums,
 reordered source calls with a resealed header, a changed compiled endpoint
 with a resealed header, public-output changes, header/schema changes, trailing
-bytes, and V4/V5 cross-profile replay. These controls do not replace an
-independent AIR equation review or the full compiler correspondence proof.
+bytes, and V4/V5 cross-profile replay. An [independent lookup and boundary
+equation review](../security/INDEPENDENT_REVIEW_MIXED_N3_LOOKUP_2026-10-11.md)
+found no concrete false-proof path in this fixed profile. It does not prove
+cryptographic LogUp/PCS/FRI soundness or full compiler correspondence.
 The separate mixed-schedule inspection test rejects altered relation IDs,
 program bindings, PCS geometry, and local AIR dependency hashes; the engine
 native test rejects changed main and interaction commitment roots.
