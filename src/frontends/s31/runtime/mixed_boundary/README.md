@@ -2,15 +2,21 @@
 
 `inspection.zig` reconstructs the selected mixed roster from source and live
 AIR handles without consuming proof bytes. `package.zig` and `n4_package.zig`
-contain separate N=3 and N=4 proof envelopes, sealed provers, and source-pinned
-verifiers. Each verifier embeds the S31 source and official AIR bundle,
+contain the admitted N=3 and N=4 proof envelopes. `general_package.zig` is an
+**uncompiled draft** for one through eight calls, with a distinct tag and
+typed registry manifest digest. Each verifier embeds the S31 source and
+official AIR bundle,
 reconstructs its live schedule, checks the envelope and bounded proof shape,
 then invokes the matching engine native verifier.
 
-The `direct-mixed` and `direct-mixed4` build targets each compile three
-source-embedded commands from one normalized version 1 S31 source file. Build
+The `direct-mixed`, `direct-mixed4` and draft `direct-mixed-general` targets
+each compile three source-embedded commands from one normalized version 1 S31
+source file. The build
 runs the witness-free manifest inspector in check mode and rejects any source
-outside that target's exact N=3 or N=4 profile.
+outside that target's admitted source shape. The general target requires
+one to eight calls and exactly eight public M31 words; it has not yet passed
+native proof admission.
+
 The command implementations and statement schema live here; the tiny files in
 `entry/` are required only by Zig's module-root import rule.
 
@@ -45,9 +51,10 @@ zig-out/bin/s31-mixed_four-mixed4-native-verifier \
 zig-out/bin/s31-mixed_four-mixed4-manifest > /tmp/mixed4.manifest.json
 ```
 
-The statement holds eight canonical public words and source, selected
-manifest, and circuit identity digests. The proof envelope carries the same
-three digests. The verifier recomputes those values from its embedded source
+The fixed-profile statement holds eight canonical public words and source,
+selected manifest, and circuit identity digests. The draft general statement
+also carries the typed registry manifest digest, which replaces the selected
+manifest digest in its version-3 proof header. The verifier recomputes those values from its embedded source
 and AIR; the JSON manifest is an audit output, not an input or a key. The
 manifest lists source-derived calls, compiled endpoints, all ordered
 component slots and claimed-sum positions, AIR source hashes, column spans,
@@ -91,7 +98,9 @@ SHA-256 cannot authorize an altered component. The N=3 and N=4 manifest
 commands show the new registry IDs and diagnostic digest alongside their
 existing audit fields. Their wire formats, selected-schedule digest domains
 and proof transcript tags remain distinct and unchanged. The registry digest
-does **not** enter either current proof transcript.
+does **not** enter either fixed-profile proof transcript. The draft general
+profile derives it from source and mixes it into a distinct transcript and
+circuit identity.
 
 The JSON reports include every **direct input** to the registry digest:
 `registry_manifest_version`, root `registry_version`, source and IR hashes,
@@ -103,21 +112,18 @@ presence flags and list lengths, `u32` for other numbers); SHA-256 fields
 decode from hexadecimal; the domain is
 `S31-MIXED-REGISTRY-MANIFEST-V1\0`. The independent Python helper in
 `tests/acceptance/mixed_boundary/registry_manifest_digest.py` recomputes
-the digest from either fixed-profile report. The selected schedule digest
+the digest from any of the three reports. The selected schedule digest
 (`manifest_sha256`) and descriptor digest are **inputs** to this calculation;
 deriving those two from first principles still requires the authenticated
 S31 source, official AIR bundle, pinned engine and live PCS geometry. The
 JSON itself is not verifier authority.
 
-This is a generated audit manifest and shared admission policy, not a
-generalized 1–8-call native proof adapter. Only N=3 and N=4 have source-pinned
-mixed native proof admission. Counts 1, 2 and 5–8 have source-bound inspection
-tests but no mixed proof envelope, prover or verifier. General proof admission
-still needs dynamic bounded component arrays and claim parsing in the engine,
-one transcript and PCS instance for each count, and verifier use of the same
-source-derived registry to instantiate every live AIR. A future profile must
-bind its registry revision and canonical roster under a new transcript tag;
-the diagnostic digest here cannot be retrofitted into N=3 or N=4.
+The draft general composer now has bounded dynamic arrays and claim parsing
+for all eight counts, one transcript and PCS instance per proof, and live AIR
+handles rebuilt from the source-derived registry. It remains isolated until
+the engine and wrapper compile, native and black-box rejection tests pass,
+and the tested engine commit is pinned into S31. The general proof's new tag
+does not change N=3 or N=4 proof bytes.
 
 `test_source.zig` generates a chain of 1–8 live repeated calls for the focused
 descriptor matrix. Every count checks the source-reconstructed roster and
@@ -144,12 +150,16 @@ Run the focused honest and mutation controls:
 ```sh
 zig build --build-file src/frontends/s31/build.zig test-mixed-native -Doptimize=ReleaseFast -j1
 zig build --build-file src/frontends/s31/build.zig test-mixed-n4-native -Doptimize=ReleaseFast -j1
+zig build --build-file src/frontends/s31/build.zig test-mixed-general-native -Doptimize=ReleaseFast -j1
 python3 src/frontends/s31/tests/acceptance/mixed_boundary/source_pinned.py
 python3 src/frontends/s31/tests/acceptance/mixed_boundary/source_pinned_n4.py
+python3 src/frontends/s31/tests/acceptance/mixed_boundary/source_pinned_general.py
 zig build --build-file src/frontends/s31/build.zig test-mixed-descriptor -Doptimize=ReleaseFast -j1
 zig build --build-file src/frontends/s31/build.zig test-mixed-registry -Doptimize=ReleaseFast -j1
 ```
 
 See [`MIXED_NATIVE_N3_PROFILE.md`](../../../../../design/s31/language/MIXED_NATIVE_N3_PROFILE.md)
 and [`MIXED_N4_NATIVE_PROFILE.md`](../../../../../design/s31/language/MIXED_N4_NATIVE_PROFILE.md)
-for the transcript, component rosters, and assurance limits.
+for the fixed transcript and component rosters. The draft general profile and
+its admission gates are in
+[`MIXED_GENERAL_NATIVE_PROFILE.md`](../../../../../design/s31/language/MIXED_GENERAL_NATIVE_PROFILE.md).
