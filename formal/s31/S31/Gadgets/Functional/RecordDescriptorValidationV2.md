@@ -47,6 +47,11 @@ same nominal record name appears. At least one root must be a record, matching
 the native version-two boundary rule.
 
 This closes descriptor-level *shape* premises for the abstract layout model.
+The [32-case source-derived differential](../../../../../src/frontends/s31/tests/acceptance/record_abi/README.md)
+checks the same shape fragment against the production parser: 15 descriptors
+are accepted, 17 are rejected at `InvalidRecordAbi`, and 30 concrete cases
+also reduce in Lean. Three deliberately malformed identifier/path/wire cases
+show obligations that this pure shape checker does not cover.
 The module does not separately prove that the token encoding is injective;
 the formal nominal theorem states equality of its arity-tagged streams.
 The model has no claim that the production parser yields this exact tree.

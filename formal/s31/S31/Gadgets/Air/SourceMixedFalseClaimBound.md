@@ -6,6 +6,10 @@ set. Choose one of the eight public words by `product : Bool` and
 `lane : Fin 4`. The source function starts from a four-word private state,
 applies sixteen square-plus-constant rounds per call, and publishes the
 wordwise sum or product of the final state with the initial state.
+"False" here is relative to that fixed modeled private initial state. A
+different private input can legitimately produce a different public word;
+this theorem alone does not classify a public statement as invalid for every
+possible witness.
 
 For example, with one call and `product = false`, lane zero should publish
 

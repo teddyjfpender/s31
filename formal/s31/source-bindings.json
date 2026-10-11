@@ -153,6 +153,8 @@
     "src/frontends/s31/tests/acceptance/record_abi/native_proof_corpus_v2.py": "fcb32ec4329fa5c4000b71fdfeefe2d693fd9cec8709529bfe480fbab3c5803b",
     "src/frontends/s31/tests/acceptance/record_abi/native_descriptor_corpus.zig": "3c2b2e585fed9aa6a475dd2a66f2e567bf9885a343e67ec380a0599659d3c4b0",
     "src/frontends/s31/tests/acceptance/record_abi/whole_descriptor_shape_v2.py": "bb983d66dc5154f93be8fb5d6aa4e6a8a8bbae7afe1fed1659b4fc5ce72c341a",
+    "src/frontends/s31/tests/acceptance/record_abi/lexical_name_differential_v2.py": "867c28d397691a7b85fdce4f1eae7eed72f15494ac53112e5789a30de51d5341",
+    "src/frontends/s31/tests/acceptance/record_abi/nested_alias_v2.py": "c71ca55eaa0cd61c83e51913b8554a522c547e5aeb5d6fc2f329bf86661b90e6",
     "src/frontends/s31/benchmarks/pow_workers/phase_equivalence.py": "799ee07268299c352c40fb82edd2449af883553cd9fbb3001978e6f1f4a479f0",
     "src/frontends/s31/tests/acceptance/compiler_correspondence/generated_native_subset.py": "4817c7ba7068c03e8ec9e917989858342c1585fbf2ab3492cbe2144bb8d66ded",
     "src/frontends/s31/tests/python/generated/test_source_mutation_correspondence.py": "b9d84a147c814dc337caa437f0306506e908a80efe911fce012d6571243a7a0a",
