@@ -99,8 +99,8 @@ The fixed-witness exceptional-pair bound also remains conditional; this audit
 does not prove Fiat–Shamir challenge independence or a whole-prover rejection
 probability.
 
-One further useful hostile test is to change the arithmetic value on a
-**zero-multiplicity padding Gate row** while keeping its multiplicity zero,
-then require `InvalidMixedTraceAuditGate`. The loop currently checks such
-rows, but the existing mutation changes an ordinary Gate row. This is a
-coverage recommendation, not a detected bypass.
+Follow-up native commit `1cd904303` adds the hostile padding case. It pads
+the fixture beyond its 16 real rows, checks that the selected `1+1` row has
+zero output multiplicity, changes only that row's output value, and requires
+`InvalidMixedTraceAuditGate`. The focused `test-mixed-circuit-mutations`
+target passes with this addition. This adds coverage, not a new theorem.
