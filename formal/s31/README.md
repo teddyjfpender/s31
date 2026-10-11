@@ -1089,18 +1089,22 @@ outAddress, multiplicity]`; the main-column order is
 out.a, out.b, out.c, out.d]`. Addresses name Gate wires, while each group
 of four main values is a QM31 element. The exporter uses the same `writeBase`
 row order and field-limb encoding as the direct prover. The checker binds
-reported public words to the requested assignment and the full fixed columns
-to the package's source-derived topology.
+reported public words to the requested assignment, the full fixed columns
+to the package's source-derived topology, and the main output limbs of the
+eight public copy rows at Gate addresses `3..10` to those public words.
 
 The checker compares that native export with the generated Lean fixed-cell
 fixture at all 28 source/input/output rows and checks the nine arithmetic
-roots at all 512 rows. `--controls` checks that a changed fixed cell,
-main value, or selected public claim is rejected. This closes hand-authored
-physical row *values* for the tested public assignment. The diagnostic is
+roots at all 512 rows. `--controls` checks changed fixed and main cells,
+a wrong selected claim, and a locally valid all-zero witness paired with a
+nonzero `x,x²` claim. This supplies an independently checked instance of the
+projected physical-row values and public copy-row values for one assignment.
+The diagnostic is
 restricted by the exact normalized-source digest so it cannot export private
 values from arbitrary S31 packages. It does not prove that a verifier's PCS
 openings equal this uncommitted diagnostic trace, or that the native LogUp
-argument implies the ideal exact Gate premises.
+argument implies the ideal exact Gate premises or authenticates external
+public pin events.
 
 ## Reproduce the gate
 

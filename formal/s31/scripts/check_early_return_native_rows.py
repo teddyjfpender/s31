@@ -96,6 +96,22 @@ def check_report(report: dict, topology: dict | None = None) -> dict[str, int]:
         actual_fixed = [column[index] for column in fixed]
         if actual_fixed != expected_fixed:
             raise ValueError(f"fixed cell differs at trace row {index}")
+    # The generated input/output copy rows produce Gate addresses 3..6 and
+    # 7..10. Their native QM31 output limbs must be the public M31 words,
+    # embedded in the base limb. A valid arithmetic trace alone permits an
+    # all-zero witness paired with an unrelated x,x² public statement.
+    for lane in range(4):
+        for role, cells, address, word in (
+            ("input", inputs, 3 + lane, public[lane]),
+            ("output", outputs, 7 + lane, public[4 + lane]),
+        ):
+            copies = [cell for cell in cells
+                      if cell.out == address and cell.addFlag == 1 and cell.in1 == 0]
+            if len(copies) != 1:
+                raise ValueError(f"missing unique physical public {role} copy row {lane}")
+            actual = [column[copies[0].traceRow] for column in main[8:12]]
+            if actual != [word, 0, 0, 0]:
+                raise ValueError(f"physical public {role} pin differs at lane {lane}")
     if any(cell.mults <= 0 for cell in inputs + outputs):
         raise ValueError("public boundary row has zero multiplicity")
     if [cell.mults for cell in source] != [6, 1, 0]:
@@ -155,6 +171,9 @@ def check_negative_controls() -> None:
         ("wrong-fixed", lambda report: report["fixed_columns"][7].__setitem__(502, 7), "fixed cell differs"),
         ("wrong-main", lambda report: report["main_columns"][8].__setitem__(502, 1), "arithmetic roots differ"),
         ("wrong-public", lambda report: report["public_words"].__setitem__(4, 1), "selected result differs"),
+        ("coherent-wrong-witness", lambda report: (report["public_words"].__setitem__(0, 1),
+                                                   report["public_words"].__setitem__(4, 1)),
+         "physical public input pin differs"),
     ):
         altered = copy.deepcopy(original)
         mutate(altered)
@@ -182,7 +201,7 @@ def main() -> None:
         parser.error("pass --package with --assignment, --report, or --controls")
     if args.controls:
         check_negative_controls()
-        print("physical_row_mutation_controls=3 rejected")
+        print("physical_row_mutation_controls=4 rejected")
 
 
 if __name__ == "__main__":
