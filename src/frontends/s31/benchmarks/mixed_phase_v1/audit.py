@@ -7,15 +7,25 @@ import argparse
 import json
 from pathlib import Path
 
-from study import (ASSIGNMENTS, COUNTS, RESULT, canonical, case, changed_result,
-                   frozen, parse, phase_check, process, proof_layer_rejection,
-                   sha, stage_check, tagged)
+from study import (ASSIGNMENTS, COUNTS, PROTOCOL, RESULT, ROOT, canonical, case,
+                   changed_result, git, parse, phase_check, process,
+                   proof_layer_rejection, sha, stage_check, tagged)
+
+PROTOCOL_SHA256 = "f004af8901a1cd601e26fdec37fa075f54d24851b665245908e3568cb06bb303"
+RESULT_SHA256 = "2eeec0a19de95510eeb6a8927ddd81d38ed9214b3f1e107649846eff7167f514"
 
 
 def audit(out: Path, native: bool = False) -> dict:
-    protocol, protocol_hash = frozen()
+    protocol_raw = PROTOCOL.read_bytes()
+    protocol_hash = sha(protocol_raw)
+    protocol = parse(protocol_raw)
+    if (protocol_hash != PROTOCOL_SHA256 or
+            protocol_raw != canonical(protocol) or
+            protocol.get("schema") != "s31-mixed-phase-v1-protocol" or
+            git("show", f"HEAD:{PROTOCOL.relative_to(ROOT).as_posix()}") != protocol_raw):
+        raise ValueError("frozen protocol bytes changed")
     raw = (out / "result.json").read_bytes()
-    if raw != RESULT.read_bytes():
+    if raw != RESULT.read_bytes() or sha(raw) != RESULT_SHA256:
         raise ValueError("raw and committed compact results differ")
     result = parse(raw)
     if (raw != canonical(result) or result.get("schema") != "s31-mixed-phase-v1-result" or
@@ -53,6 +63,8 @@ def audit(out: Path, native: bool = False) -> dict:
             if (row["count"] != count or row["assignment_index"] != index or
                     row["order"] != expected_order or
                     row["source_sha256"] != protocol["roster"][str(count)]["source_sha256"] or
+                    sha(assignment) != protocol["roster"][str(count)]["assignment_sha256"][index] or
+                    sha(statement) != protocol["roster"][str(count)]["statement_sha256"][index] or
                     row["assignment_sha256"] != sha(assignment) or
                     row["statement_sha256"] != sha(statement) or
                     (directory / f"a{index:02d}.assignment.json").read_bytes() != assignment or

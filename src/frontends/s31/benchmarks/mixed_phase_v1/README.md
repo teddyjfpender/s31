@@ -34,6 +34,12 @@ Each changed result is decoded against the same source and ABI before the
 verifier runs. A preflight parser rejection does not count as a negative
 proof check.
 
+**Result:** the 60 pairs and native audit passed. The compact
+[result JSON](../../../../../design/s31/measurements/language/mixed-phase-v1-result.json)
+and [measurement note](../../../../../design/s31/measurements/MIXED_PHASE_V1.md)
+give observed phase medians and their limits. The result SHA-256 is
+`2eeec0a19de95510eeb6a8927ddd81d38ed9214b3f1e107649846eff7167f514`.
+
 Run from the S31 repository root on a quiet host:
 
 ```sh
@@ -57,4 +63,6 @@ The read-only audit checks the committed compact result against all raw
 assignment, statement, proof, binary, and stderr files. `--native` also
 reruns every original and changed-result verifier check. The raw directory
 must be retained to repeat that audit; the compact tracked result alone
-cannot rerun native verification.
+cannot rerun native verification. The auditor pins the protocol and result
+SHA-256 directly and uses the saved verifier binary, so later edits to the
+live compiler do not turn this historical replay into a new measurement.
