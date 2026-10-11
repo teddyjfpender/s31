@@ -62,6 +62,21 @@ The source, descriptor, and statement SHA-256 values are printed by the
 Python command and recorded in the generated Lean file. Pass `--write` only
 when intentionally updating the pinned source and its derived artifacts.
 
+[`mixed_eight_statement_edges_v2.py`](mixed_eight_statement_edges_v2.py)
+uses that same byte-pinned source and statement for a focused public-claim
+parser matrix. It accepts the honest claim and a consistent boundary claim
+with bit `0` and M31 words `0` and `p−1`. Its 21 rejected cases cover both
+bit positions, the M31 range on the salt and result, word-vector length,
+both alias groups, named paths, private-leaf insertion, digest/version, and
+canonical JSON bytes (including the required single final newline). The
+accepted boundary claim tests statement parsing only; it is not asserted to
+satisfy the circuit or to verify against the honest proof.
+
+```sh
+python3 -B src/frontends/s31/tests/acceptance/record_abi/mixed_eight_statement_edges_v2.py
+python3 -B src/frontends/s31/tests/acceptance/record_abi/mixed_eight_statement_edges_v2.py --native
+```
+
 ## Whole-descriptor shape differential
 
 [`whole_descriptor_shape_v2.py`](whole_descriptor_shape_v2.py) compares an
