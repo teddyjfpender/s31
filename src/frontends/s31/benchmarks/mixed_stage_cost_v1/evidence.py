@@ -395,6 +395,8 @@ def audit_split(out: Path, split: str, expected_protocol_sha256: str,
                                   "source_sha256": expected["source_sha256"],
                                   "build_wall_ns": build["build_wall_ns"],
                                   "trials": trials})
+    if saved_root != canonical(phase_root(out, split, expected_protocol_sha256)):
+        raise ValueError("raw mixed cost phase changed during native audit replay")
     (out / "corpus.json").write_bytes(canonical(corpus))
     audit = {"schema": "s31-mixed-stage-cost-v1-audit", "split": split,
              "phase_root_sha256": expected_phase_root_sha256,
