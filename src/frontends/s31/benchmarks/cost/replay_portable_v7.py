@@ -20,7 +20,8 @@ from benchmark_whole_prover_cost_v7 import check_build_inventory
 from independent_v7_gate import check_saved_evaluation
 from portable_v7 import verify as verify_manifest
 from publish_whole_prover_cost_v7 import replay_trials
-from v7_protocol import MODEL, require_model, require_protocol
+from v7_protocol import (MODEL, check_case_cost_geometry, require_model,
+                         require_protocol)
 from whole_prover_predictor_v7 import evaluate, fit_model
 
 CHANGED = re.compile(r"(public_inputs|public_outputs)\.([A-Za-z_][A-Za-z0-9_]*)\[0\]\Z")
@@ -89,6 +90,9 @@ def audit_split(root: Path, split: str, corpus: dict, protocol: dict,
         if (manifest["compiler_sha256"] != protocol["compiler_sha256"] or
             manifest["lowering"] != case["lowering"]):
             raise ValueError(f"{split}/{name}: native package differs from frozen stack")
+        check_case_cost_geometry(case,
+                                 json.loads((package / "cost-report.json").read_bytes()),
+                                 f"{split}/{name}")
         if source_name.endswith(".s31"):
             if (manifest.get("source_text_sha256") != case["source_sha256"] or
                 source.read_bytes() != (package / "source.s31").read_bytes()):

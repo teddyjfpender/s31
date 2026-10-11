@@ -114,7 +114,10 @@ def tool_digest(paths: list[Path]) -> str:
 def require_committed(path: Path, commit: str = "HEAD") -> None:
     name = relative(path)
     try:
-        saved = subprocess.check_output(["git", "-C", str(ROOT), "show", f"{commit}:{name}"])
+        saved = subprocess.check_output(
+            ["git", "-C", str(ROOT), "show", f"{commit}:{name}"],
+            stderr=subprocess.DEVNULL,
+        )
     except subprocess.CalledProcessError as error:
         raise ValueError(f"source is not committed: {name}") from error
     if saved != path.read_bytes():
@@ -124,14 +127,51 @@ def require_committed(path: Path, commit: str = "HEAD") -> None:
 def require_clean_sources() -> None:
     for path in tool_paths():
         require_committed(path)
-    changed = git("status", "--porcelain", "--untracked-files=no", "--", "src/frontends/s31")
+    require_fingerprinted_zig_sources_committed()
+    changed = git("status", "--porcelain", "--untracked-files=no", "--", "src")
     if changed:
-        raise ValueError("S31 frontend has uncommitted tracked changes")
+        raise ValueError("fingerprinted source tree has uncommitted tracked changes")
     expected_engine = git("rev-parse", "HEAD:deps/stwo-zig")
     actual_engine = git("rev-parse", "HEAD", cwd=ROOT / "deps/stwo-zig")
     if actual_engine != expected_engine or git("status", "--porcelain", "--untracked-files=no",
                                                cwd=ROOT / "deps/stwo-zig"):
         raise ValueError("engine checkout must equal the clean committed gitlink")
+
+
+def require_fingerprinted_zig_sources_committed() -> None:
+    """Require every byte scanned by compiler_fingerprint to exist in HEAD."""
+    # The package compiler fingerprint scans every Zig/Zon file under src,
+    # including ignored and otherwise untracked files. The freeze must be
+    # reproducible from its source-base commit, not just this local checkout.
+    excluded = {".zig-cache", "zig-out", "target"}
+    for path in (ROOT / "src").rglob("*"):
+        if (path.is_file() and path.suffix in {".zig", ".zon"} and
+                not excluded.intersection(path.parts)):
+            require_committed(path)
+
+
+def check_case_cost_geometry(case: dict, cost: dict, label: str) -> None:
+    """Bind model features to the package's sealed native cost report."""
+    fields_match = all(case.get(key) == cost.get(key)
+                       for key in ("raw", "padded", "preprocessed_cells", "profile"))
+    fri_matches = case.get("visible_fri") == s31.visible_fri(cost, case["lowering"])
+    if not fields_match or not fri_matches:
+        raise ValueError(f"{label}: corpus geometry differs from sealed package cost report")
+
+
+def check_corpus_cost_geometry(corpus_path: Path, corpus: dict, protocol: dict) -> None:
+    """Reject poisoned features before fitting or evaluating a frozen model."""
+    split = corpus.get("split")
+    if split not in ("train", "validation") or \
+            corpus.get("cases", {}).keys() != protocol["inventory"][split].keys():
+        raise ValueError("V7 corpus program roster differs from frozen inventory")
+    for name, case in corpus["cases"].items():
+        if re.fullmatch(r"[A-Za-z0-9_]+", name) is None:
+            raise ValueError("unsafe V7 corpus program name")
+        package = corpus_path.parent / name / "package"
+        s31.verify_package(package)
+        cost = json.loads((package / "cost-report.json").read_bytes())
+        check_case_cost_geometry(case, cost, f"{split}/{name}")
 
 
 def fixed_source(width: int, kind: str, split: str) -> str:

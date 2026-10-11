@@ -19,7 +19,8 @@ from independent_v7_gate import check_saved_evaluation
 from oracle import evaluate_relation
 from publish_stage_aware_cost_v1 import audit_corpus, file_hash
 from publish_whole_prover_cost_v3 import audit_case_artifacts
-from v7_protocol import ROOT, require_model, require_protocol, tool_digest, tool_paths
+from v7_protocol import (ROOT, check_case_cost_geometry, require_model,
+                         require_protocol, tool_digest, tool_paths)
 from whole_prover_predictor_v7 import evaluate, fit_model
 
 
@@ -104,6 +105,9 @@ def publish(train_path: Path, model_path: Path, validation_path: Path,
             manifest = s31.verify_package(package)
             if manifest["compiler_sha256"] != protocol["compiler_sha256"]:
                 raise ValueError(f"{split}/{name}: package compiler differs")
+            check_case_cost_geometry(case,
+                                     json.loads((package / "cost-report.json").read_bytes()),
+                                     f"{split}/{name}")
             count = audit_case_artifacts(base, name, case, manifest)
             replay_trials(base, name, case, manifest, native)
             binding = chip_manifest_binding(package) if case["family"] == "chip" else None

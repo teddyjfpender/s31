@@ -158,6 +158,12 @@ symlinks. These portable tools enter the V7 tool digest when its protocol is
 eventually frozen; they do not change the frozen V6 inventory. The separate
 `independent_v7_gate.py` recomputes held-out predictions and every gate from
 the serialized model and raw trials without importing the fitting predictor.
+The publisher and portable replay exit successfully when the evidence is
+internally consistent, even if `local_accuracy_gate_pass` is `false`. For a
+cost-accuracy release gate, inspect that boolean in the emitted audit JSON and
+require it to be `true`; process exit status alone is only an evidence-integrity
+check. The fitted features (`raw`, `padded`, `preprocessed_cells`, profile, and
+visible FRI settings) must also match each package's sealed cost report.
 
 ## Acceptance and limits
 

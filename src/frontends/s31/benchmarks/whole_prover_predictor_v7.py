@@ -21,7 +21,8 @@ from whole_prover_predictor_v3 import (
 )
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "cost"))
-from v7_protocol import MODEL, PROTOCOL, require_model, require_protocol
+from v7_protocol import (MODEL, PROTOCOL, check_corpus_cost_geometry,
+                         require_model, require_protocol)
 
 CORPUS_SCHEMA = "s31-whole-prover-cost-corpus-v7"
 MODEL_SCHEMA = "s31-whole-prover-cost-model-v7"
@@ -348,6 +349,7 @@ def main() -> None:
                                 args.protocol_anchor_commit)
     corpus_bytes = args.corpus.read_bytes()
     corpus = json.loads(corpus_bytes)
+    check_corpus_cost_geometry(args.corpus, corpus, protocol)
     if args.command == "fit":
         if args.expected_model_sha256 is not None or args.model_anchor_commit is not None:
             raise ValueError("training fit cannot consume held-out model anchor")

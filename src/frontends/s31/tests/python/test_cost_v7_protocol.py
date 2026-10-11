@@ -23,6 +23,36 @@ from whole_prover_predictor_v7 import process_stage_gate
 
 
 class CostV7ProtocolTests(unittest.TestCase):
+    def test_fingerprint_source_admission_rejects_untracked_zig(self):
+        probe = v7.ROOT / "src/v7_untracked_audit_probe.zig"
+        self.assertFalse(probe.exists())
+        try:
+            probe.write_text("pub const audit_probe = 1;\n")
+            with self.assertRaisesRegex(ValueError, "source is not committed"):
+                v7.require_fingerprinted_zig_sources_committed()
+        finally:
+            probe.unlink(missing_ok=True)
+
+    def test_cost_geometry_admission_rejects_poisoned_features(self):
+        cost = {"raw": {"vm": 1}, "padded": {"vm": 2},
+                "preprocessed_cells": 1, "profile": "direct-m31-v4",
+                "fri": {"pow_bits": 26, "log_blowup_factor": 1,
+                        "last_layer_degree_bound": 1, "queries": 70,
+                        "fold_step": 1}}
+        case = {key: value for key, value in cost.items() if key != "fri"}
+        case.update({"lowering": "direct-gate",
+                     "visible_fri": v7.s31.visible_fri(cost, "direct-gate")})
+        v7.check_case_cost_geometry(case, cost, "train/arithmetic_1")
+        for field, bad_value in (("raw", {"vm": 999}),
+                                 ("padded", {"vm": 1024}),
+                                 ("preprocessed_cells", 999),
+                                 ("profile", "wrong-profile"),
+                                 ("visible_fri", {"pow_bits": 0})):
+            with self.subTest(field=field):
+                with self.assertRaisesRegex(ValueError, "corpus geometry differs"):
+                    v7.check_case_cost_geometry({**case, field: bad_value}, cost,
+                                                "train/arithmetic_1")
+
     def test_complete_tool_pin_includes_transitive_predictor_and_oracles(self):
         names = {path.name for path in v7.tool_paths()}
         self.assertTrue({"v7_protocol.py", "benchmark_whole_prover_cost_v7.py",

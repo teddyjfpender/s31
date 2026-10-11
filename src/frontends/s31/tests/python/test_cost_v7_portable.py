@@ -99,6 +99,12 @@ class PortableV7Tests(unittest.TestCase):
             package = base / name / "package"
             package.mkdir(parents=True)
             (package / "source.s31.json").write_bytes(source.read_bytes())
+            cost = {"raw": {"vm": 1}, "padded": {"vm": 2},
+                    "preprocessed_cells": 1, "profile": "direct-m31-v4",
+                    "fri": {"pow_bits": 26, "log_blowup_factor": 1,
+                            "last_layer_degree_bound": 1, "queries": 70,
+                            "fold_step": 1}}
+            s31.write_json(package / "cost-report.json", cost)
             trial = base / name / "trials/00"
             trial.mkdir(parents=True)
             proof = trial / "proof.bin"
@@ -136,7 +142,10 @@ class PortableV7Tests(unittest.TestCase):
                     "source_sha256": source_sha,
                     "assignment_sha256": [assignment_sha],
                     "package_build": build, "chip_manifest_binding": None,
-                    "trials": [compact], "profile": "direct-m31-v4"}
+                    "trials": [compact], "profile": "direct-m31-v4",
+                    "raw": cost["raw"], "padded": cost["padded"],
+                    "preprocessed_cells": cost["preprocessed_cells"],
+                    "visible_fri": s31.visible_fri(cost, "direct-gate")}
             corpus = {"schema": "s31-whole-prover-cost-corpus-v7", "split": "train",
                       "protocol_sha256": "a" * 64,
                       "measurement_tool_sha256": "b" * 64,
@@ -165,6 +174,16 @@ class PortableV7Tests(unittest.TestCase):
                     None, None, False)
             self.assertEqual(controls["proofs"], 1)
             self.assertEqual(controls["assignments"], 1)
+            poisoned = {**case, "raw": {"vm": 999},
+                        "padded": {"vm": 1024}, "preprocessed_cells": 999}
+            with (patch.object(replay_portable_v7, "check_build_inventory",
+                               return_value=built),
+                  patch.object(replay_portable_v7.s31, "verify_package",
+                               return_value=manifest),
+                  self.assertRaisesRegex(ValueError, "corpus geometry differs")):
+                replay_portable_v7.audit_split(
+                    root, "train", {**corpus, "cases": {name: poisoned}},
+                    protocol, "a" * 64, "e" * 40, None, None, False)
 
 
 if __name__ == "__main__":
