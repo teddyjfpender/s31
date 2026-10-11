@@ -3,12 +3,13 @@
 Status: **design committed, protocol not frozen, no V8 native observations**.
 The machine-readable [prospective design](language/whole-prover-cost-v8-prospective.json)
 and its [static inventory generator](../../../src/frontends/s31/benchmarks/cost/v8_design.py)
-fix the workload menus, disjointness rule, uncertainty method, and gates. They
-cannot authorize a native build. A later commit must supply an executable
-collector, predictor, independent gate checker, native artifact publisher, and
-portable replay, followed by a separate source-pinned protocol and external
-anchor. The general mixed profile must be admitted and packaged before the
-paired comparison can be frozen or measured.
+fix the workload menus, disjointness rule, uncertainty method, and gates. The
+[baseline runbook](WHOLE_PROVER_V8_RUNBOOK.md) describes the implemented
+collector, fitter, independent gate checker, native artifact publisher, and
+portable replay. These tools cannot authorize a native build without a
+separately committed source-pinned protocol and external anchor. The general
+mixed profile must be admitted and packaged before the paired comparison can
+be frozen or measured.
 
 ## Why V8 is a new study
 
@@ -119,10 +120,11 @@ or fixed N=3/N=4 profiles.
 ## Freeze and release sequence
 
 1. Admit and package the general mixed profile, or explicitly exclude the
-   paired experiment. Finish V8 runner, train-only fitter, independent gate
-   implementation, native publisher, and content-addressed portable replay.
-   Add tests for source/assignment disjointness, canonical public-claim
-   mutation, sealed cost features, and both mixed/generic verifiers.
+   paired experiment. The baseline V8 runner, train-only fitter, independent
+   gate implementation, native publisher, and content-addressed portable
+   replay are implemented. Review the source and existing static tests before
+   freeze. A paired runner and both mixed/generic verifier controls remain a
+   separate admission requirement.
 2. On a clean committed S31 checkout and clean engine checkout at the gitlink,
    generate both inventories. Freeze exact source-base commit, compiler
    fingerprint over every source byte it reads, engine revision, transitive
