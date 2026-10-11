@@ -29,6 +29,7 @@ open S31.Functional.SSATextBytes
 open S31.Functional.SSANormalizedBytes
 open S31.Functional.SSADirectGateBridge
 open S31.Functional.SSAAirColumnCells
+open S31.Functional.SSAOutputAirCells
 open S31.Functional.SSANativePolynomialRows
 open S31.Functional.SSAInputAirCells
 open S31.Functional.SSAPublicInputBinding
@@ -70,9 +71,8 @@ theorem input_boundary_of_exact_gate
     have hcell :
         expectedInputCopyCell certificate i.val ∈ observedCells := by
       rw [hcells, expectedInputCells]
-      apply List.mem_append_right
-      apply List.mem_append_right
       apply List.mem_append_left
+      apply List.mem_append_right
       apply List.mem_map.mpr
       exact ⟨i.val, by simpa using i.isLt, rfl⟩
     have hrow := heval _ hcell
@@ -91,8 +91,9 @@ theorem input_boundary_of_exact_gate
   · intro i
     have hcell : expectedPackMulCell totalAddRows i.val ∈ observedCells := by
       rw [hcells, expectedInputCells]
-      apply List.mem_append_right
       apply List.mem_append_left
+      apply List.mem_append_left
+      apply List.mem_append_right
       apply List.mem_map.mpr
       exact ⟨i.val, by simpa using i.isLt, rfl⟩
     have hrow := heval _ hcell
@@ -107,6 +108,8 @@ theorem input_boundary_of_exact_gate
   · intro i
     have hcell : expectedPackAddCell certificate i.val ∈ observedCells := by
       rw [hcells, expectedInputCells]
+      apply List.mem_append_left
+      apply List.mem_append_left
       apply List.mem_append_left
       apply List.mem_map.mpr
       exact ⟨i.val, by simpa using i.isLt, rfl⟩
@@ -148,6 +151,8 @@ theorem packed_input_yield_of_exact_gate
   let cell := expectedPackAddCell certificate 2
   have hcell : cell ∈ observedCells := by
     rw [hcells, expectedInputCells]
+    apply List.mem_append_left
+    apply List.mem_append_left
     apply List.mem_append_left
     apply List.mem_map.mpr
     exact ⟨2, by decide, rfl⟩
