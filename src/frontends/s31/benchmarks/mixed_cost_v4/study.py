@@ -121,8 +121,12 @@ def binary_paths(directory: Path, name: str) -> dict[str, Path]:
 
 
 def check_manifest(data: dict, expected: dict, protocol: dict) -> None:
+    if type(data) is not dict:
+        raise ValueError("native manifest object required")
     pcs = data.get("pcs", {})
     fri = pcs.get("fri_config", {}) if type(pcs) is dict else {}
+    if type(fri) is not dict:
+        raise ValueError("native FRI config object required")
     calls, slots, trees = data.get("calls"), data.get("slots"), data.get("tree_columns")
     if (data.get("source_sha256") != expected["source_sha256"] or
             data.get("call_count") != expected["call_count"] or

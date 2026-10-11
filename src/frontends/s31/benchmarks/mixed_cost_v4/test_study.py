@@ -55,6 +55,8 @@ class StudyV4Tests(unittest.TestCase):
             study.check_manifest({**manifest, "interaction_pow_bits": 19}, source, protocol)
         with self.assertRaises(ValueError):
             study.check_manifest({**manifest, "slot_count": 0}, source, protocol)
+        with self.assertRaises(ValueError):
+            study.check_manifest({**manifest, "pcs": {"fri_config": []}}, source, protocol)
 
     def test_prepare_and_anchor_refuse_unfrozen_work(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
