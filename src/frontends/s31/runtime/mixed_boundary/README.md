@@ -41,11 +41,23 @@ has a distinct wire tag from V3/V4. The engine adapter is not a standalone
 source-authentication API; callers must use the source-pinned verifier. The
 committed trace does not hide private witness values.
 
+`descriptor.zig` adds a versioned, ordered descriptor for source-inspected
+mixed plans of one through eight calls. It maps each call to a chip and
+bridge, with the first two using pair AIRs and subsequent calls using many
+AIRs. `requireSource` reconstructs the descriptor from literal source and the
+official AIR bundle, then checks cardinality, role order, source and manifest
+hashes, and program bindings. The N=4 test checks a nine-component roster and
+resealed descriptor mutations. A four-call descriptor is **not** an admitted
+native proof profile; `package.zig` still verifies exactly N=3. The optional
+`verifyEmbeddedWithDescriptor` entrypoint checks a supplied descriptor before
+using that same N=3 verifier.
+
 Run the focused honest and mutation controls:
 
 ```sh
 zig build --build-file src/frontends/s31/build.zig test-mixed-native -Doptimize=ReleaseFast -j1
 python3 src/frontends/s31/tests/acceptance/mixed_boundary/source_pinned.py
+zig build --build-file src/frontends/s31/build.zig test-mixed-descriptor -Doptimize=ReleaseFast -j1
 ```
 
 See [`MIXED_NATIVE_N3_PROFILE.md`](../../../../../design/s31/language/MIXED_NATIVE_N3_PROFILE.md)

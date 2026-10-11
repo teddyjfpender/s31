@@ -11,6 +11,7 @@ const postcard = @import("interop_postcard");
 const relation = @import("../../language/relation.zig");
 const binding = @import("../bounded_compiled_binding.zig");
 const mixed = @import("inspection.zig");
+const descriptor = @import("descriptor.zig");
 const engine = cpu.experimental_direct_mixed_arithmetic;
 
 const M31 = core.fields.m31.M31;
@@ -168,6 +169,22 @@ pub fn verifyEmbeddedAndInspect(
     return verifySourceBound(allocator, source, air_bytes, public_words, raw);
 }
 
+/// Admit a supplied component descriptor only after reconstructing it from
+/// compiled-in source. This remains the same fixed N=3 proof profile; an N=4
+/// descriptor is inspectable but is not accepted as a proof profile.
+pub fn verifyEmbeddedWithDescriptor(
+    comptime source: []const u8,
+    comptime air_bytes: []const u8,
+    allocator: std.mem.Allocator,
+    candidate: *const descriptor.Descriptor,
+    public_words: [8]u32,
+    raw: []const u8,
+) !void {
+    try descriptor.requireSource(allocator, candidate, source, air_bytes);
+    if (candidate.call_count != engine.n_calls) return error.UnsupportedMixedProofCount;
+    return verifySourceBound(allocator, source, air_bytes, public_words, raw);
+}
+
 fn verifySourceBound(
     allocator: std.mem.Allocator,
     source: []const u8,
@@ -311,6 +328,8 @@ test "mixed sealed N3 native envelope authenticates source and interleaved claim
     timer.reset();
     try verifyEmbedded(source, air_bytes, allocator, words, raw);
     const verify_ns = timer.read();
+    const supplied_descriptor = try descriptor.fromSource(allocator, source, air_bytes);
+    try verifyEmbeddedWithDescriptor(source, air_bytes, allocator, &supplied_descriptor, words, raw);
     std.debug.print("mixed N3 sealed proof: bytes={d} prove_ms={d} verify_ms={d} main_cols=63 interaction_cols=92 components=7\n", .{ raw.len, prove_ns / std.time.ns_per_ms, verify_ns / std.time.ns_per_ms });
     try std.testing.expectEqual(@as(u8, engine.n_calls), raw[magic.len]);
     try std.testing.expectEqual(@as(u8, engine.n_components), raw[magic.len + 1]);
@@ -374,4 +393,13 @@ test "mixed sealed N3 native envelope authenticates source and interleaved claim
     defer allocator.free(v4_raw);
     try std.testing.expectError(error.InvalidMixedNativeEnvelope, verifySourceBound(allocator, source, air_bytes, words, v4_raw));
     try std.testing.expectError(error.InvalidManyNativeEnvelope, v4.verifyEmbedded(source, air_bytes, allocator, words, raw));
+}
+
+test "mixed N4 descriptor cannot admit proof bytes under N3 profile" {
+    const allocator = std.testing.allocator;
+    const source = @embedFile("../../examples/boundary/mixed_four.s31.json");
+    const air_bytes = @embedFile("s31_air_programs");
+    const candidate = try descriptor.fromSource(allocator, source, air_bytes);
+    try std.testing.expectEqual(@as(u8, 4), candidate.call_count);
+    try std.testing.expectError(error.UnsupportedMixedProofCount, verifyEmbeddedWithDescriptor(source, air_bytes, allocator, &candidate, [_]u32{0} ** 8, &.{}));
 }

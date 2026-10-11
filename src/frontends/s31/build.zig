@@ -143,6 +143,9 @@ pub fn build(b: *std.Build) void {
     const mixed_admission_tests = b.addRunArtifact(b.addTest(.{ .root_module = bounded_binding_root, .filters = &.{"mixed composition admission"} }));
     b.step("test-mixed-composition-admission", "Inspect source-bound mixed pair/many AIR roster without proof admission")
         .dependOn(&mixed_admission_tests.step);
+    const mixed_descriptor_tests = b.addRunArtifact(b.addTest(.{ .root_module = bounded_binding_root, .filters = &.{"mixed N4 source descriptor"} }));
+    b.step("test-mixed-descriptor", "Check source-bound N4 mixed component descriptors and negative controls")
+        .dependOn(&mixed_descriptor_tests.step);
     const mixed_native_tests = b.addRunArtifact(b.addTest(.{ .root_module = bounded_binding_root, .filters = &.{"mixed sealed N3 native"} }));
     b.step("test-mixed-native", "Prove and verify source-pinned mixed N3 native envelopes")
         .dependOn(&mixed_native_tests.step);
