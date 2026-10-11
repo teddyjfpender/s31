@@ -331,6 +331,32 @@ compiler, Python decoder, independent projection, Lean model, and, with
 `--native`, Zig statement parser. It does not prove native STARK verification
 for all 13 shapes.
 
+## Text, record claims, and relation values on the same assignment
+
+[`nested_relation_word_correspondence_v2.py`](nested_relation_word_correspondence_v2.py)
+uses the 12 source-text record variants above with concrete assignments. Its
+small value oracle computes `x = a + delta` by hand, then writes each named
+input and result wire in declaration order. The fixtures exercise nested
+records and tuples, width-two leaves, reordered fields, public and private
+inputs, result aliases, and a public bit. Their exact corpus bytes are pinned
+by SHA-256
+`37ca9286ff4e6fb5b43bc3ee6fe8f3512bea594ed9e90ae239e00f97716afdde`.
+
+With `--native`, the reusable Zig statement runner parses each compiled
+relation and its canonical named claim, then requires three production paths
+to equal the handwritten eight-word vector: `record_abi.claimedWords`,
+`relation.claimedWords` on the flat assignment, and `relation.evaluate` on
+that assignment. All **12 cases pass**. Two controls corrupt the expected
+public word or a private arithmetic operand while leaving the original
+statement fixed; the native runner must reject both. This closes a bounded
+text-to-evaluated-word gap left by the synthetic descriptor corpus. It does
+not establish a universal compiler theorem or authenticate any proof row.
+
+```sh
+python3 -B src/frontends/s31/tests/acceptance/record_abi/nested_relation_word_correspondence_v2.py
+python3 -B src/frontends/s31/tests/acceptance/record_abi/nested_relation_word_correspondence_v2.py --native
+```
+
 ## Representative proof binding across record layouts
 
 [`native_proof_corpus_v2.py`](native_proof_corpus_v2.py) takes four programs

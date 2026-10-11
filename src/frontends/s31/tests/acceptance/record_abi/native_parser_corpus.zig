@@ -5,6 +5,8 @@
 //!    "statement":"<canonical statement JSON>",
 //!    "expected_words":[0,0,0,0,0,0,0,0]}
 //! ]}. Set expected_words to null for a required InvalidRecordStatement.
+//! An accepted case may also supply a flat `assignment` JSON string; then
+//! the parsed statement, flat assignment, and evaluated relation must agree.
 const std = @import("std");
 const s31 = @import("stwo_s31_prototype");
 
@@ -13,6 +15,7 @@ const Case = struct {
     source: []const u8,
     statement: []const u8,
     expected_words: ?[8]u32,
+    assignment: ?[]const u8 = null,
 };
 
 const Corpus = struct {
@@ -64,6 +67,23 @@ pub fn main() !void {
         if (!std.mem.eql(u32, &expected, &actual)) {
             std.debug.print("case {s} projected wrong words\n", .{case.label});
             return error.CorpusMismatch;
+        }
+        if (case.assignment) |encoded_assignment| {
+            var assignment = try s31.relation.parseAssignment(allocator, encoded_assignment);
+            defer assignment.deinit();
+            const claimed = try s31.relation.claimedWords(allocator, program.value, assignment.value);
+            if (!std.mem.eql(u32, &expected, &claimed)) {
+                std.debug.print("case {s} assignment public words differ\n", .{case.label});
+                return error.CorpusMismatch;
+            }
+            const evaluated = s31.relation.evaluate(allocator, program.value, assignment.value) catch |err| {
+                std.debug.print("case {s} relation evaluation failed: {s}\n", .{ case.label, @errorName(err) });
+                return error.CorpusMismatch;
+            };
+            if (!std.mem.eql(u32, &expected, &evaluated)) {
+                std.debug.print("case {s} evaluated public words differ\n", .{case.label});
+                return error.CorpusMismatch;
+            }
         }
         accepted += 1;
     }
