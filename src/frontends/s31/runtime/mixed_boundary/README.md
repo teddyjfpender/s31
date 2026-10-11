@@ -58,6 +58,19 @@ geometry, rejects a resealed program binding, role swap, and shortened roster,
 and counts other than three are rejected by the proof entrypoint before proof
 decoding. These are descriptor tests; they do not construct N≠3 proofs.
 
+`witness_audit.zig` is the next N=4 handoff check. It revalidates source and
+descriptor authority, compiles a witness against a separate witness-free
+topology, writes the circuit and selected pair/many chip and bridge base
+traces, and checks their public outputs and all four input/output handoffs.
+Its independent integer recurrence checks every chip step. The test changes
+endpoint values, source, component order and role, a resealed descriptor
+binding, and a claimed public output. This remains an unproved witness audit:
+there is no N=4 mixed transcript, proof serializer, or native verifier.
+
+```sh
+zig build --build-file src/frontends/s31/build.zig test-mixed-n4-witness -Doptimize=Debug -j1
+```
+
 Run the focused honest and mutation controls:
 
 ```sh
