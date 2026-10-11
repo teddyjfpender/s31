@@ -93,6 +93,7 @@ class Builder:
         self.reserved_names: set[str] = set()
         self.source_map: dict[str, dict[str, int]] = {}
         self.bit_inputs: set[str] = set()
+        self.public_bit_inputs: set[str] = set()
         self.constrained_bits: set[str] = set()
         self.computed_bits: set[str] = set()
         self.inverse_cache: dict[str, Value] = {}
@@ -123,6 +124,8 @@ class Builder:
         self.input_words += length
         if typ.kind == "bit":
             self.bit_inputs.add(name)
+            if visibility == "public":
+                self.public_bit_inputs.add(name)
         value = Value(typ, ref=name)
         return self.int_view(value) if typ.kind in INT_TYPES else value
 
@@ -672,9 +675,13 @@ class Builder:
                 "assertions": self.assertions, "public_outputs": [value.ref]}
 
     def finish_record_outputs(self, leaves: list[Value],
-                              span: dict[str, int] | None = None) -> tuple[dict[str, Any], list[str]]:
+                              span: dict[str, int] | None = None, *,
+                              v2_public_statement: bool = False) -> tuple[dict[str, Any], list[str]]:
         """Realize record leaves, preserving aliases without adding copy gates."""
-        if self.bit_inputs != self.constrained_bits:
+        # Only the sealed v2 record statement checks public bit inputs before
+        # proof verification. Keep the builder's default and private bits strict.
+        statement_bits = self.public_bit_inputs if v2_public_statement else set()
+        if self.bit_inputs != self.constrained_bits | statement_bits:
             raise TypeErrorS31("every bit input must be constrained by a Boolean operation or select")
         refs = [self.realize(value, span=span).ref for value in leaves]
         if any(ref is None for ref in refs):

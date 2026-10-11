@@ -13,6 +13,7 @@ sys.path.insert(0, str(S31 / "python"))
 from oracle import OracleError, evaluate_relation
 from abi.binding_v2 import flat_assignment_from_typed
 from abi.record_v2 import AbiError
+from s31_stdlib import Builder, Type
 from text_frontend import SourceError, compile_file, compile_text
 
 
@@ -46,6 +47,51 @@ circuit bits(public request: Request, private other: [m31; 1]) -> public Respons
         private = source.replace("public request: Request", "private request: Request")
         with self.assertRaisesRegex(SourceError, "private bit leaves"):
             compile_text(private)
+
+    def test_public_bit_record_passthrough_uses_statement_range_check(self) -> None:
+        source = """struct Request { flag: bit }
+struct Response { flag: bit }
+circuit echo(public request: Request) -> public Response {
+    Response { flag: request.flag }
+}"""
+        relation, _ = compile_text(source)
+        self.assertEqual(relation["version"], 2)
+        self.assertEqual(relation["nodes"], [])
+        self.assertEqual(relation["public_outputs"], [relation["inputs"][0]["name"]])
+        for flag in (0, 1):
+            typed = {"version": 2, "public_inputs": {"request": {"flag": [flag]}},
+                     "private_inputs": {}, "result": {"flag": [flag]}}
+            flat = flat_assignment_from_typed(relation, json.dumps(typed).encode())
+            self.assertEqual(flat["public_inputs"][relation["inputs"][0]["name"]], [flag])
+            self.assertEqual(flat["public_outputs"][relation["public_outputs"][0]], [flag])
+        for input_flag, output_flag in ((2, 2), (0, 2), (0, 1)):
+            typed = {"version": 2, "public_inputs": {"request": {"flag": [input_flag]}},
+                     "private_inputs": {}, "result": {"flag": [output_flag]}}
+            with self.subTest(input_flag=input_flag, output_flag=output_flag), self.assertRaises(AbiError):
+                flat_assignment_from_typed(relation, json.dumps(typed).encode())
+
+    def test_unused_public_bit_in_record_is_statement_checked(self) -> None:
+        source = """struct Request { flag: bit, value: [m31; 1] }
+circuit value(public request: Request) -> public [m31; 1] { request.value }"""
+        relation, _ = compile_text(source)
+        self.assertEqual(relation["nodes"], [])
+        typed = {"version": 2, "public_inputs": {"request": {"flag": [1], "value": [7]}},
+                 "private_inputs": {}, "result": [7]}
+        flat_assignment_from_typed(relation, json.dumps(typed).encode())
+        typed["public_inputs"]["request"]["flag"] = [2]
+        with self.assertRaisesRegex(AbiError, "typed bit leaf"):
+            flat_assignment_from_typed(relation, json.dumps(typed).encode())
+        with self.assertRaisesRegex(ValueError, "every bit input must be constrained"):
+            compile_text("circuit echo(public flag: bit) -> public bit { flag }")
+        with self.assertRaisesRegex(SourceError, "private bit leaves"):
+            compile_text("""struct Response { flag: bit }
+circuit bad(private flag: bit) -> public Response { Response { flag: flag } }""")
+
+    def test_record_builder_without_v2_statement_remains_strict(self) -> None:
+        builder = Builder("raw")
+        flag = builder.input("flag", Type("bit", 1), "public")
+        with self.assertRaisesRegex(ValueError, "every bit input must be constrained"):
+            builder.finish_record_outputs([flag])
 
     def test_named_fields_erase_to_identical_relation(self) -> None:
         example = S31 / "examples/arithmetic/record_square_sum.s31"

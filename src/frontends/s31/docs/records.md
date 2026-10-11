@@ -321,6 +321,29 @@ rejects such descriptors even if a source-side assignment looks valid. The
 checks both honest Boolean values, native range and proof mutations, and
 flat AIR geometry.
 
+A public bit can also pass through a v2 record boundary without an arithmetic
+Boolean gate:
+
+```s31
+struct Request { flag: bit }
+struct Response { flag: bit }
+circuit echo(public request: Request) -> public Response {
+    Response { flag: request.flag }
+}
+```
+
+The normalized relation has one public M31 input wire, no computation nodes,
+and that same wire as its public output. The record descriptor marks both
+paths as `bit`. Before checking the proof, the native v2 statement parser
+requires each claimed word on those paths to be `0` or `1` and requires their
+values to agree because they name the same wire. The proof binds the admitted
+public input and output words to the relation. Even a public bit input that
+the circuit never reads is checked at its v2 statement path. This is a
+boundary guarantee: a raw v1 relation has no bit tag on its M31 wire, so v1
+source still requires a Boolean operation or select for every bit input.
+Private bit inputs remain disallowed by v2 record ABI because their values
+are absent from the public statement.
+
 ## A record input and scalar result
 
 The executable [record-input source](../examples/arithmetic/record_input_sum.s31)
