@@ -24,6 +24,7 @@ from text_frontend import compile_text
 
 LEAN = ROOT / "formal/s31/S31/Gadgets/Functional/Correspondence/OptimizedTextBytes.lean"
 ZIG = S31 / "language/canonical.zig"
+ZIG_COMPILER = S31 / "language/relation_compiler.zig"
 
 
 def lean_token(name: str) -> bytes:
@@ -35,9 +36,10 @@ def lean_token(name: str) -> bytes:
     return json.loads(found.group(1)).encode("ascii")
 
 
-def zig_test_literal(name: str) -> bytes:
-    source = ZIG.read_text()
-    test = source.split('test "canonical reversed CSE exact legacy bytes and digest" {', 1)[1]
+def zig_test_literal(name: str, *, path: Path = ZIG,
+                     test_name: str = "canonical reversed CSE exact legacy bytes and digest") -> bytes:
+    source = path.read_text()
+    test = source.split(f'test "{test_name}" {{', 1)[1]
     test = test.split('\n}', 1)[0]
     pattern = rf'const {re.escape(name)} =\s*\\\\([^\n]+)'
     found = re.search(pattern, test)
@@ -56,6 +58,9 @@ class CanonicalOptimizerFixtureTests(unittest.TestCase):
                              + "\n").encode("ascii")
         self.assertEqual(actual_normalized, expected_normalized)
         self.assertEqual(json.loads(zig_test_literal("source_text")), relation)
+        self.assertEqual(json.loads(zig_test_literal(
+            "source_text", path=ZIG_COMPILER,
+            test_name="direct CSE source-map reuses the canonical circuit span")), relation)
         self.assertEqual(zig_test_literal("expected_bytes"), expected_canonical)
         self.assertEqual(hashlib.sha256(expected_canonical).hexdigest(),
                          "2088c1bad15f2ba5b52f0214e9d3d66744b9c84aa6218aa336d8b337157e7132")

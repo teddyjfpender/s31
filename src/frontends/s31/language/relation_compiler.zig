@@ -445,6 +445,40 @@ pub fn compileDirectBoundedWithSpans(comptime V: type, allocator: std.mem.Alloca
     return compileWithSpansMode(V, allocator, program, assignment, maps, false, true, false, false, true);
 }
 
+test "direct CSE source-map reuses the canonical circuit span" {
+    const allocator = std.testing.allocator;
+    const source_text =
+        \\{"version":1,"name":"reverse_share","inputs":[{"name":"x","kind":"m31","length":4,"visibility":"public"}],"nodes":[{"name":"a","op":"add","lhs":"x","rhs":"x"},{"name":"b","op":"mul","lhs":"x","rhs":"x"},{"name":"c","op":"add","lhs":"a","rhs":"b"},{"name":"d","op":"add","lhs":"b","rhs":"a"}],"assertions":[],"public_outputs":["d"]}
+    ;
+    var parsed = try relation.parseProgram(allocator, source_text);
+    defer parsed.deinit();
+    var ir = try canonical.build(allocator, parsed.value);
+    defer ir.deinit();
+    const expected_ids = [_]u32{ 0, 1, 2, 3, 3 };
+    var maps = Maps{};
+    defer maps.deinit(allocator);
+    var ctx = try compileDirectWithSpans(circuit.builder.NoValue, allocator, parsed.value, null, &maps, false);
+    defer ctx.deinit();
+    try std.testing.expectEqual(@as(usize, 4), maps.nodes.items.len);
+    const expected_starts = [_]usize{ 0, 6, 7, 8 };
+    const expected_ends = [_]usize{ 6, 7, 8, 9 };
+    for (maps.nodes.items, expected_starts, expected_ends) |span, start, end| {
+        try std.testing.expectEqual(start, span.qm31_start);
+        try std.testing.expectEqual(end, span.qm31_end);
+        try std.testing.expectEqual(span.eq_start, span.eq_end);
+        try std.testing.expectEqual(span.m31_to_u32_start, span.m31_to_u32_end);
+        try std.testing.expectEqual(span.triple_xor_start, span.triple_xor_end);
+        try std.testing.expectEqual(span.blake_g_start, span.blake_g_end);
+    }
+    for (ir.source_map, expected_ids) |entry, id| {
+        try std.testing.expectEqual(id, entry.id);
+        const span = maps.nodes.items[id];
+        try std.testing.expectEqual(expected_starts[id], span.qm31_start);
+        try std.testing.expectEqual(expected_ends[id], span.qm31_end);
+    }
+    try std.testing.expectEqual(ir.source_map[3].id, ir.source_map[4].id);
+}
+
 test "bounded arithmetic chip input emits the same constrained scalar ports in both modes" {
     const allocator = std.testing.allocator;
     var program = try relation.parseProgram(allocator, @embedFile("../examples/boundary/private_arithmetic_chip_input.s31.json"));

@@ -64,6 +64,19 @@ all eight emitted selector/address column hashes, the exact input/source/ABI
 gate allocation and base-256 constant and padding schedule, fixed QM31 basis
 derivation,
 AIR asset hashes and key core.
+An explicit `parse_source_optimized` / `make_optimized_certificate` /
+`check_optimized_package` v3 API also checks commutative operand reversal and
+first-match CSE. It maps every source producer to a compact canonical ID,
+checks that duplicate source names reuse the original native gate span, and
+replays the compact direct-gate topology and fixed columns. The default text
+package builder and `check_package` remain v2-only; they do not automatically
+admit optimized source. A focused native test checks the reused span for a
+four-operation source that lowers to three gates, and Python mutation tests
+reject a forged source map after its report digest is recomputed. The
+on-demand `tests/python/check_optimized_native_package.py` builds a temporary
+real package, attaches v3 explicitly, checks all bound native artifacts, then
+reseals and rejects a malformed duplicate span. It requires a clean pinned
+Stwo dependency.
 It also checks each source instruction directly against the eight **exported
 fixed AIR columns**, using the same row formula as Lean's general
 `SSADirectGateBridge.expectedRows` and `SSAAirColumnCells.expectedCells`.

@@ -79,11 +79,13 @@ Lean theorem about the Zig serializer. In particular, the large pinned byte
 literals are not kernel-proved to satisfy `checkBytes`; the universal theorem
 applies whenever that checker accepts its three byte inputs.
 
-The **production canonical builder** accepts this reversed/CSE form, but the
-current opt-in Python release correspondence checker still rejects it. The
-new Lean grammar is an extension model, not an expansion of that release
-gate. Admitting this form in the release checker still requires a checked
-source-to-canonical ID map, topology validation against it, and tamper tests.
+The **production canonical builder** accepts this reversed/CSE form. The
+Python checker now has a separate `parse_source_optimized` and v3 certificate
+API. It derives a source-to-canonical ID map, checks reused native source-map
+spans and compact topology, and rejects altered maps even if a report digest
+is recomputed. The default v2 package build and verification path still
+rejects reversed/CSE; v3 admission is explicitly opt-in and has not been
+wired into the package builder. The new Lean grammar is an extension model.
 The structural optimizer's audit-completeness theorem and authentication of
 the resulting AIR and proof remain open.
 
@@ -92,6 +94,9 @@ the resulting AIR and proof remain open.
 (cd formal/s31 && lake env leanchecker S31.Gadgets.Functional.Correspondence.OptimizedTextBytes)
 (cd src/frontends/s31 && zig build test-canonical-cse -Doptimize=ReleaseFast)
 PYTHONPATH=src/frontends/s31/python python3 -m unittest src/frontends/s31/tests/python/test_canonical_optimizer_fixture.py
+PYTHONPATH=src/frontends/s31/python python3 -m unittest src/frontends/s31/tests/python/test_optimized_correspondence.py
+# Builds a real temporary native package; run on a clean pinned Stwo dependency.
+PYTHONPATH=src/frontends/s31/python python3 src/frontends/s31/tests/python/check_optimized_native_package.py
 ```
 
 `RawGateSoundness.lean` composes the executable source-byte/normalized-byte

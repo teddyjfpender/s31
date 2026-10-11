@@ -4,10 +4,12 @@ The accepted grammar has one public [m31; 4] input and one public [m31; 4]
 output. Its body contains 1..16 fresh arithmetic lets (`+` or `.*`),
 interleaved with zero-cost alias lets, followed by a returned wire name.
 Redundant parentheses around these expressions and names are admitted.
-Operands must resolve to the input or an earlier arithmetic let, appear in
-canonical operand order, and create distinct arithmetic expressions. No
+Operands must resolve to the input or an earlier arithmetic let. The default
+v2 certificate requires canonical operand order and distinct expressions.
+The explicit optimized v3 path independently sorts commutative operands and
+checks common-subexpression elimination with a source-to-canonical map. No
 imports, calls, constants, assertions, private inputs, or implicit coercions
-enter this certificate.
+enter either certificate.
 
 This checks source bytes against normalized relation and the published native
 row schedule. It does not derive the native circuit hash or prove Gate lookup,
@@ -39,6 +41,7 @@ SOURCE_KEYWORDS = frozenset({
     "circuit", "blinded", "public", "private", "assert_eq", "m31",
 })
 SCHEMA = "s31-direct-gate-correspondence-v2"
+OPTIMIZED_SCHEMA = "s31-direct-gate-correspondence-v3"
 M31_MODULUS = 2**31 - 1
 MAX_SOURCE_BYTES = 16_384
 MAX_RELATION_NAME_CHARS = 128
@@ -122,7 +125,7 @@ def _tokens(data: bytes) -> list[str]:
     return result
 
 
-def parse_source(data: bytes) -> tuple[dict[str, Any], dict[str, Any]]:
+def parse_source(data: bytes, *, optimized: bool = False) -> tuple[dict[str, Any], dict[str, Any]]:
     """Reparse exact bytes without using the production lexer or compiler."""
     tokens = _tokens(data)
     cursor = 0
@@ -216,7 +219,8 @@ def parse_source(data: bytes) -> tuple[dict[str, Any], dict[str, Any]]:
     # Aliases share a positional wire. Only the producer name is present in
     # the normalized relation and native source map.
     producer_names = [input_name]
-    expressions: set[tuple[str, int, int]] = set()
+    expressions: dict[tuple[str, int, int], int] = {}
+    source_to_canonical = [0]
     nodes: list[dict[str, str]] = []
     ssa: list[dict[str, Any]] = []
     while cursor < len(tokens) and tokens[cursor] == "let":
@@ -237,23 +241,30 @@ def parse_source(data: bytes) -> tuple[dict[str, Any], dict[str, Any]]:
             continue
         op = "add" if op_token == "+" else "mul"
         assert right is not None
-        lhs_id, rhs_id = wires[left], wires[right]
+        lhs_raw, rhs_raw = wires[left], wires[right]
+        lhs_id = source_to_canonical[lhs_raw]
+        rhs_id = source_to_canonical[rhs_raw]
         if lhs_id > rhs_id:
-            raise UnsupportedFragment("commutative operands are not in canonical order")
+            if not optimized:
+                raise UnsupportedFragment("commutative operands are not in canonical order")
+            lhs_id, rhs_id = rhs_id, lhs_id
         expression = (op, lhs_id, rhs_id)
-        if expression in expressions:
+        if expression in expressions and not optimized:
             raise UnsupportedFragment("canonical common-subexpression elimination would merge lets")
         if len(name) > MAX_RELATION_NAME_CHARS:
             raise UnsupportedFragment("relation producer name exceeds compiler limit")
-        expressions.add(expression)
-        new_id = len(producer_names)
-        ssa.append({"id": new_id, "name": name, "op": op,
-                    "lhs": lhs_id, "rhs": rhs_id})
+        canonical_id = expressions.get(expression)
+        if canonical_id is None:
+            canonical_id = len(ssa) + 1
+            expressions[expression] = canonical_id
+            ssa.append({"id": canonical_id, "name": name, "op": op,
+                        "lhs": lhs_id, "rhs": rhs_id})
         nodes.append({"name": name, "op": op,
-                      "lhs": producer_names[lhs_id],
-                      "rhs": producer_names[rhs_id]})
-        wires[name] = new_id
+                      "lhs": producer_names[lhs_raw],
+                      "rhs": producer_names[rhs_raw]})
+        wires[name] = len(producer_names)
         producer_names.append(name)
+        source_to_canonical.append(canonical_id)
         if len(nodes) > 16:
             raise UnsupportedFragment("more than 16 arithmetic operations")
     if not nodes:
@@ -267,10 +278,11 @@ def parse_source(data: bytes) -> tuple[dict[str, Any], dict[str, Any]]:
     take("}")
     if cursor != len(tokens) or output not in wires or output == input_name:
         raise UnsupportedFragment("trailing tokens or output is not a bound let wire")
-    output_id = wires[output]
-    if output_id == 0:
+    output_raw = wires[output]
+    if output_raw == 0:
         raise UnsupportedFragment("output must resolve to an arithmetic let")
-    output_name = producer_names[output_id]
+    output_id = source_to_canonical[output_raw]
+    output_name = producer_names[output_raw]
     relation = {
         "version": 1, "name": circuit,
         "inputs": [{"name": input_name, "kind": "m31", "length": 4,
@@ -279,7 +291,15 @@ def parse_source(data: bytes) -> tuple[dict[str, Any], dict[str, Any]]:
     }
     syntax = {"input": input_name, "instructions": ssa,
               "output": output_id, "output_name": output_name}
+    if optimized:
+        syntax["source_to_canonical"] = source_to_canonical
+        syntax["source_names"] = producer_names
     return relation, syntax
+
+
+def parse_source_optimized(data: bytes) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Opt in to checked commutative sorting and first-match CSE."""
+    return parse_source(data, optimized=True)
 
 
 def public_abi(syntax: dict[str, Any]) -> dict[str, Any]:
@@ -296,9 +316,8 @@ def public_abi(syntax: dict[str, Any]) -> dict[str, Any]:
 def canonical_ir_bytes(syntax: dict[str, Any]) -> bytes:
     """Reconstruct the exact Zig `canonical.build` legacy SSA encoding.
 
-    The bounded grammar has one public M31[4] input and fresh, canonical
-    add/mul nodes. Consequently Zig's operand sorting and CSE leave the
-    positional IDs unchanged. `LegacyNode` serializes every optional field,
+    The checked syntax contains fresh, canonical add/mul nodes after optional
+    commutative sorting and CSE. `LegacyNode` serializes every optional field,
     including its nulls, in declaration order. Source-only names and the
     circuit name are deliberately absent from this verifier identity.
     """
@@ -326,30 +345,43 @@ def canonical_ir_bytes(syntax: dict[str, Any]) -> bytes:
 
 
 def gate_schedule(syntax: dict[str, Any], report: dict[str, Any]) -> list[dict[str, Any]]:
-    """Check the native source-map spans against the canonical SSA order."""
+    """Check every native source span against its canonical producer."""
     rows = report.get("source_map")
     instructions = syntax["instructions"]
-    if not isinstance(rows, list) or len(rows) != len(instructions) + 1:
+    expected_names = syntax.get("source_names")
+    expected_ids = syntax.get("source_to_canonical")
+    if expected_names is None and expected_ids is None:
+        expected_names = [syntax["input"], *(node["name"] for node in instructions)]
+        expected_ids = list(range(len(expected_names)))
+    if (not isinstance(expected_names, list) or not isinstance(expected_ids, list) or
+            len(expected_names) != len(expected_ids) or
+            not isinstance(rows, list) or len(rows) != len(expected_names)):
         raise ValueError("native source-map length differs from checked SSA")
-    expected_names = [syntax["input"], *(node["name"] for node in instructions)]
     schedule: list[dict[str, Any]] = []
-    prior_end = 0
-    for index, (row, name) in enumerate(zip(rows, expected_names, strict=True)):
+    for index, (row, name, canonical_id) in enumerate(
+            zip(rows, expected_names, expected_ids, strict=True)):
         if (not isinstance(row, dict) or row.get("name") != name or
-                type(row.get("canonical_id")) is not int or row["canonical_id"] != index):
+                type(row.get("canonical_id")) is not int or
+                row["canonical_id"] != canonical_id):
             raise ValueError("native source-map order differs from checked SSA")
         start, end = row.get("qm31_start"), row.get("qm31_end")
-        if (type(start) is not int or type(end) is not int or start != prior_end or
-                end - start != (6 if index == 0 else 1) or
+        expected_start = 0 if canonical_id == 0 else canonical_id + 5
+        expected_end = 6 if canonical_id == 0 else expected_start + 1
+        if (type(start) is not int or type(end) is not int or
+                start != expected_start or end != expected_end or
                 any(type(row.get(f"{component}_start")) is not int or
                     type(row.get(f"{component}_end")) is not int or
                     row[f"{component}_start"] != row[f"{component}_end"]
                     for component in ("eq", "m31_to_u32", "triple_xor", "blake_g"))):
             raise ValueError("native gate spans differ from bounded direct arithmetic schedule")
-        schedule.append({"id": index, "name": name, "qm31_start": start,
-                         "qm31_end": end,
-                         "op": "pack_public_input" if index == 0 else instructions[index - 1]["op"]})
-        prior_end = end
+        if canonical_id == len(schedule):
+            schedule.append({"id": canonical_id, "name": name,
+                             "qm31_start": start, "qm31_end": end,
+                             "op": "pack_public_input" if index == 0 else instructions[canonical_id - 1]["op"]})
+        elif not 0 <= canonical_id < len(schedule):
+            raise ValueError("source map references an unallocated canonical producer")
+    if len(schedule) != len(instructions) + 1:
+        raise ValueError("native source map omits a canonical producer")
     return schedule
 
 
@@ -755,9 +787,9 @@ def _assets() -> tuple[str, str, str]:
             digest(air_bytes), program_hash.hexdigest())
 
 
-def _checked_material(package: Path) -> tuple[dict[str, Any], dict[str, Any]]:
+def _checked_material(package: Path, *, optimized: bool = False) -> tuple[dict[str, Any], dict[str, Any]]:
     source_bytes = (package / "source.s31").read_bytes()
-    expected_relation, syntax = parse_source(source_bytes)
+    expected_relation, syntax = parse_source(source_bytes, optimized=optimized)
     relation_bytes = (package / "source.s31.json").read_bytes()
     relation = read_canonical_json(package / "source.s31.json")
     if relation != expected_relation:
@@ -872,7 +904,7 @@ def _checked_material(package: Path) -> tuple[dict[str, Any], dict[str, Any]]:
             "preprocessed_root", "circuit_hash", "padded", "trace_log_size", "fri")):
         raise ValueError("native report differs from verification key")
     material = {
-        "schema": SCHEMA,
+        "schema": OPTIMIZED_SCHEMA if optimized else SCHEMA,
         "status": {
             "source_to_normalized": "source-to-normalized-checked",
             "native_gate_emission": "native-gate-topology-and-selectors-checked",
@@ -906,6 +938,12 @@ def make_certificate(package: Path) -> dict[str, Any]:
     return material
 
 
+def make_optimized_certificate(package: Path) -> dict[str, Any]:
+    """Explicit v3 opt-in; the normal package builder remains v2-only."""
+    material, _ = _checked_material(package, optimized=True)
+    return material
+
+
 def check_package(package: Path) -> dict[str, Any]:
     """Recompute the certificate from source bytes and all bound artifacts."""
     material, manifest = _checked_material(package)
@@ -915,4 +953,16 @@ def check_package(package: Path) -> dict[str, Any]:
         raise ValueError("correspondence certificate is absent or changed")
     if read_canonical_json(path) != material:
         raise ValueError("correspondence certificate differs from independent check")
+    return material
+
+
+def check_optimized_package(package: Path) -> dict[str, Any]:
+    """Recheck a rooted v3 certificate without changing v2 admission."""
+    material, manifest = _checked_material(package, optimized=True)
+    path = package / "correspondence-certificate.json"
+    listed = manifest.get("artifacts", {}).get(path.name)
+    if not isinstance(listed, str) or listed != digest(path.read_bytes()):
+        raise ValueError("correspondence certificate is absent or changed")
+    if read_canonical_json(path) != material:
+        raise ValueError("optimized correspondence certificate differs from independent check")
     return material
