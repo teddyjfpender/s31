@@ -109,3 +109,34 @@ statement; they do not connect uncommitted exported rows to proof openings.
 The Zig guard tests require rejection of a private input, a nonempty private
 assignment, wrong input and output shape, assertions, constant/repeat nodes,
 and a 17-node source.
+
+## Public main commitment from serialized rows
+
+The `inspect-physical-root ASSIGNMENT.json` command is limited by the same
+public-only source and assignment guard. It takes the 12×512 `writeBase` main
+columns, installs the source's preprocessed tree as commitment tree 0, then
+commits the main columns as tree 1 with the package's direct PCS configuration.
+It also reports SHA-256 of all 6,144 canonical M31 words in column-major,
+little-endian `u32` order. The digest identifies the exact uncommitted words
+used by that invocation; it is separate from the PCS root.
+
+```sh
+python3 src/frontends/s31/tests/acceptance/compiler_correspondence/public_main_root_binding.py
+```
+
+The acceptance check builds and verifies a fresh `functional_square4` proof,
+reads its first two postcard commitments with a strict direct-Gate profile
+parser, and checks that commitment 0 is the sealed fixed root. It separately
+exports `inspect-physical-rows`, matches all fixed rows to `inspect-topology`,
+hashes the serialized main words, and requires that digest to equal the root
+diagnostic's main-word digest. Finally it requires the recommitted main root
+to equal commitment 1 in the accepted proof. Altering one exported M31 cell
+changes the digest; altering one proof main-root byte is rejected by the
+native verifier at `InvalidInteractionNonce` for this pinned trial.
+
+This connects one honest public `writeBase` export to the main commitment in
+one accepted proof, conditional on SHA-256 and the backend's PCS commitment
+implementation. It does not establish that arbitrary prover-supplied openings
+equal the exported rows, prove collision resistance, or cover private/mixed
+programs. The source compiler and PCS verifier remain separate proof
+obligations in the broader correspondence claim.

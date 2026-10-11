@@ -194,3 +194,13 @@ For the checked-in square4 source, a [pinned corollary](../../../../../formal/s3
 discharges those three model checks from exact source bytes, 485 checked
 constant rows, and the nine pinned feeder addresses. Its conclusion works for
 every four-lane input. The native commitment and verifier joins remain open.
+
+The [public main-root diagnostic](../../tests/acceptance/compiler_correspondence/README.md#public-main-commitment-from-serialized-rows)
+adds one concrete honest-proof check at that boundary. For the square4
+assignment, it exports all 6,144 main M31 words, hashes their exact serialized
+bytes, recommits those words with the direct PCS tree order, and compares the
+result with the main root inside a separately accepted native proof. A changed
+row breaks the byte digest; a changed proof root makes the verifier reject.
+This binds the particular export and proof under the hash and PCS
+implementations. The Lean theorem still does not quantify over arbitrary
+authenticated openings or prove the cryptographic binding assumptions.

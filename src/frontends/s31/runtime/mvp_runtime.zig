@@ -9,6 +9,7 @@ const native = @import("native_verifier.zig");
 const component_manifest = @import("component_manifest.zig");
 const direct_component_preflight = @import("direct_component_preflight.zig");
 const public_physical_guard = @import("public_physical_guard.zig");
+const public_main_commitment = @import("public_main_commitment.zig");
 const proof_execution = @import("proof_execution.zig");
 const recursion_gate = @import("../recursion/recursion_gate.zig");
 const fixed_fold = @import("../recursion/fixed_fold.zig");
@@ -309,7 +310,9 @@ pub fn main() !void {
     } else if (std.mem.eql(u8, command, "inspect-topology") and args.len == 2 and direct_mode and !chip_mode) {
         try inspectDirectTopology(allocator, parsed.value);
     } else if (std.mem.eql(u8, command, "inspect-physical-rows") and args.len == 3 and direct_mode and !chip_mode) {
-        try inspectBoundedPhysicalRows(allocator, parsed.value, args[2]);
+        try inspectBoundedPhysicalRows(allocator, parsed.value, args[2], .rows);
+    } else if (std.mem.eql(u8, command, "inspect-physical-root") and args.len == 3 and direct_mode and !chip_mode) {
+        try inspectBoundedPhysicalRows(allocator, parsed.value, args[2], .main_root);
     } else if (std.mem.eql(u8, command, "prove") and args.len == 4) {
         try prove(allocator, parsed.value, args[2], args[3], null, false, null, null, false, false);
     } else if (std.mem.eql(u8, command, "prove-for-external-verification") and args.len == 4 and
@@ -462,7 +465,7 @@ fn parseInspectStep(args: []const []const u8, base_len: usize) !u32 {
 }
 
 fn usage() error{InvalidArguments} {
-    std.debug.print("usage: s31-program check | inspect | inspect-topology (bounded direct-gate only) | inspect-physical-rows ASSIGNMENT.json (public bounded direct-gate only) | run ASSIGNMENT.json | prove ASSIGNMENT.json PROOF\n", .{});
+    std.debug.print("usage: s31-program check | inspect | inspect-topology (bounded direct-gate only) | inspect-physical-rows ASSIGNMENT.json | inspect-physical-root ASSIGNMENT.json (public bounded direct-gate only) | run ASSIGNMENT.json | prove ASSIGNMENT.json PROOF\n", .{});
     std.debug.print("       prove-for-external-verification ASSIGNMENT.json PROOF (record direct-gate v2 only; output is UNVERIFIED until separate native verifier accepts)\n", .{});
     std.debug.print("       recurse-check ASSIGNMENT.json CHILD-PROOF CHILD-KEY.json | recurse-prove ASSIGNMENT.json CHILD-PROOF OUTER-PROOF CHILD-KEY.json [--low-memory]\n", .{});
     std.debug.print("       recurse-wrap CHILD-PROOF CHILD-STATEMENT.json OUTER-PROOF CHILD-KEY.json [--low-memory]\n", .{});
@@ -980,7 +983,9 @@ fn inspectDirectTopology(allocator: std.mem.Allocator, source: relation.Program)
     std.debug.print("{s}\n", .{encoded});
 }
 
-fn inspectBoundedPhysicalRows(allocator: std.mem.Allocator, source: relation.Program, assignment_path: []const u8) !void {
+const PhysicalInspectionMode = enum { rows, main_root };
+
+fn inspectBoundedPhysicalRows(allocator: std.mem.Allocator, source: relation.Program, assignment_path: []const u8, mode: PhysicalInspectionMode) !void {
     // This diagnostic exposes uncommitted main-column values. Private inputs
     // and every other profile remain ineligible for inspection.
     var source_digest: [32]u8 = undefined;
@@ -1012,6 +1017,32 @@ fn inspectBoundedPhysicalRows(allocator: std.mem.Allocator, source: relation.Pro
     defer base_trace.deinit();
     if (base_trace.columns.len != circuit.witness.direct_arithmetic.main_width)
         return error.InvalidDirectTraceShape;
+
+    if (mode == .main_root) {
+        const pcs = try directPcsConfig(pp.traceLogSize(), null);
+        const main_root = try public_main_commitment.root(allocator, &pp, base_trace.columns, pcs);
+        const root_hex = std.fmt.bytesToHex(main_root, .lower);
+        var main_digest = std.crypto.hash.sha2.Sha256.init(.{});
+        for (base_trace.columns) |column| for (column.values) |value| {
+            var word: [4]u8 = undefined;
+            std.mem.writeInt(u32, &word, value.toU32(), .little);
+            main_digest.update(&word);
+        };
+        var main_sha: [32]u8 = undefined;
+        main_digest.final(&main_sha);
+        const main_sha_hex = std.fmt.bytesToHex(main_sha, .lower);
+        const report = .{
+            .schema = "s31-direct-gate-public-main-root-v1",
+            .program_sha256 = &source_hex,
+            .public_words = public_words,
+            .main_root = &root_hex,
+            .main_columns_sha256 = &main_sha_hex,
+        };
+        const encoded_root = try std.json.Stringify.valueAlloc(allocator, report, .{});
+        defer allocator.free(encoded_root);
+        std.debug.print("{s}\n", .{encoded_root});
+        return;
+    }
 
     var arena = std.heap.ArenaAllocator.init(allocator);
     defer arena.deinit();
