@@ -381,27 +381,33 @@ test "mixed selected feeder native proof binds both private bit branches" {
     const allocator = std.heap.smp_allocator;
     const source = @embedFile("../../examples/boundary/private_selected_chip_feeder.s31.json");
     const air_bytes = @embedFile("s31_air_programs");
-    const x = [4]M31{ M31.zero(), M31.one(), M31.fromCanonical(core.fields.m31.Modulus - 1), M31.fromCanonical(7) };
-    const y = [4]M31{ M31.fromCanonical(2), M31.fromCanonical(3), M31.fromCanonical(5), M31.fromCanonical(11) };
+    const p: u64 = core.fields.m31.Modulus;
+    const x = [4]u32{ 0, 1, core.fields.m31.Modulus - 1, 7 };
+    const y = [4]u32{ 2, 3, 5, 11 };
+    // Use plain widened integer arithmetic as an independent expected-value
+    // oracle; this avoids sharing the prover's field helper implementation.
     var first = x;
     for (0..16) |_| {
-        for (&first) |*word| word.* = word.*.mul(word.*).add(M31.fromCanonical(13));
+        for (&first) |*word| word.* = @intCast((@as(u64, word.*) * word.* + 13) % p);
     }
     const profile = try inspectProfile(allocator, source, air_bytes);
     try std.testing.expectEqual(@as(u8, 2), profile.schedule.call_count);
     for (0..2) |bit| {
-        var final: [4]M31 = undefined;
+        var final: [4]u32 = undefined;
         var sums: [4]u32 = undefined;
         var products: [4]u32 = undefined;
         for (&final, x, y, first) |*word, left, right, computed| {
-            word.* = if (bit == 0) computed.add(left) else computed.mul(right);
+            word.* = @intCast((if (bit == 0)
+                @as(u64, computed) + left
+            else
+                @as(u64, computed) * right) % p);
         }
         for (0..16) |_| {
-            for (&final) |*word| word.* = word.*.mul(word.*).add(M31.fromCanonical(17));
+            for (&final) |*word| word.* = @intCast((@as(u64, word.*) * word.* + 17) % p);
         }
         for (final, first, y, &sums, &products) |end, computed, right, *sum, *product| {
-            sum.* = end.add(computed).toU32();
-            product.* = end.mul(right).toU32();
+            sum.* = @intCast((@as(u64, end) + computed) % p);
+            product.* = @intCast((@as(u64, end) * right) % p);
         }
         const assignment_bytes = try std.fmt.allocPrint(allocator, "{{\"public_inputs\":{{}},\"private_inputs\":{{\"x\":[0,1,{d},7],\"y\":[2,3,5,11],\"bit\":[{d}]}},\"public_outputs\":{{\"sum\":[{d},{d},{d},{d}],\"product\":[{d},{d},{d},{d}]}}}}", .{ core.fields.m31.Modulus - 1, bit, sums[0], sums[1], sums[2], sums[3], products[0], products[1], products[2], products[3] });
         defer allocator.free(assignment_bytes);
