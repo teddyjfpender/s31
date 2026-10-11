@@ -110,10 +110,12 @@ class TransferDesignTests(unittest.TestCase):
                     cohort.reference_inventory(self.cfg)
 
     def test_draft_refuses_uncommitted_design_or_existing_protocol(self) -> None:
-        with patch.object(protocol, "clean_stack", side_effect=ValueError("uncommitted")):
-            with self.assertRaisesRegex(ValueError, "uncommitted"):
-                protocol.draft()
         with tempfile.TemporaryDirectory() as temporary:
+            missing = Path(temporary) / "missing-protocol.json"
+            with patch.object(protocol, "PROTOCOL", missing), \
+                    patch.object(protocol, "clean_stack", side_effect=ValueError("uncommitted")):
+                with self.assertRaisesRegex(ValueError, "uncommitted"):
+                    protocol.draft()
             candidate = Path(temporary) / "protocol.json"
             candidate.write_text("{}")
             with patch.object(protocol, "PROTOCOL", candidate):

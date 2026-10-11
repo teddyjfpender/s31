@@ -85,6 +85,28 @@ These are three distinct compiler fingerprints; this corpus only measures the
 frozen worktree. All use the pinned engine gitlink
 `7d544c6839497ca19b6c7ef9b982e464f10cfeed` where applicable.
 
+## Reproducible compact-corpus replay
+
+The independent [descriptive replay](../../../src/frontends/s31/benchmarks/mixed_stage_cost_transfer_v1/descriptive.py)
+checks five fixed file hashes, the frozen program and claim inventory, all
+360 trial identities, process endpoints, proof uniqueness, and stage sums.
+Its [machine-readable result](language/mixed-stage-cost-transfer-v1-descriptive-replay.json)
+reproduces the table above and also reports each program's observed p90
+first-verified wall. Across the twelve programs, those p90 values range from
+189.65 to 358.13 ms, whereas the respective medians range from 85.49 to
+138.80 ms. This wide within-program variation is one reason the current data
+cannot justify a precise general wall-time predictor. The replay reads only
+the compact corpus and cannot redo native proof verification; the frozen
+native audit did that from retained raw proofs.
+
+```sh
+python3 -B src/frontends/s31/benchmarks/mixed_stage_cost_transfer_v1/descriptive.py \
+  > /tmp/s31-mixed-descriptive-replay.json
+cmp /tmp/s31-mixed-descriptive-replay.json \
+  design/s31/measurements/language/mixed-stage-cost-transfer-v1-descriptive-replay.json
+python3 -B src/frontends/s31/benchmarks/mixed_stage_cost_transfer_v1/test_descriptive.py -q
+```
+
 The earlier [mixed-stage v1 result](MIXED_STAGE_COST_MODEL_V1_RESULT.md)
 documented the missing artifact's hash and training-only freeze, but did not
 commit the model bytes. Neither the tracked Git object history nor available
