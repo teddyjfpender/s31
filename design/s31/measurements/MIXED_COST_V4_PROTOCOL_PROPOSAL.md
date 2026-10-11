@@ -5,7 +5,9 @@ data are pending.** The
 [native-free inventory](language/mixed-cost-v4-prospective-inventory.json)
 fixes eight new source programs, 640 unique public claims, the model
 implementation hash, fit/calibration split, and acceptance gates. This is
-an advance design precommitment. Before **any** v4 native measurement, the
+an advance design precommitment; its `design-only-no-native-runner` field
+records the state when that inventory was frozen, before the runner was
+added. Before **any** v4 native measurement, the
 [executable runner](../../../src/frontends/s31/benchmarks/mixed_cost_v4/study.py)
 must be reviewed, committed, and included in a separate
 final protocol that pins the compiler, engine gitlink, Zig executable,
