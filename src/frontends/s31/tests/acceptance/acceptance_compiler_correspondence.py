@@ -32,6 +32,8 @@ from export_s31_direct_gate_bytecode_arithmetic import (
     render_oods_openings as render_bytecode_oods_openings,
     render_composition_opening as render_bytecode_composition_opening,
     render_circle_factor as render_bytecode_circle_factor,
+    render_pcs_opening_link as render_bytecode_pcs_opening_link,
+    check_pcs_opening_source_contract,
 )
 from export_s31_direct_gate_evaluator_fixture import (
     render as render_evaluator_fixture, validate_component_geometry,
@@ -277,6 +279,33 @@ def main() -> None:
                                 "GeneratedDirectGateCircleFactor.lean")
         if render_bytecode_circle_factor(honest) != circle_factor_golden.read_text():
             raise AssertionError("Gate OODS circle factor differs from checked Lean export")
+        pcs_opening_golden = (REPO / "formal/s31/S31/Gadgets/Air/"
+                              "GeneratedDirectGatePcsOpeningLink.lean")
+        if render_bytecode_pcs_opening_link(honest) != pcs_opening_golden.read_text():
+            raise AssertionError("Gate OODS-to-PCS source link differs from checked Lean export")
+        core_dir = REPO / "deps/stwo-zig/src/core"
+        pcs_sources = [(core_dir / path).read_text() for path in (
+            "verifier.zig", "pcs/verifier.zig",
+            "pcs/quotients/fri_answers.zig", "pcs/quotients/samples.zig")]
+        for index, old, new in (
+            (0, "&proof.commitment_scheme_proof.sampled_values,",
+                "&other_proof.commitment_scheme_proof.sampled_values,"),
+            (1, "channel.mixFelts(sampled_values_flat);",
+                "channel.mixFelts(&.{});"),
+            (1, "proof.sampled_values,", "alternate.samples,"),
+            (2, "buildColumnSampleBatchesFromParallelInputs(",
+                "buildColumnSampleBatchesFromOtherInputs("),
+        ):
+            altered = pcs_sources.copy()
+            if old not in altered[index]:
+                raise AssertionError("PCS source mutation marker missing")
+            altered[index] = altered[index].replace(old, new, 1)
+            try:
+                check_pcs_opening_source_contract(*altered)
+            except ValueError:
+                pass
+            else:
+                raise AssertionError("mutated OODS-to-PCS sample path was admitted")
         component = json.loads((honest / "component-manifest.json").read_text())["components"][0]
         for kind in ("fixed", "main", "interaction"):
             changed = copy.deepcopy(component)
@@ -446,6 +475,8 @@ def main() -> None:
             "installed_gate_oods_openings_match_checked_package": True,
             "installed_gate_composition_opening_matches_checked_package": True,
             "installed_gate_circle_factor_matches_checked_package": True,
+            "installed_gate_pcs_opening_link_matches_checked_package": True,
+            "oods_to_pcs_source_mutations_rejected": True,
             "native_gate_512_row_previous_mask_matches_lean_formula": True,
             "resealed_component_column_maps_rejected": True,
             "resealed_gate_program_binding_rejected": True,

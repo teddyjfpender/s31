@@ -566,6 +566,33 @@ the unchecked circle wrapper, which has `catch unreachable`. The theorem
 does not establish that the transcript seed is unpredictable or that PCS/FRI
 authenticates the opening.
 
+### Committed opening boundary
+
+The core verifier uses one decoded `sampled_values` tree for the Gate OODS
+comparison and passes that same proof object and mask points to PCS. PCS
+flattens tree, column, then sample order into the transcript. After Merkle
+query checks, it uses the same sampled tree to form DEEP quotient answers for
+FRI. In this selected Gate proof, the 40 sampled QM31 values are eight fixed,
+12 main, 12 interaction, and eight composition values. The last four
+interaction columns each carry `[previous, current]` in that order.
+
+[`DirectGatePcsOpeningLink.lean`](../../../formal/s31/S31/Gadgets/Air/DirectGatePcsOpeningLink.lean)
+defines the precise assumption that those 40 values evaluate the committed
+column polynomials at their selected mask points. It proves that the sampled
+Gate cells and split-one composition tree reduce to the corresponding pure
+polynomial-opening equation, including the fixed-column permutation and
+previous/current interaction slots. The
+[`generated selected instance`](../../../formal/s31/S31/Gadgets/Air/GeneratedDirectGatePcsOpeningLink.lean)
+is bound to the installed Gate bytecode, package source, and the core PCS/FRI
+source files. The exporter rejects changes to the native shared-sample path;
+the native constant-polynomial PCS fixture rejects a changed OODS sample.
+
+This is a **conditional** opening link. Lean does not prove that a successful
+Merkle/FRI verification implies the opening assumption, that transcript
+challenges are unpredictable, or that Zig execution refines the reviewed
+source statements. The next proof obligation is that cryptographic PCS
+soundness bridge, followed by whole-program and all-row compiler refinement.
+
 Recheck the bounded export and theorem with:
 
 ```sh
@@ -576,7 +603,8 @@ python3 scripts/export_s31_direct_gate_bytecode_arithmetic.py PACKAGE \
   --transcript-output formal/s31/S31/Gadgets/Air/GeneratedDirectGateTranscriptParams.lean \
   --oods-openings-output formal/s31/S31/Gadgets/Air/GeneratedDirectGateOodsOpenings.lean \
   --composition-opening-output formal/s31/S31/Gadgets/Air/GeneratedDirectGateCompositionOpening.lean \
-  --circle-factor-output formal/s31/S31/Gadgets/Air/GeneratedDirectGateCircleFactor.lean --check
+  --circle-factor-output formal/s31/S31/Gadgets/Air/GeneratedDirectGateCircleFactor.lean \
+  --pcs-opening-output formal/s31/S31/Gadgets/Air/GeneratedDirectGatePcsOpeningLink.lean --check
 python3 -m unittest src/frontends/s31/tests/python/test_gate_bytecode_arithmetic.py
 (cd formal/s31 && lake build S31.Gadgets.Air.GeneratedDirectGateBytecodeLogUp)
 (cd formal/s31 && lake build S31.Gadgets.Air.DirectGateOodsMask)
@@ -585,6 +613,7 @@ python3 -m unittest src/frontends/s31/tests/python/test_gate_bytecode_arithmetic
 (cd formal/s31 && lake build S31.Gadgets.Air.GeneratedDirectGateOodsOpenings)
 (cd formal/s31 && lake build S31.Gadgets.Air.GeneratedDirectGateCompositionOpening)
 (cd formal/s31 && lake build S31.Gadgets.Air.GeneratedDirectGateCircleFactor)
+(cd formal/s31 && lake build S31.Gadgets.Air.GeneratedDirectGatePcsOpeningLink)
 zig test --dep stwo_utils \
   -Mroot=src/frontends/s31/tests/proofs/gate_mask_native_test.zig \
   -Mstwo_utils=deps/stwo-zig/src/core/utils.zig

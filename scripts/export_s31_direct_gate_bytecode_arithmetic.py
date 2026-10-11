@@ -869,6 +869,126 @@ def render_circle_factor(package: Path) -> str:
     ])
 
 
+def check_pcs_opening_source_contract(core: str, pcs: str,
+                                      fri_answers: str, samples: str) -> None:
+    """Check the native dataflow that passes one proof's OODS values to PCS.
+
+    This is a reviewed source contract, not a cryptographic or Zig refinement
+    proof. The Lean PCS opening property remains an explicit assumption.
+    """
+    verifier = core.split("fn verifyImpl(", 1)[-1].split(
+        "fn pointFromOodsSeed(", 1)[0]
+    markers = [
+        "const composition_oods_eval = proof.extractCompositionOodsEvalWithSplit(",
+        "&proof.commitment_scheme_proof.sampled_values,",
+        "return VerificationError.OodsNotMatching;",
+        "const pcs_proof = proof.commitment_scheme_proof;",
+        "try commitment_scheme.verifyValues(",
+    ]
+    positions = [verifier.find(marker) for marker in markers]
+    require(all(position >= 0 for position in positions) and
+            positions == sorted(positions) and
+            all(verifier.count(marker) == 1 for marker in markers),
+            "core OODS-to-PCS proof sample identity changed")
+    require("sample_points,\n            pcs_proof,\n            channel," in verifier and
+            "try appendCompositionMaskTree(" in verifier and
+            "verifyValuesWithProofCapture(allocator, sample_points, pcs_proof, channel, challenges, capture)" in verifier and
+            "verifyValuesWithBorrowedProofCapture(allocator, sample_points, &pcs_proof, channel, challenges, capture)" in verifier and
+            "try commitment_scheme.verifyValuesWithQueryCapture(" in verifier,
+            "core PCS sample points or proof handoff changed")
+    pcs_impl = pcs.split("fn verifyValuesImpl(", 1)[-1].split(
+        "fn maxOrDefault(", 1)[0]
+    pcs_markers = [
+        "flattenSampledValues(allocator, proof.sampled_values)",
+        "channel.mixFelts(sampled_values_flat);",
+        "tree.verify(",
+        "const fri_answers = try quotients.friAnswers(",
+        "proof.sampled_values,",
+        "fri_verifier.decommit(allocator, fri_answers)",
+    ]
+    pcs_positions = [pcs_impl.find(marker) for marker in pcs_markers]
+    require(all(position >= 0 for position in pcs_positions) and
+            pcs_positions == sorted(pcs_positions),
+            "PCS transcript/Merkle/FRI sampled-value dataflow changed")
+    flatten = pcs.split("fn flattenSampledValues(", 1)[-1].split(
+        "fn duplicateColumnLogSizes(", 1)[0]
+    require("for (sampled_values.items) |tree|" in flatten and
+            "for (tree) |column|" in flatten and
+            "@memcpy(out[at .. at + column.len], column);" in flatten,
+            "PCS tree/column/sample flatten order changed")
+    require("pub fn friAnswers(" in fri_answers and
+            "buildColumnSampleBatchesFromParallelInputs(" in fri_answers and
+            "sampled_values," in fri_answers,
+            "PCS quotient answer sampled-value input changed")
+    require("for (sampled_points.items, sampled_values.items, 0..)" in samples and
+            "for (points_per_col, values_per_col) |point, value|" in samples and
+            "if (points_per_col.len != values_per_col.len) return error.ShapeMismatch;" in samples,
+            "PCS point/value column pairing changed")
+
+
+def render_pcs_opening_link(package: Path) -> str:
+    """Emit the selected Gate's conditional committed-opening theorem."""
+    checked = check_package(package)
+    _base, _ext, roots = decoded_program(gate_program(BUNDLE.read_bytes()))
+    manifest = json.loads((package / "component-manifest.json").read_text())
+    entries = manifest["components"]
+    require(len(entries) == 1 and entries[0]["source_index"] == 1 and
+            entries[0]["preprocessed_indices"] == list(READ_ORDER) and
+            roots == (*range(9), 88, 96),
+            "selected Gate PCS opening geometry changed")
+    engine = ROOT / "deps/stwo-zig/src/core"
+    paths = [engine / "verifier.zig", engine / "pcs/verifier.zig",
+             engine / "pcs/quotients/fri_answers.zig",
+             engine / "pcs/quotients/samples.zig"]
+    sources = [path.read_text() for path in paths]
+    check_pcs_opening_source_contract(*sources)
+    lines = [
+        "-- Generated from the selected Gate package and reviewed OODS-to-PCS source dataflow.",
+        f"-- Bundle SHA-256: {AIR_BUNDLE_SHA256}",
+        f"-- Gate program SHA-256: {GATE_PROGRAM_SHA256}",
+        f"-- Source SHA-256: {checked['source_sha256']}",
+    ]
+    lines += [f"-- {label} SHA-256: {hashlib.sha256(source.encode()).hexdigest()}"
+              for label, source in zip(("Core verifier", "PCS verifier", "FRI answers",
+                                        "PCS samples"), sources, strict=True)]
+    lines += [
+        "-- This theorem is conditional on PCS opening authentication; it does not prove it.",
+        "import S31.Gadgets.Air.DirectGatePcsOpeningLink", "",
+        "namespace S31.Gadgets.Air.GeneratedDirectGatePcsOpeningLink", "",
+        "open S31.Gadgets.Air.DirectGateOodsArithmetic",
+        "open S31.Gadgets.Air.DirectGateOodsOpenings",
+        "open S31.Gadgets.Air.DirectGateOodsLogUp",
+        "open S31.Gadgets.Air.DirectGateOodsComposition",
+        "open S31.Gadgets.Air.DirectGateCircleFactor",
+        "open S31.Gadgets.Air.DirectGatePcsOpeningLink",
+        "open S31.Gadgets.Air.DirectGateCompositionOpening",
+        "open S31.Gadgets.Air.GeneratedDirectGateTranscriptParams", "",
+        "/-- The native verifier's shared proof-sample dataflow permits this",
+        "reduction only under an authenticated PCS-opening assumption. -/",
+        "theorem selected_gate_accepted_of_authenticated (samples : Samples)",
+        "    (compositionTree : List (List QM)) (openings : PolynomialOpenings)",
+        "    (auth : PcsOpeningAssumption samples compositionTree openings)",
+        "    (seed z alpha claimed coefficient zeroifier : QM)",
+        "    (compositionLogSize : Nat) (hsize : 2 ≤ compositionLogSize)",
+        "    (seedAccepted : checkedFromSeed seed = some (fromSeed seed))",
+        "    (hzero : zeroifier ≠ 0)",
+        "    (accepted : extractSplitOne",
+        "      (repeatedDouble (compositionLogSize - 2) (fromSeed seed)).x",
+        "      compositionTree = some (quotientFold coefficient zeroifier⁻¹",
+        "        (transcriptRoots (cellsOfSamples samples) z alpha claimed))) :",
+        "    extractSplitOne (factor seed compositionLogSize)",
+        "      (expectedCompositionTree openings) =",
+        "      some (S31.Gadgets.Air.CompositionFold.fold coefficient",
+        "        (pureRoots (expectedCells openings) alpha z (claimed / 512)) /",
+        "        zeroifier) := by",
+        "  exact accepted_of_authenticated_openings samples compositionTree openings",
+        "    auth seed z alpha claimed coefficient zeroifier compositionLogSize",
+        "    hsize seedAccepted hzero accepted", "",
+        "end S31.Gadgets.Air.GeneratedDirectGatePcsOpeningLink", "",
+    ]
+    return "\n".join(lines)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("package", type=Path)
@@ -885,6 +1005,8 @@ def main() -> None:
                         help="also regenerate the split-one composition-tree theorem")
     parser.add_argument("--circle-factor-output", type=Path,
                         help="also regenerate the selected OODS circle-factor theorem")
+    parser.add_argument("--pcs-opening-output", type=Path,
+                        help="also regenerate the conditional PCS opening link")
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
     result = render(args.package)
@@ -899,6 +1021,8 @@ def main() -> None:
                            if args.composition_opening_output is not None else None)
     circle_factor = (render_circle_factor(args.package)
                      if args.circle_factor_output is not None else None)
+    pcs_opening = (render_pcs_opening_link(args.package)
+                   if args.pcs_opening_output is not None else None)
     if args.check:
         if not args.output.is_file() or args.output.read_text() != result:
             raise SystemExit("installed Gate bytecode Lean export changed")
@@ -924,6 +1048,11 @@ def main() -> None:
             args.circle_factor_output.read_text() != circle_factor
         ):
             raise SystemExit("installed Gate circle factor Lean export changed")
+        if pcs_opening is not None and (
+            not args.pcs_opening_output.is_file() or
+            args.pcs_opening_output.read_text() != pcs_opening
+        ):
+            raise SystemExit("installed Gate PCS opening link Lean export changed")
     else:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(result)
@@ -945,6 +1074,9 @@ def main() -> None:
         if circle_factor is not None:
             args.circle_factor_output.parent.mkdir(parents=True, exist_ok=True)
             args.circle_factor_output.write_text(circle_factor)
+        if pcs_opening is not None:
+            args.pcs_opening_output.parent.mkdir(parents=True, exist_ok=True)
+            args.pcs_opening_output.write_text(pcs_opening)
 
 
 if __name__ == "__main__":
