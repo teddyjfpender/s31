@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import hashlib
 import json
 import subprocess
@@ -63,6 +64,125 @@ def family(count: int) -> tuple[dict, dict]:
     return source, assignment
 
 
+def check_source_call_mapping(source: dict, manifest: dict) -> None:
+    """Independently project this chain's source calls into the native roster.
+
+    This checks the public inspection report. The generated verifier remains
+    responsible for binding it to compiler output, fixed rows and proof bytes.
+    """
+    calls = manifest["calls"]
+    count = len(calls)
+    nodes = source["nodes"]
+    if (not 1 <= count <= 8 or manifest["call_count"] != count or
+            len(nodes) != count + 2 or len(manifest["slots"]) != 1 + 2 * count or
+            source["inputs"] != [{"name": "x", "kind": "m31", "length": 4,
+                                   "visibility": "private"}] or
+            source["public_outputs"] != ["sum", "product"]):
+        raise AssertionError("source/manifest call shape differs")
+    occupied: set[int] = set()
+    previous_name = "x"
+    previous_output: list[int] | None = None
+    circuit = manifest["slots"][0]
+    if (circuit["registry_role"] != "circuit" or circuit["call_id"] is not None or
+            circuit["relation_ids"] != [378353459]):
+        raise AssertionError("mixed circuit Gate relation differs")
+    for call_id, (node, call) in enumerate(zip(nodes[:count], calls)):
+        expected = {"name": f"r{call_id}", "op": "repeat", "lhs": previous_name,
+                    "rounds": 16,
+                    "body": [{"op": "square"},
+                             {"op": "add_const", "constant": 13 + call_id}]}
+        if (node != expected or call["call_id"] != call_id or
+                call["source_node_id"] != call_id + 1 or
+                call["input_node_id"] != call_id or
+                call["rounds"] != node["rounds"] or
+                call["constant"] != node["body"][1]["constant"]):
+            raise AssertionError("mixed call differs from source repeat")
+        inputs, outputs = call["input"], call["output"]
+        if (not isinstance(inputs, list) or not isinstance(outputs, list) or
+                len(inputs) != 4 or len(outputs) != 4 or
+                any(type(address) is not int or address < 0 for address in inputs + outputs) or
+                len(set(inputs)) != 4 or len(set(outputs)) != 4 or
+                set(outputs) & occupied or
+                set(outputs) & set(inputs) or
+                (previous_output is not None and inputs != previous_output)):
+            raise AssertionError("mixed call endpoint chain differs")
+        occupied.update(inputs)
+        occupied.update(outputs)
+        chip, bridge = manifest["slots"][1 + 2 * call_id:3 + 2 * call_id]
+        if (chip["registry_role"] != "chip" or bridge["registry_role"] != "bridge" or
+                chip["call_id"] != call_id or bridge["call_id"] != call_id or
+                chip["relation_ids"] != [1395863811] or
+                bridge["relation_ids"] != [378353459, 1395863811]):
+            raise AssertionError("mixed call lookup relation or slot differs")
+        previous_output = outputs
+        previous_name = node["name"]
+    if (nodes[count] != {"name": "sum", "op": "add", "lhs": previous_name,
+                          "rhs": "x"} or
+            nodes[count + 1] != {"name": "product", "op": "mul",
+                                 "lhs": previous_name, "rhs": "x"}):
+        raise AssertionError("mixed public output tail differs")
+
+
+def check_source_call_mapping_mutations(source: dict, manifest: dict) -> None:
+    """Require the independent projection to detect altered call metadata."""
+    cases = []
+    for key in ("call_id", "source_node_id", "input_node_id", "rounds", "constant"):
+        changed = copy.deepcopy(manifest)
+        changed["calls"][0][key] += 1
+        cases.append((f"call-{key}", changed))
+    for field in ("input", "output"):
+        changed = copy.deepcopy(manifest)
+        changed["calls"][0][field][0] += 1
+        cases.append((f"endpoint-{field}", changed))
+    for slot, key, value in ((1, "call_id", 7), (1, "relation_ids", [378353459]),
+                             (2, "relation_ids", [1395863811]),
+                             (0, "relation_ids", [1395863811])):
+        changed = copy.deepcopy(manifest)
+        changed["slots"][slot][key] = value
+        cases.append((f"slot-{slot}-{key}", changed))
+    for label, changed in cases:
+        try:
+            check_source_call_mapping(source, changed)
+        except AssertionError:
+            continue
+        raise AssertionError(f"mixed source/manifest mutation {label} escaped independent projection")
+
+
+def static_mapping_checks() -> dict:
+    """Exercise the projector and mutation controls without a native build."""
+    for count in (1, 3, 8):
+        source, _ = family(count)
+        calls = []
+        slots = [{"registry_role": "circuit", "call_id": None,
+                  "relation_ids": [378353459]}]
+        previous = [100, 101, 102, 103]
+        for call_id in range(count):
+            output = [104 + 4 * call_id + lane for lane in range(4)]
+            calls.append({"call_id": call_id, "source_node_id": call_id + 1,
+                          "input_node_id": call_id, "rounds": 16,
+                          "constant": 13 + call_id,
+                          "input": previous, "output": output})
+            slots += [{"registry_role": "chip", "call_id": call_id,
+                       "relation_ids": [1395863811]},
+                      {"registry_role": "bridge", "call_id": call_id,
+                       "relation_ids": [378353459, 1395863811]}]
+            previous = output
+        manifest = {"calls": calls, "call_count": count, "slots": slots}
+        check_source_call_mapping(source, manifest)
+        check_source_call_mapping_mutations(source, manifest)
+        changed_source = copy.deepcopy(source)
+        changed_source["nodes"][0]["body"][1]["constant"] += 1
+        try:
+            check_source_call_mapping(changed_source, manifest)
+        except AssertionError:
+            pass
+        else:
+            raise AssertionError("source-side chip constant mutation escaped")
+    return {"schema": "s31-mixed-source-roster-mapping-static-v1",
+            "counts": [1, 3, 8], "manifest_mutations_rejected_per_count": 11,
+            "source_mutations_rejected_per_count": 1}
+
+
 def build(source: Path, prefix: Path, *, accept: bool = True) -> tuple[Path, Path, Path]:
     run(
         "zig", "build", "--build-file", str(S31 / "build.zig"), "install",
@@ -107,6 +227,8 @@ def exercise(work: Path, count: int) -> dict:
     assert [slot["registry_id"] for slot in manifest["slots"]] == [
         0, *(id for call in range(count) for id in ((1, 2) if call < 2 else (3, 4))),
     ]
+    check_source_call_mapping(source_value, manifest)
+    check_source_call_mapping_mutations(source_value, manifest)
     proof = work / f"proof-{count}.bin"
     statement = work / f"statement-{count}.json"
     run(str(prover), str(assignment), str(proof), str(statement))
@@ -230,7 +352,12 @@ def exercise(work: Path, count: int) -> dict:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--counts", nargs="+", type=int, default=list(range(1, 9)))
+    parser.add_argument("--static", action="store_true",
+                        help="check source/manifest mapping and mutants without native builds")
     args = parser.parse_args()
+    if args.static:
+        print(json.dumps(static_mapping_checks(), sort_keys=True))
+        return
     if len(set(args.counts)) != len(args.counts) or any(not 1 <= count <= 8 for count in args.counts):
         parser.error("counts must be distinct values in 1..8")
     with tempfile.TemporaryDirectory(prefix="s31-mixed-general-") as directory:
