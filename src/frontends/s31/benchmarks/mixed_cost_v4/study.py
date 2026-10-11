@@ -151,6 +151,14 @@ def flat(trial: dict) -> dict:
                 trial["package_stages_ns"]["native_prove_including_setup_ns"]}
 
 
+def study_environment() -> dict[str, str]:
+    """Use the same explicit environment for measured and replayed verifiers."""
+    env = os.environ.copy()
+    env.pop("STWO_ZIG_POW_WORKERS", None)
+    env["S31_MIXED_NATIVE_PHASES"] = "1"
+    return env
+
+
 def run(split: str, out: Path, model_sha: str | None = None,
         anchor_commit: str | None = None) -> dict:
     if split not in p.SPLITS:
@@ -160,9 +168,7 @@ def run(split: str, out: Path, model_sha: str | None = None,
         anchor_required(protocol_sha, model_sha, anchor_commit)
     target = out / split
     target.mkdir(parents=True, exist_ok=False)
-    env = os.environ.copy()
-    env.pop("STWO_ZIG_POW_WORKERS", None)
-    env["S31_MIXED_NATIVE_PHASES"] = "1"
+    env = study_environment()
     records = []
     for shape, count in p.SPLITS[split]:
         name = f"{shape}_n{count}"
@@ -324,6 +330,7 @@ def audit(out: Path, split: str, protocol: dict) -> dict:
         raise ValueError("raw and tracked corpus differ")
     corpus = v2.parse(raw)
     check_corpus(corpus, protocol, split)
+    env = study_environment()
     checked = 0
     for record in corpus["records"]:
         name, shape, count = record["name"], record["shape"], record["call_count"]
@@ -367,9 +374,9 @@ def audit(out: Path, split: str, protocol: dict) -> dict:
                                trial["external_verifier_process_wall_ns"]) != trial["partition_ns"]):
                 raise ValueError("raw native timing report differs")
             accepted, _ = v2.process([str(bins["verifier"]), str(proof_path),
-                                       str(statement_path)])
+                                       str(statement_path)], env)
             rejected, _ = v2.process([str(bins["verifier"]), str(proof_path),
-                                       str(changed_path)])
+                                       str(changed_path)], env)
             if (accepted.stderr != (directory / f"{prefix}.verified.stderr").read_bytes() or
                     rejected.stderr != (directory / f"{prefix}.changed.stderr").read_bytes() or
                     accepted.returncode or b"verified" not in accepted.stderr or

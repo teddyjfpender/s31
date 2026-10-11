@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import tempfile
 import unittest
+import os
 from pathlib import Path
 from unittest.mock import patch
 
@@ -63,6 +64,15 @@ class StudyV4Tests(unittest.TestCase):
                     study.prepare()
         with self.assertRaisesRegex(ValueError, "full model SHA"):
             study.anchor_required("protocol", None, None)
+
+    def test_measured_and_replayed_verifier_environment_is_identical(self) -> None:
+        with patch.dict(os.environ, {"STWO_ZIG_POW_WORKERS": "17",
+                                    "S31_MIXED_NATIVE_PHASES": "0"}):
+            first = study.study_environment()
+            replay = study.study_environment()
+        self.assertEqual(first, replay)
+        self.assertEqual(first["S31_MIXED_NATIVE_PHASES"], "1")
+        self.assertNotIn("STWO_ZIG_POW_WORKERS", first)
 
 
 if __name__ == "__main__":
