@@ -78,7 +78,8 @@ pub fn extract(allocator: std.mem.Allocator, program: relation.Program) !Plan {
         if (input.length == 1) scalar_selectors += 1;
     }
     // Keep the scalar selector ABI small while its source-to-chip coverage is
-    // limited to one conditional feeder. A dead selector is rejected below.
+    // limited to one scalar input. Multiple live selects may share it; a dead
+    // selector is rejected below.
     if (scalar_selectors > 1) return error.UnsupportedManyCallSource;
 
     var source_repeat_names: [max_calls][]const u8 = undefined;

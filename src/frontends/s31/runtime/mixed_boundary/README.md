@@ -166,8 +166,9 @@ circuit identity.
 Before projecting a mutable selected schedule into a registry manifest,
 `fromSchedule` also recomputes the selected-schedule digest from its active
 slots and native PCS geometry. This rejects a stale schedule identity when
-geometry, mask points, local AIR dependency, or component bytes change after
-inspection. It is an internal consistency check, not source authentication:
+geometry, mask points, local AIR dependency, or stored component AIR hashes
+change after inspection. It does not reread component source bytes. It is an
+internal consistency check, not source authentication:
 only the source-pinned verifier's reconstruction grants that authority.
 
 The general profile also runs `lookup_budget.zig` during source inspection,
