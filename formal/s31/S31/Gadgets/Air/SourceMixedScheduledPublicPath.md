@@ -36,12 +36,41 @@ The native roster validates the output address of **every** Gate row before
 skipping zero-multiplicity rows. `LocalPublicSchedule.rowAddressRange` models
 that separate check, so an inactive row at address 512 cannot satisfy the
 schedule merely because `checkedRoster` filters it out. The schedule assumes
-this range property; the native fixture checks it for the admitted 1–8 call
-family, but no Lean theorem yet constructs the schedule from compiled rows.
+this range property.
+
+`SourceMixedFixedScheduleBridge.lean` now uses the exact N=1 and N=8 native
+fixed-column exports in `GeneratedMixedFixedRows.lean`. Given an exact fixed
+column match for a decoded 512-row trace and an equality identifying its row
+list with the source-owned `Boundary.rows`, it derives `ScheduledRow` for
+every positive-multiplicity selected cell. Concrete corollaries provide the
+packed add and pointwise-multiply tail rows at addresses 33/34 for N=1 and
+103/104 for N=8. Separate corollaries check that **all** exported row output
+addresses are below 512, including inactive rows. This discharges the
+`LocalPublicSchedule.add`, `.mul`, and `.rowAddressRange` facts for either
+pinned source family once that decoded-to-source row equality is supplied.
+The fixture does not construct the whole `LocalPublicSchedule`: its
+`ValueAt` facts depend on main-column values and Gate production, while its
+`producerScan` depends on the complete logical producer roster and baseline
+yields. Authentication of the decoded fixed and main columns remains a
+proof-system obligation.
+
+The `GeneratedMixedEightV2` record ABI fixture is a different one-call
+program. Its eight public words are a bit, two salt words, an aliased bit, and
+four repeated-function outputs. This schedule applies to the
+`mixed_general_N` chain whose eight public words are four sums and four
+products of the initial and final states; the record descriptor alone cannot
+specify this chain's Gate rows.
 
 The final theorem says a false public word can close the source-shaped
 reciprocal equation only at a challenge pair in the explicit exceptional set,
 given this complete arithmetic trace contract and the source schedule.
+
+Focused check:
+
+```sh
+(cd formal/s31 && lake build S31.Gadgets.Air.SourceMixedFixedScheduleBridge)
+(cd formal/s31 && lake env leanchecker S31.Gadgets.Air.SourceMixedFixedScheduleBridge)
+```
 
 This is still conditional on the source row list being the committed row list,
 on the five per-call event projections, the source schedule and checked

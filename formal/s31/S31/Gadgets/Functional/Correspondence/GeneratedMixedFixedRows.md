@@ -60,6 +60,14 @@ obligations in `SourceMixedPackCorrespondence` and
 `SourceMixedPublicClosure`; exact Gate balance and native proof authentication
 also remain explicit.
 
+`SourceMixedFixedScheduleBridge.lean` transports these selected fixed cells
+to the mixed-chain `ScheduledRow` predicate when the decoded trace rows equal
+the source-owned canonical row list. It covers every selected row with
+positive output multiplicity, pins the two packed public tail operations for
+N=1 and N=8, and proves that every exported output address is below the
+native 512-variable bound. Main-value `ValueAt` facts, the full producer scan,
+and authentication of the decoded trace remain separate premises.
+
 From the S31 repository root:
 
 ```sh
