@@ -77,7 +77,8 @@ def reseal_emitted_columns(topology: dict, component: dict) -> None:
 
 
 def reject_resealed_topology(honest: Path, checked: dict, work: Path,
-                             name: str, mutate, expected: tuple[str, ...]) -> None:
+                             name: str, mutate, expected: tuple[str, ...],
+                             *, certificate_root_status: str | None = None) -> None:
     """Let an adversary rewrite topology, columns, key, manifest and claim."""
     mutant = work / name
     shutil.copytree(honest, mutant)
@@ -99,6 +100,8 @@ def reject_resealed_topology(honest: Path, checked: dict, work: Path,
     fake["gate_topology_sha256"] = file_hash(mutant / "gate-topology.json")
     fake["air_profile"]["component_manifest_sha256"] = digest(canonical(component))
     fake["key_core"] = {field: key.get(field) for field in KEY_FIELDS}
+    if certificate_root_status is not None:
+        fake["status"]["native_root_binding"] = certificate_root_status
     write_json(mutant / "correspondence-certificate.json", fake)
     manifest = json.loads((mutant / "manifest.json").read_text())
     for artifact in ("gate-topology.json", "component-manifest.json",
@@ -235,6 +238,11 @@ def wrong_opcode(topology: dict, _checked: dict) -> None:
 def wrong_exported_fixed_root(topology: dict, _checked: dict) -> None:
     root = topology["preprocessed_root"]
     topology["preprocessed_root"] = ("0" if root[0] != "0" else "1") + root[1:]
+
+
+def downgrade_exported_root(topology: dict, _checked: dict) -> None:
+    topology["schema"] = "s31-direct-gate-topology-v1"
+    del topology["preprocessed_root"]
 
 
 def wrong_source_operand(topology: dict, checked: dict) -> None:
@@ -500,6 +508,11 @@ def main() -> None:
             honest, checked, work, "wrong-exported-fixed-root",
             wrong_exported_fixed_root,
             ("exported direct AIR fixed root differs from sealed verifier key",))
+        reject_resealed_topology(
+            honest, checked, work, "downgraded-exported-fixed-root",
+            downgrade_exported_root,
+            ("v2 direct-gate key requires v2 topology root report",),
+            certificate_root_status="preprocessed-root-binding-assumed")
         reject_resealed_topology(
             honest, checked, work, "wrong-source-operand", wrong_source_operand,
             ("native source gate selector or operands differ from checked SSA",))

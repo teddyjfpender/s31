@@ -768,6 +768,9 @@ def _checked_material(package: Path) -> tuple[dict[str, Any], dict[str, Any]]:
                 "program_sha256", "canonical_ir_sha256", "preprocessed_root",
                 "circuit_hash", "air_bundle_sha256"))):
         raise ValueError("direct-gate AIR profile or key core differs from checked package")
+    if gate_v2 and (not isinstance(topology, dict) or
+                    topology.get("schema") != "s31-direct-gate-topology-v2"):
+        raise ValueError("v2 direct-gate key requires v2 topology root report")
     schedule = gate_schedule(syntax, report)
     source_gates = check_gate_topology(syntax, topology, component, report,
                                        digest(relation_bytes))

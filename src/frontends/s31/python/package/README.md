@@ -67,7 +67,9 @@ exported column values at those positions. Tests exercise all lengths 1–16,
 both operations, dead results, and mutations of every source fixed-cell field.
 The certificate still marks native Gate lookup and AIR/PCS soundness as assumptions.
 Older v1 topology artifacts have no exported root and retain an explicit
-root-binding assumption in their certificate.
+root-binding assumption in their certificate when paired with a legacy v1 key.
+A v2 key requires the v2 topology report even if every package artifact is
+resealed.
 It is a **package-admission** certificate: the standalone native verifier does
 not read it. See the [design brief](../../../../../design/s31/language/DIRECT_GATE_CORRESPONDENCE_CERTIFICATE.md).
 

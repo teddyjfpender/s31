@@ -83,7 +83,9 @@ packages, conditional on the native inspector, root computation, verifier,
 and PCS implementations. The topology and key are both package artifacts;
 their agreement is not external authentication of either one. Legacy v1
 topology artifacts lack this field and retain an
-explicit root-binding assumption. The remaining constant
+explicit root-binding assumption only with legacy v1 keys. A v2 key requires
+a v2 topology report, including when package artifacts and the certificate
+are mutually resealed. The remaining constant
 gates must derive their QM31 values from fixed
 `0`, `1`, and `u`, with `i²=-1` and `u²=2+i`; the pack basis must be the four
 unit vectors and each unpack inverse must multiply its basis vector to one.
