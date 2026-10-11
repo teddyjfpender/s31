@@ -58,3 +58,9 @@ one-stack evidence at these three fixed-call shapes. PoW remains stochastic;
 the V8 mixture came from only four clean source blocks. The experiment does
 not establish accuracy for arbitrary circuits, higher column counts, other
 PoW settings, or a speedup against Cairo.
+
+The single prospective run [failed six of twelve frozen
+gates](../../../../../design/s31/measurements/MIXED_COST_V9_GEOMETRY_TRANSFER_RESULT.md):
+all wall checks passed, while proof size medians and intervals failed for
+all three geometries. This failed score is committed with its native replay
+audit; the V8 fit was not changed after observing it.
