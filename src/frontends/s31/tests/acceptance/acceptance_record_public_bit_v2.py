@@ -53,7 +53,8 @@ def reject_raw_prover_bit(package: Path, work: Path, flat: dict,
     changed[section][wire] = [2]
     assignment = work / f"bad-{label}.json"
     write_json(assignment, changed)
-    prover = package / "bin/s31-bits-prover"
+    name = json.loads((package / "source.s31.json").read_text())["name"]
+    prover = package / "bin" / f"s31-{name}-prover"
     for command in ("prove", "prove-for-external-verification"):
         proof = work / f"bad-{label}-{command}.proof"
         result = subprocess.run((str(prover), command, str(assignment), str(proof)),
@@ -141,6 +142,9 @@ def raw_relation_controls(work: Path, relation: dict) -> None:
                         "result": {"flag": [1], "chosen": [7], "again_as_m31": [1]}}
     alias_path = work / "mixed-alias-assignment.json"
     alias_path.write_bytes(canonical(alias_assignment))
+    alias_flat = flat_assignment_from_typed(alias, canonical(alias_assignment))
+    reject_raw_prover_bit(alias_package, work, alias_flat, flag_wire,
+                          "public_outputs", "aliased-output-bit")
     alias_trial = s31.trial(alias_package, alias_path, work / "mixed-alias-trial")
     if not alias_trial["native_verifier_accepted"]:
         raise AssertionError("valid bit/M31 alias proof failed")
