@@ -416,6 +416,15 @@ guard rejects an arithmetic-arm decoy and a post-switch register overwrite.
 The nine arithmetic-root extension injections and native Zig execution remain
 separate from this suffix theorem.
 
+[`DirectGateVmComposition.lean`](../../../formal/s31/S31/Gadgets/Air/DirectGateVmComposition.lean)
+puts the nine interpreted arithmetic roots and two interpreted LogUp roots in
+the installed eleven-root order. It proves that this list equals the existing
+selected bytecode and pure AIR root lists, then carries the equality through
+the selected quotient Horner fold with an explicit nonzero-zeroifier premise.
+The nine arithmetic extension instructions inject each base result with three
+zero coordinates; that injection is covered by the earlier arithmetic-root
+lemma, while a single full-program VM execution theorem remains future work.
+
 The exporter checks all selected interaction reads and the unique offset list
 derived by native `resident_geometry.componentOffsets`: columns 0–3 use
 `[0]`, while columns 4–7 use `[-1, 0]`. Its generated Lean `mask_slots` and
@@ -699,6 +708,7 @@ python3 -m unittest src/frontends/s31/tests/python/test_gate_bytecode_arithmetic
 (cd formal/s31 && lake build S31.Gadgets.Air.GeneratedDirectGateBytecodeLogUp)
 (cd formal/s31 && lake build S31.Gadgets.Air.GeneratedDirectGateBaseVm)
 (cd formal/s31 && lake build S31.Gadgets.Air.GeneratedDirectGateExtVm)
+(cd formal/s31 && lake build S31.Gadgets.Air.DirectGateVmComposition)
 (cd formal/s31 && lake build S31.Gadgets.Air.DirectGateOodsMask)
 (cd formal/s31 && lake build S31.Gadgets.Air.GeneratedDirectGateComposition)
 (cd formal/s31 && lake build S31.Gadgets.Air.GeneratedDirectGateTranscriptParams)

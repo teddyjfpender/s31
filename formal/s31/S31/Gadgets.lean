@@ -46,6 +46,7 @@ import S31.Gadgets.Air.DirectGateOodsArithmetic
 import S31.Gadgets.Air.DirectGateOodsLogUp
 import S31.Gadgets.Air.GeneratedDirectGateBytecodeLogUp
 import S31.Gadgets.Air.GeneratedDirectGateExtVm
+import S31.Gadgets.Air.DirectGateVmComposition
 import S31.Gadgets.Air.DirectGateOodsMask
 import S31.Gadgets.Air.DirectGateRowBytecodeBridge
 import S31.Gadgets.Air.DirectGateOodsComposition
