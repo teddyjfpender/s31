@@ -531,3 +531,32 @@ python3 -B src/frontends/s31/tests/acceptance/record_abi/native_proof_corpus_v2.
 The four cases test a bounded subset of the 13 source layouts. They do not
 establish full compiler correspondence or the soundness of the underlying
 STARK verifier.
+
+## Nested public u8/u16 source and proof seal
+
+[`nested_narrow_seal_v2.py`](nested_narrow_seal_v2.py) compiles two valid
+source programs whose only semantic layout change is the named nested input
+field `digit` versus `value`. Both lower to the same three-input, four-node
+flat arithmetic relation and the same six live public proof words followed
+by two padding zeros. The source
+includes a public `u8`, public `u16`, M31 salt, and a repeated `u16` result
+alias inside records and a tuple. It pins the source and ABI digests and
+checks the paths, tags, word projection, and modular arithmetic by hand.
+
+With `--native`, both generated packages prove and verify the honest boundary
+values. Each proof is then presented to the *other* generated verifier using
+that verifier's own valid key and statement. Both cross-replays must fail
+inside proof verification, after named-statement validation. A forged ABI
+digest in the original key must fail key validation. Separate native parser
+controls reject wrong version, path, leaf order, and out-of-range `u8`/`u16`
+claims. See the [short design note](../../../../../../design/s31/language/RECORD_NESTED_NARROW_SEAL_V2.md)
+for the exact source and eight-word vector.
+
+```sh
+python3 -B src/frontends/s31/tests/acceptance/record_abi/nested_narrow_seal_v2.py
+python3 -B src/frontends/s31/tests/acceptance/record_abi/nested_narrow_seal_v2.py --native
+```
+
+The valid field rename also changes exact source bytes; this proves the
+combined source/ABI seal on these two packages, not an isolated ABI-only
+transcript field or universal compiler correspondence.
