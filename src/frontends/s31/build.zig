@@ -826,7 +826,8 @@ pub fn build(b: *std.Build) void {
         const mixed_prover_root = localEntry(b, if (mixed_general) "runtime/mixed_boundary/general_prover_main.zig" else if (mixed_four) "runtime/mixed_boundary/n4_prover_main.zig" else "runtime/mixed_boundary/mixed_prover_main.zig", target, optimize);
         const mixed_verifier_root = localEntry(b, if (mixed_general) "runtime/mixed_boundary/general_verifier_main.zig" else if (mixed_four) "runtime/mixed_boundary/n4_verifier_main.zig" else "runtime/mixed_boundary/mixed_verifier_main.zig", target, optimize);
         const mixed_manifest_root = localEntry(b, if (mixed_general) "runtime/mixed_boundary/general_manifest_main.zig" else if (mixed_four) "runtime/mixed_boundary/n4_manifest_main.zig" else "runtime/mixed_boundary/mixed_manifest_main.zig", target, optimize);
-        for ([_]*std.Build.Module{ mixed_prover_root, mixed_verifier_root, mixed_manifest_root }) |root| {
+        const mixed_auditor_root = localEntry(b, "runtime/mixed_boundary/general_trace_audit_main.zig", target, optimize);
+        for ([_]*std.Build.Module{ mixed_prover_root, mixed_verifier_root, mixed_manifest_root, mixed_auditor_root }) |root| {
             root.addImport("stwo_core", core);
             root.addImport("stwo_circuit_frontend", circuit);
             root.addImport("stwo_circuit_cpu_integration", cpu);
@@ -853,18 +854,24 @@ pub fn build(b: *std.Build) void {
         const mixed_prover = b.addExecutable(.{ .name = b.fmt("s31-{s}-{s}-prover", .{ program_name, profile_name }), .root_module = mixed_prover_root });
         const mixed_verifier = b.addExecutable(.{ .name = b.fmt("s31-{s}-{s}-native-verifier", .{ program_name, profile_name }), .root_module = mixed_verifier_root });
         const mixed_manifest = b.addExecutable(.{ .name = b.fmt("s31-{s}-{s}-manifest", .{ program_name, profile_name }), .root_module = mixed_manifest_root });
+        const mixed_auditor = if (mixed_general)
+            b.addExecutable(.{ .name = b.fmt("s31-{s}-{s}-trace-auditor", .{ program_name, profile_name }), .root_module = mixed_auditor_root })
+        else null;
         const mixed_source_check = b.addRunArtifact(mixed_manifest);
         mixed_source_check.addArg("--check");
         mixed_prover.step.dependOn(&mixed_source_check.step);
         mixed_verifier.step.dependOn(&mixed_source_check.step);
+        if (mixed_auditor) |auditor| auditor.step.dependOn(&mixed_source_check.step);
         b.installArtifact(mixed_prover);
         b.installArtifact(mixed_verifier);
         b.installArtifact(mixed_manifest);
+        if (mixed_auditor) |auditor| b.installArtifact(auditor);
         b.getInstallStep().dependOn(&mixed_source_check.step);
         const mixed_programs = b.step("mixed-programs", "Build experimental source-pinned mixed prover, verifier, and component inspector for the selected profile");
         mixed_programs.dependOn(&mixed_prover.step);
         mixed_programs.dependOn(&mixed_verifier.step);
         mixed_programs.dependOn(&mixed_manifest.step);
+        if (mixed_auditor) |auditor| mixed_programs.dependOn(&auditor.step);
         mixed_programs.dependOn(&mixed_source_check.step);
         return;
     }

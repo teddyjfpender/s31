@@ -6,6 +6,21 @@ embedded S31 source, embedded AIR bundle, eight public words, and serialized
 proof as `verifyEmbedded`, plus the assignment. The ordinary verifier and proof
 format are unchanged.
 
+For a packaged `direct-mixed-general` program, the generated
+`s31-<name>-mixed-general-trace-auditor` exposes that check as a local command:
+
+```sh
+s31-<name>-mixed-general-trace-auditor proof.bin statement.json assignment.json
+```
+
+It verifies the proof and typed statement, audits the assignment, then prints
+`S31_MIXED_TRACE_AUDIT_V1` with the three recomputed commitment roots and row
+counts. The assignment is read locally and is not included in that report.
+The command requires the private assignment, so it is for a prover or a
+separate consenting auditor, not an ordinary light client. The package build
+installs this command alongside the source-embedded prover and verifier only
+for `direct-mixed-general`.
+
 The audit first admits the proof through the normal source-derived verifier.
 It then recompiles the assignment and recomputes all three witness-bearing
 commitments with the same PCS code. The fixed, main, and interaction roots must

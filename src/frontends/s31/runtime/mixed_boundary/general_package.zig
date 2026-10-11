@@ -295,9 +295,29 @@ pub fn verifyEmbeddedWithTraceAudit(
     raw: []const u8,
     assignment: relation.Assignment,
 ) !engine.TraceAudit {
+    return (try verifyEmbeddedAndInspectWithTraceAudit(
+        source, air_bytes, allocator, public_words, raw, assignment)).trace;
+}
+
+/// The same opt-in audit, retaining the source-derived inspection needed to
+/// authenticate a saved V1 statement without verifying the proof twice.
+pub const AuditedInspection = struct {
+    inspection: Inspection,
+    trace: engine.TraceAudit,
+};
+
+pub fn verifyEmbeddedAndInspectWithTraceAudit(
+    comptime source: []const u8,
+    comptime air_bytes: []const u8,
+    allocator: std.mem.Allocator,
+    public_words: [8]u32,
+    raw: []const u8,
+    assignment: relation.Assignment,
+) !AuditedInspection {
     var audit: engine.TraceAudit = undefined;
-    _ = try verifySourceBoundWithWitness(allocator, source, air_bytes, public_words, raw, assignment, &audit);
-    return audit;
+    const inspection = try verifySourceBoundWithWitness(
+        allocator, source, air_bytes, public_words, raw, assignment, &audit);
+    return .{ .inspection = inspection, .trace = audit };
 }
 
 fn verifySourceBound(
