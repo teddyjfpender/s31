@@ -5,9 +5,10 @@ import S31.Gadgets.Functional.SSAPublicInputBinding
 The four public input words are positive Gate events at addresses 3--6.
 Physical copy, basis-multiply, and pack-add rows force the source input at
 address 22 to be their four-lane packing. The final pack row must have a
-positive output multiplicity: this is the explicit, source-derived
-`sourceInputUses > 0` premise below. Proving that successful source parsing
-always implies this inequality is a separate compiler-invariant obligation.
+positive output multiplicity. This follows from `physicalGateBytecodeRows`
+for the exact source-derived input cells. Proving that successful source
+parsing gives this positive multiplicity for the native row remains a
+compiler-invariant obligation.
 Without it the row does not yield an event, and the earlier
 source Gate theorem's `hinputYield` cannot be inferred.
 
@@ -130,7 +131,6 @@ theorem packed_input_yield_of_exact_gate
     (hrows : physicalGateBytecodeRows observedCells rows)
     (hbalance : balanced rows externalUses externalYields)
     (hunique : uniqueProduced (allYields rows externalYields))
-    (hpositiveUses : 0 < sourceInputUses certificate)
     (hzero : (0, base 0) ∈ allYields rows externalYields)
     (hbasis1 : (15, unit ⟨1, by decide⟩) ∈ allYields rows externalYields)
     (hbasis2 : (2, unit ⟨2, by decide⟩) ∈ allYields rows externalYields)
@@ -151,14 +151,11 @@ theorem packed_input_yield_of_exact_gate
     apply List.mem_append_left
     apply List.mem_map.mpr
     exact ⟨2, by decide, rfl⟩
-  obtain ⟨row, hindex, _, _, _, haddrOut, hmult, _, _⟩ := hrows cell hcell
+  obtain ⟨row, hindex, _, _, _, haddrOut, _, hm, _⟩ := hrows cell hcell
   have hrow : row ∈ rows := by
     obtain ⟨hbound, hvalue⟩ := List.getElem?_eq_some_iff.mp hindex
     rw [← hvalue]
     exact List.getElem_mem hbound
-  have hm : 0 < row.multiplicity := by
-    rw [hmult]
-    simpa [cell, expectedPackAddCell] using hpositiveUses
   have hyield : (row.outAddress, row.output) ∈ produced :=
     row_output_yield rows externalYields row hrow hm
   have hrowAddress : row.outAddress = address 0 := by
@@ -189,7 +186,6 @@ theorem bytecode_exact_gate_public_io_sound
     (houtputRows : physicalGateBytecodeRows outputCells rows)
     (hbalance : balanced rows externalUses externalYields)
     (hunique : uniqueProduced (allYields rows externalYields))
-    (hpositiveUses : 0 < sourceInputUses certificate)
     (hzero : (0, base 0) ∈ allYields rows externalYields)
     (hbasis1 : (15, unit ⟨1, by decide⟩) ∈ allYields rows externalYields)
     (hbasis2 : (2, unit ⟨2, by decide⟩) ∈ allYields rows externalYields)
@@ -207,7 +203,7 @@ theorem bytecode_exact_gate_public_io_sound
     denotation sourceBytes input = some claimed := by
   have hinputYield := packed_input_yield_of_exact_gate certificate
     totalAddRows inputCells input rows externalUses externalYields
-    hinputCells hinputRows hbalance hunique hpositiveUses hzero
+    hinputCells hinputRows hbalance hunique hzero
     hbasis1 hbasis2 hbasis3 hpublicInputPins
   exact bytecode_exact_gate_public_claim_sound sourceBytes normalizedBytes
     certificate totalAddRows sourceCells outputCells input claimed rows
