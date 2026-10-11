@@ -52,6 +52,12 @@ native proof profile; `package.zig` still verifies exactly N=3. The optional
 `verifyEmbeddedWithDescriptor` entrypoint checks a supplied descriptor before
 using that same N=3 verifier.
 
+`test_source.zig` generates a chain of 1–8 live repeated calls for the focused
+descriptor matrix. Every count checks the source-reconstructed roster and
+geometry, rejects a resealed program binding, role swap, and shortened roster,
+and counts other than three are rejected by the proof entrypoint before proof
+decoding. These are descriptor tests; they do not construct N≠3 proofs.
+
 Run the focused honest and mutation controls:
 
 ```sh

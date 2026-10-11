@@ -115,7 +115,7 @@ pub fn requireSource(
         return error.InvalidMixedDescriptor;
 }
 
-test "mixed N4 source descriptor binds cardinality roles and public private source" {
+test "mixed descriptor N4 source binds cardinality roles and public private source" {
     const a = std.testing.allocator;
     const air_bytes = @embedFile("s31_air_programs");
     const source = @embedFile("../../examples/boundary/mixed_four.s31.json");
@@ -167,4 +167,70 @@ test "mixed N4 source descriptor binds cardinality roles and public private sour
     defer a.free(public_input);
     try std.testing.expect(!std.mem.eql(u8, source, public_input));
     if (requireSource(a, &expected, public_input, air_bytes)) |_| return error.AcceptedChangedInputVisibility else |_| {}
+}
+
+test "mixed descriptor count matrix reconstructs 1 through 8 live rosters" {
+    const a = std.testing.allocator;
+    const air_bytes = @embedFile("s31_air_programs");
+    const source_family = @import("test_source.zig");
+    inline for (1..admission.max_calls + 1) |n| {
+        const source = source_family.forCount(n);
+        const schedule = try mixed.inspectSource(a, source, air_bytes);
+        try std.testing.expectEqual(@as(u8, n), schedule.call_count);
+        try std.testing.expectEqual(@as(usize, 1 + 2 * n), schedule.slot_count);
+        try std.testing.expectEqual(@as(u32, 12 + 17 * n), schedule.main_columns);
+        try std.testing.expectEqual(@as(u32, 8 + 28 * n), schedule.interaction_columns);
+        const geometry = schedule.native_geometry.?;
+        try std.testing.expectEqual(schedule.slot_count, geometry.slot_count);
+        try std.testing.expectEqual(schedule.main_columns, geometry.tree_columns[1]);
+        try std.testing.expectEqual(schedule.interaction_columns, geometry.tree_columns[2]);
+        const expected = try fromSchedule(&schedule);
+        try requireSource(a, &expected, source, air_bytes);
+        try std.testing.expectEqual(@as(u32, 0), expected.entries[0].proof_index);
+        try std.testing.expectEqual(@as(u32, 0), expected.entries[0].claimed_sum_index);
+        try std.testing.expectEqual(@as(?u32, null), expected.entries[0].call_id);
+        var main_at: u32 = 0;
+        var interaction_at: u32 = 0;
+        for (schedule.slots[0..schedule.slot_count], 0..) |slot, index| {
+            try std.testing.expectEqual(@as(u32, @intCast(index)), slot.proof_index);
+            try std.testing.expectEqual(@as(u32, @intCast(index)), slot.claimed_sum_index);
+            try std.testing.expectEqual(main_at, slot.main_offset);
+            try std.testing.expectEqual(interaction_at, slot.interaction_offset);
+            main_at += slot.main_columns;
+            interaction_at += slot.interaction_columns;
+            if (index == 0) continue;
+            const call_id: u32 = @intCast((index - 1) / 2);
+            const chip = index % 2 == 1;
+            const wanted_kind: mixed.SourceKind = if (call_id < 2)
+                (if (chip) .pair_chip else .pair_bridge)
+            else
+                (if (chip) .many_chip else .many_bridge);
+            try std.testing.expectEqual(@as(?u32, call_id), slot.call_id);
+            try std.testing.expectEqual(wanted_kind, slot.source_kind);
+            try std.testing.expectEqual(@as(?u32, call_id), expected.entries[index].call_id);
+            try std.testing.expectEqual(@as(u32, @intCast(index)), expected.entries[index].proof_index);
+            try std.testing.expectEqual(@as(u32, @intCast(index)), expected.entries[index].claimed_sum_index);
+        }
+        try std.testing.expectEqual(schedule.main_columns, main_at);
+        try std.testing.expectEqual(schedule.interaction_columns, interaction_at);
+
+        // Each count gets a resealed, in-range program-binding substitution.
+        var changed = expected;
+        changed.entries[changed.entry_count - 1].source.native_air.program_binding_sha256[0] ^= 1;
+        changed.digest = try contract.digest(changed.roster());
+        try std.testing.expectError(error.InvalidMixedDescriptor, requireSource(a, &changed, source, air_bytes));
+
+        // A second negative checks chip/bridge role order even at N=1.
+        changed = expected;
+        std.mem.swap(contract.Source, &changed.entries[1].source, &changed.entries[2].source);
+        changed.digest = try contract.digest(changed.roster());
+        try std.testing.expectError(error.InvalidMixedDescriptor, requireSource(a, &changed, source, air_bytes));
+
+        // Removing the final pair cannot be hidden by recomputing the digest.
+        changed = expected;
+        changed.call_count = n - 1;
+        changed.entry_count = 1 + 2 * (n - 1);
+        changed.digest = try contract.digest(changed.roster());
+        try std.testing.expectError(error.InvalidMixedDescriptor, requireSource(a, &changed, source, air_bytes));
+    }
 }

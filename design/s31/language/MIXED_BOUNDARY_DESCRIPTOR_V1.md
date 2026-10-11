@@ -35,10 +35,15 @@ either alteration does not pass. Changed public outputs, a changed private
 computation, and changed input visibility also fail against the original
 descriptor. The tests use a four-call source with 80 main and 120 interaction
 columns; these are geometry observations, not whole-prover cost measurements.
+The generated source matrix also checks all counts 1–8 with chained live calls.
+It observes `12 + 17N` main columns, `8 + 28N` interaction columns, contiguous
+slot offsets, and the canonical pair/pair/many role policy. Each count rejects
+a resealed program binding, role swap, and truncated roster. These formulas
+describe the tested bounded source family, not an arbitrary S31 program.
 
 The N=3 `verifyEmbeddedWithDescriptor` entrypoint checks this descriptor
 against compile-time source and official AIR bytes before its existing
-bounded proof decoder and native verifier. N=4 is rejected as
-`UnsupportedMixedProofCount`; there is no N=4 proof serializer or native
-verifier yet. The source-inspected descriptor does not prove lookup, PCS, or
+bounded proof decoder and native verifier. Every tested N≠3 count is rejected
+as `UnsupportedMixedProofCount`; there is no other mixed proof serializer or
+native verifier yet. The source-inspected descriptor does not prove lookup, PCS, or
 FRI soundness, full compiler correspondence, or witness confidentiality.

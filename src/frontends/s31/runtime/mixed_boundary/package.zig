@@ -395,11 +395,15 @@ test "mixed sealed N3 native envelope authenticates source and interleaved claim
     try std.testing.expectError(error.InvalidManyNativeEnvelope, v4.verifyEmbedded(source, air_bytes, allocator, words, raw));
 }
 
-test "mixed N4 descriptor cannot admit proof bytes under N3 profile" {
+test "mixed descriptor non N3 count matrix cannot admit proof bytes" {
     const allocator = std.testing.allocator;
-    const source = @embedFile("../../examples/boundary/mixed_four.s31.json");
     const air_bytes = @embedFile("s31_air_programs");
-    const candidate = try descriptor.fromSource(allocator, source, air_bytes);
-    try std.testing.expectEqual(@as(u8, 4), candidate.call_count);
-    try std.testing.expectError(error.UnsupportedMixedProofCount, verifyEmbeddedWithDescriptor(source, air_bytes, allocator, &candidate, [_]u32{0} ** 8, &.{}));
+    const source_family = @import("test_source.zig");
+    inline for (1..9) |n| {
+        if (n == 3) continue;
+        const source = comptime source_family.forCount(n);
+        const candidate = try descriptor.fromSource(allocator, source, air_bytes);
+        try std.testing.expectEqual(@as(u8, n), candidate.call_count);
+        try std.testing.expectError(error.UnsupportedMixedProofCount, verifyEmbeddedWithDescriptor(source, air_bytes, allocator, &candidate, [_]u32{0} ** 8, &.{}));
+    }
 }
