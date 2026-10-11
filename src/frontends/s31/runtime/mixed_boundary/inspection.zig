@@ -1,8 +1,8 @@
 //! Source-bound, witness-free inspection of the mixed pair/many AIR roster.
 //!
-//! This API has no proof serializer or verifier. The fixed N=3 proof profile
-//! in package.zig consumes its regenerated schedule before proof decoding;
-//! other callers must not treat this inspection result as proof authority.
+//! This API has no proof serializer or verifier. The fixed N=3 and N=4 proof
+//! packages consume their regenerated schedules before proof decoding; other
+//! callers must not treat this inspection result as proof authority.
 const std = @import("std");
 const core = @import("stwo_core");
 const cpu = @import("stwo_circuit_cpu_integration");
