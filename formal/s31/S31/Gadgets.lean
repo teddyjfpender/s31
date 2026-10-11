@@ -160,6 +160,7 @@ import S31.Gadgets.Functional.Correspondence.PinnedFullFixedRoster
 import S31.Gadgets.Functional.Correspondence.PinnedNativeSquare4Witness
 import S31.Gadgets.Functional.Correspondence.PinnedNativeSquare4Context
 import S31.Gadgets.Functional.Correspondence.GeneratedMutationRows
+import S31.Gadgets.Functional.Correspondence.GeneratedNativeClaims
 import S31.Gadgets.Functional.GeneratedDirectGateBridge
 import S31.Gadgets.Functional.GeneratedDirectGateMixedReturn
 import S31.Gadgets.Functional.MathLibrary

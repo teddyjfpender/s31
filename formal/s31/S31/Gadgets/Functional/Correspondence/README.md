@@ -69,6 +69,12 @@ The rows checked by Lean are source-derived expected rows. Native exporter
 equality for a packaged program must still be established by the separate
 package topology check; this fixture does not authenticate the committed AIR
 columns, witness values, or proof verifier.
+`GeneratedNativeClaims.lean` then instantiates the general raw Gate theorem for
+the four native samples. For each exact source file, any physical trace meeting
+the fixed-cell, arithmetic, public-pin and ideal exact-balance premises yields
+the source-computed public result. The source/normalized-byte premise is
+discharged by the generated Lean checks; the physical and proof-system
+premises remain explicit.
 For example,
 the following source has one arithmetic producer and therefore one source
 arithmetic row; the alias bindings and parentheses add none:
