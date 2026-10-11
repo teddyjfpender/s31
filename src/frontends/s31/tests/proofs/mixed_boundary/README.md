@@ -24,6 +24,11 @@ rows, all 512×12 main cells, every gate equation, and:
    tuples match the boundary words.
 4. The circuit base trace's eight public output words match an independent
    calculation of the final `sum` and `product` nodes.
+   The fixture also finds the unique positive-multiplicity Gate producer for
+   the source's zero, four basis units, packed first and last states, and
+   three inverse-basis constants. It checks those expected values in the
+   emitted main output cells. These are the concrete writer-side `ValueAt`
+   pins used by the N1/N8 Lean public-output schedule.
 5. For `N=1` and `N=8`, the production mixed package proves these exact source bytes, and its
    embedded-source native verifier accepts the serialized proof with the eight
    independently calculated public words. The proof header carries the same

@@ -253,6 +253,62 @@ fn checkCircuitRows(
     if (row != 512) return error.WrongFixtureRowShape;
 }
 
+/// Check the source-owned values used by the Lean `ValueAt` premises against
+/// the actual positive-multiplicity producer in the emitted Gate columns.
+/// Looking up the producer through fixed column 6 makes this an audit of the
+/// written trace, rather than a check of the compiler's value array alone.
+fn checkProducedValue(
+    pp: *const circuit.common.direct_arithmetic.Circuit,
+    base: *const circuit.witness.direct_arithmetic.Base,
+    values: []const QM31,
+    address: u32,
+    expected: QM31,
+) !void {
+    if (address >= values.len or !values[address].eql(expected))
+        return error.WrongFixturePinnedValue;
+    const outputs = pp.columnValues(circuit.common.preprocessed.QM31_OPS_COLUMN_IDS[6]) orelse
+        return error.MissingFixtureFixedColumn;
+    const mults = pp.columnValues(circuit.common.preprocessed.QM31_OPS_COLUMN_IDS[7]) orelse
+        return error.MissingFixtureFixedColumn;
+    if (outputs.len != 512 or mults.len != 512 or base.columns.len != 12)
+        return error.WrongFixtureRowShape;
+    const limbs = expected.toM31Array();
+    var count: usize = 0;
+    for (outputs, mults, 0..) |output, mult, row| {
+        if (output.toU32() != address or mult.isZero()) continue;
+        count += 1;
+        for (limbs, 0..) |limb, lane|
+            if (!base.columns[8 + lane].values[row].eql(limb))
+                return error.WrongFixturePinnedMainValue;
+    }
+    if (count != 1) return error.WrongFixturePinnedProducer;
+}
+
+fn checkSourceValuePins(
+    pp: *const circuit.common.direct_arithmetic.Circuit,
+    base: *const circuit.witness.direct_arithmetic.Base,
+    values: []const QM31,
+    count: usize,
+    initial: [4]u32,
+    final: [4]u32,
+) !void {
+    const zero = QM31.fromU32Unchecked(0, 0, 0, 0);
+    const units = [4]QM31{
+        QM31.fromU32Unchecked(1, 0, 0, 0),
+        QM31.fromU32Unchecked(0, 1, 0, 0),
+        QM31.fromU32Unchecked(0, 0, 1, 0),
+        QM31.fromU32Unchecked(0, 0, 0, 1),
+    };
+    try checkProducedValue(pp, base, values, 0, zero);
+    for ([_]u32{ 1, 15, 2, 16 }, units) |address, unit|
+        try checkProducedValue(pp, base, values, address, unit);
+    try checkProducedValue(pp, base, values, 22, packWords(initial));
+    const last: u32 = @intCast(22 + 10 * count);
+    try checkProducedValue(pp, base, values, last, packWords(final));
+    for ([_]u32{ 5, 8, 11 }, units[1..]) |offset, unit|
+        try checkProducedValue(pp, base, values, last + offset, try unit.inv());
+}
+
 fn rejectChangedCircuitRows(
     allocator: std.mem.Allocator,
     view: circuit.common.preprocessed.CircuitView,
@@ -356,6 +412,7 @@ fn fixture(comptime count: usize, comptime prove: bool) !void {
     var circuit_base = try circuit.witness.direct_arithmetic.writeBase(allocator, values, &pp);
     defer circuit_base.deinit();
     try checkCircuitRows(allocator, view, &pp, &circuit_base, values, count);
+    try checkSourceValuePins(&pp, &circuit_base, values, count, initial, final);
     try rejectChangedCircuitRows(allocator, view, &pp, &circuit_base, values, count);
     if (circuit_base.output_values.len != 8) return error.WrongFixturePublicWidth;
     for (sum ++ product, circuit_base.output_values) |word, actual|
