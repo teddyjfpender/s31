@@ -14,8 +14,8 @@ namespace S31.Functional.RecordAbiV2
 
 open RecordBoundary
 
-/-- One first-order M31 leaf with its checked width. The native v2 subset
-currently admits M31 leaves only. -/
+/-- A checked first-order M31 word block. Public bit leaves erase to this
+word representation and carry a separate kind tag and 0/1 range check. -/
 structure WordBlock (α : Type) where
   width : Nat
   words : List α
