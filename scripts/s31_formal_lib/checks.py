@@ -22,7 +22,7 @@ DERIVED_THEOREMS = {
 # Versioned, reviewed roster of Lean-generated theorem projections for proof
 # fields. Each entry binds a kernel declaration to a concrete source structure
 # and field. Unknown generated theorems still fail the exact live audit; a
-# removed or renamed source field fails inventory generation. These 40 fields
+# removed or renamed source field fails inventory generation. These 42 fields
 # are separate from explicit `theorem` declarations and the two non-field
 # derived declarations above.
 PROOF_FIELD_PROJECTIONS_V1 = {
@@ -49,6 +49,7 @@ PROOF_FIELD_PROJECTIONS_V1 = {
     "formal/s31/S31/Gadgets/Functional/RecordAbiV2.lean": {
         "S31.Functional.RecordAbiV2.WordBlock": ("exactWidth",),
         "S31.Functional.RecordAbiV2.ValidatedPaths": ("injective",),
+        "S31.Functional.RecordAbiV2.TaggedPublicBlock": ("bitWidth", "range"),
     },
     "formal/s31/S31/Gadgets/Functional/SSAInstalledBytecodePublicOutput.lean": {
         "S31.Functional.SSAInstalledBytecodePublicOutput.OutputBoundary": (

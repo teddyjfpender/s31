@@ -455,6 +455,8 @@
     "S31.Functional.ProductControl.select_iff",
     "S31.Functional.ProductControl.select_one_iff",
     "S31.Functional.ProductControl.select_zero_iff",
+    "S31.Functional.RecordAbiV2.TaggedPublicBlock.bitWidth",
+    "S31.Functional.RecordAbiV2.TaggedPublicBlock.range",
     "S31.Functional.RecordAbiV2.ValidatedPaths.injective",
     "S31.Functional.RecordAbiV2.WordBlock.exactWidth",
     "S31.Functional.RecordAbiV2.binaryChain_flatten",

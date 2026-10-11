@@ -96,7 +96,27 @@ class FormalGateTests(unittest.TestCase):
             self.assertNotEqual(changed, source)
             with self.subTest(path=path), self.assertRaises(checks.FormalError):
                 checks.proof_field_projection_names(changed, path, s31_formal.lean_code)
-        self.assertEqual(len(all_names), 40)
+        self.assertEqual(len(all_names), 42)
+
+    def test_tagged_public_block_proof_fields_require_live_source(self) -> None:
+        path = "formal/s31/S31/Gadgets/Functional/RecordAbiV2.lean"
+        source = (ROOT / path).read_text()
+        prefix = "S31.Functional.RecordAbiV2.TaggedPublicBlock."
+        expected = {prefix + "bitWidth", prefix + "range"}
+        self.assertTrue(expected <= set(checks.proof_field_projection_names(
+            source, path, s31_formal.lean_code)))
+        self.assertTrue(expected <= self.theorems)
+        for field in ("bitWidth", "range"):
+            original = f"  {field} :"
+            self.assertIn(original, source)
+            for replacement in (f"  renamed_{field} :",
+                                f"  -- {field} :"):
+                changed = source.replace(original, replacement, 1)
+                with self.subTest(field=field, replacement=replacement), \
+                        self.assertRaisesRegex(checks.FormalError,
+                                                "stale proof-field projection roster"):
+                    checks.proof_field_projection_names(
+                        changed, path, s31_formal.lean_code)
 
     def test_reused_m31_projection_rejects_renamed_or_commented_field_spoof(self) -> None:
         path = checks.REUSED[0]
