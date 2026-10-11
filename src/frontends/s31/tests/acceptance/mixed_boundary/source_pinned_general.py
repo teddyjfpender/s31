@@ -335,11 +335,17 @@ def exercise(work: Path, count: int) -> dict:
     wrong.write_text(json.dumps(invalid))
     run(str(prover), str(wrong), str(work / "bad.proof"), str(work / "bad.statement"), accept=False)
     if count in (1, 3, 8):
-        changed_source = work / "changed-source.s31.json"
+        changed_source = work / f"changed-source-{count}.s31.json"
         changed_source.write_bytes(source.read_bytes() + b" ")
-        _, other_verifier, other_manifest_bin = build(changed_source, work / "changed-source")
+        _, other_verifier, other_manifest_bin = build(
+            changed_source, work / f"changed-source-{count}")
         other_manifest = json.loads(run(str(other_manifest_bin)).stdout)
-        assert other_manifest["source_sha256"] != manifest["source_sha256"]
+        if (other_manifest["source_sha256"] != hashlib.sha256(changed_source.read_bytes()).hexdigest() or
+                other_manifest["source_sha256"] == manifest["source_sha256"] or
+                other_manifest["call_count"] != count or
+                other_manifest["slot_count"] != 1 + 2 * count or
+                other_manifest["registry_manifest_sha256"] != registry_manifest_digest(other_manifest)):
+            raise AssertionError("changed-source verifier was not built for this exact call roster")
         resealed = {**saved,
                     "source_sha256": other_manifest["source_sha256"],
                     "selected_manifest_sha256": other_manifest["manifest_sha256"],
@@ -356,7 +362,14 @@ def exercise(work: Path, count: int) -> dict:
             resealed_proof[offset:offset + 32] = bytes.fromhex(resealed[field])
         resealed_path = work / f"bad-{count}-resealed-source.bin"
         resealed_path.write_bytes(resealed_proof)
-        verify_rejects(other_verifier, resealed_path, malformed)
+        rejected = subprocess.run((str(other_verifier), str(resealed_path), str(malformed)),
+                                  text=True, capture_output=True, check=False, timeout=30)
+        if (rejected.returncode == 0 or rejected.returncode < 0 or
+                "InvalidMixedNativeEnvelope" in rejected.stderr or
+                "InvalidMixedStatementIdentity" in rejected.stderr):
+            raise AssertionError(
+                "changed-source resealed proof escaped or failed at a surface mismatch: "
+                f"{rejected.stderr}")
     return {"calls": count, "proof_bytes": len(raw), "proof_sha256": hashlib.sha256(raw).hexdigest()}
 
 
