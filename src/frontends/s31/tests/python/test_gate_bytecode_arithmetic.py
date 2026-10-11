@@ -376,21 +376,23 @@ class GateBytecodeArithmeticTest(unittest.TestCase):
         engine = ROOT / "deps/stwo-zig/src"
         lookup = (engine / "core/channel/lookup_transcript.zig").read_text()
         resident = (engine / "frontends/cairo/witness/resident_verifier.zig").read_text()
-        check_transcript_parameter_source_contract(native, lookup, resident)
+        preflight = (ROOT / "src/frontends/s31/runtime/direct_component_preflight.zig").read_text()
+        check_transcript_parameter_source_contract(native, lookup, resident, preflight)
         with self.assertRaisesRegex(ValueError, "lookup challenge/claim transcript mapping changed"):
             check_transcript_parameter_source_contract(
                 native, lookup.replace(".z = values[0], .alpha = values[1]",
-                                       ".z = values[1], .alpha = values[0]"), resident)
+                                       ".z = values[1], .alpha = values[0]"), resident,
+                preflight)
         with self.assertRaisesRegex(ValueError, "selected direct Gate transcript/claim order changed"):
             check_transcript_parameter_source_contract(
                 native.replace("mixInteractionClaim(&channel, sums[0..sum_count]);",
                                "mixInteractionClaim(&channel, sums[1..sum_count]);"),
-                lookup, resident)
+                lookup, resident, preflight)
         with self.assertRaisesRegex(ValueError, "resident Gate extension parameter mapping changed"):
             check_transcript_parameter_source_contract(
                 native, lookup,
                 resident.replace("self.claimed_sum.mulM31(claimed_scale)",
-                                 "self.claimed_sum"))
+                                 "self.claimed_sum"), preflight)
         for original, changed in (
             (".lookup_z => self.lookup_z,", ".lookup_z => self.lookup_alpha,"),
             (".lookup_alpha_power => |power| self.lookup_alpha.pow(power),",
@@ -401,7 +403,7 @@ class GateBytecodeArithmeticTest(unittest.TestCase):
             with self.subTest(arm=original):
                 decoy = resident.replace(original, changed, 1) + "\n// " + original + "\n"
                 with self.assertRaisesRegex(ValueError, "resident Gate extension parameter mapping changed"):
-                    check_transcript_parameter_source_contract(native, lookup, decoy)
+                    check_transcript_parameter_source_contract(native, lookup, decoy, preflight)
         clobber = resident.replace(
             "        return out;\n    }\n\n    fn evaluateProgram",
             "        out[0] = self.lookup_z;\n        return out;\n    }\n\n    fn evaluateProgram",
@@ -409,14 +411,19 @@ class GateBytecodeArithmeticTest(unittest.TestCase):
         )
         self.assertNotEqual(clobber, resident)
         with self.assertRaisesRegex(ValueError, "resident Gate extension parameter mapping changed"):
-            check_transcript_parameter_source_contract(native, lookup, clobber)
+            check_transcript_parameter_source_contract(native, lookup, clobber, preflight)
         native_marker = "mixInteractionClaim(&channel, sums[0..sum_count]);"
         prefix, suffix = native.rsplit(native_marker, 1)
         native_decoy = (prefix +
                         "mixInteractionClaim(&channel, sums[1..sum_count]);" +
                         suffix + "\n// " + native_marker + "\n")
         with self.assertRaisesRegex(ValueError, "selected direct Gate transcript/claim order changed"):
-            check_transcript_parameter_source_contract(native_decoy, lookup, resident)
+            check_transcript_parameter_source_contract(native_decoy, lookup, resident, preflight)
+        with self.assertRaisesRegex(ValueError, "direct verifier handle claim mapping changed"):
+            check_transcript_parameter_source_contract(
+                native, lookup, resident,
+                preflight.replace("self.captured.runtime.claimed_sum = sums[0];",
+                                  "self.captured.runtime.claimed_sum = sums[1];"))
 
     def test_extension_source_decoder_rejects_tag_rebind_with_comment_decoy(self) -> None:
         decoder = (ROOT / "deps/stwo-zig/src/frontends/cairo/witness/composition_bundle.zig").read_text()

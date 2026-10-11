@@ -192,6 +192,14 @@ audit and analysis bytes with the committed report hashes. It does not rerun
 the native negative controls from `audit`: their passed result is bound by the
 report hash and remains a trusted observation of the pinned collector.
 
+For the completed study, replay from the pinned measurement worktree at
+`f2f55411879319e74e08dfe078f7b440a20fdd63`, with the original
+`zig-out/s31-paired-record-v2/{train,heldout}` evidence and engine gitlink
+`7d544c6839497ca19b6c7ef9b982e464f10cfeed`. The protocol checks the
+compiler and measurement-tool fingerprints frozen before timing. A later S31
+checkout with compiler edits is expected to fail admission even if the saved
+evidence is intact; use the pinned checkout for report replay.
+
 Repeat for `--split heldout` with its own fresh `.../heldout` path and
 `paired-record-v2-heldout-phase-anchor.json`, only after train phase and
 report anchors are externally recorded. **Every** held-out `build`, `prove`,

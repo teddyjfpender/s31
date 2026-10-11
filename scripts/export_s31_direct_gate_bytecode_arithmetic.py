@@ -960,7 +960,7 @@ def check_rebound_extension_source_contract(air: str) -> None:
 
 
 def check_transcript_parameter_source_contract(native: str, lookup: str,
-                                               resident: str) -> None:
+                                               resident: str, preflight: str) -> None:
     """Check the selected direct verifier's local draw/claim/parameter path."""
     native_active = active_zig_source(native)
     lookup_active = active_zig_source(lookup)
@@ -970,18 +970,30 @@ def check_transcript_parameter_source_contract(native: str, lookup: str,
     markers = [
         "const sum_count: usize = if (private_boundary != null) 3 else if (has_chip) 2 else 1;",
         "sum.* = QM31.fromU32Unchecked(limbs[0], limbs[1], limbs[2], limbs[3]);",
-        "try scheme.commit(allocator, roots[1], main_logs, &channel);",
+        "var component_logs = try direct_handles.components().columnLogSizes(allocator);",
+        "try scheme.commit(allocator, roots[1], component_logs.items[1], &channel);",
         "const lookup = try core.channel.lookup_transcript.drawLookupElements(allocator, &channel);",
         "const circuit_sum = try circuit.witness.direct_arithmetic.lookupSum(&outputs, sums[0], lookup.z, lookup.alpha);",
         "else if (!circuit_sum.isZero()) return error.InvalidLookupSum;",
         "core.channel.lookup_transcript.mixInteractionClaim(&channel, sums[0..sum_count]);",
-        "try scheme.commit(allocator, roots[2], interaction_logs, &channel);",
-        "captured[0] = .init(allocator, &bound.components[0], &pp_logs, lifting_bound, lookup.z, lookup.alpha, sums[0]);",
+        "try scheme.commit(allocator, roots[2], component_logs.items[2], &channel);",
+        "try direct_handles.setClaims(lookup.z, lookup.alpha, sums[0..sum_count]);",
     ]
     positions = [selected.find(marker) for marker in markers]
     require(all(position >= 0 for position in positions) and positions == sorted(positions)
             and all(selected.count(marker) == 1 for marker in markers),
             "selected direct Gate transcript/claim order changed")
+    require(selected.count("direct_handles.slice(),") == 1 and
+            selected.find("direct_handles.slice(),") > positions[-1],
+            "selected direct Gate transcript/claim order changed")
+    preflight_active = active_zig_source(preflight)
+    claim_methods = list(re.finditer(r"\bpub\s+fn\s+setClaims\s*\(", preflight_active))
+    require(len(claim_methods) == 1, "direct verifier handle claim mapping changed")
+    claim_body, _ = braced_body(preflight_active,
+                               preflight_active.find("{", claim_methods[0].end()))
+    claim_digest = hashlib.sha256(re.sub(r"\s+", "", claim_body).encode()).hexdigest()
+    require(claim_digest == "c78df0ac53678903407cb0756b48243831654630628d2ff769b7db978f7ac6b8",
+            "direct verifier handle claim mapping changed")
     require("return .{ .z = values[0], .alpha = values[1] };" in lookup_active and
             "channel.mixFelts(claimed_sums);" in lookup_active,
             "lookup challenge/claim transcript mapping changed")
@@ -1004,6 +1016,7 @@ def render_transcript_params(package: Path) -> str:
         (ROOT / "src/frontends/s31/runtime/native_verifier.zig").read_text(),
         (engine / "core/channel/lookup_transcript.zig").read_text(),
         (engine / "frontends/cairo/witness/resident_verifier.zig").read_text(),
+        (ROOT / "src/frontends/s31/runtime/direct_component_preflight.zig").read_text(),
     )
     check_extension_source_decoder_contract(
         (engine / "frontends/cairo/witness/composition_bundle.zig").read_text())
