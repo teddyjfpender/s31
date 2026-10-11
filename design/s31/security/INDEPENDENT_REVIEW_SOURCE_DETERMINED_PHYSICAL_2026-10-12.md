@@ -25,3 +25,15 @@ Reviewed `38ba7e60ffb77ea6dd12e60c4454c0a1e15ea2af`, `HonestSourceCellWitness.le
 The proof derives a total source denotation from the successful parse, uses byte-check soundness to obtain a successful normalized interpreter run, converts that run to `AcceptsTrace`, and reads all operands and outputs from one final SSA value list. Fresh instruction IDs and the append-only execution relation make `wireOfFinal final (22 + id)` coherent for every used source ID; its default zero is not used for admitted instruction operands or outputs. `SourcePlan` then supplies each modeled cell's opcode and three addresses, so `sourceCellsEvaluated` holds and the chosen output address contains the interpreted result. `Qm31Ops.accepts` denotes the nine modeled local residual equations. There is no extra assumed output value or circular use of the conclusion.
 
 The existential witness is a **logical address-to-value function**, not a `Trace 9` with physical main columns. `sourceCellsEvaluated` checks local arithmetic and source opcode/address matches against `expectedCells`; it does not assert the cell's trace position or multiplicity in its own predicate, instantiate the source-independent fixed rows, produce public pin or Gate events, establish unique producers or ideal balance, authenticate a native export, or derive verifier acceptance. The earlier `UnpartitionedTrace` non-vacuity and accepted-proof correspondence gaps therefore remain. A useful next theorem is a full honest modeled `Trace 9` satisfying `UnpartitionedTrace` and balance, with separately stated native authentication assumptions. No Lake or native rebuild was run during this static review because the four-case fixture rebuild was in progress.
+
+## Maintainer refresh after the review
+
+At `0b8ef0f`, the maintainer reran `native_source_cells.py --native --write`
+after the public `u8` compiler edit, then passed its static fixture check.
+The updated relation-lowering source SHA-256 is
+`2b46f1f4f3631a455095260827e416456871c030a783ed1f6df2ee2835b78d54`.
+All four source-row lists, complete fixed-column digests, and preprocessed
+roots stayed byte-identical; compiler and native binary provenance hashes
+changed. The independent review above covers the original fixture's logic
+and source-byte comparison; this refresh is maintainer evidence, not a second
+independent native replay.
