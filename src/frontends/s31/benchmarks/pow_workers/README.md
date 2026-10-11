@@ -36,11 +36,54 @@ for 2 calls; 146,182 bytes for 6 calls). The 18-worker smoke runs measured
 116.78 and 31.25 ms, one sample each. Neither that difference nor these
 small fixed-statement samples supports a speedup claim over the default.
 
-The immediate performance work is to add separate, non-transcript timers
-around the 20-bit interaction grind and PCS/FRI grind in an isolated engine
-branch, then run an interleaved same-binary 16/18/24/32-worker comparison
-over multiple sources and fresh assignments. If the default worker count is
-suboptimal, a host-local worker policy can change only the search schedule:
+## Fresh-statement paired diagnostic
+
+[`fresh_assignments.py`](fresh_assignments.py) runs a second, more useful
+worker comparison against the *same frozen binaries* over 30 distinct
+assignments for each of the 2-call and 6-call control programs. The runner
+checks the prospective protocol SHA-256 and its freeze record, source and
+assignment hashes, and both binary hashes before launching native work. It
+rotates worker order across statements, repeats each statement twice, checks
+every emitted proof with the source-embedded native verifier, and requires
+proof bytes to remain identical across all worker counts and repetitions for
+that statement. An ABI-valid changed result is rejected by the verifier for
+each program. All 480 proofs were accepted; there were 30 distinct proof
+hashes per program and both changed claims failed with
+`InvalidMixedInteractionNonce`. The full [trial records](results/fresh-statements-20261011.json)
+retain timing, proof-byte, binary, source, protocol and script hashes.
+
+| Source | 16 workers | 18 workers | 24 workers | 32 workers |
+| --- | ---: | ---: | ---: | ---: |
+| Control, 2 calls | 68.97 ms | 72.94 ms | 71.83 ms | 69.00 ms |
+| Control, 6 calls | 107.01 ms | 106.98 ms | 105.93 ms | 105.03 ms |
+
+Each entry is the median of **30 per-statement medians**, each of which
+contains two process runs. In the paired per-statement analysis, relative to
+18 workers, the median timing ratios for 16/24/32 workers were
+0.963/0.972/0.957 for 2 calls and 0.969/0.992/0.960 for 6 calls. The
+ratios do not establish an overall winner: differences are small relative
+to run-to-run and statement-dependent variation. Native proving spans
+roughly 6–380 ms in these records. This is one host and two source shapes.
+The timed interval includes native setup and both PoW stages, so it does not
+measure either grinder separately. It is a diagnostic, not a trained or
+validated whole-prover predictor; the earlier transfer corpus remains
+**unscored** because its exact frozen training-model bytes were lost.
+
+Run the saved study with the frozen package root (a fresh `--out` directory is
+required):
+
+```sh
+python3 src/frontends/s31/benchmarks/pow_workers/fresh_assignments.py \
+  --package-root /path/to/zig-out/s31-mixed-stage-transfer-v1-20261011 \
+  --shapes control_n2 control_n6 --workers 16 18 24 32 \
+  --assignments 30 --rounds 2 --out /path/to/new/output-directory
+python3 -m unittest discover -s src/frontends/s31/benchmarks/pow_workers -p 'test_*.py'
+```
+
+The next measurement step is separate, non-transcript timers around the
+20-bit interaction grind and PCS/FRI grind in an isolated engine branch. If
+a host-local worker policy is changed later, it may alter only the search
+schedule:
 the canonical smallest-valid lattice nonce, PoW difficulty, verifier,
 Fiat–Shamir transcript and proof bytes must remain unchanged. If device
 offload wins after startup cost, its result must be checked by the native
