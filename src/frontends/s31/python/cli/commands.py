@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import shutil
 import sys
@@ -29,6 +30,14 @@ def explain(package: Path) -> dict:
 
 def equations(package: Path) -> dict:
     return report_equations(package, verify_package)
+
+
+def _file_sha256(path: Path) -> bytes:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1 << 20), b""):
+            digest.update(chunk)
+    return digest.digest()
 
 
 def main() -> None:
@@ -128,7 +137,9 @@ def dispatch(args: argparse.Namespace) -> None:
         proof = args.proof.resolve()
         statement = args.statement.resolve() if args.statement else Path(str(proof) + ".statement.json")
         with unpinned_snapshot(package) as (snapshot, manifest):
-            relation = json.loads((snapshot / "source.s31.json").read_text())
+            source_path = snapshot / "source.s31.json"
+            source_bytes = source_path.read_bytes()
+            relation = json.loads(source_bytes)
             if relation.get("version") != 2 or manifest["lowering"] != "direct-gate":
                 raise ValueError("inspect-record-proof requires a direct-gate record ABI v2 package")
             with tempfile.TemporaryDirectory(prefix="s31-inspect-record-") as temporary:
@@ -136,10 +147,19 @@ def dispatch(args: argparse.Namespace) -> None:
                 statement_snapshot = Path(temporary) / "statement.json"
                 shutil.copyfile(proof, proof_snapshot)
                 shutil.copyfile(statement, statement_snapshot)
+                proof_digest = _file_sha256(proof_snapshot)
+                statement_bytes = statement_snapshot.read_bytes()
+                key_path = snapshot / "verification-key.json"
+                key_bytes = key_path.read_bytes()
                 executable = snapshot / "bin" / f"s31-{manifest['name']}-native-verifier"
                 invoke(str(executable), str(proof_snapshot), str(statement_snapshot),
-                       str(snapshot / "verification-key.json"))
-                claim = decode_typed_public_statement(relation, statement_snapshot.read_bytes())
+                       str(key_path))
+                if (source_path.read_bytes() != source_bytes or
+                        key_path.read_bytes() != key_bytes or
+                        _file_sha256(proof_snapshot) != proof_digest or
+                        statement_snapshot.read_bytes() != statement_bytes):
+                    raise ValueError("verified record snapshot changed during native verification")
+                claim = decode_typed_public_statement(relation, statement_bytes)
         print(json.dumps({"schema": "s31-verified-record-claim-v1",
                           "program": manifest["name"], "proof_verified": True,
                           "claim": claim}, indent=2, sort_keys=True))

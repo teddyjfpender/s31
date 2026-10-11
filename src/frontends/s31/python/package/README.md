@@ -26,7 +26,8 @@ channel must supply them; the verifier executes from the checked snapshot.
 `inspect-record-proof` also executes from a private copy of the package,
 proof, and statement. Its `unpinned_snapshot` check establishes internal
 package consistency and prevents caller path changes during inspection from
-changing the displayed record claim. It does not establish an externally
+changing the displayed record claim. The readback also rejects changes to its
+copied source, key, proof, or statement while the verifier runs. It does not establish an externally
 trusted source or verifier identity; use `verify-pinned` with trusted pins for
 that separate requirement.
 
