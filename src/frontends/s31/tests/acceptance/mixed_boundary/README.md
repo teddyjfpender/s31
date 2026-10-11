@@ -65,9 +65,14 @@ each count from one through eight. Its independent source/manifest projection
 checks that each inspected call has the source repeat's ID, input node,
 round count and constant; that consecutive calls use the preceding call's
 four output addresses; and that circuit, chip and bridge slots carry the
-declared Gate/chip relation IDs. It rejects eleven manifest mutations and a
-changed source constant per checked count. Run the projection alone during a
-short edit loop:
+declared Gate/chip relation IDs. It also checks each diagnostic source kind
+against the versioned registry constructor and the proof and claimed-sum
+indices. It rejects 20, 24 and 34 manifest mutations for one, three and eight
+calls respectively, plus a changed source constant at each count. Every slot
+gets a source-kind relabel mutation. A synthetic digest control shows that
+relabeling the unhashed `source_kind` report field leaves the diagnostic registry digest
+unchanged while the independent projection still rejects it. Run the
+projection alone during a short edit loop:
 
 ```sh
 python3 src/frontends/s31/tests/acceptance/mixed_boundary/source_pinned_general.py --static

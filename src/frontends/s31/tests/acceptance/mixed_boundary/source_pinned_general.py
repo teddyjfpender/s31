@@ -82,9 +82,22 @@ def check_source_call_mapping(source: dict, manifest: dict) -> None:
     occupied: set[int] = set()
     previous_name = "x"
     previous_output: list[int] | None = None
+
+    def check_slot(slot: dict, index: int, call_id: int | None,
+                   role: str, key: str, registry_id: int) -> None:
+        # source_kind is a diagnostic projection, not part of the registry
+        # digest. Check it against the source-derived constructor explicitly.
+        if (slot["source_kind"] != key or slot["registry_key"] != key or
+                slot["registry_id"] != registry_id or
+                slot["registry_version"] != 1 or
+                slot["registry_role"] != role or slot["call_id"] != call_id or
+                slot["proof_index"] != index or
+                slot["claimed_sum_index"] != index):
+            raise AssertionError("mixed source/registry/claim slot differs")
+
     circuit = manifest["slots"][0]
-    if (circuit["registry_role"] != "circuit" or circuit["call_id"] is not None or
-            circuit["relation_ids"] != [378353459]):
+    check_slot(circuit, 0, None, "circuit", "bundled_circuit", 0)
+    if circuit["relation_ids"] != [378353459]:
         raise AssertionError("mixed circuit Gate relation differs")
     for call_id, (node, call) in enumerate(zip(nodes[:count], calls)):
         expected = {"name": f"r{call_id}", "op": "repeat", "lhs": previous_name,
@@ -109,9 +122,12 @@ def check_source_call_mapping(source: dict, manifest: dict) -> None:
         occupied.update(inputs)
         occupied.update(outputs)
         chip, bridge = manifest["slots"][1 + 2 * call_id:3 + 2 * call_id]
-        if (chip["registry_role"] != "chip" or bridge["registry_role"] != "bridge" or
-                chip["call_id"] != call_id or bridge["call_id"] != call_id or
-                chip["relation_ids"] != [1395863811] or
+        constructor = "pair" if call_id < 2 else "many"
+        check_slot(chip, 1 + 2 * call_id, call_id, "chip",
+                   f"{constructor}_chip", 1 if call_id < 2 else 3)
+        check_slot(bridge, 2 + 2 * call_id, call_id, "bridge",
+                   f"{constructor}_bridge", 2 if call_id < 2 else 4)
+        if (chip["relation_ids"] != [1395863811] or
                 bridge["relation_ids"] != [378353459, 1395863811]):
             raise AssertionError("mixed call lookup relation or slot differs")
         previous_output = outputs
@@ -123,7 +139,7 @@ def check_source_call_mapping(source: dict, manifest: dict) -> None:
         raise AssertionError("mixed public output tail differs")
 
 
-def check_source_call_mapping_mutations(source: dict, manifest: dict) -> None:
+def check_source_call_mapping_mutations(source: dict, manifest: dict) -> int:
     """Require the independent projection to detect altered call metadata."""
     cases = []
     for key in ("call_id", "source_node_id", "input_node_id", "rounds", "constant"):
@@ -140,21 +156,47 @@ def check_source_call_mapping_mutations(source: dict, manifest: dict) -> None:
         changed = copy.deepcopy(manifest)
         changed["slots"][slot][key] = value
         cases.append((f"slot-{slot}-{key}", changed))
+    for slot, key, value in ((1, "registry_key", "many_chip"),
+                             (2, "registry_id", 4),
+                             (1, "registry_version", 2),
+                             (1, "proof_index", 2),
+                             (2, "claimed_sum_index", 1)):
+        changed = copy.deepcopy(manifest)
+        changed["slots"][slot][key] = value
+        cases.append((f"slot-{slot}-{key}", changed))
+    for index, slot in enumerate(manifest["slots"]):
+        changed = copy.deepcopy(manifest)
+        changed["slots"][index]["source_kind"] = (
+            "pair_chip" if index == 0 else
+            slot["source_kind"].replace("_chip", "_bridge") if index % 2 else
+            slot["source_kind"].replace("_bridge", "_chip"))
+        cases.append((f"slot-{index}-source-kind", changed))
+    # This retains a permutation of all claimed-sum indices; order still
+    # matters because the claims belong to different AIR components.
+    changed = copy.deepcopy(manifest)
+    changed["slots"][1]["claimed_sum_index"] = 2
+    changed["slots"][2]["claimed_sum_index"] = 1
+    cases.append(("swapped-chip-bridge-claim-indices", changed))
     for label, changed in cases:
         try:
             check_source_call_mapping(source, changed)
         except AssertionError:
             continue
         raise AssertionError(f"mixed source/manifest mutation {label} escaped independent projection")
+    return len(cases)
 
 
 def static_mapping_checks() -> dict:
     """Exercise the projector and mutation controls without a native build."""
+    mutation_counts: dict[int, int] = {}
     for count in (1, 3, 8):
         source, _ = family(count)
         calls = []
-        slots = [{"registry_role": "circuit", "call_id": None,
-                  "relation_ids": [378353459]}]
+        slots = [{"source_kind": "bundled_circuit",
+                  "registry_key": "bundled_circuit", "registry_id": 0,
+                  "registry_version": 1, "registry_role": "circuit",
+                  "call_id": None, "proof_index": 0,
+                  "claimed_sum_index": 0, "relation_ids": [378353459]}]
         previous = [100, 101, 102, 103]
         for call_id in range(count):
             output = [104 + 4 * call_id + lane for lane in range(4)]
@@ -162,14 +204,54 @@ def static_mapping_checks() -> dict:
                           "input_node_id": call_id, "rounds": 16,
                           "constant": 13 + call_id,
                           "input": previous, "output": output})
-            slots += [{"registry_role": "chip", "call_id": call_id,
+            constructor = "pair" if call_id < 2 else "many"
+            slots += [{"source_kind": f"{constructor}_chip",
+                       "registry_key": f"{constructor}_chip",
+                       "registry_id": 1 if call_id < 2 else 3,
+                       "registry_version": 1, "registry_role": "chip",
+                       "call_id": call_id, "proof_index": 1 + 2 * call_id,
+                       "claimed_sum_index": 1 + 2 * call_id,
                        "relation_ids": [1395863811]},
-                      {"registry_role": "bridge", "call_id": call_id,
+                      {"source_kind": f"{constructor}_bridge",
+                       "registry_key": f"{constructor}_bridge",
+                       "registry_id": 2 if call_id < 2 else 4,
+                       "registry_version": 1, "registry_role": "bridge",
+                       "call_id": call_id, "proof_index": 2 + 2 * call_id,
+                       "claimed_sum_index": 2 + 2 * call_id,
                        "relation_ids": [378353459, 1395863811]}]
             previous = output
         manifest = {"calls": calls, "call_count": count, "slots": slots}
         check_source_call_mapping(source, manifest)
-        check_source_call_mapping_mutations(source, manifest)
+        mutation_counts[count] = check_source_call_mapping_mutations(source, manifest)
+        # A serializer-only fixture makes the important asymmetry explicit:
+        # source_kind is an unhashed report field, whereas registry_key is
+        # hashed. Neither synthetic digest is a native verifier key.
+        digest_fixture = copy.deepcopy(manifest)
+        digest_fixture.update({
+            "registry_manifest_version": 1, "registry_version": 1,
+            "source_sha256": "00" * 32, "canonical_ir_sha256": "00" * 32,
+            "fixed_root": "00" * 32, "manifest_sha256": "00" * 32,
+            "descriptor_sha256": "00" * 32, "slot_count": len(slots),
+            "main_columns": 0, "interaction_columns": 0,
+            "total_constraints": 0,
+        })
+        for slot in digest_fixture["slots"]:
+            slot.update({
+                "trace_log_size": 0, "evaluation_log_size": 0,
+                "main_offset": 0, "main_columns": 0,
+                "interaction_offset": 0, "interaction_columns": 0,
+                "constraint_offset": 0, "n_constraints": 0,
+                "preprocessed_indices": [], "air_source_sha256": "00" * 32,
+                "program_binding_sha256": "00" * 32,
+            })
+        unchanged_digest = registry_manifest_digest(digest_fixture)
+        changed = copy.deepcopy(digest_fixture)
+        changed["slots"][1]["source_kind"] = "many_chip"
+        if registry_manifest_digest(changed) != unchanged_digest:
+            raise AssertionError("diagnostic source_kind unexpectedly entered digest")
+        changed["slots"][1]["registry_key"] = "many_chip"
+        if registry_manifest_digest(changed) == unchanged_digest:
+            raise AssertionError("registry constructor key escaped digest")
         # This projector checks continuity and freshness, but source text
         # alone does not expose the compiler's absolute circuit addresses.
         # A coordinated fresh retarget remains possible in this *static*
@@ -189,7 +271,8 @@ def static_mapping_checks() -> dict:
         else:
             raise AssertionError("source-side chip constant mutation escaped")
     return {"schema": "s31-mixed-source-roster-mapping-static-v1",
-            "counts": [1, 3, 8], "manifest_mutations_rejected_per_count": 11,
+            "counts": [1, 3, 8],
+            "manifest_mutations_rejected_by_count": mutation_counts,
             "source_mutations_rejected_per_count": 1,
             "fresh_absolute_address_retarget_accepted_without_topology": True}
 
@@ -231,6 +314,15 @@ def exercise(work: Path, count: int) -> dict:
     assert manifest["source_sha256"] == hashlib.sha256(source.read_bytes()).hexdigest()
     assert manifest["call_count"] == count and manifest["slot_count"] == 1 + 2 * count
     assert manifest["registry_manifest_sha256"] == registry_manifest_digest(manifest)
+    relabeled = copy.deepcopy(manifest)
+    relabeled["slots"][1]["source_kind"] = "many_chip"
+    assert registry_manifest_digest(relabeled) == manifest["registry_manifest_sha256"]
+    try:
+        check_source_call_mapping(source_value, relabeled)
+    except AssertionError:
+        pass
+    else:
+        raise AssertionError("unhashed source-kind relabel escaped independent audit")
     assert [slot["claimed_sum_index"] for slot in manifest["slots"]] == list(range(1 + 2 * count))
     assert [slot["registry_role"] for slot in manifest["slots"]] == [
         "circuit", *(role for _ in range(count) for role in ("chip", "bridge")),
