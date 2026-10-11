@@ -126,31 +126,59 @@ def theorem_names(source: str, lexer: Callable[[str], str]) -> list[str]:
     return names
 
 
-def proof_field_projection_names(source: str, label: str) -> list[str]:
+def _qualified_structure_headers(lines: list[str], qualified: str, label: str) -> list[int]:
+    """Locate a reviewed structure in its actual Lean namespace, not by basename."""
+    scopes: list[tuple[str, str]] = []
+    headers = []
+    for index, line in enumerate(lines):
+        if match := re.fullmatch(r"\s*(namespace|section)(?:\s+([\w.]+))?\s*", line):
+            scopes.append((match[1], match[2] or ""))
+        elif match := re.fullmatch(r"\s*end(?:\s+([\w.]+))?\s*", line):
+            if not scopes or (match[1] and match[1] != scopes[-1][1]):
+                raise FormalError(f"{label}: unmatched Lean namespace/section")
+            scopes.pop()
+        elif match := re.match(r"^structure\s+([A-Za-z_][A-Za-z_0-9]*)\b", line):
+            namespace = ".".join(name for kind, name in scopes if kind == "namespace")
+            if (namespace + "." if namespace else "") + match[1] == qualified:
+                headers.append(index)
+    if scopes:
+        raise FormalError(f"{label}: unterminated Lean namespace/section")
+    return headers
+
+
+def proof_field_projection_names(source: str, label: str,
+                                 lexer: Callable[[str], str]) -> list[str]:
     """Bind each reviewed generated theorem to a field in its source structure.
 
     This is deliberately a small roster, not a wildcard for Lean-generated
-    declarations. The live axiom audit checks these names like all other
+    declarations. Parse only code surviving the same nested-comment,
+    line-comment and string lexer used for explicit theorem inventory, and
+    require the actual enclosing namespace. A
+    commented field must not license a hand-written theorem with the expected
+    projection name. The live axiom audit checks these names like all other
     theorems and rejects both missing and unexpected declarations.
     """
     names = []
-    lines = source.splitlines()
+    lines = lexer(source).splitlines()
     for qualified, expected_fields in PROOF_FIELD_PROJECTIONS_V1.get(label, {}).items():
         structure = qualified.rsplit(".", 1)[1]
-        headers = [index for index, line in enumerate(lines)
-                   if re.match(rf"^structure\s+{re.escape(structure)}\b", line)]
+        headers = _qualified_structure_headers(lines, qualified, label)
         if len(headers) != 1:
             raise FormalError(f"{label}: expected one structure {structure}")
         cursor = headers[0]
-        while "where" not in lines[cursor].split("--", 1)[0]:
+        while not re.search(r"\bwhere\b", lines[cursor]):
             cursor += 1
             if cursor >= len(lines) or cursor > headers[0] + 10 or not lines[cursor].strip():
                 raise FormalError(f"{label}: missing structure body {structure}")
         fields = set()
         for line in lines[cursor + 1:]:
-            if not line.strip() or not line.startswith(" "):
+            if not line.strip():
+                continue
+            if not line.startswith(" "):
                 break
             if match := re.match(r"^  ([A-Za-z_][A-Za-z_0-9]*)\s*:", line):
+                if match[1] in fields:
+                    raise FormalError(f"{label}: duplicate structure field {structure}.{match[1]}")
                 fields.add(match[1])
         if len(expected_fields) != len(set(expected_fields)) or not set(expected_fields) <= fields:
             raise FormalError(f"{label}: stale proof-field projection roster for {structure}")
@@ -182,7 +210,7 @@ def inventory(root: Path, lexer: Callable[[str], str]) -> dict:
         files[label] = hashlib.sha256(path.read_bytes()).hexdigest()
         declarations.extend(theorem_names(source, lexer))
         declarations.extend(DERIVED_THEOREMS.get(label, ()))
-        declarations.extend(proof_field_projection_names(source, label))
+        declarations.extend(proof_field_projection_names(source, label, lexer))
     if len(declarations) != len(set(declarations)):
         raise FormalError("duplicate theorem in proof closure")
     if not CONTROLS <= set(declarations):

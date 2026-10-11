@@ -76,7 +76,8 @@ class FormalGateTests(unittest.TestCase):
             source = (ROOT / path).read_text()
             expected = {f"{structure}.{field}"
                         for structure, fields in structures.items() for field in fields}
-            self.assertEqual(set(checks.proof_field_projection_names(source, path)), expected)
+            self.assertEqual(set(checks.proof_field_projection_names(
+                source, path, s31_formal.lean_code)), expected)
             self.assertTrue(expected <= self.theorems)
             all_names.update(expected)
             first_structure, first_fields = next(iter(structures.items()))
@@ -86,8 +87,59 @@ class FormalGateTests(unittest.TestCase):
                 f"  {first_field} :", f"  changed_{first_field} :", 1))
             self.assertNotEqual(changed, source)
             with self.subTest(path=path), self.assertRaises(checks.FormalError):
-                checks.proof_field_projection_names(changed, path)
+                checks.proof_field_projection_names(changed, path, s31_formal.lean_code)
         self.assertEqual(len(all_names), 19)
+
+    def test_commented_proof_field_cannot_be_spoofed_by_named_lemma(self) -> None:
+        path = "formal/s31/S31/Gadgets/Functional/RecordAbiV2.lean"
+        source = (ROOT / path).read_text()
+        field = "  exactWidth : words.length = width\n"
+        self.assertEqual(source.count(field), 1)
+        # The old raw-line parser counted this field in a nested block comment.
+        # The explicit lemma can carry the same fully qualified audit name, so
+        # checking only the live theorem-name set would miss the substitution.
+        commented = source.replace(
+            field, "  /- outer /- nested -/\n" + field + "  -/\n", 1)
+        spoofed = commented.replace(
+            "end S31.Functional.RecordAbiV2\n",
+            "theorem WordBlock.exactWidth : True := by trivial\n\n"
+            "end S31.Functional.RecordAbiV2\n", 1)
+        self.assertIn("S31.Functional.RecordAbiV2.WordBlock.exactWidth",
+                      checks.theorem_names(spoofed, s31_formal.lean_code))
+        with self.assertRaisesRegex(checks.FormalError, "stale proof-field projection roster"):
+            checks.proof_field_projection_names(spoofed, path, s31_formal.lean_code)
+
+    def test_line_and_nested_block_comments_do_not_supply_fields(self) -> None:
+        path = "formal/s31/S31/Gadgets/Functional/RecordAbiV2.lean"
+        source = (ROOT / path).read_text()
+        field = "  exactWidth : words.length = width\n"
+        for decoy in (
+            "  -- exactWidth : words.length = width\n",
+            "  /- outer /- nested -/\n" + field + "  -/\n",
+        ):
+            changed = source.replace(field, decoy, 1)
+            with self.subTest(decoy=decoy), self.assertRaises(checks.FormalError):
+                checks.proof_field_projection_names(changed, path, s31_formal.lean_code)
+
+    def test_string_comment_markers_do_not_hide_real_projection(self) -> None:
+        path = "formal/s31/S31/Gadgets/Functional/RecordAbiV2.lean"
+        source = (ROOT / path).read_text()
+        changed = source.replace("structure WordBlock", 'def marker := "-- /-"\n\nstructure WordBlock', 1)
+        self.assertIn("S31.Functional.RecordAbiV2.WordBlock.exactWidth",
+                      checks.proof_field_projection_names(
+                          changed, path, s31_formal.lean_code))
+
+    def test_same_basename_in_wrong_namespace_cannot_license_projection(self) -> None:
+        path = "formal/s31/S31/Gadgets/Functional/RecordAbiV2.lean"
+        source = ("namespace Decoy\n"
+                  "structure WordBlock where\n"
+                  "  exactWidth : Nat\n"
+                  "end Decoy\n"
+                  "namespace S31.Functional.RecordAbiV2\n"
+                  "theorem WordBlock.exactWidth : True := by trivial\n"
+                  "end S31.Functional.RecordAbiV2\n")
+        with self.assertRaisesRegex(checks.FormalError, "expected one structure WordBlock"):
+            checks.proof_field_projection_names(source, path, s31_formal.lean_code)
 
     def test_unsupported_declaration_style_is_rejected(self) -> None:
         with self.assertRaises(checks.FormalError):
@@ -157,7 +209,7 @@ class FormalGateTests(unittest.TestCase):
         good = f"S31_THEOREM S31.example\nS31_THEOREM {projected}\n"
         checks.check_audit(good, expected)
         for bad in ("S31_THEOREM S31.example\n",
-                    good + "S31_THEOREM S31.unreviewedProjection\n",
+                    good + "S31_THEOREM S31.Functional.RecordAbiV2.WordBlock.unreviewed\n",
                     good + f"S31_AXIOM {projected} sorryAx\n"):
             with self.subTest(bad=bad), self.assertRaises(checks.FormalError):
                 checks.check_audit(bad, expected)
