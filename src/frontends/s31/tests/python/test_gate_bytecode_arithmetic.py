@@ -378,6 +378,32 @@ class GateBytecodeArithmeticTest(unittest.TestCase):
                 native, lookup,
                 resident.replace("self.claimed_sum.mulM31(claimed_scale)",
                                  "self.claimed_sum"))
+        for original, changed in (
+            (".lookup_z => self.lookup_z,", ".lookup_z => self.lookup_alpha,"),
+            (".lookup_alpha_power => |power| self.lookup_alpha.pow(power),",
+             ".lookup_alpha_power => |power| self.lookup_alpha.pow(power + 1),"),
+            (".claimed_sum_scaled => self.claimed_sum.mulM31(claimed_scale),",
+             ".claimed_sum_scaled => self.claimed_sum,"),
+        ):
+            with self.subTest(arm=original):
+                decoy = resident.replace(original, changed, 1) + "\n// " + original + "\n"
+                with self.assertRaisesRegex(ValueError, "resident Gate extension parameter mapping changed"):
+                    check_transcript_parameter_source_contract(native, lookup, decoy)
+        clobber = resident.replace(
+            "        return out;\n    }\n\n    fn evaluateProgram",
+            "        out[0] = self.lookup_z;\n        return out;\n    }\n\n    fn evaluateProgram",
+            1,
+        )
+        self.assertNotEqual(clobber, resident)
+        with self.assertRaisesRegex(ValueError, "resident Gate extension parameter mapping changed"):
+            check_transcript_parameter_source_contract(native, lookup, clobber)
+        native_marker = "mixInteractionClaim(&channel, sums[0..sum_count]);"
+        prefix, suffix = native.rsplit(native_marker, 1)
+        native_decoy = (prefix +
+                        "mixInteractionClaim(&channel, sums[1..sum_count]);" +
+                        suffix + "\n// " + native_marker + "\n")
+        with self.assertRaisesRegex(ValueError, "selected direct Gate transcript/claim order changed"):
+            check_transcript_parameter_source_contract(native_decoy, lookup, resident)
 
     def test_oods_claim_uses_the_same_sample_tree_as_opening_check(self) -> None:
         engine = ROOT / "deps/stwo-zig/src"

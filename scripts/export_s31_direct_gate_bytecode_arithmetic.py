@@ -848,12 +848,46 @@ def render_composition(package: Path) -> str:
     return "\n".join(lines)
 
 
+def check_extension_parameters_source_contract(resident: str) -> None:
+    """Pin the unique active native mapping from transcript values to VM slots."""
+    source = active_zig_source(resident)
+    functions = list(re.finditer(
+        r"\bpub\s+fn\s+extensionParameters\s*\(\s*self\s*:\s*RuntimeComponent\s*\)\s*!\s*\[\s*\]\s*QM31\s*\{",
+        source,
+    ))
+    require(len(functions) == 1,
+            "resident Gate extension parameter mapping changed")
+    body, _ = braced_body(source, functions[0].end() - 1)
+    expected = """
+        const sources = self.captured.ext_sources;
+        const out = try self.allocator.alloc(QM31, sources.len);
+        const claimed_scale = try M31.fromCanonical(
+            @as(u32, 1) << @intCast(self.captured.trace_log_size),
+        ).inv();
+        for (sources, out) |source, *value| value.* = switch (source) {
+            .constant => |words| try qm31FromWords(&words),
+            .lookup_z => self.lookup_z,
+            .lookup_alpha_power => |power| self.lookup_alpha.pow(power),
+            .lookup_alpha_power_scaled => |scaled| self.lookup_alpha
+                .pow(scaled.power)
+                .mulM31(M31.fromCanonical(scaled.scale)),
+            .claimed_sum_scaled => self.claimed_sum.mulM31(claimed_scale),
+        };
+        return out;
+    """
+    require(re.sub(r"\s+", "", body) ==
+            re.sub(r"\s+", "", active_zig_source(expected)),
+            "resident Gate extension parameter mapping changed")
+
+
 def check_transcript_parameter_source_contract(native: str, lookup: str,
                                                resident: str) -> None:
     """Check the selected direct verifier's local draw/claim/parameter path."""
-    require(native.count("fn verifyDirectProfile(") == 1,
+    native_active = active_zig_source(native)
+    lookup_active = active_zig_source(lookup)
+    require(native_active.count("fn verifyDirectProfile(") == 1,
             "selected direct verifier entry changed")
-    selected = native.split("fn verifyDirectProfile(", 1)[1]
+    selected = native_active.split("fn verifyDirectProfile(", 1)[1]
     markers = [
         "const sum_count: usize = if (private_boundary != null) 3 else if (has_chip) 2 else 1;",
         "sum.* = QM31.fromU32Unchecked(limbs[0], limbs[1], limbs[2], limbs[3]);",
@@ -869,15 +903,10 @@ def check_transcript_parameter_source_contract(native: str, lookup: str,
     require(all(position >= 0 for position in positions) and positions == sorted(positions)
             and all(selected.count(marker) == 1 for marker in markers),
             "selected direct Gate transcript/claim order changed")
-    require("return .{ .z = values[0], .alpha = values[1] };" in lookup and
-            "channel.mixFelts(claimed_sums);" in lookup,
+    require("return .{ .z = values[0], .alpha = values[1] };" in lookup_active and
+            "channel.mixFelts(claimed_sums);" in lookup_active,
             "lookup challenge/claim transcript mapping changed")
-    require("const claimed_scale = try M31.fromCanonical(" in resident and
-            "@as(u32, 1) << @intCast(self.captured.trace_log_size)," in resident and
-            ".lookup_z => self.lookup_z," in resident and
-            ".lookup_alpha_power => |power| self.lookup_alpha.pow(power)," in resident and
-            ".claimed_sum_scaled => self.claimed_sum.mulM31(claimed_scale)," in resident,
-            "resident Gate extension parameter mapping changed")
+    check_extension_parameters_source_contract(resident)
 
 
 def render_transcript_params(package: Path) -> str:

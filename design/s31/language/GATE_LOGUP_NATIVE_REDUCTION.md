@@ -519,8 +519,11 @@ statements. Its theorems substitute the verified parameter order into the
 eleven-root bytecode identity and the Gate composition equation, giving
 `pureRoots(cells, alpha, z, claimed / 512)` at arbitrary supplied QM31 cells.
 The source-to-Lean mapping of `mulM31` and the channel implementation remains
-a reviewed source premise. Mutation tests reject swapped `z/alpha`, changed
-claim mix, and removed claim scaling.
+a reviewed source premise. The resident parameter guard compares the unique
+active `extensionParameters` body, including the switch and return, after
+masking comments and quoted strings. Mutation tests reject swapped `z/alpha`,
+changed claim mix, shifted alpha powers, changed `z` or claim mapping, a
+commented decoy, and a post-switch output overwrite.
 
 ## The sampled OODS values used by the claim check
 
