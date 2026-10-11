@@ -8,6 +8,7 @@ import S31.Gadgets.Air.GeneratedDirectGateBytecodeLogUp
 namespace S31.Gadgets.Air.GeneratedDirectGateExtVm
 
 open S31.Gadgets.Air.DirectGateOodsArithmetic
+
 open S31.Gadgets.Air.DirectGateOodsLogUp
 
 set_option maxRecDepth 2048
