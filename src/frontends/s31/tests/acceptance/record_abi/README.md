@@ -115,3 +115,35 @@ fixture. This check ties one admitted source program to the Lean model and to
 the statement words already exercised by the native acceptance. It does not
 prove a general Python/Zig parser refinement, native proof soundness, or
 confidentiality of private inputs.
+
+## General statement checker and generated source corpus
+
+[`RecordStatementV2.lean`](../../../../../../formal/s31/S31/Gadgets/Functional/RecordStatementV2.lean)
+proves an exact admission equivalence for arbitrary validated leaf descriptors:
+the claim list must match path, width, and M31/bit range in order, repeated
+wire references must agree, and the public input/result wire projection must
+fit the eight-word native slot budget. It also proves that first-wire lookup
+returns every aliased claim's payload after the consistency check.
+
+[`general_statement_refinement_v2.py`](general_statement_refinement_v2.py)
+compiles 13 different source programs: wide leaves, nested tuples, public
+bits, private roots, and repeated input/result or result/result wires. Its
+independent projection agrees with the Python ABI decoder. The generated
+[`Lean corpus`](../../../../../../formal/s31/S31/Gadgets/Functional/GeneratedRecordStatementCorpusV2.lean)
+checks 13 accepted claims, 13 consistent changed claims with changed public
+words, and 65 malformed rejections. The source corpus SHA-256 is
+`a5e2883c146957858828404f47afec1251a4c8b99929c0ed310bb56a04a2305c`.
+
+```sh
+python3 -B src/frontends/s31/tests/acceptance/record_abi/general_statement_refinement_v2.py
+cd formal/s31
+lake build S31.Gadgets.Functional.RecordStatementV2
+lake env lean S31/Gadgets/Functional/GeneratedRecordStatementCorpusV2.lean
+```
+
+The [hand-written bit and alias example](../../../../../../formal/s31/S31/Gadgets/Functional/RecordStatementV2.md)
+shows the exact named claims and padded proof words. The theorem starts after
+descriptor validation and JSON/digest checks. This corpus compares the source
+compiler, Python decoder, independent projection, and Lean model; it does not
+exercise the Zig parser for all 13 generated shapes or prove native STARK
+verification for them.
