@@ -22,6 +22,7 @@ def audit(out: Path, native: bool = False) -> dict:
             result.get("protocol_sha256") != protocol_hash or
             result.get("engine_gitlink_commit") != protocol["engine_gitlink_commit"] or
             result.get("compiler_sha256") != protocol["compiler_sha256"] or
+            result.get("host") != protocol["host"] or
             result.get("proof_pairs") != ASSIGNMENTS * len(COUNTS) or
             result.get("native_accepted_proofs") != 2 * ASSIGNMENTS * len(COUNTS) or
             result.get("changed_result_rejections") != 2 * ASSIGNMENTS * len(COUNTS) or

@@ -11,6 +11,7 @@ import argparse
 import hashlib
 import json
 import os
+import platform
 import shutil
 import statistics
 import subprocess
@@ -97,8 +98,21 @@ def current_pins() -> dict:
     engine = git("rev-parse", "HEAD:deps/stwo-zig").decode().strip()
     if git("-C", str(ROOT / "deps/stwo-zig"), "rev-parse", "HEAD").decode().strip() != engine:
         raise ValueError("engine checkout differs from gitlink")
+    node = platform.node()
+    if not node:
+        raise ValueError("host identity unavailable")
+    cpu = subprocess.run(["sysctl", "-n", "machdep.cpu.brand_string"],
+                         capture_output=True, text=True, check=False)
+    cpu_model = cpu.stdout.strip() if cpu.returncode == 0 else platform.processor()
+    if not cpu_model:
+        raise ValueError("CPU identity unavailable")
+    host = {"host_id_sha256": sha(node.encode()), "cpu_model": cpu_model,
+            "platform": platform.platform(), "machine": platform.machine(),
+            "python": platform.python_version(), "zig":
+                subprocess.check_output([zig, "version"], text=True).strip()}
     return {"engine_gitlink_commit": engine,
             "compiler_sha256": compiler_fingerprint(),
+            "host": host,
             "zig_executable_sha256": sha(Path(zig).resolve().read_bytes()),
             "tool_sha256": {path: sha((ROOT / path).read_bytes()) for path in TOOL_PATHS},
             "source_template_sha256": sha((ROOT / design()["source_template"]).read_bytes())}
@@ -162,7 +176,7 @@ def frozen() -> tuple[dict, str]:
     saved = git("show", f"HEAD:{PROTOCOL.relative_to(ROOT).as_posix()}")
     if saved != raw:
         raise ValueError("mixed phase protocol must be committed unchanged before native build")
-    if {key: value[key] for key in ("engine_gitlink_commit", "compiler_sha256",
+    if {key: value[key] for key in ("engine_gitlink_commit", "compiler_sha256", "host",
                                   "zig_executable_sha256", "tool_sha256",
                                   "source_template_sha256")} != current_pins():
         raise ValueError("compiler, engine, tools or template changed after protocol freeze")
@@ -387,7 +401,7 @@ def run(out: Path) -> dict:
             if proof_bytes[0] != proof_bytes[1]:
                 raise RuntimeError(f"N{count}/a{index} timed proof changed proof bytes")
             rows.append(pair)
-    if {key: protocol[key] for key in ("engine_gitlink_commit", "compiler_sha256",
+    if {key: protocol[key] for key in ("engine_gitlink_commit", "compiler_sha256", "host",
                                       "zig_executable_sha256", "tool_sha256",
                                       "source_template_sha256")} != current_pins():
         raise RuntimeError("compiler, engine, tools or template changed during native study")
@@ -396,6 +410,7 @@ def run(out: Path) -> dict:
               "protocol_sha256": protocol_hash,
               "engine_gitlink_commit": protocol["engine_gitlink_commit"],
               "compiler_sha256": protocol["compiler_sha256"],
+              "host": protocol["host"],
               "binary_sha256": manifest["binary_sha256"],
               "build_wall_ns": manifest["build_wall_ns"],
               "proof_pairs": len(rows), "native_accepted_proofs": 2 * len(rows),
