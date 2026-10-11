@@ -42,11 +42,13 @@ unique complete field paths (`WellTagged`), and the allowed leaf widths:
 `m31` lengths 1–8 and `bit` length one. It derives that no leaf below a
 private input has kind `bit`. Acceptance also records distinct input root
 names, a result root named `result` that does not collide with an input,
-the global leaf budget, and consistent full type structures wherever the
+the global leaf budget, and equal normalized type-token streams wherever the
 same nominal record name appears. At least one root must be a record, matching
 the native version-two boundary rule.
 
 This closes descriptor-level *shape* premises for the abstract layout model.
+The module does not separately prove that the token encoding is injective;
+the formal nominal theorem states equality of its arity-tagged streams.
 The model has no claim that the production parser yields this exact tree.
 Native JSON syntax, identifier spelling, canonical descriptor bytes,
 nominal-code equality with native JSON serialization, ordered leaf paths and
