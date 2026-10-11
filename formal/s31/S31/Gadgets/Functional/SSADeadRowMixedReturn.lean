@@ -25,7 +25,11 @@ open S31.Functional.SSAInstalledBytecodePublicOutput
 open S31.Functional.SSADeadRowGateJoin
 open S31.Functional.GeneratedDirectGateMixedReturn
 
-theorem generated_used_dependencies : usedDependencies certificate := by decide
+theorem generated_used_dependencies : usedDependencies certificate := by
+  intro instruction hmem
+  simp [certificate] at hmem
+  rcases hmem with rfl | rfl | rfl
+  all_goals decide
 
 theorem generated_selected_use :
     0 < sourceUses certificate certificate.output := by decide
