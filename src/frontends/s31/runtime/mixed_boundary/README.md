@@ -55,13 +55,18 @@ The command implementations and statement schema live here; the tiny files in
 
 ## Public record ABI v2 on the general profile
 
-The general profile also admits the narrow source shape in
-[`record_mixed1.s31`](../../examples/boundary/record_mixed1.s31): one public
-record containing four M31 words, one or more live square/add chip calls, and
-one derived four-word public result record. The normalized source must be
-version 2 with its validated nominal ABI descriptor. Other mixed profiles
-remain version 1 only. The source admission rejects extra inputs, extra
-public results, assertions, and output widths outside this shape.
+The general profile admits two source shapes under record ABI v2. The first,
+[`record_mixed1.s31`](../../examples/boundary/record_mixed1.s31), has one public
+four-word record input, one or more live square/add chip calls, and one
+derived four-word result. The second,
+[`mixed_eight_alias_bit.s31`](../../tests/acceptance/record_abi/mixed_eight_alias_bit.s31),
+has a public bit and two-word salt, a private four-word chip input, and two
+distinct public result wires: the original bit and the chip's four-word
+output. Its record result repeats the chip output in another named field
+without adding proof words. Both shapes supply exactly eight public words.
+The normalized source must be version 2 with its validated nominal ABI
+descriptor. Other mixed profiles remain version 1 only. Source admission
+rejects inputs, result wire order, and widths outside these two shapes.
 
 For example, with `x.words = [1, 2, 3, 4]`, the chip applies
 `y <- y² + 13 (mod 2³¹−1)` sixteen times independently to each lane. The
@@ -94,6 +99,15 @@ prover assignment. It passed N=1 and N=8 in an isolated S31 worktree using
 engine revision `7d544c6839497ca19b6c7ef9b982e464f10cfeed`; it must be
 rerun after integration. The broader one-through-eight-call general profile
 and its complete AIR/PCS soundness have separate review gates.
+
+The [eight-word alias proof gate](../../tests/acceptance/record_abi/mixed_eight_proof_v2.py)
+uses the exact source and statement bytes from the text/Python/Lean fixture.
+It proves and verifies the one-call private-input program, checks three
+ABI-valid changed public claims against the original proof, and rejects
+split aliases, non-bit claims, a renamed field, and a private-witness change
+that disagrees with the fixed output. This checks the admitted shape and
+native proof binding; arbitrary record shapes and the cryptographic
+soundness of the underlying PCS remain separate work.
 
 ```sh
 cd src/frontends/s31
@@ -261,7 +275,12 @@ private assignment. It verifies the proof, reconstructs the circuit/chip/bridge
 traces, checks row equations and lookup event bags, then compares recomputed
 fixed/main/interaction commitment roots with the verified proof. See
 [TRACE_AUDIT.md](TRACE_AUDIT.md) for the precise binding claim, assumptions,
-limits, and focused tests.
+limits, and focused tests. Generated `direct-mixed-general` packages install
+`s31-<name>-mixed-general-trace-auditor` for the same check from a proof,
+typed statement, and local private assignment. The
+[black-box acceptance](../../tests/acceptance/mixed_boundary/trace_auditor_cli.py)
+checks accepted roots and rows and rejects changed assignments, statements,
+and proof bytes.
 
 ```sh
 zig build --build-file src/frontends/s31/build.zig test-mixed-n4-witness -Doptimize=Debug -j1

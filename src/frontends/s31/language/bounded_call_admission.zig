@@ -62,20 +62,30 @@ pub fn extract(allocator: std.mem.Allocator, program: relation.Program) !Plan {
         program.inputs.len == 0 or program.public_outputs.len == 0 or
         program.public_outputs.len > 8)
         return error.UnsupportedManyCallSource;
-    // The v2 mixed statement has exactly eight public M31 words. Admit a
-    // single public four-lane input and one derived four-lane output until
-    // the native proof/record binding has been exercised for wider shapes.
-    if (program.version == 2 and (program.inputs.len != 1 or
-        program.inputs[0].visibility != .public or
-        program.public_outputs.len != 1))
+    // Keep the public-record proof boundary to two explicitly checked shapes.
+    // The second shape exercises a bit and a two-word public field, a private
+    // chip input, and a repeated result alias. Both project exactly eight
+    // words; the record descriptor and statement enforce the named paths.
+    const v2_simple = program.version == 2 and program.inputs.len == 1 and
+        program.inputs[0].visibility == .public and program.inputs[0].length == 4 and
+        program.public_outputs.len == 1;
+    const v2_alias = program.version == 2 and program.inputs.len == 3 and
+        program.inputs[0].visibility == .public and program.inputs[0].length == 1 and
+        program.inputs[1].visibility == .public and program.inputs[1].length == 2 and
+        program.inputs[2].visibility == .private and program.inputs[2].length == 4 and
+        program.public_outputs.len == 2 and
+        std.mem.eql(u8, program.public_outputs[0], program.inputs[0].name);
+    if (program.version == 2 and !v2_simple and !v2_alias)
         return error.UnsupportedManyCallSource;
     var scalar_selectors: usize = 0;
     for (program.inputs) |input| {
         if ((program.version == 1 and input.visibility != .private) or
             input.kind != .m31 or
-            (input.length != 4 and (program.version != 1 or input.length != 1)))
+            (input.length != 4 and !(program.version == 1 and input.length == 1) and
+                !(v2_alias and input.visibility == .public and
+                    (input.length == 1 or input.length == 2))))
             return error.UnsupportedManyCallSource;
-        if (input.length == 1) scalar_selectors += 1;
+        if (input.length == 1 and input.visibility == .private) scalar_selectors += 1;
     }
     // Keep the scalar selector ABI small while its source-to-chip coverage is
     // limited to one scalar input. Multiple live selects may share it; a dead
@@ -156,18 +166,33 @@ pub fn extract(allocator: std.mem.Allocator, program: relation.Program) !Plan {
     }
     if (plan.call_count != source_repeat_count) return error.NoncanonicalChipCalls;
 
-    for (ir.public_outputs) |output| {
+    for (ir.public_outputs, 0..) |output, output_index| {
         if (output.id >= ir.nodes.len) return error.InvalidManyCallOutput;
         const tag = ir.nodes[output.id].tag;
-        if (tag == .input or tag == .repeat or !from_call[output.id])
+        if (v2_alias) {
+            if (output_index == 0) {
+                if (tag != .input or output.id != 0 or ir.nodes[output.id].length != 1)
+                    return error.InvalidManyCallOutput;
+            } else if (tag != .repeat or !from_call[output.id] or
+                ir.nodes[output.id].length != 4)
+                return error.InvalidManyCallOutput;
+        } else if (tag == .input or tag == .repeat or !from_call[output.id]) {
             return error.InvalidManyCallOutput;
+        }
         plan.public_output_ids[plan.public_output_count] = output.id;
         plan.public_output_count += 1;
         live[output.id] = true;
     }
-    if (program.version == 2 and
+    if (v2_simple and
         (ir.public_outputs.len != 1 or ir.nodes[ir.public_outputs[0].id].length != 4))
         return error.UnsupportedManyCallSource;
+    // Public inputs are independently bound to statement words, even when a
+    // field such as a salt is intentionally unused by the computation.
+    if (v2_alias) {
+        for (ir.nodes, 0..) |node, id| {
+            if (node.tag == .input and node.visibility.? == .public) live[id] = true;
+        }
+    }
     for (0..ir.nodes.len) |reverse| {
         const id = ir.nodes.len - 1 - reverse;
         if (!live[id]) continue;
@@ -180,7 +205,7 @@ pub fn extract(allocator: std.mem.Allocator, program: relation.Program) !Plan {
         if (!live[call.source_node_id]) return error.DeadChipCall;
     for (ir.nodes, 0..) |node, id| {
         if (node.tag == .input and !live[id]) return error.DeadChipInput;
-        if (node.tag != .input or node.length != 1) continue;
+        if (node.tag != .input or node.length != 1 or node.visibility.? == .public) continue;
         const input_id: u32 = @intCast(id);
         var used_as_selector = false;
         for (ir.nodes, 0..) |consumer, consumer_id| {
@@ -388,4 +413,29 @@ test "record ABI v2 mixed admission has one public input and one derived result"
     parsed.value.public_abi = null;
     try std.testing.expectError(error.UnsupportedManyCallSource, extract(a, parsed.value));
     parsed.value.public_abi = original_abi;
+}
+
+test "record ABI v2 mixed admission binds an eight-word bit and result alias shape" {
+    const a = std.testing.allocator;
+    var parsed = try relation.parseProgram(a, @embedFile("../tests/acceptance/record_abi/mixed_eight_alias_bit.s31.json"));
+    defer parsed.deinit();
+    const plan = try extract(a, parsed.value);
+    try std.testing.expectEqual(@as(usize, 1), plan.call_count);
+    try std.testing.expectEqual(@as(usize, 2), plan.public_output_count);
+
+    parsed.value.inputs[1].visibility = .private;
+    try std.testing.expectError(error.UnsupportedManyCallSource, extract(a, parsed.value));
+    parsed.value.inputs[1].visibility = .public;
+    parsed.value.inputs[2].visibility = .public;
+    try std.testing.expectError(error.UnsupportedManyCallSource, extract(a, parsed.value));
+    parsed.value.inputs[2].visibility = .private;
+
+    const outputs = parsed.value.public_outputs;
+    var reversed = [_][]const u8{ outputs[1], outputs[0] };
+    parsed.value.public_outputs = &reversed;
+    try std.testing.expectError(error.UnsupportedManyCallSource, extract(a, parsed.value));
+    var wrong_alias = [_][]const u8{ outputs[0], parsed.value.inputs[1].name };
+    parsed.value.public_outputs = &wrong_alias;
+    try std.testing.expectError(error.InvalidRecordAbi, extract(a, parsed.value));
+    parsed.value.public_outputs = outputs;
 }

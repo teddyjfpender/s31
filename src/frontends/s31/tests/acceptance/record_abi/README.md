@@ -29,15 +29,24 @@ declaration-order wire lists, accepted eight-word projection, and the bit and
 result alias rejection examples. Full JSON is kept in byte-pinned artifacts;
 Lean does **not** parse those JSON bytes or kernel-check the SHA-256 comments.
 The generator and native parser provide a finite byte-level differential,
-not a general compiler refinement theorem. This source exercises text and ABI
-acceptance only; it is not a `direct-mixed-general` proof-profile admission
-claim. The existing admitted N=1/N=8 record proof smoke is documented in the
+not a general compiler refinement theorem. The separate
+[`mixed_eight_proof_v2.py`](mixed_eight_proof_v2.py) sends these **same pinned
+source and statement bytes** through the `direct-mixed-general` native prover
+and verifier. It checks the exact eight public words, a changed but ABI-valid
+public bit and its result alias, a changed unused public salt, and a changed
+chip result with its repeated alias. The original proof must fail for each
+changed claim after ABI parsing. Split aliases, a non-bit claim, and a renamed
+record field must fail in the ABI parser; a changed private input with the
+old output must fail before proving. This is a one-call proof admission for
+this shape, not a general compiler refinement theorem. The existing admitted
+N=1/N=8 record proof smoke is documented in the
 [mixed boundary acceptance README](../mixed_boundary/README.md).
 
 Run from the repository root, or pass the same absolute paths from elsewhere:
 
 ```sh
 python3 -B src/frontends/s31/tests/acceptance/record_abi/mixed_eight_lean_correspondence_v2.py --native
+python3 -B src/frontends/s31/tests/acceptance/record_abi/mixed_eight_proof_v2.py
 cd formal/s31 && LEAN_NUM_THREADS=1 lake env lean S31/Gadgets/Records/GeneratedMixedEightV2.lean
 ```
 
