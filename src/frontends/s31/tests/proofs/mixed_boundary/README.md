@@ -44,7 +44,8 @@ engine, or prove compiler correspondence for arbitrary programs.
 ## Logical producer roster
 
 `producer_roster_correspondence.zig` covers the pinned direct source family for
-every call count `N=1..8`:
+every call count `N=1..8` and a three-call fork in which two chips consume the
+same arithmetic result:
 
 ```sh
 zig build --build-file src/frontends/s31/build.zig test-mixed-producer-roster -Doptimize=ReleaseFast -j1
@@ -67,8 +68,11 @@ The bridge consumes one Gate event per endpoint occurrence and contributes to
 the corresponding producer row's fixed multiplicity. The fixture checks that
 count, scans active output addresses for uniqueness and bounds, and rejects
 mutated fixed addresses, multiplicities, duplicate producers, and out-of-range
-producers. A dead output with multiplicity zero is intentionally absent from
-Lean's `activeRows` list, although its fixed row and address are still checked.
+producers. In the fork, it independently recomputes all 512 fixed
+multiplicities from ordinary circuit reads plus one read per bridge endpoint;
+each shared chip input receives two additional reads. A dead output with
+multiplicity zero is intentionally absent from Lean's `activeRows` list,
+although its fixed row and address are still checked.
 
 This establishes the **address and multiplicity projection** of the Lean
 logical roster for the honest compiled source, with an empty baseline-yield

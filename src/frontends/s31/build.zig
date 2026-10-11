@@ -99,7 +99,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&tests.step);
     const canonical_cse_tests = b.addRunArtifact(b.addTest(.{
         .root_module = frontend,
-        .filters = &.{"canonical reversed CSE exact legacy bytes and digest"},
+        .filters = &.{"CSE"},
     }));
     b.step("test-canonical-cse", "Check source-to-canonical CSE bytes and verifier digest")
         .dependOn(&canonical_cse_tests.step);
@@ -223,8 +223,10 @@ pub fn build(b: *std.Build) void {
     b.step("test-mixed-trace-correspondence", "Check exact N1/N8 native base rows and verified proof envelopes")
         .dependOn(&mixed_trace_correspondence_tests.step);
     const mixed_producer_roster_tests = b.addRunArtifact(b.addTest(.{ .root_module = bounded_binding_root, .filters = &.{"mixed N1 through N8 source logical producer roster"} }));
-    b.step("test-mixed-producer-roster", "Check N1..8 compiled logical Gate producer rosters against native fixed columns")
-        .dependOn(&mixed_producer_roster_tests.step);
+    const mixed_fork_multiplicity_tests = b.addRunArtifact(b.addTest(.{ .root_module = bounded_binding_root, .filters = &.{"mixed fork counts every shared circuit-to-chip input in fixed multiplicity"} }));
+    const mixed_producer_roster_step = b.step("test-mixed-producer-roster", "Check N1..8 and forked compiled Gate producer multiplicities against native fixed columns");
+    mixed_producer_roster_step.dependOn(&mixed_producer_roster_tests.step);
+    mixed_producer_roster_step.dependOn(&mixed_fork_multiplicity_tests.step);
     const mixed_native_tests = b.addRunArtifact(b.addTest(.{ .root_module = bounded_binding_root, .filters = &.{"mixed sealed N3 native"} }));
     b.step("test-mixed-native", "Prove and verify source-pinned mixed N3 native envelopes")
         .dependOn(&mixed_native_tests.step);

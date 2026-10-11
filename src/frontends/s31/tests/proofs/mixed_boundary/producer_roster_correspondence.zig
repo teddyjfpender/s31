@@ -197,3 +197,61 @@ fn fixture(comptime count: usize) !void {
 test "mixed N1 through N8 source logical producer roster" {
     inline for (1..9) |count| try fixture(count);
 }
+
+test "mixed fork counts every shared circuit-to-chip input in fixed multiplicity" {
+    const allocator = std.testing.allocator;
+    const source = @embedFile("../../../examples/boundary/private_arithmetic_chip_fork.s31.json");
+    const topology = try binding.compileSourceTopology(allocator, source);
+    try std.testing.expectEqual(@as(usize, 3), topology.call_count);
+    try std.testing.expectEqualDeep(topology.calls[1].input, topology.calls[2].input);
+    var compiled = try binding.compileManyTopology(allocator, source, topology);
+    defer compiled.deinit();
+    const view = CircuitView.fromBuilder(&compiled.circuit);
+    try view.validateUniqueProducers(allocator);
+    try std.testing.expectEqual(@as(usize, 512), view.nQm31OpsRows());
+    var plan: cpu.private_many_boundary.Plan = .{ .count = 3 };
+    for (topology.callSlice(), plan.calls[0..3]) |call, *slot| {
+        slot.* = .{
+            .call_id = call.call_id,
+            .rounds = call.rounds,
+            .constant = M31.fromCanonical(call.constant),
+            .input = call.input,
+            .output = call.output,
+        };
+    }
+    var pp = try plan.preprocessed(allocator, view);
+    defer pp.deinit(allocator);
+    const cols = try Columns.from(&pp);
+    const ordinary_uses = try view.computeUses(allocator);
+    defer allocator.free(ordinary_uses);
+
+    // This is an independent oracle for the fixed Gate yield multiplicity:
+    // circuit reads plus one read for *each* bridge endpoint occurrence.
+    var expected = try allocator.dupe(u32, ordinary_uses);
+    defer allocator.free(expected);
+    for (topology.callSlice()) |call| {
+        for (call.input ++ call.output) |address| {
+            try circuit.common.preprocessed.addCanonicalMultiplicity(&expected[address], 1);
+        }
+    }
+    var producer_count = [_]u8{0} ** 512;
+    var row: usize = 0;
+    inline for (.{ view.add, view.sub, view.mul, view.pointwise_mul }) |gates| {
+        for (gates) |gate| {
+            try std.testing.expect(gate.out < expected.len);
+            try std.testing.expectEqual(gate.out, cols.output[row].toU32());
+            try std.testing.expectEqual(expected[gate.out], cols.multiplicity[row].toU32());
+            if (expected[gate.out] != 0) {
+                try std.testing.expectEqual(@as(u8, 0), producer_count[gate.out]);
+                producer_count[gate.out] = 1;
+            }
+            row += 1;
+        }
+    }
+    try std.testing.expectEqual(@as(usize, 512), row);
+    for (topology.calls[1].input) |shared| {
+        try std.testing.expect(shared < expected.len);
+        try std.testing.expectEqual(ordinary_uses[shared] + 2, expected[shared]);
+        try std.testing.expectEqual(@as(u8, 1), producer_count[shared]);
+    }
+}
