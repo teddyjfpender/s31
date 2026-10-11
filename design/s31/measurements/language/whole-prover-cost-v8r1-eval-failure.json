@@ -1,0 +1,30 @@
+{
+  "schema": "s31-whole-prover-cost-v8r1-evaluation-failure-v1",
+  "status": "frozen-heldout-evaluator-failed-before-accuracy-output",
+  "protocol_sha256": "d974d97db448e8bfbe759a57eb9f8b4e580a5a75b0d158b7572f0cd60ca3388d",
+  "protocol_anchor_commit": "088312c3e3b084075e3aa475da3cf445d1f4d916",
+  "model_sha256": "4edadc85032dbfafd191dad838cfa5083bc7c54a509e7cdf22cc9fbb6561fc87",
+  "model_anchor_commit": "3e11e36a7fffb548135765423df823c35bd904d6",
+  "heldout_build_inventory_sha256": "1f2728a030ad7c93b5fc19a8035c2aaaca399b9ded5e0210e0c63ee01cffeb23",
+  "heldout_corpus_sha256": "6ea0cd38953a1b1fa7b86fdcc21bf16bd15aace52804098dd2b42738c4726c43",
+  "heldout_packages": 20,
+  "verified_heldout_trials": 2000,
+  "original_evaluator_exit_code": 1,
+  "original_evaluator_error": "ValueError: wrong prospective program set",
+  "root_cause": "Inherited V3 expected_names selects quotient for validation signed widths 8,16,32,64; the pinned V8r1 validation inventory specifies div_rem below 128 and remainder at 128.",
+  "original_evaluator_expected_only": [
+    "signed_quotient_8",
+    "signed_quotient_16",
+    "signed_quotient_32",
+    "signed_quotient_64"
+  ],
+  "pinned_corpus_only": [
+    "signed_div_rem_8",
+    "signed_div_rem_16",
+    "signed_div_rem_32",
+    "signed_div_rem_64"
+  ],
+  "evaluation_created": false,
+  "accuracy_gate_result": "not_evaluated",
+  "raw_evidence": "zig-out/s31-v8r1-evidence"
+}
