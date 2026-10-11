@@ -1,11 +1,13 @@
 # Mixed cost v4: prospective distributional protocol proposal
 
-**Status: design-only, no native runner and no v4 timing data.** The
+**Status: executable runner implemented; final native protocol and v4 timing
+data are pending.** The
 [native-free inventory](language/mixed-cost-v4-prospective-inventory.json)
 fixes eight new source programs, 640 unique public claims, the model
 implementation hash, fit/calibration split, and acceptance gates. This is
-an advance design precommitment. Before **any** v4 native measurement, an
-executable runner must be reviewed, committed, and included in a separate
+an advance design precommitment. Before **any** v4 native measurement, the
+[executable runner](../../../src/frontends/s31/benchmarks/mixed_cost_v4/study.py)
+must be reviewed, committed, and included in a separate
 final protocol that pins the compiler, engine gitlink, Zig executable,
 host, source template, model code, native manifest geometry, and all
 runner bytes. Its first build must refuse an uncommitted or changed final
@@ -137,17 +139,21 @@ remain outside the passing scope even if every warm gate passes.
 
 ## Reproduction boundary
 
-The native-free generator and arithmetic can be checked now:
+The native-free generator, arithmetic and runner chronology can be checked now:
 
 ```sh
 python3 -B src/frontends/s31/benchmarks/mixed_cost_v4/test_static.py -q
 python3 -B src/frontends/s31/benchmarks/mixed_cost_v4/test_model.py -q
+python3 -B src/frontends/s31/benchmarks/mixed_cost_v4/test_study.py -q
 python3 -B src/frontends/s31/benchmarks/mixed_cost_v4/prospective.py preview
 ```
 
 `preview` starts no native build and reads no v3 timing corpus. The
-inventory is a **design artifact**. A later runner must add the
-frozen-source and model-anchor chronology used in v3, verify all source
-programs compile and prove, and then freeze a new final protocol with
-its own tool fingerprints. Measurements made before that step would
-be exploratory and cannot validate this preregistration.
+inventory is a **design artifact**. The runner implements frozen-source
+and model-anchor chronology; its exact bytes and the engine/compiler stack
+must be committed before `prepare` writes the final protocol. That protocol
+must then be committed before the first native build. The full command
+sequence and raw-artifact layout are in the
+[runner README](../../../src/frontends/s31/benchmarks/mixed_cost_v4/README.md).
+Measurements made before final protocol freeze would be exploratory and
+cannot validate this preregistration.
