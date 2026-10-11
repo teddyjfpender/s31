@@ -5,6 +5,9 @@ already hold circuit values. Inside a program, specialization removes the
 record before the arithmetic relation is built. When a circuit returns a
 public record, relation v2 also carries its nominal layout and field paths
 to the native verifier. That metadata adds no arithmetic gate or AIR row.
+The direct-gate v2 boundary also admits public `bit` leaves. Each occupies
+one existing M31 proof word, and the native statement parser requires that
+word to be exactly `0` or `1` before proof decoding.
 
 ## Public record on the one-call chip
 
@@ -143,11 +146,11 @@ rejects this expression in either arm of a witness-dependent `if`. The
 record does not hide proof obligations in an unused field.
 
 Records may be passed to and returned from pure `fn` helpers and stored in
-`let` bindings. Circuit parameters may also be nominal records with M31
-leaves. A circuit may return either a public record or a first-order M31
+`let` bindings. Circuit parameters may also be nominal records with M31 or
+public `bit` leaves. A circuit may return either a public record or a first-order M31
 value under the `direct-gate` v2 profile. The native verifier accepts one
 canonical typed v2 statement with named input and output paths. Other leaf
-types remain outside this boundary.
+types and private `bit` leaves remain outside this boundary.
 Whole-record `if` and `assert_eq` now traverse first-order leaves in declared
 field order. A record `if` evaluates both branches and emits exactly the
 selectors that a handwritten fieldwise program emits. A record assertion
@@ -287,6 +290,36 @@ nominal layouts, alias checks, and the eight-word proof budget. The
 [native acceptance control](../tests/acceptance/acceptance_public_record_v2.py)
 compares AIR geometry with a flat relation and mutates field paths, aliases,
 digest, JSON encoding, and M31 words.
+
+## A public bit leaf
+
+```s31
+struct Request { flag: bit, value: [m31; 1] }
+struct Response { flag: bit, chosen: [m31; 1] }
+circuit bits(public request: Request, private other: [m31; 1]) -> public Response {
+    Response { flag: std::field::is_zero(other),
+               chosen: select(request.flag, request.value, other) }
+}
+```
+
+For `request = {flag: [0], value: [7]}` and `other = [0]`, the claimed
+result is `{flag: [1], chosen: [7]}`. The relation has one `is_zero` node and
+one `select` node. The public words are `[0, 7, 1, 7]` in input and result
+order. Its ABI type tree marks both flags as `bit`, while their relation wires
+remain M31. The native verifier first checks each flagged public claim is
+`0` or `1`, then binds the four words to the circuit proof. Replacing either
+flag by the canonical M31 value `2` is rejected as an invalid record
+statement. A valid changed flag passes the range check but fails proof
+verification. The same first-order relation without record metadata has
+identical AIR geometry; the selector's Boolean gate is part of the existing
+computation, not a cost of grouping fields.
+
+Private `bit` leaves are excluded from this first extension because their
+range cannot be checked from the public statement. The native boundary
+rejects such descriptors even if a source-side assignment looks valid. The
+[acceptance control](../tests/acceptance/acceptance_record_public_bit_v2.py)
+checks both honest Boolean values, native range and proof mutations, and
+flat AIR geometry.
 
 ## A record input and scalar result
 

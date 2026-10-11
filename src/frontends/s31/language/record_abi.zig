@@ -141,9 +141,12 @@ const State = struct {
         self.nominal.deinit(self.allocator);
     }
 
-    fn leaf(self: *State, program: anytype, descriptor: Value, expected_length: usize, input_root: bool, visibility: []const u8) !void {
+    fn leaf(self: *State, program: anytype, descriptor: Value, expected_kind: []const u8, expected_length: usize, input_root: bool, visibility: []const u8) !void {
         _ = try object(descriptor, &.{ "kind", "length", "path", "wire" });
-        if (!std.mem.eql(u8, try name(try field(descriptor, "kind")), "m31") or
+        const kind = try name(try field(descriptor, "kind"));
+        const is_bit = std.mem.eql(u8, kind, "bit");
+        if (!std.mem.eql(u8, kind, expected_kind) or
+            (is_bit and (expected_length != 1 or (input_root and std.mem.eql(u8, visibility, "private")))) or
             try count(try field(descriptor, "length")) != expected_length)
             return error.InvalidRecordAbi;
         try matchingPath(try field(descriptor, "path"), self.path.items);
@@ -174,10 +177,13 @@ const State = struct {
         if (depth > 32 or tree != .object) return error.InvalidRecordAbi;
         if (tree.object.contains("kind")) {
             _ = try object(tree, &.{ "kind", "length" });
-            if (!std.mem.eql(u8, try name(try field(tree, "kind")), "m31")) return error.InvalidRecordAbi;
+            const kind = try name(try field(tree, "kind"));
+            if (!std.mem.eql(u8, kind, "m31") and !std.mem.eql(u8, kind, "bit")) return error.InvalidRecordAbi;
             const length = try count(try field(tree, "length"));
-            if (length == 0 or length > 8 or at.* >= leaves.len) return error.InvalidRecordAbi;
-            try self.leaf(program, leaves[at.*], length, input_root, visibility);
+            if (length == 0 or length > 8 or
+                (std.mem.eql(u8, kind, "bit") and length != 1) or at.* >= leaves.len)
+                return error.InvalidRecordAbi;
+            try self.leaf(program, leaves[at.*], kind, length, input_root, visibility);
             at.* += 1;
             return;
         }
@@ -356,12 +362,14 @@ fn checkClaim(allocator: std.mem.Allocator, descriptor: Value, actual: Value, wi
     defer allocator.free(actual_path);
     if (!std.mem.eql(u8, expected_path, actual_path)) return error.InvalidRecordStatement;
     const length = try count(try field(descriptor, "length"));
+    const kind = try name(try field(descriptor, "kind"));
+    const limit: i64 = if (std.mem.eql(u8, kind, "bit")) 2 else P;
     const words = try array(try field(actual, "words"));
     if (words.len != length) return error.InvalidRecordStatement;
     const value = try allocator.alloc(u32, length);
     errdefer allocator.free(value);
     for (words, value) |word, *slot| {
-        if (word != .integer or word.integer < 0 or word.integer >= P) return error.InvalidRecordStatement;
+        if (word != .integer or word.integer < 0 or word.integer >= limit) return error.InvalidRecordStatement;
         slot.* = @intCast(word.integer);
     }
     const wire = try name(try field(descriptor, "wire"));

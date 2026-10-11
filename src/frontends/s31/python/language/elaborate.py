@@ -466,11 +466,23 @@ class Elaborator:
         if record_boundary and any(name == "result" for name, _, _ in self.circuit.params):
             raise self.error(self.circuit.body,
                              "result is reserved for the public output root")
+        def has_bit_leaf(typ: Type | RecordType | TupleType) -> bool:
+            if isinstance(typ, Type):
+                return typ.kind == "bit"
+            if isinstance(typ, RecordType):
+                return any(has_bit_leaf(field) for _, field in typ.fields)
+            return any(has_bit_leaf(item) for item in typ.elements)
+
+        if record_boundary and any(
+                visibility == "private" and has_bit_leaf(typ)
+                for _, typ, visibility in self.circuit.params):
+            raise self.error(self.circuit.body,
+                             "public record v2 does not admit private bit leaves")
         def result_words(typ: Type | RecordType | TupleType) -> int:
             if isinstance(typ, Type):
-                if record_boundary and typ.kind != "m31":
+                if record_boundary and typ.kind not in {"m31", "bit"}:
                     raise self.error(self.circuit.body,
-                                     "public record v2 currently supports only m31 leaves")
+                                     "public record v2 supports only m31 and public bit leaves")
                 return typ.length
             if isinstance(typ, RecordType):
                 return sum(result_words(field) for _, field in typ.fields)

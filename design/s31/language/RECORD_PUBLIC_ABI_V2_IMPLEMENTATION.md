@@ -6,7 +6,10 @@ the public one-call direct-chip profile and the experimental one-to-eight-call
 mixed profile are implemented and passed local native acceptance. The native verifier
 checks the typed statement, embedded relation descriptor, sealed key digest
 or embedded source identity, and source-derived component roster. Private
-record chip endpoints, other proof profiles, and non-M31 boundary leaves
+record chip endpoints and other proof profiles remain disabled. A narrow
+direct-gate public `bit` leaf extension is implemented in source, Python ABI,
+native ABI parser, and an abstract Lean range model; native acceptance and
+Lean compilation remain pending. Private `bit` and all `u16` record leaves
 remain disabled. CI and broader soundness review remain release gates.
 
 ## Source-bounded public one-call chip
@@ -49,11 +52,14 @@ mismatch. Its final validation-order edit still needs an integrated rerun.
 The initial native slice admitted nominal records of `m31` leaves, including
 nested records and tuples, as the public result. The next slice extends that
 same v2 relation to nominal record inputs with inherited public or private
-visibility. Retain the existing eight-word public budget. Other
-leaf types require native checks for their additional invariants and are
-excluded from this slice. A later version can add `u16`, `bit`, fixed-width
-integers, and digest families with explicit semantic tags and range or
-Boolean constraints.
+visibility. Retain the existing eight-word public budget. The next
+direct-gate increment admits public `bit` leaves only:
+`{"kind":"bit","length":1}` erases to one M31 wire, while the native typed
+statement parser rejects a claimed bit outside `{0,1}` before proof
+decoding. Private `bit` leaves remain rejected because they are absent from
+the public statement; their native in-circuit range obligation needs a
+separate gate. `u16`, fixed-width integers, and digest families likewise
+await explicit semantic and range rules.
 
 The relation retains first-order arithmetic wires. Every input leaf has a
 fresh relation input. Every result leaf points to a computed or input wire.

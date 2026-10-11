@@ -11,10 +11,40 @@ S31 = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(S31 / "python"))
 
 from oracle import OracleError, evaluate_relation
+from abi.binding_v2 import flat_assignment_from_typed
+from abi.record_v2 import AbiError
 from text_frontend import SourceError, compile_file, compile_text
 
 
 class RecordTests(unittest.TestCase):
+    def test_public_bit_record_erases_to_m31_and_rejects_private_bit(self) -> None:
+        source = """struct Request { flag: bit, value: [m31; 1] }
+struct Response { flag: bit, chosen: [m31; 1] }
+circuit bits(public request: Request, private other: [m31; 1]) -> public Response {
+    Response { flag: std::field::is_zero(other),
+               chosen: select(request.flag, request.value, other) }
+}"""
+        relation, _ = compile_text(source)
+        self.assertEqual(relation["version"], 2)
+        self.assertEqual([item["kind"] for item in relation["inputs"]], ["m31"] * 3)
+        self.assertEqual([node["op"] for node in relation["nodes"]], ["is_zero", "select"])
+        self.assertEqual([leaf["kind"] for leaf in relation["public_abi"]["result"]["leaves"]],
+                         ["bit", "m31"])
+        typed = {"version": 2,
+                 "public_inputs": {"request": {"flag": [0], "value": [7]}},
+                 "private_inputs": {"other": [0]},
+                 "result": {"flag": [1], "chosen": [7]}}
+        flat = flat_assignment_from_typed(relation,
+                                          (json.dumps(typed, sort_keys=True) + "\n").encode())
+        self.assertEqual(evaluate_relation(relation, flat), flat["public_outputs"])
+        typed["result"]["flag"] = [2]
+        with self.assertRaises(AbiError):
+            flat_assignment_from_typed(relation,
+                                       (json.dumps(typed, sort_keys=True) + "\n").encode())
+        private = source.replace("public request: Request", "private request: Request")
+        with self.assertRaisesRegex(SourceError, "private bit leaves"):
+            compile_text(private)
+
     def test_named_fields_erase_to_identical_relation(self) -> None:
         example = S31 / "examples/arithmetic/record_square_sum.s31"
         relation, _ = compile_file(example)

@@ -69,6 +69,48 @@ theorem concatBlocks_length {α : Type} (leaves : List (WordBlock α)) :
         head.width + (tail.map WordBlock.width).sum
       simp [head.exactWidth, ih]
 
+/-!
+The public-bit extension tags an already existing M31 word. This model
+records the additional native statement range check; it does not assume that
+the production JSON parser or source compiler implements that check. Private
+bit leaves are outside the admitted native ABI subset.
+-/
+
+inductive PublicLeafKind where
+  | m31
+  | bit
+deriving DecidableEq
+
+def publicLeafBound : PublicLeafKind → Nat
+  | .m31 => 2147483647
+  | .bit => 2
+
+structure TaggedPublicBlock where
+  kind : PublicLeafKind
+  block : WordBlock Nat
+  bitWidth : kind = .bit → block.width = 1
+  range : ∀ word ∈ block.words, word < publicLeafBound kind
+
+def TaggedPublicBlock.erase (leaf : TaggedPublicBlock) : WordBlock Nat :=
+  leaf.block
+
+/-- Erasing the public kind tags neither reorders nor adds proof words. -/
+theorem concatBlocks_erase_tags (leaves : List TaggedPublicBlock) :
+    concatBlocks (leaves.map TaggedPublicBlock.erase) =
+      leaves.flatMap (fun leaf => leaf.block.words) := by
+  induction leaves with
+  | nil => rfl
+  | cons head tail ih =>
+      simp [concatBlocks, TaggedPublicBlock.erase, ih]
+
+/-- Every word in a native-validated public bit leaf is exactly zero or one. -/
+theorem tagged_public_bit_range (leaf : TaggedPublicBlock)
+    (isBit : leaf.kind = .bit) (word : Nat)
+    (present : word ∈ leaf.block.words) : word = 0 ∨ word = 1 := by
+  have bounded := leaf.range word present
+  simp [isBit, publicLeafBound] at bounded
+  omega
+
 /-- Typed public roots plus distinct result references use the same first
 order word order as the native projection over tagged relation inputs. -/
 def typedPublicWords {α : Type} {n : Nat} (roots : List (InputRoot (WordBlock α)))

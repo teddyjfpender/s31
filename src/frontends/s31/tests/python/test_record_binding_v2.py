@@ -163,13 +163,56 @@ class RecordBindingV2Tests(unittest.TestCase):
         self.assertNotEqual(binding_digest(self.relation, wrong_output),
                             binding_digest(self.relation, self.binding))
 
-    def test_non_m31_leaf_rejected_until_native_range_checks_exist(self) -> None:
-        for typ in (Type("u16", 1), Type("bit", 1), Type("int_u8", 1)):
-            with self.subTest(typ=typ), self.assertRaisesRegex(AbiError, "only supports"):
+    def test_non_m31_and_non_bit_leaf_rejected(self) -> None:
+        for typ in (Type("u16", 1), Type("int_u8", 1)):
+            with self.subTest(typ=typ), self.assertRaisesRegex(AbiError, "v2 supports"):
                 make_binding(self.relation, [
                     ("request", self.request, "public", ["a", "b"]),
                     ("witness", Type("m31", 1), "private", ["secret"]),
                 ], ("result", typ, ["sum"]))
+
+    def test_public_bit_leaves_have_native_compatible_range(self) -> None:
+        bit = Type("bit", 1)
+        request = RecordType("BitRequest", (("flag", bit), ("value", Type("m31", 1))))
+        result = RecordType("BitResult", (("flag", bit), ("value", Type("m31", 1))))
+        binding = make_binding(self.relation, [
+            ("request", request, "public", ["a", "b"]),
+            ("witness", Type("m31", 1), "private", ["secret"]),
+        ], ("result", result, ["sum", "b"]))
+        self.assertEqual(binding["inputs"][0]["leaves"][0]["kind"], "bit")
+        self.assertEqual(binding["result"]["leaves"][0]["kind"], "bit")
+        encoded = encode_public_statement(self.relation, binding,
+                                          [[1], [5], [0], [5]])
+        self.assertEqual(decode_public_statement(self.relation, binding, encoded),
+                         [1, 5, 0, 5, 0, 0, 0, 0])
+        for at in (0, 2):
+            for bad in (2, 2**31 - 2, 2**31 - 1):
+                words = [[1], [5], [0], [5]]
+                words[at] = [bad]
+                with self.subTest(at=at, bad=bad), self.assertRaisesRegex(AbiError, "noncanonical"):
+                    encode_public_statement(self.relation, binding, words)
+        changed = copy.deepcopy(binding)
+        changed["result"]["type"]["fields"][0]["type"]["kind"] = "m31"
+        changed["result"]["leaves"][0]["kind"] = "m31"
+        self.assertNotEqual(binding_digest(self.relation, changed), binding_digest(self.relation, binding))
+
+    def test_private_bit_and_bit_width_two_rejected(self) -> None:
+        private = RecordType("PrivateFlag", (("flag", Type("bit", 1)),))
+        with self.assertRaisesRegex(AbiError, "private bit"):
+            make_binding(self.relation, [
+                ("request", self.request, "public", ["a", "b"]),
+                ("witness", private, "private", ["secret"]),
+            ], ("result", Type("m31", 1), ["sum"]))
+        result = RecordType("BitResult", (("flag", Type("bit", 1)),))
+        binding = make_binding(self.relation, [
+            ("request", self.request, "public", ["a", "b"]),
+            ("witness", Type("m31", 1), "private", ["secret"]),
+        ], ("result", result, ["sum"]))
+        changed = copy.deepcopy(binding)
+        changed["result"]["type"]["fields"][0]["type"]["length"] = 2
+        changed["result"]["leaves"][0]["length"] = 2
+        with self.assertRaisesRegex(AbiError, "one public bit"):
+            validate_binding(self.relation, changed)
 
     def test_public_word_budget_counts_distinct_output_wires(self) -> None:
         source = copy.deepcopy(self.relation)
