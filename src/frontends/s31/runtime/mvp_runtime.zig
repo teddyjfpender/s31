@@ -8,6 +8,7 @@ const s31 = @import("stwo_s31_prototype");
 const native = @import("native_verifier.zig");
 const component_manifest = @import("component_manifest.zig");
 const direct_component_preflight = @import("direct_component_preflight.zig");
+const public_physical_guard = @import("public_physical_guard.zig");
 const proof_execution = @import("proof_execution.zig");
 const recursion_gate = @import("../recursion/recursion_gate.zig");
 const fixed_fold = @import("../recursion/fixed_fold.zig");
@@ -461,7 +462,7 @@ fn parseInspectStep(args: []const []const u8, base_len: usize) !u32 {
 }
 
 fn usage() error{InvalidArguments} {
-    std.debug.print("usage: s31-program check | inspect | inspect-topology (bounded direct-gate only) | inspect-physical-rows ASSIGNMENT.json (pinned bounded fixtures only) | run ASSIGNMENT.json | prove ASSIGNMENT.json PROOF\n", .{});
+    std.debug.print("usage: s31-program check | inspect | inspect-topology (bounded direct-gate only) | inspect-physical-rows ASSIGNMENT.json (public bounded direct-gate only) | run ASSIGNMENT.json | prove ASSIGNMENT.json PROOF\n", .{});
     std.debug.print("       prove-for-external-verification ASSIGNMENT.json PROOF (record direct-gate v2 only; output is UNVERIFIED until separate native verifier accepts)\n", .{});
     std.debug.print("       recurse-check ASSIGNMENT.json CHILD-PROOF CHILD-KEY.json | recurse-prove ASSIGNMENT.json CHILD-PROOF OUTER-PROOF CHILD-KEY.json [--low-memory]\n", .{});
     std.debug.print("       recurse-wrap CHILD-PROOF CHILD-STATEMENT.json OUTER-PROOF CHILD-KEY.json [--low-memory]\n", .{});
@@ -980,19 +981,20 @@ fn inspectDirectTopology(allocator: std.mem.Allocator, source: relation.Program)
 }
 
 fn inspectBoundedPhysicalRows(allocator: std.mem.Allocator, source: relation.Program, assignment_path: []const u8) !void {
-    // This diagnostic exposes public-input witness values. Pin the complete
-    // normalized source bytes so it cannot be used on a private S31 package.
+    // This diagnostic exposes uncommitted main-column values. Private inputs
+    // and every other profile remain ineligible for inspection.
     var source_digest: [32]u8 = undefined;
     std.crypto.hash.sha2.Sha256.hash(embedded_source, &source_digest, .{});
     const source_hex = std.fmt.bytesToHex(source_digest, .lower);
     const early_return = std.mem.eql(u8, &source_hex, "93bd19fc72c1e4526ad8bfe788f506bfea4c1787114df6e119dd95760efd888f");
     const square4 = std.mem.eql(u8, &source_hex, "b7d744dd89f487742f2b72cf71fa76c6c37c2f5b01b74b58befa24e8c749979c");
-    if (source.version != 1 or source.proof_mode != .transparent or
-        source.inputs.len != 1 or source.nodes.len > 16 or (!early_return and !square4))
+    if ((!early_return and !square4 and !(try public_physical_guard.eligible(allocator, source))) or
+        source.inputs.len != 1 or source.inputs[0].visibility != .public)
         return error.UnsupportedPhysicalRowInspection;
 
     var assignment = try readAssignment(allocator, assignment_path);
     defer assignment.deinit();
+    try public_physical_guard.checkAssignment(assignment.value);
     const public_words = try relation.evaluate(allocator, source, assignment.value);
     var value_ctx = try s31.relation_compiler.compileDirect(QM31, allocator, source, assignment.value, false);
     defer value_ctx.deinit();
@@ -1028,7 +1030,7 @@ fn inspectBoundedPhysicalRows(allocator: std.mem.Allocator, source: relation.Pro
         out.* = words;
     }
     const report: DirectPhysicalTrace = .{
-        .schema = if (square4) "s31-direct-gate-square4-physical-v1" else "s31-direct-gate-early-return-physical-v1",
+        .schema = if (square4) "s31-direct-gate-square4-physical-v1" else if (early_return) "s31-direct-gate-early-return-physical-v1" else "s31-direct-gate-public-functional-physical-v1",
         .program_sha256 = &source_hex,
         .public_words = public_words,
         .fixed_columns = fixed,

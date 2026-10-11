@@ -97,6 +97,18 @@ pub fn build(b: *std.Build) void {
     const tests = b.addRunArtifact(b.addTest(.{ .root_module = frontend }));
     const test_step = b.step("test", "Test the S31 prototype parser, evaluator and circuit compiler");
     test_step.dependOn(&tests.step);
+    const public_physical_guard_root = b.createModule(.{
+        .root_source_file = b.path("runtime/public_physical_guard.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    public_physical_guard_root.addImport("stwo_core", core);
+    public_physical_guard_root.addImport("stwo_circuit_frontend", circuit);
+    public_physical_guard_root.addImport("s31_poseidon_ref", sha_provider);
+    public_physical_guard_root.addImport("stwo_s31_prototype", frontend);
+    const public_physical_guard_tests = b.addRunArtifact(b.addTest(.{ .root_module = public_physical_guard_root }));
+    b.step("test-public-physical-guard", "Reject private and unsupported direct-Gate diagnostic exports")
+        .dependOn(&public_physical_guard_tests.step);
     const canonical_cse_tests = b.addRunArtifact(b.addTest(.{
         .root_module = frontend,
         .filters = &.{"CSE"},
