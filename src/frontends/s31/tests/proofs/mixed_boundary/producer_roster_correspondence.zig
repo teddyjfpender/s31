@@ -190,6 +190,8 @@ fn fixture(comptime count: usize) !void {
     try std.testing.expectError(error.DuplicateLogicalProducer, scanAddresses(&duplicate, 512));
     const invalid = [_]Row{.{ .address = 512, .multiplicity = 1 }};
     try std.testing.expectError(error.ProducerAddressOutOfRange, scanAddresses(&invalid, 512));
+    const inactive_invalid = [_]Row{.{ .address = 512, .multiplicity = 0 }};
+    try std.testing.expectError(error.ProducerAddressOutOfRange, scanAddresses(&inactive_invalid, 512));
 }
 
 test "mixed N1 through N8 source logical producer roster" {
