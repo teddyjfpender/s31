@@ -274,6 +274,86 @@ def encode_public_statement(relation: Mapping[str, Any], binding: dict[str, Any]
     return encoded
 
 
+def _source_binding(source: Mapping[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+    if source.get("version") != 2 or type(source.get("public_abi")) is not dict:
+        raise AbiError("expected a version 2 relation with a public record boundary")
+    relation = {**source, "version": 1}
+    binding = relation.pop("public_abi")
+    validate_binding(relation, binding)
+    return relation, binding
+
+
+def _inflate_typed(tree: dict[str, Any], leaves: list[dict[str, Any]], at: int) -> tuple[object, int]:
+    """Rebuild one source-shaped value from already validated, ordered leaves."""
+    if "kind" in tree:
+        if at >= len(leaves):
+            raise AbiError("public statement is missing a typed leaf")
+        return list(leaves[at]["words"]), at + 1
+    if "record" in tree:
+        result: dict[str, object] = {}
+        for field in tree["fields"]:
+            result[field["name"]], at = _inflate_typed(field["type"], leaves, at)
+        return result, at
+    result_tuple: list[object] = []
+    for element in tree["tuple"]:
+        value, at = _inflate_typed(element, leaves, at)
+        result_tuple.append(value)
+    return result_tuple, at
+
+
+def decode_typed_public_statement(source: Mapping[str, Any], encoded: bytes) -> dict[str, Any]:
+    """Read the exact named public claim admitted by the v2 statement parser.
+
+    This checks the statement and layout, but does not verify a proof. A caller
+    displaying an authenticated claim must first run the native verifier.
+    """
+    relation, binding = _source_binding(source)
+    decode_public_statement(relation, binding, encoded)
+    statement = json.loads(encoded)
+    leaves = statement["leaves"]
+    at = 0
+    public_inputs: dict[str, object] = {}
+    for root in binding["inputs"]:
+        if root["visibility"] != "public":
+            continue
+        public_inputs[root["name"]], at = _inflate_typed(root["type"], leaves, at)
+    result, at = _inflate_typed(binding["result"]["type"], leaves, at)
+    if at != len(leaves):
+        raise AbiError("public statement has extra typed leaves")
+    return {"version": 2, "abi_sha256": statement["abi_sha256"],
+            "public_inputs": public_inputs, "result": result}
+
+
+def encode_typed_public_statement(source: Mapping[str, Any], claim: Mapping[str, Any]) -> bytes:
+    """Encode a named public claim and check aliases with the verifier parser."""
+    relation, binding = _source_binding(source)
+    digest = binding_digest(relation, binding)
+    if (type(claim) is not dict or
+            set(claim) != {"version", "abi_sha256", "public_inputs", "result"} or
+            type(claim["version"]) is not int or claim["version"] != 2 or
+            claim["abi_sha256"] != digest):
+        raise AbiError("typed public claim version or ABI digest differs")
+    public_roots = [root for root in binding["inputs"] if root["visibility"] == "public"]
+    public_inputs = claim["public_inputs"]
+    if (type(public_inputs) is not dict or
+            set(public_inputs) != {root["name"] for root in public_roots}):
+        raise AbiError("typed public input roots differ from the ABI")
+    words: list[list[int]] = []
+    for root in public_roots:
+        flattened = _flatten_typed(root["type"], public_inputs[root["name"]],
+                                   [{"root": root["name"]}])
+        if [path for path, _ in flattened] != [leaf["path"] for leaf in root["leaves"]]:
+            raise AbiError("typed public input paths differ from the ABI")
+        words.extend(value for _, value in flattened)
+    result_root = binding["result"]
+    flattened = _flatten_typed(result_root["type"], claim["result"],
+                               [{"root": "result"}])
+    if [path for path, _ in flattened] != [leaf["path"] for leaf in result_root["leaves"]]:
+        raise AbiError("typed public result paths differ from the ABI")
+    words.extend(value for _, value in flattened)
+    return encode_public_statement(relation, binding, words)
+
+
 def statement_from_assignment(source: Mapping[str, Any], assignment: Mapping[str, Any]) -> bytes:
     """Derive the only v2 verifier statement from a prover's flat assignment."""
     if source.get("version") != 2 or type(source.get("public_abi")) is not dict:

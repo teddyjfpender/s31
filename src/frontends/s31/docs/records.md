@@ -279,6 +279,26 @@ five zeros. The private mask values enter the circuit computation; absence
 from the public statement does not make this transparent proof zero
 knowledge.
 
+To read a record claim after checking its proof, run:
+
+```sh
+python3 src/frontends/s31/python/s31.py inspect-record-proof \
+  PATH_TO_DIRECT_GATE_PACKAGE PATH_TO_PROOF \
+  --statement PATH_TO_PROOF.statement.json
+```
+
+The command checks the sealed package and runs its native verifier before
+decoding the canonical v2 statement into named values. For the example above,
+`claim.public_inputs.request.left` is `[3]`,
+`claim.public_inputs.request.right` is `[4]`, and `claim.result` is `[18]`.
+The private `mask` is absent. Library callers can round-trip the same named
+claim through `decode_typed_public_statement` and
+`encode_typed_public_statement` in `python/abi/binding_v2.py`; those codec
+functions validate a statement but do not verify a proof by themselves.
+The command verifies against the supplied package; use externally pinned
+package hashes when the program identity must be trusted. This readback adds
+no AIR row or proof word.
+
 For this scalar example, the arithmetic graph has three add nodes. Write
 the four flattened inputs as $a,b,c,d$. Its witnesses $t_0,t_1,t_2$ must
 satisfy $t_0-a-b=0$, $t_1-t_0-c=0$, and $t_2-t_1-d=0$ in M31. The public

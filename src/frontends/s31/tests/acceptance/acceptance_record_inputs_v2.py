@@ -114,6 +114,17 @@ def main() -> None:
         trial = s31.trial(package, typed_path, work / "typed-trial")
         if not trial["native_verifier_accepted"] or not trial["changed_public_statement_rejected"]:
             raise AssertionError("typed record input proof or changed claim control failed")
+        inspected = subprocess.run((sys.executable, str(S31 / "python/s31.py"),
+                                    "inspect-record-proof", str(package),
+                                    str(work / "typed-trial/proof.bin"), "--statement",
+                                    str(work / "typed-trial/statement.json")),
+                                   capture_output=True, text=True, check=True)
+        verified_claim = json.loads(inspected.stdout)
+        if (verified_claim["proof_verified"] is not True or
+                verified_claim["claim"]["public_inputs"] != TYPED["public_inputs"] or
+                verified_claim["claim"]["result"] != TYPED["result"] or
+                "mask" in verified_claim["claim"]["public_inputs"]):
+            raise AssertionError("verified record claim did not reconstruct the named public values")
         flat_trial = s31.trial(flat_package, flat_path, work / "flat-trial")
         if not flat_trial["native_verifier_accepted"]:
             raise AssertionError("manual flat v1 proof failed")
@@ -174,6 +185,7 @@ def main() -> None:
         print(json.dumps({
             "schema": "s31-record-input-v2-acceptance",
             "native_typed_proof_accepted": True,
+            "verified_named_claim_inspected": True,
             "manual_flat_v1_proof_accepted": True,
             "rejected_statement_mutations": list(mutations),
             "resealed_input_visibility_key_rejected": True,

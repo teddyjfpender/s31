@@ -115,6 +115,11 @@ def make_parser() -> argparse.ArgumentParser:
     sub.add_argument("package", type=Path)
     sub.add_argument("proof", type=Path)
     sub.add_argument("--statement", type=Path)
+    sub = commands.add_parser("inspect-record-proof",
+                              help="verify a v2 proof, then display its authenticated named public claim")
+    sub.add_argument("package", type=Path)
+    sub.add_argument("proof", type=Path)
+    sub.add_argument("--statement", type=Path)
     sub = commands.add_parser("verify-pinned", help="verify a proof only after external package digest admission")
     sub.add_argument("package", type=Path)
     sub.add_argument("proof", type=Path)

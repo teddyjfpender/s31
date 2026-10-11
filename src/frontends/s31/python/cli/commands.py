@@ -8,7 +8,8 @@ import sys
 import tempfile
 from pathlib import Path
 
-from abi.binding_v2 import (flat_assignment_from_typed, parse_assignment_json,
+from abi.binding_v2 import (decode_typed_public_statement,
+                            flat_assignment_from_typed, parse_assignment_json,
                             statement_from_assignment)
 from cli.parser import make_parser
 from inspection.reports import equations as report_equations, explain as report_explain
@@ -368,6 +369,26 @@ def dispatch(args: argparse.Namespace) -> None:
                      str(package / "recursive-verification-key.json"),
                      *((str(package / "recursive-verification-key-level2.json"),) if wide_fold else ()),
                      str(package / key_name)), end="")
+    elif args.command == "inspect-record-proof":
+        relation = json.loads((package / "source.s31.json").read_text())
+        if relation.get("version") != 2 or manifest["lowering"] != "direct-gate":
+            raise ValueError("inspect-record-proof requires a direct-gate record ABI v2 package")
+        proof = args.proof.resolve()
+        statement = args.statement.resolve() if args.statement else Path(str(proof) + ".statement.json")
+        executable = package / "bin" / f"s31-{manifest['name']}-native-verifier"
+        encoded = statement.read_bytes()
+        # Verify the same statement bytes that are decoded below. A private
+        # snapshot prevents a replaced caller path from changing the claim
+        # between native verification and presentation.
+        with tempfile.TemporaryDirectory(prefix="s31-inspect-record-") as temporary:
+            snapshot = Path(temporary) / "statement.json"
+            snapshot.write_bytes(encoded)
+            invoke(str(executable), str(proof), str(snapshot),
+                   str(package / "verification-key.json"))
+        claim = decode_typed_public_statement(relation, encoded)
+        print(json.dumps({"schema": "s31-verified-record-claim-v1",
+                          "program": manifest["name"], "proof_verified": True,
+                          "claim": claim}, indent=2, sort_keys=True))
     elif args.command == "verify":
         proof = args.proof.resolve()
         statement = args.statement.resolve() if args.statement else Path(str(proof) + ".statement.json")

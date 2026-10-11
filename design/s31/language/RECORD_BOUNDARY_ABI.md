@@ -1,8 +1,12 @@
 # Record-valued circuit boundary: versioned ABI design
 
-Status: canonical typed statement codec implemented as a preparatory component;
-proof-profile integration remains proposed. The current compiler deliberately
-rejects record-valued circuit parameters and results.
+Status: historical design sketch. The implemented `direct-gate` M31-leaf v2
+boundary, including nominal record inputs and results, is specified in
+[RECORD_PUBLIC_ABI_V2_IMPLEMENTATION.md](RECORD_PUBLIC_ABI_V2_IMPLEMENTATION.md).
+The native verifier now binds the descriptor digest and canonical typed
+statement to the sealed key. Other proof profiles and non-M31 leaves remain
+outside this ABI. The named public statement can be read after native proof
+verification with `s31 inspect-record-proof`.
 
 ## Why the relation format needs an explicit extension
 
@@ -47,10 +51,11 @@ now serializes a nominal layout digest and tagged root/field/tuple paths in
 declaration order. It round-trips typed values and rejects altered layouts,
 paths, counts, noncanonical field/bit/byte words, duplicate JSON keys, and
 noncanonical JSON bytes. Its [controls](../../../src/frontends/s31/tests/python/test_record_abi_v2.py)
-cover nested records and these malformed cases. The codec is not called by
-the relation compiler, prover, package builder, or native verifier; its digest
-is **not yet bound** to a proof key or public statement. No circuit may use a
-record boundary on the strength of this codec alone.
+cover nested records and these malformed cases. This original codec is not
+the proof boundary. The implemented [binding v2](../../../src/frontends/s31/python/abi/binding_v2.py)
+and [native validator](../../../src/frontends/s31/language/record_abi.zig)
+extend it with sealed relation, key and statement checks; the source compiler
+admits the M31-leaf record boundary under `direct-gate` only.
 
 ## Required implementation and proof gates
 

@@ -12,6 +12,7 @@ S31 = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(S31 / "python"))
 
 from abi.binding_v2 import (binding_digest, decode_public_statement,
+                            decode_typed_public_statement, encode_typed_public_statement,
                             flat_assignment_from_typed, statement_from_assignment,
                             encode_public_statement, make_binding, validate_binding)
 from abi.record_v2 import AbiError
@@ -225,6 +226,49 @@ class RecordBindingV2Tests(unittest.TestCase):
         with self.assertRaisesRegex(AbiError, "duplicate"):
             flat_assignment_from_typed(source,
                 encoded.replace(b'"version": 2', b'"version": 2, "version": 2'))
+
+    def test_typed_public_claim_round_trips_exact_statement_bytes(self) -> None:
+        source = {**self.relation, "version": 2, "public_abi": self.binding}
+        statement = encode_public_statement(self.relation, self.binding,
+                                            [[3], [5], [10], [5], [5]])
+        claim = decode_typed_public_statement(source, statement)
+        self.assertEqual(claim, {
+            "version": 2, "abi_sha256": binding_digest(self.relation, self.binding),
+            "public_inputs": {"request": {"first": [3], "second": [5]}},
+            "result": {"sum": [10], "copy": [[5], [5]]},
+        })
+        self.assertNotIn("witness", claim["public_inputs"])
+        self.assertEqual(encode_typed_public_statement(source, claim), statement)
+
+    def test_typed_public_claim_rejects_private_root_alias_and_bad_shape(self) -> None:
+        source = {**self.relation, "version": 2, "public_abi": self.binding}
+        statement = encode_public_statement(self.relation, self.binding,
+                                            [[3], [5], [10], [5], [5]])
+        claim = decode_typed_public_statement(source, statement)
+        variants = []
+        private = copy.deepcopy(claim)
+        private["public_inputs"]["witness"] = [7]
+        variants.append(private)
+        alias = copy.deepcopy(claim)
+        alias["result"]["copy"][1] = [6]
+        variants.append(alias)
+        wrong_digest = copy.deepcopy(claim)
+        wrong_digest["abi_sha256"] = "0" * 64
+        variants.append(wrong_digest)
+        wrong_tuple = copy.deepcopy(claim)
+        wrong_tuple["result"]["copy"] = [[5]]
+        variants.append(wrong_tuple)
+        bad_word = copy.deepcopy(claim)
+        bad_word["public_inputs"]["request"]["first"] = [2**31 - 1]
+        variants.append(bad_word)
+        for variant in variants:
+            with self.subTest(variant=variant), self.assertRaises(AbiError):
+                encode_typed_public_statement(source, variant)
+        with self.assertRaisesRegex(AbiError, "noncanonical"):
+            decode_typed_public_statement(source, statement[:-1])
+        with self.assertRaisesRegex(AbiError, "digest"):
+            decode_typed_public_statement(
+                source, statement.replace(claim["abi_sha256"].encode(), b"0" * 64))
 
 
 if __name__ == "__main__":
