@@ -64,7 +64,11 @@ explain why the gate-only case missed while the joint log-11 case passed.
 Peak RSS medians were 9.66–13.15 MB for provers and 6.68–10.44 MB for
 external verifiers; these were descriptive and had no frozen predictive
 gate. A separately labeled post-hoc matched-invocation check can quantify
-wrapper overhead without altering this prospective score.
+wrapper overhead without altering this prospective score. That
+[post-hoc check](MIXED_COST_V11_POSTHOC_METHOD_CHECK.md) measured roughly
+12–13 ms of combined process-method shift on the saved gate-only and joint
+binaries, far below the gate-only 92.88 ms observed-versus-predicted wall
+gap. Its new proof samples did not enter V11 scoring or fitting.
 
 The result is one host, one engine/compiler pin, and four related sources.
 It shows a useful proof-size extrapolation on this small set and a wall-time
