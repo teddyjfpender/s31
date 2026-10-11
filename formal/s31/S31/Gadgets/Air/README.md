@@ -687,6 +687,20 @@ honest proofs. It still does not identify the typed boundary with
 compiler-emitted rows, fixed columns, statement words, or source/manifest
 fields; it does not prove Gate local arithmetic or producer uniqueness; and it
 does not derive exact balance or row equations from an accepted native proof.
+[`SourceMixedLookupBound.lean`](SourceMixedLookupBound.md) counts the ideal
+joint Gate/chip event occurrences for this 512-row, sixteen-round family:
+each side has `1033+25N` events for `N ≤ 8`. It derives canonical event tags,
+per-tuple multiplicities below the M31 characteristic, and an explicit
+`36,491,868·|QM31|` exceptional challenge-pair ceiling, conditional on the
+source-shape roster and fixed event lists. The separate native producer-roster
+fixture checks the row/multiplicity inputs on honest N1..8 emissions; the
+formal boundary still requires their correspondence to an authenticated
+trace and the transcript challenge distribution.
+[`SourceMixedFixedWeightBridge.lean`](SourceMixedFixedWeightBridge.lean)
+kernel-checks the eighth-column multiplicity totals over every exported
+N1/N8 fixed row (1,041 and 1,097). It supplies the corresponding
+`SourceShape` field when the modeled row weights equal those complete native
+exports. That equality remains a separate source-to-trace premise.
 [`SourceMixedPublicClosure.lean`](SourceMixedPublicClosure.lean) and
 [`SourceMixedPackCorrespondence.lean`](SourceMixedPackCorrespondence.lean)
 then follow the compiler's six-row packing path, packed arithmetic, unpack

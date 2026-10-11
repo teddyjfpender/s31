@@ -137,6 +137,7 @@ BINDINGS = [
     "src/frontends/s31/examples/boundary/private_arithmetic_chip_fork.valid.json",
     "src/frontends/s31/tests/acceptance/mixed_boundary/source_pinned_n4.py",
     "src/frontends/s31/tests/acceptance/mixed_boundary/source_pinned_general.py",
+    "src/frontends/s31/tests/acceptance/mixed_boundary/preprocessed_root_binding.py",
     "src/frontends/s31/tests/acceptance/mixed_boundary/semantic_source_reseal.py",
     "src/frontends/s31/tests/acceptance/mixed_boundary/typed_boundary_correspondence.py",
     "src/frontends/s31/tests/acceptance/mixed_boundary/arithmetic_chip_input.py",

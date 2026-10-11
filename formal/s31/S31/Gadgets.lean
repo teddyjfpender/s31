@@ -66,6 +66,8 @@ import S31.Gadgets.Air.IndexedManyTaggedTupleBridge
 import S31.Gadgets.Air.TaggedPairConditionalCorrespondence
 import S31.Gadgets.Air.SourceMixedRoster
 import S31.Gadgets.Air.SourceMixedPath
+import S31.Gadgets.Air.SourceMixedLookupBound
+import S31.Gadgets.Air.SourceMixedFixedWeightBridge
 import S31.Gadgets.Air.SourceMixedAddressSchedule
 import S31.Gadgets.Air.SourceMixedChainSemantics
 import S31.Gadgets.Air.SourceMixedPublicClosure
@@ -181,6 +183,7 @@ import S31.Gadgets.Functional.RecordBoundary
 import S31.Gadgets.Functional.RecordAbiV2
 import S31.Gadgets.Functional.RecordWordBoundaryV2
 import S31.Gadgets.Functional.RecordLayoutValidationV2
+import S31.Gadgets.Functional.RecordDescriptorValidationV2
 import S31.Gadgets.Functional.GeneratedRecordLayoutCorpusV2
 import S31.Gadgets.Functional.RecordStatementV2
 import S31.Gadgets.Functional.GeneratedRecordStatementCorpusV2
