@@ -1,0 +1,19 @@
+{
+  "schema": "s31-whole-prover-cost-v8-fit-failure-v1",
+  "status": "failed-frozen-training-fit-gate-no-model-no-heldout",
+  "protocol_sha256": "dff9ed804a9a5c50189f569adceae0ba68a25cebcfa4d98c899065f2ab769abd",
+  "protocol_anchor_commit": "cdfe86cf7047a630c945cca7f8b8706295bc3623",
+  "clean_train_build_inventory_sha256": "7831a64332a98a9e9fb3d90a7824ddebe082a5243af388ad9434de2d050772d1",
+  "clean_train_corpus_sha256": "6de6546243f81d80bf862d99f8acd191dd6fa828bb92d17b5fe6a25daa475d95",
+  "completed_train_packages": 23,
+  "verified_train_trials": 2300,
+  "fit_command_exit_code": 1,
+  "fit_error": "ValueError: wrong prospective program set",
+  "root_cause": "V8 split uses signed_128_result, while inherited V3 expected_names reads signed_128_output; signed_quotient_128 was observed but signed_div_rem_128 was expected.",
+  "model_created": false,
+  "heldout_native_observations": 0,
+  "raw_evidence": "zig-out/s31-v8-evidence/train",
+  "quarantined_pre_slot_build": "zig-out/s31-v8-aborted-overlap/train",
+  "quarantined_static_check_overlap_build": "zig-out/s31-v8-quarantined-static-overlap-train",
+  "accuracy_result": "not_evaluated"
+}

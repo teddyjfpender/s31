@@ -1,6 +1,7 @@
 # V8 baseline whole-prover runbook
 
-Status: **executable tooling, unfrozen protocol, no native V8 observations**.
+Status: **protocol frozen and externally timestamped; training restarted after
+two disclosed build-phase interruptions**.
 The [prospective design](WHOLE_PROVER_V8_PROTOCOL.md) discloses V7r1's failed
 RSS coverage, the training-only V8 interval rule, fresh split menus, and the
 conditional authenticated mixed comparison. The commands here run only the
@@ -8,6 +9,48 @@ four baseline families. The paired mixed/generic experiment is explicitly
 excluded by this protocol implementation until its general profile, packaged
 CLI lowering, paired runner, and independent controls are admitted. There is
 no mixed speed claim and automatic lowering stays disabled.
+
+## Frozen protocol and interrupted pre-slot build
+
+The V8 baseline protocol is frozen at source base
+`b4d4270f28ab162e3ed0a17c4d6628ec24ee938f`, engine gitlink
+`7d544c6839497ca19b6c7ef9b982e464f10cfeed`, compiler fingerprint
+`290eaa667e96039b7a872f5b5566bff3d6c4d7a880bdf022bd38f7990ab72c9a`,
+and measurement-tool digest
+`9dd113abb35bad0ed25b7177c1db5152ece441d6280fb0301f72802361f5084e`.
+The protocol SHA-256 is
+`dff9ed804a9a5c50189f569adceae0ba68a25cebcfa4d98c899065f2ab769abd`;
+the full anchor commit is `cdfe86cf7047a630c945cca7f8b8706295bc3623`.
+Both were externally recorded at 2026-10-11 05:22:10 UTC before native work.
+The mixed/generic paired study is excluded from this baseline protocol.
+
+After that timestamp, a training **build** was briefly started for the first
+case, `arithmetic_16`, while an unrelated record-v2 Zig build was active.
+The V8 process group received SIGINT and the collector exited 130. It
+produced no completed package, package-build record, build inventory, proof,
+trial report, or timed corpus. The 1.7 MiB generated-source and partial
+staging directory was preserved under `zig-out/s31-v8-aborted-overlap/train`.
+The canonical `zig-out/s31-v8-evidence/train` path was cleared for a complete
+restart after an exclusive build-slot handoff. This interrupted attempt is
+excluded from every model and timing claim; no V8 protocol or tool source was
+changed. It may have warmed the global Zig compiler cache. Subsequent package
+build times therefore describe **fresh package paths under the observed
+cache state**, not cold-cache builds.
+
+An exclusive-slot training build then completed 13 of 23 package builds. At
+approximately 2026-10-11 05:37:10–05:37:31 UTC, an unrelated
+`python3 scripts/s31_formal.py` static binding/inventory check ran for about
+12 seconds and overlapped the `hash_2` package build. It failed a stale
+binding check; it did not start a Zig or Lean build or a proof. Before
+inspecting any package timing or model result, we chose a non-selective
+policy: SIGINT the entire training build (collector exit 130), quarantine
+all 13 completed packages plus the partial `hash_3` package under
+`zig-out/s31-v8-quarantined-static-overlap-train`, and restart **all 23**
+packages at the now-empty canonical evidence path. There was no training
+proof, corpus, model, or held-out native observation from this interrupted
+run. Quarantined package timing records are excluded from every V8 model and
+accuracy claim. The fresh restart still measures package builds under the
+observed global cache state; it is not a cold-cache benchmark.
 
 ## Prepare and freeze
 
