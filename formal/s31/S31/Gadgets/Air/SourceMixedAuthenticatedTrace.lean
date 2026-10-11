@@ -232,7 +232,7 @@ private theorem call_claims_sum {N : Nat} (alpha z : GateSecure)
 
 /-- All component residuals and the native claim fold imply the exact
 source-shaped *reciprocal identity* consumed by `SourceMixedLookupBound`.
-The two event-list alignment equalities remain explicit, so this theorem
+The two event-list alignment permutations remain explicit, so this theorem
 cannot be applied to an accepted succinct proof without a trace-authentication
 and compiler-correspondence argument. -/
 theorem closed_ideal_event_lists {N : Nat}

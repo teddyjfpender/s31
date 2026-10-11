@@ -44,7 +44,7 @@ This is a strong and explicit source/compiler/trace correspondence premise:
 it includes every Gate row, fixed multiplicity, every chip step, both bridge
 endpoints, all eight public outputs, and the fixed `u` event. The theorem
 `closed_ideal_event_lists` combines the component residual results, the
-alignment equalities, and the zero native claim fold into the exact ideal
+alignment permutations, and the zero native claim fold into the exact ideal
 reciprocal identity. It does not assume a good challenge and does not turn
 the identity into exact multiset balance; the existing bounded-exception
 theorems handle that conditional step.
