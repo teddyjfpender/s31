@@ -61,8 +61,11 @@ under a second:
 modeled address schedule is canonical for every admitted count up to eight,
 that each later input block equals the previous output block, and that
 different calls allocate distinct output blocks. It checks the first and
-eighth concrete bridge address lists by kernel reduction. Equality of this
-model to the production compiler still comes from the native inspector test.
+eighth concrete bridge address lists by kernel reduction. Under the explicit
+Gate producer-uniqueness premise, it also proves that adjacent calls must
+carry identical values across their shared addresses. Equality of this model
+to the production compiler still comes from the native inspector test, while
+authenticating producer uniqueness from a proof remains open.
 
 ```sh
 python3 src/frontends/s31/tests/acceptance/mixed_boundary/typed_boundary_correspondence.py
