@@ -206,7 +206,7 @@ theorem expected_rows_trace_nodup (certificate : Certificate)
     (0, 0, []) (by simp [placed]) (by simpa using hcapacity)).1
 
 /-- Under the native bounded-profile row equation, the complete source-row
-projection lies before the eight public output pointwise rows. The source
+projection lies before the eight trailing fixed pointwise rows. The source
 rows therefore have valid indices in the 512-row trace. This models the
 partition arithmetic checked independently by `check_source_fixed_rows`; it
 does not authenticate that the native columns satisfy the equation. -/

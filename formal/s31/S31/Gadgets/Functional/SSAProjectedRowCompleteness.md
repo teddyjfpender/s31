@@ -22,7 +22,8 @@ addresses start at `22`, so their outputs are at `23` and `24`. In the
 rows. Three input-pack additions come first; the source add is therefore
 at trace row `3`. One sub and 27 ordinary multiplication rows follow the
 add partition. The source product is at `475 + 1 + 27 = 503`. The eight
-public-output pointwise rows use indices `504` through `511`.
+four output-mask pointwise rows use indices `504` through `507`; four
+input-self pointwise rows use `508` through `511`.
 
 | Source instruction | Circuit operation | AIR trace index | Fixed selector |
 | --- | --- | ---: | --- |
