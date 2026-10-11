@@ -96,6 +96,7 @@ def main() -> None:
             else:
                 result = check_heldout_report_anchor(
                     args.heldout_out, model, args.expected_protocol_sha256,
+                    args.protocol_anchor_commit,
                     args.expected_heldout_phase_root_sha256,
                     args.heldout_phase_anchor_commit, args.expected_model_sha256,
                     args.model_anchor_commit, args.report_anchor_commit)

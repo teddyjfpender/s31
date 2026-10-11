@@ -167,7 +167,8 @@ def evaluate_heldout(heldout_out: Path, model: dict, protocol_sha256: str,
 
 
 def check_heldout_report_anchor(heldout_out: Path, model: dict, protocol_sha256: str,
-                                phase_root_sha256: str, phase_anchor_commit: str,
+                                protocol_anchor_commit: str, phase_root_sha256: str,
+                                phase_anchor_commit: str,
                                 model_sha256: str, model_anchor_commit: str,
                                 report_anchor_commit: str) -> dict:
     """Check the committed post-audit report seal before publishing a result."""
@@ -178,6 +179,12 @@ def check_heldout_report_anchor(heldout_out: Path, model: dict, protocol_sha256:
     anchor = anchored(anchor_path, report_anchor_commit,
                       "s31-mixed-stage-cost-v1-heldout-report-anchor")
     if (subprocess.run(["git", "-C", str(ROOT), "merge-base", "--is-ancestor",
+                       protocol_anchor_commit, phase_anchor_commit],
+                      check=False).returncode or
+            subprocess.run(["git", "-C", str(ROOT), "merge-base", "--is-ancestor",
+                            model_anchor_commit, phase_anchor_commit],
+                           check=False).returncode or
+            subprocess.run(["git", "-C", str(ROOT), "merge-base", "--is-ancestor",
                        phase_anchor_commit, report_anchor_commit],
                       check=False).returncode or
             subprocess.run(["git", "-C", str(ROOT), "merge-base", "--is-ancestor",
@@ -190,6 +197,7 @@ def check_heldout_report_anchor(heldout_out: Path, model: dict, protocol_sha256:
             phase.get("protocol_sha256") != protocol_sha256 or
             phase.get("phase_root_sha256") != phase_root_sha256 or
             report_time < phase_time or
+            anchor_path.read_bytes() != canonical(anchor) or
             set(anchor) != {"schema", "split", "protocol_sha256", "phase_root_sha256",
                             "phase_anchor_commit", "model_sha256", "model_anchor_commit",
                             "audit_sha256", "corpus_sha256", "evaluation_sha256",
@@ -220,6 +228,8 @@ def check_heldout_report_anchor(heldout_out: Path, model: dict, protocol_sha256:
             audit.get("corpus_sha256") != anchor["corpus_sha256"] or
             audit.get("native_verified_proofs") != 400 or
             audit.get("changed_input_and_result_rejected") is not True or
+            audit.get("raw_build_and_process_endpoints_replayed") is not True or
+            audit.get("source_assignment_statement_manifest_and_binary_hashes_replayed") is not True or
             corpus.get("schema") != "s31-mixed-stage-cost-v1-audited-corpus" or
             corpus.get("split") != "heldout" or
             corpus.get("protocol_sha256") != protocol_sha256 or

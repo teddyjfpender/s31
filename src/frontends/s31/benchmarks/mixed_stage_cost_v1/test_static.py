@@ -145,7 +145,9 @@ class ProspectiveMixedCostTests(unittest.TestCase):
                      "phase_root_sha256": phase_sha,
                      "corpus_sha256": sha((out / "corpus.json").read_bytes()),
                      "native_verified_proofs": 400,
-                     "changed_input_and_result_rejected": True}
+                     "changed_input_and_result_rejected": True,
+                     "raw_build_and_process_endpoints_replayed": True,
+                     "source_assignment_statement_manifest_and_binary_hashes_replayed": True}
             (out / "audit.json").write_bytes(canonical(audit))
             result = evaluate(model, records, protocol_sha256=protocol_sha,
                               inventory_sha256=inventory_sha, host=host,
@@ -185,7 +187,7 @@ class ProspectiveMixedCostTests(unittest.TestCase):
                            check=True)
             report_commit = subprocess.check_output(
                 ["git", "-C", str(root), "rev-parse", "HEAD"], text=True).strip()
-            arguments = (out, model, protocol_sha, phase_sha, phase_commit,
+            arguments = (out, model, protocol_sha, phase_commit, phase_sha, phase_commit,
                          model_sha, phase_commit, report_commit)
             with patch.object(anchors, "ROOT", root), patch.object(protocol, "ROOT", root):
                 self.assertTrue(anchors.check_heldout_report_anchor(*arguments)
