@@ -13,7 +13,8 @@ Gate claim + sum over calls (chip claim + bridge claim)
 ```
 
 The module keeps three component claims separate. `GateRows` carries the 512
-Gate row interaction residuals and explicit nonzero denominators. It derives
+Gate row arithmetic residuals, interaction residuals, and explicit nonzero
+denominators. It derives
 the Gate claim as the reciprocal sum of its two input events minus its
 multiplicity-weighted output events. Each `ChipRows` carries all 16 arithmetic
 and interaction row residuals and derives the input-event sum minus the
@@ -23,10 +24,14 @@ minus the initial chip endpoint, plus the final chip endpoint. The latter
 reduction uses the factor `1/16` and cyclic telescoping, so it must not be
 treated as sixteen independent endpoint events.
 
-This contract does **not** include all 512 Gate arithmetic row residuals.
-`LocalPublicPath` supplies only selected arithmetic facts on the source-to-
-public path. An end-to-end AIR correspondence proof must separately establish
-the full Gate arithmetic constraints for the committed trace.
+`source_gate_rows_arithmetic` projects the all-row arithmetic checks through
+`gateRowsEq` onto every canonical source row, including padding and rows with
+zero output multiplicity. `scheduled_row_accepted` then supplies the nine AIR
+residuals for a row selected by source addresses and opcode. The schedule
+selection and the premise that these rows are authenticated by the proof
+remain explicit. `LocalPublicPath` still packages the selected row facts for
+its older conditional theorem; the new projection shows how its arithmetic
+part follows from the global trace contract.
 
 `AuthenticatedMixedTrace.gateRowsEq` binds every decoded Gate row, including
 its raw canonical addresses and fixed multiplicity, to the source roster.

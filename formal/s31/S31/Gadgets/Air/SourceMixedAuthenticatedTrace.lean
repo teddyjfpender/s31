@@ -32,6 +32,8 @@ open S31.Gadgets.Air.SourceMixedPath
 open S31.Gadgets.Air.SourceMixedLookupBound
 open S31.Gadgets.Air.SourceMixedFalseClaimBound
 open S31.Gadgets.Air.IndexedManyTaggedTupleBridge
+open S31.Gadgets.Air.Qm31Ops
+open S31.Gadgets.Air.SourceMixedPublicClosure
 
 private theorem gate_sum_embedded (events : List GateLookup.Event)
     (alpha z : GateSecure) :
@@ -55,6 +57,9 @@ both native LogUp residuals checked. Nonzero denominators are explicit:
 the paired residual alone is vacuous at two poles. -/
 structure GateRows (alpha z : GateSecure) where
   rows : Fin 512 → Row
+  arithmeticResidual : ∀ i,
+    Qm31Ops.accepts (rows i).flags (rows i).in0 (rows i).in1
+      (rows i).output
   previous : Equiv.Perm (Fin 512)
   first : Fin 512 → GateSecure
   last : Fin 512 → GateSecure
@@ -154,6 +159,47 @@ structure AuthenticatedMixedTrace {N : Nat}
       ((List.finRange N).map (fun call =>
         (chip call).claim + (bridge call).claim)).sum +
       productionReciprocalSum7 (publicOutputYields publicWords) alpha z = 0
+
+/-- The arithmetic AIR obligation covers all 512 source rows, including
+padding and rows whose output multiplicity is zero. The source-row identity
+is an explicit compiler/trace premise; this theorem never infers it from a
+succinct proof header. -/
+theorem AuthenticatedMixedTrace.source_gate_rows_arithmetic {N : Nat}
+    {boundary : Boundary N}
+    {rows : ∀ call, Fin (boundary.rounds call) → NativeRow}
+    {alpha z : GateSecure}
+    (trace : AuthenticatedMixedTrace boundary rows alpha z)
+    (row : CanonicalRow) (hrow : row ∈ boundary.rows) :
+    Qm31Ops.accepts row.flags row.in0 row.in1 row.output := by
+  have hgate : row.toGate ∈ List.ofFn trace.gate.rows := by
+    rw [trace.gateRowsEq]
+    exact List.mem_map.mpr ⟨row, hrow, rfl⟩
+  obtain ⟨i, hi⟩ := List.mem_ofFn.mp hgate
+  have hair := trace.gate.arithmeticResidual i
+  rw [hi] at hair
+  simpa [CanonicalRow.toGate] using hair
+
+/-- The compiler schedule selects a row by address, opcode, and positive
+output multiplicity. Arithmetic acceptance comes from the all-row Gate AIR
+obligation, so clients need not assume a second per-row AIR fact. -/
+def ScheduledRow {N : Nat} (boundary : Boundary N)
+    (in0 in1 out : Nat) (op : Qm31Ops.Op) : Prop :=
+  ∃ row ∈ boundary.rows,
+    row.in0Address.val = in0 ∧ row.in1Address.val = in1 ∧
+    row.outAddress.val = out ∧ row.flags = encode op ∧
+    0 < row.multiplicity
+
+theorem AuthenticatedMixedTrace.scheduled_row_accepted {N : Nat}
+    {boundary : Boundary N}
+    {rows : ∀ call, Fin (boundary.rounds call) → NativeRow}
+    {alpha z : GateSecure}
+    (trace : AuthenticatedMixedTrace boundary rows alpha z)
+    (in0 in1 out : Nat) (op : Qm31Ops.Op)
+    (hschedule : ScheduledRow boundary in0 in1 out op) :
+    AcceptedRow boundary in0 in1 out op := by
+  obtain ⟨row, hrow, h0, h1, hout, hop, hm⟩ := hschedule
+  exact ⟨row, hrow, h0, h1, hout, hop, hm,
+    trace.source_gate_rows_arithmetic row hrow⟩
 
 private theorem call_claims_sum {N : Nat} (alpha z : GateSecure)
     (chips : Fin N → ChipRows 8 (by decide) alpha z)

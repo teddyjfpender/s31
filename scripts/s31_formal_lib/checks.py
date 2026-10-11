@@ -91,12 +91,18 @@ PROOF_FIELD_PROJECTIONS_V1 = {
     },
     "formal/s31/S31/Gadgets/Air/SourceMixedAuthenticatedTrace.lean": {
         "S31.Gadgets.Air.SourceMixedAuthenticatedTrace.GateRows": (
-            "use0Nonzero", "use1Nonzero", "yieldNonzero", "pairResidual",
+            "arithmeticResidual", "use0Nonzero", "use1Nonzero", "yieldNonzero", "pairResidual",
             "yieldResidual",
         ),
         "S31.Gadgets.Air.SourceMixedAuthenticatedTrace.AuthenticatedMixedTrace": (
             "gateRowsEq", "publicWordsEq", "positiveAligned", "negativeAligned",
             "claimFoldZero",
+        ),
+    },
+    "formal/s31/S31/Gadgets/Air/SourceMixedScheduledPublicPath.lean": {
+        "S31.Gadgets.Air.SourceMixedScheduledPublicPath.LocalPublicSchedule": (
+            "addresses", "unique", "first", "constants", "step", "packedInitial",
+            "packedFinal", "zero", "add", "mul", "outputs",
         ),
     },
 }

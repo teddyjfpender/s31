@@ -719,14 +719,18 @@ close, the challenge pair belongs to the explicit bounded exception set.
 Native proof acceptance, committed-row authentication, and transcript
 sampling are still separate obligations.
 [`SourceMixedAuthenticatedTrace.lean`](SourceMixedAuthenticatedTrace.md)
-packages Gate interaction, chip arithmetic/interaction, and bridge residual
+packages all 512 Gate arithmetic and interaction rows, chip arithmetic/
+interaction, and bridge residual
 premises with exact source event-list alignment and the native claim fold.
 It derives the ideal
 reciprocal closure consumed by the false-word theorem and hence exceptional
 pair membership for a false public word. The contract is not derived from
 succinct verifier acceptance; authenticating those rows and their alignment
-through PCS/FRI remains the next end-to-end soundness step. Full Gate
-arithmetic row constraints are outside this contract.
+through PCS/FRI remains the next end-to-end soundness step.
+[`SourceMixedScheduledPublicPath.lean`](SourceMixedScheduledPublicPath.md)
+uses that all-row Gate arithmetic premise to fill the selected add, multiply,
+unpack, and copy row AIR facts from a source address/opcode schedule. It
+leaves row selection, producer uniqueness, and proof authentication explicit.
 `TaggedPairChallenge.lean` supplies the ideal seven-coordinate challenge
 reduction for the **joint** Gate/chip event support. It proves that distinct
 seven-word tuples collide for at most six compression challenges, derives an
