@@ -78,8 +78,7 @@ pub fn extract(allocator: std.mem.Allocator, program: relation.Program) !Plan {
         std.mem.eql(u8, program.public_outputs[0], program.inputs[0].name);
     if (program.version == 2 and !v2_simple and !v2_alias)
         return error.UnsupportedManyCallSource;
-    if (v2_alias and !(try record_abi.isPublicBitAlias(
-        allocator, program, program.inputs[0].name)))
+    if (v2_alias and !(try record_abi.isPublicBitAlias(allocator, program, program.inputs[0].name)))
         return error.UnsupportedManyCallSource;
     var scalar_selectors: usize = 0;
     for (program.inputs) |input| {
@@ -422,6 +421,17 @@ test "record ABI v2 mixed admission has one public input and one derived result"
 test "record ABI v2 mixed admission rejects public u16 input even with a valid cast and repeat" {
     const allocator = std.testing.allocator;
     const source = @embedFile("../tests/acceptance/record_abi/public_u16_mixed_rejected.s31.json");
+    var parsed = try relation.parseProgram(allocator, source);
+    defer parsed.deinit();
+    try parsed.value.validate(allocator);
+    try std.testing.expectEqual(relation.Kind.u16, parsed.value.inputs[0].kind);
+    try std.testing.expectError(error.UnsupportedManyCallSource, extract(allocator, parsed.value));
+    try std.testing.expectError(error.UnsupportedManyCallSource, extractSource(allocator, source));
+}
+
+test "record ABI v2 mixed admission rejects a public u8 leaf lowered to u16" {
+    const allocator = std.testing.allocator;
+    const source = @embedFile("../tests/acceptance/record_abi/public_u8_mixed_rejected.s31.json");
     var parsed = try relation.parseProgram(allocator, source);
     defer parsed.deinit();
     try parsed.value.validate(allocator);

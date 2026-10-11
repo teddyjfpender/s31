@@ -480,9 +480,9 @@ class Elaborator:
                              "public record v2 does not admit private bit leaves")
         def result_words(typ: Type | RecordType | TupleType) -> int:
             if isinstance(typ, Type):
-                if record_boundary and typ.kind not in {"m31", "bit", "u16"}:
+                if record_boundary and typ.kind not in {"m31", "bit", "u16", "int_u8"}:
                     raise self.error(self.circuit.body,
-                                     "public record v2 supports only m31, public bit, and public u16 leaves")
+                                     "public record v2 supports only m31, public bit, public u8, and public u16 leaves")
                 return typ.length
             if isinstance(typ, RecordType):
                 return sum(result_words(field) for _, field in typ.fields)

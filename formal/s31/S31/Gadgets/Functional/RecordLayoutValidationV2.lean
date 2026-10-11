@@ -43,11 +43,13 @@ def leafCount : RawLayout → Nat
       ((List.finRange arity).map fun index => leafCount (child index)).sum
 
 def ValidLeaf (kind : PublicLeafKind) (width : Nat) : Prop :=
-  1 ≤ width ∧ width ≤ 8 ∧ (kind = .bit → width = 1)
+  1 ≤ width ∧ width ≤ 8 ∧ (kind = .bit → width = 1) ∧
+    (kind = .u8 → width = 1)
 
 def checkLeaf (kind : PublicLeafKind) (width : Nat) : Bool :=
   decide (1 ≤ width) && decide (width ≤ 8) &&
-    decide (kind = .bit → width = 1)
+    decide (kind = .bit → width = 1) &&
+    decide (kind = .u8 → width = 1)
 
 theorem checkLeaf_iff (kind : PublicLeafKind) (width : Nat) :
     checkLeaf kind width = true ↔ ValidLeaf kind width := by

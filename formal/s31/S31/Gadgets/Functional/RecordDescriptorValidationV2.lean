@@ -4,7 +4,7 @@ import S31.Gadgets.Functional.RecordLayoutValidationV2
 An executable whole-descriptor shape check for public record ABI v2. The
 input is an already parsed, explicitly named type tree. `checkDescriptor`
 checks all roots together: local shape, the aggregate leaf budget, root names,
-private `bit`/`u16` exclusion, and equality of complete type structures sharing a
+private `bit`/`u8`/`u16` exclusion, and equality of complete type structures sharing a
 nominal record name. It also requires a top-level record boundary, as the
 native v2 validator does.
 
@@ -57,7 +57,7 @@ def nominalOccurrences : NamedLayout → List (String × List TypeToken)
       (List.finRange arity).flatMap fun i => nominalOccurrences (child i)
 
 def noPrivateNarrowLeaf : NamedLayout → Bool
-  | .leaf kind _ => decide (kind ≠ .bit ∧ kind ≠ .u16)
+  | .leaf kind _ => decide (kind ≠ .bit ∧ kind ≠ .u8 ∧ kind ≠ .u16)
   | .record _ arity _ child =>
       (List.finRange arity).all fun i => noPrivateNarrowLeaf (child i)
   | .tuple arity child =>
@@ -71,7 +71,7 @@ theorem noPrivateNarrowLeaf_no_bit (layout : NamedLayout)
   | leaf kind width =>
       intro position
       cases position
-      have allowed : kind ≠ .bit ∧ kind ≠ .u16 := by
+      have allowed : kind ≠ .bit ∧ kind ≠ .u8 ∧ kind ≠ .u16 := by
         simpa [noPrivateNarrowLeaf] using accepted
       exact allowed.1
   | record name arity names child ih =>
@@ -99,9 +99,37 @@ theorem noPrivateNarrowLeaf_no_u16 (layout : NamedLayout)
   | leaf kind width =>
       intro position
       cases position
-      have allowed : kind ≠ .bit ∧ kind ≠ .u16 := by
+      have allowed : kind ≠ .bit ∧ kind ≠ .u8 ∧ kind ≠ .u16 := by
         simpa [noPrivateNarrowLeaf] using accepted
-      exact allowed.2
+      exact allowed.2.2
+  | record name arity names child ih =>
+      intro position
+      rcases position with ⟨i, tail⟩
+      have childAccepted : noPrivateNarrowLeaf (child i) = true := by
+        have h := accepted
+        simp only [noPrivateNarrowLeaf, List.all_eq_true] at h
+        exact h i (List.mem_finRange i)
+      simpa [toRaw, leafKindAt] using ih i childAccepted tail
+  | tuple arity child ih =>
+      intro position
+      rcases position with ⟨i, tail⟩
+      have childAccepted : noPrivateNarrowLeaf (child i) = true := by
+        have h := accepted
+        simp only [noPrivateNarrowLeaf, List.all_eq_true] at h
+        exact h i (List.mem_finRange i)
+      simpa [toRaw, leafKindAt] using ih i childAccepted tail
+
+theorem noPrivateNarrowLeaf_no_u8 (layout : NamedLayout)
+    (accepted : noPrivateNarrowLeaf layout = true) :
+    ∀ position : LeafPosition (erase (toRaw layout)),
+      leafKindAt (toRaw layout) position ≠ .u8 := by
+  induction layout with
+  | leaf kind width =>
+      intro position
+      cases position
+      have allowed : kind ≠ .bit ∧ kind ≠ .u8 ∧ kind ≠ .u16 := by
+        simpa [noPrivateNarrowLeaf] using accepted
+      exact allowed.2.1
   | record name arity names child ih =>
       intro position
       rcases position with ⟨i, tail⟩

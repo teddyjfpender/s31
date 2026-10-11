@@ -5,7 +5,7 @@ already hold circuit values. Inside a program, specialization removes the
 record before the arithmetic relation is built. When a circuit returns a
 public record, relation v2 also carries its nominal layout and field paths
 to the native verifier. The grouping metadata adds no arithmetic gate or AIR
-row; a `u16` leaf's range proof does add arithmetic gates.
+row; a `u8` or `u16` leaf's range proof does add arithmetic gates.
 The direct-gate v2 boundary also admits public `bit` leaves. Each occupies
 one existing M31 proof word, and the native statement parser requires that
 word to be exactly `0` or `1` before proof decoding.
@@ -14,6 +14,12 @@ with `1 ≤ N ≤ 8`. Each limb has a 16-bit arithmetic range proof. A `u16`
 result leaf must alias one of those public input wires; derived `u16` results
 and private `u16` record inputs are not yet admitted. `direct-chip` and
 `direct-mixed-general` reject this shape.
+Public scalar `u8` record input leaves use the same raw relation word with an
+eight-bit range proof. A public `u8` result may only alias a public `u8`
+input wire; derived outputs and private `u8` record inputs are excluded.
+The byte tag is included in the versioned ABI digest, and the native statement
+parser rejects byte claims above 255. Chip and mixed profiles reject public
+`u8` inputs because their source admission does not supply this range proof.
 
 ## Public record on the one-call chip
 
@@ -349,6 +355,42 @@ boundary guarantee: a raw v1 relation has no bit tag on its M31 wire, so v1
 source still requires a Boolean operation or select for every bit input.
 Private bit inputs remain disallowed by v2 record ABI because their values
 are absent from the public statement.
+
+## A public byte record field
+
+The [executable byte source](../examples/arithmetic/record_public_u8.s31)
+uses a source-level scalar `u8` while retaining a single raw `u16` relation
+wire. Its result returns exactly that input wire and an M31 computation:
+
+```s31
+struct Request { byte: u8, salt: [m31; 1] }
+struct Result { byte: u8, square: [m31; 1] }
+
+circuit record_public_u8(public req: Request) -> public Result {
+    let limb = std::int::limbs(req.byte);
+    let field = std::field::from_u16(limb);
+    let square = field .* field + req.salt;
+    Result { byte: req.byte, square: square }
+}
+```
+
+For `req.byte=[255]` and `req.salt=[3]`, the result is
+`{byte:[255], square:[65028]}`. The statement lists four logical words:
+input byte, input salt, result byte, result square. The first and third
+must agree because both paths point to the same relation wire.
+
+The direct circuit guesses eight bits `b₀…b₇`, proves each
+`bᵢ²=bᵢ`, and proves `byte=Σᵢ 2ⁱbᵢ` in M31. The reconstructed integer is at
+most `255`, below the M31 modulus, so there is no field wrap in this range
+equation. This is an arithmetic operation AIR range proof with **eight
+Boolean producer gates per byte**, not a lookup constraint. The native flat
+witness check and typed statement decoder independently require `<256`.
+The [acceptance control](../tests/acceptance/record_abi/public_u8_direct_gate_v2.py)
+proves the endpoints `0` and `255`, rejects claims `256` and `p−1`, rejects
+an in-range changed claim against an old proof, rejects a bad flat witness,
+and checks input alias and tag mutations in both descriptor validators.
+The Lean reconstruction theorem states a model-level range fact; it does not
+by itself prove compiler-to-AIR correspondence.
 
 ## A public 16-bit record field
 

@@ -74,18 +74,20 @@ Public bit and u16 leaves tag already existing M31 words. This model records
 the additional native statement range checks. The production direct-gate
 compiler separately reconstructs public u16 input words from sixteen Boolean
 bits; neither that compiler link nor JSON parsing follows from this model.
-Private bit and u16 leaves are outside the admitted native ABI subset.
+Private bit, u8, and u16 leaves are outside the admitted native ABI subset.
 -/
 
 inductive PublicLeafKind where
   | m31
   | bit
+  | u8
   | u16
 deriving DecidableEq
 
 def publicLeafBound : PublicLeafKind → Nat
   | .m31 => 2147483647
   | .bit => 2
+  | .u8 => 256
   | .u16 => 65536
 
 structure TaggedPublicBlock where
@@ -118,6 +120,21 @@ theorem tagged_public_u16_range (leaf : TaggedPublicBlock)
     (isU16 : leaf.kind = .u16) (word : Nat)
     (present : word ∈ leaf.block.words) : word < 65536 := by
   simpa [isU16, publicLeafBound] using leaf.range word present
+
+/-- A statement-validated public byte is a canonical eight-bit word. -/
+theorem tagged_public_u8_range (leaf : TaggedPublicBlock)
+    (isU8 : leaf.kind = .u8) (word : Nat)
+    (present : word ∈ leaf.block.words) : word < 256 := by
+  simpa [isU8, publicLeafBound] using leaf.range word present
+
+theorem u8_edge_words_valid :
+    0 < publicLeafBound .u8 ∧ 255 < publicLeafBound .u8 := by
+  decide
+
+theorem u8_out_of_range_rejected :
+    ¬ 256 < publicLeafBound .u8 ∧
+    ¬ 2147483646 < publicLeafBound .u8 := by
+  decide
 
 /-- The two canonical edge values are admitted by the u16 word predicate. -/
 theorem u16_edge_words_valid :
@@ -155,6 +172,13 @@ theorem bitListValue_bound (bits : List Nat)
 theorem reconstructed_sixteen_bits_are_u16 (bits : List Nat)
     (length : bits.length = 16)
     (boolean : ∀ bit ∈ bits, bit < 2) : bitListValue bits < 65536 := by
+  simpa [length] using bitListValue_bound bits boolean
+
+/-- Model-level range consequence of eight Boolean reconstruction bits.
+The production gate-to-AIR correspondence is a separate obligation. -/
+theorem reconstructed_eight_bits_are_u8 (bits : List Nat)
+    (length : bits.length = 8)
+    (boolean : ∀ bit ∈ bits, bit < 2) : bitListValue bits < 256 := by
   simpa [length] using bitListValue_bound bits boolean
 
 /-- Typed public roots plus distinct result references use the same first

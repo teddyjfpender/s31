@@ -49,8 +49,8 @@ def _leaves(tree: object, path: list[dict[str, str | int]], names: dict[str, obj
     if set(tree) == {"kind", "length"}:
         kind, length = tree["kind"], tree["length"]
         if ((kind not in {"m31", "u16"} or type(length) is not int or not 1 <= length <= 8) and
-                (kind != "bit" or type(length) is not int or length != 1)):
-            raise AbiError("v2 supports 1..8 M31 or u16 words or one public bit per leaf")
+                (kind not in {"bit", "u8"} or type(length) is not int or length != 1)):
+            raise AbiError("v2 supports 1..8 M31 or u16 words or one public bit/u8 per leaf")
         return [{"path": path, "kind": kind, "length": length}]
     if set(tree) == {"tuple"}:
         elements = tree["tuple"]
@@ -125,8 +125,8 @@ def validate_binding(relation: Mapping[str, Any], binding: object) -> None:
     public_words = 0
     for root in inputs:
         leaves = _root(root, names, input_root=True)
-        if root["visibility"] == "private" and any(leaf["kind"] in {"bit", "u16"} for leaf in leaves):
-            raise AbiError("private bit and u16 leaves are not admitted by record ABI v2")
+        if root["visibility"] == "private" and any(leaf["kind"] in {"bit", "u8", "u16"} for leaf in leaves):
+            raise AbiError("private bit, u8, and u16 leaves are not admitted by record ABI v2")
         if root["name"] in root_names:
             raise AbiError("duplicate ABI root name")
         root_names.add(root["name"])
@@ -142,7 +142,7 @@ def validate_binding(relation: Mapping[str, Any], binding: object) -> None:
     for root in inputs:
         for leaf in root["leaves"]:
             raw = relation_inputs[at]
-            relation_kind = "m31" if leaf["kind"] == "bit" else leaf["kind"]
+            relation_kind = "m31" if leaf["kind"] == "bit" else "u16" if leaf["kind"] == "u8" else leaf["kind"]
             if (leaf["wire"] != raw["name"] or relation_kind != raw["kind"] or
                     leaf["length"] != raw["length"] or root["visibility"] != raw["visibility"]):
                 raise AbiError("ABI input wire, shape, or visibility differs from relation")
@@ -161,13 +161,16 @@ def validate_binding(relation: Mapping[str, Any], binding: object) -> None:
     if unique_outputs != relation["public_outputs"]:
         raise AbiError("ABI result wire order differs from relation public outputs")
     for leaf in outputs:
-        relation_kind = "m31" if leaf["kind"] == "bit" else leaf["kind"]
+        relation_kind = "m31" if leaf["kind"] == "bit" else "u16" if leaf["kind"] == "u8" else leaf["kind"]
         if shapes.get(leaf["wire"]) != (relation_kind, leaf["length"]):
             raise AbiError("ABI result wire shape differs from relation")
-        if leaf["kind"] == "u16" and not any(
+        if leaf["kind"] in {"u8", "u16"} and not any(
                 raw["name"] == leaf["wire"] and raw["kind"] == "u16" and
-                raw["visibility"] == "public" for raw in relation_inputs):
-            raise AbiError("v2 u16 result must alias a public u16 input wire")
+                raw["visibility"] == "public" and declared["kind"] == leaf["kind"]
+                for root in inputs if root["visibility"] == "public"
+                for declared in root["leaves"]
+                for raw in relation_inputs if raw["name"] == declared["wire"]):
+            raise AbiError(f"v2 {leaf['kind']} result must alias a public {leaf['kind']} input wire")
     public_words += sum(shapes[name][1] for name in unique_outputs)
     if not 1 <= public_words <= 8:
         raise AbiError("ABI boundary exceeds eight distinct public words")
@@ -264,7 +267,7 @@ def decode_public_statement(relation: Mapping[str, Any], binding: dict[str, Any]
                 _json_bytes(leaf["path"]) != _json_bytes(declared["path"])):
             raise AbiError("public statement leaf path differs from ABI")
         words = leaf["words"]
-        limit = 2 if declared["kind"] == "bit" else 65536 if declared["kind"] == "u16" else 2**31 - 1
+        limit = 2 if declared["kind"] == "bit" else 256 if declared["kind"] == "u8" else 65536 if declared["kind"] == "u16" else 2**31 - 1
         if (type(words) is not list or len(words) != declared["length"] or
                 any(type(word) is not int or word < 0 or word >= limit for word in words)):
             raise AbiError(f"noncanonical public {declared['kind']} word")
@@ -395,7 +398,7 @@ def _flatten_typed(tree: dict[str, Any], value: object,
     """Validate one typed value and return declaration-ordered public words."""
     if "kind" in tree:
         length = tree["length"]
-        limit = 2 if tree["kind"] == "bit" else 65536 if tree["kind"] == "u16" else 2**31 - 1
+        limit = 2 if tree["kind"] == "bit" else 256 if tree["kind"] == "u8" else 65536 if tree["kind"] == "u16" else 2**31 - 1
         if (type(value) is not list or len(value) != length or
                 any(type(word) is not int or word < 0 or word >= limit for word in value)):
             raise AbiError(f"typed {tree['kind']} leaf has noncanonical words or wrong length")

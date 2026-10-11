@@ -151,10 +151,11 @@ const State = struct {
         _ = try object(descriptor, &.{ "kind", "length", "path", "wire" });
         const kind = try name(try field(descriptor, "kind"));
         const is_bit = std.mem.eql(u8, kind, "bit");
+        const is_u8 = std.mem.eql(u8, kind, "u8");
         const is_u16 = std.mem.eql(u8, kind, "u16");
         if (!std.mem.eql(u8, kind, expected_kind) or
-            (is_bit and expected_length != 1) or
-            (input_root and (is_bit or is_u16) and std.mem.eql(u8, visibility, "private")) or
+            ((is_bit or is_u8) and expected_length != 1) or
+            (input_root and (is_bit or is_u8 or is_u16) and std.mem.eql(u8, visibility, "private")) or
             try count(try field(descriptor, "length")) != expected_length)
             return error.InvalidRecordAbi;
         try matchingPath(try field(descriptor, "path"), self.path.items);
@@ -165,24 +166,22 @@ const State = struct {
             if (self.input_at >= program.inputs.len) return error.InvalidRecordAbi;
             const input = program.inputs[self.input_at];
             self.input_at += 1;
-            if (!std.mem.eql(u8, input.name, wire) or input.kind != (if (is_u16) @as(@TypeOf(input.kind), .u16) else .m31) or
+            if (!std.mem.eql(u8, input.name, wire) or input.kind != (if (is_u8 or is_u16) @as(@TypeOf(input.kind), .u16) else .m31) or
                 input.length != expected_length or
                 !std.mem.eql(u8, @tagName(input.visibility), visibility))
                 return error.InvalidRecordAbi;
         } else {
             const shape = (try program.shapeOf(self.allocator, wire)) orelse return error.InvalidRecordAbi;
-            if (shape.kind != (if (is_u16) @as(@TypeOf(shape.kind), .u16) else .m31) or shape.length != expected_length) return error.InvalidRecordAbi;
-            // The direct profile proves public u16 input bits arithmetically.
-            // Until derived u16 producers have an audited range proof, expose
-            // such a result only as an alias of one of those input wires.
-            if (is_u16) {
+            if (shape.kind != (if (is_u8 or is_u16) @as(@TypeOf(shape.kind), .u16) else .m31) or shape.length != expected_length) return error.InvalidRecordAbi;
+            // Direct Gate range-proves public u8/u16 input words. Derived
+            // narrow producers have no audited range proof in this ABI.
+            if (is_u8 or is_u16) {
                 var input_alias = false;
-                for (program.inputs) |input| {
-                    if (input.kind == .u16 and input.visibility == .public and
-                        std.mem.eql(u8, input.name, wire) and input.length == expected_length)
-                    {
-                        input_alias = true;
-                        break;
+                for (try array(try field(program.public_abi.?, "inputs"))) |declared_root| {
+                    if (!std.mem.eql(u8, try name(try field(declared_root, "visibility")), "public")) continue;
+                    for (try array(try field(declared_root, "leaves"))) |input_leaf| {
+                        if (std.mem.eql(u8, try name(try field(input_leaf, "wire")), wire) and
+                            std.mem.eql(u8, try name(try field(input_leaf, "kind")), kind)) input_alias = true;
                     }
                 }
                 if (!input_alias) return error.InvalidRecordAbi;
@@ -201,10 +200,10 @@ const State = struct {
         if (tree.object.contains("kind")) {
             _ = try object(tree, &.{ "kind", "length" });
             const kind = try name(try field(tree, "kind"));
-            if (!std.mem.eql(u8, kind, "m31") and !std.mem.eql(u8, kind, "bit") and !std.mem.eql(u8, kind, "u16")) return error.InvalidRecordAbi;
+            if (!std.mem.eql(u8, kind, "m31") and !std.mem.eql(u8, kind, "bit") and !std.mem.eql(u8, kind, "u8") and !std.mem.eql(u8, kind, "u16")) return error.InvalidRecordAbi;
             const length = try count(try field(tree, "length"));
             if (length == 0 or length > 8 or
-                (std.mem.eql(u8, kind, "bit") and length != 1) or at.* >= leaves.len)
+                ((std.mem.eql(u8, kind, "bit") or std.mem.eql(u8, kind, "u8")) and length != 1) or at.* >= leaves.len)
                 return error.InvalidRecordAbi;
             try self.leaf(program, leaves[at.*], kind, length, input_root, visibility);
             at.* += 1;
@@ -298,6 +297,29 @@ pub fn validate(allocator: std.mem.Allocator, program: anytype) !void {
     }
 }
 
+/// Width of a validated public narrow input's arithmetic decomposition.
+/// The caller validates the descriptor first, so its leaf tag is bound to
+/// the exact relation input and cannot be chosen independently by a prover.
+pub fn publicInputRangeWidth(program: anytype, wire: []const u8) ?u32 {
+    if (program.version != 2) return null;
+    const abi = program.public_abi orelse return null;
+    const inputs = array(field(abi, "inputs") catch return null) catch return null;
+    for (inputs) |root_descriptor| {
+        const visibility = name(field(root_descriptor, "visibility") catch return null) catch return null;
+        if (!std.mem.eql(u8, visibility, "public")) continue;
+        const leaves = array(field(root_descriptor, "leaves") catch return null) catch return null;
+        for (leaves) |leaf| {
+            const leaf_wire = name(field(leaf, "wire") catch return null) catch return null;
+            if (!std.mem.eql(u8, leaf_wire, wire)) continue;
+            const kind = name(field(leaf, "kind") catch return null) catch return null;
+            if (std.mem.eql(u8, kind, "u8")) return 8;
+            if (std.mem.eql(u8, kind, "u16")) return 16;
+            return null;
+        }
+    }
+    return null;
+}
+
 /// A narrow proof profile may require a public input and every result alias
 /// of that same wire to retain its declared bit type. Inspect wire identity,
 /// not a record field name: nominal fields can be renamed without changing
@@ -338,29 +360,28 @@ pub fn digest(allocator: std.mem.Allocator, program: anytype) ![32]u8 {
     return output;
 }
 
-/// Reject a flat prover assignment that cannot be represented by the sealed
-/// typed v2 statement. The relation IR erases `bit` to M31, so an otherwise
-/// unused public bit has no Boolean circuit gate. Program validation must
-/// precede this check; it establishes that every descriptor names the exact
-/// input/output wire and shape in the relation.
+/// Reject flat prover assignments that cannot be represented by the sealed
+/// typed v2 statement. The relation IR erases `bit` to M31 and `u8` to u16.
+/// Program validation precedes this check and binds tags to actual wires.
 pub fn validateAssignedPublicBits(program: anytype, assignment: anytype) !void {
     const abi = program.public_abi orelse return error.InvalidRecordAbi;
     for (try array(try field(abi, "inputs"))) |root_descriptor| {
         if (!std.mem.eql(u8, try name(try field(root_descriptor, "visibility")), "public")) continue;
-        try validateAssignedBitLeaves(root_descriptor, assignment.public_inputs);
+        try validateAssignedNarrowLeaves(root_descriptor, assignment.public_inputs);
     }
-    try validateAssignedBitLeaves(try field(abi, "result"), assignment.public_outputs);
+    try validateAssignedNarrowLeaves(try field(abi, "result"), assignment.public_outputs);
 }
 
-fn validateAssignedBitLeaves(root_descriptor: Value, assigned: Value) !void {
+fn validateAssignedNarrowLeaves(root_descriptor: Value, assigned: Value) !void {
     if (assigned != .object) return error.InvalidAssignedBit;
     for (try array(try field(root_descriptor, "leaves"))) |leaf| {
-        if (!std.mem.eql(u8, try name(try field(leaf, "kind")), "bit")) continue;
+        const kind = try name(try field(leaf, "kind"));
+        const limit: i64 = if (std.mem.eql(u8, kind, "bit")) 2 else if (std.mem.eql(u8, kind, "u8")) 256 else continue;
         const wire = try name(try field(leaf, "wire"));
         const value = assigned.object.get(wire) orelse return error.InvalidAssignedBit;
         if (value != .array or value.array.items.len != 1 or
             value.array.items[0] != .integer or
-            (value.array.items[0].integer != 0 and value.array.items[0].integer != 1))
+            value.array.items[0].integer < 0 or value.array.items[0].integer >= limit)
             return error.InvalidAssignedBit;
     }
 }
@@ -443,7 +464,7 @@ fn checkClaim(allocator: std.mem.Allocator, descriptor: Value, actual: Value, wi
     if (!std.mem.eql(u8, expected_path, actual_path)) return error.InvalidRecordStatement;
     const length = try count(try field(descriptor, "length"));
     const kind = try name(try field(descriptor, "kind"));
-    const limit: i64 = if (std.mem.eql(u8, kind, "bit")) 2 else if (std.mem.eql(u8, kind, "u16")) 65536 else P;
+    const limit: i64 = if (std.mem.eql(u8, kind, "bit")) 2 else if (std.mem.eql(u8, kind, "u8")) 256 else if (std.mem.eql(u8, kind, "u16")) 65536 else P;
     const words = try array(try field(actual, "words"));
     if (words.len != length) return error.InvalidRecordStatement;
     const value = try allocator.alloc(u32, length);

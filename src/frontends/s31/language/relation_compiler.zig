@@ -6,6 +6,7 @@ const core = @import("stwo_core");
 const circuit = @import("stwo_circuit_frontend");
 const cpu = @import("stwo_circuit_cpu_integration");
 const relation = @import("relation.zig");
+const record_abi = @import("record_abi.zig");
 const canonical = @import("canonical.zig");
 const bounded_admission = @import("bounded_call_admission.zig");
 const poseidon2 = @import("../library/hash/poseidon2.zig");
@@ -187,14 +188,14 @@ fn arithmeticInputWidth(program: relation.Program, input: relation.Input, allow_
 }
 
 pub fn directFixedInput(program: relation.Program, input: relation.Input) bool {
-    return directRecordU16Input(program, input) or arithmeticInputWidth(program, input, true) != null;
+    return directRecordRangeWidth(program, input) != null or arithmeticInputWidth(program, input, true) != null;
 }
 
-/// Record-v2 public u16 input words are range-proved by sixteen Boolean
-/// operation gates and a reconstruction equation, without a fixed lookup.
-/// Program.validate binds this input kind and visibility to the sealed ABI.
-fn directRecordU16Input(program: relation.Program, input: relation.Input) bool {
-    return program.version == 2 and input.kind == .u16 and input.visibility == .public;
+/// The validated ABI tag chooses eight or sixteen Boolean arithmetic bits.
+/// Both byte and word inputs retain their raw u16 relation wire identity.
+fn directRecordRangeWidth(program: relation.Program, input: relation.Input) ?u32 {
+    if (input.kind != .u16 or input.visibility != .public) return null;
+    return record_abi.publicInputRangeWidth(program, input.name);
 }
 
 pub fn compileRaw(comptime V: type, allocator: std.mem.Allocator, program: relation.Program, assignment: ?relation.Assignment) !circuit.builder.Context(V) {
@@ -646,8 +647,10 @@ fn compileWithSpansMode(comptime V: type, allocator: std.mem.Allocator, program:
                 const source_values: ?[]M31 = if (comptime V == QM31) try relation.inputValues(allocator, assignment.?, input) else null;
                 defer if (source_values) |owned| allocator.free(owned);
                 const boolean = direct_output and bit_sources[id];
-                const arithmetic_width: ?u32 = if (direct_output and directRecordU16Input(program, input))
-                    16 else arithmeticInputWidth(program, input, direct_output);
+                const arithmetic_width: ?u32 = if (direct_output and directRecordRangeWidth(program, input) != null)
+                    directRecordRangeWidth(program, input)
+                else
+                    arithmeticInputWidth(program, input, direct_output);
                 // A QM31 witness is already four M31 coordinates. For a
                 // private array, guessing the packed wire directly avoids
                 // four scalar guesses and their six packing gates. Public

@@ -39,7 +39,7 @@ def _type_tree(typ: Type | RecordType | TupleType, depth: int,
         leaves[0] += 1
         if leaves[0] > MAX_LAYOUT_LEAVES:
             raise AbiError("public layout has too many leaves")
-        return {"kind": typ.kind, "length": typ.length,
+        return {"kind": "u8" if typ.kind == "int_u8" else typ.kind, "length": typ.length,
                 **({"family": typ.family} if typ.family else {})}
     if isinstance(typ, TupleType):
         if not 1 <= len(typ.elements) <= 64:

@@ -1,5 +1,28 @@
 # Nested public record ABI acceptance
 
+## Public byte input range under direct-gate
+
+[`record_public_u8.s31`](../../../examples/arithmetic/record_public_u8.s31)
+tags one raw u16 relation word as a public `u8` in ABI v2. Direct Gate
+reconstructs it from eight Boolean bits using arithmetic operation gates.
+Only a public input alias can appear as a `u8` result. The native statement
+and flat witness paths reject words above 255; chip and mixed admission reject
+the public byte source shape.
+
+```sh
+python3 -B src/frontends/s31/tests/acceptance/record_abi/public_u8_direct_gate_v2.py
+python3 -B src/frontends/s31/tests/acceptance/record_abi/public_u8_direct_gate_v2.py --native
+zig build --build-file src/frontends/s31/build.zig test-bounded-call-source -Doptimize=ReleaseFast -j1
+```
+
+The native control proves 0 and 255, rejects changed in-range and out-of-range
+statements, rejects a flat witness of 256 against a valid claim, and checks a
+derived output and wrong narrow result tag in the production descriptor parser.
+The Lean `RecordAbiV2`, `RecordLayoutValidationV2`, and
+`RecordDescriptorValidationV2` modules model the eight-bit reconstruction
+bound and private-leaf exclusion; they do not establish a full physical AIR
+correspondence theorem for this compiler path.
+
 ## Public u16 input range under direct-gate
 
 [`record_public_u16.s31`](../../../examples/arithmetic/record_public_u16.s31)
