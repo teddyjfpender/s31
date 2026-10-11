@@ -66,7 +66,11 @@ relation challenges, but must be proved for the implemented transcript.
 
 For the proposed 1–8-call pair/many schedule, the existing `Plan.validate`
 caps circuit rows at `2^16`, the sum of chip rounds at `2^18`, and calls at
-eight. The direct circuit emits three Gate lookup occurrences per row. Each
+eight. **The numeric ceiling also requires source admission to cap the public
+output shape at eight words plus the reserved `u` wire.** The fixed N=4
+profile checks that shape; `Plan.validate` alone does not, and the general
+1–8-call native verifier still needs this check. The direct circuit emits
+three Gate lookup occurrences per row. Each
 tagged chip emits two endpoint occurrences per round. A bridge has 16 rows;
 each row contributes eight Gate and two tagged chip denominator terms. The
 public statement contributes at most eight output terms plus the `u` term.
@@ -81,7 +85,7 @@ T <= E.
 
 The multiplicity budget needs a separate count. Write `R = G + 2P` for
 `G` arithmetic gates and `P` permutation pairs, `S` for total chip rounds,
-`N` for calls, and `O = 9` for eight public words plus `u`.
+`N` for calls, and `O <= 9` for at most eight public words plus `u`.
 `CircuitView.computeUses` counts at most `2G + P + O` wire uses. The direct
 preprocessor adds `2P` uses of the zero wire and `8N` bridge endpoint uses.
 The circuit's output lookup weight is drawn from these checked counts;
@@ -118,6 +122,8 @@ The factors come from `private_many_boundary.Plan.validate`,
 `tagged_pair_bridge.FillContext.fill`, and `witness.trace.lookupSum` in the
 pinned engine. Any change to those emitters or caps requires recomputing this
 envelope before using it in a release budget.
+The release admission gate must enforce `source.output.len <= 9` and its
+profile's exact public-word shape before applying these numeric ceilings.
 
 ## Conditions to check in the implementation
 
