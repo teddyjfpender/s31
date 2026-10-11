@@ -165,7 +165,10 @@ def exercise(work: Path, count: int) -> dict:
         run(str(verifier), str(altered_proof), str(statement), accept=False)
     for slot in range(1 + 2 * count):
         changed_proof = bytearray(proof_bytes)
-        changed_proof[116 + 16 * slot] ^= 1
+        offset = 116 + 16 * slot
+        old = int.from_bytes(changed_proof[offset:offset + 4], "little")
+        assert old < P
+        changed_proof[offset:offset + 4] = ((old + 1) % P).to_bytes(4, "little")
         altered_proof = work / f"changed-{count}-sum-{slot}.proof"
         altered_proof.write_bytes(changed_proof)
         run(str(verifier), str(altered_proof), str(statement), accept=False)
@@ -205,14 +208,22 @@ def exercise(work: Path, count: int) -> dict:
             "-Ds31-name=record", "-j1", "--prefix", str(renamed_prefix))
         renamed_verifier = (renamed_prefix / "bin" /
                             "s31-record-mixed-general-native-verifier")
-        run(str(renamed_verifier), str(proof), str(statement), accept=False)
+        renamed_manifest = json.loads(run(str(
+            renamed_prefix / "bin" / "s31-record-mixed-general-manifest")).stdout)
+        assert renamed_manifest["source_sha256"] == hashlib.sha256(
+            renamed_path.read_bytes()).hexdigest()
+        old_claim_replay = run(str(renamed_verifier), str(proof), str(statement),
+                               accept=False)
+        assert "InvalidRecordStatement" in old_claim_replay.stderr
         renamed_claim = {
             **claim,
             "abi_sha256": binding_digest(flat_relation(renamed), renamed["public_abi"]),
         }
         renamed_typed = work / "renamed-typed-1.json"
         renamed_typed.write_bytes(encode_typed_public_statement(renamed, renamed_claim))
-        run(str(renamed_verifier), str(proof), str(renamed_typed), accept=False)
+        rebound_claim_replay = run(str(renamed_verifier), str(proof),
+                                   str(renamed_typed), accept=False)
+        assert "InvalidMixedNativeEnvelope" in rebound_claim_replay.stderr
 
     wrong_assignment = copy.deepcopy(assignment)
     wrong_assignment["public_inputs"][source["inputs"][0]["name"]][0] += 1
