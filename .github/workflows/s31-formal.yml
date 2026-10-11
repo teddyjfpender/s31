@@ -50,6 +50,10 @@ jobs:
         uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2
         with:
           version: 0.15.2
+          # The restored shared cache has reported the exporter executable as
+          # built while omitting the file itself. This job compiles one small
+          # exporter; a clean cache is more valuable than a stale cache hit.
+          use-cache: false
       - name: Source bindings, coverage, and proof-escape checks
         run: |
           set -euo pipefail
