@@ -127,8 +127,9 @@ The fixed-profile implementation follows this narrow sequence:
 4. Run honest and mutation tests in Debug and ReleaseFast, preserve existing
    V4 proof bytes, and obtain [independent admission review](../security/INDEPENDENT_REVIEW_MIXED_N3_2026-10-11.md)
    and [lookup/boundary review](../security/INDEPENDENT_REVIEW_MIXED_N3_LOOKUP_2026-10-11.md).
-   A frozen mixed proof-byte fixture and full independent pair/many lookup
-   equation review remain open.
+   The fixed N=3 profile pins the complete proof-byte SHA-256 in Debug and
+   ReleaseFast tests. A formal reduction from accepted proof bytes to
+   authenticated all-row equations remains open.
 
 The prototype reuses V4's source-derived circuit slot as an audit anchor,
 but it cannot reuse V4's grouped component manifest as the new proof
@@ -140,8 +141,7 @@ witness-confidentiality claim**.
 
 The refreshed formal source inventory pins the mixed wrapper, engine schedule,
 and engine revision. It does not contain a Lean theorem about this mixed
-inspection path or the mixed
-proof. The [N=3 profile](MIXED_NATIVE_N3_PROFILE.md) describes the supported
+inspection path or the mixed proof. The [N=3 profile](MIXED_NATIVE_N3_PROFILE.md) describes the supported
 proof-byte entrypoint and its limits.
 
 Run the prototype controls with:

@@ -59,6 +59,8 @@ authenticate arbitrary caller-supplied S31 manifest digests by itself and is
 not a standalone proof-byte admission API.
 
 The focused tests prove and verify one honest source in Debug and ReleaseFast.
+They pin the complete 98,363-byte proof's SHA-256 so envelope, transcript,
+commitment, and PCS serialization changes require an explicit fixture update.
 They reject each sum-position mutation, compensated chip/bridge sums,
 reordered source calls with a resealed header, a changed compiled endpoint
 with a resealed header, public-output changes, header/schema changes, trailing
