@@ -53,6 +53,35 @@ negatives, and three intentional refinement gaps. The Zig executable is
 [`native_descriptor_corpus.zig`](native_descriptor_corpus.zig), wired to
 `zig build record-descriptor-parser-corpus` in the frontend build.
 
+## Identifier bytes: native and Lean differential
+
+[`lexical_name_differential_v2.py`](lexical_name_differential_v2.py) compiles a
+small record circuit, then changes one input-root, nominal-record, or field
+name in its public descriptor. It updates the corresponding leaf path, so a
+valid renamed root or field remains a valid descriptor. Each position gets
+the same eight byte cases: empty, one ASCII letter, exactly 128 bytes, 129
+bytes, a leading digit, a hyphen, non-ASCII UTF-8, and an underscore with
+letters and digits. The unmodified compiled descriptor is a ninth control.
+
+The script generates 25 concrete Lean descriptors and kernel-checks both
+`checkDescriptor = true` and the expected `checkLexicalDescriptor` result for
+each. Thus every negative retains a valid *shape* and fails the lexical rule.
+The same 25 source/descriptor bytes go through the production Zig
+`relation.parseProgram` → `record_abi.validate` path using the existing
+[`native_descriptor_corpus.zig`](native_descriptor_corpus.zig) runner. It
+requires exactly **10 accepted** and **15 rejected specifically as
+`InvalidRecordAbi`**; an unrelated parse or relation error fails the run.
+Corpus SHA-256:
+`04281617e87db8ea06476f831688c869de2904724c9df9bd43d78e8db32a7ecf`.
+
+```sh
+python3 -B src/frontends/s31/tests/acceptance/record_abi/lexical_name_differential_v2.py
+```
+
+This is a finite parser differential. The Lean checker starts from an already
+parsed named tree; the fixture does not prove a general JSON-to-Lean
+refinement or validate an authenticated proof.
+
 [`nested_alias_v2.py`](nested_alias_v2.py) covers a versioned public record
 whose input contains a tuple and a nested record, whose result contains a
 tuple and nested records, and whose private input is another record. The
