@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import tempfile
 import unittest
 from datetime import datetime, timezone
@@ -16,7 +17,8 @@ from integrity import (BUILD_EVENT_SCHEMA, EVENT_SCHEMA, GENESIS,
                        replay_process)
 from protocol import check
 from runner import (altered_valid_assignment, build_event_seconds, check_disk_space,
-                    changed_claim, heldout_train_admission, materialize, paired_summary,
+                    changed_claim, heldout_train_admission, materialize,
+                    native_storage_locations, paired_summary,
                     replay_build_evidence, require_static_case)
 import integrity
 
@@ -106,6 +108,24 @@ class PairedRecordDesign(unittest.TestCase):
                        return_value=SimpleNamespace(free=minimum - 1)):
                 with self.assertRaisesRegex(ValueError, "at least 8 GiB"):
                     check_disk_space(Path(temporary) / "evidence", minimum)
+
+    def test_disk_guard_includes_existing_evidence_mount_and_cache_overrides(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            evidence = root / "evidence"
+            local = root / "local-cache"
+            global_cache = root / "global-cache"
+            for path in (evidence, local, global_cache):
+                path.mkdir()
+            with patch.dict(os.environ, {"ZIG_LOCAL_CACHE_DIR": str(local),
+                                         "ZIG_GLOBAL_CACHE_DIR": str(global_cache)}):
+                locations = native_storage_locations(evidence)
+                self.assertEqual(locations[:3], (evidence, local, global_cache))
+                with patch("runner.shutil.disk_usage",
+                           return_value=SimpleNamespace(free=9 * (1 << 30))) as usage:
+                    check_disk_space(evidence, 8 * (1 << 30))
+                self.assertEqual(usage.call_count, 1)  # same filesystem, one device check
+                self.assertEqual(usage.call_args.args[0], evidence.resolve())
 
     def test_report_anchor_detects_post_audit_edit(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

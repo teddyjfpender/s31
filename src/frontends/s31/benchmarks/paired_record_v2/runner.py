@@ -49,13 +49,17 @@ def saved_json(path: Path, value: object) -> None:
     path.write_bytes(canonical(value))
 
 
-def check_disk_space(out: Path, minimum: int) -> None:
-    """Check each filesystem used for packages, global Zig cache, and temp files."""
+def native_storage_locations(out: Path) -> tuple[Path, ...]:
+    """Include the evidence mountpoint itself and both overridable Zig caches."""
     global_cache = os.environ.get("ZIG_GLOBAL_CACHE_DIR") or str(Path.home() / ".cache/zig")
-    locations = (out.parent, S31 / ".zig-cache", Path(global_cache),
-                 Path(tempfile.gettempdir()))
+    local_cache = os.environ.get("ZIG_LOCAL_CACHE_DIR") or str(S31 / ".zig-cache")
+    return (out, Path(local_cache), Path(global_cache), Path(tempfile.gettempdir()))
+
+
+def check_disk_space(out: Path, minimum: int) -> None:
+    """Check each evidence/cache/temp filesystem before the next native unit."""
     devices = set()
-    for location in locations:
+    for location in native_storage_locations(out):
         path = location.resolve()
         while not path.exists():
             path = path.parent
