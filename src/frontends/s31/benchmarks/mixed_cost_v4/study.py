@@ -123,15 +123,25 @@ def binary_paths(directory: Path, name: str) -> dict[str, Path]:
 def check_manifest(data: dict, expected: dict, protocol: dict) -> None:
     pcs = data.get("pcs", {})
     fri = pcs.get("fri_config", {}) if type(pcs) is dict else {}
+    calls, slots, trees = data.get("calls"), data.get("slots"), data.get("tree_columns")
     if (data.get("source_sha256") != expected["source_sha256"] or
             data.get("call_count") != expected["call_count"] or
             data.get("schema") != "s31-mixed-component-inspection-general-v3" or
             data.get("interaction_pow_bits") != protocol["manifest_interaction_pow_bits"] or
             fri.get("pow_bits") != protocol["manifest_fri_pow_bits"] or
-            not isinstance(data.get("tree_columns"), list) or
-            not all(type(x) is int and x > 0 for x in data["tree_columns"]) or
+            type(calls) is not list or len(calls) != expected["call_count"] or
+            any(type(call) is not dict for call in calls) or
+            [call.get("call_id") for call in calls] != list(range(expected["call_count"])) or
+            type(slots) is not list or len(slots) != data.get("slot_count") or
+            any(type(slot) is not dict or type(slot.get("n_constraints")) is not int or
+                slot["n_constraints"] < 0 for slot in slots) or
+            type(trees) is not list or len(trees) != 4 or
+            not all(type(x) is int and x > 0 for x in trees) or
             type(data.get("slot_count")) is not int or data["slot_count"] <= 0 or
-            type(data.get("total_constraints")) is not int or data["total_constraints"] <= 0):
+            type(data.get("total_constraints")) is not int or data["total_constraints"] <= 0 or
+            sum(slot.get("n_constraints", 0) for slot in slots) != data["total_constraints"] or
+            data.get("main_columns") != trees[1] or
+            data.get("interaction_columns") != trees[2]):
         raise ValueError("native manifest identity, geometry or PoW difficulty differs")
 
 

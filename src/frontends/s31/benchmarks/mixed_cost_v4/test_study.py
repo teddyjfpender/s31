@@ -44,8 +44,11 @@ class StudyV4Tests(unittest.TestCase):
         manifest = {"schema": "s31-mixed-component-inspection-general-v3",
                     "source_sha256": "abc", "call_count": 3,
                     "interaction_pow_bits": 20, "pcs": {"fri_config": {"pow_bits": 26}},
-                    "tree_columns": [8, 12, 16, 8], "slot_count": 7,
-                    "total_constraints": 81}
+                    "tree_columns": [8, 12, 16, 8], "main_columns": 12,
+                    "interaction_columns": 16,
+                    "calls": [{"call_id": i} for i in range(3)],
+                    "slots": [{"n_constraints": 9} for _ in range(7)],
+                    "slot_count": 7, "total_constraints": 63}
         study.check_manifest(manifest, source, protocol)
         with self.assertRaises(ValueError):
             study.check_manifest({**manifest, "interaction_pow_bits": 19}, source, protocol)
