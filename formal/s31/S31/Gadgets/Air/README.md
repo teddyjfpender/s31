@@ -733,6 +733,11 @@ unpack, and copy row AIR facts from a source address/opcode schedule. It
 derives producer uniqueness from a checked logical-roster scan and chip row
 semantics from projected chip events. Row selection and proof authentication
 remain explicit.
+The schedule pins that producer scan to the native family’s 512 declared
+variables and separately requires every modeled Gate output address below 512,
+including rows with zero multiplicity. This matches the native fixture’s
+address check before inactive rows are skipped; native-to-Lean schedule
+construction remains explicit.
 [`SourceMixedEventAlignment.lean`](SourceMixedEventAlignment.md) uses event
 permutations to account for native grouping of bridge Gate reads and chip
 endpoints. It derives the two global alignments from source circuit lists

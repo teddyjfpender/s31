@@ -68,9 +68,13 @@ structure LocalPublicSchedule {N : Nat} (hN : N ≤ 8)
     (initial : State) : Prop where
   addresses : ∀ call slot,
     boundary.addresses call slot = canonicalAddress hN call slot
-  producerScan : ∃ bound result,
+  /-- The pinned native direct circuit has exactly 512 declared variables. -/
+  producerScan : ∃ result,
     S31.Gadgets.Air.GateProducerCheck.scan
-      bound ∅ ((checkedRoster boundary).map Prod.fst) = some result
+      512 ∅ ((checkedRoster boundary).map Prod.fst) = some result
+  /-- Native address validation precedes the zero-multiplicity filter. -/
+  rowAddressRange : ∀ row ∈ boundary.jointGateSource.gateRows,
+    row.outAddress < 512
   first : boundary.start ⟨0, hpositive⟩ = initial
   constants : ∀ call, boundary.constants call = (13 + call.val : F)
   packedInitial : ValueAt boundary 22 (packState initial)
@@ -95,11 +99,11 @@ theorem LocalPublicSchedule.toLocalPublicPath {N : Nat}
     (hconstant : ∀ call,
       (trace.chip call).constant = boundary.constants call) :
     LocalPublicPath hN hpositive boundary rows initial := by
-  obtain ⟨producerBound, producerResult, hscan⟩ := schedule.producerScan
+  obtain ⟨producerResult, hscan⟩ := schedule.producerScan
   exact {
     addresses := schedule.addresses
     unique := unique_produced_of_checked_roster boundary
-      producerBound producerResult hscan
+      512 producerResult hscan
     first := schedule.first
     constants := schedule.constants
     step := SourceMixedChipRowProjection.EventProjection.chip_step

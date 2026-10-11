@@ -25,11 +25,19 @@ an explicit source-to-native obligation.
 
 The schedule also carries a successful scan of the complete logical Gate
 producer roster instead of an abstract value-uniqueness premise. The scan
-checks output addresses once per active row, including rows whose lookup
+uses the pinned native declared-variable bound of **512**. It checks output
+addresses once per active row, including rows whose lookup
 output is repeated by multiplicity. `SourceMixedProducerCheck` proves that
 this decidable scan implies the value uniqueness needed by the packed and
 bridge path theorems. Relating the modeled roster to native emitted rows
 remains a compiler/trace obligation.
+
+The native roster validates the output address of **every** Gate row before
+skipping zero-multiplicity rows. `LocalPublicSchedule.rowAddressRange` models
+that separate check, so an inactive row at address 512 cannot satisfy the
+schedule merely because `checkedRoster` filters it out. The schedule assumes
+this range property; the native fixture checks it for the admitted 1–8 call
+family, but no Lean theorem yet constructs the schedule from compiled rows.
 
 The final theorem says a false public word can close the source-shaped
 reciprocal equation only at a challenge pair in the explicit exceptional set,
