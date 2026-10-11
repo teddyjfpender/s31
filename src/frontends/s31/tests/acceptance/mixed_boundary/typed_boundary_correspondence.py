@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Concrete N=1/N=8 compiler-to-typed-mixed-boundary audit fixture.
+"""Concrete N=1..8 compiler-to-typed-mixed-boundary audit fixture.
 
 This is a source and native-inspector correspondence check, not a proof of
 LogUp, PCS, or source compiler soundness. ``--static`` needs no native build.
@@ -50,8 +50,8 @@ def reviewed_address_schedule(count: int) -> list[list[int]]:
     first output is 23..26, and each later output advances ten addresses.
     This arithmetic is deliberately independent of inspector call records.
     """
-    if count not in (1, 8):
-        raise AssertionError("only the reviewed N=1/N=8 family is pinned")
+    if not 1 <= count <= 8:
+        raise AssertionError("only the reviewed N=1..8 family is pinned")
     previous = [11, 12, 13, 14]
     calls = []
     for call_id in range(count):
@@ -172,7 +172,7 @@ def synthetic(count: int) -> tuple[dict, list[int]]:
 def static_controls() -> dict:
     if reviewed_address_schedule(8)[7] != [83, 84, 85, 86, 93, 94, 95, 96]:
         raise AssertionError("eighth-call address schedule differs from Lean fixture")
-    for count in (1, 8):
+    for count in range(1, 9):
         manifest, public = synthetic(count)
         boundary = project(count, manifest, public)
         if (len(boundary["calls"]) != count or
@@ -208,14 +208,14 @@ def static_controls() -> dict:
             except AssertionError:
                 continue
             raise AssertionError(f"typed boundary control accepted {label}")
-    return {"schema": "s31-typed-mixed-boundary-static-v1", "counts": [1, 8],
+    return {"schema": "s31-typed-mixed-boundary-static-v1", "counts": list(range(1, 9)),
             "mutations_rejected_per_count": 5}
 
 
-def native_inspector_audit() -> dict:
+def native_inspector_audit(counts: list[int]) -> dict:
     with tempfile.TemporaryDirectory(prefix="s31-typed-mixed-") as temporary:
         work = Path(temporary)
-        for count in (1, 8):
+        for count in counts:
             source, assignment = family(count)
             source_file = work / f"n{count}.s31.json"
             source_file.write_bytes(canonical_source(source))
@@ -236,19 +236,24 @@ def native_inspector_audit() -> dict:
             if claimed["public_words"] != public:
                 raise AssertionError("native statement differs from public feeder")
     return {"schema": "s31-typed-mixed-boundary-native-inspector-v1",
-            "counts": [1, 8], "exact_endpoint_schedule_checked": True,
-            "modeled_bridge_gate_events": 72, "native_proofs_accepted": 2,
+            "counts": counts, "exact_endpoint_schedule_checked": True,
+            "modeled_bridge_gate_events": 8 * sum(counts),
+            "native_proofs_accepted": len(counts),
             "bridge_trace_values_read": False,
             "compiler_to_lean_event_lists_proven": False}
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--native", action="store_true", help="build, prove and verify N=1/N=8")
+    parser.add_argument("--native", action="store_true", help="build, prove and verify selected N=1..8 counts")
+    parser.add_argument("--counts", type=int, nargs="+", default=[1, 8],
+                        help="native call counts, each in 1..8 (default: 1 8)")
     args = parser.parse_args()
+    if any(count < 1 or count > 8 for count in args.counts) or len(set(args.counts)) != len(args.counts):
+        parser.error("--counts must be distinct call counts in 1..8")
     print(json.dumps(static_controls(), sort_keys=True))
     if args.native:
-        print(json.dumps(native_inspector_audit(), sort_keys=True))
+        print(json.dumps(native_inspector_audit(args.counts), sort_keys=True))
 
 
 if __name__ == "__main__":

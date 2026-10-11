@@ -46,8 +46,8 @@ fixed-column commitments and proof verification carry authority for the
 package. The Python check does not authenticate trace values or prove the
 source-to-Lean event correspondence.
 
-`typed_boundary_correspondence.py` checks the narrower N=1 and N=8 chain
-family against the typed event model in
+`typed_boundary_correspondence.py` checks the N=1..8 chain family against the
+typed event model in
 `formal/s31/S31/Gadgets/Air/SourceMixedPath.lean`. It derives the expected
 absolute circuit addresses by hand from the reviewed compiler allocation:
 reserved variables 0–10, private input words 11–14, input-packing temporaries
@@ -77,10 +77,12 @@ visible in the theorem statement; an accepted native proof is not yet shown
 to imply them.
 
 `formal/s31/S31/Gadgets/Air/SourceMixedPublicClosure.lean` adds the source
-tail: eight selected local Gate rows read the final chip words and the first
-private input, then compute four public sums and four public products. The
-theorem derives the public words from local AIR acceptance, exact event
-balance, and unique Gate values without assuming the row operands or results.
+tail: two packed Gate rows compute the sum and product, eight lane paths
+extract the scalar words, and eight add-with-zero rows bind them to public
+addresses 3–10. The theorem derives the public words from local AIR
+acceptance, exact event balance, and unique Gate values without assuming row
+operands or results. Its packed-wire and row-presence premises still need a
+compiler-to-model proof.
 Its [worked example](../../../../../../formal/s31/S31/Gadgets/Air/SourceMixedPublicClosure.md)
 shows the addresses and the arithmetic. The compiler-to-model and native
 proof-to-event reductions remain explicit requirements.
@@ -89,9 +91,10 @@ proof-to-event reductions remain explicit requirements.
 python3 src/frontends/s31/tests/acceptance/mixed_boundary/typed_boundary_correspondence.py
 ```
 
-Its native mode builds source-embedded N=1 and N=8 packages, checks the exact
-inspected endpoints, emits an honest proof, checks the native public statement,
-and runs the generated verifier:
+Its native mode defaults to source-embedded N=1 and N=8 packages, checks the
+exact inspected endpoints, emits an honest proof, checks the native public
+statement, and runs the generated verifier. Pass `--counts 1 2 3 4 5 6 7 8`
+to exercise the complete family:
 
 ```sh
 python3 src/frontends/s31/tests/acceptance/mixed_boundary/typed_boundary_correspondence.py --native
