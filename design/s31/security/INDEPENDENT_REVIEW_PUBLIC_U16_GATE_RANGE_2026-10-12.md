@@ -21,6 +21,8 @@ The shared worktree was at `31b1ed34c057b4fd22968bfbd2cc88590e244e10` when inspe
 
 The Lean files inspected at this state were `RecordAbiV2.lean` (`1cdbc550ef3d577af32aaee483e98c00c3274ed8a0e15fcfd0383fed3cc777d3`) and `RecordDescriptorValidationV2.lean` (`49b4aeb588d5429d82635fb5d556114815151d2305c38d9b024adacef3a8aebe`), both under `formal/s31/S31/Gadgets/Functional/`.
 
+Postcommit pin check: the seven frontend file hashes in the table and both Lean file hashes match the exact bytes committed in `30619d0`. The engine gitlink is unchanged. This binds the review of the previously uncommitted patch to the committed implementation.
+
 ## Constraint argument
 
 For each 16-bit input word `w`, `decomposeWordArithmetic` allocates bits `b_0,...,b_15`, emits a self-product `mulInto(b_i,b_i,b_i)` for each, reconstructs `r = Σ 2^i b_i`, and emits a self-loop addition `addInto(a,r-w,a)`. In the Gate AIR, fixed opcode/address/multiplicity columns select each arithmetic row; all four destination coordinates must equal the selected operation. Thus the self-product enforces `b_i²=b_i` and the self-loop addition enforces `a+(r-w)=a`, hence `r=w` in the field. Each Boolean root is 0 or 1. Consequently `0≤r≤2^16−1=65535<p=2147483647`; the equality has no alternative canonical M31 representative from modular wrap. The witness initializer choosing bits from `w` does not supply this argument; the constraints do.
