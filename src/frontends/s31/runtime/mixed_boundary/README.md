@@ -70,6 +70,39 @@ resealed descriptor mutations. A descriptor alone never admits a proof;
 `verifyEmbeddedWithDescriptor` checks it against source before invoking its
 fixed N=3 or N=4 verifier.
 
+`registry.zig` is the closed version 1 constructor table for the five current
+mixed component identities: the bundled circuit, pair chip and bridge, and
+many chip and bridge. The compiler-derived call index selects the chip and
+bridge family: calls 0 and 1 use pair components; calls 2 through 7 use many
+components. The registry checks each native constructor against a live engine
+AIR handle, including trace widths, constraint count, evaluation degree and
+lookup relation dependencies. `inspection.zig` and `descriptor.zig` now use
+this common selection policy. The resulting proof and claimed-sum order is
+always `circuit, chip(0), bridge(0), ...`; neither a proof nor JSON manifest
+chooses or reorders these constructors.
+
+`registry_manifest.zig` projects the source-inspected plan into a typed
+one-through-eight-call roster. It records the source and canonical IR hashes,
+fixed root, compiled input and output gate addresses, constructor IDs, AIR
+bindings, trace and column geometry, relation dependencies, and exact proof
+and claimed-sum indexes. `requireSource` regenerates the entire roster from
+literal verifier-owned source and AIR bytes, so recomputing its diagnostic
+SHA-256 cannot authorize an altered component. The N=3 and N=4 manifest
+commands show the new registry IDs and diagnostic digest alongside their
+existing audit fields. Their wire formats, selected-schedule digest domains
+and proof transcript tags remain distinct and unchanged. The registry digest
+does **not** enter either current proof transcript.
+
+This is a generated audit manifest and shared admission policy, not a
+generalized 1–8-call native proof adapter. Only N=3 and N=4 have source-pinned
+mixed native proof admission. Counts 1, 2 and 5–8 have source-bound inspection
+tests but no mixed proof envelope, prover or verifier. General proof admission
+still needs dynamic bounded component arrays and claim parsing in the engine,
+one transcript and PCS instance for each count, and verifier use of the same
+source-derived registry to instantiate every live AIR. A future profile must
+bind its registry revision and canonical roster under a new transcript tag;
+the diagnostic digest here cannot be retrofitted into N=3 or N=4.
+
 `test_source.zig` generates a chain of 1–8 live repeated calls for the focused
 descriptor matrix. Every count checks the source-reconstructed roster and
 geometry, rejects a resealed program binding, role swap, and shortened roster,
@@ -98,6 +131,7 @@ zig build --build-file src/frontends/s31/build.zig test-mixed-n4-native -Doptimi
 python3 src/frontends/s31/tests/acceptance/mixed_boundary/source_pinned.py
 python3 src/frontends/s31/tests/acceptance/mixed_boundary/source_pinned_n4.py
 zig build --build-file src/frontends/s31/build.zig test-mixed-descriptor -Doptimize=ReleaseFast -j1
+zig build --build-file src/frontends/s31/build.zig test-mixed-registry -Doptimize=ReleaseFast -j1
 ```
 
 See [`MIXED_NATIVE_N3_PROFILE.md`](../../../../../design/s31/language/MIXED_NATIVE_N3_PROFILE.md)

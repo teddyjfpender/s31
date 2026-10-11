@@ -56,6 +56,12 @@ def main() -> None:
             "pair_bridge", "many_chip", "many_bridge",
         ]
         assert [slot["claimed_sum_index"] for slot in manifest["slots"]] == list(range(7))
+        assert manifest["registry_manifest_version"] == 1
+        assert len(bytes.fromhex(manifest["registry_manifest_sha256"])) == 32
+        assert [slot["registry_id"] for slot in manifest["slots"]] == [0, 1, 2, 1, 2, 3, 4]
+        assert [slot["registry_role"] for slot in manifest["slots"]] == [
+            "circuit", "chip", "bridge", "chip", "bridge", "chip", "bridge",
+        ]
         assert manifest["tree_columns"] == [8, 63, 92, 8]
         assert [call["constant"] for call in manifest["calls"]] == [13, 14, 15]
 

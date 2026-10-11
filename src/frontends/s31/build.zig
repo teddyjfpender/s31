@@ -147,6 +147,9 @@ pub fn build(b: *std.Build) void {
     const mixed_descriptor_tests = b.addRunArtifact(b.addTest(.{ .root_module = bounded_binding_root, .filters = &.{"mixed descriptor"} }));
     b.step("test-mixed-descriptor", "Check source-bound mixed component descriptors for every bounded call count")
         .dependOn(&mixed_descriptor_tests.step);
+    const mixed_registry_tests = b.addRunArtifact(b.addTest(.{ .root_module = bounded_binding_root, .filters = &.{"mixed registry"} }));
+    b.step("test-mixed-registry", "Check source-derived mixed registry and component manifests for every bounded call count")
+        .dependOn(&mixed_registry_tests.step);
     const mixed_n4_witness_tests = b.addRunArtifact(b.addTest(.{ .root_module = bounded_binding_root, .filters = &.{"mixed N4 witness audit"} }));
     b.step("test-mixed-n4-witness", "Audit source-bound N4 circuit, chip, and bridge base handoffs without proving")
         .dependOn(&mixed_n4_witness_tests.step);

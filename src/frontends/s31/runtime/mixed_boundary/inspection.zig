@@ -10,6 +10,7 @@ const circuit = @import("stwo_circuit_frontend");
 const binding = @import("../bounded_compiled_binding.zig");
 const v4 = @import("../bounded_component_manifest.zig");
 const admission = @import("../../language/bounded_call_admission.zig");
+const registry = @import("registry.zig");
 
 const Digest = [32]u8;
 const Sha256 = std.crypto.hash.sha2.Sha256;
@@ -110,9 +111,12 @@ pub fn inspectSource(allocator: std.mem.Allocator, source: []const u8, air_bytes
     var constraint_at: u32 = 0;
     const circuit_component = manifest.components[0];
     const circuit_fact = inspected.selected_schedule.geometry.live.facts[0];
+    const circuit_registry = registry.constructor(.bundled_circuit);
     if (circuit_component.source != .bundled_air or circuit_component.role != .circuit or
         circuit_component.call_id != null or circuit_fact.kind != .circuit or
-        circuit_component.preprocessed_indices.len != 8 or circuit_component.lookup_relation_ids.len != 1)
+        circuit_component.preprocessed_indices.len != 8 or
+        circuit_component.lookup_relation_ids.len != circuit_registry.relation_count or
+        !std.mem.eql(u32, circuit_component.lookup_relation_ids, circuit_registry.relation_ids[0..circuit_registry.relation_count]))
         return error.InvalidMixedSourceRoster;
     const circuit_source = circuit_component.source.bundled_air;
     var fixed_indices: [8]u32 = undefined;
@@ -144,16 +148,18 @@ pub fn inspectSource(allocator: std.mem.Allocator, source: []const u8, air_bytes
             .input = call.input,
             .output = call.output,
         };
-        inline for (.{ Native.Role.chip, Native.Role.bridge }) |role| {
+        inline for (.{ registry.Role.chip, registry.Role.bridge }) |role| {
             const source_index = if (role == .chip) 1 + id else 1 + count + id;
             const target_index = 1 + 2 * id + @intFromBool(role == .bridge);
             const component = manifest.components[source_index];
-            const fact = try Native.inspectNative(allocator, try Native.kindForCall(call.call_id, role), native_call);
-            const source_kind: SourceKind = switch (fact.kind) {
+            const registered = try registry.forCall(call.call_id, role);
+            const fact = try registry.inspectNative(allocator, registered.key, native_call);
+            const source_kind: SourceKind = switch (registered.key) {
                 .pair_chip => .pair_chip,
                 .pair_bridge => .pair_bridge,
                 .many_chip => .many_chip,
                 .many_bridge => .many_bridge,
+                .bundled_circuit => unreachable,
             };
             if (component.call_id == null or component.call_id.? != call.call_id or
                 component.role != (if (role == .chip) v4.Role.chip else v4.Role.bridge) or
