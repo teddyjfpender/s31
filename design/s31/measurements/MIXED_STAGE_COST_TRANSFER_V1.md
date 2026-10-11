@@ -1,7 +1,9 @@
 # Mixed-general whole-prover cost: prospective source-shape transfer v1
 
-**Status: design and tooling only. No transfer native corpus, accuracy result,
-or speedup claim exists.** The [local v1 result](MIXED_STAGE_COST_MODEL_V1_RESULT.md)
+**Status: 360-trial native corpus complete and audited; unscored because the
+exact frozen training model bytes are unavailable.** See the
+[unscored result](MIXED_STAGE_COST_TRANSFER_V1_UNSCORED_RESULT.md). The
+[local v1 result](MIXED_STAGE_COST_MODEL_V1_RESULT.md)
 passed its predeclared gates for one 16-round repeat-chain family on one host.
 This protocol asks whether its **already frozen training-only model** predicts
 new source shapes. The old held-out timings, proof lengths, and stage reports
