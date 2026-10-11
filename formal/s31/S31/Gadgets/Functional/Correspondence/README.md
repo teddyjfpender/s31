@@ -42,6 +42,26 @@ projected source and public rows are distinct and inside the 512-row trace.
 canonical IR bytes. `AliasCanonicalAirBridge.lean` composes that byte check
 with the conditional physical Gate theorem; keeping the modules separate
 lets the executable byte audit compile without linking the AIR evaluator.
+`GeneratedMutationRows.lean` adds sixteen kernel-checked source-byte samples,
+one for each admitted arithmetic length from 1 through 16. An independent
+positional DAG generator supplies the expected certificates, grouped physical
+source-row positions, and output-use multiplicities. The even-sized samples
+return an earlier producer, so their final eager arithmetic row has zero
+output multiplicity. Each sample changes the return or an operation and proves
+the altered bytes do not parse to the original certificate. The source-byte
+corpus digest and selected-source digest are pinned in the generated file.
+Regenerate and verify it with:
+
+```sh
+python3 src/frontends/s31/tests/python/generated/render_lean_source_row_fixture.py --check
+(cd formal/s31 && lake build S31.Gadgets.Functional.Correspondence.GeneratedMutationRows)
+(cd formal/s31 && lake env leanchecker S31.Gadgets.Functional.Correspondence.GeneratedMutationRows)
+```
+
+The rows checked by Lean are source-derived expected rows. Native exporter
+equality for a packaged program must still be established by the separate
+package topology check; this fixture does not authenticate the committed AIR
+columns, witness values, or proof verifier.
 For example,
 the following source has one arithmetic producer and therefore one source
 arithmetic row; the alias bindings and parentheses add none:
