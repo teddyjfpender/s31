@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 import tempfile
@@ -41,6 +42,12 @@ def expected_instructions(sample) -> list[dict]:
     ]
 
 
+def normalized_bytes(sample) -> bytes:
+    """Use the serializer whose exact output the Lean byte fixture checks."""
+    relation, _ = compile_text(sample.source)
+    return (json.dumps(relation, indent=2, sort_keys=True) + "\n").encode()
+
+
 def check_static(sample) -> dict:
     checked, syntax = parse_source(sample.source.encode())
     produced, _ = compile_text(sample.source)
@@ -51,7 +58,8 @@ def check_static(sample) -> dict:
         raise AssertionError("pinned generator source changed certificate shape")
     return {"sample": sample.label, "gates": sample.gate_count,
             "returned_gate": sample.return_id,
-            "expected_public_words": expected_words(sample)}
+            "expected_public_words": expected_words(sample),
+            "normalized_sha256": hashlib.sha256(normalized_bytes(sample)).hexdigest()}
 
 
 def check_static_mutations(sample) -> int:
@@ -84,6 +92,8 @@ def exercise(work: Path, sample) -> dict:
     }, separators=(",", ":")) + "\n")
     package = s31.build(source, work / f"package-{sample.label.replace(':', '-')}",
                         "direct-gate")
+    if (package / "source.s31.json").read_bytes() != normalized_bytes(sample):
+        raise AssertionError("native package normalized bytes differ from Lean fixture")
     certificate = check_package(package)
     if (certificate["source_ssa"]["output"] != sample.return_id or
             certificate["source_ssa"]["instructions"] != expected_instructions(sample)):

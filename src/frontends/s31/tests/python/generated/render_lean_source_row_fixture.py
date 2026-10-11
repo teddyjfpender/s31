@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import json
 import sys
 from pathlib import Path
 
@@ -22,11 +23,13 @@ from package.correspondence import parse_source
 from package.direct_gate_schedule import exact_direct_gate_schedule
 from test_source_mutation_correspondence import (CORPUS_SHA256, _spell,
                                                  corpus, corpus_digest)
+from text_frontend import compile_text
 
 OUTPUT = (ROOT / "formal/s31/S31/Gadgets/Functional/Correspondence/"
           "GeneratedMutationRows.lean")
 SELECTION = tuple(f"{index:02d}:{'aliases' if index % 2 else 'direct'}"
-                  for index in range(16))
+                  for index in range(16)) + ("15:comments",)
+NATIVE_SELECTION = {"00:direct", "07:aliases", "14:direct", "15:comments"}
 
 
 def lean_bytes(data: bytes) -> str:
@@ -76,6 +79,7 @@ def render() -> str:
     selected = {sample.label: sample for sample in samples
                 if sample.label in SELECTION}
     assert set(selected) == set(SELECTION)
+    assert NATIVE_SELECTION <= set(selected)
     selection_bytes = b"".join(label.encode() + b"\0" +
                                selected[label].source.encode() + b"\0"
                                for label in SELECTION)
@@ -86,8 +90,8 @@ def render() -> str:
         "",
         "/-!",
         "Kernel-reduced samples for the bounded direct-Gate source grammar.",
-        "The independent positional generator and this renderer pin 16 DAGs",
-        "with 1..16 arithmetic instructions, aliases, and earlier returns.",
+        "The independent positional generator and this renderer pin 17 sources",
+        "with 1..16 arithmetic instructions, aliases, comments, and earlier returns.",
         f"Full Python mutation corpus SHA-256: {CORPUS_SHA256}",
         f"Selected source-byte SHA-256: {selection_sha}",
         "Each certificate, row address/selector position, and use count is",
@@ -95,6 +99,8 @@ def render() -> str:
         "The `totalAddRows` values come from the independent Python schedule.",
         "The native exporter equality, actual AIR fixed columns, proof",
         "authentication, and verifier soundness remain external obligations.",
+        "The four native samples additionally check their exact normalized",
+        "JSON bytes, including a changed-opcode negative control.",
         "-/",
         "",
         "namespace S31.Functional.Correspondence.GeneratedMutationRows",
@@ -166,6 +172,25 @@ def render() -> str:
             f"      some {prefix}Certificate := by decide",
             "",
         ]
+        if label in NATIVE_SELECTION:
+            normalized, _ = compile_text(sample.source)
+            normalized_bytes = (json.dumps(normalized, indent=2, sort_keys=True) + "\n").encode()
+            old = b'"op": "add"' if b'"op": "add"' in normalized_bytes else b'"op": "mul"'
+            new = b'"op": "mul"' if old.endswith(b'"add"') else b'"op": "add"'
+            changed_bytes = normalized_bytes.replace(old, new, 1)
+            assert changed_bytes != normalized_bytes
+            lines += [
+                f"-- Native proof sample {label}; normalized SHA-256: "
+                f"{hashlib.sha256(normalized_bytes).hexdigest()}",
+                f"def {prefix}NormalizedBytes : List Nat := {lean_bytes(normalized_bytes)}",
+                f"def {prefix}ChangedNormalizedBytes : List Nat := {lean_bytes(changed_bytes)}",
+                f"theorem {prefix}NormalizedChecks :",
+                f"    checkAliasRelation {prefix}Bytes {prefix}NormalizedBytes =",
+                f"      some {prefix}Certificate ∧",
+                f"    checkAliasRelation {prefix}Bytes {prefix}ChangedNormalizedBytes =",
+                "      none := by decide",
+                "",
+            ]
     lines += ["end S31.Functional.Correspondence.GeneratedMutationRows", ""]
     return "\n".join(lines)
 

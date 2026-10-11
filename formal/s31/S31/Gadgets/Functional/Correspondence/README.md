@@ -42,14 +42,19 @@ projected source and public rows are distinct and inside the 512-row trace.
 canonical IR bytes. `AliasCanonicalAirBridge.lean` composes that byte check
 with the conditional physical Gate theorem; keeping the modules separate
 lets the executable byte audit compile without linking the AIR evaluator.
-`GeneratedMutationRows.lean` adds sixteen kernel-checked source-byte samples,
-one for each admitted arithmetic length from 1 through 16. An independent
+`GeneratedMutationRows.lean` adds seventeen kernel-checked source-byte samples,
+one for each admitted arithmetic length from 1 through 16 plus a second
+sixteen-operation spelling with comments. An independent
 positional DAG generator supplies the expected certificates, grouped physical
 source-row positions, and output-use multiplicities. The even-sized samples
 return an earlier producer, so their final eager arithmetic row has zero
 output multiplicity. Each sample changes the return or an operation and proves
 the altered bytes do not parse to the original certificate. The source-byte
 corpus digest and selected-source digest are pinned in the generated file.
+For the four native proof samples, Lean also checks every byte of the canonical
+normalized JSON against its source parser and rejects a changed normalized
+opcode. The native package checker separately compares those canonical bytes
+with the files actually used to construct the proofs.
 Regenerate and verify it with:
 
 ```sh
