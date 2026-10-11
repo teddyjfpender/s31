@@ -39,8 +39,8 @@ def verify_package(package: Path) -> dict:
     source = json.loads((package / "source.s31.json").read_text())
     if source.get("version") not in (1, 2):
         raise ValueError("unsupported S31 relation version")
-    if source["version"] == 2 and manifest.get("lowering") != "direct-gate":
-        raise ValueError("record ABI v2 requires direct-gate lowering")
+    if source["version"] == 2 and manifest.get("lowering") not in {"direct-gate", "direct-chip"}:
+        raise ValueError("record ABI v2 requires direct-gate or direct-chip lowering")
     privacy = proof_privacy.policy_for(source, manifest.get("lowering"), manifest.get("fri_fold_step", 1))
     fri_fold_step = manifest.get("fri_fold_step", 1)
     if (type(fri_fold_step) is not int or fri_fold_step not in (1, 4) or
@@ -152,9 +152,14 @@ def verify_package(package: Path) -> dict:
         raise ValueError("S31 package cost report does not match key")
     if source["version"] == 2:
         expected_abi = abi(source, manifest["lowering"])["boundary_sha256"]
-        if (key.get("schema") != "s31-verification-key-direct-record-v2" or
+        expected_key_schema = ("s31-verification-key-direct-record-chip-v2"
+                               if manifest["lowering"] == "direct-chip"
+                               else "s31-verification-key-direct-record-v2")
+        if (key.get("schema") != expected_key_schema or
                 key.get("public_abi_sha256") != expected_abi or
-                report.get("public_abi_sha256") != expected_abi):
+                report.get("public_abi_sha256") != expected_abi or
+                (manifest["lowering"] == "direct-chip" and
+                 (key.get("profile") != "direct-m31-v4" or key.get("private_boundary") is not None))):
             raise ValueError("record ABI v2 key or cost report differs from source")
     elif key.get("public_abi_sha256") is not None or report.get("public_abi_sha256") is not None:
         raise ValueError("version 1 key cannot carry a record ABI digest")
@@ -196,13 +201,14 @@ def verify_package(package: Path) -> dict:
             declared = key.get("component_manifest")
             chip_call = declared.get("chip_call") if isinstance(declared, dict) else None
             expected_components = (3 if key.get("profile") == "direct-m31-private-v5" else 2)
-            chip_v2 = key.get("schema") == "s31-verification-key-direct-chip-manifest-v2"
+            chip_v2 = key.get("schema") in {"s31-verification-key-direct-chip-manifest-v2",
+                                              "s31-verification-key-direct-record-chip-v2"}
             try:
                 expected_digest = direct_chip_v2_digest(declared) if chip_v2 and isinstance(declared, dict) else None
             except (KeyError, TypeError, ValueError) as exc:
                 raise ValueError("S31 direct-chip component manifest does not match sealed key") from exc
             if ("component-manifest.json" not in artifacts or
-                    key.get("schema") not in {"s31-verification-key-direct-chip-manifest-v1", "s31-verification-key-direct-chip-manifest-v2"} or
+                    key.get("schema") not in {"s31-verification-key-direct-chip-manifest-v1", "s31-verification-key-direct-chip-manifest-v2", "s31-verification-key-direct-record-chip-v2"} or
                     key.get("profile") not in {"direct-m31-v4", "direct-m31-private-v5"} or
                     not isinstance(key.get("chip"), dict) or
                     not isinstance(declared, dict) or

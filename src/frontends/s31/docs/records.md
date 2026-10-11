@@ -6,6 +6,45 @@ record before the arithmetic relation is built. When a circuit returns a
 public record, relation v2 also carries its nominal layout and field paths
 to the native verifier. That metadata adds no arithmetic gate or AIR row.
 
+## Public record on the one-call chip
+
+The narrow public `direct-chip` source shape can carry named input and result
+records around the same eight proof words:
+
+```s31
+struct Lanes { words: [m31; 4] }
+
+fn step(v: [m31; 4]) -> [m31; 4] {
+    v .* v + splat<4>(7_m31)
+}
+
+circuit record_chip(public x: Lanes) -> public Lanes {
+    Lanes { words: iterate<16>(step, x.words) }
+}
+```
+
+The text compiler makes one public four-word input wire and one repeat node.
+The record paths `x.words` and `result.words` live in the v2 source
+descriptor. The chip still proves 16 rows of `next = current² + 7` for each
+of four independent M31 positions. Circuit and chip lookup sums close in the
+same proof; no record field becomes an AIR column. For input
+`x.words = [0, 1, 2, 7]`, the first chip row is `[7, 8, 11, 56]` modulo
+`p = 2³¹−1`. The final four values are claimed at `result.words`.
+
+The native verifier rebuilds the source descriptor and one-call component
+manifest, checks the sealed key's ABI digest, then parses the canonical typed
+statement into the chip's eight public M31 words. The new key schema is
+`s31-verification-key-direct-record-chip-v2`. The source and manifest digests
+enter the existing public one-call proof transcript. Only one public M31[4]
+input, one `square; add_const` repeat of 16–32768 power-of-two rounds, and
+one public M31[4] output are admitted. Private chip endpoints, multiple
+calls, other operations and other leaf types remain separate work.
+
+The [native acceptance gate](../tests/acceptance/acceptance_record_chip_v2.py)
+compares its arithmetic geometry with the equivalent flat relation and
+challenges named paths, public words, canonical encodings, the sealed key,
+and a resealed display-side ABI. Run it after a native build slot is free.
+
 ## A complete example
 
 The executable [record source](../examples/arithmetic/record_square_sum.s31)

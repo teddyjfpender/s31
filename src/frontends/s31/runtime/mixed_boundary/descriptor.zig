@@ -7,6 +7,7 @@ const std = @import("std");
 const contract = @import("../component_descriptor_contract.zig");
 const admission = @import("../../language/bounded_call_admission.zig");
 const mixed = @import("inspection.zig");
+const registry = @import("registry.zig");
 
 pub const version: u32 = 1;
 pub const max_entries = 1 + 2 * admission.max_calls;
@@ -49,14 +50,14 @@ pub fn fromSchedule(schedule: *const mixed.SelectedSchedule) !Descriptor {
     for (schedule.slots[0..schedule.slot_count], 0..) |slot, index| {
         if (slot.proof_index != index or slot.claimed_sum_index != index)
             return error.InvalidMixedDescriptor;
-        const call_id: ?u32 = if (index == 0) null else @intCast((index - 1) / 2);
-        const wanted_kind: mixed.SourceKind = if (index == 0) .bundled_circuit else blk: {
-            const pair = call_id.? < 2;
-            const chip = index % 2 == 1;
-            break :blk if (pair)
-                (if (chip) .pair_chip else .pair_bridge)
-            else
-                (if (chip) .many_chip else .many_bridge);
+        const registered = try registry.forSlot(index, count);
+        const call_id = registered.call_id;
+        const wanted_kind: mixed.SourceKind = switch (registered.constructor.key) {
+            .bundled_circuit => .bundled_circuit,
+            .pair_chip => .pair_chip,
+            .pair_bridge => .pair_bridge,
+            .many_chip => .many_chip,
+            .many_bridge => .many_bridge,
         };
         if (slot.call_id != call_id or slot.source_kind != wanted_kind)
             return error.InvalidMixedDescriptor;
@@ -69,14 +70,8 @@ pub fn fromSchedule(schedule: *const mixed.SelectedSchedule) !Descriptor {
                 .bundle_sha256 = slot.air_source_sha256,
                 .program_binding_sha256 = slot.program_binding_sha256,
             } } else .{ .native_air = .{
-                .program_id = switch (slot.source_kind) {
-                    .pair_chip => 1,
-                    .pair_bridge => 2,
-                    .many_chip => 3,
-                    .many_bridge => 4,
-                    .bundled_circuit => unreachable,
-                },
-                .program_version = 1,
+                .program_id = registered.constructor.id,
+                .program_version = registered.constructor.version,
                 .program_binding_sha256 = slot.program_binding_sha256,
             } },
         };

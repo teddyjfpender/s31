@@ -5,6 +5,7 @@ from __future__ import annotations
 import sys
 import copy
 import hashlib
+import itertools
 import struct
 import tempfile
 import unittest
@@ -88,6 +89,47 @@ class CorrespondenceParserTests(unittest.TestCase):
             parse_source((source + "\n//" + "a" * 16_384).encode())
         with self.assertRaisesRegex(UnsupportedFragment, "token limit"):
             parse_source((source + " x" * 257).encode())
+
+    def test_only_ascii_whitespace_is_accepted_outside_comments(self) -> None:
+        source = ("circuit square(public x: [m31; 4]) -> public [m31; 4] "
+                  "{ let y = x .* x; y }")
+        for separator in ("\u00a0", "\u2003", "\u2028"):
+            with self.subTest(separator=repr(separator)):
+                with self.assertRaisesRegex(UnsupportedFragment, "unsupported token"):
+                    parse_source(source.replace("let y", f"let{separator}y").encode())
+        # The byte grammar ignores comment contents through the next LF.
+        relation, _ = parse_source((source + " // Unicode \u00a0 in a comment\n").encode())
+        self.assertEqual(relation["name"], "square")
+
+    def test_small_canonical_ssa_agrees_with_production_frontend(self) -> None:
+        # Compare two independently implemented parsers across shared wires,
+        # both operators, and a returned earlier binding. These are package
+        # admission controls; they do not replace the Lean theorem.
+        names = ("x", "a", "b", "c")
+        checked = 0
+        for count in range(1, 4):
+            choices = [
+                [(op, left, right) for op in ("+", ".*")
+                 for left in range(index + 1)
+                 for right in range(left, index + 1)]
+                for index in range(count)
+            ]
+            for steps in itertools.product(*choices):
+                if len({(op, left, right) for op, left, right in steps}) != count:
+                    continue
+                body = " ".join(
+                    f"let {names[index + 1]} = {names[left]} {op} {names[right]};"
+                    for index, (op, left, right) in enumerate(steps)
+                )
+                for output in range(1, count + 1):
+                    source = ("circuit scan(public x: [m31; 4]) -> public [m31; 4] "
+                              f"{{ {body} {names[output]} }}")
+                    expected, syntax = parse_source(source.encode())
+                    actual, _ = compile_text(source)
+                    self.assertEqual(expected, actual)
+                    self.assertEqual(syntax["output"], output)
+                    checked += 1
+        self.assertGreater(checked, 100)
 
     def test_duplicate_keys_and_noncanonical_json_reject(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

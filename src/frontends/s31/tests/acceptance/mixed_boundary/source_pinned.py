@@ -9,6 +9,8 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+from registry_manifest_digest import digest as registry_manifest_digest
+
 S31 = Path(__file__).resolve().parents[3]
 SOURCE = S31 / "examples/boundary/private_mixed3.s31.json"
 ASSIGNMENT = S31 / "examples/boundary/private_mixed3.valid.json"
@@ -56,6 +58,14 @@ def main() -> None:
             "pair_bridge", "many_chip", "many_bridge",
         ]
         assert [slot["claimed_sum_index"] for slot in manifest["slots"]] == list(range(7))
+        assert manifest["registry_manifest_version"] == 1
+        assert manifest["registry_version"] == 1
+        assert len(bytes.fromhex(manifest["descriptor_sha256"])) == 32
+        assert registry_manifest_digest(manifest) == manifest["registry_manifest_sha256"]
+        assert [slot["registry_id"] for slot in manifest["slots"]] == [0, 1, 2, 1, 2, 3, 4]
+        assert [slot["registry_role"] for slot in manifest["slots"]] == [
+            "circuit", "chip", "bridge", "chip", "bridge", "chip", "bridge",
+        ]
         assert manifest["tree_columns"] == [8, 63, 92, 8]
         assert [call["constant"] for call in manifest["calls"]] == [13, 14, 15]
 

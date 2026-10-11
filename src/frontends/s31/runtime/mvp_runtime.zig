@@ -439,8 +439,10 @@ fn parsedProgram(allocator: std.mem.Allocator) !relation.ParsedProgram {
     var parsed = try relation.parseProgram(allocator, embedded_source);
     errdefer parsed.deinit();
     _ = try proofPrivacy(parsed.value);
-    if (parsed.value.version == 2 and (!direct_mode or chip_mode or
-        parsed.value.proof_mode != .transparent)) return error.UnsupportedRecordBoundaryProfile;
+    if (parsed.value.version == 2 and (!direct_mode or
+        parsed.value.proof_mode != .transparent or
+        (chip_mode and (parsed.value.repeatedStepChip() == null or privateChip(parsed.value)))))
+        return error.UnsupportedRecordBoundaryProfile;
     return parsed;
 }
 
@@ -3677,7 +3679,7 @@ fn validateKey(allocator: std.mem.Allocator, source: relation.Program, key: Key)
         const pinned_stdlib = key.stdlib_lock_sha256 orelse return error.InvalidVerificationKey;
         if (!std.mem.eql(u8, pinned_stdlib, expected_stdlib)) return error.InvalidVerificationKey;
     }
-    if (!std.mem.eql(u8, key.schema, if (source.version == 2) "s31-verification-key-direct-record-v2" else if (source.proof_mode == .blinded) "s31-verification-key-blinded-v1" else if (direct_mode and chip_mode) "s31-verification-key-direct-chip-manifest-v2" else if (direct_mode) "s31-verification-key-direct-manifest-v1" else if (wide_mode) "s31-verification-key-v5" else if (sparse_mode) "s31-verification-key-v3" else if (chip_mode) "s31-verification-key-v2" else "s31-verification-key-v1") or
+    if (!std.mem.eql(u8, key.schema, if (source.version == 2 and chip_mode) "s31-verification-key-direct-record-chip-v2" else if (source.version == 2) "s31-verification-key-direct-record-v2" else if (source.proof_mode == .blinded) "s31-verification-key-blinded-v1" else if (direct_mode and chip_mode) "s31-verification-key-direct-chip-manifest-v2" else if (direct_mode) "s31-verification-key-direct-manifest-v1" else if (wide_mode) "s31-verification-key-v5" else if (sparse_mode) "s31-verification-key-v3" else if (chip_mode) "s31-verification-key-v2" else "s31-verification-key-v1") or
         !std.mem.eql(u8, key.profile, if (source.proof_mode == .blinded) "circuit-blinded-v1" else if (privateChip(source)) "direct-m31-private-v5" else if (direct_mode) "direct-m31-v4" else if (wide_mode) "sparse-wide-v5" else if (sparse_mode) "sparse-v3" else if (chip_mode) "hybrid-step-v2" else "circuit-v1") or
         !std.mem.eql(u8, key.name, source.name))
         return error.InvalidVerificationKey;

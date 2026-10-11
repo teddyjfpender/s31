@@ -54,8 +54,8 @@ def _verified_record_claim(snapshot: Path, manifest: dict, proof: Path,
     source_path = snapshot / "source.s31.json"
     source_bytes = source_path.read_bytes()
     relation = json.loads(source_bytes)
-    if relation.get("version") != 2 or manifest["lowering"] != "direct-gate":
-        raise ValueError("record proof inspection requires a direct-gate record ABI v2 package")
+    if relation.get("version") != 2 or manifest["lowering"] not in {"direct-gate", "direct-chip"}:
+        raise ValueError("record proof inspection requires a direct-gate or direct-chip record ABI v2 package")
     with tempfile.TemporaryDirectory(prefix="s31-inspect-record-") as temporary:
         proof_snapshot = Path(temporary) / "proof.bin"
         statement_snapshot = Path(temporary) / "statement.json"

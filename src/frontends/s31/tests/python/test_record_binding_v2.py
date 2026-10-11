@@ -15,7 +15,7 @@ from abi.binding_v2 import (binding_digest, decode_public_statement,
                             decode_typed_public_statement, encode_typed_public_statement,
                             flat_assignment_from_typed, statement_from_assignment,
                             encode_public_statement, make_binding, validate_binding)
-from abi.record_v2 import AbiError
+from abi.record_v2 import AbiError, flatten_value
 from language.syntax import RecordType, TupleType
 from s31_stdlib import Type
 
@@ -52,6 +52,38 @@ class RecordBindingV2Tests(unittest.TestCase):
         ])
         self.assertEqual(self.relation["public_outputs"], ["sum", "b"])
         self.assertEqual(len(self.relation["nodes"]), 1)
+
+    def test_three_element_tuple_walk_matches_typed_value_order(self) -> None:
+        word = Type("m31", 1)
+        request = RecordType("WalkRequest", (("items", TupleType((word, word, word))),
+                                             ("salt", word)))
+        result = RecordType("WalkResult", (("echo", word),))
+        relation = {
+            "version": 1, "name": "three_tuple_walk",
+            "inputs": [{"name": wire, "kind": "m31", "length": 1,
+                        "visibility": "public"}
+                       for wire in ("a", "b", "c", "d")],
+            "nodes": [], "assertions": [], "public_outputs": ["a"],
+        }
+        binding = make_binding(relation, [
+            ("request", request, "public", ["a", "b", "c", "d"]),
+        ], ("result", result, ["a"]))
+        value = {"salt": [13], "items": ([3], [5], [8])}
+        typed = flatten_value(request, value, (("root", "request"),))
+        declared = binding["inputs"][0]["leaves"]
+        self.assertEqual([leaf["path"] for leaf in typed],
+                         [leaf["path"] for leaf in declared])
+        self.assertEqual([leaf["words"] for leaf in typed],
+                         [[3], [5], [8], [13]])
+        self.assertEqual([leaf["wire"] for leaf in declared], ["a", "b", "c", "d"])
+        self.assertEqual([leaf["path"][-1] for leaf in declared],
+                         [{"tuple": 0}, {"tuple": 1}, {"tuple": 2},
+                          {"field": "salt"}])
+        swapped = copy.deepcopy(binding)
+        swapped["inputs"][0]["leaves"][1:3] = list(
+            reversed(swapped["inputs"][0]["leaves"][1:3]))
+        with self.assertRaises(AbiError):
+            validate_binding(relation, swapped)
 
     def test_digest_binds_nominal_names_field_order_and_wire_aliases(self) -> None:
         baseline = binding_digest(self.relation, self.binding)

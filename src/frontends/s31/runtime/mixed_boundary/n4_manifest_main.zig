@@ -2,9 +2,15 @@
 const std = @import("std");
 const package = @import("n4_package.zig");
 const mixed = @import("inspection.zig");
+const registry = @import("registry.zig");
+const registry_manifest = @import("registry_manifest.zig");
 
 const SlotReport = struct {
     source_kind: mixed.SourceKind,
+    registry_key: registry.Key,
+    registry_id: u32,
+    registry_version: u32,
+    registry_role: registry.Role,
     call_id: ?u32,
     proof_index: u32,
     claimed_sum_index: u32,
@@ -35,12 +41,17 @@ pub fn main() !void {
     );
     if (check_only) return;
     const schedule = &inspected.schedule;
+    const generated = try registry_manifest.fromSchedule(schedule);
     const geometry = schedule.native_geometry.?;
     var slots: [9]SlotReport = undefined;
     std.debug.assert(schedule.slot_count == slots.len);
-    for (schedule.slots[0..schedule.slot_count], &slots) |slot, *out| {
+    for (schedule.slots[0..schedule.slot_count], generated.entrySlice(), &slots) |slot, entry, *out| {
         out.* = .{
             .source_kind = slot.source_kind,
+            .registry_key = entry.registry_key,
+            .registry_id = entry.registry_id,
+            .registry_version = entry.registry_version,
+            .registry_role = entry.role,
             .call_id = slot.call_id,
             .proof_index = slot.proof_index,
             .claimed_sum_index = slot.claimed_sum_index,
@@ -65,6 +76,10 @@ pub fn main() !void {
         .canonical_ir_sha256 = std.fmt.bytesToHex(schedule.canonical_ir_sha256, .lower),
         .v4_audit_manifest_sha256 = std.fmt.bytesToHex(schedule.source_manifest_sha256, .lower),
         .manifest_sha256 = std.fmt.bytesToHex(schedule.digest, .lower),
+        .registry_manifest_version = generated.schema_version,
+        .registry_version = generated.registry_version,
+        .registry_manifest_sha256 = std.fmt.bytesToHex(generated.digest, .lower),
+        .descriptor_sha256 = std.fmt.bytesToHex(generated.descriptor_sha256, .lower),
         .circuit_identity_sha256 = std.fmt.bytesToHex(inspected.circuit_identity_sha256, .lower),
         .fixed_root = std.fmt.bytesToHex(schedule.fixed_root, .lower),
         .call_count = schedule.call_count,

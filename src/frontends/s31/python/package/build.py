@@ -25,8 +25,10 @@ def build_json(source_path: Path, output: Path, lowering: str = "gate",
         raise ValueError("FRI fold step 4 requires gate or sparse-wide-gate lowering; supported steps are 1 and 4")
     source_path = source_path.resolve()
     source, data = load_source(source_path)
-    if source["version"] == 2 and lowering != "direct-gate":
-        raise ValueError("public record ABI v2 requires direct-gate lowering")
+    if source["version"] == 2:
+        # Validate the source-derived typed descriptor before invoking Zig.
+        # The native compiler and verifier independently repeat this check.
+        abi(source, lowering)
     privacy = proof_privacy.policy_for(source, lowering, fri_fold_step)
     lock_bytes = ((json.dumps(library_lock, indent=2, sort_keys=True) + "\n").encode()
                   if library_lock is not None else None)
@@ -67,7 +69,7 @@ def build_json(source_path: Path, output: Path, lowering: str = "gate",
         if inspection["program_sha256"] != sha256(data):
             raise RuntimeError("compiled program does not match source")
         key = {
-            "schema": "s31-verification-key-direct-record-v2" if source["version"] == 2 else proof_privacy.KEY_SCHEMA if privacy else "s31-verification-key-sha-fused-v4" if lowering == "sha-fused" else "s31-verification-key-sha-shift-v3" if lowering == "sha-shift" else "s31-verification-key-sha-joint-v1" if lowering == "sha-joint" else "s31-verification-key-direct-chip-manifest-v2" if lowering == "direct-chip" else "s31-verification-key-direct-manifest-v1" if lowering == "direct-gate" else "s31-verification-key-v5" if lowering == "sparse-wide-gate" else "s31-verification-key-v3" if lowering.startswith("sparse-") else "s31-verification-key-v2" if lowering == "chip" else "s31-verification-key-v1",
+            "schema": ("s31-verification-key-direct-record-chip-v2" if lowering == "direct-chip" else "s31-verification-key-direct-record-v2") if source["version"] == 2 else proof_privacy.KEY_SCHEMA if privacy else "s31-verification-key-sha-fused-v4" if lowering == "sha-fused" else "s31-verification-key-sha-shift-v3" if lowering == "sha-shift" else "s31-verification-key-sha-joint-v1" if lowering == "sha-joint" else "s31-verification-key-direct-chip-manifest-v2" if lowering == "direct-chip" else "s31-verification-key-direct-manifest-v1" if lowering == "direct-gate" else "s31-verification-key-v5" if lowering == "sparse-wide-gate" else "s31-verification-key-v3" if lowering.startswith("sparse-") else "s31-verification-key-v2" if lowering == "chip" else "s31-verification-key-v1",
             "profile": inspection["profile"],
             "chip": inspection["chip"],
             "name": name,

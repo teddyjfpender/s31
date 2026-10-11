@@ -130,7 +130,12 @@ import S31.Gadgets.Functional.SSAOutputAirCells
 import S31.Gadgets.Functional.SSAInputAirCells
 import S31.Gadgets.Functional.SSAPublicInputBinding
 import S31.Gadgets.Functional.SSANativePolynomialRows
+import S31.Gadgets.Functional.SSAInstalledBytecodeRows
+import S31.Gadgets.Functional.SSAInstalledBytecodeMixedReturn
 import S31.Gadgets.Functional.SSAGateLookupWireMap
+import S31.Gadgets.Functional.SSAInstalledBytecodeGateJoin
+import S31.Gadgets.Functional.SSAInstalledBytecodePublicOutput
+import S31.Gadgets.Functional.SSAInstalledBytecodePublicInput
 import S31.Gadgets.Functional.GeneratedDirectGateBridge
 import S31.Gadgets.Functional.GeneratedDirectGateMixedReturn
 import S31.Gadgets.Functional.MathLibrary
@@ -142,6 +147,7 @@ import S31.Gadgets.Functional.PowerChains
 import S31.Gadgets.Functional.TupleValues
 import S31.Gadgets.Functional.RecordValues
 import S31.Gadgets.Functional.RecordBoundary
+import S31.Gadgets.Functional.RecordAbiV2
 import S31.Gadgets.Functional.StaticRecurrence
 import S31.Gadgets.Functional.WorkedMix4
 import S31.Gadgets.Functional.Assertions

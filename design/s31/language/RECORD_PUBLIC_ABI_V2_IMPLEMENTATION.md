@@ -1,10 +1,47 @@
 # Public record ABI v2: implementation contract
 
 Status: M31-leaf v2 record outputs and record-valued public/private inputs
-are implemented for the direct-gate profile. The native verifier checks the
-typed statement, embedded relation descriptor, and sealed key digest. Other
-proof profiles and non-M31 boundary leaves remain disabled. The input slice
-passed its local native proof and mutation acceptance; CI is still pending.
+are implemented for the direct-gate profile. A source-bounded extension for
+the public one-call direct-chip profile is implemented in code and has a
+dedicated native acceptance gate awaiting execution. The native verifier
+checks the typed statement, embedded relation descriptor, sealed key digest,
+and source-derived component roster. Private record chip endpoints, other
+proof profiles, and non-M31 boundary leaves remain disabled. The direct-gate
+input slice passed its local native proof and mutation acceptance; CI remains
+the release gate.
+
+## Source-bounded public one-call chip
+
+The direct-chip v2 slice accepts exactly one public `m31[4]` flat input wire,
+one `repeat` node containing `square; add_const`, 16–32768 power-of-two
+rounds, and one public `m31[4]` result wire. One or both endpoints may be
+wrapped by nominal records; duplicate result fields may alias the result
+wire. The eight proof words remain four initial and four final M31 values.
+All named paths and aliases are checked by the same native v2 statement
+parser used by direct-gate. Any private input or private chip boundary is
+rejected before proof decoding. The source-derived v2 descriptor is validated
+against the flat relation and hashed into the canonical IR identity.
+
+The key schema is `s31-verification-key-direct-record-chip-v2`. It carries
+both `public_abi_sha256` and the typed one-call
+`manifest_precommitment_sha256`. Before reading proof bytes, the verifier
+regenerates the ABI digest, circuit topology, AIR roster, preprocessed data,
+manifest digest, and expected circuit identity from its embedded source and
+pinned AIR. The manifest digest includes the source and canonical IR digests;
+the latter includes the ABI digest. The effective source digest bound to the
+existing public one-call proof transcript includes the manifest digest. A
+version-1 chip proof cannot be reinterpreted as a version-2 record proof for
+the same arithmetic graph. The underlying chip AIR and proof envelope remain
+the one-call public profile; no extra arithmetic rows are introduced by
+record grouping.
+
+The [native acceptance script](../../../src/frontends/s31/tests/acceptance/acceptance_record_chip_v2.py)
+must pass before this slice is called release-ready. It compares flat and
+record AIR geometry, verifies both proofs, rejects changed paths, alias
+claims, public values, noncanonical words, rehashed sidecars, independently
+resealed bad ABI/manifest keys, a visibility-swapped embedded descriptor,
+and cross-version proof replay. This script has not yet run while the V7r1
+timed cost study owns the native build slot.
 
 ## Minimal first release
 

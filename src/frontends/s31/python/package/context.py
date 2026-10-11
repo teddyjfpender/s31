@@ -90,8 +90,10 @@ def abi(source: dict, lowering: str) -> dict:
     if source.get("version") == 2:
         from abi.binding_v2 import binding_digest
 
-        if lowering != "direct-gate":
-            raise ValueError("public record ABI v2 requires direct-gate lowering")
+        if lowering not in {"direct-gate", "direct-chip"}:
+            raise ValueError("public record ABI v2 requires direct-gate or direct-chip lowering")
+        if lowering == "direct-chip" and not public_record_chip_source(source):
+            raise ValueError("record direct-chip requires one public four-lane M31 square/add repeat")
         base = {**source, "version": 1}
         boundary = base.pop("public_abi")
         return {"schema": "s31-public-abi-v2", "boundary": boundary,
@@ -128,6 +130,39 @@ def abi(source: dict, lowering: str) -> dict:
         ],
         "public_outputs": [{"name": name, **shapes[name]} for name in source["public_outputs"]],
     }
+
+
+def public_record_chip_source(source: dict) -> bool:
+    """Conservative source admission for the existing public one-call AIR.
+
+    Native `Program.repeatedStepChip` and the v2 descriptor validator remain
+    authoritative. This check avoids starting a native build for an unsupported
+    record shape and prevents package inspection from presenting it as a chip.
+    """
+    inputs = source.get("inputs")
+    nodes = source.get("nodes")
+    outputs = source.get("public_outputs")
+    assertions = source.get("assertions")
+    if (source.get("version") != 2 or source.get("proof_mode", "transparent") != "transparent" or
+            type(inputs) is not list or len(inputs) != 1 or
+            type(nodes) is not list or len(nodes) != 1 or
+            type(outputs) is not list or len(outputs) != 1 or
+            assertions != []):
+        return False
+    entry, node = inputs[0], nodes[0]
+    if (type(entry) is not dict or entry.get("visibility") != "public" or
+            entry.get("kind") != "m31" or type(entry.get("length")) is not int or
+            entry["length"] != 4 or type(node) is not dict or
+            node.get("op") != "repeat" or node.get("lhs") != entry.get("name") or
+            outputs[0] != node.get("name")):
+        return False
+    rounds, body = node.get("rounds"), node.get("body")
+    return (type(rounds) is int and 16 <= rounds <= 32768 and
+            rounds & (rounds - 1) == 0 and type(body) is list and len(body) == 2 and
+            body[0] == {"op": "square"} and type(body[1]) is dict and
+            set(body[1]) == {"op", "constant"} and body[1]["op"] == "add_const" and
+            type(body[1]["constant"]) is int and
+            0 <= body[1]["constant"] < (1 << 31) - 1)
 
 
 def write_json(path: Path, value: dict) -> None:
