@@ -281,6 +281,97 @@ def render(package: Path) -> str:
     return "\n".join(lines)
 
 
+def check_base_vm_source_contract(verifier: str) -> None:
+    """Pin the native base register write and arithmetic opcode switch."""
+    require("base[instruction.dst] = switch (instruction.op)" in verifier and
+            ".constant => QM31.fromBase(M31.fromCanonical(instruction.a))" in verifier and
+            ".add => base[instruction.a].add(base[instruction.b])" in verifier and
+            ".sub => base[instruction.a].sub(base[instruction.b])" in verifier and
+            ".mul => base[instruction.a].mul(base[instruction.b])" in verifier,
+            "native Gate base opcode source contract changed")
+
+
+def render_base_vm(package: Path) -> str:
+    """Reflect the selected Gate's first 38 base opcodes into a Lean VM.
+
+    This prefix covers the five flag/one-hot roots. Its instruction bytes are
+    checked by the same pinned bundle/program digest as the other exports.
+    """
+    checked = check_package(package)
+    base, _extension, _roots = decoded_program(gate_program(BUNDLE.read_bytes()))
+    verifier = (ROOT / "deps/stwo-zig/src/frontends/cairo/witness/resident_verifier.zig").read_text()
+    check_base_vm_source_contract(verifier)
+    constructors = {4: "add", 5: "sub", 6: "mul"}
+    instructions = []
+    for op, tree, dst, a, b, imm in base[:38]:
+        if op == 0:
+            require(imm == 0 and tree in (0, 1), "flag prefix has unsupported trace read")
+            operation = f".{'fixed' if tree == 0 else 'main'} {a}"
+        elif op == 3:
+            operation = f".constant {a}"
+        else:
+            require(op in constructors, "flag prefix has unsupported opcode")
+            operation = f".{constructors[op]} {a} {b}"
+        instructions.append(f"  ⟨{dst}, {operation}⟩")
+    lines = [
+        "-- Generated from the checked first 38 STWZEVA/1 Gate base instructions.",
+        f"-- Bundle SHA-256: {AIR_BUNDLE_SHA256}",
+        f"-- Gate program SHA-256: {GATE_PROGRAM_SHA256}",
+        f"-- Source SHA-256: {checked['source_sha256']}",
+        "-- Native opcode switch wording is checked by the exporter; Zig execution is external.",
+        "import S31.Gadgets.Air.GeneratedDirectGateBytecodeArithmetic", "",
+        "namespace S31.Gadgets.Air.GeneratedDirectGateBaseVm", "",
+        "open S31.Gadgets.Air.DirectGatePolynomial", "",
+        "inductive BaseOp where",
+        "  | fixed (column : Fin 8)",
+        "  | main (column : Fin 12)",
+        "  | constant (value : Nat)",
+        "  | add (left right : Nat)",
+        "  | sub (left right : Nat)",
+        "  | mul (left right : Nat)", "",
+        "structure Instruction where",
+        "  dst : Nat",
+        "  op : BaseOp", "",
+        "def execute {K : Type*} [CommRing K] (cells : ArithmeticCells K)",
+        "    (registers : Nat → K) (instruction : Instruction) : Nat → K :=",
+        "  let value := match instruction.op with",
+        "    | .fixed column => cells.localFixed column",
+        "    | .main column => cells.main column",
+        "    | .constant n => (n : K)",
+        "    | .add left right => registers left + registers right",
+        "    | .sub left right => registers left - registers right",
+        "    | .mul left right => registers left * registers right",
+        "  fun index => if index == instruction.dst then value else registers index", "",
+        "def executeAll {K : Type*} [CommRing K] (cells : ArithmeticCells K)",
+        "    (instructions : List Instruction) : Nat → K :=",
+        "  instructions.foldl (execute cells) (fun _ => 0)", "",
+        "/-- Exactly the installed base instruction prefix through register 37. -/",
+        "def flagPrefix : List Instruction := [",
+        ",\n".join(instructions),
+        "]", "",
+        "def flagRoots {K : Type*} [CommRing K] (cells : ArithmeticCells K) : List K :=",
+        "  let registers := executeAll cells flagPrefix",
+        "  [registers 24, registers 28, registers 31, registers 34, registers 37]", "",
+        "/-- The reflected opcode interpreter agrees with the first five",
+        "generated Gate arithmetic roots for every commutative ring, including",
+        "QM31 samples. This does not prove native Zig executes the opcode switch. -/",
+        "theorem flagRoots_eq_generated {K : Type*} [CommRing K]",
+        "    (cells : ArithmeticCells K) :",
+        "    flagRoots cells =",
+        "      (GeneratedDirectGateBytecodeArithmetic.bytecodeArithmeticOver cells).take 5 := by",
+        "  simp [flagRoots, executeAll, flagPrefix, execute,",
+        "    GeneratedDirectGateBytecodeArithmetic.bytecodeArithmeticOver]", "",
+        "/-- These interpreted roots are the first five Gate AIR polynomials. -/",
+        "theorem flagRoots_eq_modeled {K : Type*} [CommRing K]",
+        "    (cells : ArithmeticCells K) :",
+        "    flagRoots cells = (modeledArithmetic cells).take 5 := by",
+        "  rw [flagRoots_eq_generated,",
+        "    GeneratedDirectGateBytecodeArithmetic.bytecode_arithmetic_over_eq]", "",
+        "end S31.Gadgets.Air.GeneratedDirectGateBaseVm", "",
+    ]
+    return "\n".join(lines)
+
+
 def render_logup(package: Path) -> str:
     """Emit the selected two QM31 LogUp roots from the same pinned program."""
     checked = check_package(package)
@@ -1053,6 +1144,8 @@ def main() -> None:
                         help="also regenerate the selected OODS circle-factor theorem")
     parser.add_argument("--pcs-opening-output", type=Path,
                         help="also regenerate the conditional PCS opening link")
+    parser.add_argument("--base-vm-output", type=Path,
+                        help="also regenerate the selected Gate base opcode interpreter")
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
     result = render(args.package)
@@ -1069,6 +1162,7 @@ def main() -> None:
                      if args.circle_factor_output is not None else None)
     pcs_opening = (render_pcs_opening_link(args.package)
                    if args.pcs_opening_output is not None else None)
+    base_vm = render_base_vm(args.package) if args.base_vm_output is not None else None
     if args.check:
         if not args.output.is_file() or args.output.read_text() != result:
             raise SystemExit("installed Gate bytecode Lean export changed")
@@ -1099,6 +1193,11 @@ def main() -> None:
             args.pcs_opening_output.read_text() != pcs_opening
         ):
             raise SystemExit("installed Gate PCS opening link Lean export changed")
+        if base_vm is not None and (
+            not args.base_vm_output.is_file() or
+            args.base_vm_output.read_text() != base_vm
+        ):
+            raise SystemExit("installed Gate base VM Lean export changed")
     else:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(result)
@@ -1123,6 +1222,9 @@ def main() -> None:
         if pcs_opening is not None:
             args.pcs_opening_output.parent.mkdir(parents=True, exist_ok=True)
             args.pcs_opening_output.write_text(pcs_opening)
+        if base_vm is not None:
+            args.base_vm_output.parent.mkdir(parents=True, exist_ok=True)
+            args.base_vm_output.write_text(base_vm)
 
 
 if __name__ == "__main__":

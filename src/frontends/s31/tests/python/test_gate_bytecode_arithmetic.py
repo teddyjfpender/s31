@@ -15,6 +15,7 @@ from export_s31_direct_gate_bytecode_arithmetic import (  # noqa: E402
     BUNDLE, check_composition_source_contract,
     check_composition_opening_source_contract,
     check_circle_factor_source_contract,
+    check_base_vm_source_contract,
     check_transcript_parameter_source_contract, check_oods_opening_source_contract,
     decoded_program, evaluate_row,
     gate_program,
@@ -195,6 +196,28 @@ class GateBytecodeArithmeticTest(unittest.TestCase):
                                    mul(mul(x[i], y[i]), fp)))
                 expected += (sub(output[i], weighted),)
             self.assertEqual(roots, expected)
+
+    def test_base_vm_native_opcode_source_mutations_rejected(self) -> None:
+        verifier = (ROOT / "deps/stwo-zig/src/frontends/cairo/witness/"
+                    "resident_verifier.zig").read_text()
+        check_base_vm_source_contract(verifier)
+        for old, new in (
+            ("base[instruction.dst] = switch (instruction.op)",
+             "base[instruction.a] = switch (instruction.op)"),
+            (".constant => QM31.fromBase(M31.fromCanonical(instruction.a))",
+             ".constant => QM31.fromBase(M31.fromCanonical(instruction.b))"),
+            (".add => base[instruction.a].add(base[instruction.b])",
+             ".add => base[instruction.a].mul(base[instruction.b])"),
+            (".sub => base[instruction.a].sub(base[instruction.b])",
+             ".sub => base[instruction.a].add(base[instruction.b])"),
+            (".mul => base[instruction.a].mul(base[instruction.b])",
+             ".mul => base[instruction.a].add(base[instruction.b])"),
+        ):
+            self.assertIn(old, verifier)
+            with self.subTest(old=old), self.assertRaisesRegex(
+                ValueError, "native Gate base opcode source contract changed"
+            ):
+                check_base_vm_source_contract(verifier.replace(old, new, 1))
 
     def test_logup_roots_over_nonbase_oods_cells(self) -> None:
         """All sampled columns may be nonbase at the verifier's OODS point."""

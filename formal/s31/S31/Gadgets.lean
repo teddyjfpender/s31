@@ -41,6 +41,7 @@ import S31.Gadgets.Air.DirectGateNativeIndices
 import S31.Gadgets.Air.DirectGateEvaluatorCells
 import S31.Gadgets.Air.DirectGatePolynomial
 import S31.Gadgets.Air.GeneratedDirectGateBytecodeArithmetic
+import S31.Gadgets.Air.GeneratedDirectGateBaseVm
 import S31.Gadgets.Air.DirectGateOodsArithmetic
 import S31.Gadgets.Air.DirectGateOodsLogUp
 import S31.Gadgets.Air.GeneratedDirectGateBytecodeLogUp

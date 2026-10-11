@@ -386,6 +386,19 @@ replay tests an in-memory `at_prev` to current-offset mutation: the singleton
 root changes, while the other ten roots do not. The strict decoder rejects
 the same mutation after the program's semantic hash is recomputed.
 
+The selected base-instruction interpreter now has a first formal slice in
+[`GeneratedDirectGateBaseVm.lean`](../../../formal/s31/S31/Gadgets/Air/GeneratedDirectGateBaseVm.lean).
+Its source-bound list contains the exact first 38 base instructions, through
+register 37. Lean interprets each read, constant, add, subtract, multiply,
+and destination write over an arbitrary commutative ring, then proves that
+registers 24, 28, 31, 34, and 37 equal the first five generated arithmetic
+roots. These are the one-hot sum and four Boolean selector constraints. The
+exporter checks the native verifier's corresponding opcode switch statements,
+the complete installed bundle/program digests, and the instruction bytes.
+Acceptance checks the generated Lean file byte for byte. This theorem covers
+the selected instruction prefix; registers 38–133, extension opcodes, actual
+Zig execution, and proof authentication remain separate correspondence work.
+
 The exporter checks all selected interaction reads and the unique offset list
 derived by native `resident_geometry.componentOffsets`: columns 0–3 use
 `[0]`, while columns 4–7 use `[-1, 0]`. Its generated Lean `mask_slots` and
@@ -659,9 +672,11 @@ python3 scripts/export_s31_direct_gate_bytecode_arithmetic.py PACKAGE \
   --oods-openings-output formal/s31/S31/Gadgets/Air/GeneratedDirectGateOodsOpenings.lean \
   --composition-opening-output formal/s31/S31/Gadgets/Air/GeneratedDirectGateCompositionOpening.lean \
   --circle-factor-output formal/s31/S31/Gadgets/Air/GeneratedDirectGateCircleFactor.lean \
-  --pcs-opening-output formal/s31/S31/Gadgets/Air/GeneratedDirectGatePcsOpeningLink.lean --check
+  --pcs-opening-output formal/s31/S31/Gadgets/Air/GeneratedDirectGatePcsOpeningLink.lean \
+  --base-vm-output formal/s31/S31/Gadgets/Air/GeneratedDirectGateBaseVm.lean --check
 python3 -m unittest src/frontends/s31/tests/python/test_gate_bytecode_arithmetic.py
 (cd formal/s31 && lake build S31.Gadgets.Air.GeneratedDirectGateBytecodeLogUp)
+(cd formal/s31 && lake build S31.Gadgets.Air.GeneratedDirectGateBaseVm)
 (cd formal/s31 && lake build S31.Gadgets.Air.DirectGateOodsMask)
 (cd formal/s31 && lake build S31.Gadgets.Air.GeneratedDirectGateComposition)
 (cd formal/s31 && lake build S31.Gadgets.Air.GeneratedDirectGateTranscriptParams)
