@@ -16,6 +16,7 @@ import copy
 import hashlib
 import json
 from pathlib import Path
+import re
 import subprocess
 import sys
 
@@ -61,8 +62,12 @@ def check_report(report: dict, topology: dict | None = None) -> dict[str, int]:
     fixed = _columns(report.get("fixed_columns"), 8, "fixed")
     main = _columns(report.get("main_columns"), 12, "main")
     if topology is not None:
+        schema = topology.get("schema") if type(topology) is dict else None
         if (type(topology) is not dict or
-                topology.get("schema") != "s31-direct-gate-topology-v1" or
+                schema not in {"s31-direct-gate-topology-v1", "s31-direct-gate-topology-v2"} or
+                (schema == "s31-direct-gate-topology-v2" and
+                 (type(topology.get("preprocessed_root")) is not str or
+                  re.fullmatch(r"[0-9a-f]{64}", topology["preprocessed_root"]) is None)) or
                 topology.get("program_sha256") != PROGRAM_SHA256 or
                 type(topology.get("columns")) is not list or
                 len(topology["columns"]) != 8 or
