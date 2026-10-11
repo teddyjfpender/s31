@@ -8,6 +8,11 @@ const Case = struct {
     label: []const u8,
     source: []const u8,
     expected_valid: bool,
+    /// Optional cross-language contract for a valid descriptor. The digest is
+    /// computed by the production canonical JSON serializer and SHA-256 path.
+    expected_digest: ?[]const u8 = null,
+    statement: ?[]const u8 = null,
+    expected_words: ?[8]u32 = null,
 };
 
 const Corpus = struct {
@@ -46,6 +51,29 @@ pub fn main() !void {
         if (!case.expected_valid) {
             std.debug.print("descriptor case {s}: malformed descriptor accepted\n", .{case.label});
             return error.CorpusMismatch;
+        }
+        if (case.expected_digest) |expected| {
+            const actual = try s31.record_abi.digest(allocator, program.value);
+            const hex = std.fmt.bytesToHex(actual, .lower);
+            if (!std.mem.eql(u8, expected, &hex)) {
+                std.debug.print("descriptor case {s}: canonical ABI digest differs\n", .{case.label});
+                return error.CorpusMismatch;
+            }
+        }
+        if ((case.statement == null) != (case.expected_words == null))
+            return error.InvalidCorpus;
+        if (case.statement) |statement| {
+            const expected_words = case.expected_words.?;
+            const actual = s31.record_abi.claimedWords(allocator, program.value, statement) catch |err| {
+                std.debug.print("descriptor case {s}: valid statement rejected: {s}\n", .{
+                    case.label, @errorName(err),
+                });
+                return error.CorpusMismatch;
+            };
+            if (!std.mem.eql(u32, &actual, &expected_words)) {
+                std.debug.print("descriptor case {s}: projected public words differ\n", .{case.label});
+                return error.CorpusMismatch;
+            }
         }
         accepted += 1;
     }

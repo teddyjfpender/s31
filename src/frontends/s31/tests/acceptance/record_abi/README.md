@@ -82,6 +82,48 @@ This is a finite parser differential. The Lean checker starts from an already
 parsed named tree; the fixture does not prove a general JSON-to-Lean
 refinement or validate an authenticated proof.
 
+## Canonical descriptor digest and final public words
+
+[`descriptor_digest_correspondence_v2.py`](descriptor_digest_correspondence_v2.py)
+checks the complete executable ABI chain up to proof verification. It uses the
+production Zig relation parser, `record_abi.digest` (native canonical JSON and
+SHA-256), and `record_abi.claimedWords` (ordered named claims and the final
+eight-word projection). The Python side computes the digest from the specified
+domain prefix and canonical descriptor bytes, checks the independent
+declaration-order/alias projection, and pins every native input in corpus
+SHA-256
+`cb863031d541c594a24feb41aab146344759b3239049e475dce4bcf0be256af9`.
+
+The **23 accepted** cases include 14 compiled programs, the same nested
+program serialized with reversed JSON key order and with pretty spacing, and
+seven explicitly marked *synthetic* descriptor mutations. The latter change
+root, nominal, or field names; result field order; result wire references; and
+an M31 leaf's ABI type to `bit`. All seven change the native/Python descriptor
+digest. Type-code changes are checked separately from root/path/wire changes.
+Five malformed descriptors must fail at native `InvalidRecordAbi`. Two negative
+controls corrupt the corpus's expected digest or expected public words and
+require the native oracle to detect each corruption.
+
+For example, renaming the private `mask` root changes the descriptor digest
+from `15ca13f4…` to `cc0c730a…`, even though the public projection remains
+`[494, 507, 520, 533, 494, 0, 0, 0]`. Rebinding the result's second leaf
+from the first to the second public input changes the projected fifth word
+from `494` to `507`; the matching relation output reference is changed in
+that synthetic case. Recoding the first public M31 leaf as `bit` changes the
+digest and constrains its accepted claim to `0` or `1`.
+
+```sh
+python3 -B src/frontends/s31/tests/acceptance/record_abi/descriptor_digest_correspondence_v2.py
+python3 -B src/frontends/s31/tests/acceptance/record_abi/descriptor_digest_correspondence_v2.py --native
+```
+
+The seven descriptor mutations are valid parser states, not claims that the
+text compiler emits those exact programs. This finite correspondence does not
+prove a general JSON parser or canonical serializer refinement, relation-wire
+mapping for every source program, or that native proof acceptance implies the
+Lean descriptor and claim premises. The native proof corpus below checks
+representative verified proofs separately.
+
 [`nested_alias_v2.py`](nested_alias_v2.py) covers a versioned public record
 whose input contains a tuple and a nested record, whose result contains a
 tuple and nested records, and whose private input is another record. The
