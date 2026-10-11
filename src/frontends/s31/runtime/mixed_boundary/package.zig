@@ -57,6 +57,24 @@ fn selectedFromSource(source: *const mixed.SelectedSchedule) !engine.Selected {
     };
 }
 
+/// The same source-derived profile identity used by proveSealed and
+/// verifyEmbedded. This is an audit view, never a caller-supplied verifier key.
+pub const Inspection = struct {
+    schedule: mixed.SelectedSchedule,
+    circuit_identity_sha256: [32]u8,
+};
+
+pub const Sealed = struct {
+    bytes: []u8,
+    inspection: Inspection,
+};
+
+pub fn inspectProfile(allocator: std.mem.Allocator, source: []const u8, air_bytes: []const u8) !Inspection {
+    const schedule = try mixed.inspectSource(allocator, source, air_bytes);
+    const selected = try selectedFromSource(&schedule);
+    return .{ .schedule = schedule, .circuit_identity_sha256 = selected.circuitIdentity() };
+}
+
 /// Build the distinct V5 envelope. Only the regenerated source schedule may
 /// nominate component order and manifest digest. Use a concurrency-safe
 /// allocator because native composition workers allocate concurrently.
@@ -66,6 +84,17 @@ pub fn proveSealed(
     air_bytes: []const u8,
     assignment: relation.Assignment,
 ) ![]u8 {
+    return (try proveSealedAndInspect(allocator, source, air_bytes, assignment)).bytes;
+}
+
+/// Produce the proof and the exact rebuilt identity used in its header.
+/// The caller owns `bytes`; `inspection` contains no allocated slices.
+pub fn proveSealedAndInspect(
+    allocator: std.mem.Allocator,
+    source: []const u8,
+    air_bytes: []const u8,
+    assignment: relation.Assignment,
+) !Sealed {
     const schedule = try mixed.inspectSource(allocator, source, air_bytes);
     const selected = try selectedFromSource(&schedule);
     var parsed = try relation.parseProgram(allocator, source);
@@ -109,7 +138,10 @@ pub fn proveSealed(
     };
     try postcard.serializeProof(H, bytes.writer(allocator), proof.stark_proof.proof);
     if (bytes.items.len > max_wire_bytes) return error.InvalidMixedNativeEnvelope;
-    return bytes.toOwnedSlice(allocator);
+    return .{
+        .bytes = try bytes.toOwnedSlice(allocator),
+        .inspection = .{ .schedule = schedule, .circuit_identity_sha256 = identity },
+    };
 }
 
 /// Compiled-in source and AIR are the verifier's authority. This is the only
@@ -121,6 +153,18 @@ pub fn verifyEmbedded(
     public_words: [8]u32,
     raw: []const u8,
 ) !void {
+    _ = try verifySourceBound(allocator, source, air_bytes, public_words, raw);
+}
+
+/// Verified audit identity for a caller that also needs to check a saved
+/// statement. Source and official AIR remain compile-time embedded authority.
+pub fn verifyEmbeddedAndInspect(
+    comptime source: []const u8,
+    comptime air_bytes: []const u8,
+    allocator: std.mem.Allocator,
+    public_words: [8]u32,
+    raw: []const u8,
+) !Inspection {
     return verifySourceBound(allocator, source, air_bytes, public_words, raw);
 }
 
@@ -130,7 +174,7 @@ fn verifySourceBound(
     air_bytes: []const u8,
     public_words: [8]u32,
     raw: []const u8,
-) !void {
+) !Inspection {
     if (raw.len < fixed_header_len or raw.len > max_wire_bytes or
         !std.mem.eql(u8, raw[0..magic.len], magic) or
         raw[magic.len] != engine.n_calls or raw[magic.len + 1] != engine.n_components or
@@ -211,6 +255,7 @@ fn verifySourceBound(
             .circuit_hash = identity,
         },
     );
+    return .{ .schedule = schedule, .circuit_identity_sha256 = identity };
 }
 
 test "mixed sealed N3 native envelope authenticates source and interleaved claims" {

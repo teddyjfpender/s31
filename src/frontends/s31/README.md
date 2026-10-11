@@ -376,6 +376,14 @@ The direct-M31 example is [`examples/arithmetic/arith4_m31.s31.json`](examples/a
 
 The private-boundary example is [`examples/boundary/private_step16.s31`](examples/boundary/private_step16.s31), with [`examples/boundary/private_step16.valid.json`](examples/boundary/private_step16.valid.json) as its assignment and a [checked normalized relation](examples/boundary/private_step16.s31.json). Build the text source with `--lowering direct-chip`. Its sealed `direct-m31-private-v5` key records the eight circuit wire addresses, and its public statement contains one aggregate output rather than the four input and four final values. The [private-boundary guide](docs/private-boundary.md) specifies the lookup connection and source restrictions.
 
+The separate [experimental fixed mixed N=3 commands](runtime/mixed_boundary/README.md)
+compile a normalized source file into a source-embedded prover, verifier, and
+seven-component manifest inspector with `-Ds31-lowering=direct-mixed`. The
+[three-call example](examples/boundary/private_mixed3.s31.json) uses two pair
+chips and one many chip in a single proof. This Zig build target is not yet a
+general Python package lowering; its exact supported shape and assurance
+limits are in the linked README.
+
 The hash suite includes [`examples/hashes/merkle2.s31.json`](examples/hashes/merkle2.s31.json), which hashes two private leaves into a public root, and [`examples/hashes/merkle_path1.s31.json`](examples/hashes/merkle_path1.s31.json), which proves a one-level path with a constrained direction bit. Use `--lowering gate` for both. The [hash section of the language guide](docs/reference/LANGUAGE_AND_AIR.md#hashes-tree-nodes-and-conditional-paths) specifies every byte and field conversion.
 The [hash library brief](../../../design/s31/language/HASH_LIBRARY.md) records the cryptographic encoding, proof cost and next efficiency work.
 

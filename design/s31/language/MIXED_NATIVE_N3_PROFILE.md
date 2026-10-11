@@ -82,4 +82,21 @@ Run the focused controls with:
 ```sh
 zig build --build-file src/frontends/s31/build.zig test-mixed-native -Doptimize=Debug -j1
 zig build --build-file src/frontends/s31/build.zig test-mixed-native -Doptimize=ReleaseFast -j1
+python3 src/frontends/s31/tests/acceptance/mixed_boundary/source_pinned.py
 ```
+
+## Source-file commands
+
+`-Ds31-lowering=direct-mixed` and `-Ds31-version=1` now build a source-embedded
+prover, native verifier, and witness-free manifest inspector. The build runs
+the inspector in check mode, so a valid source with any call count other than
+three fails the build. See the complete command example in
+[`runtime/mixed_boundary/README.md`](../../../src/frontends/s31/runtime/mixed_boundary/README.md).
+The saved `s31-mixed-public-words-n3-v1` statement contains eight public
+words and the source, selected manifest, and circuit identity digests. The
+verifier rederives each digest from its embedded source and AIR, then checks
+the proof and statement. A separately built verifier with even a whitespace
+change in its embedded source rejects the earlier proof. The inspector's JSON
+shows the seven interleaved slots and their claimed-sum positions, call
+endpoints, AIR source hashes, column spans, relation IDs, and PCS geometry;
+it does not supply verifier authority.
