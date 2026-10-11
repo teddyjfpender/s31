@@ -357,6 +357,9 @@ jobs:
       - name: Sealed source-pinned proof for every mixed call count
         working-directory: src/frontends/s31
         run: zig build test-mixed-general-native -Doptimize=ReleaseFast -j1 --summary all
+      - name: Selected private feeder and registry integrity controls
+        working-directory: src/frontends/s31
+        run: zig build test-mixed-registry test-mixed-selected-feeder -Doptimize=ReleaseFast -j1 --summary all
       - name: Black-box source, manifest, claim, and statement controls
         run: |
           set -euo pipefail
