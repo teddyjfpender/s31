@@ -66,7 +66,10 @@ output. Its record result repeats the chip output in another named field
 without adding proof words. Both shapes supply exactly eight public words.
 The normalized source must be version 2 with its validated nominal ABI
 descriptor. Other mixed profiles remain version 1 only. Source admission
-rejects inputs, result wire order, and widths outside these two shapes.
+rejects inputs, result wire order, and widths outside these two shapes. For the
+second shape it also requires the first public input wire and **every** result
+alias of that wire to retain the ABI `bit` kind; a self-consistent `m31` alias
+is valid for the general record ABI but is outside this mixed proof profile.
 
 For example, with `x.words = [1, 2, 3, 4]`, the chip applies
 `y <- y² + 13 (mod 2³¹−1)` sixteen times independently to each lane. The

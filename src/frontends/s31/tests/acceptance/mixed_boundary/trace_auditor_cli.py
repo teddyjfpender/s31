@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import subprocess
 import tempfile
 from pathlib import Path
@@ -44,18 +45,21 @@ def main() -> None:
         run(str(verifier), str(proof), str(statement))
         audited = run(str(auditor), str(proof), str(statement), str(ASSIGNMENT))
         reports = [line.partition(" ")[2] for line in audited.stderr.splitlines()
-                   if line.startswith("S31_MIXED_TRACE_AUDIT_V1 ")]
+                   if line.startswith("S31_MIXED_TRACE_AUDIT_V2 ")]
         if len(reports) != 1:
             raise AssertionError("auditor did not print exactly one report")
         report = json.loads(reports[0])
-        if (report.get("schema") != "s31-mixed-full-trace-audit-v1" or
+        if (report.get("schema") != "s31-mixed-full-trace-audit-v2" or
                 report.get("verified") is not True or
                 report.get("circuit_rows") != 512 or
                 report.get("chip_rows") != 32 or
                 report.get("bridge_rows") != 32 or
                 any(len(report.get(key, "")) != 64 for key in (
-                    "fixed_root", "main_root",
-                    "interaction_root"))):
+                    "fixed_root", "main_root", "interaction_root")) or
+                report.get("source_sha256") != hashlib.sha256(SOURCE.read_bytes()).hexdigest() or
+                report.get("statement_sha256") != hashlib.sha256(statement.read_bytes()).hexdigest() or
+                report.get("proof_sha256") != hashlib.sha256(proof.read_bytes()).hexdigest() or
+                "assignment_sha256" in report):
             raise AssertionError(f"unexpected full-trace audit report: {report}")
 
         changed_assignment = json.loads(ASSIGNMENT.read_text())
@@ -65,7 +69,7 @@ def main() -> None:
         changed_assignment_path.write_text(json.dumps(changed_assignment))
         bad_assignment_result = run(str(auditor), str(proof), str(statement),
                                     str(changed_assignment_path), accept=False)
-        if "S31_MIXED_TRACE_AUDIT_V1 " in bad_assignment_result.stderr:
+        if "S31_MIXED_TRACE_AUDIT_V2 " in bad_assignment_result.stderr:
             raise AssertionError("rejected assignment emitted an accepted audit")
 
         changed_statement = json.loads(statement.read_text())
@@ -77,7 +81,7 @@ def main() -> None:
         bad_statement_result = run(str(auditor), str(proof),
                                    str(changed_statement_path),
                                    str(ASSIGNMENT), accept=False)
-        if "S31_MIXED_TRACE_AUDIT_V1 " in bad_statement_result.stderr:
+        if "S31_MIXED_TRACE_AUDIT_V2 " in bad_statement_result.stderr:
             raise AssertionError("rejected statement emitted an accepted audit")
         changed_proof = bytearray(proof.read_bytes())
         changed_proof[-1] ^= 1
@@ -85,7 +89,7 @@ def main() -> None:
         changed_proof_path.write_bytes(changed_proof)
         bad_proof_result = run(str(auditor), str(changed_proof_path),
                                str(statement), str(ASSIGNMENT), accept=False)
-        if "S31_MIXED_TRACE_AUDIT_V1 " in bad_proof_result.stderr:
+        if "S31_MIXED_TRACE_AUDIT_V2 " in bad_proof_result.stderr:
             raise AssertionError("rejected proof emitted an accepted audit")
         print(json.dumps({"schema": "s31-mixed-trace-auditor-cli-acceptance-v1",
                           "accepted": 1, "rejected": 4,

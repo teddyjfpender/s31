@@ -40,7 +40,10 @@ record field must fail in the ABI parser; a changed private input with the
 old output must fail before proving. The generated full-trace auditor must
 accept the honest proof, typed statement, and private assignment, reporting
 512 circuit rows and 16 rows each for the chip and bridge, and must reject
-the changed private assignment and changed v2 statement. This is a one-call
+the changed private assignment and changed v2 statement. A separate negative
+source gate changes both flag aliases to `m31` and uses a self-consistent value
+`2`: the generic ABI accepts its typed statement, while this mixed proof
+profile rejects the source because the alias must be a `bit`. This is a one-call
 proof admission for this shape, not a general compiler refinement theorem.
 The existing admitted
 N=1/N=8 record proof smoke is documented in the

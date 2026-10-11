@@ -11,7 +11,10 @@ const relation = @import("../../language/relation.zig");
 const record_abi = @import("../../language/record_abi.zig");
 
 const Report = struct {
-    schema: []const u8 = "s31-mixed-full-trace-audit-v1",
+    schema: []const u8 = "s31-mixed-full-trace-audit-v2",
+    source_sha256: []const u8,
+    statement_sha256: []const u8,
+    proof_sha256: []const u8,
     fixed_root: []const u8,
     main_root: []const u8,
     interaction_root: []const u8,
@@ -60,7 +63,19 @@ pub fn main() !void {
     const fixed_hex = std.fmt.bytesToHex(trace.fixed_root, .lower);
     const main_hex = std.fmt.bytesToHex(trace.main_root, .lower);
     const interaction_hex = std.fmt.bytesToHex(trace.interaction_root, .lower);
+    var source_digest: [32]u8 = undefined;
+    var statement_digest: [32]u8 = undefined;
+    var proof_digest: [32]u8 = undefined;
+    std.crypto.hash.sha2.Sha256.hash(source, &source_digest, .{});
+    std.crypto.hash.sha2.Sha256.hash(statement_bytes, &statement_digest, .{});
+    std.crypto.hash.sha2.Sha256.hash(proof, &proof_digest, .{});
+    const source_hex = std.fmt.bytesToHex(source_digest, .lower);
+    const statement_hex = std.fmt.bytesToHex(statement_digest, .lower);
+    const proof_hex = std.fmt.bytesToHex(proof_digest, .lower);
     const report = try std.json.Stringify.valueAlloc(allocator, Report{
+        .source_sha256 = &source_hex,
+        .statement_sha256 = &statement_hex,
+        .proof_sha256 = &proof_hex,
         .fixed_root = &fixed_hex,
         .main_root = &main_hex,
         .interaction_root = &interaction_hex,
@@ -69,5 +84,5 @@ pub fn main() !void {
         .bridge_rows = trace.bridge_rows,
     }, .{});
     defer allocator.free(report);
-    std.debug.print("S31_MIXED_TRACE_AUDIT_V1 {s}\n", .{report});
+    std.debug.print("S31_MIXED_TRACE_AUDIT_V2 {s}\n", .{report});
 }

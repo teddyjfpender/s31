@@ -14,8 +14,12 @@ s31-<name>-mixed-general-trace-auditor proof.bin statement.json assignment.json
 ```
 
 It verifies the proof and typed statement, audits the assignment, then prints
-`S31_MIXED_TRACE_AUDIT_V1` with the three recomputed commitment roots and row
-counts. The assignment is read locally and is not included in that report.
+`S31_MIXED_TRACE_AUDIT_V2` with the three recomputed commitment roots, row
+counts, and SHA-256 digests of the exact embedded source, supplied public
+statement bytes, and proof bytes. These public byte digests identify the inputs
+to this local check; the report has no private assignment digest and does not
+disclose the assignment. The JSON is unsigned diagnostic output, so a detached
+copy is not an authenticated certificate of a third party's audit.
 The command requires the private assignment, so it is for a prover or a
 separate consenting auditor, not an ordinary light client. The package build
 installs this command alongside the source-embedded prover and verifier only

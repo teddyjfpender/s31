@@ -281,6 +281,33 @@ pub fn validate(allocator: std.mem.Allocator, program: anytype) !void {
     }
 }
 
+/// A narrow proof profile may require a public input and every result alias
+/// of that same wire to retain its declared bit type. Inspect wire identity,
+/// not a record field name: nominal fields can be renamed without changing
+/// the relation wire. Validate first so malformed direct Program calls fail
+/// rather than being mistaken for an absent alias.
+pub fn isPublicBitAlias(allocator: std.mem.Allocator, program: anytype, wire: []const u8) !bool {
+    try validate(allocator, program);
+    const abi = program.public_abi.?;
+    var input_count: usize = 0;
+    for (try array(try field(abi, "inputs"))) |input_root| {
+        if (!std.mem.eql(u8, try name(try field(input_root, "visibility")), "public")) continue;
+        for (try array(try field(input_root, "leaves"))) |leaf| {
+            if (!std.mem.eql(u8, try name(try field(leaf, "wire")), wire)) continue;
+            if (!std.mem.eql(u8, try name(try field(leaf, "kind")), "bit")) return false;
+            input_count += 1;
+        }
+    }
+    if (input_count != 1) return false;
+    var result_count: usize = 0;
+    for (try array(try field(try field(abi, "result"), "leaves"))) |leaf| {
+        if (!std.mem.eql(u8, try name(try field(leaf, "wire")), wire)) continue;
+        if (!std.mem.eql(u8, try name(try field(leaf, "kind")), "bit")) return false;
+        result_count += 1;
+    }
+    return result_count != 0;
+}
+
 pub fn digest(allocator: std.mem.Allocator, program: anytype) ![32]u8 {
     try validate(allocator, program);
     const canonical = try canonicalJson(allocator, program.public_abi.?);

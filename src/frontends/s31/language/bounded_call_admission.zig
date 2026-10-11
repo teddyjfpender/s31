@@ -5,6 +5,7 @@
 //! from its embedded source before accepting native proof bytes.
 const std = @import("std");
 const relation = @import("relation.zig");
+const record_abi = @import("record_abi.zig");
 const canonical = @import("canonical.zig");
 const P = @import("stwo_core").fields.m31.Modulus;
 
@@ -76,6 +77,9 @@ pub fn extract(allocator: std.mem.Allocator, program: relation.Program) !Plan {
         program.public_outputs.len == 2 and
         std.mem.eql(u8, program.public_outputs[0], program.inputs[0].name);
     if (program.version == 2 and !v2_simple and !v2_alias)
+        return error.UnsupportedManyCallSource;
+    if (v2_alias and !(try record_abi.isPublicBitAlias(
+        allocator, program, program.inputs[0].name)))
         return error.UnsupportedManyCallSource;
     var scalar_selectors: usize = 0;
     for (program.inputs) |input| {
@@ -438,4 +442,39 @@ test "record ABI v2 mixed admission binds an eight-word bit and result alias sha
     parsed.value.public_outputs = &wrong_alias;
     try std.testing.expectError(error.InvalidRecordAbi, extract(a, parsed.value));
     parsed.value.public_outputs = outputs;
+}
+
+test "record ABI v2 mixed admission rejects an m31 or mixed-kind flag alias" {
+    const a = std.testing.allocator;
+    var parsed = try relation.parseProgram(a, @embedFile("../tests/acceptance/record_abi/mixed_eight_alias_bit.s31.json"));
+    defer parsed.deinit();
+    try std.testing.expect(try record_abi.isPublicBitAlias(a, parsed.value, parsed.value.inputs[0].name));
+
+    // Change the input type tree and its leaf together, retaining a valid
+    // descriptor with a bit result alias. A single bit occurrence still
+    // range-checks the shared wire, but this proof profile requires both.
+    var abi = parsed.value.public_abi.?;
+    const input = &abi.object.getPtr("inputs").?.array.items[0];
+    const input_field = &input.object.getPtr("type").?.object.getPtr("fields").?.array.items[0];
+    input_field.object.getPtr("type").?.object.getPtr("kind").?.* = .{ .string = "m31" };
+    input.object.getPtr("leaves").?.array.items[0].object.getPtr("kind").?.* = .{ .string = "m31" };
+    try record_abi.validate(a, parsed.value);
+    try std.testing.expectError(error.UnsupportedManyCallSource, extract(a, parsed.value));
+
+    input_field.object.getPtr("type").?.object.getPtr("kind").?.* = .{ .string = "bit" };
+    input.object.getPtr("leaves").?.array.items[0].object.getPtr("kind").?.* = .{ .string = "bit" };
+    const result = abi.object.getPtr("result").?;
+    const result_field = &result.object.getPtr("type").?.object.getPtr("fields").?.array.items[0];
+    result_field.object.getPtr("type").?.object.getPtr("kind").?.* = .{ .string = "m31" };
+    result.object.getPtr("leaves").?.array.items[0].object.getPtr("kind").?.* = .{ .string = "m31" };
+    try record_abi.validate(a, parsed.value);
+    try std.testing.expectError(error.UnsupportedManyCallSource, extract(a, parsed.value));
+
+    // Both aliases now declare m31, so value 2 would be a valid typed
+    // statement word. The mixed source profile must still reject it.
+    input_field.object.getPtr("type").?.object.getPtr("kind").?.* = .{ .string = "m31" };
+    input.object.getPtr("leaves").?.array.items[0].object.getPtr("kind").?.* = .{ .string = "m31" };
+    try record_abi.validate(a, parsed.value);
+    try std.testing.expect(!(try record_abi.isPublicBitAlias(a, parsed.value, parsed.value.inputs[0].name)));
+    try std.testing.expectError(error.UnsupportedManyCallSource, extract(a, parsed.value));
 }

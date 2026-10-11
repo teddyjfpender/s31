@@ -12,6 +12,7 @@ from pathlib import Path
 
 from mixed_eight_lean_correspondence_v2 import (S31, SOURCE, STATEMENT,
                                                  canonical, valid_case)
+from abi.binding_v2 import binding_digest, decode_public_statement
 
 
 def run(*args: str, ok: bool = True) -> subprocess.CompletedProcess[str]:
@@ -68,13 +69,13 @@ def main() -> None:
         run(str(verifier), str(proof), str(statement))
         audit_result = run(str(auditor), str(proof), str(statement),
                            str(assignment_path))
-        audit_lines = [line.removeprefix("S31_MIXED_TRACE_AUDIT_V1 ")
+        audit_lines = [line.removeprefix("S31_MIXED_TRACE_AUDIT_V2 ")
                        for line in audit_result.stderr.splitlines()
-                       if line.startswith("S31_MIXED_TRACE_AUDIT_V1 ")]
+                       if line.startswith("S31_MIXED_TRACE_AUDIT_V2 ")]
         if len(audit_lines) != 1:
             raise AssertionError(f"missing v2 trace audit report: {audit_result.stderr}")
         audit = json.loads(audit_lines[0])
-        if (audit["schema"] != "s31-mixed-full-trace-audit-v1" or
+        if (audit["schema"] != "s31-mixed-full-trace-audit-v2" or
                 audit["verified"] is not True or
                 (audit["circuit_rows"], audit["chip_rows"], audit["bridge_rows"]) !=
                 (512, 16, 16)):
@@ -82,6 +83,11 @@ def main() -> None:
         for root in ("fixed_root", "main_root", "interaction_root"):
             if len(audit[root]) != 64 or any(c not in "0123456789abcdef" for c in audit[root]):
                 raise AssertionError(f"invalid {root} in v2 trace audit report")
+        if (audit["source_sha256"] != hashlib.sha256(source_bytes).hexdigest() or
+                audit["statement_sha256"] != hashlib.sha256(typed).hexdigest() or
+                audit["proof_sha256"] != hashlib.sha256(proof.read_bytes()).hexdigest() or
+                "assignment_sha256" in audit):
+            raise AssertionError("auditor did not report exact public byte digests")
 
         honest = json.loads(typed)
         valid_changes = {
@@ -101,7 +107,7 @@ def main() -> None:
             if label == "unused_public_salt":
                 audited_rejection = run(str(auditor), str(proof), str(path),
                                         str(assignment_path), ok=False)
-                if "S31_MIXED_TRACE_AUDIT_V1 " in audited_rejection.stderr:
+                if "S31_MIXED_TRACE_AUDIT_V2 " in audited_rejection.stderr:
                     raise AssertionError("auditor reported verified for changed v2 statement")
 
         malformed = {
@@ -132,8 +138,39 @@ def main() -> None:
             str(work / "wrong-private.statement"), str(STATEMENT), ok=False)
         audited_rejection = run(str(auditor), str(proof), str(statement),
                                 str(path), ok=False)
-        if "S31_MIXED_TRACE_AUDIT_V1 " in audited_rejection.stderr:
+        if "S31_MIXED_TRACE_AUDIT_V2 " in audited_rejection.stderr:
             raise AssertionError("auditor reported verified for changed private witness")
+
+        # The generic ABI accepts this self-consistent m31 alias and value 2.
+        # The narrower mixed proof profile promises a bit and must reject its
+        # source before admitting a proof. Mutate by wire/type, not by field
+        # spelling, so this remains an admission test rather than a parser test.
+        m31_source = copy.deepcopy(source)
+        for root in (m31_source["public_abi"]["inputs"][0],
+                     m31_source["public_abi"]["result"]):
+            root["type"]["fields"][0]["type"]["kind"] = "m31"
+            root["leaves"][0]["kind"] = "m31"
+        m31_claim = copy.deepcopy(honest)
+        m31_claim["leaves"][0]["words"] = [2]
+        m31_claim["leaves"][2]["words"] = [2]
+        relation = {key: value for key, value in m31_source.items()
+                    if key != "public_abi"}
+        relation["version"] = 1
+        m31_claim["abi_sha256"] = binding_digest(relation, m31_source["public_abi"])
+        m31_statement = canonical(m31_claim)
+        if decode_public_statement(relation, m31_source["public_abi"],
+                                   m31_statement) != [2, 5, 6, 2, *y]:
+            raise AssertionError("m31 alias negative control failed before admission")
+        m31_source_path = work / "non-bit-alias.s31.json"
+        m31_source_path.write_bytes(canonical(m31_source))
+        rejected_source = run(
+            "zig", "build", "--build-file", str(S31 / "build.zig"), "install",
+            "-Doptimize=ReleaseFast", "-Ds31-version=2",
+            "-Ds31-lowering=direct-mixed-general", f"-Ds31-source={m31_source_path}",
+            "-Ds31-name=non_bit_alias", "-j1", "--prefix",
+            str(work / "rejected-package"), ok=False)
+        if "UnsupportedManyCallSource" not in rejected_source.stderr:
+            raise AssertionError("non-bit alias failed outside mixed admission")
 
         print(json.dumps({
             "schema": "s31-mixed-eight-record-proof-v2",
@@ -147,6 +184,7 @@ def main() -> None:
             "abi_valid_changed_claim_rejections": changed_errors,
             "malformed_alias_bit_layout_rejections": len(malformed) + 1,
             "private_witness_mismatch_rejected": True,
+            "abi_valid_non_bit_source_rejected_by_mixed_profile": True,
         }, sort_keys=True))
 
 
