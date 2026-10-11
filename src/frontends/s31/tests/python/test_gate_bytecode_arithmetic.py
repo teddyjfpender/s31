@@ -17,6 +17,8 @@ from export_s31_direct_gate_bytecode_arithmetic import (  # noqa: E402
     check_circle_factor_source_contract,
     check_base_vm_source_contract,
     check_ext_vm_source_contract,
+    check_extension_source_decoder_contract,
+    check_rebound_extension_source_contract,
     check_transcript_parameter_source_contract, check_oods_opening_source_contract,
     decoded_program, evaluate_row,
     gate_program,
@@ -404,6 +406,33 @@ class GateBytecodeArithmeticTest(unittest.TestCase):
                         suffix + "\n// " + native_marker + "\n")
         with self.assertRaisesRegex(ValueError, "selected direct Gate transcript/claim order changed"):
             check_transcript_parameter_source_contract(native_decoy, lookup, resident)
+
+    def test_extension_source_decoder_rejects_tag_rebind_with_comment_decoy(self) -> None:
+        decoder = (ROOT / "deps/stwo-zig/src/frontends/cairo/witness/composition_bundle.zig").read_text()
+        check_extension_source_decoder_contract(decoder)
+        for original, changed in (
+            ("break :blk .lookup_z;", "break :blk .claimed_sum_scaled;"),
+            ("break :blk .{ .lookup_alpha_power = power };", "break :blk .lookup_z;"),
+            ("break :blk .claimed_sum_scaled;", "break :blk .lookup_z;"),
+        ):
+            with self.subTest(arm=original):
+                mutant = decoder.replace(original, changed, 1) + "\n// " + original + "\n"
+                with self.assertRaisesRegex(ValueError, "native Gate extension source decoder changed"):
+                    check_extension_source_decoder_contract(mutant)
+
+    def test_rebound_extension_sources_are_copied_without_reordering(self) -> None:
+        air = (ROOT / "deps/stwo-zig/src/integrations/circuit_cpu/air.zig").read_text()
+        check_rebound_extension_source_contract(air)
+        original = "allocator.dupe(composition.ExtSource, source.ext_sources)"
+        changed = "allocator.dupe(composition.ExtSource, source.ext_sources[1..])"
+        mutant = air.replace(original, changed, 1) + "\n// " + original + "\n"
+        with self.assertRaisesRegex(ValueError, "native Gate rebound extension source copy changed"):
+            check_rebound_extension_source_contract(mutant)
+        original_store = ".ext_sources = sources,"
+        changed_store = ".ext_sources = sources[1..],"
+        mutant_store = air.replace(original_store, changed_store, 1) + "\n// " + original_store + "\n"
+        with self.assertRaisesRegex(ValueError, "native Gate rebound extension source copy changed"):
+            check_rebound_extension_source_contract(mutant_store)
 
     def test_oods_claim_uses_the_same_sample_tree_as_opening_check(self) -> None:
         engine = ROOT / "deps/stwo-zig/src"

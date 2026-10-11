@@ -880,6 +880,75 @@ def check_extension_parameters_source_contract(resident: str) -> None:
             "resident Gate extension parameter mapping changed")
 
 
+def check_extension_source_decoder_contract(decoder: str) -> None:
+    """Pin the active STWO bundle tag-to-parameter mapping used by native code."""
+    source = active_zig_source(decoder)
+    loops = list(re.finditer(r"\bfor\s*\(\s*ext_sources\s*\)\s*\|\s*\*source\s*\|\s*\{",
+                            source))
+    require(len(loops) == 1 and source.count(".ext_sources = ext_sources,") == 1,
+            "native Gate extension source decoder changed")
+    body, _ = braced_body(source, loops[0].end() - 1)
+    expected = """
+        const tag = try reader.int(u32);
+        const power = try reader.int(u32);
+        const scale = try reader.int(u32);
+        if (try reader.int(u32) != 0) return error.InvalidReserved;
+        var value: [4]u32 = undefined;
+        for (&value) |*coordinate| {
+            coordinate.* = try reader.int(u32);
+            if (coordinate.* >= eval_program.m31_prime) return error.InvalidFieldElement;
+        }
+        source.* = switch (tag) {
+            0 => blk: {
+                if (power != 0 or scale != 0) return error.InvalidExtSource;
+                break :blk .{ .constant = value };
+            },
+            1 => blk: {
+                if (power != 0 or scale != 0 or !allZero(value)) return error.InvalidExtSource;
+                break :blk .lookup_z;
+            },
+            2 => blk: {
+                if (power == 0 or scale != 0 or !allZero(value)) return error.InvalidExtSource;
+                break :blk .{ .lookup_alpha_power = power };
+            },
+            3 => blk: {
+                if (power != 0 or scale != 0 or !allZero(value)) return error.InvalidExtSource;
+                break :blk .claimed_sum_scaled;
+            },
+            4 => blk: {
+                if (power == 0 or scale <= 1 or scale >= eval_program.m31_prime or !allZero(value)) return error.InvalidExtSource;
+                break :blk .{ .lookup_alpha_power_scaled = .{ .power = power, .scale = scale } };
+            },
+            else => return error.InvalidExtSource,
+        };
+    """
+    require(re.sub(r"\s+", "", body) ==
+            re.sub(r"\s+", "", active_zig_source(expected)),
+            "native Gate extension source decoder changed")
+
+
+def check_rebound_extension_source_contract(air: str) -> None:
+    """Pin the selected direct component's copied extension-source vector."""
+    source = active_zig_source(air)
+    direct = list(re.finditer(r"\bpub\s+fn\s+bindDirectArithmetic\s*\(", source))
+    binding = list(re.finditer(r"\bfn\s+bindComponent\s*\(", source))
+    require(len(direct) == 1 and len(binding) == 1,
+            "native Gate rebound extension source copy changed")
+    direct_body, _ = braced_body(source, source.find("{", direct[0].end()))
+    require(re.sub(r"\s+", "", direct_body) == re.sub(
+        r"\s+", "", "return bindSelectedArithmetic(allocator, template, &direct.active_component_indices, &.{log_size}, layout);"),
+        "native Gate rebound extension source copy changed")
+    body, _ = braced_body(source, source.find("{", binding[0].end()))
+    copy = "const sources = try allocator.dupe(composition.ExtSource, source.ext_sources);"
+    release = "errdefer allocator.free(sources);"
+    store = ".ext_sources = sources,"
+    positions = [body.find(statement) for statement in (copy, release, store)]
+    require(all(position >= 0 for position in positions) and positions == sorted(positions)
+            and all(body.count(statement) == 1 for statement in (copy, release, store))
+            and len(re.findall(r"\bsources\b", body)) == 3,
+            "native Gate rebound extension source copy changed")
+
+
 def check_transcript_parameter_source_contract(native: str, lookup: str,
                                                resident: str) -> None:
     """Check the selected direct verifier's local draw/claim/parameter path."""
@@ -926,6 +995,10 @@ def render_transcript_params(package: Path) -> str:
         (engine / "core/channel/lookup_transcript.zig").read_text(),
         (engine / "frontends/cairo/witness/resident_verifier.zig").read_text(),
     )
+    check_extension_source_decoder_contract(
+        (engine / "frontends/cairo/witness/composition_bundle.zig").read_text())
+    check_rebound_extension_source_contract(
+        (engine / "integrations/circuit_cpu/air.zig").read_text())
     return "\n".join([
         "-- Generated from the checked selected direct Gate package and native source contracts.",
         f"-- Bundle SHA-256: {AIR_BUNDLE_SHA256}",

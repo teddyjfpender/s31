@@ -530,9 +530,12 @@ eleven-root bytecode identity and the Gate composition equation, giving
 The source-to-Lean mapping of `mulM31` and the channel implementation remains
 a reviewed source premise. The resident parameter guard compares the unique
 active `extensionParameters` body, including the switch and return, after
-masking comments and quoted strings. Mutation tests reject swapped `z/alpha`,
-changed claim mix, shifted alpha powers, changed `z` or claim mapping, a
-commented decoy, and a post-switch output overwrite.
+masking comments and quoted strings. The bundle decoder's active extension
+source loop is checked against the expected tag mapping, and the selected
+component binding is checked to copy those sources in order before the
+generated parameter theorem is accepted. Mutation tests reject swapped `z/alpha`,
+changed claim mix, shifted alpha powers, changed `z` or claim mapping,
+rebound source tags, commented decoys, and a post-switch output overwrite.
 
 ## The sampled OODS values used by the claim check
 
