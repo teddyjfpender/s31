@@ -129,9 +129,9 @@ The fixture still relies on the outer exporter to
 bind the embedded arrays to the package, and Lean does not compute the
 displayed SHA-256 digests. The total add-row count and source-independent
 rows remain package-checker premises, and committed-column authenticity is
-still a PCS obligation. The Python checker accepts some Unicode whitespace
-that this ASCII Lean parser rejects; their full parser equivalence is not
-proved. Nor is equivalence between the
+still a PCS obligation. The Python checker now rejects Unicode whitespace
+outside comments, matching the Lean parser's ASCII token alphabet. Their
+full parser equivalence is still unproved. Nor is equivalence between the
 production JSON readers and the exact Lean byte encoder. Production Zig
 compilation, native Gate lookup authentication, committed AIR columns, and
 PCS binding remain separate proof obligations.

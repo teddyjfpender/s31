@@ -89,6 +89,17 @@ class CorrespondenceParserTests(unittest.TestCase):
         with self.assertRaisesRegex(UnsupportedFragment, "token limit"):
             parse_source((source + " x" * 257).encode())
 
+    def test_only_ascii_whitespace_is_accepted_outside_comments(self) -> None:
+        source = ("circuit square(public x: [m31; 4]) -> public [m31; 4] "
+                  "{ let y = x .* x; y }")
+        for separator in ("\u00a0", "\u2003", "\u2028"):
+            with self.subTest(separator=repr(separator)):
+                with self.assertRaisesRegex(UnsupportedFragment, "unsupported token"):
+                    parse_source(source.replace("let y", f"let{separator}y").encode())
+        # The byte grammar ignores comment contents through the next LF.
+        relation, _ = parse_source((source + " // Unicode \u00a0 in a comment\n").encode())
+        self.assertEqual(relation["name"], "square")
+
     def test_duplicate_keys_and_noncanonical_json_reject(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "ambiguous.json"

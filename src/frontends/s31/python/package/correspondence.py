@@ -29,7 +29,8 @@ class UnsupportedFragment(ValueError):
     """The source is outside the certificate grammar."""
 
 
-TOKEN = re.compile(r"\s+|//[^\n]*|->|\.\*|[()\[\];:{}=+]|[A-Za-z_][A-Za-z_0-9]*|[0-9]+")
+ASCII_SPACE = frozenset(" \t\n\v\f\r")
+TOKEN = re.compile(r"[ \t\n\v\f\r]+|//[^\n]*|->|\.\*|[()\[\];:{}=+]|[A-Za-z_][A-Za-z_0-9]*|[0-9]+")
 NAME = re.compile(r"[A-Za-z_][A-Za-z_0-9]*\Z")
 SCHEMA = "s31-direct-gate-correspondence-v2"
 M31_MODULUS = 2**31 - 1
@@ -94,7 +95,7 @@ def _tokens(data: bytes) -> list[str]:
         if match is None:
             raise UnsupportedFragment(f"unsupported token at character {position}")
         token = match.group()
-        if not token.isspace() and not token.startswith("//"):
+        if token[0] not in ASCII_SPACE and not token.startswith("//"):
             result.append(token)
             if len(result) > 256:
                 raise UnsupportedFragment("source exceeds bounded correspondence token limit")

@@ -6,7 +6,8 @@ native verifier's accepted proof language.
 
 ## Accepted source
 
-The checker independently tokenizes the exact UTF-8 `.s31` bytes. It accepts
+The checker independently tokenizes the exact UTF-8 `.s31` bytes. Outside
+`//` comments, only ASCII whitespace and tokens are admitted. It accepts
 one public `[m31; 4]` input and one public `[m31; 4]` output, 1–16 fresh
 `let` bindings of `earlier + earlier` or `earlier .* earlier`, then a returned
 `let` wire. Comments and whitespace are allowed. Imports, functions, constants,
