@@ -203,6 +203,9 @@ pub fn build(b: *std.Build) void {
     const mixed_trace_correspondence_tests = b.addRunArtifact(b.addTest(.{ .root_module = bounded_binding_root, .filters = &.{"mixed N1 and N8 source base rows and proof envelope"} }));
     b.step("test-mixed-trace-correspondence", "Check exact N1/N8 native base rows and verified proof envelopes")
         .dependOn(&mixed_trace_correspondence_tests.step);
+    const mixed_producer_roster_tests = b.addRunArtifact(b.addTest(.{ .root_module = bounded_binding_root, .filters = &.{"mixed N1 through N8 source logical producer roster"} }));
+    b.step("test-mixed-producer-roster", "Check N1..8 compiled logical Gate producer rosters against native fixed columns")
+        .dependOn(&mixed_producer_roster_tests.step);
     const mixed_native_tests = b.addRunArtifact(b.addTest(.{ .root_module = bounded_binding_root, .filters = &.{"mixed sealed N3 native"} }));
     b.step("test-mixed-native", "Prove and verify source-pinned mixed N3 native envelopes")
         .dependOn(&mixed_native_tests.step);

@@ -12,4 +12,5 @@ test {
     _ = @import("src/runtime/mixed_boundary/witness_audit.zig");
     _ = @import("src/tests/proofs/mixed_boundary/trace_correspondence.zig");
     _ = @import("src/tests/proofs/mixed_boundary/fixed_column_correspondence.zig");
+    _ = @import("src/tests/proofs/mixed_boundary/producer_roster_correspondence.zig");
 }
