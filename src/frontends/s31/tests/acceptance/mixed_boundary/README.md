@@ -76,6 +76,15 @@ the reviewed address schedule, and unique Gate producers. Those premises are
 visible in the theorem statement; an accepted native proof is not yet shown
 to imply them.
 
+`formal/s31/S31/Gadgets/Air/SourceMixedPublicClosure.lean` adds the source
+tail: eight selected local Gate rows read the final chip words and the first
+private input, then compute four public sums and four public products. The
+theorem derives the public words from local AIR acceptance, exact event
+balance, and unique Gate values without assuming the row operands or results.
+Its [worked example](../../../../../../formal/s31/S31/Gadgets/Air/SourceMixedPublicClosure.md)
+shows the addresses and the arithmetic. The compiler-to-model and native
+proof-to-event reductions remain explicit requirements.
+
 ```sh
 python3 src/frontends/s31/tests/acceptance/mixed_boundary/typed_boundary_correspondence.py
 ```
