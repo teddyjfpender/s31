@@ -1,10 +1,10 @@
 # Mixed circuit-to-chip admission prototype
 
-Status: **source-bound inspection only**. No proof format, prover, verifier,
-transcript, or verification key accepts this roster. The existing V3 pair and
-V4 bounded proofs are unchanged. This prototype tests the next scheduler
-boundary with two source-distinct native AIR families that share lower-level
-arithmetic and boundary code.
+Status: **source-bound selected schedule inspection only**. No proof format,
+prover, verifier, transcript, or verification key accepts this roster. The
+existing V3 pair and V4 bounded proofs are unchanged. This prototype tests
+the next scheduler boundary with two source-distinct native AIR families that
+share lower-level arithmetic and boundary code.
 
 ## Concrete program and roster
 
@@ -61,6 +61,30 @@ API reconstructs all fields from source; re-sealing a forged slot digest does
 not make it admissible. Tests mutate source kind, relation ID, endpoint, native
 program binding, and source constant, then require rejection.
 
+The next executable gate is
+[`direct_mixed_schedule.zig`](../../../deps/stwo-zig/src/integrations/circuit_cpu/direct_mixed_schedule.zig).
+It constructs the **combined** circuit/pair/many verifier handles in the
+prospective interleaved order. It asks those live handles for column log sizes,
+mask sample points, composition degree/split, and exact tree widths. It checks
+every PCS lifting height against the extended column logs and records a
+canonical digest of sample-point coordinates at a deterministic audit point.
+This does not establish mask behavior for every verifier challenge. S31 recompiles the source,
+recreates the fixed circuit and these handles, compares every slot with its
+source-derived call and endpoint addresses, and hashes the complete selected
+schedule under the prototype domain. Re-sealed mutations of FRI queries,
+lifting height, sample width/points, native AIR source hash, and local AIR
+dependency digest are rejected.
+
+The local AIR dependency digest binds the seven-file import closure of the
+pair/many chip and bridge implementations: their four tagged AIR files,
+`repeated_step_chip.zig`, and both private boundary modules. Its expected hash
+is pinned in the engine adapter. The selected circuit program and AIR bundle
+are independently bound by the V4 source inspection; core and prover library
+code is pinned by the engine revision used to build the verifier. The lookup
+relation IDs remain a reviewed registry contract rather than automatically
+extracted evaluator dependencies. Independent formula review is still a
+release obligation.
+
 This is a real increase in **component-source composition**: the prospective
 roster contains both pair and many native AIR implementations in one program.
 It does not add a new arithmetic function, and it does not establish that the
@@ -70,10 +94,9 @@ bytes are consumed or produced by this prototype.
 ## Native proof gate
 
 A proof-backed profile needs a new magic, transcript tag, manifest schema, and
-program-binding domain. The verifier must regenerate this mixed roster from
-sealed source **before proof decoding**, instantiate these exact handles in
-the interleaved order, derive live PCS tree logs and mask geometry from them,
-and bind the manifest digest before the first commitment. The prover must
+program-binding domain. The verifier must regenerate this selected schedule
+from sealed source **before proof decoding** and bind its manifest digest
+before the first commitment. The prover must
 write and commit the matching interleaved base and interaction columns, mix
 the seven claimed sums in that same order, and use one lookup challenge pair.
 The new native tests must accept an honest three-call proof and reject a
