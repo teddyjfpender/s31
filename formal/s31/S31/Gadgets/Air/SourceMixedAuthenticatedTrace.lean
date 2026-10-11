@@ -9,8 +9,8 @@ commitments and PCS/FRI verifier before the source-level false-claim theorem
 can be applied. The contract is **not** derived from native proof acceptance.
 
 The Gate, chip, and bridge residuals below are the already formalized logical
-row equations. `positiveAligned` and `negativeAligned` are separate exact
-compiler/trace-to-event-list correspondence premises. Neither a passing
+row equations. `positiveAligned` and `negativeAligned` are separate event
+permutation compiler/trace correspondence premises. Neither a passing
 honest-writer fixture nor a matching proof header establishes those premises
 for an arbitrary prover-selected committed trace.
 -/

@@ -101,7 +101,7 @@ PROOF_FIELD_PROJECTIONS_V1 = {
     },
     "formal/s31/S31/Gadgets/Air/SourceMixedScheduledPublicPath.lean": {
         "S31.Gadgets.Air.SourceMixedScheduledPublicPath.LocalPublicSchedule": (
-            "addresses", "unique", "first", "constants", "step", "packedInitial",
+            "addresses", "unique", "first", "constants", "packedInitial",
             "packedFinal", "zero", "add", "mul", "outputs",
         ),
     },

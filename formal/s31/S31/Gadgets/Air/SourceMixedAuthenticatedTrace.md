@@ -30,8 +30,9 @@ zero output multiplicity. `scheduled_row_accepted` then supplies the nine AIR
 residuals for a row selected by source addresses and opcode. The schedule
 selection and the premise that these rows are authenticated by the proof
 remain explicit. `LocalPublicPath` still packages the selected row facts for
-its older conditional theorem; the new projection shows how its arithmetic
-part follows from the global trace contract.
+its older conditional theorem; `LocalPublicSchedule` derives its Gate
+arithmetic from the global trace and its chip transition from projected
+chip events, chip AIR, and the fixed-constant binding.
 
 `AuthenticatedMixedTrace.gateRowsEq` binds every decoded Gate row, including
 its raw canonical addresses and fixed multiplicity, to the source roster.
@@ -63,14 +64,15 @@ must bind **both** committed trees, column order and row permutations to the
 formal model. Honest-writer row fixtures and a proof-root mutation test are
 useful checks, but do not discharge this implication.
 
-The smallest independently auditable native next step is an optional full
-trace certificate: export the exact main and interaction columns for a proof,
-recompute their commitment roots, check every component AIR row with the
-same source-derived handles, decode the two event lists, and compare them
-with the modeled lists. This would validate a trace-carrying audit mode.
-The ordinary succinct verifier still requires a separate cryptographic
-argument to extract that same all-row evidence from arbitrary accepted
-proofs. Fiat–Shamir challenge distribution is a further, separate obligation.
+An optional native full-trace audit now verifies a proof, rebuilds all fixed,
+main, and interaction columns from a supplied private assignment, checks
+every Gate/chip/bridge row and LogUp recurrence, and requires all three
+recomputed commitment roots to match the accepted proof. It also checks
+the complete source-derived Gate event bag. This binds the supplied trace
+under the Merkle commitment assumption; it does not serialize a Lean proof
+object or extract rows from an arbitrary succinct proof. The ordinary
+verifier still requires a separate PCS/FRI extraction or soundness argument
+and Fiat–Shamir challenge analysis. See the [native trace audit](../../../../../src/frontends/s31/runtime/mixed_boundary/TRACE_AUDIT.md).
 
 ## Soundness details that must survive implementation
 

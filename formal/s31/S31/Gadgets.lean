@@ -165,6 +165,7 @@ import S31.Gadgets.Functional.Correspondence.RawGateSoundness
 import S31.Gadgets.Functional.Correspondence.AliasRawGateSoundness
 import S31.Gadgets.Functional.Correspondence.AliasCanonicalIrBytes
 import S31.Gadgets.Functional.Correspondence.AliasCanonicalAirBridge
+import S31.Gadgets.Functional.Correspondence.CanonicalDagOptimization
 import S31.Gadgets.Functional.Correspondence.ZeroPhysicalTraceWitness
 import S31.Gadgets.Functional.Correspondence.AliasProjectedExportBridge
 import S31.Gadgets.Functional.Correspondence.PinnedFullOutputRoster
