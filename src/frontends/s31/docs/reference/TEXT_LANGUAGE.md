@@ -1,8 +1,9 @@
 # S31 text language and proof-aware core library
 
 This is the **implemented, deliberately narrow** `.s31` frontend. It lowers to
-the existing normalized relation v1. The Zig relation validator and compiler
-then produce the same prover, AIR and sealed native verifier as a handwritten
+normalized relation v1 for flat boundaries or v2 for a versioned public
+record boundary. The Zig relation validator and compiler then produce the
+same prover, AIR and sealed native verifier as a handwritten
 `.s31.json` relation. The text compiler is not a second proving backend.
 
 ## Build and audit a program
@@ -76,7 +77,12 @@ circuit arithmetic uses canonical field literals.
 The [record guide](../records.md) shows named struct fields that erase into
 static products before relation emission. A function may accept or return a
 record. The versioned public-record ABI also permits nominal record circuit
-inputs and outputs with M31 leaves under `direct-gate`; tuples remain inside
+inputs and outputs with M31 leaves under `direct-gate`, and a narrow public
+four-lane record input/result under `direct-chip` or
+`direct-mixed-general`. The [one-call mixed example](../../examples/boundary/record_mixed1.s31)
+shows the public input and derived result; its native verifier checks the
+canonical typed statement and the source-derived component roster. Tuples
+remain inside
 records or source helpers rather than top-level proof roots. The
 [functional core](../functional-language.md) adds expression-level
 `let name = expression in expression`, typed

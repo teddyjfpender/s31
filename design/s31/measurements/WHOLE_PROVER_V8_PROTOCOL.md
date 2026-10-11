@@ -1,15 +1,21 @@
 # Prospective V8 whole-prover cost study
 
-Status: **design committed, protocol not frozen, no V8 native observations**.
+Status: **baseline protocol frozen and externally timestamped before native
+training; training is in progress; no V8 accuracy result yet**.
 The machine-readable [prospective design](language/whole-prover-cost-v8-prospective.json)
 and its [static inventory generator](../../../src/frontends/s31/benchmarks/cost/v8_design.py)
 fix the workload menus, disjointness rule, uncertainty method, and gates. The
 [baseline runbook](WHOLE_PROVER_V8_RUNBOOK.md) describes the implemented
 collector, fitter, independent gate checker, native artifact publisher, and
-portable replay. These tools cannot authorize a native build without a
-separately committed source-pinned protocol and external anchor. The general
-mixed profile must be admitted and packaged before the paired comparison can
-be frozen or measured.
+portable replay. The baseline [frozen protocol](language/whole-prover-cost-v8.json)
+has SHA-256 `dff9ed804a9a5c50189f569adceae0ba68a25cebcfa4d98c899065f2ab769abd`
+and committed anchor `cdfe86cf7047a630c945cca7f8b8706295bc3623`; both
+were recorded externally on 2026-10-11 at 05:22:10 UTC before native
+training. An interrupted overlapping first build was quarantined with no
+completed package or timed corpus, then training restarted from clean
+evidence paths as recorded in the runbook. The general mixed profile must be
+packaged as an equivalent generic/mixed pair before the paired comparison
+can be frozen or measured.
 
 ## Why V8 is a new study
 
@@ -85,7 +91,8 @@ one host does not establish cross-host or future-revision transfer.
 
 This is a **conditional, separately reported** companion experiment. The
 [bounded general mixed profile](../language/MIXED_GENERAL_NATIVE_PROFILE.md)
-is currently draft. Before admission it has no cost result and is absent
+has local N=1..8 native acceptance, but its paired generic/mixed package gate
+has not passed. It has no paired cost result and is absent
 from the ordinary V8 model. The admission gate requires a reviewed and
 native-tested N=1..8 source-pinned verifier, sealed generated component
 manifest, source-equivalent generic and mixed packaged CLI lowerings, a
@@ -149,6 +156,7 @@ or fixed N=3/N=4 profiles.
 The final runner must refuse native work unless all committed and externally
 recorded pins are supplied, both anchors have the required ancestry, at least
 8 GiB remains free before each native phase, and the source/host/tool identity
-matches the protocol. The committed design is not a frozen source fingerprint
-and authorizes no native observation. Automatic lowering remains disabled
+matches the protocol. The prospective design alone is not a frozen source
+fingerprint and authorizes no native observation. The separately frozen
+baseline protocol authorizes the pinned ordinary V8 run. Automatic lowering remains disabled
 until a passing pinned study and a separate soundness-equivalence review.

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
 import subprocess
 import sys
@@ -15,6 +16,7 @@ sys.path.insert(0, str(S31 / "python"))
 
 from abi.binding_v2 import binding_digest, encode_typed_public_statement
 from text_frontend import compile_text
+from registry_manifest_digest import digest as registry_manifest_digest
 
 P = 2_147_483_647
 SOURCE = (S31 / "examples/boundary/record_mixed1.s31").read_text()
@@ -83,15 +85,36 @@ def exercise(work: Path, count: int) -> dict:
         "-Doptimize=ReleaseFast", "-Ds31-version=2",
         "-Ds31-lowering=direct-mixed-general", f"-Ds31-source={source_path}",
         "-Ds31-name=record", "-j1", "--prefix", str(prefix))
+    if count == 1:
+        mismatch = run("zig", "build", "--build-file", str(S31 / "build.zig"),
+                       "install", "-Doptimize=ReleaseFast", "-Ds31-version=1",
+                       "-Ds31-lowering=direct-mixed-general", f"-Ds31-source={source_path}",
+                       "-Ds31-name=record", "-j1", "--prefix", str(work / "wrong-version"),
+                       accept=False)
+        assert "-Ds31-version differs from embedded mixed source version" in mismatch.stderr
     bin_dir = prefix / "bin"
     prover = bin_dir / "s31-record-mixed-general-prover"
     verifier = bin_dir / "s31-record-mixed-general-native-verifier"
+    manifest_bin = bin_dir / "s31-record-mixed-general-manifest"
+    manifest = json.loads(run(str(manifest_bin)).stdout)
+    assert manifest["schema"] == "s31-mixed-component-inspection-general-v3"
+    assert manifest["source_sha256"] == hashlib.sha256(source_path.read_bytes()).hexdigest()
+    assert manifest["registry_manifest_sha256"] == registry_manifest_digest(manifest)
+    assert manifest["call_count"] == count and manifest["slot_count"] == 1 + 2 * count
+    assert [slot["claimed_sum_index"] for slot in manifest["slots"]] == list(range(1 + 2 * count))
+    assert [slot["registry_role"] for slot in manifest["slots"]] == [
+        "circuit", *(role for _ in range(count) for role in ("chip", "bridge")),
+    ]
     proof = work / f"proof-{count}.bin"
     statement = work / f"statement-{count}.json"
     run(str(prover), str(assignment_path), str(proof), str(statement), str(typed_path))
     assert statement.read_bytes() == typed
     run(str(verifier), str(proof), str(statement))
-    assert proof.read_bytes().startswith(b"S31MIX07" + bytes((count, 1 + 2 * count, 3, 0)))
+    proof_bytes = proof.read_bytes()
+    assert proof_bytes.startswith(b"S31MIX07" + bytes((count, 1 + 2 * count, 3, 0)))
+    assert proof_bytes[12:44].hex() == manifest["source_sha256"]
+    assert proof_bytes[44:76].hex() == manifest["registry_manifest_sha256"]
+    assert proof_bytes[76:108].hex() == manifest["circuit_identity_sha256"]
 
     for name, root, word_index in (("public_input", 0, 0), ("public_result", 1, 0)):
         changed = copy.deepcopy(json.loads(typed))
