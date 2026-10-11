@@ -22,6 +22,7 @@ open S31.Gadgets.Packed
 open S31.Gadgets.Air.Qm31Ops
 open S31.Gadgets.Air.GateLookup
 open S31.Gadgets.Air.DirectGateEvaluatorCells
+open S31.Gadgets.Air.DirectGateNativeIndices
 open S31.Gadgets.Air.GeneratedDirectGateBytecodeArithmetic
 open S31.Functional.SSACertificate
 open S31.Functional.SSATextBytes
@@ -61,12 +62,12 @@ theorem physical_bytecode_arithmetic_eq (cell : ColumnCell) (row : Row) :
     bytecodeArithmetic (physicalBytecodeCells cell row) =
       residuals (cellFlags cell) row.in0 row.in1 row.output := by
   rw [bytecode_arithmetic_eq]
-  simp [DirectGateEvaluatorCells.arithmetic,
+  simp [S31.Gadgets.Air.DirectGateEvaluatorCells.arithmetic,
     S31.Gadgets.Air.NativeQm31AirProof.native_residuals_eq,
-    DirectGateEvaluatorCells.decodedRow,
-    DirectGateEvaluatorCells.semanticFixed, physicalBytecodeCells,
+    S31.Gadgets.Air.DirectGateEvaluatorCells.decodedRow,
+    S31.Gadgets.Air.DirectGateEvaluatorCells.semanticFixed, physicalBytecodeCells,
     sourceBytecodeCells, cellFlags, fixedReadOrder,
-    airLocalToSemantic, semanticToAirLocal]
+    semanticToAirLocal]
 
 /-- If exact Gate lookup has identified the three physical row values with
 the logical address map, the installed roots at the physical row equal the

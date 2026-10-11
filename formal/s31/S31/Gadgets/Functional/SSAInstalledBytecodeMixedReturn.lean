@@ -20,6 +20,7 @@ open S31.Gadgets.Air.GeneratedDirectGateBytecodeArithmetic
 open S31.Functional.SSACertificate
 open S31.Functional.SSATextBytes
 open S31.Functional.SSAAirColumnCells
+open S31.Functional.SSADirectGateBridge
 open S31.Functional.SSAPublicInputBinding
 open S31.Functional.SSANativePolynomialRows
 open S31.Functional.SSAInstalledBytecodeRows
