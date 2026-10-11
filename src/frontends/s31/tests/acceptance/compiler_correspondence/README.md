@@ -24,3 +24,26 @@ The full corpus remains a fast parser, normalizer and exact-schedule comparison
 in `tests/python/generated/test_source_mutation_correspondence.py`. These
 samples test the native path; they do not prove parser or emitter refinement in
 Lean, nor the underlying PCS/FRI soundness assumptions.
+
+## Pinned square4 fixed-root binding
+
+`native_fixed_root_binding.py` checks the complete 512-row, eight-column
+direct-Gate fixed roster against the binary native fixture, the physical-row
+report, and Lean's `PinnedFullFixedRoster` literal. It also checks that all 512
+address-indexed output values in `PinnedSquare4ConstantValues` agree with the
+physical main rows, and that the Lean main witness names the pinned native
+preprocessed root. Four one-cell/root controls must fail.
+
+```sh
+python3 src/frontends/s31/tests/acceptance/compiler_correspondence/native_fixed_root_binding.py
+python3 src/frontends/s31/tests/acceptance/compiler_correspondence/native_fixed_root_binding.py --native
+```
+
+The second command builds a fresh source-bound native package in a temporary
+directory. It rechecks the package's exported fixed cells and key root against
+the pinned fixture, proves the square4 claim, verifies it with the generated
+native verifier, changes one byte in the proof's serialized preprocessed root,
+and requires `InvalidPreprocessedRoot` from that verifier. The comparison and
+mutation are reproducible diagnostics. They do not independently recompute the
+Blake2s PCS root from circle evaluations or prove that all authenticated proof
+openings equal the uncommitted physical-row export.
