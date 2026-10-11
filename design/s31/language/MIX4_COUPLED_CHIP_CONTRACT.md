@@ -39,6 +39,11 @@ maps are prerequisites for proving this example with a native mixed profile.
 In particular, the four scalar ports for `middle` must be circuit wires
 whose base-field values are constrained equal to the four packed coordinates
 of `a + x`; copying host-evaluated words into a bridge would leave a gap.
+The pinned circuit builder already offers constrained `simd.unpackIdx` for
+each coordinate. The compiler must emit all four extractions, retain their
+raw producer addresses, and check the same address map in both topology and
+witness passes. It must likewise constrain the four outputs before repacking
+them into a public vector (`simd.pack` is the existing constrained primitive).
 The text frontend and generic circuit already represent its normalized
 `repeat` body `square; add_const(7); mix4`.
 
@@ -107,8 +112,9 @@ event multiplicities and nonzero denominators, needs independent review.
 
 Each call also gets a bridge with eight constant endpoint columns (four in,
 four out) at the current bridge log size 4. The bridge constrains those
-columns constant across its rows, emits the eight Gate events with the
-opposite sign to the circuit's Gate obligations, and emits
+columns constant across its rows, emits eight effective Gate events as 16
+row-wise copies weighted `1/16` with the opposite sign to the circuit's Gate
+obligations, and emits
 `-1/T_mix(call_id,0,initial) + 1/T_mix(call_id,R,final)` to cancel the
 chip's endpoints. The bridge copies **compiler-owned scalar Gate addresses**,
 not addresses supplied by proof bytes. Its anticipated shape is eight main
@@ -150,6 +156,10 @@ inspection view; a rehashed sidecar cannot authorize a changed constructor.
 
 The roster is `circuit, chip(0), bridge(0), ..., chip(n-1), bridge(n-1)` for
 `1 <= n <= 8`. Claim slots and sum indices follow that order exactly. Bind
+every main, interaction, and constraint offset as a checked prefix sum in
+that order; the new verifier preflight and decoder must use the resulting
+column tree and claim layout rather than reuse the older
+`circuit, all chips, all bridges` indices. Bind
 registry version, constructor IDs, call/body parameters, endpoint addresses,
 all component source/program hashes, preprocessed root, public ABI, profile
 tag, PCS geometry and roster digest to a new transcript domain before the
@@ -187,6 +197,14 @@ is the number of distinct, injectively encoded seven-coordinate coefficient
 vectors and all signed imbalances are nonzero mod M31, the algebraic
 collision/false-closure term is at most
 `[6*binom(T,2)+2*T-1]/|QM31|` under ideal independent uniform challenges.
+The denominator count does not by itself prove the nonzero-imbalance premise:
+the circuit has source-derived multiplicities and each bridge contributes
+16 rows of terms weighted `1/16`. Multiply the global closure by 16 and
+derive a checked source-bound ceiling `B < p` on the sum of absolute
+integerized weights across the circuit, both chip kinds, every bridge row,
+and statement outputs. The old pair/many worksheet's `B <= 12585504` applies
+only if the new emitters and public-output cap preserve its hypotheses; the
+v2 implementation must recompute and independently review this bound.
 This is separate from AIR, PCS/FRI and Fiat-Shamir soundness. An actual v2
 release must derive T and total occurrence bounds from its checked plan;
 the transcript must draw challenges only after main commitments are fixed.
