@@ -96,6 +96,9 @@ pub fn main() !void {
         // Diagnostic algebraic term only; this is not total proof security.
         .conditional_lookup_budget = schedule.lookup_envelope.?,
         .tree_columns = geometry.tree_columns,
+        .tree_lifting_log_sizes = geometry.tree_lifting_log_sizes,
+        .mask_points_sha256 = std.fmt.bytesToHex(geometry.mask_points_sha256, .lower),
+        .local_air_dependency_sha256 = std.fmt.bytesToHex(geometry.local_air_dependency_sha256, .lower),
         .max_column_log_size = geometry.max_column_log_size,
         .composition_log_size = geometry.composition_log_size,
         .composition_split = geometry.composition_split,

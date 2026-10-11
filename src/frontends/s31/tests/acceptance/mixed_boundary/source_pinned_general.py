@@ -7,6 +7,7 @@ import argparse
 import copy
 import hashlib
 import json
+import struct
 import subprocess
 import sys
 import tempfile
@@ -18,6 +19,52 @@ S31 = Path(__file__).resolve().parents[3]
 MODULUS = 2_147_483_647
 MAGIC = b"S31MIX07"
 SUMS_OFFSET = len(MAGIC) + 4 + 32 * 3 + 8
+LOCAL_AIR_FILES = (
+    "repeated_step_chip.zig", "private_pair_boundary.zig",
+    "private_many_boundary.zig", "tagged_pair_chip.zig",
+    "tagged_pair_bridge.zig", "tagged_many_chip.zig",
+    "tagged_many_bridge.zig",
+)
+
+
+def local_air_dependency_digest() -> str:
+    """Independently hash the native AIR files in their registered order."""
+    engine = S31.parents[2] / "deps/stwo-zig/src/integrations/circuit_cpu"
+    h = hashlib.sha256(b"STWO-MIXED-LOCAL-AIR-CLOSURE-V1\0")
+    for name in LOCAL_AIR_FILES:
+        data = (engine / name).read_bytes()
+        h.update(name.encode() + b"\0")
+        h.update(struct.pack("<Q", len(data)))
+        h.update(data)
+    return h.hexdigest()
+
+
+def check_native_geometry_audit(manifest: dict) -> None:
+    """Check report-level PCS geometry; this report is not a verifier key."""
+    slots = manifest["slots"]
+    trees = manifest["tree_columns"]
+    pcs = manifest["pcs"]
+    lifting = manifest["tree_lifting_log_sizes"]
+    if (len(trees) != 4 or trees[0] != 8 or
+            trees[1] != sum(slot["main_columns"] for slot in slots) or
+            trees[2] != sum(slot["interaction_columns"] for slot in slots) or
+            trees[3] != 4 * (1 << manifest["composition_split"]) or
+            lifting != [pcs["preprocessed_lifting_log_size"],
+                        pcs["trace_lifting_log_size"],
+                        pcs["trace_lifting_log_size"],
+                        pcs["trace_lifting_log_size"]] or
+            manifest["max_column_log_size"] != max(
+                manifest["composition_log_size"],
+                *(slot["trace_log_size"] for slot in slots))):
+        raise AssertionError("mixed native PCS geometry report differs")
+    mask_digest = manifest["mask_points_sha256"]
+    if (not isinstance(mask_digest, str) or len(mask_digest) != 64 or
+            mask_digest != mask_digest.lower() or
+            set(mask_digest) - set("0123456789abcdef") or
+            mask_digest == "0" * 64):
+        raise AssertionError("mixed mask-point digest is missing or malformed")
+    if manifest["local_air_dependency_sha256"] != local_air_dependency_digest():
+        raise AssertionError("mixed local AIR dependency closure differs")
 
 
 def run(*args: str, accept: bool = True) -> subprocess.CompletedProcess[str]:
@@ -186,6 +233,41 @@ def check_source_call_mapping_mutations(source: dict, manifest: dict) -> int:
     return len(cases)
 
 
+def static_geometry_checks() -> int:
+    """Exercise report checks without compiling or proving a native circuit."""
+    fixture = {
+        "slots": [
+            {"main_columns": 12, "interaction_columns": 8, "trace_log_size": 9},
+            {"main_columns": 9, "interaction_columns": 8, "trace_log_size": 4},
+            {"main_columns": 8, "interaction_columns": 20, "trace_log_size": 4},
+        ],
+        "tree_columns": [8, 29, 36, 8],
+        "tree_lifting_log_sizes": [10, 12, 12, 12],
+        "pcs": {"preprocessed_lifting_log_size": 10, "trace_lifting_log_size": 12},
+        "composition_split": 1,
+        "composition_log_size": 9,
+        "max_column_log_size": 9,
+        "mask_points_sha256": "a" * 64,
+        "local_air_dependency_sha256": local_air_dependency_digest(),
+    }
+    check_native_geometry_audit(fixture)
+    cases = (
+        ("tree-columns", lambda m: m["tree_columns"].__setitem__(2, 35)),
+        ("tree-height", lambda m: m["tree_lifting_log_sizes"].__setitem__(2, 11)),
+        ("mask-digest", lambda m: m.__setitem__("mask_points_sha256", "0" * 64)),
+        ("air-dependency", lambda m: m.__setitem__("local_air_dependency_sha256", "0" * 64)),
+    )
+    for label, mutate in cases:
+        changed = copy.deepcopy(fixture)
+        mutate(changed)
+        try:
+            check_native_geometry_audit(changed)
+        except AssertionError:
+            continue
+        raise AssertionError(f"mixed geometry mutation {label} escaped report audit")
+    return len(cases)
+
+
 def static_mapping_checks() -> dict:
     """Exercise the projector and mutation controls without a native build."""
     mutation_counts: dict[int, int] = {}
@@ -273,6 +355,7 @@ def static_mapping_checks() -> dict:
     return {"schema": "s31-mixed-source-roster-mapping-static-v1",
             "counts": [1, 3, 8],
             "manifest_mutations_rejected_by_count": mutation_counts,
+            "geometry_report_mutations_rejected": static_geometry_checks(),
             "source_mutations_rejected_per_count": 1,
             "fresh_absolute_address_retarget_accepted_without_topology": True}
 
@@ -314,6 +397,7 @@ def exercise(work: Path, count: int) -> dict:
     assert manifest["source_sha256"] == hashlib.sha256(source.read_bytes()).hexdigest()
     assert manifest["call_count"] == count and manifest["slot_count"] == 1 + 2 * count
     assert manifest["registry_manifest_sha256"] == registry_manifest_digest(manifest)
+    check_native_geometry_audit(manifest)
     relabeled = copy.deepcopy(manifest)
     relabeled["slots"][1]["source_kind"] = "many_chip"
     assert registry_manifest_digest(relabeled) == manifest["registry_manifest_sha256"]
