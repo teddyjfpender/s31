@@ -123,6 +123,7 @@ BINDINGS = [
     "deps/stwo-zig/src/core/utils.zig",
     "deps/stwo-zig/src/core/air/accumulation.zig",
     "deps/stwo-zig/src/core/air/components.zig",
+    "deps/stwo-zig/src/core/channel/lookup_transcript.zig",
     "deps/stwo-zig/vectors/circuit/official/circuit_air.air_programs_v1.bin",
     "src/frontends/s31/library/hash/poseidon2.zig",
     "src/core/crypto/blake2s_terminal_parallel.zig",

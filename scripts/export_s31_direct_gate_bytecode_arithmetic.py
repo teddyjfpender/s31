@@ -480,6 +480,92 @@ def render_composition(package: Path) -> str:
     return "\n".join(lines)
 
 
+def check_transcript_parameter_source_contract(native: str, lookup: str,
+                                               resident: str) -> None:
+    """Check the selected direct verifier's local draw/claim/parameter path."""
+    require(native.count("fn verifyDirectProfile(") == 1,
+            "selected direct verifier entry changed")
+    selected = native.split("fn verifyDirectProfile(", 1)[1]
+    markers = [
+        "const sum_count: usize = if (private_boundary != null) 3 else if (has_chip) 2 else 1;",
+        "sum.* = QM31.fromU32Unchecked(limbs[0], limbs[1], limbs[2], limbs[3]);",
+        "try scheme.commit(allocator, roots[1], main_logs, &channel);",
+        "const lookup = try core.channel.lookup_transcript.drawLookupElements(allocator, &channel);",
+        "const circuit_sum = try circuit.witness.direct_arithmetic.lookupSum(&outputs, sums[0], lookup.z, lookup.alpha);",
+        "else if (!circuit_sum.isZero()) return error.InvalidLookupSum;",
+        "core.channel.lookup_transcript.mixInteractionClaim(&channel, sums[0..sum_count]);",
+        "try scheme.commit(allocator, roots[2], interaction_logs, &channel);",
+        "captured[0] = .init(allocator, &bound.components[0], &pp_logs, lifting_bound, lookup.z, lookup.alpha, sums[0]);",
+    ]
+    positions = [selected.find(marker) for marker in markers]
+    require(all(position >= 0 for position in positions) and positions == sorted(positions)
+            and all(selected.count(marker) == 1 for marker in markers),
+            "selected direct Gate transcript/claim order changed")
+    require("return .{ .z = values[0], .alpha = values[1] };" in lookup and
+            "channel.mixFelts(claimed_sums);" in lookup,
+            "lookup challenge/claim transcript mapping changed")
+    require("const claimed_scale = try M31.fromCanonical(" in resident and
+            "@as(u32, 1) << @intCast(self.captured.trace_log_size)," in resident and
+            ".lookup_z => self.lookup_z," in resident and
+            ".lookup_alpha_power => |power| self.lookup_alpha.pow(power)," in resident and
+            ".claimed_sum_scaled => self.claimed_sum.mulM31(claimed_scale)," in resident,
+            "resident Gate extension parameter mapping changed")
+
+
+def render_transcript_params(package: Path) -> str:
+    """Emit the selected Gate lookup draw and scaled-claim parameter link."""
+    checked = check_package(package)
+    _base, _ext, roots = decoded_program(gate_program(BUNDLE.read_bytes()))
+    manifest = json.loads((package / "component-manifest.json").read_text())
+    component = manifest["components"]
+    require(len(component) == 1 and component[0]["source_index"] == 1 and
+            component[0]["trace_log_size"] == 9 and
+            component[0]["random_coefficient_offset"] == 0 and
+            roots == (*range(9), 88, 96),
+            "selected Gate transcript parameter profile changed")
+    engine = ROOT / "deps/stwo-zig/src"
+    check_transcript_parameter_source_contract(
+        (ROOT / "src/frontends/s31/runtime/native_verifier.zig").read_text(),
+        (engine / "core/channel/lookup_transcript.zig").read_text(),
+        (engine / "frontends/cairo/witness/resident_verifier.zig").read_text(),
+    )
+    return "\n".join([
+        "-- Generated from the checked selected direct Gate package and native source contracts.",
+        f"-- Bundle SHA-256: {AIR_BUNDLE_SHA256}",
+        f"-- Gate program SHA-256: {GATE_PROGRAM_SHA256}",
+        f"-- Source SHA-256: {checked['source_sha256']}",
+        "-- Extension source order: alpha^1..alpha^5, z, claimed_sum / 512.",
+        "-- `z` is draw 0 and `alpha` is draw 1 after main commitment.",
+        "import S31.Gadgets.Air.DirectGateTranscriptParams",
+        "import S31.Gadgets.Air.GeneratedDirectGateComposition", "",
+        "namespace S31.Gadgets.Air.GeneratedDirectGateTranscriptParams", "",
+        "open S31.Gadgets.Air.DirectGateOodsArithmetic",
+        "open S31.Gadgets.Air.DirectGateOodsLogUp",
+        "open S31.Gadgets.Air.DirectGateOodsComposition",
+        "open S31.Gadgets.Air.DirectGateTranscriptParams", "",
+        "/-- Supply the installed bytecode using the exact selected verifier",
+        "lookup pair `(z, alpha)` and first claimed sum. -/",
+        "def transcriptRoots (cells : Cells) (z alpha claimed : QM) : List QM :=",
+        "  GeneratedDirectGateComposition.bytecodeRoots cells alpha z",
+        "    (extensionParam z alpha claimed 6)", "",
+        "theorem transcript_roots_eq_pure (cells : Cells) (z alpha claimed : QM) :",
+        "    transcriptRoots cells z alpha claimed =",
+        "      pureRoots cells alpha z (claimed / 512) := by",
+        "  simp [transcriptRoots, extensionParam, claimed_scaled_eq_div,",
+        "    GeneratedDirectGateComposition.bytecode_roots_eq_pure]", "",
+        "theorem transcript_composition_eq_pure (cells : Cells)",
+        "    (z alpha claimed coefficient zeroifier : QM)",
+        "    (_hzero : zeroifier ≠ 0) :",
+        "    quotientFold coefficient zeroifier⁻¹",
+        "      (transcriptRoots cells z alpha claimed) =",
+        "      S31.Gadgets.Air.CompositionFold.fold coefficient",
+        "        (pureRoots cells alpha z (claimed / 512)) / zeroifier := by",
+        "  rw [transcript_roots_eq_pure, quotient_fold_factor]",
+        "  rfl", "",
+        "end S31.Gadgets.Air.GeneratedDirectGateTranscriptParams", "",
+    ])
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("package", type=Path)
@@ -488,12 +574,16 @@ def main() -> None:
                         help="also regenerate the selected two-root QM31 LogUp theorem")
     parser.add_argument("--composition-output", type=Path,
                         help="also regenerate the selected direct Gate composition theorem")
+    parser.add_argument("--transcript-output", type=Path,
+                        help="also regenerate the selected Gate transcript parameter theorem")
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
     result = render(args.package)
     logup = render_logup(args.package) if args.logup_output is not None else None
     composition = (render_composition(args.package)
                    if args.composition_output is not None else None)
+    transcript = (render_transcript_params(args.package)
+                  if args.transcript_output is not None else None)
     if args.check:
         if not args.output.is_file() or args.output.read_text() != result:
             raise SystemExit("installed Gate bytecode Lean export changed")
@@ -503,6 +593,9 @@ def main() -> None:
         if composition is not None and (not args.composition_output.is_file() or
                                         args.composition_output.read_text() != composition):
             raise SystemExit("installed Gate composition Lean export changed")
+        if transcript is not None and (not args.transcript_output.is_file() or
+                                       args.transcript_output.read_text() != transcript):
+            raise SystemExit("installed Gate transcript Lean export changed")
     else:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(result)
@@ -512,6 +605,9 @@ def main() -> None:
         if composition is not None:
             args.composition_output.parent.mkdir(parents=True, exist_ok=True)
             args.composition_output.write_text(composition)
+        if transcript is not None:
+            args.transcript_output.parent.mkdir(parents=True, exist_ok=True)
+            args.transcript_output.write_text(transcript)
 
 
 if __name__ == "__main__":

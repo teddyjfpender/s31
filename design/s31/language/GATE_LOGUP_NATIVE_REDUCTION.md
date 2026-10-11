@@ -424,17 +424,50 @@ The theorem assumes the supplied coefficient, zeroifier, and samples are the
 ones used by the proof. Transcript ordering, committed opening authentication,
 and the random composition, PCS, and FRI soundness arguments remain separate.
 
+## Lookup draw and claimed sum supplied to Gate bytecode
+
+The selected direct verifier reads `sums[0]` as a four-limb QM31 value from
+the proof header. Its checked source path commits the main trace, verifies and
+mixes the interaction nonce, draws two secure values, checks the public lookup
+closure using `sums[0]`, mixes the claim, and commits the interaction trace.
+The shared draw routine labels the first value `z` and the second `alpha`.
+The direct Gate component then receives exactly `(z, alpha, sums[0])`.
+This sequence is checked as a bounded source contract; it does not prove
+Fiat–Shamir unpredictability or that a proof opening matches a commitment.
+
+The installed Gate extension source table asks for seven values in this order:
+`[alpha, alpha², alpha³, alpha⁴, alpha⁵, z, claimed / 512]`. The resident
+verifier computes the last value by inverting the canonical M31 trace size
+`1 << 9` and multiplying the QM31 claim by that base-field inverse.
+[`DirectGateTranscriptParams.lean`](../../../formal/s31/S31/Gadgets/Air/DirectGateTranscriptParams.lean)
+proves the M31 inverse lifted into QM31 equals the QM31 inverse of `512`, and
+proves the seven-value list. For example, if `alpha=2`, `z=7`, and the claimed
+sum is `1024`, the seven parameters are `[2, 4, 8, 16, 32, 7, 2]` modulo
+M31. The final `2` enters the running-sum residual as `claimedScaled`.
+
+[`GeneratedDirectGateTranscriptParams.lean`](../../../formal/s31/S31/Gadgets/Air/GeneratedDirectGateTranscriptParams.lean)
+is regenerated from the checked package after validating the selected native
+draw, closure, claim-mix, interaction-commit, and resident parameter source
+statements. Its theorems substitute the verified parameter order into the
+eleven-root bytecode identity and the Gate composition equation, giving
+`pureRoots(cells, alpha, z, claimed / 512)` at arbitrary supplied QM31 cells.
+The source-to-Lean mapping of `mulM31` and the channel implementation remains
+a reviewed source premise. Mutation tests reject swapped `z/alpha`, changed
+claim mix, and removed claim scaling.
+
 Recheck the bounded export and theorem with:
 
 ```sh
 python3 scripts/export_s31_direct_gate_bytecode_arithmetic.py PACKAGE \
   formal/s31/S31/Gadgets/Air/GeneratedDirectGateBytecodeArithmetic.lean \
   --logup-output formal/s31/S31/Gadgets/Air/GeneratedDirectGateBytecodeLogUp.lean \
-  --composition-output formal/s31/S31/Gadgets/Air/GeneratedDirectGateComposition.lean --check
+  --composition-output formal/s31/S31/Gadgets/Air/GeneratedDirectGateComposition.lean \
+  --transcript-output formal/s31/S31/Gadgets/Air/GeneratedDirectGateTranscriptParams.lean --check
 python3 -m unittest src/frontends/s31/tests/python/test_gate_bytecode_arithmetic.py
 (cd formal/s31 && lake build S31.Gadgets.Air.GeneratedDirectGateBytecodeLogUp)
 (cd formal/s31 && lake build S31.Gadgets.Air.DirectGateOodsMask)
 (cd formal/s31 && lake build S31.Gadgets.Air.GeneratedDirectGateComposition)
+(cd formal/s31 && lake build S31.Gadgets.Air.GeneratedDirectGateTranscriptParams)
 zig test --dep stwo_utils \
   -Mroot=src/frontends/s31/tests/proofs/gate_mask_native_test.zig \
   -Mstwo_utils=deps/stwo-zig/src/core/utils.zig

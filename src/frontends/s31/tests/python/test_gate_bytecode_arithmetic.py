@@ -12,7 +12,8 @@ ROOT = Path(__file__).resolve().parents[5]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from export_s31_direct_gate_bytecode_arithmetic import (  # noqa: E402
-    BUNDLE, check_composition_source_contract, decoded_program, evaluate_row,
+    BUNDLE, check_composition_source_contract,
+    check_transcript_parameter_source_contract, decoded_program, evaluate_row,
     gate_program,
 )
 from export_s31_direct_gate_evaluator_fixture import (  # noqa: E402
@@ -276,6 +277,27 @@ class GateBytecodeArithmeticTest(unittest.TestCase):
                 accumulator.replace("self.accumulation.mul(self.random_coeff).add(evaluation)",
                                     "self.accumulation.add(evaluation).mul(self.random_coeff)"),
                 component_fold)
+
+    def test_selected_transcript_claim_parameter_source(self) -> None:
+        native = (ROOT / "src/frontends/s31/runtime/native_verifier.zig").read_text()
+        engine = ROOT / "deps/stwo-zig/src"
+        lookup = (engine / "core/channel/lookup_transcript.zig").read_text()
+        resident = (engine / "frontends/cairo/witness/resident_verifier.zig").read_text()
+        check_transcript_parameter_source_contract(native, lookup, resident)
+        with self.assertRaisesRegex(ValueError, "lookup challenge/claim transcript mapping changed"):
+            check_transcript_parameter_source_contract(
+                native, lookup.replace(".z = values[0], .alpha = values[1]",
+                                       ".z = values[1], .alpha = values[0]"), resident)
+        with self.assertRaisesRegex(ValueError, "selected direct Gate transcript/claim order changed"):
+            check_transcript_parameter_source_contract(
+                native.replace("mixInteractionClaim(&channel, sums[0..sum_count]);",
+                               "mixInteractionClaim(&channel, sums[1..sum_count]);"),
+                lookup, resident)
+        with self.assertRaisesRegex(ValueError, "resident Gate extension parameter mapping changed"):
+            check_transcript_parameter_source_contract(
+                native, lookup,
+                resident.replace("self.claimed_sum.mulM31(claimed_scale)",
+                                 "self.claimed_sum"))
 
     def test_changed_installed_bundle_is_rejected(self) -> None:
         mutation = bytearray(self.bundle)
