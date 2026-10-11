@@ -225,6 +225,20 @@ pub const ManyInspection = struct {
     }
 };
 
+/// The witness-free circuit that `inspectMany` already checked against the
+/// independently compiled source topology, endpoint map, and fixed root.
+/// Keep it alive only when a caller also needs the exact validated circuit.
+pub const ManyInspectionWithContext = struct {
+    inspection: ManyInspection,
+    context: circuit.builder.Context(circuit.builder.NoValue),
+
+    pub fn deinit(self: *ManyInspectionWithContext) void {
+        self.inspection.deinit();
+        self.context.deinit();
+        self.* = undefined;
+    }
+};
+
 /// In-process versioned descriptors for the guarded engine adapter. The
 /// source-pinned caller obtains these only from a regenerated typed manifest.
 pub const ManyProvenance = struct {
@@ -460,13 +474,27 @@ pub fn inspectMany(
     source_bytes: []const u8,
     air_bundle_bytes: []const u8,
 ) !ManyInspection {
+    var checked = try inspectManyWithTopologyContext(allocator, source_bytes, air_bundle_bytes);
+    defer checked.context.deinit();
+    return checked.inspection;
+}
+
+/// Return the same inspection together with its checked witness-free circuit.
+/// The context was compiled from `source_bytes` and compared with a separate
+/// source topology, including every endpoint, circuit dimension, and fixed
+/// preprocessed root. Callers must still bind source identity at use.
+pub fn inspectManyWithTopologyContext(
+    allocator: std.mem.Allocator,
+    source_bytes: []const u8,
+    air_bundle_bytes: []const u8,
+) !ManyInspectionWithContext {
     const topology = try compileSourceTopology(allocator, source_bytes);
     var parsed = try relation.parseProgram(allocator, source_bytes);
     defer parsed.deinit();
     var maps = compiler.Maps{};
     defer maps.deinit(allocator);
     var ctx = try compiler.compileDirectBoundedWithSpans(circuit.builder.NoValue, allocator, parsed.value, null, &maps);
-    defer ctx.deinit();
+    errdefer ctx.deinit();
     try padDirect(allocator, circuit.builder.NoValue, &ctx);
     const view = circuit.common.preprocessed.CircuitView.fromBuilder(&ctx.circuit);
     try validateEndpoints(allocator, view, maps.bounded_calls.items);
@@ -535,13 +563,16 @@ pub fn inspectMany(
     const precommitment = v4.precommitmentDigest(generated.value);
     const selected_schedule = selected_geometry.bindManifestDigest(precommitment);
     return .{
-        .topology = topology,
-        .generated = generated,
-        .selected_schedule = selected_schedule,
-        .preprocessed_root = root,
-        .manifest_precommitment = precommitment,
-        .effective_source_digest = selected_schedule.effectiveDigest(),
-        .circuit_identity = selected_schedule.circuitIdentity(),
+        .inspection = .{
+            .topology = topology,
+            .generated = generated,
+            .selected_schedule = selected_schedule,
+            .preprocessed_root = root,
+            .manifest_precommitment = precommitment,
+            .effective_source_digest = selected_schedule.effectiveDigest(),
+            .circuit_identity = selected_schedule.circuitIdentity(),
+        },
+        .context = ctx,
     };
 }
 

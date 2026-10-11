@@ -81,9 +81,10 @@ pub const Projection = SelectedSchedule;
 /// an interleaved roster: circuit, (chip i, bridge i) for each call. The
 /// source-kind policy is fixed: pair AIRs for calls 0/1, many AIRs thereafter.
 pub fn inspectSource(allocator: std.mem.Allocator, source: []const u8, air_bytes: []const u8) !SelectedSchedule {
-    var inspected = try binding.inspectMany(allocator, source, air_bytes);
-    defer inspected.deinit();
-    const descriptors = try binding.manyProvenance(&inspected);
+    var checked = try binding.inspectManyWithTopologyContext(allocator, source, air_bytes);
+    defer checked.deinit();
+    const inspected = &checked.inspection;
+    const descriptors = try binding.manyProvenance(inspected);
     try cpu.direct_many_provenance.validate(&inspected.selected_schedule, descriptors.pin(source, air_bytes));
     const manifest = inspected.generated.value;
     const count = manifest.calls.len;
@@ -204,9 +205,13 @@ pub fn inspectSource(allocator: std.mem.Allocator, source: []const u8, air_bytes
     result.main_columns = main_at;
     result.interaction_columns = interaction_at;
     result.total_constraints = constraint_at;
-    var topology_ctx = try binding.compileManyTopology(allocator, source, inspected.topology);
-    defer topology_ctx.deinit();
-    const view = circuit.common.preprocessed.CircuitView.fromBuilder(&topology_ctx.circuit);
+    // This is the context independently compiled and validated by inspectMany.
+    // Recheck the immutable source identity before using it for native geometry.
+    var source_sha256: [32]u8 = undefined;
+    Sha256.hash(source, &source_sha256, .{});
+    if (!std.meta.eql(source_sha256, inspected.topology.source_sha256))
+        return error.InvalidMixedSourceRoster;
+    const view = circuit.common.preprocessed.CircuitView.fromBuilder(&checked.context.circuit);
     var plan: cpu.private_many_boundary.Plan = .{ .count = @intCast(count) };
     for (result.calls[0..count], plan.calls[0..count]) |call, *native_slot| {
         native_slot.* = .{
@@ -470,6 +475,43 @@ fn hashInt(h: *Sha256, value: anytype) void {
     var bytes: [@sizeOf(@TypeOf(value))]u8 = undefined;
     std.mem.writeInt(@TypeOf(value), &bytes, value, .little);
     h.update(&bytes);
+}
+
+test "mixed registry reused context equals full rebuild and native geometry N1 through N8" {
+    const allocator = std.testing.allocator;
+    const air_bytes = @embedFile("s31_air_programs");
+    const family = @import("test_source.zig");
+    inline for (1..admission.max_calls + 1) |count| {
+        const source = family.forCount(count);
+        var checked = try binding.inspectManyWithTopologyContext(allocator, source, air_bytes);
+        defer checked.deinit();
+        var full = try binding.compileManyTopology(allocator, source, checked.inspection.topology);
+        defer full.deinit();
+        const reused_view = circuit.common.preprocessed.CircuitView.fromBuilder(&checked.context.circuit);
+        const full_view = circuit.common.preprocessed.CircuitView.fromBuilder(&full.circuit);
+        try std.testing.expectEqualDeep(full_view, reused_view);
+
+        const selected = try inspectSource(allocator, source, air_bytes);
+        try std.testing.expectEqualDeep(checked.inspection.topology.source_sha256, selected.source_sha256);
+        try std.testing.expectEqualDeep(checked.inspection.preprocessed_root, selected.fixed_root);
+        var plan: cpu.private_many_boundary.Plan = .{ .count = @intCast(count) };
+        for (selected.calls[0..count], plan.calls[0..count]) |call, *slot| {
+            slot.* = .{
+                .call_id = call.call_id,
+                .rounds = call.rounds,
+                .constant = core.fields.m31.M31.fromCanonical(call.constant),
+                .input = call.input,
+                .output = call.output,
+            };
+        }
+        var pp = try plan.preprocessed(allocator, full_view);
+        defer pp.deinit(allocator);
+        try std.testing.expectEqualDeep(selected.fixed_root, try pp.preprocessedRoot(allocator, 1));
+        var template = try cpu.air.parse(allocator, air_bytes);
+        defer template.deinit();
+        const full_geometry = try Mixed.inspect(allocator, &pp, &template, plan);
+        try std.testing.expectEqualDeep(full_geometry, selected.native_geometry.?);
+    }
 }
 
 test "mixed composition admission derives interleaved pair and many sources" {
