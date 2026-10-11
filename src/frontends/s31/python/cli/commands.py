@@ -40,6 +40,43 @@ def _file_sha256(path: Path) -> bytes:
     return digest.digest()
 
 
+def _external_pins(args: argparse.Namespace) -> dict[str, str]:
+    pins = {kind: getattr(args, f"{kind}_sha256")
+            for kind in ("source", "key", "prover", "verifier")}
+    if args.text_sha256 is not None:
+        pins["text"] = args.text_sha256
+    return pins
+
+
+def _verified_record_claim(snapshot: Path, manifest: dict, proof: Path,
+                           statement: Path) -> dict:
+    """Verify and decode one record claim from the same captured bytes."""
+    source_path = snapshot / "source.s31.json"
+    source_bytes = source_path.read_bytes()
+    relation = json.loads(source_bytes)
+    if relation.get("version") != 2 or manifest["lowering"] != "direct-gate":
+        raise ValueError("record proof inspection requires a direct-gate record ABI v2 package")
+    with tempfile.TemporaryDirectory(prefix="s31-inspect-record-") as temporary:
+        proof_snapshot = Path(temporary) / "proof.bin"
+        statement_snapshot = Path(temporary) / "statement.json"
+        shutil.copyfile(proof, proof_snapshot)
+        shutil.copyfile(statement, statement_snapshot)
+        proof_digest = _file_sha256(proof_snapshot)
+        statement_bytes = statement_snapshot.read_bytes()
+        key_path = snapshot / "verification-key.json"
+        key_bytes = key_path.read_bytes()
+        executable = snapshot / "bin" / f"s31-{manifest['name']}-native-verifier"
+        verifier_digest = _file_sha256(executable)
+        invoke(str(executable), str(proof_snapshot), str(statement_snapshot), str(key_path))
+        if (source_path.read_bytes() != source_bytes or
+                key_path.read_bytes() != key_bytes or
+                _file_sha256(executable) != verifier_digest or
+                _file_sha256(proof_snapshot) != proof_digest or
+                statement_snapshot.read_bytes() != statement_bytes):
+            raise ValueError("verified record snapshot changed during native verification")
+        return decode_typed_public_statement(relation, statement_bytes)
+
+
 def main() -> None:
     dispatch(make_parser().parse_args())
 
@@ -122,10 +159,7 @@ def dispatch(args: argparse.Namespace) -> None:
 
     package = args.package.resolve()
     if args.command == "verify-pinned":
-        pins = {kind: getattr(args, f"{kind}_sha256")
-                for kind in ("source", "key", "prover", "verifier")}
-        if args.text_sha256 is not None:
-            pins["text"] = args.text_sha256
+        pins = _external_pins(args)
         proof = args.proof.resolve()
         statement = args.statement.resolve() if args.statement else Path(str(proof) + ".statement.json")
         with admitted_snapshot(package, pins) as (snapshot, manifest):
@@ -133,33 +167,14 @@ def dispatch(args: argparse.Namespace) -> None:
             print(invoke(str(executable), str(proof), str(statement),
                          str(snapshot / "verification-key.json")), end="")
         return
-    if args.command == "inspect-record-proof":
+    if args.command in ("inspect-record-proof", "inspect-record-proof-pinned"):
         proof = args.proof.resolve()
         statement = args.statement.resolve() if args.statement else Path(str(proof) + ".statement.json")
-        with unpinned_snapshot(package) as (snapshot, manifest):
-            source_path = snapshot / "source.s31.json"
-            source_bytes = source_path.read_bytes()
-            relation = json.loads(source_bytes)
-            if relation.get("version") != 2 or manifest["lowering"] != "direct-gate":
-                raise ValueError("inspect-record-proof requires a direct-gate record ABI v2 package")
-            with tempfile.TemporaryDirectory(prefix="s31-inspect-record-") as temporary:
-                proof_snapshot = Path(temporary) / "proof.bin"
-                statement_snapshot = Path(temporary) / "statement.json"
-                shutil.copyfile(proof, proof_snapshot)
-                shutil.copyfile(statement, statement_snapshot)
-                proof_digest = _file_sha256(proof_snapshot)
-                statement_bytes = statement_snapshot.read_bytes()
-                key_path = snapshot / "verification-key.json"
-                key_bytes = key_path.read_bytes()
-                executable = snapshot / "bin" / f"s31-{manifest['name']}-native-verifier"
-                invoke(str(executable), str(proof_snapshot), str(statement_snapshot),
-                       str(key_path))
-                if (source_path.read_bytes() != source_bytes or
-                        key_path.read_bytes() != key_bytes or
-                        _file_sha256(proof_snapshot) != proof_digest or
-                        statement_snapshot.read_bytes() != statement_bytes):
-                    raise ValueError("verified record snapshot changed during native verification")
-                claim = decode_typed_public_statement(relation, statement_bytes)
+        snapshot_context = (admitted_snapshot(package, _external_pins(args))
+                            if args.command == "inspect-record-proof-pinned"
+                            else unpinned_snapshot(package))
+        with snapshot_context as (snapshot, manifest):
+            claim = _verified_record_claim(snapshot, manifest, proof, statement)
         print(json.dumps({"schema": "s31-verified-record-claim-v1",
                           "program": manifest["name"], "proof_verified": True,
                           "claim": claim}, indent=2, sort_keys=True))

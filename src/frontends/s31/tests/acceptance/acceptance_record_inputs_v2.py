@@ -18,6 +18,7 @@ import s31
 from abi.binding_v2 import flat_assignment_from_typed
 from abi.record_v2 import AbiError
 from package.context import BUILD_FILE, write_json
+from package.trust import pinned_paths
 from text_frontend import compile_text
 
 SOURCE = """struct Pair { left: [m31; 1], right: [m31; 1] }
@@ -125,6 +126,20 @@ def main() -> None:
                 verified_claim["claim"]["result"] != TYPED["result"] or
                 "mask" in verified_claim["claim"]["public_inputs"]):
             raise AssertionError("verified record claim did not reconstruct the named public values")
+        # These fixture-local digests exercise the atomic pin admission path;
+        # deployment callers must obtain pins through an authenticated channel.
+        pins = {kind: hashlib.sha256(path.read_bytes()).hexdigest()
+                for kind, path in pinned_paths(package).items()}
+        pinned_command = [sys.executable, str(S31 / "python/s31.py"),
+                          "inspect-record-proof-pinned", str(package),
+                          str(work / "typed-trial/proof.bin"), "--statement",
+                          str(work / "typed-trial/statement.json")]
+        for kind, value in pins.items():
+            pinned_command.extend((f"--{kind}-sha256", value))
+        pinned_inspected = subprocess.run(pinned_command, capture_output=True,
+                                          text=True, check=True)
+        if json.loads(pinned_inspected.stdout) != verified_claim:
+            raise AssertionError("pinned and unpinned record inspection disagree")
         flat_trial = s31.trial(flat_package, flat_path, work / "flat-trial")
         if not flat_trial["native_verifier_accepted"]:
             raise AssertionError("manual flat v1 proof failed")
@@ -186,6 +201,7 @@ def main() -> None:
             "schema": "s31-record-input-v2-acceptance",
             "native_typed_proof_accepted": True,
             "verified_named_claim_inspected": True,
+            "pinned_named_claim_inspected": True,
             "manual_flat_v1_proof_accepted": True,
             "rejected_statement_mutations": list(mutations),
             "resealed_input_visibility_key_rejected": True,

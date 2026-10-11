@@ -19,9 +19,13 @@ The two public readback functions are:
 For a verified readback, use `s31 inspect-record-proof PACKAGE PROOF`. That
 command copies the supplied package, proof, and statement into private
 snapshots, checks the package copy, verifies the copied proof with its
-generated native verifier, rejects changes to the copied source, key, proof,
-or statement during verification, and decodes the captured statement bytes. The codec functions
-alone check a claim's format and binding; they do not verify a proof.
+generated native verifier, rejects changes to the copied source, key,
+verifier, proof, or statement during verification, and decodes the captured
+statement bytes.
+`s31 inspect-record-proof-pinned` uses the same readback path after admitting
+the copied package against external source, key, prover, verifier, and (for
+text packages) source-text SHA-256 pins. Pins must come from a trusted source;
+the codec functions alone check a claim's format and binding, not its proof.
 
 `record_v2.py` is the earlier standalone nominal-layout codec. Its layout
 digest is separate from the proof-bound descriptor digest in `binding_v2.py`.

@@ -116,10 +116,18 @@ def make_parser() -> argparse.ArgumentParser:
     sub.add_argument("proof", type=Path)
     sub.add_argument("--statement", type=Path)
     sub = commands.add_parser("inspect-record-proof",
-                              help="verify a v2 proof, then display its authenticated named public claim")
+                              help="verify a v2 proof against the supplied package and display its named claim")
     sub.add_argument("package", type=Path)
     sub.add_argument("proof", type=Path)
     sub.add_argument("--statement", type=Path)
+    sub = commands.add_parser("inspect-record-proof-pinned",
+                              help="verify and display a v2 public record claim under externally supplied package digests")
+    sub.add_argument("package", type=Path)
+    sub.add_argument("proof", type=Path)
+    sub.add_argument("--statement", type=Path)
+    for kind in ("source", "key", "prover", "verifier"):
+        sub.add_argument(f"--{kind}-sha256", required=True)
+    sub.add_argument("--text-sha256", help="required when the package contains source.s31")
     sub = commands.add_parser("verify-pinned", help="verify a proof only after external package digest admission")
     sub.add_argument("package", type=Path)
     sub.add_argument("proof", type=Path)

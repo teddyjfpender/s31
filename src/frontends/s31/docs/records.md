@@ -296,9 +296,24 @@ The private `mask` is absent. Library callers can round-trip the same named
 claim through `decode_typed_public_statement` and
 `encode_typed_public_statement` in `python/abi/binding_v2.py`; those codec
 functions validate a statement but do not verify a proof by themselves.
-The command verifies against the supplied package; use externally pinned
-package hashes when the program identity must be trusted. This readback adds
-no AIR row or proof word.
+The command verifies against the supplied package. When program identity
+matters, supply SHA-256 pins obtained from a trusted source through the
+atomic pinned form:
+
+```sh
+python3 src/frontends/s31/python/s31.py inspect-record-proof-pinned \
+  PATH_TO_DIRECT_GATE_PACKAGE PATH_TO_PROOF \
+  --source-sha256 "$SOURCE_SHA256" --key-sha256 "$KEY_SHA256" \
+  --prover-sha256 "$PROVER_SHA256" --verifier-sha256 "$VERIFIER_SHA256" \
+  --text-sha256 "$TEXT_SHA256"
+```
+
+Supply `--text-sha256` when the package contains `source.s31`; omit it for a
+JSON-only package. The four other pins are always required. Pins copied from
+the package itself establish no external trust. The pinned command admits the
+package copy against those exact pins and then verifies and displays the
+record claim from the same private snapshots. Readback adds no AIR row or
+proof word.
 
 For this scalar example, the arithmetic graph has three add nodes. Write
 the four flattened inputs as $a,b,c,d$. Its witnesses $t_0,t_1,t_2$ must
