@@ -37,8 +37,12 @@ public bit and its result alias, a changed unused public salt, and a changed
 chip result with its repeated alias. The original proof must fail for each
 changed claim after ABI parsing. Split aliases, a non-bit claim, and a renamed
 record field must fail in the ABI parser; a changed private input with the
-old output must fail before proving. This is a one-call proof admission for
-this shape, not a general compiler refinement theorem. The existing admitted
+old output must fail before proving. The generated full-trace auditor must
+accept the honest proof, typed statement, and private assignment, reporting
+512 circuit rows and 16 rows each for the chip and bridge, and must reject
+the changed private assignment and changed v2 statement. This is a one-call
+proof admission for this shape, not a general compiler refinement theorem.
+The existing admitted
 N=1/N=8 record proof smoke is documented in the
 [mixed boundary acceptance README](../mixed_boundary/README.md).
 

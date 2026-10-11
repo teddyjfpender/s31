@@ -54,6 +54,7 @@ def main() -> None:
         binaries = prefix / "bin"
         prover = binaries / "s31-mixed_eight_alias_bit-mixed-general-prover"
         verifier = binaries / "s31-mixed_eight_alias_bit-mixed-general-native-verifier"
+        auditor = binaries / "s31-mixed_eight_alias_bit-mixed-general-trace-auditor"
         manifest = json.loads(run(str(binaries /
                                   "s31-mixed_eight_alias_bit-mixed-general-manifest")).stdout)
         if (manifest["source_sha256"] != hashlib.sha256(source_bytes).hexdigest() or
@@ -65,6 +66,22 @@ def main() -> None:
         if statement.read_bytes() != typed:
             raise AssertionError("prover did not preserve the exact canonical v2 statement")
         run(str(verifier), str(proof), str(statement))
+        audit_result = run(str(auditor), str(proof), str(statement),
+                           str(assignment_path))
+        audit_lines = [line.removeprefix("S31_MIXED_TRACE_AUDIT_V1 ")
+                       for line in audit_result.stderr.splitlines()
+                       if line.startswith("S31_MIXED_TRACE_AUDIT_V1 ")]
+        if len(audit_lines) != 1:
+            raise AssertionError(f"missing v2 trace audit report: {audit_result.stderr}")
+        audit = json.loads(audit_lines[0])
+        if (audit["schema"] != "s31-mixed-full-trace-audit-v1" or
+                audit["verified"] is not True or
+                (audit["circuit_rows"], audit["chip_rows"], audit["bridge_rows"]) !=
+                (512, 16, 16)):
+            raise AssertionError(f"unexpected v2 trace audit geometry: {audit}")
+        for root in ("fixed_root", "main_root", "interaction_root"):
+            if len(audit[root]) != 64 or any(c not in "0123456789abcdef" for c in audit[root]):
+                raise AssertionError(f"invalid {root} in v2 trace audit report")
 
         honest = json.loads(typed)
         valid_changes = {
@@ -81,6 +98,11 @@ def main() -> None:
             if "InvalidRecordStatement" in rejected.stderr:
                 raise AssertionError(f"{label}: valid changed claim stopped in ABI parser")
             changed_errors[label] = rejected.stderr.strip().splitlines()[-1]
+            if label == "unused_public_salt":
+                audited_rejection = run(str(auditor), str(proof), str(path),
+                                        str(assignment_path), ok=False)
+                if "S31_MIXED_TRACE_AUDIT_V1 " in audited_rejection.stderr:
+                    raise AssertionError("auditor reported verified for changed v2 statement")
 
         malformed = {
             "split_public_bit_alias": [(2, 0, 0)],
@@ -108,6 +130,10 @@ def main() -> None:
         path.write_bytes(canonical(wrong_private))
         run(str(prover), str(path), str(work / "wrong-private.proof"),
             str(work / "wrong-private.statement"), str(STATEMENT), ok=False)
+        audited_rejection = run(str(auditor), str(proof), str(statement),
+                                str(path), ok=False)
+        if "S31_MIXED_TRACE_AUDIT_V1 " in audited_rejection.stderr:
+            raise AssertionError("auditor reported verified for changed private witness")
 
         print(json.dumps({
             "schema": "s31-mixed-eight-record-proof-v2",
@@ -115,6 +141,9 @@ def main() -> None:
             "proof_bytes": proof.stat().st_size,
             "public_words": expected,
             "verified": True,
+            "trace_audit": audit,
+            "trace_auditor_changed_statement_rejected": True,
+            "trace_auditor_changed_private_witness_rejected": True,
             "abi_valid_changed_claim_rejections": changed_errors,
             "malformed_alias_bit_layout_rejections": len(malformed) + 1,
             "private_witness_mismatch_rejected": True,
