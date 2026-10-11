@@ -1,6 +1,7 @@
 # Mixed-general whole-prover cost model v1: prospective protocol
 
-Status: **design and tooling only; no new timed training or held-out corpus**.
+Status: **frozen protocol completed; see the [audited result](MIXED_STAGE_COST_MODEL_V1_RESULT.md)**.
+This page retains the predeclared method and gates.
 The completed [paired record v2 study](PAIRED_RECORD_V2_RESULT.md) and the
 single-witness [N3/N8 stage smoke](MIXED_STAGE_DIAGNOSTIC_V1.md) motivated
 the stage boundary. Their source hashes, assignments, wall times, ratios, and

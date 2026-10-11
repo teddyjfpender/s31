@@ -9,12 +9,12 @@ source-bound stage diagnostic, audits saved evidence with native verifier and
 changed-claim controls, fits the training model, evaluates held-out data, and
 checks a separately committed held-out report anchor before publication.
 
-**Current status:** tooling and prospective design only. No protocol anchor,
-model anchor, or new timed corpus exists. `study.py` refuses native work without
-the exact committed protocol and externally recorded full hash/anchor commit.
-The new model predicts only first-verified wall and proof bytes for one pinned
-record ABI v2 repeat-chain source family on one host. It never selects a
-lowering or claims a speedup.
+**Current status:** the frozen v1 train and held-out corpus completed; see the
+[audited result](../../../../../design/s31/measurements/MIXED_STAGE_COST_MODEL_V1_RESULT.md).
+`study.py` still refuses native work without the exact committed protocol and
+externally recorded full hash/anchor commit. The model predicts only first
+verified wall and proof bytes for one pinned record ABI v2 repeat-chain source
+family on one host. It never selects a lowering or claims a speedup.
 
 Native-free checks:
 
