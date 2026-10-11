@@ -45,3 +45,45 @@ addresses. Native source reinspection checks the generated topology;
 fixed-column commitments and proof verification carry authority for the
 package. The Python check does not authenticate trace values or prove the
 source-to-Lean event correspondence.
+
+`typed_boundary_correspondence.py` checks the narrower N=1 and N=8 chain
+family against the typed event model in
+`formal/s31/S31/Gadgets/Air/SourceMixedPath.lean`. It derives the expected
+absolute circuit addresses by hand from the reviewed compiler allocation:
+reserved variables 0–10, private input words 11–14, input-packing temporaries
+15–22, first chip outputs 23–26, and ten more variables per later call. It
+compares those addresses, source rounds and constants, and relation IDs with
+the native inspector. This detects the coordinated fresh-address retarget that
+the shape-only projector above deliberately accepts. The static loop runs in
+under a second:
+
+```sh
+python3 src/frontends/s31/tests/acceptance/mixed_boundary/typed_boundary_correspondence.py
+```
+
+Its native mode builds source-embedded N=1 and N=8 packages, checks the exact
+inspected endpoints, emits an honest proof, checks the native public statement,
+and runs the generated verifier:
+
+```sh
+python3 src/frontends/s31/tests/acceptance/mixed_boundary/typed_boundary_correspondence.py --native
+```
+
+For one call with private `x = [1, 2, 3, 4]`, the bridge's first four modeled
+Gate tuples are `[Gate,11,1,0,0,0,0]` through
+`[Gate,14,4,0,0,0,0]`. Its next four Gate tuples use addresses 23–26 and the
+four words after sixteen `w := w² + 13 mod 2147483647` rounds. The chip start
+tuple is `[Chip,0,0,1,2,3,4]`; its finish tuple is
+`[Chip,0,16,r0,r1,r2,r3]`. Eight public output Gate tuples use addresses 3–10
+for `r+x` and `r*x`, followed by fixed `u` at address 2 with QM31 coordinates
+`[0,0,1,0]`. Every Gate tuple has a seventh zero coordinate because the joint
+Gate/chip lookup uses seven coordinates.
+
+This executable projection checks the native manifest and accepted public
+statement against a source-shaped model for this source family. It constructs
+the modeled Gate/chip tuples from source arithmetic and inspected addresses;
+it does not compare them with an exported native trace. The native proof check
+does not independently read bridge trace values or derive Lean event-list
+hypotheses from proof acceptance. Those remain the
+native AIR/PCS and formal correspondence obligations documented in the typed
+boundary review.
