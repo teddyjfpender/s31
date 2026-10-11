@@ -43,6 +43,11 @@ by this constructor. A native proof-acceptance theorem and exact compiler-to-
 trace authentication are still needed before the schedule can be claimed for
 an arbitrary accepted proof.
 
+The follow-on [main-cell certificate](SourceMixedPinnedMainCells.md) replaces
+the remaining `ValueAt` fields by exact decoded output-main-cell equalities
+at ten kernel-checked positive producer rows, and derives the complete
+source shape from the fixed export.
+
 Focused checks:
 
 ```sh
