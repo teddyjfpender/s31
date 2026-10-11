@@ -433,6 +433,15 @@ class GateBytecodeArithmeticTest(unittest.TestCase):
         mutant_store = air.replace(original_store, changed_store, 1) + "\n// " + original_store + "\n"
         with self.assertRaisesRegex(ValueError, "native Gate rebound extension source copy changed"):
             check_rebound_extension_source_contract(mutant_store)
+        pre_copy = air.replace(
+            "    const sources = try allocator.dupe(composition.ExtSource, source.ext_sources);",
+            "    source.ext_sources[0] = source.ext_sources[1];\n"
+            "    const sources = try allocator.dupe(composition.ExtSource, source.ext_sources);",
+            1,
+        )
+        self.assertNotEqual(pre_copy, air)
+        with self.assertRaisesRegex(ValueError, "native Gate rebound extension source copy changed"):
+            check_rebound_extension_source_contract(pre_copy)
 
     def test_oods_claim_uses_the_same_sample_tree_as_opening_check(self) -> None:
         engine = ROOT / "deps/stwo-zig/src"

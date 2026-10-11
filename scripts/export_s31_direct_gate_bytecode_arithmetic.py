@@ -928,17 +928,27 @@ def check_extension_source_decoder_contract(decoder: str) -> None:
 
 
 def check_rebound_extension_source_contract(air: str) -> None:
-    """Pin the selected direct component's copied extension-source vector."""
+    """Pin the full selected binding path, including all writes around the copy."""
     source = active_zig_source(air)
     direct = list(re.finditer(r"\bpub\s+fn\s+bindDirectArithmetic\s*\(", source))
+    selected = list(re.finditer(r"\bfn\s+bindSelectedArithmetic\s*\(", source))
     binding = list(re.finditer(r"\bfn\s+bindComponent\s*\(", source))
-    require(len(direct) == 1 and len(binding) == 1,
+    require(len(direct) == 1 and len(selected) == 1 and len(binding) == 1,
             "native Gate rebound extension source copy changed")
     direct_body, _ = braced_body(source, source.find("{", direct[0].end()))
     require(re.sub(r"\s+", "", direct_body) == re.sub(
         r"\s+", "", "return bindSelectedArithmetic(allocator, template, &direct.active_component_indices, &.{log_size}, layout);"),
         "native Gate rebound extension source copy changed")
+    selected_body, _ = braced_body(source, source.find("{", selected[0].end()))
     body, _ = braced_body(source, source.find("{", binding[0].end()))
+    # Exact active bodies reject pre-copy swaps and post-copy rewrites that
+    # ordered line markers alone would miss. Hashes are over comment/string-
+    # masked source with insignificant whitespace removed.
+    selected_digest = hashlib.sha256(re.sub(r"\s+", "", selected_body).encode()).hexdigest()
+    binding_digest = hashlib.sha256(re.sub(r"\s+", "", body).encode()).hexdigest()
+    require(selected_digest == "55b6f8ea178fd173b848f0e1051dc55b19119bceda01b923dc0397d6cbf62909"
+            and binding_digest == "e401e3266ce98b980c5f939930ff4f6fb629e357963b180d473ecf5f4da856b4",
+            "native Gate rebound extension source copy changed")
     copy = "const sources = try allocator.dupe(composition.ExtSource, source.ext_sources);"
     release = "errdefer allocator.free(sources);"
     store = ".ext_sources = sources,"
