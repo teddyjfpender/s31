@@ -150,6 +150,10 @@ pub fn fromSchedule(schedule: *const mixed.SelectedSchedule) !Manifest {
     if (main_at != schedule.main_columns or interaction_at != schedule.interaction_columns or
         constraint_at != schedule.total_constraints)
         return error.InvalidMixedRegistryManifest;
+    // A stale digest would let the manifest label changed live geometry with
+    // the previous schedule identity. The source-pinned caller remains the
+    // authority even when this check passes.
+    if (!mixed.hasCurrentDigest(schedule)) return error.InvalidMixedRegistryManifest;
     result.digest = digest(&result);
     return result;
 }
@@ -271,6 +275,24 @@ test "mixed registry manifest is source-derived and ordered for all bounded coun
         altered_schedule = selected;
         altered_schedule.lookup_envelope = null;
         try std.testing.expectError(error.InvalidMixedLookupBudget, fromSchedule(&altered_schedule));
+        // PCS and local AIR closure are bound indirectly through the selected
+        // schedule digest. Reject a mutable schedule carrying stale identity.
+        altered_schedule = selected;
+        altered_schedule.native_geometry.?.pcs.fri_config.n_queries += 1;
+        try std.testing.expectError(error.InvalidMixedRegistryManifest, fromSchedule(&altered_schedule));
+        altered_schedule = selected;
+        altered_schedule.native_geometry.?.mask_points_sha256[0] ^= 1;
+        try std.testing.expectError(error.InvalidMixedRegistryManifest, fromSchedule(&altered_schedule));
+        altered_schedule = selected;
+        altered_schedule.native_geometry.?.local_air_dependency_sha256[0] ^= 1;
+        try std.testing.expectError(error.InvalidMixedRegistryManifest, fromSchedule(&altered_schedule));
+        altered_schedule = selected;
+        altered_schedule.slots[0].air_source_sha256[0] ^= 1;
+        try std.testing.expectError(error.InvalidMixedRegistryManifest, fromSchedule(&altered_schedule));
+        altered_schedule = selected;
+        altered_schedule.native_geometry.?.tree_columns[0] =
+            @intCast(altered_schedule.native_geometry.?.columns[0].len + 1);
+        try std.testing.expectError(error.InvalidMixedRegistryManifest, fromSchedule(&altered_schedule));
     }
 }
 

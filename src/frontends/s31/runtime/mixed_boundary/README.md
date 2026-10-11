@@ -156,6 +156,13 @@ does **not** enter either fixed-profile proof transcript. The experimental gener
 profile derives it from source and mixes it into a distinct transcript and
 circuit identity.
 
+Before projecting a mutable selected schedule into a registry manifest,
+`fromSchedule` also recomputes the selected-schedule digest from its active
+slots and native PCS geometry. This rejects a stale schedule identity when
+geometry, mask points, local AIR dependency, or component bytes change after
+inspection. It is an internal consistency check, not source authentication:
+only the source-pinned verifier's reconstruction grants that authority.
+
 The general profile also runs `lookup_budget.zig` during source inspection,
 before proof creation or bounded verifier decoding. It counts every Gate row,
 chip round, bridge row and public output lookup term, then checks the

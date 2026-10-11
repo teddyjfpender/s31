@@ -247,6 +247,33 @@ pub fn matchesSource(allocator: std.mem.Allocator, candidate: *const SelectedSch
     return std.meta.eql(candidate.*, expected);
 }
 
+/// Check that a mutable inspection value still carries the digest of its
+/// active roster and PCS geometry. This is only an internal consistency check:
+/// a caller can reseal a changed value, so proof admission still needs the
+/// source-owned reconstruction in `inspectSource`/`matchesSource`.
+pub fn hasCurrentDigest(candidate: *const SelectedSchedule) bool {
+    if (candidate.policy_version != Native.policy_version or
+        candidate.call_count == 0 or candidate.call_count > admission.max_calls or
+        candidate.slot_count != 1 + 2 * @as(usize, candidate.call_count) or
+        candidate.slot_count > candidate.slots.len)
+        return false;
+    const geometry = candidate.native_geometry orelse return false;
+    if (geometry.slot_count != candidate.slot_count or geometry.slot_count > geometry.slots.len)
+        return false;
+    for (candidate.slots[0..candidate.slot_count]) |slot| {
+        if (slot.preprocessed_count > slot.preprocessed_indices.len or
+            slot.relation_count > slot.relation_ids.len) return false;
+    }
+    for (geometry.slotSlice()) |slot| {
+        if (slot.preprocessed_count > slot.preprocessed_indices.len or
+            slot.relation_count > slot.relation_ids.len) return false;
+    }
+    for (geometry.columns, 0..) |columns, tree| {
+        if (geometry.tree_columns[tree] > columns.len) return false;
+    }
+    return std.meta.eql(candidate.digest, digestSelectedSchedule(candidate));
+}
+
 fn spanWidth(span: v4.Span) !u32 {
     if (span.end < span.start) return error.InvalidMixedSourceRoster;
     return span.end - span.start;
@@ -417,6 +444,7 @@ test "mixed composition admission derives interleaved pair and many sources" {
 
     projected.slots[5].source_kind = .pair_chip;
     projected.digest = digestSelectedSchedule(&projected);
+    try std.testing.expect(hasCurrentDigest(&projected));
     try std.testing.expect(!try matchesSource(allocator, &projected, source, air_bytes));
     projected = try inspectSource(allocator, source, air_bytes);
     projected.slots[6].relation_ids[1] ^= 1;
