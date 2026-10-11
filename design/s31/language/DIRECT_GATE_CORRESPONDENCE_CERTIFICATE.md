@@ -342,9 +342,9 @@ induction over the modeled `expectedRows` construction proves positional
 address alignment, exact ordered add/pointwise-multiply opcodes and projected
 AIR selectors, and the existence of a matching cell for each source
 instruction. It also proves that source trace-row indices are pairwise
-distinct when `3 + instruction_count ≤ totalAddRows + 28`; a separately
-established 16-instruction budget suffices for this inequality at any
-nonnegative `totalAddRows`. The Lean bridge has not yet derived that budget
+distinct when `3 + instruction_count ≤ totalAddRows + 28`; an assumed
+`instruction_count ≤ 16` suffices for this inequality at any nonnegative
+`totalAddRows`. The Lean bridge has not yet derived that budget
 from `parseBytes` success. These are facts about the modeled schedule and do
 not independently establish that native emitted trace positions or opcodes
 agree with it; exact

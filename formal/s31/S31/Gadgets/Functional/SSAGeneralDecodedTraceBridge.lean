@@ -321,9 +321,11 @@ theorem expected_cells_trace_rows_nodup (certificate : Certificate)
   exact expected_rows_trace_rows_nodup certificate totalAddRows hgap
 
 /-- The modeled deterministic `expectedRows` schedule supplies a matching
-projected cell for each instruction. It does not prove uniqueness, native
-trace-row placement, or native opcode correspondence; those latter fields
-are connected only under the separate `fixedMatches` premise. -/
+projected cell for each instruction. This theorem does not itself prove
+uniqueness; `expected_rows_trace_rows_nodup` separately proves modeled source
+row uniqueness under its gap premise. Matching these modeled fields to a
+decoded trace still requires the separate `fixedMatches` premise; native
+emitter correspondence is not proved here. -/
 theorem source_plan_expected (certificate : Certificate)
     (totalAddRows : Nat) :
     SourcePlan certificate (expectedCells certificate totalAddRows) := by
