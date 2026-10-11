@@ -108,9 +108,12 @@ addresses retain their full multiplicity.
    source binding, relation list, address, span, sum index, fixed root, PCS
    geometry and unused claim slots before native proof admission.
 3. Add a second semantically different chip kind only after its transition,
-   endpoint and lookup contracts are specified. A mixed proof must exercise
-   both kinds and a circuit operation between them; identical square/add
-   implementations with different AIR names do not establish generality.
+   endpoint and lookup contracts are specified. The proposed
+   [coupled `square; add_const; mix4` chip](MIX4_COUPLED_CHIP_CONTRACT.md)
+   specifies these requirements but is not implemented. A mixed proof must
+   exercise both kinds and a circuit operation between them; identical
+   square/add implementations with different AIR names do not establish
+   generality.
 4. Complete the compiler refinement for the admitted source grammar and the
    AIR/lookup/PCS reduction. Keep the native experimental label until that
    chain is reviewed. Add a separate blinded profile and privacy proof before
