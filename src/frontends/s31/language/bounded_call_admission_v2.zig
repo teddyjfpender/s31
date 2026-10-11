@@ -333,7 +333,7 @@ test "dead private input and ninth source output word are rejected" {
     try std.testing.expectEqual(@as(u32, 8), at_limit.public_output_word_count);
     // The circuit's ninth slot belongs to `u`, not a source output.
     program.public_outputs = outputs;
-    try std.testing.expectError(error.TooManyPublicOutputWords, extract(a, program));
+    try std.testing.expectError(error.PublicAbiTooWide, extract(a, program));
 }
 
 test "normalized three-call source preserves independent and dependent call IDs" {

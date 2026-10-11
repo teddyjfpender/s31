@@ -286,7 +286,7 @@ test "mixed general sealed native proofs authenticate one through eight source c
     const air_bytes = @embedFile("s31_air_programs");
     const family = @import("test_source.zig");
     inline for (1..engine.max_calls + 1) |n| {
-        const source = family.forCount(n);
+        const source = comptime family.forCount(n);
         const initial = [4]M31{ M31.fromCanonical(1), M31.fromCanonical(2), M31.fromCanonical(3), M31.fromCanonical(4) };
         var final = initial;
         for (0..n) |id| {

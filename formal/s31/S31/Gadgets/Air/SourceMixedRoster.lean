@@ -79,20 +79,18 @@ theorem sourceSlot_call_bound (n : Nat)
 theorem sourceSlot_chip {n : Nat} (call : Fin n) :
     sourceSlot n ⟨1 + 2 * call.val, by omega⟩ =
       chipSlot call.val := by
-  have hnonzero : 1 + 2 * call.val ≠ 0 := by omega
   have hsub : 1 + 2 * call.val - 1 = 2 * call.val := by omega
   have hdiv : (2 * call.val) / 2 = call.val := by omega
   have hmod : (2 * call.val) % 2 = 0 := by omega
-  simp [sourceSlot, hnonzero, hsub, hdiv, hmod]
+  simp [sourceSlot, hsub, hdiv, hmod]
 
 theorem sourceSlot_bridge {n : Nat} (call : Fin n) :
     sourceSlot n ⟨2 + 2 * call.val, by omega⟩ =
       bridgeSlot call.val := by
-  have hnonzero : 2 + 2 * call.val ≠ 0 := by omega
   have hsub : 2 + 2 * call.val - 1 = 1 + 2 * call.val := by omega
   have hdiv : (1 + 2 * call.val) / 2 = call.val := by omega
   have hmod : (1 + 2 * call.val) % 2 = 1 := by omega
-  simp [sourceSlot, hnonzero, hsub, hdiv, hmod]
+  simp [sourceSlot, hsub, hdiv, hmod]
 
 theorem sourceSlot_claim_index (n : Nat)
     (index : Fin (1 + 2 * n)) :
@@ -117,7 +115,7 @@ structure CanonicalRow where
   in0Address : CanonicalAddress
   in1Address : CanonicalAddress
   outAddress : CanonicalAddress
-  flags : Flags
+  flags : S31.Gadgets.Air.Qm31Ops.Flags
   in0 : Quad
   in1 : Quad
   output : Quad
@@ -171,8 +169,7 @@ private theorem row_uses_canonical (row : CanonicalRow)
     (event : GateLookup.Event)
     (hmem : event ∈ row.toGate.uses) :
     event.1 < 2147483647 := by
-  simp only [Row.uses, CanonicalRow.toGate, List.mem_cons,
-    List.mem_singleton] at hmem
+  simp [Row.uses, CanonicalRow.toGate] at hmem
   rcases hmem with rfl | rfl
   · exact row.in0Address.isLt
   · exact row.in1Address.isLt

@@ -45,7 +45,9 @@ pub fn main() !void {
     const geometry = schedule.native_geometry.?;
     var slots: [9]SlotReport = undefined;
     std.debug.assert(schedule.slot_count == slots.len);
-    for (schedule.slots[0..schedule.slot_count], generated.entrySlice(), &slots) |slot, entry, *out| {
+    for (&slots, 0..) |*out, index| {
+        const slot = &schedule.slots[index];
+        const entry = &generated.entries[index];
         out.* = .{
             .source_kind = slot.source_kind,
             .registry_key = entry.registry_key,
@@ -63,8 +65,8 @@ pub fn main() !void {
             .interaction_columns = slot.interaction_columns,
             .constraint_offset = slot.constraint_offset,
             .n_constraints = slot.n_constraints,
-            .preprocessed_indices = slot.preprocessed_indices[0..slot.preprocessed_count],
-            .relation_ids = slot.relation_ids[0..slot.relation_count],
+            .preprocessed_indices = entry.preprocessed_indices[0..entry.preprocessed_count],
+            .relation_ids = entry.relation_ids[0..entry.relation_count],
             .air_source_sha256 = std.fmt.bytesToHex(slot.air_source_sha256, .lower),
             .program_binding_sha256 = std.fmt.bytesToHex(slot.program_binding_sha256, .lower),
         };

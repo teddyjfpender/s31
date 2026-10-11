@@ -224,7 +224,7 @@ test "mixed registry rejects SHA word v1 and pair or many in one lookup domain" 
         .layout = .sha_word_v1,
     };
     try std.testing.expectEqual(chip_schema.relation_id, sha_schema.relation_id);
-    for (.{ Key.pair_chip, Key.many_chip, Key.pair_bridge, Key.many_bridge }) |key| {
+    for ([_]Key{ .pair_chip, .many_chip, .pair_bridge, .many_bridge }) |key| {
         var domain: RelationDomain = .{};
         try domain.admit(sha_schema);
         try std.testing.expectError(error.ConflictingMixedRelationSchema, domain.admitConstructor(constructor(key)));
