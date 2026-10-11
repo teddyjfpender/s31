@@ -145,18 +145,44 @@ def exercise(work: Path, count: int) -> dict:
         altered = work / f"bad-{count}-{field}.json"
         altered.write_text(json.dumps({**saved, field: value}))
         verify_rejects(verifier, proof, altered)
+    malformed = work / f"malformed-{count}.json"
+    malformed.write_text(json.dumps({**saved, "unknown_field": 1}))
+    verify_rejects(verifier, proof, malformed)
+    malformed.write_text(json.dumps(saved)[:-1] + ',"public_words":[0,0,0,0,0,0,0,0]}')
+    verify_rejects(verifier, proof, malformed)
+    noncanonical = {**saved, "public_words": saved["public_words"].copy()}
+    noncanonical["public_words"][0] = MODULUS
+    malformed.write_text(json.dumps(noncanonical))
+    verify_rejects(verifier, proof, malformed)
     invalid = json.loads(assignment.read_text())
     invalid["private_inputs"]["x"][0] += 1
     wrong = work / f"wrong-{count}.json"
     wrong.write_text(json.dumps(invalid))
     run(str(prover), str(wrong), str(work / "bad.proof"), str(work / "bad.statement"), accept=False)
+    invalid = json.loads(assignment.read_text())
+    invalid["public_outputs"]["sum"][0] = (invalid["public_outputs"]["sum"][0] + 1) % MODULUS
+    wrong.write_text(json.dumps(invalid))
+    run(str(prover), str(wrong), str(work / "bad.proof"), str(work / "bad.statement"), accept=False)
+    if count == 8:
+        changed_source = work / "changed-source.s31.json"
+        changed_source.write_bytes(source.read_bytes() + b" ")
+        _, other_verifier, other_manifest_bin = build(changed_source, work / "changed-source")
+        other_manifest = json.loads(run(str(other_manifest_bin)).stdout)
+        assert other_manifest["source_sha256"] != manifest["source_sha256"]
+        resealed = {**saved,
+                    "source_sha256": other_manifest["source_sha256"],
+                    "selected_manifest_sha256": other_manifest["manifest_sha256"],
+                    "registry_manifest_sha256": other_manifest["registry_manifest_sha256"],
+                    "circuit_identity_sha256": other_manifest["circuit_identity_sha256"]}
+        malformed.write_text(json.dumps(resealed))
+        verify_rejects(other_verifier, proof, malformed)
     return {"calls": count, "proof_bytes": len(raw), "proof_sha256": hashlib.sha256(raw).hexdigest()}
 
 
 def main() -> None:
     with tempfile.TemporaryDirectory(prefix="s31-mixed-general-") as directory:
         work = Path(directory)
-        results = [exercise(work, count) for count in (1, 8)]
+        results = [exercise(work, count) for count in range(1, 9)]
         print(json.dumps({"schema": "s31-mixed-general-acceptance-v3",
                           "profiles": results, "accepted": True}, sort_keys=True))
 

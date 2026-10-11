@@ -69,6 +69,7 @@ theorem source_bytecode_arithmetic_eq (cell : ColumnCell) (wire : Nat → Quad) 
         (wire cell.out) := by
   rw [bytecode_arithmetic_eq]
   simp [DirectGateEvaluatorCells.arithmetic,
+    S31.Gadgets.Air.NativeQm31AirProof.native_residuals_eq,
     DirectGateEvaluatorCells.decodedRow,
     DirectGateEvaluatorCells.semanticFixed, sourceBytecodeCells,
     cellFlags, fixedReadOrder, airLocalToSemantic, semanticToAirLocal]
