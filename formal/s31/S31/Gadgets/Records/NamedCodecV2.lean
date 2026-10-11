@@ -65,7 +65,7 @@ def WidthsMatch (layout : RawLayout)
   ∀ position, (values position).width = leafWidthAt layout position
 
 /-- The kind-specific native range rule: M31 words are canonical, bit words
-are zero or one, and u16 words are below 65536. -/
+are zero or one, u8 words are below 256, and u16 words are below 65536. -/
 def KindsInRange (layout : RawLayout)
     (values : LeafPosition (erase layout) → WordBlock Nat) : Prop :=
   ∀ position, ∀ word ∈ (values position).words,
@@ -126,7 +126,7 @@ theorem widths_eq_orderedWidths (root : String) (layout : RawLayout)
     orderedNominalLeaves, List.map_map, Function.comp_def]
   exact List.map_congr_left (fun position _ => (matching position).symm)
 
-/-- Bit and u16 bounds are stronger than the canonical M31 bound. Thus the
+/-- Bit, u8, and u16 bounds are stronger than the canonical M31 bound. Thus the
 native per-kind statement range check suffices for the flat word decoder. -/
 theorem kindsInRange_canonical (root : String) (layout : RawLayout)
     (values : LeafPosition (erase layout) → WordBlock Nat)
@@ -142,6 +142,9 @@ theorem kindsInRange_canonical (root : String) (layout : RawLayout)
   cases hKind : leafKindAt layout position with
   | m31 => simpa [hKind, publicLeafBound] using bounded
   | bit =>
+      simp [hKind, publicLeafBound] at bounded
+      omega
+  | u8 =>
       simp [hKind, publicLeafBound] at bounded
       omega
   | u16 =>
