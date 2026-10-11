@@ -18,10 +18,14 @@ For a call count `N` from one through eight, the `SourceShape` contract says:
 The sum of Gate output multiplicities is **not** the number of distinct
 producer rows. It counts repeated reads of the same produced value. For
 example, the exported N=1 and N=8 fixed columns sum to 1041 and 1097,
-respectively. The native producer-roster test checks all N=1..8 family
-instances, but the Lean `SourceShape` proposition remains a correspondence
-premise until those native results are tied to the authenticated verifier
-trace and the Lean `Boundary`.
+respectively. `SourceMixedFixedWeightBridge.lean` checks these two sums in
+Lean's kernel from the full generated N=1 and N=8 fixed-row exports; its
+`n1_source_shape` and `n8_source_shape` theorems require the modeled row
+multiplicity list to equal the exported eighth column. The native
+producer-roster test checks all N=1..8 family instances, but the Lean
+`SourceShape` proposition remains a correspondence premise until those
+native results are tied to the authenticated verifier trace and the Lean
+`Boundary`.
 
 The Lean proof derives both ideal closure list lengths:
 
