@@ -130,6 +130,11 @@ jobs:
           set -euo pipefail
           python3 src/frontends/s31/tests/acceptance/acceptance_record_inputs_v2.py |
             tee zig-out/s31/acceptance/record-inputs-v2.json
+      - name: Nested record and tuple alias statement controls
+        run: |
+          set -euo pipefail
+          python3 src/frontends/s31/tests/acceptance/record_abi/nested_alias_v2.py |
+            tee zig-out/s31/acceptance/record-nested-alias-v2.json
       - name: Public bit record ABI range and flat AIR parity controls
         run: |
           set -euo pipefail

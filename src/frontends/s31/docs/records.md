@@ -424,3 +424,19 @@ geometry with an equivalent manually flattened relation, proves both, and
 checks that the native verifier rejects changed field paths and values. The
 typed assignment adapter rejects missing or extra fields, wrong tuple arity,
 duplicate JSON keys, and noncanonical M31 words before proving.
+
+The [nested alias acceptance](../tests/acceptance/record_abi/nested_alias_v2.py)
+joins both record boundaries in one program. Its public `req` has a tuple
+and nested record, its private `mask` is a record, and its result contains a
+tuple and nested records. With `req.pair=([2],[3])`, `req.extra.seed=[5]`,
+and private `mask.delta=[7]`, the three additions produce `y=17`. One
+result leaf repeats `y`; another repeats the first public input. Its six
+named statement leaves project to only five occupied proof-word slots:
+`[2, 3, 5, 17, 2, 0, 0, 0]` in the eight-word native vector. Two native
+proofs, including an M31 wraparound case, verify against the exact bytes
+produced by both Python statement encoders. Four alias-consistent but false
+claims pass the statement parser and fail native proof verification. Mutating
+either alias, a tuple index, a field path, or the canonical JSON encoding
+fails statement validation.
+The [test README](../tests/acceptance/record_abi/README.md) lists all
+malformed statement and typed-assignment controls.
