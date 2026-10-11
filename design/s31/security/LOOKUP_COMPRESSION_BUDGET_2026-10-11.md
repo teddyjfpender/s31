@@ -68,8 +68,9 @@ For the proposed 1–8-call pair/many schedule, the existing `Plan.validate`
 caps circuit rows at `2^16`, the sum of chip rounds at `2^18`, and calls at
 eight. **The numeric ceiling also requires source admission to cap the public
 output shape at eight words plus the reserved `u` wire.** The fixed N=4
-profile checks that shape; `Plan.validate` alone does not, and the general
-1–8-call native verifier still needs this check. The direct circuit emits
+profile checks that shape; `Plan.validate` alone does not. The isolated
+general 1–8-call draft checks exactly nine output addresses in both prover
+and verifier, but has not passed native admission yet. The direct circuit emits
 three Gate lookup occurrences per row. Each
 tagged chip emits two endpoint occurrences per round. A bridge has 16 rows;
 each row contributes eight Gate and two tagged chip denominator terms. The
@@ -116,7 +117,8 @@ algebraic error ceiling below `2^-83.49`, subject to the stated AIR and
 uniform-challenge premises and the weighted bound above. This is not an
 independent bridge-soundness proof or a blanket bound for every S31
 program or future chip kind. The native N=3 and N=4 profiles use smaller
-source-derived counts; the 1–8-call native proof scheduler is still pending.
+source-derived counts; the isolated 1–8-call native proof scheduler remains
+uncompiled and unadmitted.
 The factors come from `private_many_boundary.Plan.validate`,
 `components.qm31_ops.n_lookups`, `tagged_pair_chip.FillContext.fill`,
 `tagged_pair_bridge.FillContext.fill`, and `witness.trace.lookupSum` in the
@@ -148,4 +150,6 @@ Sources in the pinned engine revision: `core/channel/lookup_transcript.zig`
 draws the challenges; `integrations/circuit_cpu/private_pair_boundary.zig`
 defines the seven-coordinate tagged compression; and
 `integrations/circuit_cpu/direct_mixed_four_arithmetic.zig` commits main columns
-before drawing lookup challenges and installs ordered claimed sums.
+before drawing lookup challenges and installs ordered claimed sums. The draft
+`direct_mixed_general_arithmetic.zig` uses the same ordering for dynamic
+`1+2N` rosters; its native proof tests are still a release gate.
