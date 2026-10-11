@@ -1,5 +1,39 @@
 # Bounded source to raw Gate AIR
 
+## Canonical add/mul DAG optimization
+
+`CanonicalDagOptimization.lean` models the add/mul branch of Zig
+`language/canonical.zig` for one public four-lane M31 input and at most sixteen
+fresh, backward-referencing SSA instructions. It maps each source wire to a
+compact node ID, orders the two commutative operands by compact ID, and reuses
+the first node with the same operation and operands. This models the two
+optimizer steps that the existing `SSATextBytes` grammar deliberately excludes.
+
+For example, source operations `a = x + x`, `b = x .* x`, `c = a + b`, and
+`d = b + a` become the three compact nodes `a`, `b`, `c`; the output mapping
+for `d` points to `c`. The last operation's operands are reversed before the
+duplicate lookup. The Lean example checks the exact four-to-three result.
+
+The optimizer is followed by an independent symbolic audit: it reconstructs
+the full source and compact expressions from their positional SSA, then checks
+equality up to recursively swapping add/mul children. The theorem
+`optimizeChecked_semantics` proves that **every accepted** compact result has
+the same output as the source for every four-lane M31 input. Its proof derives
+commutativity from the implemented M31 modular arithmetic, and runs both
+programs through the existing normalized relation evaluator. Kernel-checked
+mutations reject a changed operation and a wrong output mapping.
+
+This is a fail-closed semantic checker, not a completeness theorem saying the
+audit accepts every valid source program. It does not establish byte equality
+with Zig's IR serializer or digest, and it does not cover constants, casts,
+other operation tags, source text parsing, or native AIR emission. Those edges
+remain separate correspondence obligations. The focused check is:
+
+```sh
+(cd formal/s31 && lake build S31.Gadgets.Functional.Correspondence.CanonicalDagOptimization)
+(cd formal/s31 && lake env leanchecker S31.Gadgets.Functional.Correspondence.CanonicalDagOptimization)
+```
+
 `RawGateSoundness.lean` composes the executable source-byte/normalized-byte
 relation check, source-derived fixed cell schedule, installed arithmetic roots,
 physical public input/output rows, ideal Gate event semantics, and the
