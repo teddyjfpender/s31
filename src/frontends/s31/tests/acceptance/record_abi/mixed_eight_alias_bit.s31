@@ -1,0 +1,14 @@
+struct Request { flag: bit, salt: [m31; 2] }
+struct Result { flag: bit, y: [m31; 4], again: [m31; 4] }
+
+fn step(v: [m31; 4]) -> [m31; 4] {
+    v .* v + splat<4>(13_m31)
+}
+
+circuit mixed_eight_alias_bit(
+    public request: Request,
+    private x: [m31; 4]
+) -> public Result {
+    let y = iterate<16>(step, x);
+    Result { flag: request.flag, y: y, again: y }
+}

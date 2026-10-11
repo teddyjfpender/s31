@@ -1,5 +1,51 @@
 # Nested public record ABI acceptance
 
+## Eight-word text, statement, native, and Lean correspondence
+
+[`mixed_eight_alias_bit.s31`](mixed_eight_alias_bit.s31) is a small, actual
+source program with a public `bit`, a two-word public salt, a four-word
+private input, and two result fields that refer to the same four-word wire.
+Its result `flag` also refers to the public input bit. The text compiler
+therefore emits three relation inputs, two distinct public result wires, and
+exactly eight projected public words: one bit, two salt words, the repeated
+bit, and four result words. The ABI describes nine logical result leaf words;
+the last four repeat an existing result wire and do not add public proof words.
+
+[`mixed_eight_lean_correspondence_v2.py`](mixed_eight_lean_correspondence_v2.py)
+pins the exact compiled relation, descriptor, and typed-statement JSON bytes
+beside the source. It compares the production Python statement codec with the
+independent public-word projection, then sends the **same unmodified source
+and statement bytes** through the native Zig statement parser. Its eight-case
+corpus accepts the honest evaluated assignment and a consistently changed bit;
+it rejects a split input/result bit alias, a split result alias at the third
+lane, an out-of-range bit, a swapped equal-width result field, a leaked private
+root claim, and a descriptor reorder with a stale statement digest. The split
+bit alias is a distinct adversarial case from the older native record corpus.
+
+The generated
+[`GeneratedMixedEightV2.lean`](../../../../../../formal/s31/S31/Gadgets/Records/GeneratedMixedEightV2.lean)
+kernel-checks the small named layouts, paths, widths, private erasure,
+declaration-order wire lists, accepted eight-word projection, and the bit and
+result alias rejection examples. Full JSON is kept in byte-pinned artifacts;
+Lean does **not** parse those JSON bytes or kernel-check the SHA-256 comments.
+The generator and native parser provide a finite byte-level differential,
+not a general compiler refinement theorem. This source exercises text and ABI
+acceptance only; it is not a `direct-mixed-general` proof-profile admission
+claim. The existing admitted N=1/N=8 record proof smoke is documented in the
+[mixed boundary acceptance README](../mixed_boundary/README.md).
+
+Run from the repository root, or pass the same absolute paths from elsewhere:
+
+```sh
+python3 -B src/frontends/s31/tests/acceptance/record_abi/mixed_eight_lean_correspondence_v2.py --native
+cd formal/s31 && LEAN_NUM_THREADS=1 lake env lean S31/Gadgets/Records/GeneratedMixedEightV2.lean
+```
+
+At the current fixture, the native corpus reports **2 accepted / 6 rejected**.
+The source, descriptor, and statement SHA-256 values are printed by the
+Python command and recorded in the generated Lean file. Pass `--write` only
+when intentionally updating the pinned source and its derived artifacts.
+
 ## Whole-descriptor shape differential
 
 [`whole_descriptor_shape_v2.py`](whole_descriptor_shape_v2.py) compares an

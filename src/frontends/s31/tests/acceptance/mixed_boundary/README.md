@@ -1,5 +1,24 @@
 # Mixed boundary command acceptance
 
+`record_general_v2.py` is the admitted public-record ABI v2 proof gate for
+the source-pinned N=1 and N=8 `direct-mixed-general` family. It compiles each
+source, checks the generated component manifest and registry digest, proves,
+checks the exact typed statement bytes, and verifies with the corresponding
+native verifier. It also rejects modified public words, malformed typed
+claims, changed proof envelope identities and lookup sums, wrong source or
+renamed ABI replay, and cross-profile proof replay.
+
+```sh
+python3 src/frontends/s31/tests/acceptance/mixed_boundary/record_general_v2.py
+```
+
+The focused run against working-tree HEAD `40bddbcb280f` on 2026-10-11
+passed for both profiles. The N=1 proof was **69,488 bytes** and the N=8
+proof was **163,853 bytes**. These are actual proof acceptance results for
+the admitted source family. The separate eight-word alias/bit example in the
+[record ABI guide](../record_abi/README.md) checks text, statement and native
+parser correspondence and is not claimed to enter this proof profile.
+
 `source_pinned.py` builds the experimental fixed N=3 mixed binaries from a
 source file. It checks an honest proof, the generated component manifest,
 changed public claims and proof fields, a separately built verifier with

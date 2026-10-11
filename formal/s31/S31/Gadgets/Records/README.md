@@ -54,3 +54,22 @@ Focused check:
 cd formal/s31
 LEAN_NUM_THREADS=1 lake env lean S31/Gadgets/Records/NamedCodecV2.lean
 ```
+
+[`GeneratedMixedEightV2.lean`](GeneratedMixedEightV2.lean) is a separate,
+source-pinned finite certificate for the record ABI v2 eight-public-word
+example in
+[`mixed_eight_alias_bit.s31`](../../../../../src/frontends/s31/tests/acceptance/record_abi/mixed_eight_alias_bit.s31).
+It checks concrete named paths, field order, `bit` bounds, private-root
+erasure, the two shared result references, and rejection when either shared
+reference is given inconsistent claimed words. The small structured Lean
+terms are generated from the actual text compiler output and exact typed
+statement; the adjacent Python runner pins the full JSON bytes and passes
+them to Zig. Lean does not check the JSON parser or hash function, so the
+finite byte-level differential and the kernel theorem have distinct scopes.
+See the [record ABI acceptance guide](../../../../../src/frontends/s31/tests/acceptance/record_abi/README.md)
+for commands and all adversarial cases.
+
+```sh
+cd formal/s31
+LEAN_NUM_THREADS=1 lake env lean S31/Gadgets/Records/GeneratedMixedEightV2.lean
+```
