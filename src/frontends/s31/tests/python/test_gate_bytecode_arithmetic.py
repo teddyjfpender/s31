@@ -13,7 +13,8 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from export_s31_direct_gate_bytecode_arithmetic import (  # noqa: E402
     BUNDLE, check_composition_source_contract,
-    check_transcript_parameter_source_contract, decoded_program, evaluate_row,
+    check_transcript_parameter_source_contract, check_oods_opening_source_contract,
+    decoded_program, evaluate_row,
     gate_program,
 )
 from export_s31_direct_gate_evaluator_fixture import (  # noqa: E402
@@ -298,6 +299,29 @@ class GateBytecodeArithmeticTest(unittest.TestCase):
                 native, lookup,
                 resident.replace("self.claimed_sum.mulM31(claimed_scale)",
                                  "self.claimed_sum"))
+
+    def test_oods_claim_uses_the_same_sample_tree_as_opening_check(self) -> None:
+        engine = ROOT / "deps/stwo-zig/src"
+        core = (engine / "core/verifier.zig").read_text()
+        resident = (engine / "frontends/cairo/witness/resident_verifier.zig").read_text()
+        check_oods_opening_source_contract(core, resident)
+        with self.assertRaisesRegex(ValueError, "native OODS claim/sample pass-through changed"):
+            check_oods_opening_source_contract(
+                core.replace("&proof.commitment_scheme_proof.sampled_values,",
+                             "&other_sampled_values,"), resident)
+        with self.assertRaisesRegex(ValueError, "native PCS proof forwarding changed"):
+            check_oods_opening_source_contract(
+                core.replace("verifyValuesWithProofCapture(allocator, sample_points, pcs_proof, channel, challenges, capture)",
+                             "verifyValuesWithProofCapture(allocator, sample_points, other_proof, channel, challenges, capture)"),
+                resident)
+        with self.assertRaisesRegex(ValueError, "resident Gate OODS sample read changed"):
+            check_oods_opening_source_contract(
+                core, resident.replace("mask.items[0][global][0]",
+                                       "mask.items[0][local_column][0]"))
+        with self.assertRaisesRegex(ValueError, "resident Gate OODS sample read changed"):
+            check_oods_opening_source_contract(
+                core, resident.replace("mask.items[interaction][global][sample_index]",
+                                       "mask.items[interaction][global][0]"))
 
     def test_changed_installed_bundle_is_rejected(self) -> None:
         mutation = bytearray(self.bundle)

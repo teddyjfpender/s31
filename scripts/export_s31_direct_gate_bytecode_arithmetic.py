@@ -566,6 +566,100 @@ def render_transcript_params(package: Path) -> str:
     ])
 
 
+def check_oods_opening_source_contract(core: str, resident: str) -> None:
+    """Bind the accepted OODS claim to the very samples read by Gate bytecode.
+
+    This checks pass-through and indexing. It does not prove that the PCS
+    verifier authenticates those samples or that FRI establishes low degree.
+    """
+    markers = [
+        "const composition_oods_eval = proof.extractCompositionOodsEvalWithSplit(",
+        "if (!composition_oods_eval.eql(try components.evalCompositionPolynomialAtPoint(",
+        "&proof.commitment_scheme_proof.sampled_values,",
+        "return VerificationError.OodsNotMatching;",
+        "const pcs_proof = proof.commitment_scheme_proof;",
+        "try commitment_scheme.verifyValuesWithProofCapture(",
+        "try commitment_scheme.verifyValuesWithBorrowedProofCapture(",
+        "try commitment_scheme.verifyValuesWithQueryCapture(",
+        "try commitment_scheme.verifyValues(",
+    ]
+    positions = [core.find(marker) for marker in markers]
+    require(all(position >= 0 for position in positions) and positions == sorted(positions)
+            and all(core.count(marker) == 1 for marker in markers),
+            "native OODS claim/sample pass-through changed")
+    require("verifyValuesWithProofCapture(allocator, sample_points, pcs_proof, channel, challenges, capture)" in core and
+            "verifyValuesWithBorrowedProofCapture(allocator, sample_points, &pcs_proof, channel, challenges, capture)" in core and
+            core.count("            pcs_proof,\n            channel,") == 2,
+            "native PCS proof forwarding changed")
+    reads = [
+        "const global = component.preprocessed_indices[local_column];",
+        "if (global >= mask.items[0].len or mask.items[0][global].len != 1)",
+        "break :blk mask.items[0][global][0];",
+        "const sample_index = offsetIndex(offsets[local_column].items, offset) orelse",
+        "const global = span.start + local_column;",
+        "break :blk mask.items[interaction][global][sample_index];",
+    ]
+    read_positions = [resident.find(marker) for marker in reads]
+    require(all(position >= 0 for position in read_positions) and
+            read_positions == sorted(read_positions) and
+            all(resident.count(marker) == 1 for marker in reads),
+            "resident Gate OODS sample read changed")
+    require(".trace_col, .preprocessed_col => try self.traceValue(" in resident and
+            "instruction.interaction," in resident and
+            "instruction.a," in resident and "instruction.imm," in resident,
+            "resident Gate bytecode trace dispatch changed")
+
+
+def render_oods_openings(package: Path) -> str:
+    """Emit the sampled-value-tree to selected Gate claim reduction."""
+    checked = check_package(package)
+    _base, _ext, roots = decoded_program(gate_program(BUNDLE.read_bytes()))
+    manifest = json.loads((package / "component-manifest.json").read_text())
+    entries = manifest["components"]
+    require(len(entries) == 1 and entries[0]["source_index"] == 1 and
+            entries[0]["preprocessed_indices"] == list(READ_ORDER) and
+            roots == (*range(9), 88, 96),
+            "selected Gate opening geometry changed")
+    core = (ROOT / "deps/stwo-zig/src/core/verifier.zig").read_text()
+    resident = (ROOT / "deps/stwo-zig/src/frontends/cairo/witness/resident_verifier.zig").read_text()
+    check_oods_opening_source_contract(core, resident)
+    return "\n".join([
+        "-- Generated from the checked selected direct Gate package and native OODS source contracts.",
+        f"-- Bundle SHA-256: {AIR_BUNDLE_SHA256}",
+        f"-- Gate program SHA-256: {GATE_PROGRAM_SHA256}",
+        f"-- Source SHA-256: {checked['source_sha256']}",
+        f"-- Core verifier SHA-256: {hashlib.sha256(core.encode()).hexdigest()}",
+        f"-- Resident verifier SHA-256: {hashlib.sha256(resident.encode()).hexdigest()}",
+        "-- PCS sample authentication and FRI remain separate assumptions.",
+        "import S31.Gadgets.Air.DirectGateOodsOpenings",
+        "import S31.Gadgets.Air.GeneratedDirectGateTranscriptParams", "",
+        "namespace S31.Gadgets.Air.GeneratedDirectGateOodsOpenings", "",
+        "open S31.Gadgets.Air.DirectGateOodsArithmetic",
+        "open S31.Gadgets.Air.DirectGateOodsOpenings",
+        "open S31.Gadgets.Air.DirectGateOodsComposition",
+        "open S31.Gadgets.Air.DirectGateOodsLogUp", "",
+        "open S31.Gadgets.Air.GeneratedDirectGateTranscriptParams", "",
+        "/-- Accepted claim equation at the resident Gate component. `accepted`",
+        "is the core verifier's OODS equality check, with the exact sampled",
+        "values later passed to PCS verification. `Shape` makes every read",
+        "defined; authentication of the values is an external premise. -/",
+        "theorem accepted_claim_eq_pure (samples : Samples)",
+        "    (_shape : DirectGateOodsOpenings.Shape samples)",
+        "    (z alpha claimed coefficient zeroifier compositionClaim : QM)",
+        "    (_hzero : zeroifier ≠ 0)",
+        "    (accepted : compositionClaim =",
+        "      quotientFold coefficient zeroifier⁻¹",
+        "        (S31.Gadgets.Air.GeneratedDirectGateTranscriptParams.transcriptRoots",
+        "          (cellsOfSamples samples) z alpha claimed)) :",
+        "    compositionClaim = S31.Gadgets.Air.CompositionFold.fold coefficient",
+        "      (pureRoots (cellsOfSamples samples) alpha z (claimed / 512)) / zeroifier := by",
+        "  rw [accepted]",
+        "  exact transcript_composition_eq_pure (cellsOfSamples samples)",
+        "      z alpha claimed coefficient zeroifier _hzero", "",
+        "end S31.Gadgets.Air.GeneratedDirectGateOodsOpenings", "",
+    ])
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("package", type=Path)
@@ -576,6 +670,8 @@ def main() -> None:
                         help="also regenerate the selected direct Gate composition theorem")
     parser.add_argument("--transcript-output", type=Path,
                         help="also regenerate the selected Gate transcript parameter theorem")
+    parser.add_argument("--oods-openings-output", type=Path,
+                        help="also regenerate the selected Gate OODS sampled-value theorem")
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
     result = render(args.package)
@@ -584,6 +680,8 @@ def main() -> None:
                    if args.composition_output is not None else None)
     transcript = (render_transcript_params(args.package)
                   if args.transcript_output is not None else None)
+    openings = (render_oods_openings(args.package)
+                if args.oods_openings_output is not None else None)
     if args.check:
         if not args.output.is_file() or args.output.read_text() != result:
             raise SystemExit("installed Gate bytecode Lean export changed")
@@ -596,6 +694,9 @@ def main() -> None:
         if transcript is not None and (not args.transcript_output.is_file() or
                                        args.transcript_output.read_text() != transcript):
             raise SystemExit("installed Gate transcript Lean export changed")
+        if openings is not None and (not args.oods_openings_output.is_file() or
+                                     args.oods_openings_output.read_text() != openings):
+            raise SystemExit("installed Gate OODS openings Lean export changed")
     else:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(result)
@@ -608,6 +709,9 @@ def main() -> None:
         if transcript is not None:
             args.transcript_output.parent.mkdir(parents=True, exist_ok=True)
             args.transcript_output.write_text(transcript)
+        if openings is not None:
+            args.oods_openings_output.parent.mkdir(parents=True, exist_ok=True)
+            args.oods_openings_output.write_text(openings)
 
 
 if __name__ == "__main__":

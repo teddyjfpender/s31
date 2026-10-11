@@ -455,6 +455,42 @@ The source-to-Lean mapping of `mulM31` and the channel implementation remains
 a reviewed source premise. Mutation tests reject swapped `z/alpha`, changed
 claim mix, and removed claim scaling.
 
+## The sampled OODS values used by the claim check
+
+The core verifier computes its composition value from
+`proof.commitment_scheme_proof.sampled_values`, compares that value to the
+composition opening at the OODS point, and then passes the same proof to the
+PCS value verifier. This is a source-checked pass-through. The claim equality
+is a premise in the Lean theorem; the theorem does not authenticate the PCS
+openings.
+
+For this one Gate component, the resident bytecode reads the proof's sample
+trees as follows (all entries are QM31 values):
+
+| Tree | Local column | Proof sample list | Bytecode read |
+| --- | --- | --- | --- |
+| Fixed | `i = 0…7` | global fixed column `[0,2,3,1,4,5,6,7][i]`: `[current]` | slot 0 |
+| Main | `i = 0…11` | main column `i`: `[current]` | slot 0 |
+| Interaction | `i = 0…3` | column `i`: `[current]` | offset 0, slot 0 |
+| Interaction | `i = 4…7` | column `i`: `[previous,current]` | offset −1, slot 0; offset 0, slot 1 |
+
+For example, if the fifth interaction column has samples `[13, 29]`, its
+previous read is `13` and its current read is `29`. If the fixed global
+columns hold `[10,11,12,13,14,15,16,17]`, bytecode local fixed column 1
+reads `12`. [`DirectGateOodsOpenings.lean`](../../../formal/s31/S31/Gadgets/Air/DirectGateOodsOpenings.lean)
+models these lists, requires the selected list lengths, and proves that
+each native-style read produces the corresponding `Cells` value. The checked
+[`GeneratedDirectGateOodsOpenings.lean`](../../../formal/s31/S31/Gadgets/Air/GeneratedDirectGateOodsOpenings.lean)
+then says: **if** the native OODS equality check accepts the composition
+claim formed from those sampled cells, the claim equals the pure Gate
+eleven-root composition expression on those cells. The exporter checks the
+installed bytecode, manifest, core verifier pass-through, and resident read
+statements; mutation tests change each binding and require rejection.
+
+This link still needs a separate proof that the PCS opening check binds each
+sample to its commitment, that the composition opening itself is authentic,
+and that the Fiat–Shamir and FRI arguments give the desired all-row claim.
+
 Recheck the bounded export and theorem with:
 
 ```sh
@@ -462,12 +498,14 @@ python3 scripts/export_s31_direct_gate_bytecode_arithmetic.py PACKAGE \
   formal/s31/S31/Gadgets/Air/GeneratedDirectGateBytecodeArithmetic.lean \
   --logup-output formal/s31/S31/Gadgets/Air/GeneratedDirectGateBytecodeLogUp.lean \
   --composition-output formal/s31/S31/Gadgets/Air/GeneratedDirectGateComposition.lean \
-  --transcript-output formal/s31/S31/Gadgets/Air/GeneratedDirectGateTranscriptParams.lean --check
+  --transcript-output formal/s31/S31/Gadgets/Air/GeneratedDirectGateTranscriptParams.lean \
+  --oods-openings-output formal/s31/S31/Gadgets/Air/GeneratedDirectGateOodsOpenings.lean --check
 python3 -m unittest src/frontends/s31/tests/python/test_gate_bytecode_arithmetic.py
 (cd formal/s31 && lake build S31.Gadgets.Air.GeneratedDirectGateBytecodeLogUp)
 (cd formal/s31 && lake build S31.Gadgets.Air.DirectGateOodsMask)
 (cd formal/s31 && lake build S31.Gadgets.Air.GeneratedDirectGateComposition)
 (cd formal/s31 && lake build S31.Gadgets.Air.GeneratedDirectGateTranscriptParams)
+(cd formal/s31 && lake build S31.Gadgets.Air.GeneratedDirectGateOodsOpenings)
 zig test --dep stwo_utils \
   -Mroot=src/frontends/s31/tests/proofs/gate_mask_native_test.zig \
   -Mstwo_utils=deps/stwo-zig/src/core/utils.zig
