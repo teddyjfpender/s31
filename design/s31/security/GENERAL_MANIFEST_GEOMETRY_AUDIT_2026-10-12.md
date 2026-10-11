@@ -28,8 +28,11 @@ digest and accepted a 70,105-byte proof. A subsequent N3 run exercised the
 manifest, accepted a 101,122-byte proof (SHA-256
 `fcad0c86e6e48341e9742a43ba3bf283d6ef712b7143becb2e41c741edf2a799`),
 and passed the existing changed-source, changed-claim, and malformed-proof
-rejection controls. Static source/slot projection and mutation cases cover
-N1, N3, and N8. These observations are local acceptance evidence rather
+rejection controls. The maximum N8 run also matched the manifest, accepted a
+164,528-byte proof (SHA-256
+`55e2eb091f296a63ab79e3d537d9d081c6465669d0ecf9425d4279d5279962c6`),
+and passed the same rejection controls. Static source/slot projection and
+mutation cases cover N1, N3, and N8. These observations are local evidence rather
 than a proof for every possible source or challenge.
 
 This closes a manifest visibility and digest-recomputation gap for the bounded
