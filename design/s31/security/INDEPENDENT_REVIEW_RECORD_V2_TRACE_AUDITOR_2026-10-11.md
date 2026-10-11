@@ -111,3 +111,24 @@ the stated intent.
   Fiat-Shamir reduction remain outside this review. Three matching roots
   bind a *supplied* full trace under those assumptions; they do not extract
   every trace row from an arbitrary succinct proof.
+
+## Resolution on current branch
+
+Follow-up commit `78a1fa0` closes the profile-specific P2 admission gap.
+`record_abi.isPublicBitAlias` validates the descriptor and requires the first
+public input wire plus every result occurrence of that wire to declare `bit`;
+`bounded_call_admission.extract` applies this only to the v2 alias shape. Its
+focused Zig suite passed **34/34** tests, including both directions of
+mixed-kind aliases and the both-`m31` case. The v2 acceptance gate also
+confirmed that the generic ABI accepts a self-consistent both-`m31` value-2
+statement while the mixed package source check rejects it as
+`UnsupportedManyCallSource`. The honest v2 proof and full-trace audit still
+passed, as did the V1 N2 auditor acceptance (one honest and four rejected
+mutations).
+
+The same commit resolves the report-context P3 diagnostic gap by versioning
+the local output to `S31_MIXED_TRACE_AUDIT_V2` and adding SHA-256 digests of
+the exact embedded source, public statement bytes, and proof bytes. Both
+acceptance scripts compare these fields with independently hashed files. The
+report intentionally has no private-assignment digest and remains unsigned
+local evidence, not an authenticated third-party certificate.
