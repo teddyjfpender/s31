@@ -111,6 +111,13 @@ private theorem reciprocal_append (left right : List JointTuple)
         productionReciprocalSum7 right alpha z := by
   simp [productionReciprocalSum7]
 
+private theorem reciprocal_perm (left right : List JointTuple)
+    (alpha z : GateSecure) (hperm : left.Perm right) :
+    productionReciprocalSum7 left alpha z =
+      productionReciprocalSum7 right alpha z := by
+  unfold productionReciprocalSum7
+  exact (hperm.map (fun event => 1 / combine7 event alpha z)).sum_eq
+
 /-- A concrete chip plus its bridge contributes Gate endpoint reads, chip
 row inputs, and the bridge final endpoint positively; chip row outputs and
 the bridge initial endpoint occur negatively. -/
@@ -145,15 +152,15 @@ structure AuthenticatedMixedTrace {N : Nat}
   publicWordsEq : publicWords =
     List.ofFn (fun output : Fin 8 => base (boundary.publicOutputs output))
   positiveAligned :
-    (gate.uses ++ publicOutputYields publicWords) ++
+    ((gate.uses ++ publicOutputYields publicWords) ++
       (List.finRange N).flatMap (fun call =>
         (bridge call).gateEvents ++ (chip call).inputEvents ++
-          (bridge call).finishEvents) =
-      boundary.jointGateSource.circuitUses ++ jointUses rows boundary.finish
+          (bridge call).finishEvents)).Perm
+      (boundary.jointGateSource.circuitUses ++ jointUses rows boundary.finish)
   negativeAligned :
-    gate.yields ++ (List.finRange N).flatMap (fun call =>
-      (chip call).outputEvents ++ (bridge call).startEvents) =
-      boundary.jointGateSource.circuitYields ++ jointYields rows boundary.start
+    (gate.yields ++ (List.finRange N).flatMap (fun call =>
+      (chip call).outputEvents ++ (bridge call).startEvents)).Perm
+      (boundary.jointGateSource.circuitYields ++ jointYields rows boundary.start)
   claimFoldZero :
     gate.claim +
       ((List.finRange N).map (fun call =>
@@ -244,7 +251,8 @@ theorem closed_ideal_event_lists {N : Nat}
     (List.finRange N)
   have hfold := trace.claimFoldZero
   rw [hgate, hcalls] at hfold
-  rw [← trace.positiveAligned, ← trace.negativeAligned]
+  rw [← reciprocal_perm _ _ alpha z trace.positiveAligned,
+    ← reciprocal_perm _ _ alpha z trace.negativeAligned]
   repeat rw [reciprocal_append]
   linear_combination hfold
 

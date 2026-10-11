@@ -731,6 +731,10 @@ through PCS/FRI remains the next end-to-end soundness step.
 uses that all-row Gate arithmetic premise to fill the selected add, multiply,
 unpack, and copy row AIR facts from a source address/opcode schedule. It
 leaves row selection, producer uniqueness, and proof authentication explicit.
+[`SourceMixedEventAlignment.lean`](SourceMixedEventAlignment.md) uses event
+permutations to account for native grouping of bridge Gate reads and chip
+endpoints. It derives the two global alignments from source circuit lists
+and per-call component projections; exact list order would be too strong.
 `TaggedPairChallenge.lean` supplies the ideal seven-coordinate challenge
 reduction for the **joint** Gate/chip event support. It proves that distinct
 seven-word tuples collide for at most six compression challenges, derives an

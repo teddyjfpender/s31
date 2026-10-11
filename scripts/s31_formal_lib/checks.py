@@ -105,6 +105,12 @@ PROOF_FIELD_PROJECTIONS_V1 = {
             "packedFinal", "zero", "add", "mul", "outputs",
         ),
     },
+    "formal/s31/S31/Gadgets/Air/SourceMixedEventAlignment.lean": {
+        "S31.Gadgets.Air.SourceMixedEventAlignment.EventProjection": (
+            "circuitUses", "circuitYields", "chipInputs", "bridgeFinish",
+            "chipOutputs", "bridgeStart",
+        ),
+    },
 }
 # Lean also generates proof projections for inherited Prop-valued contexts.
 # Require the actual `extends` clause in the reviewed structure header before

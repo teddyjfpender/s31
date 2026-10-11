@@ -36,7 +36,10 @@ part follows from the global trace contract.
 `AuthenticatedMixedTrace.gateRowsEq` binds every decoded Gate row, including
 its raw canonical addresses and fixed multiplicity, to the source roster.
 `AuthenticatedMixedTrace.positiveAligned` and `.negativeAligned` identify
-those decoded component events with the ideal lists in `SourceMixedPath`.
+those decoded component events with the ideal lists in `SourceMixedPath` as
+**permutations**. Native grouping places bridge Gate reads before all chip
+rows, and each call's endpoint order differs from the component claim
+expression, so exact list equality would exclude an honest trace.
 This is a strong and explicit source/compiler/trace correspondence premise:
 it includes every Gate row, fixed multiplicity, every chip step, both bridge
 endpoints, all eight public outputs, and the fixed `u` event. The theorem
