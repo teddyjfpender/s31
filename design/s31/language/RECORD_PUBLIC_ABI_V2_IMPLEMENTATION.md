@@ -140,6 +140,14 @@ explicitly in the native v2 path and test duplicates in nested leaf objects.
 Check canonical bytes separately. Never silently normalize an attacker-supplied
 statement into a different statement.
 
+The native canonical JSON writer caps nesting at 128 containers. The v2 type
+tree itself permits at most 32 record or tuple edges; even with each edge's
+field and array wrappers, a valid descriptor remains below the writer cap.
+This limit also applies before canonical-byte comparison of a verifier
+statement, so a deeply nested malformed path is rejected as an invalid
+statement before proof decoding. The cap is a resource bound, not a change to
+the ordered leaf or proof-word semantics.
+
 ## Source lowering
 
 `Circuit.result` carries a first-order or product type, and the parser admits

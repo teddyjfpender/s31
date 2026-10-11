@@ -166,6 +166,15 @@ def main() -> None:
         changed = copy.deepcopy(honest)
         changed["abi_sha256"] = "0" * 64
         mutations["abi_digest"] = canonical(changed)
+        # The statement parser can construct a deeply nested JSON Value even
+        # though no v2 path permits one. Its canonical-byte check must reject
+        # this without overflowing the native verifier's call stack.
+        changed = copy.deepcopy(honest)
+        nested: object = "request"
+        for _ in range(512):
+            nested = [nested]
+        changed["leaves"][0]["path"][0]["root"] = nested
+        mutations["deeply_nested_path"] = canonical(changed)
         for label, payload in mutations.items():
             reject(verifier, proof, key, work / "mutated-statement.json", payload, label)
         reject_resealed_visibility_key(work, package, relation, proof,

@@ -8,6 +8,9 @@ descriptor, its key digest, and the canonical statement. M31 leaves and
 public `bit` leaves are admitted. A `bit` occupies one M31 relation/proof
 word but its public statement value must be `0` or `1`. Private `bit` leaves
 and all `u16` leaves remain outside this boundary.
+The native canonical JSON writer rejects nesting beyond 128 containers;
+valid v2 type trees are limited to 32 record or tuple edges. Malformed deep
+statement values fail before proof decoding.
 For v2 source, this statement check also permits a public bit input to be
 passed through or left unused without adding a Boolean computation node;
 the v1 source boundary still requires a Boolean operation or select.

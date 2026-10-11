@@ -7,6 +7,11 @@ const Value = std.json.Value;
 const P: i64 = (1 << 31) - 1;
 const schema = "s31-public-record-boundary-v2";
 const domain = "s31-public-record-boundary-v2\x00";
+// A valid v2 type tree has at most 32 record/tuple edges. Its JSON wrapper
+// adds fewer than three containers per edge, so 128 admits every valid ABI.
+// Parsed statement values are attacker-controlled; cap serializer recursion
+// before descending into them, including during canonical-byte checks.
+const max_canonical_depth: usize = 128;
 
 fn object(value: Value, keys: []const []const u8) !std.json.ObjectMap {
     if (value != .object or value.object.count() != keys.len) return error.InvalidRecordAbi;
@@ -43,7 +48,8 @@ fn count(value: Value) !usize {
     return std.math.cast(usize, value.integer) orelse error.InvalidRecordAbi;
 }
 
-fn appendCanonical(allocator: std.mem.Allocator, output: *std.ArrayList(u8), value: Value) !void {
+fn appendCanonical(allocator: std.mem.Allocator, output: *std.ArrayList(u8), value: Value, depth: usize) !void {
+    if (depth > max_canonical_depth) return error.RecordAbiJsonTooDeep;
     switch (value) {
         .object => |map| {
             try output.append(allocator, '{');
@@ -63,7 +69,7 @@ fn appendCanonical(allocator: std.mem.Allocator, output: *std.ArrayList(u8), val
                 defer allocator.free(encoded_key);
                 try output.appendSlice(allocator, encoded_key);
                 try output.append(allocator, ':');
-                try appendCanonical(allocator, output, map.get(key).?);
+                try appendCanonical(allocator, output, map.get(key).?, depth + 1);
             }
             try output.append(allocator, '}');
         },
@@ -71,7 +77,7 @@ fn appendCanonical(allocator: std.mem.Allocator, output: *std.ArrayList(u8), val
             try output.append(allocator, '[');
             for (items.items, 0..) |item, index| {
                 if (index != 0) try output.append(allocator, ',');
-                try appendCanonical(allocator, output, item);
+                try appendCanonical(allocator, output, item, depth + 1);
             }
             try output.append(allocator, ']');
         },
@@ -94,7 +100,7 @@ fn appendCanonical(allocator: std.mem.Allocator, output: *std.ArrayList(u8), val
 pub fn canonicalJson(allocator: std.mem.Allocator, value: Value) ![]u8 {
     var output: std.ArrayList(u8) = .empty;
     errdefer output.deinit(allocator);
-    try appendCanonical(allocator, &output, value);
+    try appendCanonical(allocator, &output, value, 0);
     return output.toOwnedSlice(allocator);
 }
 
@@ -327,7 +333,10 @@ pub fn claimedWords(allocator: std.mem.Allocator, program: anytype, encoded: []c
     const expected_hex = std.fmt.bytesToHex(expected_digest, .lower);
     const claimed_digest = try string(try field(statement, "abi_sha256"));
     if (!std.mem.eql(u8, claimed_digest, &expected_hex)) return error.InvalidRecordStatement;
-    const canonical = try canonicalJson(allocator, statement);
+    const canonical = canonicalJson(allocator, statement) catch |err| switch (err) {
+        error.RecordAbiJsonTooDeep => return error.InvalidRecordStatement,
+        else => return err,
+    };
     defer allocator.free(canonical);
     if (encoded.len != canonical.len + 1 or !std.mem.eql(u8, encoded[0..canonical.len], canonical) or
         encoded[canonical.len] != '\n') return error.InvalidRecordStatement;
@@ -404,4 +413,16 @@ fn checkClaim(allocator: std.mem.Allocator, descriptor: Value, actual: Value, wi
         if (!std.mem.eql(u32, prior, value)) return error.InvalidRecordStatement;
         allocator.free(value);
     } else try wire_values.put(allocator, wire, value);
+}
+
+test "canonical record JSON rejects deeply nested parsed values without recursing into them" {
+    const allocator = std.testing.allocator;
+    var encoded: std.ArrayList(u8) = .empty;
+    defer encoded.deinit(allocator);
+    try encoded.appendNTimes(allocator, '[', 512);
+    try encoded.append(allocator, '0');
+    try encoded.appendNTimes(allocator, ']', 512);
+    var parsed = try std.json.parseFromSlice(Value, allocator, encoded.items, .{});
+    defer parsed.deinit();
+    try std.testing.expectError(error.RecordAbiJsonTooDeep, canonicalJson(allocator, parsed.value));
 }
