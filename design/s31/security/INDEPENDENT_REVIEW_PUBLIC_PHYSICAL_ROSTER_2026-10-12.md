@@ -109,7 +109,7 @@ for the diagnostic exporter, not verifier-to-trace authentication.
 
 ## Pinned square4 modeled corollary (static review)
 
-I also inspected the new, then-uncompiled
+I also inspected the new
 [`PinnedSquare4CompleteModeledTrace.lean`](../../../formal/s31/S31/Gadgets/Functional/Correspondence/PinnedSquare4CompleteModeledTrace.lean).
 `complete_modeled_trace` supplies the three premises of
 `checked_u8_physical_modeled_trace` using the generated literal source/normalized
@@ -122,5 +122,9 @@ The pinned constant value table came from one native diagnostic fixture;
 the theorem checks its constant-island role and does not identify the modeled
 trace with an arbitrary native witness. The module comments state that native
 commitment, feeder-source binding, and PCS/FRI soundness remain outside scope.
-No Lean build or kernel replay of this new corollary had completed at review
-time; this section is source inspection only.
+After the source inspection, the focused
+`LEAN_NUM_THREADS=1 lake build S31.Gadgets.Functional.Correspondence.PinnedSquare4CompleteModeledTrace`
+completed successfully (3,429 jobs), and
+`LEAN_NUM_THREADS=1 lake env leanchecker -v S31.Gadgets.Functional.Correspondence.PinnedSquare4CompleteModeledTrace`
+exited 0. These checks replay the modeled theorem in Lean's kernel; they do
+not change its native proof and PCS/FRI scope limits.
