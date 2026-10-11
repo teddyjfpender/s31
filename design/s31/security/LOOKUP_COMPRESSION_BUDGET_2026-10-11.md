@@ -79,13 +79,38 @@ E <= 3 * 2^16 + 2 * 2^18 + (8 + 2) * 16 * 8 + (8 + 1)
 T <= E.
 ```
 
+The multiplicity budget needs a separate count. Write `R = G + 2P` for
+`G` arithmetic gates and `P` permutation pairs, `S` for total chip rounds,
+`N` for calls, and `O = 9` for eight public words plus `u`.
+`CircuitView.computeUses` counts at most `2G + P + O` wire uses. The direct
+preprocessor adds `2P` uses of the zero wire and `8N` bridge endpoint uses.
+The circuit's output lookup weight is drawn from these checked counts;
+its `P` synthetic permutation wires add weight one each. Thus the total
+absolute weight of circuit lookup terms is bounded by
+`2R + (2G + 4P + O + 8N) = 4R + O + 8N`.
+The chip contributes `2S` unit weights and the public statement `O` more.
+Every one of the `10 * 16 * N` bridge row terms has weight `1/16` in
+magnitude. Multiplying the whole closure equation by 16 therefore gives
+an **integer** coefficient for every distinct tuple with total absolute
+weight at most
+
+```text
+B = 16 * (4R + 8N + 2O + 2S) + 10 * 16 * N
+  <= 16 * (4 * 2^16 + 8 * 8 + 2 * 9 + 2 * 2^18) + 10 * 16 * 8
+   = 12585504 < p = 2147483647.
+```
+
+Consequently, under these checked source geometry and multiplicity rules,
+no nonzero integer tuple imbalance can disappear only by reduction modulo
+`p`. This argument counts a malicious bridge row independently and does not
+use its row-constancy constraint. It still relies on the live AIR to enforce
+each row's fraction equation and on the source-derived preprocessed counts;
+the arithmetic bound by itself authenticates neither.
+
 Substituting this ceiling into the conditional formula above gives an
-algebraic error ceiling below `2^-83.49` for the proposed bounded profile.
-The count is also below the M31 characteristic, so a nonzero *integer*
-imbalance of these occurrences cannot vanish solely by reduction modulo
-`p`. The bridge uses `1/16` per row: that integer interpretation additionally
-requires its row-constancy AIR constraints to hold, so this is not an
-independent bridge-soundness proof. Nor is it a blanket bound for every S31
+algebraic error ceiling below `2^-83.49`, subject to the stated AIR and
+uniform-challenge premises and the weighted bound above. This is not an
+independent bridge-soundness proof or a blanket bound for every S31
 program or future chip kind. The native N=3 and N=4 profiles use smaller
 source-derived counts; the 1–8-call native proof scheduler is still pending.
 The factors come from `private_many_boundary.Plan.validate`,
