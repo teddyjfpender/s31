@@ -381,7 +381,7 @@ class CorrespondenceParserTests(unittest.TestCase):
                     self.assertEqual(len({row["trace_row"] for row in checked}), count)
                     if count == 16 and pattern == "alternating":
                         first = checked[0]["trace_row"]
-                        for column_index in (0, 3, 4, 5, 6, 7):
+                        for column_index in range(8):
                             changed = copy.deepcopy(topology)
                             changed["columns"][column_index]["values"][first] ^= 1
                             with self.assertRaisesRegex(ValueError, "source instruction 1"):
