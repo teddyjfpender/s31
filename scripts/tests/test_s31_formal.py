@@ -70,6 +70,25 @@ class FormalGateTests(unittest.TestCase):
         self.assertEqual(set(checks.DERIVED_THEOREMS[path]), expected)
         self.assertTrue(expected <= self.theorems)
 
+    def test_reviewed_proof_field_projections_bind_to_source_fields(self) -> None:
+        all_names = set()
+        for path, structures in checks.PROOF_FIELD_PROJECTIONS_V1.items():
+            source = (ROOT / path).read_text()
+            expected = {f"{structure}.{field}"
+                        for structure, fields in structures.items() for field in fields}
+            self.assertEqual(set(checks.proof_field_projection_names(source, path)), expected)
+            self.assertTrue(expected <= self.theorems)
+            all_names.update(expected)
+            first_structure, first_fields = next(iter(structures.items()))
+            first_field = first_fields[0]
+            start = source.index(f"structure {first_structure.rsplit('.', 1)[1]}")
+            changed = (source[:start] + source[start:].replace(
+                f"  {first_field} :", f"  changed_{first_field} :", 1))
+            self.assertNotEqual(changed, source)
+            with self.subTest(path=path), self.assertRaises(checks.FormalError):
+                checks.proof_field_projection_names(changed, path)
+        self.assertEqual(len(all_names), 19)
+
     def test_unsupported_declaration_style_is_rejected(self) -> None:
         with self.assertRaises(checks.FormalError):
             checks.theorem_names("namespace X\ntheorem «hidden name» : True := by trivial\nend X\n", s31_formal.lean_code)
@@ -131,6 +150,17 @@ class FormalGateTests(unittest.TestCase):
                     good + "S31_AXIOM S31.example propext\n"):
             with self.subTest(bad=bad), self.assertRaises(checks.FormalError):
                 checks.check_audit(bad, {"S31.example"})
+
+    def test_audit_requires_exact_reviewed_projection_set(self) -> None:
+        projected = "S31.Functional.RecordAbiV2.WordBlock.exactWidth"
+        expected = {"S31.example", projected}
+        good = f"S31_THEOREM S31.example\nS31_THEOREM {projected}\n"
+        checks.check_audit(good, expected)
+        for bad in ("S31_THEOREM S31.example\n",
+                    good + "S31_THEOREM S31.unreviewedProjection\n",
+                    good + f"S31_AXIOM {projected} sorryAx\n"):
+            with self.subTest(bad=bad), self.assertRaises(checks.FormalError):
+                checks.check_audit(bad, expected)
 
     def test_kernel_log_rejects_missing_duplicate_and_failed_module(self) -> None:
         files = {"formal/s31/S31.lean": "digest", "formal/s31/S31/Gadgets/Field.lean": "digest"}

@@ -79,10 +79,12 @@ theorem checked_canonical_bytes_sound
           by_cases hbytes : encodeCanonical parsed = canonicalBytes
           · have hcertificate : accepted = certificate := by
               simpa [hrelation, hparsed, hbytes] using hcheck
-            subst accepted
-            exact ⟨hrelation, ⟨parsed, hparsed, hbytes.symm⟩,
+            have haccepted : checkRelation sourceBytes normalizedBytes =
+                some certificate := by
+              simpa [hcertificate] using hrelation
+            exact ⟨congrArg some hcertificate, ⟨parsed, rfl, hbytes.symm⟩,
               checked_relation_sound sourceBytes normalizedBytes certificate
-                input hrelation⟩
+                input haccepted⟩
           · simp [hrelation, hparsed, hbytes] at hcheck
 
 end S31.Functional.SSACanonicalIrBytes

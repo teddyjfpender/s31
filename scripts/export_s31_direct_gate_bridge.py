@@ -380,14 +380,14 @@ def render_bridge(package: Path, namespace: str = "GeneratedDirectGateBridge") -
         # refinement requires every source row's multiplicity to be positive,
         # so this fixture is an admission control rather than a Gate-chain
         # theorem instance.
-        gate_chain_instance = f'''/-- Accepted source can contain dead instructions;
-the current source-row Gate refinement cannot be applied to this fixture. -/
+        gate_chain_instance = f'''/-- Accepted source can contain dead instructions; the current source-row
+Gate refinement cannot be applied to this fixture. -/
 theorem unused_source_row_detected :
     sourceUses certificate {unused_source_ids[0]} = 0 := by decide
 '''
     else:
-        gate_chain_instance = '''/-- Liveness is checked for this concrete
-source. It is not guaranteed by the accepted source grammar. -/
+        gate_chain_instance = '''/-- Liveness is checked for this concrete source. It is not guaranteed by the
+accepted source grammar. -/
 theorem all_source_rows_live :
     ∀ instruction ∈ certificate.instructions,
       0 < sourceUses certificate instruction.id := by decide
@@ -690,7 +690,6 @@ theorem checked_canonical_ir_bytes_sound (input : Lanes) :
     canonicalIrBytes certificate input canonical_ir_bytes_check).2
 
 {gate_chain_instance}
-
 /-- The captured normalized JSON runs through the actual named evaluator.
 The admission test checks the package before rendering these constants;
 Lean's byte and structural checks bind this concrete generated instance. -/

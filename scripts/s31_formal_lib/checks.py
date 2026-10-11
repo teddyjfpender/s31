@@ -45,6 +45,33 @@ DERIVED_THEOREMS = {
         "S31.Gadgets.Air.TaggedPairSourceComposition.ChipRows.rowCountNonzero",
     ),
 }
+# Versioned, reviewed roster of Lean-generated theorem projections for proof
+# fields. Each entry binds a kernel declaration to a concrete source structure
+# and field. Unknown generated theorems still fail the exact live audit; a
+# removed or renamed source field fails inventory generation. These 19 fields
+# are separate from explicit `theorem` declarations and the older derived
+# declaration roster above.
+PROOF_FIELD_PROJECTIONS_V1 = {
+    "formal/s31/S31/Gadgets/Functional/RecordAbiV2.lean": {
+        "S31.Functional.RecordAbiV2.WordBlock": ("exactWidth",),
+        "S31.Functional.RecordAbiV2.ValidatedPaths": ("injective",),
+    },
+    "formal/s31/S31/Gadgets/Functional/SSAInstalledBytecodePublicOutput.lean": {
+        "S31.Functional.SSAInstalledBytecodePublicOutput.OutputBoundary": (
+            "zero", "maskBasis", "inverseBasis", "masks", "inverses", "copies", "pins",
+        ),
+    },
+    "formal/s31/S31/Gadgets/Air/DirectGateOodsOpenings.lean": {
+        "S31.Gadgets.Air.DirectGateOodsOpenings.Shape": (
+            "fixed", "main", "interactionFirst", "interactionLast",
+        ),
+    },
+    "formal/s31/S31/Gadgets/Air/DirectGatePcsOpeningLink.lean": {
+        "S31.Gadgets.Air.DirectGatePcsOpeningLink.PcsOpeningAssumption": (
+            "bound", "fixed", "main", "interactionFirst", "interactionLast", "composition",
+        ),
+    },
+}
 CONTROLS = frozenset("S31.Evidence." + name for name in (
     "honest_byte_boundary", "byte_out_of_range", "honest_carry", "honest_borrow",
     "checked_overflow_rejected", "checked_underflow_rejected", "zero_inverse_witness_free",
@@ -99,6 +126,38 @@ def theorem_names(source: str, lexer: Callable[[str], str]) -> list[str]:
     return names
 
 
+def proof_field_projection_names(source: str, label: str) -> list[str]:
+    """Bind each reviewed generated theorem to a field in its source structure.
+
+    This is deliberately a small roster, not a wildcard for Lean-generated
+    declarations. The live axiom audit checks these names like all other
+    theorems and rejects both missing and unexpected declarations.
+    """
+    names = []
+    lines = source.splitlines()
+    for qualified, expected_fields in PROOF_FIELD_PROJECTIONS_V1.get(label, {}).items():
+        structure = qualified.rsplit(".", 1)[1]
+        headers = [index for index, line in enumerate(lines)
+                   if re.match(rf"^structure\s+{re.escape(structure)}\b", line)]
+        if len(headers) != 1:
+            raise FormalError(f"{label}: expected one structure {structure}")
+        cursor = headers[0]
+        while "where" not in lines[cursor].split("--", 1)[0]:
+            cursor += 1
+            if cursor >= len(lines) or cursor > headers[0] + 10 or not lines[cursor].strip():
+                raise FormalError(f"{label}: missing structure body {structure}")
+        fields = set()
+        for line in lines[cursor + 1:]:
+            if not line.strip() or not line.startswith(" "):
+                break
+            if match := re.match(r"^  ([A-Za-z_][A-Za-z_0-9]*)\s*:", line):
+                fields.add(match[1])
+        if len(expected_fields) != len(set(expected_fields)) or not set(expected_fields) <= fields:
+            raise FormalError(f"{label}: stale proof-field projection roster for {structure}")
+        names.extend(f"{qualified}.{field}" for field in expected_fields)
+    return names
+
+
 def source_paths(root: Path) -> list[Path]:
     formal = root / "formal/s31"
     required = [formal / "S31.lean", formal / "S31/Semantics/Node.lean",
@@ -123,6 +182,7 @@ def inventory(root: Path, lexer: Callable[[str], str]) -> dict:
         files[label] = hashlib.sha256(path.read_bytes()).hexdigest()
         declarations.extend(theorem_names(source, lexer))
         declarations.extend(DERIVED_THEOREMS.get(label, ()))
+        declarations.extend(proof_field_projection_names(source, label))
     if len(declarations) != len(set(declarations)):
         raise FormalError("duplicate theorem in proof closure")
     if not CONTROLS <= set(declarations):
