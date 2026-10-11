@@ -14,7 +14,8 @@ pub const max_calls: usize = 8;
 pub const max_source_bytes: usize = 1 << 20;
 pub const max_ir_nodes: usize = 1 << 16;
 pub const max_total_rounds: u32 = 1 << 18;
-pub const max_public_output_words: u32 = 9;
+/// The direct circuit has nine public slots, including its reserved `u` word.
+pub const max_public_output_words: u32 = 8;
 
 /// Distinct AIR constructors and lookup relation IDs are required for these
 /// two transitions. This tag is source metadata only until a native profile
@@ -305,7 +306,7 @@ test "mix4 is admitted only as exact final step after square and constant" {
     try std.testing.expectError(error.UnsupportedChipBody, extract(a, program));
 }
 
-test "dead private input and more than nine public words are rejected" {
+test "dead private input and ninth source output word are rejected" {
     var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
     const a = arena.allocator();
@@ -321,12 +322,16 @@ test "dead private input and more than nine public words are rejected" {
     nodes[0] = program.nodes[0];
     nodes[1] = .{ .name = "a", .op = .add_const, .lhs = "r0", .constant = 1 };
     nodes[2] = .{ .name = "b", .op = .add_const, .lhs = "r0", .constant = 2 };
-    nodes[3] = .{ .name = "c", .op = .add_const, .lhs = "r0", .constant = 3 };
+    nodes[3] = .{ .name = "scalar", .op = .sum_lanes, .lhs = "r0" };
     program.nodes = nodes;
     const outputs = try a.alloc([]const u8, 3);
     outputs[0] = "a";
     outputs[1] = "b";
-    outputs[2] = "c";
+    outputs[2] = "scalar";
+    program.public_outputs = outputs[0..2];
+    const at_limit = try extract(a, program);
+    try std.testing.expectEqual(@as(u32, 8), at_limit.public_output_word_count);
+    // The circuit's ninth slot belongs to `u`, not a source output.
     program.public_outputs = outputs;
     try std.testing.expectError(error.TooManyPublicOutputWords, extract(a, program));
 }

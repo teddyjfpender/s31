@@ -49,8 +49,10 @@ The module parses at most 1 MiB of normalized source. It accepts version-1
 transparent programs with one to eight private `m31[4]` inputs and one to
 eight canonical repeat calls. Each repeat has 16–32768 power-of-two rounds;
 the checked sum of rounds is at most 2¹⁸. It also limits canonical IR to
-65,536 nodes, public output names to eight, and their total width to nine
-M31 words. Assertions, public inputs, a declared public-record ABI, and
+65,536 nodes, public output names to eight, and their total width to eight
+M31 words. The direct circuit reserves a ninth public slot for `u`: eight
+source output words plus that reserved word make the documented nine-word
+lookup budget. Assertions, public inputs, a declared public-record ABI, and
 other node kinds are outside this draft profile.
 
 Call IDs follow literal source order. Every source repeat must survive as
