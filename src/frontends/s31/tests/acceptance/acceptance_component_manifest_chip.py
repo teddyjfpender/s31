@@ -28,6 +28,20 @@ def reject_native(verifier: Path, proof: Path, statement: Path, key: Path) -> No
         raise AssertionError("native verifier accepted a re-sealed false chip roster")
 
 
+def reject_malformed_wire(verifier: Path, work: Path, statement: Path,
+                          key: Path, proof: bytes, name: str,
+                          expected_error: str) -> None:
+    path = work / f"malformed-{name}.bin"
+    path.write_bytes(proof)
+    try:
+        s31.invoke(str(verifier), str(path), str(statement), str(key))
+    except RuntimeError as exc:
+        if expected_error not in str(exc):
+            raise AssertionError(f"{name} failed outside postcard preflight: {exc}") from exc
+    else:
+        raise AssertionError(f"native verifier accepted malformed {name} postcard wire")
+
+
 def reject_package(package: Path, work: Path, name: str, target: str, mutate) -> None:
     forged = work / f"{name}-{target}"
     shutil.copytree(package, forged)
@@ -152,6 +166,20 @@ def check_case(source: Path, assignment: Path, private: bool) -> dict:
                       work / "trial/proof.bin", work / "trial/statement.json", wrong_digest)
         proof = (work / "trial/proof.bin").read_bytes()
         assert proof[:8] == (b"S31NAT6P" if private else b"S31NAT6C")
+        header_len = 8 + 8 + 16 * (3 if private else 2)
+        if proof[header_len] != 26:
+            raise AssertionError("unexpected postcard FRI config prefix")
+        native = package / "bin" / f"s31-{key['name']}-native-verifier"
+        statement = work / "trial/statement.json"
+        sealed_key = package / "verification-key.json"
+        reject_malformed_wire(native, work, statement, sealed_key,
+                              proof[:header_len] + b"\x19" + proof[header_len + 1:],
+                              "wrong-fri-config", "InvalidProofConfig")
+        reject_malformed_wire(native, work, statement, sealed_key,
+                              proof[:header_len] + b"\x9a\x00" + proof[header_len + 1:],
+                              "noncanonical-varint", "NonCanonicalVarint")
+        reject_malformed_wire(native, work, statement, sealed_key,
+                              proof[:-1], "truncated-postcard", "EndOfStream")
         old_magic = b"S31NAT5P" if private else b"S31NAT4C"
         old_proof = work / "old-version-proof.bin"
         old_proof.write_bytes(old_magic + proof[8:])
@@ -175,6 +203,7 @@ def check_case(source: Path, assignment: Path, private: bool) -> dict:
             "resealed_native_key_rejected": len(controls),
             "wrong_manifest_digest_rejected": True,
             "cross_version_proof_rejected": True,
+            "malformed_postcard_rejected_before_decode": 3,
         }
 
 

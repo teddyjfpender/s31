@@ -19,6 +19,110 @@ const n_fixed = circuit.common.direct_arithmetic.N_COLUMNS;
 
 pub const ChipSpec = struct { rounds: u32, constant: M31 };
 
+/// One in-place owner for the verifier's exact AIR handles. The handles contain
+/// pointers into this struct, so callers must not copy or return it by value.
+/// The predecode geometry walk and the final STARK verifier use the same owner.
+pub const DirectHandles = struct {
+    bound: cpu.air.Bundle,
+    captured: cairo.proving.air.component.Component,
+    chip_component: chip.Component = undefined,
+    bridge_component: bridge.Component = undefined,
+    handles: [3]core.air.components.Component = undefined,
+    preprocessed_logs: [n_fixed]u32,
+    chip_log: ?u32,
+    has_boundary: bool,
+    count: usize,
+
+    pub fn init(
+        self: *DirectHandles,
+        allocator: std.mem.Allocator,
+        layout: *const circuit.common.direct_arithmetic.Layout,
+        template: *const cpu.air.Bundle,
+        pcs: core.pcs.config_v2.PcsConfigV2,
+        chip_spec: ?ChipSpec,
+        boundary: ?bridge.Boundary,
+    ) !void {
+        if (boundary != null and chip_spec == null) return error.InvalidDirectHandleRoster;
+        if (boundary) |addresses| try addresses.validate(core.fields.m31.Modulus);
+        const circuit_log = layout.traceLogSize();
+        const chip_log: ?u32 = if (chip_spec) |spec| try chip.validateRounds(spec.rounds) else null;
+        self.bound = try cpu.air.bindDirectArithmetic(allocator, template, circuit_log, layout);
+        errdefer self.bound.deinit();
+        if (self.bound.components.len != 1) return error.InvalidDirectHandleRoster;
+        self.preprocessed_logs = [_]u32{circuit_log} ** n_fixed;
+        const lifted_log = std.math.sub(u32, pcs.trace_lifting_log_size, pcs.fri_config.log_blowup_factor) catch
+            return error.InvalidDirectHandlePcs;
+        const lifting_bound = try std.math.add(u32, lifted_log, 1);
+        self.captured = cairo.proving.air.component.Component.init(
+            allocator,
+            &self.bound.components[0],
+            &self.preprocessed_logs,
+            lifting_bound,
+            QM31.one(),
+            QM31.one(),
+            QM31.zero(),
+        );
+        self.handles[0] = self.captured.asVerifierComponent();
+        self.chip_log = chip_log;
+        self.has_boundary = boundary != null;
+        self.count = 1;
+        if (chip_spec) |spec| {
+            self.chip_component = .{
+                .log_size = chip_log.?,
+                .constant = spec.constant,
+                .main_offset = direct_trace.main_width,
+                .interaction_offset = direct_trace.interaction_width,
+                .elements = .init(QM31.one(), QM31.one()),
+                .claimed_sum = QM31.zero(),
+            };
+            self.handles[1] = self.chip_component.asVerifierComponent();
+            self.count = 2;
+        }
+        if (boundary) |addresses| {
+            self.bridge_component = .{
+                .main_offset = direct_trace.main_width + chip.main_width,
+                .interaction_offset = direct_trace.interaction_width + chip.interaction_width,
+                .boundary = addresses,
+                .rounds = chip_spec.?.rounds,
+                .elements = .init(QM31.one(), QM31.one()),
+                .claimed_sum = QM31.zero(),
+            };
+            self.handles[2] = self.bridge_component.asVerifierComponent();
+            self.count = 3;
+        }
+    }
+
+    pub fn deinit(self: *DirectHandles) void {
+        self.bound.deinit();
+        self.* = undefined;
+    }
+
+    pub fn components(self: *const DirectHandles) core.air.components.Components {
+        return .{ .components = self.handles[0..self.count], .n_preprocessed_columns = n_fixed };
+    }
+
+    pub fn slice(self: *const DirectHandles) []const core.air.components.Component {
+        return self.handles[0..self.count];
+    }
+
+    /// Transcript challenges and claims do not affect geometry, but they must
+    /// be installed on the very handles that were inspected before decoding.
+    pub fn setClaims(self: *DirectHandles, z: QM31, alpha: QM31, sums: []const QM31) !void {
+        if (sums.len != self.count) return error.InvalidDirectHandleRoster;
+        self.captured.runtime.lookup_z = z;
+        self.captured.runtime.lookup_alpha = alpha;
+        self.captured.runtime.claimed_sum = sums[0];
+        if (self.chip_log != null) {
+            self.chip_component.elements = .init(z, alpha);
+            self.chip_component.claimed_sum = sums[1];
+        }
+        if (self.has_boundary) {
+            self.bridge_component.elements = .init(z, alpha);
+            self.bridge_component.claimed_sum = sums[2];
+        }
+    }
+};
+
 pub const Fact = struct {
     trace_log_size: u32,
     evaluation_log_size: u32,
@@ -67,54 +171,22 @@ pub fn inspect(
     chip_spec: ?ChipSpec,
     boundary: ?bridge.Boundary,
 ) !Inspection {
-    if (boundary != null and chip_spec == null) return error.InvalidDirectHandleRoster;
+    var owned: DirectHandles = undefined;
+    try owned.init(allocator, layout, template, pcs, chip_spec, boundary);
+    defer owned.deinit();
+    return inspectHandles(allocator, layout, pcs, &owned);
+}
+
+pub fn inspectHandles(
+    allocator: std.mem.Allocator,
+    layout: *const circuit.common.direct_arithmetic.Layout,
+    pcs: core.pcs.config_v2.PcsConfigV2,
+    owned: *const DirectHandles,
+) !Inspection {
     const circuit_log = layout.traceLogSize();
-    const chip_log: ?u32 = if (chip_spec) |spec| try chip.validateRounds(spec.rounds) else null;
-    var bound = try cpu.air.bindDirectArithmetic(allocator, template, circuit_log, layout);
-    defer bound.deinit();
-    if (bound.components.len != 1) return error.InvalidDirectHandleRoster;
-    var pp_logs = [_]u32{circuit_log} ** n_fixed;
-    const lifting_bound = std.math.sub(u32, pcs.trace_lifting_log_size, pcs.fri_config.log_blowup_factor) catch
-        return error.InvalidDirectHandlePcs;
-    var captured = cairo.proving.air.component.Component.init(
-        allocator,
-        &bound.components[0],
-        &pp_logs,
-        lifting_bound + 1,
-        QM31.one(),
-        QM31.one(),
-        QM31.zero(),
-    );
-    var handles: [3]core.air.components.Component = undefined;
-    handles[0] = captured.asVerifierComponent();
-    var chip_component: chip.Component = undefined;
-    var bridge_component: bridge.Component = undefined;
-    var count: usize = 1;
-    if (chip_spec) |spec| {
-        chip_component = .{
-            .log_size = chip_log.?,
-            .constant = spec.constant,
-            .main_offset = direct_trace.main_width,
-            .interaction_offset = direct_trace.interaction_width,
-            .elements = .init(QM31.one(), QM31.one()),
-            .claimed_sum = QM31.zero(),
-        };
-        handles[1] = chip_component.asVerifierComponent();
-        count = 2;
-    }
-    if (boundary) |addresses| {
-        try addresses.validate(core.fields.m31.Modulus);
-        bridge_component = .{
-            .main_offset = direct_trace.main_width + chip.main_width,
-            .interaction_offset = direct_trace.interaction_width + chip.interaction_width,
-            .boundary = addresses,
-            .rounds = chip_spec.?.rounds,
-            .elements = .init(QM31.one(), QM31.one()),
-            .claimed_sum = QM31.zero(),
-        };
-        handles[2] = bridge_component.asVerifierComponent();
-        count = 3;
-    }
+    const chip_log = owned.chip_log;
+    const count = owned.count;
+    const handles = owned.slice();
     var result: Inspection = .{
         .count = count,
         .tree_columns = @splat(0),
@@ -185,10 +257,7 @@ pub fn inspect(
         interaction_at = try std.math.add(u32, interaction_at, interaction_width);
         constraint_at = try std.math.add(u32, constraint_at, fact.n_constraints);
     }
-    const selected: core.air.components.Components = .{
-        .components = handles[0..count],
-        .n_preprocessed_columns = n_fixed,
-    };
+    const selected = owned.components();
     const split = try selected.compositionLogSplit();
     const composition_log = core.verifier_types.compositionMaskLogSize(selected.compositionLogDegreeBound(), split) orelse
         return error.InvalidDirectHandleComposition;
@@ -283,6 +352,28 @@ test "direct-chip live roster rejects a changed manifest and injected handle dri
     try std.testing.expectEqual(@as(usize, 2), live.count);
     try std.testing.expectEqual(@as(u32, 21), live.tree_columns[1]);
     try std.testing.expectEqual(@as(u32, 16), live.tree_columns[2]);
+    var owned: DirectHandles = undefined;
+    try owned.init(a, &layout, &template, pcs, spec, null);
+    defer owned.deinit();
+    const before_claims = try inspectHandles(a, &layout, pcs, &owned);
+    var logs = try owned.components().columnLogSizes(a);
+    defer logs.deinitDeep(a);
+    try std.testing.expectEqual(@as(usize, 3), logs.items.len);
+    try std.testing.expectEqual(@as(usize, before_claims.tree_columns[0]), logs.items[0].len);
+    try std.testing.expectEqual(@as(usize, before_claims.tree_columns[1]), logs.items[1].len);
+    try std.testing.expectEqual(@as(usize, before_claims.tree_columns[2]), logs.items[2].len);
+    for (logs.items[0]) |size| try std.testing.expectEqual(layout.traceLogSize(), size);
+    for (logs.items[1][0..direct_trace.main_width]) |size| try std.testing.expectEqual(layout.traceLogSize(), size);
+    for (logs.items[1][direct_trace.main_width..]) |size| try std.testing.expectEqual(owned.chip_log.?, size);
+    for (logs.items[2][0..direct_trace.interaction_width]) |size| try std.testing.expectEqual(layout.traceLogSize(), size);
+    for (logs.items[2][direct_trace.interaction_width..]) |size| try std.testing.expectEqual(owned.chip_log.?, size);
+    try std.testing.expectError(error.InvalidDirectHandleRoster, owned.setClaims(QM31.one(), QM31.one(), &.{QM31.zero()}));
+    try owned.setClaims(QM31.fromU32Unchecked(3, 4, 5, 6), QM31.fromU32Unchecked(7, 8, 9, 10), &.{ QM31.one(), QM31.zero() });
+    const after_claims = try inspectHandles(a, &layout, pcs, &owned);
+    try std.testing.expectEqual(before_claims.tree_columns, after_claims.tree_columns);
+    try std.testing.expectEqual(before_claims.sample_width_limits, after_claims.sample_width_limits);
+    for (before_claims.factSlice(), after_claims.factSlice()) |before, after|
+        try std.testing.expectEqualDeep(before, after);
     var bad_pcs = pcs;
     bad_pcs.preprocessed_lifting_log_size += 1;
     try std.testing.expectError(error.InvalidDirectHandlePcs, inspect(a, &layout, &template, bad_pcs, spec, null));

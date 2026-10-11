@@ -730,18 +730,23 @@ fn verifyDirectProfile(
     const header_len = magic.len + 8 + sum_count * 16;
     if (raw.len < header_len or raw.len > (16 << 20) or !std.mem.eql(u8, raw[0..magic.len], magic))
         return error.InvalidNativeProof;
+    // Keep this owner in place: every handle points into it. The predecode
+    // geometry check and the final core verifier consume this exact roster.
+    var direct_handles: direct_component_preflight.DirectHandles = undefined;
+    try direct_handles.init(
+        allocator,
+        layout,
+        template,
+        pcs,
+        if (chip_spec) |item| .{ .rounds = item.rounds, .constant = item.constant } else null,
+        private_boundary,
+    );
+    defer direct_handles.deinit();
     // Inspect the actual verifier handles and bounded proof shape before
     // allocating for postcard decoding. The source-pinned key was checked by
     // mvp_runtime before this entrypoint is called.
     if (manifest_bound and has_chip) {
-        const live = try direct_component_preflight.inspect(
-            allocator,
-            layout,
-            template,
-            pcs,
-            .{ .rounds = chip_spec.?.rounds, .constant = chip_spec.?.constant },
-            private_boundary,
-        );
+        const live = try direct_component_preflight.inspectHandles(allocator, layout, pcs, &direct_handles);
         if (live.count != sum_count) return error.InvalidDirectHandleRoster;
         try postcard.proof_preflight.validateFor(4, raw[header_len..], .{
             .config = .{
@@ -821,20 +826,13 @@ fn verifyDirectProfile(
     pcs.fri_config.mixInto(&channel);
     var scheme = try core.pcs.verifier.CommitmentSchemeVerifier(H, MC).init(allocator, pcs);
     defer scheme.deinit(allocator);
-    var pp_logs = [_]u32{log_size} ** circuit.common.direct_arithmetic.N_COLUMNS;
-    try scheme.commit(allocator, roots[0], &pp_logs, &channel);
+    var component_logs = try direct_handles.components().columnLogSizes(allocator);
+    defer component_logs.deinitDeep(allocator);
+    if (component_logs.items.len != 3) return error.InvalidDirectHandleTree;
+    try scheme.commit(allocator, roots[0], component_logs.items[0], &channel);
     MC.mixRoot(&channel, circuit_hash);
     channel.mixFelts(&outputs);
-    const chip_log: ?u32 = if (chip_spec) |item| try chip.validateRounds(item.rounds) else null;
-    const main_logs = try sparseLogs(allocator, .{ log_size, 0, 0 }, .{ 12, 0, 0 }, chip_log, chip.main_width + if (private_boundary != null) cpu.private_boundary_bridge.main_width else @as(usize, 0));
-    defer allocator.free(main_logs);
-    const interaction_logs = try sparseLogs(allocator, .{ log_size, 0, 0 }, .{ 8, 0, 0 }, chip_log, chip.interaction_width + if (private_boundary != null) cpu.private_boundary_bridge.interaction_width else @as(usize, 0));
-    defer allocator.free(interaction_logs);
-    if (private_boundary != null) {
-        @memset(main_logs[main_logs.len - cpu.private_boundary_bridge.main_width ..], cpu.private_boundary_bridge.log_size);
-        @memset(interaction_logs[interaction_logs.len - cpu.private_boundary_bridge.interaction_width ..], cpu.private_boundary_bridge.log_size);
-    }
-    try scheme.commit(allocator, roots[1], main_logs, &channel);
+    try scheme.commit(allocator, roots[1], component_logs.items[1], &channel);
     if (!channel.verifyPowNonce(circuit.common.component_list.INTERACTION_POW_BITS, nonce))
         return error.InvalidInteractionNonce;
     channel.mixU64(nonce);
@@ -851,47 +849,14 @@ fn verifyDirectProfile(
         final,
     )).isZero()) return error.InvalidChipLookupSum;
     core.channel.lookup_transcript.mixInteractionClaim(&channel, sums[0..sum_count]);
-    try scheme.commit(allocator, roots[2], interaction_logs, &channel);
-    var bound = try cpu.air.bindDirectArithmetic(allocator, template, log_size, layout);
-    defer bound.deinit();
-    const lifting_bound = pcs.trace_lifting_log_size - pcs.fri_config.log_blowup_factor + 1;
-    var captured: [1]cairo.proving.air.component.Component = undefined;
-    captured[0] = .init(allocator, &bound.components[0], &pp_logs, lifting_bound, lookup.z, lookup.alpha, sums[0]);
-    var handles: [3]core.air.components.Component = undefined;
-    handles[0] = captured[0].asVerifierComponent();
-    var chip_component: chip.Component = undefined;
-    var component_count: usize = 1;
-    if (chip_spec) |item| {
-        chip_component = .{
-            .log_size = try chip.validateRounds(item.rounds),
-            .constant = item.constant,
-            .main_offset = circuit.witness.direct_arithmetic.main_width,
-            .interaction_offset = circuit.witness.direct_arithmetic.interaction_width,
-            .elements = .init(lookup.z, lookup.alpha),
-            .claimed_sum = sums[1],
-        };
-        handles[1] = chip_component.asVerifierComponent();
-        component_count = 2;
-    }
-    var bridge_component: cpu.private_boundary_bridge.Component = undefined;
-    if (private_boundary) |boundary| {
-        bridge_component = .{
-            .main_offset = circuit.witness.direct_arithmetic.main_width + chip.main_width,
-            .interaction_offset = circuit.witness.direct_arithmetic.interaction_width + chip.interaction_width,
-            .boundary = boundary,
-            .rounds = chip_spec.?.rounds,
-            .elements = .init(lookup.z, lookup.alpha),
-            .claimed_sum = sums[2],
-        };
-        handles[2] = bridge_component.asVerifierComponent();
-        component_count = 3;
-    }
+    try scheme.commit(allocator, roots[2], component_logs.items[2], &channel);
+    try direct_handles.setClaims(lookup.z, lookup.alpha, sums[0..sum_count]);
     var capture: core.verifier.ProofCapture(H) = undefined;
     try core.verifier.verifyBorrowedExWithProofCapture(
         H,
         MC,
         allocator,
-        handles[0..component_count],
+        direct_handles.slice(),
         &channel,
         &scheme,
         &stark,

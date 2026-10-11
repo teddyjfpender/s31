@@ -88,7 +88,9 @@ compares their constraint counts, degree bounds, fixed-column indices, trace
 spans, coefficient offsets and ordered relation IDs. Before allocating for
 proof decoding, the native verifier obtains the handles' column logs, mask
 widths, composition geometry and PCS tree shape and applies bounded proof
-preflight. Relation IDs are checked against pinned chip and bridge source;
+preflight. The preflight and final STARK check use the same in-place handle
+owner; PCS commitment log arrays are derived from those handles. Relation IDs
+are checked against pinned chip and bridge source;
 Stwo's generic component interface does not expose lookup tuple schemas.
 This check changes neither the v2 manifest encoding nor the `S31NAT6C` /
 `S31NAT6P` proof bytes. The legacy v1 decoder is unaffected.
