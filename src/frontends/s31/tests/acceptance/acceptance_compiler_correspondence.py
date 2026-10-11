@@ -31,6 +31,7 @@ from export_s31_direct_gate_bytecode_arithmetic import (
     render_transcript_params as render_bytecode_transcript_params,
     render_oods_openings as render_bytecode_oods_openings,
     render_composition_opening as render_bytecode_composition_opening,
+    render_circle_factor as render_bytecode_circle_factor,
 )
 from export_s31_direct_gate_evaluator_fixture import (
     render as render_evaluator_fixture, validate_component_geometry,
@@ -215,6 +216,9 @@ def main() -> None:
     invoke("zig", "test", "--dep", "stwo_utils",
            "-Mroot=src/frontends/s31/tests/proofs/gate_mask_native_test.zig",
            "-Mstwo_utils=deps/stwo-zig/src/core/utils.zig")
+    invoke("zig", "test", "--dep", "stwo_circle",
+           "-Mroot=src/frontends/s31/tests/proofs/gate_circle_factor_native_test.zig",
+           "-Mstwo_circle=deps/stwo-zig/src/core/circle.zig")
     source = S31 / "examples/arithmetic/functional_square4_manual.s31"
     assignment = S31 / "examples/arithmetic/functional_square4.valid.json"
     with tempfile.TemporaryDirectory(prefix="s31-correspondence-") as directory:
@@ -269,6 +273,10 @@ def main() -> None:
                                       "GeneratedDirectGateCompositionOpening.lean")
         if render_bytecode_composition_opening(honest) != composition_opening_golden.read_text():
             raise AssertionError("Gate composition proof opening differs from checked Lean export")
+        circle_factor_golden = (REPO / "formal/s31/S31/Gadgets/Air/"
+                                "GeneratedDirectGateCircleFactor.lean")
+        if render_bytecode_circle_factor(honest) != circle_factor_golden.read_text():
+            raise AssertionError("Gate OODS circle factor differs from checked Lean export")
         component = json.loads((honest / "component-manifest.json").read_text())["components"][0]
         for kind in ("fixed", "main", "interaction"):
             changed = copy.deepcopy(component)
@@ -437,6 +445,7 @@ def main() -> None:
             "installed_gate_transcript_params_match_checked_package": True,
             "installed_gate_oods_openings_match_checked_package": True,
             "installed_gate_composition_opening_matches_checked_package": True,
+            "installed_gate_circle_factor_matches_checked_package": True,
             "native_gate_512_row_previous_mask_matches_lean_formula": True,
             "resealed_component_column_maps_rejected": True,
             "resealed_gate_program_binding_rejected": True,

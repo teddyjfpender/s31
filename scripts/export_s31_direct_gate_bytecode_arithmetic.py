@@ -772,6 +772,95 @@ def render_composition_opening(package: Path) -> str:
     ])
 
 
+def check_circle_factor_source_contract(core: str, circle: str, proof: str) -> None:
+    """Bind the selected OODS point and split-factor path to reviewed Zig."""
+    require("const oods_seed = channel.drawSecureFelt();" in core and
+            "const oods_point = circle.secureFieldPointFromRandomSeed(oods_seed);" in core and
+            "const composition_oods_eval = proof.extractCompositionOodsEvalWithSplit(" in core,
+            "native OODS seed/point path changed")
+    point = circle.split("pub fn secureFieldPointFromRandomSeedChecked(", 1)[-1].split(
+        "pub fn randomSecureFieldPoint(", 1)[0]
+    require("const t_square = t.square();" in point and
+            "const one_plus_t_square_inv = try t_square.add(QM31.one()).inv();" in point and
+            "const x = QM31.one().sub(t_square).mul(one_plus_t_square_inv);" in point and
+            "const y = t.add(t).mul(one_plus_t_square_inv);" in point and
+            "return .{ .x = x, .y = y };" in point and
+            "return secureFieldPointFromRandomSeedChecked(t) catch unreachable;" in circle,
+            "native OODS seed-to-circle map changed")
+    algebra = circle.split("pub fn CirclePoint(comptime F: type) type {", 1)[-1].split(
+        "pub const CirclePointM31", 1)[0]
+    require("const x = lhs.x.mul(rhs.x).sub(lhs.y.mul(rhs.y));" in algebra and
+            "const y = lhs.x.mul(rhs.y).add(lhs.y.mul(rhs.x));" in algebra and
+            "return self.add(self);" in algebra and
+            "out = out.double();" in algebra and
+            "while (i < n) : (i += 1)" in algebra,
+            "native circle repeated-double arithmetic changed")
+    require("const factor = point.repeatedDouble(parent_log - 2).x;" in proof and
+            "var parent_log = composition_log_size - split_depth + 1;" in proof and
+            "if (composition_log_size <= split_depth or chunk_evals_in.len != chunk_count)" in proof,
+            "native composition factor selection changed")
+
+
+def render_circle_factor(package: Path) -> str:
+    """Emit a seed-indexed Gate composition factor theorem."""
+    checked = check_package(package)
+    _base, _ext, roots = decoded_program(gate_program(BUNDLE.read_bytes()))
+    manifest = json.loads((package / "component-manifest.json").read_text())
+    entry = manifest["components"]
+    require(len(entry) == 1 and entry[0]["source_index"] == 1 and
+            entry[0]["evaluation_log_size"] == 10 and
+            roots == (*range(9), 88, 96),
+            "selected Gate circle-factor profile changed")
+    engine = ROOT / "deps/stwo-zig/src/core"
+    core = (engine / "verifier.zig").read_text()
+    circle = (engine / "circle.zig").read_text()
+    proof = (engine / "proof.zig").read_text()
+    check_circle_factor_source_contract(core, circle, proof)
+    return "\n".join([
+        "-- Generated from the selected Gate package and native OODS circle source contract.",
+        f"-- Bundle SHA-256: {AIR_BUNDLE_SHA256}",
+        f"-- Gate program SHA-256: {GATE_PROGRAM_SHA256}",
+        f"-- Source SHA-256: {checked['source_sha256']}",
+        f"-- Core verifier SHA-256: {hashlib.sha256(core.encode()).hexdigest()}",
+        f"-- Circle SHA-256: {hashlib.sha256(circle.encode()).hexdigest()}",
+        f"-- Proof extraction SHA-256: {hashlib.sha256(proof.encode()).hexdigest()}",
+        "-- The seed denominator and native Zig refinement remain premises.",
+        "import S31.Gadgets.Air.DirectGateCircleFactor",
+        "import S31.Gadgets.Air.GeneratedDirectGateCompositionOpening", "",
+        "namespace S31.Gadgets.Air.GeneratedDirectGateCircleFactor", "",
+        "open S31.Gadgets.Air.DirectGateOodsArithmetic",
+        "open S31.Gadgets.Air.DirectGateOodsOpenings",
+        "open S31.Gadgets.Air.DirectGateOodsLogUp",
+        "open S31.Gadgets.Air.DirectGateOodsComposition",
+        "open S31.Gadgets.Air.DirectGateCircleFactor",
+        "open S31.Gadgets.Air.DirectGateCompositionOpening",
+        "open S31.Gadgets.Air.GeneratedDirectGateCompositionOpening", "",
+        "/-- Reduce a native-shaped OODS check whose factor is the x-coordinate",
+        "after `compositionLogSize - 2` doublings of the seed-derived point.",
+        "The native channel draw and PCS opening authentication are premises. -/",
+        "theorem accepted_seeded_tree_eq_pure (samples : Samples)",
+        "    (shape : DirectGateOodsOpenings.Shape samples)",
+        "    (compositionTree : List (List QM))",
+        "    (seed z alpha claimed coefficient zeroifier : QM)",
+        "    (compositionLogSize : Nat)",
+        "    (_hsize : 2 ≤ compositionLogSize)",
+        "    (hden : 1 + seed * seed ≠ 0)",
+        "    (hzero : zeroifier ≠ 0)",
+        "    (accepted : extractSplitOne",
+        "      (repeatedDouble (compositionLogSize - 2) (fromSeed seed)).x",
+        "      compositionTree = some (quotientFold coefficient zeroifier⁻¹",
+        "        (S31.Gadgets.Air.GeneratedDirectGateTranscriptParams.transcriptRoots",
+        "          (cellsOfSamples samples) z alpha claimed))) :",
+        "    extractSplitOne (factor seed compositionLogSize) compositionTree =",
+        "      some (S31.Gadgets.Air.CompositionFold.fold coefficient",
+        "        (pureRoots (cellsOfSamples samples) alpha z (claimed / 512)) / zeroifier) := by",
+        "  rw [factor_eq_repeated_double seed hden compositionLogSize]",
+        "  exact accepted_tree_eq_pure samples shape compositionTree",
+        "    _ z alpha claimed coefficient zeroifier hzero accepted", "",
+        "end S31.Gadgets.Air.GeneratedDirectGateCircleFactor", "",
+    ])
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("package", type=Path)
@@ -786,6 +875,8 @@ def main() -> None:
                         help="also regenerate the selected Gate OODS sampled-value theorem")
     parser.add_argument("--composition-opening-output", type=Path,
                         help="also regenerate the split-one composition-tree theorem")
+    parser.add_argument("--circle-factor-output", type=Path,
+                        help="also regenerate the selected OODS circle-factor theorem")
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
     result = render(args.package)
@@ -798,6 +889,8 @@ def main() -> None:
                 if args.oods_openings_output is not None else None)
     composition_opening = (render_composition_opening(args.package)
                            if args.composition_opening_output is not None else None)
+    circle_factor = (render_circle_factor(args.package)
+                     if args.circle_factor_output is not None else None)
     if args.check:
         if not args.output.is_file() or args.output.read_text() != result:
             raise SystemExit("installed Gate bytecode Lean export changed")
@@ -818,6 +911,11 @@ def main() -> None:
             args.composition_opening_output.read_text() != composition_opening
         ):
             raise SystemExit("installed Gate composition opening Lean export changed")
+        if circle_factor is not None and (
+            not args.circle_factor_output.is_file() or
+            args.circle_factor_output.read_text() != circle_factor
+        ):
+            raise SystemExit("installed Gate circle factor Lean export changed")
     else:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(result)
@@ -836,6 +934,9 @@ def main() -> None:
         if composition_opening is not None:
             args.composition_opening_output.parent.mkdir(parents=True, exist_ok=True)
             args.composition_opening_output.write_text(composition_opening)
+        if circle_factor is not None:
+            args.circle_factor_output.parent.mkdir(parents=True, exist_ok=True)
+            args.circle_factor_output.write_text(circle_factor)
 
 
 if __name__ == "__main__":

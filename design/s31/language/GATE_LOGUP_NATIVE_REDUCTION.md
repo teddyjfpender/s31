@@ -524,6 +524,44 @@ last-tree extraction, chunk reconstruction and comparison source statements.
 It leaves native circle arithmetic, PCS authentication, FRI and all-row
 soundness as explicit obligations.
 
+## The OODS circle factor from the transcript seed
+
+The core verifier draws a QM31 `oods_seed`, maps it to a circle point, and
+uses the point's x-coordinate after `composition_log_size - 2` doublings as
+the composition reconstruction factor. For seed `t`, the map is defined when
+`d = 1+t²` is nonzero:
+
+```text
+point.x = (1-t²) / d
+point.y = 2t / d
+x₀ = point.x
+xₙ₊₁ = 2xₙ² - 1
+X = x_(composition_log_size-2)
+```
+
+For example, `t=1` gives the on-circle point `(0,1)`. Its first doubled
+x-coordinate is `−1`, and its second is `1`; every later doubled
+x-coordinate stays `1`. At composition log size 10, the extractor therefore
+uses `X=1` and reconstructs `A+B`. The example illustrates the arithmetic,
+not a claimed transcript draw.
+
+[`DirectGateCircleFactor.lean`](../../../formal/s31/S31/Gadgets/Air/DirectGateCircleFactor.lean)
+proves the seed-derived point is on the circle when `d≠0`, that doubling
+preserves the circle equation, and that the x-coordinate follows this exact
+recurrence for any number of doubles.
+[`GeneratedDirectGateCircleFactor.lean`](../../../formal/s31/S31/Gadgets/Air/GeneratedDirectGateCircleFactor.lean)
+substitutes the seed-indexed factor into the accepted composition-tree
+equation. The exporter checks the native seed/point path, rational map,
+doubling, and factor selection; mutation tests change each path and require
+rejection.
+
+The native unchecked wrapper currently uses `catch unreachable` if `d=0`;
+its checked form returns division by zero, including for `t=i`. The Lean
+theorem states `d≠0` explicitly. A future native hardening step can make
+the verifier reject the exceptional seed rather than abort. The theorem also
+does not establish that the transcript seed is unpredictable or that PCS/FRI
+authenticates the opening.
+
 Recheck the bounded export and theorem with:
 
 ```sh
@@ -533,7 +571,8 @@ python3 scripts/export_s31_direct_gate_bytecode_arithmetic.py PACKAGE \
   --composition-output formal/s31/S31/Gadgets/Air/GeneratedDirectGateComposition.lean \
   --transcript-output formal/s31/S31/Gadgets/Air/GeneratedDirectGateTranscriptParams.lean \
   --oods-openings-output formal/s31/S31/Gadgets/Air/GeneratedDirectGateOodsOpenings.lean \
-  --composition-opening-output formal/s31/S31/Gadgets/Air/GeneratedDirectGateCompositionOpening.lean --check
+  --composition-opening-output formal/s31/S31/Gadgets/Air/GeneratedDirectGateCompositionOpening.lean \
+  --circle-factor-output formal/s31/S31/Gadgets/Air/GeneratedDirectGateCircleFactor.lean --check
 python3 -m unittest src/frontends/s31/tests/python/test_gate_bytecode_arithmetic.py
 (cd formal/s31 && lake build S31.Gadgets.Air.GeneratedDirectGateBytecodeLogUp)
 (cd formal/s31 && lake build S31.Gadgets.Air.DirectGateOodsMask)
@@ -541,7 +580,11 @@ python3 -m unittest src/frontends/s31/tests/python/test_gate_bytecode_arithmetic
 (cd formal/s31 && lake build S31.Gadgets.Air.GeneratedDirectGateTranscriptParams)
 (cd formal/s31 && lake build S31.Gadgets.Air.GeneratedDirectGateOodsOpenings)
 (cd formal/s31 && lake build S31.Gadgets.Air.GeneratedDirectGateCompositionOpening)
+(cd formal/s31 && lake build S31.Gadgets.Air.GeneratedDirectGateCircleFactor)
 zig test --dep stwo_utils \
   -Mroot=src/frontends/s31/tests/proofs/gate_mask_native_test.zig \
   -Mstwo_utils=deps/stwo-zig/src/core/utils.zig
+zig test --dep stwo_circle \
+  -Mroot=src/frontends/s31/tests/proofs/gate_circle_factor_native_test.zig \
+  -Mstwo_circle=deps/stwo-zig/src/core/circle.zig
 ```

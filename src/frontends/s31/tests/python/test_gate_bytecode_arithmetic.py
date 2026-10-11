@@ -14,6 +14,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 from export_s31_direct_gate_bytecode_arithmetic import (  # noqa: E402
     BUNDLE, check_composition_source_contract,
     check_composition_opening_source_contract,
+    check_circle_factor_source_contract,
     check_transcript_parameter_source_contract, check_oods_opening_source_contract,
     decoded_program, evaluate_row,
     gate_program,
@@ -355,6 +356,29 @@ class GateBytecodeArithmeticTest(unittest.TestCase):
             check(core, proof, types, resident, components,
                   field.replace("QM31.fromU32Unchecked(0, 0, 1, 0)",
                                 "QM31.fromU32Unchecked(0, 1, 0, 0)"))
+
+    def test_oods_seed_circle_factor_source(self) -> None:
+        engine = ROOT / "deps/stwo-zig/src/core"
+        core = (engine / "verifier.zig").read_text()
+        circle = (engine / "circle.zig").read_text()
+        proof = (engine / "proof.zig").read_text()
+        check_circle_factor_source_contract(core, circle, proof)
+        with self.assertRaisesRegex(ValueError, "native OODS seed/point path changed"):
+            check_circle_factor_source_contract(
+                core.replace("secureFieldPointFromRandomSeed(oods_seed)",
+                             "secureFieldPointFromRandomSeed(other_seed)"), circle, proof)
+        with self.assertRaisesRegex(ValueError, "native OODS seed-to-circle map changed"):
+            check_circle_factor_source_contract(
+                core, circle.replace("const y = t.add(t).mul(one_plus_t_square_inv);",
+                                     "const y = t.mul(one_plus_t_square_inv);"), proof)
+        with self.assertRaisesRegex(ValueError, "native circle repeated-double arithmetic changed"):
+            check_circle_factor_source_contract(
+                core, circle.replace("out = out.double();", "out = out.add(self);"), proof)
+        with self.assertRaisesRegex(ValueError, "native composition factor selection changed"):
+            check_circle_factor_source_contract(
+                core, circle,
+                proof.replace("point.repeatedDouble(parent_log - 2).x",
+                              "point.repeatedDouble(parent_log - 1).x"))
 
     def test_changed_installed_bundle_is_rejected(self) -> None:
         mutation = bytearray(self.bundle)
