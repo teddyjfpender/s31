@@ -80,8 +80,15 @@ is rejected.
 
 `orderedPositions` now models that depth-first n-ary order. The path of each
 position is computed by the existing `nominalPath`, rather than being supplied
-independently. `orderedRootLeaves_paths` identifies the complete rooted paths
-of the ordered leaves with those of the path-injectivity theorem.
+independently. `orderedPositions_complete` proves that every leaf position is
+emitted, and `orderedPositions_nodup` proves that no position is emitted twice,
+even for a raw tree with duplicate sibling tags. `orderedRootLeaves_paths`
+identifies the complete rooted paths of the ordered leaves with those of the
+path-injectivity theorem. Under `WellTagged`,
+`orderedRootLeaves_paths_nodup` proves the emitted paths have no duplicates;
+`orderedRootLeaves_paths_complete` proves every leaf position contributes its
+rooted path.
+
 `binaryChain` converts any nonempty ordered leaf list into a right-associated
 binary product. `binaryChain_flatten` and
 `binaryOfOrderedLeaves_flatten` prove that `RecordBoundary.flatten` returns
@@ -141,8 +148,8 @@ output first-appearance order, and canonical descriptor hashing separately.
 1. Prove native `typeTree` and `matchingPath` acceptance instantiates the
    ordered n-ary model, including node-size and depth limits, identifier
    syntax, canonical JSON, first-order leaf widths, and descriptor cursor
-   coverage. Prove `orderedPositions` contains each valid leaf position
-   exactly once to carry path injectivity to the complete emitted list.
+   coverage. The Lean walk's position coverage and duplicate freedom are
+   proved; their correspondence to the native walk remains open.
 2. Prove canonical statement parsing, SHA-256 ABI digest/key binding,
    duplicate-key rejection, M31 range checks, alias equality, and the
    eight-word limit against the production verifier.

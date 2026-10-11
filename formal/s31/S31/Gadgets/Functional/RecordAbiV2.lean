@@ -98,10 +98,7 @@ def TaggedPublicBlock.erase (leaf : TaggedPublicBlock) : WordBlock Nat :=
 theorem concatBlocks_erase_tags (leaves : List TaggedPublicBlock) :
     concatBlocks (leaves.map TaggedPublicBlock.erase) =
       leaves.flatMap (fun leaf => leaf.block.words) := by
-  induction leaves with
-  | nil => rfl
-  | cons head tail ih =>
-      simp [concatBlocks, TaggedPublicBlock.erase, ih]
+  simp [concatBlocks, TaggedPublicBlock.erase, List.flatMap_map]
 
 /-- Every word in a native-validated public bit leaf is exactly zero or one. -/
 theorem tagged_public_bit_range (leaf : TaggedPublicBlock)
@@ -337,6 +334,29 @@ def orderedPositions : (tree : NominalTree) → List (LeafPosition tree)
       (List.finRange arity).flatMap fun index =>
         (orderedPositions (child index)).map fun tail => ⟨index, tail⟩
 
+/-- The depth-first walk emits every leaf position, including positions in
+arbitrarily nested children. This does not require unique sibling tags. -/
+theorem orderedPositions_complete (tree : NominalTree)
+    (position : LeafPosition tree) : position ∈ orderedPositions tree := by
+  induction tree with
+  | leaf =>
+      cases position
+      simp [orderedPositions]
+  | node arity tag child ih =>
+      rcases position with ⟨index, tail⟩
+      simp only [orderedPositions, List.mem_flatMap, List.mem_map]
+      exact ⟨index, List.mem_finRange index, tail, ih index tail, rfl⟩
+
+/-- The depth-first walk emits each leaf position at most once. This holds
+even for a raw tree with duplicate sibling tags or empty nodes. -/
+theorem orderedPositions_nodup (tree : NominalTree) :
+    (orderedPositions tree).Nodup := by
+  induction tree with
+  | leaf => simp [orderedPositions]
+  | node arity tag child ih =>
+      simpa only [orderedPositions, List.sigma] using
+        (List.nodup_finRange arity).sigma (fun index => ih index)
+
 /-- Every emitted path is the already proved injective `nominalPath` of the
 corresponding ordered leaf position; values do not influence its path. -/
 def orderedNominalLeaves {α : Type} (tree : NominalTree)
@@ -355,6 +375,27 @@ theorem orderedRootLeaves_paths {α : Type} (root : String)
       (orderedPositions tree).map (rootedNominalPath root tree) := by
   simp [orderedRootLeaves, orderedNominalLeaves, rootedNominalPath,
     List.map_map]
+
+/-- For a locally validated tree, all complete paths emitted by the ordered
+walk are distinct. Combined with `orderedPositions_complete`, this covers
+every leaf position exactly once. -/
+theorem orderedRootLeaves_paths_nodup {α : Type} (root : String)
+    (tree : NominalTree) (values : LeafPosition tree → α)
+    (valid : WellTagged tree) :
+    ((orderedRootLeaves root tree values).map Prod.fst).Nodup := by
+  rw [orderedRootLeaves_paths]
+  exact (orderedPositions_nodup tree).map
+    (rootedNominalPath_injective root tree valid)
+
+/-- Every leaf position contributes its complete rooted path to the
+emitted list. -/
+theorem orderedRootLeaves_paths_complete {α : Type} (root : String)
+    (tree : NominalTree) (values : LeafPosition tree → α)
+    (position : LeafPosition tree) :
+    rootedNominalPath root tree position ∈
+      (orderedRootLeaves root tree values).map Prod.fst := by
+  rw [orderedRootLeaves_paths]
+  exact List.mem_map.mpr ⟨position, orderedPositions_complete tree position, rfl⟩
 
 /-- Any nonempty first-order leaf sequence has a canonical right-associated
 binary product. Parenthesization contributes no AIR arithmetic. -/
