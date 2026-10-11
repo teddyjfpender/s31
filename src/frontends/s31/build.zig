@@ -101,6 +101,11 @@ pub fn build(b: *std.Build) void {
     const many_call_source_tests = b.addRunArtifact(b.addTest(.{ .root_module = many_call_source_root }));
     b.step("test-bounded-call-source", "Test source-only bounded multi-call admission")
         .dependOn(&many_call_source_tests.step);
+    const mixed_call_source_root = localEntry(b, "language/bounded_call_admission_v2.zig", target, optimize);
+    mixed_call_source_root.addImport("stwo_core", core);
+    const mixed_call_source_tests = b.addRunArtifact(b.addTest(.{ .root_module = mixed_call_source_root }));
+    b.step("test-mixed-call-source-v2", "Test source-only mixed square/add and mix4 call admission")
+        .dependOn(&mixed_call_source_tests.step);
     const bounded_manifest_root = localEntry(b, "entry/bounded_component_manifest.zig", target, optimize);
     bounded_manifest_root.addImport("stwo_core", core);
     bounded_manifest_root.addImport("stwo_circuit_frontend", circuit);

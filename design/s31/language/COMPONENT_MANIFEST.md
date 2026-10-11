@@ -312,6 +312,11 @@ lookup relations against live handles. The public engine
 `SelectedSchedule` remains mutable and is not independently authenticated
 outside the sealed S31 wrapper.
 
+The [source-only Mix4 V2 admission](MIX4_SOURCE_ADMISSION_V2.md) records a
+second, coupled-lane chip kind for canonical `square; add_const; mix4`
+repeats. It is a separate in-memory plan and does not change any V1/V4
+proof admission, selected component, or manifest digest.
+
 The fixed cases to remove for a general chip API are concrete:
 
 1. `bounded_call_admission.zig` admits only the current repeated
