@@ -42,3 +42,8 @@ predicted 90% proof interval coverage ≥80%. Cold/startup and build walls are
 descriptive only. These are one-host, one-stack transfer checks of the
 call-count-only cost model; they do not compare against Cairo or establish
 general statistical coverage.
+
+The single native run and its two preregistered gate misses are reported in
+[`MIXED_COST_V7_TRANSFER_RESULT.md`](../../../../../design/s31/measurements/MIXED_COST_V7_TRANSFER_RESULT.md).
+The committed score stays failed. With the local raw bundle, run the auditor
+command above without `--write` to replay the exact proofs again.
