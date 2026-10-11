@@ -81,5 +81,28 @@ deterministic inputs before using those finer timers in a model.
 
 Static checks: `python3 -B
 src/frontends/s31/benchmarks/paired_record_v2/test_diagnose_stages_v1.py`.
-A native source-bound smoke test and proof-byte compatibility run remain
-required before treating the new Zig timing code as validated.
+
+## Native smoke, 2026-10-11
+
+The post-timing-change eight-profile [proof-byte gate](OLD_FAMILY_PROOF_BYTE_GATE_2026-10-11.md)
+passed at S31 `6d5edb7`: every old-family mixed proof length and SHA-256
+matched the twice-repeated baseline. New ReleaseFast builds at S31 runtime
+commit `51d9554` and engine `7d544c6` then proved and externally verified
+one assignment each from the frozen paired-record v2 N3 and N8 held-out
+sources. The only uncommitted change during those builds was regenerated
+`formal/s31/proof-inventory.json`, outside the runtime/compiler source set.
+The exact report, binary, source, assignment, statement, proof, and log hashes
+are in the [N3](language/mixed-stage-diagnostic-v1-n3-smoke.json) and
+[N8](language/mixed-stage-diagnostic-v1-n8-smoke.json) reports.
+
+| Calls | Package timer | Opaque native prove | Prover process | External verifier process | First verified process sum | Proof bytes |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 3 | 132.4 ms | 126.3 ms | 703.7 ms | 406.8 ms | 1,110.5 ms | 96,861 |
+| 8 | 310.7 ms | 303.1 ms | 725.0 ms | 423.8 ms | 1,148.8 ms | 174,746 |
+
+These are two **single-witness smoke tests**, not an estimator or a new
+paired comparison. They validate the stage line, source/manifest/statement
+binding, saved proof, and external verifier path. The opaque native call
+dominates the package timer in both cases, while process overhead and native
+verification are material parts of first-verified wall time. Repeated,
+predeclared runs are required before fitting a mixed whole-prover cost model.
