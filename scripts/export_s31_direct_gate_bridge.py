@@ -70,9 +70,11 @@ def _nat_list(values: list[int]) -> str:
     return "[" + ", ".join(str(value) for value in values) + "]"
 
 
-def _source_term(instructions: list[dict], index: int = 0) -> str:
+def _source_term(instructions: list[dict], output: int, index: int = 0) -> str:
     if index == len(instructions):
-        return "(.var ⟨0, by decide⟩)"
+        if not 1 <= output <= len(instructions):
+            raise ValueError("bounded bridge output is not a let wire")
+        return f"(.var ⟨{len(instructions) - output}, by decide⟩)"
     instruction = instructions[index]
     if instruction["id"] != index + 1:
         raise ValueError("nonsequential source SSA in Lean bridge")
@@ -84,10 +86,11 @@ def _source_term(instructions: list[dict], index: int = 0) -> str:
 
     operation = "mul" if instruction["op"] == "mul" else "add"
     value = f"(.{operation} {var(instruction['lhs'])} {var(instruction['rhs'])})"
-    return f"(.letValue {value} {_source_term(instructions, index + 1)})"
+    return f"(.letValue {value} {_source_term(instructions, output, index + 1)})"
 
 
-def _certificate(instructions: list[dict], *, flip_first: bool = False) -> str:
+def _certificate(instructions: list[dict], output: int,
+                 *, flip_first: bool = False) -> str:
     rows = []
     for index, instruction in enumerate(instructions):
         multiply = instruction["op"] == "mul"
@@ -97,7 +100,33 @@ def _certificate(instructions: list[dict], *, flip_first: bool = False) -> str:
             instruction["id"], instruction["lhs"], instruction["rhs"],
             "true" if multiply else "false"))
     return "{ instructions := [\n      " + ",\n      ".join(rows) + \
-        f"],\n    output := {instructions[-1]['id']} }}"
+        f"],\n    output := {output} }}"
+
+
+def _normalized_program(relation: dict) -> str:
+    """Render the captured relation, not a source-derived expected Program."""
+    if (set(relation) != {"version", "name", "inputs", "nodes", "assertions",
+                          "public_outputs"} or
+            len(relation["inputs"]) != 1 or relation["assertions"] != [] or
+            len(relation["public_outputs"]) != 1):
+        raise ValueError("Lean bridge normalized Program is outside fixed schema")
+    source_input = relation["inputs"][0]
+    if (source_input["kind"] != "m31" or source_input["length"] != 4 or
+            source_input["visibility"] != "public"):
+        raise ValueError("Lean bridge normalized input differs from four public M31 lanes")
+    nodes = []
+    for node in relation["nodes"]:
+        if node["op"] not in {"add", "mul"}:
+            raise ValueError("Lean bridge normalized node is not add or mul")
+        nodes.append("{ name := %s, op := .%s, lhs := some %s, rhs := some %s }" % (
+            json.dumps(node["name"]), node["op"],
+            json.dumps(node["lhs"]), json.dumps(node["rhs"])))
+    return ("{ version := %d, name := %s, inputs := "
+            "[{ name := %s, shape := ⟨.m31, 4⟩, visibility := .«public» }], "
+            "nodes := [%s], assertions := [], outputs := [%s] }" % (
+                relation["version"], json.dumps(relation["name"]),
+                json.dumps(source_input["name"]), ", ".join(nodes),
+                json.dumps(relation["public_outputs"][0])))
 
 
 def _native_rows(checked: dict, *, change_address: bool = False) -> str:
@@ -255,6 +284,7 @@ def render_bridge(package: Path) -> str:
     topology_digest = hashlib.sha256(topology_bytes).hexdigest()
     if topology_digest != checked["gate_topology_sha256"]:
         raise ValueError("checked topology digest differs from exact topology bytes")
+    relation = parse_canonical_json(normalized_bytes, "source.s31.json")
     topology = parse_canonical_json(topology_bytes, "gate-topology.json")
     if topology["n_vars"] != 512:
         raise ValueError("Lean bridge only covers 512 direct variables")
@@ -265,23 +295,37 @@ def render_bridge(package: Path) -> str:
     changed_public_addresses[5], changed_public_addresses[6] = (
         changed_public_addresses[6], changed_public_addresses[5])
     instructions = checked["source_ssa"]["instructions"]
-    if not instructions or checked["source_ssa"]["output"] != instructions[-1]["id"]:
-        raise ValueError("Lean bridge requires final SSA output")
+    output_id = checked["source_ssa"]["output"]
+    if not instructions or not 1 <= output_id <= len(instructions):
+        raise ValueError("Lean bridge requires a bound let output")
     source_input_uses = sum((instruction["lhs"] == 0) + (instruction["rhs"] == 0)
                             for instruction in instructions)
+    selected_output_uses = 4 + sum(
+        (instruction["lhs"] == output_id) + (instruction["rhs"] == output_id)
+        for instruction in instructions)
     counts = checked["gate_counts"]
     public_names = (
         checked["key_core"]["name"],
         checked["source_ssa"]["input"],
         checked["source_ssa"]["output_name"],
     )
-    if any(not name.isascii() for name in public_names):
-        raise ValueError("Lean byte bridge requires ASCII public names")
+    all_names = [relation["inputs"][0]["name"],
+                 *(node["name"] for node in relation["nodes"])]
+    if any(not name.isascii() for name in (*public_names, *all_names)):
+        raise ValueError("Lean byte bridge requires ASCII names")
     lean_names = ", ".join(f"token {json.dumps(name)}" for name in public_names)
-    source_term = _source_term(instructions)
+    lean_wire_tokens = ", ".join(f"token {json.dumps(name)}" for name in all_names)
+    lean_wire_names = ", ".join(json.dumps(name) for name in all_names)
+    normalized_program = _normalized_program(relation)
+    changed_relation = dict(relation)
+    changed_relation["nodes"] = [dict(node) for node in relation["nodes"]]
+    changed_relation["nodes"][0]["op"] = (
+        "add" if changed_relation["nodes"][0]["op"] == "mul" else "mul")
+    changed_program = _normalized_program(changed_relation)
+    source_term = _source_term(instructions, output_id)
     changed = [dict(node) for node in instructions]
     changed[0]["op"] = "add" if changed[0]["op"] == "mul" else "mul"
-    changed_source = _source_term(changed)
+    changed_source = _source_term(changed, output_id)
     byte_list = _byte_list(source_bytes)
     changed_bytes = _mutated_source_bytes(source_bytes, instructions[0]["op"])
     changed_byte_list = _byte_list(changed_bytes)
@@ -310,6 +354,7 @@ import S31.Gadgets.Functional.SSANormalizedBytes
 import S31.Gadgets.Functional.SSAAirColumnCells
 import S31.Gadgets.Functional.SSAOutputAirCells
 import S31.Gadgets.Functional.SSAInputAirCells
+import S31.Gadgets.Functional.SSAGeneralNamedExecution
 
 set_option maxRecDepth 4096
 
@@ -323,6 +368,10 @@ open S31.Functional.SSANormalizedBytes
 open S31.Functional.SSAAirColumnCells
 open S31.Functional.SSAOutputAirCells
 open S31.Functional.SSAInputAirCells
+open S31.Functional.SSAGeneralNamedTopology
+open S31.Functional.SSAGeneralNamedExecution
+open S31.Functional.SSANativeTopologyCheck
+open S31.Functional.SSANamedExecution (laneValue)
 
 def sourceBytes : List Nat := {byte_list}
 -- Informational digest from the outer package checker; Lean does not hash sourceBytes.
@@ -338,10 +387,29 @@ def source : Source 1 :=
   {source_term}
 
 def certificate : Certificate :=
-  {_certificate(instructions)}
+  {_certificate(instructions, output_id)}
+
+-- This Program is rendered from the captured normalized JSON, while the
+-- names below are independently compared to Lean's parse of sourceBytes.
+def programName : String := {json.dumps(public_names[0])}
+def wireNames : List String := [{lean_wire_names}]
+def normalizedProgram : S31.Program :=
+  {normalized_program}
+def changedOpcodeProgram : S31.Program :=
+  {changed_program}
 
 def observedRows : List NativeSourceRow :=
   {_native_rows(checked)}
+
+-- Physical source wire 0 is packed at circuit address 22. This projection
+-- preserves the observed gate order and operation flags while renumbering
+-- physical source addresses to the logical SSA wire IDs.
+def projectedGates : List Gate :=
+  observedRows.map (fun row =>
+    {{ in0 := row.in0 - 22, in1 := row.in1 - 22,
+       out := row.out - 22, multiply := row.multiply }})
+def changedOpcodeGates : List Gate :=
+  projectedGates.modifyHead (fun gate => {{ gate with multiply := !gate.multiply }})
 
 def observedColumnCells : List ColumnCell :=
   {_air_column_rows(checked, topology)}
@@ -400,6 +468,9 @@ theorem bytes_parse_public_names :
     (parseBytes sourceBytes).map
       (fun p => (p.circuitName, p.inputName, p.outputName)) =
       some ({lean_names}) := by decide
+theorem bytes_parse_all_wire_names :
+    (parseBytes sourceBytes).map Parsed.wireNames =
+      some [{lean_wire_tokens}] := by decide
 theorem normalized_bytes_check :
     checkRelation sourceBytes normalizedBytes = some certificate := by decide
 theorem changed_normalized_opcode_rejected :
@@ -413,6 +484,16 @@ theorem source_ssa_checked : check source certificate = some () := by decide
 theorem deterministic_emitter_matches : compile source = certificate := by decide
 theorem source_native_rows_match :
     observedRows = expectedRows certificate observedAddRows := by decide
+theorem named_program_source_rows_checked :
+    checkNamedSourceRows source certificate programName wireNames
+      normalizedProgram projectedGates =
+      some (List.range (certificate.instructions.length + 1)) := by decide
+theorem changed_named_opcode_rejected :
+    checkNamedSourceRows source certificate programName wireNames
+      changedOpcodeProgram projectedGates = none := by decide
+theorem changed_projected_gate_rejected :
+    checkNamedSourceRows source certificate programName wireNames
+      normalizedProgram changedOpcodeGates = none := by decide
 theorem observed_source_columns_match :
     observedColumnCells = expectedCells certificate observedAddRows := by decide
 theorem changed_selector_cell_rejected :
@@ -425,8 +506,8 @@ theorem changed_multiplicity_cell_rejected :
     changedMultiplicityCells ≠ expectedCells certificate observedAddRows := by decide
 theorem observed_output_cells_match :
     observedOutputCells = expectedOutputCells certificate observedAddRows := by decide
-theorem selected_source_output_has_four_mask_reads :
-    sourceUses certificate certificate.output = 4 := by decide
+theorem selected_source_output_use_count :
+    sourceUses certificate certificate.output = {selected_output_uses} := by decide
 theorem changed_output_mask_selector_rejected :
     changedOutputMaskSelector ≠ expectedOutputCells certificate observedAddRows := by decide
 theorem changed_output_mask_source_rejected :
@@ -467,7 +548,7 @@ def changedSource : Source 1 :=
   {changed_source}
 
 def changedOpcode : Certificate :=
-  {_certificate(instructions, flip_first=True)}
+  {_certificate(instructions, output_id, flip_first=True)}
 
 theorem changed_bytes_parse_changed_opcode :
     (parseBytes changedSourceBytes).map Parsed.certificate =
@@ -497,6 +578,40 @@ theorem checked_bytes_sound (input : Lanes) :
     executeNormalized certificate input = denotation sourceBytes input :=
   checked_relation_sound sourceBytes normalizedBytes certificate input
     normalized_bytes_check
+
+/-- The captured normalized JSON runs through the actual named evaluator.
+The admission test checks the package before rendering these constants;
+Lean's byte and structural checks bind this concrete generated instance. -/
+theorem checked_named_environment (assignment : S31.Assignment)
+    (input : Lanes)
+    (hprivate : assignment.privateInputs = [])
+    (hinput : S31.assigned assignment.publicInputs (nameAt wireNames 0)
+      ⟨.m31, 4⟩ = .ok (laneValue input)) :
+    ∃ env,
+      normalizedProgram.environment assignment = .ok env ∧
+      S31.lookup env (nameAt wireNames certificate.output) =
+        some (laneValue (source.value (fun _ => input))) :=
+  checked_named_environment_sound wireNames source certificate programName
+    normalizedProgram projectedGates
+    (List.range (certificate.instructions.length + 1)) assignment input
+    named_program_source_rows_checked hprivate hinput
+
+/-- The named result is also the denotation of the captured source bytes,
+because Lean separately checked the exact normalized JSON byte sequence. -/
+theorem checked_named_source_bytes (assignment : S31.Assignment)
+    (input : Lanes)
+    (hprivate : assignment.privateInputs = [])
+    (hinput : S31.assigned assignment.publicInputs (nameAt wireNames 0)
+      ⟨.m31, 4⟩ = .ok (laneValue input)) :
+    ∃ env,
+      normalizedProgram.environment assignment = .ok env ∧
+      (∃ value, S31.lookup env (nameAt wireNames certificate.output) =
+        some (laneValue value) ∧ denotation sourceBytes input = some value) := by
+  obtain ⟨env, henv, hlookup⟩ :=
+    checked_named_environment assignment input hprivate hinput
+  refine ⟨env, henv, source.value (fun _ => input), hlookup, ?_⟩
+  rw [← checked_bytes_sound input]
+  exact (checked_instance_sound input)
 
 /-- Exact source selectors, addresses and output use counts from the exported
 preprocessed cells agree with the SSA-derived row plan. The byte relation

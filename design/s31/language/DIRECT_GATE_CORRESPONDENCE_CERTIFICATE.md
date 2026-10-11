@@ -118,7 +118,26 @@ embedded `source.s31.json` bytes. This catches added fields, duplicate keys,
 changed visibility or output, reordered nodes, changed operands or opcodes,
 and any other byte change in the bounded relation. It separately checks the
 deterministic source-term emitter and each observed source gate's circuit
-address and grouped AIR row. [`SSAAirColumnCells.lean`](../../../formal/s31/S31/Gadgets/Functional/SSAAirColumnCells.lean)
+address and grouped AIR row.
+
+The bridge also renders a literal Lean `Program` from the **captured
+normalized JSON**, and a complete wire-name table from its input and node
+names. Lean reparses the captured source bytes and checks that every name in
+that table matches the source order. It projects the ordered physical source
+gates from circuit addresses `22+i` to logical SSA wire IDs `i`, then
+requires `checkNamedSourceRows` to accept the source term, certificate,
+captured `Program`, name table, and projected gate list together. A changed
+normalized opcode or projected gate opcode fails this composite check. The
+arbitrary-name execution theorem runs that accepted `Program` through S31's
+real `Program.environment` and proves its result agrees with the exact
+source-byte denotation for every four-lane input. The generator handles a
+returned earlier let wire as well as the final let; a three-operation
+program returning its first let was generated and Lean checked separately.
+This is a concrete package-to-Lean check. The Python exporter and Zig
+inspector remain outside the Lean proof, and physical address 22 is specific
+to this direct-gate profile.
+
+[`SSAAirColumnCells.lean`](../../../formal/s31/S31/Gadgets/Functional/SSAAirColumnCells.lean)
 derives the expected selector, three wire addresses, and output use count
 from the parsed SSA and checks them against the eight cells that the exporter
 reads from `gate-topology.json` at those rows. For the example, source wire

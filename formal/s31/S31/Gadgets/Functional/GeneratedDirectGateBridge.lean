@@ -7,6 +7,7 @@ import S31.Gadgets.Functional.SSANormalizedBytes
 import S31.Gadgets.Functional.SSAAirColumnCells
 import S31.Gadgets.Functional.SSAOutputAirCells
 import S31.Gadgets.Functional.SSAInputAirCells
+import S31.Gadgets.Functional.SSAGeneralNamedExecution
 
 set_option maxRecDepth 4096
 
@@ -20,6 +21,10 @@ open S31.Functional.SSANormalizedBytes
 open S31.Functional.SSAAirColumnCells
 open S31.Functional.SSAOutputAirCells
 open S31.Functional.SSAInputAirCells
+open S31.Functional.SSAGeneralNamedTopology
+open S31.Functional.SSAGeneralNamedExecution
+open S31.Functional.SSANativeTopologyCheck
+open S31.Functional.SSANamedExecution (laneValue)
 
 def sourceBytes : List Nat := [
     47, 47, 32, 70, 105, 114, 115, 116, 45, 111, 114, 100, 101, 114, 32, 114,
@@ -155,11 +160,30 @@ def certificate : Certificate :=
       { id := 2, lhs := 1, rhs := 1, multiply := true }],
     output := 2 }
 
+-- This Program is rendered from the captured normalized JSON, while the
+-- names below are independently compared to Lean's parse of sourceBytes.
+def programName : String := "functional_square4"
+def wireNames : List String := ["x", "once", "result"]
+def normalizedProgram : S31.Program :=
+  { version := 1, name := "functional_square4", inputs := [{ name := "x", shape := ⟨.m31, 4⟩, visibility := .«public» }], nodes := [{ name := "once", op := .mul, lhs := some "x", rhs := some "x" }, { name := "result", op := .mul, lhs := some "once", rhs := some "once" }], assertions := [], outputs := ["result"] }
+def changedOpcodeProgram : S31.Program :=
+  { version := 1, name := "functional_square4", inputs := [{ name := "x", shape := ⟨.m31, 4⟩, visibility := .«public» }], nodes := [{ name := "once", op := .add, lhs := some "x", rhs := some "x" }, { name := "result", op := .mul, lhs := some "once", rhs := some "once" }], assertions := [], outputs := ["result"] }
+
 def observedRows : List NativeSourceRow :=
   [
     { circuitRow := 6, traceRow := 502, multiply := true, in0 := 22, in1 := 22, out := 23 },
     { circuitRow := 7, traceRow := 503, multiply := true, in0 := 23, in1 := 23, out := 24 }
   ]
+
+-- Physical source wire 0 is packed at circuit address 22. This projection
+-- preserves the observed gate order and operation flags while renumbering
+-- physical source addresses to the logical SSA wire IDs.
+def projectedGates : List Gate :=
+  observedRows.map (fun row =>
+    { in0 := row.in0 - 22, in1 := row.in1 - 22,
+       out := row.out - 22, multiply := row.multiply })
+def changedOpcodeGates : List Gate :=
+  projectedGates.modifyHead (fun gate => { gate with multiply := !gate.multiply })
 
 def observedColumnCells : List ColumnCell :=
   [
@@ -434,6 +458,9 @@ theorem bytes_parse_public_names :
     (parseBytes sourceBytes).map
       (fun p => (p.circuitName, p.inputName, p.outputName)) =
       some (token "functional_square4", token "x", token "result") := by decide
+theorem bytes_parse_all_wire_names :
+    (parseBytes sourceBytes).map Parsed.wireNames =
+      some [token "x", token "once", token "result"] := by decide
 theorem normalized_bytes_check :
     checkRelation sourceBytes normalizedBytes = some certificate := by decide
 theorem changed_normalized_opcode_rejected :
@@ -447,6 +474,16 @@ theorem source_ssa_checked : check source certificate = some () := by decide
 theorem deterministic_emitter_matches : compile source = certificate := by decide
 theorem source_native_rows_match :
     observedRows = expectedRows certificate observedAddRows := by decide
+theorem named_program_source_rows_checked :
+    checkNamedSourceRows source certificate programName wireNames
+      normalizedProgram projectedGates =
+      some (List.range (certificate.instructions.length + 1)) := by decide
+theorem changed_named_opcode_rejected :
+    checkNamedSourceRows source certificate programName wireNames
+      changedOpcodeProgram projectedGates = none := by decide
+theorem changed_projected_gate_rejected :
+    checkNamedSourceRows source certificate programName wireNames
+      normalizedProgram changedOpcodeGates = none := by decide
 theorem observed_source_columns_match :
     observedColumnCells = expectedCells certificate observedAddRows := by decide
 theorem changed_selector_cell_rejected :
@@ -459,7 +496,7 @@ theorem changed_multiplicity_cell_rejected :
     changedMultiplicityCells ≠ expectedCells certificate observedAddRows := by decide
 theorem observed_output_cells_match :
     observedOutputCells = expectedOutputCells certificate observedAddRows := by decide
-theorem selected_source_output_has_four_mask_reads :
+theorem selected_source_output_use_count :
     sourceUses certificate certificate.output = 4 := by decide
 theorem changed_output_mask_selector_rejected :
     changedOutputMaskSelector ≠ expectedOutputCells certificate observedAddRows := by decide
@@ -537,6 +574,40 @@ theorem checked_bytes_sound (input : Lanes) :
     executeNormalized certificate input = denotation sourceBytes input :=
   checked_relation_sound sourceBytes normalizedBytes certificate input
     normalized_bytes_check
+
+/-- The captured normalized JSON runs through the actual named evaluator.
+The admission test checks the package before rendering these constants;
+Lean's byte and structural checks bind this concrete generated instance. -/
+theorem checked_named_environment (assignment : S31.Assignment)
+    (input : Lanes)
+    (hprivate : assignment.privateInputs = [])
+    (hinput : S31.assigned assignment.publicInputs (nameAt wireNames 0)
+      ⟨.m31, 4⟩ = .ok (laneValue input)) :
+    ∃ env,
+      normalizedProgram.environment assignment = .ok env ∧
+      S31.lookup env (nameAt wireNames certificate.output) =
+        some (laneValue (source.value (fun _ => input))) :=
+  checked_named_environment_sound wireNames source certificate programName
+    normalizedProgram projectedGates
+    (List.range (certificate.instructions.length + 1)) assignment input
+    named_program_source_rows_checked hprivate hinput
+
+/-- The named result is also the denotation of the captured source bytes,
+because Lean separately checked the exact normalized JSON byte sequence. -/
+theorem checked_named_source_bytes (assignment : S31.Assignment)
+    (input : Lanes)
+    (hprivate : assignment.privateInputs = [])
+    (hinput : S31.assigned assignment.publicInputs (nameAt wireNames 0)
+      ⟨.m31, 4⟩ = .ok (laneValue input)) :
+    ∃ env,
+      normalizedProgram.environment assignment = .ok env ∧
+      (∃ value, S31.lookup env (nameAt wireNames certificate.output) =
+        some (laneValue value) ∧ denotation sourceBytes input = some value) := by
+  obtain ⟨env, henv, hlookup⟩ :=
+    checked_named_environment assignment input hprivate hinput
+  refine ⟨env, henv, source.value (fun _ => input), hlookup, ?_⟩
+  rw [← checked_bytes_sound input]
+  exact (checked_instance_sound input)
 
 /-- Exact source selectors, addresses and output use counts from the exported
 preprocessed cells agree with the SSA-derived row plan. The byte relation
