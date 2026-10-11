@@ -398,7 +398,8 @@ theorem checked_direct_public_boundary_exists
       nativePolynomialRows certificate wire ∧
       InputBoundary certificate (compiledAddRows certificate) wire input ∧
       OutputBoundary certificate (compiledAddRows certificate) wire output ∧
-      wire (address certificate.output) = packM31 output := by
+      wire (address certificate.output) = packM31 output ∧
+      wire 1 = unit ⟨0, by decide⟩ := by
   have hparse : ∃ parsed, parseBytes sourceBytes = some parsed := by
     unfold checkRelation at hcheck
     cases hp : parseBytes sourceBytes with
@@ -440,6 +441,7 @@ theorem checked_direct_public_boundary_exists
         honest_output_boundary certificate (compiledAddRows certificate)
           input output final term1 term2 term3 sum1 sum2 hlen hselected,
         extendedWire_selected certificate input output final
-          term1 term2 term3 sum1 sum2 hselected⟩
+          term1 term2 term3 sum1 sum2 hselected,
+        by simp [wire, extendedWire_lower, lowerValue]⟩
 
 end S31.Functional.Correspondence.HonestPublicBoundaryWire
