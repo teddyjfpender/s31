@@ -65,6 +65,8 @@ def design() -> dict:
                 "sha256-shuffled-per-assignment-index-across-12-programs" or
             value.get("build_mode") != "ReleaseFast" or
             value.get("lowering") != "direct-mixed-general" or
+            value.get("first_verified_boundary") !=
+                "one fresh prover process plus one fresh source-embedded external native verifier process; both wall times include startup; package build and Python orchestration are separate" or
             value.get("minimum_available_disk_bytes_at_phase_start") != 12 * 1024**3 or
             value.get("minimum_available_disk_bytes_before_native_unit") != 8 * 1024**3 or
             value.get("reference_heldout_observations_allowed_in_fit_or_gate_selection") is not False or
@@ -166,8 +168,10 @@ def reference_inventory(cfg: dict) -> tuple[dict, dict[str, set[str]]]:
     if sha(REFERENCE_PATH.read_bytes()) != cfg["reference_protocol_sha256"]:
         raise ValueError("reference protocol changed after frozen v1 study")
     protocol = json.loads(REFERENCE_PATH.read_bytes())
-    if protocol.get("schema") != "s31-mixed-stage-cost-v1-protocol":
-        raise ValueError("wrong reference protocol")
+    if (protocol.get("schema") != "s31-mixed-stage-cost-v1-protocol" or
+            protocol.get("source_template_sha256") !=
+                sha((ROOT / cfg["source_template"]).read_bytes())):
+        raise ValueError("wrong reference protocol or changed record ABI template")
     old = {"source": set(), "assignment": set(), "typed_statement": set()}
     for split in ("train", "heldout"):
         for record in protocol["inventory"][split].values():

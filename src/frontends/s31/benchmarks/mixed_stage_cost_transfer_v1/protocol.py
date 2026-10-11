@@ -87,6 +87,8 @@ def draft() -> dict:
     paths = tools()
     clean_stack(cfg, paths)
     reference, _ = reference_inventory(cfg)
+    if git("rev-parse", "HEAD:deps/stwo-zig") != reference["engine_gitlink_commit"]:
+        raise ValueError("transfer engine differs from reference model engine")
     model_anchor = json.loads(MODEL_ANCHOR.read_bytes())
     if (model_anchor.get("schema") != "s31-mixed-stage-cost-v1-model-freeze" or
             model_anchor.get("model_sha256") != cfg["reference_train_model_sha256"] or
@@ -174,6 +176,8 @@ def check(expected_sha256: str, anchor_commit: str) -> dict:
         raise ValueError("transfer freeze anchor differs from declared protocol")
     value = json.loads(PROTOCOL.read_bytes())
     reference, _ = reference_inventory(cfg)
+    if git("rev-parse", "HEAD:deps/stwo-zig") != reference["engine_gitlink_commit"]:
+        raise ValueError("transfer engine differs from reference model engine")
     model_anchor = json.loads(MODEL_ANCHOR.read_bytes())
     executable = shutil.which("zig")
     if executable is None:
