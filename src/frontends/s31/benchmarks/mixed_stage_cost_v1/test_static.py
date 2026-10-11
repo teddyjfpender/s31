@@ -212,6 +212,32 @@ class ProspectiveMixedCostTests(unittest.TestCase):
                         anchors.check_heldout_report_anchor(*arguments)
                     path.write_bytes(saved)
 
+    def test_training_fit_requires_complete_native_audit(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            out = Path(temporary)
+            (out / "raw.marker").write_bytes(b"sealed raw phase")
+            protocol_sha = "p" * 64
+            root_bytes = canonical(phase_root(out, "train", protocol_sha))
+            (out / "phase-root.json").write_bytes(root_bytes)
+            root_sha = sha(root_bytes)
+            corpus = {"schema": "s31-mixed-stage-cost-v1-audited-corpus",
+                      "split": "train", "protocol_sha256": protocol_sha,
+                      "phase_root_sha256": root_sha,
+                      "records": synthetic_records([1, 3, 5, 7])}
+            corpus_bytes = canonical(corpus)
+            (out / "corpus.json").write_bytes(corpus_bytes)
+            audit = {"schema": "s31-mixed-stage-cost-v1-audit", "split": "train",
+                     "phase_root_sha256": root_sha,
+                     "corpus_sha256": sha(corpus_bytes),
+                     "changed_input_and_result_rejected": True}
+            (out / "audit.json").write_bytes(canonical(audit))
+            phase_anchor = {"split": "train", "protocol_sha256": protocol_sha,
+                            "phase_root_sha256": root_sha}
+            with patch.object(anchors, "anchored", return_value=phase_anchor):
+                with self.assertRaisesRegex(ValueError, "anchored native train audit"):
+                    anchors.fit_train(out, protocol_sha, root_sha, "a" * 40)
+            self.assertFalse((out / "model.json").exists())
+
     def test_tool_inventory_covers_transitive_oracle_and_frontend(self) -> None:
         paths = {path.relative_to(ROOT).as_posix()
                  for path in tool_paths()}

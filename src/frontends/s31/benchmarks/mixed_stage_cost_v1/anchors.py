@@ -109,8 +109,16 @@ def fit_train(train_out: Path, protocol_sha256: str, train_phase_root_sha256: st
             (train_out / "phase-root.json").read_bytes() != canonical(
                 phase_root(train_out, "train", protocol_sha256)) or
             audit.get("corpus_sha256") != sha(corpus_bytes) or
+            audit.get("schema") != "s31-mixed-stage-cost-v1-audit" or
+            audit.get("split") != "train" or
             audit.get("phase_root_sha256") != train_phase_root_sha256 or
+            audit.get("native_verified_proofs") != 400 or
             audit.get("changed_input_and_result_rejected") is not True or
+            audit.get("raw_build_and_process_endpoints_replayed") is not True or
+            audit.get("source_assignment_statement_manifest_and_binary_hashes_replayed") is not True or
+            corpus.get("schema") != "s31-mixed-stage-cost-v1-audited-corpus" or
+            corpus.get("split") != "train" or
+            corpus.get("protocol_sha256") != protocol_sha256 or
             corpus.get("phase_root_sha256") != train_phase_root_sha256):
         raise ValueError("cannot fit before anchored native train audit")
     model_path = train_out / "model.json"
