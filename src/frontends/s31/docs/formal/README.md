@@ -158,3 +158,39 @@ challenge distribution. The source compiler's general parser and specializer
 also need a proof beyond this regenerated concrete certificate. These are
 substantive obligations; [the formal package README](../../../../../formal/s31/README.md)
 tracks the other proved components and the full audit commands.
+
+## A complete modeled 512-row trace
+
+The newer [physical model composition](../../../../../formal/s31/S31/Gadgets/Functional/Correspondence/CheckedPhysicalModeledComposition.md)
+extends the worked path from its selected gates to every direct-Gate physical
+row. For `functional_square4`, the two source nodes and 25 input/output
+boundary gates make **27 projected rows**. A checked constant island supplies
+the other **485 rows**. The two sets have distinct row positions and cover all
+512 positions, including padding and basis-constant gates.
+
+The construction uses three checks in order:
+
+| Check | What it establishes for the model |
+| --- | --- |
+| Exact source-byte admission | A bounded source DAG, its public result, and the source/public physical row positions. |
+| Constant-island certificate | The remaining row positions, correct gate selectors, isolated addresses, coherent constant values, seed values, and zero local arithmetic residuals. |
+| Address ledger | Fixed-address reads equal output multiplicities plus the supplied external feeder/sink addresses. For the pinned square4 fixture, nine external feeder addresses are `2..10`, and both sides have 1,033 events. |
+
+The result is **one synthetic decoded trace**: all selected fixed words match,
+each of its 512 rows satisfies the installed local arithmetic equations, the
+selected output matches the source meaning, and the decoded Gate events
+balance that trace's own external-event fields. The row order matters: source
+and public cells are listed before island cells, while the physical trace is
+ordered by row number. A Lean permutation proof connects those two lists.
+
+These checks construct an honest witness. They do not imply that an arbitrary
+prover's committed rows equal this witness. The island and address-ledger
+checks are supplied premises, and their feeder addresses are not yet proved
+equal to the native public component's events for every program. The
+[independent review](../../../../../design/s31/security/INDEPENDENT_REVIEW_FULL_GATE_COMPOSITION_2026-10-12.md)
+lists the remaining native commitment, lookup, and PCS/FRI joins.
+
+For the checked-in square4 source, a [pinned corollary](../../../../../formal/s31/S31/Gadgets/Functional/Correspondence/PinnedSquare4CompleteModeledTrace.md)
+discharges those three model checks from exact source bytes, 485 checked
+constant rows, and the nine pinned feeder addresses. Its conclusion works for
+every four-lane input. The native commitment and verifier joins remain open.

@@ -10,6 +10,7 @@ import argparse
 import hashlib
 import json
 import re
+import runpy
 import subprocess
 import sys
 import tempfile
@@ -29,6 +30,8 @@ from scripts.riscv_refinement import _skip_lean_string, _strip_lean_comments
 from scripts.riscv_refinement_lib.model import RefinementError
 
 FORMAL = ROOT / "formal/s31"
+PINNED_CONSTANT_TOOL = ROOT / "src/frontends/s31/tools/formal/pinned_constant_values.py"
+PINNED_CONSTANT_FIXTURE = FORMAL / "fixtures/square4-native-physical.json"
 RELATION = "src/frontends/s31/language/relation.zig"
 POSEIDON = "src/frontends/riscv/air/memory_commitment/poseidon2_constants.zig"
 SHA = "src/frontends/riscv/air/guest_precompile/sha256_compression.zig"
@@ -80,6 +83,7 @@ BINDINGS = [
     "src/frontends/s31/build.zig",
     "src/frontends/s31/entry/export_square4_topology.zig",
     "src/frontends/s31/tools/formal/export_square4_topology.zig",
+    "src/frontends/s31/tools/formal/pinned_constant_values.py",
     "src/frontends/s31/language/canonical.zig",
     "src/frontends/s31/language/record_abi.zig",
     "src/frontends/s31/language/relation_compiler.zig",
@@ -91,6 +95,7 @@ BINDINGS = [
     "src/frontends/s31/language/gadgets/integer_division.zig",
     "src/frontends/s31/language/finalization/constant_base.zig",
     "src/frontends/s31/runtime/mvp_runtime.zig",
+    "src/frontends/s31/runtime/public_physical_guard.zig",
     "src/frontends/s31/runtime/component_manifest.zig",
     "src/frontends/s31/runtime/direct_component_preflight.zig",
     "src/frontends/s31/runtime/bounded_component_manifest.zig",
@@ -137,6 +142,7 @@ BINDINGS = [
     "src/frontends/s31/examples/boundary/private_arithmetic_chip_fork.valid.json",
     "src/frontends/s31/tests/acceptance/mixed_boundary/source_pinned_n4.py",
     "src/frontends/s31/tests/acceptance/mixed_boundary/source_pinned_general.py",
+    "src/frontends/s31/tests/acceptance/mixed_boundary/mask_points_digest.py",
     "src/frontends/s31/tests/acceptance/mixed_boundary/preprocessed_root_binding.py",
     "src/frontends/s31/tests/acceptance/mixed_boundary/semantic_source_reseal.py",
     "src/frontends/s31/tests/acceptance/mixed_boundary/typed_boundary_correspondence.py",
@@ -154,7 +160,12 @@ BINDINGS = [
     "src/frontends/s31/benchmarks/pow_workers/phase_equivalence.py",
     "src/frontends/s31/tests/acceptance/compiler_correspondence/generated_native_subset.py",
     "src/frontends/s31/tests/acceptance/compiler_correspondence/native_source_cells.py",
+    "src/frontends/s31/tests/acceptance/compiler_correspondence/native_fixed_root_binding.py",
+    "src/frontends/s31/tests/acceptance/compiler_correspondence/full_native_roster.py",
+    "src/frontends/s31/tests/acceptance/compiler_correspondence/fixtures/case00-full-native-roster.json",
+    "src/frontends/s31/tests/acceptance/compiler_correspondence/fixtures/case16-full-native-roster.json",
     "formal/s31/fixtures/correspondence/native_source_cells.json",
+    "formal/s31/fixtures/square4-native-physical.json",
     "src/frontends/s31/tests/python/generated/test_source_mutation_correspondence.py",
     "src/frontends/s31/tests/python/generated/render_lean_source_row_fixture.py",
     "src/frontends/s31/runtime/many_statement.zig",
@@ -585,6 +596,7 @@ def generated_native_square4_topology() -> str:
 
 
 def generated() -> dict[Path, str]:
+    render_pinned_values = runpy.run_path(str(PINNED_CONSTANT_TOOL))["render"]
     check_native_qm31_relation_schedule()
     check_native_eq_relation_schedule()
     check_record_erasure()
@@ -639,6 +651,8 @@ def generated() -> dict[Path, str]:
         FORMAL / "S31/Gadgets/Functional/TextSquare4.lean": generated_text_square4(),
         FORMAL / "S31/Gadgets/Functional/TextSquare4Native.lean":
             generated_native_square4_topology(),
+        FORMAL / "S31/Gadgets/Functional/Correspondence/PinnedSquare4ConstantValues.lean":
+            render_pinned_values(PINNED_CONSTANT_FIXTURE),
         FORMAL / "S31/Evidence/Coverage.lean": render_coverage(
             json.loads((FORMAL / "coverage.json").read_text())),
         FORMAL / "source-bindings.json": json.dumps(identity, indent=2) + "\n",

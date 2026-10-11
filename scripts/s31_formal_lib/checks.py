@@ -78,6 +78,12 @@ PROOF_FIELD_PROJECTIONS_V1 = {
         ),
         "S31.Functional.Correspondence.RawGateSoundness.FixedTraceContext": ("relation",),
     },
+    "formal/s31/S31/Gadgets/Functional/Correspondence/SourceDeterminedPhysicalSoundness.lean": {
+        "S31.Functional.Correspondence.SourceDeterminedPhysicalSoundness.UnpartitionedTrace": (
+            "fixed", "arithmetic", "unique", "zero", "basis1", "basis2",
+            "basis3", "maskBasis", "inverseBasis", "inputPins", "outputPins",
+        ),
+    },
     "formal/s31/S31/Gadgets/Functional/Correspondence/AliasRawGateSoundness.lean": {
         "S31.Functional.Correspondence.AliasRawGateSoundness.AliasFixedTraceContext": (
             "relation",

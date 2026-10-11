@@ -1,8 +1,7 @@
 //! Versioned, source-reconstructed component identity for bounded mixed plans.
 //!
-//! This is an inspection contract for 1..8 calls, not a proof-byte profile.
-//! Separate source-pinned native proof profiles admit exactly three or four
-//! calls; other counts remain inspection only.
+//! This descriptor is an inspection contract for 1..8 calls, not a proof-byte
+//! profile. The separate source-pinned `S31MIX07` package admits 1..8 calls.
 const std = @import("std");
 const contract = @import("../component_descriptor_contract.zig");
 const admission = @import("../../language/bounded_call_admission.zig");

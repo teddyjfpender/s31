@@ -941,6 +941,13 @@ Soundness quantifies over every satisfying auxiliary witness. Completeness
 constructs witnesses for every input within the stated range and shape
 premises. Honest-witness evaluation alone is insufficient for soundness.
 
+The [pinned square4 physical-trace corollary](S31/Gadgets/Functional/Correspondence/PinnedSquare4CompleteModeledTrace.md)
+discharges the generic model's source-byte, 485-row constant-island, and
+512-row address-ledger checks. For every four-lane input it constructs one
+honest trace with all local arithmetic roots zero and ideal Gate events
+balanced. It does not identify this synthetic trace with a native proof's
+authenticated openings; that verifier correspondence remains open.
+
 | Gadget family | Main results |
 | --- | --- |
 | Field arithmetic and zero anchors | Residual equations iff addition, multiplication, equality or zero; canonical M31/ZMod bridge and inversion iff nonzero. |
