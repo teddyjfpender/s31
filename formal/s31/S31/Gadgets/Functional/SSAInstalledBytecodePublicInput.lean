@@ -5,8 +5,10 @@ import S31.Gadgets.Functional.SSAPublicInputBinding
 The four public input words are positive Gate events at addresses 3--6.
 Physical copy, basis-multiply, and pack-add rows force the source input at
 address 22 to be their four-lane packing. The final pack row must have a
-positive output multiplicity: this is the checked `sourceInputUses > 0`
-premise below. Without it the row does not yield an event, and the earlier
+positive output multiplicity: this is the explicit, source-derived
+`sourceInputUses > 0` premise below. Proving that successful source parsing
+always implies this inequality is a separate compiler-invariant obligation.
+Without it the row does not yield an event, and the earlier
 source Gate theorem's `hinputYield` cannot be inferred.
 
 The module composes ideal exact Gate balance with source-derived projected
@@ -117,7 +119,7 @@ theorem input_boundary_of_exact_gate
         ((expectedPackAddCell certificate i.val).out)) at hrow
     exact hrow
 
-/-- The checked positive source-input use count makes the final pack row's
+/-- A positive source-input use count makes the final pack row's
 output available to Gate. Its value is then fixed by the four public pins
 and the six local pack equations, rather than assumed as a packed event. -/
 theorem packed_input_yield_of_exact_gate
