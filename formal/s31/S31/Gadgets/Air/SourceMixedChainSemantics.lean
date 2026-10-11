@@ -30,6 +30,9 @@ theorem every_call_matches_source_prefix {N : Nat}
     (initial : State)
     (haddresses : ∀ call slot,
       boundary.addresses call slot = canonicalAddress hN call slot)
+    (hbalance : balanced boundary.jointGateSource.gateRows
+      boundary.jointGateSource.gateExternalUses
+      boundary.jointGateSource.gateExternalYields)
     (hunique : uniqueProduced
       (allYields boundary.jointGateSource.gateRows
         boundary.jointGateSource.gateExternalYields))
@@ -46,7 +49,7 @@ theorem every_call_matches_source_prefix {N : Nat}
         boundary.finish call := by
     intro call hnext
     funext lane
-    exact adjacent_call_words_coherent hN boundary haddresses hunique
+    exact adjacent_call_words_coherent hN boundary haddresses hbalance hunique
       call hnext lane
   have sourceStepEq : ∀ call : Fin N,
       boundary.step call = sourceStep call.val := by
@@ -98,11 +101,12 @@ theorem source_prefix_of_joint_event_balance {N : Nat}
         boundary.step call (rows call row).input) :
     ∀ call : Fin N,
       boundary.finish call = sourcePrefix (call.val + 1) initial := by
-  have hpaths := (joint_gate_and_every_chip_path hN boundary rows
+  have hpathAndBalance := joint_gate_and_every_chip_path hN boundary rows
     (by intro call; rw [hrounds call]; omega)
     (by intro call; rw [hrounds call]; omega)
-    hjoint hstep).2
+    hjoint hstep
+  have hpaths := hpathAndBalance.2
   exact every_call_matches_source_prefix hN hpositive boundary initial
-    haddresses hunique hfirst hrounds hconstants hpaths
+    haddresses hpathAndBalance.1 hunique hfirst hrounds hconstants hpaths
 
 end S31.Gadgets.Air.SourceMixedChainSemantics

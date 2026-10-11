@@ -120,9 +120,13 @@ def OutputPath {N : Nat} (boundary : Boundary N) (callCount : Nat)
       (3 + (outputSlot product lane).val) .add
 
 private theorem public_is_produced {N : Nat} (boundary : Boundary N)
+    (hbalance : balanced boundary.jointGateSource.gateRows
+      boundary.jointGateSource.gateExternalUses
+      boundary.jointGateSource.gateExternalYields)
     (slot : Fin 8) :
     ValueAt boundary (3 + slot.val) (base (boundary.publicOutputs slot)) := by
   unfold ValueAt produced
+  apply hbalance.mem_iff.mp
   apply List.mem_append_right
   apply List.mem_map.mpr
   refine ⟨((⟨3 + slot.val, by omega⟩ : CanonicalAddress),
@@ -188,7 +192,7 @@ private theorem output_path_value {N : Nat} (boundary : Boundary N)
     evaluate .add (wire scalarAddress) (wire 0) at hcopyEq
   have hpublicWire : wire (3 + (outputSlot product lane).val) =
       base (boundary.publicOutputs (outputSlot product lane)) :=
-    value_wire boundary hunique (public_is_produced boundary _)
+    value_wire boundary hunique (public_is_produced boundary hbalance _)
   rw [hscalar, hzeroWire] at hcopyEq
   have hword := hpublicWire.symm.trans hcopyEq
   have hbase : base (boundary.publicOutputs (outputSlot product lane)) =
@@ -223,8 +227,8 @@ theorem all_public_outputs_match_source {N : Nat}
     (hpackedFinal : ValueAt boundary (22 + 10 * N)
       (packState (boundary.finish ⟨N - 1, by omega⟩)))
     (hzero : ValueAt boundary 0 (base 0))
-    (hadd : AcceptedRow boundary (22 + 10 * N) 22 (23 + 10 * N) .add)
-    (hmul : AcceptedRow boundary (22 + 10 * N) 22
+    (hadd : AcceptedRow boundary 22 (22 + 10 * N) (23 + 10 * N) .add)
+    (hmul : AcceptedRow boundary 22 (22 + 10 * N)
       (24 + 10 * N) .pointwiseMul)
     (hpaths : ∀ product lane, OutputPath boundary N product lane) :
     ∀ lane : Fin 4,
@@ -252,13 +256,13 @@ theorem all_public_outputs_match_source {N : Nat}
     rw [hend] at h
     exact h
   have haddEq := accepted_row_equation boundary hbalance hunique
-    (22 + 10 * N) 22 (23 + 10 * N) .add hadd
+    22 (22 + 10 * N) (23 + 10 * N) .add hadd
   have hmulEq := accepted_row_equation boundary hbalance hunique
-    (22 + 10 * N) 22 (24 + 10 * N) .pointwiseMul hmul
+    22 (22 + 10 * N) (24 + 10 * N) .pointwiseMul hmul
   change wire (23 + 10 * N) = evaluate .add
-    (wire (22 + 10 * N)) (wire 22) at haddEq
+    (wire 22) (wire (22 + 10 * N)) at haddEq
   change wire (24 + 10 * N) = evaluate .pointwiseMul
-    (wire (22 + 10 * N)) (wire 22) at hmulEq
+    (wire 22) (wire (22 + 10 * N)) at hmulEq
   intro lane
   have hsum := output_path_value boundary hbalance hunique hzero
     N false lane (hpaths false lane)
@@ -269,11 +273,11 @@ theorem all_public_outputs_match_source {N : Nat}
       coord (wire (23 + 10 * N)) lane at hsum
     rw [haddEq, hfinalWire, hfirstWire] at hsum
     fin_cases lane <;>
-      simpa [evaluate, Packed.add, packState, coord] using hsum
+      simpa [evaluate, Packed.add, packState, coord, add_comm] using hsum
   · change boundary.publicOutputs (outputSlot true lane) =
       coord (wire (24 + 10 * N)) lane at hproduct
     rw [hmulEq, hfinalWire, hfirstWire] at hproduct
     fin_cases lane <;>
-      simpa [evaluate, Packed.pointwise, packState, coord] using hproduct
+      simpa [evaluate, Packed.pointwise, packState, coord, mul_comm] using hproduct
 
 end S31.Gadgets.Air.SourceMixedPublicClosure

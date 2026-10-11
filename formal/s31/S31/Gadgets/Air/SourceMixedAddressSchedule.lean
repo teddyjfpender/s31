@@ -86,14 +86,17 @@ theorem eighth_call_addresses :
       [83, 84, 85, 86, 93, 94, 95, 96] := by
   decide
 
-/-- The modeled circuit's Gate yield list contains every bridge's input and
-output read. This is where Gate producer uniqueness can identify repeated
-addresses across adjacent calls. -/
+/-- Every bridge endpoint is a Gate use. Exact Gate balance then locates its
+value among circuit yields; the bridge itself is not a producer. -/
 private theorem bridge_event_produced {N : Nat} (boundary : Boundary N)
+    (hbalance : balanced boundary.jointGateSource.gateRows
+      boundary.jointGateSource.gateExternalUses
+      boundary.jointGateSource.gateExternalYields)
     (call : Fin N) (slot : Fin 8) :
     ((boundary.addresses call slot).val, base (boundary.words call slot)) ∈
       allYields boundary.jointGateSource.gateRows
         boundary.jointGateSource.gateExternalYields := by
+  apply hbalance.mem_iff.mp
   apply List.mem_append_right
   apply List.mem_map.mpr
   refine ⟨(boundary.addresses call slot, base (boundary.words call slot)), ?_, rfl⟩
@@ -112,6 +115,9 @@ theorem adjacent_call_words_coherent {N : Nat} (hN : N ≤ 8)
     (boundary : Boundary N)
     (haddresses : ∀ call slot,
       boundary.addresses call slot = canonicalAddress hN call slot)
+    (hbalance : balanced boundary.jointGateSource.gateRows
+      boundary.jointGateSource.gateExternalUses
+      boundary.jointGateSource.gateExternalYields)
     (hunique : uniqueProduced
       (allYields boundary.jointGateSource.gateRows
         boundary.jointGateSource.gateExternalYields))
@@ -128,8 +134,8 @@ theorem adjacent_call_words_coherent {N : Nat} (hN : N ≤ 8)
   have samePacked := hunique (boundary.addresses next input).val
     (base (boundary.words next input))
     (base (boundary.words call output))
-    (bridge_event_produced boundary next input)
-    (by simpa [sameAddress] using bridge_event_produced boundary call output)
+    (bridge_event_produced boundary hbalance next input)
+    (by simpa [sameAddress] using bridge_event_produced boundary hbalance call output)
   exact congrArg Quad.a samePacked
 
 end S31.Gadgets.Air.SourceMixedAddressSchedule

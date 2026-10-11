@@ -1,8 +1,10 @@
-//! Concrete N=1/N=8 source-to-native-base-trace fixture.
+//! Concrete N=1/N=8 source-to-native-circuit and base-trace fixture.
 //!
 //! These are the same base writers called by general_package.proveSealed via
-//! direct_mixed_general_arithmetic.proveSourceBound. The fixture also proves
-//! and verifies the exact pinned sources, then changes proof-envelope fields.
+//! direct_mixed_general_arithmetic.proveSourceBound. It checks the emitted
+//! pack, public arithmetic, unpack and output-copy Gate rows as well as the
+//! bridge/chip base rows. The fixture also proves and verifies the exact
+//! pinned sources, then changes proof-envelope fields.
 //! It does not establish a general compiler correspondence theorem.
 const std = @import("std");
 const core = @import("stwo_core");
@@ -17,6 +19,7 @@ const package = @import("../../../runtime/mixed_boundary/general_package.zig");
 
 const M31 = core.fields.m31.M31;
 const QM31 = core.fields.qm31.QM31;
+const BinaryGate = circuit.builder.circuit.BinaryGate;
 const p = core.fields.m31.Modulus;
 const H = core.vcs_lifted.blake2_merkle.Blake2sPlainMerkleHasher;
 
@@ -41,6 +44,108 @@ fn wordsAt(values: []const QM31, addresses: [4]u32) ![4]u32 {
         word.* = (try values[address].tryIntoM31()).toU32();
     }
     return result;
+}
+
+fn packWords(words: [4]u32) QM31 {
+    return QM31.fromU32Unchecked(words[0], words[1], words[2], words[3]);
+}
+
+fn gateAt(gates: []const BinaryGate, output: u32) !BinaryGate {
+    var found: ?BinaryGate = null;
+    for (gates) |gate| {
+        if (gate.out != output) continue;
+        if (found != null) return error.DuplicateFixtureGateOutput;
+        found = gate;
+    }
+    return found orelse error.MissingFixtureGate;
+}
+
+fn checkPackRows(view: circuit.common.preprocessed.CircuitView, values: []const QM31, scalar: [4]u32, output: u32, words: [4]u32) !void {
+    if (output < 5 or output >= values.len) return error.WrongFixturePackedAddress;
+    const terms = [3]u32{ output - 5, output - 3, output - 1 };
+    const units = [4]QM31{
+        QM31.fromU32Unchecked(1, 0, 0, 0),
+        QM31.fromU32Unchecked(0, 1, 0, 0),
+        QM31.fromU32Unchecked(0, 0, 1, 0),
+        QM31.fromU32Unchecked(0, 0, 0, 1),
+    };
+    for (scalar, words) |address, word| {
+        if (address >= values.len or
+            !values[address].eql(QM31.fromBase(M31.fromCanonical(word))))
+            return error.WrongFixturePackScalar;
+    }
+    for (terms, 1..) |term, lane| {
+        const gate = try gateAt(view.mul, term);
+        if (gate.in1 != scalar[lane] or gate.in0 >= values.len or
+            !values[gate.in0].eql(units[lane]) or
+            !values[term].eql(units[lane].mul(values[scalar[lane]])))
+            return error.WrongFixturePackTerm;
+    }
+    const additions = [3]BinaryGate{
+        .{ .in0 = scalar[0], .in1 = terms[0], .out = output - 4 },
+        .{ .in0 = output - 4, .in1 = terms[1], .out = output - 2 },
+        .{ .in0 = output - 2, .in1 = terms[2], .out = output },
+    };
+    for (additions) |expected| {
+        const gate = try gateAt(view.add, expected.out);
+        if (!std.meta.eql(gate, expected) or
+            !values[gate.out].eql(values[gate.in0].add(values[gate.in1])))
+            return error.WrongFixturePackAdd;
+    }
+    if (!values[output].eql(packWords(words))) return error.WrongFixturePackedValue;
+}
+
+fn checkPublicTail(view: circuit.common.preprocessed.CircuitView, values: []const QM31, count: usize, initial: [4]u32, final: [4]u32, sums: [4]u32, products: [4]u32) !void {
+    const first: u32 = 22;
+    const last: u32 = @intCast(22 + 10 * count);
+    const first_scalars = [4]u32{ 11, 12, 13, 14 };
+    const last_scalars = [4]u32{ last - 9, last - 8, last - 7, last - 6 };
+    try checkPackRows(view, values, first_scalars, first, initial);
+    try checkPackRows(view, values, last_scalars, last, final);
+    const add = try gateAt(view.add, last + 1);
+    const mul = try gateAt(view.pointwise_mul, last + 2);
+    if (add.in0 != first or add.in1 != last or
+        mul.in0 != first or mul.in1 != last or
+        !values[add.out].eql(values[first].add(values[last])) or
+        !values[mul.out].eql(core.fields.qm31_pointwise.pointwiseMul(values[first], values[last])) or
+        !values[add.out].eql(packWords(sums)) or !values[mul.out].eql(packWords(products)))
+        return error.WrongFixturePackedArithmetic;
+    const units = [4]QM31{
+        QM31.fromU32Unchecked(1, 0, 0, 0),
+        QM31.fromU32Unchecked(0, 1, 0, 0),
+        QM31.fromU32Unchecked(0, 0, 1, 0),
+        QM31.fromU32Unchecked(0, 0, 0, 1),
+    };
+    for (0..8) |slot| {
+        const lane = slot % 4;
+        const source: u32 = last + if (slot < 4) @as(u32, 1) else @as(u32, 2);
+        const public: u32 = @intCast(3 + slot);
+        const copy = try gateAt(view.add, public);
+        if (copy.in1 != 0 or copy.in0 >= values.len or
+            !values[public].eql(values[copy.in0]))
+            return error.WrongFixturePublicCopy;
+        const mask_address = if (lane == 0) copy.in0 else blk: {
+            const inverse = try gateAt(view.mul, copy.in0);
+            if (inverse.in1 >= values.len or
+                !values[inverse.in1].eql(try units[lane].inv()) or
+                !values[copy.in0].eql(values[inverse.in0].mul(values[inverse.in1])))
+                return error.WrongFixtureUnpackInverse;
+            break :blk inverse.in0;
+        };
+        const mask = try gateAt(view.pointwise_mul, mask_address);
+        if (mask.in0 != source or mask.in1 >= values.len or
+            !values[mask.in1].eql(units[lane]) or
+            !values[mask.out].eql(core.fields.qm31_pointwise.pointwiseMul(values[source], values[mask.in1])))
+            return error.WrongFixtureUnpackMask;
+        const want = if (slot < 4) sums[lane] else products[lane];
+        if ((try values[public].tryIntoM31()).toU32() != want)
+            return error.WrongFixturePublicWord;
+    }
+    // The circuit also marks its fixed extension-basis variable 2 as an
+    // output. The eight source public words occupy the following slots.
+    if (view.output.len != 9 or view.output[0] != 2) return error.WrongFixturePublicWidth;
+    for (view.output, 0..) |address, slot|
+        if (address != 2 + slot) return error.WrongFixturePublicAddress;
 }
 
 fn checkBridge(columns: anytype, addresses: [8]u32, expected: [8]u32) !void {
@@ -109,6 +214,11 @@ fn fixture(comptime count: usize) !void {
     defer witness.deinit();
     const values = witness.values();
     const view = circuit.common.preprocessed.CircuitView.fromBuilder(&witness.circuit);
+    // This bounded source has no permutation scratch rows, so the native
+    // source-variable producer check covers every emitted arithmetic output.
+    if (view.nPermutations() != 0) return error.UnexpectedFixturePermutation;
+    try view.validateUniqueProducers(allocator);
+    try checkPublicTail(view, values, count, initial, final, sum, product);
     var plan: cpu.private_many_boundary.Plan = .{ .count = count };
     for (selected.calls[0..count], plan.calls[0..count], 0..) |call, *slot, id| {
         if (call.call_id != id or call.rounds != 16 or call.constant != 13 + id or

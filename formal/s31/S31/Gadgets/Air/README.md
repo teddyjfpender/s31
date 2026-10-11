@@ -671,8 +671,10 @@ closure and avoidance of the explicit exceptional set as premises.
 [`SourceMixedPath.lean`](SourceMixedPath.lean) assembles a typed ideal boundary
 for one to eight calls. Each call has eight canonical Gate addresses, eight
 bridge words, a round count, and a square-plus-constant step. The same bridge
-words supply the eight Gate reads and both chip endpoints; its Gate-positive
-side also contains eight public M31 output terms and the fixed `u` term.
+words supply the eight Gate reads and both chip endpoints. The bridge reads,
+eight public M31 outputs, and fixed `u` term are **Gate uses**. Qm31 row
+outputs are Gate yields. Exact balance, rather than an assumed producer
+event, ties a bridge or public use to a yielded circuit value.
 It proves an `8N` bridge-event count, a per-event equality with the native
 seven-coordinate bridge Gate encoding, and the public feeder's ordered
 equality with the native claim-fold tuple model. Given an **exact** joint event
@@ -682,6 +684,16 @@ reciprocal identity. It still does not identify the typed boundary with
 compiler-emitted rows, fixed columns, statement words, or source/manifest
 fields; it does not prove Gate local arithmetic or producer uniqueness; and it
 does not derive exact balance or row equations from an accepted native proof.
+[`SourceMixedPublicClosure.lean`](SourceMixedPublicClosure.lean) and
+[`SourceMixedPackCorrespondence.lean`](SourceMixedPackCorrespondence.lean)
+then follow the compiler's six-row packing path, packed arithmetic, unpack
+mask/inverse rows, and public copy rows to derive the eight result words.
+The packed tail reads the initial input at address 22 before the final state
+at `22+10N`. [`SourceMixedProducerCheck.lean`](SourceMixedProducerCheck.lean)
+replaces the abstract global producer-uniqueness premise by a successful
+scan of every logical active row output and baseline yield, ignoring mere
+repetition from lookup multiplicity. The source-to-Lean producer roster,
+exact lookup balance, and accepted-proof-to-row authentication remain open.
 `TaggedPairChallenge.lean` supplies the ideal seven-coordinate challenge
 reduction for the **joint** Gate/chip event support. It proves that distinct
 seven-word tuples collide for at most six compression challenges, derives an

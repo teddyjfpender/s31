@@ -22,10 +22,11 @@ allocation is not proved by this module. The packed output address is fixed:
 22 for the input and `22 + 10N` for the last chip state (32 at `N=1`, 102
 at `N=8`).
 
-The source-shaped bridge contributes the four scalar input events at 11–14
+The source-shaped bridge reads the four scalar input events at 11–14
 and the final four scalar output events at `23 + 10(N−1)` through
 `26 + 10(N−1)`. Exact Gate event balance and unique produced values force
-the six pack rows to read those scalar values and the basis constants.
+those bridge uses to equal yielded circuit values, which the six pack rows
+then read along with the basis constants.
 `PackRows.acceptsPack_sound` then proves that their final output equals the
 four-coordinate packed state. Positive output multiplicity makes that packed
 value a produced Gate tuple. `all_public_outputs_from_pack_paths` composes

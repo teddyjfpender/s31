@@ -29,6 +29,11 @@ public addresses 3–10. For `N` calls, the reviewed packed tail uses:
 | Packed sum | `23 + 10N` | Packed Qm31 add of those two wires |
 | Packed product | `24 + 10N` | Packed Qm31 pointwise multiply of those two wires |
 
+Both packed arithmetic rows read the initial packed input at address 22 as
+their first operand and the final packed state at `22 + 10N` as their second.
+Addition and pointwise multiplication are commutative, so the stated source
+results remain `final + x` and `final × x`.
+
 For each public word, `simd.unpackIdx` emits a pointwise mask by the lane's
 unit vector. Lanes 1–3 also multiply by the corresponding basis inverse;
 lane 0 uses the mask output directly. The direct output path skips
@@ -44,22 +49,25 @@ unit/inverse constant values. The intermediate addresses are existential
 because their allocation is not yet proved here. The two packed arithmetic
 rows have exact addresses above. No premise states a public result value.
 
-Exact joint Gate/chip event balance and unique produced Gate values tie every
-selected row's operands and result to shared wires. The local AIR equations
-compute the packed sum/product and lane extraction. The copy row and public
-feeder identify the extracted word with the verifier's public claim.
+The verifier's public feeder and each bridge endpoint are Gate **uses**. The
+Qm31 rows yield the produced wire values. Exact joint Gate/chip event balance
+and unique produced values tie every use to its row result. The local AIR
+equations compute the packed sum/product and lane extraction. The copy row
+and public feeder identify the extracted word with the verifier's public claim.
 `SourceMixedChainSemantics` separately ties the final chip state to the
 source repeat sequence. The theorem combines these to derive all eight
 public words.
 
 ## Explicit remaining proof obligations
 
-The theorem assumes that the produced Gate tuples at address 22 and
-`22 + 10N` equal the packed private input and chip final state. A native
-compiler/packing correspondence proof must establish these memberships from
-actual pack rows and the chip bridge. It also assumes the selected packed,
-unpack, constant, and copy rows exist in the native emitted trace with the
-modeled addresses and flags. The native proof-to-exact-event reduction,
-producer uniqueness, and authentication of local AIR rows are not proved by
-this theorem. This is a conditional source-to-public computation theorem,
-not a certificate for the full production STARK verifier.
+This theorem takes the packed Gate values at address 22 and `22 + 10N` as
+premises. The companion `SourceMixedPackCorrespondence.lean` derives those
+values from the scalar bridge events and two selected six-row `simd.pack`
+paths. Together, the theorems still require the selected pack, arithmetic,
+unpack, constant, and copy rows to match the native compiler output. The
+native proof-to-exact-event reduction, producer uniqueness, and all-row AIR
+authentication also remain open. This is a conditional source-to-public
+computation theorem, not a certificate for the full production STARK verifier.
+The companion `SourceMixedProducerCheck.lean` derives the uniqueness premise
+from a successful scan of all modeled logical producer addresses, provided
+the native producer roster is shown to match that modeled list.

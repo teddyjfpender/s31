@@ -5,7 +5,7 @@ import S31.Gadgets.Air.IndexedManyTaggedTupleBridge
 A typed ideal event boundary for the experimental source-pinned mixed profile.
 One boundary owns each call's eight canonical Gate addresses, eight M31 bridge
 words, round count, and square-plus-constant step. The same bridge words form
-the eight Gate reads and the two chip endpoint events. Its Gate-positive list
+the eight Gate reads and the two chip endpoint events. Its Gate-use list
 also includes the verifier's eight public output tuples and fixed `u` tuple.
 
 The theorems below start with an **exact joint event permutation**, not a
@@ -115,15 +115,16 @@ def Boundary.step {N : Nat} (boundary : Boundary N)
     (call : Fin N) (state : State) : State :=
   fun lane => state lane ^ 2 + boundary.constants call
 
-/-- This is a *joint* Gate model: its external yields include the verifier's
-public feeder and all bridge Gate reads. It is not the circuit component's
-claimed-sum equation in isolation. -/
+/-- This is a *joint* Gate model: its external uses include the verifier's
+public feeder and all bridge Gate reads. Native Qm31 rows yield their outputs;
+the public verifier and bridge consume those outputs. It is not the circuit
+component's claimed-sum equation in isolation. -/
 def Boundary.jointGateSource {N : Nat} (boundary : Boundary N) :
     GateSource :=
   { rows := boundary.rows,
-    externalUses := boundary.baselineUses,
-    externalYields := boundary.baselineYields ++
-      boundary.publicFeeder ++ boundary.bridgeGates }
+    externalUses := boundary.baselineUses ++
+      boundary.publicFeeder ++ boundary.bridgeGates,
+    externalYields := boundary.baselineYields }
 
 /-- One exact seven-word permutation forces both the complete Gate lookup
 multiset and each source-shaped square-plus-constant chip path. Gate local

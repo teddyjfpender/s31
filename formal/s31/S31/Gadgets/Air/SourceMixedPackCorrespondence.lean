@@ -64,10 +64,14 @@ private theorem selected_output_produced {N : Nat}
   simpa [CanonicalRow.toGate, hout] using hyield
 
 private theorem bridge_value {N : Nat} (boundary : Boundary N)
+    (hbalance : balanced boundary.jointGateSource.gateRows
+      boundary.jointGateSource.gateExternalUses
+      boundary.jointGateSource.gateExternalYields)
     (call : Fin N) (slot : Fin 8) :
     ValueAt boundary (boundary.addresses call slot).val
       (base (boundary.words call slot)) := by
   unfold ValueAt produced
+  apply hbalance.mem_iff.mp
   apply List.mem_append_right
   apply List.mem_map.mpr
   refine ⟨(boundary.addresses call slot,
@@ -182,6 +186,9 @@ theorem bridge_scalar_endpoints {N : Nat} (hN : N ≤ 8)
     (hpositive : 0 < N) (boundary : Boundary N) (initial : State)
     (haddresses : ∀ call slot,
       boundary.addresses call slot = canonicalAddress hN call slot)
+    (hbalance : balanced boundary.jointGateSource.gateRows
+      boundary.jointGateSource.gateExternalUses
+      boundary.jointGateSource.gateExternalYields)
     (hfirst : boundary.start ⟨0, hpositive⟩ = initial) :
     (∀ lane : Fin 4,
       ValueAt boundary (inputAddress 0 lane.val) (base (initial lane))) ∧
@@ -190,7 +197,7 @@ theorem bridge_scalar_endpoints {N : Nat} (hN : N ≤ 8)
         (base (boundary.finish ⟨N - 1, by omega⟩ lane))) := by
   constructor
   · intro lane
-    have h := bridge_value boundary ⟨0, hpositive⟩
+    have h := bridge_value boundary hbalance ⟨0, hpositive⟩
       ⟨lane.val, by omega⟩
     have hinitLane := congrFun hfirst lane
     change boundary.words ⟨0, hpositive⟩
@@ -203,7 +210,7 @@ theorem bridge_scalar_endpoints {N : Nat} (hN : N ≤ 8)
     rw [hinitLane] at h'
     exact h'
   · intro lane
-    have h := bridge_value boundary ⟨N - 1, by omega⟩
+    have h := bridge_value boundary hbalance ⟨N - 1, by omega⟩
       ⟨4 + lane.val, by omega⟩
     simpa [haddresses ⟨N - 1, by omega⟩
       ⟨4 + lane.val, by omega⟩, canonicalAddress, bridgeAddress,
@@ -228,7 +235,7 @@ theorem packed_inputs_from_bridge_and_pack {N : Nat} (hN : N ≤ 8)
       ValueAt boundary (22 + 10 * N)
         (packState (boundary.finish ⟨N - 1, by omega⟩)) := by
   obtain ⟨hinput, houtput⟩ := bridge_scalar_endpoints hN hpositive
-    boundary initial haddresses hfirst
+    boundary initial haddresses hbalance hfirst
   exact ⟨pack_path_produces_state boundary hbalance hunique initial
       _ 22 hinput hpackInitial,
     pack_path_produces_state boundary hbalance hunique
@@ -261,8 +268,8 @@ theorem all_public_outputs_from_pack_paths {N : Nat}
     (hpackFinal : PackPath boundary
       (fun lane => outputAddress (N - 1) lane.val) (22 + 10 * N))
     (hzero : ValueAt boundary 0 (base 0))
-    (hadd : AcceptedRow boundary (22 + 10 * N) 22 (23 + 10 * N) .add)
-    (hmul : AcceptedRow boundary (22 + 10 * N) 22
+    (hadd : AcceptedRow boundary 22 (22 + 10 * N) (23 + 10 * N) .add)
+    (hmul : AcceptedRow boundary 22 (22 + 10 * N)
       (24 + 10 * N) .pointwiseMul)
     (hpaths : ∀ product lane, OutputPath boundary N product lane) :
     ∀ lane : Fin 4,

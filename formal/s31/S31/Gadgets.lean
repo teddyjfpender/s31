@@ -70,6 +70,7 @@ import S31.Gadgets.Air.SourceMixedAddressSchedule
 import S31.Gadgets.Air.SourceMixedChainSemantics
 import S31.Gadgets.Air.SourceMixedPublicClosure
 import S31.Gadgets.Air.SourceMixedPackCorrespondence
+import S31.Gadgets.Air.SourceMixedProducerCheck
 import S31.Gadgets.Air.PrivateBridgeChallenge
 import S31.Gadgets.Air.PrivateBridgeChallengeMany
 import S31.Gadgets.Air.SelectRows
