@@ -25,6 +25,7 @@ open S31.Functional.SSACertificate
 open S31.Functional.SSATextBytes
 open S31.Functional.SSANormalizedBytes
 open S31.Functional.SSAAirColumnCells
+open S31.Functional.SSADirectGateBridge
 open S31.Functional.SSAPublicInputBinding
 open S31.Functional.SSANativePolynomialRows
 
@@ -68,10 +69,10 @@ theorem source_bytecode_arithmetic_eq (cell : ColumnCell) (wire : Nat → Quad) 
       residuals (cellFlags cell) (wire cell.in0) (wire cell.in1)
         (wire cell.out) := by
   rw [bytecode_arithmetic_eq]
-  simp [DirectGateEvaluatorCells.arithmetic,
+  simp [S31.Gadgets.Air.DirectGateEvaluatorCells.arithmetic,
     S31.Gadgets.Air.NativeQm31AirProof.native_residuals_eq,
-    DirectGateEvaluatorCells.decodedRow,
-    DirectGateEvaluatorCells.semanticFixed, sourceBytecodeCells,
+    S31.Gadgets.Air.DirectGateEvaluatorCells.decodedRow,
+    S31.Gadgets.Air.DirectGateEvaluatorCells.semanticFixed, sourceBytecodeCells,
     cellFlags, fixedReadOrder, airLocalToSemantic, semanticToAirLocal]
 
 /-- Exact projected selectors and a zero output from the installed arithmetic

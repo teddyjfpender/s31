@@ -26,28 +26,31 @@ def block {α : Type} (words : List α) : WordBlock α :=
 
 /-- The ordered widths in the validated type tree. -/
 def matchesWidths {α : Type} (layout : Layout)
-    (value : Value (WordBlock α) layout) (expected : List Nat) : Prop :=
+    (value : RecordBoundary.Value (WordBlock α) layout) (expected : List Nat) : Prop :=
   (flatten layout value).map WordBlock.width = expected
 
 /-- Decode whole leaf blocks, rejecting a different declared width sequence.
 The caller must separately check the canonical tagged paths and word ranges. -/
 def decodeChecked {α : Type} (layout : Layout) (expected : List Nat)
-    (leaves : List (WordBlock α)) : Option (Value (WordBlock α) layout × List (WordBlock α)) := do
+    (leaves : List (WordBlock α)) : Option (RecordBoundary.Value (WordBlock α) layout × List (WordBlock α)) := do
   let (value, rest) ← reconstruct layout leaves
-  if matchesWidths layout value expected then some (value, rest) else none
+  if (flatten layout value).map WordBlock.width == expected then
+    some (value, rest)
+  else none
 
 /-- Checked flattening followed by decoding consumes exactly the record's
 leaves and leaves any following leaves untouched. -/
 theorem decodeChecked_flatten_append {α : Type} (layout : Layout)
-    (value : Value (WordBlock α) layout) (expected : List Nat)
+    (value : RecordBoundary.Value (WordBlock α) layout) (expected : List Nat)
     (tail : List (WordBlock α)) (valid : matchesWidths layout value expected) :
     decodeChecked layout expected (flatten layout value ++ tail) =
       some (value, tail) := by
+  change (flatten layout value).map WordBlock.width = expected at valid
   simp [decodeChecked, reconstruct_flatten_append, valid]
 
 /-- Exact checked leaf vectors recover their typed product and width order. -/
 theorem decodeChecked_flatten {α : Type} (layout : Layout)
-    (value : Value (WordBlock α) layout) (expected : List Nat)
+    (value : RecordBoundary.Value (WordBlock α) layout) (expected : List Nat)
     (valid : matchesWidths layout value expected) :
     decodeChecked layout expected (flatten layout value) = some (value, []) := by
   simpa using decodeChecked_flatten_append layout value expected [] valid
@@ -62,7 +65,9 @@ theorem concatBlocks_length {α : Type} (leaves : List (WordBlock α)) :
   induction leaves with
   | nil => rfl
   | cons head tail ih =>
-      simp [concatBlocks, head.exactWidth, ih]
+      change (head.words ++ concatBlocks tail).length =
+        head.width + (tail.map WordBlock.width).sum
+      simp [head.exactWidth, ih]
 
 /-- Typed public roots plus distinct result references use the same first
 order word order as the native projection over tagged relation inputs. -/
@@ -312,7 +317,7 @@ theorem orderedRootLeaves_paths {α : Type} (root : String)
 /-- Any nonempty first-order leaf sequence has a canonical right-associated
 binary product. Parenthesization contributes no AIR arithmetic. -/
 def binaryChain {α : Type} (first : α) :
-    (rest : List α) → Σ layout : Layout, Value α layout
+    (rest : List α) → Σ layout : Layout, RecordBoundary.Value α layout
   | [] => ⟨.leaf, first⟩
   | next :: tail =>
       let suffix := binaryChain next tail
@@ -329,14 +334,14 @@ theorem binaryChain_flatten {α : Type} (first : α) (rest : List α) :
 /-- The native type-tree validator rejects empty tuple/record nodes. The
 `none` case keeps the raw Lean tree honest about its unrestricted arity. -/
 def binaryOfOrderedLeaves {α : Type} (leaves : List (List Segment × α)) :
-    Option (Σ layout : Layout, Value α layout) :=
+    Option (Σ layout : Layout, RecordBoundary.Value α layout) :=
   match leaves.map Prod.snd with
   | [] => none
   | first :: rest => some (binaryChain first rest)
 
 theorem binaryOfOrderedLeaves_flatten {α : Type}
     (leaves : List (List Segment × α))
-    (binary : Σ layout : Layout, Value α layout)
+    (binary : Σ layout : Layout, RecordBoundary.Value α layout)
     (accepted : binaryOfOrderedLeaves leaves = some binary) :
     flatten binary.1 binary.2 = leaves.map Prod.snd := by
   unfold binaryOfOrderedLeaves at accepted
@@ -353,7 +358,7 @@ binary product flattens to the same M31 words, including every block width. -/
 theorem orderedRootLeaves_binary_words {α : Type}
     (root : String) (tree : NominalTree)
     (values : LeafPosition tree → WordBlock α)
-    (binary : Σ layout : Layout, Value (WordBlock α) layout)
+    (binary : Σ layout : Layout, RecordBoundary.Value (WordBlock α) layout)
     (accepted : binaryOfOrderedLeaves
       (orderedRootLeaves root tree values) = some binary) :
     concatBlocks (flatten binary.1 binary.2) =
@@ -366,7 +371,16 @@ def nestedFixture : NominalTree :=
   namedRecord 2 (fun index => if index.val = 0 then "items" else "salt")
     (fun index => if index.val = 0 then indexedTuple 3 (fun _ => .leaf) else .leaf)
 
-theorem nestedFixture_wellTagged : WellTagged nestedFixture := by decide
+theorem nestedFixture_wellTagged : WellTagged nestedFixture := by
+  apply namedRecord_wellTagged
+  · intro first second same
+    fin_cases first <;> fin_cases second <;> simp_all
+  · intro index
+    fin_cases index
+    · apply indexedTuple_wellTagged
+      intro child
+      trivial
+    · trivial
 
 theorem nested_fixture_tuple_paths_distinct :
     rootedNominalPath "request" nestedFixture ⟨0, ⟨1, ()⟩⟩ ≠
