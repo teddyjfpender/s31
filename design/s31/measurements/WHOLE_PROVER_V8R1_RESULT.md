@@ -83,8 +83,10 @@ The second-source held-out gate again passed.
 | Publisher repair provenance | `b4642535e3549c6d2ea16b88cc8f21c829b82dc9735971e68cf4c2c0f99d4daa` |
 | Portable replay repair provenance | `836b38449573fba934088170d2a769e41254b52b7eb034e953e5c4a1bf9fb65a` |
 
-Original and copied raw evidence remain under
-`zig-out/s31-v8r1-evidence` and `zig-out/s31-v8r1-portable-relocated` in the
-isolated measurement worktree. The wrapper provenance files are under
+Original raw evidence remains under `zig-out/s31-v8r1-evidence` in the
+isolated measurement worktree. The distinct-path replay used a temporary
+copy at `zig-out/s31-v8r1-portable-relocated`; that copy was removed after
+the passing replay and externally recorded manifest hash to restore disk
+headroom. The wrapper provenance files remain under
 `zig-out/s31-v8r1-postfreeze`. These paths are ignored local evidence, not
 repository artifacts. The frozen protocol and model remain byte-identical.
