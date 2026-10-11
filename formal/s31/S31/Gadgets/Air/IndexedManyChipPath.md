@@ -25,6 +25,33 @@ forces `7 = 5 + 2`. A malicious B row that reads `(B,1,8)` cannot borrow
 `(C,1,9)` or `(A,1,3)` to balance its read: the call tag differs. The same
 argument works even if rows are stored out of index order.
 
+## What the native seven-word event contains
+
+[`IndexedManyTaggedTupleBridge.lean`](IndexedManyTaggedTupleBridge.lean)
+uses the same tuple constructor as the native tagged chip. Write B's call
+number as `1`, and represent the scalar example in lane 0 while the other
+three lanes are zero. The event for B's middle state is
+
+```text
+coordinate:  0                 1       2       3       4  5  6
+meaning:     chip relation     call    step    lane 0  lanes 1–3
+field word:  1395863811        1       1       6       0  0  0
+```
+
+B's first row *produces* this tuple: its step `0` becomes `0+1`, and its
+output lane is `6`. B's second row *consumes* the same tuple as its input at
+step `1`. Matching all seven coordinates proves the join. A row from C
+cannot substitute, because C's call word is `2`; a Gate circuit event cannot
+substitute, because its relation word is `378353459`. The tuple carries a
+four-lane state in the real chip, so all four lane values must match at once.
+
+The native step is an M31 field word. Decoding it gives its canonical value
+in `0..p-1`. The produced step is `(step+1) mod p`. The endpoint tag stores
+the round count `R` as a field word; `R<p` is exactly what lets the decoder
+recover the same natural `R`. The Lean proof filters the combined list by
+relation and call tags, decodes those field words, and hands the resulting
+exact event permutation to the general path theorem.
+
 The theorem starts from an **exact** permutation of tagged tuples, checked
 local transition equations, and `0 < R < p` for every call. It does not show
 that the current native one-to-eight-call proof's random compressed LogUp

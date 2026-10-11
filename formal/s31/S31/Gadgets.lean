@@ -62,6 +62,7 @@ import S31.Gadgets.Air.GeneratedDirectGateEvaluatorFixture
 import S31.Gadgets.Air.TaggedPairSourceComposition
 import S31.Gadgets.Air.TaggedPairEventProjection
 import S31.Gadgets.Air.TaggedPairEventDecode
+import S31.Gadgets.Air.IndexedManyTaggedTupleBridge
 import S31.Gadgets.Air.TaggedPairConditionalCorrespondence
 import S31.Gadgets.Air.SourceMixedRoster
 import S31.Gadgets.Air.PrivateBridgeChallenge

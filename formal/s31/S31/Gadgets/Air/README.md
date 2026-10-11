@@ -656,6 +656,18 @@ the existing arbitrary-row theorem then forces every endpoint. The
 [handwritten three-call ledger](IndexedManyChipPath.md) shows the event
 accounting. This is an ideal multiset theorem and does not derive its premise
 from the source-pinned mixed verifier or its compressed LogUp proof.
+[`IndexedManyTaggedTupleBridge.lean`](IndexedManyTaggedTupleBridge.lean)
+connects that abstract event argument to the actual seven-coordinate chip
+tuple layout for any roster of at most eight calls. It proves call-tag and
+tuple injectivity, canonical M31 step decoding, removal of Gate-only events,
+per-call tuple balance, and the precise abstract joint balance passed to
+`IndexedManyChipPath`. The [ledger](IndexedManyChipPath.md) now expands one
+join into its seven field words. It still takes exact joint tuple balance
+and each accepted local chip transition as premises; source/manifest roster
+correspondence and proof-verifier authentication are open.
+Its good-challenge corollary also applies the existing seven-word rational
+identity theorem to an arbitrary admitted call roster, with reciprocal
+closure and avoidance of the explicit exceptional set as premises.
 `TaggedPairChallenge.lean` supplies the ideal seven-coordinate challenge
 reduction for the **joint** Gate/chip event support. It proves that distinct
 seven-word tuples collide for at most six compression challenges, derives an
