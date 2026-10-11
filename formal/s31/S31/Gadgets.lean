@@ -73,6 +73,9 @@ import S31.Gadgets.Air.SourceMixedChainSemantics
 import S31.Gadgets.Air.SourceMixedPublicClosure
 import S31.Gadgets.Air.SourceMixedFalseClaimBound
 import S31.Gadgets.Air.SourceMixedAuthenticatedTrace
+import S31.Gadgets.Air.SourceMixedPoleClosure
+import S31.Gadgets.Air.SourceMixedBridgePoleClosure
+import S31.Gadgets.Air.SourceMixedRawTraceClosure
 import S31.Gadgets.Air.SourceMixedEventAlignment
 import S31.Gadgets.Air.SourceMixedChipRowProjection
 import S31.Gadgets.Air.SourceMixedScheduledPublicPath
@@ -166,6 +169,7 @@ import S31.Gadgets.Functional.Correspondence.AliasRawGateSoundness
 import S31.Gadgets.Functional.Correspondence.AliasCanonicalIrBytes
 import S31.Gadgets.Functional.Correspondence.AliasCanonicalAirBridge
 import S31.Gadgets.Functional.Correspondence.CanonicalDagOptimization
+import S31.Gadgets.Functional.Correspondence.OptimizedTextBytes
 import S31.Gadgets.Functional.Correspondence.ZeroPhysicalTraceWitness
 import S31.Gadgets.Functional.Correspondence.AliasProjectedExportBridge
 import S31.Gadgets.Functional.Correspondence.PinnedFullOutputRoster
@@ -197,6 +201,7 @@ import S31.Gadgets.Functional.RecordDescriptorWireRefinementV2
 import S31.Gadgets.Functional.GeneratedRecordStatementCorpusV2
 import S31.Gadgets.Functional.RecordPinnedPairAliasV2
 import S31.Gadgets.Records.NamedCodecV2
+import S31.Gadgets.Records.GeneratedMixedEightV2
 import S31.Gadgets.Functional.StaticRecurrence
 import S31.Gadgets.Functional.WorkedMix4
 import S31.Gadgets.Functional.Assertions

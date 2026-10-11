@@ -738,6 +738,18 @@ variables and separately requires every modeled Gate output address below 512,
 including rows with zero multiplicity. This matches the native fixture’s
 address check before inactive rows are skipped; native-to-Lean schedule
 construction remains explicit.
+[`SourceMixedPoleClosure.lean`](SourceMixedRawTraceClosure.md),
+[`SourceMixedBridgePoleClosure.lean`](SourceMixedRawTraceClosure.md), and
+[`SourceMixedRawTraceClosure.lean`](SourceMixedRawTraceClosure.md) account for
+denominator poles in the *physical* Gate and bridge AIR rows. A zero-multiplicity
+Gate output still has a singleton denominator even though the ideal yield list
+omits it; the raw-to-checked conversions therefore exclude every emitted
+event pole and all 512 Gate output poles. The scheduled raw-trace theorem
+derives local Gate arithmetic from all-row residuals and pins any false public
+word to a set of at most `36,494,846·|QM31|` challenge pairs. Its source event
+alignment, row identity, projection, claim fold, and proof authentication
+remain explicit premises. The [worked algebraic note](SourceMixedRawTraceClosure.md)
+shows why the extra poles are needed.
 [`SourceMixedEventAlignment.lean`](SourceMixedEventAlignment.md) uses event
 permutations to account for native grouping of bridge Gate reads and chip
 endpoints. It derives the two global alignments from source circuit lists
