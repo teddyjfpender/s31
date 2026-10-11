@@ -50,6 +50,9 @@ The first build and claim-0 process pair are descriptive cold/startup
 diagnostics. Claims 1–40 train the model; 41–79 calibrate its uncertainty.
 Only heldout claims 1–79 are scored. All 648 native proofs must verify, and
 all 648 changed public results must be rejected at the interaction nonce.
+The `cold_warm` summary's descriptive warm median includes the claim-0
+same-claim repeat; the fitted model and heldout score exclude both claim-0
+processes.
 Raw proofs, statements, process stderr, manifests and package binaries live
 under `$OUT`; compact canonical corpora and the model live under `design/`.
 Run the commands in order with an unchanged working tree for compiler/engine
