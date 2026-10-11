@@ -22,11 +22,11 @@ This worksheet treats both challenges as independent uniform field elements.
 For the real hash transcript that is a Fiat–Shamir/random-oracle premise, not
 a theorem established here.
 
-## A conditional bound
+## Conditional algebraic bounds
 
 Fix all tuple occurrences and signed multiplicities **before** sampling
-`alpha`. Represent each emitted lookup tuple by its coefficient vector,
-zero-padded to the maximum arity. Let `T` count distinct such vectors over
+either `z` or `alpha`. Represent each emitted lookup tuple by its coefficient
+vector, zero-padded to the maximum arity. Let `T` count distinct such vectors over
 all Gate, chip, and bridge events. Require this padded-vector encoding to be
 injective for intended distinct event identities: `(a,b)` and `(a,b,0)`
 otherwise compress identically for every `alpha`. The current fixed profile
@@ -54,13 +54,77 @@ most
 epsilon_lookup <= [6 * binom(T, 2) + 2*T - 1] / q.
 ```
 
-The bound is deliberately conservative. If `T = 524288`, its collision term
-alone is about `2^-84.4`; `q` being nearly 124 bits does not make this a
-124-bit lookup argument at that size. The actual release budget needs the
-source-derived maximum `T` for each admitted profile, including every
-committed Gate row and chip round. Counting just boundary endpoints would be
-incorrect. A tighter argument may exploit tuple structure or independent
-relation challenges, but must be proved for the implemented transcript.
+This is a valid but deliberately conservative decomposition: it counts any
+pairwise compressed-key collision as a failure, even when that collision does
+not make the **whole** false lookup equation vanish. If `T = 524288`, its
+collision term alone is about `2^-84.4`.
+
+### Direct two-challenge bound
+
+There is a sharper bound for this same fixed, signed tuple imbalance; it does
+not require separate relation challenges or tuple structure beyond the
+injective tagged encoding above. Let `f_i(X)` be the distinct coefficient
+polynomials of the `T` vectors after
+combining repeated vectors, and let `m_i` be their integerized signed
+multiplicities reduced into the characteristic-`p` subfield. Here `T >= 1`;
+at least one `m_i` must be nonzero. Define polynomials over `QM31`:
+
+```text
+D(X,Z) = product_i (f_i(X) - Z)
+H(X,Z) = sum_i m_i * product_(j != i) (f_j(X) - Z).
+
+When D(alpha,z) != 0, the false closure equation is H(alpha,z) = 0.
+```
+
+`H` is **not the zero polynomial**. Choose `k` with `m_k != 0` and substitute
+`Z = f_k(X)` as a polynomial identity. Every term except `k` vanishes, while
+
+```text
+H(X, f_k(X)) = m_k * product_(j != k) (f_j(X) - f_k(X)) != 0.
+```
+
+The last inequality uses distinct *formal* coefficient polynomials and the
+fact that `QM31[X]` has no zero divisors. With maximum tuple degree `d = 6`,
+each factor `f_j(X) - Z` has total bivariate degree at most six, so
+`deg_total(H) <= 6(T - 1)`. Schwartz–Zippel on **independent uniform**
+`(alpha,z) in QM31^2` bounds its zero probability by `6(T - 1)/q`.
+Separately, for every fixed `alpha`, at most `T` choices of `z` zero a
+denominator, giving probability at most `T/q`. Therefore the false closure
+or undefined-fraction event has the conditional algebraic bound
+
+```text
+epsilon_lookup <= [6(T - 1) + T] / q = (7T - 6) / q.
+```
+
+More generally, for tuples of degree at most `d`, replace six by
+`max(d, 1)`. This direct bound subsumes the collision case: a collision can
+make `H` vanish at that sampled `alpha`, but the exceptional **pair of
+challenges** still lies in the zero set of the one nonzero polynomial `H`.
+The earlier `O(T^2/q)` bound remains an independent conservative cross-check.
+
+For a small exact check, take `F_5`, `f_1(X)=0`, `f_2(X)=X`, and weights
+`(1,-1)`. Then `H(X,Z)=X`. There are nine challenge pairs with a zero
+denominator and four more with `alpha=0`, `z!=0`, where the false closure
+holds: 13 bad pairs out of 25. The direct ceiling is
+`[1*(2-1)+2]/5 = 15/25` for degree one. This example also shows why simply
+discarding compressed-key collisions would be unsound.
+
+The actual release budget still needs the source-derived maximum `T` for
+each admitted profile, including every committed Gate row and chip round.
+Counting just boundary endpoints would be incorrect. In particular, the
+direct proof fails if an adversary can choose tuple coefficients or
+multiplicities after seeing either challenge, if semantically different
+relation tuples share the same padded coefficient polynomial without a
+structural tag, or if all nonzero integer imbalances can vanish modulo `p`.
+For the latter two failures, `(a,b)` versus `(a,b,0)` can cancel at **every**
+challenge without a tag, and a single integer imbalance of `p` becomes zero
+in the field. The checked `B < p` envelope below excludes the latter for
+the proposed bounded profile, once its other premises are enforced. The
+pre-challenge commitment is essential too: after observing `alpha`, an
+adversary allowed to choose new base-field tuple coefficients could use the
+minimal polynomial of `alpha` over `M31` (degree at most four), multiplied
+by `X` to retain a fixed constant relation tag. The resulting nonzero tuple
+difference has degree at most five and compresses to zero at that challenge.
 
 ### An envelope from the current bounded geometry
 
@@ -112,11 +176,14 @@ use its row-constancy constraint. It still relies on the live AIR to enforce
 each row's fraction equation and on the source-derived preprocessed counts;
 the arithmetic bound by itself authenticates neither.
 
-Substituting this ceiling into the conditional formula above gives an
-algebraic error ceiling below `2^-83.49`, subject to the stated AIR and
-uniform-challenge premises and the weighted bound above. This is not an
-independent bridge-soundness proof or a blanket bound for every S31
-program or future chip kind. The native N=3 and N=4 profiles use smaller
+Substituting `T <= 722185` into the direct conditional formula gives
+`(7T-6)/q <= 5055289/q < 2^-101.73`. The older collision-decomposition
+formula gives a conservative ceiling below `2^-83.49`. These are bounds on
+the **same algebraic event**, not independent error terms to add. They are
+subject to the stated AIR, fixed-trace, uniform-challenge, and weighted
+imbalance premises. This is not an independent bridge-soundness proof or a
+blanket bound for every S31 program or future chip kind. The native N=3 and
+N=4 profiles use smaller
 source-derived counts; the isolated 1–8-call native proof scheduler remains
 uncompiled and unadmitted.
 The factors come from `private_many_boundary.Plan.validate`,
@@ -132,7 +199,10 @@ profile's exact public-word shape before applying these numeric ceilings.
 1. The manifest or registry supplies a checked upper bound on **distinct**
    event tuples and total occurrences for each source-derived component
    roster. Dynamic dimensions and multiplicities use checked arithmetic.
-2. The main commitment fixes all tuple coordinates before the challenge draw.
+2. The main commitment fixes all tuple coordinates and the signed occurrence
+   weights before the challenge draw; the source-selected roster and relation
+   tags are fixed too. A tuple or weight selected after seeing `alpha` or `z`
+   invalidates the bivariate-polynomial argument.
    Every interaction fraction and claimed sum is constrained in its live AIR;
    a closure sum by itself does not establish this.
 3. The same tuple is used on both sides of each intended join; unrelated
