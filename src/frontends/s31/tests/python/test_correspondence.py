@@ -19,7 +19,7 @@ sys.path.insert(0, str(S31.parents[2] / "scripts"))
 from package.correspondence import (DIRECT_COLUMN_IDS, M31_MODULUS,
                                     UnsupportedFragment, _check_constant_island,
                                     _qm_mul, canonical_ir_bytes, check_gate_topology,
-                                    check_source_fixed_rows,
+                                    check_exported_root, check_source_fixed_rows,
                                     digest, parse_source,
                                     read_canonical_json)
 from package.direct_gate_schedule import constant_and_padding, exact_direct_gate_schedule
@@ -28,6 +28,20 @@ from export_s31_direct_gate_bridge import render_bridge
 
 
 class CorrespondenceParserTests(unittest.TestCase):
+    def test_exported_fixed_root_matches_sealed_key(self) -> None:
+        root = "1a" * 32
+        topology = {"schema": "s31-direct-gate-topology-v2",
+                    "preprocessed_root": root}
+        key = {"preprocessed_root": root}
+        self.assertTrue(check_exported_root(topology, key))
+        for changed in ("2b" * 32, root.upper(), root[:-1], 7):
+            with self.subTest(changed=changed):
+                topology["preprocessed_root"] = changed
+                with self.assertRaisesRegex(ValueError, "exported direct AIR fixed root"):
+                    check_exported_root(topology, key)
+        self.assertFalse(check_exported_root(
+            {"schema": "s31-direct-gate-topology-v1"}, key))
+
     def test_exact_canonical_ir_identity_and_source_mutations(self) -> None:
         source = ("circuit square(public x: [m31; 4]) -> public [m31; 4] "
                   "{ let once = x .* x; let result = once .* once; result }")
@@ -270,6 +284,13 @@ class CorrespondenceParserTests(unittest.TestCase):
                 return check_gate_topology(syntax, value, declaration, report, "a" * 64)
 
         self.assertEqual(checked(topo, component)[0]["op"], "mul")
+        rooted = copy.deepcopy(topo)
+        rooted["schema"] = "s31-direct-gate-topology-v2"
+        rooted["preprocessed_root"] = "1a" * 32
+        self.assertEqual(checked(rooted, component)[0]["op"], "mul")
+        del rooted["preprocessed_root"]
+        with self.assertRaisesRegex(ValueError, "topology header"):
+            checked(rooted, component)
         plus_source = ("circuit sum(public x: [m31; 4]) -> public [m31; 4] "
                        "{ let y = x + x; y }")
         _, plus_syntax = parse_source(plus_source.encode())

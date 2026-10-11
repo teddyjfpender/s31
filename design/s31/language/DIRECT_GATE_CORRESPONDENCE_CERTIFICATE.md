@@ -73,7 +73,17 @@ projection check corresponds to Lean's `expectedRows` and `expectedCells`
 constructors for any admitted 1–16 instruction program, while the existing
 full gate replay separately checks that the exported cells agree with the
 native gate list. The two checks are executable package admission, not a
-Lean proof of Zig emission or commitment binding. The remaining constant
+Lean proof of Zig emission or commitment binding. Native v2 topology
+inspection computes `preprocessed_root` from the same `PreprocessedCircuit`
+whose eight fixed columns it exports. The checker requires this root to equal
+the sealed key root. The installed verifier independently recompiles from
+its embedded source and checks the proof's fixed-tree root. This adds an
+explicit native-inspection-root-to-key comparison for newly built bounded
+packages, conditional on the native inspector, root computation, verifier,
+and PCS implementations. The topology and key are both package artifacts;
+their agreement is not external authentication of either one. Legacy v1
+topology artifacts lack this field and retain an
+explicit root-binding assumption. The remaining constant
 gates must derive their QM31 values from fixed
 `0`, `1`, and `u`, with `i²=-1` and `u²=2+i`; the pack basis must be the four
 unit vectors and each unpack inverse must multiply its basis vector to one.
@@ -93,7 +103,7 @@ The machine-readable status is:
 {
   "source_to_normalized": "source-to-normalized-checked",
   "native_gate_emission": "native-gate-topology-and-selectors-checked",
-  "native_root_binding": "preprocessed-root-binding-assumed",
+  "native_root_binding": "native-reported-fixed-root-matches-key",
   "gate_lookup_air_pcs": "AIR/PCS-assumed",
   "admission": "python-package-only"
 }

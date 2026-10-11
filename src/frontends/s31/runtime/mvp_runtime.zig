@@ -242,8 +242,11 @@ const Report = struct {
 /// This is an inspection artifact, not a verifier key or a PCS commitment.
 const DirectTopologyColumn = struct { id: []const u8, values: []const u32 };
 const DirectTopology = struct {
-    schema: []const u8 = "s31-direct-gate-topology-v1",
+    schema: []const u8 = "s31-direct-gate-topology-v2",
     program_sha256: []const u8,
+    /// Computed from the same preprocessed circuit as `columns` below.
+    /// Package admission compares this with the source-bound verifier key.
+    preprocessed_root: []const u8,
     n_vars: usize,
     output: []const u32,
     add: []const circuit.builder.circuit.BinaryGate,
@@ -923,6 +926,8 @@ fn inspectDirectTopology(allocator: std.mem.Allocator, source: relation.Program)
     var pp = try circuit.common.direct_arithmetic.Circuit.fromBuilderCircuit(allocator, &ctx.circuit);
     defer pp.deinit(allocator);
     if (pp.columns[0].values.len > 1024) return error.UnsupportedTopologyInspection;
+    const root = try pp.preprocessedRoot(allocator, 1);
+    const root_hex = std.fmt.bytesToHex(root, .lower);
     var arena = std.heap.ArenaAllocator.init(allocator);
     defer arena.deinit();
     const temp = arena.allocator();
@@ -937,6 +942,7 @@ fn inspectDirectTopology(allocator: std.mem.Allocator, source: relation.Program)
     const source_hex = std.fmt.bytesToHex(source_digest, .lower);
     const exported: DirectTopology = .{
         .program_sha256 = &source_hex,
+        .preprocessed_root = &root_hex,
         .n_vars = ctx.circuit.n_vars,
         .output = ctx.circuit.output.items,
         .add = ctx.circuit.add.items,

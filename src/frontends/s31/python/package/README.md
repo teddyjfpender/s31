@@ -45,6 +45,12 @@ AIR asset hashes and key core.
 It also checks each source instruction directly against the eight **exported
 fixed AIR columns**, using the same row formula as Lean's general
 `SSADirectGateBridge.expectedRows` and `SSAAirColumnCells.expectedCells`.
+The v2 topology inspection computes the fixed-tree root from the same native
+preprocessed circuit that supplies those columns. Package admission checks
+that root against the sealed verifier key. The installed native verifier
+recompiles the fixed circuit from its embedded source and checks the proof's
+fixed-tree root. This is an executable binding through native code, not an
+independent proof of the native commitment implementation or PCS security.
 For `let a = x .* x; let b = x + a; b`, the modeled rows are:
 
 | Source instruction | Circuit row | Grouped AIR row | Selectors `(add, sub, mul, pointwise)` | `(in0, in1, out, uses)` |
@@ -60,6 +66,8 @@ positions, selectors, addresses and counts from source syntax and reads the
 exported column values at those positions. Tests exercise all lengths 1–16,
 both operations, dead results, and mutations of every source fixed-cell field.
 The certificate still marks native Gate lookup and AIR/PCS soundness as assumptions.
+Older v1 topology artifacts have no exported root and retain an explicit
+root-binding assumption in their certificate.
 It is a **package-admission** certificate: the standalone native verifier does
 not read it. See the [design brief](../../../../../design/s31/language/DIRECT_GATE_CORRESPONDENCE_CERTIFICATE.md).
 

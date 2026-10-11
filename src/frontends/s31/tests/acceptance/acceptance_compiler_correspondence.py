@@ -232,6 +232,11 @@ def wrong_opcode(topology: dict, _checked: dict) -> None:
     topology["pointwise_mul"].append(topology["add"].pop())
 
 
+def wrong_exported_fixed_root(topology: dict, _checked: dict) -> None:
+    root = topology["preprocessed_root"]
+    topology["preprocessed_root"] = ("0" if root[0] != "0" else "1") + root[1:]
+
+
 def wrong_source_operand(topology: dict, checked: dict) -> None:
     source = checked["source_gates"][0]
     kind = "pointwise_mul" if source["op"] == "mul" else "add"
@@ -491,6 +496,10 @@ def main() -> None:
             honest, checked, work, "wrong-opcode", wrong_opcode,
             ("source gates are missing", "unexpected pointwise gates",
              "native source gate selector or operands"))
+        reject_resealed_topology(
+            honest, checked, work, "wrong-exported-fixed-root",
+            wrong_exported_fixed_root,
+            ("exported direct AIR fixed root differs from sealed verifier key",))
         reject_resealed_topology(
             honest, checked, work, "wrong-source-operand", wrong_source_operand,
             ("native source gate selector or operands differ from checked SSA",))

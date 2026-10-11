@@ -408,6 +408,25 @@ def check_source_fixed_rows(syntax: dict[str, Any], topology: dict[str, Any],
     return checked
 
 
+def check_exported_root(topology: dict[str, Any], key: dict[str, Any]) -> bool:
+    """Bind native-exported fixed cells to the source-sealed key root.
+
+    The v2 native inspector obtains `columns` and this root from one
+    `PreprocessedCircuit`. The verifier separately recompiles its source and
+    checks the proof's fixed-tree root. This check relies on those native
+    procedures and the PCS; it does not independently implement either.
+    Legacy v1 inspection artifacts lack this additional binding.
+    """
+    if topology["schema"] == "s31-direct-gate-topology-v1":
+        return False
+    exported_root = topology["preprocessed_root"]
+    if (not isinstance(exported_root, str) or
+            re.fullmatch(r"[0-9a-f]{64}", exported_root) is None or
+            exported_root != key.get("preprocessed_root")):
+        raise ValueError("exported direct AIR fixed root differs from sealed verifier key")
+    return True
+
+
 def check_gate_topology(syntax: dict[str, Any], topology: dict[str, Any],
                         component: dict[str, Any], report: dict[str, Any],
                         relation_sha256: str) -> list[dict[str, Any]]:
@@ -416,11 +435,17 @@ def check_gate_topology(syntax: dict[str, Any], topology: dict[str, Any],
     The column digests are checked against the native component manifest.
     This still assumes that the native PCS root commits to those columns.
     """
-    if (not isinstance(topology, dict) or set(topology) != {
+    if (not isinstance(topology, dict) or topology.get("schema") not in {
+            "s31-direct-gate-topology-v1", "s31-direct-gate-topology-v2"}):
+        raise ValueError("native direct-gate topology header differs from source")
+    rooted = topology["schema"] == "s31-direct-gate-topology-v2"
+    fields = {
             "schema", "program_sha256", "n_vars", "output", "add", "sub", "mul",
             "pointwise_mul", "permutation_ends", "permutation_inputs",
-            "permutation_outputs", "first_permutation_row", "columns"} or
-            topology["schema"] != "s31-direct-gate-topology-v1" or
+            "permutation_outputs", "first_permutation_row", "columns"}
+    if rooted:
+        fields.add("preprocessed_root")
+    if (set(topology) != fields or
             topology["program_sha256"] != relation_sha256):
         raise ValueError("native direct-gate topology header differs from source")
     n_vars = topology["n_vars"]
@@ -747,6 +772,7 @@ def _checked_material(package: Path) -> tuple[dict[str, Any], dict[str, Any]]:
     source_gates = check_gate_topology(syntax, topology, component, report,
                                        digest(relation_bytes))
     check_source_fixed_rows(syntax, topology, schedule)
+    rooted = check_exported_root(topology, key)
     if any(report.get(field) != key.get(field) for field in (
             "program_sha256", "canonical_ir_sha256", "profile", "chip",
             "preprocessed_root", "circuit_hash", "padded", "trace_log_size", "fri")):
@@ -756,7 +782,9 @@ def _checked_material(package: Path) -> tuple[dict[str, Any], dict[str, Any]]:
         "status": {
             "source_to_normalized": "source-to-normalized-checked",
             "native_gate_emission": "native-gate-topology-and-selectors-checked",
-            "native_root_binding": "preprocessed-root-binding-assumed",
+            "native_root_binding": (
+                "native-reported-fixed-root-matches-key" if rooted
+                else "preprocessed-root-binding-assumed"),
             "gate_lookup_air_pcs": "AIR/PCS-assumed",
             "admission": "python-package-only",
         },
