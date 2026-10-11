@@ -46,6 +46,17 @@ The saved constant proof-size baseline had 20.20% p90 relative error, versus
 evidence that call count predicted proof *size* better than a constant in
 this small held-out corpus; it does not establish a general cost model.
 
+The package logged six stage durations for every trial. Their separate
+held-out medians, in milliseconds, show where prover process time went;
+medians of individual stages need not add to the median of their sum.
+
+| Source | Profile rebuild | Semantic eval | Topology compile | Witness compile | Native prove and setup | Envelope/serialize | Package total |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `feeder_n4` | 2.035 | 0.017 | 0.169 | 0.193 | 52.080 | 0.128 | 54.631 |
+| `feeder_n6` | 2.274 | 0.021 | 0.191 | 0.214 | 70.129 | 0.164 | 72.987 |
+| `fork_n4` | 2.073 | 0.015 | 0.169 | 0.182 | 53.085 | 0.128 | 55.564 |
+| `fork_n6` | 2.251 | 0.017 | 0.181 | 0.197 | 67.682 | 0.166 | 70.516 |
+
 ## Native and timing checks
 
 All 160 original proofs (80 training, 80 held out) were accepted by their
