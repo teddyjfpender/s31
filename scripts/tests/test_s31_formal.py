@@ -72,9 +72,10 @@ class FormalGateTests(unittest.TestCase):
         self.assertTrue(expected <= self.theorems)
 
     def test_old_derived_roster_contains_no_proof_field_projections(self) -> None:
-        self.assertEqual(sum(map(len, checks.DERIVED_THEOREMS.values())), 3)
+        self.assertEqual(sum(map(len, checks.DERIVED_THEOREMS.values())), 2)
         self.assertFalse(any(".InputBoundary." in name or ".ChipRows." in name
                              or ".BridgeRows." in name or ".Parsed.checked" in name
+                             or name == "RiscvRefinement.M31.isLt"
                              for names in checks.DERIVED_THEOREMS.values() for name in names))
 
     def test_reviewed_proof_field_projections_bind_to_source_fields(self) -> None:
@@ -95,7 +96,26 @@ class FormalGateTests(unittest.TestCase):
             self.assertNotEqual(changed, source)
             with self.subTest(path=path), self.assertRaises(checks.FormalError):
                 checks.proof_field_projection_names(changed, path, s31_formal.lean_code)
-        self.assertEqual(len(all_names), 39)
+        self.assertEqual(len(all_names), 40)
+
+    def test_reused_m31_projection_rejects_renamed_or_commented_field_spoof(self) -> None:
+        path = checks.REUSED[0]
+        source = (ROOT / path).read_text()
+        field = "  isLt : val < m31Modulus\n"
+        self.assertEqual(source.count(field), 1)
+        for replacement in (
+            field.replace("isLt", "renamedIsLt"),
+            "  /- retired proof field /- nested -/\n" + field + "  -/\n",
+        ):
+            changed = source.replace(field, replacement, 1).replace(
+                "end RiscvRefinement\n",
+                "theorem M31.isLt : True := by trivial\n\n"
+                "end RiscvRefinement\n", 1)
+            self.assertIn("RiscvRefinement.M31.isLt",
+                          checks.theorem_names(changed, s31_formal.lean_code))
+            with self.subTest(replacement=replacement), self.assertRaisesRegex(
+                    checks.FormalError, "stale proof-field projection roster"):
+                checks.proof_field_projection_names(changed, path, s31_formal.lean_code)
 
     def test_old_input_boundary_projection_rejects_renamed_or_commented_field_spoof(self) -> None:
         path = "formal/s31/S31/Gadgets/Functional/SSAPublicInputBinding.lean"

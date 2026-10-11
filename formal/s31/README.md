@@ -1024,10 +1024,11 @@ The Python parity corpus is regression evidence for the executable semantics,
 not a proof of compiler or cryptographic correctness. Hash parity includes
 Python `hashlib` and the existing independent Poseidon2 implementation.
 The source inventory includes both reused Lean modules, whose theorems are
-also included in the live axiom audit. In the current inventory, 1,481
-declarations are explicit or in the three-entry non-field `DERIVED_THEOREMS`
-name list; **39 additional** kernel theorems are Lean-generated projections
-of proof fields in nine structures across seven source files.
+also included in the live axiom audit. In the current inventory, 1,480
+declarations are explicit or in the two-entry non-field `DERIVED_THEOREMS`
+name list; **40 additional** kernel theorems are Lean-generated projections
+of proof fields in ten structures across eight source files, including the
+reused `RiscvRefinement.M31.isLt` projection.
 `PROOF_FIELD_PROJECTIONS_V1` binds each projection to its exact source file,
 enclosing namespace, structure and field. The field parser uses the Lean
 lexer to remove nested block comments, line comments and strings before

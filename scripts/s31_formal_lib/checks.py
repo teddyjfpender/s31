@@ -16,17 +16,19 @@ REUSED = (
 # generated extensionality iff theorem. Proof-field projections belong in the
 # source-aware roster below, never in this name-only derived declaration list.
 DERIVED_THEOREMS = {
-    REUSED[0]: ("RiscvRefinement.M31.isLt",),
     "formal/s31/S31/Gadgets/Field.lean": ("S31.Field.instFactPrimeOfNatNat_s31",),
     "formal/s31/S31/Gadgets/Packed.lean": ("S31.Gadgets.Packed.Quad.ext_iff",),
 }
 # Versioned, reviewed roster of Lean-generated theorem projections for proof
 # fields. Each entry binds a kernel declaration to a concrete source structure
 # and field. Unknown generated theorems still fail the exact live audit; a
-# removed or renamed source field fails inventory generation. These 39 fields
-# are separate from explicit `theorem` declarations and the three non-field
+# removed or renamed source field fails inventory generation. These 40 fields
+# are separate from explicit `theorem` declarations and the two non-field
 # derived declarations above.
 PROOF_FIELD_PROJECTIONS_V1 = {
+    REUSED[0]: {
+        "RiscvRefinement.M31": ("isLt",),
+    },
     "formal/s31/S31/Gadgets/Functional/SSATextBytes.lean": {
         "S31.Functional.SSATextBytes.Parsed": ("checked",),
     },
