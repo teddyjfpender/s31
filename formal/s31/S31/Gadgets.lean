@@ -76,6 +76,7 @@ import S31.Gadgets.Air.SourceMixedAuthenticatedTrace
 import S31.Gadgets.Air.SourceMixedPoleClosure
 import S31.Gadgets.Air.SourceMixedBridgePoleClosure
 import S31.Gadgets.Air.SourceMixedRawTraceClosure
+import S31.Gadgets.Air.SourceMixedRawEventAlignment
 import S31.Gadgets.Air.SourceMixedEventAlignment
 import S31.Gadgets.Air.SourceMixedChipRowProjection
 import S31.Gadgets.Air.SourceMixedScheduledPublicPath
