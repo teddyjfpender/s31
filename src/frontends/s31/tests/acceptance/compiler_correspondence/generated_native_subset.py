@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import subprocess
 import sys
 import tempfile
 from dataclasses import replace
@@ -81,6 +82,45 @@ def check_static_mutations(sample) -> int:
     return len(mutations)
 
 
+def check_reembedded_ir_digest_rejected(package: Path, trial_dir: Path,
+                                        work: Path) -> None:
+    """Reach native key validation with a forged digest embedded in the binary.
+
+    Editing the external key alone would only exercise the verifier's exact
+    byte comparison with its compiled-in key, before canonical IR is rebuilt.
+    """
+    manifest = json.loads((package / "manifest.json").read_text())
+    key = json.loads((package / "verification-key.json").read_text())
+    digest = key["canonical_ir_sha256"]
+    changed_digest = ("0" if digest[0] != "0" else "1") + digest[1:]
+    key["canonical_ir_sha256"] = changed_digest
+    key["component_manifest"]["canonical_ir_sha256"] = changed_digest
+    forged_key = work / "forged-ir-verification-key.json"
+    forged_key.write_text(json.dumps(key, sort_keys=True, separators=(",", ":")) + "\n")
+    forged_prefix = work / "forged-ir-verifier"
+    command = [
+        "zig", "build", "--build-file", str(S31 / "build.zig"), "install",
+        "-Doptimize=ReleaseFast", "-Ds31-version=1", "-Ds31-lowering=direct-gate",
+        f"-Ds31-source={package / 'source.s31.json'}",
+        f"-Ds31-name={manifest['name']}", f"-Ds31-key={forged_key}",
+    ]
+    if (stdlib_digest := key.get("stdlib_lock_sha256")) is not None:
+        command.append(f"-Ds31-stdlib-sha256={stdlib_digest}")
+    command.extend(["--prefix", str(forged_prefix)])
+    built = subprocess.run(command, capture_output=True, text=True, check=False)
+    if built.returncode != 0:
+        raise AssertionError(f"forged-key verifier build failed: {built.stderr[-4000:]}")
+    verifier = forged_prefix / "bin" / f"s31-{manifest['name']}-native-verifier"
+    if not verifier.is_file():
+        raise AssertionError("forged-key native verifier was not built")
+    checked = subprocess.run([
+        str(verifier), str(trial_dir / "proof.bin"),
+        str(trial_dir / "statement.json"), str(forged_key),
+    ], capture_output=True, text=True, check=False)
+    if checked.returncode == 0 or "InvalidVerificationKey" not in checked.stderr:
+        raise AssertionError("re-embedded forged canonical IR digest escaped native validation")
+
+
 def exercise(work: Path, sample) -> dict:
     expected = check_static(sample)
     source = work / f"{sample.label.replace(':', '-')}.s31"
@@ -102,8 +142,8 @@ def exercise(work: Path, sample) -> dict:
     if (certificate["source_ssa"]["output"] != sample.return_id or
             certificate["source_ssa"]["instructions"] != expected_instructions(sample)):
         raise AssertionError("package correspondence differs from pinned DAG")
-    trial = s31.trial(package, assignment,
-                      work / f"trial-{sample.label.replace(':', '-')}")
+    trial_dir = work / f"trial-{sample.label.replace(':', '-')}"
+    trial = s31.trial(package, assignment, trial_dir)
     oracle = trial["independent_value_oracle"]
     if (not trial["native_verifier_accepted"] or
             not trial["changed_public_statement_rejected"] or
@@ -111,11 +151,16 @@ def exercise(work: Path, sample) -> dict:
             oracle.get("computed_public_outputs") !=
             {f"p{sample.return_id}": expected_words(sample)}):
         raise AssertionError("native proof or public-word negative control failed")
-    return {"sample": expected["sample"], "gates": expected["gates"],
-            "returned_gate": expected["returned_gate"],
-            "proof_sha256": trial["proof_sha256"],
-            "proof_bytes": trial["proof_bytes"],
-            "changed_public_statement_rejected": trial["changed_public_statement_rejected"]}
+    if sample.label == SELECTED[0]:
+        check_reembedded_ir_digest_rejected(package, trial_dir, work)
+    result = {"sample": expected["sample"], "gates": expected["gates"],
+              "returned_gate": expected["returned_gate"],
+              "proof_sha256": trial["proof_sha256"],
+              "proof_bytes": trial["proof_bytes"],
+              "changed_public_statement_rejected": trial["changed_public_statement_rejected"]}
+    if sample.label == SELECTED[0]:
+        result["reembedded_ir_digest_rejected"] = True
+    return result
 
 
 def main() -> None:
