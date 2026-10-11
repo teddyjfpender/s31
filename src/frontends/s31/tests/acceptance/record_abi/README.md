@@ -1,5 +1,58 @@
 # Nested public record ABI acceptance
 
+## Whole-descriptor shape differential
+
+[`whole_descriptor_shape_v2.py`](whole_descriptor_shape_v2.py) compares an
+independent implementation of the whole-descriptor *shape* check in
+[`RecordDescriptorValidationV2.lean`](../../../../../../formal/s31/S31/Gadgets/Functional/RecordDescriptorValidationV2.lean)
+with the Python ABI validator and production Zig `relation.parseProgram` →
+`record_abi.validate` path. It compiles 13 varied record programs and the
+hand-written nested-alias program. Every one of those 14 source descriptors
+must pass all three checks. It then mutates the nested descriptor to cover
+nominal-name disagreement, a private bit leaf, duplicate or colliding root
+names, a wrong result name, a tuple root, depth 33, empty record/tuple,
+duplicate sibling fields, and invalid leaf widths. Zig must reject each
+specifically as `InvalidRecordAbi`; a JSON or relation-layer rejection cannot
+pass the harness.
+
+One synthetic relation exercises the **global** leaf bound that the compiler's
+small public-word examples do not reach: 1,023 private one-leaf inputs plus a
+one-leaf result total exactly 1,024 and pass; adding one private input totals
+1,025 and is rejected. The synthetic relation is constructed from a compiled
+single-input source, then extends both its relation input list and record
+descriptor consistently. It is an ABI-validator test, not a source-compiler
+acceptance claim. All corpus bytes are pinned by SHA-256
+`a1f2fef313d2e3f81f69a854b0978a07065f098c71ba0adc4e711e1c637c827c`.
+
+The optional `--lean` mode generates concrete `checkDescriptor` propositions
+for the 30 small cases and checks each with `by decide` in Lean. The two
+synthetic 1,024/1,025-leaf cases stay in the Python/Zig differential; Lean's
+general `overBudget_rejected` theorem covers every descriptor above 1,024,
+while this fixture does not create a giant Lean term for the exact-boundary
+case.
+
+Three explicit gap controls keep the claim precise. A malformed nominal
+identifier (`Bad!`), a wrong declared leaf path, and a wrong wire reference
+retain valid *type-tree shape* and are admitted by the independent shape
+model. The Python and Zig full validators reject them. Lean's descriptor
+checker starts from an already parsed named tree; this differential is a
+finite agreement check, not a proof that Zig parsing refines Lean for all
+inputs. It does not compare ABI digests, statements, proofs, or authenticated
+AIR openings.
+
+Run the fast source/model/Python check or include the native parser:
+
+```sh
+python3 -B src/frontends/s31/tests/acceptance/record_abi/whole_descriptor_shape_v2.py --static
+python3 -B src/frontends/s31/tests/acceptance/record_abi/whole_descriptor_shape_v2.py --lean
+```
+
+The current corpus has **15 native accepted / 17 `InvalidRecordAbi` rejected**
+cases: 14 compiled positives, one synthetic bound positive, 14 shape
+negatives, and three intentional refinement gaps. The Zig executable is
+[`native_descriptor_corpus.zig`](native_descriptor_corpus.zig), wired to
+`zig build record-descriptor-parser-corpus` in the frontend build.
+
 [`nested_alias_v2.py`](nested_alias_v2.py) covers a versioned public record
 whose input contains a tuple and a nested record, whose result contains a
 tuple and nested records, and whose private input is another record. The

@@ -110,6 +110,19 @@ pub fn build(b: *std.Build) void {
     if (b.args) |args| record_parser_corpus.addArgs(args);
     b.step("record-statement-parser-corpus", "Check compiled record claims in the Zig parser")
         .dependOn(&record_parser_corpus.step);
+    const record_descriptor_corpus_root = b.createModule(.{
+        .root_source_file = b.path("tests/acceptance/record_abi/native_descriptor_corpus.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    record_descriptor_corpus_root.addImport("stwo_s31_prototype", frontend);
+    const record_descriptor_corpus = b.addRunArtifact(b.addExecutable(.{
+        .name = "s31-record-descriptor-parser-corpus",
+        .root_module = record_descriptor_corpus_root,
+    }));
+    if (b.args) |args| record_descriptor_corpus.addArgs(args);
+    b.step("record-descriptor-parser-corpus", "Check record ABI v2 descriptor shapes in the Zig parser")
+        .dependOn(&record_descriptor_corpus.step);
     const pair_source_test_root = localEntry(b, "tests/proofs/private_pair_source_test.zig", target, optimize);
     pair_source_test_root.addImport("stwo_core", core);
     pair_source_test_root.addImport("stwo_circuit_frontend", circuit);
