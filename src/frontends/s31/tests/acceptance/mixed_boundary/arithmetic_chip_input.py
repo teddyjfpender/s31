@@ -75,7 +75,8 @@ def variant(work: Path, middle_op: str) -> tuple[Path, Path]:
 def exercise(work: Path, source: Path, assignment: Path, count: int, middle_op: str = "add") -> dict:
     stem = source.stem.removesuffix(".s31")
     expected = oracle(count == 3, middle_op)
-    assert list(json.loads(assignment.read_text())["public_outputs"].values()) == expected
+    expected_outputs = json.loads(assignment.read_text())["public_outputs"]
+    assert (expected_outputs["sum"], expected_outputs["product"]) == expected
     prover, verifier, inspector = build(source, work / f"build-{stem}")
     manifest = json.loads(run(str(inspector)).stdout)
     assert manifest["call_count"] == count
