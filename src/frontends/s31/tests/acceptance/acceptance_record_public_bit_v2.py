@@ -173,6 +173,60 @@ def raw_relation_controls(work: Path, relation: dict) -> None:
                "unused public bit outside Boolean range", "InvalidRecordStatement")
 
 
+def source_passthrough_controls(work: Path) -> None:
+    """Prove the source-level zero-node case that relies only on the v2 claim."""
+    source_text = """struct Request { flag: bit }
+struct Response { flag: bit }
+circuit echo(public request: Request) -> public Response {
+    Response { flag: request.flag }
+}
+"""
+    source = work / "echo.s31"
+    source.write_text(source_text)
+    relation, _ = compile_text(source_text)
+    wire = relation["inputs"][0]["name"]
+    if (relation["version"] != 2 or relation["nodes"] != [] or
+            relation["public_outputs"] != [wire] or
+            relation["public_abi"]["inputs"][0]["leaves"][0]["kind"] != "bit" or
+            relation["public_abi"]["result"]["leaves"][0]["kind"] != "bit"):
+        raise AssertionError("source bit passthrough did not erase to one shared wire")
+    package = s31.build(source, work / "echo-package", "direct-gate")
+    verifier = package / "bin/s31-echo-native-verifier"
+    key = package / "verification-key.json"
+    for bit in (0, 1):
+        typed = {"version": 2, "public_inputs": {"request": {"flag": [bit]}},
+                 "private_inputs": {}, "result": {"flag": [bit]}}
+        assignment = work / f"echo-{bit}.json"
+        assignment.write_bytes(canonical(typed))
+        trial_dir = work / f"echo-trial-{bit}"
+        trial = s31.trial(package, assignment, trial_dir)
+        if not trial["native_verifier_accepted"]:
+            raise AssertionError(f"native zero-node bit passthrough rejected {bit}")
+        proof = trial_dir / "proof.bin"
+        statement = json.loads((trial_dir / "statement.json").read_text())
+        for index in (0, 1):
+            altered = copy.deepcopy(statement)
+            altered["leaves"][index]["words"][0] = 2
+            reject(verifier, proof, work / "echo-mutated-statement.json", key,
+                   canonical(altered), f"passthrough bit leaf {index} outside range",
+                   "InvalidRecordStatement")
+        mismatched = copy.deepcopy(statement)
+        mismatched["leaves"][1]["words"][0] ^= 1
+        reject(verifier, proof, work / "echo-mutated-statement.json", key,
+               canonical(mismatched), "passthrough alias mismatch",
+               "InvalidRecordStatement")
+        changed = copy.deepcopy(statement)
+        for leaf in changed["leaves"]:
+            leaf["words"][0] ^= 1
+        reject(verifier, proof, work / "echo-mutated-statement.json", key,
+               canonical(changed), "valid but changed passthrough public bit")
+        flat = flat_assignment_from_typed(relation, canonical(typed))
+        reject(verifier, proof, work / "echo-mutated-statement.json", key,
+               canonical({"public_inputs": flat["public_inputs"],
+                          "public_outputs": flat["public_outputs"]}),
+               "passthrough v1 statement replay")
+
+
 def main() -> None:
     with tempfile.TemporaryDirectory(prefix="s31-record-public-bit-v2-") as temporary:
         work = Path(temporary)
@@ -251,6 +305,7 @@ def main() -> None:
             raise AssertionError("no honest bit proof was produced")
         adversarial_package_controls(work, package, relation, first_proof, first_statement)
         raw_relation_controls(work, relation)
+        source_passthrough_controls(work)
 
         print(json.dumps({"schema": "s31-record-public-bit-v2-acceptance",
                           "native_honest_proofs": 2, "flat_parity_proofs": 2,
@@ -259,6 +314,7 @@ def main() -> None:
                           "resealed_bit_m31_keys_rejected": 2,
                           "mixed_kind_alias_rejected": True,
                           "unused_public_bit_range_checked": True,
+                          "source_zero_node_bit_passthrough_bound": True,
                           "zero_extra_grouping_rows": True,
                           "raw": record_cost["raw"],
                           "padded": record_cost["padded"]},

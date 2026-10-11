@@ -11,7 +11,7 @@ from __future__ import annotations
 import hashlib
 import struct
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Callable
 
 
 P = (1 << 31) - 1
@@ -674,13 +674,9 @@ class Builder:
         return {"version": 1, "name": self.name, "inputs": self.inputs, "nodes": self.nodes,
                 "assertions": self.assertions, "public_outputs": [value.ref]}
 
-    def finish_record_outputs(self, leaves: list[Value],
-                              span: dict[str, int] | None = None, *,
-                              v2_public_statement: bool = False) -> tuple[dict[str, Any], list[str]]:
+    def _record_outputs(self, leaves: list[Value], span: dict[str, int] | None,
+                        statement_bits: set[str]) -> tuple[dict[str, Any], list[str]]:
         """Realize record leaves, preserving aliases without adding copy gates."""
-        # Only the sealed v2 record statement checks public bit inputs before
-        # proof verification. Keep the builder's default and private bits strict.
-        statement_bits = self.public_bit_inputs if v2_public_statement else set()
         if self.bit_inputs != self.constrained_bits | statement_bits:
             raise TypeErrorS31("every bit input must be constrained by a Boolean operation or select")
         refs = [self.realize(value, span=span).ref for value in leaves]
@@ -696,6 +692,20 @@ class Builder:
             raise TypeErrorS31("current public ABI allows at most eight distinct words")
         return ({"version": 1, "name": self.name, "inputs": self.inputs, "nodes": self.nodes,
                  "assertions": self.assertions, "public_outputs": outputs}, refs)
+
+    def finish_record_outputs(self, leaves: list[Value],
+                              span: dict[str, int] | None = None) -> tuple[dict[str, Any], list[str]]:
+        """Return a raw relation only when every bit input has a Boolean gate."""
+        return self._record_outputs(leaves, span, set())
+
+    def finish_public_record_v2(self, leaves: list[Value],
+                                bind_abi: Callable[[dict[str, Any], list[str]], dict[str, Any]],
+                                span: dict[str, int] | None = None) -> dict[str, Any]:
+        """Complete the v2 ABI before exposing a relation with public bit inputs."""
+        relation, refs = self._record_outputs(leaves, span, self.public_bit_inputs)
+        relation["public_abi"] = bind_abi(relation, refs)
+        relation["version"] = 2
+        return relation
 
 
 # Independent value semantics used by library tests; no relation nodes are involved.

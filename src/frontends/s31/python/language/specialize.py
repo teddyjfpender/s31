@@ -719,12 +719,11 @@ class Compiler:
             leaves = collect(self.circuit.result, result)
             if any(leaf.typ.kind not in {"m31", "bit"} for leaf in leaves):
                 raise self.located(self.circuit.body, "public record v2 supports only m31 and public bit leaves")
-            relation, refs = self.builder.finish_record_outputs(
-                leaves, self.span(self.circuit.body), v2_public_statement=True)
-            binding = make_binding(relation, input_bindings,
-                                   ("result", self.circuit.result, refs))
-            relation["version"] = 2
-            relation["public_abi"] = binding
+            relation = self.builder.finish_public_record_v2(
+                leaves,
+                lambda base, refs: make_binding(
+                    base, input_bindings, ("result", self.circuit.result, refs)),
+                self.span(self.circuit.body))
         else:
             result = self.expect_value(result, self.circuit.body)
             relation = self.builder.finish(result, self.circuit.result,
