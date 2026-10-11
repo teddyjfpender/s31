@@ -55,6 +55,9 @@ executables have unchanged SHA-256 digests across the run. The report binds
 assignment, statement, proof, binaries, and raw logs by SHA-256. Its
 `first_verified_process_wall_ns` is the sum of the two process wall times;
 it excludes the Python gap between processes, just like the paired study.
+Executable paths are resolved to absolute paths before hashing and execution,
+so a bare filename cannot hash a cwd file while running a different file from
+`PATH`.
 
 The source-embedded native verifier and its underlying proof-system review
 remain the authority for proof acceptance. The collector checks the chosen

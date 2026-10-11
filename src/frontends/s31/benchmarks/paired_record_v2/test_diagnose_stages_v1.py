@@ -2,9 +2,11 @@
 """Native-free integrity checks for the post-study mixed stage diagnostic."""
 
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from diagnose_stages_v1 import measure, parse_prover_stage
 
@@ -49,6 +51,36 @@ def executable(path: Path, body: str) -> None:
 
 
 class StageDiagnosticTests(unittest.TestCase):
+    def test_bare_executable_names_hash_the_executed_files(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            shadow = root / "shadow"
+            shadow.mkdir()
+            for name in ("inspector", "prover", "verifier"):
+                executable(shadow / name, "raise SystemExit(63)\n")
+            executable(root / "inspector", f"print({json.dumps(json.dumps(MANIFEST))})\n")
+            executable(root / "prover", "import pathlib,sys\n"
+                       "pathlib.Path(sys.argv[2]).write_bytes(b'proof')\n"
+                       "pathlib.Path(sys.argv[3]).write_bytes(pathlib.Path(sys.argv[4]).read_bytes())\n"
+                       f"sys.stderr.buffer.write({stage_line()!r})\n")
+            executable(root / "verifier", "import pathlib,sys\n"
+                       "assert pathlib.Path(sys.argv[1]).read_bytes()==b'proof'\n"
+                       "assert pathlib.Path(sys.argv[2]).read_bytes()==b'abc'\n")
+            (root / "assignment.json").write_text("{}")
+            (root / "typed.json").write_bytes(b"abc")
+            old_cwd = Path.cwd()
+            try:
+                os.chdir(root)
+                with patch.dict(os.environ, {"PATH": f"{shadow}:{os.environ['PATH']}"}):
+                    report = measure(Path("prover"), Path("verifier"), Path("inspector"),
+                                     Path("assignment.json"), Path("typed.json"),
+                                     Path("accepted"))
+            finally:
+                os.chdir(old_cwd)
+            self.assertTrue(report["external_native_verification_accepted"])
+            self.assertEqual(report["proof_bytes"], 5)
+            self.assertIn("inspector.stderr", report["raw_log_sha256"])
+
     def test_rejects_different_source_identity_and_bad_partition(self) -> None:
         with self.assertRaisesRegex(ValueError, "source or saved artifacts"):
             parse_prover_stage(stage_line(identity="d" * 64), MANIFEST, b"proof", b"abc")

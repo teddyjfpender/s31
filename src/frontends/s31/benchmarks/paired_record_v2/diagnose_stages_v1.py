@@ -81,6 +81,11 @@ def parse_prover_stage(stderr: bytes, manifest: dict, proof: bytes,
 
 def measure(prover: Path, verifier: Path, inspector: Path, assignment: Path,
             typed_statement: Path, out: Path) -> dict:
+    # Bare relative names are resolved through PATH by subprocess, but
+    # Path.read_bytes() opens them in cwd. Use the same absolute file for both
+    # execution and the evidence digest.
+    prover, verifier, inspector = (path.resolve(strict=True) for path in
+                                   (prover, verifier, inspector))
     binaries = {name: digest(path.read_bytes()) for name, path in
                 (("prover", prover), ("verifier", verifier), ("inspector", inspector))}
     supplied = typed_statement.read_bytes()
@@ -120,6 +125,7 @@ def measure(prover: Path, verifier: Path, inspector: Path, assignment: Path,
     (out / "verifier.stdout").write_bytes(verifier_result.stdout)
     (out / "verifier.stderr").write_bytes(verifier_result.stderr)
     (out / "inspector.stdout").write_bytes(inspector_result.stdout)
+    (out / "inspector.stderr").write_bytes(inspector_result.stderr)
     report = {
         "schema": SCHEMA,
         "external_native_verification_accepted": True,
@@ -141,7 +147,7 @@ def measure(prover: Path, verifier: Path, inspector: Path, assignment: Path,
             path.name: digest(path.read_bytes()) for path in (
                 out / "prover.stdout", out / "prover.stderr",
                 out / "verifier.stdout", out / "verifier.stderr",
-                out / "inspector.stdout")
+                out / "inspector.stdout", out / "inspector.stderr")
         },
     }
     (out / "report.json").write_text(json.dumps(report, sort_keys=True,
