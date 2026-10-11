@@ -1,5 +1,6 @@
 //! Witness-free JSON audit view of the exact selected mixed 1..8 profile.
 const std = @import("std");
+const circuit = @import("stwo_circuit_frontend");
 const package = @import("general_package.zig");
 const mixed = @import("inspection.zig");
 const registry = @import("registry.zig");
@@ -99,6 +100,7 @@ pub fn main() !void {
         .composition_log_size = geometry.composition_log_size,
         .composition_split = geometry.composition_split,
         .pcs = geometry.pcs,
+        .interaction_pow_bits = circuit.common.component_list.INTERACTION_POW_BITS,
     };
     const json = try std.json.Stringify.valueAlloc(allocator, report, .{});
     defer allocator.free(json);

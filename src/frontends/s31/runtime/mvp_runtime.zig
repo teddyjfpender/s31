@@ -224,6 +224,10 @@ const Report = struct {
     constant_min_base: u32,
     fixed_table_max_log_size: u32,
     trace_log_size: u32,
+    /// Live source-bound native configuration for record direct-gate proofs.
+    /// Older profiles retain null until their own inspector is upgraded.
+    pcs: ?PcsConfigV2 = null,
+    interaction_pow_bits: ?u32 = null,
     input_packing: []const InputPacking,
     source_map: []const SourceSpan,
     assertion_map: []const s31.relation_compiler.AssertionSpan,
@@ -289,11 +293,17 @@ pub fn main() !void {
     } else if (std.mem.eql(u8, command, "inspect-topology") and args.len == 2 and direct_mode and !chip_mode) {
         try inspectDirectTopology(allocator, parsed.value);
     } else if (std.mem.eql(u8, command, "prove") and args.len == 4) {
-        try prove(allocator, parsed.value, args[2], args[3], null, false, null, null, false);
+        try prove(allocator, parsed.value, args[2], args[3], null, false, null, null, false, false);
+    } else if (std.mem.eql(u8, command, "prove-for-external-verification") and args.len == 4 and
+        parsed.value.version == 2 and direct_mode and !chip_mode)
+    {
+        // Benchmark-only phase boundary. The caller MUST run the separately
+        // installed, source-embedded native verifier before accepting output.
+        try prove(allocator, parsed.value, args[2], args[3], null, false, null, null, false, true);
     } else if (std.mem.eql(u8, command, "recurse-check") and args.len == 5 and !chip_mode and !sparse_mode and !direct_mode) {
-        try prove(allocator, parsed.value, args[2], args[3], null, true, null, args[4], false);
+        try prove(allocator, parsed.value, args[2], args[3], null, true, null, args[4], false, false);
     } else if (std.mem.eql(u8, command, "recurse-prove") and (args.len == 6 or (args.len == 7 and std.mem.eql(u8, args[6], "--low-memory"))) and !chip_mode and !sparse_mode and !direct_mode) {
-        try prove(allocator, parsed.value, args[2], args[3], null, true, args[4], args[5], args.len == 7);
+        try prove(allocator, parsed.value, args[2], args[3], null, true, args[4], args[5], args.len == 7, false);
     } else if (std.mem.eql(u8, command, "recurse-wrap") and (args.len == 6 or (args.len == 7 and std.mem.eql(u8, args[6], "--low-memory"))) and !chip_mode and !sparse_mode and !direct_mode) {
         try wrapExisting(allocator, parsed.value, args[2], args[3], args[4], args[5], false, args.len == 7);
     } else if (std.mem.eql(u8, command, "recurse-wrap-next") and (args.len == 8 or (args.len == 9 and std.mem.eql(u8, args[8], "--low-memory"))) and !chip_mode and (!sparse_mode or wide_mode) and !direct_mode) {
@@ -357,7 +367,7 @@ pub fn main() !void {
     } else if (std.mem.eql(u8, command, "prove-adversarial") and args.len == 5 and (sparse_mode or direct_mode) and chip_mode) {
         const mutation = std.meta.stringToEnum(cpu.sparse_arithmetic.Mutation, args[4]) orelse
             return error.InvalidMutation;
-        try prove(allocator, parsed.value, args[2], args[3], mutation, false, null, null, false);
+        try prove(allocator, parsed.value, args[2], args[3], mutation, false, null, null, false, false);
     } else return usage();
 }
 
@@ -415,6 +425,7 @@ fn parseInspectStep(args: []const []const u8, base_len: usize) !u32 {
 
 fn usage() error{InvalidArguments} {
     std.debug.print("usage: s31-program check | inspect | inspect-topology (bounded direct-gate only) | run ASSIGNMENT.json | prove ASSIGNMENT.json PROOF\n", .{});
+    std.debug.print("       prove-for-external-verification ASSIGNMENT.json PROOF (record direct-gate v2 only; output is UNVERIFIED until separate native verifier accepts)\n", .{});
     std.debug.print("       recurse-check ASSIGNMENT.json CHILD-PROOF CHILD-KEY.json | recurse-prove ASSIGNMENT.json CHILD-PROOF OUTER-PROOF CHILD-KEY.json [--low-memory]\n", .{});
     std.debug.print("       recurse-wrap CHILD-PROOF CHILD-STATEMENT.json OUTER-PROOF CHILD-KEY.json [--low-memory]\n", .{});
     std.debug.print("       recurse-wrap-next OUTER-PROOF OUTER-STATEMENT.json NEXT-PROOF CHILD-KEY.json RECURSIVE-KEY.json NEXT-KEY.json [--low-memory]\n", .{});
@@ -813,6 +824,14 @@ fn inspect(allocator: std.mem.Allocator, source: relation.Program) !void {
         .constant_min_base = s31.relation_compiler.selectedConstantMinBase(source),
         .fixed_table_max_log_size = max_preprocessed_log,
         .trace_log_size = trace_log,
+        .pcs = if (source.version == 2 and direct_mode and !chip_mode)
+            try directPcsConfig(trace_log, null)
+        else
+            null,
+        .interaction_pow_bits = if (source.version == 2 and direct_mode and !chip_mode)
+            circuit.common.component_list.INTERACTION_POW_BITS
+        else
+            null,
         .input_packing = packing,
         .source_map = source_map,
         .assertion_map = maps.assertions.items,
@@ -866,7 +885,7 @@ fn inspectDirectTopology(allocator: std.mem.Allocator, source: relation.Program)
     std.debug.print("{s}\n", .{encoded});
 }
 
-fn prove(allocator: std.mem.Allocator, source: relation.Program, assignment_path: []const u8, path: []const u8, mutation: ?cpu.sparse_arithmetic.Mutation, recurse_check: bool, outer_path: ?[]const u8, child_key_path: ?[]const u8, low_memory: bool) !void {
+fn prove(allocator: std.mem.Allocator, source: relation.Program, assignment_path: []const u8, path: []const u8, mutation: ?cpu.sparse_arithmetic.Mutation, recurse_check: bool, outer_path: ?[]const u8, child_key_path: ?[]const u8, low_memory: bool, external_verification: bool) !void {
     var total_timer = try std.time.Timer.start();
     var assignment = try readAssignment(allocator, assignment_path);
     defer assignment.deinit();
@@ -1013,7 +1032,7 @@ fn prove(allocator: std.mem.Allocator, source: relation.Program, assignment_path
             encoded,
             proof_digest,
             spec.?,
-        ) else try native.verifyDirect(
+        ) else if (!external_verification) try native.verifyDirect(
             allocator,
             &layout,
             &bundle,
@@ -1224,7 +1243,7 @@ fn prove(allocator: std.mem.Allocator, source: relation.Program, assignment_path
     var input_lanes: usize = 0;
     for (source.inputs) |input| input_lanes += input.length;
     printWords(public_words);
-    std.debug.print("S31 {s}: lanes={d}, field-ops={d}->{d}, Blake-G={d}->{d}, proof={d} bytes, witness={d:.6}s, setup={d:.6}s, prove={d:.6}s, total through verification={d:.6}s\n", .{
+    std.debug.print("S31 {s}: lanes={d}, field-ops={d}->{d}, Blake-G={d}->{d}, proof={d} bytes, witness={d:.6}s, setup={d:.6}s, prove={d:.6}s, {s}={d:.6}s\n", .{
         source.name,
         input_lanes,
         raw.qm31_ops,
@@ -1235,6 +1254,7 @@ fn prove(allocator: std.mem.Allocator, source: relation.Program, assignment_path
         @as(f64, @floatFromInt(witness_ns)) / std.time.ns_per_s,
         @as(f64, @floatFromInt(setup_ns)) / std.time.ns_per_s,
         @as(f64, @floatFromInt(prove_ns)) / std.time.ns_per_s,
+        if (external_verification) "total before external verification" else "total through verification",
         @as(f64, @floatFromInt(total_ns)) / std.time.ns_per_s,
     });
     if (sparse_mode or direct_mode) std.debug.print("S31 {s} proof: interaction_pow={d:.6}s fri_pow={d:.6}s\n", .{

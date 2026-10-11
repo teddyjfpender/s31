@@ -1,0 +1,29 @@
+{
+  "schema": "s31-paired-record-v2-prospective-v1",
+  "status": "designed-not-frozen-no-native-observations",
+  "source_template": "src/frontends/s31/examples/boundary/record_mixed1.s31.json",
+  "train_call_counts": [1, 2, 4, 6],
+  "heldout_call_counts": [3, 5, 7, 8],
+  "assignments_per_call_count": 100,
+  "assignment_seed": 9102400,
+  "balanced_order_seed": "s31-paired-record-v2-order-20261011",
+  "bootstrap_seed": 9102419,
+  "bootstrap_resamples": 10000,
+  "minimum_available_disk_bytes_before_native_phase": 8589934592,
+  "build_mode": "ReleaseFast",
+  "source_version": 2,
+  "generic_lowering": "direct-gate",
+  "mixed_lowering": "direct-mixed-general",
+  "first_verified_proof_boundary": "both arms invoke prover without internal native verification, then a fresh source-embedded native verifier process on the same canonical typed public statement; include both wall times and process startups",
+  "live_security_config_gate": "record each arm's live PCS from source-embedded inspector; require identical complete FriConfigV2 and interaction PoW bits, report geometry-dependent lifting sizes separately; security equivalence remains unproven",
+  "automatic_lowering_selection_enabled": false,
+  "speedup_threshold": null,
+  "prefreeze_pins": {
+    "source_base_commit": null,
+    "compiler_sha256": null,
+    "engine_gitlink_commit": null,
+    "measurement_tool_sha256": null,
+    "host_identity": null,
+    "generated_inventory_sha256": null
+  }
+}
