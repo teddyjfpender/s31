@@ -14,12 +14,71 @@ pub const max_components = 1 + 2 * max_calls;
 pub const Role = enum(u8) { circuit, chip, bridge };
 pub const Key = enum(u8) { bundled_circuit, pair_chip, pair_bridge, many_chip, many_bridge };
 
+/// The tuple shape is a relation-level contract, not a property of one AIR
+/// component. Different layouts with the same ID would share one compressed
+/// LogUp key space, even when their tuple lengths differ by trailing zeroes.
+pub const TupleLayout = enum(u8) {
+    unused,
+    gate_address_m31x4,
+    tagged_step_m31x4,
+    sha_word_v1,
+};
+
+pub const RelationSchema = struct {
+    relation_id: u32 = 0,
+    tuple_arity: u8 = 0,
+    layout: TupleLayout = .unused,
+};
+
+const gate_schema: RelationSchema = .{
+    .relation_id = circuit.common.component_list.GATE_RELATION_ID,
+    .tuple_arity = 6,
+    .layout = .gate_address_m31x4,
+};
+const chip_schema: RelationSchema = .{
+    .relation_id = cpu.private_many_boundary.relation_id,
+    .tuple_arity = 7,
+    .layout = .tagged_step_m31x4,
+};
+
+/// A bounded co-admission check for all relations sharing one lookup challenge
+/// domain. It is deliberately absent from any hashed profile or proof layout.
+pub const RelationDomain = struct {
+    schemas: [max_components * 2]RelationSchema = [_]RelationSchema{.{}} ** (max_components * 2),
+    count: usize = 0,
+
+    pub fn admit(self: *RelationDomain, schema: RelationSchema) !void {
+        if (schema.relation_id == 0 or schema.tuple_arity == 0 or schema.layout == .unused)
+            return error.InvalidMixedRelationSchema;
+        for (self.schemas[0..self.count]) |existing| {
+            if (existing.relation_id != schema.relation_id) continue;
+            if (!std.meta.eql(existing, schema)) return error.ConflictingMixedRelationSchema;
+            return;
+        }
+        if (self.count == self.schemas.len) return error.TooManyMixedRelationSchemas;
+        self.schemas[self.count] = schema;
+        self.count += 1;
+    }
+
+    pub fn admitConstructor(self: *RelationDomain, spec: Constructor) !void {
+        if (spec.relation_count == 0 or spec.relation_count > spec.relation_ids.len)
+            return error.InvalidMixedRelationSchema;
+        for (0..spec.relation_count) |index| {
+            const schema = spec.relation_schemas[index];
+            if (spec.relation_ids[index] != schema.relation_id)
+                return error.InvalidMixedRelationSchema;
+            try self.admit(schema);
+        }
+    }
+};
+
 pub const Constructor = struct {
     key: Key,
     id: u32,
     version: u32,
     role: Role,
     relation_ids: [2]u32,
+    relation_schemas: [2]RelationSchema,
     relation_count: u8,
     main_columns: u32,
     interaction_columns: u32,
@@ -38,6 +97,7 @@ pub fn constructor(key: Key) Constructor {
             .version = version,
             .role = .circuit,
             .relation_ids = .{ gate_relation, 0 },
+            .relation_schemas = .{ gate_schema, .{} },
             .relation_count = 1,
             // Circuit geometry comes only from the selected bundled AIR.
             .main_columns = 0,
@@ -51,6 +111,7 @@ pub fn constructor(key: Key) Constructor {
             .version = version,
             .role = .chip,
             .relation_ids = .{ chip_relation, 0 },
+            .relation_schemas = .{ chip_schema, .{} },
             .relation_count = 1,
             .main_columns = 9,
             .interaction_columns = 8,
@@ -63,6 +124,7 @@ pub fn constructor(key: Key) Constructor {
             .version = version,
             .role = .bridge,
             .relation_ids = .{ gate_relation, chip_relation },
+            .relation_schemas = .{ gate_schema, chip_schema },
             .relation_count = 2,
             .main_columns = 8,
             .interaction_columns = 20,
@@ -140,4 +202,49 @@ test "mixed registry chooses bounded pair then many components in sum order" {
         try std.testing.expectError(error.UnregisteredMixedComponent, forSlot(1 + 2 * n, n));
     }
     try std.testing.expectError(error.UnregisteredMixedComponent, forSlot(0, 0));
+}
+
+test "mixed registry relation domain admits Gate, pair and many schemas for every roster" {
+    for (1..max_calls + 1) |n| {
+        var domain: RelationDomain = .{};
+        for (0..1 + 2 * n) |index| {
+            try domain.admitConstructor((try forSlot(index, n)).constructor);
+        }
+        try std.testing.expectEqual(@as(usize, 2), domain.count);
+        try std.testing.expectEqualDeep(gate_schema, domain.schemas[0]);
+        try std.testing.expectEqualDeep(chip_schema, domain.schemas[1]);
+    }
+}
+
+test "mixed registry rejects SHA word v1 and pair or many in one lookup domain" {
+    const sha_word = @import("../../sha/air/sha_direct_word_bus.zig");
+    const sha_schema: RelationSchema = .{
+        .relation_id = sha_word.relation_id,
+        .tuple_arity = 6,
+        .layout = .sha_word_v1,
+    };
+    try std.testing.expectEqual(chip_schema.relation_id, sha_schema.relation_id);
+    for (.{ Key.pair_chip, Key.many_chip, Key.pair_bridge, Key.many_bridge }) |key| {
+        var domain: RelationDomain = .{};
+        try domain.admit(sha_schema);
+        try std.testing.expectError(error.ConflictingMixedRelationSchema, domain.admitConstructor(constructor(key)));
+    }
+    var domain: RelationDomain = .{};
+    try domain.admitConstructor(constructor(.pair_chip));
+    try std.testing.expectError(error.ConflictingMixedRelationSchema, domain.admit(sha_schema));
+}
+
+test "mixed registry relation guard rejects same-ID schema conflicts and malformed constructors" {
+    var domain: RelationDomain = .{};
+    try domain.admitConstructor(constructor(.bundled_circuit));
+    try domain.admitConstructor(constructor(.pair_chip));
+    var changed = constructor(.pair_chip);
+    changed.relation_schemas[0].tuple_arity = 6;
+    try std.testing.expectError(error.ConflictingMixedRelationSchema, domain.admitConstructor(changed));
+    changed = constructor(.pair_chip);
+    changed.relation_schemas[0].layout = .sha_word_v1;
+    try std.testing.expectError(error.ConflictingMixedRelationSchema, domain.admitConstructor(changed));
+    changed = constructor(.pair_chip);
+    changed.relation_schemas[0].relation_id ^= 1;
+    try std.testing.expectError(error.InvalidMixedRelationSchema, domain.admitConstructor(changed));
 }

@@ -80,9 +80,13 @@ pub fn fromSchedule(schedule: *const mixed.SelectedSchedule) !Manifest {
     var main_at: u32 = 0;
     var interaction_at: u32 = 0;
     var constraint_at: u32 = 0;
+    var relation_domain: registry.RelationDomain = .{};
     for (schedule.slots[0..schedule.slot_count], result.entries[0..schedule.slot_count], 0..) |slot, *entry, index| {
         const choice = try registry.forSlot(index, schedule.call_count);
         const spec = choice.constructor;
+        // These source-selected constructors share one interaction challenge.
+        // Distinct tuple layouts must never alias under one relation ID.
+        try relation_domain.admitConstructor(spec);
         const source_kind: mixed.SourceKind = switch (spec.key) {
             .bundled_circuit => .bundled_circuit,
             .pair_chip => .pair_chip,
