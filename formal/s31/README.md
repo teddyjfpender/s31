@@ -183,6 +183,18 @@ and `checkRelation` admission inherit this bound. Therefore the admitted
 certificate has distinct modeled source-row positions and projected source
 cell positions without an extra budget assumption. These theorems do not
 prove that the native emitter or committed columns match the modeled schedule.
+The same bridge now counts actual source add and pointwise-multiply operations
+from the certificate and proves that each source row lies in its gate-kind
+partition. For the bounded direct-gate profile, an explicit premise
+`totalAddRows = 11 + sourceAddCount` connects the modeled add partition to
+the native layout: three input-pack adds, source adds, four input copies, and
+four output copies. Under that premise, byte admission proves a stronger
+modeled row roster: all source, public input, and public output projected
+trace positions are pairwise distinct and below the 512-row capacity. The
+source-row theorem also preserves opcode, order, circuit position, and
+operand/output addresses. The eleven-row count equality, exporter fidelity,
+remaining nonprojected rows, and committed-column correspondence remain
+separate obligations; the roster theorem does not silently assume them.
 `Functional/SSATextBytes` independently
 parses the embedded bytes for the restricted ASCII four-lane add/mul grammar,
 reconstructs its SSA meaning, and proves normalized execution agrees with

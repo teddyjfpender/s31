@@ -329,6 +329,273 @@ private def rowsWithin (totalAddRows priorAdds priorMuls : Nat)
     else
       3 ≤ row.traceRow ∧ row.traceRow < 3 + priorAdds
 
+private theorem fold_rows_within (totalAddRows : Nat)
+    (remaining : List Instruction) (priorAdds priorMuls : Nat)
+    (rows : List NativeSourceRow)
+    (hwithin : rowsWithin totalAddRows priorAdds priorMuls rows) :
+    let result := remaining.foldl (emitStep totalAddRows)
+      (priorAdds, priorMuls, rows)
+    rowsWithin totalAddRows result.1 result.2.1 result.2.2 := by
+  induction remaining generalizing priorAdds priorMuls rows with
+  | nil => simpa using hwithin
+  | cons instruction rest ih =>
+      let next := emittedRow instruction totalAddRows priorAdds priorMuls
+      have hwithin' : rowsWithin totalAddRows
+          (priorAdds + if instruction.multiply then 0 else 1)
+          (priorMuls + if instruction.multiply then 1 else 0)
+          (rows ++ [next]) := by
+        intro row hmember
+        rcases List.mem_append.mp hmember with hold | hnew
+        · have hrange := hwithin row hold
+          cases instruction.multiply <;> cases ho : row.multiply <;>
+            simp [ho] at hrange ⊢ <;> omega
+        · have heq : row = next := by simpa using hnew
+          subst row
+          cases hi : instruction.multiply <;>
+            simp [next, emittedRow, hi]
+      simpa [List.foldl_cons, emitStep, next] using
+        (ih _ _ (rows ++ [next]) hwithin')
+
+private theorem fold_rows_add_count (totalAddRows : Nat)
+    (remaining : List Instruction) (priorAdds priorMuls : Nat)
+    (rows : List NativeSourceRow) :
+    (remaining.foldl (emitStep totalAddRows)
+      (priorAdds, priorMuls, rows)).1 =
+      remaining.foldl (fun n instruction =>
+        n + if instruction.multiply then 0 else 1) priorAdds := by
+  induction remaining generalizing priorAdds priorMuls rows with
+  | nil => rfl
+  | cons instruction rest ih =>
+      simpa [List.foldl_cons, emitStep] using
+        ih (priorAdds + if instruction.multiply then 0 else 1)
+          (priorMuls + if instruction.multiply then 1 else 0)
+          (rows ++ [emittedRow instruction totalAddRows priorAdds priorMuls])
+
+private theorem fold_rows_mul_count (totalAddRows : Nat)
+    (remaining : List Instruction) (priorAdds priorMuls : Nat)
+    (rows : List NativeSourceRow) :
+    (remaining.foldl (emitStep totalAddRows)
+      (priorAdds, priorMuls, rows)).2.1 =
+      remaining.foldl (fun n instruction =>
+        n + if instruction.multiply then 1 else 0) priorMuls := by
+  induction remaining generalizing priorAdds priorMuls rows with
+  | nil => rfl
+  | cons instruction rest ih =>
+      simpa [List.foldl_cons, emitStep] using
+        ih (priorAdds + if instruction.multiply then 0 else 1)
+          (priorMuls + if instruction.multiply then 1 else 0)
+          (rows ++ [emittedRow instruction totalAddRows priorAdds priorMuls])
+
+/-- Every modeled source row lies in its actual counted native gate-kind
+partition. The add and pointwise-multiply counts come from the certificate's
+instructions; no separate row-count oracle is assumed. -/
+theorem expected_rows_partition (certificate : Certificate)
+    (totalAddRows : Nat) :
+    ∀ row ∈ expectedRows certificate totalAddRows,
+      if row.multiply then
+        totalAddRows + 28 ≤ row.traceRow ∧
+          row.traceRow < totalAddRows + 28 + sourceMulCount certificate
+      else
+        3 ≤ row.traceRow ∧
+          row.traceRow < 3 + sourceAddCount certificate := by
+  let result := certificate.instructions.foldl (emitStep totalAddRows)
+    (0, 0, [])
+  have hwithin : rowsWithin totalAddRows result.1 result.2.1 result.2.2 :=
+    fold_rows_within totalAddRows certificate.instructions 0 0 []
+      (by simp [rowsWithin])
+  have hadd : result.1 = sourceAddCount certificate := by
+    simpa [result, sourceAddCount] using
+      fold_rows_add_count totalAddRows certificate.instructions 0 0 []
+  have hmul : result.2.1 = sourceMulCount certificate := by
+    simpa [result, sourceMulCount] using
+      fold_rows_mul_count totalAddRows certificate.instructions 0 0 []
+  simpa [expectedRows, result, rowsWithin, hadd, hmul] using hwithin
+
+private theorem add_count_bounded (instructions : List Instruction)
+    (start : Nat) :
+    instructions.foldl (fun n instruction =>
+      n + if instruction.multiply then 0 else 1) start ≤
+      start + instructions.length := by
+  induction instructions generalizing start with
+  | nil => simp
+  | cons instruction rest ih =>
+      simp only [List.foldl_cons, List.length_cons]
+      have h := ih (start + if instruction.multiply then 0 else 1)
+      cases hkind : instruction.multiply <;> simp [hkind] at h ⊢ <;> omega
+
+private theorem mul_count_bounded (instructions : List Instruction)
+    (start : Nat) :
+    instructions.foldl (fun n instruction =>
+      n + if instruction.multiply then 1 else 0) start ≤
+      start + instructions.length := by
+  induction instructions generalizing start with
+  | nil => simp
+  | cons instruction rest ih =>
+      simp only [List.foldl_cons, List.length_cons]
+      have h := ih (start + if instruction.multiply then 1 else 0)
+      cases hkind : instruction.multiply <;> simp [hkind] at h ⊢ <;> omega
+
+theorem source_add_count_bounded (certificate : Certificate) :
+    sourceAddCount certificate ≤ certificate.instructions.length := by
+  simpa [sourceAddCount] using
+    add_count_bounded certificate.instructions 0
+
+theorem source_mul_count_bounded (certificate : Certificate) :
+    sourceMulCount certificate ≤ certificate.instructions.length := by
+  simpa [sourceMulCount] using
+    mul_count_bounded certificate.instructions 0
+
+/-- The actual bounded direct-gate layout has eleven fixed add rows around
+the source add partition. Successful byte admission therefore places every
+modeled source row inside the 512-row trace. Equality of this row count with
+the native emitted or committed trace remains a separate premise. -/
+theorem checked_source_rows_within_512
+    (sourceBytes normalizedBytes : List Nat) (certificate : Certificate)
+    (totalAddRows : Nat)
+    (hrelation : checkRelation sourceBytes normalizedBytes = some certificate)
+    (hadd : totalAddRows = 11 + sourceAddCount certificate) :
+    ∀ row ∈ expectedRows certificate totalAddRows,
+      row.traceRow < 2 ^ 9 := by
+  have hbudget := checked_relation_instruction_bound sourceBytes
+    normalizedBytes certificate hrelation
+  have ha := source_add_count_bounded certificate
+  have hm := source_mul_count_bounded certificate
+  intro row hrow
+  have hrange := expected_rows_partition certificate totalAddRows row hrow
+  cases hkind : row.multiply <;> simp [hkind] at hrange <;> norm_num <;> omega
+
+/-- Cell projection preserves every modeled source trace position. -/
+theorem expected_cells_trace_rows_eq (certificate : Certificate)
+    (totalAddRows : Nat) :
+    (expectedCells certificate totalAddRows).map ColumnCell.traceRow =
+      (expectedRows certificate totalAddRows).map
+        NativeSourceRow.traceRow := by
+  have hlen := (expected_rows_shape certificate totalAddRows).length_eq
+  calc
+    _ = ((certificate.instructions.zip
+        (expectedRows certificate totalAddRows)).map Prod.snd).map
+          NativeSourceRow.traceRow := by
+            simp [expectedCells, expectedCell, List.map_map]
+    _ = _ := by rw [List.map_snd_zip hlen.ge]
+
+private def publicRowBand (certificate : Certificate)
+    (totalAddRows row : Nat) : Prop :=
+  row < 3 ∨
+  (3 + sourceAddCount certificate ≤ row ∧
+    row < 11 + sourceAddCount certificate) ∨
+  (totalAddRows + 1 ≤ row ∧ row < totalAddRows + 7) ∨
+  (totalAddRows + 28 + sourceMulCount certificate ≤ row ∧
+    row < totalAddRows + 36 + sourceMulCount certificate)
+
+/-- The public input and output cells occupy four fixed-width ranges outside
+the source add and pointwise-multiply partitions. -/
+private theorem public_cells_band (certificate : Certificate)
+    (totalAddRows : Nat) :
+    ∀ cell ∈ expectedInputCells certificate totalAddRows ++
+        expectedOutputCells certificate totalAddRows,
+      publicRowBand certificate totalAddRows cell.traceRow := by
+  intro cell hcell
+  simp only [expectedInputCells, expectedOutputCells, expectedMaskCells,
+    List.mem_append] at hcell
+  rcases hcell with hinput | houtput
+  · rcases hinput with hpre | hself
+    · rcases hpre with hpre | hcopy
+      · rcases hpre with hpackAdd | hpackMul
+        · obtain ⟨index, hindex, heq⟩ := List.mem_map.mp hpackAdd
+          subst cell
+          have hi := List.mem_range.mp hindex
+          simp [publicRowBand, expectedPackAddCell]
+          omega
+        · obtain ⟨index, hindex, heq⟩ := List.mem_map.mp hpackMul
+          subst cell
+          have hi := List.mem_range.mp hindex
+          simp [publicRowBand, expectedPackMulCell]
+          omega
+      · obtain ⟨index, hindex, heq⟩ := List.mem_map.mp hcopy
+        subst cell
+        have hi := List.mem_range.mp hindex
+        simp [publicRowBand, expectedInputCopyCell]
+        omega
+    · obtain ⟨index, hindex, heq⟩ := List.mem_map.mp hself
+      subst cell
+      have hi := List.mem_range.mp hindex
+      simp [publicRowBand, expectedInputSelfCell]
+      omega
+  · rcases houtput with hpre | hcopy
+    · rcases hpre with hmask | hinverse
+      · obtain ⟨index, hindex, heq⟩ := List.mem_map.mp hmask
+        subst cell
+        have hi := List.mem_range.mp hindex
+        simp [publicRowBand, expectedMaskCell]
+        omega
+      · obtain ⟨index, hindex, heq⟩ := List.mem_map.mp hinverse
+        subst cell
+        have hi := List.mem_range.mp hindex
+        simp [publicRowBand, expectedInverseCell]
+        omega
+    · obtain ⟨index, hindex, heq⟩ := List.mem_map.mp hcopy
+      subst cell
+      have hi := List.mem_range.mp hindex
+      simp [publicRowBand, expectedCopyCell]
+      omega
+
+/-- The exact source-cell positions and all modeled public input/output
+positions are disjoint when `totalAddRows` equals the native bounded profile's
+eleven fixed add rows plus the number of source adds. This remains a statement
+about projected rows, not an assertion about the committed trace. -/
+theorem expected_source_public_rows_disjoint (certificate : Certificate)
+    (totalAddRows : Nat)
+    (hadd : totalAddRows = 11 + sourceAddCount certificate) :
+    ∀ sourceCell ∈ expectedCells certificate totalAddRows,
+      ∀ publicCell ∈ expectedInputCells certificate totalAddRows ++
+          expectedOutputCells certificate totalAddRows,
+        sourceCell.traceRow ≠ publicCell.traceRow := by
+  intro sourceCell hsource publicCell hpublic heq
+  have hsourceRow : sourceCell.traceRow ∈
+      (expectedRows certificate totalAddRows).map
+        NativeSourceRow.traceRow := by
+    rw [← expected_cells_trace_rows_eq]
+    exact List.mem_map_of_mem hsource
+  obtain ⟨sourceRow, hrow, htrace⟩ := List.mem_map.mp hsourceRow
+  have hsourceBand := expected_rows_partition certificate totalAddRows
+    sourceRow hrow
+  have hpublicBand := public_cells_band certificate totalAddRows
+    publicCell hpublic
+  rcases hpublicBand with h | h | h | h <;>
+    cases hkind : sourceRow.multiply <;>
+    simp [hkind] at hsourceBand <;> omega
+
+/-- The twenty-five modeled public input/output cells have distinct trace
+positions. The arithmetic uses the actual source add and multiply counts and
+the direct-gate eleven-add-row layout. -/
+theorem expected_public_rows_nodup (certificate : Certificate)
+    (totalAddRows : Nat)
+    (hadd : totalAddRows = 11 + sourceAddCount certificate) :
+    (((expectedInputCells certificate totalAddRows ++
+        expectedOutputCells certificate totalAddRows).map
+      ColumnCell.traceRow)).Nodup := by
+  simp [expectedInputCells, expectedOutputCells, expectedMaskCells,
+    expectedPackAddCell, expectedPackMulCell, expectedInputCopyCell,
+    expectedInputSelfCell, expectedMaskCell, expectedInverseCell,
+    expectedCopyCell, List.range, List.range.loop, List.map_append,
+    List.nodup_cons] <;> omega
+
+theorem checked_public_cells_within_512
+    (sourceBytes normalizedBytes : List Nat) (certificate : Certificate)
+    (totalAddRows : Nat)
+    (hrelation : checkRelation sourceBytes normalizedBytes = some certificate)
+    (hadd : totalAddRows = 11 + sourceAddCount certificate) :
+    ∀ cell ∈ expectedInputCells certificate totalAddRows ++
+        expectedOutputCells certificate totalAddRows,
+      cell.traceRow < 2 ^ 9 := by
+  have hbudget := checked_relation_instruction_bound sourceBytes
+    normalizedBytes certificate hrelation
+  have ha := source_add_count_bounded certificate
+  have hm := source_mul_count_bounded certificate
+  intro cell hcell
+  have hband := public_cells_band certificate totalAddRows cell hcell
+  rcases hband with h | h | h | h <;> norm_num <;> omega
+
 private theorem fold_rows_unique (totalAddRows : Nat)
     (remaining : List Instruction) (priorAdds priorMuls : Nat)
     (rows : List NativeSourceRow)
@@ -401,18 +668,7 @@ theorem expected_cells_trace_rows_nodup (certificate : Certificate)
     (totalAddRows : Nat)
     (hgap : 3 + certificate.instructions.length ≤ totalAddRows + 28) :
     ((expectedCells certificate totalAddRows).map ColumnCell.traceRow).Nodup := by
-  have hlen := (expected_rows_shape certificate totalAddRows).length_eq
-  have hproj :
-      (expectedCells certificate totalAddRows).map ColumnCell.traceRow =
-        (expectedRows certificate totalAddRows).map
-          NativeSourceRow.traceRow := by
-    calc
-      _ = ((certificate.instructions.zip
-          (expectedRows certificate totalAddRows)).map Prod.snd).map
-            NativeSourceRow.traceRow := by
-              simp [expectedCells, expectedCell, List.map_map]
-      _ = _ := by rw [List.map_snd_zip hlen.ge]
-  rw [hproj]
+  rw [expected_cells_trace_rows_eq]
   exact expected_rows_trace_rows_nodup certificate totalAddRows hgap
 
 /-- The modeled deterministic `expectedRows` schedule supplies a matching
@@ -457,6 +713,59 @@ theorem checked_relation_modeled_source_schedule
     expected_rows_trace_rows_nodup_of_budget certificate totalAddRows hbudget,
     expected_cells_trace_rows_nodup certificate totalAddRows ?_⟩
   omega
+
+/-- Exact legal row roster for the modeled bounded direct-gate profile.
+Every byte-admitted source instruction retains its order, opcode, circuit
+wire, and operand/output addresses by `expected_rows_opcode_and_addresses`;
+this theorem adds global row uniqueness and 512-row capacity for all source,
+input, and output projections. The native emitter count equality `hadd` is
+explicit. Committed-column equality and remaining nonprojected native rows
+are outside this theorem. -/
+theorem checked_relation_modeled_row_roster
+    (sourceBytes normalizedBytes : List Nat) (certificate : Certificate)
+    (totalAddRows : Nat)
+    (hrelation : checkRelation sourceBytes normalizedBytes = some certificate)
+    (hadd : totalAddRows = 11 + sourceAddCount certificate) :
+    SourcePlan certificate (expectedCells certificate totalAddRows) ∧
+    (((expectedCells certificate totalAddRows ++
+        (expectedInputCells certificate totalAddRows ++
+          expectedOutputCells certificate totalAddRows)).map
+      ColumnCell.traceRow)).Nodup ∧
+    (∀ cell ∈ expectedCells certificate totalAddRows ++
+        (expectedInputCells certificate totalAddRows ++
+          expectedOutputCells certificate totalAddRows),
+      cell.traceRow < 2 ^ 9) := by
+  have hsource := checked_relation_modeled_source_schedule
+    sourceBytes normalizedBytes certificate totalAddRows hrelation
+  have hpublic := expected_public_rows_nodup certificate totalAddRows hadd
+  have hdisjoint : List.Disjoint
+      ((expectedCells certificate totalAddRows).map ColumnCell.traceRow)
+      ((expectedInputCells certificate totalAddRows ++
+        expectedOutputCells certificate totalAddRows).map ColumnCell.traceRow) := by
+    intro row hsourceRow hpublicRow
+    obtain ⟨sourceCell, hsourceCell, hsourceEq⟩ :=
+      List.mem_map.mp hsourceRow
+    obtain ⟨publicCell, hpublicCell, hpublicEq⟩ :=
+      List.mem_map.mp hpublicRow
+    exact expected_source_public_rows_disjoint certificate totalAddRows hadd
+      sourceCell hsourceCell publicCell hpublicCell
+      (hsourceEq.trans hpublicEq.symm)
+  refine ⟨hsource.1, ?_, ?_⟩
+  · rw [List.map_append]
+    exact hsource.2.2.append hpublic hdisjoint
+  · intro cell hcell
+    rcases List.mem_append.mp hcell with hsourceCell | hpublicCell
+    · have hsourceRow : cell.traceRow ∈
+          (expectedRows certificate totalAddRows).map
+            NativeSourceRow.traceRow := by
+        rw [← expected_cells_trace_rows_eq]
+        exact List.mem_map_of_mem hsourceCell
+      obtain ⟨sourceRow, hrow, htrace⟩ := List.mem_map.mp hsourceRow
+      have hbound := checked_source_rows_within_512 sourceBytes
+        normalizedBytes certificate totalAddRows hrelation hadd sourceRow hrow
+      omega
+    · exact checked_public_cells_within_512 sourceBytes normalizedBytes
+        certificate totalAddRows hrelation hadd cell hpublicCell
 
 /-- Output masks, inverse-basis products, and public copies each yield once
 by construction, independently of the source program's instruction count. -/
