@@ -19,7 +19,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE / "cost"))
 
 from benchmark_whole_prover_cost_v3 import chip_manifest_binding, run_corpus, s31
-from v7_protocol import (MIN_FREE_BYTES, PROTOCOL, inventory, require_model,
+from v7_protocol import (MIN_FREE_BYTES, PROTOCOL, SCHEMA, inventory, require_model,
                          require_protocol, tool_paths, workloads)
 
 
@@ -106,7 +106,7 @@ def run(args: argparse.Namespace) -> None:
         check_build_inventory(output, args.split, protocol, args.expected_protocol_sha256,
                               model_sha, args.protocol_anchor_commit,
                               args.model_anchor_commit)
-    run_corpus(args, protocol_path=PROTOCOL, protocol_schema="s31-whole-prover-cost-protocol-v7",
+    run_corpus(args, protocol_path=PROTOCOL, protocol_schema=SCHEMA,
                model_schema="s31-whole-prover-cost-model-v7",
                corpus_schema="s31-whole-prover-cost-corpus-v7",
                build_schema="s31-whole-prover-build-inventory-v7",

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prospective V7 study protocol. No native work is allowed before anchoring.
+"""Prospective V7r1 study protocol. No native work is allowed before anchoring.
 
 This module deliberately does not contain fitted coefficients or observations.
 The protocol is generated once, after the compiler and engine commits settle.
@@ -30,13 +30,23 @@ from benchmark_whole_prover_cost_v3 import host_identity, signed_assignment
 from benchmark_whole_prover_cost_v6 import remainder_assignment
 from benchmark_whole_prover_multiscale import hash_assignment, hash_program
 
-PROTOCOL = ROOT / "design/s31/measurements/language/whole-prover-cost-v7.json"
-MODEL = ROOT / "design/s31/measurements/language/whole-prover-cost-v7-model.json"
-PROTOCOL_ANCHOR = ROOT / "design/s31/measurements/language/whole-prover-cost-v7-protocol-freeze.json"
-MODEL_ANCHOR = ROOT / "design/s31/measurements/language/whole-prover-cost-v7-model-freeze.json"
+PROTOCOL = ROOT / "design/s31/measurements/language/whole-prover-cost-v7r1.json"
+MODEL = ROOT / "design/s31/measurements/language/whole-prover-cost-v7r1-model.json"
+PROTOCOL_ANCHOR = ROOT / "design/s31/measurements/language/whole-prover-cost-v7r1-protocol-freeze.json"
+MODEL_ANCHOR = ROOT / "design/s31/measurements/language/whole-prover-cost-v7r1-model-freeze.json"
+SUPERSEDED_PROTOCOL = ROOT / "design/s31/measurements/language/whole-prover-cost-v7.json"
+SUPERSEDED_ANCHOR = ROOT / "design/s31/measurements/language/whole-prover-cost-v7-protocol-freeze.json"
+SUPERSEDED_PROTOCOL_SHA = "3376d94435f1e8d533693f23f82d90e9d2833e9a8a14e27c91b86d48d14ab83b"
+SUPERSEDED_ANCHOR_COMMIT = "5bb640ac69c74e5adae02e55735232ea8b7a0689"
+SUPERSEDED_EXPOSURE = {
+    "train_package_builds": ["arithmetic_24", "arithmetic_160", "arithmetic_640", "arithmetic_2560"],
+    "interrupted_train_package_build": "arithmetic_8192",
+    "train_proofs": 0, "validation_package_builds": 0,
+    "validation_proofs": 0, "used_in_model": False,
+}
 V6_AUDIT = ROOT / "design/s31/measurements/language/whole-prover-cost-v6-audit.json"
 TRANSFER_PROTOCOL = ROOT / "design/s31/measurements/language/whole-prover-transfer-v1.json"
-SCHEMA = "s31-whole-prover-cost-protocol-v7"
+SCHEMA = "s31-whole-prover-cost-protocol-v7r1"
 SAMPLES = 100
 MIN_FREE_BYTES = 8 * 1024**3
 SPLITS = {
@@ -136,6 +146,19 @@ def require_clean_sources() -> None:
     if actual_engine != expected_engine or git("status", "--porcelain", "--untracked-files=no",
                                                cwd=ROOT / "deps/stwo-zig"):
         raise ValueError("engine checkout must equal the clean committed gitlink")
+
+
+def require_superseded_attempt() -> None:
+    """Keep the aborted build-only first freeze visible and immutable."""
+    require_committed(SUPERSEDED_PROTOCOL)
+    require_committed(SUPERSEDED_ANCHOR)
+    if (s31.file_hash(SUPERSEDED_PROTOCOL) != SUPERSEDED_PROTOCOL_SHA or
+        subprocess.run(["git", "-C", str(ROOT), "merge-base", "--is-ancestor",
+                        SUPERSEDED_ANCHOR_COMMIT, "HEAD"], check=False).returncode):
+        raise ValueError("superseded V7 freeze changed or is not an ancestor")
+    require_committed(SUPERSEDED_ANCHOR, SUPERSEDED_ANCHOR_COMMIT)
+    if json.loads(SUPERSEDED_ANCHOR.read_bytes()).get("protocol_sha256") != SUPERSEDED_PROTOCOL_SHA:
+        raise ValueError("superseded V7 anchor disagrees with its protocol")
 
 
 def require_fingerprinted_zig_sources_committed() -> None:
@@ -286,7 +309,11 @@ def inventory(output: Path, protocol: dict) -> dict:
 def protocol_template() -> dict:
     old = json.loads((ROOT / "design/s31/measurements/whole-prover-cost-v6.json").read_bytes())
     return {
-        "schema": SCHEMA, "revision": "7", "status": "frozen-before-any-v7-native-observation",
+        "schema": SCHEMA, "revision": "7r1",
+        "status": "frozen-before-native-measurement-under-this-revision",
+        "supersedes_protocol_sha256": SUPERSEDED_PROTOCOL_SHA,
+        "supersedes_protocol_anchor_commit": SUPERSEDED_ANCHOR_COMMIT,
+        "superseded_attempt_exposure": SUPERSEDED_EXPOSURE,
         "source_base_commit": git("rev-parse", "HEAD"),
         "engine_gitlink_commit": git("rev-parse", "HEAD:deps/stwo-zig"),
         "compiler_sha256": s31.compiler_fingerprint(),
@@ -312,8 +339,9 @@ def protocol_template() -> dict:
 
 def draft(output: Path) -> str:
     if PROTOCOL.exists():
-        raise ValueError("V7 protocol already exists; never refreeze it in place")
+        raise ValueError("V7r1 protocol already exists; never refreeze it in place")
     require_clean_sources()
+    require_superseded_attempt()
     protocol = protocol_template()
     protocol["inventory"] = inventory(output, protocol)
     s31.write_json(PROTOCOL, protocol)
@@ -348,11 +376,15 @@ def require_protocol(expected_sha: str, anchor_commit: str, output: Path | None 
         raise ValueError("protocol differs from recorded SHA")
     protocol = json.loads(PROTOCOL.read_bytes())
     if (protocol.get("schema") != SCHEMA or
-        protocol.get("status") != "frozen-before-any-v7-native-observation" or
+        protocol.get("status") != "frozen-before-native-measurement-under-this-revision" or
+        protocol.get("revision") != "7r1" or
+        protocol.get("supersedes_protocol_sha256") != SUPERSEDED_PROTOCOL_SHA or
+        protocol.get("supersedes_protocol_anchor_commit") != SUPERSEDED_ANCHOR_COMMIT or
+        protocol.get("superseded_attempt_exposure") != SUPERSEDED_EXPOSURE or
         protocol.get("automatic_lowering_selection_enabled") is not False):
         raise ValueError("wrong or unfrozen V7 protocol")
     anchor = committed_anchor(PROTOCOL_ANCHOR, anchor_commit,
-                              "s31-whole-prover-v7-protocol-freeze")
+                              "s31-whole-prover-v7r1-protocol-freeze")
     require_committed(PROTOCOL, anchor_commit)
     for key, value in {
         "protocol_sha256": expected_sha,
@@ -367,6 +399,7 @@ def require_protocol(expected_sha: str, anchor_commit: str, output: Path | None 
                        protocol["source_base_commit"], "HEAD"], check=False).returncode:
         raise ValueError("source base is not an ancestor")
     require_clean_sources()
+    require_superseded_attempt()
     if (protocol["measurement_tool_paths"] != [relative(path) for path in tool_paths()] or
         protocol["measurement_tool_sha256"] != tool_digest(tool_paths()) or
         protocol["v6_audit_sha256"] != s31.file_hash(V6_AUDIT) or
@@ -395,7 +428,7 @@ def require_model(model_path: Path, expected_sha: str, model_anchor_commit: str,
                         protocol_anchor_commit, model_anchor_commit], check=False).returncode):
         raise ValueError("model anchor must descend the protocol anchor")
     anchor = committed_anchor(MODEL_ANCHOR, model_anchor_commit,
-                              "s31-whole-prover-v7-model-freeze")
+                              "s31-whole-prover-v7r1-model-freeze")
     require_committed(MODEL, model_anchor_commit)
     model = json.loads(model_path.read_bytes())
     for key, value in {"protocol_sha256": protocol_sha,
@@ -415,7 +448,7 @@ def write_anchor(kind: str, model: Path | None = None) -> str:
         raise ValueError("anchor already exists")
     require_committed(PROTOCOL)
     protocol = json.loads(PROTOCOL.read_bytes())
-    anchor = {"schema": f"s31-whole-prover-v7-{kind}-freeze",
+    anchor = {"schema": f"s31-whole-prover-v7r1-{kind}-freeze",
               "recorded_at_utc": datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z"),
               "protocol_sha256": s31.file_hash(PROTOCOL)}
     if kind == "protocol":
@@ -443,9 +476,9 @@ def main() -> None:
     anchor.add_argument("--model", type=Path)
     args = parser.parse_args()
     if args.command == "draft":
-        print(f"V7 draft protocol SHA-256: {draft(args.out.resolve())}")
+        print(f"V7r1 draft protocol SHA-256: {draft(args.out.resolve())}")
     else:
-        print(f"V7 {args.kind} anchor SHA-256: {write_anchor(args.kind, args.model)}")
+        print(f"V7r1 {args.kind} anchor SHA-256: {write_anchor(args.kind, args.model)}")
 
 
 if __name__ == "__main__":
