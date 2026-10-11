@@ -2,10 +2,12 @@
 -- Bundle SHA-256: 7b8022b09d84db371cc433aa0fcf132f7687f2720e05e4dc9a7650c575dc02c2
 -- Gate program SHA-256: b80bf2c8b76770fb2cdee666908ac96f6dadedec83ae7ee4e334721af7478cf6
 -- Source SHA-256: 2555767fb91b626f6ad959eb87bb2a83626f1aaacab3ad63179d966eeedfd1f6
--- Core verifier SHA-256: a66a349bcf408fc7864985d1c92ec7c9335fbc5287d9e5dc6de24072881246a9
+-- Core verifier SHA-256: 85e70cea004f82060d94363b3552e0f2d9cd4203cee69fff0fb47b5345056381
 -- Circle SHA-256: 71176ae60dc3bb2b799d0463c50b27f65ed908fd05e4405cdcda44f2e3aac5cf
 -- Proof extraction SHA-256: 1d5d1726a45c64a141ce38e541bfe649af4582aedd51e6420c2be8a935bfbc7c
--- The seed denominator and native Zig refinement remain premises.
+-- Verifier errors SHA-256: 6b62306c13422eaf41a7a856646a3faee98f3b28d0d01e9edf544b9107458371
+-- Successful checked seed conversion replaces the denominator premise.
+-- Native Zig refinement and PCS/FRI remain premises.
 import S31.Gadgets.Air.DirectGateCircleFactor
 import S31.Gadgets.Air.GeneratedDirectGateCompositionOpening
 
@@ -28,7 +30,7 @@ theorem accepted_seeded_tree_eq_pure (samples : Samples)
     (seed z alpha claimed coefficient zeroifier : QM)
     (compositionLogSize : Nat)
     (_hsize : 2 ≤ compositionLogSize)
-    (hden : 1 + seed * seed ≠ 0)
+    (seedAccepted : checkedFromSeed seed = some (fromSeed seed))
     (hzero : zeroifier ≠ 0)
     (accepted : extractSplitOne
       (repeatedDouble (compositionLogSize - 2) (fromSeed seed)).x
@@ -38,6 +40,7 @@ theorem accepted_seeded_tree_eq_pure (samples : Samples)
     extractSplitOne (factor seed compositionLogSize) compositionTree =
       some (S31.Gadgets.Air.CompositionFold.fold coefficient
         (pureRoots (cellsOfSamples samples) alpha z (claimed / 512)) / zeroifier) := by
+  have hden := checked_seed_success_nonzero seed (fromSeed seed) seedAccepted
   rw [factor_eq_repeated_double seed hden compositionLogSize]
   exact accepted_tree_eq_pure samples shape compositionTree
     _ z alpha claimed coefficient zeroifier hzero accepted

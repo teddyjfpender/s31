@@ -555,10 +555,14 @@ equation. The exporter checks the native seed/point path, rational map,
 doubling, and factor selection; mutation tests change each path and require
 rejection.
 
-The native unchecked wrapper currently uses `catch unreachable` if `d=0`;
-its checked form returns division by zero, including for `t=i`. The Lean
-theorem states `d≠0` explicitly. A future native hardening step can make
-the verifier reject the exceptional seed rather than abort. The theorem also
+The core prover and verifier now use the checked seed conversion and return
+`InvalidOodsSeed` if `d=0`, including for `t=i`. Each draws the same single
+transcript seed as before; ordinary successful proof bytes are unchanged.
+In Lean, the checked map
+returns `none` on exactly that case; a successful conversion implies `d≠0`.
+The generated theorem requires that success, so its denominator condition
+follows from the admitted verifier path. Other native callers may still use
+the unchecked circle wrapper, which has `catch unreachable`. The theorem
 does not establish that the transcript seed is unpredictable or that PCS/FRI
 authenticates the opening.
 

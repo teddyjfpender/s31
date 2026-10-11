@@ -772,12 +772,16 @@ def render_composition_opening(package: Path) -> str:
     ])
 
 
-def check_circle_factor_source_contract(core: str, circle: str, proof: str) -> None:
+def check_circle_factor_source_contract(core: str, circle: str, proof: str,
+                                        types: str) -> None:
     """Bind the selected OODS point and split-factor path to reviewed Zig."""
     require("const oods_seed = channel.drawSecureFelt();" in core and
-            "const oods_point = circle.secureFieldPointFromRandomSeed(oods_seed);" in core and
+            "const oods_point = try pointFromOodsSeed(oods_seed);" in core and
+            "return circle.secureFieldPointFromRandomSeedChecked(seed) catch" in core and
+            "return VerificationError.InvalidOodsSeed;" in core and
+            "InvalidOodsSeed," in types and
             "const composition_oods_eval = proof.extractCompositionOodsEvalWithSplit(" in core,
-            "native OODS seed/point path changed")
+            "native checked OODS seed/point path changed")
     point = circle.split("pub fn secureFieldPointFromRandomSeedChecked(", 1)[-1].split(
         "pub fn randomSecureFieldPoint(", 1)[0]
     require("const t_square = t.square();" in point and
@@ -815,7 +819,8 @@ def render_circle_factor(package: Path) -> str:
     core = (engine / "verifier.zig").read_text()
     circle = (engine / "circle.zig").read_text()
     proof = (engine / "proof.zig").read_text()
-    check_circle_factor_source_contract(core, circle, proof)
+    types = (engine / "verifier_types.zig").read_text()
+    check_circle_factor_source_contract(core, circle, proof, types)
     return "\n".join([
         "-- Generated from the selected Gate package and native OODS circle source contract.",
         f"-- Bundle SHA-256: {AIR_BUNDLE_SHA256}",
@@ -824,7 +829,9 @@ def render_circle_factor(package: Path) -> str:
         f"-- Core verifier SHA-256: {hashlib.sha256(core.encode()).hexdigest()}",
         f"-- Circle SHA-256: {hashlib.sha256(circle.encode()).hexdigest()}",
         f"-- Proof extraction SHA-256: {hashlib.sha256(proof.encode()).hexdigest()}",
-        "-- The seed denominator and native Zig refinement remain premises.",
+        f"-- Verifier errors SHA-256: {hashlib.sha256(types.encode()).hexdigest()}",
+        "-- Successful checked seed conversion replaces the denominator premise.",
+        "-- Native Zig refinement and PCS/FRI remain premises.",
         "import S31.Gadgets.Air.DirectGateCircleFactor",
         "import S31.Gadgets.Air.GeneratedDirectGateCompositionOpening", "",
         "namespace S31.Gadgets.Air.GeneratedDirectGateCircleFactor", "",
@@ -844,7 +851,7 @@ def render_circle_factor(package: Path) -> str:
         "    (seed z alpha claimed coefficient zeroifier : QM)",
         "    (compositionLogSize : Nat)",
         "    (_hsize : 2 ≤ compositionLogSize)",
-        "    (hden : 1 + seed * seed ≠ 0)",
+        "    (seedAccepted : checkedFromSeed seed = some (fromSeed seed))",
         "    (hzero : zeroifier ≠ 0)",
         "    (accepted : extractSplitOne",
         "      (repeatedDouble (compositionLogSize - 2) (fromSeed seed)).x",
@@ -854,6 +861,7 @@ def render_circle_factor(package: Path) -> str:
         "    extractSplitOne (factor seed compositionLogSize) compositionTree =",
         "      some (S31.Gadgets.Air.CompositionFold.fold coefficient",
         "        (pureRoots (cellsOfSamples samples) alpha z (claimed / 512)) / zeroifier) := by",
+        "  have hden := checked_seed_success_nonzero seed (fromSeed seed) seedAccepted",
         "  rw [factor_eq_repeated_double seed hden compositionLogSize]",
         "  exact accepted_tree_eq_pure samples shape compositionTree",
         "    _ z alpha claimed coefficient zeroifier hzero accepted", "",

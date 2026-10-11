@@ -362,23 +362,32 @@ class GateBytecodeArithmeticTest(unittest.TestCase):
         core = (engine / "verifier.zig").read_text()
         circle = (engine / "circle.zig").read_text()
         proof = (engine / "proof.zig").read_text()
-        check_circle_factor_source_contract(core, circle, proof)
-        with self.assertRaisesRegex(ValueError, "native OODS seed/point path changed"):
+        types = (engine / "verifier_types.zig").read_text()
+        check_circle_factor_source_contract(core, circle, proof, types)
+        with self.assertRaisesRegex(ValueError, "native checked OODS seed/point path changed"):
             check_circle_factor_source_contract(
-                core.replace("secureFieldPointFromRandomSeed(oods_seed)",
-                             "secureFieldPointFromRandomSeed(other_seed)"), circle, proof)
+                core.replace("pointFromOodsSeed(oods_seed)",
+                             "pointFromOodsSeed(other_seed)"), circle, proof, types)
+        with self.assertRaisesRegex(ValueError, "native checked OODS seed/point path changed"):
+            check_circle_factor_source_contract(
+                core.replace("return VerificationError.InvalidOodsSeed;",
+                             "return VerificationError.InvalidStructure;"), circle, proof, types)
+        with self.assertRaisesRegex(ValueError, "native checked OODS seed/point path changed"):
+            check_circle_factor_source_contract(
+                core.replace("secureFieldPointFromRandomSeedChecked(seed)",
+                             "secureFieldPointFromRandomSeed(seed)"), circle, proof, types)
         with self.assertRaisesRegex(ValueError, "native OODS seed-to-circle map changed"):
             check_circle_factor_source_contract(
                 core, circle.replace("const y = t.add(t).mul(one_plus_t_square_inv);",
-                                     "const y = t.mul(one_plus_t_square_inv);"), proof)
+                                     "const y = t.mul(one_plus_t_square_inv);"), proof, types)
         with self.assertRaisesRegex(ValueError, "native circle repeated-double arithmetic changed"):
             check_circle_factor_source_contract(
-                core, circle.replace("out = out.double();", "out = out.add(self);"), proof)
+                core, circle.replace("out = out.double();", "out = out.add(self);"), proof, types)
         with self.assertRaisesRegex(ValueError, "native composition factor selection changed"):
             check_circle_factor_source_contract(
                 core, circle,
                 proof.replace("point.repeatedDouble(parent_log - 2).x",
-                              "point.repeatedDouble(parent_log - 1).x"))
+                              "point.repeatedDouble(parent_log - 1).x"), types)
 
     def test_changed_installed_bundle_is_rejected(self) -> None:
         mutation = bytearray(self.bundle)

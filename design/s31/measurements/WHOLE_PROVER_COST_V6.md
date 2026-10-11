@@ -7,6 +7,12 @@ is immutable. Its direct-chip RSS interval missed the frozen coverage gate.
 That failure motivates another independent study; V5 held-out values are not
 fit inputs, calibration inputs, or V6 gate adjustments.
 
+The [subsequent same-host transfer check](WHOLE_PROVER_TRANSFER_V1.md) on a
+newer compiler and engine **failed its predeclared wall-time gate**. The V6
+result below applies to its pinned source revisions; it is not a validated
+wall-time predictor for the current stack. Proof-byte and peak-RSS transfer
+diagnostics passed, but automatic lowering remains disabled.
+
 The [V6 protocol](whole-prover-cost-v6.json) retains V5's wall and proof-byte
 models, all accuracy thresholds, 26-bit PoW policy, and source/tool/host
 controls. Automatic lowering selection remains disabled after this local

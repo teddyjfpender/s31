@@ -23,6 +23,29 @@ def fromSeed (seed : QM) : Point :=
   ⟨(1 - seed * seed) * (1 + seed * seed)⁻¹,
     (seed + seed) * (1 + seed * seed)⁻¹⟩
 
+/-- The accepted branch of the native checked circle map. `none` models the
+verifier's `InvalidOodsSeed` error. -/
+def checkedFromSeed (seed : QM) : Option Point :=
+  if 1 + seed * seed = 0 then none else some (fromSeed seed)
+
+theorem checked_seed_rejects (seed : QM)
+    (hden : 1 + seed * seed = 0) :
+    checkedFromSeed seed = none := by
+  simp [checkedFromSeed, hden]
+
+theorem checked_seed_admits (seed : QM)
+    (hden : 1 + seed * seed ≠ 0) :
+    checkedFromSeed seed = some (fromSeed seed) := by
+  simp [checkedFromSeed, hden]
+
+theorem checked_seed_success_nonzero (seed : QM) (point : Point)
+    (hsuccess : checkedFromSeed seed = some point) :
+    1 + seed * seed ≠ 0 := by
+  intro hzero
+  have hnone := checked_seed_rejects seed hzero
+  rw [hnone] at hsuccess
+  cases hsuccess
+
 theorem from_seed_on_circle (seed : QM)
     (hden : 1 + seed * seed ≠ 0) :
     onCircle (fromSeed seed) := by

@@ -134,6 +134,9 @@ pub fn build(b: *std.Build) void {
     const many_native_matrix_tests = b.addRunArtifact(b.addTest(.{ .root_module = bounded_binding_root, .filters = &.{"V4 native count matrix"} }));
     b.step("test-many-native-matrix", "Prove and verify bounded V4 native envelopes for every count 2 through 8")
         .dependOn(&many_native_matrix_tests.step);
+    const mixed_admission_tests = b.addRunArtifact(b.addTest(.{ .root_module = bounded_binding_root, .filters = &.{"mixed composition admission"} }));
+    b.step("test-mixed-composition-admission", "Inspect source-bound mixed pair/many AIR roster without proof admission")
+        .dependOn(&mixed_admission_tests.step);
     const square_export_root = localEntry(b, "tools/formal/export_square4_topology.zig", target, optimize);
     square_export_root.addImport("stwo_s31_prototype", frontend);
     square_export_root.addImport("stwo_circuit_frontend", circuit);
