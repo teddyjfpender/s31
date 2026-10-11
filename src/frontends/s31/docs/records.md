@@ -287,8 +287,9 @@ python3 src/frontends/s31/python/s31.py inspect-record-proof \
   --statement PATH_TO_PROOF.statement.json
 ```
 
-The command checks the sealed package and runs its native verifier before
-decoding the canonical v2 statement into named values. For the example above,
+The command copies the supplied package, proof, and statement into a private
+snapshot, checks that package's internal hashes, and runs its native verifier
+before decoding the same canonical v2 statement into named values. For the example above,
 `claim.public_inputs.request.left` is `[3]`,
 `claim.public_inputs.request.right` is `[4]`, and `claim.result` is `[18]`.
 The private `mask` is absent. Library callers can round-trip the same named

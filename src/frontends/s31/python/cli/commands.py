@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import shutil
 import sys
 import tempfile
 from pathlib import Path
@@ -16,7 +17,7 @@ from inspection.reports import equations as report_equations, explain as report_
 from inspection.source_layout import source_layout
 from package.build import build, package_for
 from package.context import invoke, load_source, lower_text, write_json
-from package.trust import admitted_snapshot
+from package.trust import admitted_snapshot, unpinned_snapshot
 from package.verify import verify_package
 from runtime.folds import audit_fold_chain
 from runtime.trials import independent_value_check, trial, tune
@@ -122,6 +123,26 @@ def dispatch(args: argparse.Namespace) -> None:
             executable = snapshot / "bin" / f"s31-{manifest['name']}-native-verifier"
             print(invoke(str(executable), str(proof), str(statement),
                          str(snapshot / "verification-key.json")), end="")
+        return
+    if args.command == "inspect-record-proof":
+        proof = args.proof.resolve()
+        statement = args.statement.resolve() if args.statement else Path(str(proof) + ".statement.json")
+        with unpinned_snapshot(package) as (snapshot, manifest):
+            relation = json.loads((snapshot / "source.s31.json").read_text())
+            if relation.get("version") != 2 or manifest["lowering"] != "direct-gate":
+                raise ValueError("inspect-record-proof requires a direct-gate record ABI v2 package")
+            with tempfile.TemporaryDirectory(prefix="s31-inspect-record-") as temporary:
+                proof_snapshot = Path(temporary) / "proof.bin"
+                statement_snapshot = Path(temporary) / "statement.json"
+                shutil.copyfile(proof, proof_snapshot)
+                shutil.copyfile(statement, statement_snapshot)
+                executable = snapshot / "bin" / f"s31-{manifest['name']}-native-verifier"
+                invoke(str(executable), str(proof_snapshot), str(statement_snapshot),
+                       str(snapshot / "verification-key.json"))
+                claim = decode_typed_public_statement(relation, statement_snapshot.read_bytes())
+        print(json.dumps({"schema": "s31-verified-record-claim-v1",
+                          "program": manifest["name"], "proof_verified": True,
+                          "claim": claim}, indent=2, sort_keys=True))
         return
     manifest = verify_package(package)
     if args.command == "prove":
@@ -369,26 +390,6 @@ def dispatch(args: argparse.Namespace) -> None:
                      str(package / "recursive-verification-key.json"),
                      *((str(package / "recursive-verification-key-level2.json"),) if wide_fold else ()),
                      str(package / key_name)), end="")
-    elif args.command == "inspect-record-proof":
-        relation = json.loads((package / "source.s31.json").read_text())
-        if relation.get("version") != 2 or manifest["lowering"] != "direct-gate":
-            raise ValueError("inspect-record-proof requires a direct-gate record ABI v2 package")
-        proof = args.proof.resolve()
-        statement = args.statement.resolve() if args.statement else Path(str(proof) + ".statement.json")
-        executable = package / "bin" / f"s31-{manifest['name']}-native-verifier"
-        encoded = statement.read_bytes()
-        # Verify the same statement bytes that are decoded below. A private
-        # snapshot prevents a replaced caller path from changing the claim
-        # between native verification and presentation.
-        with tempfile.TemporaryDirectory(prefix="s31-inspect-record-") as temporary:
-            snapshot = Path(temporary) / "statement.json"
-            snapshot.write_bytes(encoded)
-            invoke(str(executable), str(proof), str(snapshot),
-                   str(package / "verification-key.json"))
-        claim = decode_typed_public_statement(relation, encoded)
-        print(json.dumps({"schema": "s31-verified-record-claim-v1",
-                          "program": manifest["name"], "proof_verified": True,
-                          "claim": claim}, indent=2, sort_keys=True))
     elif args.command == "verify":
         proof = args.proof.resolve()
         statement = args.statement.resolve() if args.statement else Path(str(proof) + ".statement.json")

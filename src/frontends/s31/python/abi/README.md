@@ -17,8 +17,9 @@ The two public readback functions are:
   the same canonical statement bytes.
 
 For a verified readback, use `s31 inspect-record-proof PACKAGE PROOF`. That
-command checks the supplied package, verifies the proof with its generated
-native verifier, and decodes the same statement bytes. The codec functions
+command copies the supplied package, proof, and statement into private
+snapshots, checks the package copy, verifies the copied proof with its
+generated native verifier, and decodes the copied statement bytes. The codec functions
 alone check a claim's format and binding; they do not verify a proof.
 
 `record_v2.py` is the earlier standalone nominal-layout codec. Its layout

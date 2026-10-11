@@ -92,6 +92,22 @@ def check_pinned_package(package: Path, pins: dict[str, str]) -> dict[str, str]:
 
 
 @contextmanager
+def unpinned_snapshot(package: Path) -> Iterator[tuple[Path, dict]]:
+    """Check and use one private package copy without claiming external trust.
+
+    Internal manifest hashes detect an inconsistent copy. They do not
+    authenticate who built the package or which source a caller intended.
+    """
+    with tempfile.TemporaryDirectory(prefix="s31-unpinned-package-") as temporary:
+        snapshot = Path(temporary) / "package"
+        shutil.copytree(package, snapshot, symlinks=True)
+        if any(path.is_symlink() for path in snapshot.rglob("*")):
+            raise ValueError("package snapshot contains a symlink")
+        manifest = verify_package(snapshot)
+        yield snapshot, manifest
+
+
+@contextmanager
 def admitted_snapshot(package: Path, pins: dict[str, str]) -> Iterator[tuple[Path, dict]]:
     """Verify and execute from private copied bytes, not the mutable input tree."""
     with tempfile.TemporaryDirectory(prefix="s31-pinned-package-") as temporary:

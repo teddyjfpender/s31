@@ -23,6 +23,13 @@ on a private package snapshot immediately before native verification. Pins
 obtained from the package itself provide no authentication. A trusted release
 channel must supply them; the verifier executes from the checked snapshot.
 
+`inspect-record-proof` also executes from a private copy of the package,
+proof, and statement. Its `unpinned_snapshot` check establishes internal
+package consistency and prevents caller path changes during inspection from
+changing the displayed record claim. It does not establish an externally
+trusted source or verifier identity; use `verify-pinned` with trusted pins for
+that separate requirement.
+
 `correspondence.py` independently reparses the exact source bytes for a bounded
 public four-lane add/multiply/static-let fragment. For direct-gate text packages
 in that grammar, build attaches `correspondence-certificate.json` and verification
