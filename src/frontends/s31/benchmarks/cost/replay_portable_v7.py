@@ -4,9 +4,7 @@
 from __future__ import annotations
 
 import argparse
-import copy
 import json
-import re
 import sys
 from pathlib import Path
 
@@ -19,39 +17,16 @@ from benchmark_whole_prover_cost_v3 import chip_manifest_binding, s31
 from benchmark_whole_prover_cost_v7 import check_build_inventory
 from independent_v7_gate import check_saved_evaluation
 from portable_v7 import verify as verify_manifest
+from v7_statement import check_trial_statement
 from publish_whole_prover_cost_v7 import replay_trials
 from v7_protocol import (MODEL, check_case_cost_geometry, require_model,
                          require_protocol)
 from whole_prover_predictor_v7 import evaluate, fit_model
 
-CHANGED = re.compile(r"(public_inputs|public_outputs)\.([A-Za-z_][A-Za-z0-9_]*)\[0\]\Z")
-
-
 def suffix(path: str, parts: tuple[str, ...], label: str) -> None:
     parsed = Path(path)
     if not parsed.is_absolute() or parsed.parts[-len(parts):] != parts or ".." in parsed.parts:
         raise ValueError(f"{label}: original absolute path has wrong relative suffix")
-
-
-def check_statement(assignment: dict, directory: Path, changed_field: str) -> None:
-    public = {name: assignment[name] for name in ("public_inputs", "public_outputs")}
-    statement = json.loads((directory / "statement.json").read_bytes())
-    changed = json.loads((directory / "changed-statement.json").read_bytes())
-    if statement != public:
-        raise ValueError("saved public statement differs from assignment")
-    match = CHANGED.fullmatch(changed_field)
-    if match is None:
-        raise ValueError("changed public field is not canonical")
-    category, name = match.groups()
-    try:
-        before = statement[category][name][0]
-        after = changed[category][name][0]
-    except (KeyError, IndexError, TypeError) as error:
-        raise ValueError("changed public field is missing") from error
-    expected = copy.deepcopy(statement)
-    expected[category][name][0] = after
-    if before == after or expected != changed:
-        raise ValueError("changed public statement modifies the wrong fields")
 
 
 def audit_split(root: Path, split: str, corpus: dict, protocol: dict,
@@ -87,6 +62,7 @@ def audit_split(root: Path, split: str, corpus: dict, protocol: dict,
             raise ValueError(f"{split}/{name}: source digest differs")
         package = base / name / "package"
         manifest = s31.verify_package(package)
+        source_relation = json.loads((package / "source.s31.json").read_bytes())
         if (manifest["compiler_sha256"] != protocol["compiler_sha256"] or
             manifest["lowering"] != case["lowering"]):
             raise ValueError(f"{split}/{name}: native package differs from frozen stack")
@@ -129,8 +105,8 @@ def audit_split(root: Path, split: str, corpus: dict, protocol: dict,
                 compact["native_verifier_accepted"] is not True or
                 compact["independent_value_oracle"]["status"] != "passed"):
                 raise ValueError(f"{split}/{name}[{index}]: proof or control differs")
-            check_statement(assignment, directory,
-                            compact["changed_public_statement_rejected"])
+            check_trial_statement(source_relation, assignment, directory,
+                                  compact["changed_public_statement_rejected"])
             controls["assignments"] += 1
             controls["proofs"] += 1
         replay_trials(base, name, case, manifest, native)
@@ -198,8 +174,10 @@ def main() -> None:
     parser.add_argument("--model-anchor-commit", required=True)
     parser.add_argument("--native", action="store_true")
     parser.add_argument("--require-pass", action="store_true",
-                        help="exit nonzero if the verified audit fails its local accuracy gate")
+                        help="require native replay and exit nonzero if the local accuracy gate fails")
     args = parser.parse_args()
+    if args.require_pass and not args.native:
+        parser.error("--require-pass requires --native proof and changed-statement replay")
     result = replay(args.root.resolve(), args.expected_manifest_sha256,
                     args.expected_protocol_sha256, args.protocol_anchor_commit,
                     args.expected_model_sha256, args.model_anchor_commit,

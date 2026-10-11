@@ -119,6 +119,7 @@ python3 src/frontends/s31/benchmarks/publish_whole_prover_cost_v7.py \
   --protocol-anchor-commit <full-protocol-anchor-commit> \
   --expected-model-sha256 <full-model-sha256> \
   --model-anchor-commit <full-model-anchor-commit> \
+  --native \
   --require-pass \
   --out zig-out/s31-v7-evidence/validation/audit.json
 ```
@@ -150,6 +151,7 @@ python3 src/frontends/s31/benchmarks/cost/replay_portable_v7.py \
   --protocol-anchor-commit <full-protocol-anchor-commit> \
   --expected-model-sha256 <full-model-sha256> \
   --model-anchor-commit <full-model-anchor-commit> \
+  --native \
   --require-pass
 ```
 

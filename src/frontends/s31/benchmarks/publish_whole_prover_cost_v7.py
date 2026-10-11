@@ -16,6 +16,7 @@ sys.path.insert(0, str(HERE.parent / "python"))
 from benchmark_whole_prover_cost_v3 import chip_manifest_binding, s31
 from benchmark_whole_prover_cost_v7 import check_build_inventory
 from independent_v7_gate import check_saved_evaluation
+from v7_statement import check_trial_statement
 from oracle import evaluate_relation
 from publish_stage_aware_cost_v1 import audit_corpus, file_hash
 from publish_whole_prover_cost_v3 import audit_case_artifacts
@@ -37,6 +38,8 @@ def replay_trials(base: Path, name: str, case: dict, manifest: dict, native: boo
         ):
             raise ValueError(f"{name}[{index}]: independent value oracle replay differs")
         report = json.loads((trial / "trial-report.json").read_bytes())
+        check_trial_statement(relation, assignment, trial,
+                              compact["changed_public_statement_rejected"])
         provenance = report["independent_value_oracle_provenance"]["source_sha256"]
         for filename in ("oracle.py", "poseidon2_oracle.py"):
             source = HERE.parent / "python" / filename
@@ -152,9 +155,11 @@ def main() -> None:
     parser.add_argument("--model-anchor-commit", required=True)
     parser.add_argument("--native", action="store_true")
     parser.add_argument("--require-pass", action="store_true",
-                        help="exit nonzero if the verified audit fails its local accuracy gate")
+                        help="require native replay and exit nonzero if the local accuracy gate fails")
     parser.add_argument("--out", type=Path, required=True)
     args = parser.parse_args()
+    if args.require_pass and not args.native:
+        parser.error("--require-pass requires --native proof and changed-statement replay")
     result = publish(args.train, args.model, args.validation, args.evaluation,
                      args.expected_protocol_sha256, args.protocol_anchor_commit,
                      args.expected_model_sha256, args.model_anchor_commit,
