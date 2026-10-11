@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import shutil
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -66,6 +67,14 @@ def tool_sha256() -> str:
     return digest.hexdigest()
 
 
+def zig_executable_sha256() -> str:
+    """Pin the resolved compiler bytes, in addition to Zig's reported version."""
+    executable = shutil.which("zig")
+    if executable is None:
+        raise ValueError("Zig executable is unavailable")
+    return sha(Path(executable).resolve().read_bytes())
+
+
 def clean_stack() -> None:
     cfg = design()
     for path in [DESIGN_PATH, ROOT / cfg["source_template"], *tool_paths()]:
@@ -93,6 +102,7 @@ def draft() -> str:
         "source_base_commit": git("rev-parse", "HEAD"),
         "engine_gitlink_commit": git("rev-parse", "HEAD:deps/stwo-zig"),
         "compiler_sha256": compiler_fingerprint(),
+        "zig_executable_sha256": zig_executable_sha256(),
         "tool_paths": [relative(path) for path in tool_paths()],
         "tool_sha256": tool_sha256(),
         "host": host_identity(),
@@ -151,6 +161,7 @@ def check(expected_protocol_sha256: str, anchor_commit: str) -> dict:
             value.get("source_template_sha256") != sha((ROOT / cfg["source_template"]).read_bytes()) or
             value.get("engine_gitlink_commit") != git("rev-parse", "HEAD:deps/stwo-zig") or
             value.get("compiler_sha256") != compiler_fingerprint() or
+            value.get("zig_executable_sha256") != zig_executable_sha256() or
             value.get("tool_paths") != [relative(path) for path in tool_paths()] or
             value.get("tool_sha256") != tool_sha256() or
             value.get("host") != host_identity() or

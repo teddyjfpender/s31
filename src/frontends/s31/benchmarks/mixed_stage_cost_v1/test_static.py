@@ -118,6 +118,18 @@ class ProspectiveMixedCostTests(unittest.TestCase):
             self.assertEqual(zig_cache_path("ZIG_LOCAL_CACHE_DIR", Path("unused")),
                              ROOT / "temporary-cache")
 
+    def test_resolved_zig_executable_bytes_are_pinned(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            binary = Path(temporary) / "zig"
+            link = Path(temporary) / "zig-link"
+            binary.write_bytes(b"zig compiler one")
+            link.symlink_to(binary)
+            with patch.object(protocol.shutil, "which", return_value=str(link)):
+                first = protocol.zig_executable_sha256()
+                self.assertEqual(first, sha(binary.read_bytes()))
+                binary.write_bytes(b"zig compiler two")
+                self.assertNotEqual(protocol.zig_executable_sha256(), first)
+
     def test_report_anchor_rejects_post_audit_edit(self) -> None:
         protocol_sha, inventory_sha, compiler_sha = "p" * 64, "i" * 64, "c" * 64
         engine_commit, model_sha = "e" * 40, "m" * 64

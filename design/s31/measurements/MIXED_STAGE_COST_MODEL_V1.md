@@ -90,7 +90,7 @@ whole-prover predictor until source-shape and host transfer pass separately.
    clean S31 revision with the exact pinned `deps/stwo-zig` gitlink, run
    `python3 src/frontends/s31/benchmarks/mixed_stage_cost_v1/protocol.py draft`.
    The generated protocol binds the design/template bytes, generated inventory,
-   compiler fingerprint, engine commit, tool hashes, host, split, features,
+   compiler fingerprint, resolved Zig executable hash, engine commit, tool hashes, host, split, features,
    estimator, gates, and 12 GiB/8 GiB disk guards. It is a **candidate**, not
    permission to measure. Commit it, then commit
    `language/mixed-stage-cost-v1-freeze.json` with schema
