@@ -79,6 +79,8 @@ separate process startup from proof work. It needs source- and
 assignment-disjoint training and validation on the new stack, enough fresh
 trials to characterize proof-of-work variance, and a predeclared gate before
 automatic lowering can be considered.
+The [V7 study plan](WHOLE_PROVER_V7_PLAN.md) makes these gates explicit; it is
+not yet a frozen protocol or a fitted model.
 
 The separate [read-only replay tool](../../../src/frontends/s31/benchmarks/cost/replay_transfer_v1.py)
 now checks both saved corpora. Its native mode reopened all 160 saved proof
