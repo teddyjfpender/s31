@@ -1,0 +1,105 @@
+{
+  "assertions": [],
+  "inputs": [
+    {
+      "kind": "m31",
+      "length": 4,
+      "name": "_s31_abi_input_0",
+      "visibility": "public"
+    }
+  ],
+  "name": "record_mixed",
+  "nodes": [
+    {
+      "body": [
+        {
+          "op": "square"
+        },
+        {
+          "constant": 13,
+          "op": "add_const"
+        }
+      ],
+      "lhs": "_s31_abi_input_0",
+      "name": "y",
+      "op": "repeat",
+      "rounds": 16
+    },
+    {
+      "lhs": "y",
+      "name": "_s31_0",
+      "op": "add",
+      "rhs": "_s31_abi_input_0"
+    }
+  ],
+  "public_abi": {
+    "inputs": [
+      {
+        "leaves": [
+          {
+            "kind": "m31",
+            "length": 4,
+            "path": [
+              {
+                "root": "x"
+              },
+              {
+                "field": "words"
+              }
+            ],
+            "wire": "_s31_abi_input_0"
+          }
+        ],
+        "name": "x",
+        "type": {
+          "fields": [
+            {
+              "name": "words",
+              "type": {
+                "kind": "m31",
+                "length": 4
+              }
+            }
+          ],
+          "record": "Lanes"
+        },
+        "visibility": "public"
+      }
+    ],
+    "result": {
+      "leaves": [
+        {
+          "kind": "m31",
+          "length": 4,
+          "path": [
+            {
+              "root": "result"
+            },
+            {
+              "field": "words"
+            }
+          ],
+          "wire": "_s31_0"
+        }
+      ],
+      "name": "result",
+      "type": {
+        "fields": [
+          {
+            "name": "words",
+            "type": {
+              "kind": "m31",
+              "length": 4
+            }
+          }
+        ],
+        "record": "Result"
+      }
+    },
+    "schema": "s31-public-record-boundary-v2"
+  },
+  "public_outputs": [
+    "_s31_0"
+  ],
+  "version": 2
+}

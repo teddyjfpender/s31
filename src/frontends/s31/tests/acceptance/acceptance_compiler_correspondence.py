@@ -150,6 +150,41 @@ def reject_resealed_component_map(honest: Path, checked: dict, work: Path,
         raise AssertionError(f"resealed {kind} component map was admitted")
 
 
+def reject_resealed_canonical_ir(honest: Path, checked: dict, work: Path) -> None:
+    """Rewrite every package copy of the compiler's claimed SSA identity."""
+    mutant = work / "changed-canonical-ir"
+    shutil.copytree(honest, mutant)
+    original = checked["key_core"]["canonical_ir_sha256"]
+    forged = ("0" if original[0] != "0" else "1") + original[1:]
+    component = json.loads((mutant / "component-manifest.json").read_text())
+    component["canonical_ir_sha256"] = forged
+    write_json(mutant / "component-manifest.json", component)
+    key = json.loads((mutant / "verification-key.json").read_text())
+    report = json.loads((mutant / "cost-report.json").read_text())
+    for artifact in (key, report):
+        artifact["canonical_ir_sha256"] = forged
+        artifact["component_manifest"] = component
+    write_json(mutant / "verification-key.json", key)
+    write_json(mutant / "cost-report.json", report)
+    fake = copy.deepcopy(checked)
+    fake["key_core"] = {field: key.get(field) for field in KEY_FIELDS}
+    fake["air_profile"]["component_manifest_sha256"] = digest(canonical(component))
+    write_json(mutant / "correspondence-certificate.json", fake)
+    manifest = json.loads((mutant / "manifest.json").read_text())
+    manifest["canonical_ir_sha256"] = forged
+    for name in ("verification-key.json", "cost-report.json",
+                 "component-manifest.json", "correspondence-certificate.json"):
+        manifest["artifacts"][name] = file_hash(mutant / name)
+    write_json(mutant / "manifest.json", manifest)
+    try:
+        check_package(mutant)
+    except ValueError as exc:
+        if "canonical IR digest differs from independently normalized source" not in str(exc):
+            raise AssertionError(f"forged canonical IR reached wrong rejection: {exc}") from exc
+    else:
+        raise AssertionError("mutually resealed canonical IR digest was admitted")
+
+
 def reject_resealed_program_binding(honest: Path, checked: dict, work: Path) -> None:
     """A forged compiler cannot nominate a different Gate AIR program hash."""
     mutant = work / "changed-gate-program-binding"
@@ -371,6 +406,7 @@ def main() -> None:
                 raise AssertionError(f"changed {kind} AIR column map was admitted")
             reject_resealed_component_map(honest, checked, work, kind)
         reject_resealed_program_binding(honest, checked, work)
+        reject_resealed_canonical_ir(honest, checked, work)
         if checked["status"]["source_to_normalized"] != "source-to-normalized-checked":
             raise AssertionError("honest package lacks the source correspondence status")
         if not s31.trial(honest, assignment, work / "honest-proof")["native_verifier_accepted"]:

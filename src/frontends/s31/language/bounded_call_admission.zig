@@ -56,13 +56,23 @@ pub fn extractSource(allocator: std.mem.Allocator, bytes: []const u8) !Plan {
 /// canonical repeat per source repeat. Canonical IR may fold or merge nodes;
 /// silently assigning two call IDs to one surviving repeat is forbidden.
 pub fn extract(allocator: std.mem.Allocator, program: relation.Program) !Plan {
-    if (program.version != 1 or program.proof_mode != .transparent or
-        program.public_abi != null or program.assertions.len != 0 or
+    if ((program.version != 1 and program.version != 2) or program.proof_mode != .transparent or
+        (program.version == 1 and program.public_abi != null) or
+        (program.version == 2 and program.public_abi == null) or
+        program.assertions.len != 0 or
         program.inputs.len == 0 or program.public_outputs.len == 0 or
         program.public_outputs.len > 8)
         return error.UnsupportedManyCallSource;
+    // The v2 mixed statement has exactly eight public M31 words. Admit a
+    // single public four-lane input and one derived four-lane output until
+    // the native proof/record binding has been exercised for wider shapes.
+    if (program.version == 2 and (program.inputs.len != 1 or
+        program.inputs[0].visibility != .public or
+        program.public_outputs.len != 1))
+        return error.UnsupportedManyCallSource;
     for (program.inputs) |input| {
-        if (input.visibility != .private or input.kind != .m31 or input.length != 4)
+        if ((program.version == 1 and input.visibility != .private) or
+            input.kind != .m31 or input.length != 4)
             return error.UnsupportedManyCallSource;
     }
 
@@ -106,7 +116,7 @@ pub fn extract(allocator: std.mem.Allocator, program: relation.Program) !Plan {
             if (input_id >= index or ir.nodes[input_id].kind != .m31 or ir.nodes[input_id].length != 4)
                 return error.UnsupportedChipInput;
             // The current direct compiler records scalar endpoint addresses
-            // only for private inputs and earlier chip outputs. Arithmetic
+            // for four-lane input nodes and earlier chip outputs. Arithmetic
             // nodes have packed lanes but no `raw` scalar address array.
             // Admit those inputs only after a constrained unpacking path is
             // implemented and the value/topology maps are checked again.
@@ -141,6 +151,9 @@ pub fn extract(allocator: std.mem.Allocator, program: relation.Program) !Plan {
         plan.public_output_count += 1;
         live[output.id] = true;
     }
+    if (program.version == 2 and
+        (ir.public_outputs.len != 1 or ir.nodes[ir.public_outputs[0].id].length != 4))
+        return error.UnsupportedManyCallSource;
     for (0..ir.nodes.len) |reverse| {
         const id = ir.nodes.len - 1 - reverse;
         if (!live[id]) continue;
@@ -267,4 +280,34 @@ test "source byte cap rejects before JSON parsing" {
     defer std.testing.allocator.free(too_large);
     @memset(too_large, 'x');
     try std.testing.expectError(error.ManyCallSourceTooLarge, extractSource(std.testing.allocator, too_large));
+}
+
+test "record ABI v2 mixed admission has one public input and one derived result" {
+    const a = std.testing.allocator;
+    var parsed = try relation.parseProgram(a, @embedFile("../examples/boundary/record_mixed1.s31.json"));
+    defer parsed.deinit();
+    const plan = try extract(a, parsed.value);
+    try std.testing.expectEqual(@as(usize, 1), plan.call_count);
+    try std.testing.expectEqual(@as(usize, 1), plan.public_output_count);
+
+    parsed.value.inputs[0].visibility = .private;
+    try std.testing.expectError(error.UnsupportedManyCallSource, extract(a, parsed.value));
+    parsed.value.inputs[0].visibility = .public;
+
+    const original_inputs = parsed.value.inputs;
+    var extra_inputs = [_]relation.Input{ original_inputs[0], original_inputs[0] };
+    parsed.value.inputs = &extra_inputs;
+    try std.testing.expectError(error.UnsupportedManyCallSource, extract(a, parsed.value));
+    parsed.value.inputs = original_inputs;
+
+    const original_outputs = parsed.value.public_outputs;
+    var extra_outputs = [_][]const u8{ original_outputs[0], original_outputs[0] };
+    parsed.value.public_outputs = &extra_outputs;
+    try std.testing.expectError(error.UnsupportedManyCallSource, extract(a, parsed.value));
+    parsed.value.public_outputs = original_outputs;
+
+    const original_abi = parsed.value.public_abi;
+    parsed.value.public_abi = null;
+    try std.testing.expectError(error.UnsupportedManyCallSource, extract(a, parsed.value));
+    parsed.value.public_abi = original_abi;
 }

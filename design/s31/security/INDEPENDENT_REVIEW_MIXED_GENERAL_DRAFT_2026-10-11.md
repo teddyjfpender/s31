@@ -50,3 +50,16 @@ existing bounded plan enforces row, round and call limits.
 
 Until these gates pass, this document records a **conditional static GO for
 continued implementation**, not release acceptance.
+
+## Subsequent local evidence
+
+On engine revision `7d544c6839497ca19b6c7ef9b982e464f10cfeed`, the
+selected engine N=1..8 native proof tests, S31 source-pinned wrapper tests,
+and black-box source/manifest/claim mutation suite passed locally. The
+black-box suite independently recomputed the generated registry manifest
+digest and checked all eight call counts. The source-pinned N=3 and N=4
+legacy native gates also passed. This evidence satisfies the **local test**
+part of items 1 and 2 above; CI and a complete formal/cryptographic
+soundness review remain open. The original reviewer did not inspect these
+later test results, so this appendix does not change the static review's
+scope or release conclusion.

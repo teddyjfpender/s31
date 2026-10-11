@@ -4,6 +4,8 @@ import S31.Gadgets.Functional.SSADirectGateBridge
 import S31.Gadgets.Functional.SSAAirRows
 import S31.Gadgets.Functional.SSATextBytes
 import S31.Gadgets.Functional.SSANormalizedBytes
+import S31.Gadgets.Functional.SSACanonicalIrBytes
+import S31.Gadgets.Functional.SSACanonicalGateChain
 import S31.Gadgets.Functional.SSAAirColumnCells
 import S31.Gadgets.Functional.SSAOutputAirCells
 import S31.Gadgets.Functional.SSAInputAirCells
@@ -18,6 +20,8 @@ open S31.Functional.SSADirectGateBridge
 open S31.Functional.SSAAirRows
 open S31.Functional.SSATextBytes
 open S31.Functional.SSANormalizedBytes
+open S31.Functional.SSACanonicalIrBytes
+open S31.Functional.SSACanonicalGateChain
 open S31.Functional.SSAAirColumnCells
 open S31.Functional.SSAOutputAirCells
 open S31.Functional.SSAInputAirCells
@@ -90,6 +94,49 @@ def normalizedBytes : List Nat := [
   ]
 -- Informational digest from the outer package checker; Lean does not hash normalizedBytes.
 def normalizedSha256 : String := "b7d744dd89f487742f2b72cf71fa76c6c37c2f5b01b74b58befa24e8c749979c"
+def canonicalIrBytes : List Nat := [
+    123, 34, 118, 101, 114, 115, 105, 111, 110, 34, 58, 49, 44, 34, 110, 111,
+    100, 101, 115, 34, 58, 91, 123, 34, 116, 97, 103, 34, 58, 34, 105, 110,
+    112, 117, 116, 34, 44, 34, 107, 105, 110, 100, 34, 58, 34, 109, 51, 49,
+    34, 44, 34, 108, 101, 110, 103, 116, 104, 34, 58, 52, 44, 34, 108, 104,
+    115, 34, 58, 110, 117, 108, 108, 44, 34, 114, 104, 115, 34, 58, 110, 117,
+    108, 108, 44, 34, 99, 111, 110, 115, 116, 97, 110, 116, 34, 58, 110, 117,
+    108, 108, 44, 34, 114, 111, 117, 110, 100, 115, 34, 58, 110, 117, 108, 108,
+    44, 34, 98, 111, 100, 121, 34, 58, 110, 117, 108, 108, 44, 34, 105, 110,
+    112, 117, 116, 95, 110, 97, 109, 101, 34, 58, 34, 120, 34, 44, 34, 118,
+    105, 115, 105, 98, 105, 108, 105, 116, 121, 34, 58, 34, 112, 117, 98, 108,
+    105, 99, 34, 125, 44, 123, 34, 116, 97, 103, 34, 58, 34, 109, 117, 108,
+    34, 44, 34, 107, 105, 110, 100, 34, 58, 34, 109, 51, 49, 34, 44, 34,
+    108, 101, 110, 103, 116, 104, 34, 58, 52, 44, 34, 108, 104, 115, 34, 58,
+    48, 44, 34, 114, 104, 115, 34, 58, 48, 44, 34, 99, 111, 110, 115, 116,
+    97, 110, 116, 34, 58, 110, 117, 108, 108, 44, 34, 114, 111, 117, 110, 100,
+    115, 34, 58, 110, 117, 108, 108, 44, 34, 98, 111, 100, 121, 34, 58, 110,
+    117, 108, 108, 44, 34, 105, 110, 112, 117, 116, 95, 110, 97, 109, 101, 34,
+    58, 110, 117, 108, 108, 44, 34, 118, 105, 115, 105, 98, 105, 108, 105, 116,
+    121, 34, 58, 110, 117, 108, 108, 125, 44, 123, 34, 116, 97, 103, 34, 58,
+    34, 109, 117, 108, 34, 44, 34, 107, 105, 110, 100, 34, 58, 34, 109, 51,
+    49, 34, 44, 34, 108, 101, 110, 103, 116, 104, 34, 58, 52, 44, 34, 108,
+    104, 115, 34, 58, 49, 44, 34, 114, 104, 115, 34, 58, 49, 44, 34, 99,
+    111, 110, 115, 116, 97, 110, 116, 34, 58, 110, 117, 108, 108, 44, 34, 114,
+    111, 117, 110, 100, 115, 34, 58, 110, 117, 108, 108, 44, 34, 98, 111, 100,
+    121, 34, 58, 110, 117, 108, 108, 44, 34, 105, 110, 112, 117, 116, 95, 110,
+    97, 109, 101, 34, 58, 110, 117, 108, 108, 44, 34, 118, 105, 115, 105, 98,
+    105, 108, 105, 116, 121, 34, 58, 110, 117, 108, 108, 125, 93, 44, 34, 97,
+    115, 115, 101, 114, 116, 105, 111, 110, 115, 34, 58, 91, 93, 44, 34, 112,
+    117, 98, 108, 105, 99, 95, 111, 117, 116, 112, 117, 116, 115, 34, 58, 91,
+    123, 34, 110, 97, 109, 101, 34, 58, 34, 114, 101, 115, 117, 108, 116, 34,
+    44, 34, 105, 100, 34, 58, 50, 125, 93, 125
+  ]
+-- SHA-256 is checked by the independent package checker, not computed in Lean.
+def canonicalIrSha256 : String := "e7c40b96e601b8ea21557ae6c459f2315152b2aca812b0e8d876798c7e0a63a9"
+def changedCanonicalOpcodeBytes : List Nat :=
+  canonicalIrBytes.set 173 97
+def changedCanonicalOperandBytes : List Nat :=
+  canonicalIrBytes.set 208 49
+def changedCanonicalOutputBytes : List Nat :=
+  canonicalIrBytes.set 486 48
+def changedCanonicalInputBytes : List Nat :=
+  canonicalIrBytes.set 139 122
 def changedNormalizedOpcodeBytes : List Nat := [
     123, 10, 32, 32, 34, 97, 115, 115, 101, 114, 116, 105, 111, 110, 115, 34,
     58, 32, 91, 93, 44, 10, 32, 32, 34, 105, 110, 112, 117, 116, 115, 34,
@@ -463,6 +510,14 @@ theorem bytes_parse_all_wire_names :
       some [token "x", token "once", token "result"] := by decide
 theorem normalized_bytes_check :
     checkRelation sourceBytes normalizedBytes = some certificate := by decide
+theorem canonical_ir_bytes_check :
+    checkCanonical sourceBytes normalizedBytes canonicalIrBytes =
+      some certificate := by decide
+theorem changed_canonical_ir_rejected :
+    checkCanonical sourceBytes normalizedBytes changedCanonicalOpcodeBytes = none ∧
+    checkCanonical sourceBytes normalizedBytes changedCanonicalOperandBytes = none ∧
+    checkCanonical sourceBytes normalizedBytes changedCanonicalOutputBytes = none ∧
+    checkCanonical sourceBytes normalizedBytes changedCanonicalInputBytes = none := by decide
 theorem changed_normalized_opcode_rejected :
     checkRelation sourceBytes changedNormalizedOpcodeBytes = none := by decide
 theorem changed_normalized_public_output_rejected :
@@ -574,6 +629,52 @@ theorem checked_bytes_sound (input : Lanes) :
     executeNormalized certificate input = denotation sourceBytes input :=
   checked_relation_sound sourceBytes normalizedBytes certificate input
     normalized_bytes_check
+
+/-- The independently reconstructed compact canonical SSA bytes also match
+the parsed source and relation bytes. Zig reports only their SHA-256 digest,
+which the package checker compares outside Lean. -/
+theorem checked_canonical_ir_bytes_sound (input : Lanes) :
+    (∃ parsed, parseBytes sourceBytes = some parsed ∧
+      canonicalIrBytes = encodeCanonical parsed) ∧
+    executeNormalized certificate input = denotation sourceBytes input := by
+  exact (checked_canonical_bytes_sound sourceBytes normalizedBytes
+    canonicalIrBytes certificate input canonical_ir_bytes_check).2
+
+/-- Liveness is checked for this concrete source. It is not guaranteed by the
+accepted source grammar. -/
+theorem all_source_rows_live :
+    ∀ instruction ∈ certificate.instructions,
+      0 < sourceUses certificate instruction.id := by decide
+
+/-- This live source, canonical SSA identity and exported fixed-cell projection
+feed the conditional exact-Gate theorem. Authentication of physical rows,
+exact balance, unique producers and the packed input yield stay explicit. -/
+theorem checked_live_canonical_gate_chain (input : Lanes)
+    (rows : List S31.Gadgets.Air.GateLookup.Row)
+    (externalUses externalYields : List S31.Gadgets.Air.GateLookup.Event)
+    (hsource : SSAGateLookupWireMap.sourceGateRows certificate
+      observedColumnCells rows)
+    (hbalance : S31.Gadgets.Air.GateLookup.balanced rows
+      externalUses externalYields)
+    (hunique : S31.Gadgets.Air.GateLookup.uniqueProduced
+      (S31.Gadgets.Air.GateLookup.allYields rows externalYields))
+    (hinputYield : (SSADirectGateBridge.address 0,
+      S31.Gadgets.Air.Qm31Ops.packM31 input) ∈
+      S31.Gadgets.Air.GateLookup.allYields rows externalYields) :
+    ∃ parsed, parseBytes sourceBytes = some parsed ∧
+      canonicalIrBytes = encodeCanonical parsed ∧
+      (∃ output : Lanes, denotation sourceBytes input = some output ∧
+        SSAGateLookupWireMap.wireOfProduced
+          (S31.Gadgets.Air.GateLookup.allYields rows externalYields)
+          (SSADirectGateBridge.address certificate.output) =
+            S31.Gadgets.Air.Qm31Ops.packM31 output) := by
+  obtain ⟨parsed, hparse, hcanonical, _, result⟩ :=
+    checked_live_canonical_source_output_of_exact_gate
+      sourceBytes normalizedBytes canonicalIrBytes certificate
+      observedAddRows observedColumnCells input rows externalUses
+      externalYields canonical_ir_bytes_check all_source_rows_live
+      observed_source_columns_match hsource hbalance hunique hinputYield
+  exact ⟨parsed, hparse, hcanonical, result⟩
 
 /-- The captured normalized JSON runs through the actual named evaluator.
 The admission test checks the package before rendering these constants;

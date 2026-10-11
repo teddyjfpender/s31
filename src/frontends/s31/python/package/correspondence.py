@@ -200,6 +200,38 @@ def public_abi(syntax: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def canonical_ir_bytes(syntax: dict[str, Any]) -> bytes:
+    """Reconstruct the exact Zig `canonical.build` legacy SSA encoding.
+
+    The bounded grammar has one public M31[4] input and fresh, canonical
+    add/mul nodes. Consequently Zig's operand sorting and CSE leave the
+    positional IDs unchanged. `LegacyNode` serializes every optional field,
+    including its nulls, in declaration order. Source-only names and the
+    circuit name are deliberately absent from this verifier identity.
+    """
+
+    fields = ("tag", "kind", "length", "lhs", "rhs", "constant", "rounds",
+              "body", "input_name", "visibility")
+
+    def node(**values: Any) -> dict[str, Any]:
+        return {field: values.get(field) for field in fields}
+
+    nodes = [node(tag="input", kind="m31", length=4,
+                  input_name=syntax["input"], visibility="public")]
+    for expected_id, step in enumerate(syntax["instructions"], 1):
+        if (step["id"] != expected_id or step["op"] not in ("add", "mul") or
+                not 0 <= step["lhs"] <= step["rhs"] < expected_id):
+            raise ValueError("checked source is not canonical positional SSA")
+        nodes.append(node(tag=step["op"], kind="m31", length=4,
+                          lhs=step["lhs"], rhs=step["rhs"]))
+    if not 1 <= syntax["output"] < len(nodes):
+        raise ValueError("checked source output is not a bound SSA wire")
+    ir = {"version": 1, "nodes": nodes, "assertions": [],
+          "public_outputs": [{"name": syntax["output_name"],
+                              "id": syntax["output"]}]}
+    return json.dumps(ir, separators=(",", ":"), ensure_ascii=True).encode("ascii")
+
+
 def gate_schedule(syntax: dict[str, Any], report: dict[str, Any]) -> list[dict[str, Any]]:
     """Check the native source-map spans against the canonical SSA order."""
     rows = report.get("source_map")
@@ -554,6 +586,10 @@ def _checked_material(package: Path) -> tuple[dict[str, Any], dict[str, Any]]:
     key = read_canonical_json(package / "verification-key.json")
     report = read_canonical_json(package / "cost-report.json")
     component = read_canonical_json(package / "component-manifest.json")
+    expected_ir_digest = digest(canonical_ir_bytes(syntax))
+    if any(artifact.get("canonical_ir_sha256") != expected_ir_digest for artifact in
+           (manifest, key, report, component)):
+        raise ValueError("canonical IR digest differs from independently normalized source")
     topology_bytes = (package / "gate-topology.json").read_bytes()
     topology = parse_canonical_json(topology_bytes, "gate-topology.json")
     source_map = read_canonical_json(package / "source-map.json")

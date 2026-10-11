@@ -3,22 +3,66 @@
 `inspection.zig` reconstructs the selected mixed roster from source and live
 AIR handles without consuming proof bytes. `package.zig` and `n4_package.zig`
 contain the admitted N=3 and N=4 proof envelopes. `general_package.zig` is an
-**uncompiled draft** for one through eight calls, with a distinct tag and
-typed registry manifest digest. Each verifier embeds the S31 source and
+experimental one-through-eight-call profile with a distinct tag and typed
+registry manifest digest. Each verifier embeds the S31 source and
 official AIR bundle,
 reconstructs its live schedule, checks the envelope and bounded proof shape,
 then invokes the matching engine native verifier.
 
-The `direct-mixed`, `direct-mixed4` and draft `direct-mixed-general` targets
-each compile three source-embedded commands from one normalized version 1 S31
-source file. The build
+The `direct-mixed`, `direct-mixed4` and `direct-mixed-general` targets
+each compile three source-embedded commands from one normalized S31 source
+file. The first two require version 1; the general target accepts version 1
+or the narrow record ABI v2 shape described below. The build checks that
+`-Ds31-version` equals the embedded source version, then
 runs the witness-free manifest inspector in check mode and rejects any source
 outside that target's admitted source shape. The general target requires
-one to eight calls and exactly eight public M31 words; it has not yet passed
-native proof admission.
+one to eight calls and exactly eight public M31 words. Its full profile remains
+experimental while native and independent soundness gates continue.
 
 The command implementations and statement schema live here; the tiny files in
 `entry/` are required only by Zig's module-root import rule.
+
+## Public record ABI v2 on the general profile
+
+The general profile also admits the narrow source shape in
+[`record_mixed1.s31`](../../examples/boundary/record_mixed1.s31): one public
+record containing four M31 words, one or more live square/add chip calls, and
+one derived four-word public result record. The normalized source must be
+version 2 with its validated nominal ABI descriptor. Other mixed profiles
+remain version 1 only. The source admission rejects extra inputs, extra
+public results, assertions, and output widths outside this shape.
+
+For example, with `x.words = [1, 2, 3, 4]`, the chip applies
+`y <- y² + 13 (mod 2³¹−1)` sixteen times independently to each lane. The
+bundled circuit then adds `x.words` to `y` and pins the eight public words in
+this order: the four input words followed by the four result words. Its nine
+preprocessed output addresses include one reserved circuit wire. The existing
+`S31MIX07` proof header, ordered component roster, lookup closure, and PCS
+schedule are unchanged; changing the source necessarily changes the
+source/manifest/circuit-identity hashes and thus the proof bytes themselves.
+
+The version-2 prover accepts `ASSIGNMENT PROOF_OUT STATEMENT_OUT
+TYPED_STATEMENT_IN`. `TYPED_STATEMENT_IN` is the canonical three-field record
+statement (`version`, `abi_sha256`, `leaves`) produced by the Python
+`abi.binding_v2.encode_typed_public_statement` codec. The prover checks all
+eight flattened words against source evaluation before copying those exact
+statement bytes. The verifier independently parses the embedded source,
+validates the ABI digest, paths, aliases, canonical M31 words and canonical
+JSON bytes, and sends the eight words to the native mixed verifier. The
+native verifier binds those words to the Gate output lookup and Fiat–Shamir
+transcript. A public input changes the statement and invalidates the proof
+even if the claimed result is left unchanged. The canonical record statement
+has no separate manifest fields because the verifier rebuilds the source and
+checks the proof header identities before native proof decoding.
+
+The focused native gate is
+[`record_general_v2.py`](../../tests/acceptance/mixed_boundary/record_general_v2.py).
+It proves one and eight calls and checks changed public input/result words,
+paths, duplicate JSON keys, and mismatch between the typed statement and
+prover assignment. It passed N=1 and N=8 in an isolated S31 worktree using
+engine revision `7d544c6839497ca19b6c7ef9b982e464f10cfeed`; it must be
+rerun after integration. The broader one-through-eight-call general profile
+and its complete AIR/PCS soundness have separate review gates.
 
 ```sh
 cd src/frontends/s31
@@ -52,9 +96,10 @@ zig-out/bin/s31-mixed_four-mixed4-manifest > /tmp/mixed4.manifest.json
 ```
 
 The fixed-profile statement holds eight canonical public words and source,
-selected manifest, and circuit identity digests. The draft general statement
+selected manifest, and circuit identity digests. The version-1 general statement
 also carries the typed registry manifest digest, which replaces the selected
-manifest digest in its version-3 proof header. The verifier recomputes those values from its embedded source
+manifest digest in its version-3 proof header. The verifier recomputes those
+values from its embedded source
 and AIR; the JSON manifest is an audit output, not an input or a key. The
 manifest lists source-derived calls, compiled endpoints, all ordered
 component slots and claimed-sum positions, AIR source hashes, column spans,
@@ -98,7 +143,7 @@ SHA-256 cannot authorize an altered component. The N=3 and N=4 manifest
 commands show the new registry IDs and diagnostic digest alongside their
 existing audit fields. Their wire formats, selected-schedule digest domains
 and proof transcript tags remain distinct and unchanged. The registry digest
-does **not** enter either fixed-profile proof transcript. The draft general
+does **not** enter either fixed-profile proof transcript. The experimental general
 profile derives it from source and mixes it into a distinct transcript and
 circuit identity.
 
@@ -135,12 +180,13 @@ deriving those two from first principles still requires the authenticated
 S31 source, official AIR bundle, pinned engine and live PCS geometry. The
 JSON itself is not verifier authority.
 
-The draft general composer now has bounded dynamic arrays and claim parsing
-for all eight counts, one transcript and PCS instance per proof, and live AIR
-handles rebuilt from the source-derived registry. It remains isolated until
-the engine and wrapper compile, native and black-box rejection tests pass,
-and the tested engine commit is pinned into S31. The general proof's new tag
-does not change N=3 or N=4 proof bytes.
+The experimental general composer has bounded dynamic arrays and claim
+parsing for all eight counts, one transcript and PCS instance per proof,
+and live AIR handles rebuilt from the source-derived registry. Local engine,
+wrapper, and black-box rejection gates passed on pinned engine revision
+`7d544c6839497ca19b6c7ef9b982e464f10cfeed`. CI and full soundness
+review remain open. The general proof's new tag does not change N=3 or N=4
+proof bytes.
 
 `test_source.zig` generates a chain of 1–8 live repeated calls for the focused
 descriptor matrix. Every count checks the source-reconstructed roster and
@@ -171,12 +217,13 @@ zig build --build-file src/frontends/s31/build.zig test-mixed-general-native -Do
 python3 src/frontends/s31/tests/acceptance/mixed_boundary/source_pinned.py
 python3 src/frontends/s31/tests/acceptance/mixed_boundary/source_pinned_n4.py
 python3 src/frontends/s31/tests/acceptance/mixed_boundary/source_pinned_general.py
+python3 src/frontends/s31/tests/acceptance/mixed_boundary/record_general_v2.py
 zig build --build-file src/frontends/s31/build.zig test-mixed-descriptor -Doptimize=ReleaseFast -j1
 zig build --build-file src/frontends/s31/build.zig test-mixed-registry -Doptimize=ReleaseFast -j1
 ```
 
 See [`MIXED_NATIVE_N3_PROFILE.md`](../../../../../design/s31/language/MIXED_NATIVE_N3_PROFILE.md)
 and [`MIXED_N4_NATIVE_PROFILE.md`](../../../../../design/s31/language/MIXED_N4_NATIVE_PROFILE.md)
-for the fixed transcript and component rosters. The draft general profile and
+for the fixed transcript and component rosters. The experimental general profile and
 its admission gates are in
 [`MIXED_GENERAL_NATIVE_PROFILE.md`](../../../../../design/s31/language/MIXED_GENERAL_NATIVE_PROFILE.md).

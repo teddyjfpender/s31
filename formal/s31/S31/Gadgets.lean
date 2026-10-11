@@ -127,6 +127,7 @@ import S31.Gadgets.Functional.SSAGeneralNamedExecution
 import S31.Gadgets.Functional.SSALocalPipeline
 import S31.Gadgets.Functional.SSATextBytes
 import S31.Gadgets.Functional.SSANormalizedBytes
+import S31.Gadgets.Functional.SSACanonicalIrBytes
 import S31.Gadgets.Functional.SSAAirColumnCells
 import S31.Gadgets.Functional.SSAOutputAirCells
 import S31.Gadgets.Functional.SSAInputAirCells
@@ -135,6 +136,7 @@ import S31.Gadgets.Functional.SSANativePolynomialRows
 import S31.Gadgets.Functional.SSAInstalledBytecodeRows
 import S31.Gadgets.Functional.SSAInstalledBytecodeMixedReturn
 import S31.Gadgets.Functional.SSAGateLookupWireMap
+import S31.Gadgets.Functional.SSACanonicalGateChain
 import S31.Gadgets.Functional.SSAInstalledBytecodeGateJoin
 import S31.Gadgets.Functional.SSAInstalledBytecodePublicOutput
 import S31.Gadgets.Functional.SSAInstalledBytecodePublicInput

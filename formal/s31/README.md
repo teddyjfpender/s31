@@ -34,7 +34,7 @@ theorem does not establish zero knowledge.
 | `S31/Gadgets/IntegerDivision` | Unique unsigned quotient/remainder, strict zero-divisor exclusion, fused bounded-column equality, signed sign reconstruction, and direct 8-/16-bit, wide-column, and signed 16-bit-limb no-wrap lemmas. |
 | `S31/Evidence/` | Checked operation coverage, non-vacuity/invalid-boundary theorems and live axiom enumeration. |
 | `coverage.json` | Reviewed mapping of every operation to semantics, local gadget theorems and production source functions. |
-| `source-bindings.json`, `proof-inventory.json` | Generated exact source identities and the complete theorem inventory, including the reused modules and three source-derived proof declarations. |
+| `source-bindings.json`, `proof-inventory.json` | Generated exact source identities and the complete theorem inventory, including reused modules and reviewed Lean-generated proof projections. |
 | `scripts/s31_formal.py`, `scripts/s31_formal_lib/` | Regeneration, escape/inventory checks, independent parity and adversarial proof controls. |
 
 The package pins Lean **4.29.0** and Mathlib revision
@@ -178,9 +178,28 @@ that byte denotation for every input. `Functional/SSANormalizedBytes` encodes
 the exact canonical JSON relation from the parsed names and instructions;
 its checker admits a source/normalized byte pair only when the entire JSON
 byte sequence matches, and its theorem transfers source denotation to the
-admitted certificate. The generated instance kernel-checks both actual byte
-arrays, the public names, exact source-gate positions, and literal source or
-normalized opcode and public-output mutation controls.
+admitted certificate. `Functional/SSACanonicalIrBytes` encodes the compact
+`LegacyNode` SSA identity for this same fragment, including the source-derived
+public input name, output name and output ID. The independent package checker
+hashes those exact bytes and compares the result with the manifest, key,
+report and component claims. Lean checks the reconstructed compact byte sequence
+and changed opcode, operand, input name and output ID controls; it does not
+implement SHA-256. The generated instance also kernel-checks both actual
+source and normalized byte arrays, public names, exact source-gate positions,
+and literal source or normalized opcode and public-output mutation controls.
+`Functional/SSACanonicalGateChain` then composes byte admission with the
+source-projected fixed-cell plan and an ideal exact Gate multiset join for
+**live source rows**. Its conclusion fixes the selected native packed wire to
+the source denotation for every input. Every instruction's positive
+`sourceUses` is an explicit premise; accepted source does not guarantee it.
+Physical row identification and local AIR acceptance, exact balance, unique
+producers and the packed public input yield remain additional premises. The
+generated square fixture checks its own liveness and fixed cells before
+applying the theorem with those physical premises. The early-return fixture
+checks byte/IR admission and proves its unused final row has zero
+`sourceUses`; dead-code liveness in the physical Gate refinement remains an
+open obligation. This does not prove that the installed verifier authenticates
+the physical premises.
 `Functional/SSAAirColumnCells` projects the eight native preprocessed cells
 at each source gate's grouped AIR row and computes the expected selector,
 addresses, and use count from the parsed SSA. The generated shared-square
@@ -217,7 +236,8 @@ row's local arithmetic acceptance, and composes this with the exact Gate
 wire-map result. Its selected-claim theorem additionally assumes a packed
 claim yield at the selected source address; binding the four public output
 pins through the unpack/copy rows to that yield is still open. The module is
-currently a static draft pending Lean compilation and inventory replay.
+kernel checked, while its physical-row and public-claim premises remain
+conditional.
 The Python package checker supplies the
 package-to-embedded-byte/digest binding
 and validates other native rows. Lean does not verify the embedded SHA-256 strings, prove
@@ -1004,7 +1024,14 @@ The Python parity corpus is regression evidence for the executable semantics,
 not a proof of compiler or cryptographic correctness. Hash parity includes
 Python `hashlib` and the existing independent Poseidon2 implementation.
 The source inventory includes both reused Lean modules, whose theorems are
-also included in the live axiom audit. Only Lean's standard `propext`,
+also included in the live axiom audit. In the current inventory, 1,501
+declarations are explicit or previously derived; 19 additional kernel theorems
+are Lean-generated projections of proof fields in four source structures.
+`PROOF_FIELD_PROJECTIONS_V1` binds each projected theorem to its exact source
+file, structure and field. The static inventory and live audit both require
+all 1,520 names: an unknown or missing generated projection fails the gate,
+and every projection receives the same axiom check as an explicit theorem.
+Only Lean's standard `propext`,
 `Classical.choice` and `Quot.sound` axioms are approved. Proof sources reject
 `sorry`, `admit`, custom `axiom`, `unsafe` and `native_decide`.
 

@@ -54,8 +54,11 @@ noncanonical JSON bytes. Its [controls](../../../src/frontends/s31/tests/python/
 cover nested records and these malformed cases. This original codec is not
 the proof boundary. The implemented [binding v2](../../../src/frontends/s31/python/abi/binding_v2.py)
 and [native validator](../../../src/frontends/s31/language/record_abi.zig)
-extend it with sealed relation, key and statement checks; the source compiler
-admits the M31-leaf record boundary under `direct-gate` only.
+extend it with sealed relation, key and statement checks. The source compiler
+admits M31-leaf records under `direct-gate`, and bounded public four-lane
+record input/result shapes under one-call `direct-chip` and the experimental
+one-to-eight-call `direct-mixed-general` profile. Private chip endpoints and
+non-M31 record leaves remain outside those chip profiles.
 
 ## Required implementation and proof gates
 
