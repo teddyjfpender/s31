@@ -27,17 +27,23 @@ optimizer itself emits a compact certificate for **every** bounded positional
 SSA whose instruction IDs are fresh, operands read earlier wires, and output
 is in range. `findKey_sound`, `found_existing_instruction`, and
 `fold_keys_match` prove that a CSE hit selects the first instruction with the
-same canonical operation and ordered operands. These facts do not by
-themselves prove the independent symbolic audit accepts every such source.
+same canonical operation and ordered operands. `CanonicalDagCompleteness.lean`
+adds the missing invariant relating all source wires, compact terms, and
+canonical cache keys. Its `audit_complete_of_valid` theorem proves that
+**every** compact DAG actually produced from this valid bounded fragment
+passes the independent symbolic audit, including repeated and reversed
+operands. Consequently `optimizeChecked_exists_of_valid` proves the checked
+optimizer succeeds on every valid source in this fragment.
 
-This is a fail-closed semantic checker, not a completeness theorem saying the
-audit accepts every valid source program. It does not cover constants, casts,
-other operation tags, or native AIR emission. Those edges remain separate
-correspondence obligations. The focused check is:
+These theorems cover the modeled positional SSA fragment. They do not cover
+constants, casts, other operation tags, or native AIR emission. Those edges
+remain separate correspondence obligations. The focused checks are:
 
 ```sh
 (cd formal/s31 && lake build S31.Gadgets.Functional.Correspondence.CanonicalDagOptimization)
 (cd formal/s31 && lake env leanchecker S31.Gadgets.Functional.Correspondence.CanonicalDagOptimization)
+(cd formal/s31 && lake build S31.Gadgets.Functional.Correspondence.CanonicalDagCompleteness)
+(cd formal/s31 && lake env leanchecker S31.Gadgets.Functional.Correspondence.CanonicalDagCompleteness)
 ```
 
 ### Reversed operands and CSE from source bytes
@@ -86,8 +92,9 @@ spans and compact topology, and rejects altered maps even if a report digest
 is recomputed. The default v2 package build and verification path still
 rejects reversed/CSE; v3 admission is explicitly opt-in and has not been
 wired into the package builder. The new Lean grammar is an extension model.
-The structural optimizer's audit-completeness theorem and authentication of
-the resulting AIR and proof remain open.
+The structural optimizer's audit-completeness theorem is now proved in
+`CanonicalDagCompleteness.lean`. Authentication of the resulting AIR and proof
+remains open.
 
 ```sh
 (cd formal/s31 && lake build S31.Gadgets.Functional.Correspondence.OptimizedTextBytes)
