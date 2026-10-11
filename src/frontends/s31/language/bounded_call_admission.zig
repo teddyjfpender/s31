@@ -56,13 +56,23 @@ pub fn extractSource(allocator: std.mem.Allocator, bytes: []const u8) !Plan {
 /// canonical repeat per source repeat. Canonical IR may fold or merge nodes;
 /// silently assigning two call IDs to one surviving repeat is forbidden.
 pub fn extract(allocator: std.mem.Allocator, program: relation.Program) !Plan {
-    if (program.version != 1 or program.proof_mode != .transparent or
-        program.public_abi != null or program.assertions.len != 0 or
+    if ((program.version != 1 and program.version != 2) or program.proof_mode != .transparent or
+        (program.version == 1 and program.public_abi != null) or
+        (program.version == 2 and program.public_abi == null) or
+        program.assertions.len != 0 or
         program.inputs.len == 0 or program.public_outputs.len == 0 or
         program.public_outputs.len > 8)
         return error.UnsupportedManyCallSource;
+    // The v2 mixed statement has exactly eight public M31 words. Admit a
+    // single public four-lane input and one derived four-lane output until
+    // the native proof/record binding has been exercised for wider shapes.
+    if (program.version == 2 and (program.inputs.len != 1 or
+        program.inputs[0].visibility != .public or
+        program.public_outputs.len != 1))
+        return error.UnsupportedManyCallSource;
     for (program.inputs) |input| {
-        if (input.visibility != .private or input.kind != .m31 or input.length != 4)
+        if ((program.version == 1 and input.visibility != .private) or
+            input.kind != .m31 or input.length != 4)
             return error.UnsupportedManyCallSource;
     }
 
@@ -141,6 +151,9 @@ pub fn extract(allocator: std.mem.Allocator, program: relation.Program) !Plan {
         plan.public_output_count += 1;
         live[output.id] = true;
     }
+    if (program.version == 2 and
+        (ir.public_outputs.len != 1 or ir.nodes[ir.public_outputs[0].id].length != 4))
+        return error.UnsupportedManyCallSource;
     for (0..ir.nodes.len) |reverse| {
         const id = ir.nodes.len - 1 - reverse;
         if (!live[id]) continue;
