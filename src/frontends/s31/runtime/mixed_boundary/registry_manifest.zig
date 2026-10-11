@@ -161,11 +161,11 @@ pub fn fromSchedule(schedule: *const mixed.SelectedSchedule) !Manifest {
     return result;
 }
 
-/// Bind the typed, transcript-mixed manifest to the exact ordered native
-/// component and polynomial-column schedule consumed by the engine. The
-/// engine independently reconstructs its handles from source at admission;
-/// this check makes a drift between our registry and that live schedule fail
-/// before the manifest digest is used as an identity.
+/// Check ordered native components, column spans and the native AIR's
+/// one-or-two-point mask arity. Exact mask widths and evaluation points are
+/// authenticated through the source-rebuilt selected geometry and its digest;
+/// this local check alone is not a verifier key. The engine independently
+/// reconstructs handles from source at proof admission.
 pub fn requireNativeGeometry(manifest: *const Manifest, geometry: *const cpu.direct_mixed_schedule.Geometry) !void {
     if (manifest.call_count == 0 or manifest.call_count > registry.max_calls or
         manifest.entry_count != 1 + 2 * @as(usize, manifest.call_count) or
@@ -178,7 +178,8 @@ pub fn requireNativeGeometry(manifest: *const Manifest, geometry: *const cpu.dir
         geometry.tree_columns[2] > geometry.columns[2].len)
         return error.InvalidMixedLiveManifestBinding;
     for (geometry.columns[0][0..geometry.tree_columns[0]]) |column| {
-        if (column.log_size != manifest.entries[0].trace_log_size or column.mask_width == 0)
+        if (column.log_size != manifest.entries[0].trace_log_size or
+            column.mask_width == 0 or column.mask_width > 2)
             return error.InvalidMixedLiveManifestBinding;
     }
     for (manifest.entrySlice(), geometry.slotSlice(), 0..) |entry, live, index| {
@@ -213,11 +214,13 @@ pub fn requireNativeGeometry(manifest: *const Manifest, geometry: *const cpu.dir
         if (main_end > geometry.tree_columns[1] or interaction_end > geometry.tree_columns[2])
             return error.InvalidMixedLiveManifestBinding;
         for (geometry.columns[1][entry.main_offset..main_end]) |column| {
-            if (column.log_size != entry.trace_log_size or column.mask_width == 0)
+            if (column.log_size != entry.trace_log_size or
+                column.mask_width == 0 or column.mask_width > 2)
                 return error.InvalidMixedLiveManifestBinding;
         }
         for (geometry.columns[2][entry.interaction_offset..interaction_end]) |column| {
-            if (column.log_size != entry.trace_log_size or column.mask_width == 0)
+            if (column.log_size != entry.trace_log_size or
+                column.mask_width == 0 or column.mask_width > 2)
                 return error.InvalidMixedLiveManifestBinding;
         }
     }
@@ -321,6 +324,15 @@ test "mixed registry manifest is source-derived and ordered for all bounded coun
         changed_native = native;
         changed_native.columns[2][manifest.entries[2].interaction_offset].mask_width = 0;
         try std.testing.expectError(error.InvalidMixedLiveManifestBinding, requireNativeGeometry(&manifest, &changed_native));
+        // Native AIR mask construction caps every live column at two points.
+        // A resealed diagnostic schedule must not normalize an impossible
+        // width to merely "nonzero" in the manifest-to-native check.
+        inline for (0..3) |tree| {
+            changed_native = native;
+            changed_native.columns[tree][0].mask_width = 3;
+            try std.testing.expectError(error.InvalidMixedLiveManifestBinding,
+                requireNativeGeometry(&manifest, &changed_native));
+        }
         var changed = manifest;
         changed.entries[changed.entry_count - 1].registry_id ^= 1;
         changed.digest = digest(&changed);
