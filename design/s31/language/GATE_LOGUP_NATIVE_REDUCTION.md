@@ -425,6 +425,28 @@ The nine arithmetic extension instructions inject each base result with three
 zero coordinates; that injection is covered by the earlier arithmetic-root
 lemma, while a single full-program VM execution theorem remains future work.
 
+### Native selected-Gate evaluator differential
+
+The engine's `test-cairo-resident-gate-oods` step executes the actual
+`RuntimeComponent.extensionParameters`, `traceValue`, and `evaluateProgram`
+paths on the installed, SHA-256-pinned `qm31_ops` bytecode. Two deterministic
+fixtures fill all eight fixed, twelve main, and eight interaction cells with
+nonbase QM31 OODS samples. The four last interaction columns each have the
+native `[previous, current]` slot order. The test rebinds the direct Gate
+trace size to 512 rows, checks all seven extension parameters, and evaluates
+each of the eleven selected roots with a one-root borrowed program view and
+unit quotient denominator. Literal expected values come from the independent
+Python scalar opcode replay; the vector exporter's `--check` option recomputes
+them and rejects bundle or fixture drift. An altered expected root word is
+known to fail the native test. A native previous-slot mutation also changes
+the singleton LogUp root.
+
+This is finite differential evidence for native execution of the selected
+bytecode and parameter mapping. It does not prove that every Zig execution
+refines the Lean VM, authenticate these test cells as PCS openings, prove FRI,
+or establish the all-row AIR condition. The broader correspondence theorem
+retains those premises.
+
 The exporter checks all selected interaction reads and the unique offset list
 derived by native `resident_geometry.componentOffsets`: columns 0–3 use
 `[0]`, while columns 4–7 use `[-1, 0]`. Its generated Lean `mask_slots` and
@@ -708,6 +730,8 @@ python3 scripts/export_s31_direct_gate_bytecode_arithmetic.py PACKAGE \
   --base-vm-output formal/s31/S31/Gadgets/Air/GeneratedDirectGateBaseVm.lean \
   --ext-vm-output formal/s31/S31/Gadgets/Air/GeneratedDirectGateExtVm.lean --check
 python3 -m unittest src/frontends/s31/tests/python/test_gate_bytecode_arithmetic.py
+python3 scripts/export_s31_native_gate_oods_vectors.py --check
+(cd deps/stwo-zig && zig build test-cairo-resident-gate-oods -Doptimize=ReleaseFast)
 (cd formal/s31 && lake build S31.Gadgets.Air.GeneratedDirectGateBytecodeLogUp)
 (cd formal/s31 && lake build S31.Gadgets.Air.GeneratedDirectGateBaseVm)
 (cd formal/s31 && lake build S31.Gadgets.Air.GeneratedDirectGateExtVm)

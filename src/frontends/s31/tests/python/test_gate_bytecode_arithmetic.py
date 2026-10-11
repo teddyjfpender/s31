@@ -96,6 +96,17 @@ class GateBytecodeArithmeticTest(unittest.TestCase):
         self.bundle = BUNDLE.read_bytes()
         self.program = decoded_program(gate_program(self.bundle))
 
+    def test_native_gate_oods_vectors_match_independent_scalar_replay(self) -> None:
+        from export_s31_native_gate_oods_vectors import OUTPUT, render
+
+        expected = render(self.bundle)
+        self.assertEqual(OUTPUT.read_text(), expected)
+        self.assertIn("pub const cases = [_]Vector{", expected)
+        mutated = bytearray(self.bundle)
+        mutated[-1] ^= 1
+        with self.assertRaisesRegex(ValueError, "installed evaluator bundle changed"):
+            render(bytes(mutated))
+
     def check_row(self, row: tuple[tuple[int, ...], ...]) -> tuple[tuple[int, ...], ...]:
         fixed, main, current, previous = row
         actual = evaluate_row(self.program, fixed, main, current, previous,
