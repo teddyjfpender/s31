@@ -26,7 +26,7 @@ PROTOCOL = LANGUAGE / "mixed-phase-v1-protocol.json"
 RESULT = LANGUAGE / "mixed-phase-v1-result.json"
 sys.path.insert(0, str(S31 / "python"))
 sys.path.insert(0, str(S31 / "benchmarks/mixed_stage_cost_transfer_v1"))
-from abi.binding_v2 import statement_from_assignment  # noqa: E402
+from abi.binding_v2 import decode_public_statement, statement_from_assignment  # noqa: E402
 from package.context import compiler_fingerprint  # noqa: E402
 from cohort import design, output_words, source  # noqa: E402
 
@@ -119,6 +119,8 @@ def prepare() -> dict:
         source_hashes = {sha(row[0]) for row in cases}
         assignments = [sha(row[1]) for row in cases]
         statements = [sha(row[2]) for row in cases]
+        for source_bytes, _, statement in cases:
+            changed_result(source_bytes, statement)
         if (len(source_hashes) != 1 or len(set(assignments)) != ASSIGNMENTS or
                 len(set(statements)) != ASSIGNMENTS or
                 (set(assignments) | set(statements)) & prior_hashes):
@@ -189,13 +191,38 @@ def tagged(stderr: bytes, tag: bytes) -> dict:
     return parse(lines[0])
 
 
-def changed_result(statement: bytes) -> bytes:
+def statement_words(source_bytes: bytes, statement: bytes) -> list[int]:
+    relation = parse(source_bytes)
+    if relation.get("version") != 2:
+        raise ValueError("expected version 2 source")
+    binding = relation.pop("public_abi")
+    relation["version"] = 1
+    words = decode_public_statement(relation, binding, statement)
+    if len(words) != 8:
+        raise ValueError("expected eight canonical public words")
+    return words
+
+
+def changed_result(source_bytes: bytes, statement: bytes) -> bytes:
     value = parse(statement)
     words = value["leaves"][-1]["words"]
     if len(words) != 4 or type(words[0]) is not int or not 0 <= words[0] < P:
         raise ValueError("expected record ABI v2 result leaf")
     words[0] = (words[0] + 1) % P
-    return canonical(value)
+    changed = canonical(value)
+    original_words = statement_words(source_bytes, statement)
+    changed_words = statement_words(source_bytes, changed)
+    if (original_words[:4] != changed_words[:4] or
+            original_words[4] == changed_words[4] or
+            original_words[5:] != changed_words[5:]):
+        raise ValueError("changed result is not an ABI-valid one-word mutation")
+    return changed
+
+
+def proof_layer_rejection(result: subprocess.CompletedProcess[bytes]) -> bool:
+    return (result.returncode > 0 and result.stderr.strip() in
+            (b"error: InvalidMixedInteractionNonce",
+             b"error: InvalidMixedPublicStatement"))
 
 
 def stage_check(stage: dict, wall_ns: int) -> int:
@@ -297,14 +324,14 @@ def run(out: Path) -> dict:
         prover = directory / "package/bin" / (base + "prover")
         verifier = directory / "package/bin" / (base + "native-verifier")
         for index in range(ASSIGNMENTS):
-            _, assignment, statement = case(count, index)
+            source_bytes, assignment, statement = case(count, index)
             statement_hash = sha(statement)
             assignment_path = directory / f"a{index:02d}.assignment.json"
             statement_path = directory / f"a{index:02d}.statement.json"
             assignment_path.write_bytes(assignment)
             statement_path.write_bytes(statement)
             changed_path = directory / f"a{index:02d}.changed-result.json"
-            changed_path.write_bytes(changed_result(statement))
+            changed_path.write_bytes(changed_result(source_bytes, statement))
             modes = ("untimed", "timed") if index % 2 == 0 else ("timed", "untimed")
             pair = {"count": count, "assignment_index": index,
                     "order": list(modes), "source_sha256": protocol["roster"][str(count)]["source_sha256"],
@@ -332,8 +359,8 @@ def run(out: Path) -> dict:
                 if verified.returncode or b"verified" not in verified.stderr:
                     raise RuntimeError(f"N{count}/a{index}/{mode} native verifier rejected")
                 rejected, _ = process([str(verifier), str(proof_path), str(changed_path)], trial_env)
-                if rejected.returncode == 0 or rejected.returncode < 0:
-                    raise RuntimeError(f"N{count}/a{index}/{mode} changed result accepted/crashed")
+                if not proof_layer_rejection(rejected):
+                    raise RuntimeError(f"N{count}/a{index}/{mode} changed result did not reach proof binding: {rejected.stderr.decode(errors='replace')}")
                 stage = tagged(produced.stderr, b"S31_MIXED_STAGE_V1")
                 if stage["source_sha256"] != pair["source_sha256"] or \
                         stage["proof_bytes"] != proof_path.stat().st_size:

@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import unittest
 
-from study import ASSIGNMENTS, COUNTS, case, changed_result, phase_check, sha
+from subprocess import CompletedProcess
+
+from study import (ASSIGNMENTS, COUNTS, case, changed_result, phase_check,
+                   proof_layer_rejection, sha, statement_words)
 
 
 class PhaseStudyTests(unittest.TestCase):
@@ -17,10 +20,20 @@ class PhaseStudyTests(unittest.TestCase):
                 source_hashes.add(sha(source))
                 assignments.add(sha(assignment))
                 statements.add(sha(statement))
-                self.assertNotEqual(statement, changed_result(statement))
+                changed = changed_result(source, statement)
+                self.assertNotEqual(statement, changed)
+                self.assertEqual(statement_words(source, statement)[:4],
+                                 statement_words(source, changed)[:4])
             self.assertEqual(len(source_hashes), 1)
         self.assertEqual(len(assignments), 60)
         self.assertEqual(len(statements), 60)
+
+    def test_rejection_must_reach_proof_binding(self) -> None:
+        self.assertTrue(proof_layer_rejection(CompletedProcess([], 1, b"",
+            b"error: InvalidMixedInteractionNonce\n")))
+        self.assertFalse(proof_layer_rejection(CompletedProcess([], 1, b"",
+            b"error: InvalidRecordStatement\n")))
+        self.assertFalse(proof_layer_rejection(CompletedProcess([], 0, b"", b"")))
 
     def test_phase_accounting_rejects_wrong_identity_and_overflow(self) -> None:
         parts = {"profile_rebuild_ns": 2, "semantic_evaluation_ns": 3,
