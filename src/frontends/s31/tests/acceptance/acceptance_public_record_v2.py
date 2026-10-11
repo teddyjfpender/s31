@@ -104,6 +104,15 @@ def main() -> None:
 
         package = s31.build(source, work / "record-package", "direct-gate")
         flat_package = s31.build(manual_path, work / "flat-package", "direct-gate")
+        record_key = json.loads((package / "verification-key.json").read_text())
+        if (record_key["schema"] != "s31-verification-key-direct-record-v2" or
+                record_key["component_manifest"]["schema"] != "s31-component-manifest-direct-gate-v1" or
+                record_key.get("manifest_precommitment_sha256") is not None):
+            raise AssertionError("record ABI package changed its direct-gate key or manifest schema")
+        flat_key = json.loads((flat_package / "verification-key.json").read_text())
+        if (flat_key["schema"] != "s31-verification-key-direct-manifest-v2" or
+                flat_key["component_manifest"]["schema"] != "s31-component-manifest-direct-gate-v2"):
+            raise AssertionError("flat direct-gate control did not use manifest v2")
         record_cost = json.loads((package / "cost-report.json").read_text())
         flat_cost = json.loads((flat_package / "cost-report.json").read_text())
         for field in ("raw", "padded", "preprocessed_cells", "preprocessed_columns"):
@@ -112,6 +121,8 @@ def main() -> None:
         trial = s31.trial(package, assignment, work / "trial")
         if not trial["native_verifier_accepted"] or not trial["changed_public_statement_rejected"]:
             raise AssertionError("record proof did not pass native positive/negative controls")
+        if (work / "trial/proof.bin").read_bytes()[:8] != b"S31NAT4G":
+            raise AssertionError("record ABI proof changed its direct-gate envelope")
         flat_trial = s31.trial(flat_package, assignment, work / "flat-trial")
         if not flat_trial["native_verifier_accepted"]:
             raise AssertionError("flat v1 control proof did not verify")

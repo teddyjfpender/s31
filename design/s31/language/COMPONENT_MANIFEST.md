@@ -28,7 +28,8 @@ source and canonical IR digests, circuit identity, preprocessed root, and the
 one claimed sum. It has no fixed lookup table or chip component.
 
 The initial v1 manifest was checked against sealed source and pinned AIR but
-left the proof transcript unchanged. New direct-gate packages select v2 with
+left the proof transcript unchanged. New direct-gate packages for version 1
+relations select v2 with
 key schema `s31-verification-key-direct-manifest-v2`, manifest schema
 `s31-component-manifest-direct-gate-v2`, and proof tag `S31NAT7G`. The native
 prover and verifier independently derive the same typed precommitment before
@@ -49,6 +50,9 @@ manifest version 1 by default for explicit old-format builds; the Python
 package builder passes `-Ds31-direct-gate-manifest-version=2`. Previously
 sealed v1 verifier binaries and their `S31NAT4G` proofs remain unchanged.
 The two envelope tags reject replay across versions.
+Record ABI v2 relations retain their existing `direct-record-v2` key,
+direct-gate manifest v1, and `S31NAT4G` envelope until that ABI receives a
+separately versioned manifest-bound profile.
 
 ## One-call direct-chip roster
 

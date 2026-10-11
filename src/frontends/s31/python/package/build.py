@@ -17,6 +17,31 @@ from package.context import (
 from package.verify import verify_package
 
 
+def _key_schema(source: dict, lowering: str, privacy: dict | None) -> str:
+    if lowering == "direct-gate" and source["version"] == 1:
+        return "s31-verification-key-direct-manifest-v2"
+    if source["version"] == 2:
+        return ("s31-verification-key-direct-record-chip-v2" if lowering == "direct-chip"
+                else "s31-verification-key-direct-record-v2")
+    if privacy:
+        return proof_privacy.KEY_SCHEMA
+    return {
+        "sha-fused": "s31-verification-key-sha-fused-v4",
+        "sha-shift": "s31-verification-key-sha-shift-v3",
+        "sha-joint": "s31-verification-key-sha-joint-v1",
+        "direct-chip": "s31-verification-key-direct-chip-manifest-v2",
+        "sparse-wide-gate": "s31-verification-key-v5",
+        "chip": "s31-verification-key-v2",
+    }.get(lowering, "s31-verification-key-v3" if lowering.startswith("sparse-")
+          else "s31-verification-key-v1")
+
+
+def _check_cached_key_schema(output: Path, requested: str) -> None:
+    cached_key = json.loads((output / "verification-key.json").read_text())
+    if cached_key.get("schema") != requested:
+        raise FileExistsError(f"package was built with a different verification key schema: {output}")
+
+
 def build_json(source_path: Path, output: Path, lowering: str = "gate",
                library_lock: dict | None = None, fri_fold_step: int = 1) -> Path:
     if lowering not in {"gate", "chip", "sparse-gate", "sparse-chip", "sparse-wide-gate", "direct-gate", "direct-chip", "sha-joint", "sha-shift", "sha-fused"}:
@@ -25,13 +50,14 @@ def build_json(source_path: Path, output: Path, lowering: str = "gate",
         raise ValueError("FRI fold step 4 requires gate or sparse-wide-gate lowering; supported steps are 1 and 4")
     source_path = source_path.resolve()
     source, data = load_source(source_path)
-    gate_manifest_v2 = lowering == "direct-gate"
+    gate_manifest_v2 = lowering == "direct-gate" and source["version"] == 1
     gate_manifest_option = ("-Ds31-direct-gate-manifest-version=2",) if gate_manifest_v2 else ()
     if source["version"] == 2:
         # Validate the source-derived typed descriptor before invoking Zig.
         # The native compiler and verifier independently repeat this check.
         abi(source, lowering)
     privacy = proof_privacy.policy_for(source, lowering, fri_fold_step)
+    requested_key_schema = _key_schema(source, lowering, privacy)
     lock_bytes = ((json.dumps(library_lock, indent=2, sort_keys=True) + "\n").encode()
                   if library_lock is not None else None)
     lock_digest = sha256(lock_bytes) if lock_bytes is not None else None
@@ -50,6 +76,7 @@ def build_json(source_path: Path, output: Path, lowering: str = "gate",
             raise FileExistsError(f"package was built with a different FRI fold step: {output}")
         if manifest.get("stdlib_lock_sha256") != lock_digest:
             raise FileExistsError(f"package was built with a different standard library lock: {output}")
+        _check_cached_key_schema(output, requested_key_schema)
         return output
 
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -71,26 +98,8 @@ def build_json(source_path: Path, output: Path, lowering: str = "gate",
         inspection = json.loads(invoke(str(prover), "inspect"))
         if inspection["program_sha256"] != sha256(data):
             raise RuntimeError("compiled program does not match source")
-        if gate_manifest_v2:
-            key_schema = "s31-verification-key-direct-manifest-v2"
-        elif source["version"] == 2:
-            key_schema = ("s31-verification-key-direct-record-chip-v2" if lowering == "direct-chip"
-                          else "s31-verification-key-direct-record-v2")
-        elif privacy:
-            key_schema = proof_privacy.KEY_SCHEMA
-        else:
-            key_schema = {
-                "sha-fused": "s31-verification-key-sha-fused-v4",
-                "sha-shift": "s31-verification-key-sha-shift-v3",
-                "sha-joint": "s31-verification-key-sha-joint-v1",
-                "direct-chip": "s31-verification-key-direct-chip-manifest-v2",
-                "direct-gate": "s31-verification-key-direct-manifest-v1",
-                "sparse-wide-gate": "s31-verification-key-v5",
-                "chip": "s31-verification-key-v2",
-            }.get(lowering, "s31-verification-key-v3" if lowering.startswith("sparse-")
-                  else "s31-verification-key-v1")
         key = {
-            "schema": key_schema,
+            "schema": requested_key_schema,
             "profile": inspection["profile"],
             "chip": inspection["chip"],
             "name": name,
@@ -126,14 +135,15 @@ def build_json(source_path: Path, output: Path, lowering: str = "gate",
         if lowering in {"direct-gate", "direct-chip"}:
             component_manifest = inspection.get("component_manifest")
             expected_manifest_schema = ("s31-component-manifest-direct-chip-v2" if lowering == "direct-chip"
-                                        else "s31-component-manifest-direct-gate-v2")
+                                        else "s31-component-manifest-direct-gate-v2" if gate_manifest_v2
+                                        else "s31-component-manifest-direct-gate-v1")
             if not isinstance(component_manifest, dict) or component_manifest.get("schema") != expected_manifest_schema:
                 raise RuntimeError(f"{lowering} compiler did not produce a component manifest")
             key["component_manifest"] = component_manifest
             if lowering == "direct-chip" or gate_manifest_v2:
                 digest = inspection.get("manifest_precommitment_sha256")
                 if not isinstance(digest, str) or len(digest) != 64:
-                    raise RuntimeError("direct-chip compiler omitted typed manifest precommitment")
+                    raise RuntimeError(f"{lowering} compiler omitted typed manifest precommitment")
                 key["manifest_precommitment_sha256"] = digest
             write_json(staging / "component-manifest.json", component_manifest)
         (staging / "source.s31.json").write_bytes(data)
@@ -239,7 +249,7 @@ def build_text(source_path: Path, output: Path, lowering: str = "gate", fri_fold
     source_path = source_path.resolve()
     output = output.resolve()
     text_data = source_path.read_bytes()
-    _, normalized, source_map = lower_text(source_path)
+    relation, normalized, source_map = lower_text(source_path)
     parser = Parser(text_data.decode(), str(source_path))
     _, circuit = parser.parse()
     library_lock = standard_library_lock(parser.stdlib_explicit)
@@ -252,6 +262,9 @@ def build_text(source_path: Path, output: Path, lowering: str = "gate", fri_fold
             raise FileExistsError(f"package was built with different compiler inputs or lowering: {output}")
         if manifest.get("fri_fold_step", 1) != fri_fold_step:
             raise FileExistsError(f"package was built with a different FRI fold step: {output}")
+        requested_key_schema = _key_schema(
+            relation, lowering, proof_privacy.policy_for(relation, lowering, fri_fold_step))
+        _check_cached_key_schema(output, requested_key_schema)
         return output
     output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix=f".{output.name}.text-", dir=output.parent) as directory:
