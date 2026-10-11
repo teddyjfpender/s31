@@ -31,6 +31,7 @@ def command(*args: str, accept: bool = True) -> subprocess.CompletedProcess[str]
 def main() -> None:
     cfg = design()
     source_bytes, assignment_bytes, typed_statement = case(1, 0, cfg)
+    profiles = []
     with tempfile.TemporaryDirectory(prefix="s31-paired-v2-regression-") as temporary:
         root = Path(temporary)
         v2_source = root / "record-v2.s31.json"
@@ -60,16 +61,28 @@ def main() -> None:
             verifier = package / "bin" / f"s31-{name}-native-verifier"
             key = package / "verification-key.json"
             modes = ("prove",) if version == 1 else ("prove", "prove-for-external-verification")
+            proof_sizes = {}
             for mode in modes:
                 proof = root / f"v{version}-{mode}.proof"
                 command(str(prover), mode, str(assignment), str(proof))
                 command(str(verifier), str(proof), str(statement), str(key))
+                proof_sizes[mode] = proof.stat().st_size
                 if version == 2:
-                    changed = json.loads(typed_statement)
-                    changed["leaves"][0]["words"][0] = (changed["leaves"][0]["words"][0] + 1) % ((1 << 31) - 1)
-                    bad = root / "changed-typed.json"
-                    bad.write_bytes(canonical(changed))
-                    command(str(verifier), str(proof), str(bad), str(key), accept=False)
+                    for leaf in (0, 1):
+                        changed = json.loads(typed_statement)
+                        changed["leaves"][leaf]["words"][0] = (
+                            changed["leaves"][leaf]["words"][0] + 1
+                        ) % ((1 << 31) - 1)
+                        bad = root / f"changed-typed-{leaf}.json"
+                        bad.write_bytes(canonical(changed))
+                        command(str(verifier), str(proof), str(bad), str(key), accept=False)
+            profiles.append({"version": version,
+                             "installed_file_bytes": sum(path.stat().st_size
+                                                         for path in package.rglob("*")
+                                                         if path.is_file()),
+                             "prover_binary_bytes": prover.stat().st_size,
+                             "verifier_binary_bytes": verifier.stat().st_size,
+                             "proof_bytes": proof_sizes})
 
         mismatch = command("zig", "build", "--build-file", str(S31 / "build.zig"),
                            "install", "-Doptimize=ReleaseFast", "-Ds31-version=2",
@@ -79,7 +92,9 @@ def main() -> None:
             raise AssertionError("record build version mismatch failed for the wrong reason")
         print(json.dumps({"schema": "s31-paired-record-v2-generic-native-regression",
                           "v1_self_verified": True, "v2_self_verified": True,
-                          "v2_external_verified": True, "changed_typed_claim_rejected": True},
+                          "v2_external_verified": True,
+                          "changed_typed_input_and_result_rejected": True,
+                          "profiles": profiles},
                          sort_keys=True))
 
 

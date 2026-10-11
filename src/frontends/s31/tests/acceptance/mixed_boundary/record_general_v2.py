@@ -147,6 +147,11 @@ def exercise(work: Path, count: int) -> dict:
     run(str(prover), str(wrong), str(work / "wrong.proof"),
         str(work / "wrong.statement"), str(typed_path), accept=False)
     return {"calls": count, "proof_bytes": proof.stat().st_size,
+            "installed_file_bytes": sum(path.stat().st_size for path in prefix.rglob("*")
+                                        if path.is_file()),
+            "prover_binary_bytes": prover.stat().st_size,
+            "verifier_binary_bytes": verifier.stat().st_size,
+            "manifest_binary_bytes": manifest_bin.stat().st_size,
             "changed_public_input_rejected": True, "changed_public_result_rejected": True}
 
 
