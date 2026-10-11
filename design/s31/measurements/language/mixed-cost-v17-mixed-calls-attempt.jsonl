@@ -1,0 +1,2 @@
+{"event":"started","output_dir":"/private/tmp/s31-v17-mixed-calls-23f55ac/.v17-artifacts","protocol_sha256":"c4402bff32a5b24db6e6e32fa26ea5137aff1170bcd1ba9e99dbed747d479329","schema":"s31-mixed-cost-v17-attempt-v1","time_ns":1791761680401291000}
+{"all_gates_pass":false,"event":"completed","score_sha256":"aba4eb8a6516c9da7a7b674500a90a087cf0bc1f4d07daa07988fa91f1e01bdd","time_ns":1791761942392814000}
