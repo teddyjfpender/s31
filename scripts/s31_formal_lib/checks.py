@@ -153,6 +153,14 @@ PROOF_FIELD_PROJECTIONS_V1 = {
             "call_eq", "key_eq", "proof_eq", "relation_eq", "role_eq", "sum_eq",
         ),
     },
+    "formal/s31/S31/Gadgets/Air/Corresp/DecodedEvents.lean": {
+        "S31.Gadgets.Air.Corresp.DecodedEvents.ChipCells": (
+            "rounds", "call", "step", "input", "output",
+        ),
+        "S31.Gadgets.Air.Corresp.DecodedEvents.BridgeCells": (
+            "addresses", "words", "call", "rounds",
+        ),
+    },
 }
 # Lean also generates proof projections for inherited Prop-valued contexts.
 # Require the actual `extends` clause in the reviewed structure header before

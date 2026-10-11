@@ -84,6 +84,7 @@ import S31.Gadgets.Air.SourceMixedFixedScheduleBridge
 import S31.Gadgets.Air.SourceMixedFixedLocalCertificate
 import S31.Gadgets.Air.SourceMixedDecodedBoundary
 import S31.Gadgets.Air.SourceMixedPinnedMainCells
+import S31.Gadgets.Air.Corresp.DecodedEvents
 import S31.Gadgets.Air.Manifest.InterleavedRoster
 import S31.Gadgets.Air.SourceMixedPackCorrespondence
 import S31.Gadgets.Air.SourceMixedProducerCheck
