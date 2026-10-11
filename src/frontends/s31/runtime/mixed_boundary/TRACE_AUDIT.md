@@ -47,7 +47,11 @@ fixture changes a decoded proof's main Merkle root, reserializes it, and checks
 native verification rejects it. The two mutation tests reject changed
 reserved `u`, Gate/main/fixed cells, a bit-reversed chip row, a non-first bridge
 row, chip/bridge interaction cells, a non-first chip column's log size, and a
-denominator pole. The last test holds all eight public words fixed while
+denominator pole. Circuit mutations also change arithmetic on a
+zero-multiplicity padding Gate row and change a constrained private selector
+from an honest bit to `2` while leaving the eight public words equal; both
+fail at `InvalidMixedTraceAuditGate`. These are precommitment row mutations,
+not forged accepted proofs. The last test holds all eight public words fixed while
 switching a private selector whose two branches happen to compute the same
 result; the verifier accepts the proof, but the sidecar audit rejects the
 different circuit trace specifically at the main commitment root.
