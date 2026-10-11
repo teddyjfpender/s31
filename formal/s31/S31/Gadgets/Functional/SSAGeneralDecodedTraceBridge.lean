@@ -71,7 +71,9 @@ def SourcePlan (certificate : Certificate) (sourceCells : List ColumnCell) :
 
 private def rowShape (instruction : Instruction)
     (native : NativeSourceRow) : Prop :=
-  native.in0 = address instruction.lhs ∧
+  native.circuitRow = 5 + instruction.id ∧
+    native.multiply = instruction.multiply ∧
+    native.in0 = address instruction.lhs ∧
     native.in1 = address instruction.rhs ∧
     native.out = address instruction.id
 
@@ -143,6 +145,181 @@ private theorem forall₂_rows_plan (instructions : List Instruction)
       · obtain ⟨other, hpair, hother⟩ := ih item htail
         exact ⟨other, by simp [hpair], hother⟩
 
+private theorem forall₂_rows_all_pairs (instructions : List Instruction)
+    (rows : List NativeSourceRow)
+    (hshape : List.Forall₂ rowShape instructions rows) :
+    ∀ pair ∈ instructions.zip rows, rowShape pair.1 pair.2 := by
+  induction hshape with
+  | nil => simp
+  | @cons instruction native rest rows hrow _ ih =>
+      intro pair hpair
+      rcases List.mem_cons.mp hpair with heq | htail
+      · subst pair
+        exact hrow
+      · exact ih pair htail
+
+/-- The modeled source rows retain each instruction's opcode, circuit wire
+position, and operand/output addresses. This is an assertion about the
+`expectedRows` constructor, not about the native trace emitter. -/
+theorem expected_rows_opcode_and_addresses (certificate : Certificate)
+    (totalAddRows : Nat) :
+    ∀ pair ∈ certificate.instructions.zip (expectedRows certificate totalAddRows),
+      pair.2.circuitRow = 5 + pair.1.id ∧
+      pair.2.multiply = pair.1.multiply ∧
+      pair.2.in0 = address pair.1.lhs ∧
+      pair.2.in1 = address pair.1.rhs ∧
+      pair.2.out = address pair.1.id := by
+  exact forall₂_rows_all_pairs certificate.instructions
+    (expectedRows certificate totalAddRows)
+    (expected_rows_shape certificate totalAddRows)
+
+private theorem forall₂_opcode_sequence (instructions : List Instruction)
+    (rows : List NativeSourceRow)
+    (hshape : List.Forall₂ rowShape instructions rows) :
+    rows.map NativeSourceRow.multiply =
+      instructions.map Instruction.multiply := by
+  induction hshape with
+  | nil => rfl
+  | @cons instruction native rest rows hrow _ ih =>
+      simp [hrow.2.1, ih]
+
+/-- The full modeled row opcode sequence has exactly the source's ordered
+add/pointwise-multiply partition. No arithmetic selector is inferred from a
+native commitment by this theorem. -/
+theorem expected_rows_opcode_sequence (certificate : Certificate)
+    (totalAddRows : Nat) :
+    (expectedRows certificate totalAddRows).map NativeSourceRow.multiply =
+      certificate.instructions.map Instruction.multiply :=
+  forall₂_opcode_sequence certificate.instructions
+    (expectedRows certificate totalAddRows)
+    (expected_rows_shape certificate totalAddRows)
+
+private theorem forall₂_cell_opcode_flags (certificate : Certificate)
+    (instructions : List Instruction) (rows : List NativeSourceRow)
+    (hshape : List.Forall₂ rowShape instructions rows) :
+    ((instructions.zip rows).map
+      (fun pair =>
+        let cell := expectedCell certificate pair.1 pair.2
+        (cell.addFlag, cell.pointwiseMulFlag))) =
+      instructions.map (fun instruction =>
+        (if instruction.multiply then 0 else 1,
+         if instruction.multiply then 1 else 0)) := by
+  induction hshape with
+  | nil => rfl
+  | @cons instruction native rest rows _ _ ih =>
+      simp only [List.zip_cons_cons, List.map_cons]
+      congr 1
+
+/-- The projected source AIR cells have exactly one add or pointwise-multiply
+selector per source instruction, in source order. The remaining arithmetic
+selectors are zero by `expectedCell`'s definition. -/
+theorem expected_cells_opcode_flags (certificate : Certificate)
+    (totalAddRows : Nat) :
+    (expectedCells certificate totalAddRows).map
+      (fun cell => (cell.addFlag, cell.pointwiseMulFlag)) =
+      certificate.instructions.map (fun instruction =>
+        (if instruction.multiply then 0 else 1,
+         if instruction.multiply then 1 else 0)) := by
+  simpa [expectedCells, List.map_map] using
+    (forall₂_cell_opcode_flags certificate certificate.instructions
+      (expectedRows certificate totalAddRows)
+      (expected_rows_shape certificate totalAddRows))
+
+private def rowsWithin (totalAddRows priorAdds priorMuls : Nat)
+    (rows : List NativeSourceRow) : Prop :=
+  ∀ row ∈ rows,
+    if row.multiply then
+      totalAddRows + 28 ≤ row.traceRow ∧
+        row.traceRow < totalAddRows + 28 + priorMuls
+    else
+      3 ≤ row.traceRow ∧ row.traceRow < 3 + priorAdds
+
+private theorem fold_rows_unique (totalAddRows : Nat)
+    (remaining : List Instruction) (priorAdds priorMuls : Nat)
+    (rows : List NativeSourceRow)
+    (hnodup : (rows.map NativeSourceRow.traceRow).Nodup)
+    (hwithin : rowsWithin totalAddRows priorAdds priorMuls rows)
+    (hgap : 3 + priorAdds + remaining.length ≤ totalAddRows + 28) :
+    (((remaining.foldl (emitStep totalAddRows)
+      (priorAdds, priorMuls, rows)).2.2).map NativeSourceRow.traceRow).Nodup := by
+  induction remaining generalizing priorAdds priorMuls rows with
+  | nil => simpa using hnodup
+  | cons instruction rest ih =>
+      let next := emittedRow instruction totalAddRows priorAdds priorMuls
+      simp only [List.length_cons] at hgap
+      have hnot : next.traceRow ∉ rows.map NativeSourceRow.traceRow := by
+        intro hmember
+        obtain ⟨old, hold, heq⟩ := List.mem_map.mp hmember
+        have hrange := hwithin old hold
+        cases hi : instruction.multiply <;> cases ho : old.multiply <;>
+          simp [next, emittedRow, hi, ho] at heq hrange <;> omega
+      have hnodup' :
+          ((rows ++ [next]).map NativeSourceRow.traceRow).Nodup := by
+        simpa [List.map_append] using
+          (List.nodup_concat (rows.map NativeSourceRow.traceRow)
+            next.traceRow).2 ⟨hnot, hnodup⟩
+      have hwithin' : rowsWithin totalAddRows
+          (priorAdds + if instruction.multiply then 0 else 1)
+          (priorMuls + if instruction.multiply then 1 else 0)
+          (rows ++ [next]) := by
+        intro row hmember
+        rcases List.mem_append.mp hmember with hold | hnew
+        · have hrange := hwithin row hold
+          cases instruction.multiply <;> cases ho : row.multiply <;>
+            simp [ho] at hrange ⊢ <;> omega
+        · have heq : row = next := by simpa using hnew
+          subst row
+          cases hi : instruction.multiply <;>
+            simp [next, emittedRow, hi]
+      have hgap' :
+          3 + (priorAdds + if instruction.multiply then 0 else 1) +
+            rest.length ≤ totalAddRows + 28 := by
+        cases hi : instruction.multiply <;> simp [hi] at * <;> omega
+      simpa [List.foldl_cons, emitStep, next] using
+        (ih _ _ (rows ++ [next]) hnodup' hwithin' hgap')
+
+/-- Source rows in the modeled grouped AIR schedule occupy distinct trace
+positions. The explicit gap premise keeps the source-add partition below the
+pointwise-multiply partition. It is satisfied by the native bounded profile's
+row count, but equality of that count with the committed trace is separate. -/
+theorem expected_rows_trace_rows_nodup (certificate : Certificate)
+    (totalAddRows : Nat)
+    (hgap : 3 + certificate.instructions.length ≤ totalAddRows + 28) :
+    ((expectedRows certificate totalAddRows).map
+      NativeSourceRow.traceRow).Nodup := by
+  have h := fold_rows_unique totalAddRows certificate.instructions 0 0 []
+    (by simp) (by simp [rowsWithin]) (by simpa using hgap)
+  simpa [expectedRows, emitStep] using h
+
+/-- A separately established 16-instruction budget is sufficient for unique
+source trace positions at any natural `totalAddRows` in this modeled layout. -/
+theorem expected_rows_trace_rows_nodup_of_budget (certificate : Certificate)
+    (totalAddRows : Nat) (hbudget : certificate.instructions.length ≤ 16) :
+    ((expectedRows certificate totalAddRows).map
+      NativeSourceRow.traceRow).Nodup := by
+  apply expected_rows_trace_rows_nodup
+  omega
+
+/-- The projected AIR source cells inherit the modeled schedule's unique
+trace positions. This says nothing about omitted non-source cells. -/
+theorem expected_cells_trace_rows_nodup (certificate : Certificate)
+    (totalAddRows : Nat)
+    (hgap : 3 + certificate.instructions.length ≤ totalAddRows + 28) :
+    ((expectedCells certificate totalAddRows).map ColumnCell.traceRow).Nodup := by
+  have hlen := (expected_rows_shape certificate totalAddRows).length_eq
+  have hproj :
+      (expectedCells certificate totalAddRows).map ColumnCell.traceRow =
+        (expectedRows certificate totalAddRows).map
+          NativeSourceRow.traceRow := by
+    calc
+      _ = ((certificate.instructions.zip
+          (expectedRows certificate totalAddRows)).map Prod.snd).map
+            NativeSourceRow.traceRow := by
+              simp [expectedCells, expectedCell, List.map_map]
+      _ = _ := by rw [List.map_snd_zip hlen.ge]
+  rw [hproj]
+  exact expected_rows_trace_rows_nodup certificate totalAddRows hgap
+
 /-- The modeled deterministic `expectedRows` schedule supplies a matching
 projected cell for each instruction. It does not prove uniqueness, native
 trace-row placement, or native opcode correspondence; those latter fields
@@ -161,9 +338,9 @@ theorem source_plan_expected (certificate : Certificate)
   · rfl
   · rfl
   · rfl
-  · exact hshape.1
-  · exact hshape.2.1
-  · exact hshape.2.2
+  · exact hshape.2.2.1
+  · exact hshape.2.2.2.1
+  · exact hshape.2.2.2.2
   · rfl
 
 /-- Output masks, inverse-basis products, and public copies each yield once

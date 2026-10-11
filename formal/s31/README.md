@@ -171,6 +171,14 @@ AIR row formula for the narrow 512-row direct-gate profile. The generated
 `Functional/GeneratedDirectGateBridge` instance records the exact checked
 source and normalized JSON bytes, their digest strings, positional SSA,
 exported gate addresses and row indices for the shared-square example.
+`Functional/SSAGeneralDecodedTraceBridge` proves that this modeled schedule
+preserves every instruction's ordered opcode, circuit position and addresses;
+its projected cells carry the matching add/pointwise-multiply selectors.
+Modeled source trace rows are pairwise distinct under the explicit gap
+`3 + instruction_count ≤ totalAddRows + 28`, which follows from a separately
+proved 16-instruction budget. The parser uses a 16-step fuel limit, but this
+formal bridge does not yet derive that budget from byte admission or prove
+that the native emitter or committed columns match the modeled schedule.
 `Functional/SSATextBytes` independently
 parses the embedded bytes for the restricted ASCII four-lane add/mul grammar,
 reconstructs its SSA meaning, and proves normalized execution agrees with

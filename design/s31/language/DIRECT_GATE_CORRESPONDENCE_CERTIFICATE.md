@@ -339,9 +339,15 @@ The parameterized
 extends the column-to-row argument to any checked bounded SSA certificate and
 decoded direct-Gate trace satisfying its stated fixed-column premises. An
 induction over the modeled `expectedRows` construction proves positional
-address alignment and the existence of a matching projected cell for each
-source instruction. It does not prove uniqueness or independently establish
-that native emitted trace positions or opcodes agree with this model; exact
+address alignment, exact ordered add/pointwise-multiply opcodes and projected
+AIR selectors, and the existence of a matching cell for each source
+instruction. It also proves that source trace-row indices are pairwise
+distinct when `3 + instruction_count ≤ totalAddRows + 28`; a separately
+established 16-instruction budget suffices for this inequality at any
+nonnegative `totalAddRows`. The Lean bridge has not yet derived that budget
+from `parseBytes` success. These are facts about the modeled schedule and do
+not independently establish that native emitted trace positions or opcodes
+agree with it; exact
 `fixedMatches` against the decoded trace is a separate premise. It proves all output
 boundary cells have positive multiplicity and derives positive input-cell
 multiplicity from the admitted source's required first instruction. Given exact
