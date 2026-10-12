@@ -113,7 +113,7 @@
     "src/frontends/s31/runtime/mixed_boundary/lookup_budget.zig": "9c9547a7265e18a6330b3342b6e5763d7b68fbe341dd4f6c8968921e21b02bc6",
     "src/frontends/s31/runtime/mixed_boundary/registry.zig": "15b368ca4d161321c0b32e3c64324a32fb297064bc532580249876c084aef699",
     "src/frontends/s31/runtime/mixed_boundary/descriptor.zig": "3b1019fc88e2d481a4c6a0c5dc073082dc182560980c2082d2375455bb56dbea",
-    "src/frontends/s31/runtime/mixed_boundary/registry_manifest.zig": "f6cdda7833d63133c779393629f8b6f1081dcfd0bfb341c0a01892c07f62d0cc",
+    "src/frontends/s31/runtime/mixed_boundary/registry_manifest.zig": "67c3f6c6ebfe3b9f1133b9c15d94680759c67072fc80b02b97be39d5660a6e5a",
     "src/frontends/s31/runtime/mixed_boundary/package.zig": "5699a6b8d12ce58b1864049a111e7b8e64bf626078b2b4ec91a8ca9eff92541c",
     "src/frontends/s31/runtime/mixed_boundary/n4_package.zig": "e1b4ff7821acf3299fdc322cf41ab049e1a0039fff5578184be05f23ad4c8d7b",
     "src/frontends/s31/runtime/mixed_boundary/general_package.zig": "9cf45bc4a34ae27a60e68942e8e745c3033e693dbb5a4fd3b2480c48631dd11c",
