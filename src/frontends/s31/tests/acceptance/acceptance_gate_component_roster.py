@@ -62,6 +62,22 @@ def run(package: Path, work: Path) -> None:
     if result.returncode == 0 or "InvalidVerificationKey" not in result.stdout + result.stderr:
         raise AssertionError(f"resealed gate roster key was not rejected: {result.stderr}")
 
+    # The package reader keeps historical v1 keys readable. A newly built
+    # verifier is sealed to its roster-bearing key, so stripping the roster
+    # cannot downgrade that installed verifier to historical semantics.
+    downgraded = dict(key)
+    downgraded["schema"] = "s31-verification-key-v1"
+    downgraded.pop("gate_component_roster_sha256")
+    downgraded_path = work / "downgraded-key.json"
+    s31.write_json(downgraded_path, downgraded)
+    installed = package / "bin/s31-affine4_v1-native-verifier"
+    result = subprocess.run(
+        [str(installed), "check-key", str(downgraded_path)],
+        cwd=s31.ROOT, capture_output=True, text=True,
+    )
+    if result.returncode == 0 or "InvalidVerificationKey" not in result.stdout + result.stderr:
+        raise AssertionError(f"installed verifier accepted a downgraded key: {result.stderr}")
+
     # A copied sidecar with a recomputed package file hash still fails the
     # package consistency check. The native test above covers coherent
     # mutation of the sealed key itself.
@@ -85,7 +101,8 @@ def run(package: Path, work: Path) -> None:
     print(json.dumps({"accepted_proof_bytes": trial["proof_bytes"],
                       "components": len(roster["components"]),
                       "preprocessed_columns": len(roster["preprocessed_columns"]),
-                      "resealed_key_rejected": True, "rehashed_sidecar_rejected": True},
+                      "resealed_key_rejected": True, "rehashed_sidecar_rejected": True,
+                      "installed_verifier_downgrade_rejected": True},
                      sort_keys=True))
 
 
