@@ -57,3 +57,11 @@ The first local run produced 56,111 and 70,402 proof bytes respectively.
 These are proof-size observations for the pinned source and compiler. The
 [Lean schedule certificate](../../../../../../formal/s31/S31/Gadgets/Functional/PowerChains.lean)
 proves that the 21-step factor chain reaches $x^{196605}$ for every M31 input.
+
+The [functional version](pow196605_functional4.s31) defines `power(v)` and
+`twice(v)`, then calls `twice(twice(x))`. Its four calls specialize into the
+same 84 multiplication gates, with identical input and public-output
+boundaries, as the direct source. The [source test](../../../tests/python/functional/test_power_chains.py)
+compares every gate's operation and predecessor indices after erasing source
+names and checks the example's eight independent output values. Function
+calls themselves add no circuit gate.

@@ -215,6 +215,13 @@ def validate_reports(audit: dict, feature: dict, formal: dict, *, compiler: str,
                 f"feature row {name}: script differs from current tree")
 
     require(formal.get("schema") == "s31-v01-formal-checks-v1", "wrong formal report schema")
+    require(formal.get("status") in (None, "passed") and formal.get("failure") is None,
+            "formal receipt reports failure")
+    if "receipt_script_sha256" in formal:
+        receipt_script = root / "scripts/release/formal_receipt.py"
+        require(receipt_script.is_file() and not receipt_script.is_symlink() and
+                formal["receipt_script_sha256"] == digest(receipt_script),
+                "formal receipt runner differs from current tree")
     require(formal.get("compiler_sha256") == compiler, "formal compiler pin mismatch")
     require(oid(formal.get("source_commit")), "formal source commit is missing")
     for key, name in FORMAL_FILES.items():

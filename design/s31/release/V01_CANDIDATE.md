@@ -53,13 +53,25 @@ part of this release candidate.
 ## Candidate gate
 
 Run the native matrix and feature gate on a clean, pinned source revision,
-then run the formal commands. Keep all three formal command logs. Produce a
-JSON formal receipt of this shape (actual hashes and paths are required):
+then generate the formal receipt on a clean commit. The
+[`formal_receipt.py`](../../../scripts/release/formal_receipt.py) tool runs the
+three commands sequentially, keeps their logs, and fails if the source or
+compiler changes while it runs:
+
+```sh
+python3 -B scripts/release/formal_receipt.py \
+  --out zig-out/s31/formal-checks.json
+```
+
+The JSON has this shape (actual hashes and paths are required):
 
 ```json
 {
   "schema": "s31-v01-formal-checks-v1",
+  "status": "passed",
+  "failure": null,
   "source_commit": "<40- or 64-character git commit of formal run>",
+  "receipt_script_sha256": "<SHA-256 of scripts/release/formal_receipt.py>",
   "compiler_sha256": "<64-character compiler fingerprint>",
   "inventory_sha256": "<SHA-256 of formal/s31/proof-inventory.json>",
   "bindings_sha256": "<SHA-256 of formal/s31/source-bindings.json>",
@@ -67,7 +79,8 @@ JSON formal receipt of this shape (actual hashes and paths are required):
     "bindings": {"command": ["python3", "-B", "scripts/s31_formal.py"], "returncode": 0, "log": "<path>", "log_sha256": "<SHA-256>"},
     "lake_build": {"command": ["lake", "build", "S31"], "returncode": 0, "log": "<path>", "log_sha256": "<SHA-256>"},
     "leanchecker": {"command": ["lake", "env", "leanchecker", "S31"], "returncode": 0, "log": "<path>", "log_sha256": "<SHA-256>"}
-  }
+  },
+  "lean_threads": 1
 }
 ```
 

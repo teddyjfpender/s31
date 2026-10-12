@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 import sys
 import unittest
@@ -105,6 +106,21 @@ class PowerChainTests(unittest.TestCase):
                    for index in range(1, len(chain))]
         self.assertEqual(lean_reference_pairs("pow196605Refs"), parents)
         self.assertEqual(graph(relation), [("mul", lhs, rhs) for lhs, rhs in parents])
+
+    def test_functional_factor_power_erases_to_the_same_gate_graph(self) -> None:
+        examples = S31 / "examples/arithmetic/powers"
+        direct, _ = compile_text((examples / "pow196605_factor4.s31").read_text())
+        functional, _ = compile_text((examples / "pow196605_functional4.s31").read_text())
+        self.assertEqual(direct["inputs"], functional["inputs"])
+        self.assertEqual(direct["public_outputs"], functional["public_outputs"])
+        self.assertEqual(direct["assertions"], functional["assertions"])
+        self.assertEqual(len(graph(direct)), 84)
+        self.assertEqual(graph(direct), graph(functional))
+        assignment = json.loads(
+            (examples / "pow196605_factor4.valid.json").read_text())
+        for relation in (direct, functional):
+            self.assertEqual(evaluate_relation(relation, assignment),
+                             assignment["public_outputs"])
 
     def test_pow15_matches_handwritten_five_gate_graph(self) -> None:
         optimized = """circuit p(private x: [m31; 1]) -> public [m31; 1] {

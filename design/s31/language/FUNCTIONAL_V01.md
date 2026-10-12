@@ -149,7 +149,14 @@ shows a compiler-owned math-library improvement that crosses a native AIR
 padding boundary. Four eight-lane `pow<65535>` calls use 76 multiplication
 nodes rather than 120 explicit binary nodes; both forms have checked native
 proofs, and the padded QM31 trace is 512 rather than 1,024 rows. This is a
-structural cost result, not a general prover-time claim.
+structural cost result, not a general prover-time claim. A second four-call
+example uses bounded factor reuse for `pow<196605>`: 84 rather than 128
+multiplication nodes, 487 rather than 575 raw QM31 rows, and 512 rather than
+1,024 padded rows. A Lean certificate proves its 21-step per-call schedule
+reaches the claimed exponent; a source test compares the exact reference
+indices with the production graph, and both native proofs pass the release
+feature gate. This evidence does not establish general compiler-to-AIR
+correspondence.
 
 | Requirement | Evidence required | Current state |
 | --- | --- | --- |

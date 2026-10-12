@@ -30,9 +30,10 @@ concurrency:
 jobs:
   semantics-and-gadgets:
     runs-on: ubuntu-latest
-    # The full build passed in about 21 minutes on hosted runners; kernel
-    # replay then hit the former 30-minute whole-job limit without a result.
-    timeout-minutes: 60
+    # This full proof tree reached 6,919/6,946 build tasks at the former
+    # 60-minute limit on a hosted runner, before kernel replay began. Leave
+    # enough time for both the build and the independent kernel check.
+    timeout-minutes: 150
     env:
       # leanchecker otherwise imports a Mathlib environment per concurrent
       # module. One worker preserves the same kernel checks with bounded RAM.

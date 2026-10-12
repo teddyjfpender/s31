@@ -1,0 +1,15 @@
+use std@1;
+
+// These static calls disappear; the residual circuit matches four direct calls.
+fn power(v: [m31; 8]) -> [m31; 8] {
+    std::math::pow<196605>(v)
+}
+
+fn twice(v: [m31; 8]) -> [m31; 8] {
+    power(power(v))
+}
+
+circuit pow_factor(private x: [m31; 8]) -> public [m31; 8] {
+    let result = twice(twice(x));
+    result
+}

@@ -210,6 +210,17 @@ class CandidateReports(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "formal source commit"):
             self.check()
 
+    def test_failed_executed_formal_receipt_cannot_pass(self) -> None:
+        self.formal.update(status="failed", failure="worktree drift after leanchecker")
+        with self.assertRaisesRegex(ValueError, "formal receipt reports failure"):
+            self.check()
+
+    def test_executed_formal_receipt_runner_is_pinned(self) -> None:
+        self.formal.update(status="passed", failure=None,
+                           receipt_script_sha256="0" * 64)
+        with self.assertRaisesRegex(ValueError, "formal receipt runner"):
+            self.check()
+
     def test_failed_lean_command_fails(self) -> None:
         self.formal["checks"]["lake_build"]["returncode"] = 1
         with self.assertRaisesRegex(ValueError, "formal command failed"):

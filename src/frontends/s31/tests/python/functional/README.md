@@ -26,7 +26,9 @@ two previously computed parents. It also compares the 19 reference pairs
 with the [kernel-checked certificate](../../../../../../formal/s31/S31/Gadgets/Functional/PowerChains.lean).
 For large exponents with small odd factors, it pins shorter factored chains,
 checks every saved parent, and compares the emitted `pow<196605>` graph with
-the 21-step schedule certified in Lean.
+the 21-step schedule certified in Lean. A nested functional version using
+`power` and `twice` helpers must emit the same 84-gate graph as
+four direct calls, with independently checked public outputs.
 The eight-lane
 [native comparison](../../acceptance/math/power_chain.py) verifies both the
 19-step and 30-step `pow<65535>` schedules across four calls.

@@ -1,5 +1,25 @@
 # S31 v0.1 supported-profile audit
 
+## Formal receipt
+
+Run the Lean source-binding check, full build, and kernel replay on a clean
+candidate commit with one Lean thread. The receipt tool executes the commands
+in that order, saves each complete command log and its SHA-256, and rejects
+command failure or a source, compiler, inventory, or worktree change during
+the run:
+
+```sh
+python3 -B scripts/release/formal_receipt.py \
+  --out zig-out/s31/formal-checks.json
+```
+
+The generated JSON has the `s31-v01-formal-checks-v1` shape required by the
+candidate checker. A command failure or detected drift writes a receipt marked
+`failed`; a setup error exits without a receipt. Neither can be used as
+passing release evidence. The receipt pins the tool's own
+source hash, which the candidate checker compares with the current tree. The
+command runs no native proof.
+
 ## Complete source bundle
 
 GitHub's automatic source archives omit `deps/stwo-zig`. After the candidate
