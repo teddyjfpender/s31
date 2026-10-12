@@ -156,6 +156,9 @@ import S31.Gadgets.Functional.SSALocalPipeline
 import S31.Gadgets.Functional.SSATextBytes
 import S31.Gadgets.Functional.Correspondence.SourceFunctionBytes
 import S31.Gadgets.Functional.Correspondence.OrderedSubtractionRelease
+import S31.Gadgets.Functional.Correspondence.OrderedSubtractionBytes
+import S31.Gadgets.Functional.Correspondence.GeneratedOrderedSubtractionRelease
+import S31.Gadgets.Functional.Correspondence.OrderedSubtractionConcrete
 import S31.Gadgets.Functional.Correspondence.SourceFunctionCanonicalBytes
 import S31.Gadgets.Functional.SSANormalizedBytes
 import S31.Gadgets.Functional.SSACanonicalIrBytes

@@ -33,6 +33,7 @@ FORMAL = ROOT / "formal/s31"
 PINNED_CONSTANT_TOOL = ROOT / "src/frontends/s31/tools/formal/pinned_constant_values.py"
 PINNED_CONSTANT_FIXTURE = FORMAL / "fixtures/square4-native-physical.json"
 ALIAS8_NATIVE_FIXTURE_TOOL = ROOT / "src/frontends/s31/tools/formal/alias8_native_fixture.py"
+ORDERED_SUBTRACTION_FIXTURE_TOOL = ROOT / "src/frontends/s31/tools/formal/ordered_subtraction_fixture.py"
 RELATION = "src/frontends/s31/language/relation.zig"
 POSEIDON = "src/frontends/riscv/air/memory_commitment/poseidon2_constants.zig"
 SHA = "src/frontends/riscv/air/guest_precompile/sha256_compression.zig"
@@ -110,6 +111,7 @@ BINDINGS = [
     "src/frontends/s31/tools/formal/export_square4_topology.zig",
     "src/frontends/s31/tools/formal/pinned_constant_values.py",
     "src/frontends/s31/tools/formal/alias8_native_fixture.py",
+    "src/frontends/s31/tools/formal/ordered_subtraction_fixture.py",
     "src/frontends/s31/language/canonical.zig",
     "src/frontends/s31/language/record_abi.zig",
     "src/frontends/s31/language/relation_compiler.zig",
@@ -644,6 +646,7 @@ def generated_native_square4_topology() -> str:
 def generated() -> dict[Path, str]:
     render_pinned_values = runpy.run_path(str(PINNED_CONSTANT_TOOL))["render"]
     render_alias8_native_fixture = runpy.run_path(str(ALIAS8_NATIVE_FIXTURE_TOOL))["render"]
+    render_ordered_subtraction_fixture = runpy.run_path(str(ORDERED_SUBTRACTION_FIXTURE_TOOL))["render"]
     check_native_qm31_relation_schedule()
     check_native_eq_relation_schedule()
     check_record_erasure()
@@ -702,6 +705,9 @@ def generated() -> dict[Path, str]:
             render_pinned_values(PINNED_CONSTANT_FIXTURE),
         FORMAL / "S31/Gadgets/Functional/Correspondence/GeneratedAlias8NativeFixture.lean":
             render_alias8_native_fixture(),
+        FORMAL / "S31/Gadgets/Functional/Correspondence/GeneratedOrderedSubtractionRelease.lean":
+            render_ordered_subtraction_fixture(
+                ROOT / "src/frontends/s31/examples/functional/release_sub4/manual.s31"),
         FORMAL / "S31/Evidence/Coverage.lean": render_coverage(
             json.loads((FORMAL / "coverage.json").read_text())),
         FORMAL / "source-bindings.json": json.dumps(identity, indent=2) + "\n",

@@ -71,6 +71,10 @@ The [Lean packed-row theorem](../../../../../formal/s31/S31/Gadgets/Functional/C
 proves that **every** auxiliary witness satisfying these three add/sub rows
 has output `0 - (x + x)` in all four lanes, and constructs an honest witness
 for every input. It also identifies each row with the executable normalized
-node operation. This is a local arbitrary-witness theorem; the source-byte
-parser, emitted native rows, and proof openings are not yet joined to it in
-Lean.
+node operation. The [exact-byte checker](../../../../../formal/s31/S31/Gadgets/Functional/Correspondence/OrderedSubtractionBytes.lean)
+parses the checked-in `manual.s31`, compares every byte of the production
+normalized JSON, and rejects a changed subtraction opcode. The
+[concrete theorem](../../../../../formal/s31/S31/Gadgets/Functional/Correspondence/OrderedSubtractionConcrete.lean)
+connects those bytes to the arbitrary-witness three-row result. The helper
+spelling in `functional.s31`, emitted native rows, authenticated Gate lookup,
+and proof openings are still separate proof obligations.

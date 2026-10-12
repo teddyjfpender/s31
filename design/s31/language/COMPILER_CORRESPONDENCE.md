@@ -39,10 +39,15 @@ that arbitrary satisfying intermediate values force `0 - (x+x)` in all four
 lanes, constructs an honest witness for every input, and equates those rows
 with executable normalized nodes. The independent v2/v3 package checker now
 handles ordered subtraction through its native fixed-row schedule and release
-proofs. The Lean byte parser and physical-roster theorem below still cover
-source add/pointwise-multiply gates, so a Lean theorem joining this new
-subtraction example's exact source bytes to authenticated native rows remains
-open.
+proofs. [`OrderedSubtractionBytes.lean`](../../../formal/s31/S31/Gadgets/Functional/Correspondence/OrderedSubtractionBytes.lean)
+parses a bounded straight-line four-lane source grammar directly from bytes,
+checks its exact normalized JSON bytes, and proves that arbitrary coherent
+packed rows compute the parsed source. The generated release fixture pins the
+checked-in `manual.s31` and production JSON to a reviewed three-operation DAG;
+[`OrderedSubtractionConcrete.lean`](../../../formal/s31/S31/Gadgets/Functional/Correspondence/OrderedSubtractionConcrete.lean)
+connects those exact bytes to the three-row theorem. This covers the manual
+spelling. The functional helper source, native emitted rows, Gate lookup
+authentication, and proof openings remain separate joins.
 
 ## Remaining proof obligations
 
