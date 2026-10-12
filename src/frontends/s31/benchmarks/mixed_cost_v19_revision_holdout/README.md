@@ -38,6 +38,8 @@ Run the native attempt on a quiet host, from the S31 repository root:
 ```sh
 python3 src/frontends/s31/benchmarks/mixed_cost_v19_revision_holdout/study.py run \
   --out /absolute/isolated/v19-artifacts
+python3 src/frontends/s31/benchmarks/mixed_cost_v19_revision_holdout/audit.py \
+  --out /absolute/isolated/v19-artifacts --native --write
 ```
 
 The attempt marker is created with `O_EXCL` before the package build. An
