@@ -1,0 +1,5 @@
+circuit lexical4(public x: [m31; 4]) -> public [m31; 4] {
+    let _s31_0 = x .* x;
+    let result = _s31_0 + _s31_0;
+    result
+}

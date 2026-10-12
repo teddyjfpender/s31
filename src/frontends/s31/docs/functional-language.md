@@ -18,6 +18,10 @@ certificate. Its handwritten form has the same two relation nodes and native
 AIR geometry; the functional package's proof passes `verify-release`. The
 strict certificate currently covers this bounded helper grammar, while the
 ordinary text frontend supports the broader function syntax below.
+The [lexical release example](../examples/functional/release_let4/README.md)
+also certifies a scoped `let squared = square(x) in squared + squared`: the
+binding disappears, and its two residual gates exactly match handwritten
+arithmetic in a native proof.
 
 ## Auditing a named function all the way to packed rows
 

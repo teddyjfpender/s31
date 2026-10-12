@@ -134,6 +134,21 @@ claim rejection for all four cases.
 | Repository hygiene | Parser, AST, elaborator, specialization, library and CLI isolated by directory, module READMEs and pinned dependency versions | Syntax, parser, builtin typing, elaboration and specialization live under `python/language/`. Standard and math library implementations live under `python/library/`, with compatibility imports and an expanded source lock/fingerprint. Cost and semantic-equation reports live under `python/inspection/`. Source identity, package building and integrity checks live under `python/package/`. Native trials and fold audits live under `python/runtime/`. Argument parsing and command dispatch live under `python/cli/`; the root executable/API is 44 lines. All modules have READMEs and enter the source fingerprint. A smaller declarative command table remains desirable. |
 | Release artifact | Tagged source, lockfile, supported-profile matrix, signed or otherwise authenticated distribution process, changelog and exact test commands | The [v0.1.0-rc.4 developer prerelease](https://github.com/teddyjfpender/s31/releases/tag/v0.1.0-rc.4) ships a hash-checked complete source bundle with its pinned engine and a finite-evidence archive. It does not satisfy the full v0.1.0 soundness and correspondence requirements in this table; trusted distribution and an independent native PCS/FRI soundness argument remain open. |
 
+The opt-in strict `verify-release` path now independently reparses exact
+source bytes for a bounded public four-lane direct-gate fragment. It covers
+up to eight acyclic pure functions, calls to earlier declarations, local
+arithmetic lets, and expression-level lexical `let … in` inside circuit lets.
+The checker replays generated and anonymous wire names, requires exact
+normalized relation and canonical SSA equality, then checks the native gate
+topology and fixed-root key before native proof verification. The
+[composed-function](../../../src/frontends/s31/examples/functional/release_square4/README.md)
+and [lexical-let](../../../src/frontends/s31/examples/functional/release_let4/README.md)
+fixtures each match their handwritten two-gate form at 322 raw and 512 padded
+QM31 rows, pass `verify-release`, and reject a changed public result. This is
+finite evidence for this fragment. It does not certify higher-order source,
+records, private inputs, other AIR profiles, or the native PCS/FRI proof
+system, and it does not replace the full compiler correspondence proof above.
+
 The independent bounded [source-to-relation checker](SOURCE_RELATION_FRAGMENT.md)
 now parses one pure named function over homogeneous `[m31; N]` arrays for
 `1 ≤ N ≤ 8`, including ordered subtraction, and checks its static call against

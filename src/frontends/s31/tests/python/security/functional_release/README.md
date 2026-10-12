@@ -7,6 +7,18 @@ local lets, repeated and nested calls, and different return forms. They require 
 normalized and canonical IR equality with handwritten forms. Rejection cases
 cover shadowing, unbound arguments, effectful or nested bodies, malformed
 types, unused helpers, and commutative order outside the v2 contract.
+Lexical-let tests compare nested, shadowed and returned-alias expressions
+with the production compiler and direct gate sources, and reject malformed
+or unbound expressions and generated-name collisions. An unused bound
+arithmetic expression must still emit its eager gate.
+The separate `test_lexical_corpus.py` exhausts all 30 chains of one to four binders with
+add/multiply chains, including static helper calls and parenthesized source
+expressions. Every case must match both production compilation and a direct
+handwritten gate schedule byte for byte at the normalized relation level.
+`test_lexical_mutations.py` then makes 2,000 fixed token mutations to the
+native lexical fixture. The checker must reject malformed sources without
+crashing; all eleven mutations it still accepts must compile to exactly its
+independently reconstructed relation.
 
 Run from the repository root:
 

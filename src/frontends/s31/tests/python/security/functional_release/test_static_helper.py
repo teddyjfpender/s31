@@ -209,6 +209,82 @@ circuit calc(public x: [m31; 4]) -> public [m31; 4] {
         with self.assertRaisesRegex(UnsupportedFragment, "more than eight"):
             parse_source(source(9).encode())
 
+    def test_lexical_let_and_helper_call_have_no_gate_overhead(self) -> None:
+        functional = """fn square(v: [m31; 4]) -> [m31; 4] { v .* v }
+circuit calc(public x: [m31; 4]) -> public [m31; 4] {
+  let result = let squared = square(x) in squared + squared;
+  result
+}
+"""
+        direct = """circuit calc(public x: [m31; 4]) -> public [m31; 4] {
+  let _s31_0 = x .* x;
+  let result = _s31_0 + _s31_0;
+  result
+}
+"""
+        checked = parse_source(functional.encode())
+        self.assertEqual(checked, parse_source(direct.encode()))
+        self.assertEqual(checked[0], compile_text(functional)[0])
+
+    def test_lexical_shadowing_and_returned_alias_match_production(self) -> None:
+        source = """circuit calc(public x: [m31; 4]) -> public [m31; 4] {
+  let result = let x = x .* x in let x = x + x in x .* x;
+  result
+}
+"""
+        direct = """circuit calc(public x: [m31; 4]) -> public [m31; 4] {
+  let _s31_0 = x .* x;
+  let _s31_1 = _s31_0 + _s31_0;
+  let result = _s31_1 .* _s31_1;
+  result
+}
+"""
+        self.assertEqual(parse_source(source.encode()), parse_source(direct.encode()))
+        self.assertEqual(parse_source(source.encode())[0], compile_text(source)[0])
+
+        returned = """circuit calc(public x: [m31; 4]) -> public [m31; 4] {
+  let result = let square = x .* x in square;
+  result
+}
+"""
+        checked, _ = parse_source(returned.encode())
+        self.assertEqual(checked, compile_text(returned)[0])
+        self.assertEqual(checked["public_outputs"], ["_s31_0"])
+
+    def test_unused_lexical_bound_stays_eager(self) -> None:
+        source = """circuit calc(public x: [m31; 4]) -> public [m31; 4] {
+  let result = let unused = x .* x in x + x;
+  result
+}
+"""
+        direct = """circuit calc(public x: [m31; 4]) -> public [m31; 4] {
+  let _s31_0 = x .* x;
+  let result = x + x;
+  result
+}
+"""
+        checked, syntax = parse_source(source.encode())
+        self.assertEqual((checked, syntax), parse_source(direct.encode()))
+        self.assertEqual(checked, compile_text(source)[0])
+        self.assertEqual([node["op"] for node in checked["nodes"]], ["mul", "add"])
+
+    def test_lexical_let_rejects_ambiguity_and_unbound_names(self) -> None:
+        source = """circuit calc(public x: [m31; 4]) -> public [m31; 4] {
+  let result = let y = x .* x in y + y;
+  result
+}
+"""
+        malformed = [
+            source.replace(" in y + y", " y + y"),
+            source.replace(" in y + y", " in missing + y"),
+            source.replace("let y =", "let _s31_0 ="),
+            source.replace("y + y", "y + y + y"),
+            source.replace("x .* x", "x .* missing"),
+        ]
+        for changed in malformed:
+            with self.subTest(source=changed[:100]), self.assertRaises(UnsupportedFragment):
+                parse_source(changed.encode())
+
     def test_rejected_helper_forms_fail_closed(self) -> None:
         source = program(1, helper=True)
         malformed = [
@@ -242,6 +318,8 @@ circuit calc(public x: [m31; 4]) -> public [m31; 4] {
         optimized, _ = parse_source(source.encode(), optimized=True)
         self.assertEqual(optimized, compile_text(source)[0])
         self.assertIn(S31 / "python/package/source_fragments/static_helper.py",
+                      TEXT_FRONTEND_SOURCES)
+        self.assertIn(S31 / "python/package/source_fragments/lexical_let.py",
                       TEXT_FRONTEND_SOURCES)
 
 

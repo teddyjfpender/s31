@@ -19,6 +19,16 @@ This is a bounded acyclic-function certificate and native regression. It does no
 prove arbitrary functional source compilation or the underlying STARK
 cryptographic assumptions.
 
+`lexical_release.py` repeats the package, cost, proof, release-verifier and
+changed-claim controls for the checked-in
+[`release_let4`](../../../examples/functional/release_let4/README.md)
+program. Its scoped source binder produces no relation node; the direct form
+names the same anonymous multiplication wire `_s31_0` explicitly.
+
+```sh
+python3 src/frontends/s31/tests/acceptance/compiler_correspondence/lexical_release.py
+```
+
 `generated_native_subset.py` selects four sources from the pinned 384-source
 mutation corpus: one gate; eight alias-spelled gates with an earlier return;
 fifteen gates with a final return; and sixteen comment-spelled gates with an

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""A named helper must have zero native AIR cost and pass strict release verification."""
+"""Functional syntax must have zero native AIR cost and pass strict release verification."""
 
 from __future__ import annotations
 
@@ -17,17 +17,17 @@ from package.trust import pinned_paths  # noqa: E402
 from text_frontend import compile_text  # noqa: E402
 
 EXAMPLE = S31 / "examples/functional/release_square4"
-FUNCTIONAL_SOURCE = EXAMPLE / "functional.s31"
-DIRECT_SOURCE = EXAMPLE / "manual.s31"
 SAME_AIR = ("canonical_ir_sha256", "profile", "chip", "raw", "padded",
             "preprocessed_cells", "preprocessed_columns", "preprocessed_root",
             "input_packing", "public_binding", "finalization", "fri")
 P = (1 << 31) - 1
 
 
-def run() -> dict:
-    functional_text = FUNCTIONAL_SOURCE.read_text()
-    direct_text = DIRECT_SOURCE.read_text()
+def run(example: Path = EXAMPLE, *, case: str = "composed") -> dict:
+    functional_source = example / "functional.s31"
+    direct_source = example / "manual.s31"
+    functional_text = functional_source.read_text()
+    direct_text = direct_source.read_text()
     functional_relation, functional_syntax = parse_source(functional_text.encode())
     direct_relation, direct_syntax = parse_source(direct_text.encode())
     if (functional_relation != direct_relation or functional_syntax != direct_syntax or
@@ -37,8 +37,8 @@ def run() -> dict:
 
     with tempfile.TemporaryDirectory(prefix="s31-functional-release-") as directory:
         work = Path(directory)
-        direct = s31.build(DIRECT_SOURCE, work / "direct-package", "direct-gate")
-        functional = s31.build(FUNCTIONAL_SOURCE, work / "functional-package", "direct-gate")
+        direct = s31.build(direct_source, work / "direct-package", "direct-gate")
+        functional = s31.build(functional_source, work / "functional-package", "direct-gate")
         direct_cost = json.loads((direct / "cost-report.json").read_text())
         cost = json.loads((functional / "cost-report.json").read_text())
         different = [field for field in SAME_AIR if cost[field] != direct_cost[field]]
@@ -79,7 +79,8 @@ def run() -> dict:
         else:
             raise AssertionError("strict release verifier accepted a changed public claim")
 
-        return {"schema": "s31-functional-release-v1", "nodes": len(functional_relation["nodes"]),
+        return {"schema": "s31-functional-release-v1", "case": case,
+                "nodes": len(functional_relation["nodes"]),
                 "raw_qm31_rows": cost["raw"]["qm31_ops"],
                 "padded_qm31_rows": cost["padded"]["qm31_ops"],
                 "proof_bytes": trial["proof_bytes"],

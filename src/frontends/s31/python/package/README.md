@@ -59,6 +59,12 @@ compares the function with handwritten gates, proves the function package,
 passes `verify-release`, and rejects a changed public claim. The independent
 helper parser lives in [source_fragments](source_fragments/README.md) and is
 included in the compiler fingerprint.
+The same release grammar accepts a bounded lexical `let name = e in body`
+inside a circuit let. Its independent parser tracks shadowing and exact
+anonymous `_s31_N` wire allocation; the
+[lexical release acceptance](../../tests/acceptance/compiler_correspondence/lexical_release.py)
+compares the functional and direct AIR, proves the claim, and exercises
+`verify-release` and changed-claim rejection.
 
 `inspect-record-proof` also executes from a private copy of the package,
 proof, and statement. Its `unpinned_snapshot` check establishes internal

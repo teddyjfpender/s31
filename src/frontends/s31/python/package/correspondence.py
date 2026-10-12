@@ -1,7 +1,7 @@
 """Independent, fail-closed checker for a small direct-gate S31 fragment.
 
 The accepted grammar has one public [m31; 4] input and one public [m31; 4]
-output. Its body contains 1..16 fresh arithmetic lets (`+` or `.*`),
+output. Its body contains 1..16 fresh arithmetic gates (`+` or `.*`),
 interleaved with zero-cost alias lets, followed by a returned wire name.
 Redundant parentheses around these expressions and names are admitted.
 Operands must resolve to the input or an earlier arithmetic let. Up to eight
@@ -9,6 +9,9 @@ pure, monomorphic functions may contain straight-line arithmetic and calls to
 earlier functions. Their applications are expanded to ordinary gates with
 exact generated names. The default v2 certificate requires canonical operand order
 and distinct expressions.
+Bounded expression-level `let name = bound in body` chains may appear as
+circuit let RHSs. They eagerly emit bound gates under anonymous names and
+resolves scoped aliases before the same canonical and native checks.
 The explicit optimized v3 path independently sorts commutative operands and
 checks common-subexpression elimination with a source-to-canonical map. No
 imports, other calls, constants, assertions, private inputs, or implicit
@@ -30,6 +33,8 @@ from typing import Any
 
 from package.direct_gate_schedule import constant_and_padding, exact_direct_gate_schedule
 from package.manifest_digest import direct_gate_v2_digest
+from package.source_fragments.lexical_let import (Atom, Let, UnsupportedLexicalLet,
+                                                  parse_expression)
 from package.source_fragments.static_helper import (StaticExpr, UnsupportedStaticHelper,
                                                     peel_static_helpers)
 
@@ -42,6 +47,7 @@ ASCII_SPACE = frozenset(" \t\n\v\f\r")
 TOKEN = re.compile(r"[ \t\n\v\f\r]+|//[^\n]*|->|\.\*|[(),\[\];:{}=+]|[A-Za-z_][A-Za-z_0-9]*|[0-9]+")
 NAME = re.compile(r"[A-Za-z_][A-Za-z_0-9]*\Z")
 INLINE_NAME = re.compile(r"_s31_i[0-9]+_[0-9]+\Z")
+AUTO_NAME = re.compile(r"_s31_[0-9]+\Z")
 SOURCE_KEYWORDS = frozenset({
     "use", "let", "in", "if", "then", "else", "match", "fun", "Fn", "fn", "struct", "enum",
     "circuit", "blinded", "public", "private", "assert_eq", "m31",
@@ -139,15 +145,18 @@ def parse_source(data: bytes, *, optimized: bool = False) -> tuple[dict[str, Any
             lambda name: (NAME.fullmatch(name) is not None and
                           name not in SOURCE_KEYWORDS and name not in PLAIN_BUILTIN_NAMES and
                           len(name) <= MAX_RELATION_NAME_CHARS and
-                          INLINE_NAME.fullmatch(name) is None),
+                          INLINE_NAME.fullmatch(name) is None and
+                          AUTO_NAME.fullmatch(name) is None),
         )
     except UnsupportedStaticHelper as exc:
         raise UnsupportedFragment(str(exc)) from exc
-    # The production specializer skips a generated prefix if it collides with
-    # any circuit source binder. Excluding that namespace makes call-number
-    # replay exact without trusting the production name allocator.
-    if helpers and any(INLINE_NAME.fullmatch(token) for token in tokens):
-        raise UnsupportedFragment("circuit source occupies the static inline namespace")
+    # Production skips generated names that collide with source binders.
+    # Excluding both namespaces makes static call and anonymous-gate naming
+    # exact without trusting the production allocator.
+    if (helpers or "in" in tokens) and any(
+            INLINE_NAME.fullmatch(token) or AUTO_NAME.fullmatch(token)
+            for token in tokens):
+        raise UnsupportedFragment("circuit source occupies a generated wire namespace")
     cursor = 0
 
     def take(expected: str | None = None) -> str:
@@ -268,6 +277,17 @@ def parse_source(data: bytes, *, optimized: bool = False) -> tuple[dict[str, Any
     ssa: list[dict[str, Any]] = []
     used_helpers: set[str] = set()
     helper_calls = 0
+    next_temp = 0
+
+    def gate_name(wanted: str | None) -> str:
+        nonlocal next_temp
+        if wanted is not None:
+            return wanted
+        while f"_s31_{next_temp}" in wires:
+            next_temp += 1
+        result = f"_s31_{next_temp}"
+        next_temp += 1
+        return result
 
     def append_gate(name: str, left: str, op_token: str, right: str) -> None:
         if name in wires or name in helpers:
@@ -304,11 +324,13 @@ def parse_source(data: bytes, *, optimized: bool = False) -> tuple[dict[str, Any
         if len(nodes) > 16:
             raise UnsupportedFragment("more than 16 arithmetic operations")
 
-    def evaluate_static(expression: StaticExpr, local: dict[str, str], wanted: str) -> str:
+    def evaluate_static(expression: StaticExpr, local: dict[str, str],
+                        wanted: str | None) -> str:
         if expression.kind == "gate":
             left, right = expression.operands
-            append_gate(wanted, local[left], expression.value, local[right])
-            return wanted
+            result = gate_name(wanted)
+            append_gate(result, local[left], expression.value, local[right])
+            return result
         if expression.kind == "call":
             return expand_helper(expression.value,
                                  tuple(local[argument] for argument in expression.operands),
@@ -317,7 +339,8 @@ def parse_source(data: bytes, *, optimized: bool = False) -> tuple[dict[str, Any
             return local[expression.operands[0]]
         raise UnsupportedFragment("invalid static function expression")
 
-    def expand_helper(function: str, arguments: tuple[str, ...], wanted: str) -> str:
+    def expand_helper(function: str, arguments: tuple[str, ...],
+                      wanted: str | None) -> str:
         nonlocal helper_calls
         helper_calls += 1
         serial = helper_calls
@@ -325,11 +348,38 @@ def parse_source(data: bytes, *, optimized: bool = False) -> tuple[dict[str, Any
         helper = helpers[function]
         local = dict(zip(helper.params, arguments))
         for index, step in enumerate(helper.statements):
-            target = (wanted if helper.body.kind == "ref" and
+            target = (wanted if wanted is not None and helper.body.kind == "ref" and
                       helper.body.operands[0] == step.name else
                       f"_s31_i{serial}_{index}")
             local[step.name] = evaluate_static(step.expression, local, target)
         return evaluate_static(helper.body, local, wanted)
+
+    def evaluate_lexical(expression: Atom | Let, local: dict[str, str],
+                         wanted: str | None) -> str:
+        if isinstance(expression, Let):
+            bound = evaluate_lexical(expression.bound, local, None)
+            extended = local.copy()
+            extended[expression.name] = bound
+            return evaluate_lexical(expression.body, extended, wanted)
+
+        def resolve(name: str) -> str:
+            if name not in local:
+                raise UnsupportedFragment("unbound lexical operand")
+            return local[name]
+
+        atom = list(expression.tokens)
+        call = helper_call(atom)
+        if call is not None:
+            function, *arguments = call
+            return expand_helper(function, tuple(resolve(argument) for argument in arguments),
+                                 wanted)
+        left, operator, right = binding_rhs(atom)
+        if operator == "alias":
+            return resolve(left)
+        assert right is not None
+        result = gate_name(wanted)
+        append_gate(result, resolve(left), operator, resolve(right))
+        return result
 
     while cursor < len(tokens) and tokens[cursor] == "let":
         take("let")
@@ -341,6 +391,23 @@ def parse_source(data: bytes, *, optimized: bool = False) -> tuple[dict[str, Any
         while cursor < len(tokens) and tokens[cursor] != ";":
             rhs.append(take())
         take(";")
+        if strip_parens(rhs)[:1] == ["let"]:
+            try:
+                expression = parse_expression(
+                    rhs,
+                    lambda binder: (NAME.fullmatch(binder) is not None and
+                                    binder not in SOURCE_KEYWORDS and
+                                    binder not in PLAIN_BUILTIN_NAMES and
+                                    binder not in helpers and
+                                    AUTO_NAME.fullmatch(binder) is None and
+                                    INLINE_NAME.fullmatch(binder) is None),
+                )
+            except UnsupportedLexicalLet as exc:
+                raise UnsupportedFragment(str(exc)) from exc
+            produced = evaluate_lexical(expression, {wire: wire for wire in wires}, name)
+            if produced != name:
+                wires[name] = wires[produced]
+            continue
         call = helper_call(rhs)
         if call is not None:
             function, *arguments = call
