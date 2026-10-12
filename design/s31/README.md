@@ -16,8 +16,8 @@ The [MVP roadmap](MVP_ROADMAP.md) tracks open work; the [functional v0.1.0 relea
 ## Current release evidence
 
 The [formal live audit](security/FORMAL_LIVE_EVIDENCE_2026-10-12.md)
-records 2,531 kernel-audited theorems and the limits of the modeled
-correspondence argument. The [derived-roster theorem](../../formal/s31/S31/Gadgets/Functional/Correspondence/DerivedRosterArbitraryTrace.md)
+records 2,531 axiom-audited theorems, 310 kernel-replayed modules, and the
+limits of the modeled correspondence argument. The [derived-roster theorem](../../formal/s31/S31/Gadgets/Functional/Correspondence/DerivedRosterArbitraryTrace.md)
 covers all 512 fixed rows of an arbitrary decoded Gate trace under explicit
 fixed-cell agreement and runtime premises; its [independent review](security/INDEPENDENT_REVIEW_DERIVED_ROSTER_ARBITRARY_TRACE_2026-10-12.md)
 checks those premises and a concrete satisfiable fixture. The [V24 cost
