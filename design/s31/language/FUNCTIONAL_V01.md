@@ -95,6 +95,16 @@ may reach the circuit boundary. A partial condition remains a precondition
 of the whole expression. The source `if` adds no relation node beyond the
 equivalent explicit selector.
 
+The same staging rule applies to source-only enum matches in generic helpers.
+When the enum tag is not yet known, the effect pass defers effects of the
+match arms; it preserves any effect from constructing the scrutinee. At each
+concrete call, the known constructor selects one arm, whose effects are then
+checked against any enclosing witness-dependent `if`. A safe constructor
+therefore erases an unselected partial arm without AIR cost. The selected
+partial arm and an eager partial constructor payload remain inadmissible in
+an inactive dynamic branch. A functional regression compares the safe case
+with direct `if` source byte for byte at the normalized relation boundary.
+
 The release gate still needs broader geometry equivalence checks and a
 formal correspondence from source conditionals through effect analysis to
 the generated AIR. Lean composes total source branches with the local

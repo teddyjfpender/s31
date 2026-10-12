@@ -543,6 +543,19 @@ the same four-lane multiplication as `let result = x .* x; result`; no enum
 tag, match, or branch selector appears in the relation or AIR. The compiler
 still typechecks **both** arms and requires each variant exactly once.
 
+This static choice also matters inside a witness-dependent `if`. Suppose a
+helper takes `Choice` and its `Safe` arm doubles `x`, while its `Risky` arm
+inverts `x`. A circuit call with `Choice::Safe(x)` is allowed inside `if`:
+the source-only tag removes the `Risky` arm before the circuit is built. The
+relation is exactly the direct `if b then x + x else x` relation: one addition
+and one constrained selector. A call with `Choice::Risky(x)` is rejected,
+because its inverse would be present even when `b` selects the other branch.
+For a generic helper whose enum parameter has no tag yet, effect analysis
+defers arm effects until each static call supplies a constructor; unresolved
+static choices cannot cross the circuit boundary. Constructing the enum
+payload is eager, so an inverse used to build `Choice::Safe(...)` inside a
+dynamic branch is still rejected.
+
 Constructor payloads are eager. For example,
 `match Choice::Square(x .* x) { Choice::Square(y) => x, Choice::Double(y) => y }`
 evaluates `x .* x` during specialization, then removes the unobserved total

@@ -64,6 +64,11 @@ in unused definitions, so passing a function cannot hide recursion. It checks
 the intermediate `Fn` type, the
 effect pass resolves any partial operations in the called body, and
 specialization erases the application before relation emission.
+Static enum matches defer a generic helper's arm effects until a concrete
+constructor reaches that helper. The scrutinee and its payload remain eager;
+at the circuit boundary every tag must be known, and a selected partial arm
+inside a witness-dependent `if` is rejected. An unselected static arm emits
+no relation node and imposes no inactive-branch obligation.
 For `iterate<N>`, a static named reference or closure is interpreted by the
 restricted step recognizer. It emits one `repeat` node only when the step
 reduces to the chip's straight-line operations; dynamic captures and

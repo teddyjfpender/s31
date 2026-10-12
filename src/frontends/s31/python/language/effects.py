@@ -264,7 +264,16 @@ class TotalityChecker:
             variants = dict(expr.sum_type.variants)
             arms = tuple(self.expr(body, env | {binder: self.parameter(variants[variant])})
                          for variant, (binder, _), body in zip(expr.variants, expr.params, expr.args[1:]))
-            failure = source.failure | frozenset().union(*(arm.failure for arm in arms))
+            # Enum tags exist only at specialization time; a circuit input
+            # cannot supply one. In a generic function, the selected arm is
+            # not known yet. Defer its effects until the function is invoked
+            # with a concrete variant, instead of treating every unselected
+            # arm as an eager branch of a witness-dependent `if`. Effects
+            # from constructing the scrutinee remain unconditional.
+            arm_failure = frozenset().union(*(arm.failure for arm in arms))
+            deferred = ({f"opaque:static-match:{expr.sum_type.name}"}
+                        if arm_failure else set())
+            failure = source.failure | deferred
             values = tuple(arm.value for arm in arms)
             return Effect(self.join_values(values), failure)
         if expr.kind == "project":

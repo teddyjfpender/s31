@@ -9,7 +9,7 @@ from pathlib import Path
 S31 = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(S31 / "python"))
 
-from oracle import evaluate_relation
+from oracle import OracleError, evaluate_relation
 from text_frontend import SourceError, compile_text
 
 
@@ -80,6 +80,54 @@ circuit p(private x: u16) -> public u16 {
 }"""
         relation, _ = compile_text(source)
         self.assertNotIn("int_div_rem", [node["op"] for node in relation["nodes"]])
+
+    def test_generic_static_match_defers_effect_until_the_tag_is_known(self) -> None:
+        prelude = """enum Choice { Safe: [m31; 1], Risky: [m31; 1] }
+fn choose(choice: Choice, flag: bit, x: [m31; 1]) -> [m31; 1] {
+    if flag then match choice {
+        Choice::Safe(v) => v + v,
+        Choice::Risky(v) => std::math::inv(v)
+    } else x
+}
+fn relay(choice: Choice, flag: bit, x: [m31; 1]) -> [m31; 1] {
+    choose(choice, flag, x)
+}
+"""
+        circuit = """circuit p(public flag: bit, private x: [m31; 1]) -> public [m31; 1] {
+    let out = relay(Choice::Safe(x), flag, x);
+    out
+}"""
+        relation, _ = compile_text(prelude + circuit)
+        direct, _ = compile_text("""circuit p(public flag: bit, private x: [m31; 1])
+            -> public [m31; 1] { let out = if flag then x + x else x; out }""")
+        self.assertEqual(relation, direct)
+        self.assertEqual([node["op"] for node in relation["nodes"]], ["add", "select"])
+        for flag, expected in ((0, 7), (1, 14)):
+            with self.subTest(flag=flag):
+                assignment = {"public_inputs": {"flag": [flag]},
+                              "private_inputs": {"x": [7]},
+                              "public_outputs": {"out": [expected]}}
+                self.assertEqual(evaluate_relation(relation, assignment),
+                                 assignment["public_outputs"])
+                assignment["public_outputs"]["out"] = [expected + 1]
+                with self.assertRaises(OracleError):
+                    evaluate_relation(relation, assignment)
+
+        risky = circuit.replace("Choice::Safe(x)", "Choice::Risky(x)")
+        with self.assertRaisesRegex(SourceError, "if branch may fail when inactive: std::math::inv"):
+            compile_text(prelude + risky)
+
+        # Building the selected static variant is still eager. Its payload
+        # failure cannot be hidden in a dynamically inactive `if` arm.
+        eager = prelude + """circuit p(public flag: bit, private x: [m31; 1])
+            -> public [m31; 1] {
+            let out = if flag then
+                relay(Choice::Safe(std::math::inv(x)), flag, x)
+            else x;
+            out
+        }"""
+        with self.assertRaisesRegex(SourceError, "if branch may fail when inactive: std::math::inv"):
+            compile_text(eager)
 
     def test_dynamic_if_cannot_hide_partial_constructor_payload(self) -> None:
         source = """enum Choice { Left: u16, Right: u16 }

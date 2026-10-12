@@ -35,6 +35,11 @@ one abstract effect shape, the 1,024-leaf record ABI budget is enforced before
 input expansion, and repeated product assertions are deduplicated and charged
 against a bounded expansion budget.
 
+`test_static_sums.py` checks static enum erasure, selected-arm evaluation,
+and effect resolution through a generic enum helper. Its safe constructor
+matches a direct conditional relation exactly; the risky constructor and an
+eagerly partial constructor payload are rejected inside dynamic branches.
+
 `test_pattern_parameters.py` checks tuple and nominal record binders in
 named functions and lambdas against direct first-order relations and
 independent field values. It covers eager evaluation, duplicate names,
