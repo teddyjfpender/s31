@@ -27,6 +27,8 @@ def _key_schema(source: dict, lowering: str, privacy: dict | None) -> str:
         return proof_privacy.KEY_SCHEMA
     if lowering == "gate":
         return "s31-verification-key-gate-roster-v1"
+    if lowering == "sparse-gate":
+        return "s31-verification-key-sparse-roster-v1"
     return {
         "sha-fused": "s31-verification-key-sha-fused-v4",
         "sha-shift": "s31-verification-key-sha-shift-v3",
@@ -146,6 +148,14 @@ def build_json(source_path: Path, output: Path, lowering: str = "gate",
                 raise RuntimeError("gate compiler did not produce a component roster")
             key["gate_component_roster_sha256"] = inspection["gate_component_roster_sha256"]
             write_json(staging / "gate-component-roster.json", roster)
+        if lowering == "sparse-gate":
+            roster = inspection.get("sparse_component_roster")
+            if (not isinstance(roster, dict) or
+                    roster.get("schema") != "s31-component-roster-sparse-gate-v1" or
+                    not isinstance(inspection.get("sparse_component_roster_sha256"), str)):
+                raise RuntimeError("sparse compiler did not produce a component roster")
+            key["sparse_component_roster_sha256"] = inspection["sparse_component_roster_sha256"]
+            write_json(staging / "sparse-component-roster.json", roster)
         if lowering in {"direct-gate", "direct-chip"}:
             component_manifest = inspection.get("component_manifest")
             expected_manifest_schema = ("s31-component-manifest-direct-chip-v2" if lowering == "direct-chip"
@@ -216,6 +226,8 @@ def build_json(source_path: Path, output: Path, lowering: str = "gate",
             artifacts.append("component-manifest.json")
         if lowering == "gate" and privacy is None:
             artifacts.append("gate-component-roster.json")
+        if lowering == "sparse-gate":
+            artifacts.append("sparse-component-roster.json")
         if lock_bytes is not None:
             artifacts.append("stdlib-lock.json")
         if recursive_option:

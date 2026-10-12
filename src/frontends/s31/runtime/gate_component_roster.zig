@@ -122,10 +122,14 @@ pub fn generate(
 }
 
 pub fn digest(allocator: std.mem.Allocator, manifest: Manifest) ![32]u8 {
+    return digestWithDomain(allocator, manifest, "S31-GATE-COMPONENT-ROSTER-V1\x00");
+}
+
+pub fn digestWithDomain(allocator: std.mem.Allocator, manifest: Manifest, domain: []const u8) ![32]u8 {
     const encoded = try std.json.Stringify.valueAlloc(allocator, manifest, .{});
     defer allocator.free(encoded);
     var hasher = Sha256.init(.{});
-    hasher.update("S31-GATE-COMPONENT-ROSTER-V1\x00");
+    hasher.update(domain);
     hasher.update(encoded);
     var result: [32]u8 = undefined;
     hasher.final(&result);

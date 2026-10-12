@@ -29,6 +29,10 @@ COLUMN_FIELDS = {"id", "commitment_index", "log_size", "rows", "values_sha256"}
 
 
 def digest(roster: dict) -> str:
+    return digest_with_domain(roster, b"S31-GATE-COMPONENT-ROSTER-V1\x00")
+
+
+def digest_with_domain(roster: dict, domain: bytes) -> str:
     """Match the Zig typed struct serialization, independent of file key order."""
     fields = ("schema", "profile", "program_sha256", "canonical_ir_sha256",
               "air_bundle_sha256", "preprocessed_root", "circuit_hash",
@@ -50,7 +54,7 @@ def digest(roster: dict) -> str:
         for row in roster["preprocessed_columns"]
     ]
     encoded = json.dumps(ordered, separators=(",", ":"), ensure_ascii=False).encode()
-    return hashlib.sha256(b"S31-GATE-COMPONENT-ROSTER-V1\x00" + encoded).hexdigest()
+    return hashlib.sha256(domain + encoded).hexdigest()
 
 
 def validate(package: Path, lowering: str, artifacts: dict,

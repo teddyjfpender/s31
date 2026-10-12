@@ -106,6 +106,9 @@ text .s31 ──parse/typecheck/specialize──▶ normalized relation JSON
    typed operations, static reductions, Horner evaluation, and a proof example.
 - [Circuit lowering](circuits.md): a hand-drawn gate graph, packed M31 lanes,
    fixed/witness columns, address lookups, and the six proof profiles.
+- [Sparse AIR component roster](reference/SPARSE_COMPONENT_ROSTER.md): the
+   three sparse proof components, 12 committed columns, and the native key
+   check that binds the emitted roster to the compiled source.
 - [Private circuit-to-chip boundary](private-boundary.md): eight source-derived
    wire addresses, authenticated Gate and chip lookup closure, affine
    one-square steps, an experimental two-call source binding, and the public
