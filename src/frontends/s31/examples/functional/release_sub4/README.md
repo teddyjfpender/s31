@@ -75,6 +75,12 @@ node operation. The [exact-byte checker](../../../../../formal/s31/S31/Gadgets/F
 parses the checked-in `manual.s31`, compares every byte of the production
 normalized JSON, and rejects a changed subtraction opcode. The
 [concrete theorem](../../../../../formal/s31/S31/Gadgets/Functional/Correspondence/OrderedSubtractionConcrete.lean)
-connects those bytes to the arbitrary-witness three-row result. The helper
-spelling in `functional.s31`, emitted native rows, authenticated Gate lookup,
-and proof openings are still separate proof obligations.
+connects those bytes to the arbitrary-witness three-row result. The
+[native fixed-cell fixture](../../../../../formal/s31/S31/Gadgets/Functional/Correspondence/GeneratedOrderedSubtractionNativeRows.lean)
+records the three selected rows exported by the sealed package and checks
+their selectors, addresses, and use counts against a Lean projection of the
+parsed source. The [conditional row theorem](../../../../../formal/s31/S31/Gadgets/Functional/Correspondence/OrderedSubtractionNativeSoundness.lean)
+shows that any single coherent address-to-value map satisfying the three
+local packed rows forces the public result. The helper spelling in
+`functional.s31`, authentication of native main-row values and Gate lookups,
+and proof openings are still separate obligations.

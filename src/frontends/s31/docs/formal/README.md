@@ -162,8 +162,9 @@ The independent release checker now admits ordered subtraction and checks its
 native selector, operands, row position, and fixed root. The Lean exact-byte
 and physical-roster composition on this page still covers add and pointwise
 multiply source gates. A separate bounded byte checker now covers the three
-ordered subtraction example operations without connecting them to the native
-physical roster.
+ordered subtraction example operations. Its native fixture now checks their
+three selected fixed cells against the sealed exporter, without proving the
+whole physical roster in Lean.
 The [ordered subtraction theorem](../../../../../formal/s31/S31/Gadgets/Functional/Correspondence/OrderedSubtractionRelease.lean)
 now proves the three-row `release_sub4` arithmetic relation for arbitrary
 intermediate witnesses and honest existence, using the installed packed-row
@@ -171,8 +172,10 @@ model and executable normalized node semantics. The
 [source-byte checker](../../../../../formal/s31/S31/Gadgets/Functional/Correspondence/OrderedSubtractionBytes.lean)
 and [concrete release theorem](../../../../../formal/s31/S31/Gadgets/Functional/Correspondence/OrderedSubtractionConcrete.lean)
 connect the checked-in `manual.s31` bytes and production normalized JSON to
-those three rows. The helper source spelling, native row emission, Gate lookup
-authentication, and proof openings remain separate joins.
+those three rows. The [native row theorem](../../../../../formal/s31/S31/Gadgets/Functional/Correspondence/OrderedSubtractionNativeSoundness.lean)
+adds the exported selector and address cells and one coherent wire-value map.
+The helper source spelling, native main-row and Gate lookup authentication,
+and proof openings remain separate joins.
 
 ## A complete modeled 512-row trace
 

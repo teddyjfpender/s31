@@ -46,8 +46,12 @@ packed rows compute the parsed source. The generated release fixture pins the
 checked-in `manual.s31` and production JSON to a reviewed three-operation DAG;
 [`OrderedSubtractionConcrete.lean`](../../../formal/s31/S31/Gadgets/Functional/Correspondence/OrderedSubtractionConcrete.lean)
 connects those exact bytes to the three-row theorem. This covers the manual
-spelling. The functional helper source, native emitted rows, Gate lookup
-authentication, and proof openings remain separate joins.
+spelling. A second source-bound fixture captures the three selected fixed
+cells from the sealed native export and checks them against a Lean projection
+of the parsed DAG. The conditional native-row theorem then forces the same
+public result when one coherent address-to-value map satisfies their packed
+arithmetic rows. The functional helper source, the actual committed main-row
+values, Gate lookup authentication, and proof openings remain separate joins.
 
 ## Remaining proof obligations
 
