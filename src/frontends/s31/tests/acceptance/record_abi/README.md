@@ -68,6 +68,7 @@ two-limb wire. The ABI digest distinguishes this `u32` from `[u16; 2]`.
 ```sh
 python3 -B src/frontends/s31/tests/acceptance/record_abi/public_u32_direct_gate_v2.py
 python3 -B src/frontends/s31/tests/acceptance/record_abi/public_u32_direct_gate_v2.py --native
+python3 -B src/frontends/s31/tests/acceptance/record_abi/public_u32_adversarial_v2.py --native
 ```
 
 The native check accepts zero, maximum, and mixed-limb proofs, rejects a

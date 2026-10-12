@@ -393,7 +393,10 @@ fn validateAssignedNarrowLeaves(root_descriptor: Value, assigned: Value) !void {
 pub fn claimedWords(allocator: std.mem.Allocator, program: anytype, encoded: []const u8) ![8]u32 {
     if (encoded.len == 0 or encoded.len > 1_000_000) return error.InvalidRecordStatement;
     try validate(allocator, program);
-    var parsed = try std.json.parseFromSlice(Value, allocator, encoded, .{ .duplicate_field_behavior = .@"error" });
+    var parsed = std.json.parseFromSlice(Value, allocator, encoded, .{ .duplicate_field_behavior = .@"error" }) catch |err| switch (err) {
+        error.OutOfMemory => return err,
+        else => return error.InvalidRecordStatement,
+    };
     defer parsed.deinit();
     const statement = parsed.value;
     _ = try object(statement, &.{ "abi_sha256", "leaves", "version" });
@@ -403,7 +406,7 @@ pub fn claimedWords(allocator: std.mem.Allocator, program: anytype, encoded: []c
     const claimed_digest = try string(try field(statement, "abi_sha256"));
     if (!std.mem.eql(u8, claimed_digest, &expected_hex)) return error.InvalidRecordStatement;
     const canonical = canonicalJson(allocator, statement) catch |err| switch (err) {
-        error.RecordAbiJsonTooDeep => return error.InvalidRecordStatement,
+        error.RecordAbiJsonTooDeep, error.InvalidRecordAbi => return error.InvalidRecordStatement,
         else => return err,
     };
     defer allocator.free(canonical);
