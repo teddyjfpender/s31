@@ -37,6 +37,16 @@ PROOF_FIELD_PROJECTIONS_V1 = {
             "checkedOptimization", "checkedRaw",
         ),
     },
+    "formal/s31/S31/Gadgets/Functional/Correspondence/SourceFunctionBytes.lean": {
+        "S31.Functional.Correspondence.SourceFunctionBytes.Parsed": (
+            "inputNamesDistinct",
+        ),
+    },
+    "formal/s31/S31/Gadgets/Functional/Correspondence/ConservativeDeadCode.lean": {
+        "S31.Functional.Correspondence.ConservativeDeadCode.SafeMask": (
+            "outputsKept", "observedKept", "effectsKept", "dependencies",
+        ),
+    },
     "formal/s31/S31/Gadgets/Functional/SSAPublicInputBinding.lean": {
         "S31.Functional.SSAPublicInputBinding.InputBoundary": (
             "zero", "copies", "pins", "basis1", "basis2", "basis3", "packMuls", "packAdds",
