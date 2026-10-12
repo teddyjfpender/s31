@@ -11,7 +11,9 @@ exact generated names. The default v2 certificate requires canonical operand ord
 and distinct expressions.
 Bounded expression-level `let name = bound in body` chains may appear as
 circuit let RHSs. They eagerly emit bound gates under anonymous names and
-resolves scoped aliases before the same canonical and native checks.
+resolve scoped aliases before the same canonical and native checks. A named
+unary function may pass through a monomorphic Fn parameter or a static alias;
+the value is erased before relation lowering.
 The explicit optimized v3 path independently sorts commutative operands and
 checks common-subexpression elimination with a source-to-canonical map. No
 imports, other calls, constants, assertions, private inputs, or implicit
@@ -28,8 +30,9 @@ import hashlib
 import json
 import re
 import struct
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from package.direct_gate_schedule import constant_and_padding, exact_direct_gate_schedule
 from package.manifest_digest import direct_gate_v2_digest
@@ -41,6 +44,16 @@ from package.source_fragments.static_helper import (StaticExpr, UnsupportedStati
 
 class UnsupportedFragment(ValueError):
     """The source is outside the certificate grammar."""
+
+
+@dataclass(frozen=True)
+class NamedFunction:
+    """A source-only unary function value, erased at its static call site."""
+
+    name: str
+
+
+StaticValue = str | NamedFunction
 
 
 ASCII_SPACE = frozenset(" \t\n\v\f\r")
@@ -230,8 +243,9 @@ def parse_source(data: bytes, *, optimized: bool = False) -> tuple[dict[str, Any
 
     def helper_call(expression: list[str]) -> tuple[str, ...] | None:
         plain = strip_parens(expression)
-        if not plain or plain[0] not in helpers:
+        if not plain or (plain[0] not in helpers and plain[0] not in function_aliases):
             return None
+        function = (plain[0] if plain[0] in helpers else function_aliases[plain[0]].name)
         if len(plain) < 4 or plain[1] != "(" or plain[-1] != ")":
             raise UnsupportedFragment("static helper must be called as a whole expression")
         parts: list[list[str]] = [[]]
@@ -247,9 +261,9 @@ def parse_source(data: bytes, *, optimized: bool = False) -> tuple[dict[str, Any
                 parts.append([])
             else:
                 parts[-1].append(token)
-        if depth != 0 or len(parts) != len(helpers[plain[0]].params):
+        if depth != 0 or len(parts) != len(helpers[function].params):
             raise UnsupportedFragment("static helper argument count differs")
-        return (plain[0], *(reference(part) for part in parts))
+        return (function, *(reference(part) for part in parts))
 
     take("circuit")
     circuit = identifier()
@@ -268,6 +282,7 @@ def parse_source(data: bytes, *, optimized: bool = False) -> tuple[dict[str, Any
     lane_type()
     take("{")
     wires = {input_name: 0}
+    function_aliases: dict[str, NamedFunction] = {}
     # Aliases share a positional wire. Only the producer name is present in
     # the normalized relation and native source map.
     producer_names = [input_name]
@@ -324,29 +339,52 @@ def parse_source(data: bytes, *, optimized: bool = False) -> tuple[dict[str, Any
         if len(nodes) > 16:
             raise UnsupportedFragment("more than 16 arithmetic operations")
 
-    def evaluate_static(expression: StaticExpr, local: dict[str, str],
+    def wire_value(value: StaticValue) -> str:
+        if not isinstance(value, str) or value not in wires:
+            raise UnsupportedFragment("static function expected an existing circuit wire")
+        return value
+
+    def evaluate_static(expression: StaticExpr, local: dict[str, StaticValue],
                         wanted: str | None) -> str:
         if expression.kind == "gate":
             left, right = expression.operands
             result = gate_name(wanted)
-            append_gate(result, local[left], expression.value, local[right])
+            append_gate(result, wire_value(local[left]), expression.value,
+                        wire_value(local[right]))
             return result
         if expression.kind == "call":
-            return expand_helper(expression.value,
-                                 tuple(local[argument] for argument in expression.operands),
-                                 wanted)
+            if expression.value in helpers:
+                function = expression.value
+            else:
+                callee = local.get(expression.value)
+                if not isinstance(callee, NamedFunction):
+                    raise UnsupportedFragment("static callee is not a function value")
+                function = callee.name
+            arguments = tuple(local[argument] if argument in local else NamedFunction(argument)
+                              for argument in expression.operands)
+            return expand_helper(function, arguments, wanted)
         if expression.kind == "ref":
-            return local[expression.operands[0]]
+            return wire_value(local[expression.operands[0]])
         raise UnsupportedFragment("invalid static function expression")
 
-    def expand_helper(function: str, arguments: tuple[str, ...],
+    def expand_helper(function: str, arguments: tuple[StaticValue, ...],
                       wanted: str | None) -> str:
         nonlocal helper_calls
+        helper = helpers[function]
+        if len(arguments) != len(helper.params):
+            raise UnsupportedFragment("static function argument count differs")
+        for param, argument in zip(helper.params, arguments):
+            if param.kind == "array":
+                wire_value(argument)
+            elif (not isinstance(argument, NamedFunction) or
+                  argument.name not in helpers or
+                  len(helpers[argument.name].params) != 1 or
+                  helpers[argument.name].params[0].kind != "array"):
+                raise UnsupportedFragment("static function value has wrong type")
         helper_calls += 1
         serial = helper_calls
         used_helpers.add(function)
-        helper = helpers[function]
-        local = dict(zip(helper.params, arguments))
+        local = {param.name: argument for param, argument in zip(helper.params, arguments)}
         for index, step in enumerate(helper.statements):
             target = (wanted if wanted is not None and helper.body.kind == "ref" and
                       helper.body.operands[0] == step.name else
@@ -354,43 +392,85 @@ def parse_source(data: bytes, *, optimized: bool = False) -> tuple[dict[str, Any
             local[step.name] = evaluate_static(step.expression, local, target)
         return evaluate_static(helper.body, local, wanted)
 
-    def evaluate_lexical(expression: Atom | Let, local: dict[str, str],
-                         wanted: str | None) -> str:
+    def source_arguments(function: str, names: list[str],
+                         resolve_array: Callable[[str], str],
+                         resolve_function: Callable[[str], NamedFunction]) -> tuple[StaticValue, ...]:
+        arguments: list[StaticValue] = []
+        for param, name in zip(helpers[function].params, names):
+            if param.kind == "array":
+                arguments.append(resolve_array(name))
+            else:
+                arguments.append(resolve_function(name))
+        return tuple(arguments)
+
+    def evaluate_lexical(expression: Atom | Let, local: dict[str, StaticValue],
+                         wanted: str | None) -> StaticValue:
         if isinstance(expression, Let):
             bound = evaluate_lexical(expression.bound, local, None)
             extended = local.copy()
             extended[expression.name] = bound
             return evaluate_lexical(expression.body, extended, wanted)
 
-        def resolve(name: str) -> str:
-            if name not in local:
-                raise UnsupportedFragment("unbound lexical operand")
-            return local[name]
+        def resolve(name: str) -> StaticValue:
+            if name in local:
+                return local[name]
+            if name in function_aliases:
+                return function_aliases[name]
+            if name in helpers:
+                return NamedFunction(name)
+            raise UnsupportedFragment("unbound lexical operand")
+
+        def resolve_array(name: str) -> str:
+            return wire_value(resolve(name))
+
+        def resolve_function(name: str) -> NamedFunction:
+            value = resolve(name)
+            if not isinstance(value, NamedFunction):
+                raise UnsupportedFragment("lexical array shadows a function value")
+            return value
 
         atom = list(expression.tokens)
-        call = helper_call(atom)
+        plain_atom = strip_parens(atom)
+        if len(plain_atom) == 1 and (plain_atom[0] in helpers or
+                                     plain_atom[0] in function_aliases or
+                                     isinstance(local.get(plain_atom[0]), NamedFunction)):
+            return resolve(plain_atom[0])
+        if atom and atom[0] in local and isinstance(local[atom[0]], NamedFunction):
+            callee = local[atom[0]]
+            assert isinstance(callee, NamedFunction)
+            call = helper_call([callee.name, *atom[1:]])
+        elif atom and atom[0] in local and atom[0] in function_aliases:
+            raise UnsupportedFragment("lexical array shadows a function callee")
+        else:
+            call = helper_call(atom)
         if call is not None:
             function, *arguments = call
-            return expand_helper(function, tuple(resolve(argument) for argument in arguments),
+            return expand_helper(function, source_arguments(function, arguments,
+                                                            resolve_array, resolve_function),
                                  wanted)
         left, operator, right = binding_rhs(atom)
         if operator == "alias":
             return resolve(left)
         assert right is not None
         result = gate_name(wanted)
-        append_gate(result, resolve(left), operator, resolve(right))
+        append_gate(result, resolve_array(left), operator, resolve_array(right))
         return result
 
     while cursor < len(tokens) and tokens[cursor] == "let":
         take("let")
         name = identifier()
-        if name in wires or name in helpers:
+        if name in wires or name in helpers or name in function_aliases:
             raise UnsupportedFragment("duplicate wire name")
         take("=")
         rhs: list[str] = []
         while cursor < len(tokens) and tokens[cursor] != ";":
             rhs.append(take())
         take(";")
+        bare = strip_parens(rhs)
+        if len(bare) == 1 and (bare[0] in helpers or bare[0] in function_aliases):
+            function_aliases[name] = (function_aliases[bare[0]] if bare[0] in function_aliases
+                                      else NamedFunction(bare[0]))
+            continue
         if strip_parens(rhs)[:1] == ["let"]:
             try:
                 expression = parse_expression(
@@ -405,15 +485,26 @@ def parse_source(data: bytes, *, optimized: bool = False) -> tuple[dict[str, Any
             except UnsupportedLexicalLet as exc:
                 raise UnsupportedFragment(str(exc)) from exc
             produced = evaluate_lexical(expression, {wire: wire for wire in wires}, name)
-            if produced != name:
+            if isinstance(produced, NamedFunction):
+                function_aliases[name] = produced
+            elif produced != name:
                 wires[name] = wires[produced]
             continue
         call = helper_call(rhs)
         if call is not None:
             function, *arguments = call
-            if any(argument not in wires for argument in arguments):
-                raise UnsupportedFragment("forward or unbound function argument")
-            expand_helper(function, tuple(arguments), name)
+            def resolve_wire(argument: str) -> str:
+                if argument not in wires:
+                    raise UnsupportedFragment("forward or unbound function argument")
+                return argument
+            def resolve_function(argument: str) -> NamedFunction:
+                if argument in function_aliases:
+                    return function_aliases[argument]
+                if argument in helpers:
+                    return NamedFunction(argument)
+                raise UnsupportedFragment("unbound static function value")
+            expand_helper(function, source_arguments(function, arguments,
+                                                    resolve_wire, resolve_function), name)
             continue
         left, op_token, right = binding_rhs(rhs)
         if left not in wires or (right is not None and right not in wires):

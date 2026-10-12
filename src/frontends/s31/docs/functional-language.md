@@ -22,6 +22,12 @@ The [lexical release example](../examples/functional/release_let4/README.md)
 also certifies a scoped `let squared = square(x) in squared + squared`: the
 binding disappears, and its two residual gates exactly match handwritten
 arithmetic in a native proof.
+The [named function value release example](../examples/functional/release_higher_order4/README.md)
+passes `twice_square` through a lexical `let` and a monomorphic `Fn` parameter.
+The independent certificate checks that the value adds no gate or AIR row;
+the native proof covers the same two gates as the handwritten source. This
+strict subset admits named unary functions and static aliases, while the full
+frontend below also admits lambdas and closures.
 
 ## Auditing a named function all the way to packed rows
 

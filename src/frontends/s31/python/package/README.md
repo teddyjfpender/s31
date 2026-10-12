@@ -50,7 +50,8 @@ General direct-gate text packages remain buildable; programs outside the
 bounded certificate grammar fail this stricter admission. This gate still
 inherits the certificate's stated AIR/PCS and native implementation assumptions.
 The v2 grammar now includes up to eight pure static functions with one or two
-`[m31; 4]` parameters each and bounded straight-line bodies of add,
+parameters each, of type `[m31; 4]` or unary
+`Fn([m31; 4]) -> [m31; 4]`, and bounded straight-line bodies of add,
 pointwise-multiply, and earlier-declared function calls. Their calls are
 independently expanded to existing circuit wires and fresh generated wires before the
 same positional SSA, topology, fixed-root, and key checks. The
@@ -65,6 +66,12 @@ anonymous `_s31_N` wire allocation; the
 [lexical release acceptance](../../tests/acceptance/compiler_correspondence/lexical_release.py)
 compares the functional and direct AIR, proves the claim, and exercises
 `verify-release` and changed-claim rejection.
+Named unary functions can also be bound as source-only values and passed
+through `Fn` parameters. The
+[higher-order release acceptance](../../tests/acceptance/compiler_correspondence/higher_order_release.py)
+requires the function value to disappear completely: its package has the
+same normalized relation and native AIR geometry as two handwritten gates,
+passes `verify-release`, and rejects a changed public claim.
 
 `inspect-record-proof` also executes from a private copy of the package,
 proof, and statement. Its `unpinned_snapshot` check establishes internal

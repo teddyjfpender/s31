@@ -11,6 +11,11 @@ Lexical-let tests compare nested, shadowed and returned-alias expressions
 with the production compiler and direct gate sources, and reject malformed
 or unbound expressions and generated-name collisions. An unused bound
 arithmetic expression must still emit its eager gate.
+The higher-order cases pass named unary functions through `Fn` parameters,
+lexical bindings, and circuit aliases. They compare the exact one-gate result
+with handwritten arithmetic and reject an array used as a function, a function
+used as an array, shadowing, an unbound function, or a function at the public
+output. Lambdas and closures are outside this bounded certificate.
 The separate `test_lexical_corpus.py` exhausts all 30 chains of one to four binders with
 add/multiply chains, including static helper calls and parenthesized source
 expressions. Every case must match both production compilation and a direct
@@ -26,6 +31,6 @@ Run from the repository root:
 python3 -m unittest discover -s src/frontends/s31/tests/python/security/functional_release -p 'test_*.py' -q
 ```
 
-The native [release acceptance](../../../acceptance/compiler_correspondence/functional_release.py)
+The native [release acceptance](../../../acceptance/compiler_correspondence/higher_order_release.py)
 builds a real package and proves a public claim. These tests do not replace
 the native AIR, PCS, or verifier checks.

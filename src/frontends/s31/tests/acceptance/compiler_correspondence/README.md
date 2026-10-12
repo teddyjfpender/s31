@@ -29,6 +29,16 @@ names the same anonymous multiplication wire `_s31_0` explicitly.
 python3 src/frontends/s31/tests/acceptance/compiler_correspondence/lexical_release.py
 ```
 
+`higher_order_release.py` checks a named function value passed through a
+lexical binding and a monomorphic `Fn` parameter. It compares the complete
+normalized relation, canonical IR, and native AIR geometry with a handwritten
+two-gate program, then proves, runs `verify-release`, and rejects a changed
+public claim. The function value itself contributes no gate or AIR row.
+
+```sh
+python3 src/frontends/s31/tests/acceptance/compiler_correspondence/higher_order_release.py
+```
+
 `generated_native_subset.py` selects four sources from the pinned 384-source
 mutation corpus: one gate; eight alias-spelled gates with an earlier return;
 fifteen gates with a final return; and sixteen comment-spelled gates with an

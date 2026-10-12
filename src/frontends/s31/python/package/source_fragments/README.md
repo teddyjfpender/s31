@@ -1,11 +1,14 @@
 # Certified source fragments
 
 `static_helper.py` parses up to eight pure, monomorphic functions before the
-v2 direct-gate circuit grammar. Each accepts one or two `[m31; 4]`
-parameters, local arithmetic or call lets, and a final add, pointwise
+v2 direct-gate circuit grammar. Each accepts one or two parameters of type
+`[m31; 4]` or the unary `Fn([m31; 4]) -> [m31; 4]`, local arithmetic or call
+lets, and a final add, pointwise
 multiply, earlier-declared function call, or last local value. Calls to later
-functions and recursion are rejected. Every argument and operand names a
-parameter or earlier local. There are at most sixteen gates across the entire
+functions and recursion are rejected. A `Fn` value must resolve to an earlier
+named unary function; it can pass through function parameters or source-only
+aliases in circuit blocks and lexical lets. Array operands name a parameter
+or earlier local. There are at most sixteen gates across the entire
 circuit. The checker statically expands calls in declaration order and
 independently derives the production specializer's generated wire names, so
 its complete normalized relation must match the package. Function values and
@@ -28,8 +31,10 @@ includes it in the compiler fingerprint. The certificate continues to check
 the complete native gate topology, selectors, fixed root, and key under its
 documented assumptions.
 
-This fragment is intentionally exact: higher-order values, calls nested
-inside an argument expression, partial operations, subtraction,
+The [worked higher-order example](../../../examples/functional/release_higher_order4/README.md)
+shows a named function passed through a `Fn` parameter and erased to two
+ordinary gates. This fragment is intentionally exact: anonymous lambdas,
+captured closures, calls nested inside an argument expression, partial operations, subtraction,
 multi-operator arithmetic expressions, and hidden effects
 remain outside this v2 certificate. They remain usable through the
 ordinary S31 compiler and verifier; the stricter release gate admits them

@@ -137,15 +137,19 @@ claim rejection for all four cases.
 The opt-in strict `verify-release` path now independently reparses exact
 source bytes for a bounded public four-lane direct-gate fragment. It covers
 up to eight acyclic pure functions, calls to earlier declarations, local
-arithmetic lets, and expression-level lexical `let … in` inside circuit lets.
+arithmetic lets, expression-level lexical `let … in` inside circuit lets, and
+named unary `Fn([m31; 4]) -> [m31; 4]` values passed through static aliases
+and function parameters.
 The checker replays generated and anonymous wire names, requires exact
 normalized relation and canonical SSA equality, then checks the native gate
 topology and fixed-root key before native proof verification. The
-[composed-function](../../../src/frontends/s31/examples/functional/release_square4/README.md)
-and [lexical-let](../../../src/frontends/s31/examples/functional/release_let4/README.md)
+[composed-function](../../../src/frontends/s31/examples/functional/release_square4/README.md),
+[lexical-let](../../../src/frontends/s31/examples/functional/release_let4/README.md),
+and [named-function-value](../../../src/frontends/s31/examples/functional/release_higher_order4/README.md)
 fixtures each match their handwritten two-gate form at 322 raw and 512 padded
 QM31 rows, pass `verify-release`, and reject a changed public result. This is
-finite evidence for this fragment. It does not certify higher-order source,
+finite evidence for this fragment. It does not certify lambdas, closures,
+general higher-order source,
 records, private inputs, other AIR profiles, or the native PCS/FRI proof
 system, and it does not replace the full compiler correspondence proof above.
 
