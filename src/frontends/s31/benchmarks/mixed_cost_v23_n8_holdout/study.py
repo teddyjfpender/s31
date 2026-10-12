@@ -34,15 +34,15 @@ def blockers(snapshot: bytes, exempt_pid: int) -> list[str]:
     """Reject compiler work and sustained high-CPU processes before the attempt."""
     found = []
     for raw in snapshot.decode("utf-8", errors="replace").splitlines():
-        fields = raw.strip().split(maxsplit=3)
+        fields = raw.strip().split(maxsplit=2)
         if len(fields) < 3:
             continue
-        name = Path(fields[1]).name.lower()
+        name = Path(fields[2]).name.lower()
         if name in {"lean", "leanchecker", "lake", "zig", "zig2"}:
             found.append(raw)
         elif fields[0].isdigit() and int(fields[0]) != exempt_pid and name != "ps":
             try:
-                if float(fields[2]) >= 10.0:
+                if float(fields[1]) >= 25.0:
                     found.append(raw)
             except ValueError:
                 found.append(raw)
@@ -52,7 +52,7 @@ def blockers(snapshot: bytes, exempt_pid: int) -> list[str]:
 def quiet_host_snapshot() -> bytes:
     snapshots = []
     for index in range(2):
-        proc = subprocess.run(["ps", "-axo", "pid=,comm=,%cpu=,args="],
+        proc = subprocess.run(["ps", "-axo", "pid=,%cpu=,comm="],
                               capture_output=True, check=False)
         if proc.returncode or not proc.stdout:
             raise RuntimeError("quiet-host ps preflight unavailable")

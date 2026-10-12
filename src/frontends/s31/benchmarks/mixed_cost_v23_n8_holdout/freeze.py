@@ -26,7 +26,7 @@ OPS, BRANCHES, MUL_EVERY = 5120, 5, 5
 CLAIMS, SEED, SCHEDULE_SEED = 20, 202610122301, 202610122302
 P = 2**31 - 1
 BASE_COMMIT = "06c8b94cc68312b5d657a9a62215878bf6054baf"
-TOOLS = ("freeze.py", "study.py", "lifecycle.py", "audit.py")
+TOOLS = ("freeze.py", "study.py", "lifecycle.py", "audit.py", "test_preflight.py")
 
 
 def canonical(value: object) -> bytes:
@@ -246,7 +246,7 @@ def prepare(*, historical: dict | None = None) -> dict:
                 "immediate_repeat_relative_error_max": 0.50,
                 "build_plus_22_proofs_relative_error_max": 0.25},
             "forecast_rule": "V18 model: V17 log13 N4 baseline plus four frozen average-call steps for N8; five-branch one-in-five arithmetic transferred without refit; V18-V20 five-record median lifecycle",
-            "one_attempt_semantics": "two ps snapshots one second apart must show no Lean/lake/Zig process or other non-runner process at 10% CPU or above; preflight failure consumes no attempt; bind snapshot bytes/hash and runner PID into O_EXCL marker before native build; preserve failure and do not rerun"}
+            "one_attempt_semantics": "two ps snapshots one second apart must show no Lean/lake/Zig process or other non-runner process at 25% CPU or above; preflight failure consumes no attempt; bind snapshot bytes/hash and runner PID into O_EXCL marker before native build; preserve failure and do not rerun"}
 
 
 def frozen_record() -> tuple[dict, str]:

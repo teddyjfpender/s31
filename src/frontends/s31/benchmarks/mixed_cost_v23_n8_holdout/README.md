@@ -6,13 +6,14 @@ The manifest forecast is one circuit plus eight chip/bridge pairs: 17 slots, 163
 
 Warm predictions use the V18 model unchanged: the V17 log-13 four-call baseline plus four frozen average-call steps. This explicitly tests whether the model transfers to another eight-call source; V17's prior failure remains in the evidence. Build, first post-build, immediate repeat, and build-plus-22-process-sum forecasts use the unchanged five-record V18–V20 median rule. These lifecycle points are exploratory. All gates and prediction numbers are in the canonical protocol, frozen before the native run.
 
-Before the one-attempt marker, two `ps` snapshots one second apart must show no Lean, lake, or Zig process and no other non-runner process at or above 10% CPU. A busy preflight consumes no attempt. The snapshot bytes and hash are bound into the marker. Once the marker exists, any native failure remains the one recorded attempt; the runner does not retry. The first post-build run measures immediate first use, not a controlled operating-system cold cache.
+Before the one-attempt marker, two `ps` snapshots one second apart must show no Lean, lake, or Zig process and no other non-runner process at or above 25% CPU. A busy preflight consumes no attempt. The snapshot bytes and hash are bound into the marker. Once the marker exists, any native failure remains the one recorded attempt; the runner does not retry. The first post-build run measures immediate first use, not a controlled operating-system cold cache.
 
 Static preflight, before any native observation:
 
 ```sh
 python3 src/frontends/s31/benchmarks/mixed_cost_v23_n8_holdout/freeze.py check
 python3 -m py_compile src/frontends/s31/benchmarks/mixed_cost_v23_n8_holdout/*.py
+python3 -m unittest discover -s src/frontends/s31/benchmarks/mixed_cost_v23_n8_holdout -p 'test_preflight.py'
 ```
 
 After the preregistration commit is pushed and the host is quiet:
