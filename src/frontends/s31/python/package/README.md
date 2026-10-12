@@ -90,6 +90,9 @@ passes both a computed `Fn` value and a computed array value as arguments.
 Nested calls are expanded in source evaluation order and require the same
 three gates and native AIR geometry as the direct program. Parenthesized
 returned callees have the same checked relation.
+The [composed helper example](../../examples/functional/release_helper_composition4/README.md)
+also certifies nested calls and captured lambdas inside a helper body. Its
+static function arguments leave only the two handwritten addition gates.
 
 `inspect-record-proof` also executes from a private copy of the package,
 proof, and statement. Its `unpinned_snapshot` check establishes internal

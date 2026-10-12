@@ -79,6 +79,15 @@ public result.
 python3 src/frontends/s31/tests/acceptance/compiler_correspondence/nested_release.py
 ```
 
+`helper_composition_release.py` checks a helper whose body passes both an
+inline captured `fun` and a nested array call to another helper. The native
+package must contain only the two direct addition gates, pass strict release
+verification, and reject a changed public result.
+
+```sh
+python3 src/frontends/s31/tests/acceptance/compiler_correspondence/helper_composition_release.py
+```
+
 `generated_native_subset.py` selects four sources from the pinned 384-source
 mutation corpus: one gate; eight alias-spelled gates with an earlier return;
 fifteen gates with a final return; and sixteen comment-spelled gates with an

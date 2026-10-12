@@ -32,6 +32,12 @@ spellings. Every admitted source must match production compilation, the
 canonical IR and exact positional gate schedule of a direct program, and an
 independent modular-integer oracle with false-claim rejection. The corpus
 identity is pinned by SHA-256. Parenthesized returned callees are included.
+`test_nested_helper_body.py` separately checks typed nested calls and inline
+captured lambdas inside helper bodies against production compilation and a
+handwritten two-gate fixture. Wrong array/function argument types and unbound
+inner calls fail before relation emission. Its pinned 24-source corpus also
+compares canonical IR and positional gate schedules with direct programs and
+checks independent field values and false public claims.
 Other lambda operations and general closures remain outside this bounded
 certificate.
 The separate `test_lexical_corpus.py` exhausts all 30 chains of one to four binders with

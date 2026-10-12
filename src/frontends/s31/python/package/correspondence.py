@@ -460,8 +460,8 @@ def parse_source(data: bytes, *, optimized: bool = False) -> tuple[dict[str, Any
                 if not isinstance(callee, (NamedFunction, StaticLambda)):
                     raise UnsupportedFragment("static callee is not a function value")
                 function = callee
-            arguments = tuple(local[argument] if argument in local else NamedFunction(argument)
-                              for argument in expression.operands)
+            arguments = tuple(evaluate_static(argument, local, None)
+                              for argument in expression.arguments)
             return expand_callable(function, arguments, wanted)
         if expression.kind == "ref":
             return local[expression.operands[0]]

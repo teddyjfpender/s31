@@ -43,6 +43,9 @@ themselves static calls. Evaluation emits exactly `x²`, `2x`, and their sum;
 passing either intermediate value adds no AIR row.
 The strict checker also accepts parentheses around a returned callee, as in
 `(identity(make(x)))(double(x))`, with the same residual gates.
+The [composed helper example](../examples/functional/release_helper_composition4/README.md)
+places a nested array call and inline captured `fun` inside another helper's
+body. Those source expressions leave only the two additions computing `3x`.
 
 ## Auditing a named function all the way to packed rows
 

@@ -27,6 +27,7 @@ class StaticExpr:
     value: str  # arithmetic operator or called function name
     operands: tuple[str, ...]
     lambda_body: StaticLambda | None = None
+    arguments: tuple[StaticExpr, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -122,10 +123,8 @@ def peel_static_helpers(tokens: list[str], valid_name: Callable[[str], bool]) ->
                 return ("array",)
             raise UnsupportedStaticHelper("function call must target an earlier declaration or function parameter")
 
-        def argument_kind(argument: str, expected: str) -> bool:
-            if available.get(argument) == expected:
-                return True
-            return (expected == "unary_function" and argument in helpers and
+        def named_function(argument: str) -> bool:
+            return (argument in helpers and
                     len(helpers[argument].params) == 1 and
                     helpers[argument].params[0].kind == "array" and
                     helpers[argument].result_kind == "array")
@@ -146,7 +145,7 @@ def peel_static_helpers(tokens: list[str], valid_name: Callable[[str], bool]) ->
                 depth = 0
                 while cursor < len(tokens):
                     upcoming = tokens[cursor]
-                    if depth == 0 and upcoming in {";", "}"}:
+                    if depth == 0 and upcoming in {";", "}", ",", ")"}:
                         break
                     token = take()
                     depth += (token in {"(", "[", "{"}) - (token in {")", "]", "}"})
@@ -170,28 +169,27 @@ def peel_static_helpers(tokens: list[str], valid_name: Callable[[str], bool]) ->
             if tokens[cursor:cursor + 1] == ["("]:
                 expected_kinds = callable_signature(first)
                 take("(")
-                args: list[str] = []
+                args: list[StaticExpr] = []
                 if tokens[cursor:cursor + 1] != [")"]:
                     while True:
-                        argument = name()
-                        args.append(argument)
+                        args.append(expression())
                         if tokens[cursor:cursor + 1] != [","]:
                             break
                         take(",")
                 take(")")
                 if len(args) != len(expected_kinds):
                     raise UnsupportedStaticHelper("function call argument count differs")
-                if any(not argument_kind(argument, kind)
+                if any(expression_kind(argument) != kind
                        for argument, kind in zip(args, expected_kinds)):
                     raise UnsupportedStaticHelper("function call argument type differs")
-                return StaticExpr("call", first, tuple(args))
+                return StaticExpr("call", first, (), arguments=tuple(args))
             if tokens[cursor:cursor + 1] in (["+"], [".*"]):
                 operator = take()
                 second = name()
                 if available.get(first) != "array" or available.get(second) != "array":
                     raise UnsupportedStaticHelper("function gate needs earlier wires")
                 return StaticExpr("gate", operator, (first, second))
-            if first in helpers and argument_kind(first, "unary_function"):
+            if named_function(first):
                 return StaticExpr("named_function", first, ())
             if first not in available:
                 raise UnsupportedStaticHelper("unbound function result")

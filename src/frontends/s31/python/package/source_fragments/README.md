@@ -8,8 +8,10 @@ result may return a typed lambda that captures earlier array values. Calls to
 later functions and recursion are rejected. A `Fn` value may be an earlier
 named unary function, a bounded `static_lambda.py` value, or a returned
 closure. It can pass through function parameters and source-only aliases.
-Array operands name a parameter or earlier local. There are at most sixteen
-gates across the entire circuit. The checker statically expands calls in declaration order and
+Arithmetic gate operands name a parameter or earlier local. Pure call
+arguments may themselves contain nested calls, one arithmetic gate, or an
+inline captured lambda. There are at most sixteen gates across the entire
+circuit. The checker statically expands calls in evaluation order and
 independently derives the production specializer's generated wire names, so
 its complete normalized relation must match the package. Function values and
 applications have no separate AIR representation.
@@ -49,8 +51,11 @@ applies one such value twice and matches two handwritten gates.
 The [curried native example](../../../examples/functional/release_curried4/README.md)
 returns a function that captures a gate result, then applies it with
 `make(x)(x)`. Its static closure and postfix application add no AIR rows.
+The [composed helper example](../../../examples/functional/release_helper_composition4/README.md)
+passes an inline captured lambda and a nested array call inside another helper;
+both disappear into the two handwritten addition gates.
 This fragment is intentionally exact: other lambda operations and closures,
-calls nested inside an argument expression, partial operations, subtraction,
-and hidden effects remain outside this v2 certificate. They remain usable
+partial operations, subtraction, and hidden effects remain outside this v2
+certificate. They remain usable
 through the ordinary S31 compiler and verifier; the stricter release gate admits them
 only when a corresponding independent certificate is available.

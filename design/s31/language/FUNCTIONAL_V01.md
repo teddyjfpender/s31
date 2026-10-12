@@ -147,6 +147,8 @@ Pure helpers may also return these `Fn` values, including a closure over an
 earlier helper gate, and direct postfix application specializes the result.
 Function and array arguments may themselves be nested static calls; the checker
 replays those calls in evaluation order before applying the enclosing helper.
+Pure helper bodies may also compose typed nested calls, arithmetic arguments,
+and inline captured lambdas; the same bounded gate and call budgets apply.
 The checker replays generated and anonymous wire names, requires exact
 normalized relation and canonical SSA equality, then checks the native gate
 topology and fixed-root key before native proof verification. The
@@ -170,6 +172,11 @@ passes a computed function and computed array argument, matching three
 handwritten gates at 323 raw and 512 padded QM31 rows. A typed Lean source
 model proves erasure to the direct graph and agreement with modeled packed
 rows for arbitrary satisfying witnesses. The
+[composed helper fixture](../../../src/frontends/s31/examples/functional/release_helper_composition4/README.md)
+checks an inline captured lambda and nested array call inside a helper body
+against two handwritten addition gates at 322 raw and 512 padded QM31 rows.
+A pinned 24-source differential corpus covers nested helper arguments across
+both arithmetic operators, with direct schedules and independent values. The
 certificate does not cover other lambda operations or closure types, general
 higher-order source, records, private inputs, other AIR profiles, or the native
 PCS/FRI proof system, and it does not replace the full compiler correspondence

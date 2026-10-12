@@ -95,6 +95,8 @@ BINDINGS = [
     "src/frontends/s31/examples/functional/release_curried4/manual.s31",
     "src/frontends/s31/examples/functional/release_nested4/functional.s31",
     "src/frontends/s31/examples/functional/release_nested4/manual.s31",
+    "src/frontends/s31/examples/functional/release_helper_composition4/functional.s31",
+    "src/frontends/s31/examples/functional/release_helper_composition4/manual.s31",
     "src/frontends/s31/build.zig",
     "src/frontends/s31/entry/export_square4_topology.zig",
     "src/frontends/s31/tools/formal/export_square4_topology.zig",

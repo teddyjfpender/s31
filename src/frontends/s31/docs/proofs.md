@@ -158,6 +158,9 @@ left-to-right evaluation order.
 Its [Lean typed-source model](../../../../formal/s31/S31/Gadgets/Functional/NestedApplications.lean)
 proves that these static applications erase to the direct four-lane graph and
 that strict graph acceptance agrees with the modeled packed arithmetic rows.
+The [composed helper example](../examples/functional/release_helper_composition4/README.md)
+certifies a nested call and an inline captured function in a helper body.
+Its native proof uses the same two addition gates as handwritten `x + (x+x)`.
 
 For that same fragment, the [fixed-root join inspector](../tools/inspect/check_direct_gate_fixed_root_join.py)
 replays `verify-release` admission, asks the packaged prover for a fresh
