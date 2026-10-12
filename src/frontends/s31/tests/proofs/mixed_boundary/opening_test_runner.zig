@@ -1,4 +1,5 @@
-//! A focused runner that requires exactly one expected PCS rejection per tree.
+//! A focused runner that requires one fixed-tree rejection and one main and
+//! interaction rejection for every circuit/chip/bridge slot.
 //! The stock Zig runner fails on expected verifier `std.log.err` diagnostics.
 const std = @import("std");
 const builtin = @import("builtin");
@@ -29,6 +30,6 @@ pub fn main() !void {
         try result;
         if (leaked) return error.TestAllocatorLeak;
     }
-    if (unexpected_error_logs != 0 or !std.mem.eql(u8, &root_mismatch_logs, &.{ 1, 1, 1 }))
+    if (unexpected_error_logs != 0 or !std.mem.eql(u8, &root_mismatch_logs, &.{ 1, 7, 7 }))
         return error.UnexpectedVerifierLog;
 }

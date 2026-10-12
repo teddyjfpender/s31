@@ -236,10 +236,10 @@ pub fn build(b: *std.Build) void {
         .dependOn(&mixed_trace_correspondence_tests.step);
     const mixed_opening_authentication_tests = b.addRunArtifact(b.addTest(.{
         .root_module = bounded_binding_root,
-        .filters = &.{"mixed fixed main and interaction queried openings authenticate to their roots"},
+        .filters = &.{"mixed circuit pair and many chip bridge queried openings authenticate to their roots"},
         .test_runner = .{ .path = b.path("tests/proofs/mixed_boundary/opening_test_runner.zig"), .mode = .simple },
     }));
-    b.step("test-mixed-opening-authentication", "Reject structurally valid changed fixed/main/interaction PCS queried values")
+    b.step("test-mixed-opening-authentication", "Reject changed queried values in every circuit, chip and bridge slot")
         .dependOn(&mixed_opening_authentication_tests.step);
     const mixed_producer_roster_tests = b.addRunArtifact(b.addTest(.{ .root_module = bounded_binding_root, .filters = &.{"mixed N1 through N8 source logical producer roster"} }));
     const mixed_fork_multiplicity_tests = b.addRunArtifact(b.addTest(.{ .root_module = bounded_binding_root, .filters = &.{"mixed fork counts every shared circuit-to-chip input in fixed multiplicity"} }));
@@ -878,7 +878,8 @@ pub fn build(b: *std.Build) void {
         const mixed_manifest = b.addExecutable(.{ .name = b.fmt("s31-{s}-{s}-manifest", .{ program_name, profile_name }), .root_module = mixed_manifest_root });
         const mixed_auditor = if (mixed_general)
             b.addExecutable(.{ .name = b.fmt("s31-{s}-{s}-trace-auditor", .{ program_name, profile_name }), .root_module = mixed_auditor_root })
-        else null;
+        else
+            null;
         const mixed_source_check = b.addRunArtifact(mixed_manifest);
         mixed_source_check.addArg("--check");
         mixed_prover.step.dependOn(&mixed_source_check.step);

@@ -85,3 +85,22 @@ suffix. It does not establish full `(address, value)` event equality, identify
 arbitrary committed main-trace values with Lean events, or derive exact lookup
 balance from an accepted proof. The verifier's authenticated fixed-root path
 and the circuit AIR/PCS soundness remain separate obligations.
+
+## Queried opening authentication
+
+`opening_authentication.zig` proves one source-pinned three-call private
+program and decodes its accepted proof. It changes one queried value in the
+fixed tree and in the first main and interaction column of every native
+slot: circuit, two pair chips, two pair bridges, one many chip, and one many
+bridge. Each of the 15 changed proofs still passes the structural postcard
+preflight and fails native verification at `RootMismatch` for its own PCS
+tree. Run it with:
+
+```sh
+zig build --build-file src/frontends/s31/build.zig test-mixed-opening-authentication -Doptimize=ReleaseFast -j1
+```
+
+This specifically checks that a queried value in every admitted component
+role is authenticated to the accepted root. It samples one queried value per
+slot and does not independently prove PCS soundness or authenticate
+unopened rows outside the verifier's cryptographic assumptions.
