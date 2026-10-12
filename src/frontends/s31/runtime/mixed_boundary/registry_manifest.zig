@@ -189,6 +189,11 @@ pub fn requireNativeGeometry(manifest: *const Manifest, geometry: *const cpu.dir
         geometry.composition_log_size,
         geometry.pcs.fri_config.log_blowup_factor,
     ) catch return error.InvalidMixedLiveManifestBinding;
+    const extended_fixed_log = std.math.add(
+        u32,
+        manifest.entries[0].trace_log_size,
+        geometry.pcs.fri_config.log_blowup_factor,
+    ) catch return error.InvalidMixedLiveManifestBinding;
     if (manifest.call_count == 0 or manifest.call_count > registry.max_calls or
         manifest.entry_count != 1 + 2 * @as(usize, manifest.call_count) or
         geometry.version != cpu.direct_mixed_schedule.version or
@@ -196,16 +201,22 @@ pub fn requireNativeGeometry(manifest: *const Manifest, geometry: *const cpu.dir
         geometry.tree_columns[0] != 8 or geometry.tree_columns[1] != manifest.main_columns or
         geometry.tree_columns[2] != manifest.interaction_columns or
         geometry.tree_columns[3] != composition_width or
+        geometry.tree_lifting_log_sizes[0] != geometry.pcs.preprocessed_lifting_log_size or
+        geometry.pcs.preprocessed_lifting_log_size != extended_fixed_log or
+        geometry.tree_lifting_log_sizes[1] != geometry.pcs.trace_lifting_log_size or
+        geometry.tree_lifting_log_sizes[2] != geometry.pcs.trace_lifting_log_size or
         geometry.tree_lifting_log_sizes[3] != geometry.pcs.trace_lifting_log_size or
         extended_composition_log > geometry.tree_lifting_log_sizes[3] or
         geometry.tree_columns[0] > geometry.columns[0].len or
         geometry.tree_columns[1] > geometry.columns[1].len or
         geometry.tree_columns[2] > geometry.columns[2].len)
         return error.InvalidMixedLiveManifestBinding;
+    var max_column_log_size = geometry.composition_log_size;
     for (geometry.columns[0][0..geometry.tree_columns[0]]) |column| {
         if (column.log_size != manifest.entries[0].trace_log_size or
             column.mask_width == 0 or column.mask_width > 2)
             return error.InvalidMixedLiveManifestBinding;
+        max_column_log_size = @max(max_column_log_size, column.log_size);
     }
     for (manifest.entrySlice(), geometry.slotSlice(), 0..) |entry, live, index| {
         const kind: ?cpu.direct_mixed_admission.SourceKind = switch (entry.registry_key) {
@@ -242,13 +253,18 @@ pub fn requireNativeGeometry(manifest: *const Manifest, geometry: *const cpu.dir
             if (column.log_size != entry.trace_log_size or
                 column.mask_width == 0 or column.mask_width > 2)
                 return error.InvalidMixedLiveManifestBinding;
+            max_column_log_size = @max(max_column_log_size, column.log_size);
         }
         for (geometry.columns[2][entry.interaction_offset..interaction_end]) |column| {
             if (column.log_size != entry.trace_log_size or
                 column.mask_width == 0 or column.mask_width > 2)
                 return error.InvalidMixedLiveManifestBinding;
+            max_column_log_size = @max(max_column_log_size, column.log_size);
         }
     }
+    if (geometry.max_column_log_size != max_column_log_size or
+        geometry.pcs.trace_lifting_log_size < max_column_log_size)
+        return error.InvalidMixedLiveManifestBinding;
 }
 
 pub fn fromSource(allocator: std.mem.Allocator, source: []const u8, air_bytes: []const u8) !Manifest {
@@ -365,6 +381,18 @@ test "mixed registry manifest is source-derived and ordered for all bounded coun
         try std.testing.expectError(error.InvalidMixedLiveManifestBinding, requireNativeGeometry(&manifest, &changed_native));
         changed_native = native;
         changed_native.tree_lifting_log_sizes[3] += 1;
+        try std.testing.expectError(error.InvalidMixedLiveManifestBinding, requireNativeGeometry(&manifest, &changed_native));
+        inline for (0..3) |tree| {
+            changed_native = native;
+            changed_native.tree_lifting_log_sizes[tree] += 1;
+            try std.testing.expectError(error.InvalidMixedLiveManifestBinding, requireNativeGeometry(&manifest, &changed_native));
+        }
+        changed_native = native;
+        changed_native.max_column_log_size += 1;
+        try std.testing.expectError(error.InvalidMixedLiveManifestBinding, requireNativeGeometry(&manifest, &changed_native));
+        changed_native = native;
+        changed_native.pcs.preprocessed_lifting_log_size += 1;
+        changed_native.tree_lifting_log_sizes[0] += 1;
         try std.testing.expectError(error.InvalidMixedLiveManifestBinding, requireNativeGeometry(&manifest, &changed_native));
         changed_native = native;
         changed_native.composition_log_size = changed_native.pcs.trace_lifting_log_size + 1;
