@@ -1,0 +1,6 @@
+circuit alias_add(public x: [m31; 4]) -> public [m31; 4] {
+  let a = x + x;
+  let copy = a;
+  let b = copy + x;
+  b
+}
