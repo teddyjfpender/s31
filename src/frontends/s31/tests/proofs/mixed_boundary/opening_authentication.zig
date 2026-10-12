@@ -4,6 +4,7 @@
 //! A full trace is not decoded by succinct verification: the test exercises
 //! one opened value in the fixed tree and in every circuit/chip/bridge slot
 //! of the main and interaction trees, including both registered chip kinds.
+//! It also changes an authentication-path hash in each commitment tree.
 const std = @import("std");
 const core = @import("stwo_core");
 const cpu = @import("stwo_circuit_cpu_integration");
@@ -101,5 +102,40 @@ test "mixed circuit pair and many chip bridge queried openings authenticate to t
             try std.testing.expectError(error.RootMismatch, package.verifyEmbedded(source, air, allocator, words, changed.items));
             columns[column_index][0] = original;
         }
+    }
+
+    // A changed queried value must not be the only negative PCS control:
+    // decommitment witnesses are separately supplied by the proof. Keep the
+    // values and transcript commitments intact, and change one sibling hash
+    // in each tree (fixed, main, interaction, quotient). All four serialized
+    // proofs remain structurally valid; each must fail at its own Merkle root.
+    try std.testing.expectEqual(@as(usize, 4), stark.commitment_scheme_proof.decommitments.items.len);
+    for (stark.commitment_scheme_proof.decommitments.items) |*decommitment| {
+        try std.testing.expect(decommitment.hash_witness.len > 0);
+        const original = decommitment.hash_witness[0];
+        decommitment.hash_witness[0][0] ^= 1;
+        var changed: std.ArrayList(u8) = .empty;
+        defer changed.deinit(allocator);
+        try changed.appendSlice(allocator, sealed.bytes[0..proof_offset]);
+        try postcard.serializeProof(H, changed.writer(allocator), stark);
+        try std.testing.expectEqual(sealed.bytes.len, changed.items.len);
+        try std.testing.expect(!std.mem.eql(u8, sealed.bytes, changed.items));
+        try postcard.proof_preflight.validateFor(4, changed.items[proof_offset..], .{
+            .config = .{
+                .pow_bits = pcs.fri_config.pow_bits,
+                .log_blowup_factor = pcs.fri_config.log_blowup_factor,
+                .n_queries = pcs.fri_config.n_queries,
+                .log_last_layer_degree_bound = pcs.fri_config.log_last_layer_degree_bound,
+                .fold_step = pcs.fri_config.fold_step,
+                .lifting_log_size = null,
+            },
+            .tree_columns = geometry.tree_columns,
+            .max_column_log_size = geometry.max_column_log_size,
+            .sample_width_limits = sample_width_limits,
+            .hash_size = @sizeOf(H.Hash),
+            .max_wire_bytes = (16 << 20) - proof_offset,
+        });
+        try std.testing.expectError(error.RootMismatch, package.verifyEmbedded(source, air, allocator, words, changed.items));
+        decommitment.hash_witness[0] = original;
     }
 }

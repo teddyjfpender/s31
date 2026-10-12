@@ -239,7 +239,7 @@ pub fn build(b: *std.Build) void {
         .filters = &.{"mixed circuit pair and many chip bridge queried openings authenticate to their roots"},
         .test_runner = .{ .path = b.path("tests/proofs/mixed_boundary/opening_test_runner.zig"), .mode = .simple },
     }));
-    b.step("test-mixed-opening-authentication", "Reject changed queried values in every circuit, chip and bridge slot")
+    b.step("test-mixed-opening-authentication", "Reject changed queried values and Merkle paths in every mixed proof tree")
         .dependOn(&mixed_opening_authentication_tests.step);
     const mixed_producer_roster_tests = b.addRunArtifact(b.addTest(.{ .root_module = bounded_binding_root, .filters = &.{"mixed N1 through N8 source logical producer roster"} }));
     const mixed_fork_multiplicity_tests = b.addRunArtifact(b.addTest(.{ .root_module = bounded_binding_root, .filters = &.{"mixed fork counts every shared circuit-to-chip input in fixed multiplicity"} }));
