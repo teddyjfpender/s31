@@ -75,8 +75,13 @@ four-operation source that lowers to three gates, and Python mutation tests
 reject a forged source map after its report digest is recomputed. The
 on-demand `tests/python/check_optimized_native_package.py` builds a temporary
 real package, attaches v3 explicitly, checks all bound native artifacts, then
-reseals and rejects a malformed duplicate span. It requires a clean pinned
-Stwo dependency.
+reseals and rejects a malformed duplicate span. It also proves one source
+claim, verifies it natively, joins the complete fixed and public main exports
+to the first two proof commitments, and rejects changed roots and a changed
+public output. Use `--work PATH` to retain the exact package and proof. This
+is an opt-in regression, not v3 release admission; it requires a clean pinned
+Stwo dependency. The [worked source/AIR/root example](../../../../formal/s31/S31/Gadgets/Functional/Correspondence/OptimizedSourceAirRows.md)
+gives the handwritten four-lane computation.
 It also checks each source instruction directly against the eight **exported
 fixed AIR columns**, using the same row formula as Lean's general
 `SSADirectGateBridge.expectedRows` and `SSAAirColumnCells.expectedCells`.

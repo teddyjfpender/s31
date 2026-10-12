@@ -51,6 +51,44 @@ row; its public output selects wire 25. The displayed equations abbreviate
 the nine modeled QM31 residuals in `Qm31Ops.accepts`. `.*` means independent
 M31 multiplication in each of the four packed coordinates.
 
+## Fresh native proof join for this program
+
+The opt-in native regression builds this exact source, attaches the v3
+correspondence certificate, and checks its full exported 8-column × 512-row
+fixed roster against the independent source schedule. It independently checks
+that the four source arithmetic lets map to compact IDs `[1, 2, 3, 3]`, with
+three native arithmetic gates and no fourth gate for `d`.
+
+For public input `[0, 1, 2, 7]`, the handwritten public output is
+`[0, 3, 8, 63]`. The regression proves that statement, asks the generated
+native verifier to accept the exact proof, recommits all 4,096 exported fixed
+cells through the native PCS preparation path, and requires that root to equal
+both the sealed key root and proof commitment 0. It also hashes the 6,144
+exported main cells, checks the native main-root diagnostic against those
+bytes, and requires its root to equal proof commitment 1. A changed fixed
+selector changes the recommitted root. Changes to either root byte in the
+proof and to the public result must be rejected by the generated verifier.
+The earlier resealed source-map mutation remains part of the same regression.
+On the pinned 2026-10-12 build, the fixed root was
+`f08f6d98c79316b827950a3a5af5f812d21e54c11a45a683d8207fc0a46f1c56`,
+the main root was
+`7187f0aabef67d4d5a0629256e016d9ea897fa10b614e15537d9c26de1c9beb2`,
+and the accepted proof was 55,386 bytes. These are observed regression bytes,
+not a guarantee across compiler changes.
+
+```sh
+PYTHONPATH=src/frontends/s31/python \
+  python3 src/frontends/s31/tests/python/check_optimized_native_package.py
+# Add --work /tmp/s31-optimized-evidence to retain the package and proof.
+```
+
+This is one honest-prover, public-only native test under the pinned compiler
+and Stwo dependency. The v3 certificate is opt-in: ordinary package release
+admission currently rejects it. The equality of inspected rows and proof
+commitments is an executable implementation check; it does not prove native
+emitter refinement for every optimized source, arbitrary PCS opening
+authentication, or FRI soundness.
+
 ## Boundary of this proof
 
 The theorem does not show that production Zig emits these modeled cells for
