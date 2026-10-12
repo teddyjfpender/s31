@@ -335,7 +335,7 @@ def SharedAgreement (certificate : Certificate) (projectedWire : Nat → Quad)
       constantAddress certificate address →
         projectedWire address = wireOfValues values address
 
-private theorem merged_projected_port (certificate : Certificate)
+theorem merged_projected_port (certificate : Certificate)
     (projectedWire : Nat → Quad) (values : List Quad)
     (hagrees : SharedAgreement certificate projectedWire values)
     (cell : ColumnCell) (hcell : cell ∈ projectedCells certificate)
@@ -347,7 +347,7 @@ private theorem merged_projected_port (certificate : Certificate)
       (hagrees cell hcell address hport hconstant).symm]
   · simp [mergedWire, hconstant]
 
-private theorem merged_island_port (certificate : Certificate)
+theorem merged_island_port (certificate : Certificate)
     (projectedWire : Nat → Quad) (values : List Quad)
     (address : Nat) (hconstant : constantAddress certificate address) :
     mergedWire certificate projectedWire values address =

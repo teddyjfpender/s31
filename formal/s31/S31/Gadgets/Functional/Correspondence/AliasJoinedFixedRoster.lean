@@ -110,6 +110,27 @@ theorem checked_alias_joined_roster_complete
   obtain ⟨cell, hcell, hrow⟩ := List.mem_map.mp hmem
   exact ⟨cell, hcell, hrow⟩
 
+/-- The alias admission and island check bound every exported fixed address
+and multiplicity by the canonical M31 representative range. -/
+theorem checked_alias_joined_canonical
+    (sourceBytes normalizedBytes canonicalBytes : Token)
+    (certificate : Certificate) (island : List ColumnCell)
+    (values : List Quad)
+    (halias : checkAliasCanonical sourceBytes normalizedBytes canonicalBytes =
+      some certificate)
+    (hisland : NativeConstantIslandCertificate.check certificate island values = true) :
+    ∀ cell ∈ joinedCells certificate island,
+      cell.in0 < 2147483647 ∧ cell.in1 < 2147483647 ∧
+        cell.out < 2147483647 ∧ cell.mults < 2147483647 := by
+  intro cell hcell
+  rcases List.mem_append.mp hcell with hprojected | hislandCell
+  · exact checked_alias_projected_canonical sourceBytes normalizedBytes
+      canonicalBytes certificate halias cell hprojected
+  · have hsound := checked_cells_sound certificate island values
+      hisland cell hislandCell
+    rcases hsound with ⟨_, _, _, _, _, _, _, h0, h1, ho, hm, _⟩
+    exact ⟨h0, h1, ho, hm⟩
+
 /-- Every fixed tuple in the complete modeled roster matches the same
 constructed decoded trace, for every wire assignment. The alias source bytes
 alone determine the projected tuples; the island checker determines the rest.
@@ -125,17 +146,8 @@ theorem checked_alias_joined_fixed_matches
       fixedMatches (trace (joinedCells certificate island) wire) cell := by
   have hroster := checked_alias_joined_roster_complete sourceBytes
     normalizedBytes canonicalBytes certificate island values halias hisland
-  have hcanonical : ∀ cell ∈ joinedCells certificate island,
-      cell.in0 < 2147483647 ∧ cell.in1 < 2147483647 ∧
-        cell.out < 2147483647 ∧ cell.mults < 2147483647 := by
-    intro cell hcell
-    rcases List.mem_append.mp hcell with hprojected | hislandCell
-    · exact checked_alias_projected_canonical sourceBytes normalizedBytes
-        canonicalBytes certificate halias cell hprojected
-    · have hsound := checked_cells_sound certificate island values
-        hisland cell hislandCell
-      rcases hsound with ⟨_, _, _, _, _, _, _, h0, h1, ho, hm, _⟩
-      exact ⟨h0, h1, ho, hm⟩
+  have hcanonical := checked_alias_joined_canonical sourceBytes
+    normalizedBytes canonicalBytes certificate island values halias hisland
   intro cell hcell
   obtain ⟨i, hi, hflags, hin0, hin1, hout, hmult⟩ :=
     zeroTrace_fixed (joinedCells certificate island) hroster.2.1
