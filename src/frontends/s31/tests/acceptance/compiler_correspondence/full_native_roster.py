@@ -23,6 +23,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 S31 = HERE.parents[2]
 ROOT = S31.parents[2]
+sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(S31 / "python"))
 sys.path.insert(0, str(S31 / "tests/python/generated"))
 sys.path.insert(0, str(ROOT / "formal/s31/scripts"))
@@ -37,6 +38,7 @@ from package.direct_gate_schedule import exact_direct_gate_schedule  # noqa: E40
 from test_source_mutation_correspondence import (  # noqa: E402
     CORPUS_SHA256, corpus, corpus_digest,
 )
+from public_main_root_binding import main_words, proof_roots  # noqa: E402
 
 P = 2_147_483_647
 ZERO = (0, 0, 0, 0)
@@ -383,8 +385,9 @@ def reject_mutations(data: dict, sample, pinned: dict) -> int:
     return len(tests) + 1
 
 
-def native_proof_binding(package: Path, assigned: Path, work: Path, sample) -> dict:
-    """Verify one honest proof and one ABI-valid changed-result statement."""
+def native_proof_binding(package: Path, assigned: Path, work: Path, sample,
+                         physical: dict, key: dict) -> dict:
+    """Bind one accepted proof's first two roots to its public base export."""
     manifest = s31.verify_package(package)
     abi = json.loads((package / "public-abi.json").read_bytes())
     result_name = f"p{sample.return_id}"
@@ -399,6 +402,29 @@ def native_proof_binding(package: Path, assigned: Path, work: Path, sample) -> d
             trial.get("changed_public_statement_rejected") != field or
             trial.get("proof_bytes", 0) <= 0):
         raise ValueError("honest proof or changed-result native trial failed")
+    # The trial has accepted this exact proof with the generated native
+    # verifier and the package's sealed key before we interpret its roots.
+    proof = (trial_dir / "proof.bin").read_bytes()
+    if len(proof) != trial["proof_bytes"] or sha(proof) != trial["proof_sha256"]:
+        raise ValueError("native trial proof bytes differ from its accepted report")
+    fixed_root, proof_main_root, _ = proof_roots(proof)
+    prover = package / "bin" / f"s31-{manifest['name']}-prover"
+    root_report = json.loads(s31.invoke(str(prover), "inspect-physical-root", str(assigned)))
+    serialized_main_digest = sha(main_words(physical))
+    if (type(root_report) is not dict or
+            set(root_report) != {"schema", "program_sha256", "public_words",
+                                 "main_root", "main_columns_sha256"} or
+            root_report["schema"] != "s31-direct-gate-public-main-root-v1" or
+            root_report["program_sha256"] != manifest["program_sha256"] or
+            root_report["program_sha256"] != physical.get("program_sha256") or
+            root_report["public_words"] != physical.get("public_words") or
+            type(root_report["main_root"]) is not str or
+            re.fullmatch(r"[0-9a-f]{64}", root_report["main_root"]) is None or
+            type(root_report["main_columns_sha256"]) is not str or
+            root_report["main_columns_sha256"] != serialized_main_digest or
+            fixed_root.hex() != key.get("preprocessed_root") or
+            proof_main_root.hex() != root_report["main_root"]):
+        raise ValueError("accepted proof roots differ from sealed fixed key or public writeBase rows")
     honest = json.loads((trial_dir / "statement.json").read_bytes())
     changed = json.loads((trial_dir / "changed-statement.json").read_bytes())
     expected = {"public_inputs": {"x": list(INPUT)},
@@ -420,6 +446,10 @@ def native_proof_binding(package: Path, assigned: Path, work: Path, sample) -> d
     return {"proof_bytes": trial["proof_bytes"],
             "proof_sha256": trial["proof_sha256"],
             "native_verifier_accepted": True,
+            "proof_fixed_root": fixed_root.hex(),
+            "proof_main_root": proof_main_root.hex(),
+            "main_columns_sha256": serialized_main_digest,
+            "main_cells_bound": 6144,
             "changed_public_result_rejected_at": field,
             "changed_public_result_error": errors[0]}
 
@@ -451,19 +481,21 @@ def native_case(work: Path, sample, prefix: str, pinned: dict) -> tuple[dict, di
     denied["private_inputs"] = {"secret": [1]}
     denied_path = work / f"nonempty-private-assignment-{prefix}.json"
     denied_path.write_text(json.dumps(denied, sort_keys=True) + "\n")
-    denied_result = subprocess.run((str(prover), "inspect-physical-rows", str(denied_path)),
-                                   capture_output=True, text=True, timeout=120, check=False)
-    if (denied_result.returncode == 0 or
-            "PrivatePhysicalRowsUnavailable" not in denied_result.stderr or
-            any(key in denied_result.stdout + denied_result.stderr
-                for key in ('"fixed_columns"', '"main_columns"'))):
-        raise ValueError("native inspect CLI did not reject nonempty private assignment")
+    for command in ("inspect-physical-rows", "inspect-physical-root"):
+        denied_result = subprocess.run((str(prover), command, str(denied_path)),
+                                       capture_output=True, text=True, timeout=120, check=False)
+        if (denied_result.returncode == 0 or
+                "PrivatePhysicalRowsUnavailable" not in denied_result.stderr or
+                any(key in denied_result.stdout + denied_result.stderr
+                    for key in ('"fixed_columns"', '"main_columns"', '"main_root"',
+                                '"main_columns_sha256"'))):
+            raise ValueError(f"native {command} leaked a nonempty private assignment")
     data = {"schema": "s31-full-native-roster-diagnostic-v1", "label": sample.label,
             "source_sha256": sha(sample.source.encode()),
             "sealed_key_root": key["preprocessed_root"],
             "topology": topology, "physical": physical}
     check_case(data, sample, pinned)
-    return data, native_proof_binding(package, assigned, work, sample)
+    return data, native_proof_binding(package, assigned, work, sample, physical, key)
 
 
 def native_private_source_rejection(work: Path) -> dict:
@@ -478,13 +510,15 @@ def native_private_source_rejection(work: Path) -> dict:
     assigned.write_text(json.dumps({"public_inputs": {}, "private_inputs": {"x": list(INPUT)},
                                     "public_outputs": {"result": [0, 1, 4, 49]}},
                                    sort_keys=True) + "\n")
-    result = subprocess.run((str(prover), "inspect-physical-rows", str(assigned)),
-                            capture_output=True, text=True, timeout=120, check=False)
-    if (result.returncode == 0 or
-            "UnsupportedPhysicalRowInspection" not in result.stderr or
-            any(key in result.stdout + result.stderr
-                for key in ('"fixed_columns"', '"main_columns"'))):
-        raise ValueError("private-input source reached the uncommitted physical-row exporter")
+    for command in ("inspect-physical-rows", "inspect-physical-root"):
+        result = subprocess.run((str(prover), command, str(assigned)),
+                                capture_output=True, text=True, timeout=120, check=False)
+        if (result.returncode == 0 or
+                "UnsupportedPhysicalRowInspection" not in result.stderr or
+                any(key in result.stdout + result.stderr
+                    for key in ('"fixed_columns"', '"main_columns"', '"main_root"',
+                                '"main_columns_sha256"'))):
+            raise ValueError(f"private-input source reached the native {command} exporter")
     return {**source, "native_cli_rejected": True}
 
 
@@ -504,8 +538,13 @@ def run_native(work: Path, write: bool) -> tuple[list[dict], dict]:
         encoded = (json.dumps(data, separators=(",", ":"), sort_keys=True) + "\n").encode()
         if write:
             pending_writes.append((path, encoded))
-        elif path.read_bytes() != encoded:
-            raise ValueError(f"fresh native export differs from pinned diagnostic {prefix}")
+        else:
+            fixture_bytes = path.read_bytes()
+            fixture = json.loads(fixture_bytes)
+            if sha(main_words(fixture["physical"])) != proof_binding["main_columns_sha256"]:
+                raise ValueError(f"accepted proof main root has a different pinned-row digest: {prefix}")
+            if fixture_bytes != encoded:
+                raise ValueError(f"fresh native export differs from pinned diagnostic {prefix}")
         results.append(result)
     private_guard = native_private_source_rejection(work)
     if pending_writes:

@@ -91,13 +91,25 @@ The changed public word enters the verifier transcript before the interaction
 nonce check, so these deterministic proof/statement bytes check transcript
 binding at that point. A changed transcript could by chance pass that nonce
 check and fail later, so the named error is a pinned regression result rather
-than a universal verifier rule. The native
-run reports proof byte counts and hashes. The fresh-native path also invokes
-each prover with a nonempty private assignment and requires the CLI to return
+than a universal verifier rule. The native run reports proof byte counts and
+hashes. The fresh-native path invokes both physical inspection commands with a
+nonempty private assignment and requires both to return
 `PrivatePhysicalRowsUnavailable` before writing diagnostic rows. It builds the
 existing private-input `named_square4_manual.s31` package and requires its
-`inspect-physical-rows` command to fail with `UnsupportedPhysicalRowInspection`
-without returning fixed or main columns.
+two physical inspection commands to fail with `UnsupportedPhysicalRowInspection`
+without returning fixed columns, main columns, or a main root.
+
+For each of the four accepted proofs, the native path also calls
+`inspect-physical-root` on the same public assignment. It parses only the
+bounded direct-Gate proof header after the generated native verifier accepts
+that exact proof. Proof commitment 0 must equal the package's sealed fixed
+root; commitment 1 must equal the reported main root. SHA-256 of the 12×512
+canonical M31 main words, serialized column by column as little-endian `u32`,
+must equal the root diagnostic's digest. The ordinary `--native` path separately
+requires that digest to match the checked-in fixture's rows, then compares the
+entire fresh export byte-for-byte. `--native --write` binds its fresh rows before
+refreshing fixtures and preserves the deliberate refresh workflow. The result
+reports both proof roots and the main-row digest per case.
 
 The physical-row command is limited to transparent, public-only four-lane M31
 programs with 1–16 add/multiply source nodes and no assertions. It exports
@@ -105,7 +117,10 @@ uncommitted fixed and main evaluations from `writeBase`. Even if a native
 proof verifies, this export does not authenticate PCS openings, prove LogUp
 soundness, or establish a verifier-to-trace correspondence theorem. The proof
 acceptance checks authenticate the proof against its sealed key and public
-statement; they do not connect uncommitted exported rows to proof openings.
+statement. The main-root comparison binds these public exported base rows to
+the commitment root in those separately accepted honest proofs. It does not
+establish that arbitrary prover-supplied openings equal the exported rows,
+prove collision resistance, or supply a general verifier-to-trace theorem.
 The Zig guard tests require rejection of a private input, a nonempty private
 assignment, wrong input and output shape, assertions, constant/repeat nodes,
 and a 17-node source.
