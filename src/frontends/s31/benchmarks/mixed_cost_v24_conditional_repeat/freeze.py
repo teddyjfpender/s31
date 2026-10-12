@@ -25,7 +25,7 @@ ROUNDS = (2048, 64, 4096, 128, 512, 32, 1024, 256)
 OPS, BRANCHES, MUL_EVERY = 5120, 4, 4
 CLAIMS, SEED, SCHEDULE_SEED = 20, 202610122401, 202610122402
 P = 2**31 - 1
-BASE_COMMIT = "0074ee45b251f21c4337d337d220c780a9e165f8"
+BASE_COMMIT = "6f35bc5802a919e141b6e91248c0d918d9082c0b"
 TOOLS = ("freeze.py", "study.py", "lifecycle.py", "audit.py",
          "test_preflight.py", "test_lifecycle.py")
 
