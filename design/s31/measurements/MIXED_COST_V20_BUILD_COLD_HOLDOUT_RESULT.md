@@ -3,6 +3,8 @@
 **The one preregistered native attempt passed every frozen gate.** The
 protocol was committed first at `5d93582` (SHA-256
 `80c8661bfd0d9a09faf4904194318161018bfbe8a99ed098c73548fdf4650d63`),
+and the same preregistration was pushed to the PR as `ae2e14a` before the
+native run,
 then the one-attempt marker was created before the native package build. The
 measured compiler base is `93114dfa53b9f8762d4da20a41b158992ce61de9`
 with engine gitlink `fde847ea374ade2ae07ef5b3a42ba07e15655b64` on the
