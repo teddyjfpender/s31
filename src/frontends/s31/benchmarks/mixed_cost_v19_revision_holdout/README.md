@@ -26,12 +26,40 @@ durations only for the separately reported non-PoW diagnostic; residuals must
 stay positive. Prediction bands and gates are those frozen before this run.
 The protocol's sample-of-20 wall band is additionally required.
 
-Run static preflight before the single native attempt:
+Before the single native attempt, `check` required the current compiler and
+engine checkout to match the frozen production file hashes, compiler
+fingerprint, host, and gitlink:
 
 ```sh
 python3 src/frontends/s31/benchmarks/mixed_cost_v19_revision_holdout/freeze.py check
 python3 -m py_compile src/frontends/s31/benchmarks/mixed_cost_v19_revision_holdout/*.py
 ```
+
+On a later PR head, use `check-record` to validate the committed protocol,
+source, claims, prediction, tool hash, and all 31 production file digests
+against the pinned `aa15b22` Git tree. It checks the historical engine
+gitlink too. It does not assert that today's checkout matches the old compiler
+fingerprint or host:
+
+```sh
+python3 src/frontends/s31/benchmarks/mixed_cost_v19_revision_holdout/freeze.py check-record
+```
+
+For the original stricter `check`, use the preregistration commit from the PR
+history in a separate worktree. Its production checkout is the one measured:
+
+```sh
+v19_prereg_commit=$(git log --all --format=%H \
+  --grep='^Preregister V19 current-revision cost replication$' -1)
+git worktree add --detach /tmp/s31-v19-preregistered "$v19_prereg_commit"
+git -C /tmp/s31-v19-preregistered submodule update --init deps/stwo-zig
+python3 /tmp/s31-v19-preregistered/src/frontends/s31/benchmarks/mixed_cost_v19_revision_holdout/freeze.py check
+```
+
+The committed result and score remain tied to their original protocol SHA.
+The independent audit uses `check-record` semantics, so it can replay the
+saved binaries and proofs from a later PR head when the raw artifact directory
+is available. The native study still calls the strict `check` before build.
 
 Run the native attempt on a quiet host, from the S31 repository root:
 

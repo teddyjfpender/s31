@@ -54,7 +54,24 @@ def case(index: int) -> tuple[bytes, bytes, bytes]:
     return source, canonical(assignment), statement
 
 
-def prepare() -> dict:
+def historical_pin_sha256(value: dict) -> dict[str, str]:
+    """Check each recorded production file against the preregistered base tree."""
+    if value.get("current_revision") != BASE_COMMIT:
+        raise ValueError("V19 base commit differs from preregistration")
+    recorded = value.get("current_pin_sha256")
+    if not isinstance(recorded, dict) or set(recorded) != set(v18.PIN_PATHS):
+        raise ValueError("V19 historical production pin roster differs")
+    for path, digest in recorded.items():
+        historical = v18.v2.git("show", f"{BASE_COMMIT}:{path}")
+        if sha(historical) != digest:
+            raise ValueError(f"V19 historical production pin differs: {path}")
+    gitlink = v18.v2.git("rev-parse", f"{BASE_COMMIT}:deps/stwo-zig").decode().strip()
+    if value.get("engine_gitlink_commit") != gitlink:
+        raise ValueError("V19 historical engine gitlink differs")
+    return recorded
+
+
+def prepare(*, historical: dict | None = None) -> dict:
     old_raw = v18.PROTOCOL.read_bytes()
     old = v18.v2.parse(old_raw)
     model_raw = v18.MODEL.read_bytes()
@@ -74,7 +91,16 @@ def prepare() -> dict:
         raise ValueError("new claim corpus collides with V18")
     names = list(range(1, CLAIMS + 1))
     random.Random(SCHEDULE_SEED).shuffle(names)
-    pins = v18.v3.pins()
+    if historical is None:
+        pins = v18.v3.pins()
+        current_pin_sha256 = {path: sha((ROOT / path).read_bytes())
+                              for path in v18.PIN_PATHS if (ROOT / path).is_file()}
+    else:
+        current_pin_sha256 = historical_pin_sha256(historical)
+        # These are provenance fields committed before the native attempt.
+        # A full compiler fingerprint replay uses the pinned-base worktree.
+        pins = {key: historical[key] for key in
+                ("engine_gitlink_commit", "compiler_sha256", "host")}
     return {
         "schema": "s31-mixed-cost-v19-revision-holdout-protocol",
         "status": "pre-native-frozen",
@@ -91,8 +117,7 @@ def prepare() -> dict:
         "host": pins["host"],
         "source_base_commit": v18.SOURCE_BASE_COMMIT,
         "current_revision": BASE_COMMIT,
-        "current_pin_sha256": {path: sha((ROOT / path).read_bytes())
-                               for path in v18.PIN_PATHS if (ROOT / path).is_file()},
+        "current_pin_sha256": current_pin_sha256,
         "study_tool_sha256": sha((HERE / "study.py").read_bytes()),
         "claim_seed": SEED,
         "schedule_seed": SCHEDULE_SEED,
@@ -116,28 +141,41 @@ def prepare() -> dict:
     }
 
 
-def frozen() -> tuple[dict, str]:
+def frozen_record() -> tuple[dict, str]:
     raw = FROZEN.read_bytes()
     value = v18.v2.parse(raw)
-    if raw != canonical(value) or value != prepare():
-        raise ValueError("V19 protocol differs from pre-native freeze or current stack")
+    if raw != canonical(value) or value != prepare(historical=value):
+        raise ValueError("V19 protocol differs from its preregistered historical record")
     if v18.v2.git("show", f"HEAD:{FROZEN.relative_to(ROOT).as_posix()}") != raw:
-        raise ValueError("V19 protocol must be committed before native run")
+        raise ValueError("V19 protocol must be committed unchanged")
     return value, sha(raw)
+
+
+def frozen() -> tuple[dict, str]:
+    """Stricter pre-native check: the current checkout must match the freeze."""
+    value, digest = frozen_record()
+    if value != prepare():
+        raise ValueError("current S31 stack differs from V19 pre-native freeze")
+    return value, digest
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("preview", "freeze", "check"))
+    parser.add_argument("action", choices=("preview", "freeze", "check", "check-record"))
     action = parser.parse_args().action
-    value = prepare()
-    raw = canonical(value)
+    if action == "check-record":
+        value, digest = frozen_record()
+        raw = FROZEN.read_bytes()
+    else:
+        value = prepare()
+        raw = canonical(value)
+        digest = sha(raw)
     if action == "freeze":
         with FROZEN.open("xb") as file:
             file.write(raw)
     if action == "check":
         frozen()
-    print(json.dumps({"protocol_sha256": sha(raw),
+    print(json.dumps({"protocol_sha256": digest,
                       "source_sha256": value["source_sha256"],
                       "current_revision": value["current_revision"],
                       "v18_protocol_sha256": value["v18_protocol_sha256"]}, indent=2))

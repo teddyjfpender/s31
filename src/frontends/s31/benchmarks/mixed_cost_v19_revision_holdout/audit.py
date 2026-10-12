@@ -30,7 +30,9 @@ AUDIT = f.LANGUAGE / "mixed-cost-v19-revision-holdout-audit.json"
 
 
 def run(out: Path, native: bool) -> dict:
-    protocol, protocol_sha = f.frozen()
+    # Replay may run on a later checkout. The native attempt itself still
+    # required the stricter current-stack `frozen()` preflight.
+    protocol, protocol_sha = f.frozen_record()
     result_raw = s.RESULT.read_bytes()
     score_raw = s.SCORE.read_bytes()
     result = f.v18.v2.parse(result_raw)
