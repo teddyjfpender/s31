@@ -129,6 +129,51 @@ def check_examples() -> None:
         pass
     else:
         raise AssertionError("worked functional polynomial accepted a false public claim")
+
+    direct_mul, _ = compile_text(
+        text_block_containing(DOCS / "worked-direct-multiplication.md",
+                              "circuit hand_u16_product"),
+        "worked-direct-multiplication.md",
+    )
+    assert [node["op"] for node in direct_mul["nodes"]] == [
+        "int_view", "int_view", "int_mul_checked"]
+    assert [node["constant"] for node in direct_mul["nodes"]] == [16, 16, 16]
+    direct_mul_assignment = json_block_containing(
+        DOCS / "worked-direct-multiplication.md", '"private_inputs"')
+    assert evaluate_relation(direct_mul, direct_mul_assignment) == {"product": [510]}
+    assert 255 * 2 == 254 + 256 * 1
+    assert 1 == 1 + 256 * 0
+    for a, b, low in ((255, 258, 254), (256, 256, 0)):
+        overflow_assignment = {
+            "public_inputs": {}, "private_inputs": {"a": [a], "b": [b]},
+            "public_outputs": {"product": [low]},
+        }
+        try:
+            evaluate_relation(direct_mul, overflow_assignment)
+        except OracleError:
+            pass
+        else:
+            raise AssertionError(f"worked checked multiplication accepted {a} * {b}")
+
+    static_sum, static_map = compile_text(
+        text_block_containing(DOCS / "worked-static-sum.md", "circuit p("),
+        "worked-static-sum.md",
+    )
+    assert static_sum["nodes"] == [{
+        "name": "result", "op": "repeat", "lhs": "x", "rounds": 16,
+        "body": [{"op": "square"}, {"op": "add_const", "constant": 7}],
+    }]
+    assert set(static_map) == {"result"}
+    static_input = [0, 1, 2, 7]
+    assert [(value * value + 7) % P for value in static_input] == [7, 8, 11, 56]
+    static_result = static_input[:]
+    for _ in range(16):
+        static_result = [(value * value + 7) % P for value in static_result]
+    assert evaluate_relation(static_sum, {
+        "public_inputs": {"x": static_input}, "private_inputs": {},
+        "public_outputs": {"result": static_result},
+    }) == {"result": static_result}
+
     curried, _ = compile_text(
         text_block_containing(DOCS / "functional-language.md", "circuit curried_sum"),
         "functional-language.md",

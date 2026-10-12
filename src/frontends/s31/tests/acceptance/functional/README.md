@@ -52,3 +52,12 @@ public record ABI and checks independent values and changed-claim rejection:
 ```sh
 python3 src/frontends/s31/tests/acceptance/functional/product_control.py
 ```
+
+`static_sum_dce.py` compares a static enum with an ignored, total arithmetic
+payload against a handwritten recurrence under `direct-chip`. It requires
+identical one-node relations and complete native AIR geometry, then proves the
+enum source, checks its independent value, and rejects a changed public claim:
+
+```sh
+python3 src/frontends/s31/tests/acceptance/functional/static_sum_dce.py
+```

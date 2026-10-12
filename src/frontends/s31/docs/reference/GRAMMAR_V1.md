@@ -25,7 +25,7 @@ leading zeroes; the lexer reports the source location when that limit is
 exceeded. The lexer recognizes `->`, `=>`, `::`, and `.*` before
 their one-character prefixes. The reserved words are `use`, `let`, `in`,
 `if`, `then`, `else`, `fun`, `Fn`, `fn`, `circuit`, `blinded`, `public`,
-`private`, `struct`, and `assert_eq`.
+`private`, `struct`, `enum`, `match`, and `assert_eq`.
 
 ## Declarations and types
 
@@ -33,8 +33,10 @@ The notation below uses `{…}` for repetition, `[…]` for optional syntax,
 and `|` for alternatives. Quoted punctuation is literal source text.
 
 ```text
-file          = ["use", "std", "@", "1", ";"], {struct | function}, circuit, EOF
+file          = ["use", "std", "@", "1", ";"], {struct | enum | function}, circuit, EOF
 struct        = "struct", type_identifier, "{", field, {",", field}, [","], "}", [";"]
+enum          = "enum", type_identifier, "{", variant, {",", variant}, [","], "}", [";"]
+variant       = identifier, ":", struct_field_type
 field         = identifier, ":", struct_field_type
 struct_field_type = first_order_type | type_identifier
                   | "(", struct_field_type, ",", struct_field_type,
@@ -62,14 +64,16 @@ first_order_type = "bit" | "u8" | "u16" | "u32" | "u64" | "u128"
                 | "[", ("m31" | "u16"), ";", natural, "]"
 ```
 
-Array lengths and type arguments are checked after parsing. `Fn`, tuples, and
-struct records exist only during specialization; circuit inputs and outputs
+Array lengths and type arguments are checked after parsing. `Fn`, tuples,
+struct records, and enum values exist only during specialization; circuit inputs and outputs
 require first-order types. A struct field may contain a first-order value, an
 earlier declared struct, or a tuple recursively built from those types.
 Function-valued fields and forward or recursive struct references are rejected.
 Struct type names are nominal: equal field shapes with different names are
-different source types. Functions may return or accept structs, `Fn`, and
-tuple values. `Digest`
+different source types. Enum types are nominal too. Each enum variant has
+exactly one payload, whose type may be a first-order value, earlier struct, or
+tuple of those types. Enum and function-valued payloads are excluded.
+Functions may return or accept structs, enums, `Fn`, and tuple values. `Digest`
 families and the fixed-width integer names are exact and case sensitive.
 
 ## Blocks and expressions
@@ -88,10 +92,12 @@ postfix_call  = "(", [expression, {",", expression}], ")"
 postfix_projection = ".", (natural | identifier)
 prefix        = "let", binding_pattern, "=", expression, "in", expression
               | "if", expression, "then", expression, "else", expression
+              | "match", expression, "{", match_arm, {",", match_arm}, [","], "}"
               | "fun", function_parameters, "->", type, "=>", expression
               | "-", expression
               | atom
 atom          = identifier
+              | type_identifier, "::", identifier, "(", expression, ")"
               | type_identifier, "{", named_field, {",", named_field}, [","], "}"
               | qualified_name, ["<", natural, ">"], "(", [expression,
                 {",", expression}], ")"
@@ -102,6 +108,7 @@ atom          = identifier
               | "[", [expression, {",", expression}], "]"
 qualified_name = identifier, {"::", identifier}
 named_field    = identifier, ":", expression
+match_arm      = type_identifier, "::", identifier, "(", identifier, ")", "=>", expression
 binary_operator = "+" | "-" | ".*"
 ```
 
@@ -147,6 +154,18 @@ it evaluates the source expression once and works in both block statements
 and `let … in` expressions. Unbound fields still retain their computations
 and partial effects.
 
+`enum Choice { Square: [m31; 4], Double: [m31; 4] }` declares a nominal
+source-only sum. `Choice::Square(x)` evaluates its one payload immediately;
+`match choice { Choice::Square(y) => y .* y, Choice::Double(y) => y + y }`
+evaluates the scrutinee once and then only the arm named by its static tag.
+All variants must occur exactly once, and every arm body must have the same
+source type. The tag and `match` add no relation nodes. The tag must be known
+at specialization: a circuit input or output cannot have enum type, and a
+witness-dependent `if` cannot return an enum. Every arm is typechecked even
+when its tag is never constructed. Constructor payloads are evaluated eagerly
+during specialization. Unused, total M31 arithmetic is pruned from the
+normalized relation; partial operations and their proof obligations remain.
+
 The parser uses left-associative Pratt binding powers: unary `-` is 30,
 lane-wise `.*` is 20, and `+` and `-` are 10. Postfix application binds more
 tightly than arithmetic and may follow any expression whose type is `Fn`.
@@ -165,7 +184,7 @@ step. The specialized step body must reduce to one to
 sixteen supported recurrence operations; no witness-dependent capture,
 conditional, inverse, or helper call that cannot reduce to supported steps is
 admitted.
-`if`, expression `let`, and `fun` are prefix forms; parenthesize them when
+`if`, `match`, expression `let`, and `fun` are prefix forms; parenthesize them when
 embedding them in a larger arithmetic expression or applying their result.
 Calls, types, shapes and builtins receive separate
 type/effect checks. `assert_eq` is allowed only in circuit blocks.
@@ -183,6 +202,8 @@ Struct declarations are capped at 128 types, 64 fields per type, 32 levels of
 nested product layout, and 1,024 flattened first-order fields per type. These
 limits bound parser work and reject deep source trees before later
 recursive compiler passes.
+Enum declarations are capped at 128 types and 64 variants per type. Their
+payload layouts obey the same depth and leaf limits as struct fields.
 
 The normalized relation admits at most **65,536 aggregate input words**,
 **100,000 total inputs, nodes and assertions**, and **8 MiB each of program

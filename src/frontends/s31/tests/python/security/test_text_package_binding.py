@@ -51,13 +51,20 @@ class TextPackageBindingTests(unittest.TestCase):
 
     def test_text_source_cannot_downgrade_frontend_version(self) -> None:
         self.manifest["source_text_sha256"] = "0" * 64
-        for version in (None, 0, 2, "1"):
+        for version in (None, 0, 2, "1", True, 1.0):
             with self.subTest(version=version):
                 if version is None:
                     self.manifest.pop("text_frontend_version", None)
                 else:
                     self.manifest["text_frontend_version"] = version
                 self.check_rejected("text package requires frontend version 1")
+
+    def test_relation_version_requires_integer_json_type(self) -> None:
+        for version in (True, 1.0, 2.0):
+            with self.subTest(version=version):
+                (self.package / "source.s31.json").write_text(
+                    json.dumps({"version": version, "name": "example"}))
+                self.check_rejected("unsupported S31 relation version")
 
 
 if __name__ == "__main__":

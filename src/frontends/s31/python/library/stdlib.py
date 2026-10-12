@@ -115,7 +115,7 @@ class Builder:
         self.used_names.add(name)
         return name
 
-    def input(self, name: str, typ: Type, visibility: str, *, record_public_byte: bool = False) -> Value:
+    def input(self, name: str, typ: Type, visibility: str, *, record_public_integer: bool = False) -> Value:
         kind, length = typ.relation_shape()
         if self.input_words + length > MAX_INPUT_WORDS:
             raise TypeErrorS31(f"aggregate relation inputs exceed {MAX_INPUT_WORDS} words")
@@ -127,12 +127,12 @@ class Builder:
             if visibility == "public":
                 self.public_bit_inputs.add(name)
         value = Value(typ, ref=name)
-        # The v2 record descriptor binds a public u8 tag to this raw u16
-        # relation input. Direct Gate proves its range with eight arithmetic
-        # bits, so the source value may preserve the exact input wire alias.
-        if record_public_byte:
-            if typ.kind != "int_u8" or visibility != "public":
-                raise TypeErrorS31("record public byte requires a public u8 input")
+        # The v2 descriptor binds public u8/u32 tags to raw u16 relation
+        # inputs. Direct Gate range-proves each limb with arithmetic bits,
+        # so the source value can preserve the exact input-wire alias.
+        if record_public_integer:
+            if typ.kind not in {"int_u8", "int_u32"} or visibility != "public":
+                raise TypeErrorS31("record public integer requires a public u8 or u32 input")
             return value
         return self.int_view(value) if typ.kind in INT_TYPES else value
 

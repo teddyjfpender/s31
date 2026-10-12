@@ -87,6 +87,30 @@ fixed-column commitments and proof verification carry authority for the
 package. The Python check does not authenticate trace values or prove the
 source-to-Lean event correspondence.
 
+For the native N=3 and N=8 profiles, the same acceptance also moves one unit
+of a QM31 claimed sum from the first pair bridge to the final many bridge,
+and separately between their chip components. Each mutation keeps the
+**total** lookup sum unchanged. The generated verifier must still reject it
+after the envelope and total lookup-sum checks, because each slot's claim is
+bound to its AIR and to the transcript. This is a proof-header mutation, not
+a forged witness or a complete soundness proof.
+
+`semantic_source_reseal.py` can target a chosen call, including a later many
+chip. It changes only that source repeat's constant, builds both generated
+verifiers, proves both programs, then rewrites the old proof and statement's
+source, registry-manifest and circuit-identity hashes to match the changed
+program. The changed verifier must reject that structurally valid replay
+beyond the transport identity checks. To exercise the N=3 many-chip call:
+
+```sh
+python3 src/frontends/s31/tests/acceptance/mixed_boundary/semantic_source_reseal.py --counts 3 --changed-call 2
+```
+
+This checks source-to-fixed-root replay resistance for one selected later
+call. It does not establish that every possible chip relation or bridge
+trace is sound; the separate queried-opening and trace-mutation tests cover
+other parts of that argument.
+
 `typed_boundary_correspondence.py` checks the N=1..8 chain family against the
 typed event model in
 `formal/s31/S31/Gadgets/Air/SourceMixedPath.lean`. It derives the expected

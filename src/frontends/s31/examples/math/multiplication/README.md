@@ -15,6 +15,8 @@ The checked programs reject arithmetic overflow:
 
 Each `.valid.json` file supplies an independently calculated private input
 and public result. The [fixed-width walkthrough](../../../docs/fixed-width-integers.md)
-explains the byte constraints and multiplication AIR by hand. The
+explains the sparse-wide byte constraints; the
+[direct `u16` walkthrough](../../../docs/worked-direct-multiplication.md)
+shows the arithmetic-only circuit, AIR, and polynomials by hand. The
 [native acceptance gate](../../../tests/acceptance/math/README.md) verifies
 representative proofs and rejects a changed public result for each.

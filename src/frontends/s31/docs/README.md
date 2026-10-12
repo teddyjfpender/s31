@@ -52,6 +52,9 @@ text .s31 ──parse/typecheck/specialize──▶ normalized relation JSON
 - [Fixed-width integers from source to AIR](fixed-width-integers.md): all
    ten unsigned and signed scalar types, a checked `u8` proof by hand,
    byte range, carry, sign, and comparison constraints.
+- [A direct integer product worked by hand](worked-direct-multiplication.md):
+   one `u16` source program, radix columns, two distinct overflow controls,
+   circuit gates, AIR polynomials, and the native verifier's claim.
 - [Hash-based Tongo-style payments](../examples/payments/README.md): a complete
    note-spend relation, checked 64-bit amounts, an envelope-bound receipt,
    native proof acceptance and the zero-knowledge work required for confidentiality.
@@ -93,6 +96,9 @@ text .s31 ──parse/typecheck/specialize──▶ normalized relation JSON
 - [Static functional core](functional-language.md): typed lambdas,
    higher-order calls, lexical capture, and the exact zero-gate staging
    boundary, with a four-lane proof example.
+- [A static choice with an erased payload](worked-static-sum.md): an
+   `enum` known at compile time, a total calculation removed after eager
+   evaluation, the retained recurrence chip, and its proof claim.
 - [Nominal records](records.md): named struct fields, eager evaluation,
    static type checks, whole-record selection, exact fieldwise AIR cost,
    and handwritten calculations.
@@ -100,6 +106,9 @@ text .s31 ──parse/typecheck/specialize──▶ normalized relation JSON
    typed operations, static reductions, Horner evaluation, and a proof example.
 - [Circuit lowering](circuits.md): a hand-drawn gate graph, packed M31 lanes,
    fixed/witness columns, address lookups, and the six proof profiles.
+- [Sparse AIR component roster](reference/SPARSE_COMPONENT_ROSTER.md): the
+   three sparse proof components, 12 committed columns, and the native key
+   check that binds the emitted roster to the compiled source.
 - [Private circuit-to-chip boundary](private-boundary.md): eight source-derived
    wire addresses, authenticated Gate and chip lookup closure, affine
    one-square steps, an experimental two-call source binding, and the public

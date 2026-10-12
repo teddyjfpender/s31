@@ -57,6 +57,28 @@ model proves the 16-bit reconstruction bound and public tag bound, while
 excludes private u16 leaves. These are model-level statements; the native
 proof acceptance gate supplies executable coverage for this fixture.
 
+## Public u32 record under direct-gate
+
+[`record_public_u32.s31`](../../../examples/arithmetic/record_public_u32.s31)
+uses one scalar `u32` record input and an alias-only `u32` result. Its two
+little-endian `u16` limbs each get a 16-bit arithmetic range proof. The
+verifier sees four ordered words because both named paths refer to the same
+two-limb wire. The ABI digest distinguishes this `u32` from `[u16; 2]`.
+
+```sh
+python3 -B src/frontends/s31/tests/acceptance/record_abi/public_u32_direct_gate_v2.py
+python3 -B src/frontends/s31/tests/acceptance/record_abi/public_u32_direct_gate_v2.py --native
+python3 -B src/frontends/s31/tests/acceptance/record_abi/public_u32_adversarial_v2.py --native
+```
+
+The native check accepts zero, maximum, and mixed-limb proofs, rejects a
+changed proof claim, overlarge low/high limbs at statement and flat-witness
+admission, alias mismatch, derived/private/malformed descriptor shapes, and
+the wrong nominal ABI digest. A coherently retyped `[u16; 2]` record has the
+same AIR/preprocessing geometry for this fixture but a distinct key digest.
+The capability is public, direct-gate, and alias-only; it does not admit
+private `u32` leaves or arbitrary derived `u32` result wires.
+
 ## Eight-word text, statement, native, and Lean correspondence
 
 [`mixed_eight_alias_bit.s31`](mixed_eight_alias_bit.s31) is a small, actual
@@ -560,3 +582,54 @@ python3 -B src/frontends/s31/tests/acceptance/record_abi/nested_narrow_seal_v2.p
 The valid field rename also changes exact source bytes; this proves the
 combined source/ABI seal on these two packages, not an isolated ABI-only
 transcript field or universal compiler correspondence.
+
+## Independent bounded record source check
+
+[`record_source_fragment_v2.py`](record_source_fragment_v2.py) checks one
+hand-written program with a public and a private `Pair` input, two arithmetic
+lets, a declaration-ordered result whose constructor lists fields in reverse
+order, and a result alias of a public input wire. The independent parser
+reconstructs the complete version-2 relation and ABI digest from the text.
+The script builds an actual direct-gate package, checks its emitted source,
+relation, ABI artifact, and manifest, and verifies a native proof for public
+words `[2, 3, 17, 3, 0, 0, 0, 0]`. A different but ABI-valid `result.left`
+claim must fail inside proof verification. Focused unit tests re-seal changed
+relation and ABI artifacts and require the independent checker to reject them.
+
+```sh
+python3 -B -m unittest src/frontends/s31/tests/python/security/test_record_source_fragment.py
+python3 -B src/frontends/s31/tests/acceptance/record_abi/record_source_fragment_v2.py
+```
+
+The checker reports only `source-to-relation-only`. It does not certify native
+gate extraction, AIR, or the proof system. Its accepted grammar and exact
+checks are in the [design note](../../../../../../design/s31/language/RECORD_SOURCE_RELATION_FRAGMENT_V2.md).
+
+## Independent bounded source-to-statement projection
+
+[`independent_statement_fragment_v2.py`](independent_statement_fragment_v2.py)
+extends that exact M31 record grammar from source bytes through canonical v2
+statement bytes to the eight proof words. It derives the ABI digest, required
+public leaf paths, alias identities, and final distinct-wire order from the
+independent source parser. It does not import the production ABI codec or
+compiler. For the `Pair` program above, the named claim has `x.left=2`,
+`x.right=3`, `result.left=17`, and `result.right=3`. The last leaf aliases
+`x.right`; the projected proof words are `[2, 3, 17, 3, 0, 0, 0, 0]`.
+
+The fast unit gate compares 30 bounded source/layout/alias programs with the
+production Python statement decoder. It also rejects changed paths, split
+aliases, M31 overflow, wrong scalar types, missing leaves, duplicate keys,
+and noncanonical bytes. The optional native gate sends the same handwritten
+three accepted and six rejected claims through Zig's statement parser, without
+creating proofs:
+
+```sh
+python3 -B -m unittest src/frontends/s31/tests/python/security/test_record_statement_fragment.py
+python3 -B src/frontends/s31/tests/acceptance/record_abi/record_source_statement_fragment_v2.py
+python3 -B src/frontends/s31/tests/acceptance/record_abi/record_source_statement_fragment_v2.py --native
+```
+
+This adds the `source-to-statement-projection-only` audit capability. It checks
+the public claim that a verifier would receive; it does not establish that a
+proof is valid, that the source computation produced those values, or that all
+record types are supported. See the [exact contract](../../../../../../design/s31/language/RECORD_SOURCE_STATEMENT_FRAGMENT_V2.md).

@@ -1,5 +1,33 @@
 # Bounded source to raw Gate AIR
 
+## Optimized source row capacity
+
+[The optimized decoded-trace theorem](OptimizedDecodedTrace.md) connects an
+arbitrary physical 512-row trace to exact optimized source semantics, including
+the installed arithmetic roots, Gate event balance, and public pins. It proves
+the compact input-pack producer is live from source admission and CSE, so the
+caller cannot assume this separately. The theorem's trace premises are
+explicit and do not follow from a native verifier result.
+
+[The optimized physical roster proof](OptimizedPhysicalRoster.md) derives the
+compact program's 16-producer budget from the accepted optimizer, then fixes
+its 512-row direct-Gate partition and proves 28 distinct source/public
+positions for a four-let program with one CSE hit. This removes a free row
+budget assumption for the modeled optimized source path. Native emission and
+proof authentication remain separate checks.
+
+## Optimized source to projected AIR cells
+
+[The optimized source AIR bridge](OptimizedSourceAirRows.md) composes exact
+source/normalized/canonical byte admission, commutative operand sorting and
+common subexpression elimination, the compact direct-Gate projected cell
+schedule, local operation polynomials, and the packed public input boundary.
+For the handwritten reversed/CSE program, Lean checks that four source lets
+use three compact operation rows at physical positions 3, 503, and 4. An
+arbitrary coherent wire satisfying those modeled cells has the source result
+at the selected output address. Native emitter and proof authentication remain
+explicitly outside this theorem.
+
 ## Latest derived-roster join
 
 [The arbitrary-trace theorem](DerivedRosterArbitraryTrace.md) joins exact

@@ -7,6 +7,8 @@ from pathlib import Path
 
 import proof_privacy
 from package.manifest_digest import direct_chip_v2_digest, direct_gate_v2_digest
+from package.gate_component_roster import validate as validate_gate_component_roster
+from package.sparse_component_roster import validate as validate_sparse_component_roster
 from package.context import (
     AIR_BUNDLE_SHA256, LIBRARY_SOURCE_FILES, PROJECTION_SHA256, abi, file_hash,
     lower_text, parse_source_json, text_interface,
@@ -42,10 +44,11 @@ def verify_package(package: Path) -> dict:
             for name in text_artifacts) and
             not has_text):
         raise ValueError("S31 text artifacts require source binding metadata")
-    if has_text and manifest.get("text_frontend_version") != 1:
+    if (has_text and (type(manifest.get("text_frontend_version")) is not int or
+                      manifest["text_frontend_version"] != 1)):
         raise ValueError("S31 text package requires frontend version 1")
     source = parse_source_json((package / "source.s31.json").read_bytes())
-    if source.get("version") not in (1, 2):
+    if type(source.get("version")) is not int or source["version"] not in (1, 2):
         raise ValueError("unsupported S31 relation version")
     if source["version"] == 2 and manifest.get("lowering") not in {"direct-gate", "direct-chip"}:
         raise ValueError("record ABI v2 requires direct-gate or direct-chip lowering")
@@ -151,6 +154,8 @@ def verify_package(package: Path) -> dict:
             fri_config.get("fold_step") != fri_fold_step):
         raise ValueError("S31 package key does not match manifest")
     report = json.loads((package / "cost-report.json").read_text())
+    validate_gate_component_roster(package, manifest.get("lowering"), artifacts, key, report)
+    validate_sparse_component_roster(package, manifest.get("lowering"), artifacts, key, report)
     proof_privacy.validate_package(source, manifest, key, report)
     inspected_key_fields = (
         "program_sha256", "canonical_ir_sha256", "profile", "chip",

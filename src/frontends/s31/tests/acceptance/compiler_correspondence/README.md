@@ -221,6 +221,40 @@ equal the exported rows, prove collision resistance, or cover private/mixed
 programs. The source compiler and PCS verifier remain separate proof
 obligations in the broader correspondence claim.
 
+## Source-derived full main trace for optimized v3
+
+`package.direct_gate_main_correspondence` reconstructs the full 12×512 main
+columns from the compact normalized source, four public input words, and the
+independent fixed schedule. It evaluates every compact add or pointwise
+multiply, including a returned earlier wire after later lets and v3
+common-subexpression sharing. The four public input scalars and the constant
+basis/inverse words anchor the fixed Gate graph. It solves every other address
+from the selected operation and checks the seed rows, packed input, every
+source SSA word, public output copies, and all 6,144 input/output cells.
+The model never reads native main words to derive its expected columns.
+
+```sh
+python3 -m unittest src.frontends.s31.tests.python.test_direct_gate_main_correspondence
+python3 src/frontends/s31/tests/python/check_optimized_native_package.py
+```
+
+The pure test compares this reconstruction with four older complete native
+exports and rejects altered cells, column order, claims, and digests. The
+optimized native test uses the reversed/CSE `reverse_share` source with four
+source lets but three compact gates. It compares all 6,144 source-derived
+main words and the eight source-derived public words to fresh native exports.
+The diagnostic's SHA-256 digest must equal the source-derived main bytes. It
+then requires the diagnostic's main PCS root to equal commitment 1 in the
+exact proof accepted by the generated native verifier. A changed main-root
+proof byte and a changed public claim are rejected by that verifier; changed
+export cells and swapped columns fail the independent trace comparison.
+
+This is a finite, honest-prover source-to-main-commitment regression under the
+native exporter and PCS commitment implementation. It does not authenticate
+arbitrary query openings as these 6,144 cells, prove collision resistance or
+FRI/LogUp soundness, or cover private and mixed profiles. The v3 checker is
+still an explicit opt-in: normal package admission remains v2-only.
+
 ## Resealed source-row adversarial controls
 
 `projected_row_adversarial.py` builds the pinned eight-gate alias source and

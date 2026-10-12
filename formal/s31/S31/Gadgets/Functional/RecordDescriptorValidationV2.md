@@ -39,8 +39,9 @@ input and result leaf counts exceeds 1,024.
 
 For every input and for the result, the theorem derives `checkRoot = true`,
 unique complete field paths (`WellTagged`), and the allowed leaf widths:
-`m31` and `u16` lengths 1–8 and `bit` length one. It derives that no leaf below a
-private input has kind `bit` or `u16`. Acceptance also records distinct input root
+`m31` and `u16` lengths 1–8, `bit` and `u8` length one, and `u32` length two.
+It derives that no leaf below a private input has kind `bit`, `u8`, `u16`,
+or `u32`. Acceptance also records distinct input root
 names, a result root named `result` that does not collide with an input,
 the global leaf budget, and equal normalized type-token streams wherever the
 same nominal record name appears. At least one root must be a record, matching
@@ -59,7 +60,7 @@ The [lexical layer](RecordDescriptorLexicalV2.md) now checks native identifier
 spelling for the already parsed tree. Native JSON syntax, canonical descriptor bytes,
 nominal-code equality with native JSON serialization, ordered leaf paths and
 wire references, relation inputs and outputs, and proof authentication still
-require separate refinement arguments. The public-bit and public-u16 value
+require separate refinement arguments. The public-bit, public-u16, and public-u32 value
 checks and canonical M31 word checks are also separate. Native direct-gate
-also restricts a u16 result to a public input alias; this model's shape
+also restricts a u16 or u32 result to a same-type public input alias; this model's shape
 checker does not encode that wire rule.

@@ -76,6 +76,19 @@ class BoundedReleaseAdmissionTests(unittest.TestCase):
         check.assert_not_called()
         native.assert_not_called()
 
+    def test_noninteger_frontend_version_never_reaches_certificate(self) -> None:
+        for version in (True, 1.0):
+            with self.subTest(version=version):
+                self.manifest["text_frontend_version"] = version
+                with patch("package.release_admission.admitted_snapshot", self.admitted), \
+                        patch("package.release_admission.check_package") as check, \
+                        patch("package.release_admission.invoke") as native:
+                    with self.assertRaisesRegex(ValueError, "direct-gate text package"):
+                        with bounded_direct_gate_snapshot(self.package, self.pins):
+                            pass
+                check.assert_not_called()
+                native.assert_not_called()
+
     def test_legacy_unrooted_certificate_is_rejected(self) -> None:
         self.certificate["status"]["native_root_binding"] = "preprocessed-root-binding-assumed"
         with patch("package.release_admission.admitted_snapshot", self.admitted), \

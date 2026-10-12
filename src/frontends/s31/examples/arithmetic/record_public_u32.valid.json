@@ -1,0 +1,6 @@
+{
+  "version": 2,
+  "public_inputs": {"req": {"word": [65535, 65535]}},
+  "private_inputs": {},
+  "result": {"word": [65535, 65535]}
+}

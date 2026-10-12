@@ -35,6 +35,7 @@ from package.correspondence import (  # noqa: E402
     DIRECT_COLUMN_IDS, canonical_ir_bytes, check_package, parse_source,
 )
 from package.direct_gate_schedule import exact_direct_gate_schedule  # noqa: E402
+from package.direct_gate_main_correspondence import expected_main_columns  # noqa: E402
 from test_source_mutation_correspondence import (  # noqa: E402
     CORPUS_SHA256, corpus, corpus_digest,
 )
@@ -250,6 +251,7 @@ def check_case(data: dict, sample, pinned: dict) -> dict:
     expected, gates, n_vars = expected_fixed(syntax)
     fixed = columns(report.get("fixed_columns"), 8, "physical fixed")
     main = columns(report.get("main_columns"), 12, "physical main")
+    source_main, source_public = expected_main_columns(syntax, INPUT)
     exported = topology.get("columns")
     if (topology.get("schema") != "s31-direct-gate-topology-v2" or
             topology.get("program_sha256") != sha(normalized) or
@@ -274,7 +276,7 @@ def check_case(data: dict, sample, pinned: dict) -> dict:
     _, expected_output = evaluate(sample)
     public = report.get("public_words")
     if (report.get("schema") != SCHEMA or report.get("program_sha256") != sha(normalized) or
-            public != [*INPUT, *expected_output]):
+            public != source_public or public != [*INPUT, *expected_output]):
         raise ValueError("physical public words differ from source evaluation")
     projected_rows = {cell.traceRow for cell in projected}
     for cell in projected:
@@ -334,10 +336,13 @@ def check_case(data: dict, sample, pinned: dict) -> dict:
         if produced[address] != (word, 0, 0, 0):
             raise ValueError(f"public copy value differs at address {address}")
     events = gate_balance(fixed, main, public)
+    if main != source_main:
+        raise ValueError("all native main cells differ from independently evaluated source")
     return {"label": sample.label, "source_gates": n,
             "zero_use_source_results": sum(cell[-1] == 0 for cell in source_cells),
             "constant_rows": len(constant_rows), "physical_rows": 512,
             "fixed_cells": 4096, "main_cells": 6144,
+            "source_derived_main_columns_sha256": sha(main_words(report)),
             "arithmetic_roots": 4608, "gate_events": events,
             "fixed_root": root, "fixed_columns_sha256": sha(encoded)}
 

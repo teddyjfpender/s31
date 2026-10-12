@@ -65,6 +65,36 @@ test "mixed circuit pair and many chip bridge queried openings authenticate to t
     try std.testing.expectEqual(cpu.direct_mixed_admission.SourceKind.pair_bridge, geometry.slots[2].kind.?);
     try std.testing.expectEqual(cpu.direct_mixed_admission.SourceKind.many_chip, geometry.slots[5].kind.?);
     try std.testing.expectEqual(cpu.direct_mixed_admission.SourceKind.many_bridge, geometry.slots[6].kind.?);
+
+    // The bridge commits each endpoint as a constant main-column polynomial.
+    // A normal proof opens every main column at the verifier's query points,
+    // so these serialized values disclose the complete four-word private
+    // input and every subsequent chip handoff to anyone holding the proof.
+    // This is a privacy regression guard, not a confidentiality assertion.
+    const opened_main = stark.commitment_scheme_proof.queried_values.items[1];
+    var private_state = initial;
+    for (0..call_count) |call_id| {
+        const bridge_slot = geometry.slots[2 + 2 * call_id];
+        const bridge_at: usize = @intCast(bridge_slot.main_offset);
+        try std.testing.expectEqual(@as(u32, 8), bridge_slot.main_columns);
+        for (0..4) |lane| {
+            const openings = opened_main[bridge_at + lane];
+            try std.testing.expect(openings.len > 0);
+            for (openings) |opened|
+                try std.testing.expectEqual(private_state[lane], opened);
+        }
+        for (0..16) |_| {
+            for (&private_state) |*word|
+                word.* = word.*.mul(word.*).add(M31.fromCanonical(@intCast(13 + call_id)));
+        }
+        for (0..4) |lane| {
+            const openings = opened_main[bridge_at + 4 + lane];
+            try std.testing.expect(openings.len > 0);
+            for (openings) |opened|
+                try std.testing.expectEqual(private_state[lane], opened);
+        }
+    }
+
     const pcs = geometry.pcs;
     var sample_width_limits: [4]u32 = .{ 0, 0, 0, 1 };
     for (geometry.tree_columns[0..3], 0..) |width, tree| {
@@ -76,39 +106,47 @@ test "mixed circuit pair and many chip bridge queried openings authenticate to t
         try std.testing.expectEqual(geometry.tree_columns[tree], columns.len);
         const targets: usize = if (tree == 0) 1 else geometry.slot_count;
         for (0..targets) |slot_index| {
-            const column_index: usize = if (tree == 0) 0 else @intCast(if (tree == 1)
+            const first: usize = if (tree == 0) 0 else @intCast(if (tree == 1)
                 geometry.slots[slot_index].main_offset
             else
                 geometry.slots[slot_index].interaction_offset);
-            try std.testing.expect(columns[column_index].len > 0);
-            const original = columns[column_index][0];
-            columns[column_index][0] = original.add(M31.one());
-            defer columns[column_index][0] = original;
-            var changed: std.ArrayList(u8) = .empty;
-            defer changed.deinit(allocator);
-            try changed.appendSlice(allocator, sealed.bytes[0..proof_offset]);
-            try postcard.serializeProof(H, changed.writer(allocator), stark);
-            try std.testing.expectEqual(sealed.bytes.len, changed.items.len);
-            try std.testing.expect(!std.mem.eql(u8, sealed.bytes, changed.items));
-            // A valid postcard shape must fail at its authenticated PCS
-            // opening, including the first column of each native component.
-            try postcard.proof_preflight.validateFor(4, changed.items[proof_offset..], .{
-                .config = .{
-                    .pow_bits = pcs.fri_config.pow_bits,
-                    .log_blowup_factor = pcs.fri_config.log_blowup_factor,
-                    .n_queries = pcs.fri_config.n_queries,
-                    .log_last_layer_degree_bound = pcs.fri_config.log_last_layer_degree_bound,
-                    .fold_step = pcs.fri_config.fold_step,
-                    .lifting_log_size = null,
-                },
-                .tree_columns = geometry.tree_columns,
-                .max_column_log_size = geometry.max_column_log_size,
-                .sample_width_limits = sample_width_limits,
-                .hash_size = @sizeOf(H.Hash),
-                .max_wire_bytes = (16 << 20) - proof_offset,
-            });
-            try std.testing.expectError(error.RootMismatch, package.verifyEmbedded(source, air, allocator, words, changed.items));
-            columns[column_index][0] = original;
+            const width: usize = if (tree == 0) columns.len else @intCast(if (tree == 1)
+                geometry.slots[slot_index].main_columns
+            else
+                geometry.slots[slot_index].interaction_columns);
+            try std.testing.expect(width > 1);
+            // The first column catches a missing component opening; the last
+            // catches a truncated span that still authenticates its prefix.
+            for ([_]usize{ first, first + width - 1 }) |column_index| {
+                try std.testing.expect(column_index < columns.len);
+                try std.testing.expect(columns[column_index].len > 0);
+                const original = columns[column_index][0];
+                columns[column_index][0] = original.add(M31.one());
+                defer columns[column_index][0] = original;
+                var changed: std.ArrayList(u8) = .empty;
+                defer changed.deinit(allocator);
+                try changed.appendSlice(allocator, sealed.bytes[0..proof_offset]);
+                try postcard.serializeProof(H, changed.writer(allocator), stark);
+                try std.testing.expectEqual(sealed.bytes.len, changed.items.len);
+                try std.testing.expect(!std.mem.eql(u8, sealed.bytes, changed.items));
+                try postcard.proof_preflight.validateFor(4, changed.items[proof_offset..], .{
+                    .config = .{
+                        .pow_bits = pcs.fri_config.pow_bits,
+                        .log_blowup_factor = pcs.fri_config.log_blowup_factor,
+                        .n_queries = pcs.fri_config.n_queries,
+                        .log_last_layer_degree_bound = pcs.fri_config.log_last_layer_degree_bound,
+                        .fold_step = pcs.fri_config.fold_step,
+                        .lifting_log_size = null,
+                    },
+                    .tree_columns = geometry.tree_columns,
+                    .max_column_log_size = geometry.max_column_log_size,
+                    .sample_width_limits = sample_width_limits,
+                    .hash_size = @sizeOf(H.Hash),
+                    .max_wire_bytes = (16 << 20) - proof_offset,
+                });
+                try std.testing.expectError(error.RootMismatch, package.verifyEmbedded(source, air, allocator, words, changed.items));
+                columns[column_index][0] = original;
+            }
         }
     }
 

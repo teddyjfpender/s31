@@ -15,6 +15,8 @@ from pathlib import Path
 
 from registry_manifest_digest import digest as registry_manifest_digest
 from mask_points_digest import recompute as mask_points_digest
+from native_program_binding_digest import check_report as check_native_program_bindings
+from native_program_binding_digest import digest as native_program_binding_digest
 
 S31 = Path(__file__).resolve().parents[3]
 MODULUS = 2_147_483_647
@@ -338,6 +340,29 @@ def static_mapping_checks() -> dict:
                 "preprocessed_indices": [], "air_source_sha256": "00" * 32,
                 "program_binding_sha256": "00" * 32,
             })
+        for call_id, call in enumerate(calls):
+            for slot in digest_fixture["slots"][1 + 2 * call_id:3 + 2 * call_id]:
+                slot["program_binding_sha256"] = native_program_binding_digest(
+                    slot["source_kind"], slot["air_source_sha256"], call)
+        check_native_program_bindings(digest_fixture)
+        for label, mutate in (
+            ("private input address", lambda m: m["calls"][0]["input"].__setitem__(0, 10_000)),
+            ("private output address", lambda m: m["calls"][0]["output"].__setitem__(0, 20_000)),
+            ("chip program digest", lambda m: m["slots"][1].__setitem__("program_binding_sha256", "11" * 32)),
+            ("bridge program digest", lambda m: m["slots"][2].__setitem__("program_binding_sha256", "22" * 32)),
+            ("chip AIR source digest", lambda m: m["slots"][1].__setitem__("air_source_sha256", "33" * 32)),
+            ("last-call input address", lambda m: m["calls"][-1]["input"].__setitem__(3, 30_000)),
+            ("last bridge program digest", lambda m: m["slots"][-1].__setitem__("program_binding_sha256", "44" * 32)),
+        ):
+            changed_binding = copy.deepcopy(digest_fixture)
+            mutate(changed_binding)
+            changed_binding["registry_manifest_sha256"] = registry_manifest_digest(changed_binding)
+            try:
+                check_native_program_bindings(changed_binding)
+            except AssertionError:
+                pass
+            else:
+                raise AssertionError(f"resealed native binding mutation {label} escaped")
         unchanged_digest = registry_manifest_digest(digest_fixture)
         changed = copy.deepcopy(digest_fixture)
         changed["slots"][1]["source_kind"] = "many_chip"
@@ -368,6 +393,7 @@ def static_mapping_checks() -> dict:
             "counts": [1, 3, 8],
             "manifest_mutations_rejected_by_count": mutation_counts,
             "geometry_report_mutations_rejected": static_geometry_checks(),
+            "resealed_program_binding_mutations_rejected_per_count": 7,
             "source_mutations_rejected_per_count": 1,
             "fresh_absolute_address_retarget_accepted_without_topology": True}
 
@@ -394,6 +420,48 @@ def verify_rejects(verifier: Path, proof: Path, statement: Path) -> None:
         raise AssertionError(
             f"native verifier accepted or crashed on changed proof or statement "
             f"(exit {result.returncode}): {proof}, {statement}"
+        )
+
+
+def reject_compensated_component_claims(
+    work: Path, verifier: Path, statement: Path, raw: bytes,
+    count: int, first_slot: int, second_slot: int, label: str,
+) -> None:
+    """Move one QM31 unit between slots while preserving lookup closure.
+
+    Slots have distinct chip/bridge AIRs. A verifier checking only their
+    aggregate sum would accept the changed header; transcript and component
+    claim binding must reject it later.
+    """
+    slot_count = 1 + 2 * count
+    if not (0 <= first_slot < second_slot < slot_count):
+        raise AssertionError("invalid compensated component pair")
+    changed = bytearray(raw)
+    first_at = SUMS_OFFSET + 16 * first_slot
+    second_at = SUMS_OFFSET + 16 * second_slot
+    first = int.from_bytes(changed[first_at:first_at + 4], "little")
+    second = int.from_bytes(changed[second_at:second_at + 4], "little")
+    if first >= MODULUS or second >= MODULUS:
+        raise AssertionError("honest proof has a noncanonical component claim")
+    changed[first_at:first_at + 4] = ((first + 1) % MODULUS).to_bytes(4, "little")
+    changed[second_at:second_at + 4] = ((second - 1) % MODULUS).to_bytes(4, "little")
+    if (len(changed) != len(raw) or
+            ((first + second) % MODULUS) !=
+            ((int.from_bytes(changed[first_at:first_at + 4], "little") +
+              int.from_bytes(changed[second_at:second_at + 4], "little")) % MODULUS) or
+            changed[:SUMS_OFFSET] != raw[:SUMS_OFFSET] or
+            changed[SUMS_OFFSET + 16 * slot_count:] != raw[SUMS_OFFSET + 16 * slot_count:]):
+        raise AssertionError("compensated mutation changed envelope or total sum")
+    altered = work / f"bad-{count}-{label}-compensated-claims.bin"
+    altered.write_bytes(changed)
+    result = subprocess.run((str(verifier), str(altered), str(statement)),
+                            text=True, capture_output=True, check=False, timeout=30)
+    if (result.returncode <= 0 or
+            "InvalidMixedNativeEnvelope" in result.stderr or
+            "InvalidMixedLookupSum" in result.stderr):
+        raise AssertionError(
+            f"{label} compensated claims escaped or failed before component "
+            f"claim binding: exit={result.returncode}, stderr={result.stderr}"
         )
 
 
@@ -427,6 +495,7 @@ def exercise(work: Path, count: int) -> dict:
         0, *(id for call in range(count) for id in ((1, 2) if call < 2 else (3, 4))),
     ]
     check_source_call_mapping(source_value, manifest)
+    check_native_program_bindings(manifest)
     check_source_call_mapping_mutations(source_value, manifest)
     proof = work / f"proof-{count}.bin"
     statement = work / f"statement-{count}.json"
@@ -481,18 +550,18 @@ def exercise(work: Path, count: int) -> dict:
             altered = work / f"bad-{count}-public-word-{lane}.json"
             altered.write_text(json.dumps({**saved, "public_words": words}))
             verify_rejects(verifier, proof, altered)
-        # Preserve the total QM31 claimed sum while changing two individual
-        # component claims. The transcript and installed AIR claims must still
-        # reject this coordinated mutation.
-        compensated = bytearray(raw)
-        first = int.from_bytes(compensated[SUMS_OFFSET:SUMS_OFFSET + 4], "little")
-        second_at = SUMS_OFFSET + 16
-        second = int.from_bytes(compensated[second_at:second_at + 4], "little")
-        compensated[SUMS_OFFSET:SUMS_OFFSET + 4] = ((first + 1) % MODULUS).to_bytes(4, "little")
-        compensated[second_at:second_at + 4] = ((second - 1) % MODULUS).to_bytes(4, "little")
-        altered = work / f"bad-{count}-compensated-sums.bin"
-        altered.write_bytes(compensated)
-        verify_rejects(verifier, altered, statement)
+        reject_compensated_component_claims(
+            work, verifier, statement, raw, count, 0, 1, "circuit-chip")
+        if count >= 3:
+            # The last call uses the many AIR; the first uses the pair AIR.
+            # Preserve global lookup closure while retargeting claim weight
+            # across two different bridge and chip instances.
+            reject_compensated_component_claims(
+                work, verifier, statement, raw, count, 2, 2 * count,
+                "pair-many-bridge")
+            reject_compensated_component_claims(
+                work, verifier, statement, raw, count, 1, 2 * count - 1,
+                "pair-many-chip")
         header_end = SUMS_OFFSET + 16 * (1 + 2 * count)
         for label, data in (
             ("truncated-header", raw[:header_end - 1]),

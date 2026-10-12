@@ -147,6 +147,17 @@ const BitCache = struct {
         try self.entries.put(ctx.scratch(), key(word, width), bits);
         return bits;
     }
+
+    fn getIntegerArithmetic(self: *BitCache, comptime V: type, ctx: *circuit.builder.Context(V), words: []const Var, width: u32) ![]Var {
+        const per_limb: usize = if (width == 8) 8 else 16;
+        if (words.len * per_limb != @as(usize, @intCast(width))) return error.InvalidIntegerBits;
+        const bits = try ctx.scratch().alloc(Var, @intCast(width));
+        for (words, 0..) |word, index| {
+            const part = try self.getArithmetic(V, ctx, word, per_limb);
+            @memcpy(bits[index * per_limb ..][0..per_limb], part);
+        }
+        return bits;
+    }
 };
 
 fn hasDivisionWidth(program: relation.Program, width: u32) bool {
@@ -160,8 +171,8 @@ fn hasDivisionWidth(program: relation.Program, width: u32) bool {
 
 /// A raw u16 array may skip the fixed table only when every direct use is
 /// an integer view of one supported width. Arithmetic bit decomposition
-/// proves every source limb's range. Wide arithmetic is admitted only for
-/// division in the direct profile.
+/// proves every source limb's range. Generic profiles retain the division
+/// fast path; direct profiles may also use arithmetic-only integer operators.
 fn arithmeticInputWidth(program: relation.Program, input: relation.Input, allow_wide: bool) ?u32 {
     if (input.kind != .u16) return null;
     var width: ?u32 = null;
@@ -183,7 +194,7 @@ fn arithmeticInputWidth(program: relation.Program, input: relation.Input, allow_
         if (std.mem.eql(u8, assertion.lhs, input.name) or std.mem.eql(u8, assertion.rhs, input.name)) return null;
     }
     for (program.public_outputs) |name| if (std.mem.eql(u8, name, input.name)) return null;
-    if (width) |w| if (hasDivisionWidth(program, w)) return w;
+    if (width) |w| if (allow_wide or hasDivisionWidth(program, w)) return w;
     return null;
 }
 
@@ -274,13 +285,13 @@ pub fn compileRaw(comptime V: type, allocator: std.mem.Allocator, program: relat
             .u256_sub => try u256Binary(V, &ctx, lhs.?, rhs.?, .sub),
             .u256_sub_checked => try u256Binary(V, &ctx, lhs.?, rhs.?, .sub_checked),
             .int_view => try intView(V, &ctx, lhs.?, node.constant.?),
-            .int_add_checked => try intBinary(V, &ctx, lhs.?, rhs.?, node.constant.?, .add_checked),
-            .int_add_wrapping => try intBinary(V, &ctx, lhs.?, rhs.?, node.constant.?, .add),
-            .int_sub_checked => try intBinary(V, &ctx, lhs.?, rhs.?, node.constant.?, .sub_checked),
-            .int_sub_wrapping => try intBinary(V, &ctx, lhs.?, rhs.?, node.constant.?, .sub),
-            .int_le => try intBinary(V, &ctx, lhs.?, rhs.?, node.constant.?, .le),
-            .int_mul_wrapping => try intMultiplyWrapping(V, &ctx, lhs.?, rhs.?, node.constant.?),
-            .int_mul_checked => try intMultiplyChecked(V, &ctx, lhs.?, rhs.?, node.constant.?),
+            .int_add_checked => try intBinary(V, &ctx, null, lhs.?, rhs.?, node.constant.?, .add_checked, false),
+            .int_add_wrapping => try intBinary(V, &ctx, null, lhs.?, rhs.?, node.constant.?, .add, false),
+            .int_sub_checked => try intBinary(V, &ctx, null, lhs.?, rhs.?, node.constant.?, .sub_checked, false),
+            .int_sub_wrapping => try intBinary(V, &ctx, null, lhs.?, rhs.?, node.constant.?, .sub, false),
+            .int_le => try intBinary(V, &ctx, null, lhs.?, rhs.?, node.constant.?, .le, false),
+            .int_mul_wrapping => try intMultiplyWrapping(V, &ctx, null, lhs.?, rhs.?, node.constant.?, false),
+            .int_mul_checked => try intMultiplyChecked(V, &ctx, null, lhs.?, rhs.?, node.constant.?, false),
             .int_div_rem => try intDivRem(V, &ctx, &bit_cache, lhs.?, rhs.?, node.constant.?, false),
             .int_cast_checked => try intCastChecked(V, &ctx, lhs.?, node.constant.?),
             .int_bit_and => try intBitwise(V, &ctx, &bit_cache, lhs.?, rhs.?, node.constant.?, .and_),
@@ -725,13 +736,13 @@ fn compileWithSpansMode(comptime V: type, allocator: std.mem.Allocator, program:
             .u256_sub => try u256Binary(V, &ctx, entries[node.lhs.?], entries[node.rhs.?], .sub),
             .u256_sub_checked => try u256Binary(V, &ctx, entries[node.lhs.?], entries[node.rhs.?], .sub_checked),
             .int_view => try intView(V, &ctx, entries[node.lhs.?], node.constant.?),
-            .int_add_checked => try intBinary(V, &ctx, entries[node.lhs.?], entries[node.rhs.?], node.constant.?, .add_checked),
-            .int_add_wrapping => try intBinary(V, &ctx, entries[node.lhs.?], entries[node.rhs.?], node.constant.?, .add),
-            .int_sub_checked => try intBinary(V, &ctx, entries[node.lhs.?], entries[node.rhs.?], node.constant.?, .sub_checked),
-            .int_sub_wrapping => try intBinary(V, &ctx, entries[node.lhs.?], entries[node.rhs.?], node.constant.?, .sub),
-            .int_le => try intBinary(V, &ctx, entries[node.lhs.?], entries[node.rhs.?], node.constant.?, .le),
-            .int_mul_wrapping => try intMultiplyWrapping(V, &ctx, entries[node.lhs.?], entries[node.rhs.?], node.constant.?),
-            .int_mul_checked => try intMultiplyChecked(V, &ctx, entries[node.lhs.?], entries[node.rhs.?], node.constant.?),
+            .int_add_checked => try intBinary(V, &ctx, &bit_cache, entries[node.lhs.?], entries[node.rhs.?], node.constant.?, .add_checked, direct_output),
+            .int_add_wrapping => try intBinary(V, &ctx, &bit_cache, entries[node.lhs.?], entries[node.rhs.?], node.constant.?, .add, direct_output),
+            .int_sub_checked => try intBinary(V, &ctx, &bit_cache, entries[node.lhs.?], entries[node.rhs.?], node.constant.?, .sub_checked, direct_output),
+            .int_sub_wrapping => try intBinary(V, &ctx, &bit_cache, entries[node.lhs.?], entries[node.rhs.?], node.constant.?, .sub, direct_output),
+            .int_le => try intBinary(V, &ctx, &bit_cache, entries[node.lhs.?], entries[node.rhs.?], node.constant.?, .le, direct_output),
+            .int_mul_wrapping => try intMultiplyWrapping(V, &ctx, &bit_cache, entries[node.lhs.?], entries[node.rhs.?], node.constant.?, direct_output),
+            .int_mul_checked => try intMultiplyChecked(V, &ctx, &bit_cache, entries[node.lhs.?], entries[node.rhs.?], node.constant.?, direct_output),
             .int_div_rem => try intDivRem(V, &ctx, &bit_cache, entries[node.lhs.?], entries[node.rhs.?], node.constant.?, direct_output),
             .int_cast_checked => try intCastChecked(V, &ctx, entries[node.lhs.?], node.constant.?),
             .int_bit_and => try intBitwise(V, &ctx, &bit_cache, entries[node.lhs.?], entries[node.rhs.?], node.constant.?, .and_),
@@ -1343,7 +1354,7 @@ fn intBitwise(comptime V: type, ctx: *circuit.builder.Context(V), cache: *BitCac
     return .{ .shape = .{ .kind = .u16, .length = raw.len }, .lanes = try circuit.builder.simd.pack(V, ctx, wrappers), .raw = raw, .integer_spec = encoded };
 }
 
-fn intMultiplyWrapping(comptime V: type, ctx: *circuit.builder.Context(V), lhs: Entry, rhs: Entry, encoded: u32) !Entry {
+fn intMultiplyWrapping(comptime V: type, ctx: *circuit.builder.Context(V), cache: ?*BitCache, lhs: Entry, rhs: Entry, encoded: u32, direct_arithmetic: bool) !Entry {
     const spec = relation.IntegerSpec.decode(encoded) orelse return error.InvalidIntegerSpec;
     const left = lhs.raw orelse return error.InvalidIntegerOperand;
     const right = rhs.raw orelse return error.InvalidIntegerOperand;
@@ -1352,7 +1363,13 @@ fn intMultiplyWrapping(comptime V: type, ctx: *circuit.builder.Context(V), lhs: 
         return error.InvalidIntegerOperand;
     const left_byte_bounded = lhs.integer_spec != null and (lhs.integer_spec.? & 0xff) == 8;
     const right_byte_bounded = rhs.integer_spec != null and (rhs.integer_spec.? & 0xff) == 8;
-    const raw = try integer_multiply.wrapping(V, ctx, left, right, spec.width, left_byte_bounded, right_byte_bounded);
+    const raw = if (direct_arithmetic) blk: {
+        const left_bits = try cache.?.getIntegerArithmetic(V, ctx, left, spec.width);
+        const right_bits = try cache.?.getIntegerArithmetic(V, ctx, right, spec.width);
+        const product = try integer_multiply.wrappingArithmetic(V, ctx, left, right, spec.width, left_bits, right_bits);
+        try cache.?.remember(ctx.scratch(), product.low, product.low_bits, spec.width);
+        break :blk product.low;
+    } else try integer_multiply.wrapping(V, ctx, left, right, spec.width, left_byte_bounded, right_byte_bounded);
     const wrappers = try ctx.scratch().alloc(circuit.builder.wrappers.M31Wrapper(Var), raw.len);
     for (wrappers, raw) |*wrapped, wire| wrapped.* = .newUnsafe(wire);
     return .{ .shape = .{ .kind = .u16, .length = raw.len }, .lanes = try circuit.builder.simd.pack(V, ctx, wrappers), .raw = raw, .integer_spec = encoded };
@@ -1488,7 +1505,7 @@ fn intConditionalNegate(comptime V: type, ctx: *circuit.builder.Context(V), sour
     return output;
 }
 
-fn intMultiplyChecked(comptime V: type, ctx: *circuit.builder.Context(V), lhs: Entry, rhs: Entry, encoded: u32) !Entry {
+fn intMultiplyChecked(comptime V: type, ctx: *circuit.builder.Context(V), cache: ?*BitCache, lhs: Entry, rhs: Entry, encoded: u32, direct_arithmetic: bool) !Entry {
     const spec = relation.IntegerSpec.decode(encoded) orelse return error.InvalidIntegerSpec;
     const left = lhs.raw orelse return error.InvalidIntegerOperand;
     const right = rhs.raw orelse return error.InvalidIntegerOperand;
@@ -1497,7 +1514,16 @@ fn intMultiplyChecked(comptime V: type, ctx: *circuit.builder.Context(V), lhs: E
         return error.InvalidIntegerOperand;
     const left_byte_bounded = lhs.integer_spec != null and (lhs.integer_spec.? & 0xff) == 8;
     const right_byte_bounded = rhs.integer_spec != null and (rhs.integer_spec.? & 0xff) == 8;
-    const product = try integer_multiply.fullProduct(V, ctx, left, right, spec.width, left_byte_bounded, right_byte_bounded);
+    const product: integer_multiply.FullProduct = if (direct_arithmetic) blk: {
+        const left_bits = try cache.?.getIntegerArithmetic(V, ctx, left, spec.width);
+        const right_bits = try cache.?.getIntegerArithmetic(V, ctx, right, spec.width);
+        const arithmetic = if (spec.signed)
+            try integer_multiply.fullProductArithmetic(V, ctx, left, right, spec.width, left_bits, right_bits)
+        else
+            try integer_multiply.checkedUnsignedArithmetic(V, ctx, left, right, spec.width, left_bits, right_bits);
+        try cache.?.remember(ctx.scratch(), arithmetic.low, arithmetic.low_bits, spec.width);
+        break :blk .{ .low = arithmetic.low, .high = arithmetic.high };
+    } else try integer_multiply.fullProduct(V, ctx, left, right, spec.width, left_byte_bounded, right_byte_bounded);
     if (!spec.signed) {
         // The complete unsigned product must fit in exactly W bits.
         for (product.high) |word| try assertZeroArithmetic(V, ctx, word);
@@ -1506,9 +1532,10 @@ fn intMultiplyChecked(comptime V: type, ctx: *circuit.builder.Context(V), lhs: E
         // If U=A*B=low+2^W*high, the signed product fits exactly when
         // high + carry*2^W = sign(A)*B + sign(B)*A +
         // sign(low)*(2^W-1), with carry = sign(A)*sign(B)+sign(low).
-        const sa = try integerSign(V, ctx, left[left.len - 1], spec.width);
-        const sb = try integerSign(V, ctx, right[right.len - 1], spec.width);
-        const sr = try integerSign(V, ctx, product.low[product.low.len - 1], spec.width);
+        const sign_width: u32 = if (spec.width == 8) 8 else 16;
+        const sa = if (direct_arithmetic) try integerSignArithmetic(V, ctx, cache.?, left[left.len - 1], sign_width) else try integerSign(V, ctx, left[left.len - 1], spec.width);
+        const sb = if (direct_arithmetic) try integerSignArithmetic(V, ctx, cache.?, right[right.len - 1], sign_width) else try integerSign(V, ctx, right[right.len - 1], spec.width);
+        const sr = if (direct_arithmetic) try integerSignArithmetic(V, ctx, cache.?, product.low[product.low.len - 1], sign_width) else try integerSign(V, ctx, product.low[product.low.len - 1], spec.width);
         const base_value: u32 = if (spec.width == 8) 256 else 65536;
         const base = try ctx.constant(QM31.fromBase(M31.fromCanonical(base_value)));
         const base_minus_one = try ctx.constant(QM31.fromBase(M31.fromCanonical(base_value - 1)));
@@ -1529,28 +1556,35 @@ fn intMultiplyChecked(comptime V: type, ctx: *circuit.builder.Context(V), lhs: E
             // A four-value polynomial keeps both sides of the field equation
             // below p, so no modular wrap can satisfy a false high word.
             const zero_to_three = try ctx.mul(try ctx.mul(outgoing, try ctx.sub(outgoing, one)), try ctx.mul(try ctx.sub(outgoing, two), try ctx.sub(outgoing, three)));
-            try ctx.eq(zero_to_three, ctx.zero());
+            if (direct_arithmetic) try assertZeroArithmetic(V, ctx, zero_to_three) else try ctx.eq(zero_to_three, ctx.zero());
             const sum = try ctx.add(try ctx.add(try ctx.add(incoming, try ctx.mul(sa, b)), try ctx.mul(sb, a)), try ctx.mul(sr, base_minus_one));
-            try ctx.eq(sum, try ctx.add(high, try ctx.mul(outgoing, base)));
+            const expected = try ctx.add(high, try ctx.mul(outgoing, base));
+            if (direct_arithmetic) try assertZeroArithmetic(V, ctx, try ctx.sub(sum, expected)) else try ctx.eq(sum, expected);
             incoming = outgoing;
             carry_value = outgoing_value;
         }
         // Fixing this carry converts the modular high-word comparison into
         // an exact signed integer equality, including at MIN * -1.
-        try ctx.eq(incoming, try ctx.add(try ctx.mul(sa, sb), sr));
+        const terminal = try ctx.add(try ctx.mul(sa, sb), sr);
+        if (direct_arithmetic) try assertZeroArithmetic(V, ctx, try ctx.sub(incoming, terminal)) else try ctx.eq(incoming, terminal);
     }
     const wrappers = try ctx.scratch().alloc(circuit.builder.wrappers.M31Wrapper(Var), product.low.len);
     for (wrappers, product.low) |*wrapped, wire| wrapped.* = .newUnsafe(wire);
     return .{ .shape = .{ .kind = .u16, .length = product.low.len }, .lanes = try circuit.builder.simd.pack(V, ctx, wrappers), .raw = product.low, .integer_spec = encoded };
 }
 
-fn intBinary(comptime V: type, ctx: *circuit.builder.Context(V), lhs: Entry, rhs: Entry, encoded: u32, mode: U256Mode) !Entry {
+fn intBinary(comptime V: type, ctx: *circuit.builder.Context(V), cache: ?*BitCache, lhs: Entry, rhs: Entry, encoded: u32, mode: U256Mode, direct_arithmetic: bool) !Entry {
     const spec = relation.IntegerSpec.decode(encoded) orelse return error.InvalidIntegerSpec;
     const left = lhs.raw orelse return error.InvalidIntegerOperand;
     const right = rhs.raw orelse return error.InvalidIntegerOperand;
     if (lhs.shape.kind != .u16 or rhs.shape.kind != .u16 or
         left.len != spec.limbCount() or right.len != spec.limbCount()) return error.InvalidIntegerOperand;
-    if (spec.width == 8) {
+    const limb_width: u32 = if (spec.width == 8) 8 else 16;
+    if (direct_arithmetic) {
+        const bits = cache orelse return error.InvalidIntegerBits;
+        for (left) |word| _ = try bits.getArithmetic(V, ctx, word, limb_width);
+        for (right) |word| _ = try bits.getArithmetic(V, ctx, word, limb_width);
+    } else if (spec.width == 8) {
         if (lhs.integer_spec == null or (lhs.integer_spec.? & 0xff) != 8) try constrainByte(V, ctx, left[0]);
         if (rhs.integer_spec == null or (rhs.integer_spec.? & 0xff) != 8) try constrainByte(V, ctx, right[0]);
     }
@@ -1574,17 +1608,25 @@ fn intBinary(comptime V: type, ctx: *circuit.builder.Context(V), lhs: Entry, rhs
             @intFromBool(first < second + carry_value)
         else
             (av + bv + carry_value) / base_value;
-        digit.* = try ctx.guessU16(circuit.builder.ivalue.fromQm31(V, QM31.fromBase(M31.fromCanonical(value))));
-        if (spec.width == 8) try constrainByte(V, ctx, digit.*);
+        const hint = circuit.builder.ivalue.fromQm31(V, QM31.fromBase(M31.fromCanonical(value)));
+        digit.* = if (direct_arithmetic) try ctx.guess(hint) else try ctx.guessU16(hint);
+        if (direct_arithmetic) {
+            _ = try cache.?.getArithmetic(V, ctx, digit.*, limb_width);
+        } else if (spec.width == 8) try constrainByte(V, ctx, digit.*);
         const outgoing = try ctx.guess(circuit.builder.ivalue.fromQm31(V, QM31.fromBase(M31.fromCanonical(next))));
-        try ctx.eq(try ctx.mul(outgoing, outgoing), outgoing);
+        const squared = try ctx.mul(outgoing, outgoing);
+        if (direct_arithmetic) try assertZeroArithmetic(V, ctx, try ctx.sub(squared, outgoing)) else try ctx.eq(squared, outgoing);
         const scaled = try ctx.mul(outgoing, base);
         if (borrowing) {
             const first_wire = if (compare) b else a;
             const second_wire = if (compare) a else b;
-            try ctx.eq(try ctx.add(first_wire, scaled), try ctx.add(try ctx.add(second_wire, incoming), digit.*));
+            const left_equation = try ctx.add(first_wire, scaled);
+            const right_equation = try ctx.add(try ctx.add(second_wire, incoming), digit.*);
+            if (direct_arithmetic) try assertZeroArithmetic(V, ctx, try ctx.sub(left_equation, right_equation)) else try ctx.eq(left_equation, right_equation);
         } else {
-            try ctx.eq(try ctx.add(try ctx.add(a, b), incoming), try ctx.add(digit.*, scaled));
+            const left_equation = try ctx.add(try ctx.add(a, b), incoming);
+            const right_equation = try ctx.add(digit.*, scaled);
+            if (direct_arithmetic) try assertZeroArithmetic(V, ctx, try ctx.sub(left_equation, right_equation)) else try ctx.eq(left_equation, right_equation);
         }
         incoming = outgoing;
         carry_value = next;
@@ -1592,8 +1634,8 @@ fn intBinary(comptime V: type, ctx: *circuit.builder.Context(V), lhs: Entry, rhs
     if (compare) {
         const unsigned_le = try ctx.sub(ctx.one(), incoming);
         const result = if (spec.signed) blk: {
-            const left_sign = try integerSign(V, ctx, left[left.len - 1], spec.width);
-            const right_sign = try integerSign(V, ctx, right[right.len - 1], spec.width);
+            const left_sign = if (direct_arithmetic) try integerSignArithmetic(V, ctx, cache.?, left[left.len - 1], limb_width) else try integerSign(V, ctx, left[left.len - 1], spec.width);
+            const right_sign = if (direct_arithmetic) try integerSignArithmetic(V, ctx, cache.?, right[right.len - 1], limb_width) else try integerSign(V, ctx, right[right.len - 1], spec.width);
             const difference = try ctx.sub(left_sign, right_sign);
             const different = try ctx.mul(difference, difference);
             break :blk try ctx.add(try ctx.mul(different, left_sign), try ctx.mul(try ctx.sub(ctx.one(), different), unsigned_le));
@@ -1606,9 +1648,9 @@ fn intBinary(comptime V: type, ctx: *circuit.builder.Context(V), lhs: Entry, rhs
         if (!spec.signed) {
             try assertZeroArithmetic(V, ctx, incoming);
         } else {
-            const sa = try integerSign(V, ctx, left[left.len - 1], spec.width);
-            const sb = try integerSign(V, ctx, right[right.len - 1], spec.width);
-            const sr = try integerSign(V, ctx, digits[digits.len - 1], spec.width);
+            const sa = if (direct_arithmetic) try integerSignArithmetic(V, ctx, cache.?, left[left.len - 1], limb_width) else try integerSign(V, ctx, left[left.len - 1], spec.width);
+            const sb = if (direct_arithmetic) try integerSignArithmetic(V, ctx, cache.?, right[right.len - 1], limb_width) else try integerSign(V, ctx, right[right.len - 1], spec.width);
+            const sr = if (direct_arithmetic) try integerSignArithmetic(V, ctx, cache.?, digits[digits.len - 1], limb_width) else try integerSign(V, ctx, digits[digits.len - 1], spec.width);
             const ab = try ctx.sub(sa, sb);
             const ar = try ctx.sub(sa, sr);
             const ab_different = try ctx.mul(ab, ab);
@@ -2796,6 +2838,138 @@ test "fixed integer byte bounds, signed overflow and width-specific carry are ci
     var invalid_byte = try compile(QM31, allocator, byte_program.value, byte_values.value);
     defer invalid_byte.deinit();
     try std.testing.expect(!try invalid_byte.isCircuitValid());
+}
+
+test "direct integer binary range carry and signed overflow use only arithmetic gates" {
+    const allocator = std.testing.allocator;
+    const cases = .{
+        .{
+            \\{"version":1,"name":"u8_add","inputs":[{"name":"a","kind":"u16","length":1,"visibility":"private"},{"name":"b","kind":"u16","length":1,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":8},{"name":"bv","op":"int_view","lhs":"b","constant":8},{"name":"result","op":"int_add_checked","lhs":"av","rhs":"bv","constant":8}],"assertions":[],"public_outputs":["result"]}
+            ,
+            \\{"public_inputs":{},"private_inputs":{"a":[254],"b":[1]},"public_outputs":{"result":[255]}}
+            , true,
+        },
+        .{
+            \\{"version":1,"name":"u8_add","inputs":[{"name":"a","kind":"u16","length":1,"visibility":"private"},{"name":"b","kind":"u16","length":1,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":8},{"name":"bv","op":"int_view","lhs":"b","constant":8},{"name":"result","op":"int_add_checked","lhs":"av","rhs":"bv","constant":8}],"assertions":[],"public_outputs":["result"]}
+            ,
+            \\{"public_inputs":{},"private_inputs":{"a":[255],"b":[1]},"public_outputs":{"result":[0]}}
+            , false,
+        },
+        .{
+            \\{"version":1,"name":"u8_add","inputs":[{"name":"a","kind":"u16","length":1,"visibility":"private"},{"name":"b","kind":"u16","length":1,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":8},{"name":"bv","op":"int_view","lhs":"b","constant":8},{"name":"result","op":"int_add_checked","lhs":"av","rhs":"bv","constant":8}],"assertions":[],"public_outputs":["result"]}
+            ,
+            \\{"public_inputs":{},"private_inputs":{"a":[256],"b":[0]},"public_outputs":{"result":[0]}}
+            , false,
+        },
+        .{
+            \\{"version":1,"name":"i8_sub","inputs":[{"name":"a","kind":"u16","length":1,"visibility":"private"},{"name":"b","kind":"u16","length":1,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":264},{"name":"bv","op":"int_view","lhs":"b","constant":264},{"name":"result","op":"int_sub_checked","lhs":"av","rhs":"bv","constant":264}],"assertions":[],"public_outputs":["result"]}
+            ,
+            \\{"public_inputs":{},"private_inputs":{"a":[129],"b":[1]},"public_outputs":{"result":[128]}}
+            , true,
+        },
+        .{
+            \\{"version":1,"name":"i8_sub","inputs":[{"name":"a","kind":"u16","length":1,"visibility":"private"},{"name":"b","kind":"u16","length":1,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":264},{"name":"bv","op":"int_view","lhs":"b","constant":264},{"name":"result","op":"int_sub_checked","lhs":"av","rhs":"bv","constant":264}],"assertions":[],"public_outputs":["result"]}
+            ,
+            \\{"public_inputs":{},"private_inputs":{"a":[128],"b":[1]},"public_outputs":{"result":[127]}}
+            , false,
+        },
+        .{
+            \\{"version":1,"name":"u32_add","inputs":[{"name":"a","kind":"u16","length":2,"visibility":"private"},{"name":"b","kind":"u16","length":2,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":32},{"name":"bv","op":"int_view","lhs":"b","constant":32},{"name":"result","op":"int_add_checked","lhs":"av","rhs":"bv","constant":32}],"assertions":[],"public_outputs":["result"]}
+            ,
+            \\{"public_inputs":{},"private_inputs":{"a":[65535,0],"b":[1,0]},"public_outputs":{"result":[0,1]}}
+            , true,
+        },
+        .{
+            \\{"version":1,"name":"i8_le","inputs":[{"name":"a","kind":"u16","length":1,"visibility":"private"},{"name":"b","kind":"u16","length":1,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":264},{"name":"bv","op":"int_view","lhs":"b","constant":264},{"name":"result","op":"int_le","lhs":"av","rhs":"bv","constant":264}],"assertions":[],"public_outputs":["result"]}
+            ,
+            \\{"public_inputs":{},"private_inputs":{"a":[255],"b":[0]},"public_outputs":{"result":[1]}}
+            , true,
+        },
+    };
+    inline for (cases) |case| {
+        var program = try relation.parseProgram(allocator, case[0]);
+        defer program.deinit();
+        var assigned = try relation.parseAssignment(allocator, case[1]);
+        defer assigned.deinit();
+        try std.testing.expect(directFixedInput(program.value, program.value.inputs[0]));
+        try std.testing.expect(directFixedInput(program.value, program.value.inputs[1]));
+        var witness = try compileDirect(QM31, allocator, program.value, assigned.value, false);
+        defer witness.deinit();
+        var topology = try compileDirect(circuit.builder.NoValue, allocator, program.value, null, false);
+        defer topology.deinit();
+        try std.testing.expectEqual(case[2], try witness.isCircuitValid());
+        try std.testing.expectEqual(witness.circuit.n_vars, topology.circuit.n_vars);
+        try std.testing.expectEqual(witness.circuit.nQm31OpsRows(), topology.circuit.nQm31OpsRows());
+        try std.testing.expectEqual(@as(usize, 0), witness.circuit.eq.items.len);
+        try std.testing.expectEqual(@as(usize, 0), witness.circuit.m31_to_u32.items.len);
+        try std.testing.expectEqual(null, try witness.circuit.firstYieldViolation(allocator));
+    }
+}
+
+test "direct multiplication binds nominal inputs and cached result bits" {
+    const allocator = std.testing.allocator;
+    const cases = .{
+        .{
+            \\{"version":1,"name":"u8_mul_chain","inputs":[{"name":"a","kind":"u16","length":1,"visibility":"private"},{"name":"b","kind":"u16","length":1,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":8},{"name":"bv","op":"int_view","lhs":"b","constant":8},{"name":"product","op":"int_mul_wrapping","lhs":"av","rhs":"bv","constant":8},{"name":"result","op":"int_add_checked","lhs":"product","rhs":"av","constant":8}],"assertions":[],"public_outputs":["result"]}
+            ,
+            \\{"public_inputs":{},"private_inputs":{"a":[3],"b":[4]},"public_outputs":{"result":[15]}}
+            , true,
+        },
+        .{
+            \\{"version":1,"name":"u8_mul_chain","inputs":[{"name":"a","kind":"u16","length":1,"visibility":"private"},{"name":"b","kind":"u16","length":1,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":8},{"name":"bv","op":"int_view","lhs":"b","constant":8},{"name":"product","op":"int_mul_wrapping","lhs":"av","rhs":"bv","constant":8},{"name":"result","op":"int_add_checked","lhs":"product","rhs":"av","constant":8}],"assertions":[],"public_outputs":["result"]}
+            ,
+            \\{"public_inputs":{},"private_inputs":{"a":[256],"b":[4]},"public_outputs":{"result":[0]}}
+            , false,
+        },
+        .{
+            \\{"version":1,"name":"u16_checked_mul","inputs":[{"name":"a","kind":"u16","length":1,"visibility":"private"},{"name":"b","kind":"u16","length":1,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":16},{"name":"bv","op":"int_view","lhs":"b","constant":16},{"name":"result","op":"int_mul_checked","lhs":"av","rhs":"bv","constant":16}],"assertions":[],"public_outputs":["result"]}
+            ,
+            \\{"public_inputs":{},"private_inputs":{"a":[255],"b":[258]},"public_outputs":{"result":[254]}}
+            , false,
+        },
+        .{
+            \\{"version":1,"name":"u16_checked_mul","inputs":[{"name":"a","kind":"u16","length":1,"visibility":"private"},{"name":"b","kind":"u16","length":1,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":16},{"name":"bv","op":"int_view","lhs":"b","constant":16},{"name":"result","op":"int_mul_checked","lhs":"av","rhs":"bv","constant":16}],"assertions":[],"public_outputs":["result"]}
+            ,
+            \\{"public_inputs":{},"private_inputs":{"a":[256],"b":[256]},"public_outputs":{"result":[0]}}
+            , false,
+        },
+        .{
+            \\{"version":1,"name":"u64_checked_mul","inputs":[{"name":"a","kind":"u16","length":4,"visibility":"private"},{"name":"b","kind":"u16","length":4,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":64},{"name":"bv","op":"int_view","lhs":"b","constant":64},{"name":"result","op":"int_mul_checked","lhs":"av","rhs":"bv","constant":64}],"assertions":[],"public_outputs":["result"]}
+            ,
+            \\{"public_inputs":{},"private_inputs":{"a":[0,0,0,32768],"b":[2,0,0,0]},"public_outputs":{"result":[0,0,0,0]}}
+            , false,
+        },
+        .{
+            \\{"version":1,"name":"i8_checked_mul","inputs":[{"name":"a","kind":"u16","length":1,"visibility":"private"},{"name":"b","kind":"u16","length":1,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":264},{"name":"bv","op":"int_view","lhs":"b","constant":264},{"name":"result","op":"int_mul_checked","lhs":"av","rhs":"bv","constant":264}],"assertions":[],"public_outputs":["result"]}
+            ,
+            \\{"public_inputs":{},"private_inputs":{"a":[253],"b":[7]},"public_outputs":{"result":[235]}}
+            , true,
+        },
+        .{
+            \\{"version":1,"name":"i8_checked_mul","inputs":[{"name":"a","kind":"u16","length":1,"visibility":"private"},{"name":"b","kind":"u16","length":1,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":264},{"name":"bv","op":"int_view","lhs":"b","constant":264},{"name":"result","op":"int_mul_checked","lhs":"av","rhs":"bv","constant":264}],"assertions":[],"public_outputs":["result"]}
+            ,
+            \\{"public_inputs":{},"private_inputs":{"a":[128],"b":[255]},"public_outputs":{"result":[128]}}
+            , false,
+        },
+    };
+    inline for (cases) |case| {
+        var program = try relation.parseProgram(allocator, case[0]);
+        defer program.deinit();
+        var assigned = try relation.parseAssignment(allocator, case[1]);
+        defer assigned.deinit();
+        try std.testing.expect(directFixedInput(program.value, program.value.inputs[0]));
+        try std.testing.expect(directFixedInput(program.value, program.value.inputs[1]));
+        var witness = try compileDirect(QM31, allocator, program.value, assigned.value, false);
+        defer witness.deinit();
+        var topology = try compileDirect(circuit.builder.NoValue, allocator, program.value, null, false);
+        defer topology.deinit();
+        try std.testing.expectEqual(case[2], try witness.isCircuitValid());
+        try std.testing.expectEqual(witness.circuit.n_vars, topology.circuit.n_vars);
+        try std.testing.expectEqual(witness.circuit.nQm31OpsRows(), topology.circuit.nQm31OpsRows());
+        try std.testing.expectEqual(@as(usize, 0), witness.circuit.eq.items.len);
+        try std.testing.expectEqual(@as(usize, 0), witness.circuit.m31_to_u32.items.len);
+        try std.testing.expectEqual(null, try witness.circuit.firstYieldViolation(allocator));
+    }
 }
 
 test "fixed integer wrapping multiplication constrains bytes, carries, and public result" {

@@ -75,8 +75,13 @@ four-operation source that lowers to three gates, and Python mutation tests
 reject a forged source map after its report digest is recomputed. The
 on-demand `tests/python/check_optimized_native_package.py` builds a temporary
 real package, attaches v3 explicitly, checks all bound native artifacts, then
-reseals and rejects a malformed duplicate span. It requires a clean pinned
-Stwo dependency.
+reseals and rejects a malformed duplicate span. It also proves one source
+claim, verifies it natively, joins the complete fixed and public main exports
+to the first two proof commitments, and rejects changed roots and a changed
+public output. Use `--work PATH` to retain the exact package and proof. This
+is an opt-in regression, not v3 release admission; it requires a clean pinned
+Stwo dependency. The [worked source/AIR/root example](../../../../formal/s31/S31/Gadgets/Functional/Correspondence/OptimizedSourceAirRows.md)
+gives the handwritten four-lane computation.
 It also checks each source instruction directly against the eight **exported
 fixed AIR columns**, using the same row formula as Lean's general
 `SSADirectGateBridge.expectedRows` and `SSAAirColumnCells.expectedCells`.
@@ -110,3 +115,22 @@ not read it. See the [design brief](../../../../../design/s31/language/DIRECT_GA
 
 The public Python API remains in `../s31.py`; its functions import these
 modules. The dependency direction is `context -> verify -> build -> CLI`.
+
+`source_relation_fragment.py` is a separate development/audit checker for a
+bounded four-lane fragment with private inputs, canonical splat constants,
+and assertions. Its result is explicitly `source-to-relation-only`; it is not
+used for package admission or native verification. It independently parses
+source bytes, compares the entire normalized relation, and optionally checks
+direct-gate public ABI and manifest identities. Its [scope and example](../../../../../design/s31/language/SOURCE_RELATION_FRAGMENT.md)
+explain the exact grammar and remaining circuit/AIR gap.
+
+`record_source_fragment.py` independently parses a bounded version-2 source
+with one nominal M31 record, up to two public/private record inputs, explicit
+scalar add/multiply lets, and a record result. It reconstructs every relation
+input, node, named leaf path, alias, and the v2 ABI digest from source bytes.
+The optional package check compares canonical relation and ABI artifacts even
+if their manifest hashes are recomputed after tampering. Its capability is
+also `source-to-relation-only`; ordinary package verification and native proof
+checking do not treat it as a full compiler or AIR certificate. See the
+[bounded record plan](../../../../../design/s31/language/RECORD_SOURCE_RELATION_FRAGMENT_V2.md)
+and [native package gate](../../tests/acceptance/record_abi/record_source_fragment_v2.py).

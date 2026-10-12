@@ -14,6 +14,7 @@ CLI and existing tests. Implementation files are grouped by compiler phase:
 | `effects.py` | Exhaustive builtin totality inventory and transitive effect check for eager conditional arms. |
 | `products.py` | Structural first-order selection and equality for static tuples and nominal records. |
 | `specialize.py` | Lexical environments, typed function application, source specialization, and normalized relation emission. |
+| `dead_code.py` | Conservative liveness pruning of unobserved total M31 operations in enum-bearing sources, after strict specialization. |
 
 `Fn` values never enter normalized relation JSON. Function application
 specializes a body into the existing `s31_stdlib.Builder`, whose primitive

@@ -37,7 +37,7 @@ ASCII_SPACE = frozenset(" \t\n\v\f\r")
 TOKEN = re.compile(r"[ \t\n\v\f\r]+|//[^\n]*|->|\.\*|[()\[\];:{}=+]|[A-Za-z_][A-Za-z_0-9]*|[0-9]+")
 NAME = re.compile(r"[A-Za-z_][A-Za-z_0-9]*\Z")
 SOURCE_KEYWORDS = frozenset({
-    "use", "let", "in", "if", "then", "else", "fun", "Fn", "fn", "struct",
+    "use", "let", "in", "if", "then", "else", "match", "fun", "Fn", "fn", "struct", "enum",
     "circuit", "blinded", "public", "private", "assert_eq", "m31",
 })
 SCHEMA = "s31-direct-gate-correspondence-v2"

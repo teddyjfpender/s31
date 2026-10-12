@@ -37,6 +37,43 @@ with range-checked limbs and Boolean carries. Checked addition also requires $c_
 
 Signed wrapping addition uses the same bit-vector equation. Signed checked addition must also prove the sign bits and reject when equal-sign operands produce the opposite-sign result. For `i8`, $120+10$ has bit pattern 130, interpreted as $-126$ after wrapping, and is rejected by checked addition. Checked subtraction and multiplication must similarly use the mathematical signed bounds $-2^{W-1}\le x\le2^{W-1}-1$. An integer hint never counts as a constraint.
 
+### Direct arithmetic-only add, subtract, and comparison
+
+The `direct-gate` lowering now has an arithmetic-only path for the five
+normalized operations `int_add_checked`, `int_add_wrapping`,
+`int_sub_checked`, `int_sub_wrapping`, and `int_le`. It applies when source
+integer limbs flow directly from same-width nominal views. Each input and
+result limb is reconstructed from proved Boolean bits:
+
+$$b_k(b_k-1)=0,\qquad w=\sum_{k=0}^{m-1}2^k b_k,\qquad m\in\{8,16\}. $$
+
+The reconstruction equality is an arithmetic zero check in the direct
+circuit. Each carry or borrow is Boolean and every radix equation is checked
+in the same way. For subtraction the local equation is
+$a_j+2^m c_{j+1}=b_j+c_j+r_j$. Because all words are range proved, the
+integer sides of either local equation stay below the M31 modulus; equality
+in the field is therefore equality over ordinary nonnegative integers.
+Signed overflow and ordering use the proved highest bit of each operand and
+result. Reused limbs share their existing bit decomposition through the
+compiler's bit cache.
+
+For example, `std::int::add_wrapping(250_u8, 10_u8)` has output byte `4`
+and Boolean carry `1`, since $250+10=4+256$. The checked operation adds a
+zero-terminal-carry condition and rejects this witness. For signed `i8`,
+`120+10` produces bit pattern `130`, whose proved sign bit is `1`; the
+checked sign rule rejects it, whereas wrapping addition returns `-126`.
+These constraints live in the circuit's arithmetic column; this path needs
+neither the generic equality gate nor the 16-bit range lookup table. An
+unsupported adjacent operation may still require the generic gates, in which
+case the complete `direct-gate` circuit is rejected by profile admission.
+
+The [independent source review](../security/REVIEW_DIRECT_FIXED_INTEGER_BINARY_2026-10-12.md)
+checks these equations and exhaustively enumerates the 8-bit host algebra.
+The [native addition gate](../../../src/frontends/s31/tests/acceptance/math/addition.py)
+checks all ten widths against an independent value oracle, honest generated
+verifiers, changed public claims, and overflow rejection under both sparse
+and direct profiles. These finite checks do not prove the native PCS or FRI.
+
 The [division design and circuit equations](FIXED_WIDTH_DIVISION.md) use the unsigned rule $a=q b+r$, $b>0$, and $0\le r<b$ as an integer equality. Signed division rounds toward zero, the remainder has the dividend's sign, division by zero rejects, and checked `MIN / -1` rejects. Static shifts fix their counts in source: logical shifts insert zero, arithmetic right shift requires a signed operand and repeats its proved sign bit, and rotations reduce the count modulo the width. Aligned shifts rewire bounded 16-bit limbs; unaligned shifts reuse Boolean bit decompositions. The shipped bitwise operations decompose bounded limbs into constrained Boolean bits, apply Boolean polynomial equations, and pack the result; repeated circuit wires reuse their proved decomposition.
 
 ## Lowering and cost

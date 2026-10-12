@@ -89,11 +89,15 @@ and the circuit AIR/PCS soundness remain separate obligations.
 ## Queried opening authentication
 
 `opening_authentication.zig` proves one source-pinned three-call private
-program and decodes its accepted proof. It changes one queried value in the
-fixed tree and in the first main and interaction column of every native
-slot: circuit, two pair chips, two pair bridges, one many chip, and one many
-bridge. It also changes one Merkle authentication-path sibling in each of
-the four commitment trees (fixed, main, interaction, quotient). The 19
+program and decodes its accepted proof. Before the mutation checks, it reads
+the main-tree bridge openings for all three calls and confirms that every
+query directly exposes the four private input and four private output words
+for that call. See the [endpoint disclosure review](../../../../../../design/s31/security/REVIEW_MIXED_PRIVATE_ENDPOINT_DISCLOSURE_2026-10-12.md).
+It then changes one queried value in the
+first and last column of the fixed tree and of every native slot's main and
+interaction span: circuit, two pair chips, two pair bridges, one many chip,
+and one many bridge. It also changes one Merkle authentication-path sibling
+in each of the four commitment trees (fixed, main, interaction, quotient). The 34
 changed proofs pass structural postcard preflight and fail native verification
 at `RootMismatch` for their own PCS tree. The path controls first require
 byte-exact proof decode/encode round-trip and then exactly one changed proof
