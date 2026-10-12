@@ -2,6 +2,13 @@
 
 ## Optimized source row capacity
 
+[The optimized decoded-trace theorem](OptimizedDecodedTrace.md) connects an
+arbitrary physical 512-row trace to exact optimized source semantics, including
+the installed arithmetic roots, Gate event balance, and public pins. It proves
+the compact input-pack producer is live from source admission and CSE, so the
+caller cannot assume this separately. The theorem's trace premises are
+explicit and do not follow from a native verifier result.
+
 [The optimized physical roster proof](OptimizedPhysicalRoster.md) derives the
 compact program's 16-producer budget from the accepted optimizer, then fixes
 its 512-row direct-Gate partition and proves 28 distinct source/public
