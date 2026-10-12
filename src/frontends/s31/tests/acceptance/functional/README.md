@@ -53,6 +53,17 @@ public record ABI and checks independent values and changed-claim rejection:
 python3 src/frontends/s31/tests/acceptance/functional/product_control.py
 ```
 
+`pattern_parameters.py` checks the
+[weighted pair example](../../../examples/functional/pattern_parameters/README.md)
+against handwritten `mul; add` arithmetic. It requires the same normalized
+relation and all reported AIR cost fields under both `gate` and `direct-gate`,
+pins raw and padded geometry, accepts a native proof with an independent
+field-value check, and rejects a changed public claim:
+
+```sh
+python3 src/frontends/s31/tests/acceptance/functional/pattern_parameters.py
+```
+
 `static_sum_dce.py` compares a static enum with an ignored, total arithmetic
 payload against a handwritten recurrence under `direct-chip`. It requires
 identical one-node relations and complete native AIR geometry, then proves the

@@ -1,0 +1,7 @@
+use std@1;
+
+circuit weighted_pair(public x: [m31; 1], public y: [m31; 1])
+    -> public [m31; 1] {
+    let result = x .* y + x;
+    result
+}

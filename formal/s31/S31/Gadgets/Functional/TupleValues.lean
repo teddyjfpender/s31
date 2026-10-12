@@ -61,4 +61,21 @@ theorem nestedTupleSum_accepts (x output : M31) :
   simpa [nestedTupleSum, inputSource, inputResidual, denote] using
     (program_accepts_iff [0] nestedTupleSum (fun _ : Fin 1 => x) output)
 
+/- A model of `fn weighted((a,b): (M31,M31)) { a*b+a }` after the
+   parser's parameter-pattern expansion. The product and function application
+   disappear; this does not assert that the Python parser implements the model. -/
+def patternedPairWeighted : Expr [.field, .field] .field :=
+  .apply
+    (.lambda
+      (.add (.mul (.fst (.var .here)) (.snd (.var .here)))
+            (.fst (.var .here))))
+    (.pair (.var .here) (.var (.there .here)))
+
+def directPairWeighted : Expr [.field, .field] .field :=
+  .add (.mul (.var .here) (.var (.there .here))) (.var .here)
+
+theorem patternedPairWeighted_zero_cost {n : Nat} (x y : Poly n) :
+    specialize patternedPairWeighted (.cons x (.cons y .nil)) =
+      specialize directPairWeighted (.cons x (.cons y .nil)) := rfl
+
 end S31.Functional

@@ -35,6 +35,13 @@ one abstract effect shape, the 1,024-leaf record ABI budget is enforced before
 input expansion, and repeated product assertions are deduplicated and charged
 against a bounded expansion budget.
 
+`test_pattern_parameters.py` checks tuple and nominal record binders in
+named functions and lambdas against direct first-order relations and
+independent field values. It covers eager evaluation, duplicate names,
+malformed product types, inactive partial operations through returned
+closures, and exact `Fn` projection paths through recurrence helpers. A
+non-step function in the same nested product must not acquire step context.
+
 Run through the repository's Python discovery command:
 
 ```sh

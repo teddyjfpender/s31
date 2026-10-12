@@ -1,0 +1,11 @@
+use std@1;
+
+fn weighted((a, b): ([m31; 1], [m31; 1])) -> [m31; 1] {
+    a .* b + a
+}
+
+circuit weighted_pair(public x: [m31; 1], public y: [m31; 1])
+    -> public [m31; 1] {
+    let result = weighted((x, y));
+    result
+}

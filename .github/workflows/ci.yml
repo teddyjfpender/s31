@@ -96,6 +96,11 @@ jobs:
           set -euo pipefail
           python3 src/frontends/s31/tests/acceptance/functional/product_control.py |
             tee zig-out/s31/acceptance/product-control.json
+      - name: Pattern parameters native proof and AIR-cost gate
+        run: |
+          set -euo pipefail
+          python3 src/frontends/s31/tests/acceptance/functional/pattern_parameters.py |
+            tee zig-out/s31/acceptance/pattern-parameters.json
       - name: Preserve native acceptance evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
