@@ -124,8 +124,11 @@ An explicit `parse_source_optimized` / `make_optimized_certificate` /
 first-match CSE. It maps every source producer to a compact canonical ID,
 checks that duplicate source names reuse the original native gate span, and
 replays the compact direct-gate topology and fixed columns. The default text
-package builder and `check_package` remain v2-only; they do not automatically
-admit optimized source. A focused native test checks the reused span for a
+package builder and `check_package` remain conservative v2. Building a text
+source with `--lowering direct-gate --correspondence optimized` records an
+explicit v3 marker, attaches the v3 certificate, and requires the independent
+v3 checker in package verification and five-pin `verify-release`. A focused
+native test checks the reused span for a
 four-operation source that lowers to three gates, and Python mutation tests
 reject a forged source map after its report digest is recomputed. The
 on-demand `tests/python/check_optimized_native_package.py` builds a temporary
@@ -134,8 +137,11 @@ reseals and rejects a malformed duplicate span. It also proves one source
 claim, verifies it natively, joins the complete fixed and public main exports
 to the first two proof commitments, and rejects changed roots and a changed
 public output. Use `--work PATH` to retain the exact package and proof. This
-is an opt-in regression, not v3 release admission; it requires a clean pinned
-Stwo dependency. The [worked source/AIR/root example](../../../../formal/s31/S31/Gadgets/Functional/Correspondence/OptimizedSourceAirRows.md)
+remains a separate opt-in trace regression; the checked-in
+[`optimized_release.py`](../../tests/acceptance/compiler_correspondence/optimized_release.py)
+exercises v3 release admission and both live outputs of the repeated gate.
+Both require a clean pinned Stwo dependency. The
+[worked source/AIR/root example](../../../../formal/s31/S31/Gadgets/Functional/Correspondence/OptimizedSourceAirRows.md)
 gives the handwritten four-lane computation.
 It also checks each source instruction directly against the eight **exported
 fixed AIR columns**, using the same row formula as Lean's general

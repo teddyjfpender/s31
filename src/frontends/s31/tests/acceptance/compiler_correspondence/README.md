@@ -19,6 +19,19 @@ This is a bounded acyclic-function certificate and native regression. It does no
 prove arbitrary functional source compilation or the underlying STARK
 cryptographic assumptions.
 
+`optimized_release.py` builds the checked-in
+[`release_optimized4`](../../../examples/functional/release_optimized4/README.md)
+program in explicit v3 mode. Five source lets produce four native arithmetic
+gates through commutative sorting and reuse. Both repeated results feed the
+output; its canonical IR and full AIR geometry match a handwritten four-gate
+package. The test admits a native
+proof through five-pin `verify-release`, rejects a false result, and rejects
+certificate schema downgrade and unknown schema markers.
+
+```sh
+python3 src/frontends/s31/tests/acceptance/compiler_correspondence/optimized_release.py
+```
+
 `lexical_release.py` repeats the package, cost, proof, release-verifier and
 changed-claim controls for the checked-in
 [`release_let4`](../../../examples/functional/release_let4/README.md)
@@ -341,7 +354,8 @@ This is a finite, honest-prover source-to-main-commitment regression under the
 native exporter and PCS commitment implementation. It does not authenticate
 arbitrary query openings as these 6,144 cells, prove collision resistance or
 FRI/LogUp soundness, or cover private and mixed profiles. The v3 checker is
-still an explicit opt-in: normal package admission remains v2-only.
+still an explicit opt-in. The separate `optimized_release.py` fixture checks
+the generated v3 package through strict release admission.
 
 ## Resealed source-row adversarial controls
 

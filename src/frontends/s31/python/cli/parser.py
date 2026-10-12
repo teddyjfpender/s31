@@ -24,6 +24,9 @@ def make_parser() -> argparse.ArgumentParser:
     sub.add_argument("--lowering", choices=("gate", "chip", "sparse-gate", "sparse-chip", "sparse-wide-gate", "direct-gate", "direct-chip", "sha-joint", "sha-shift", "sha-fused"), default="gate")
     sub.add_argument("--fri-fold-step", type=int, choices=(1, 4), default=1,
                      help="FRI folds per commitment for gate or sparse-wide-gate proofs; 4 can shrink recursive verifier circuits")
+    sub.add_argument("--correspondence", choices=("conservative", "optimized"),
+                     default="conservative",
+                     help="opt into checked operand sorting and common-subexpression reuse under direct-gate")
     sub = commands.add_parser("trial", help="build, prove, verify, and record one trial")
     sub.add_argument("source_or_package", type=Path)
     sub.add_argument("assignment", type=Path)

@@ -177,6 +177,16 @@ checks an inline captured lambda and nested array call inside a helper body
 against two handwritten addition gates at 322 raw and 512 padded QM31 rows.
 A pinned 24-source differential corpus covers nested helper arguments across
 both arithmetic operators, with direct schedules and independent values. The
+explicit v3 optimized mode additionally checks commutative operand sorting
+and common-subexpression reuse within the same bounded public four-lane
+direct-gate profile. The
+[optimized fixture](../../../src/frontends/s31/examples/functional/release_optimized4/README.md)
+has five source lets but four native arithmetic gates; both repeated values
+feed its output. Its AIR geometry matches a handwritten four-gate program at
+324 raw and 512 padded QM31 rows.
+The generated package passes five-pin `verify-release` with an accepted native
+proof and rejects a changed claim and certificate downgrade. This is a
+checked finite example, not a general optimization theorem. The
 certificate does not cover other lambda operations or closure types, general
 higher-order source, records, private inputs, other AIR profiles, or the native
 PCS/FRI proof system, and it does not replace the full compiler correspondence

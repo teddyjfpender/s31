@@ -120,7 +120,8 @@ def dispatch(args: argparse.Namespace) -> None:
             sys.stdout.buffer.write(normalized)
         return
     if args.command == "build":
-        print(build(args.source, args.out, args.lowering, args.fri_fold_step))
+        print(build(args.source, args.out, args.lowering, args.fri_fold_step,
+                    args.correspondence))
         return
     if args.command == "trial":
         print(json.dumps(trial(args.source_or_package, args.assignment, args.out,

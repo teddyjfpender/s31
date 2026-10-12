@@ -136,6 +136,15 @@ its handwritten form. A bounded [lexical `let … in` example](../examples/funct
 likewise has exactly the two handwritten arithmetic gates and a strict native
 release proof. Other S31 programs can still use `verify-pinned`; their
 source-to-AIR correspondence is outside this particular certificate.
+For an explicitly optimized public four-lane program, build with
+`--lowering direct-gate --correspondence optimized`. This selects the
+independently checked v3 certificate, which also admits commutative operand
+sorting and repeated gate reuse. The
+[gate-sharing example](../examples/functional/release_optimized4/README.md)
+has five source lets and four native arithmetic gates; both copies of the
+repeated addition feed the public output. Its v3 package passes
+the same five-pin `verify-release` command; the default conservative build
+does not certify this source.
 The [named function value example](../examples/functional/release_higher_order4/README.md)
 passes a function through a `Fn` parameter and a lexical binding, then proves
 exactly the same two-gate AIR as its handwritten program. The

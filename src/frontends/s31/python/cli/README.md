@@ -7,6 +7,13 @@ Commands that read an existing package call `verify_package` before using its
 artifacts. The `explain` and `equations` commands also verify the package
 before rendering reports.
 
+`build --lowering direct-gate --correspondence optimized` opts a bounded
+public four-lane text program into the independent v3 source-to-gate checker.
+It certifies commutative operand sorting and common-subexpression reuse,
+records the selected certificate schema in the manifest, and makes subsequent
+package checks and `verify-release` recompute that certificate. The default
+build remains the conservative v2 source fragment.
+
 `verify-pinned` additionally checks exact source, key, prover and verifier
 digests supplied from outside the package; text packages require a fifth
 digest for `source.s31`. It performs that check in the same invocation as

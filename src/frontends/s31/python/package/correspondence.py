@@ -1378,7 +1378,7 @@ def make_certificate(package: Path) -> dict[str, Any]:
 
 
 def make_optimized_certificate(package: Path) -> dict[str, Any]:
-    """Explicit v3 opt-in; the normal package builder remains v2-only."""
+    """Create the explicit v3 certificate for checked gate reuse."""
     material, _ = _checked_material(package, optimized=True)
     return material
 
@@ -1396,7 +1396,7 @@ def check_package(package: Path) -> dict[str, Any]:
 
 
 def check_optimized_package(package: Path) -> dict[str, Any]:
-    """Recheck a rooted v3 certificate without changing v2 admission."""
+    """Recheck a rooted v3 certificate for explicit optimized admission."""
     material, manifest = _checked_material(package, optimized=True)
     path = package / "correspondence-certificate.json"
     listed = manifest.get("artifacts", {}).get(path.name)

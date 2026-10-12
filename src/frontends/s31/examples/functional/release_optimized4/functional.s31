@@ -1,0 +1,8 @@
+circuit reverse_share(public x: [m31; 4]) -> public [m31; 4] {
+    let a = x + x;
+    let b = x .* x;
+    let c = a + b;
+    let d = b + a;
+    let e = c + d;
+    e
+}

@@ -47,6 +47,16 @@ The [composed helper example](../examples/functional/release_helper_composition4
 places a nested array call and inline captured `fun` inside another helper's
 body. Those source expressions leave only the two additions computing `3x`.
 
+The separate [optimized release example](../examples/functional/release_optimized4/README.md)
+uses `--correspondence optimized` with `direct-gate`. Its independent v3
+checker accepts reversed commutative operands and repeated gates: the five
+source lets `a = x + x`, `b = x .* x`, `c = a + b`, `d = b + a`,
+`e = c + d` become four native arithmetic gates. Both `c` and `d` feed the
+output. The native AIR geometry equals a handwritten four-gate program, and
+its proof passes the strict five-pin release verifier.
+This mode is opt-in and currently covers the same bounded public four-lane
+direct-gate fragment as the conservative checker.
+
 ## Auditing a named function all the way to packed rows
 
 This small program is also the five-lane subtraction acceptance fixture:

@@ -351,12 +351,25 @@ def verify_package(package: Path) -> dict:
                             any(char not in "0123456789abcdef" for char in value)
                             for value in sources.values())):
                 raise ValueError("S31 standard library lock does not match text source")
-    from package.correspondence import UnsupportedFragment, check_package, parse_source
+    from package.correspondence import (
+        OPTIMIZED_SCHEMA, SCHEMA, UnsupportedFragment, check_optimized_package,
+        check_package, parse_source, parse_source_optimized,
+    )
 
     certificate_path = package / "correspondence-certificate.json"
     certificate_listed = certificate_path.name in manifest["artifacts"]
     topology_path = package / "gate-topology.json"
     topology_present = topology_path.name in manifest["artifacts"] or topology_path.exists()
+    correspondence_schema = manifest.get("correspondence_schema")
+    if correspondence_schema not in (None, SCHEMA, OPTIMIZED_SCHEMA):
+        raise ValueError("unknown S31 correspondence schema")
+    if correspondence_schema == OPTIMIZED_SCHEMA:
+        if ("source_text_sha256" not in manifest or manifest.get("lowering") != "direct-gate" or
+                not certificate_listed or not topology_present):
+            raise ValueError("optimized correspondence requires a certified direct-gate text package")
+        parse_source_optimized((package / "source.s31").read_bytes())
+        check_optimized_package(package)
+        return manifest
     if "source_text_sha256" in manifest and manifest.get("lowering") == "direct-gate":
         try:
             parse_source((package / "source.s31").read_bytes())

@@ -1,7 +1,7 @@
 """Opt-in native direct-gate package smoke test for reversed/CSE source.
 
-Run explicitly on a clean pinned Stwo dependency. The normal package builder
-remains v2-only. This script attaches the separate v3 correspondence artifact
+Run explicitly on a clean pinned Stwo dependency. The default package builder
+remains v2. This script attaches the separate v3 correspondence artifact
 to a fresh package, derives all public main cells from normalized source,
 joins the native proof roots, and rejects rooted and full-trace mutations.
 """
