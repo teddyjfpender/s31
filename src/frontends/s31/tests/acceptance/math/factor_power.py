@@ -20,9 +20,10 @@ FACTOR = 3
 QUOTIENT = 65535
 EXPONENT = FACTOR * QUOTIENT
 STAGES = 4
+FUSED_EXPONENT = (EXPONENT**STAGES - 1) % (P - 1) + 1
 EXAMPLES = S31 / "examples/arithmetic/powers"
 EXPECTED = {
-    "factor-chain": (84, 487, 512, 4096),
+    "factor-chain": (47, 413, 512, 4096),
     "binary": (128, 575, 1024, 8192),
 }
 
@@ -52,7 +53,8 @@ def _binary_source() -> str:
 def _check(kind: str, source: Path, assignment: Path, work: Path) -> dict:
     package = s31.build(source, work / kind, "direct-gate")
     relation = json.loads((package / "source.s31.json").read_text())
-    if symbolic_exponent(relation, name="pow_factor") != EXPONENT**STAGES:
+    expected_exponent = FUSED_EXPONENT if kind == "factor-chain" else EXPONENT**STAGES
+    if symbolic_exponent(relation, name="pow_factor") != expected_exponent:
         raise AssertionError(f"{kind} has the wrong symbolic exponent")
     cost = json.loads((package / "cost-report.json").read_text())
     nodes, raw, padded, cells = EXPECTED[kind]
@@ -95,10 +97,11 @@ def run() -> dict:
             _check("factor-chain", EXAMPLES / "pow196605_factor4.s31", assignment, work),
             _check("binary", binary, assignment, work),
         ]
-    return {"schema": "s31-factor-power-native-v1", "lanes": 8,
+    return {"schema": "s31-factor-power-native-v2", "lanes": 8,
             "stages": STAGES, "exponent_per_stage": EXPONENT,
+            "fused_exponent": FUSED_EXPONENT,
             "binary_source_sha256": hashlib.sha256(binary_source.encode()).hexdigest(),
-            "saved_arithmetic_nodes": 44, "saved_raw_qm31_rows": 88,
+            "saved_arithmetic_nodes": 81, "saved_raw_qm31_rows": 162,
             "halved_padded_rows": True, "cases": cases}
 
 

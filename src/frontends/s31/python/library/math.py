@@ -172,19 +172,33 @@ def pow_static(builder: Builder, value: Value, exponent: int, *, wanted: str | N
     _m31(value)
     if not 0 <= exponent < P:
         raise TypeErrorS31("std::math::pow exponent must be a static integer in 0..p-1")
+    builder.static_power_calls += 1
     if exponent == 0:
         return builder.splat(1, value.typ.length)
     if value.constant is not None:
         return builder.splat(pow(value.constant, exponent, P), value.typ.length)
-    chain = exponent_chain(exponent)
-    powers = {1: value}
+    origin = builder.static_power_origins.get(value.ref) if value.ref is not None else None
+    if origin is not None:
+        builder.static_power_opportunities += 1
+    base, prior_exponent = origin if origin is not None else (value, 1)
+    # For every x, including zero, positive powers repeat with period p-1
+    # when the zero residue is represented by p-1. The Lean lemma in
+    # Functional/PowerFusion.lean proves this exact total-field identity.
+    combined = ((prior_exponent * exponent - 1) % (P - 1)) + 1
+    use_fused = builder.fuse_static_powers and origin is not None
+    target = combined if use_fused else exponent
+    chain = exponent_chain(target)
+    powers = {1: base if use_fused else value}
     for index, next_power in enumerate(chain[1:], 1):
         current = chain[index - 1]
         prior = next_power - current
         powers[next_power] = builder.binary(
             "mul", powers[current], powers[prior],
             wanted=wanted if index == len(chain) - 1 else None, span=span)
-    return powers[exponent]
+    result = powers[target]
+    if result.ref is not None and (result.ref != base.ref or combined != 1):
+        builder.static_power_origins[result.ref] = (base, combined)
+    return result
 
 
 def _group(value: StaticGroup, operation: str) -> tuple[Value, ...]:

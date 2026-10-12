@@ -64,10 +64,18 @@ def fake_report(check: gate.Check) -> tuple[str, str]:
                               "proof_bytes": 1000}
                              for flag, x in ((1, 7), (0, 7), (0, 0))]}
     elif fmt == "power-native":
-        report = {"schema": "s31-power-chain-native-v1", "lanes": 8,
+        report = {"schema": "s31-power-chain-native-v2", "lanes": 8,
                   "stages": 4, "exponent_per_stage": 65535,
-                  "saved_arithmetic_nodes": 44, "saved_raw_qm31_rows": 88,
+                  "fused_exponent": 2146172967,
+                  "saved_arithmetic_nodes": 81, "saved_raw_qm31_rows": 162,
                   "halved_padded_rows": True,
+                  "zero_residue": {"symbolic_exponent": 2147483646,
+                                   "nodes": 37, "zero_input_verified": True,
+                                   "nonzero_input_verified": True,
+                                   "native_verified": True,
+                                   "changed_claim_rejected": True,
+                                   "independent_oracle_passed": True,
+                                   "proof_bytes": 1000},
                   "cases": [{"kind": kind, "nodes": nodes,
                              "raw_qm31_rows": raw, "padded_qm31_rows": padded,
                              "preprocessed_cells": cells, "proof_bytes": 1000,
@@ -76,14 +84,15 @@ def fake_report(check: gate.Check) -> tuple[str, str]:
                              "independent_oracle_passed": True,
                              "symbolic_exponent_checked": True}
                             for kind, nodes, raw, padded, cells in
-                            (("addition-chain", 76, 471, 512, 4096),
+                            (("addition-chain", 39, 397, 512, 4096),
                              ("binary", 120, 559, 1024, 8192))]}
     elif fmt == "factor-power-native":
-        report = {"schema": "s31-factor-power-native-v1", "lanes": 8,
+        report = {"schema": "s31-factor-power-native-v2", "lanes": 8,
                   "stages": 4, "exponent_per_stage": 196605,
+                  "fused_exponent": 2041318647,
                   "binary_source_sha256":
                   "0d84aa30895d22dd5c105c7a0a384913d53ef0b0f45364dcbd4470cf93b952a3",
-                  "saved_arithmetic_nodes": 44, "saved_raw_qm31_rows": 88,
+                  "saved_arithmetic_nodes": 81, "saved_raw_qm31_rows": 162,
                   "halved_padded_rows": True,
                   "cases": [{"kind": kind, "nodes": nodes,
                              "raw_qm31_rows": raw, "padded_qm31_rows": padded,
@@ -93,7 +102,7 @@ def fake_report(check: gate.Check) -> tuple[str, str]:
                              "independent_oracle_passed": True,
                              "symbolic_exponent_checked": True}
                             for kind, nodes, raw, padded, cells in
-                            (("factor-chain", 84, 487, 512, 4096),
+                            (("factor-chain", 47, 413, 512, 4096),
                              ("binary", 128, 575, 1024, 8192))]}
     elif fmt == "record-source-native":
         report = {"schema": "s31-record-source-fragment-native-v2",
@@ -196,7 +205,7 @@ class FeatureGateTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "static enum source corpus"):
             gate.validate_output(check, stdout, stderr.replace("Ran 2", "Ran 1"))
 
-    def test_power_chain_native_report_requires_both_proofs_and_costs(self) -> None:
+    def test_power_chain_native_report_requires_proofs_edge_and_costs(self) -> None:
         check = next(item for item in gate.checks("full")
                      if item.id == "pow65535-native")
         stdout, _ = fake_report(check)
@@ -204,7 +213,9 @@ class FeatureGateTests(unittest.TestCase):
         for mutation in (lambda report: report["cases"].pop(),
                          lambda report: report["cases"][0].update({"padded_qm31_rows": 1024}),
                          lambda report: report["cases"][1].update({"symbolic_exponent_checked": False}),
-                         lambda report: report["cases"][0].update({"native_verified": False})):
+                         lambda report: report["cases"][0].update({"native_verified": False}),
+                         lambda report: report["zero_residue"].update({"zero_input_verified": False}),
+                         lambda report: report["zero_residue"].update({"symbolic_exponent": 0})):
             report = json.loads(stdout)
             mutation(report)
             with self.assertRaisesRegex(ValueError, "power chain"):

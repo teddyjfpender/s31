@@ -29,11 +29,31 @@ def compile_text(source: str, filename: str = "<source>") -> tuple[dict[str, Any
             raise SourceError(f"{filename}: circuit name conflicts with a function")
         Elaborator(functions, circuit, filename).check()
         TotalityChecker(functions, circuit, filename).check()
-        relation, source_map = Compiler(functions, circuit, filename).compile()
+        baseline = Compiler(functions, circuit, filename)
+        relation, source_map = baseline.compile()
         # The independently certified direct-gate grammar reconstructs every
         # arithmetic let and excludes enum declarations. Keep that contract
-        # byte-for-byte stable while erasing dead total work in enum sources.
-        return prune_total_dead_nodes(relation, source_map) if parser.sums else (relation, source_map)
+        # byte-for-byte stable while erasing dead total work in enum and
+        # static-power sources. Only pure, total field nodes can be erased.
+        if parser.sums or baseline.builder.static_power_calls:
+            relation, source_map = prune_total_dead_nodes(relation, source_map)
+        if not baseline.builder.static_power_opportunities:
+            return relation, source_map
+
+        # Compile an independent fused candidate and retain it only if the
+        # complete reachable relation has fewer nodes. This accounts for
+        # intermediate powers that remain live through another output or an
+        # assertion; those cases must never pay for duplicated chains.
+        try:
+            fused = Compiler(functions, circuit, filename, fuse_static_powers=True)
+            fused_relation, fused_map = fused.compile()
+        except SourceError as exc:
+            if "relation item expansion limit exceeded" not in str(exc):
+                raise
+            return relation, source_map
+        fused_relation, fused_map = prune_total_dead_nodes(fused_relation, fused_map)
+        return ((fused_relation, fused_map) if len(fused_relation["nodes"]) < len(relation["nodes"])
+                else (relation, source_map))
     except RecursionError as exc:
         raise SourceError(f"{filename}: expression nesting limit exceeded") from exc
 

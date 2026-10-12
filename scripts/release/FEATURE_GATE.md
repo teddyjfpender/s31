@@ -28,7 +28,10 @@ i8 subtraction/order, u8 checked/wrapping multiplication, and public u8/u32
 record ABI. `full` has 21 checks. It expands the direct integer native runs to
 all ten widths, adds the public u16 record ABI proof, and compares both
 `pow<65535>` and factored `pow<196605>` against explicit binary circuits. Each
-four-call comparison crosses a padded AIR boundary. The bounded
+four-call comparison fuses positive exponents, preserves zero, and crosses a
+padded AIR boundary. The `pow<65535>` check additionally proves the
+zero-residue exponent case, including a zero lane, with its generated native
+verifier. The bounded
 v1 checker remains source-only;
 its tests include re-sealed relation mutations but establish only the
 `source-to-relation-only` capability. The v2 record source proof binds the

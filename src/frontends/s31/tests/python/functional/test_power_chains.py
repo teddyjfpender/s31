@@ -114,7 +114,7 @@ class PowerChainTests(unittest.TestCase):
         self.assertEqual(direct["inputs"], functional["inputs"])
         self.assertEqual(direct["public_outputs"], functional["public_outputs"])
         self.assertEqual(direct["assertions"], functional["assertions"])
-        self.assertEqual(len(graph(direct)), 84)
+        self.assertEqual(len(graph(direct)), 47)
         self.assertEqual(graph(direct), graph(functional))
         assignment = json.loads(
             (examples / "pow196605_factor4.valid.json").read_text())

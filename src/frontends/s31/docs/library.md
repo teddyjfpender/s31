@@ -163,11 +163,12 @@ For $65535=2^{16}-1$, the compiler first computes $x^{255}$ in ten
 multiplications, squares it eight times, then multiplies by the saved
 $x^{255}$. That is **19** multiplications instead of the binary schedule's
 **30**. The [four-call eight-lane example](../examples/arithmetic/powers/README.md)
-has 76 instead of 120 multiplication nodes. Its native direct-Gate AIR has
-471 instead of 559 raw QM31 rows, and padding falls from 1,024 to 512 rows.
-Both source forms pass native proofs and changed-claim rejection. The first
-local run took about 0.49 versus 0.50 seconds to prove; that single timing
-observation is too weak to claim a wall-clock speedup.
+has 39 instead of 120 multiplication nodes after fusing the four positive powers.
+Its native direct-Gate AIR has 397 instead of 559 raw QM31 rows, and padding
+falls from 1,024 to 512 rows. Both source forms pass native proofs and
+changed-claim rejection. One local run took 0.519 versus 0.479 seconds to
+prove; timing here is dominated by other work and is not evidence of a
+wall-clock speedup.
 
 For $196605=3\cdot65535$, factor reuse computes $y=x^3$ with two gates and
 then applies the 19-gate all-ones schedule to $y$. The last multiplication
@@ -182,7 +183,7 @@ $p=2^{31}-1$, the key saved values are:
 | Final product | 65,535 | $8,192\cdot2,097,152\bmod p=8$ |
 
 The [four-call eight-lane factor example](../examples/arithmetic/powers/README.md)
-uses 84 versus 128 multiplication nodes, 487 versus 575 raw QM31 rows, and
+uses 47 versus 128 multiplication nodes, 413 versus 575 raw QM31 rows, and
 512 versus 1,024 padded rows. Both generated verifiers accept the same
 independently calculated outputs and reject changed public claims. The
 [Lean certificate](../../../../formal/s31/S31/Gadgets/Functional/PowerChains.lean)
@@ -190,6 +191,13 @@ proves the 21-step multiplication schedule reaches $x^{196605}$ for every
 field input; its connection to the production compiler is checked by a
 separate source test, and native AIR correspondence remains an explicit
 boundary.
+
+Composing positive powers uses $E'=((E-1)\bmod(p-1))+1$. The `+1` keeps
+the result at zero correct even when $E$ is a multiple of $p-1$.
+[`PowerFusion.lean`](../../../../formal/s31/S31/Gadgets/Functional/PowerFusion.lean)
+proves the field identity for every input. The compiler compares complete
+reachable fused and unfused graphs and selects the smaller one, so a power
+also used by another public result does not acquire a larger circuit.
 
 For this four-lane fixture, native `direct-gate` builds give the library call
 and handwritten five-gate source the **same canonical IR digest**. They each

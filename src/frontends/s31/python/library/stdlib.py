@@ -81,8 +81,15 @@ class StepState:
 
 
 class Builder:
-    def __init__(self, name: str) -> None:
+    def __init__(self, name: str, *, fuse_static_powers: bool = False) -> None:
         self.name = name
+        # Compiler-only provenance. It never appears in the relation or ABI.
+        # The source compiler compares both complete graphs before selecting
+        # a fused power schedule, so sharing cannot increase circuit size.
+        self.fuse_static_powers = fuse_static_powers
+        self.static_power_origins: dict[str, tuple[Value, int]] = {}
+        self.static_power_calls = 0
+        self.static_power_opportunities = 0
         self.inputs: list[dict[str, Any]] = []
         self.input_words = 0
         self.nodes: list[dict[str, Any]] = []

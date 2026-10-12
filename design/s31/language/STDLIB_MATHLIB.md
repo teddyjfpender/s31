@@ -112,7 +112,8 @@ This does not claim a globally optimal chain. Constant inputs fold at compile
 time. The [worked `pow<15>` circuit](../../../src/frontends/s31/docs/library.md#static-powers-become-multiplication-circuits)
 uses five gates against the prior binary schedule's six.
 The [four-call `pow<65535>` comparison](../../../src/frontends/s31/examples/arithmetic/powers/README.md)
-uses 76 instead of 120 multiplication nodes, reducing the native padded
+uses 39 instead of 120 multiplication nodes after positive-exponent fusion,
+reducing the native padded
 QM31 trace from 1,024 to 512 rows. Both forms have accepted native proofs.
 
 For example, [`math_polynomial4.s31`](../../../src/frontends/s31/examples/arithmetic/math_polynomial4.s31)
