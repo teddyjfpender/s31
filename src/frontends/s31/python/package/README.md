@@ -52,8 +52,8 @@ inherits the certificate's stated AIR/PCS and native implementation assumptions.
 For admitted public four-lane programs, the separate
 [pinned public trace audit](../../tools/audit/README.md) verifies one proof and
 compares every source-derived Gate base cell with its native public export and
-accepted main commitment. It is optional, so ordinary `verify-release` does
-not pay for rebuilding a public trace.
+recommits those cells against the accepted main commitment. It is optional,
+so ordinary `verify-release` does not pay for rebuilding a public trace.
 The v2 grammar now includes up to eight pure static functions with zero to two
 parameters, of type `[m31; 4]` or unary
 `Fn([m31; 4]) -> [m31; 4]`, and either result type. It accepts bounded bodies of add,

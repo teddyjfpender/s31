@@ -388,10 +388,11 @@ the same complete reconstruction for any source admitted by the strict public
 four-lane release checker. The `subtraction_release.py` and optimized v3
 acceptance cases run it on ordered subtraction. It compares every fixed and
 main cell from the native export with the independent source schedule, checks
-the public words and serialized main digest, then joins the reported main
-root to the exact proof accepted by strict release verification. A changed
-main cell fails the independent comparison. Both trace inspection commands
-reject a nonempty private assignment before exporting any rows or roots.
+the public words and serialized main digest, and recommits the source-derived
+main columns through the native PCS. Both that root and the export's reported
+root must equal the exact proof's main commitment. A changed source-derived
+cell changes its root. Both trace inspection commands reject a nonempty
+private assignment before exporting any rows or roots.
 
 This is a finite, honest-prover source-to-main-commitment regression under the
 native exporter and PCS commitment implementation. It does not authenticate

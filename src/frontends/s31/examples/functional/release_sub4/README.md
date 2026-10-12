@@ -77,8 +77,10 @@ the exported fixed columns. The acceptance check independently reconstructs
 all 512 rows of the native fixed and main columns, including the source rows,
 public masks, and constant gates. It compares all 6,144 main M31 words with
 the exported trace, checks the serialized main digest, and joins the reported
-commitment root to the exact proof accepted by strict verification. A changed
-exported main cell fails that comparison. This is an honest-prover trace
+commitment root to the exact proof accepted by strict verification. The
+auditor also recommits its independently derived main columns through the
+native PCS and requires the same proof root. A changed main cell changes that
+root and fails the comparison. This is an honest-prover trace
 check; both inspection commands also reject a nonempty private assignment.
 Arbitrary lookup and PCS openings remain separate proof work.
 

@@ -186,8 +186,10 @@ it does not establish the missing authentication theorem for arbitrary proof
 openings.
 The reusable [pinned public trace audit](../../tools/audit/README.md) runs
 that check for any source admitted by the bounded public direct-Gate release
-checker. CI exercises a square helper, ordered subtraction, and optimized
-subtraction through the same auditor.
+checker. It now recommits the source-derived main columns through the pinned
+native PCS and requires that root to equal the accepted proof's main root.
+CI exercises a square helper, ordered subtraction, and optimized subtraction
+through the same auditor.
 
 ## A complete modeled 512-row trace
 

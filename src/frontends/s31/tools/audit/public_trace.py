@@ -23,7 +23,9 @@ sys.path.insert(0, str(S31 / "python"))
 from abi.binding_v2 import parse_assignment_json  # noqa: E402
 from package.context import invoke, write_json  # noqa: E402
 from package.correspondence import read_canonical_json  # noqa: E402
-from package.direct_gate_main_correspondence import check_export, source_values  # noqa: E402
+from package.direct_gate_main_correspondence import (  # noqa: E402
+    canonical_column_bytes, check_export, expected_main_columns, source_values,
+)
 from package.fixed_root_join import proof_roots  # noqa: E402
 from package.release_admission import bounded_direct_gate_snapshot  # noqa: E402
 from runtime.proof_inputs import proof_inputs_snapshot  # noqa: E402
@@ -71,6 +73,42 @@ def _check_snapshot(package: Path, manifest: dict, certificate: dict,
     invoke(str(verifier), str(proof), str(statement), str(key_path))
 
     with tempfile.TemporaryDirectory(prefix="s31-public-trace-audit-") as directory:
+        expected_main, expected_public = expected_main_columns(syntax, input_words)
+        if expected_public != input_words + output_words:
+            raise ValueError("source-derived public words differ from the statement")
+        main_path = Path(directory) / "source-derived-main.json"
+        write_json(main_path, {"schema": "s31-direct-gate-main-columns-v1",
+                               "main_columns": expected_main})
+        recommitted = json.loads(invoke(str(prover), "inspect-main-root-from-columns",
+                                        str(main_path)))
+        main_digest = hashlib.sha256(canonical_column_bytes(expected_main, 12)).hexdigest()
+        if (set(recommitted) != {"schema", "program_sha256", "main_root",
+                                 "main_columns_sha256"} or
+                recommitted["schema"] != "s31-direct-gate-recommitted-main-root-v1" or
+                recommitted["program_sha256"] != manifest.get("program_sha256") or
+                recommitted["main_columns_sha256"] != main_digest):
+            raise ValueError("source-derived main columns were not recommitted exactly")
+        changed_main = copy.deepcopy(expected_main)
+        changed_main[0][0] = (changed_main[0][0] + 1) % P
+        changed_path = Path(directory) / "changed-main.json"
+        write_json(changed_path, {"schema": "s31-direct-gate-main-columns-v1",
+                                  "main_columns": changed_main})
+        changed_root = json.loads(invoke(str(prover), "inspect-main-root-from-columns",
+                                         str(changed_path)))
+        if changed_root.get("main_root") == recommitted["main_root"]:
+            raise AssertionError("changed source-derived main cell retained its PCS root")
+        invalid_main = copy.deepcopy(expected_main)
+        invalid_main[0][0] = P
+        invalid_path = Path(directory) / "noncanonical-main.json"
+        write_json(invalid_path, {"schema": "s31-direct-gate-main-columns-v1",
+                                  "main_columns": invalid_main})
+        invalid = subprocess.run((str(prover), "inspect-main-root-from-columns",
+                                  str(invalid_path)), capture_output=True, text=True,
+                                 timeout=120, check=False)
+        if (invalid.returncode == 0 or "NonCanonicalM31Word" not in invalid.stderr or
+                '"main_root"' in invalid.stdout + invalid.stderr):
+            raise ValueError("main recommitment accepted a noncanonical M31 word")
+
         assignment = Path(directory) / "assignment.json"
         write_json(assignment, {"public_inputs": {syntax["input"]: input_words},
                                 "private_inputs": {},
@@ -114,7 +152,8 @@ def _check_snapshot(package: Path, manifest: dict, certificate: dict,
     proof_bytes = proof.read_bytes()
     fixed_root, main_root, _ = proof_roots(proof_bytes)
     if (fixed_root.hex() != key.get("preprocessed_root") or
-            main_root.hex() != root.get("main_root")):
+            main_root.hex() != root.get("main_root") or
+            main_root.hex() != recommitted["main_root"]):
         raise ValueError("accepted proof commitments differ from reconstructed public trace")
     return {"schema": "s31-pinned-public-main-trace-audit-v1",
             "scope": "one accepted public direct-Gate proof; PCS/FRI assumptions remain",
@@ -122,12 +161,15 @@ def _check_snapshot(package: Path, manifest: dict, certificate: dict,
             "canonical_ir_sha256": key["canonical_ir_sha256"],
             "fixed_root": fixed_root.hex(),
             "main_root": main_root.hex(),
+            "source_recommitted_main_root": recommitted["main_root"],
             "main_cells": reconstructed["source_derived_main_cells"],
             "main_columns_sha256": reconstructed["source_derived_main_columns_sha256"],
             "public_words": reconstructed["source_derived_public_words"],
             "proof_sha256": hashlib.sha256(proof_bytes).hexdigest(),
             "native_verifier_accepted": True,
             "changed_main_cell_rejected": True,
+            "changed_source_main_root_rejected": True,
+            "noncanonical_main_word_rejected": True,
             "private_assignment_diagnostic_rejected": True}
 
 

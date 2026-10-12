@@ -515,7 +515,8 @@ def native_private_source_rejection(work: Path) -> dict:
     assigned.write_text(json.dumps({"public_inputs": {}, "private_inputs": {"x": list(INPUT)},
                                     "public_outputs": {"result": [0, 1, 4, 49]}},
                                    sort_keys=True) + "\n")
-    for command in ("inspect-physical-rows", "inspect-physical-root"):
+    for command in ("inspect-physical-rows", "inspect-physical-root",
+                    "inspect-main-root-from-columns"):
         result = subprocess.run((str(prover), command, str(assigned)),
                                 capture_output=True, text=True, timeout=120, check=False)
         if (result.returncode == 0 or

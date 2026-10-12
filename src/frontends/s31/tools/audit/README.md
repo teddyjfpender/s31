@@ -21,10 +21,12 @@ checks the sealed fixed Gate schedule and key, and runs the generated native
 verifier on the captured proof and statement. It then evaluates the admitted
 arithmetic graph from the four public input words, derives every fixed and
 main Gate cell, and compares all 6,144 expected main words with the native
-public trace export. Its digest must match the native main-root report, whose
-root must equal commitment 1 in the accepted proof. A changed main cell is
-rejected by the source-derived comparison. Both native inspection commands
-must reject a synthetic assignment with a nonempty private input map.
+public trace export. It asks the pinned native PCS to recommit those
+**source-derived** main columns, independently of the witness exporter. That
+root, the export's reported root, and commitment 1 in the accepted proof must
+agree. A changed main cell changes the recommitted root, and a noncanonical
+M31 word is rejected before commitment. Both native inspection commands must
+reject a synthetic assignment with a nonempty private input map.
 
 The JSON report identifies the admitted source, canonical IR, fixed root,
 main root, full main-column digest, proof digest, and public words. This is a
