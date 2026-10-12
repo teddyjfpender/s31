@@ -1,4 +1,4 @@
-"""Independent static function grammar for the v2 gate certificate.
+"""Independent bounded static function grammar for direct-gate certificates.
 
 Functions are monomorphic. A parameter and result may be a four-lane field
 value or a unary function over that value. Calls may target earlier
@@ -23,7 +23,7 @@ class UnsupportedStaticHelper(ValueError):
 
 @dataclass(frozen=True)
 class StaticExpr:
-    kind: str  # gate, call, ref, named_function, or lambda
+    kind: str  # gate, binary, call, ref, named_function, or lambda
     value: str  # arithmetic operator or called function name
     operands: tuple[str, ...]
     lambda_body: StaticLambda | None = None
@@ -129,8 +129,10 @@ def peel_static_helpers(tokens: list[str], valid_name: Callable[[str], bool]) ->
                     helpers[argument].params[0].kind == "array" and
                     helpers[argument].result_kind == "array")
 
+        expression_gates = 0
+
         def expression_kind(expr: StaticExpr) -> str:
-            if expr.kind == "gate":
+            if expr.kind in {"gate", "binary"}:
                 return "array"
             if expr.kind in {"lambda", "named_function"}:
                 return "unary_function"
@@ -139,7 +141,7 @@ def peel_static_helpers(tokens: list[str], valid_name: Callable[[str], bool]) ->
                         else "array")
             return available[expr.operands[0]]
 
-        def expression() -> StaticExpr:
+        def atom(depth: int) -> StaticExpr:
             if tokens[cursor:cursor + 1] == ["fun"]:
                 start = cursor
                 depth = 0
@@ -165,6 +167,11 @@ def peel_static_helpers(tokens: list[str], valid_name: Callable[[str], bool]) ->
                     raise UnsupportedStaticHelper(str(exc)) from exc
                 assert parsed is not None
                 return StaticExpr("lambda", "", (), parsed)
+            if tokens[cursor:cursor + 1] == ["("]:
+                take("(")
+                enclosed = expression(depth=depth + 1)
+                take(")")
+                return enclosed
             first = name()
             if tokens[cursor:cursor + 1] == ["("]:
                 expected_kinds = callable_signature(first)
@@ -172,7 +179,7 @@ def peel_static_helpers(tokens: list[str], valid_name: Callable[[str], bool]) ->
                 args: list[StaticExpr] = []
                 if tokens[cursor:cursor + 1] != [")"]:
                     while True:
-                        args.append(expression())
+                        args.append(expression(depth=depth + 1))
                         if tokens[cursor:cursor + 1] != [","]:
                             break
                         take(",")
@@ -183,17 +190,37 @@ def peel_static_helpers(tokens: list[str], valid_name: Callable[[str], bool]) ->
                        for argument, kind in zip(args, expected_kinds)):
                     raise UnsupportedStaticHelper("function call argument type differs")
                 return StaticExpr("call", first, (), arguments=tuple(args))
-            if tokens[cursor:cursor + 1] in (["+"], [".*"]):
-                operator = take()
-                second = name()
-                if available.get(first) != "array" or available.get(second) != "array":
-                    raise UnsupportedStaticHelper("function gate needs earlier wires")
-                return StaticExpr("gate", operator, (first, second))
             if named_function(first):
                 return StaticExpr("named_function", first, ())
             if first not in available:
                 raise UnsupportedStaticHelper("unbound function result")
             return StaticExpr("ref", "", (first,))
+
+        def expression(min_power: int = 0, depth: int = 0) -> StaticExpr:
+            """Parse the bounded `+`/`.*` precedence used by source expressions."""
+            nonlocal expression_gates
+            if depth > 16:
+                raise UnsupportedStaticHelper("static helper expression is too deep")
+            left = atom(depth)
+            while tokens[cursor:cursor + 1] in (["+"], [".*"]):
+                operator = tokens[cursor]
+                power = 10 if operator == "+" else 20
+                if power < min_power:
+                    break
+                take(operator)
+                right = expression(power + 1, depth + 1)
+                if expression_kind(left) != "array" or expression_kind(right) != "array":
+                    raise UnsupportedStaticHelper("function gate needs earlier array values")
+                expression_gates += 1
+                if expression_gates > 16:
+                    raise UnsupportedStaticHelper("helper exceeds 16 arithmetic operations")
+                if left.kind == "ref" and right.kind == "ref":
+                    left = StaticExpr("gate", operator,
+                                      (left.operands[0], right.operands[0]))
+                else:
+                    left = StaticExpr("binary", operator, (),
+                                      arguments=(left, right))
+            return left
 
         while tokens[cursor:cursor + 1] == ["let"]:
             take("let")

@@ -8,12 +8,17 @@ result may return a typed lambda that captures earlier array values. Calls to
 later functions and recursion are rejected. A `Fn` value may be an earlier
 named unary function, a bounded `static_lambda.py` value, or a returned
 closure. It can pass through function parameters and source-only aliases.
-Arithmetic gate operands name a parameter or earlier local. Pure call
-arguments may themselves contain nested calls, one arithmetic gate, or an
-inline captured lambda. There are at most sixteen gates across the entire
-circuit. The checker statically expands calls in evaluation order and
-independently derives the production specializer's generated wire names, so
-its complete normalized relation must match the package. Function values and
+Arithmetic gate operands can name a parameter or earlier local. The bounded
+helper body also accepts nested pure calls and parenthesized `+`/`.*`
+expressions, with multiplication precedence and left-to-right evaluation.
+For example, `double(a) + square(a)` emits the two call results under fresh
+`_s31_N` names before its final addition; the source syntax adds no circuit
+gate of its own. Pure call arguments may themselves contain nested calls, one
+arithmetic gate, or an inline captured lambda. There are at most sixteen
+gates across the entire circuit. The checker statically expands calls in
+evaluation order and independently derives the production specializer's
+generated wire names, so its complete normalized relation must match the
+package. Function values and
 applications have no separate AIR representation.
 Gate-free function factories still consume a separate 64-call expansion
 budget, so a short source cannot force unbounded static work.
@@ -55,7 +60,7 @@ The [composed helper example](../../../examples/functional/release_helper_compos
 passes an inline captured lambda and a nested array call inside another helper;
 both disappear into the two handwritten addition gates.
 This fragment is intentionally exact: other lambda operations and closures,
-partial operations, subtraction, and hidden effects remain outside this v2
-certificate. They remain usable
+partial operations, subtraction, and hidden effects remain outside the
+bounded direct-Gate certificates. They remain usable
 through the ordinary S31 compiler and verifier; the stricter release gate admits them
 only when a corresponding independent certificate is available.

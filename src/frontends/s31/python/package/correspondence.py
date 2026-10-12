@@ -452,6 +452,15 @@ def parse_source(data: bytes, *, optimized: bool = False) -> tuple[dict[str, Any
             append_gate(result, wire_value(local[left]), expression.value,
                         wire_value(local[right]))
             return result
+        if expression.kind == "binary":
+            left, right = expression.arguments
+            # The production language evaluates the left subtree first.
+            # Unnamed subexpressions therefore consume `_s31_N` in that order.
+            lhs = wire_value(evaluate_static(left, local, None))
+            rhs = wire_value(evaluate_static(right, local, None))
+            result = gate_name(wanted)
+            append_gate(result, lhs, expression.value, rhs)
+            return result
         if expression.kind == "call":
             if expression.value in helpers:
                 function: FunctionValue = NamedFunction(expression.value)

@@ -7,9 +7,7 @@ fn square(a: [m31; 4]) -> [m31; 4] {
 }
 
 fn mix(a: [m31; 4]) -> [m31; 4] {
-    let doubled = double(a);
-    let squared = square(a);
-    doubled + squared
+    double(a) + square(a)
 }
 
 circuit repeat_mix(public x: [m31; 4]) -> public [m31; 4] {

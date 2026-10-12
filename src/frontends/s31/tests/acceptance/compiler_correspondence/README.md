@@ -35,8 +35,9 @@ python3 src/frontends/s31/tests/acceptance/compiler_correspondence/optimized_rel
 `functional_optimized_release.py` applies the same package, cost, proof,
 five-pin release, false-claim and downgrade checks to three pure helpers.
 Two live calls of `mix(x)` expand to seven normalized arithmetic nodes but
-reuse four native gates. A 12-case pure differential corpus additionally
-checks helper repetition, operand order and function aliases against the
+reuse four native gates. The helper body writes `double(a) + square(a)`
+directly; a 24-case pure differential corpus additionally checks nested
+expression order, helper repetition and function aliases against the
 production frontend and handwritten canonical IR.
 
 ```sh

@@ -3,6 +3,8 @@
 `double`, `square`, and `mix` are pure source functions. `mix(x)` is called
 twice; both results feed `e`. Specialization emits seven named arithmetic
 nodes into the normalized relation: three for each call and one final add.
+The body of `mix` writes `double(a) + square(a)` directly; the independent
+checker accepts this nested expression without source-level temporary lets.
 The explicit v3 correspondence checker independently reconstructs that
 relation, checks the native gate topology, and verifies canonical sharing:
 

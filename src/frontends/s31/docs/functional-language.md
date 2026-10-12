@@ -57,10 +57,11 @@ its proof passes the strict five-pin release verifier.
 This mode is opt-in and currently covers the same bounded public four-lane
 direct-gate fragment as the conservative checker.
 The [repeated pure-call example](../examples/functional/release_functional_cse4/README.md)
-calls a three-gate `mix` helper twice and uses both results. Seven source
+defines `mix(a)` as the direct expression `double(a) + square(a)`, calls it
+twice, and uses both results. Seven source
 arithmetic nodes compact to four native gates, the same AIR geometry as a
-handwritten four-gate circuit. Twelve additional generated cases check
-helper calls, operand order, and function aliases against the production
+handwritten four-gate circuit. Twenty-four generated cases check
+helper calls, nested expression order, and function aliases against the production
 normalized relation and a handwritten canonical IR.
 
 ## Auditing a named function all the way to packed rows
