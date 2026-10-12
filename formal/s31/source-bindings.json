@@ -81,7 +81,7 @@
     "src/frontends/s31/examples/recurrence/captured_step16_manual.s31": "5de96da04775ad1ee2211527603ec884eeb46835d0f55bc88909558a52aa5dc1",
     "src/frontends/s31/examples/recurrence/returned_mix4_3.s31": "8614204d07b6bc3b67e0b74c8fdbbad0ee84aaf92c47ca53e25dcf00f26d316f",
     "src/frontends/s31/examples/recurrence/returned_mix4_3_manual.s31": "1a142c9e0a05edf33e11a5e3c5a2d323b145f567996d51913ba1b6427f16a1b7",
-    "src/frontends/s31/build.zig": "995e0c4cc3acf46d326b85679bd7f4ff957f573a6d72c92a54c4389e9ed9c900",
+    "src/frontends/s31/build.zig": "e35f2c3b4d34bf68e9f045eddb958ab37e4df90b075b40022395671fdbc902b7",
     "src/frontends/s31/entry/export_square4_topology.zig": "3e9266bdc4dc323162098dee218d77de0cd993d1a2da3d214a0e63e8e4c43306",
     "src/frontends/s31/tools/formal/export_square4_topology.zig": "16c8bcdb004e88b2b3223edf63d0fd9aadbb0c47bc7388897ca61326ccf1e500",
     "src/frontends/s31/tools/formal/pinned_constant_values.py": "6d80c8baa2f870fdb119818bea9927c5956d7111ab9c8cddcee217e3acd0b653",
