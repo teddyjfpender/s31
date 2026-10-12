@@ -15,6 +15,8 @@ from pathlib import Path
 
 from registry_manifest_digest import digest as registry_manifest_digest
 from mask_points_digest import recompute as mask_points_digest
+from native_program_binding_digest import check_report as check_native_program_bindings
+from native_program_binding_digest import digest as native_program_binding_digest
 
 S31 = Path(__file__).resolve().parents[3]
 MODULUS = 2_147_483_647
@@ -338,6 +340,29 @@ def static_mapping_checks() -> dict:
                 "preprocessed_indices": [], "air_source_sha256": "00" * 32,
                 "program_binding_sha256": "00" * 32,
             })
+        for call_id, call in enumerate(calls):
+            for slot in digest_fixture["slots"][1 + 2 * call_id:3 + 2 * call_id]:
+                slot["program_binding_sha256"] = native_program_binding_digest(
+                    slot["source_kind"], slot["air_source_sha256"], call)
+        check_native_program_bindings(digest_fixture)
+        for label, mutate in (
+            ("private input address", lambda m: m["calls"][0]["input"].__setitem__(0, 10_000)),
+            ("private output address", lambda m: m["calls"][0]["output"].__setitem__(0, 20_000)),
+            ("chip program digest", lambda m: m["slots"][1].__setitem__("program_binding_sha256", "11" * 32)),
+            ("bridge program digest", lambda m: m["slots"][2].__setitem__("program_binding_sha256", "22" * 32)),
+            ("chip AIR source digest", lambda m: m["slots"][1].__setitem__("air_source_sha256", "33" * 32)),
+            ("last-call input address", lambda m: m["calls"][-1]["input"].__setitem__(3, 30_000)),
+            ("last bridge program digest", lambda m: m["slots"][-1].__setitem__("program_binding_sha256", "44" * 32)),
+        ):
+            changed_binding = copy.deepcopy(digest_fixture)
+            mutate(changed_binding)
+            changed_binding["registry_manifest_sha256"] = registry_manifest_digest(changed_binding)
+            try:
+                check_native_program_bindings(changed_binding)
+            except AssertionError:
+                pass
+            else:
+                raise AssertionError(f"resealed native binding mutation {label} escaped")
         unchanged_digest = registry_manifest_digest(digest_fixture)
         changed = copy.deepcopy(digest_fixture)
         changed["slots"][1]["source_kind"] = "many_chip"
@@ -368,6 +393,7 @@ def static_mapping_checks() -> dict:
             "counts": [1, 3, 8],
             "manifest_mutations_rejected_by_count": mutation_counts,
             "geometry_report_mutations_rejected": static_geometry_checks(),
+            "resealed_program_binding_mutations_rejected_per_count": 7,
             "source_mutations_rejected_per_count": 1,
             "fresh_absolute_address_retarget_accepted_without_topology": True}
 
@@ -469,6 +495,7 @@ def exercise(work: Path, count: int) -> dict:
         0, *(id for call in range(count) for id in ((1, 2) if call < 2 else (3, 4))),
     ]
     check_source_call_mapping(source_value, manifest)
+    check_native_program_bindings(manifest)
     check_source_call_mapping_mutations(source_value, manifest)
     proof = work / f"proof-{count}.bin"
     statement = work / f"statement-{count}.json"
