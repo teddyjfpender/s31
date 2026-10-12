@@ -2,7 +2,7 @@ import S31.Gadgets.Functional.SSATextBytes
 import S31.Gadgets.Air.SimdChunks
 
 /-!
-A bounded, executable byte-level model of one pure named M31 array helper
+A bounded, executable ASCII byte-level model of one pure named M31 array helper
 called by one circuit. The parser consumes actual source bytes and rejects
 unbound names, mismatched array lengths, and trailing syntax. Operand names
 are resolved at the helper body and at the call, so subtraction order is
@@ -81,6 +81,7 @@ structure Parsed where
   bodyRightSecond : Bool
   callFirstSecond : Bool
   callSecondSecond : Bool
+  inputNamesDistinct : firstInput ≠ secondInput
   deriving DecidableEq, Repr
 
 def Parsed.left {p : Parsed} (a b : Fin p.length → S31.M31) :
@@ -125,9 +126,23 @@ theorem air_iff_normalized_node (p : Parsed)
         p.op.node = .ok ⟨.m31, List.ofFn claimed⟩ := by
   exact packed_iff_node p.op (p.left a b) (p.right a b) claimed tailA tailB
 
+/-- Reserved syntax and plain builtins in the independently checked source
+fragment. The audit test compares this set with the Python checker by trying
+every reserved name as a circuit identifier. -/
+def forbiddenIdent : List Token :=
+  (List.map token ["use", "let", "in", "if", "then", "else", "match",
+    "fun", "Fn", "fn", "struct", "enum", "circuit", "blinded", "public",
+    "private", "assert_eq", "m31", "accumulate_chainwork", "blake2s_leaf",
+    "blake2s_pair", "block_work", "chainwork_from_work", "chainwork_u256",
+    "genesis_hash_mainnet", "header_bits", "header_time", "is_zero",
+    "iterate", "lt_u32", "m31_from_u16", "merkle_path_blake2s",
+    "merkle_path_poseidon2", "poseidon2_leaf", "poseidon2_pair", "pow_valid",
+    "prev_hash", "select", "sha256d_header", "splat", "target_mainnet",
+    "target_u256", "work_u256"])
+
 def takeIdent (remaining : List Token) : Option (Token × List Token) := do
   let (name, rest) ← takeName remaining
-  if [token "fn", token "private"].contains name then none else
+  if name.length > 128 || forbiddenIdent.contains name then none else
   return (name, rest)
 
 def takeLength (remaining : List Token) : Option (Nat × List Token) := do
@@ -165,6 +180,7 @@ has one binary operation; the circuit has one call and returns that result.
 The caller and callee may reorder or reuse their two inputs. -/
 def parseBytes (bytes : List Nat) : Option Parsed := do
   if bytes.length > 16384 then none else
+  if !(bytes.all (fun byte => byte < 128)) then none else
   let tokens ← lex bytes
   if tokens.length > 256 then none else
   let rest ← expect (token "fn") tokens
@@ -175,7 +191,8 @@ def parseBytes (bytes : List Nat) : Option Parsed := do
   let (n, rest) ← takeLength rest
   let rest ← expect (token ",") rest
   let (paramSecond, rest) ← takeIdent rest
-  if paramFirst == paramSecond then none else
+  if paramFirst == paramSecond || helperName == paramFirst ||
+      helperName == paramSecond then none else
   let rest ← expect (token ":") rest
   let rest ← takeSameLength n rest
   let rest ← expectMany [token ")", token "->"] rest
@@ -196,7 +213,7 @@ def parseBytes (bytes : List Nat) : Option Parsed := do
   let rest ← takeSameLength n rest
   let rest ← expectMany [token ",", token "private"] rest
   let (secondInput, rest) ← takeIdent rest
-  if firstInput == secondInput then none else
+  if hSame : firstInput = secondInput then none else
   let rest ← expect (token ":") rest
   let rest ← takeSameLength n rest
   let rest ← expectMany [token ")", token "->", token "public"] rest
@@ -215,7 +232,119 @@ def parseBytes (bytes : List Nat) : Option Parsed := do
   let rest ← expectMany [token ")", token ";", outputName, token "}"] rest
   if !rest.isEmpty then none else
   return Parsed.mk n helperName circuitName firstInput secondInput outputName
-    op bodyLeftSecond bodyRightSecond callFirstSecond callSecondSecond
+    op bodyLeftSecond bodyRightSecond callFirstSecond callSecondSecond hSame
+
+/-- Resolve both levels of static function application to the names in the
+normalized circuit relation. Only source identifiers enter JSON strings. -/
+def Parsed.leftName (p : Parsed) : Token :=
+  choose p.bodyLeftSecond
+    (choose p.callFirstSecond p.firstInput p.secondInput)
+    (choose p.callSecondSecond p.firstInput p.secondInput)
+
+def Parsed.rightName (p : Parsed) : Token :=
+  choose p.bodyRightSecond
+    (choose p.callFirstSecond p.firstInput p.secondInput)
+    (choose p.callSecondSecond p.firstInput p.secondInput)
+
+/-- Interpret one resolved normalized-relation input name in the circuit's
+private input environment. Distinct source input names make this unambiguous. -/
+def Parsed.readName (p : Parsed) (a b : Fin p.length → S31.M31)
+    (name : Token) : Fin p.length → S31.M31 :=
+  if name = p.firstInput then a else b
+
+theorem Parsed.readName_choose (p : Parsed)
+    (a b : Fin p.length → S31.M31) (second : Bool) :
+    p.readName a b (choose second p.firstInput p.secondInput) =
+      choose second a b := by
+  cases second <;>
+    simp [Parsed.readName, choose, p.inputNamesDistinct.symm]
+
+theorem Parsed.leftName_denotes (p : Parsed)
+    (a b : Fin p.length → S31.M31) :
+    p.readName a b p.leftName = p.left a b := by
+  cases h : p.bodyLeftSecond with
+  | false =>
+      simpa [Parsed.leftName, Parsed.left, choose, h] using
+        (p.readName_choose a b p.callFirstSecond)
+  | true =>
+      simpa [Parsed.leftName, Parsed.left, choose, h] using
+        (p.readName_choose a b p.callSecondSecond)
+
+theorem Parsed.rightName_denotes (p : Parsed)
+    (a b : Fin p.length → S31.M31) :
+    p.readName a b p.rightName = p.right a b := by
+  cases h : p.bodyRightSecond with
+  | false =>
+      simpa [Parsed.rightName, Parsed.right, choose, h] using
+        (p.readName_choose a b p.callFirstSecond)
+  | true =>
+      simpa [Parsed.rightName, Parsed.right, choose, h] using
+        (p.readName_choose a b p.callSecondSecond)
+
+/-- The denotation of the names emitted in canonical normalized JSON. -/
+def Parsed.relationValue (p : Parsed) (a b : Fin p.length → S31.M31) :
+    Fin p.length → S31.M31 :=
+  fun i => p.op.eval (p.readName a b p.leftName i)
+    (p.readName a b p.rightName i)
+
+theorem Parsed.relationValue_eq_value (p : Parsed)
+    (a b : Fin p.length → S31.M31) :
+    p.relationValue a b = p.value a b := by
+  funext i
+  simp [Parsed.relationValue, Parsed.value,
+    p.leftName_denotes a b, p.rightName_denotes a b]
+
+def Op.name : Op → Token
+  | .add => token "add"
+  | .sub => token "sub"
+  | .mul => token "mul"
+
+/-- Exact canonical JSON bytes of one private M31 array input. The source
+grammar accepts only ASCII identifiers, so no JSON escapes are needed. -/
+def encodeInput (name : Token) (length : Nat) : Token :=
+  token "    {\n      \"kind\": \"m31\",\n      \"length\": " ++
+  token (toString length) ++
+  token ",\n      \"name\": \"" ++ name ++
+  token "\",\n      \"visibility\": \"private\"\n    }"
+
+/-- Exact canonical JSON bytes of the single resolved arithmetic node. -/
+def encodeNode (p : Parsed) : Token :=
+  token "    {\n      \"lhs\": \"" ++ p.leftName ++
+  token "\",\n      \"name\": \"" ++ p.outputName ++
+  token "\",\n      \"op\": \"" ++ p.op.name ++
+  token "\",\n      \"rhs\": \"" ++ p.rightName ++
+  token "\"\n    }"
+
+/-- Byte-for-byte canonical v1 relation produced by this source fragment.
+Its public ABI is one M31 array output and no public inputs. -/
+def encodeNormalized (p : Parsed) : Token :=
+  token "{\n  \"assertions\": [],\n  \"inputs\": [\n" ++
+  encodeInput p.firstInput p.length ++ token ",\n" ++
+  encodeInput p.secondInput p.length ++
+  token "\n  ],\n  \"name\": \"" ++ p.circuitName ++
+  token "\",\n  \"nodes\": [\n" ++ encodeNode p ++
+  token "\n  ],\n  \"public_outputs\": [\n    \"" ++ p.outputName ++
+  token "\"\n  ],\n  \"version\": 1\n}\n"
+
+/-- Admit actual source and normalized bytes only when the Lean parser
+reconstructs their exact relation. This is a source/relation audit, not a
+native proof verifier or a certificate for compiler optimizations. -/
+def checkRelation (source normalized : List Nat) : Option Parsed := do
+  let p ← parseBytes source
+  if encodeNormalized p = normalized then some p else none
+
+theorem checked_relation_bytes (source normalized : List Nat) (p : Parsed)
+    (h : checkRelation source normalized = some p) :
+    parseBytes source = some p ∧ encodeNormalized p = normalized := by
+  unfold checkRelation at h
+  cases hs : parseBytes source with
+  | none => simp [hs] at h
+  | some q =>
+      by_cases he : encodeNormalized q = normalized
+      · simp [hs, he] at h
+        subst p
+        exact ⟨rfl, he⟩
+      · simp [hs, he] at h
 
 def denotation (bytes : List Nat) : Option Parsed := parseBytes bytes
 
@@ -227,6 +356,18 @@ theorem parsed_bytes_air_iff (bytes : List Nat) (p : Parsed)
     p.air a b claimed tailA tailB ↔
       denotation bytes = some p ∧ claimed = p.value a b := by
   simp [denotation, hparse, air_iff_value]
+
+/-- An accepted source/relation byte pair and every satisfying packed AIR
+row agree on the public M31 result for any concrete private inputs. -/
+theorem checked_relation_air_iff (source normalized : List Nat) (p : Parsed)
+    (h : checkRelation source normalized = some p)
+    (a b claimed : Fin p.length → S31.M31)
+    (tailA tailB : Nat → Fin 4 → S31.M31) :
+    p.air a b claimed tailA tailB ↔
+      denotation source = some p ∧ encodeNormalized p = normalized ∧
+        claimed = p.relationValue a b := by
+  obtain ⟨hs, he⟩ := checked_relation_bytes source normalized p h
+  simp [denotation, hs, he, air_iff_value, p.relationValue_eq_value a b]
 
 /-- The exact functional source used by the native five-lane subtraction
 acceptance gate. This literal is checked here independently of Python. -/
@@ -240,7 +381,8 @@ def subtract5Parsed : Parsed :=
     circuitName := token "subtract5", firstInput := token "a",
     secondInput := token "b", outputName := token "out", op := .sub,
     bodyLeftSecond := false, bodyRightSecond := true,
-    callFirstSecond := false, callSecondSecond := true }
+    callFirstSecond := false, callSecondSecond := true,
+    inputNamesDistinct := by decide }
 
 set_option maxRecDepth 8192
 theorem subtract5_actual_bytes :

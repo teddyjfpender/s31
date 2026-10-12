@@ -487,6 +487,23 @@ supports exactly this one-function grammar; correspondence to production
 Python parsing, native Zig row emission, and proof authentication is still
 outside these theorems.
 
+`SourceFunctionBytes.encodeNormalized` now constructs the exact canonical v1
+relation bytes for this grammar, including the two private input declarations,
+resolved operand names, operation, and public output. `checkRelation` accepts
+only when those bytes equal the actual normalized file; its
+`checked_relation_air_iff` theorem connects that source/relation pair to the
+packed AIR relation. A parsed program carries a proof that its input names
+are distinct; `Parsed.relationValue_eq_value` proves that looking up the two
+names written into JSON gives the same operands as the source function, even
+when its body or call reverses them. The optional
+`s31-source-function-check` audit executable
+reads real source and normalized files. Its differential test compares Lean
+admission against production parsing, independent Python source parsing, and
+canonical relation serialization across all 1–8 lengths, three operations,
+and both helper/call operand orders. It mutates source, relation, and byte
+formatting as rejection controls. This is a bounded compiler regression and
+does not prove Python/Zig compiler refinement or native proof authentication.
+
 `SimdChunks.partial_row_iff_normalized_node` extends the same result to final
 chunks with zero to four active lanes. `SimdChunks.packedRows_iff` covers
 arrays of any length, showing that exactly `ceil(n/4)` row witnesses bind all

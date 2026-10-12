@@ -12,6 +12,41 @@ call site and emits only the underlying relation operations.
 The [record guide](records.md) shows named fields with the same static-product
 erasure and a separate nominal type check.
 
+## Auditing a named function all the way to packed rows
+
+This small program is also the five-lane subtraction acceptance fixture:
+
+```s31
+fn difference(x: [m31; 5], y: [m31; 5]) -> [m31; 5] { x - y }
+circuit subtract5(private a: [m31; 5], private b: [m31; 5]) -> public [m31; 5] {
+    let out = difference(a, b);
+    out
+}
+```
+
+The function call is resolved at compile time. Its parameters `x` and `y`
+refer to private circuit inputs `a` and `b`, so the normalized relation has
+one node, `out = sub(a,b)`. For each array position `i`, the prover supplies
+the result `out[i]`; the subtraction AIR constrains
+`out[i] - a[i] + b[i] = 0` modulo `p = 2³¹−1`. A **lane** here is one M31
+array position, not a separate proof. Four positions fit in one packed QM31
+row; the fifth occupies the first position of a second row. The other three
+positions of that row are padding and cannot change the fifth result.
+
+The [Lean byte checker](../../../../formal/s31/S31/Gadgets/Functional/Correspondence/SourceFunctionBytes.lean)
+parses the exact source bytes, resolves helper and call operand order, and
+encodes the complete normalized relation JSON. Its theorem says that any
+claim satisfying those packed arithmetic rows equals the function result
+on all five positions, for **any** private values and any inactive padding.
+The optional [audit command](../../../../formal/s31/S31/Audit/README.md#named-function-source-and-exact-relation-bytes)
+checks actual source and relation files byte for byte. Its 96 positive
+differential cases compare Lean against production compilation and an
+independent Python parser across lengths 1–8, three operators, and four
+operand orders. The native acceptance test separately proves this five-lane
+program, checks its generated verifier, and rejects changed public claims at
+both the first and fifth positions. The Lean model and these tests do not
+yet prove the Python/Zig compiler or the full STARK verifier correct.
+
 ## Static tuples: two results from one helper
 
 The [tuple example](../examples/arithmetic/tuple_square_sum.s31) returns a

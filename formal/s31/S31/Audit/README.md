@@ -35,3 +35,32 @@ This is **optional audit evidence** for the Lean theorems
 The native release verifier does not execute
 this adapter or independently replay its proof. Acceptance here alone does
 not establish AIR/PCS soundness or production compiler correspondence.
+
+## Named-function source and exact relation bytes
+
+`SourceFunctionCheck.lean` checks one pure named binary function over
+`[m31; N]`, with `1 ≤ N ≤ 8`, called once by a circuit with two private inputs
+and one public output. Addition, subtraction, and pointwise multiplication
+are supported. The checker resolves parameter order and call order, then
+requires the full canonical normalized relation file to match the Lean
+encoder byte for byte. This audit subset requires ASCII bytes, including in
+comments; the general text frontend has a broader source grammar. For an
+accepted pair,
+`SourceFunctionBytes.checked_relation_air_iff` proves that its packed AIR row
+relation accepts exactly the function's result on every active lane. This
+includes the final short row and arbitrary inactive input values.
+
+From `formal/s31`:
+
+```sh
+lake build s31-source-function-check
+.lake/build/bin/s31-source-function-check source.s31 source.s31.json
+python3 -m unittest discover -s tests/audit -p 'test_source_function_check.py' -q
+```
+
+The executable prints `accepted`, array length, operation, and packed row
+count as one JSON line. The 96 positive differential cases cover every length
+1–8, all three operations, and four helper/call operand orders. Mutated source,
+relation, formatting, reserved names, and function shadowing must fail. This
+is an optional bounded audit; the production verifier does not run Lean, and
+the test is not a general compiler-refinement proof.

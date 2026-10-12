@@ -22,3 +22,7 @@ root = "S31.Check"
 [[lean_exe]]
 name = "s31-alias-relation-check"
 root = "S31.Audit.AliasRelationCheck"
+
+[[lean_exe]]
+name = "s31-source-function-check"
+root = "S31.Audit.SourceFunctionCheck"
