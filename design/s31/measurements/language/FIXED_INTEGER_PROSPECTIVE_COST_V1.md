@@ -8,8 +8,9 @@ are observations, not prospective predictions.
 The protocol measures unsigned checked `std::int::add_checked` and
 `std::int::mul_checked` under `direct-gate` and `sparse-wide-gate`, on the
 same source and witness for each pair. Sources at u16 and u32 fit a small
-stage model; u64 sources calibrate residual envelopes; u128 sources are the
-unseen holdout. Each source has eight distinct witnesses. This costs 16
+stage model; u64 sources calibrate residual envelopes; u128 is the unseen
+width within the same checked arithmetic source templates. Each source has
+eight distinct witnesses. This costs 16
 package builds and 128 measured prover/verifier pairs, plus 16 separate
 warmup proofs. The multiplication runner also proves overflowing controls
 must fail under both lowerings. The pair schedule alternates first position
@@ -29,12 +30,16 @@ machine.
    `model.json` plus `model.sha256`; it refuses to run if either u128 result
    directory exists. Commit or externally timestamp the model SHA.
 3. `collect-holdout` checks that sealed model against a fresh training-only
-   refit. For each u128 source it builds packages, reads their exact AIR
-   geometry, writes `preproof-prediction.json`, and only then starts native
-   warmup and measured proof processes. This gives a prospective **post-layout
-   proof** prediction. Build time is predicted from width alone before the
-   package build, and reported separately. The callback ordering is enforced
-   by code; the local file timestamp is not an external chronology witness.
+   refit. For each u128 source it writes `prebuild-prediction.json` using only
+   the source width **before either package build starts**. After both builds,
+   it reads the exact AIR geometry, writes `preproof-prediction.json`, and only
+   then starts native warmup and measured proof processes. The latter is a
+   prospective **post-layout proof** prediction, and its build estimate must
+   match the earlier prebuild record. The callbacks enforce this order during
+   an honest run and refuse to overwrite either prediction. An offline
+   validator can check their values and hashes but cannot cryptographically
+   establish local file chronology; commit or externally timestamp the
+   prebuild and preproof hashes for stronger independent evidence.
 4. `score` checks the preproof prediction against the model and built package,
    revalidates all native evidence, and scores all four u128 profiles without
    refitting. `validate` replays the artifact checks and recomputes any saved

@@ -26,14 +26,15 @@ from text_frontend import compile_text
 
 from evidence import analyze, host_identity, stage_parts
 from prospective_model import (CALIBRATION_WIDTH, FIT_WIDTHS, HOLDOUT_WIDTH,
-                               LOWERINGS, OPS, fit as fit_model,
-                               predict_group, score as score_model)
+                               LOWERINGS, OPS, TRIALS_PER_PROGRAM,
+                               fit as fit_model,
+                               predict_group, predict_one, score as score_model)
 
 TOOLS = (HERE / "prospective.py", HERE / "prospective_model.py",
          HERE / "evidence.py", HERE / "paired_tune.py",
          BENCH / "fixed_integer_addition/paired.py",
          BENCH / "fixed_integer_multiplication/paired.py")
-COUNT = 8
+COUNT = TRIALS_PER_PROGRAM
 ADD_SEED = 0x531ADD
 MUL_SEED = 0x531A11
 
@@ -128,7 +129,7 @@ def plan(output: Path) -> dict:
             "lowerings": list(LOWERINGS), "cases": cases,
             "identity": identity(),
             "measurement": "Each paired runner builds both packages, warms each with one separate native process, then alternates direct/sparse order across eight distinct witnesses. Package build is recorded separately; every measured proof and verifier uses fresh processes with cold native setup.",
-            "split_policy": "u16/u32 fit; u64 residual calibration; u128 source-family holdout. No u128 native build or proof before model.json and model.sha256 are sealed.",
+            "split_policy": "u16/u32 fit; u64 residual calibration; u128 unseen-width holdout within the same source template. No u128 native build or proof before model.json and model.sha256 are sealed.",
             "limits": "Local freeze needs a commit or external timestamp before collection for stronger chronology; no cross-host transfer or automatic lowering."}
     write_new(output / "plan.json", data)
     (output / "plan.sha256").write_text(sha(output / "plan.json") + "\n")
@@ -202,14 +203,45 @@ def collect(output: Path, phase: str) -> dict:
         callback = (lambda packages, manifests, case=case:
                     seal_preproof_prediction(output, case, model, packages, manifests)) \
             if phase == "holdout" else None
+        before_build = (lambda case=case:
+                        seal_prebuild_prediction(output, case, model)) \
+            if phase == "holdout" else None
         runner.run(f"u{width}", COUNT, ADD_SEED if op == "add" else MUL_SEED,
-                   directory, callback)
+                   directory, callback, before_build)
         check_run(output, case)
         if phase == "holdout":
             check_prediction(output, case, model)
         check_plan(output)
         completed.append(f"{op}-u{width}")
     return {"phase": phase, "completed": completed}
+
+
+def build_prediction(model: dict, operation: str, width: int) -> dict:
+    result = {}
+    for lowering in LOWERINGS:
+        center = predict_one(model["groups"][f"{operation}/{lowering}"]["fits"]["build"],
+                             {"width": float(width)})
+        band = model["bands"]["build"]
+        result[lowering] = {"predicted_center": center,
+                            "target_interval": [center * band["lower_ratio"],
+                                                center * band["upper_ratio"]]}
+    return result
+
+
+def seal_prebuild_prediction(output: Path, case: dict, model: dict) -> None:
+    """Persist width-only build predictions before the first package build."""
+    op, width = case["operation"], case["width"]
+    directory = run_dir(output, op, width)
+    require(not any((directory / "tune" / name).exists()
+                    for name in ("packages", "warmup", "runs")),
+            "prebuild prediction must precede native package build and proof")
+    write_new(directory / "prebuild-prediction.json", {
+        "schema": "s31-fixed-integer-prebuild-prediction-v1",
+        "source_sha256": case["source_sha256"],
+        "plan_sha256": sha(output / "plan.json"),
+        "model_sha256": sha(output / "model.json"),
+        "phase": "before-any-native-package-build",
+        "profiles": build_prediction(model, op, width)})
 
 
 def seal_preproof_prediction(output: Path, case: dict, model: dict,
@@ -246,6 +278,15 @@ def seal_preproof_prediction(output: Path, case: dict, model: dict,
 
 def check_prediction(output: Path, case: dict, model: dict) -> None:
     op, width = case["operation"], case["width"]
+    prebuild = read(run_dir(output, op, width) / "prebuild-prediction.json")
+    require(prebuild == {
+        "schema": "s31-fixed-integer-prebuild-prediction-v1",
+        "source_sha256": case["source_sha256"],
+        "plan_sha256": sha(output / "plan.json"),
+        "model_sha256": sha(output / "model.json"),
+        "phase": "before-any-native-package-build",
+        "profiles": build_prediction(model, op, width)},
+        "held-out build prediction differs from sealed training model")
     saved = read(run_dir(output, op, width) / "preproof-prediction.json")
     require(saved.get("schema") == "s31-fixed-integer-preproof-prediction-v1" and
             saved.get("source_sha256") == case["source_sha256"] and
@@ -268,6 +309,11 @@ def check_prediction(output: Path, case: dict, model: dict) -> None:
                         for name, band in model["bands"].items()}}
         require(saved["profiles"][lowering] == expected,
                 f"{lowering}: preproof prediction differs from model or native geometry")
+        require(saved["profiles"][lowering]["predicted_centers"]["build"] ==
+                prebuild["profiles"][lowering]["predicted_center"] and
+                saved["profiles"][lowering]["target_intervals"]["build"] ==
+                prebuild["profiles"][lowering]["target_interval"],
+                f"{lowering}: postbuild record changed prebuild prediction")
 
 
 def check_run(output: Path, case: dict) -> dict:
@@ -369,6 +415,11 @@ def score(output: Path) -> dict:
     report = {**score_model(model, heldout),
               "plan_sha256": sha(output / "plan.json"),
               "model_sha256": sha(output / "model.json"),
+              "holdout_prebuild_prediction_sha256": {
+                  f"{case['operation']}-u{case['width']}":
+                      sha(run_dir(output, case["operation"], case["width"]) /
+                          "prebuild-prediction.json")
+                  for case in data["cases"] if case["split"] == "holdout"},
               "holdout_preproof_prediction_sha256": {
                   f"{case['operation']}-u{case['width']}":
                       sha(run_dir(output, case["operation"], case["width"]) /

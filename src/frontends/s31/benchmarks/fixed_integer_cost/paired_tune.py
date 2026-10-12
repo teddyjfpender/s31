@@ -17,7 +17,8 @@ from runtime.cost_model import observed_cost_model
 
 
 def tune_interleaved(source: Path, assignments: list[Path], output: Path,
-                     lowerings: tuple[str, str], before_trials=None) -> dict:
+                     lowerings: tuple[str, str], before_trials=None,
+                     before_build=None) -> dict:
     if len(lowerings) != 2 or len(set(lowerings)) != 2 or not assignments:
         raise ValueError("paired tune requires two distinct lowerings and assignments")
     source = source.resolve()
@@ -28,6 +29,10 @@ def tune_interleaved(source: Path, assignments: list[Path], output: Path,
     digests = [s31.assignment_digest(path) for path in assignments]
     if len(set(digests)) != len(digests):
         raise ValueError("paired tune requires distinct assignments")
+    if before_build is not None:
+        # The prospective build prediction must be durable before s31.build
+        # observes the held-out source's compilation cost or AIR geometry.
+        before_build()
     packages = {}
     build_seconds = {}
     manifests = {}

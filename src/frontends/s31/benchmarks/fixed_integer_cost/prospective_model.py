@@ -14,6 +14,7 @@ LOWERINGS = ("direct-gate", "sparse-wide-gate")
 FIT_WIDTHS = (16, 32)
 CALIBRATION_WIDTH = 64
 HOLDOUT_WIDTH = 128
+TRIALS_PER_PROGRAM = 8
 STAGES = ("witness", "setup", "prove_non_pow", "interaction_pow", "fri_pow",
           "runtime_other", "process_residual", "verify")
 TARGETS = ("build", "whole", "after_pow", "proof_bytes", "prover_rss")
@@ -107,8 +108,8 @@ def stage_trial(trial: dict) -> dict:
 
 
 def program_values(program: dict) -> dict:
-    if not program["trials"]:
-        raise ValueError("program needs verified native trials")
+    if len(program["trials"]) != TRIALS_PER_PROGRAM:
+        raise ValueError("program needs exactly eight verified native trials")
     rows = [stage_trial(trial) for trial in program["trials"]]
     return {
         **{name: statistics.median(trial["stages"][name]
@@ -218,6 +219,8 @@ def score(model: dict, programs: list[dict]) -> dict:
     index = {(p["operation"], p["lowering"], p["width"]): p for p in programs}
     if set(index) != expected or len(programs) != len(expected):
         raise ValueError("score requires exact u128 holdout roster")
+    training_sources = {source for group in model["groups"].values()
+                        for source in group["fit_source_sha256"]}
     cases = {}
     coverage = {name: [0, 0] for name in TARGETS}
     errors = {name: [] for name in TARGETS}
@@ -225,9 +228,11 @@ def score(model: dict, programs: list[dict]) -> dict:
         op, lowering, _ = key
         program = index[key]
         group = model["groups"][f"{op}/{lowering}"]
-        if program["source_sha256"] in group["fit_source_sha256"]:
+        if program["source_sha256"] in training_sources:
             raise ValueError("held-out source also appears in training")
         prediction = predict_group(group, program)
+        if len(program["trials"]) != TRIALS_PER_PROGRAM:
+            raise ValueError("holdout requires exactly eight verified native trials")
         actual_rows = [stage_trial(row) for row in program["trials"]]
         measured = {name: (positive(program["build_seconds"]) if name == "build"
                            else statistics.median(row[name] for row in actual_rows))

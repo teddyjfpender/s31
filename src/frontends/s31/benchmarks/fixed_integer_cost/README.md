@@ -94,3 +94,8 @@ stops on an incomplete or inconsistent case and preserves that evidence.
 The `score.json` has four u128 profiles, not an unseen cross-program or
 cross-host reliability claim. It is valid only with the sealed plan/model
 and exact saved native proof artifacts.
+The holdout writes a width-only `prebuild-prediction.json` before package
+compilation, then a geometry-based `preproof-prediction.json` before native
+proofs. Both are write-once in the runner. The offline validator checks their
+model-derived contents and includes their hashes in the final score, but
+local file timestamps alone cannot independently prove this ordering.

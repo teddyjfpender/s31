@@ -128,13 +128,13 @@ def prepare(kind: str, count: int, seed: int, output: Path) -> tuple[Path, list[
 
 
 def run(kind: str, count: int, seed: int, output: Path,
-        before_trials=None) -> dict:
+        before_trials=None, before_build=None) -> dict:
     output = output.resolve()
     compiler_sha = s31.compiler_fingerprint()
     host = host_identity()
     source, assignments, overflow = prepare(kind, count, seed, output)
     report = tune_interleaved(source, assignments, output / "tune", LOWERINGS,
-                              before_trials)
+                              before_trials, before_build)
     profiles = report["profiles"]
     if (set(profiles) != set(LOWERINGS) or
             report["distinct_assignment_count"] != count or
