@@ -201,7 +201,7 @@ class PortableV7Tests(unittest.TestCase):
             changed["leaves"][0]["words"][0] = (1 << 31) - 1
             (trial / "changed-statement.json").write_bytes(
                 (json.dumps(changed, sort_keys=True, separators=(",", ":")) + "\n").encode())
-            with self.assertRaisesRegex(ValueError, "noncanonical public M31 word"):
+            with self.assertRaisesRegex(ValueError, "noncanonical public m31 word"):
                 check_trial_statement(source, typed, trial, "leaves[0].words[0]")
 
     def test_ordinary_publisher_rejects_malformed_changed_statement(self):

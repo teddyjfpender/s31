@@ -20,7 +20,15 @@ class MixedSingleEvaluationTests(unittest.TestCase):
 
         self.assertEqual(evaluator_calls.findall(cli), [])
         self.assertEqual(len(claim_calls.findall(cli)), 1)
-        self.assertEqual(len(evaluator_calls.findall(package)), 1)
+        # Proving evaluates once; the separate optional verifier trace audit
+        # evaluates its supplied witness once more for an independent check.
+        prover = package.split("pub fn proveSealedAndInspectWithTiming(", 1)[1].split(
+            "\npub fn verifyEmbedded(", 1
+        )[0]
+        verifier = package.split("\nfn verifySourceBoundWithWitness(", 1)[1]
+        self.assertEqual(len(evaluator_calls.findall(prover)), 1)
+        self.assertEqual(len(evaluator_calls.findall(verifier)), 1)
+        self.assertEqual(len(evaluator_calls.findall(package)), 2)
         self.assertIn("try publicValues(words)", package)
         self.assertIn("proof.output_values", package)
         self.assertIn("InvalidMixedPublicStatement", package)
