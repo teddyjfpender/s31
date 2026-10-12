@@ -92,7 +92,8 @@ for M31 subtraction, using the AIR's native subtraction flag. For example,
 row constrains its first lane to `3`. Any values in that row's other three
 input lanes produce constrained but unclaimed output lanes.
 The [five-lane native acceptance](../../../../../src/frontends/s31/tests/acceptance/math/field_subtraction_partial.py)
-also challenges the fifth public output after proof generation.
+compares a named function with direct source in normalized IR and AIR cost,
+then challenges the first and fifth public outputs of the functional proof.
 
 `FunctionalBridge.array_graph_iff_air_row` composes four modeled boundaries
 for a typed pointwise expression: functional source meaning, strict scalar
@@ -108,6 +109,11 @@ does not model the AIR rows needed to compute nontrivial operand expressions.
 `array_graph_iff_packed_rows` extends that composition to any array length
 and all rows of its final pointwise arithmetic operation. It retains the
 same operand-subexpression boundary.
+`array_sub_graph_iff_packed_rows` does the same for first-class typed
+subtraction, with exactly `ceil(length/4)` native sub rows and no negation
+expansion. `array_sub_graph_iff_normalized_node` connects those accepted
+source and AIR values to the executable normalized subtraction node. Operand
+subexpressions still need their own AIR-row composition.
 
 `SelectRows.lean` models the compiler's array choice as one shared `1 - bit`
 row, then two scalar products and an addition per packed word. It first proves

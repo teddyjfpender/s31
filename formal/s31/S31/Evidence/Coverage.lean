@@ -2,6 +2,8 @@
 import S31.Gadgets
 
 #check S31.Field.inverse_sound_complete
+#check S31.Functional.CompilerCorrespondence.source_iff_normalized_iff_air
+#check S31.Functional.CompilerCorrespondence.strict_graph_iff_air
 #check S31.Functional.arrayCode_accepts
 #check S31.Functional.u16_value_valid_iff
 #check S31.Functional.u16_vector_select_bounded
@@ -17,6 +19,8 @@ import S31.Gadgets
 #check S31.Gadgets.Air.BooleanRows.select_iff
 #check S31.Gadgets.Air.BooleanRows.xor_iff
 #check S31.Gadgets.Air.FunctionalBridge.array_graph_iff_air_row
+#check S31.Gadgets.Air.FunctionalBridge.array_sub_graph_iff_normalized_node
+#check S31.Gadgets.Air.FunctionalBridge.array_sub_graph_iff_packed_rows
 #check S31.Gadgets.Air.GateLookup.addressed_row_sound
 #check S31.Gadgets.Air.InverseRows.packedInverseRows_iff
 #check S31.Gadgets.Air.InverseRows.zero_active_lane_rejected
@@ -203,7 +207,7 @@ def operationCoverage : List (Op × List String) := [
   (.int_rotl, ["S31.Gadgets.IntegerShift.rotl_sound_complete"]),
   (.int_rotr, ["S31.Gadgets.IntegerShift.rotr_sound_complete"]),
   (.int_div_rem, ["S31.Gadgets.IntegerDivision.unsigned_sound_complete", "S31.Gadgets.IntegerDivision.zero_divisor_rejected", "S31.Gadgets.IntegerDivision.signed_reconstruction", "S31.Gadgets.IntegerDivision.fused_columns_exact"]),
-  (.sub, ["S31.Gadgets.sub_sound_complete", "S31.Gadgets.Air.Qm31Ops.sub_row_sound_complete", "S31.Gadgets.Air.Qm31Ops.sub_row_iff_normalized_node", "S31.Gadgets.Air.SimdChunks.subPackedRows_iff", "S31.Gadgets.Air.SimdChunks.subPackedRows_iff_normalized_node"])]
+  (.sub, ["S31.Gadgets.sub_sound_complete", "S31.Gadgets.Air.Qm31Ops.sub_row_sound_complete", "S31.Gadgets.Air.Qm31Ops.sub_row_iff_normalized_node", "S31.Gadgets.Air.SimdChunks.subPackedRows_iff", "S31.Gadgets.Air.SimdChunks.subPackedRows_iff_normalized_node", "S31.Gadgets.Air.FunctionalBridge.array_sub_graph_iff_packed_rows", "S31.Gadgets.Air.FunctionalBridge.array_sub_graph_iff_normalized_node", "S31.Functional.CompilerCorrespondence.source_iff_normalized_iff_air", "S31.Functional.CompilerCorrespondence.strict_graph_iff_air"])]
 
 theorem operation_inventory_exact : operationCoverage.map Prod.fst = allOps := rfl
 

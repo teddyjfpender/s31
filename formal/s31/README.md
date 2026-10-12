@@ -122,7 +122,7 @@ identity inventory now includes the Python
 syntax, parser, elaborator, specializer and libraries so changes there force a reviewed
 binding update; the source digests themselves do not prove compiler correspondence.
 `Functional/CompilerCorrespondence` proves, for arbitrarily nested four-lane
-M31 addition and multiplication trees, that typed source denotation, strict
+M31 addition, subtraction and multiplication trees, that typed source denotation, strict
 graph acceptance, executable normalized node evaluation, and packed AIR row
 constraints accept exactly the same result for arbitrary intermediate values.
 `Functional/SSACertificate` adds static `let` sharing: an executable checker
@@ -461,8 +461,16 @@ The new normalized M31 `sub` node has a separate four-lane bridge:
 `Qm31Ops.sub_row_iff_normalized_node` proves that the packed subtraction AIR
 row accepts exactly those four results. `SimdChunks.subPackedRows_iff_normalized_node`
 extends this to exactly `ceil(n/4)` rows for arrays of any length, including a
-short final row with arbitrary inactive input lanes. The typed source-expression
-composition theorems below still cover addition and multiplication only.
+short final row with arbitrary inactive input lanes. The intrinsically typed
+functional core has first-class scalar and array subtraction; its residual
+graph emits a subtraction gate, and `FunctionalBridge.array_sub_graph_iff_packed_rows`
+equates strict source-graph acceptance with those packed AIR rows at any
+array length. `Functional/CompilerCorrespondence` composes subtraction with
+addition and multiplication for nested four-lane expression trees. Its
+`squareMinusInput` example has the same graph through a static function call
+as through direct source, while the AIR relation uses a square row followed
+by one subtraction row. Python parsing, SSA lowering, native column emission,
+and proof authentication remain separate obligations.
 
 `SimdChunks.partial_row_iff_normalized_node` extends the same result to final
 chunks with zero to four active lanes. `SimdChunks.packedRows_iff` covers

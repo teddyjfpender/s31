@@ -3,8 +3,9 @@ import S31.Semantics.Field
 /-!
 A typed, total core of S31's static functional stage. Function values exist
 only during specialization; the residual language contains field expressions
-and no function nodes. This model intentionally excludes partial library calls,
-arrays, assertions and the Python parser.
+and no function nodes. This model includes total fixed-length array operations
+and intentionally excludes partial library calls, assertions and the Python
+parser.
 -/
 
 namespace S31.Functional
@@ -25,10 +26,12 @@ inductive Expr : List Ty → Ty → Type where
   | var : Var Γ t → Expr Γ t
   | literal : M31 → Expr Γ .field
   | add : Expr Γ .field → Expr Γ .field → Expr Γ .field
+  | sub : Expr Γ .field → Expr Γ .field → Expr Γ .field
   | mul : Expr Γ .field → Expr Γ .field → Expr Γ .field
   | arraySplat : Expr Γ .field → Expr Γ (.array length)
   | arrayGet : Expr Γ (.array length) → Fin length → Expr Γ .field
   | arrayAdd : Expr Γ (.array length) → Expr Γ (.array length) → Expr Γ (.array length)
+  | arraySub : Expr Γ (.array length) → Expr Γ (.array length) → Expr Γ (.array length)
   | arrayMul : Expr Γ (.array length) → Expr Γ (.array length) → Expr Γ (.array length)
   | arrayTake (count : Nat) (h : count ≤ length) :
       Expr Γ (.array length) → Expr Γ (.array count)
@@ -52,12 +55,14 @@ inductive Poly (n : Nat) where
   | input : Fin n → Poly n
   | literal : M31 → Poly n
   | add : Poly n → Poly n → Poly n
+  | sub : Poly n → Poly n → Poly n
   | mul : Poly n → Poly n → Poly n
 
 def Poly.eval {n : Nat} (inputs : Fin n → M31) : Poly n → M31
   | .input i => inputs i
   | .literal x => x
   | .add a b => a.eval inputs + b.eval inputs
+  | .sub a b => a.eval inputs - b.eval inputs
   | .mul a b => a.eval inputs * b.eval inputs
 
 @[reducible] def Meaning : Ty → Type
@@ -94,10 +99,12 @@ def denote : Expr Γ t → Env Meaning Γ → Meaning t
   | .var v, env => env.get v
   | .literal x, _ => x
   | .add a b, env => denote a env + denote b env
+  | .sub a b, env => denote a env - denote b env
   | .mul a b, env => denote a env * denote b env
   | .arraySplat value, env => fun _ => denote value env
   | .arrayGet value index, env => denote value env index
   | .arrayAdd a b, env => fun i => denote a env i + denote b env i
+  | .arraySub a b, env => fun i => denote a env i - denote b env i
   | .arrayMul a b, env => fun i => denote a env i * denote b env i
   | .arrayTake _ h value, env => arrayTakeFn h (denote value env)
   | .arrayDrop _ h value, env => arrayDropFn h (denote value env)
@@ -120,10 +127,12 @@ def specialize {n : Nat} : Expr Γ t → Env (Residual n) Γ → Residual n t
   | .var v, env => env.get v
   | .literal x, _ => .literal x
   | .add a b, env => .add (specialize a env) (specialize b env)
+  | .sub a b, env => .sub (specialize a env) (specialize b env)
   | .mul a b, env => .mul (specialize a env) (specialize b env)
   | .arraySplat value, env => fun _ => specialize value env
   | .arrayGet value index, env => specialize value env index
   | .arrayAdd a b, env => fun i => .add (specialize a env i) (specialize b env i)
+  | .arraySub a b, env => fun i => .sub (specialize a env i) (specialize b env i)
   | .arrayMul a b, env => fun i => .mul (specialize a env i) (specialize b env i)
   | .arrayTake _ h value, env => arrayTakeFn h (specialize value env)
   | .arrayDrop _ h value, env => arrayDropFn h (specialize value env)
@@ -193,6 +202,10 @@ theorem specialize_correct {n : Nat} (inputs : Fin n → M31)
       change (specialize a residual).eval inputs + (specialize b residual).eval inputs =
         denote a source + denote b source
       rw [iha source residual h, ihb source residual h]
+  | sub a b iha ihb =>
+      change (specialize a residual).eval inputs - (specialize b residual).eval inputs =
+        denote a source - denote b source
+      rw [iha source residual h, ihb source residual h]
   | mul a b iha ihb =>
       change (specialize a residual).eval inputs * (specialize b residual).eval inputs =
         denote a source * denote b source
@@ -206,6 +219,11 @@ theorem specialize_correct {n : Nat} (inputs : Fin n → M31)
       intro i
       change (specialize a residual i).eval inputs + (specialize b residual i).eval inputs =
         denote a source i + denote b source i
+      rw [iha source residual h i, ihb source residual h i]
+  | arraySub a b iha ihb =>
+      intro i
+      change (specialize a residual i).eval inputs - (specialize b residual i).eval inputs =
+        denote a source i - denote b source i
       rw [iha source residual h i, ihb source residual h i]
   | arrayMul a b iha ihb =>
       intro i
@@ -305,6 +323,9 @@ inductive Poly.Accepts {n : Nat} (inputs : Fin n → M31) : Poly n → M31 → P
   | add {a b : Poly n} {x y z : M31} :
       Accepts inputs a x → Accepts inputs b y → z - (x + y) = 0 →
       Accepts inputs (.add a b) z
+  | sub {a b : Poly n} {x y z : M31} :
+      Accepts inputs a x → Accepts inputs b y → z - (x - y) = 0 →
+      Accepts inputs (.sub a b) z
   | mul {a b : Poly n} {x y z : M31} :
       Accepts inputs a x → Accepts inputs b y → z - (x * y) = 0 →
       Accepts inputs (.mul a b) z
@@ -334,6 +355,18 @@ theorem Poly.accepts_sound_complete {n : Nat} (inputs : Fin n → M31)
       · intro h
         subst output
         exact .add ((iha _).mpr rfl) ((ihb _).mpr rfl)
+          ((RiscvRefinement.M31.sub_eq_zero_iff _ _).mpr rfl)
+  | sub a b iha ihb =>
+      constructor
+      · intro h
+        cases h with
+        | sub ha hb equation =>
+            change output = a.eval inputs - b.eval inputs
+            rw [← (iha _).mp ha, ← (ihb _).mp hb]
+            exact (RiscvRefinement.M31.sub_eq_zero_iff _ _).mp equation
+      · intro h
+        subst output
+        exact .sub ((iha _).mpr rfl) ((ihb _).mpr rfl)
           ((RiscvRefinement.M31.sub_eq_zero_iff _ _).mpr rfl)
   | mul a b iha ihb =>
       constructor

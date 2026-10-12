@@ -89,4 +89,49 @@ theorem array_graph_iff_packed_rows {n length : Nat}
       exact (h i).symm
     rw [heq]
 
+/-- Native subtraction remains one selected packed operation for every four
+active lanes, even when a typed source expression has a short final chunk.
+The strict graph quantifies arbitrary intermediate witnesses; the packed AIR
+rows quantify arbitrary inactive input padding and constrained output limbs. -/
+theorem array_sub_graph_iff_packed_rows {n length : Nat}
+    (a b : Expr [.array n] (.array length))
+    (inputs : List S31.M31) (claimed : Fin length → S31.M31)
+    (tailA tailB : Nat → Fin 4 → S31.M31)
+    (hinputs : inputs.length = n) :
+    (arrayCode (.arraySub a b)).strictAccepts
+      fieldArity S31.Gadgets.Hash.fieldPrimitive inputs
+      (List.ofFn claimed) ↔
+    subPackedRows
+      (denote a (arrayInputSource (fun i => inputs.getD i.val 0)))
+      (denote b (arrayInputSource (fun i => inputs.getD i.val 0)))
+      claimed tailA tailB := by
+  rw [arrayCode_accepts (.arraySub a b) inputs (List.ofFn claimed) hinputs]
+  rw [subPackedRows_iff]
+  constructor
+  · intro h i
+    simpa [denote] using congrFun (List.ofFn_injective h) i
+  · intro h
+    apply congrArg List.ofFn
+    funext i
+    simpa [denote] using h i
+
+/-- The same accepted source result is exactly the result of the executable
+normalized subtraction node. The AIR equivalence above therefore does not
+replace the production node with an abstract arithmetic equation. -/
+theorem array_sub_graph_iff_normalized_node {n length : Nat}
+    (a b : Expr [.array n] (.array length))
+    (inputs : List S31.M31) (claimed : Fin length → S31.M31)
+    (tailA tailB : Nat → Fin 4 → S31.M31)
+    (hinputs : inputs.length = n) :
+    (arrayCode (.arraySub a b)).strictAccepts
+      fieldArity S31.Gadgets.Hash.fieldPrimitive inputs
+      (List.ofFn claimed) ↔
+    S31.evaluateNode
+      (S31.Functional.arithmeticEnv
+        (denote a (arrayInputSource (fun i => inputs.getD i.val 0)))
+        (denote b (arrayInputSource (fun i => inputs.getD i.val 0))))
+      S31.Functional.subtractionNode = .ok ⟨.m31, List.ofFn claimed⟩ := by
+  rw [array_sub_graph_iff_packed_rows a b inputs claimed tailA tailB hinputs]
+  exact subPackedRows_iff_normalized_node _ _ _ tailA tailB
+
 end S31.Gadgets.Air.FunctionalBridge

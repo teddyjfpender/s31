@@ -151,11 +151,11 @@ theorem Code.output_in_run [Inhabited α] (code : Code α Op)
   rw [run_length]
   exact valid.2 index member
 
-inductive FieldOp where | add | mul
+inductive FieldOp where | add | sub | mul
 deriving DecidableEq, Repr
 
 def fieldArity : FieldOp → Nat
-  | .add | .mul => 2
+  | .add | .sub | .mul => 2
 
 instance : Inhabited M31 := ⟨RiscvRefinement.M31.zero⟩
 
@@ -164,6 +164,7 @@ def fieldEval (op : FieldOp) (args : List M31) : M31 :=
   let b := args.getD 1 0
   match op with
   | .add => a + b
+  | .sub => a - b
   | .mul => a * b
 
 inductive WordOp where
