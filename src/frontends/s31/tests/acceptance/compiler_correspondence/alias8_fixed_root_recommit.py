@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
-"""Recommit the case07 Lean-bound 512-row fixed roster with the native PCS.
+"""Join the case07 fixed roster, sealed key, and one accepted proof root.
 
-The input columns are explicit fixture bytes, not reconstructed from the S31
-source by the native compiler. This binds the diagnostic roster to the sealed
-fixed root for this case. It does not authenticate arbitrary PCS openings.
+The roster is checked against the source-derived schedule before recommitment.
+The proof is separately accepted by the generated native verifier before its
+bounded direct-Gate header is decoded. This fixture regression does not prove
+authentication of arbitrary PCS openings.
 """
 
 from __future__ import annotations
 
 import argparse
 import copy
+import hashlib
 import json
 import re
 import subprocess
@@ -30,6 +32,15 @@ import s31  # noqa: E402
 
 CASE = HERE / "fixtures/case07-full-native-roster.json"
 ROOT_PATTERN = re.compile(r"[0-9a-f]{64}")
+
+
+def check_root_join(recommitted: str, sealed: str, proof_fixed: bytes) -> None:
+    """Require three independently obtained roots to agree in this trial."""
+    if (type(recommitted) is not str or ROOT_PATTERN.fullmatch(recommitted) is None or
+            type(sealed) is not str or ROOT_PATTERN.fullmatch(sealed) is None or
+            type(proof_fixed) is not bytes or len(proof_fixed) != 32 or
+            recommitted != sealed or proof_fixed.hex() != sealed):
+        raise ValueError("case07 native recommit, sealed key, and accepted proof fixed root differ")
 
 
 def recommit(prover: Path, columns: list[list[int]], work: Path,
@@ -72,8 +83,34 @@ def run(package: Path, work: Path) -> dict:
             topology["preprocessed_root"] != expected):
         raise ValueError("fresh source-bound topology differs from checked case07 cells/root")
     actual = recommit(prover, columns, work, "honest")
-    if actual != expected:
-        raise ValueError("explicit fixed rows recommit to a different sealed root")
+    assigned = work / "case07-assignment.json"
+    assigned.write_text(json.dumps(roster.assignment(sample), sort_keys=True) + "\n")
+    trial_dir = work / "case07-accepted-trial"
+    trial = s31.trial(package, assigned, trial_dir)
+    result_name = f"p{sample.return_id}"
+    if (trial.get("schema") != "s31-trial-v1" or
+            trial.get("program_sha256") != manifest.get("program_sha256") or
+            trial.get("native_verifier_accepted") is not True or
+            trial.get("changed_public_statement_rejected") !=
+            f"public_outputs.{result_name}[0]" or
+            type(trial.get("proof_bytes")) is not int or trial["proof_bytes"] <= 0):
+        raise ValueError("case07 proof trial did not accept the expected source/statement")
+    proof = (trial_dir / "proof.bin").read_bytes()
+    proof_sha = hashlib.sha256(proof).hexdigest()
+    if len(proof) != trial["proof_bytes"] or proof_sha != trial.get("proof_sha256"):
+        raise ValueError("accepted case07 proof bytes differ from its trial report")
+    proof_fixed, _, _ = roster.proof_roots(proof)
+    check_root_join(actual, expected, proof_fixed)
+    # This changes only the value passed to the comparison; no forged proof is
+    # given to the verifier and no claim about verifier rejection follows.
+    changed_decoded = bytes([proof_fixed[0] ^ 1]) + proof_fixed[1:]
+    try:
+        check_root_join(actual, expected, changed_decoded)
+    except ValueError as exc:
+        if "accepted proof fixed root differ" not in str(exc):
+            raise
+    else:
+        raise AssertionError("changed decoded case07 fixed root passed the three-way join")
 
     mutations = {
         "selector": (0, 16, 0),
@@ -107,11 +144,15 @@ def run(package: Path, work: Path) -> dict:
         if trial.returncode == 0 or error not in trial.stderr:
             raise AssertionError(f"{name} was not rejected at {error}: {trial.stderr}")
         rejected.append(name)
-    return {"schema": "s31-alias8-fixed-root-recommit-v1",
+    return {"schema": "s31-alias8-fixed-root-proof-join-v1",
             "source_sha256": data["source_sha256"],
             "fixed_cells": 8 * 512, "native_recommitted_root": actual,
-            "sealed_key_root": expected, "mutations_rejected": rejected,
-            "scope": "diagnostic export equals sealed PCS fixed commitment for case07"}
+            "sealed_key_root": expected, "accepted_proof_fixed_root": proof_fixed.hex(),
+            "accepted_proof_sha256": proof_sha, "proof_bytes": len(proof),
+            "native_verifier_accepted": True,
+            "decoded_root_mismatch_rejected": True,
+            "mutations_rejected": rejected,
+            "scope": "case07 fixture/root/proof-byte regression; no arbitrary PCS opening theorem"}
 
 
 def main() -> None:

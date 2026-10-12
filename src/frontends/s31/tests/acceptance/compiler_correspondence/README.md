@@ -50,16 +50,22 @@ openings equal the uncommitted physical-row export.
 
 ## Complete modeled direct-Gate roster on four programs
 
-### Case07 fixed-root recommitment
+### Case07 fixed-root and accepted-proof join
 
 `alias8_fixed_root_recommit.py` takes the exact case07 8×512 fixed-column
 diagnostic whose constant island is checked by Lean, admits it against the
 source-derived row schedule, and sends those literal cells to
 `inspect-fixed-root-from-columns`. The native command commits the supplied
 canonical M31 columns through the production PCS preparation and Blake2s
-Merkle path. A recomputed root must equal the sealed case07 key. A changed
-selector, source address, constant multiplicity, column order, noncanonical
-word, and short column all fail their expected controls.
+Merkle path. The same source-bound package then proves the source-derived
+four-lane assignment. After its generated verifier accepts the proof against
+the sealed key and public statement, the regression decodes commitment 0 with
+the bounded direct-Gate proof parser. The recommitted root, sealed key root,
+and decoded proof root must all agree. A changed selector, source address,
+constant multiplicity, column order, noncanonical word, and short column all
+fail their expected controls. A one-bit change to the *decoded root value*
+must fail the three-way comparison; it does not create or submit a forged
+proof. The optional `--package PATH` reuses a built case07 package.
 
 ```sh
 python3 src/frontends/s31/tests/acceptance/compiler_correspondence/alias8_fixed_root_recommit.py
@@ -71,10 +77,11 @@ The four valid 4,096-cell mutations (`selector`, `source_address`,
 `island_multiplicity`, `column-swap`) must each change the root;
 `noncanonical` and `short-column` must be rejected before commitment.
 
-This closes the case07 export-to-fixed-root diagnostic equality gap for the
-pinned fixture. The command accepts explicit untrusted columns and is not a
-verifier. The test does not prove Merkle binding, PCS opening authentication,
-or FRI.
+This joins the case07 source-derived 8×512 fixed schedule to the native
+recommitment, the sealed verification key, and one separately accepted proof's
+first commitment. It is a fixture and proof-byte regression. The native
+command accepts explicit untrusted columns; the comparison does not prove
+Merkle binding, PCS opening authentication, or FRI.
 
 ### Four-case full-roster checks
 
