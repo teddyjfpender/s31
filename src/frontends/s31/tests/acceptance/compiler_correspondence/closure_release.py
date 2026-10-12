@@ -11,5 +11,5 @@ from functional_release import S31, run
 if __name__ == "__main__":
     print(json.dumps(run(S31 / "examples/functional/release_closure4",
                          case="captured-closure",
-                         result=lambda value: value * value + 2 * value),
+                         result=lambda value: 5 * value * value),
                      indent=2, sort_keys=True))

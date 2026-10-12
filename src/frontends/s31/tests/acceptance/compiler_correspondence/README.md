@@ -41,7 +41,7 @@ python3 src/frontends/s31/tests/acceptance/compiler_correspondence/higher_order_
 
 `closure_release.py` checks an explicitly captured wire in a unary lambda,
 passes that lambda through `Fn`, and shadows the captured name in a later
-lexical `let`. The independently reconstructed three-gate relation, canonical
+lexical `let`. The independently reconstructed four-gate relation, canonical
 IR, and native AIR geometry must equal the handwritten source. The native
 proof and strict release verifier accept the true result and reject a changed
 public result.

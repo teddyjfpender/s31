@@ -27,8 +27,8 @@ passes `twice_square` through a lexical `let` and a monomorphic `Fn` parameter.
 The independent certificate checks that the value adds no gate or AIR row;
 the native proof covers the same two gates as the handwritten source. The
 [captured lambda release example](../examples/functional/release_closure4/README.md)
-certifies a one-gate lambda body and its lexical capture across a shadowed
-name, with the same three AIR gates as handwritten arithmetic. The ordinary
+certifies a multi-gate lambda body and its lexical capture across a shadowed
+name, with the same four AIR gates as handwritten arithmetic. The ordinary
 frontend below supports broader lambdas and closures.
 
 ## Auditing a named function all the way to packed rows

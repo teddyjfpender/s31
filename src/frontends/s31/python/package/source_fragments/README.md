@@ -36,11 +36,13 @@ The [worked higher-order example](../../../examples/functional/release_higher_or
 shows a named function passed through a `Fn` parameter and erased to two
 ordinary gates. The [captured lambda example](../../../examples/functional/release_closure4/README.md)
 fixes an existing wire in a unary lambda's environment and demonstrates that a
-later lexical shadow does not change the capture. `static_lambda.py` admits only
-one `+` or `.*` gate in the lambda body, over the parameter and existing wires.
-This fragment is intentionally exact: general lambda bodies and closures,
+later lexical shadow does not change the capture. `static_lambda.py` parses a
+bounded pure body with parentheses, nested `+` and `.*`, and lexical `let … in`
+bindings. It captures free wire names at function creation, and the checker
+emits only the evaluated arithmetic gates.
+This fragment is intentionally exact: other lambda operations and closures,
 calls nested inside an argument expression, partial operations, subtraction,
-multi-operator arithmetic expressions, and hidden effects
+and hidden effects
 remain outside this v2 certificate. They remain usable through the
 ordinary S31 compiler and verifier; the stricter release gate admits them
 only when a corresponding independent certificate is available.

@@ -15,10 +15,11 @@ The higher-order cases pass named unary functions through `Fn` parameters,
 lexical bindings, and circuit aliases. They compare the exact one-gate result
 with handwritten arithmetic and reject an array used as a function, a function
 used as an array, shadowing, an unbound function, or a function at the public
-output. `test_static_lambda.py` checks the bounded one-gate unary lambda,
+output. `test_static_lambda.py` checks a bounded pure unary lambda body,
 including passage through `Fn`, exact gate equality with handwritten source,
 capture across lexical shadowing, and rejection of unbound or ill-typed forms.
-General lambda bodies and closures remain outside this bounded certificate.
+Other lambda operations and general closures remain outside this bounded
+certificate.
 The separate `test_lexical_corpus.py` exhausts all 30 chains of one to four binders with
 add/multiply chains, including static helper calls and parenthesized source
 expressions. Every case must match both production compilation and a direct

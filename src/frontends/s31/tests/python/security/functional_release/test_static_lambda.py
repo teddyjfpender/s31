@@ -20,6 +20,24 @@ APPLY = ("fn apply(f: Fn([m31; 4]) -> [m31; 4], v: [m31; 4]) "
 
 
 class StaticLambdaReleaseTests(unittest.TestCase):
+    def test_expression_templates_match_production(self) -> None:
+        bodies = (
+            "v .* v", "v + v", "x + v", "v + x", "x .* v", "v .* x",
+            "x + v .* v", "x + (v .* v)",
+            "let t = v .* v in x + t",
+            "let t = x + v in v .* t",
+            "v .* (x + v)",
+            "let t = v .* v in let u = x + t in x + u",
+            "let t = v in t .* t",
+        )
+        for body in bodies:
+            source = (HEADER +
+                      "  let f = fun(v: [m31; 4]) -> [m31; 4] => " + body + ";\n"
+                      "  let result = f(x);\n" + TAIL)
+            with self.subTest(body=body):
+                checked = parse_source(source.encode())
+                self.assertEqual(checked[0], compile_text(source)[0])
+
     def test_uncaptured_lambda_and_static_passage_have_one_gate(self) -> None:
         direct = parse_source((HEADER + "  let result = x .* x;\n" + TAIL).encode())
         programs = (
@@ -42,9 +60,32 @@ class StaticLambdaReleaseTests(unittest.TestCase):
         checked = parse_source(source.encode())
         self.assertEqual(checked, parse_source(manual.encode()))
         self.assertEqual(checked[0], compile_text(source)[0])
-        self.assertEqual(len(checked[0]["nodes"]), 3)
+        self.assertEqual(len(checked[0]["nodes"]), 4)
         self.assertEqual(checked[0]["nodes"][-1]["lhs"], "saved")
-        self.assertEqual(checked[0]["nodes"][-1]["rhs"], "_s31_0")
+        self.assertEqual(checked[0]["nodes"][-1]["rhs"], "_s31_1")
+
+    def test_nested_arithmetic_and_local_let_have_the_same_residual_circuit(self) -> None:
+        programs = (
+            HEADER + "  let f = fun(v: [m31; 4]) -> [m31; 4] => x + v .* v;\n"
+            "  let result = f(x);\n" + TAIL,
+            HEADER + "  let f = fun(v: [m31; 4]) -> [m31; 4] => "
+            "let saved = v .* v in x + saved;\n  let result = f(x);\n" + TAIL,
+        )
+        checked = [parse_source(source.encode()) for source in programs]
+        self.assertEqual(checked[0], checked[1])
+        for source, relation in zip(programs, checked):
+            self.assertEqual(relation[0], compile_text(source)[0])
+        self.assertEqual([node["name"] for node in checked[0][0]["nodes"]],
+                         ["_s31_0", "result"])
+
+    def test_identity_lambda_is_a_wire_alias(self) -> None:
+        source = (HEADER + "  let saved = x .* x;\n"
+                  "  let f = fun(v: [m31; 4]) -> [m31; 4] => v;\n"
+                  "  let result = f(saved);\n" + TAIL)
+        checked = parse_source(source.encode())
+        self.assertEqual(checked[0], compile_text(source)[0])
+        self.assertEqual(len(checked[0]["nodes"]), 1)
+        self.assertEqual(checked[0]["public_outputs"], ["saved"])
 
     def test_lambda_call_preserves_later_helper_wire_numbering(self) -> None:
         source = ("fn twice(v: [m31; 4]) -> [m31; 4] { "
@@ -61,7 +102,7 @@ class StaticLambdaReleaseTests(unittest.TestCase):
             "  let result = f(x);\n" + TAIL,
             HEADER + "  let f = fun(v: [m31; 2]) -> [m31; 4] => v .* v;\n"
             "  let result = f(x);\n" + TAIL,
-            HEADER + "  let f = fun(v: [m31; 4]) -> [m31; 4] => v + x + x;\n"
+            HEADER + "  let f = fun(v: [m31; 4]) -> [m31; 4] => v - x;\n"
             "  let result = f(x);\n" + TAIL,
             HEADER + "  let f = fun(v: [m31; 4]) -> [m31; 4] => v;\n"
             "  let result = f(x);\n" + TAIL,

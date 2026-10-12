@@ -140,9 +140,9 @@ The [named function value example](../examples/functional/release_higher_order4/
 passes a function through a `Fn` parameter and a lexical binding, then proves
 exactly the same two-gate AIR as its handwritten program. The
 [captured lambda example](../examples/functional/release_closure4/README.md)
-certifies one add or multiply in a unary lambda body, including a capture
-whose name is shadowed later; it has exactly the handwritten three-gate AIR.
-General lambda bodies, general closures, and function values in the public
+certifies a bounded arithmetic and lexical-let body in a unary lambda, including
+a capture whose name is shadowed later; it has exactly the handwritten four-gate AIR.
+Other lambda operations, general closures, and function values in the public
 ABI remain outside this strict certificate.
 
 For that same fragment, the [fixed-root join inspector](../tools/inspect/check_direct_gate_fixed_root_join.py)

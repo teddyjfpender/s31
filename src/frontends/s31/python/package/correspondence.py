@@ -14,7 +14,7 @@ circuit let RHSs. They eagerly emit bound gates under anonymous names and
 resolve scoped aliases before the same canonical and native checks. A named
 unary function may pass through a monomorphic Fn parameter or a static alias;
 the value is erased before relation lowering. A bounded unary lambda may
-capture earlier wires and emit one arithmetic gate per application.
+capture earlier wires and emit its body arithmetic gates per application.
 The explicit optimized v3 path independently sorts commutative operands and
 checks common-subexpression elimination with a source-to-canonical map. No
 imports, other calls, constants, assertions, private inputs, or implicit
@@ -41,8 +41,9 @@ from package.source_fragments.lexical_let import (Atom, Let, UnsupportedLexicalL
                                                   parse_expression)
 from package.source_fragments.static_helper import (StaticExpr, UnsupportedStaticHelper,
                                                     peel_static_helpers)
-from package.source_fragments.static_lambda import (StaticLambda, UnsupportedStaticLambda,
-                                                    parse_static_lambda)
+from package.source_fragments.static_lambda import (LambdaBinary, LambdaExpr, LambdaLet,
+                                                    LambdaName, StaticLambda,
+                                                    UnsupportedStaticLambda, parse_static_lambda)
 
 
 class UnsupportedFragment(ValueError):
@@ -374,12 +375,28 @@ def parse_source(data: bytes, *, optimized: bool = False) -> tuple[dict[str, Any
         if len(arguments) != 1:
             raise UnsupportedFragment("static lambda argument count differs")
         argument = wire_value(arguments[0])
-        captures = dict(function.captures)
-        left = argument if function.left == function.parameter else captures[function.left]
-        right = argument if function.right == function.parameter else captures[function.right]
-        result = gate_name(wanted)
-        append_gate(result, left, function.operator, right)
-        return result
+        captured = dict(function.captures)
+        captured[function.parameter] = argument
+
+        def evaluate_body(expression: LambdaExpr, local: dict[str, str],
+                          target: str | None) -> str:
+            if isinstance(expression, LambdaName):
+                if expression.name not in local:
+                    raise UnsupportedFragment("unbound static lambda body name")
+                return wire_value(local[expression.name])
+            if isinstance(expression, LambdaLet):
+                bound = evaluate_body(expression.bound, local, None)
+                extended = local.copy()
+                extended[expression.name] = bound
+                return evaluate_body(expression.body, extended, target)
+            assert isinstance(expression, LambdaBinary)
+            left = evaluate_body(expression.left, local, None)
+            right = evaluate_body(expression.right, local, None)
+            result = gate_name(target)
+            append_gate(result, left, expression.operator, right)
+            return result
+
+        return evaluate_body(function.body, captured, wanted)
 
     def evaluate_static(expression: StaticExpr, local: dict[str, StaticValue],
                         wanted: str | None) -> str:
@@ -565,8 +582,11 @@ def parse_source(data: bytes, *, optimized: bool = False) -> tuple[dict[str, Any
                 if argument in helpers:
                     return NamedFunction(argument)
                 raise UnsupportedFragment("unbound static function value")
-            expand_callable(function, source_arguments(function, arguments,
-                                                      resolve_wire, resolve_function), name)
+            produced = expand_callable(function, source_arguments(function, arguments,
+                                                                  resolve_wire, resolve_function),
+                                       name)
+            if produced != name:
+                wires[name] = wires[produced]
             continue
         left, op_token, right = binding_rhs(rhs)
         if left not in wires or (right is not None and right not in wires):
