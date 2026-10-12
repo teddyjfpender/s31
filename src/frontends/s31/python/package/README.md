@@ -49,10 +49,10 @@ Verification callers must use the yielded snapshot while its context is open.
 General direct-gate text packages remain buildable; programs outside the
 bounded certificate grammar fail this stricter admission. This gate still
 inherits the certificate's stated AIR/PCS and native implementation assumptions.
-The v2 grammar now includes one pure static helper with one or two
-`[m31; 4]` parameters and a bounded straight-line body of add and
-pointwise-multiply operations. Its calls are independently expanded to
-existing circuit wires and fresh generated wires before the
+The v2 grammar now includes up to eight pure static functions with one or two
+`[m31; 4]` parameters each and bounded straight-line bodies of add,
+pointwise-multiply, and earlier-declared function calls. Their calls are
+independently expanded to existing circuit wires and fresh generated wires before the
 same positional SSA, topology, fixed-root, and key checks. The
 [release acceptance](../../tests/acceptance/compiler_correspondence/functional_release.py)
 compares the function with handwritten gates, proves the function package,
@@ -75,7 +75,7 @@ bytes during native execution.
 `correspondence.py` independently reparses the exact source bytes for a bounded
 public four-lane add/multiply fragment. It erases alias lets and redundant
 parentheses without allocating SSA nodes, then checks one to sixteen canonical
-arithmetic lets. Calls to the bounded static helper are covered as above;
+arithmetic lets. Calls to the bounded static functions are covered as above;
 nested arithmetic, other calls, and other functional forms remain outside
 this independent package certificate. For direct-gate text packages
 in that grammar, build attaches `correspondence-certificate.json` and verification

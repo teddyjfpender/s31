@@ -125,9 +125,10 @@ python3 src/frontends/s31/python/s31.py verify-release PACKAGE PROOF \
 
 This strict command accepts one public `[m31; 4]` input, one to sixteen
 canonical add/multiply lets, zero-cost aliases and parentheses, and a public
-`[m31; 4]` output. It also accepts one pure named helper with one or two
-`[m31; 4]` parameters and up to sixteen straight-line add or
-pointwise-multiply operations. Calls to that helper erase to ordinary lets,
+`[m31; 4]` output. It also accepts up to eight pure named functions with one
+or two `[m31; 4]` parameters each, earlier-declared calls, and at most sixteen
+straight-line add or pointwise-multiply operations across the circuit. Calls
+erase to ordinary lets,
 so the same gate certificate and
 fixed-root checks apply. The [worked release example](../examples/functional/release_square4/README.md)
 has a native proof accepted by `verify-release` and the same AIR geometry as

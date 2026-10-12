@@ -148,6 +148,67 @@ circuit calc(public x: [m31; 4]) -> public [m31; 4] {
         with self.assertRaisesRegex(UnsupportedFragment, "exceeds 16"):
             parse_source(source(17).encode())
 
+    def test_acyclic_function_composition_erases_to_direct_gates(self) -> None:
+        source = """fn square(v: [m31; 4]) -> [m31; 4] { v .* v }
+fn twice(v: [m31; 4]) -> [m31; 4] {
+  let squared = square(v);
+  squared + squared
+}
+fn add_original(v: [m31; 4]) -> [m31; 4] {
+  let doubled = twice(v);
+  v + doubled
+}
+circuit calc(public x: [m31; 4]) -> public [m31; 4] {
+  let result = add_original(x);
+  result
+}
+"""
+        direct = """circuit calc(public x: [m31; 4]) -> public [m31; 4] {
+  let _s31_i2_0 = x .* x;
+  let _s31_i1_0 = _s31_i2_0 + _s31_i2_0;
+  let result = x + _s31_i1_0;
+  result
+}
+"""
+        checked, syntax = parse_source(source.encode())
+        direct_checked, direct_syntax = parse_source(direct.encode())
+        self.assertEqual(checked, compile_text(source)[0])
+        self.assertEqual((checked, syntax), (direct_checked, direct_syntax))
+        self.assertEqual(len(checked["nodes"]), 3)
+
+    def test_composition_rejects_forward_calls_and_unused_declarations(self) -> None:
+        source = """fn square(v: [m31; 4]) -> [m31; 4] { v .* v }
+fn twice(v: [m31; 4]) -> [m31; 4] { square(v) }
+circuit calc(public x: [m31; 4]) -> public [m31; 4] {
+  let result = twice(x);
+  result
+}
+"""
+        self.assertEqual(parse_source(source.encode())[0], compile_text(source)[0])
+        with self.assertRaisesRegex(UnsupportedFragment, "earlier declaration"):
+            parse_source(source.replace("fn square", "fn missing", 1).encode())
+        with self.assertRaisesRegex(UnsupportedFragment, "unused static helper"):
+            parse_source(source.replace("twice(x)", "square(x)").encode())
+        with self.assertRaises(UnsupportedFragment):
+            parse_source(source.replace("square(v) }", "twice(v) }").encode())
+
+    def test_eight_function_chain_is_the_declaration_limit(self) -> None:
+        def source(count: int) -> str:
+            functions = ["fn f0(v: [m31; 4]) -> [m31; 4] { v + v }"]
+            functions.extend(
+                f"fn f{index}(v: [m31; 4]) -> [m31; 4] {{ f{index - 1}(v) }}"
+                for index in range(1, count))
+            return ("\n".join(functions) + "\n" +
+                    "circuit calc(public x: [m31; 4]) -> public [m31; 4] {\n" +
+                    f"  let result = f{count - 1}(x);\n  result\n}}\n")
+
+        accepted = source(8)
+        checked, _ = parse_source(accepted.encode())
+        self.assertEqual(checked, compile_text(accepted)[0])
+        self.assertEqual(len(checked["nodes"]), 1)
+        with self.assertRaisesRegex(UnsupportedFragment, "more than eight"):
+            parse_source(source(9).encode())
+
     def test_rejected_helper_forms_fail_closed(self) -> None:
         source = program(1, helper=True)
         malformed = [

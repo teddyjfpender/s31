@@ -13,7 +13,7 @@ The [record guide](records.md) shows named fields with the same static-product
 erasure and a separate nominal type check.
 
 The [strict release example](../examples/functional/release_square4/README.md)
-shows one named pure helper admitted by the independent v2 direct-gate
+shows three composed pure functions admitted by the independent v2 direct-gate
 certificate. Its handwritten form has the same two relation nodes and native
 AIR geometry; the functional package's proof passes `verify-release`. The
 strict certificate currently covers this bounded helper grammar, while the

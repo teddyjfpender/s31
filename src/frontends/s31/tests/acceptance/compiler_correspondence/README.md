@@ -1,6 +1,6 @@
 # Generated source to native proof samples
 
-## Strict release of a named functional helper
+## Strict release of composed functions
 
 `functional_release.py` builds the checked-in
 [`release_square4`](../../../examples/functional/release_square4/README.md)
@@ -15,7 +15,7 @@ accepts from a pinned package snapshot, and a changed public claim fails.
 python3 src/frontends/s31/tests/acceptance/compiler_correspondence/functional_release.py
 ```
 
-This is a bounded one-helper certificate and native regression. It does not
+This is a bounded acyclic-function certificate and native regression. It does not
 prove arbitrary functional source compilation or the underlying STARK
 cryptographic assumptions.
 

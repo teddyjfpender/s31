@@ -4,10 +4,10 @@ The accepted grammar has one public [m31; 4] input and one public [m31; 4]
 output. Its body contains 1..16 fresh arithmetic lets (`+` or `.*`),
 interleaved with zero-cost alias lets, followed by a returned wire name.
 Redundant parentheses around these expressions and names are admitted.
-Operands must resolve to the input or an earlier arithmetic let. A single
-pure, monomorphic helper may contain straight-line arithmetic and be called
-from circuit lets; its operations are expanded to ordinary gates with exact
-generated names. The default v2 certificate requires canonical operand order
+Operands must resolve to the input or an earlier arithmetic let. Up to eight
+pure, monomorphic functions may contain straight-line arithmetic and calls to
+earlier functions. Their applications are expanded to ordinary gates with
+exact generated names. The default v2 certificate requires canonical operand order
 and distinct expressions.
 The explicit optimized v3 path independently sorts commutative operands and
 checks common-subexpression elimination with a source-to-canonical map. No
@@ -30,8 +30,8 @@ from typing import Any
 
 from package.direct_gate_schedule import constant_and_padding, exact_direct_gate_schedule
 from package.manifest_digest import direct_gate_v2_digest
-from package.source_fragments.static_helper import (UnsupportedStaticHelper,
-                                                    peel_static_helper)
+from package.source_fragments.static_helper import (StaticExpr, UnsupportedStaticHelper,
+                                                    peel_static_helpers)
 
 
 class UnsupportedFragment(ValueError):
@@ -134,7 +134,7 @@ def _tokens(data: bytes) -> list[str]:
 def parse_source(data: bytes, *, optimized: bool = False) -> tuple[dict[str, Any], dict[str, Any]]:
     """Reparse exact bytes without using the production lexer or compiler."""
     try:
-        helper, tokens = peel_static_helper(
+        helpers, tokens = peel_static_helpers(
             _tokens(data),
             lambda name: (NAME.fullmatch(name) is not None and
                           name not in SOURCE_KEYWORDS and name not in PLAIN_BUILTIN_NAMES and
@@ -146,7 +146,7 @@ def parse_source(data: bytes, *, optimized: bool = False) -> tuple[dict[str, Any
     # The production specializer skips a generated prefix if it collides with
     # any circuit source binder. Excluding that namespace makes call-number
     # replay exact without trusting the production name allocator.
-    if helper is not None and any(INLINE_NAME.fullmatch(token) for token in tokens):
+    if helpers and any(INLINE_NAME.fullmatch(token) for token in tokens):
         raise UnsupportedFragment("circuit source occupies the static inline namespace")
     cursor = 0
 
@@ -221,7 +221,7 @@ def parse_source(data: bytes, *, optimized: bool = False) -> tuple[dict[str, Any
 
     def helper_call(expression: list[str]) -> tuple[str, ...] | None:
         plain = strip_parens(expression)
-        if helper is None or not plain or plain[0] != helper.name:
+        if not plain or plain[0] not in helpers:
             return None
         if len(plain) < 4 or plain[1] != "(" or plain[-1] != ")":
             raise UnsupportedFragment("static helper must be called as a whole expression")
@@ -238,18 +238,18 @@ def parse_source(data: bytes, *, optimized: bool = False) -> tuple[dict[str, Any
                 parts.append([])
             else:
                 parts[-1].append(token)
-        if depth != 0 or len(parts) != len(helper.params):
+        if depth != 0 or len(parts) != len(helpers[plain[0]].params):
             raise UnsupportedFragment("static helper argument count differs")
-        return tuple(reference(part) for part in parts)
+        return (plain[0], *(reference(part) for part in parts))
 
     take("circuit")
     circuit = identifier()
-    if circuit in PLAIN_BUILTIN_NAMES or (helper is not None and circuit == helper.name):
+    if circuit in PLAIN_BUILTIN_NAMES or circuit in helpers:
         raise UnsupportedFragment("circuit name is reserved by the compiler")
     take("(")
     take("public")
     input_name = identifier()
-    if len(input_name) > MAX_RELATION_NAME_CHARS or (helper is not None and input_name == helper.name):
+    if len(input_name) > MAX_RELATION_NAME_CHARS or input_name in helpers:
         raise UnsupportedFragment("relation input name exceeds compiler limit")
     take(":")
     lane_type()
@@ -266,11 +266,11 @@ def parse_source(data: bytes, *, optimized: bool = False) -> tuple[dict[str, Any
     source_to_canonical = [0]
     nodes: list[dict[str, str]] = []
     ssa: list[dict[str, Any]] = []
-    helper_used = False
+    used_helpers: set[str] = set()
     helper_calls = 0
 
     def append_gate(name: str, left: str, op_token: str, right: str) -> None:
-        if name in wires or (helper is not None and name == helper.name):
+        if name in wires or name in helpers:
             raise UnsupportedFragment("duplicate wire name")
         if left not in wires or right not in wires:
             raise UnsupportedFragment("forward or unbound operand")
@@ -304,10 +304,37 @@ def parse_source(data: bytes, *, optimized: bool = False) -> tuple[dict[str, Any
         if len(nodes) > 16:
             raise UnsupportedFragment("more than 16 arithmetic operations")
 
+    def evaluate_static(expression: StaticExpr, local: dict[str, str], wanted: str) -> str:
+        if expression.kind == "gate":
+            left, right = expression.operands
+            append_gate(wanted, local[left], expression.value, local[right])
+            return wanted
+        if expression.kind == "call":
+            return expand_helper(expression.value,
+                                 tuple(local[argument] for argument in expression.operands),
+                                 wanted)
+        if expression.kind == "ref":
+            return local[expression.operands[0]]
+        raise UnsupportedFragment("invalid static function expression")
+
+    def expand_helper(function: str, arguments: tuple[str, ...], wanted: str) -> str:
+        nonlocal helper_calls
+        helper_calls += 1
+        serial = helper_calls
+        used_helpers.add(function)
+        helper = helpers[function]
+        local = dict(zip(helper.params, arguments))
+        for index, step in enumerate(helper.statements):
+            target = (wanted if helper.body.kind == "ref" and
+                      helper.body.operands[0] == step.name else
+                      f"_s31_i{serial}_{index}")
+            local[step.name] = evaluate_static(step.expression, local, target)
+        return evaluate_static(helper.body, local, wanted)
+
     while cursor < len(tokens) and tokens[cursor] == "let":
         take("let")
         name = identifier()
-        if name in wires or (helper is not None and name == helper.name):
+        if name in wires or name in helpers:
             raise UnsupportedFragment("duplicate wire name")
         take("=")
         rhs: list[str] = []
@@ -316,17 +343,10 @@ def parse_source(data: bytes, *, optimized: bool = False) -> tuple[dict[str, Any
         take(";")
         call = helper_call(rhs)
         if call is not None:
-            helper_used = True
-            helper_calls += 1
-            assert helper is not None
-            local = dict(zip(helper.params, call))
-            for index, gate in enumerate(helper.gates):
-                target = (name if index == len(helper.gates) - 1
-                          else f"_s31_i{helper_calls}_{index}")
-                append_gate(target, local[gate.left], gate.operator,
-                            local[gate.right])
-                if gate.name is not None:
-                    local[gate.name] = target
+            function, *arguments = call
+            if any(argument not in wires for argument in arguments):
+                raise UnsupportedFragment("forward or unbound function argument")
+            expand_helper(function, tuple(arguments), name)
             continue
         left, op_token, right = binding_rhs(rhs)
         if left not in wires or (right is not None and right not in wires):
@@ -338,7 +358,7 @@ def parse_source(data: bytes, *, optimized: bool = False) -> tuple[dict[str, Any
         append_gate(name, left, op_token, right)
     if not nodes:
         raise UnsupportedFragment("at least one arithmetic operation is required")
-    if helper is not None and not helper_used:
+    if helpers and set(helpers) != used_helpers:
         raise UnsupportedFragment("unused static helper is outside certified fragment")
     output_tokens: list[str] = []
     while cursor < len(tokens) and tokens[cursor] != "}":
