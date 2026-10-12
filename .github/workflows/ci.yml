@@ -121,6 +121,11 @@ jobs:
           set -euo pipefail
           python3 src/frontends/s31/tests/acceptance/compiler_correspondence/closure_release.py |
             tee zig-out/s31/acceptance/closure-release.json
+      - name: Inline lambda strict release proof and zero-cost gates
+        run: |
+          set -euo pipefail
+          python3 src/frontends/s31/tests/acceptance/compiler_correspondence/inline_lambda_release.py |
+            tee zig-out/s31/acceptance/inline-lambda-release.json
       - name: Native M31 subtraction proof and raw-row comparison
         run: |
           set -euo pipefail

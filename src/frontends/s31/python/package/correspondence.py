@@ -247,7 +247,7 @@ def parse_source(data: bytes, *, optimized: bool = False) -> tuple[dict[str, Any
                 reference(plain[position + 1:]))
 
     def helper_call(expression: list[str],
-                    local: dict[str, StaticValue] | None = None) -> tuple[FunctionValue, list[str]] | None:
+                    local: dict[str, StaticValue] | None = None) -> tuple[FunctionValue, list[list[str]]] | None:
         plain = strip_parens(expression)
         if not plain:
             return None
@@ -282,7 +282,7 @@ def parse_source(data: bytes, *, optimized: bool = False) -> tuple[dict[str, Any
                 parts[-1].append(token)
         if depth != 0 or len(parts) != len(function_parameters(function)):
             raise UnsupportedFragment("static helper argument count differs")
-        return function, [reference(part) for part in parts]
+        return function, parts
 
     take("circuit")
     circuit = identifier()
@@ -447,15 +447,27 @@ def parse_source(data: bytes, *, optimized: bool = False) -> tuple[dict[str, Any
             local[step.name] = evaluate_static(step.expression, local, target)
         return evaluate_static(helper.body, local, wanted)
 
-    def source_arguments(function: FunctionValue, names: list[str],
+    def source_arguments(function: FunctionValue, parts: list[list[str]],
                          resolve_array: Callable[[str], str],
                          resolve_function: Callable[[str], FunctionValue]) -> tuple[StaticValue, ...]:
         arguments: list[StaticValue] = []
-        for kind, name in zip(function_parameters(function), names):
+        for kind, part in zip(function_parameters(function), parts):
             if kind == "array":
-                arguments.append(resolve_array(name))
+                arguments.append(resolve_array(reference(part)))
             else:
-                arguments.append(resolve_function(name))
+                try:
+                    inline = parse_static_lambda(
+                        strip_parens(part),
+                        lambda operand: (NAME.fullmatch(operand) is not None and
+                                         operand not in SOURCE_KEYWORDS and
+                                         operand not in PLAIN_BUILTIN_NAMES and
+                                         len(operand) <= MAX_RELATION_NAME_CHARS),
+                        resolve_array,
+                    )
+                except UnsupportedStaticLambda as exc:
+                    raise UnsupportedFragment(str(exc)) from exc
+                arguments.append(inline if inline is not None else
+                                 resolve_function(reference(part)))
         return tuple(arguments)
 
     def evaluate_lexical(expression: Atom | Let, local: dict[str, StaticValue],

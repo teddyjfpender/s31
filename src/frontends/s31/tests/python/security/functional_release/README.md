@@ -18,6 +18,9 @@ used as an array, shadowing, an unbound function, or a function at the public
 output. `test_static_lambda.py` checks a bounded pure unary lambda body,
 including passage through `Fn`, exact gate equality with handwritten source,
 capture across lexical shadowing, and rejection of unbound or ill-typed forms.
+It also compares an inline lambda passed to a higher-order helper with
+handwritten gates and production compilation, and rejects malformed inline
+lambda types or captures.
 Other lambda operations and general closures remain outside this bounded
 certificate.
 The separate `test_lexical_corpus.py` exhausts all 30 chains of one to four binders with

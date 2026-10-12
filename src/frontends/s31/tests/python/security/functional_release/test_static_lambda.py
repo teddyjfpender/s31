@@ -20,6 +20,27 @@ APPLY = ("fn apply(f: Fn([m31; 4]) -> [m31; 4], v: [m31; 4]) "
 
 
 class StaticLambdaReleaseTests(unittest.TestCase):
+    def test_inline_lambda_passed_to_fn_erases_to_handwritten_gates(self) -> None:
+        example = S31 / "examples/functional/release_inline_lambda4"
+        source = (example / "functional.s31").read_text()
+        manual = (example / "manual.s31").read_text()
+        checked = parse_source(source.encode())
+        self.assertEqual(checked, parse_source(manual.encode()))
+        self.assertEqual(checked[0], compile_text(source)[0])
+        self.assertEqual([node["name"] for node in checked[0]["nodes"]],
+                         ["_s31_i1_0", "result"])
+
+    def test_inline_lambda_captures_current_lexical_wire(self) -> None:
+        source = (APPLY + HEADER +
+                  "  let saved = x .* x;\n"
+                  "  let result = let y = x + x in "
+                  "apply(fun(v: [m31; 4]) -> [m31; 4] => saved + v, y);\n" +
+                  TAIL)
+        checked = parse_source(source.encode())
+        self.assertEqual(checked[0], compile_text(source)[0])
+        self.assertEqual(checked[0]["nodes"][-1]["lhs"], "saved")
+        self.assertEqual(checked[0]["nodes"][-1]["rhs"], "_s31_0")
+
     def test_expression_templates_match_production(self) -> None:
         bodies = (
             "v .* v", "v + v", "x + v", "v + x", "x .* v", "v .* x",
@@ -108,6 +129,10 @@ class StaticLambdaReleaseTests(unittest.TestCase):
             "  let result = f(x);\n" + TAIL,
             HEADER + f"  let f = {LAMBDA};\n  let result = f(f);\n" + TAIL,
             HEADER + f"  let f = {LAMBDA};\n  let result = x .* x;\n  f\n}}\n",
+            APPLY + HEADER + "  let result = apply("
+            "fun(v: [m31; 2]) -> [m31; 4] => v .* v, x);\n" + TAIL,
+            APPLY + HEADER + "  let result = apply("
+            "fun(v: [m31; 4]) -> [m31; 4] => missing + v, x);\n" + TAIL,
         )
         for index, source in enumerate(programs):
             with self.subTest(rejection=index), self.assertRaises(UnsupportedFragment):

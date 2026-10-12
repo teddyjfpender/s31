@@ -30,6 +30,9 @@ the native proof covers the same two gates as the handwritten source. The
 certifies a multi-gate lambda body and its lexical capture across a shadowed
 name, with the same four AIR gates as handwritten arithmetic. The ordinary
 frontend below supports broader lambdas and closures.
+The [inline lambda release example](../examples/functional/release_inline_lambda4/README.md)
+passes `fun(v: [m31; 4]) -> [m31; 4] => v .* v` directly to `apply_twice`.
+Its two applications produce only the handwritten `x²` and `x⁴` gates.
 
 ## Auditing a named function all the way to packed rows
 

@@ -40,9 +40,12 @@ later lexical shadow does not change the capture. `static_lambda.py` parses a
 bounded pure body with parentheses, nested `+` and `.*`, and lexical `let … in`
 bindings. It captures free wire names at function creation, and the checker
 emits only the evaluated arithmetic gates.
+The same parser checks an inline lambda supplied to a monomorphic `Fn`
+parameter, capturing visible wires at that call site. The
+[inline native example](../../../examples/functional/release_inline_lambda4/README.md)
+applies one such value twice and matches two handwritten gates.
 This fragment is intentionally exact: other lambda operations and closures,
 calls nested inside an argument expression, partial operations, subtraction,
-and hidden effects
-remain outside this v2 certificate. They remain usable through the
-ordinary S31 compiler and verifier; the stricter release gate admits them
+and hidden effects remain outside this v2 certificate. They remain usable
+through the ordinary S31 compiler and verifier; the stricter release gate admits them
 only when a corresponding independent certificate is available.

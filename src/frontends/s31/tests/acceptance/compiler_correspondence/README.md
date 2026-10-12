@@ -50,6 +50,15 @@ public result.
 python3 src/frontends/s31/tests/acceptance/compiler_correspondence/closure_release.py
 ```
 
+`inline_lambda_release.py` passes a lambda directly to a monomorphic `Fn`
+parameter and applies it twice. Its two-gate normalized relation, canonical
+IR, and native AIR geometry must equal the handwritten `x²; x⁴` program. The
+proof passes strict release verification, and a changed public result fails.
+
+```sh
+python3 src/frontends/s31/tests/acceptance/compiler_correspondence/inline_lambda_release.py
+```
+
 `generated_native_subset.py` selects four sources from the pinned 384-source
 mutation corpus: one gate; eight alias-spelled gates with an earlier return;
 fifteen gates with a final return; and sixteen comment-spelled gates with an

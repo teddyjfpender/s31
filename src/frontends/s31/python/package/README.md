@@ -74,10 +74,13 @@ same normalized relation and native AIR geometry as two handwritten gates,
 passes `verify-release`, and rejects a changed public claim.
 The [captured-lambda release acceptance](../../tests/acceptance/compiler_correspondence/closure_release.py)
 additionally checks a unary lambda with a bounded arithmetic and lexical-let
-body. Its lexical
-capture is resolved at function creation, and passing the closure through a
-`Fn` parameter adds no relation or AIR node. A later lexical binding with the
+body. Its lexical capture is resolved at function creation, and passing the
+closure through a `Fn` parameter adds no relation or AIR node. A later lexical binding with the
 same name leaves the captured wire unchanged.
+An [inline-lambda release example](../../examples/functional/release_inline_lambda4/README.md)
+passes a lambda directly to a `Fn` parameter and invokes it twice. Its
+independent certificate checks the exact two-gate result and native AIR
+geometry against handwritten arithmetic.
 
 `inspect-record-proof` also executes from a private copy of the package,
 proof, and statement. Its `unpinned_snapshot` check establishes internal

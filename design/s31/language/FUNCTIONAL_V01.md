@@ -141,6 +141,8 @@ arithmetic lets, expression-level lexical `let … in` inside circuit lets, and
 named unary `Fn([m31; 4]) -> [m31; 4]` values passed through static aliases
 and function parameters. It also admits unary lambdas with bounded pure
 arithmetic and lexical-let bodies over the argument and existing captured wires.
+The same bounded lambdas may be supplied inline as arguments to unary `Fn`
+parameters, including captures from the current lexical scope.
 The checker replays generated and anonymous wire names, requires exact
 normalized relation and canonical SSA equality, then checks the native gate
 topology and fixed-root key before native proof verification. The
@@ -152,9 +154,13 @@ QM31 rows, pass `verify-release`, and reject a changed public result. This is
 finite evidence for this fragment. The
 [captured-lambda fixture](../../../src/frontends/s31/examples/functional/release_closure4/README.md)
 matches its handwritten four-gate form at 324 raw and 512 padded QM31 rows
-and tests lexical capture across a shadowed name. The certificate does not
-cover other lambda operations, general closures or higher-order source,
-records, private inputs, other AIR profiles, or the native PCS/FRI proof
+and tests lexical capture across a shadowed name.
+The [inline-lambda fixture](../../../src/frontends/s31/examples/functional/release_inline_lambda4/README.md)
+passes one anonymous function to a helper that applies it twice and matches
+its handwritten two-gate form at 322 raw and 512 padded QM31 rows. The
+certificate does not cover other lambda operations, general closures or
+higher-order source, records, private inputs, other AIR profiles, or the native
+PCS/FRI proof
 system, and it does not replace the full compiler correspondence proof above.
 
 The independent bounded [source-to-relation checker](SOURCE_RELATION_FRAGMENT.md)

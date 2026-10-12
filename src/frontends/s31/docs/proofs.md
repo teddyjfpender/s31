@@ -144,6 +144,10 @@ certifies a bounded arithmetic and lexical-let body in a unary lambda, including
 a capture whose name is shadowed later; it has exactly the handwritten four-gate AIR.
 Other lambda operations, general closures, and function values in the public
 ABI remain outside this strict certificate.
+The [inline lambda example](../examples/functional/release_inline_lambda4/README.md)
+passes `fun(v: [m31; 4]) -> [m31; 4] => v .* v` directly to a typed helper.
+Two applications leave exactly two multiplication gates, with no function
+value or call row in the AIR.
 
 For that same fragment, the [fixed-root join inspector](../tools/inspect/check_direct_gate_fixed_root_join.py)
 replays `verify-release` admission, asks the packaged prover for a fresh
