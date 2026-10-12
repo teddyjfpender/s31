@@ -10,6 +10,7 @@ const component_manifest = @import("component_manifest.zig");
 const direct_component_preflight = @import("direct_component_preflight.zig");
 const public_physical_guard = @import("public_physical_guard.zig");
 const public_main_commitment = @import("public_main_commitment.zig");
+const public_fixed_commitment = @import("public_fixed_commitment.zig");
 const proof_execution = @import("proof_execution.zig");
 const recursion_gate = @import("../recursion/recursion_gate.zig");
 const fixed_fold = @import("../recursion/fixed_fold.zig");
@@ -313,6 +314,8 @@ pub fn main() !void {
         try inspectBoundedPhysicalRows(allocator, parsed.value, args[2], .rows);
     } else if (std.mem.eql(u8, command, "inspect-physical-root") and args.len == 3 and direct_mode and !chip_mode) {
         try inspectBoundedPhysicalRows(allocator, parsed.value, args[2], .main_root);
+    } else if (std.mem.eql(u8, command, "inspect-fixed-root-from-columns") and args.len == 3 and direct_mode and !chip_mode) {
+        try inspectFixedRootFromColumns(allocator, args[2]);
     } else if (std.mem.eql(u8, command, "prove") and args.len == 4) {
         try prove(allocator, parsed.value, args[2], args[3], null, false, null, null, false, false);
     } else if (std.mem.eql(u8, command, "prove-for-external-verification") and args.len == 4 and
@@ -466,6 +469,7 @@ fn parseInspectStep(args: []const []const u8, base_len: usize) !u32 {
 
 fn usage() error{InvalidArguments} {
     std.debug.print("usage: s31-program check | inspect | inspect-topology (bounded direct-gate only) | inspect-physical-rows ASSIGNMENT.json | inspect-physical-root ASSIGNMENT.json (public bounded direct-gate only) | run ASSIGNMENT.json | prove ASSIGNMENT.json PROOF\n", .{});
+    std.debug.print("       inspect-fixed-root-from-columns FIXED.json (direct-gate diagnostic, explicit 8x512 canonical M31 columns)\n", .{});
     std.debug.print("       prove-for-external-verification ASSIGNMENT.json PROOF (record direct-gate v2 only; output is UNVERIFIED until separate native verifier accepts)\n", .{});
     std.debug.print("       recurse-check ASSIGNMENT.json CHILD-PROOF CHILD-KEY.json | recurse-prove ASSIGNMENT.json CHILD-PROOF OUTER-PROOF CHILD-KEY.json [--low-memory]\n", .{});
     std.debug.print("       recurse-wrap CHILD-PROOF CHILD-STATEMENT.json OUTER-PROOF CHILD-KEY.json [--low-memory]\n", .{});
@@ -984,6 +988,26 @@ fn inspectDirectTopology(allocator: std.mem.Allocator, source: relation.Program)
 }
 
 const PhysicalInspectionMode = enum { rows, main_root };
+
+const FixedRootInput = struct {
+    schema: []const u8,
+    fixed_columns: [circuit.common.direct_arithmetic.N_COLUMNS][]const u32,
+};
+
+fn inspectFixedRootFromColumns(allocator: std.mem.Allocator, path: []const u8) !void {
+    const bytes = try std.fs.cwd().readFileAlloc(allocator, path, 1 << 20);
+    defer allocator.free(bytes);
+    var parsed = try std.json.parseFromSlice(FixedRootInput, allocator, bytes, .{
+        .ignore_unknown_fields = false,
+        .duplicate_field_behavior = .@"error",
+    });
+    defer parsed.deinit();
+    if (!std.mem.eql(u8, parsed.value.schema, "s31-direct-gate-fixed-columns-v1"))
+        return error.InvalidDirectFixedColumnSchema;
+    const root = try public_fixed_commitment.rootFromWords(allocator, parsed.value.fixed_columns);
+    const root_hex = std.fmt.bytesToHex(root, .lower);
+    std.debug.print("{{\"schema\":\"s31-direct-gate-recommitted-fixed-root-v1\",\"fixed_root\":\"{s}\"}}\n", .{&root_hex});
+}
 
 fn inspectBoundedPhysicalRows(allocator: std.mem.Allocator, source: relation.Program, assignment_path: []const u8, mode: PhysicalInspectionMode) !void {
     // This diagnostic exposes uncommitted main-column values. Private inputs

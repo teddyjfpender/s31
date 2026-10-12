@@ -50,6 +50,34 @@ openings equal the uncommitted physical-row export.
 
 ## Complete modeled direct-Gate roster on four programs
 
+### Case07 fixed-root recommitment
+
+`alias8_fixed_root_recommit.py` takes the exact case07 8×512 fixed-column
+diagnostic whose constant island is checked by Lean, admits it against the
+source-derived row schedule, and sends those literal cells to
+`inspect-fixed-root-from-columns`. The native command commits the supplied
+canonical M31 columns through the production PCS preparation and Blake2s
+Merkle path. A recomputed root must equal the sealed case07 key. A changed
+selector, source address, constant multiplicity, column order, noncanonical
+word, and short column all fail their expected controls.
+
+```sh
+python3 src/frontends/s31/tests/acceptance/compiler_correspondence/alias8_fixed_root_recommit.py
+```
+
+The expected root is
+`791ada776d80d9b30c5b0217cae11135c67658e1822296564efe3e591cb62ef8`.
+The four valid 4,096-cell mutations (`selector`, `source_address`,
+`island_multiplicity`, `column-swap`) must each change the root;
+`noncanonical` and `short-column` must be rejected before commitment.
+
+This closes the case07 export-to-fixed-root diagnostic equality gap for the
+pinned fixture. The command accepts explicit untrusted columns and is not a
+verifier. The test does not prove Merkle binding, PCS opening authentication,
+or FRI.
+
+### Four-case full-roster checks
+
 `full_native_roster.py` checks a 1-gate direct multiplication, an 8-gate
 alias-spelled program that returns gate 4, a 15-gate direct program, and a
 16-gate comment-spelled program that returns gate 8 while later gates are still
