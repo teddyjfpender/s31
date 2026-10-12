@@ -161,6 +161,7 @@ BINDINGS = [
     "src/frontends/s31/benchmarks/pow_workers/phase_equivalence.py",
     "src/frontends/s31/tests/acceptance/compiler_correspondence/generated_native_subset.py",
     "src/frontends/s31/tests/acceptance/compiler_correspondence/native_source_cells.py",
+    "src/frontends/s31/tests/acceptance/compiler_correspondence/projected_row_adversarial.py",
     "src/frontends/s31/tests/acceptance/compiler_correspondence/native_fixed_root_binding.py",
     "src/frontends/s31/tests/acceptance/compiler_correspondence/full_native_roster.py",
     "src/frontends/s31/tests/acceptance/compiler_correspondence/public_main_root_binding.py",

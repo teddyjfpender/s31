@@ -155,3 +155,26 @@ implementation. It does not establish that arbitrary prover-supplied openings
 equal the exported rows, prove collision resistance, or cover private/mixed
 programs. The source compiler and PCS verifier remain separate proof
 obligations in the broader correspondence claim.
+
+## Resealed source-row adversarial controls
+
+`projected_row_adversarial.py` builds the pinned eight-gate alias source and
+requires its unmodified package to pass both the direct-Gate correspondence
+checker and package admission. It then copies the package twice. One copy
+changes the first source row's add selector to a pointwise-multiply selector;
+the other swaps the complete fixed cells at the first two source row positions.
+Both copies update the topology artifact SHA-256 in `manifest.json`, and the
+test checks every listed artifact digest before admission. Both admissions
+must fail specifically at `emitted direct-gate selector/address columns differ
+from gate replay` (the source-derived native-gate to fixed-column comparison),
+not at a stale file hash or certificate check.
+
+```sh
+python3 src/frontends/s31/tests/acceptance/compiler_correspondence/projected_row_adversarial.py
+```
+
+The source-row positions come from the pinned positional DAG's independent
+schedule. This controls package admission of changed, uncommitted topology
+exports. The generated verifier consumes its embedded source and key, not
+`gate-topology.json`; the test does not claim that these forged packages are
+valid proofs or that it authenticates arbitrary PCS openings.
