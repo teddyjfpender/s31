@@ -9,6 +9,7 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from scripts.release import formal_receipt
 
@@ -85,6 +86,29 @@ class FormalReceiptTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "symlinks"):
             formal_receipt.run(self.out, self.logs, root=self.root,
                                take_snapshot=lambda _: self.clean, execute=self.fake_execute)
+
+    def test_snapshot_checks_engine_head_against_gitlink(self) -> None:
+        pinned = "e" * 40
+        engine = self.root / "deps/stwo-zig"
+        engine.mkdir(parents=True)
+
+        def git(path: Path, *args: str) -> str:
+            if args == ("rev-parse", "HEAD:deps/stwo-zig"):
+                return pinned
+            if args == ("rev-parse", "HEAD"):
+                return pinned if path == engine else "a" * 40
+            if args == ("status", "--porcelain", "--untracked-files=normal"):
+                return ""
+            raise AssertionError((path, args))
+
+        with mock.patch.object(formal_receipt, "git", side_effect=git), \
+             mock.patch.object(formal_receipt.s31, "compiler_fingerprint", return_value="b" * 64), \
+             mock.patch.object(formal_receipt, "digest", return_value="c" * 64):
+            self.assertTrue(formal_receipt.snapshot(self.root).clean)
+            with mock.patch.object(formal_receipt, "git", side_effect=lambda path, *args:
+                                   "f" * 40 if path == engine and args == ("rev-parse", "HEAD")
+                                   else git(path, *args)):
+                self.assertFalse(formal_receipt.snapshot(self.root).clean)
 
 
 if __name__ == "__main__":

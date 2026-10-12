@@ -41,10 +41,11 @@ class Snapshot:
 
 def snapshot(root: Path) -> Snapshot:
     engine = root / "deps/stwo-zig"
-    submodules = git(root, "submodule", "status")
+    pinned_engine = git(root, "rev-parse", "HEAD:deps/stwo-zig")
+    engine_commit = git(engine, "rev-parse", "HEAD")
     clean = (not git(root, "status", "--porcelain", "--untracked-files=normal") and
              not git(engine, "status", "--porcelain", "--untracked-files=normal") and
-             all(line and line[0] not in "-+U" for line in submodules.splitlines()))
+             engine_commit == pinned_engine)
     return Snapshot(git(root, "rev-parse", "HEAD"), s31.compiler_fingerprint(),
                     digest(root / "formal/s31/proof-inventory.json"),
                     digest(root / "formal/s31/source-bindings.json"), clean)
