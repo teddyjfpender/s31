@@ -1,6 +1,6 @@
 # S31 normalized semantics and local constraint proofs
 
-This package gives executable Lean semantics for **all 56 operations in S31
+This package gives executable Lean semantics for **all 57 operations in S31
 relation IR v1** and proves the local constraint models sound and complete.
 It reuses `RiscvRefinement.Field.M31` and the existing
 `RiscvRefinement.Recursion.CompactPoseidon` S-box proofs through a local Lake
@@ -454,6 +454,14 @@ four M31 lanes using the proved M31-to-ZMod map.
 outputs of the executable normalized `add` and `mul` relation nodes for one
 full four-lane chunk. The proof models the production equations and the
 `simd.mul` opcode choice; source hashes pin the reviewed Zig files.
+
+The new normalized M31 `sub` node has a separate four-lane bridge:
+`Field.toZMod_sub` preserves subtraction across the canonical M31/ZMod map,
+`Functional.subtractionNode_eval` computes the executable node, and
+`Qm31Ops.sub_row_iff_normalized_node` proves that the packed subtraction AIR
+row accepts exactly those four results. This theorem covers one full packed
+row. The arbitrary-length and typed source-expression composition theorems
+below still cover addition and multiplication only.
 
 `SimdChunks.partial_row_iff_normalized_node` extends the same result to final
 chunks with zero to four active lanes. `SimdChunks.packedRows_iff` covers

@@ -58,6 +58,7 @@ inductive Op where
   | int_rotl
   | int_rotr
   | int_div_rem
+  | sub
 deriving DecidableEq, Repr, BEq
 
 def Op.wireName : Op → String
@@ -117,6 +118,7 @@ def Op.wireName : Op → String
   | .int_rotl => "int_rotl"
   | .int_rotr => "int_rotr"
   | .int_div_rem => "int_div_rem"
+  | .sub => "sub"
 
 def Op.ofWireName : String → Option Op
   | "constant" => some .constant
@@ -175,6 +177,7 @@ def Op.ofWireName : String → Option Op
   | "int_rotl" => some .int_rotl
   | "int_rotr" => some .int_rotr
   | "int_div_rem" => some .int_div_rem
+  | "sub" => some .sub
   | _ => none
 
 def allOps : List Op := [
@@ -233,6 +236,7 @@ def allOps : List Op := [
   .int_shr_arithmetic,
   .int_rotl,
   .int_rotr,
-  .int_div_rem]
+  .int_div_rem,
+  .sub]
 
 end S31

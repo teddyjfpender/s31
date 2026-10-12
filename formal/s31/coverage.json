@@ -718,6 +718,16 @@
         "S31.Gadgets.IntegerDivision.fused_columns_exact"
       ],
       "source": {"path": "src/frontends/s31/language/relation_compiler.zig", "function": "intDivRem"}
+    },
+    {
+      "op": "sub",
+      "semantics": "S31.evaluateNode",
+      "gadget_theorems": [
+        "S31.Gadgets.sub_sound_complete",
+        "S31.Gadgets.Air.Qm31Ops.sub_row_sound_complete",
+        "S31.Gadgets.Air.Qm31Ops.sub_row_iff_normalized_node"
+      ],
+      "source": {"path": "src/frontends/s31/language/relation_compiler.zig", "function": "compileWithSpansMode"}
     }
   ]
 }

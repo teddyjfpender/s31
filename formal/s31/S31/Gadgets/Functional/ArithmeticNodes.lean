@@ -25,6 +25,9 @@ def arithmeticNode (multiply : Bool) : Node :=
   { name := "out", op := if multiply then .mul else .add,
     lhs := some "left", rhs := some "right" }
 
+def subtractionNode : Node :=
+  { name := "out", op := .sub, lhs := some "left", rhs := some "right" }
+
 def arithmeticEnv {n : Nat}
     (a b : Fin n → M31) : S31.Env :=
   [("left", ⟨.m31, List.ofFn a⟩),
@@ -75,6 +78,33 @@ theorem arithmeticNode_eval {n : Nat} (multiply : Bool)
     rw [hpure]
     simp [hshape]
     rfl
+
+theorem subtractionNode_shape {n : Nat} (a b : Fin n → M31) :
+    inferNode ((arithmeticEnv a b).map
+      (fun (name, value) => (name, value.shape))) subtractionNode =
+      .ok ⟨.m31, n⟩ := by
+  have hkind : (Kind.m31 == Kind.m31) = true := rfl
+  simp [subtractionNode, arithmeticEnv, inferNode, Node.metadataValid,
+    Node.fields, shapeOperand, expectShape, lookup, Value.shape,
+    need, require, hkind, Bind.bind, Except.bind, Except.map]
+  have hpure : (pure (⟨.m31, n⟩ : Shape) : Result Shape) =
+      .ok ⟨.m31, n⟩ := rfl
+  simp [hpure]
+
+theorem subtractionNode_eval {n : Nat} (a b : Fin n → M31) :
+    evaluateNode (arithmeticEnv a b) subtractionNode =
+      .ok ⟨.m31, List.ofFn (fun i => a i - b i)⟩ := by
+  unfold evaluateNode
+  rw [subtractionNode_shape a b]
+  have hshape := m31_shape_beq_self n
+  simp [subtractionNode, arithmeticEnv, valueOperand, lookup,
+    require, Value.shape, Value.valid, zipMap_ofFn,
+    Bind.bind, Except.bind]
+  have hpure : (pure (List.ofFn (fun i => a i - b i)) : Result (List M31)) =
+      .ok (List.ofFn (fun i => a i - b i)) := rfl
+  rw [hpure]
+  simp [hshape]
+  rfl
 
 def arithmeticExpr {n length : Nat} (multiply : Bool)
     (a b : Expr [.array n] (.array length)) :

@@ -22,6 +22,8 @@ import S31.Gadgets
 #check S31.Gadgets.Air.InverseRows.zero_active_lane_rejected
 #check S31.Gadgets.Air.MixRows.mix4Rows_iff_applyStep
 #check S31.Gadgets.Air.Qm31Ops.row_iff_normalized_node
+#check S31.Gadgets.Air.Qm31Ops.sub_row_iff_normalized_node
+#check S31.Gadgets.Air.Qm31Ops.sub_row_sound_complete
 #check S31.Gadgets.Air.SelectRows.untrusted_selector_self_product_iff
 #check S31.Gadgets.Air.SelectRows.untrusted_self_product_select_iff_evaluateNode
 #check S31.Gadgets.Air.SimdChunks.partial_row_iff_normalized_node
@@ -120,6 +122,7 @@ import S31.Gadgets
 #check S31.Gadgets.not_sound_complete
 #check S31.Gadgets.or_sound_complete
 #check S31.Gadgets.select_sound_complete
+#check S31.Gadgets.sub_sound_complete
 #check S31.Gadgets.xor_sound_complete
 #check S31.Gadgets.zero_anchor_sound_complete
 
@@ -197,13 +200,14 @@ def operationCoverage : List (Op × List String) := [
   (.int_shr_arithmetic, ["S31.Gadgets.IntegerShift.shr_arithmetic_sound_complete", "S31.Gadgets.IntegerShift.repeated_fill_pack"]),
   (.int_rotl, ["S31.Gadgets.IntegerShift.rotl_sound_complete"]),
   (.int_rotr, ["S31.Gadgets.IntegerShift.rotr_sound_complete"]),
-  (.int_div_rem, ["S31.Gadgets.IntegerDivision.unsigned_sound_complete", "S31.Gadgets.IntegerDivision.zero_divisor_rejected", "S31.Gadgets.IntegerDivision.signed_reconstruction", "S31.Gadgets.IntegerDivision.fused_columns_exact"])]
+  (.int_div_rem, ["S31.Gadgets.IntegerDivision.unsigned_sound_complete", "S31.Gadgets.IntegerDivision.zero_divisor_rejected", "S31.Gadgets.IntegerDivision.signed_reconstruction", "S31.Gadgets.IntegerDivision.fused_columns_exact"]),
+  (.sub, ["S31.Gadgets.sub_sound_complete", "S31.Gadgets.Air.Qm31Ops.sub_row_sound_complete", "S31.Gadgets.Air.Qm31Ops.sub_row_iff_normalized_node"])]
 
 theorem operation_inventory_exact : operationCoverage.map Prod.fst = allOps := rfl
 
 theorem operation_inventory_complete (op : Op) :
     op ∈ operationCoverage.map Prod.fst := by cases op <;> simp [operationCoverage]
 
-theorem operation_inventory_size : operationCoverage.length = 56 := rfl
+theorem operation_inventory_size : operationCoverage.length = 57 := rfl
 
 end S31.Evidence
