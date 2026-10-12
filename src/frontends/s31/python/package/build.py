@@ -25,6 +25,8 @@ def _key_schema(source: dict, lowering: str, privacy: dict | None) -> str:
                 else "s31-verification-key-direct-record-v2")
     if privacy:
         return proof_privacy.KEY_SCHEMA
+    if lowering == "gate":
+        return "s31-verification-key-gate-roster-v1"
     return {
         "sha-fused": "s31-verification-key-sha-fused-v4",
         "sha-shift": "s31-verification-key-sha-shift-v3",
@@ -136,6 +138,14 @@ def build_json(source_path: Path, output: Path, lowering: str = "gate",
             key["sha_fused"] = inspection["sha_fused"]
         if inspection["profile"] == "direct-m31-private-v5":
             key["private_boundary"] = inspection["private_boundary"]
+        if lowering == "gate" and privacy is None:
+            roster = inspection.get("gate_component_roster")
+            if (not isinstance(roster, dict) or
+                    roster.get("schema") != "s31-component-roster-gate-v1" or
+                    not isinstance(inspection.get("gate_component_roster_sha256"), str)):
+                raise RuntimeError("gate compiler did not produce a component roster")
+            key["gate_component_roster_sha256"] = inspection["gate_component_roster_sha256"]
+            write_json(staging / "gate-component-roster.json", roster)
         if lowering in {"direct-gate", "direct-chip"}:
             component_manifest = inspection.get("component_manifest")
             expected_manifest_schema = ("s31-component-manifest-direct-chip-v2" if lowering == "direct-chip"
@@ -204,6 +214,8 @@ def build_json(source_path: Path, output: Path, lowering: str = "gate",
         ]
         if lowering in {"direct-gate", "direct-chip"}:
             artifacts.append("component-manifest.json")
+        if lowering == "gate" and privacy is None:
+            artifacts.append("gate-component-roster.json")
         if lock_bytes is not None:
             artifacts.append("stdlib-lock.json")
         if recursive_option:

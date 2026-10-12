@@ -7,6 +7,7 @@ const cpu = @import("stwo_circuit_cpu_integration");
 const s31 = @import("stwo_s31_prototype");
 const native = @import("native_verifier.zig");
 const component_manifest = @import("component_manifest.zig");
+const gate_component_roster = @import("gate_component_roster.zig");
 const direct_component_preflight = @import("direct_component_preflight.zig");
 const public_physical_guard = @import("public_physical_guard.zig");
 const public_main_commitment = @import("public_main_commitment.zig");
@@ -56,6 +57,7 @@ const Key = struct {
     chip: ?ChipKey = null,
     private_boundary: ?circuit.common.direct_arithmetic.PrivateBoundary = null,
     component_manifest: ?component_manifest.Manifest = null,
+    gate_component_roster_sha256: ?[]const u8 = null,
     manifest_precommitment_sha256: ?[]const u8 = null,
     public_abi_sha256: ?[]const u8 = null,
     name: []const u8,
@@ -214,6 +216,8 @@ const Report = struct {
     chip: ?ChipKey,
     private_boundary: ?circuit.common.direct_arithmetic.PrivateBoundary,
     component_manifest: ?component_manifest.Manifest,
+    gate_component_roster: ?gate_component_roster.Manifest,
+    gate_component_roster_sha256: ?[]const u8,
     manifest_precommitment_sha256: ?[]const u8,
     public_abi_sha256: ?[]const u8,
     repeated_step: ?relation.ChipSpec,
@@ -744,8 +748,10 @@ fn inspect(allocator: std.mem.Allocator, source: relation.Program) !void {
     var trace_log: u32 = undefined;
     var preprocessed_columns: usize = undefined;
     var generated_manifest: ?component_manifest.Generated = null;
+    var generated_gate_roster: ?gate_component_roster.Generated = null;
     var manifest_digest: ?[32]u8 = null;
     defer if (generated_manifest) |*owned| owned.deinit();
+    defer if (generated_gate_roster) |*owned| owned.deinit();
     if (direct_mode) {
         const boundary = if (privateChip(source)) maps.private_boundary orelse return error.MissingPrivateBoundary else null;
         var pp = if (boundary) |item|
@@ -860,6 +866,12 @@ fn inspect(allocator: std.mem.Allocator, source: relation.Program) !void {
         const component_logs = try circuit.common.component_list.circuitComponentLogSizes(&layout);
         root = try pp.preprocessedRoot(allocator, 1);
         circuit_hash = try circuit.common.circuit_hash.hostCircuitHash(component_logs, 1, root);
+        if (!chip_mode and source.proof_mode != .blinded) {
+            generated_gate_roster = try gate_component_roster.generate(
+                allocator, &pp, source_digest, ir.sha256, root, circuit_hash,
+                cpu.air.bundle_sha256,
+            );
+        }
         trace_log = pp.traceLogSize();
         preprocessed_columns = preprocessed.N_PREPROCESSED_COLUMNS;
     }
@@ -869,6 +881,10 @@ fn inspect(allocator: std.mem.Allocator, source: relation.Program) !void {
     const hash_hex = std.fmt.bytesToHex(circuit_hash, .lower);
     var manifest_hex: [64]u8 = undefined;
     if (manifest_digest) |digest| manifest_hex = std.fmt.bytesToHex(digest, .lower);
+    var gate_roster_hex: [64]u8 = undefined;
+    if (generated_gate_roster) |owned| {
+        gate_roster_hex = std.fmt.bytesToHex(try gate_component_roster.digest(allocator, owned.value), .lower);
+    }
     const source_map = try allocator.alloc(SourceSpan, ir.source_map.len);
     defer allocator.free(source_map);
     for (ir.source_map, source_map) |item, *mapped| {
@@ -905,6 +921,8 @@ fn inspect(allocator: std.mem.Allocator, source: relation.Program) !void {
         } else null,
         .private_boundary = if (privateChip(source)) maps.private_boundary else null,
         .component_manifest = if (generated_manifest) |owned| owned.value else null,
+        .gate_component_roster = if (generated_gate_roster) |owned| owned.value else null,
+        .gate_component_roster_sha256 = if (generated_gate_roster != null) &gate_roster_hex else null,
         .manifest_precommitment_sha256 = if (manifest_digest != null) &manifest_hex else null,
         .public_abi_sha256 = if (source.version == 2) blk: {
             const abi_digest = try record_abi.digest(allocator, source);
@@ -3938,7 +3956,7 @@ fn validateKey(allocator: std.mem.Allocator, source: relation.Program, key: Key)
         const pinned_stdlib = key.stdlib_lock_sha256 orelse return error.InvalidVerificationKey;
         if (!std.mem.eql(u8, pinned_stdlib, expected_stdlib)) return error.InvalidVerificationKey;
     }
-    if (!std.mem.eql(u8, key.schema, if (gate_manifest_v2) "s31-verification-key-direct-manifest-v2" else if (source.version == 2 and chip_mode) "s31-verification-key-direct-record-chip-v2" else if (source.version == 2) "s31-verification-key-direct-record-v2" else if (source.proof_mode == .blinded) "s31-verification-key-blinded-v1" else if (direct_mode and chip_mode) "s31-verification-key-direct-chip-manifest-v2" else if (direct_mode) "s31-verification-key-direct-manifest-v1" else if (wide_mode) "s31-verification-key-v5" else if (sparse_mode) "s31-verification-key-v3" else if (chip_mode) "s31-verification-key-v2" else "s31-verification-key-v1") or
+    if (!std.mem.eql(u8, key.schema, if (gate_manifest_v2) "s31-verification-key-direct-manifest-v2" else if (source.version == 2 and chip_mode) "s31-verification-key-direct-record-chip-v2" else if (source.version == 2) "s31-verification-key-direct-record-v2" else if (source.proof_mode == .blinded) "s31-verification-key-blinded-v1" else if (direct_mode and chip_mode) "s31-verification-key-direct-chip-manifest-v2" else if (direct_mode) "s31-verification-key-direct-manifest-v1" else if (wide_mode) "s31-verification-key-v5" else if (sparse_mode) "s31-verification-key-v3" else if (chip_mode) "s31-verification-key-v2" else "s31-verification-key-gate-roster-v1") or
         !std.mem.eql(u8, key.profile, if (source.proof_mode == .blinded) "circuit-blinded-v1" else if (privateChip(source)) "direct-m31-private-v5" else if (direct_mode) "direct-m31-v4" else if (wide_mode) "sparse-wide-v5" else if (sparse_mode) "sparse-v3" else if (chip_mode) "hybrid-step-v2" else "circuit-v1") or
         !std.mem.eql(u8, key.name, source.name))
         return error.InvalidVerificationKey;
@@ -3951,6 +3969,8 @@ fn validateKey(allocator: std.mem.Allocator, source: relation.Program, key: Key)
     } else if (key.chip != null) return error.InvalidVerificationKey;
     if ((key.private_boundary == null) != !privateChip(source)) return error.InvalidVerificationKey;
     if (!direct_mode and key.component_manifest != null) return error.InvalidVerificationKey;
+    if ((key.gate_component_roster_sha256 != null) != (!direct_mode and !sparse_mode and !wide_mode and !chip_mode and source.proof_mode != .blinded))
+        return error.InvalidVerificationKey;
     if ((!direct_mode or (!chip_mode and !gate_manifest_v2)) and key.manifest_precommitment_sha256 != null) return error.InvalidVerificationKey;
     var program_digest: [32]u8 = undefined;
     std.crypto.hash.sha2.Sha256.hash(embedded_source, &program_digest, .{});
@@ -4101,6 +4121,16 @@ fn validateCompiledKey(allocator: std.mem.Allocator, source: relation.Program, k
         const component_logs = try circuit.common.component_list.circuitComponentLogSizes(&layout);
         expected_root = try pp.preprocessedRoot(allocator, 1);
         expected_hash = try circuit.common.circuit_hash.hostCircuitHash(component_logs, 1, expected_root);
+        if (key.gate_component_roster_sha256) |sealed| {
+            var generated = try gate_component_roster.generate(
+                allocator, &pp, source_digest, ir_digest, expected_root, expected_hash,
+                cpu.air.bundle_sha256,
+            );
+            defer generated.deinit();
+            const actual = try gate_component_roster.digest(allocator, generated.value);
+            if (!std.mem.eql(u8, sealed, &std.fmt.bytesToHex(actual, .lower)))
+                return error.InvalidVerificationKey;
+        }
         expected_trace_log = pp.traceLogSize();
     }
     if (key.trace_log_size != expected_trace_log or
