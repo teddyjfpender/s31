@@ -7,8 +7,11 @@ logical wire map and local cell equations. This theorem takes fixed and main
 row facts about one physical trace, derives its logical wire map through
 exact Gate event balance, and proves the original source's public result.
 
-The source fragment has one public `[m31; 4]` input, one public output, and
-1–16 arithmetic `let` statements using `+` and `.*`. The exact source,
+The source fragment has one public `[m31; 4]` input, one public output,
+1–16 arithmetic `let` statements using `+` and `.*`, and bounded zero-cost
+alias lets such as `let copy = a;`. An alias resolves to an earlier input or
+producer and emits no normalized node, canonical node, or AIR row. Parentheses
+around references and a single binary expression are erased. The exact source,
 normalized JSON, and compact canonical IR bytes must pass `checkBytes`.
 Commutative operand sorting and common subexpression elimination may merge
 source expressions. `checked_optimized_source_input_used` proves from those
@@ -64,6 +67,34 @@ premise into native verifier soundness. The v3 package checker provides finite
 executable evidence for selected compiled programs. The large pinned example
 source/JSON/IR byte literals are not themselves kernel-proved to pass the
 universal `checkBytes` function; the theorem applies to any triple that does.
+
+`aliased_reversed_exact_bytes` is a pinned positive exception to that last
+qualification: Lean checks the exact source bytes below against the captured
+normalized JSON and compact canonical IR bytes. The checked compact circuit
+has three producers after both alias erasure and common subexpression
+elimination; `returned` resolves to producer `d` and the public output is
+encoded under `d`. Its source denotation equals compact circuit execution
+for every four-lane input via `aliased_reversed_semantics`.
+
+```s31
+circuit reverse_share(public x: [m31; 4]) -> public [m31; 4] {
+  let base = (x);
+  let a = (base) + x;
+  let keep = (a);
+  let b = base .* x;
+  let c = keep + b;
+  let d = b + a;
+  let returned = (d);
+  returned
+}
+```
+
+Lean also rejects forward aliases, duplicate names, aliases of the input as
+the final output, and unbalanced alias parentheses. A Python differential
+check compares this exact source with the independent fragment parser and
+production text compiler, including the complete normalized JSON and
+canonical IR byte strings. This finite check does not prove general Python
+parser equivalence or native AIR emission.
 
 Focused checks:
 

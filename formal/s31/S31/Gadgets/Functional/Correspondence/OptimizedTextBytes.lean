@@ -1,18 +1,20 @@
 import S31.Gadgets.Functional.Correspondence.CanonicalDagOptimization
+import S31.Gadgets.Functional.SSAAliasTextBytes
 import S31.Gadgets.Functional.SSANormalizedBytes
 import S31.Gadgets.Functional.SSACanonicalIrBytes
 
 /-!
 Actual source-byte admission for the direct four-lane add/mul fragment with
-commutative operand reversal and repeated expressions. The existing
-`SSATextBytes` parser intentionally rejects both, so this parser keeps its
+zero-cost aliases, commutative operand reversal, and repeated expressions. The
+existing `SSATextBytes` parser intentionally rejects reversed and repeated
+expressions, so this parser keeps its
 own arithmetic-let state while reusing the reviewed bounded lexer and token
 grammar. It checks exact normalized JSON and compact canonical IR bytes and
 then applies the checked optimizer semantics theorem.
 
-The byte grammar here has one public input/output and 1..16 arithmetic lets.
-It does not admit aliases, constants, assertions, private inputs, nested
-arithmetic expressions, or non-add/mul operations. Native Zig serializer and
+The byte grammar here has one public input/output, 1..16 arithmetic lets,
+and bounded alias lets. It does not admit constants, assertions, private inputs,
+nested arithmetic expressions, or non-add/mul operations. Native Zig serializer and
 SHA-256 correspondence remain separate obligations.
 -/
 
@@ -24,31 +26,36 @@ open S31.Functional.Correspondence.CanonicalDagOptimization
 
 structure ParseState where
   remaining : List Token
+  /-- Producer names only; aliases do not occupy SSA node IDs. -/
   names : List Token
+  /-- Every lexical binding, including aliases, resolves to a producer ID. -/
+  bindings : List (Token × Nat)
   instructions : List Instruction
 
 def parseLet (state : ParseState) : Option ParseState := do
   let rest ← expect (token "let") state.remaining
-  let (name, rest) ← takeName rest
-  if state.names.contains name then none else
+  let (name, rest) ← SSAAliasTextBytes.takeAliasName rest
+  if (SSAAliasTextBytes.findBinding name state.bindings).isSome then none else
   let rest ← expect (token "=") rest
-  let (left, rest) ← takeName rest
-  let (multiply, rest) ← match rest with
-    | operation :: tail =>
-        if operation == token "+" then some (false, tail)
-        else if operation == token ".*" then some (true, tail)
-        else none
-    | [] => none
-  let (right, rest) ← takeName rest
-  let rest ← expect (token ";") rest
-  let lhs ← findName left state.names
-  let rhs ← findName right state.names
-  let instruction : Instruction :=
-    { id := state.names.length, lhs, rhs, multiply }
-  return {
-    remaining := rest,
-    names := state.names ++ [name],
-    instructions := state.instructions ++ [instruction] }
+  let (rhsTokens, rest) ← SSAAliasTextBytes.takeUntil (token ";") rest
+  let rhs ← SSAAliasTextBytes.parseRhs rhsTokens
+  match rhs with
+  | .alias referenced =>
+      let id ← SSAAliasTextBytes.findBinding referenced state.bindings
+      return { state with
+        remaining := rest,
+        bindings := state.bindings ++ [(name, id)] }
+  | .arithmetic multiply left right =>
+      let lhs ← SSAAliasTextBytes.findBinding left state.bindings
+      let rhs ← SSAAliasTextBytes.findBinding right state.bindings
+      if state.instructions.length >= 16 || name.length > 128 then none else
+      let id := state.names.length
+      let instruction : Instruction := { id, lhs, rhs, multiply }
+      return {
+        remaining := rest,
+        names := state.names ++ [name],
+        bindings := state.bindings ++ [(name, id)],
+        instructions := state.instructions ++ [instruction] }
 
 def parseLetsFuel : Nat → ParseState → Option ParseState
   | 0, state =>
@@ -75,21 +82,25 @@ def parseBytes (bytes : Token) : Option Parsed := do
   let tokens ← lex bytes
   if tokens.length > 256 then none else
   let rest ← expect (token "circuit") tokens
-  let (circuitName, rest) ← takeName rest
+  let (circuitName, rest) ← SSAAliasTextBytes.takeAliasName rest
+  if SSAAliasTextBytes.isPlainBuiltinCircuitName circuitName then none else
   let rest ← expectMany [token "(", token "public"] rest
-  let (inputName, rest) ← takeName rest
+  let (inputName, rest) ← SSAAliasTextBytes.takeAliasName rest
+  if inputName.length > 128 then none else
   let rest ← expectMany [token ":", token "[", token "m31", token ";",
                           token "4", token "]", token ")", token "->",
                           token "public", token "[", token "m31", token ";",
                           token "4", token "]", token "{"] rest
-  let state ← parseLetsFuel 16 {
-    remaining := rest, names := [inputName], instructions := [] }
+  let state ← parseLetsFuel 256 {
+    remaining := rest, names := [inputName],
+    bindings := [(inputName, 0)], instructions := [] }
   if state.instructions.isEmpty then none else
-  let (outputName, rest) ← takeName state.remaining
-  let rest ← expect (token "}") rest
+  let (outputTokens, rest) ← SSAAliasTextBytes.takeUntil (token "}") state.remaining
   if !rest.isEmpty then none else
-  let output ← findName outputName state.names
+  let sourceOutput ← SSAAliasTextBytes.outputReference outputTokens
+  let output ← SSAAliasTextBytes.findBinding sourceOutput state.bindings
   if output == 0 then none else
+  let outputName ← state.names[output]?
   let raw : Certificate := { instructions := state.instructions, output }
   match hraw : termFor raw with
   | none => none
@@ -211,5 +222,48 @@ theorem pinned_reversed_and_repeated_semantics (input : Lanes) :
         simpa [hparse] using reversed_and_repeated_source_compacts
       rw [← hcompact]
       exact parsed_bytes_sound reversedAndRepeatedBytes parsed input hparse
+
+/-- Alias lets and reference parentheses erase before normalization. The
+producer names and operand names below are exactly those in the pinned
+normalized JSON above; `returned` is absent from both JSON and canonical IR.
+The reversed duplicate `d` is then merged into canonical producer `c`. -/
+def aliasedReversedSource : Token := token
+  "circuit reverse_share(public x: [m31; 4]) -> public [m31; 4] { let base = (x); let a = (base) + x; let keep = (a); let b = base .* x; let c = keep + b; let d = b + a; let returned = (d); returned }"
+
+set_option maxRecDepth 8192 in
+theorem aliased_reversed_exact_bytes :
+    checkBytes aliasedReversedSource reversedAndRepeatedNormalized
+      reversedAndRepeatedCanonical = some compactExample := by native_decide
+
+/-- A lexical alias neither adds an instruction nor changes the semantic
+claim checked against the optimized direct-Gate AIR model. -/
+theorem aliased_reversed_semantics (input : Lanes) :
+    executeNormalized compactExample input =
+      denotation aliasedReversedSource input := by
+  obtain ⟨_, _, _, _, _, hsem⟩ :=
+    checked_bytes_sound aliasedReversedSource reversedAndRepeatedNormalized
+      reversedAndRepeatedCanonical compactExample input
+      aliased_reversed_exact_bytes
+  exact hsem
+
+set_option maxRecDepth 8192 in
+theorem optimized_forward_alias_rejected :
+    parseBytes (token
+      "circuit reverse_share(public x: [m31; 4]) -> public [m31; 4] { let copy = later; let later = x + x; later }") = none := by decide
+
+set_option maxRecDepth 8192 in
+theorem optimized_duplicate_alias_name_rejected :
+    parseBytes (token
+      "circuit reverse_share(public x: [m31; 4]) -> public [m31; 4] { let a = x + x; let a = a; a }") = none := by decide
+
+set_option maxRecDepth 8192 in
+theorem optimized_alias_of_input_output_rejected :
+    parseBytes (token
+      "circuit reverse_share(public x: [m31; 4]) -> public [m31; 4] { let a = x + x; let copy = x; copy }") = none := by decide
+
+set_option maxRecDepth 8192 in
+theorem optimized_malformed_alias_rejected :
+    parseBytes (token
+      "circuit reverse_share(public x: [m31; 4]) -> public [m31; 4] { let a = x + x; let copy = (a; copy }") = none := by decide
 
 end S31.Functional.Correspondence.OptimizedTextBytes
