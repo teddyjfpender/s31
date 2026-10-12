@@ -40,11 +40,26 @@ Two source pointwise multiplications leave 474 grouped add rows. The source
 add occupies physical row 3 and the two source pointwise multiplications
 occupy rows 502 and 503. The modeled projected roster contains three source
 cells, fourteen input cells, and eleven output cells. All twenty-eight cell
-equations use one coherent wire assignment. The other 484 rows are synthetic
-zero-add padding in this theorem's trace construction.
+equations use one coherent wire assignment. The stronger
+`checked_alias_projected_physical_trace_exists` theorem proves that these
+twenty-eight cells occupy **distinct rows below 512** and that the fixed tuple
+at each row equals its modeled selector, input/output addresses, and output
+use count. Three source rows are easy to inspect by hand:
+
+| Physical row | Producer | `(add, sub, mul, pointwise)` | `(in0, in1, out)` | Output uses |
+|---:|---|---|---|---:|
+| 3 | `b = x + a` | `(1, 0, 0, 0)` | `(22, 23, 24)` | 1 |
+| 502 | `a = x .* x` | `(0, 0, 0, 1)` | `(22, 22, 23)` | 6 |
+| 503 | `c = a .* b` | `(0, 0, 0, 1)` | `(23, 24, 25)` | 0 |
+
+`a` is read once by `b`, once by `c`, and four times by the public output
+masks. `c` is still locally constrained at row 503 despite having zero output
+uses. The other 484 rows are synthetic zero-add padding in this theorem's
+trace construction.
 
 This is a **modeled local arithmetic satisfiability** result for the admitted
 bounded public direct-Gate fragment, including aliases and early returns. It
+establishes exact **modeled projected** row placement and fixed tuples. It
 does not establish equality to native full fixed columns, native constant and
 padding witness values, exact Gate balance, committed trace authentication,
 or PCS/FRI soundness. Those remain separate joins to the release verifier.

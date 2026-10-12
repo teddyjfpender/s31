@@ -451,20 +451,28 @@ fixed pointwise rows. Constant derivation and padding contribute hundreds of
 add rows, so `totalAddRows` is *not* eleven plus the source add count.
 Equality of these counts with the native emitted or committed trace remains
 a separate premise. -/
+theorem source_rows_within_512_of_budget
+    (certificate : Certificate) (totalAddRows : Nat)
+    (hbudget : certificate.instructions.length ≤ 16)
+    (hrows : totalAddRows + 1 + 27 + sourceMulCount certificate + 8 = 2 ^ 9) :
+    ∀ row ∈ expectedRows certificate totalAddRows,
+      row.traceRow < 2 ^ 9 := by
+  have ha := source_add_count_bounded certificate
+  have hm := source_mul_count_bounded certificate
+  intro row hrow
+  have hrange := expected_rows_partition certificate totalAddRows row hrow
+  cases hkind : row.multiply <;> simp [hkind] at hrange <;> norm_num at hrows ⊢ <;> omega
+
 theorem checked_source_rows_within_512
     (sourceBytes normalizedBytes : List Nat) (certificate : Certificate)
     (totalAddRows : Nat)
     (hrelation : checkRelation sourceBytes normalizedBytes = some certificate)
     (hrows : totalAddRows + 1 + 27 + sourceMulCount certificate + 8 = 2 ^ 9) :
     ∀ row ∈ expectedRows certificate totalAddRows,
-      row.traceRow < 2 ^ 9 := by
-  have hbudget := checked_relation_instruction_bound sourceBytes
-    normalizedBytes certificate hrelation
-  have ha := source_add_count_bounded certificate
-  have hm := source_mul_count_bounded certificate
-  intro row hrow
-  have hrange := expected_rows_partition certificate totalAddRows row hrow
-  cases hkind : row.multiply <;> simp [hkind] at hrange <;> norm_num at hrows ⊢ <;> omega
+      row.traceRow < 2 ^ 9 :=
+  source_rows_within_512_of_budget certificate totalAddRows
+    (checked_relation_instruction_bound sourceBytes normalizedBytes
+      certificate hrelation) hrows
 
 /-- Cell projection preserves every modeled source trace position. -/
 theorem expected_cells_trace_rows_eq (certificate : Certificate)
@@ -580,6 +588,19 @@ theorem expected_public_rows_nodup (certificate : Certificate)
     expectedCopyCell, List.range, List.range.loop, List.map_append,
     List.nodup_cons] <;> omega
 
+theorem public_cells_within_512_of_budget
+    (certificate : Certificate) (totalAddRows : Nat)
+    (hbudget : certificate.instructions.length ≤ 16)
+    (hrows : totalAddRows + 1 + 27 + sourceMulCount certificate + 8 = 2 ^ 9) :
+    ∀ cell ∈ expectedInputCells certificate totalAddRows ++
+        expectedOutputCells certificate totalAddRows,
+      cell.traceRow < 2 ^ 9 := by
+  have ha := source_add_count_bounded certificate
+  have hm := source_mul_count_bounded certificate
+  intro cell hcell
+  have hband := public_cells_band certificate totalAddRows cell hcell
+  rcases hband with h | h | h | h <;> norm_num at hrows ⊢ <;> omega
+
 theorem checked_public_cells_within_512
     (sourceBytes normalizedBytes : List Nat) (certificate : Certificate)
     (totalAddRows : Nat)
@@ -587,14 +608,10 @@ theorem checked_public_cells_within_512
     (hrows : totalAddRows + 1 + 27 + sourceMulCount certificate + 8 = 2 ^ 9) :
     ∀ cell ∈ expectedInputCells certificate totalAddRows ++
         expectedOutputCells certificate totalAddRows,
-      cell.traceRow < 2 ^ 9 := by
-  have hbudget := checked_relation_instruction_bound sourceBytes
-    normalizedBytes certificate hrelation
-  have ha := source_add_count_bounded certificate
-  have hm := source_mul_count_bounded certificate
-  intro cell hcell
-  have hband := public_cells_band certificate totalAddRows cell hcell
-  rcases hband with h | h | h | h <;> norm_num at hrows ⊢ <;> omega
+      cell.traceRow < 2 ^ 9 :=
+  public_cells_within_512_of_budget certificate totalAddRows
+    (checked_relation_instruction_bound sourceBytes normalizedBytes
+      certificate hrelation) hrows
 
 private theorem fold_rows_unique (totalAddRows : Nat)
     (remaining : List Instruction) (priorAdds priorMuls : Nat)

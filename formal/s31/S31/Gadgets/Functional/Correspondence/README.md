@@ -209,8 +209,10 @@ source and public-boundary wire assignment for **every** source accepted by the
 exact alias source/normalized/IR byte checker, at every public input. It
 eliminates a caller-supplied honest projected arithmetic witness, including
 for aliases that return an earlier producer while later arithmetic rows are
-still evaluated. Its 512-row completion proves the installed *local*
-arithmetic roots vanish; the unselected rows use synthetic zero-add padding.
+still evaluated. Its stronger projected physical theorem proves distinct
+in-range rows and matching fixed tuples for each selected source or public
+cell in the same 512-row trace. The installed *local* arithmetic roots vanish;
+the unselected rows use synthetic zero-add padding.
 See [the hand-worked alias example](AcceptedAliasPublicPhysicalTrace.md) for
 the selected circuit addresses and grouped AIR rows. Full native fixed-column
 equality, exact Gate balance, and proof authentication remain separate joins.

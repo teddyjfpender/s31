@@ -28,6 +28,26 @@ open S31.Functional.Correspondence.SyntheticSourceTraceCompletion
 open S31.Functional.Correspondence.AcceptedPublicPhysicalTrace
 open S31.Functional.Correspondence.HonestPublicBoundaryWire
 
+/-- Successful positional execution places the selected output in the eager
+value list, even when later producer results are not selected. -/
+theorem selected_output_id_bound_of_execution
+    (certificate : Certificate) (input output : Lanes)
+    (hexecute : executeNormalized certificate input = some output) :
+    certificate.output < 1 + certificate.instructions.length := by
+  rw [execute_normalized_eq_execute] at hexecute
+  unfold execute at hexecute
+  cases hrun : certificate.instructions.foldlM executeStep [input] with
+  | none => simp [hrun] at hexecute
+  | some final =>
+      have hselected : final[certificate.output]? = some output := by
+        simpa [hrun] using hexecute
+      have htrace := S31.Functional.SSAAirRows.executing_trace_has_air_rows
+        certificate.instructions [input] final hrun
+      have hlen : final.length = 1 + certificate.instructions.length := by
+        simpa using accepted_trace_length htrace
+      have hbound := (List.getElem?_eq_some_iff.mp hselected).1
+      omega
+
 /-- A byte-admitted certificate's selected output is a real SSA wire in the
 executed value list, whose length is fixed by the instruction count. -/
 theorem checked_selected_output_id_bound
@@ -48,31 +68,17 @@ theorem checked_selected_output_id_bound
     rw [checked_relation_sound sourceBytes normalizedBytes certificate input
       hcheck]
     exact hdenotation
-  rw [execute_normalized_eq_execute] at hexecute
-  unfold execute at hexecute
-  cases hrun : certificate.instructions.foldlM executeStep [input] with
-  | none => simp [hrun] at hexecute
-  | some final =>
-      have hselected : final[certificate.output]? = some output := by
-        simpa [hrun] using hexecute
-      have htrace := S31.Functional.SSAAirRows.executing_trace_has_air_rows
-        certificate.instructions [input] final hrun
-      have hlen : final.length = 1 + certificate.instructions.length := by
-        simpa using accepted_trace_length htrace
-      have hbound := (List.getElem?_eq_some_iff.mp hselected).1
-      omega
+  exact selected_output_id_bound_of_execution certificate input output
+    hexecute
 
-theorem public_cells_canonical
-    (sourceBytes normalizedBytes : List Nat) (certificate : Certificate)
-    (hcheck : checkRelation sourceBytes normalizedBytes = some certificate) :
+theorem public_cells_canonical_of_bounds
+    (certificate : Certificate)
+    (hbudget : certificate.instructions.length ≤ 16)
+    (houtput : certificate.output < 1 + certificate.instructions.length) :
     ∀ cell ∈ expectedInputCells certificate (compiledAddRows certificate) ++
         expectedOutputCells certificate (compiledAddRows certificate),
       cell.in0 < 2147483647 ∧ cell.in1 < 2147483647 ∧
         cell.out < 2147483647 ∧ cell.mults < 2147483647 := by
-  have hbudget := checked_relation_instruction_bound sourceBytes
-    normalizedBytes certificate hcheck
-  have houtput := checked_selected_output_id_bound sourceBytes
-    normalizedBytes certificate hcheck
   have huse : sourceInputUses certificate ≤
       2 * certificate.instructions.length + 4 := by
     have h := source_uses_bounded certificate 0
@@ -112,6 +118,19 @@ theorem public_cells_canonical
       have hii : i < 4 := List.mem_range.mp hi
       interval_cases i <;>
         simp [expectedCopyCell, resultAddress] <;> omega
+
+theorem public_cells_canonical
+    (sourceBytes normalizedBytes : List Nat) (certificate : Certificate)
+    (hcheck : checkRelation sourceBytes normalizedBytes = some certificate) :
+    ∀ cell ∈ expectedInputCells certificate (compiledAddRows certificate) ++
+        expectedOutputCells certificate (compiledAddRows certificate),
+      cell.in0 < 2147483647 ∧ cell.in1 < 2147483647 ∧
+        cell.out < 2147483647 ∧ cell.mults < 2147483647 :=
+  public_cells_canonical_of_bounds certificate
+    (checked_relation_instruction_bound sourceBytes normalizedBytes
+      certificate hcheck)
+    (checked_selected_output_id_bound sourceBytes normalizedBytes
+      certificate hcheck)
 
 theorem projected_cells_canonical
     (sourceBytes normalizedBytes : List Nat) (certificate : Certificate)
