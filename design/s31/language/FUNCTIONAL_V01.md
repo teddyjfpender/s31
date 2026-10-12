@@ -144,6 +144,13 @@ recurrence, and `sparse-wide-gate` uses a checked 256-bit sum. The
 gate checks native acceptance, independent output values and altered public
 claim rejection for all four cases.
 
+The [large static power example](../../../src/frontends/s31/examples/arithmetic/powers/README.md)
+shows a compiler-owned math-library improvement that crosses a native AIR
+padding boundary. Four eight-lane `pow<65535>` calls use 76 multiplication
+nodes rather than 120 explicit binary nodes; both forms have checked native
+proofs, and the padded QM31 trace is 512 rather than 1,024 rows. This is a
+structural cost result, not a general prover-time claim.
+
 | Requirement | Evidence required | Current state |
 | --- | --- | --- |
 | Grammar and diagnostics | Versioned grammar, location-precise errors, malformed and fuzzed input corpus, bounded parse and specialization resources | The v1 grammar documents exact source forms, including postfix application of returned closures, parenthesized lambdas, named `fn` references as static values, and returned or local static recurrence steps. The parser bounds token count, numeric token length, recursive expression/type descent and final AST depth with located errors; static call and effect analysis have separate limits. Pinned generated corpora check 96 scalar, 64 four-lane array, nine packed-lane, 29 math/hash, 40 tuple and 160 higher-order function-route programs against independent values and exact first-order IR; malformed mutations have located diagnostics. The higher-order corpus also checks that partial effects survive ten function-value routes into inactive conditional arms. Record ABI leaves are capped before expansion; repeated immutable effect shapes share memory; assertion expansion is bounded and duplicate equalities are erased. Native validation caps aggregate input words, total relation items, JSON source bytes and early shape work; both compiler routes check actual unpadded gate and variable counts during lowering. Generic repeat expansion has its own aggregate lane-step budget. Wider grammar fuzzing remains. |

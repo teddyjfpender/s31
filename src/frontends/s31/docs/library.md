@@ -147,11 +147,23 @@ checks the proof against the public result.
 The older [binary schedule](../examples/arithmetic/powers/pow15_binary.s31) uses six
 multiplications: $1,2,3,6,7,14,15$. The bounded compiler search considers
 static exponents through 255 and adopts a chain only when it uses fewer gates
-than this binary schedule. Larger exponents and searches that hit their fixed
-work limit use the binary schedule. Thus the optimization does not add a new
+than this binary schedule. Above 255, all-ones exponents $2^k-1$ and their
+power-of-two shifts reuse a saved power when that beats binary. Other large
+exponents and searches that hit their fixed work limit use binary. Thus the
+optimization does not add a new
 witness operation, and a search failure never raises circuit cost. This is an
 arithmetic gate count guarantee; proof time depends on padding and the rest
 of the circuit.
+
+For $65535=2^{16}-1$, the compiler first computes $x^{255}$ in ten
+multiplications, squares it eight times, then multiplies by the saved
+$x^{255}$. That is **19** multiplications instead of the binary schedule's
+**30**. The [four-call eight-lane example](../examples/arithmetic/powers/README.md)
+has 76 instead of 120 multiplication nodes. Its native direct-Gate AIR has
+471 instead of 559 raw QM31 rows, and padding falls from 1,024 to 512 rows.
+Both source forms pass native proofs and changed-claim rejection. The first
+local run took about 0.49 versus 0.50 seconds to prove; that single timing
+observation is too weak to claim a wall-clock speedup.
 
 For this four-lane fixture, native `direct-gate` builds give the library call
 and handwritten five-gate source the **same canonical IR digest**. They each

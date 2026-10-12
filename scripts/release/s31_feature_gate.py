@@ -96,6 +96,8 @@ def checks(mode: str) -> tuple[Check, ...]:
         ))
     else:
         native.extend((
+            Check("pow65535-native", ACCEPT + "math/power_chain.py", (),
+                  "power-native", True),
             Check("direct-add-all-native", ACCEPT + "math/addition.py",
                   ("--lowering", "direct-gate"), "addition-native", True, KINDS),
             Check("direct-sub-le-all-native", ACCEPT + "math/direct_binary.py",
@@ -246,6 +248,30 @@ def validate_output(check: Check, stdout: str, stderr: str,
                 {(item["flag"], item["x"]) for item in valid_proofs} !=
                 {(1, 7), (0, 7), (0, 0)}):
             raise ValueError("static enum conditional report failed proof or AIR controls")
+    elif fmt == "power-native":
+        cases = report.get("cases")
+        expected = {"addition-chain": (76, 471, 512, 4096),
+                    "binary": (120, 559, 1024, 8192)}
+        if (report.get("schema") != "s31-power-chain-native-v1" or
+                report.get("lanes") != 8 or report.get("stages") != 4 or
+                report.get("exponent_per_stage") != 65535 or
+                report.get("saved_arithmetic_nodes") != 44 or
+                report.get("saved_raw_qm31_rows") != 88 or
+                report.get("halved_padded_rows") is not True or
+                type(cases) is not list or len(cases) != 2 or
+                {case.get("kind") for case in cases if type(case) is dict} != set(expected)):
+            raise ValueError("power chain report has wrong scope or cost delta")
+        for case in cases:
+            if ((case.get("nodes"), case.get("raw_qm31_rows"),
+                 case.get("padded_qm31_rows"), case.get("preprocessed_cells")) !=
+                    expected[case["kind"]] or
+                    case.get("native_verified") is not True or
+                    case.get("changed_claim_rejected") is not True or
+                    case.get("independent_oracle_passed") is not True or
+                    case.get("symbolic_exponent_checked") is not True or
+                    type(case.get("proof_bytes")) is not int or
+                    case["proof_bytes"] <= 0):
+                raise ValueError("power chain report failed geometry or proof control")
     elif fmt == "record-source-native":
         if (report.get("schema") != "s31-record-source-fragment-native-v2" or
                 report.get("capability") != "source-to-relation-only" or

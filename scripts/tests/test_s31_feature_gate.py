@@ -63,6 +63,21 @@ def fake_report(check: gate.Check) -> tuple[str, str]:
                               "oracle_passed": True,
                               "proof_bytes": 1000}
                              for flag, x in ((1, 7), (0, 7), (0, 0))]}
+    elif fmt == "power-native":
+        report = {"schema": "s31-power-chain-native-v1", "lanes": 8,
+                  "stages": 4, "exponent_per_stage": 65535,
+                  "saved_arithmetic_nodes": 44, "saved_raw_qm31_rows": 88,
+                  "halved_padded_rows": True,
+                  "cases": [{"kind": kind, "nodes": nodes,
+                             "raw_qm31_rows": raw, "padded_qm31_rows": padded,
+                             "preprocessed_cells": cells, "proof_bytes": 1000,
+                             "native_verified": True,
+                             "changed_claim_rejected": True,
+                             "independent_oracle_passed": True,
+                             "symbolic_exponent_checked": True}
+                            for kind, nodes, raw, padded, cells in
+                            (("addition-chain", 76, 471, 512, 4096),
+                             ("binary", 120, 559, 1024, 8192))]}
     elif fmt == "record-source-native":
         report = {"schema": "s31-record-source-fragment-native-v2",
                   "capability": "source-to-relation-only",
@@ -93,7 +108,7 @@ class FeatureGateTests(unittest.TestCase):
         full = gate.checks("full")
         self.assertEqual(len(source), 10)
         self.assertEqual(len(smoke), 18)
-        self.assertEqual(len(full), 19)
+        self.assertEqual(len(full), 20)
         for inventory in (source, smoke, full):
             self.assertEqual(len({check.id for check in inventory}), len(inventory))
             for check in inventory:
@@ -163,6 +178,20 @@ class FeatureGateTests(unittest.TestCase):
         self.assertEqual(gate.validate_output(check, stdout, stderr)["tests"], 2)
         with self.assertRaisesRegex(ValueError, "static enum source corpus"):
             gate.validate_output(check, stdout, stderr.replace("Ran 2", "Ran 1"))
+
+    def test_power_chain_native_report_requires_both_proofs_and_costs(self) -> None:
+        check = next(item for item in gate.checks("full")
+                     if item.id == "pow65535-native")
+        stdout, _ = fake_report(check)
+        self.assertEqual(gate.validate_output(check, stdout, "")["cases"], 2)
+        for mutation in (lambda report: report["cases"].pop(),
+                         lambda report: report["cases"][0].update({"padded_qm31_rows": 1024}),
+                         lambda report: report["cases"][1].update({"symbolic_exponent_checked": False}),
+                         lambda report: report["cases"][0].update({"native_verified": False})):
+            report = json.loads(stdout)
+            mutation(report)
+            with self.assertRaisesRegex(ValueError, "power chain"):
+                gate.validate_output(check, json.dumps(report), "")
 
     def test_compiler_drift_and_subprocess_failure_are_nonpassing(self) -> None:
         calls = iter((FINGERPRINT, FINGERPRINT, "b" * 64, "b" * 64))

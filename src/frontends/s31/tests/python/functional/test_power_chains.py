@@ -40,6 +40,24 @@ class PowerChainTests(unittest.TestCase):
                          {15: 5, 31: 7, 63: 8, 255: 10})
         self.assertEqual(exponent_chain(256), binary_chain(256))
 
+    def test_large_all_ones_chains_reuse_saved_powers(self) -> None:
+        cases = {
+            511: (12, 16),
+            1023: (13, 18),
+            65535: (19, 30),
+            (2**20 - 1) << 5: (29, 43),
+            2**30 - 1: (36, 58),
+        }
+        for exponent, (optimized_steps, binary_steps) in cases.items():
+            with self.subTest(exponent=exponent):
+                chain = exponent_chain(exponent)
+                self.assertEqual((chain[0], chain[-1]), (1, exponent))
+                self.assertEqual(len(chain) - 1, optimized_steps)
+                self.assertEqual(len(binary_chain(exponent)) - 1, binary_steps)
+                for index, next_power in enumerate(chain[1:], 1):
+                    self.assertGreater(next_power, chain[index - 1])
+                    self.assertIn(next_power - chain[index - 1], chain[:index])
+
     def test_pow15_matches_handwritten_five_gate_graph(self) -> None:
         optimized = """circuit p(private x: [m31; 1]) -> public [m31; 1] {
             let result = std::math::pow<15>(x); result
@@ -70,7 +88,8 @@ class PowerChainTests(unittest.TestCase):
         self.assertTrue(all(node["op"] == "mul" for node in produced["nodes"]))
 
     def test_power_values_and_false_claims(self) -> None:
-        for exponent in (0, 1, 2, 3, 5, 7, 15, 31, 63, 127, 255, 256, P - 2):
+        for exponent in (0, 1, 2, 3, 5, 7, 15, 31, 63, 127, 255, 256,
+                         511, 1023, 65535, (2**20 - 1) << 5, 2**30 - 1, P - 2):
             with self.subTest(exponent=exponent):
                 relation, _ = compile_text(
                     f"circuit p(private x: [m31; 1]) -> public [m31; 1] "

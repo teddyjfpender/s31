@@ -103,11 +103,17 @@ The compiler checks types and canonical field constants before relation emission
 `p = 2^31 - 1`, and defines `x^0 = 1` even for `x = 0`. For exponents through
 255, it searches a bounded deterministic star addition chain and adopts it
 only when it uses fewer multiplications than left-to-right binary powering.
-Search exhaustion and larger exponents use that binary schedule, giving the
-upper bound `floor(log2 K) + popcount(K) - 1` for nonconstant `x`, `K > 0`.
+For larger exponents of the form `(2^k−1)·2^s`, it reuses a saved all-ones
+power while squaring, and accepts the resulting chain only when it is shorter
+than binary powering. Other large exponents and exhausted searches use the
+binary schedule, giving the upper bound
+`floor(log2 K) + popcount(K) - 1` for nonconstant `x`, `K > 0`.
 This does not claim a globally optimal chain. Constant inputs fold at compile
 time. The [worked `pow<15>` circuit](../../../src/frontends/s31/docs/library.md#static-powers-become-multiplication-circuits)
 uses five gates against the prior binary schedule's six.
+The [four-call `pow<65535>` comparison](../../../src/frontends/s31/examples/arithmetic/powers/README.md)
+uses 76 instead of 120 multiplication nodes, reducing the native padded
+QM31 trace from 1,024 to 512 rows. Both forms have accepted native proofs.
 
 For example, [`math_polynomial4.s31`](../../../src/frontends/s31/examples/arithmetic/math_polynomial4.s31)
 computes `f(x) = x^5 + 3x - 7` in four independent lanes. The source expression

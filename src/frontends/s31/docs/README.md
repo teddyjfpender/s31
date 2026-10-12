@@ -139,6 +139,7 @@ The worked examples use checked-in sources under [`../examples`](../examples):
 | --- | --- | --- |
 | [`math_polynomial4.s31`](../examples/arithmetic/math_polynomial4.s31) | Static power, constants, four M31 lanes, circuit gates | `direct-gate` |
 | [`pow15.s31`](../examples/arithmetic/powers/pow15.s31) | A five-gate static power, its AIR constraints, and a direct comparison with the six-gate binary schedule | `direct-gate` |
+| [`pow65535_chain4.s31`](../examples/arithmetic/powers/pow65535_chain4.s31) | Saved-power addition chain across eight lanes; 512 padded AIR rows versus 1,024 for explicit binary multiplication | `direct-gate` |
 | [`u8_wrapping.s31`](../examples/math/multiplication/u8_wrapping.s31) | Fixed-width multiplication with range-checked byte inputs, output, and carry | `sparse-wide-gate` |
 | [`functional_square4.s31`](../examples/arithmetic/functional_square4.s31) | A higher-order function and closure erased to two multiplication nodes | `direct-gate` |
 | [`record_square_sum.s31`](../examples/arithmetic/record_square_sum.s31) | A named `Powers` record erased to the same three-node relation as a positional tuple | `direct-gate` |

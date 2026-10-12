@@ -228,7 +228,7 @@ There is no general module loader or third-party package system yet.
 | `std::math::mix4(x)` | `repeat` step `mix4`: each lane gains the sum of all four lanes | Only inside `iterate` step functions on `[m31; 4]`. |
 | `std::math::inv(x)` | One `inv` node; `x·inverse=1` per active lane | `[m31; N]`; zero is rejected. |
 | `std::math::div(x,y)` | Shared checked `inv(y)` then `mul(x,inverse)` | Equal `[m31; N]` shapes; zero denominator is rejected. |
-| `std::math::pow<K>(x)` | Static square-and-multiply chain | `[m31; N]`, `0 <= K < p`; `x^0 = 1`. |
+| `std::math::pow<K>(x)` | Static multiplication chain; bounded search for small exponents, saved-power chain for large all-ones exponents, binary cost ceiling | `[m31; N]`, `0 <= K < p`; `x^0 = 1`. |
 | `std::math::sum([a,...])` | Balanced addition tree over statically grouped terms | 1–64 equally shaped `[m31; N]` values. |
 | `std::math::dot([a,...],[b,...])` | Pairwise products and balanced sum | Equal groups of 1–64 equally shaped `[m31; N]` values. |
 | `std::math::matvec(rows, vector)` | One static `dot` per matrix row; result is a static reference group | 1–16 rectangular rows and 1–16 columns of equally shaped `[m31; N]` values. |

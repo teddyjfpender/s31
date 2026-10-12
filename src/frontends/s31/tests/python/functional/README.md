@@ -20,7 +20,11 @@ ordinary `mix4` calls remain outside the source language.
 exponent 255 for valid prior powers and no multiplication-count regression
 against the binary fallback. It compares `pow<15>` with a handwritten
 five-gate graph, then evaluates honest and false field claims across small,
-boundary, and large exponents.
+boundary, and large exponents. For large `2^k−1` powers and their shifted
+forms, it pins shorter saved-power chains and checks every multiplication's
+two previously computed parents. The eight-lane
+[native comparison](../../acceptance/math/power_chain.py) verifies both the
+19-step and 30-step `pow<65535>` schedules across four calls.
 
 `test_product_control.py` checks whole-product `if` and `assert_eq` against
 explicit fieldwise source. It covers nested nominal records, a mixed bit/u16/M31

@@ -88,7 +88,7 @@ contract and worked polynomial are in [the library chapter](library.md).
 | `std::math::mix4(x)` | Inside `iterate`, add the sum of all four lanes to each lane; requires `[m31; 4]`. |
 | `std::math::inv(x)` | Checked lane-wise inverse; any zero lane makes the relation unsatisfiable. |
 | `std::math::div(x,y)` | Checked lane-wise division, lowered to a shared inverse and multiplication. |
-| `std::math::pow<K>(x)` | Static binary exponentiation, `0 <= K < p`; `x^0=1`, including `0^0`. |
+| `std::math::pow<K>(x)` | Static multiplication chain with binary cost ceiling, `0 <= K < p`; `x^0=1`, including `0^0`. |
 | `std::math::sum([a,...])` | Balanced sum across 1..64 statically grouped, equally shaped M31 arrays. |
 | `std::math::dot([a,...],[b,...])` | Pairwise products and balanced sum across equal static groups. |
 | `std::math::sum_lanes(x)` | Sum the positions of one `[m31; N]` into `[m31; 1]`. |

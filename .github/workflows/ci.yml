@@ -81,6 +81,11 @@ jobs:
           mkdir -p zig-out/s31/acceptance
           python3 src/frontends/s31/tests/acceptance/acceptance_functional_core.py |
             tee zig-out/s31/acceptance/functional-core.json
+      - name: Large static power chain and native AIR saving
+        run: |
+          set -euo pipefail
+          python3 src/frontends/s31/tests/acceptance/math/power_chain.py |
+            tee zig-out/s31/acceptance/power-chain.json
       - name: Field and byte conditional native proofs
         run: |
           set -euo pipefail

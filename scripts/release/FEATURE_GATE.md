@@ -25,8 +25,10 @@ It builds no native proofs.
 on a dedicated chip, static enum effect staging with three direct-Gate proofs,
 the bounded v2 record source fragment, u8 addition,
 i8 subtraction/order, u8 checked/wrapping multiplication, and public u8/u32
-record ABI. `full` expands the direct integer native runs to all ten widths and
-adds the public u16 record ABI proof. The bounded v1 checker remains source-only;
+record ABI. `full` expands the direct integer native runs to all ten widths,
+adds the public u16 record ABI proof, and compares two native `pow<65535>`
+circuits whose multiplication counts cross a padded AIR boundary. The bounded
+v1 checker remains source-only;
 its tests include re-sealed relation mutations but establish only the
 `source-to-relation-only` capability. The v2 record source proof binds the
 checked record fixture to a native generated verifier; it does not prove a

@@ -1,5 +1,14 @@
 # Math native acceptance
 
+`power_chain.py` compares four eight-lane `pow<65535>` calls with an explicit
+binary multiplication schedule. It derives each circuit's output exponent
+from its complete normalized multiplication graph, calculates eight expected
+field values independently, proves both native circuits, verifies their
+claims, and rejects changed public results. It pins 76 versus 120 source
+nodes, 471 versus 559 raw QM31 rows, and 512 versus 1,024 padded rows.
+The [worked source](../../../examples/arithmetic/powers/README.md) explains
+the saved-power identity and includes the two programs.
+
 `field_subtraction.py` checks that dynamic field subtraction emits one native
 subtraction relation node and fewer native QM31 rows than the prior
 negation-plus-add form. It compares two

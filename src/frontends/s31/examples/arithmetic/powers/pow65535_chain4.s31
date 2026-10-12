@@ -1,0 +1,10 @@
+use std@1;
+
+// Four sequential static power calls make the packed AIR saving visible.
+circuit pow_chain(private x: [m31; 8]) -> public [m31; 8] {
+    let a = std::math::pow<65535>(x);
+    let b = std::math::pow<65535>(a);
+    let c = std::math::pow<65535>(b);
+    let result = std::math::pow<65535>(c);
+    result
+}
