@@ -125,7 +125,7 @@ class CandidateReports(unittest.TestCase):
                                 compiler=COMPILER, root=self.root)
 
     def test_valid_finite_packet(self) -> None:
-        self.assertEqual(self.check()["feature_checks"], 20)
+        self.assertEqual(self.check()["feature_checks"], 21)
 
     def test_missing_audit_profile_fails(self) -> None:
         del self.audit["cases"]["sha-fused"]

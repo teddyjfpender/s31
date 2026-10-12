@@ -9,6 +9,14 @@ nodes, 471 versus 559 raw QM31 rows, and 512 versus 1,024 padded rows.
 The [worked source](../../../examples/arithmetic/powers/README.md) explains
 the saved-power identity and includes the two programs.
 
+`factor_power.py` compares four eight-lane `pow<196605>` calls against a
+binary circuit generated directly from the exponent's bits. It checks the
+entire normalized multiplication graph symbolically, eight independent
+modular outputs, native proof acceptance and changed-claim rejection. It
+pins 84 versus 128 multiplication nodes, 487 versus 575 raw QM31 rows, and
+512 versus 1,024 padded rows. Its factor schedule builds `x³` in two gates
+and then reuses the 19-step `65535` chain.
+
 `field_subtraction.py` checks that dynamic field subtraction emits one native
 subtraction relation node and fewer native QM31 rows than the prior
 negation-plus-add form. It compares two

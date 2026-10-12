@@ -37,3 +37,23 @@ checks its 19 reference pairs against the compiler's schedule. A single local
 run produced 58,843 and 69,354 proof bytes respectively; those byte counts and
 proving times are observations, not
 portable performance guarantees.
+
+[`pow196605_factor4.s31`](pow196605_factor4.s31) applies $K=3\cdot65535$
+four times to the same eight-lane shape. Each call first computes $y=x^3$
+using two gates, then reuses the 19-step $y^{65535}$ schedule. The comparison
+[native acceptance](../../../tests/acceptance/math/factor_power.py) generates
+an explicit left-to-right binary circuit without calling the power library.
+It checks every emitted multiplication symbolically, calculates all eight
+outputs independently, verifies both native proofs, and rejects changed
+public claims. The [assignment](pow196605_factor4.valid.json) includes zero,
+one, and $p-1$.
+
+| Four-call eight-lane circuit | Multiplication nodes | Raw QM31 rows | Padded QM31 rows | Preprocessed cells |
+| --- | ---: | ---: | ---: | ---: |
+| Factor reuse | 84 | 487 | 512 | 4,096 |
+| Explicit binary | 128 | 575 | 1,024 | 8,192 |
+
+The first local run produced 56,111 and 70,402 proof bytes respectively.
+These are proof-size observations for the pinned source and compiler. The
+[Lean schedule certificate](../../../../../../formal/s31/S31/Gadgets/Functional/PowerChains.lean)
+proves that the 21-step factor chain reaches $x^{196605}$ for every M31 input.

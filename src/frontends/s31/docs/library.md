@@ -148,8 +148,12 @@ The older [binary schedule](../examples/arithmetic/powers/pow15_binary.s31) uses
 multiplications: $1,2,3,6,7,14,15$. The bounded compiler search considers
 static exponents through 255 and adopts a chain only when it uses fewer gates
 than this binary schedule. Above 255, all-ones exponents $2^k-1$ and their
-power-of-two shifts reuse a saved power when that beats binary. Other large
-exponents and searches that hit their fixed work limit use binary. Thus the
+power-of-two shifts reuse a saved power when that beats binary. The compiler
+also tries bounded odd factors through 31: it computes $y=x^f$ once and runs
+a quotient chain for $y^{K/f}$ when $f$ divides $K$. Short quotients use the
+same bounded search; large quotients use binary or the all-ones construction.
+Other large exponents and
+searches that hit their fixed work limit use binary. Thus the
 optimization does not add a new
 witness operation, and a search failure never raises circuit cost. This is an
 arithmetic gate count guarantee; proof time depends on padding and the rest
@@ -164,6 +168,28 @@ has 76 instead of 120 multiplication nodes. Its native direct-Gate AIR has
 Both source forms pass native proofs and changed-claim rejection. The first
 local run took about 0.49 versus 0.50 seconds to prove; that single timing
 observation is too weak to claim a wall-clock speedup.
+
+For $196605=3\cdot65535$, factor reuse computes $y=x^3$ with two gates and
+then applies the 19-gate all-ones schedule to $y$. The last multiplication
+constrains $r=y^{65280}\cdot y^{255}=x^{196605}$; the complete call takes
+**21** gates versus **32** for binary. For the lane with $x=2$,
+$p=2^{31}-1$, the key saved values are:
+
+| Wire | Exponent of $y=8$ | Value modulo $p$ |
+| --- | ---: | ---: |
+| Saved power | 255 | 2,097,152 |
+| After eight squarings | 65,280 | 8,192 |
+| Final product | 65,535 | $8,192\cdot2,097,152\bmod p=8$ |
+
+The [four-call eight-lane factor example](../examples/arithmetic/powers/README.md)
+uses 84 versus 128 multiplication nodes, 487 versus 575 raw QM31 rows, and
+512 versus 1,024 padded rows. Both generated verifiers accept the same
+independently calculated outputs and reject changed public claims. The
+[Lean certificate](../../../../formal/s31/S31/Gadgets/Functional/PowerChains.lean)
+proves the 21-step multiplication schedule reaches $x^{196605}$ for every
+field input; its connection to the production compiler is checked by a
+separate source test, and native AIR correspondence remains an explicit
+boundary.
 
 For this four-lane fixture, native `direct-gate` builds give the library call
 and handwritten five-gate source the **same canonical IR digest**. They each

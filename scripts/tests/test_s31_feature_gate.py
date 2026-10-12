@@ -78,6 +78,23 @@ def fake_report(check: gate.Check) -> tuple[str, str]:
                             for kind, nodes, raw, padded, cells in
                             (("addition-chain", 76, 471, 512, 4096),
                              ("binary", 120, 559, 1024, 8192))]}
+    elif fmt == "factor-power-native":
+        report = {"schema": "s31-factor-power-native-v1", "lanes": 8,
+                  "stages": 4, "exponent_per_stage": 196605,
+                  "binary_source_sha256":
+                  "0d84aa30895d22dd5c105c7a0a384913d53ef0b0f45364dcbd4470cf93b952a3",
+                  "saved_arithmetic_nodes": 44, "saved_raw_qm31_rows": 88,
+                  "halved_padded_rows": True,
+                  "cases": [{"kind": kind, "nodes": nodes,
+                             "raw_qm31_rows": raw, "padded_qm31_rows": padded,
+                             "preprocessed_cells": cells, "proof_bytes": 1000,
+                             "native_verified": True,
+                             "changed_claim_rejected": True,
+                             "independent_oracle_passed": True,
+                             "symbolic_exponent_checked": True}
+                            for kind, nodes, raw, padded, cells in
+                            (("factor-chain", 84, 487, 512, 4096),
+                             ("binary", 128, 575, 1024, 8192))]}
     elif fmt == "record-source-native":
         report = {"schema": "s31-record-source-fragment-native-v2",
                   "capability": "source-to-relation-only",
@@ -108,7 +125,7 @@ class FeatureGateTests(unittest.TestCase):
         full = gate.checks("full")
         self.assertEqual(len(source), 10)
         self.assertEqual(len(smoke), 18)
-        self.assertEqual(len(full), 20)
+        self.assertEqual(len(full), 21)
         for inventory in (source, smoke, full):
             self.assertEqual(len({check.id for check in inventory}), len(inventory))
             for check in inventory:
@@ -191,6 +208,20 @@ class FeatureGateTests(unittest.TestCase):
             report = json.loads(stdout)
             mutation(report)
             with self.assertRaisesRegex(ValueError, "power chain"):
+                gate.validate_output(check, json.dumps(report), "")
+
+    def test_factor_power_native_report_requires_both_proofs_and_costs(self) -> None:
+        check = next(item for item in gate.checks("full")
+                     if item.id == "pow-factor-native")
+        stdout, _ = fake_report(check)
+        self.assertEqual(gate.validate_output(check, stdout, "")["cases"], 2)
+        for mutation in (lambda report: report["cases"].pop(),
+                         lambda report: report.update({"binary_source_sha256": "0" * 64}),
+                         lambda report: report["cases"][0].update({"padded_qm31_rows": 1024}),
+                         lambda report: report["cases"][1].update({"native_verified": False})):
+            report = json.loads(stdout)
+            mutation(report)
+            with self.assertRaisesRegex(ValueError, "factor power"):
                 gate.validate_output(check, json.dumps(report), "")
 
     def test_compiler_drift_and_subprocess_failure_are_nonpassing(self) -> None:

@@ -11,6 +11,7 @@ from functools import lru_cache
 
 MAX_SEARCH_EXPONENT = 255
 MAX_SEARCH_STATES = 50_000
+MAX_REUSED_FACTOR = 31
 
 
 def binary_chain(exponent: int) -> tuple[int, ...]:
@@ -66,6 +67,26 @@ def _large_mersenne_candidate(exponent: int) -> tuple[int, ...] | None:
     return tuple(chain)
 
 
+def _factor_candidate(exponent: int, factor: int) -> tuple[int, ...]:
+    """Compute ``x**factor`` once, then run a quotient chain on that value.
+
+    Scaling every quotient exponent by ``factor`` preserves the star-chain
+    invariant: each step uses the previous result and one saved power. Keep
+    the large quotient search bounded to binary and the Mersenne construction;
+    recursively factoring quotients would make compiler time input-dependent
+    on the number of divisors.
+    """
+    quotient = exponent // factor
+    prefix = exponent_chain(factor)
+    suffix = (exponent_chain(quotient) if quotient <= MAX_SEARCH_EXPONENT
+              else binary_chain(quotient))
+    if quotient > MAX_SEARCH_EXPONENT:
+        mersenne = _large_mersenne_candidate(quotient)
+        if mersenne is not None and len(mersenne) < len(suffix):
+            suffix = mersenne
+    return (*prefix, *(factor * power for power in suffix[1:]))
+
+
 @lru_cache(maxsize=256)
 def exponent_chain(exponent: int) -> tuple[int, ...]:
     """Find a shorter star chain under fixed search limits, or use binary.
@@ -76,8 +97,16 @@ def exponent_chain(exponent: int) -> tuple[int, ...]:
     """
     baseline = binary_chain(exponent)
     if exponent > MAX_SEARCH_EXPONENT:
+        best = baseline
         candidate = _large_mersenne_candidate(exponent)
-        return candidate if candidate is not None and len(candidate) < len(baseline) else baseline
+        if candidate is not None and len(candidate) < len(best):
+            best = candidate
+        for factor in range(3, MAX_REUSED_FACTOR + 1, 2):
+            if exponent % factor == 0:
+                candidate = _factor_candidate(exponent, factor)
+                if len(candidate) < len(best):
+                    best = candidate
+        return best
     if len(baseline) <= 2:
         return baseline
 

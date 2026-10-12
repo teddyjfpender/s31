@@ -20,10 +20,12 @@ value oracle, changed public claim rejection, altered key rejection, and
 damaged proof rejection. This is **one fixture per profile**, not a claim over
 all source programs.
 
-The seventeen-check feature matrix covers typed source arithmetic for
+The twenty-one-check feature matrix covers typed source arithmetic for
 `u8`–`u128` and `i8`–`i128`, checked and wrapping multiplication, bounded
 record source rules, public `u8`/`u16`/`u32` record ABI examples, and native
-controls for the supported direct arithmetic and public record cases. Public
+controls for the supported direct arithmetic and public record cases. It also
+checks native AIR and proof behavior for saved-power and factored static
+exponentiation against explicit binary circuits. Public
 `u32` record leaves use two little-endian 16-bit limbs and range constraints;
 the direct-gate result must alias a public input. The feature gate's finite
 controls do not admit private or derived narrow leaves, or narrow leaves in
@@ -84,7 +86,7 @@ python3 -B scripts/release/release_candidate.py \
   --features zig-out/s31/feature-gate-full-final.json \
   --formal zig-out/s31/formal-checks-final.json \
   --compiler-sha256 '<PINNED_COMPILER_SHA256>' \
-  --branch feat/s31-v01-release-20261011 \
+  --branch '<RELEASE_BRANCH>' \
   --out zig-out/s31/release-candidate-check.json
 ```
 

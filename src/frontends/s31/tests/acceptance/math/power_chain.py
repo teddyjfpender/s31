@@ -24,9 +24,9 @@ EXPECTED = {
 }
 
 
-def _symbolic_exponent(relation: dict) -> int:
+def symbolic_exponent(relation: dict, *, name: str = "pow_chain") -> int:
     """Check every residual gate computes the claimed power for all inputs."""
-    if (relation.get("version") != 1 or relation.get("name") != "pow_chain" or
+    if (relation.get("version") != 1 or relation.get("name") != name or
             relation.get("inputs") != [{"name": "x", "kind": "m31",
                                          "length": 8, "visibility": "private"}] or
             relation.get("assertions") != [] or
@@ -60,7 +60,7 @@ def run() -> dict:
                                ("binary", "pow65535_binary4.s31")):
             package = s31.build(EXAMPLES / filename, work / kind, "direct-gate")
             relation = json.loads((package / "source.s31.json").read_text())
-            if _symbolic_exponent(relation) != EXPONENT:
+            if symbolic_exponent(relation) != EXPONENT:
                 raise AssertionError(f"{kind} does not compute x**{EXPONENT}")
             cost = json.loads((package / "cost-report.json").read_text())
             expected = EXPECTED[kind]

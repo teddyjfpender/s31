@@ -1,0 +1,10 @@
+use std@1;
+
+// The compiler computes x^3, then reuses the x^65535 chain in each call.
+circuit pow_factor(private x: [m31; 8]) -> public [m31; 8] {
+    let a = std::math::pow<196605>(x);
+    let b = std::math::pow<196605>(a);
+    let c = std::math::pow<196605>(b);
+    let result = std::math::pow<196605>(c);
+    result
+}

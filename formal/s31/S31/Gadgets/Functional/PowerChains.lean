@@ -170,6 +170,30 @@ theorem pow65535_value (x : F) :
   rw [values_eq_powers]
   rw [getD_map_pow, pow65535Refs_target]
 
+/-- Build `x³`, then reuse the `65535` schedule with its references shifted
+past the two prefix multiplications. Literal indices let the source test
+compare this certificate directly with the production circuit graph. -/
+def pow196605Refs : List (Nat × Nat) := [
+  (0, 0), (1, 0),
+  (2, 2), (3, 2), (4, 4), (5, 5), (6, 4),
+  (7, 7), (8, 8), (9, 9), (10, 10), (11, 7),
+  (12, 12), (13, 13), (14, 14), (15, 15), (16, 16),
+  (17, 17), (18, 18), (19, 19), (20, 12)
+]
+
+theorem pow196605Refs_valid : valid pow196605Refs = true := by decide
+theorem pow196605Refs_steps : pow196605Refs.length = 21 := by decide
+theorem pow196605Refs_factor :
+    pow196605Refs = [(0, 0), (1, 0)] ++
+      pow65535Refs.map (fun refs => (refs.1 + 2, refs.2 + 2)) := by decide
+theorem pow196605Refs_target :
+    (exponents pow196605Refs).getD 21 0 = 196605 := by decide
+
+theorem pow196605_value (x : F) :
+    (values x pow196605Refs).getD 21 1 = x ^ 196605 := by
+  rw [values_eq_powers]
+  rw [getD_map_pow, pow196605Refs_target]
+
 end AdditionChainCertificate
 
 end S31.Functional

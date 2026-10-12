@@ -42,7 +42,7 @@ FEATURE_CASES = frozenset({
     "direct-add-source", "direct-sub-le-source", "direct-mul-source",
     "record-u8-source", "record-u16-source", "record-u32-source",
     "static-sum-dce-native", "static-enum-if-native", "v2-record-source-native",
-    "pow65535-native",
+    "pow65535-native", "pow-factor-native",
     "direct-add-all-native", "direct-sub-le-all-native", "direct-mul-all-native",
     "record-u8-native", "record-u16-native", "record-u32-native",
 })
@@ -62,6 +62,7 @@ FEATURE_COMMANDS = {
     "static-sum-dce-native": ("src/frontends/s31/tests/acceptance/functional/static_sum_dce.py",),
     "static-enum-if-native": ("src/frontends/s31/tests/acceptance/functional/static_enum_if.py",),
     "pow65535-native": ("src/frontends/s31/tests/acceptance/math/power_chain.py",),
+    "pow-factor-native": ("src/frontends/s31/tests/acceptance/math/factor_power.py",),
     "v2-record-source-native": ("src/frontends/s31/tests/acceptance/record_abi/record_source_fragment_v2.py",),
     "direct-add-all-native": ("src/frontends/s31/tests/acceptance/math/addition.py", "--lowering", "direct-gate"),
     "direct-sub-le-all-native": ("src/frontends/s31/tests/acceptance/math/direct_binary.py", "--native"),
@@ -183,7 +184,8 @@ def validate_reports(audit: dict, feature: dict, formal: dict, *, compiler: str,
         require(feature.get(key) is True, f"feature control failed: {key}")
     require(feature.get("compiler_sha256_start") == compiler and
             feature.get("compiler_sha256_end") == compiler, "feature compiler pin mismatch")
-    require(feature.get("selected") == sorted(FEATURE_CASES), "feature selection is not all 20 checks")
+    require(feature.get("selected") == sorted(FEATURE_CASES),
+            f"feature selection is not all {len(FEATURE_CASES)} checks")
     checks = feature.get("cases")
     require(isinstance(checks, dict) and set(checks) == FEATURE_CASES,
             "feature matrix is incomplete or changed")
@@ -235,7 +237,8 @@ def validate_reports(audit: dict, feature: dict, formal: dict, *, compiler: str,
                 f"formal log digest mismatch: {name}")
     return {"source_commit": source_commit, "formal_commit": formal["source_commit"],
             "engine_commit": engine["commit"],
-            "compiler_sha256": compiler, "audit_profiles": 12, "feature_checks": 20,
+            "compiler_sha256": compiler, "audit_profiles": 12,
+            "feature_checks": len(FEATURE_CASES),
             "formal_commands": 3}
 
 
