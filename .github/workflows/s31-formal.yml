@@ -94,6 +94,11 @@ jobs:
       - name: Compare named-function source and exact relation bytes with Lean
         working-directory: formal/s31
         run: python3 -m unittest discover -s tests/audit -p 'test_source_function_check.py' -q
+      - name: Join checked functional canonical IR with fresh native identities
+        run: |
+          set -euo pipefail
+          python3 formal/s31/tests/audit/native_canonical_digest.py |
+            tee zig-out/s31/formal/source-function-native-digest.json
       - name: Check pinned record source and canonical ABI bytes
         working-directory: formal/s31
         run: python3 -m unittest discover -s tests -p 'test_record_pair_alias_check.py' -q

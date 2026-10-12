@@ -24,6 +24,30 @@ def canonical(value: object) -> bytes:
     return (json.dumps(value, indent=2, sort_keys=True, ensure_ascii=True) + "\n").encode()
 
 
+def canonical_ir(relation: dict) -> bytes:
+    """Independent one-gate Zig LegacyNode layout, including null fields."""
+    fields = ("tag", "kind", "length", "lhs", "rhs", "constant", "rounds",
+              "body", "input_name", "visibility")
+
+    def node(**values: object) -> dict:
+        return {field: values.get(field) for field in fields}
+
+    inputs = relation["inputs"]
+    names = {item["name"]: index for index, item in enumerate(inputs)}
+    gate = relation["nodes"][0]
+    lhs, rhs = names[gate["lhs"]], names[gate["rhs"]]
+    if gate["op"] in {"add", "mul"}:
+        lhs, rhs = sorted((lhs, rhs))
+    nodes = [node(tag="input", kind="m31", length=item["length"],
+                  input_name=item["name"], visibility=item["visibility"])
+             for item in inputs]
+    nodes.append(node(tag=gate["op"], kind="m31", length=inputs[0]["length"],
+                      lhs=lhs, rhs=rhs))
+    ir = {"version": 1, "nodes": nodes, "assertions": [],
+          "public_outputs": [{"name": relation["public_outputs"][0], "id": 2}]}
+    return json.dumps(ir, separators=(",", ":"), ensure_ascii=True).encode()
+
+
 def source_for(length: int, operator: str, *, reverse_body: bool = False,
                reverse_call: bool = False) -> str:
     left, right = ("y", "x") if reverse_body else ("x", "y")
@@ -34,13 +58,19 @@ def source_for(length: int, operator: str, *, reverse_body: bool = False,
             f"-> public [m31; {length}] {{ let out = combine({first}, {second}); out }}\n")
 
 
-def invoke(source: bytes, relation: bytes) -> subprocess.CompletedProcess[str]:
+def invoke(source: bytes, relation: bytes,
+           canonical_bytes: bytes | None = None) -> subprocess.CompletedProcess[str]:
     with tempfile.TemporaryDirectory() as directory:
         source_path = Path(directory) / "source.s31"
         relation_path = Path(directory) / "source.s31.json"
         source_path.write_bytes(source)
         relation_path.write_bytes(relation)
-        return subprocess.run([str(CHECKER), str(source_path), str(relation_path)],
+        args = [str(CHECKER), str(source_path), str(relation_path)]
+        if canonical_bytes is not None:
+            canonical_path = Path(directory) / "canonical-ir.json"
+            canonical_path.write_bytes(canonical_bytes)
+            args.append(str(canonical_path))
+        return subprocess.run(args,
                               capture_output=True, text=True, check=False)
 
 
@@ -61,12 +91,14 @@ class SourceFunctionCheckTest(unittest.TestCase):
                                             reverse_call=reverse_call)
                         relation, _ = compile_text(source)
                         self.assertEqual(relation, parse_source_fragment(source.encode()))
-                        result = invoke(source.encode(), canonical(relation))
+                        result = invoke(source.encode(), canonical(relation),
+                                        canonical_ir(relation))
                         self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
                         summary = json.loads(result.stdout)
                         self.assertEqual(summary["operation"], named_op)
                         self.assertEqual(summary["length"], length)
                         self.assertEqual(summary["packed_rows"], (length + 3) // 4)
+                        self.assertTrue(summary["canonical_ir_checked"])
                         self.assertEqual(relation["nodes"][0]["lhs"],
                                          "b" if reverse_body != reverse_call else "a")
                         self.assertEqual(relation["nodes"][0]["rhs"],
@@ -77,6 +109,15 @@ class SourceFunctionCheckTest(unittest.TestCase):
         relation, _ = compile_text(source)
         good = canonical(relation)
         self.assertEqual(invoke(source.encode(), good).returncode, 0)
+        good_ir = canonical_ir(relation)
+        self.assertEqual(invoke(source.encode(), good, good_ir).returncode, 0)
+        for changed_ir in (good_ir + b" ",
+                           good_ir.replace(b'"tag":"sub"', b'"tag":"add"'),
+                           good_ir.replace(b'"lhs":0', b'"lhs":1'),
+                           good_ir.replace(b'"id":2', b'"id":1')):
+            with self.subTest(canonical=changed_ir[-65:]):
+                result = invoke(source.encode(), good, changed_ir)
+                self.assertEqual(result.returncode, 1, result.stderr + result.stdout)
 
         mutations = []
         for field, value in (("op", "add"), ("lhs", "b"), ("rhs", "a"),

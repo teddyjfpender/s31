@@ -47,6 +47,14 @@ program, checks its generated verifier, and rejects changed public claims at
 both the first and fifth positions. The Lean model and these tests do not
 yet prove the Python/Zig compiler or the full STARK verifier correct.
 
+An optional third audit file holds the compact canonical IR that the native
+package hashes. [Its Lean encoder](../../../../formal/s31/S31/Gadgets/Functional/Correspondence/SourceFunctionCanonicalBytes.lean)
+numbers the private inputs `0` and `1` and the subtraction result `2`. It
+preserves operand order for subtraction and sorts add/multiply input IDs,
+which the Lean theorem proves has no effect on the result. A native regression
+compares hashes of two Lean-accepted IR byte strings with fresh package keys
+for subtraction and reversed addition.
+
 ## Static tuples: two results from one helper
 
 The [tuple example](../examples/arithmetic/tuple_square_sum.s31) returns a

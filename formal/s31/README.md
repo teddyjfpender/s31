@@ -504,6 +504,18 @@ and both helper/call operand orders. It mutates source, relation, and byte
 formatting as rejection controls. This is a bounded compiler regression and
 does not prove Python/Zig compiler refinement or native proof authentication.
 
+`SourceFunctionCanonicalBytes` extends this audit to the exact compact
+`LegacyNode` encoding hashed by `canonical.build`. Its
+`canonicalValue_eq_relationValue` theorem proves that sorting add/mul operand
+IDs changes no M31 result, while subtraction keeps its input order.
+`checked_canonical_air_iff` ties a checked source, normalized relation, and
+compact IR byte triple to the same packed row semantics. The optional audit
+command accepts that IR as a third file. Its 96-case differential test checks
+the encoded bytes; a separate fresh-native gate checks SHA-256 of Lean-accepted
+IR bytes against the native cost report and verification key for subtraction
+and reversed addition. This checks those installed identities, not native
+SHA-256 or arbitrary compiler refinement as a theorem.
+
 `SimdChunks.partial_row_iff_normalized_node` extends the same result to final
 chunks with zero to four active lanes. `SimdChunks.packedRows_iff` covers
 arrays of any length, showing that exactly `ceil(n/4)` row witnesses bind all

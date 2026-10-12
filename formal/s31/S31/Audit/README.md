@@ -55,12 +55,17 @@ From `formal/s31`:
 ```sh
 lake build s31-source-function-check
 .lake/build/bin/s31-source-function-check source.s31 source.s31.json
+.lake/build/bin/s31-source-function-check source.s31 source.s31.json canonical-ir.json
 python3 -m unittest discover -s tests/audit -p 'test_source_function_check.py' -q
 ```
 
 The executable prints `accepted`, array length, operation, and packed row
-count as one JSON line. The 96 positive differential cases cover every length
+count as one JSON line. With a third file it also checks exact compact
+canonical IR bytes, including input IDs and commutative operand sorting.
+The 96 positive differential cases cover every length
 1–8, all three operations, and four helper/call operand orders. Mutated source,
 relation, formatting, reserved names, and function shadowing must fail. This
 is an optional bounded audit; the production verifier does not run Lean, and
-the test is not a general compiler-refinement proof.
+the test is not a general compiler-refinement proof. The optional
+`tests/audit/native_canonical_digest.py` gate additionally joins two checked
+IR byte strings to fresh native package digests.

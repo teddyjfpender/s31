@@ -154,6 +154,7 @@ import S31.Gadgets.Functional.SSAGeneralNamedExecution
 import S31.Gadgets.Functional.SSALocalPipeline
 import S31.Gadgets.Functional.SSATextBytes
 import S31.Gadgets.Functional.Correspondence.SourceFunctionBytes
+import S31.Gadgets.Functional.Correspondence.SourceFunctionCanonicalBytes
 import S31.Gadgets.Functional.SSANormalizedBytes
 import S31.Gadgets.Functional.SSACanonicalIrBytes
 import S31.Gadgets.Functional.SSAAirColumnCells
