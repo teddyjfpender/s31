@@ -3,6 +3,7 @@
 //! The diagnostic digest here is not a proof transcript. Existing N=3 and
 //! N=4 proof profiles retain their distinct, frozen schedule digests and tags.
 const std = @import("std");
+const core = @import("stwo_core");
 const cpu = @import("stwo_circuit_cpu_integration");
 const mixed = @import("inspection.zig");
 const descriptor = @import("descriptor.zig");
@@ -167,12 +168,28 @@ pub fn fromSchedule(schedule: *const mixed.SelectedSchedule) !Manifest {
 /// this local check alone is not a verifier key. The engine independently
 /// reconstructs handles from source at proof admission.
 pub fn requireNativeGeometry(manifest: *const Manifest, geometry: *const cpu.direct_mixed_schedule.Geometry) !void {
+    const composition_columns = core.verifier_types.compositionColumnCount(
+        geometry.composition_split,
+        core.fields.qm31.SECURE_EXTENSION_DEGREE,
+    ) orelse return error.InvalidMixedLiveManifestBinding;
+    const composition_width = std.math.cast(u32, composition_columns) orelse
+        return error.InvalidMixedLiveManifestBinding;
+    if (composition_width > cpu.direct_mixed_schedule.max_tree_width)
+        return error.InvalidMixedLiveManifestBinding;
+    const extended_composition_log = std.math.add(
+        u32,
+        geometry.composition_log_size,
+        geometry.pcs.fri_config.log_blowup_factor,
+    ) catch return error.InvalidMixedLiveManifestBinding;
     if (manifest.call_count == 0 or manifest.call_count > registry.max_calls or
         manifest.entry_count != 1 + 2 * @as(usize, manifest.call_count) or
         geometry.version != cpu.direct_mixed_schedule.version or
         geometry.slot_count != manifest.entry_count or geometry.slot_count > geometry.slots.len or
         geometry.tree_columns[0] != 8 or geometry.tree_columns[1] != manifest.main_columns or
         geometry.tree_columns[2] != manifest.interaction_columns or
+        geometry.tree_columns[3] != composition_width or
+        geometry.tree_lifting_log_sizes[3] != geometry.pcs.trace_lifting_log_size or
+        extended_composition_log > geometry.tree_lifting_log_sizes[3] or
         geometry.tree_columns[0] > geometry.columns[0].len or
         geometry.tree_columns[1] > geometry.columns[1].len or
         geometry.tree_columns[2] > geometry.columns[2].len)
@@ -333,6 +350,18 @@ test "mixed registry manifest is source-derived and ordered for all bounded coun
             try std.testing.expectError(error.InvalidMixedLiveManifestBinding,
                 requireNativeGeometry(&manifest, &changed_native));
         }
+        // Composition is the fourth committed tree. It has no per-column
+        // mask array, but its width and lifting height still must match the
+        // native PCS split rather than an arbitrary live-geometry label.
+        changed_native = native;
+        changed_native.tree_columns[3] = 0;
+        try std.testing.expectError(error.InvalidMixedLiveManifestBinding, requireNativeGeometry(&manifest, &changed_native));
+        changed_native = native;
+        changed_native.tree_lifting_log_sizes[3] += 1;
+        try std.testing.expectError(error.InvalidMixedLiveManifestBinding, requireNativeGeometry(&manifest, &changed_native));
+        changed_native = native;
+        changed_native.composition_log_size = changed_native.pcs.trace_lifting_log_size + 1;
+        try std.testing.expectError(error.InvalidMixedLiveManifestBinding, requireNativeGeometry(&manifest, &changed_native));
         var changed = manifest;
         changed.entries[changed.entry_count - 1].registry_id ^= 1;
         changed.digest = digest(&changed);
