@@ -154,4 +154,78 @@ theorem packedRows_iff {n : Nat} (multiply : Bool)
     rw [s31Op_coord, chunk4_active a block.val (tailA block.val) i hi,
       chunk4_active b block.val (tailB block.val) i hi, h]
 
+/-- A subtraction array uses exactly `ceil(n/4)` packed QM31 rows. The final
+row may have arbitrary inactive input values, but its active output lanes
+remain constrained by the subtraction flag. -/
+def subPackedRows {n : Nat} (a b claimed : Fin n → S31.M31)
+    (tailA tailB : Nat → Fin 4 → S31.M31) : Prop :=
+  ∀ block : Fin ((n + 3) / 4), ∃ packedOutput : Quad,
+    accepts (encode .sub)
+      (packM31 (chunk4 a block.val (tailA block.val)))
+      (packM31 (chunk4 b block.val (tailB block.val))) packedOutput ∧
+    ∀ (i : Fin 4) (h : block.val * 4 + i.val < n),
+      coord packedOutput i =
+        S31.Field.toZMod (claimed ⟨block.val * 4 + i.val, h⟩)
+
+theorem subPackedRows_iff {n : Nat} (a b claimed : Fin n → S31.M31)
+    (tailA tailB : Nat → Fin 4 → S31.M31) :
+    subPackedRows a b claimed tailA tailB ↔
+      ∀ i : Fin n, claimed i = a i - b i := by
+  constructor
+  · intro rows j
+    have hblock : j.val / 4 < (n + 3) / 4 := by omega
+    let block : Fin ((n + 3) / 4) := ⟨j.val / 4, hblock⟩
+    have hlimb : j.val % 4 < 4 := by omega
+    let limb : Fin 4 := ⟨j.val % 4, hlimb⟩
+    have hindex : block.val * 4 + limb.val < n := by
+      dsimp [block, limb]
+      omega
+    obtain ⟨output, hrow, hclaim⟩ := rows block
+    have hrow' := (sub_row_sound_complete _ _ _).mp hrow
+    have hvalue := (congrArg (fun q => coord q limb) hrow').trans
+      (sub_coord
+        (chunk4 a block.val (tailA block.val))
+        (chunk4 b block.val (tailB block.val)) limb)
+    rw [chunk4_active a block.val (tailA block.val) limb hindex,
+      chunk4_active b block.val (tailB block.val) limb hindex] at hvalue
+    have hsource := S31.Field.toZMod_injective
+      ((hclaim limb hindex).symm.trans hvalue)
+    have hsame : (⟨block.val * 4 + limb.val, hindex⟩ : Fin n) = j := by
+      apply Fin.ext
+      dsimp [block, limb]
+      omega
+    simpa [hsame] using hsource
+  · intro h block
+    refine ⟨subtract
+      (packM31 (chunk4 a block.val (tailA block.val)))
+      (packM31 (chunk4 b block.val (tailB block.val))),
+      (sub_row_sound_complete _ _ _).mpr rfl, ?_⟩
+    intro i hi
+    rw [sub_coord, chunk4_active a block.val (tailA block.val) i hi,
+      chunk4_active b block.val (tailB block.val) i hi, h]
+
+/-- Every active lane in the arbitrary-length subtraction AIR agrees with
+the executable normalized relation node, including short final rows. -/
+theorem subPackedRows_iff_normalized_node {n : Nat}
+    (a b claimed : Fin n → S31.M31)
+    (tailA tailB : Nat → Fin 4 → S31.M31) :
+    subPackedRows a b claimed tailA tailB ↔
+      S31.evaluateNode (S31.Functional.arithmeticEnv a b)
+        S31.Functional.subtractionNode = .ok ⟨.m31, List.ofFn claimed⟩ := by
+  rw [subPackedRows_iff, S31.Functional.subtractionNode_eval]
+  constructor
+  · intro h
+    have heq : (fun i : Fin n => a i - b i) = claimed := by
+      funext i
+      exact (h i).symm
+    rw [heq]
+  · intro h
+    have hlist : List.ofFn (fun i : Fin n => a i - b i) =
+        List.ofFn claimed := by
+      injection h with hvalue
+      exact congrArg S31.Value.words hvalue
+    have heq := List.ofFn_injective hlist
+    intro i
+    exact (congrFun heq i).symm
+
 end S31.Gadgets.Air.SimdChunks

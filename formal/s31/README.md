@@ -459,9 +459,10 @@ The new normalized M31 `sub` node has a separate four-lane bridge:
 `Field.toZMod_sub` preserves subtraction across the canonical M31/ZMod map,
 `Functional.subtractionNode_eval` computes the executable node, and
 `Qm31Ops.sub_row_iff_normalized_node` proves that the packed subtraction AIR
-row accepts exactly those four results. This theorem covers one full packed
-row. The arbitrary-length and typed source-expression composition theorems
-below still cover addition and multiplication only.
+row accepts exactly those four results. `SimdChunks.subPackedRows_iff_normalized_node`
+extends this to exactly `ceil(n/4)` rows for arrays of any length, including a
+short final row with arbitrary inactive input lanes. The typed source-expression
+composition theorems below still cover addition and multiplication only.
 
 `SimdChunks.partial_row_iff_normalized_node` extends the same result to final
 chunks with zero to four active lanes. `SimdChunks.packedRows_iff` covers

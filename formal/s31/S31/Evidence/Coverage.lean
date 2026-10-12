@@ -27,6 +27,8 @@ import S31.Gadgets
 #check S31.Gadgets.Air.SelectRows.untrusted_selector_self_product_iff
 #check S31.Gadgets.Air.SelectRows.untrusted_self_product_select_iff_evaluateNode
 #check S31.Gadgets.Air.SimdChunks.partial_row_iff_normalized_node
+#check S31.Gadgets.Air.SimdChunks.subPackedRows_iff
+#check S31.Gadgets.Air.SimdChunks.subPackedRows_iff_normalized_node
 #check S31.Gadgets.Air.SumRows.compiledSumLanesRows_iff_evaluateNode
 #check S31.Gadgets.Air.UnpackRows.packedUnpack_iff
 #check S31.Gadgets.Air.ZeroRows.acceptsZeroTest_iff
@@ -201,7 +203,7 @@ def operationCoverage : List (Op × List String) := [
   (.int_rotl, ["S31.Gadgets.IntegerShift.rotl_sound_complete"]),
   (.int_rotr, ["S31.Gadgets.IntegerShift.rotr_sound_complete"]),
   (.int_div_rem, ["S31.Gadgets.IntegerDivision.unsigned_sound_complete", "S31.Gadgets.IntegerDivision.zero_divisor_rejected", "S31.Gadgets.IntegerDivision.signed_reconstruction", "S31.Gadgets.IntegerDivision.fused_columns_exact"]),
-  (.sub, ["S31.Gadgets.sub_sound_complete", "S31.Gadgets.Air.Qm31Ops.sub_row_sound_complete", "S31.Gadgets.Air.Qm31Ops.sub_row_iff_normalized_node"])]
+  (.sub, ["S31.Gadgets.sub_sound_complete", "S31.Gadgets.Air.Qm31Ops.sub_row_sound_complete", "S31.Gadgets.Air.Qm31Ops.sub_row_iff_normalized_node", "S31.Gadgets.Air.SimdChunks.subPackedRows_iff", "S31.Gadgets.Air.SimdChunks.subPackedRows_iff_normalized_node"])]
 
 theorem operation_inventory_exact : operationCoverage.map Prod.fst = allOps := rfl
 

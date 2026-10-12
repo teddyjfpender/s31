@@ -9,6 +9,12 @@ claim to require rejection. The fixture's padded trace remains 512 rows, so
 its gate reduction is a raw-gate saving rather than a claimed proving-time
 speedup.
 
+`field_subtraction_partial.py` builds a five-lane direct-M31 package. Its
+fifth lane occupies the only active position in the second packed row. The
+generated verifier must accept the honest proof and reject public mutations
+of both the first and fifth output lanes. The script reports the AIR geometry
+and checks its expected values with the independent modular oracle.
+
 `addition.py` generates a checked-addition source for each of the ten nominal
 integer types (`u8` through `u128` and `i8` through `i128`). It checks the
 signedness/width tag and three-node relation shape, uses an independent Python

@@ -40,6 +40,30 @@ class FieldSubGateTests(unittest.TestCase):
         with self.assertRaises(OracleError):
             evaluate_relation(relation, wrong)
 
+    def test_functional_subtraction_is_zero_cost_across_packed_boundaries(self) -> None:
+        for length in (1, 2, 3, 5, 7, 8):
+            with self.subTest(length=length):
+                header = (f"circuit p(private a: [m31; {length}], "
+                          f"private b: [m31; {length}]) -> public [m31; {length}] {{ ")
+                direct, _ = compile_text(header + "let out = a - b; out }")
+                helper, _ = compile_text(
+                    f"fn difference(x: [m31; {length}], y: [m31; {length}]) "
+                    f"-> [m31; {length}] {{ x - y }}\n" +
+                    header + "let out = difference(a, b); out }")
+                self.assertEqual(helper, direct)
+                self.assertEqual([node["op"] for node in direct["nodes"]], ["sub"])
+                left = [0, 1, P - 1, 7, 123456789, P - 2, 42, 0][:length]
+                right = [1, P - 1, P - 1, 11, 9876, 3, P - 1, 0][:length]
+                expected = [(a - b) % P for a, b in zip(left, right)]
+                assignment = {"public_inputs": {}, "private_inputs": {"a": left, "b": right},
+                              "public_outputs": {"out": expected}}
+                self.assertEqual(evaluate_relation(direct, assignment), assignment["public_outputs"])
+                wrong = expected.copy()
+                wrong[-1] = (wrong[-1] + 1) % P
+                assignment["public_outputs"] = {"out": wrong}
+                with self.assertRaises(OracleError):
+                    evaluate_relation(direct, assignment)
+
     def test_constant_right_preserves_one_add_const_node(self) -> None:
         relation, _ = compile_text(HEADER + "a - splat<4>(7_m31) }")
         self.assertEqual(relation["nodes"], [{"name": "_s31_0", "op": "add_const",
