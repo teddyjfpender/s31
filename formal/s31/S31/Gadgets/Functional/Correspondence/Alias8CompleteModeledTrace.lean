@@ -19,6 +19,8 @@ open S31.Functional.SSACertificate
 open S31.Functional.SSAAliasTextBytes
 open S31.Functional.SSANormalizedBytes
 open S31.Functional.SSADirectGateBridge
+open S31.Functional.SSAPublicInputBinding
+open S31.Functional.Correspondence.SourceDeterminedDirectRows
 open S31.Functional.SSAAirColumnCells
 open S31.Functional.SSAGeneralDecodedTraceBridge
 open S31.Functional.Correspondence.GeneratedMutationRows
@@ -71,6 +73,8 @@ theorem complete_modeled_trace (input : Lanes) :
       allArithmeticRootsZero physical ∧
       wire (address case07Certificate.output) =
         S31.Gadgets.Air.Qm31Ops.packM31 output ∧
+      InputBoundary case07Certificate (compiledAddRows case07Certificate)
+        wire input ∧
       balanced (nativeRows physical) physical.externalUses
         physical.externalYields := by
   exact checked_alias_with_direct_physical_trace

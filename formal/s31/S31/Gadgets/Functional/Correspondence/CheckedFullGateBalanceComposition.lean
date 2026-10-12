@@ -68,7 +68,7 @@ theorem joined_local_arithmetic_and_gate_balance_of_projected_wire
         (wireEvents wire externalUses)
         (wireEvents wire externalYields) := by
   obtain ⟨wire, hdenotation, hlength, hcoverage, hfixed,
-      harithmetic, hselected⟩ :=
+      harithmetic, hselected, _⟩ :=
     joined_local_arithmetic_of_projected_wire sourceBytes normalizedBytes
       certificate input island values projectedWire output hcheck hisland
       hdenotation hsource hinput houtput hselected hunit hshared

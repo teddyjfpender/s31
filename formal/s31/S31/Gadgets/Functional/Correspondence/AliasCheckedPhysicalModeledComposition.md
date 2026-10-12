@@ -30,6 +30,12 @@ four-lane input. A checked constant island supplies the other physical rows,
 and a checked address ledger supplies ideal Gate event balance. The conclusion
 gives one complete modeled 512-row trace with each selected fixed cell at its
 physical row, zero local arithmetic roots, and the selected public output.
+It also retains `InputBoundary certificate (compiledAddRows certificate) wire
+input` for that **same** wire and trace. This pins the four public scalar
+inputs, their copy rows, the zero and basis seeds, and all six input-pack
+arithmetic rows. The checked constant island only overlays shared seed
+addresses in this input prefix; the seed check proves those values agree
+with the projected public witness.
 
 The producer-only spelling is a visible premise. The theorem does not prove
 that every accepted alias source has such a spelling, that the Python or Zig

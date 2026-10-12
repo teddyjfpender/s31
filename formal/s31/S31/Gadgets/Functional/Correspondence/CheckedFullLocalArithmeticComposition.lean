@@ -14,6 +14,7 @@ namespace S31.Functional.Correspondence.CheckedFullLocalArithmeticComposition
 
 open S31
 open S31.Gadgets.Packed
+open S31.Gadgets.Air.Qm31Ops
 open S31.Gadgets.Air.DecodedDirectGateTrace
 open S31.Functional.SSACertificate
 open S31.Functional.SSATextBytes
@@ -344,6 +345,103 @@ private theorem merged_island_port (certificate : Certificate)
       wireOfValues values address := by
   simp [mergedWire, hconstant]
 
+/-- The constant island can overwrite the public-input prefix only at the
+checked zero and basis seeds. The public input boundary already pins those
+values, so the merged witness retains every address used by that boundary. -/
+theorem merged_input_prefix (certificate : Certificate)
+    (projectedWire : Nat → Quad) (values : List Quad) (input : Lanes)
+    (hinput : InputBoundary certificate (compiledAddRows certificate)
+      projectedWire input)
+    (hseed : SeedValues certificate values) (a : Nat)
+    (ha : a < 23) (hone : a ≠ 1) :
+    mergedWire certificate projectedWire values a = projectedWire a := by
+  by_cases hc : constantAddress certificate a
+  · rcases hc with rfl | rfl | rfl | rfl | rfl | h25 | h28 | h31 | hhigh
+    · simpa [mergedWire, constantAddress, wireOfValues, hseed.1] using
+        hinput.zero.symm
+    · exact False.elim (hone rfl)
+    · simpa [mergedWire, constantAddress, wireOfValues, hseed.2.2.1] using
+        hinput.basis2.symm
+    · simpa [mergedWire, constantAddress, wireOfValues, hseed.2.2.2.1] using
+        hinput.basis1.symm
+    · simpa [mergedWire, constantAddress, wireOfValues, hseed.2.2.2.2.1] using
+        hinput.basis3.symm
+    · omega
+    · omega
+    · omega
+    · omega
+  · simp [mergedWire, hc]
+
+/-- The full modeled wire preserves the complete public input contract,
+including scalar pins and six local pack rows, under the island seed check. -/
+theorem merged_input_boundary (certificate : Certificate)
+    (projectedWire : Nat → Quad) (values : List Quad) (input : Lanes)
+    (hinput : InputBoundary certificate (compiledAddRows certificate)
+      projectedWire input)
+    (hseed : SeedValues certificate values) :
+    InputBoundary certificate (compiledAddRows certificate)
+      (mergedWire certificate projectedWire values) input := by
+  have heq (a : Nat) (ha : a < 23) (hone : a ≠ 1) :=
+    merged_input_prefix certificate projectedWire values input hinput hseed
+      a ha hone
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  · simpa only [heq 0 (by omega) (by omega)] using hinput.zero
+  · intro i
+    have hi := i.isLt
+    have hrow := hinput.copies i
+    change accepts (encode .add) (projectedWire (11 + i.val))
+      (projectedWire 0) (projectedWire (3 + i.val)) at hrow
+    change accepts (encode .add)
+      (mergedWire certificate projectedWire values (11 + i.val))
+      (mergedWire certificate projectedWire values 0)
+      (mergedWire certificate projectedWire values (3 + i.val))
+    simpa only [heq (11 + i.val) (by omega) (by omega),
+      heq 0 (by omega) (by omega),
+      heq (3 + i.val) (by omega) (by omega)] using hrow
+  · intro i
+    have hi := i.isLt
+    simpa only [heq (3 + i.val) (by omega) (by omega)] using
+      hinput.pins i
+  · simpa only [heq 15 (by omega) (by omega)] using hinput.basis1
+  · simpa only [heq 2 (by omega) (by omega)] using hinput.basis2
+  · simpa only [heq 16 (by omega) (by omega)] using hinput.basis3
+  · intro i
+    have hi := i.isLt
+    have hmask : maskBasisAddress (i.val + 1) < 23 ∧
+        maskBasisAddress (i.val + 1) ≠ 1 := by
+      fin_cases i <;> decide
+    have hrow := hinput.packMuls i
+    change accepts (encode .mul)
+      (projectedWire (maskBasisAddress (i.val + 1)))
+      (projectedWire (12 + i.val))
+      (projectedWire (17 + 2 * i.val)) at hrow
+    change accepts (encode .mul)
+      (mergedWire certificate projectedWire values
+        (maskBasisAddress (i.val + 1)))
+      (mergedWire certificate projectedWire values (12 + i.val))
+      (mergedWire certificate projectedWire values (17 + 2 * i.val))
+    simpa only [heq _ hmask.1 hmask.2,
+      heq (12 + i.val) (by omega) (by omega),
+      heq (17 + 2 * i.val) (by omega) (by omega)] using hrow
+  · intro i
+    have hi := i.isLt
+    have hfirst : (if i.val == 0 then 11 else 16 + 2 * i.val) < 23 ∧
+        (if i.val == 0 then 11 else 16 + 2 * i.val) ≠ 1 := by
+      fin_cases i <;> decide
+    have hrow := hinput.packAdds i
+    change accepts (encode .add)
+      (projectedWire (if i.val == 0 then 11 else 16 + 2 * i.val))
+      (projectedWire (17 + 2 * i.val))
+      (projectedWire (18 + 2 * i.val)) at hrow
+    change accepts (encode .add)
+      (mergedWire certificate projectedWire values
+        (if i.val == 0 then 11 else 16 + 2 * i.val))
+      (mergedWire certificate projectedWire values (17 + 2 * i.val))
+      (mergedWire certificate projectedWire values (18 + 2 * i.val))
+    simpa only [heq _ hfirst.1 hfirst.2,
+      heq (17 + 2 * i.val) (by omega) (by omega),
+      heq (18 + 2 * i.val) (by omega) (by omega)] using hrow
+
 /-- Compose one concrete honest source/public witness with a checked
 constant island. The shared-port agreement is explicit and only concerns
 the two independently built value assignments. -/
@@ -372,7 +470,8 @@ theorem joined_local_arithmetic_of_projected_wire
         fixedMatches (trace (joinedCells certificate island) wire) cell) ∧
       allArithmeticRootsZero (trace (joinedCells certificate island) wire) ∧
       wire (address certificate.output) =
-        S31.Gadgets.Air.Qm31Ops.packM31 output := by
+        S31.Gadgets.Air.Qm31Ops.packM31 output ∧
+      InputBoundary certificate (compiledAddRows certificate) wire input := by
   let wire := mergedWire certificate projectedWire values
   have hprojected : ∀ cell ∈ projectedCells certificate,
       cellAccepts cell projectedWire :=
@@ -409,11 +508,15 @@ theorem joined_local_arithmetic_of_projected_wire
     normalizedBytes certificate island values hcheck hisland).2.2
   have hnotconstant := checked_selected_output_not_constant
     sourceBytes normalizedBytes certificate hcheck
+  have hseed : SeedValues certificate values :=
+    (NativeConstantIslandCertificate.check_sound certificate island values
+      hisland).2.2.2.1
   exact ⟨wire, hdenotation, hjoinedLength, hcoverage,
     checked_joined_fixed_matches sourceBytes normalizedBytes certificate
       island values wire hcheck hisland,
     arithmetic_complete (joinedCells certificate island) wire hjoined,
-    by simpa [wire, mergedWire, hnotconstant] using hselected⟩
+    by simpa [wire, mergedWire, hnotconstant] using hselected,
+    merged_input_boundary certificate projectedWire values input hinput hseed⟩
 
 /-- A byte-admitted source and checked island have a full modeled 512-row
 trace whenever the island values agree with the honest public/source witness
@@ -439,17 +542,18 @@ theorem checked_direct_joined_local_arithmetic_exists
         fixedMatches (trace (joinedCells certificate island) wire) cell) ∧
       allArithmeticRootsZero (trace (joinedCells certificate island) wire) ∧
       wire (address certificate.output) =
-        S31.Gadgets.Air.Qm31Ops.packM31 output := by
+        S31.Gadgets.Air.Qm31Ops.packM31 output ∧
+      InputBoundary certificate (compiledAddRows certificate) wire input := by
   obtain ⟨projectedWire, output, hdenotation, hsource, hinput, houtput,
       hselected, hunit⟩ := checked_direct_public_boundary_exists
         sourceBytes normalizedBytes certificate input hcheck
   obtain ⟨wire, hdenotation, hlength, hcoverage, hfixed,
-      harithmetic, hselected⟩ :=
+      harithmetic, hselected, hinputMerged⟩ :=
     joined_local_arithmetic_of_projected_wire sourceBytes normalizedBytes
       certificate input island values projectedWire output hcheck hisland
       hdenotation hsource hinput houtput hselected hunit
       (hagrees projectedWire hsource hinput output houtput)
   exact ⟨wire, output, hdenotation, hlength, hcoverage, hfixed,
-    harithmetic, hselected⟩
+    harithmetic, hselected, hinputMerged⟩
 
 end S31.Functional.Correspondence.CheckedFullLocalArithmeticComposition

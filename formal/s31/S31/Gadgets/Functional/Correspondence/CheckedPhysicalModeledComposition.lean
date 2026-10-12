@@ -19,6 +19,8 @@ open S31.Functional.SSACertificate
 open S31.Functional.SSATextBytes
 open S31.Functional.SSANormalizedBytes
 open S31.Functional.SSADirectGateBridge
+open S31.Functional.SSAPublicInputBinding
+open S31.Functional.Correspondence.SourceDeterminedDirectRows
 open S31.Functional.SSAAirColumnCells
 open S31.Functional.SSAGeneralDecodedTraceBridge
 open S31.Functional.Correspondence.SyntheticSourceTraceCompletion
@@ -52,10 +54,11 @@ theorem checked_u8_physical_modeled_trace
       allArithmeticRootsZero physical ∧
       wire (address certificate.output) =
         S31.Gadgets.Air.Qm31Ops.packM31 output ∧
+      InputBoundary certificate (compiledAddRows certificate) wire input ∧
       balanced (nativeRows physical) physical.externalUses
         physical.externalYields := by
   obtain ⟨wire, output, hdenotation, hlength, hcoverage, hfixed,
-      harithmetic, hselected, _⟩ :=
+      harithmetic, hselected, hinput, _⟩ :=
     checked_u8_direct_full_modeled_trace sourceBytes normalizedBytes
       certificate input island values externalUses externalYields
       hcheck hisland hledger
@@ -75,6 +78,6 @@ theorem checked_u8_physical_modeled_trace
         certificate island values wire externalUses externalYields
         hcheck hisland hledger
   exact ⟨wire, output, physical, hdenotation, rfl, hlength, hcoverage,
-    hfixedPhysical, harithmeticPhysical, hselected, hbalance⟩
+    hfixedPhysical, harithmeticPhysical, hselected, hinput, hbalance⟩
 
 end S31.Functional.Correspondence.CheckedPhysicalModeledComposition

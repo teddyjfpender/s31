@@ -317,7 +317,8 @@ theorem checked_direct_joined_local_arithmetic_no_agreement
       (∀ cell ∈ joinedCells certificate island,
         fixedMatches (trace (joinedCells certificate island) wire) cell) ∧
       allArithmeticRootsZero (trace (joinedCells certificate island) wire) ∧
-      wire (address certificate.output) = packM31 output := by
+      wire (address certificate.output) = packM31 output ∧
+      InputBoundary certificate (compiledAddRows certificate) wire input := by
   have hseed : SeedValues certificate values :=
     (NativeConstantIslandCertificate.check_sound certificate island values
       hisland).2.2.2.1

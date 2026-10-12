@@ -21,6 +21,8 @@ open S31.Functional.SSANormalizedBytes
 open S31.Functional.SSADirectGateBridge
 open S31.Functional.SSAAirColumnCells
 open S31.Functional.SSANativePolynomialRows
+open S31.Functional.SSAPublicInputBinding
+open S31.Functional.Correspondence.SourceDeterminedDirectRows
 open S31.Functional.SSAGeneralDecodedTraceBridge
 open S31.Functional.Correspondence.SyntheticSourceTraceCompletion
 open S31.Functional.Correspondence.CheckedFullLocalArithmeticComposition
@@ -51,15 +53,16 @@ theorem checked_direct_full_modeled_trace
       allArithmeticRootsZero (trace (joinedCells certificate island) wire) ∧
       wire (address certificate.output) =
         S31.Gadgets.Air.Qm31Ops.packM31 output ∧
+      InputBoundary certificate (compiledAddRows certificate) wire input ∧
       balanced (gateRows (joinedCells certificate island) wire)
         (wireEvents wire externalUses)
         (wireEvents wire externalYields) := by
   obtain ⟨wire, output, hdenotation, hlength, hcoverage, hfixed,
-      harithmetic, hselected⟩ :=
+      harithmetic, hselected, hinput⟩ :=
     checked_direct_joined_local_arithmetic_no_agreement
       sourceBytes normalizedBytes certificate input island values hcheck hisland
   exact ⟨wire, output, hdenotation, hlength, hcoverage, hfixed,
-    harithmetic, hselected,
+    harithmetic, hselected, hinput,
     CheckedGateAddressLedger.check_sound
       (joinedCells certificate island) wire externalUses externalYields hledger⟩
 
@@ -84,6 +87,7 @@ theorem checked_u8_direct_full_modeled_trace
       allArithmeticRootsZero (trace (joinedCells certificate island) wire) ∧
       wire (address certificate.output) =
         S31.Gadgets.Air.Qm31Ops.packM31 output ∧
+      InputBoundary certificate (compiledAddRows certificate) wire input ∧
       balanced (gateRows (joinedCells certificate island) wire)
         (wireEvents wire externalUses)
         (wireEvents wire externalYields) :=

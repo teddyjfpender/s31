@@ -14,6 +14,7 @@ CheckedGateAddressLedger.check(joined cells, feeder addresses, sink addresses) =
                               ↓
   every physical row covered; selected fixed cells match;
   all installed local arithmetic roots vanish;
+  public input pins, copies, seeds, and pack rows hold on the same wire;
   selected output equals source denotation;
   decoded Gate rows balance the trace's own external events
 ```

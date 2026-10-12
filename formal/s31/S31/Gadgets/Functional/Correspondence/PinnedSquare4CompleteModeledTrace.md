@@ -11,7 +11,8 @@ For **every four-lane M31 input**, Lean then constructs one coherent modeled
 trace. All 512 row positions are covered; every fixed cell matches the checked
 roster; all nine local arithmetic equations per row vanish; the selected
 output equals the source evaluation; and the trace's own ideal Gate event lists
-balance. The proof discharges the three Boolean premises of the generic
+balance. The same wire also satisfies `InputBoundary`, which pins the four
+public scalar inputs and their copy and pack rows. The proof discharges the three Boolean premises of the generic
 composition for this source, rather than assuming them in its final theorem.
 
 This is an honest synthetic witness. The fixed rows and value table came from
