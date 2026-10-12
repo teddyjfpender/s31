@@ -7,11 +7,15 @@ mixed profile are implemented and passed local native acceptance. The native ver
 checks the typed statement, embedded relation descriptor, sealed key digest
 or embedded source identity, and source-derived component roster. Private
 record chip endpoints and other proof profiles remain disabled. Direct-gate
-admits public `bit`, scalar `u8`, and `[u16; N]` leaves (`1 ≤ N ≤ 8`). The
-`u8` and `u16` input limbs have in-circuit Boolean decomposition and
+admits public `bit`, scalar `u8`, `[u16; N]` (`1 ≤ N ≤ 8`), and scalar
+`u32` leaves. The `u32` tag carries exactly two little-endian `u16` limbs.
+The `u8`, `u16`, and `u32` input limbs have in-circuit Boolean decomposition and
 reconstruction constraints; a result of either type must alias a public input
 of the same type. Native edge-value and changed-claim acceptance, focused Lean
-models, and independent reviews passed locally. Private `bit`/`u8`/`u16`
+models, and independent reviews passed locally for the earlier types. The
+focused `u32` native gate checks three honest values, statement and witness
+range failures, alias/type mutations, and geometry parity with `[u16; 2]`.
+Private `bit`/`u8`/`u16`/`u32`
 leaves, derived narrow-integer results, and narrow leaves in chip or mixed
 profiles remain disabled. Full production parser-to-verifier correspondence
 and broader soundness review remain release gates.
@@ -22,7 +26,7 @@ declared widths decode one exact canonical M31 public-word vector. It also
 models distinct named output paths that share a proof wire. The theorem starts
 after type-tree and wire-reference validation; Python/Zig descriptor parsing,
 canonical bytes and digest, native verifier refinement, and the public `bit`,
-`u8`, and `u16` range rules remain separate obligations of this particular
+`u8`, `u16`, and `u32` range rules remain separate obligations of this particular
 word-boundary theorem. Their focused models and native controls are described
 in the [record guide](../../../src/frontends/s31/docs/records.md).
 
@@ -69,9 +73,9 @@ nested records and tuples, as the public result. It grew to admit record
 inputs with inherited public or private visibility while retaining the
 eight-word public budget. Public `bit` leaves erase to one M31 wire and the
 native typed statement parser checks their claimed value before proof
-decoding. Public scalar `u8` and `[u16; N]` leaves add arithmetic range gates
+decoding. Public scalar `u8`, `[u16; N]`, and `u32` leaves add arithmetic range gates
 on their input wires; their results must alias same-type public inputs. Private
-narrow integers, derived narrow-integer results, other fixed-width types, and
+narrow integers, derived narrow-integer results, remaining fixed-width types, and
 digest families await their own boundary rules.
 
 The relation retains first-order arithmetic wires. Every input leaf has a
@@ -189,9 +193,9 @@ Record input support extends relation v2, rather than introducing an unbound
 source-only sugar. **Status: implemented in the direct-gate profile; local
 native acceptance passed, and CI remains the release gate.** Admit
 nominal record roots whose nested fields may contain records or static tuples,
-with `m31` leaves only. A circuit may return an `m31` scalar or a record.
-When any boundary root is a record, every other circuit input and output leaf
-must also be `m31` until additional native type checks are implemented.
+with `m31` leaves only in that initial slice. A circuit may return an `m31`
+scalar or a record. The later public `bit`, `u8`, `u16`, and `u32` extensions
+use the additional native type and range checks described above.
 For example, the source form is:
 
 ```s31

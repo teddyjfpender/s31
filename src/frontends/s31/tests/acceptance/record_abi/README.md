@@ -57,6 +57,27 @@ model proves the 16-bit reconstruction bound and public tag bound, while
 excludes private u16 leaves. These are model-level statements; the native
 proof acceptance gate supplies executable coverage for this fixture.
 
+## Public u32 record under direct-gate
+
+[`record_public_u32.s31`](../../../examples/arithmetic/record_public_u32.s31)
+uses one scalar `u32` record input and an alias-only `u32` result. Its two
+little-endian `u16` limbs each get a 16-bit arithmetic range proof. The
+verifier sees four ordered words because both named paths refer to the same
+two-limb wire. The ABI digest distinguishes this `u32` from `[u16; 2]`.
+
+```sh
+python3 -B src/frontends/s31/tests/acceptance/record_abi/public_u32_direct_gate_v2.py
+python3 -B src/frontends/s31/tests/acceptance/record_abi/public_u32_direct_gate_v2.py --native
+```
+
+The native check accepts zero, maximum, and mixed-limb proofs, rejects a
+changed proof claim, overlarge low/high limbs at statement and flat-witness
+admission, alias mismatch, derived/private/malformed descriptor shapes, and
+the wrong nominal ABI digest. A coherently retyped `[u16; 2]` record has the
+same AIR/preprocessing geometry for this fixture but a distinct key digest.
+The capability is public, direct-gate, and alias-only; it does not admit
+private `u32` leaves or arbitrary derived `u32` result wires.
+
 ## Eight-word text, statement, native, and Lean correspondence
 
 [`mixed_eight_alias_bit.s31`](mixed_eight_alias_bit.s31) is a small, actual

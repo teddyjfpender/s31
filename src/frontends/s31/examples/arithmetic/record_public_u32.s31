@@ -1,0 +1,6 @@
+struct Request { word: u32 }
+struct Result { word: u32 }
+
+circuit record_public_u32(public req: Request) -> public Result {
+    Result { word: req.word }
+}

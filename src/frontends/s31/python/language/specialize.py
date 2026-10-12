@@ -43,7 +43,7 @@ class Compiler:
                 isinstance(param_type, RecordType) for _, param_type, _ in self.circuit.params)
             return self.builder.input(
                 wire, typ, visibility,
-                record_public_byte=record_boundary and visibility == "public" and typ.kind == "int_u8"), [wire]
+                record_public_integer=record_boundary and visibility == "public" and typ.kind in {"int_u8", "int_u32"}), [wire]
         if isinstance(typ, RecordType):
             fields = [self.circuit_input(name, child, visibility, nested=True)
                       for _, child in typ.fields]
@@ -755,8 +755,8 @@ class Compiler:
                         for leaf in collect(child, item)]
 
             leaves = collect(self.circuit.result, result)
-            if any(leaf.typ.kind not in {"m31", "bit", "u16", "int_u8"} for leaf in leaves):
-                raise self.located(self.circuit.body, "public record v2 supports only m31, public bit, public u8, and public u16 leaves")
+            if any(leaf.typ.kind not in {"m31", "bit", "u16", "int_u8", "int_u32"} for leaf in leaves):
+                raise self.located(self.circuit.body, "public record v2 supports only m31, public bit, public u8/u16/u32 leaves")
             relation = self.builder.finish_public_record_v2(
                 leaves,
                 lambda base, refs: make_binding(

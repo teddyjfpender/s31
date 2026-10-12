@@ -116,7 +116,7 @@ def abi(source: dict, lowering: str) -> dict:
         boundary = base.pop("public_abi")
         return {"schema": "s31-public-abi-v2", "boundary": boundary,
                 "boundary_sha256": binding_digest(base, boundary),
-                "encoding": "canonical typed-only JSON statement with named paths and aliased M31/bit/u8/u16 leaves"}
+                "encoding": "canonical typed-only JSON statement with named paths and aliased M31/bit/u8/u16/u32 leaves"}
     shapes = {item["name"]: {"kind": item["kind"], "length": item["length"]} for item in source["inputs"]}
     for node in source["nodes"]:
         op = node["op"]

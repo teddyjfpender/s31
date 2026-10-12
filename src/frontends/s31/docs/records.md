@@ -5,7 +5,7 @@ already hold circuit values. Inside a program, specialization removes the
 record before the arithmetic relation is built. When a circuit returns a
 public record, relation v2 also carries its nominal layout and field paths
 to the native verifier. The grouping metadata adds no arithmetic gate or AIR
-row; a `u8` or `u16` leaf's range proof does add arithmetic gates.
+row; a `u8`, `u16`, or `u32` leaf's range proof does add arithmetic gates.
 The direct-gate v2 boundary also admits public `bit` leaves. Each occupies
 one existing M31 proof word, and the native statement parser requires that
 word to be exactly `0` or `1` before proof decoding.
@@ -20,6 +20,12 @@ input wire; derived outputs and private `u8` record inputs are excluded.
 The byte tag is included in the versioned ABI digest, and the native statement
 parser rejects byte claims above 255. Chip and mixed profiles reject public
 `u8` inputs because their source admission does not supply this range proof.
+Public scalar `u32` leaves are two little-endian `u16` relation limbs. Under
+`direct-gate`, each limb gets its own 16-bit arithmetic range proof. The
+result must alias a public `u32` input with the same nominal tag; private and
+derived `u32` leaves are excluded. The `u32` tag and two-limb length enter
+the ABI digest. A `u16[2]` descriptor has the same proof geometry but a
+different statement and verification-key identity.
 
 ## Public record on the one-call chip
 
@@ -440,6 +446,48 @@ construction, a derived `u16` result descriptor, and the same u16 boundary
 under chip and mixed admission. This checks the implementation for the
 fixture; Lean models the 16-bit reconstruction and public tag bound, while
 full compiler-to-AIR and proof-system soundness remain separate work.
+
+## A public 32-bit record field
+
+The [executable source](../examples/arithmetic/record_public_u32.s31)
+passes one named `u32` field through a record:
+
+```s31
+struct Request { word: u32 }
+struct Result { word: u32 }
+
+circuit record_public_u32(public req: Request) -> public Result {
+    Result { word: req.word }
+}
+```
+
+`u32` is encoded as `[lo, hi]`, two canonical `u16` limbs in little-endian
+order. For example, `0x12345678` is `[22136, 4660]`; `0xffffffff` is
+`[65535, 65535]`. The frontend emits one public `u16[2]` relation input, no
+operation node, and the same wire as its one public output. The v2 descriptor
+tags both source paths as `u32`, length `2`. The verifier statement projects
+four public proof words: `req.word[0]`, `req.word[1]`, `result.word[0]`,
+`result.word[1]`. The repeated words must match because both paths name the
+same relation wire.
+
+The direct circuit guesses sixteen bits for **each** limb. For each bit it
+constrains `b² − b = 0`, and for each limb it constrains
+`limb − Σᵢ2ⁱbᵢ = 0`. These are polynomial equalities over M31. Since each
+reconstructed limb is at most 65535, the field equality cannot hide a
+noncanonical u16 value. The two limbs together represent exactly one integer
+in `[0, 2³² − 1]`. The AIR checks the circuit gates row by row; the proof
+binds the resulting wire values to the four ordered public words. This range
+proof uses 32 Boolean producer gates in total, plus reconstruction and public
+binding gates. The record field name and `u32` tag add no circuit gate.
+
+The [focused acceptance](../tests/acceptance/record_abi/public_u32_direct_gate_v2.py)
+verifies native proofs for zero, maximum, and mixed-limb values. It rejects a
+changed but canonical public claim against the old proof, a high or low limb
+of `65536`, an input/result alias mismatch, and a `u16[2]` type relabel under
+the original `u32` ABI digest. An otherwise identical `u16[2]` record has
+equal raw/padded AIR and preprocessing geometry in this fixture, but a
+different ABI digest. This executable check does not establish general
+compiler or proof-system soundness.
 
 ## A record input and scalar result
 

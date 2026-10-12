@@ -27,7 +27,7 @@ MAX_INPUTS = 2
 MAX_LETS = 8
 MAX_RELATION_BYTES = 65_536
 ABI_DOMAIN = b"s31-public-record-boundary-v2\0"
-ABI_ENCODING = "canonical typed-only JSON statement with named paths and aliased M31/bit/u8/u16 leaves"
+ABI_ENCODING = "canonical typed-only JSON statement with named paths and aliased M31/bit/u8/u16/u32 leaves"
 RESERVED_RECORD_TYPES = frozenset({
     "UInt256", "Bytes32", "BlockHash", "Target", "Work", "ChainWork",
     "Bytes80", "Digest", "Poseidon2", "Blake2sReduced",
