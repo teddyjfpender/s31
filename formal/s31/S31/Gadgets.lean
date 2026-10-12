@@ -196,6 +196,7 @@ import S31.Gadgets.Functional.Correspondence.CheckedDirectGateModeledComposition
 import S31.Gadgets.Functional.Correspondence.CheckedDecodedGateLedgerCorrespondence
 import S31.Gadgets.Functional.Correspondence.CheckedPhysicalModeledComposition
 import S31.Gadgets.Functional.Correspondence.AliasCheckedPhysicalModeledComposition
+import S31.Gadgets.Functional.Correspondence.Alias8CompleteModeledTrace
 import S31.Gadgets.Functional.Correspondence.PinnedSquare4CompleteModeledTrace
 import S31.Gadgets.Functional.Correspondence.GeneratedNativeSourceCells
 import S31.Gadgets.Functional.Correspondence.GeneratedNativeFullRowRoles
