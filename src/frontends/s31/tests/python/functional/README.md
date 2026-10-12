@@ -39,6 +39,8 @@ against a bounded expansion budget.
 and effect resolution through a generic enum helper. Its safe constructor
 matches a direct conditional relation exactly; the risky constructor and an
 eagerly partial constructor payload are rejected inside dynamic branches.
+It also checks a nested dynamic `if` in an unselected static arm: only a
+concrete call choosing that arm makes the partial effect relevant.
 
 `test_pattern_parameters.py` checks tuple and nominal record binders in
 named functions and lambdas against direct first-order relations and

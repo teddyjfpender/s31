@@ -121,6 +121,10 @@ class TotalityChecker:
         self.filename = filename
         self.stack: list[str] = []
         self.visits = 0
+        # An unknown source-only enum tag defers checks inside its arms until
+        # a concrete static call selects one arm. This depth is scoped with
+        # try/finally below, including through helper and closure calls.
+        self.deferred_static_arms = 0
         # Record declarations are immutable and their types are shared by the
         # parser. Reuse one abstract product shape per type object: a function
         # with many parameters of the same nested record must not allocate a
@@ -262,8 +266,12 @@ class TotalityChecker:
                 arm = self.expr(expr.args[index + 1], env | {binder: source.value.payload})
                 return Effect(arm.value, source.failure | arm.failure)
             variants = dict(expr.sum_type.variants)
-            arms = tuple(self.expr(body, env | {binder: self.parameter(variants[variant])})
-                         for variant, (binder, _), body in zip(expr.variants, expr.params, expr.args[1:]))
+            self.deferred_static_arms += 1
+            try:
+                arms = tuple(self.expr(body, env | {binder: self.parameter(variants[variant])})
+                             for variant, (binder, _), body in zip(expr.variants, expr.params, expr.args[1:]))
+            finally:
+                self.deferred_static_arms -= 1
             # Enum tags exist only at specialization time; a circuit input
             # cannot supply one. In a generic function, the selected arm is
             # not known yet. Defer its effects until the function is invoked
@@ -298,7 +306,7 @@ class TotalityChecker:
             on_false = self.expr(expr.args[2], env)
             branch_effects = on_true.failure | on_false.failure
             concrete = sorted(reason for reason in branch_effects if not reason.startswith("opaque:"))
-            if concrete:
+            if concrete and self.deferred_static_arms == 0:
                 raise self.error(expr, f"if branch may fail when inactive: {', '.join(concrete)}")
             # A generic Fn parameter is checked again at each concrete call
             # site. Circuit inputs cannot contain Fn values, so none may

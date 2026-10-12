@@ -129,6 +129,30 @@ fn relay(choice: Choice, flag: bit, x: [m31; 1]) -> [m31; 1] {
         with self.assertRaisesRegex(SourceError, "if branch may fail when inactive: std::math::inv"):
             compile_text(eager)
 
+    def test_unselected_static_arm_defers_its_nested_dynamic_if(self) -> None:
+        prelude = """enum Choice { Safe: [m31; 1], Risky: [m31; 1] }
+fn choose(choice: Choice, flag: bit) -> [m31; 1] {
+    match choice {
+        Choice::Safe(v) => v + v,
+        Choice::Risky(v) => if flag then std::math::inv(v) else v
+    }
+}
+"""
+        circuit = """circuit p(public flag: bit, private x: [m31; 1])
+            -> public [m31; 1] {
+            let out = if flag then choose(Choice::Safe(x), flag) else x;
+            out
+        }"""
+        relation, _ = compile_text(prelude + circuit)
+        direct, _ = compile_text("""circuit p(public flag: bit, private x: [m31; 1])
+            -> public [m31; 1] { let out = if flag then x + x else x; out }""")
+        self.assertEqual(relation, direct)
+        self.assertEqual([node["op"] for node in relation["nodes"]], ["add", "select"])
+
+        selected_risky = circuit.replace("Choice::Safe(x)", "Choice::Risky(x)")
+        with self.assertRaisesRegex(SourceError, "if branch may fail when inactive: std::math::inv"):
+            compile_text(prelude + selected_risky)
+
     def test_dynamic_if_cannot_hide_partial_constructor_payload(self) -> None:
         source = """enum Choice { Left: u16, Right: u16 }
 circuit p(private x: u16, private flag: bit) -> public u16 {

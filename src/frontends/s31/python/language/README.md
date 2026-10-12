@@ -68,7 +68,8 @@ Static enum matches defer a generic helper's arm effects until a concrete
 constructor reaches that helper. The scrutinee and its payload remain eager;
 at the circuit boundary every tag must be known, and a selected partial arm
 inside a witness-dependent `if` is rejected. An unselected static arm emits
-no relation node and imposes no inactive-branch obligation.
+no relation node and imposes no inactive-branch obligation, including when
+that arm contains a nested dynamic `if`.
 For `iterate<N>`, a static named reference or closure is interpreted by the
 restricted step recognizer. It emits one `repeat` node only when the step
 reduces to the chip's straight-line operations; dynamic captures and

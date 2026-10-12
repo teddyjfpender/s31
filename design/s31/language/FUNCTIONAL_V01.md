@@ -104,6 +104,8 @@ therefore erases an unselected partial arm without AIR cost. The selected
 partial arm and an eager partial constructor payload remain inadmissible in
 an inactive dynamic branch. A functional regression compares the safe case
 with direct `if` source byte for byte at the normalized relation boundary.
+The deferral also covers a nested dynamic `if` inside an unselected static
+arm; selecting that arm at a concrete call still rejects its partial effect.
 
 The release gate still needs broader geometry equivalence checks and a
 formal correspondence from source conditionals through effect analysis to

@@ -502,8 +502,9 @@ one of those operations. An unknown `Fn` parameter carries an unresolved
 effect obligation; each static call is checked again with its actual closure.
 A total closure can therefore pass through a higher-order helper, while a
 partial closure is rejected if invoked in an `if` arm. The pass checks
-unused functions and lambdas too,
-and requires every builtin to have a reviewed effect classification.
+unused functions and lambdas too; source-only enum arms whose tag is not yet
+known carry deferred obligations until a concrete call selects one.
+Every builtin requires a reviewed effect classification.
 For example, `if b then std::math::inv(x) else x` is rejected because the
 inverse constraint would still have to hold when `b=0`. A partial operation
 in the condition itself remains an ordinary precondition of the whole
@@ -554,7 +555,9 @@ For a generic helper whose enum parameter has no tag yet, effect analysis
 defers arm effects until each static call supplies a constructor; unresolved
 static choices cannot cross the circuit boundary. Constructing the enum
 payload is eager, so an inverse used to build `Choice::Safe(...)` inside a
-dynamic branch is still rejected.
+dynamic branch is still rejected. The discarded arm may itself contain a
+witness-dependent `if`: its effect check is deferred with that static arm.
+Choosing that arm later triggers the ordinary inactive-branch check.
 
 Constructor payloads are eager. For example,
 `match Choice::Square(x .* x) { Choice::Square(y) => x, Choice::Double(y) => y }`
@@ -568,7 +571,7 @@ a different relation representation. A function may accept or return an enum
 as long as every call specializes to a known constructor.
 
 The reviewed dead-code pass currently removes only unobserved `constant`,
-`add`, `mul`, `add_const`, and `mul_const` nodes in enum-bearing sources. It
+`add`, `sub`, `mul`, `add_const`, and `mul_const` nodes in enum-bearing sources. It
 keeps every other operation and all ancestors needed by outputs, assertions,
 public ABI fields, and retained nodes. The
 [design note](../../../../design/s31/language/STATIC_SUM_DCE.md) gives the
