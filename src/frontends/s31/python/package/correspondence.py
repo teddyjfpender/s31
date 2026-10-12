@@ -1,14 +1,15 @@
 """Independent, fail-closed checker for a small direct-gate S31 fragment.
 
 The accepted grammar has one public [m31; 4] input and one public [m31; 4]
-output. Its body contains 1..16 fresh arithmetic gates (`+` or `.*`),
+output. Its body contains 1..16 fresh arithmetic gates (`+`, `-`, or `.*`),
 interleaved with zero-cost alias lets, followed by a returned wire name.
 Redundant parentheses around these expressions and names are admitted.
 Operands must resolve to the input or an earlier arithmetic let. Up to eight
 pure, monomorphic functions may contain straight-line arithmetic and calls to
 earlier functions. Their applications are expanded to ordinary gates with
-exact generated names. The default v2 certificate requires canonical operand order
-and distinct expressions.
+exact generated names. The default v2 certificate requires canonical operand
+order for commutative gates and distinct expressions. Subtraction retains its
+written operand order.
 Bounded expression-level `let name = bound in body` chains may appear as
 circuit let RHSs. They eagerly emit bound gates under anonymous names and
 resolve scoped aliases before the same canonical and native checks. A named
@@ -62,7 +63,7 @@ StaticValue = str | FunctionValue
 
 
 ASCII_SPACE = frozenset(" \t\n\v\f\r")
-TOKEN = re.compile(r"[ \t\n\v\f\r]+|//[^\n]*|->|=>|\.\*|[(),\[\];:{}=+]|[A-Za-z_][A-Za-z_0-9]*|[0-9]+")
+TOKEN = re.compile(r"[ \t\n\v\f\r]+|//[^\n]*|->|=>|\.\*|[(),\[\];:{}=+\-]|[A-Za-z_][A-Za-z_0-9]*|[0-9]+")
 NAME = re.compile(r"[A-Za-z_][A-Za-z_0-9]*\Z")
 INLINE_NAME = re.compile(r"_s31_i[0-9]+_[0-9]+\Z")
 AUTO_NAME = re.compile(r"_s31_[0-9]+\Z")
@@ -235,7 +236,7 @@ def parse_source(data: bytes, *, optimized: bool = False) -> tuple[dict[str, Any
             depth += (token == "(") - (token == ")")
             if depth < 0:
                 raise UnsupportedFragment("unbalanced source parentheses")
-            if depth == 0 and token in {"+", ".*"}:
+            if depth == 0 and token in {"+", "-", ".*"}:
                 operators.append(index)
         if depth != 0:
             raise UnsupportedFragment("unbalanced source parentheses")
@@ -371,13 +372,13 @@ def parse_source(data: bytes, *, optimized: bool = False) -> tuple[dict[str, Any
             raise UnsupportedFragment("duplicate wire name")
         if left not in wires or right not in wires:
             raise UnsupportedFragment("forward or unbound operand")
-        if op_token not in {"+", ".*"}:
+        if op_token not in {"+", "-", ".*"}:
             raise UnsupportedFragment("unsupported arithmetic gate")
-        op = "add" if op_token == "+" else "mul"
+        op = {"+": "add", "-": "sub", ".*": "mul"}[op_token]
         lhs_raw, rhs_raw = wires[left], wires[right]
         lhs_id = source_to_canonical[lhs_raw]
         rhs_id = source_to_canonical[rhs_raw]
-        if lhs_id > rhs_id:
+        if op != "sub" and lhs_id > rhs_id:
             if not optimized:
                 raise UnsupportedFragment("commutative operands are not in canonical order")
             lhs_id, rhs_id = rhs_id, lhs_id
@@ -764,8 +765,9 @@ def public_abi(syntax: dict[str, Any]) -> dict[str, Any]:
 def canonical_ir_bytes(syntax: dict[str, Any]) -> bytes:
     """Reconstruct the exact Zig `canonical.build` legacy SSA encoding.
 
-    The checked syntax contains fresh, canonical add/mul nodes after optional
-    commutative sorting and CSE. `LegacyNode` serializes every optional field,
+    The checked syntax contains fresh, canonical add/sub/mul nodes after optional
+    commutative sorting and CSE. Subtraction retains operand order.
+    `LegacyNode` serializes every optional field,
     including its nulls, in declaration order. Source-only names and the
     circuit name are deliberately absent from this verifier identity.
     """
@@ -779,8 +781,10 @@ def canonical_ir_bytes(syntax: dict[str, Any]) -> bytes:
     nodes = [node(tag="input", kind="m31", length=4,
                   input_name=syntax["input"], visibility="public")]
     for expected_id, step in enumerate(syntax["instructions"], 1):
-        if (step["id"] != expected_id or step["op"] not in ("add", "mul") or
-                not 0 <= step["lhs"] <= step["rhs"] < expected_id):
+        if (step["id"] != expected_id or step["op"] not in ("add", "sub", "mul") or
+                not 0 <= step["lhs"] < expected_id or
+                not 0 <= step["rhs"] < expected_id or
+                (step["op"] != "sub" and step["lhs"] > step["rhs"])):
             raise ValueError("checked source is not canonical positional SSA")
         nodes.append(node(tag=step["op"], kind="m31", length=4,
                           lhs=step["lhs"], rhs=step["rhs"]))
@@ -935,16 +939,19 @@ def check_source_fixed_rows(syntax: dict[str, Any], topology: dict[str, Any],
     if any(len(column) != n_rows for column in values):
         raise ValueError("source fixed-row columns have different lengths")
     source_adds = sum(node["op"] == "add" for node in instructions)
-    source_products = len(instructions) - source_adds
+    source_subs = sum(node["op"] == "sub" for node in instructions)
+    source_products = sum(node["op"] == "mul" for node in instructions)
     add_rows = len(topology["add"])
     # Native padding is in the add partition. The source/public add rows
-    # occupy its prefix; the ordinary-mul and pointwise partitions begin
-    # after *all* constant and padding adds. This is the exact row equation
-    # consumed by Lean's modeled roster theorem for the 512-row profile.
-    if (n_rows != 512 or len(topology["sub"]) != 1 or
+    # occupy its prefix; source subtraction precedes the constant subtraction
+    # in the sub partition. Ordinary-mul and pointwise partitions begin after
+    # all constant and padding adds. Lean's modeled roster theorem currently
+    # covers the add/pointwise subset; subtraction is checked here and by the
+    # complete independent native gate replay.
+    if (n_rows != 512 or len(topology["sub"]) != source_subs + 1 or
             len(topology["mul"]) != 27 or
             len(topology["pointwise_mul"]) != source_products + 8 or
-            add_rows + 1 + 27 + source_products + 8 != n_rows or
+            add_rows + source_subs + 1 + 27 + source_products + 8 != n_rows or
             add_rows < 11 + source_adds or
             len(schedule) != len(instructions) + 1):
         raise ValueError("source fixed-row layout differs from bounded direct profile")
@@ -955,14 +962,15 @@ def check_source_fixed_rows(syntax: dict[str, Any], topology: dict[str, Any],
             if operand in source_uses:
                 source_uses[operand] += 1
 
-    prior_adds = prior_products = 0
+    prior_adds = prior_subs = prior_products = 0
     checked: list[dict[str, int | str]] = []
     for node, span in zip(instructions, schedule[1:], strict=True):
-        product = node["op"] == "mul"
-        trace_row = (add_rows + 28 + prior_products if product
-                     else 3 + prior_adds)
+        op = node["op"]
+        trace_row = ({"add": 3 + prior_adds,
+                      "sub": add_rows + prior_subs,
+                      "mul": add_rows + source_subs + 28 + prior_products}[op])
         circuit_row = 5 + node["id"]
-        expected = [int(not product), 0, 0, int(product),
+        expected = [int(op == "add"), int(op == "sub"), 0, int(op == "mul"),
                     22 + node["lhs"], 22 + node["rhs"],
                     22 + node["id"], source_uses[node["id"]]]
         if (trace_row >= n_rows or span["qm31_start"] != circuit_row or
@@ -972,8 +980,9 @@ def check_source_fixed_rows(syntax: dict[str, Any], topology: dict[str, Any],
                 "direct AIR selector, address, multiplicity or row position")
         checked.append({"id": node["id"], "op": node["op"],
                         "circuit_row": circuit_row, "trace_row": trace_row})
-        prior_products += product
-        prior_adds += not product
+        prior_adds += op == "add"
+        prior_subs += op == "sub"
+        prior_products += op == "mul"
     if len({row["trace_row"] for row in checked}) != len(checked):
         raise ValueError("source fixed-row trace positions overlap")
     return checked
@@ -1116,12 +1125,14 @@ def check_gate_topology(syntax: dict[str, Any], topology: dict[str, Any],
 
     # The compiler groups gates by kind. Input packing is first in `mul`
     # and `add`; source operations follow in their respective kind list.
-    adds, muls, products = (gate_lists[name] for name in ("add", "mul", "pointwise_mul"))
+    adds, subs, muls, products = (gate_lists[name] for name in
+                                ("add", "sub", "mul", "pointwise_mul"))
     instructions = syntax["instructions"]
     add_count = sum(node["op"] == "add" for node in instructions)
-    product_count = len(instructions) - add_count
+    sub_count = sum(node["op"] == "sub" for node in instructions)
+    product_count = sum(node["op"] == "mul" for node in instructions)
     if (len(adds) < 3 + add_count + 8 or len(muls) < 6 or
-            len(products) != product_count + 8):
+            len(subs) < sub_count or len(products) != product_count + 8):
         raise ValueError("direct-gate packing or source gates are missing")
     copies = {}
     for gate in adds:
@@ -1150,11 +1161,16 @@ def check_gate_topology(syntax: dict[str, Any], topology: dict[str, Any],
                 packed["in1"] != term["out"]):
             raise ValueError("public input pack gate topology differs from four-lane ABI")
     wire = {0: adds[2]["out"]}
-    add_cursor, product_cursor = 3, 0
+    add_cursor, sub_cursor, product_cursor = 3, 0, 0
     source_gates = []
     for node in instructions:
         kind = node["op"]
-        gate = adds[add_cursor] if kind == "add" else products[product_cursor]
+        if kind == "add":
+            gate = adds[add_cursor]
+        elif kind == "sub":
+            gate = subs[sub_cursor]
+        else:
+            gate = products[product_cursor]
         if gate["in0"] != wire[node["lhs"]] or gate["in1"] != wire[node["rhs"]]:
             raise ValueError("native source gate selector or operands differ from checked SSA")
         if gate["out"] < 11 or gate["out"] in wire.values():
@@ -1162,8 +1178,10 @@ def check_gate_topology(syntax: dict[str, Any], topology: dict[str, Any],
         wire[node["id"]] = gate["out"]
         source_gates.append({"id": node["id"], "op": kind, **gate})
         add_cursor += kind == "add"
+        sub_cursor += kind == "sub"
         product_cursor += kind == "mul"
-    if add_cursor != 3 + add_count or product_cursor != product_count:
+    if (add_cursor != 3 + add_count or sub_cursor != sub_count or
+            product_cursor != product_count):
         raise ValueError("native source gate schedule is incomplete")
     if [gate["out"] for gate in adds[add_cursor:add_cursor + 8]] != list(range(3, 11)):
         raise ValueError("public ABI copy gates are not in canonical order")
@@ -1193,11 +1211,11 @@ def check_gate_topology(syntax: dict[str, Any], topology: dict[str, Any],
                   {gate["out"] for gate in adds[:add_cursor]} |
                   {gate["out"] for gate in muls[:6]} |
                   {gate["out"] for gate in products[:product_count + 4]})
-    for gate in (*adds[add_cursor + 8:], *gate_lists["sub"], *muls[6:]):
+    for gate in (*adds[add_cursor + 8:], *subs[sub_cursor:], *muls[6:]):
         if {gate["in0"], gate["in1"], gate["out"]} & data_wires:
             raise ValueError("extra native gate depends on source or public data")
     _check_constant_island(
-        adds[add_cursor + 8:], gate_lists["sub"], muls[6:],
+        adds[add_cursor + 8:], subs[sub_cursor:], muls[6:],
         [products[product_count + lane]["in1"] for lane in range(4)],
         [muls[3 + lane]["in1"] for lane in range(3)],
     )
@@ -1208,7 +1226,7 @@ def check_gate_topology(syntax: dict[str, Any], topology: dict[str, Any],
             f"{n_vars} variables/{n_rows} rows, expected "
             f"{expected_vars} variables/{expected_rows} rows")
     _require_gate_schedule("add", adds[add_cursor + 8:], expected_constant["add"])
-    _require_gate_schedule("sub", gate_lists["sub"], expected_constant["sub"])
+    _require_gate_schedule("sub", subs[sub_cursor:], expected_constant["sub"])
     _require_gate_schedule("mul", muls[6:], expected_constant["mul"])
     exact_gates, exact_vars, exact_rows, exact_source = exact_direct_gate_schedule(syntax)
     if (exact_vars != n_vars or exact_rows != n_rows or exact_source != source_gates):

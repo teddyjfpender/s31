@@ -19,6 +19,26 @@ This is a bounded acyclic-function certificate and native regression. It does no
 prove arbitrary functional source compilation or the underlying STARK
 cryptographic assumptions.
 
+`subtraction_release.py` checks the
+[`release_sub4`](../../../examples/functional/release_sub4/README.md)
+helper against a handwritten three-gate program. It preserves ordered
+subtraction through the independent source checker, compares the complete
+native AIR cost and fixed root, proves `-2*x` in four lanes, admits that proof
+through the five-pin release command, and rejects a changed public claim.
+
+```sh
+python3 src/frontends/s31/tests/acceptance/compiler_correspondence/subtraction_release.py
+```
+
+`subtraction_optimized_release.py` checks opt-in v3 reuse of the same ordered
+subtraction. Four source operations become three native gates; the resulting
+canonical IR and native AIR cost match a handwritten three-gate program. Its
+proof passes strict release verification and a changed public statement fails.
+
+```sh
+python3 src/frontends/s31/tests/acceptance/compiler_correspondence/subtraction_optimized_release.py
+```
+
 `optimized_release.py` builds the checked-in
 [`release_optimized4`](../../../examples/functional/release_optimized4/README.md)
 program in explicit v3 mode. Five source lets produce four native arithmetic

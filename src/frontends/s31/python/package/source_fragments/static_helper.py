@@ -197,14 +197,14 @@ def peel_static_helpers(tokens: list[str], valid_name: Callable[[str], bool]) ->
             return StaticExpr("ref", "", (first,))
 
         def expression(min_power: int = 0, depth: int = 0) -> StaticExpr:
-            """Parse the bounded `+`/`.*` precedence used by source expressions."""
+            """Parse the bounded `+`/`-`/`.*` precedence used by source expressions."""
             nonlocal expression_gates
             if depth > 16:
                 raise UnsupportedStaticHelper("static helper expression is too deep")
             left = atom(depth)
-            while tokens[cursor:cursor + 1] in (["+"], [".*"]):
+            while tokens[cursor:cursor + 1] in (["+"], ["-"], [".*"]):
                 operator = tokens[cursor]
-                power = 10 if operator == "+" else 20
+                power = 10 if operator in {"+", "-"} else 20
                 if power < min_power:
                     break
                 take(operator)

@@ -123,7 +123,7 @@ class StaticLambdaReleaseTests(unittest.TestCase):
             "  let result = f(x);\n" + TAIL,
             HEADER + "  let f = fun(v: [m31; 2]) -> [m31; 4] => v .* v;\n"
             "  let result = f(x);\n" + TAIL,
-            HEADER + "  let f = fun(v: [m31; 4]) -> [m31; 4] => v - x;\n"
+            HEADER + "  let f = fun(v: [m31; 4]) -> [m31; 4] => v + 1_m31;\n"
             "  let result = f(x);\n" + TAIL,
             HEADER + "  let f = fun(v: [m31; 4]) -> [m31; 4] => v;\n"
             "  let result = f(x);\n" + TAIL,

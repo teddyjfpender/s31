@@ -158,6 +158,10 @@ challenge distribution. The source compiler's general parser and specializer
 also need a proof beyond this regenerated concrete certificate. These are
 substantive obligations; [the formal package README](../../../../../formal/s31/README.md)
 tracks the other proved components and the full audit commands.
+The independent release checker now admits ordered subtraction and checks its
+native selector, operands, row position, and fixed root. The Lean exact-byte
+and physical-roster composition on this page still covers add and pointwise
+multiply source gates; it has not been extended to subtraction.
 
 ## A complete modeled 512-row trace
 

@@ -47,7 +47,7 @@ class StaticLambda:
 
 MAX_EXPRESSION_DEPTH = 16
 MAX_BODY_GATES = 16
-PRECEDENCE = {"+": 10, ".*": 20}
+PRECEDENCE = {"+": 10, "-": 10, ".*": 20}
 
 
 def parse_static_lambda(tokens: list[str], valid_name: Callable[[str], bool],

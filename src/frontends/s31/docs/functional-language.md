@@ -46,6 +46,11 @@ The strict checker also accepts parentheses around a returned callee, as in
 The [composed helper example](../examples/functional/release_helper_composition4/README.md)
 places a nested array call and inline captured `fun` inside another helper's
 body. Those source expressions leave only the two additions computing `3x`.
+The [ordered subtraction example](../examples/functional/release_sub4/README.md)
+shows `x - 2x` and then subtracts `x` again. Its pure helper and handwritten
+form emit the same three native gates. The independent v2 checker preserves
+the left/right order of both subtraction operands; the linked hand calculation
+shows their M31 values and exact grouped AIR rows.
 
 The separate [optimized release example](../examples/functional/release_optimized4/README.md)
 uses `--correspondence optimized` with `direct-gate`. Its independent v3
@@ -63,6 +68,9 @@ arithmetic nodes compact to four native gates, the same AIR geometry as a
 handwritten four-gate circuit. Twenty-four generated cases check
 helper calls, nested expression order, and function aliases against the production
 normalized relation and a handwritten canonical IR.
+The same subtraction example includes an opt-in v3 case where a repeated
+ordered subtraction is reused: four source operations become three native
+gates. Reversing the operands is a different gate and cannot use that result.
 
 ## Auditing a named function all the way to packed rows
 

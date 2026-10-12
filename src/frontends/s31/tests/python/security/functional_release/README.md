@@ -40,6 +40,12 @@ compares canonical IR and positional gate schedules with direct programs and
 checks independent field values and false public claims.
 Other lambda operations and general closures remain outside this bounded
 certificate.
+`test_subtraction.py` checks that ordered subtraction survives pure helper
+erasure, that reversing operands changes the canonical verifier identity,
+that optimized reuse merges only identical ordered subtraction pairs, and
+that 72 two-step add/subtract/multiply programs and 72 mixed-helper
+spellings agree with an independent modular-integer oracle. The native release proof is in
+`tests/acceptance/compiler_correspondence/subtraction_release.py`.
 The separate `test_lexical_corpus.py` exhausts all 30 chains of one to four binders with
 add/multiply chains, including static helper calls and parenthesized source
 expressions. Every case must match both production compilation and a direct

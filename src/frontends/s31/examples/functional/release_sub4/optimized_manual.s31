@@ -1,0 +1,6 @@
+circuit release_sub_cse4(public x: [m31; 4]) -> public [m31; 4] {
+    let twice = x + x;
+    let neg = x - twice;
+    let result = neg + neg;
+    result
+}
