@@ -149,12 +149,16 @@ def main() -> None:
         mutations["noncanonical_m31"] = canonical(changed)
         mutations["v1_statement"] = canonical({"public_inputs": {"x": [7]},
                                                  "public_outputs": {"square": [49]}})
-        mutations["duplicate_key"] = (work / "trial/statement.json").read_bytes().replace(
+        honest_bytes = (work / "trial/statement.json").read_bytes()
+        mutations["duplicate_key"] = honest_bytes.replace(
             b'"version":2', b'"version":2,"version":2')
+        if mutations["duplicate_key"] == honest_bytes:
+            raise AssertionError("duplicate-key mutation did not change canonical statement")
         mutations["noncanonical_json"] = json.dumps(honest, indent=2).encode() + b"\n"
         for label, value in mutations.items():
-            expected_error = ("DuplicateField" if label == "duplicate_key" else
-                              "InvalidRecordAbi" if label == "v1_statement" else
+            # The native statement parser deliberately maps malformed JSON,
+            # including duplicate keys, to one public boundary error.
+            expected_error = ("InvalidRecordAbi" if label == "v1_statement" else
                               "InvalidRecordStatement")
             reject(verifier, proof, statement, key, value, label, expected_error)
         reject_resealed_key(work, package, proof, work / "trial/statement.json")
