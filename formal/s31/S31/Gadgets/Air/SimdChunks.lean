@@ -154,6 +154,33 @@ theorem packedRows_iff {n : Nat} (multiply : Bool)
     rw [s31Op_coord, chunk4_active a block.val (tailA block.val) i hi,
       chunk4_active b block.val (tailB block.val) i hi, h]
 
+/-- Every active lane in the arbitrary-length addition or multiplication
+AIR agrees with its executable normalized relation node. -/
+theorem packedRows_iff_normalized_node {n : Nat} (multiply : Bool)
+    (a b claimed : Fin n → S31.M31)
+    (tailA tailB : Nat → Fin 4 → S31.M31) :
+    packedRows multiply a b claimed tailA tailB ↔
+      S31.evaluateNode (S31.Functional.arithmeticEnv a b)
+        (S31.Functional.arithmeticNode multiply) =
+          .ok ⟨.m31, List.ofFn claimed⟩ := by
+  rw [packedRows_iff, S31.Functional.arithmeticNode_eval]
+  constructor
+  · intro h
+    have heq : (fun i : Fin n => if multiply then a i * b i else a i + b i) =
+        claimed := by
+      funext i
+      exact (h i).symm
+    rw [heq]
+  · intro h
+    have hlist : List.ofFn
+        (fun i : Fin n => if multiply then a i * b i else a i + b i) =
+        List.ofFn claimed := by
+      injection h with hvalue
+      exact congrArg S31.Value.words hvalue
+    have heq := List.ofFn_injective hlist
+    intro i
+    exact (congrFun heq i).symm
+
 /-- A subtraction array uses exactly `ceil(n/4)` packed QM31 rows. The final
 row may have arbitrary inactive input values, but its active output lanes
 remain constrained by the subtraction flag. -/

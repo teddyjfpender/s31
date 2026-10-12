@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import ast
 import copy
 import hashlib
 import json
+import re
 import sys
 import tempfile
 import unittest
@@ -45,6 +47,19 @@ def digest(data: bytes) -> str:
 
 
 class SourceRelationFragmentTests(unittest.TestCase):
+    def test_lean_subtraction_fixture_matches_native_acceptance_source(self) -> None:
+        formal = S31.parents[2] / "formal/s31/S31/Gadgets/Functional/Correspondence/SourceFunctionBytes.lean"
+        source = formal.read_text()
+        definition = re.search(r"def subtract5Source : String :=\s*(.*?)\s*def subtract5Parsed",
+                               source, re.DOTALL)
+        self.assertIsNotNone(definition)
+        lean_literals = re.findall(r'"(?:[^"\\]|\\.)*"', definition.group(1))
+        self.assertEqual("".join(ast.literal_eval(value) for value in lean_literals), SUB5_FUNCTIONAL)
+        native = (S31 / "tests/acceptance/math/field_subtraction_partial.py").read_text()
+        acceptance_literal = re.search(r'FUNCTIONAL_SOURCE = (""".*?""")', native, re.DOTALL)
+        self.assertIsNotNone(acceptance_literal)
+        self.assertEqual(ast.literal_eval(acceptance_literal.group(1)), SUB5_FUNCTIONAL)
+
     def test_independent_function_erasure_and_short_packed_subtraction(self) -> None:
         for length in (1, 2, 3, 4, 5, 7, 8):
             with self.subTest(length=length):

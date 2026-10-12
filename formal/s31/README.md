@@ -472,6 +472,21 @@ as through direct source, while the AIR relation uses a square row followed
 by one subtraction row. Python parsing, SSA lowering, native column emission,
 and proof authentication remain separate obligations.
 
+`Functional/Correspondence/SourceFunctionBytes` adds an independent Lean byte
+parser for one pure named binary function over `[m31; N]`, `1 ≤ N ≤ 8`, called
+once by a circuit with two private inputs and one public result. It resolves
+parameter and call names rather than assuming positional subtraction order.
+`subtract5_actual_bytes` checks the literal five-lane subtraction example;
+`subtract5_reverse_changes_certificate` and
+`subtract5_mismatched_length_rejected` check changed operand order and width.
+For every accepted parsed program, `air_iff_value` proves that exactly its
+source result satisfies all active packed AIR lanes, including a short final
+row with arbitrary inactive limbs. `air_iff_normalized_node` connects the same
+row relation to the executable normalized add, sub, or mul node. The parser
+supports exactly this one-function grammar; correspondence to production
+Python parsing, native Zig row emission, and proof authentication is still
+outside these theorems.
+
 `SimdChunks.partial_row_iff_normalized_node` extends the same result to final
 chunks with zero to four active lanes. `SimdChunks.packedRows_iff` covers
 arrays of any length, showing that exactly `ceil(n/4)` row witnesses bind all
