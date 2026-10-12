@@ -1,5 +1,5 @@
 circuit square4(public x: [m31; 4]) -> public [m31; 4] {
-    let first = x .* x;
-    let result = first + first;
+    let _s31_i1_0 = x .* x;
+    let result = _s31_i1_0 + _s31_i1_0;
     result
 }

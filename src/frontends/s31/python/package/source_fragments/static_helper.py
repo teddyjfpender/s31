@@ -1,8 +1,8 @@
-"""Exact one-gate static helper grammar for the v2 direct-gate certificate.
+"""Exact straight-line static helper grammar for the v2 gate certificate.
 
 This parser is independent of the production text parser. Its parameters are
-compile-time names; a call selects existing circuit wires and emits exactly
-one addition or pointwise multiplication node. No function value is carried
+compile-time names; a call selects existing wires and emits its additions or
+pointwise multiplications in declaration order. No function value is carried
 into the normalized relation or native AIR.
 """
 
@@ -17,12 +17,18 @@ class UnsupportedStaticHelper(ValueError):
 
 
 @dataclass(frozen=True)
+class StaticGate:
+    name: str | None
+    left: str
+    operator: str
+    right: str
+
+
+@dataclass(frozen=True)
 class StaticHelper:
     name: str
     params: tuple[str, ...]
-    operator: str
-    left_index: int
-    right_index: int
+    gates: tuple[StaticGate, ...]
 
 
 def peel_static_helper(tokens: list[str], valid_name: Callable[[str], bool]) -> tuple[StaticHelper | None, list[str]]:
@@ -71,11 +77,33 @@ def peel_static_helper(tokens: list[str], valid_name: Callable[[str], bool]) -> 
     take("->")
     lane_type()
     take("{")
-    left = take()
-    operator = take()
-    right = take()
+    gates: list[StaticGate] = []
+    available = set(params)
+
+    def gate(result_name: str | None) -> None:
+        left, operator, right = take(), take(), take()
+        if left not in available or right not in available or operator not in {"+", ".*"}:
+            raise UnsupportedStaticHelper("helper gate needs earlier wires and one binary operation")
+        gates.append(StaticGate(result_name, left, operator, right))
+        if len(gates) > 16:
+            raise UnsupportedStaticHelper("helper exceeds 16 arithmetic operations")
+
+    while tokens[cursor:cursor + 1] == ["let"]:
+        take("let")
+        local = name()
+        if local in available or local == helper_name:
+            raise UnsupportedStaticHelper("duplicate or shadowed helper local")
+        take("=")
+        gate(local)
+        take(";")
+        available.add(local)
+
+    if (len(tokens) >= cursor + 2 and tokens[cursor + 1] == "}" and
+            tokens[cursor] in available):
+        returned = take()
+        if not gates or gates[-1].name != returned:
+            raise UnsupportedStaticHelper("helper must return its last operation")
+    else:
+        gate(None)
     take("}")
-    if left not in params or right not in params or operator not in {"+", ".*"}:
-        raise UnsupportedStaticHelper("helper body must be one binary parameter operation")
-    return (StaticHelper(helper_name, tuple(params), operator,
-                         params.index(left), params.index(right)), tokens[cursor:])
+    return StaticHelper(helper_name, tuple(params), tuple(gates)), tokens[cursor:]

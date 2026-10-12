@@ -59,6 +59,95 @@ circuit add_square(public x: [m31; 4]) -> public [m31; 4] {
         self.assertEqual([node["op"] for node in checked["nodes"]], ["mul", "add"])
         self.assertEqual(syntax["output"], 2)
 
+    def test_straight_line_helper_body_and_repeated_calls(self) -> None:
+        source = """fn twice_square(v: [m31; 4]) -> [m31; 4] {
+  let square = v .* v;
+  square + square
+}
+circuit repeated(public x: [m31; 4]) -> public [m31; 4] {
+  let first = twice_square(x);
+  let result = twice_square(first);
+  result
+}
+"""
+        direct = """circuit repeated(public x: [m31; 4]) -> public [m31; 4] {
+  let _s31_i1_0 = x .* x;
+  let first = _s31_i1_0 + _s31_i1_0;
+  let _s31_i2_0 = first .* first;
+  let result = _s31_i2_0 + _s31_i2_0;
+  result
+}
+"""
+        checked, syntax = parse_source(source.encode())
+        direct_checked, direct_syntax = parse_source(direct.encode())
+        self.assertEqual(checked, direct_checked)
+        self.assertEqual(syntax, direct_syntax)
+        self.assertEqual(compile_text(source)[0], checked)
+        self.assertEqual(len(checked["nodes"]), 4)
+
+    def test_returned_local_and_three_gate_body(self) -> None:
+        source = """fn poly(v: [m31; 4]) -> [m31; 4] {
+  let square = v .* v;
+  let fourth = square .* square;
+  v + fourth
+}
+circuit calc(public x: [m31; 4]) -> public [m31; 4] {
+  let result = poly(x);
+  result
+}
+"""
+        checked, _ = parse_source(source.encode())
+        self.assertEqual(checked, compile_text(source)[0])
+        self.assertEqual(len(checked["nodes"]), 3)
+
+        returned = source.replace("v + fourth", "fourth")
+        checked_returned, _ = parse_source(returned.encode())
+        self.assertEqual(checked_returned, compile_text(returned)[0])
+        self.assertEqual(len(checked_returned["nodes"]), 2)
+
+    def test_helper_locals_are_bounded_and_hygienic(self) -> None:
+        source = """fn polynomial(v: [m31; 4]) -> [m31; 4] {
+  let square = v .* v;
+  square + square
+}
+circuit calc(public x: [m31; 4]) -> public [m31; 4] {
+  let result = polynomial(x);
+  result
+}
+"""
+        malformed = [
+            source.replace("let square =", "let v ="),
+            source.replace("square + square", "missing + square"),
+            source.replace("square + square", "v + v + square"),
+            source.replace("square + square", "v"),
+            source.replace("let square = v .* v;", "let square = square .* v;"),
+            source.replace("let result =", "let _s31_i1_0 ="),
+            source.replace("let square = v .* v;", "let square = v .* v; let square = v .* v;"),
+        ]
+        for changed in malformed:
+            with self.subTest(source=changed[:100]), self.assertRaises(UnsupportedFragment):
+                parse_source(changed.encode())
+
+    def test_sixteen_gate_body_is_the_exact_limit(self) -> None:
+        def source(count: int) -> str:
+            previous = "v"
+            steps = []
+            for index in range(count):
+                current = f"power{index}"
+                steps.append(f"  let {current} = {previous} .* {previous};")
+                previous = current
+            return ("fn power(v: [m31; 4]) -> [m31; 4] {\n" +
+                    "\n".join(steps) + f"\n  {previous}\n}}\n" +
+                    "circuit calc(public x: [m31; 4]) -> public [m31; 4] {\n" +
+                    "  let result = power(x);\n  result\n}\n")
+
+        accepted = source(16)
+        checked, _ = parse_source(accepted.encode())
+        self.assertEqual(checked, compile_text(accepted)[0])
+        self.assertEqual(len(checked["nodes"]), 16)
+        with self.assertRaisesRegex(UnsupportedFragment, "exceeds 16"):
+            parse_source(source(17).encode())
+
     def test_rejected_helper_forms_fail_closed(self) -> None:
         source = program(1, helper=True)
         malformed = [
