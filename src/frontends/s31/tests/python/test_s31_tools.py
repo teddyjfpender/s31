@@ -37,7 +37,7 @@ class ProverLogTests(unittest.TestCase):
 
         package_files = set((S31_SOURCE_ROOT / "python/package").glob("*.py"))
         self.assertEqual({path.name for path in package_files},
-                     {"__init__.py", "context.py", "build.py", "verify.py", "trust.py",
+                     {"__init__.py", "context.py", "source_identity.py", "build.py", "verify.py", "trust.py",
                          "correspondence.py", "direct_gate_schedule.py",
                          "manifest_digest.py", "bounded_manifest_v4.py",
                          "release_admission.py", "gate_component_roster.py",

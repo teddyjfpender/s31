@@ -7,6 +7,8 @@ import json
 import subprocess
 from pathlib import Path
 
+from package.source_identity import pinned_engine_commit
+
 S31_DIR = Path(__file__).resolve().parents[2]
 ROOT = S31_DIR.parents[2]
 ENGINE_ROOT = ROOT / "deps/stwo-zig"
@@ -57,18 +59,17 @@ def compiler_fingerprint() -> str:
         digest.update(str(path.relative_to(ROOT)).encode())
         digest.update(b"\0")
         digest.update(bytes.fromhex(file_hash(path)))
-    engine_commit = subprocess.check_output(
-        ["git", "-C", str(ENGINE_ROOT), "rev-parse", "HEAD"], text=True,
-    ).strip()
-    if subprocess.check_output(
-        ["git", "-C", str(ENGINE_ROOT), "status", "--porcelain", "--untracked-files=no"],
-        text=True,
-    ).strip():
-        raise RuntimeError("pinned stwo-zig dependency has local modifications")
+    engine_commit = pinned_engine_commit(ROOT, ENGINE_ROOT)
     digest.update(b"stwo-zig-commit\0")
     digest.update(engine_commit.encode())
     digest.update(invoke("zig", "version").strip().encode())
-    return digest.hexdigest()
+    fingerprint = digest.hexdigest()
+    bundle = ROOT / "SOURCE-BUNDLE.json"
+    if bundle.is_file() and not (ROOT / ".git").exists():
+        expected = json.loads(bundle.read_text()).get("compiler_sha256")
+        if fingerprint != expected:
+            raise RuntimeError("source-bundle compiler differs from its pinned manifest")
+    return fingerprint
 
 
 def invoke(*args: str) -> str:

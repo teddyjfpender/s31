@@ -6,6 +6,16 @@ every Python implementation file in this directory, the language, library and
 inspection modules, the Zig sources, pinned AIR assets, the pinned engine
 commit and the Zig version.
 
+`source_identity.py` resolves that engine commit. A normal checkout must have
+its **own** stwo-zig Git worktree; Git's fallback to an enclosing S31 checkout
+is rejected. A complete Git-free release bundle instead carries
+`SOURCE-BUNDLE.json`. Before using its engine commit in the fingerprint, the
+compiler hashes the engine's build code and relevant vector assets and
+compares them with the manifest. It also requires the computed compiler
+fingerprint to match the bundle manifest. A missing or edited covered build
+file fails package creation. The release asset's external SHA-256 remains the
+distribution trust pin; this local consistency check is not an attestation.
+
 `build.py` compiles a JSON relation or `.s31` source into a staging directory.
 It checks the compiler and source identities before atomically installing a
 package. A text package also contains the original source, its normalized
