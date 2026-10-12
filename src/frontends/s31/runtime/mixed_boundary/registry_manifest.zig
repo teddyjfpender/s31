@@ -262,8 +262,13 @@ pub fn requireNativeGeometry(manifest: *const Manifest, geometry: *const cpu.dir
             max_column_log_size = @max(max_column_log_size, column.log_size);
         }
     }
+    const extended_max_column_log_size = std.math.add(
+        u32,
+        max_column_log_size,
+        geometry.pcs.fri_config.log_blowup_factor,
+    ) catch return error.InvalidMixedLiveManifestBinding;
     if (geometry.max_column_log_size != max_column_log_size or
-        geometry.pcs.trace_lifting_log_size < max_column_log_size)
+        geometry.pcs.trace_lifting_log_size < extended_max_column_log_size)
         return error.InvalidMixedLiveManifestBinding;
 }
 
@@ -389,6 +394,21 @@ test "mixed registry manifest is source-derived and ordered for all bounded coun
         }
         changed_native = native;
         changed_native.max_column_log_size += 1;
+        try std.testing.expectError(error.InvalidMixedLiveManifestBinding, requireNativeGeometry(&manifest, &changed_native));
+        // All trace trees may appear to fit their unextended column logs
+        // while violating the PCS commitment height after FRI blowup.
+        var max_trace_log: u32 = 0;
+        inline for (0..3) |tree| {
+            for (native.columns[tree][0..native.tree_columns[tree]]) |column|
+                max_trace_log = @max(max_trace_log, column.log_size);
+        }
+        try std.testing.expect(native.pcs.fri_config.log_blowup_factor > 0);
+        try std.testing.expect(max_trace_log >= native.pcs.fri_config.log_blowup_factor);
+        changed_native = native;
+        changed_native.composition_log_size = 0;
+        changed_native.max_column_log_size = max_trace_log;
+        changed_native.pcs.trace_lifting_log_size = max_trace_log;
+        inline for (1..4) |tree| changed_native.tree_lifting_log_sizes[tree] = max_trace_log;
         try std.testing.expectError(error.InvalidMixedLiveManifestBinding, requireNativeGeometry(&manifest, &changed_native));
         changed_native = native;
         changed_native.pcs.preprocessed_lifting_log_size += 1;
