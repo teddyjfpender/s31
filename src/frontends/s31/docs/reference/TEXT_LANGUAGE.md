@@ -90,6 +90,12 @@ records or source helpers rather than top-level proof roots. The
 `fun(name: Type) -> Type => expression`, and static function types
 `Fn(Type) -> Type`. Function values are specialized away at calls, cannot
 cross circuit inputs or outputs, and add no relation nodes by themselves.
+Named `fn` and `fun` parameters can destructure typed tuples or nominal
+records, for example `fn add((a, b): ([m31; 1], [m31; 1])) -> [m31; 1]
+{ a + b }`. The pattern is checked and erased before relation emission;
+the [worked example](../../examples/functional/pattern_parameters/README.md)
+compares it with direct arithmetic. Circuit input declarations keep named
+public or private ABI roots.
 Recursive calls are rejected. Whole-program elaboration type checks every
 function and lambda body, including unused ones.
 For a witness-dependent `if`, both arms must have the same selectable

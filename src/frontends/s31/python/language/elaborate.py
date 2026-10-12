@@ -20,7 +20,9 @@ from language.syntax import Circuit, Expr, Function, FunctionType, RecordType, S
 from language.types import FieldLiteral, SourceType, StaticArray
 
 
-Origin: TypeAlias = tuple[str, str | int]
+ProjectionPath: TypeAlias = tuple[int | str, ...]
+ParamPath: TypeAlias = tuple[int, ProjectionPath]
+Origin: TypeAlias = tuple[str, str | int | ParamPath]
 
 
 @dataclass(frozen=True)
@@ -28,6 +30,7 @@ class ProductOrigin:
     """Static origin summary for a tuple containing function values."""
 
     elements: tuple[OriginValue, ...]
+    fields: tuple[str, ...] | None = None
 
 
 OriginValue: TypeAlias = Origin | ProductOrigin | None
@@ -95,6 +98,24 @@ class Elaborator:
         found_calls, found_steps = self.referenced_calls(body, bound)
         return calls | found_calls, steps | found_steps
 
+    @staticmethod
+    def project_origin(value: OriginValue, step: int | str) -> OriginValue:
+        """Preserve the exact field path through a symbolic product parameter."""
+        if isinstance(value, ProductOrigin):
+            if isinstance(step, int) and value.fields is None and 0 <= step < len(value.elements):
+                return value.elements[step]
+            if isinstance(step, str) and value.fields is not None and step in value.fields:
+                return value.elements[value.fields.index(step)]
+            return None
+        if isinstance(value, tuple):
+            kind, payload = value
+            if kind == "param" and isinstance(payload, int):
+                return ("param_path", (payload, (step,)))
+            if kind == "param_path" and isinstance(payload, tuple):
+                index, path = payload
+                return ("param_path", (index, path + (step,)))
+        return None
+
     def function_origin(self, expr: Expr, scope: dict[str, OriginValue],
                         returns: dict[str, OriginValue],
                         owner: str | None) -> OriginValue:
@@ -115,12 +136,18 @@ class Elaborator:
         if expr.kind == "tuple":
             return ProductOrigin(tuple(self.function_origin(item, scope, returns, owner)
                                        for item in expr.args))
+        if expr.kind == "record" and expr.record_type is not None:
+            return ProductOrigin(tuple(self.function_origin(item, scope, returns, owner)
+                                       for item in expr.args),
+                                 tuple(field for field, _ in expr.record_type.fields))
         if expr.kind == "project":
-            product = self.function_origin(expr.args[0], scope, returns, owner)
-            index = int(expr.value)
-            if isinstance(product, ProductOrigin) and index < len(product.elements):
-                return product.elements[index]
-            return None
+            return self.project_origin(
+                self.function_origin(expr.args[0], scope, returns, owner), int(expr.value)
+            )
+        if expr.kind == "field_project":
+            return self.project_origin(
+                self.function_origin(expr.args[0], scope, returns, owner), expr.value
+            )
         if expr.kind == "lambda":
             return ("global", owner) if owner is not None else ("lambda", id(expr))
         if expr.kind == "call" and expr.value not in scope:
@@ -132,6 +159,13 @@ class Elaborator:
                     kind, index = value
                     if kind == "param" and isinstance(index, int) and index < len(expr.args):
                         return self.function_origin(expr.args[index], scope, returns, owner)
+                    if kind == "param_path" and isinstance(index, tuple):
+                        param_index, path = index
+                        if param_index < len(expr.args):
+                            actual = self.function_origin(expr.args[param_index], scope, returns, owner)
+                            for step in path:
+                                actual = self.project_origin(actual, step)
+                            return actual
                     return value if kind == "global" else None
                 return None
             return substitute(summary)
@@ -155,8 +189,8 @@ class Elaborator:
 
     def step_flows(self, statements: tuple[Statement, ...], body: Expr,
                    params: tuple[str, ...],
-                   targets: dict[str, set[int]],
-                   returns: dict[str, OriginValue]) -> tuple[set[int], set[str]]:
+                   targets: dict[str, set[ParamPath]],
+                   returns: dict[str, OriginValue]) -> tuple[set[ParamPath], set[str]]:
         """Track static names flowing into an iterate step through Fn parameters.
 
         This is a conservative, finite source-level flow pass. Specialization
@@ -164,7 +198,7 @@ class Elaborator:
         """
         env: dict[str, OriginValue] = {name: ("param", index)
                                           for index, name in enumerate(params)}
-        positions: set[int] = set()
+        positions: set[ParamPath] = set()
         globals_: set[str] = set()
 
         def origin(expr: Expr, scope: dict[str, OriginValue]) -> OriginValue:
@@ -184,15 +218,19 @@ class Elaborator:
                     visit(arm, scope | {binder: None})
                 return
             if expr.kind == "call" and expr.value not in scope:
-                step_args = ({0} if expr.value == "iterate" else
+                step_args = ({(0, ())} if expr.value == "iterate" else
                              targets.get(expr.value, set()))
-                for index in step_args:
+                for index, path in step_args:
                     if index >= len(expr.args):
                         continue
                     source = origin(expr.args[index], scope)
+                    for step in path:
+                        source = self.project_origin(source, step)
                     if isinstance(source, tuple):
                         kind, value = source
                         if kind == "param" and isinstance(value, int):
+                            positions.add((value, ()))
+                        elif kind == "param_path" and isinstance(value, tuple):
                             positions.add(value)
                         elif kind == "global" and isinstance(value, str):
                             globals_.add(value)
@@ -238,7 +276,7 @@ class Elaborator:
         for name in self.functions:
             depth(name, ())
         returns = self.function_returns(depths)
-        targets = {name: set() for name in self.functions}
+        targets: dict[str, set[ParamPath]] = {name: set() for name in self.functions}
         while True:
             changed = False
             for name, fn in self.functions.items():

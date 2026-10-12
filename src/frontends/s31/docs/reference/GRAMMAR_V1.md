@@ -46,8 +46,8 @@ function      = "fn", identifier, function_parameters, "->", type, block
 circuit       = ["blinded"], "circuit", identifier,
                 circuit_parameters, "->", "public", first_order_type, block
 
-function_parameters = "(", [identifier, ":", type,
-                      {",", identifier, ":", type}], ")"
+function_parameters = "(", [binding_pattern, ":", type,
+                      {",", binding_pattern, ":", type}], ")"
 circuit_parameters  = "(", [visibility, identifier, ":", first_order_type,
                       {",", visibility, identifier, ":", first_order_type}], ")"
 visibility    = "public" | "private"
@@ -129,6 +129,15 @@ once. The parser uses a source-inaccessible temporary name and lowers the
 pattern to ordinary `let` bindings and static projections. A repeated name
 within one tuple pattern is rejected. No pattern node reaches elaboration,
 relation JSON or AIR.
+The same patterns are accepted in named `fn` and `fun` parameter lists, with
+one type annotation for each whole parameter. For example,
+`fn add((a, b): ([m31; 1], [m31; 1])) -> [m31; 1] { a + b }` accepts one
+source tuple argument. `fun(Pair { left, right }: Pair) -> [m31; 1] =>
+left + right` accepts one nominal record. The compiler checks the whole
+parameter type and expands the pattern to static projections before body
+elaboration. Duplicate names across parameters, even when nested in different
+patterns, are rejected. Circuit boundary parameters retain named public or
+private first-order types; a source-only product cannot cross that boundary.
 
 `struct Powers { square: [m31; 4], doubled: [m31; 4] }` declares a nominal
 static product. `Powers { doubled: x + x, square: x .* x }` constructs one with

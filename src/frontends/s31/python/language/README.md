@@ -41,6 +41,15 @@ contains a character source identifiers cannot contain, so user code cannot
 capture it. The lowering preserves one evaluation of the pair expression,
 eager component effects and zero tuple-specific AIR work. Nested patterns
 and expression-level `let … in` use the same lowering.
+Named function and lambda parameter patterns use the same projection rule.
+The entire argument is passed once; the parser inserts projections at the
+start of a named body or inside a lambda body. The declared parameter type
+must support each projection, and names must be unique across all parameters.
+Circuit inputs retain explicit named first-order or nominal record roots for
+the public ABI. The
+[weighted pair example](../../examples/functional/pattern_parameters/README.md)
+compares the exact residual relation and native AIR geometry with a direct
+two-operation circuit.
 Pattern nesting stops at 32 levels, and generated binder/projection AST nodes
 are capped at 100,000 per file so compact deep patterns cannot expand without
 bound. The record ABI's 1,024-leaf aggregate boundary is checked before

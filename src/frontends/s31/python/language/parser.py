@@ -148,15 +148,17 @@ class Parser:
         finally:
             self.pattern_depth -= 1
 
-    def pattern_bindings(self, pattern: Pattern, bound: Expr) -> list[tuple[str, Expr, Token]]:
-        """Bind the scrutinee once; projections of its static value are free."""
+    def pattern_bindings(self, pattern: Pattern, bound: Expr | None) -> list[tuple[str, Expr, Token]]:
+        """Bind once; ``None`` denotes an already-bound function parameter."""
         if pattern.name is not None:
+            assert bound is not None
             return [(pattern.name, bound, pattern.token)]
         serial = self.pattern_serial
         self.pattern_serial += 1
         hidden = f"$s31_pattern_{serial}"  # '$' is excluded from source identifiers.
         self.pattern_expansion += 1
-        bindings = [(hidden, bound, pattern.token)]
+        root = bound if bound is not None else Expr("name", hidden, (), pattern.token)
+        bindings = [(hidden, root, pattern.token)]
 
         def collect(current: Pattern, path: tuple[tuple[int | str, RecordType | None], ...]) -> None:
             if current.name is None:
@@ -426,9 +428,11 @@ class Parser:
         return Expr("record", typ.name, tuple(supplied[name] for name, _ in typ.fields),
                     token, record_type=typ)
 
-    def parameters(self, circuit: bool) -> tuple[Any, ...]:
+    def parameters(self, circuit: bool) -> tuple[tuple[Any, ...], tuple[Statement, ...]]:
         self.expect("(")
         params: list[Any] = []
+        destructuring: list[Statement] = []
+        bound_names: set[str] = set()
         if not self.accept(")"):
             while True:
                 visibility = None
@@ -438,19 +442,37 @@ class Parser:
                         raise self.error("circuit input must be public or private")
                     visibility = token.text
                     self.at += 1
-                name = self.identifier()
+                pattern = self.pattern() if not circuit else None
+                token = self.peek() if pattern is None else pattern.token
+                name = self.identifier() if circuit else None
                 self.expect(":")
                 typ = self.parse_type()
                 if circuit and not isinstance(typ, (Type, RecordType)):
                     raise self.error("circuit inputs must be first-order values or nominal records")
+                if pattern is not None:
+                    if pattern.name is not None:
+                        name = pattern.name
+                        binders = [(name, pattern.token)]
+                    else:
+                        # The pattern binder is already a function parameter.
+                        # Only its static projections enter the body; no AIR
+                        # node or extra evaluation of the argument is emitted.
+                        bindings = self.pattern_bindings(pattern, None)
+                        name = bindings[0][0]
+                        destructuring.extend(Statement("let", binder, (value,), location)
+                                              for binder, value, location in bindings[1:])
+                        binders = [(binder, location) for binder, _, location in bindings[1:]]
+                else:
+                    binders = [(name, token)]
+                for binder, location in binders:
+                    if binder in bound_names:
+                        raise self.error("duplicate parameter name", location)
+                    bound_names.add(binder)
                 params.append((name, typ, visibility) if circuit else (name, typ))
                 if self.accept(")"):
                     break
                 self.expect(",")
-        names = [item[0] for item in params]
-        if len(names) != len(set(names)):
-            raise self.error("duplicate parameter name")
-        return tuple(params)
+        return tuple(params), tuple(destructuring)
 
     def call_arguments(self) -> tuple[Expr, ...]:
         """Parse one call suffix for named and expression-valued callees."""
@@ -498,16 +520,16 @@ class Parser:
     def declaration(self) -> Function | Circuit:
         if self.accept("fn"):
             name = self.identifier()
-            params = self.parameters(False)
+            params, destructuring = self.parameters(False)
             self.expect("->")
             result = self.parse_type()
             statements, body = self.block()
-            return Function(name, params, result, statements, body)
+            return Function(name, params, result, destructuring + statements, body)
         proof_mode = "blinded" if self.accept("blinded") else "transparent"
         token = self.peek()
         self.expect("circuit")
         name = self.identifier()
-        params = self.parameters(True)
+        params, _ = self.parameters(True)
         self.expect("->")
         self.expect("public")
         result = self.parse_type()
@@ -546,11 +568,13 @@ class Parser:
             on_false = self.expression()
             lhs = Expr("if", "", (condition, on_true, on_false), token)
         elif self.accept("fun"):
-            params = self.parameters(False)
+            params, destructuring = self.parameters(False)
             self.expect("->")
             result_type = self.parse_type()
             self.expect("=>")
             body = self.expression()
+            for statement in reversed(destructuring):
+                body = Expr("let", statement.name, (statement.args[0], body), statement.token)
             lhs = Expr("lambda", "", (body,), token, params=params,
                        result_type=result_type)
         elif self.accept("-"):

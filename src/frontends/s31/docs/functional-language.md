@@ -87,6 +87,59 @@ canonical relation digest and all checked AIR cost fields match. The honest
 fixture yields a 56,967-byte proof; the generated verifier accepts it and
 rejects a changed public result.
 
+## Destructuring a function parameter
+
+The [weighted pair example](../examples/functional/pattern_parameters/weighted.s31)
+passes one source tuple to `weighted` and names its components in the function
+signature:
+
+```s31
+fn weighted((a, b): ([m31; 1], [m31; 1])) -> [m31; 1] {
+    a .* b + a
+}
+
+circuit weighted_pair(public x: [m31; 1], public y: [m31; 1])
+    -> public [m31; 1] {
+    let result = weighted((x, y));
+    result
+}
+```
+
+The call supplies **one argument**, the pair `(x, y)`. Its type is checked as
+`([m31; 1], [m31; 1])`. The parser gives the pair a hidden parameter name and
+inserts static projections equivalent to `let a = pair.0; let b = pair.1;`.
+The call then specializes to the [handwritten direct form](../examples/functional/pattern_parameters/weighted_manual.s31):
+
+```s31
+let result = x .* y + x;
+```
+
+With public inputs `x=7` and `y=9`, the prover computes `7·9+7=70` modulo
+`p=2³¹−1`. There is one M31 value per array here, so each array has one
+**lane**. The residual relation has just two nodes, `product = mul(x,y)` and
+`result = add(product,x)`. Its arithmetic obligations are
+`product−x·y=0` and `result−product−x=0` modulo `p`; the actual native AIR
+also constrains wiring, scheduling, and the public boundary. A tuple or
+parameter projection contributes no witness value, relation node, or AIR
+constraint. The
+[native acceptance gate](../tests/acceptance/functional/pattern_parameters.py)
+compares the complete reported AIR geometry of both sources under `gate` and
+`direct-gate`, checks the generated verifier on a valid proof, and rejects a
+changed public result. Named record patterns work the same way, with a
+nominal type check on each field projection. Duplicate names across parameter
+patterns are rejected. Only helper functions and lambdas accept these source
+product patterns; circuit inputs remain named public or private ABI roots.
+For this one-lane fixture, both forms use **277 raw QM31 operation rows** and
+512 padded rows in each profile. The `direct-gate` profile uses 4,096
+preprocessed cells and yields a 56,569-byte proof; generic `gate` uses
+4,248,656 preprocessed cells and yields a 425,608-byte proof. These are
+profile-specific measurements for this fixture, not a general speed ratio.
+The [Lean product model](../../../../formal/s31/S31/Gadgets/Functional/TupleValues.lean)
+also proves beta erasure for a typed pair parameter in its functional core.
+It does not prove that the Python parser or production AIR implements that
+model; the executable comparison and native trial check those paths for this
+fixture.
+
 ## A complete program
 
 The checked-in [source](../examples/arithmetic/functional_square4.s31) is:
