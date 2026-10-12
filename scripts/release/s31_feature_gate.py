@@ -63,6 +63,8 @@ def checks(mode: str) -> tuple[Check, ...]:
               "record-u8-source"),
         Check("record-u16-source", ACCEPT + "record_abi/public_u16_direct_gate_v2.py", (),
               "record-u16-source"),
+        Check("record-u32-source", ACCEPT + "record_abi/public_u32_direct_gate_v2.py", (),
+              "record-u32-source"),
     ]
     if mode == "source":
         return tuple(base)
@@ -84,6 +86,8 @@ def checks(mode: str) -> tuple[Check, ...]:
                   "multiplication-native", True, ("u8",), ("checked", "wrapping")),
             Check("record-u8-native", ACCEPT + "record_abi/public_u8_direct_gate_v2.py",
                   ("--native",), "record-u8-native", True),
+            Check("record-u32-native", ACCEPT + "record_abi/public_u32_direct_gate_v2.py",
+                  ("--native",), "record-u32-native", True),
         ))
     else:
         native.extend((
@@ -98,6 +102,8 @@ def checks(mode: str) -> tuple[Check, ...]:
                   ("--native",), "record-u8-native", True),
             Check("record-u16-native", ACCEPT + "record_abi/public_u16_direct_gate_v2.py",
                   ("--native",), "record-u16-native", True),
+            Check("record-u32-native", ACCEPT + "record_abi/public_u32_direct_gate_v2.py",
+                  ("--native",), "record-u32-native", True),
         ))
     return tuple(base + native)
 
@@ -212,6 +218,14 @@ def validate_output(check: Check, stdout: str, stderr: str,
                 report.get("native_verifier_accepted") is not True or
                 report.get("abi_valid_changed_claim_rejected_by_proof") is not True):
             raise ValueError("record source fragment report failed a control")
+    elif fmt.startswith("record-u32-"):
+        if (report.get("schema") != "s31-public-u32-record-v2" or
+                report.get("native") is not check.native or
+                report.get("limb_order") != "little-endian" or
+                report.get("honest") != [0, 0xffffffff] or
+                report.get("input_range_bits") != 32 or
+                report.get("result_aliases_public_input") is not True):
+            raise ValueError("public u32 record ABI report failed a range or alias control")
     elif fmt.startswith("record-u"):
         width = 8 if "u8" in fmt else 16
         if (report.get("schema") != f"s31-public-u{width}-record-v2" or

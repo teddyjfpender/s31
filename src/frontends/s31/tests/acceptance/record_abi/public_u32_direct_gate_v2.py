@@ -291,6 +291,7 @@ def main() -> None:
     if args.native:
         native_checks(source, flat, statement)
     print(json.dumps({"schema": "s31-public-u32-record-v2", "native": args.native,
+                      "compiler_sha256": s31.compiler_fingerprint(),
                       "limb_order": "little-endian", "honest": [0, 0xffffffff],
                       "input_range_bits": 32, "result_aliases_public_input": True}, sort_keys=True))
 

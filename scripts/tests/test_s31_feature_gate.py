@@ -55,6 +55,11 @@ def fake_report(check: gate.Check) -> tuple[str, str]:
                   "capability": "source-to-relation-only",
                   "native_verifier_accepted": True,
                   "abi_valid_changed_claim_rejected_by_proof": True}
+    elif fmt.startswith("record-u32-"):
+        report = {"schema": "s31-public-u32-record-v2", "native": check.native,
+                  "compiler_sha256": FINGERPRINT, "limb_order": "little-endian",
+                  "honest": [0, 0xffffffff], "input_range_bits": 32,
+                  "result_aliases_public_input": True}
     else:
         width = 8 if "u8" in fmt else 16
         report = {"schema": f"s31-public-u{width}-record-v2", "native": check.native,
@@ -73,9 +78,9 @@ class FeatureGateTests(unittest.TestCase):
         source = gate.checks("source")
         smoke = gate.checks("smoke")
         full = gate.checks("full")
-        self.assertEqual(len(source), 8)
-        self.assertEqual(len(smoke), 14)
-        self.assertEqual(len(full), 15)
+        self.assertEqual(len(source), 9)
+        self.assertEqual(len(smoke), 16)
+        self.assertEqual(len(full), 17)
         for inventory in (source, smoke, full):
             self.assertEqual(len({check.id for check in inventory}), len(inventory))
             for check in inventory:
