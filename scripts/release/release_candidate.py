@@ -20,6 +20,22 @@ AUDIT_CASES = frozenset({
     "sparse-wide-gate", "sparse-wide-gate-fri4", "direct-gate", "direct-chip",
     "sha-joint", "sha-shift", "sha-fused",
 })
+# This duplicates the finite audit inventory deliberately: a changed audit
+# script or report must not silently choose different source/assignment bytes.
+AUDIT_FIXTURES = {
+    "gate": ("arithmetic/functional_square4.s31", "arithmetic/functional_square4.valid.json", "arithmetic/functional_square4_manual.s31"),
+    "gate-fri4": ("arithmetic/functional_square4.s31", "arithmetic/functional_square4.valid.json", "arithmetic/functional_square4_manual.s31"),
+    "chip": ("recurrence/functional_step16.s31", "recurrence/functional_step16.valid.json", "recurrence/functional_step16_manual.s31"),
+    "sparse-gate": ("arithmetic/functional_square4.s31", "arithmetic/functional_square4.valid.json", "arithmetic/functional_square4_manual.s31"),
+    "sparse-chip": ("recurrence/functional_step16.s31", "recurrence/functional_step16.valid.json", "recurrence/functional_step16_manual.s31"),
+    "sparse-wide-gate": ("wide/functional_u256_sum.s31", "wide/u256_sum_checked.valid.json", "wide/functional_u256_sum_manual.s31"),
+    "sparse-wide-gate-fri4": ("wide/functional_u256_sum.s31", "wide/u256_sum_checked.valid.json", "wide/functional_u256_sum_manual.s31"),
+    "direct-gate": ("arithmetic/functional_square4.s31", "arithmetic/functional_square4.valid.json", "arithmetic/functional_square4_manual.s31"),
+    "direct-chip": ("recurrence/functional_step16.s31", "recurrence/functional_step16.valid.json", "recurrence/functional_step16_manual.s31"),
+    "sha-joint": ("bitcoin/bitcoin_header_pow.s31.json", "bitcoin/bitcoin_header_pow.valid.json", None),
+    "sha-shift": ("bitcoin/bitcoin_header_pow.s31.json", "bitcoin/bitcoin_header_pow.valid.json", None),
+    "sha-fused": ("bitcoin/bitcoin_header_pow.s31.json", "bitcoin/bitcoin_header_pow.valid.json", None),
+}
 FEATURE_CASES = frozenset({
     "v1-source-relation", "v2-record-source-relation", "static-sum-dce-source",
     "direct-add-source", "direct-sub-le-source", "direct-mul-source",
@@ -88,6 +104,22 @@ def validate_reports(audit: dict, feature: dict, formal: dict, *, compiler: str,
     for name, row in rows.items():
         require(isinstance(row, dict) and row.get("status") == "passed", f"audit row failed: {name}")
         require(row.get("compiler_sha256") == compiler, f"audit row compiler mismatch: {name}")
+        source, assignment, manual = AUDIT_FIXTURES[name]
+        require(row.get("source") == source and row.get("assignment") == assignment and
+                row.get("handwritten_equivalent") == manual,
+                f"audit row {name}: fixture identity mismatch")
+        expected_kind = "json-relation" if source.endswith(".json") else "text"
+        expected_fold = 4 if name in {"gate-fri4", "sparse-wide-gate-fri4"} else 1
+        require(row.get("source_kind") == expected_kind and
+                row.get("fri_fold_step") == expected_fold,
+                f"audit row {name}: source kind or FRI schedule mismatch")
+        for path, key in ((source, "source_sha256"), (assignment, "assignment_sha256"),
+                          (manual, "handwritten_source_sha256")):
+            if path is not None:
+                fixture = root / "src/frontends/s31/examples" / path
+                require(fixture.is_file() and not fixture.is_symlink() and
+                        row.get(key) == digest(fixture),
+                        f"audit row {name}: current fixture differs: {path}")
         for key in ("native_verifier_accepted", "changed_public_statement_rejected",
                     "altered_key_rejected", "altered_proof_rejected",
                     "independent_value_oracle_passed"):
@@ -114,6 +146,10 @@ def validate_reports(audit: dict, feature: dict, formal: dict, *, compiler: str,
             "audit ran from dirty source or engine")
 
     require(feature.get("schema") == "s31-scoped-feature-gate-v1", "wrong feature schema")
+    gate_script = root / "scripts/release/s31_feature_gate.py"
+    require(gate_script.is_file() and not gate_script.is_symlink() and
+            feature.get("gate_script_sha256") == digest(gate_script),
+            "feature gate script differs from current tree")
     require(feature.get("mode") == "full", "feature gate was not full mode")
     require(feature.get("release_claim") == "not-established", "feature report overclaims release status")
     for key in ("selected_passed", "mode_complete", "compiler_identity_consistent",
@@ -131,6 +167,10 @@ def validate_reports(audit: dict, feature: dict, formal: dict, *, compiler: str,
                 f"feature row failed: {name}")
         for key in ("command_sha256", "result_sha256", "stdout_sha256", "stderr_sha256"):
             require(sha(row.get(key)), f"feature row {name}: invalid {key}")
+        outcome = {key: row[key] for key in
+                   ("command_sha256", "returncode", "stdout_sha256", "stderr_sha256")}
+        require(row["result_sha256"] == hashlib.sha256(canonical(outcome)).hexdigest(),
+                f"feature row {name}: result identity mismatch")
         command = row.get("command")
         require(isinstance(command, dict) and row["command_sha256"] ==
                 hashlib.sha256(canonical(command)).hexdigest(),
@@ -175,6 +215,15 @@ def git(root: Path, *args: str) -> str:
     return subprocess.check_output(["git", "-C", str(root), *args], text=True).strip()
 
 
+def require_formal_tree_unchanged(root: Path, formal_commit: str, head: str) -> None:
+    # The JSON inventory alone cannot reveal new or edited Lean modules.
+    result = subprocess.run(
+        ["git", "-C", str(root), "diff", "--quiet", formal_commit, head,
+         "--", "formal/s31", "scripts/s31_formal.py"], check=False)
+    require(result.returncode == 0,
+            "formal sources or binding checker changed since formal report")
+
+
 def validate_live_identity(identity: dict, *, root: Path, remote: str, branch: str) -> dict:
     sys.path.insert(0, str(root / "src/frontends/s31/python"))
     from package.context import compiler_fingerprint  # noqa: E402
@@ -193,6 +242,10 @@ def validate_live_identity(identity: dict, *, root: Path, remote: str, branch: s
         result = subprocess.run(["git", "-C", str(root), "merge-base", "--is-ancestor",
                                  identity[name], head], check=False)
         require(result.returncode == 0, f"{name} is not an ancestor of candidate")
+    # A descendant commit may update Lean sources, lake dependencies, or the
+    # source-binding checker while leaving the inventory JSON byte-identical.
+    # Require a fresh formal report after any such update.
+    require_formal_tree_unchanged(root, identity["formal_commit"], head)
     refs = git(root, "ls-remote", "--heads", remote, branch).splitlines()
     require(len(refs) == 1 and refs[0].split() == [head, f"refs/heads/{branch}"],
             "candidate HEAD is not the remote branch tip")

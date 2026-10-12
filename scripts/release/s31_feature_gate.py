@@ -255,6 +255,7 @@ def run_suite(mode: str, selected: set[str] | None = None, *,
     rows: dict[str, dict] = {check.id: {"status": "not-run"} for check in inventory}
     report = {"schema": "s31-scoped-feature-gate-v1", "mode": mode,
               "release_claim": "not-established", "selected": sorted(selected),
+              "gate_script_sha256": digest(Path(__file__).read_bytes()),
               "compiler_sha256_start": None, "compiler_sha256_end": None,
               "cases": rows}
     try:

@@ -89,8 +89,9 @@ python3 -B scripts/release/release_candidate.py \
 ```
 
 The checker rejects a missing/partial row, failed control, compiler mismatch,
-stale formal inventory, failed or missing formal log, dirty worktree, engine
-drift, or a candidate commit absent from the remote branch tip. Its success
+changed audit fixtures or release runners, stale formal inventory, changed Lean
+sources or binding checker since the formal report, failed or missing formal log,
+dirty worktree, engine drift, or a candidate commit absent from the remote branch tip. Its success
 status is `scoped-candidate-gates-passed`. The release operator must still
 review the source, evidence provenance and disclosed limitations before a tag
 or distribution. The checker does not publish anything.
