@@ -125,6 +125,12 @@ binding update; the source digests themselves do not prove compiler corresponden
 M31 addition, subtraction and multiplication trees, that typed source denotation, strict
 graph acceptance, executable normalized node evaluation, and packed AIR row
 constraints accept exactly the same result for arbitrary intermediate values.
+`Functional/NestedApplications` instantiates that theorem for the checked-in
+`identity(make(x))(double(x))` fixture. Its typed factory captures `x²`, the
+function and array arguments specialize statically, and the resulting strict
+graph accepts exactly `x²+2x` on all four lanes. This proves the modeled
+source-to-row relationship; production parsing and emission are checked by
+separate executable gates.
 `Functional/SSACertificate` adds static `let` sharing: an executable checker
 reconstructs the source term from fresh, backward-referencing positional SSA
 instructions. Every accepted certificate evaluates to the source result on

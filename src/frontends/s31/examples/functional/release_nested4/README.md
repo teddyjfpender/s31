@@ -32,3 +32,8 @@ compares the normalized relation, canonical IR, native AIR geometry, and
 strict release proof with the direct program. It also rejects a changed
 public result. The fixture derives its pin hashes from a fresh package;
 deployment must receive those hashes through a separately trusted channel.
+The [Lean typed-source model](../../../../../../formal/s31/S31/Gadgets/Functional/NestedApplications.lean)
+proves that the factory, higher-order passage and nested argument erase to
+the direct four-lane arithmetic graph. Its arbitrary-witness theorem connects
+that graph to the modeled packed operation rows; the native acceptance above
+checks the actual compiler and package for this fixture.

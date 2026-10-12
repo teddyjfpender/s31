@@ -139,6 +139,7 @@ import S31.Gadgets.Functional.Arrays
 import S31.Gadgets.Functional.ArrayNodes
 import S31.Gadgets.Functional.ArithmeticNodes
 import S31.Gadgets.Functional.CompilerCorrespondence
+import S31.Gadgets.Functional.NestedApplications
 import S31.Gadgets.Functional.StaticSumValues
 import S31.Gadgets.Functional.SSACertificate
 import S31.Gadgets.Functional.SSAEmitterProof

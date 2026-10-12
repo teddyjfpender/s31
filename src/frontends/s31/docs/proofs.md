@@ -155,6 +155,9 @@ The [nested application example](../examples/functional/release_nested4/README.m
 also certifies function and array arguments computed by earlier static calls.
 `identity(make(x))(double(x))` emits exactly the three handwritten gates, in
 left-to-right evaluation order.
+Its [Lean typed-source model](../../../../formal/s31/S31/Gadgets/Functional/NestedApplications.lean)
+proves that these static applications erase to the direct four-lane graph and
+that strict graph acceptance agrees with the modeled packed arithmetic rows.
 
 For that same fragment, the [fixed-root join inspector](../tools/inspect/check_direct_gate_fixed_root_join.py)
 replays `verify-release` admission, asks the packaged prover for a fresh
