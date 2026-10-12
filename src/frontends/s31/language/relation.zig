@@ -70,7 +70,9 @@ pub fn applyStep(values: []M31, step: Step) !void {
         },
     }
 }
-pub const Op = enum { constant, cast_m31, add, mul, add_const, mul_const, repeat, hash_blake2s, hash_blake2s_leaf, hash_blake2s_pair, select, hash_poseidon2_leaf, hash_poseidon2_pair, sum_lanes, u256_add, u256_le, u256_add_checked, hash_sha256d_header, bitcoin_target_mainnet, bitcoin_prev_hash, bitcoin_header_bits, bitcoin_genesis_hash_mainnet, bitcoin_header_time, u32_lt, inv, is_zero, u256_sub, u256_sub_checked, array_get, array_concat, array_slice, bool_not, bool_and, bool_or, bool_xor, bool_select, bitcoin_block_work, int_view, int_add_checked, int_add_wrapping, int_sub_checked, int_sub_wrapping, int_le, int_mul_wrapping, int_mul_checked, int_cast_checked, int_bit_and, int_bit_or, int_bit_xor, int_bit_not, int_shl, int_shr_logical, int_shr_arithmetic, int_rotl, int_rotr, int_div_rem };
+// Append new tags: canonical.Tag derives its numeric value from this order,
+// and existing program identities must not be renumbered.
+pub const Op = enum { constant, cast_m31, add, mul, add_const, mul_const, repeat, hash_blake2s, hash_blake2s_leaf, hash_blake2s_pair, select, hash_poseidon2_leaf, hash_poseidon2_pair, sum_lanes, u256_add, u256_le, u256_add_checked, hash_sha256d_header, bitcoin_target_mainnet, bitcoin_prev_hash, bitcoin_header_bits, bitcoin_genesis_hash_mainnet, bitcoin_header_time, u32_lt, inv, is_zero, u256_sub, u256_sub_checked, array_get, array_concat, array_slice, bool_not, bool_and, bool_or, bool_xor, bool_select, bitcoin_block_work, int_view, int_add_checked, int_add_wrapping, int_sub_checked, int_sub_wrapping, int_le, int_mul_wrapping, int_mul_checked, int_cast_checked, int_bit_and, int_bit_or, int_bit_xor, int_bit_not, int_shl, int_shr_logical, int_shr_arithmetic, int_rotl, int_rotr, int_div_rem, sub };
 /// The node constant binds an integer's width and signedness into canonical IR.
 /// The source-level scalar is carried as little-endian u16 words; an 8-bit
 /// scalar uses one u16 word with an additional circuit-enforced byte bound.
@@ -380,7 +382,7 @@ pub const Program = struct {
                     if (lhs == null or lhs.?.kind != .u16 or rhs != null or node.constant != null or node.length != null or node.rounds != null or node.body != null) return error.InvalidNode;
                     result = .{ .kind = .m31, .length = lhs.?.length };
                 },
-                .add, .mul => {
+                .add, .sub, .mul => {
                     if (lhs == null or rhs == null or lhs.?.kind != .m31 or rhs.?.kind != .m31 or lhs.?.length != rhs.?.length or node.constant != null or node.length != null or node.rounds != null or node.body != null) return error.InvalidNode;
                     result = lhs.?;
                 },
@@ -1036,6 +1038,7 @@ pub fn evaluate(allocator: std.mem.Allocator, program: Program, assignment: Assi
             .constant => c,
             .cast_m31 => lhs.?[i],
             .add => lhs.?[i].add(rhs.?[i]),
+            .sub => lhs.?[i].sub(rhs.?[i]),
             .mul => lhs.?[i].mul(rhs.?[i]),
             .inv => try lhs.?[i].inv(),
             .is_zero => M31.fromCanonical(@intFromBool(lhs.?[i].isZero())),

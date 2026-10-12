@@ -1,5 +1,14 @@
 # Math native acceptance
 
+`field_subtraction.py` checks that dynamic field subtraction emits one native
+subtraction relation node and fewer native QM31 rows than the prior
+negation-plus-add form. It compares two
+independently calculated four-lane assignments, proves both forms, verifies
+all four proofs with their generated native verifiers, and changes each public
+claim to require rejection. The fixture's padded trace remains 512 rows, so
+its gate reduction is a raw-gate saving rather than a claimed proving-time
+speedup.
+
 `addition.py` generates a checked-addition source for each of the ten nominal
 integer types (`u8` through `u128` and `i8` through `i128`). It checks the
 signedness/width tag and three-node relation shape, uses an independent Python

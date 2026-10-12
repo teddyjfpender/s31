@@ -6,7 +6,7 @@ Existing sources without that line continue to use the same version
 implicitly. `use std@2;` and third-party packages are rejected.
 This is a versioned compiler builtin package, not a general module loader.
 
-Most `std::math` helpers below lower to normalized `add`, `mul`,
+Most `std::math` helpers below lower to normalized `add`, `sub`, `mul`,
 `add_const`, or `mul_const` nodes. `sum_lanes` and the two `u256` operations
 have their own normalized relation nodes. The circuit compiler lowers
 `sum_lanes` to
@@ -15,6 +15,28 @@ The wide and fixed-width integer operations use range-checked limbs and
 Boolean carries or borrows.
 The native verifier proves all these operations through the ordinary circuit
 AIR. No helper is a host-only calculation or a new specialized AIR chip.
+
+### Subtraction by hand
+
+```s31
+circuit subtract(private a: [m31; 4], private b: [m31; 4]) -> public [m31; 4] {
+    a - b
+}
+```
+
+For `a = [0, 1, p-1, 7]` and `b = [1, p-1, p-1, 11]`, the claimed result is
+`[p-1, 2, 0, p-4]`, where `p = 2147483647`. The frontend emits one `sub`
+relation node. A named pure helper returning `a - b` emits the identical
+relation; the call is specialized away. Four M31 coordinates fit in one QM31
+circuit wire. The native circuit uses one subtraction gate and its AIR checks
+`out - a + b = 0` in
+each coordinate. The public result is also bound into the native statement.
+The [native acceptance comparison](../tests/acceptance/math/field_subtraction.py)
+proved two assignments under each form and rejected four changed claims.
+This source used 313 raw QM31 rows versus 315 for explicit negation plus
+addition, while both padded to 512 rows. Its two proof-size samples were
+larger with the subtraction form, so the raw-row reduction alone does not
+establish a proving-time or proof-size improvement.
 
 ## The current API
 

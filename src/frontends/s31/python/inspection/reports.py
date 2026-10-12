@@ -243,6 +243,8 @@ def equations(package: Path, verify_package: Callable[[Path], dict]) -> dict:
                 notes.append("The u16 input has a separate range obligation.")
             elif op == "add":
                 field_equations.append(f"{name}[j] - {lhs} - {rhs} = 0")
+            elif op == "sub":
+                field_equations.append(f"{name}[j] - {lhs} + {rhs} = 0")
             elif op == "mul":
                 field_equations.append(f"{name}[j] - {lhs} * {rhs} = 0")
             elif op == "inv":

@@ -103,7 +103,7 @@ pub fn extract(allocator: std.mem.Allocator, program: relation.Program) !Plan {
             source_repeat_names[source_repeat_count] = node.name;
             source_repeat_count += 1;
         },
-        .add, .mul, .add_const, .mul_const, .sum_lanes, .select => {},
+        .add, .sub, .mul, .add_const, .mul_const, .sum_lanes, .select => {},
         else => return error.UnsupportedManyCallNode,
     };
     if (source_repeat_count == 0) return error.NoChipCalls;
@@ -146,7 +146,7 @@ pub fn extract(allocator: std.mem.Allocator, program: relation.Program) !Plan {
             // Gate producers before recording endpoints. Select uses a
             // Boolean selector constrained by the direct circuit compiler.
             switch (ir.nodes[input_id].tag) {
-                .input, .repeat, .add, .mul, .add_const, .mul_const, .select => {},
+                .input, .repeat, .add, .sub, .mul, .add_const, .mul_const, .select => {},
                 else => return error.UnsupportedChipInput,
             }
             const source_id = sourceId(&ir, source_repeat_names[plan.call_count]) orelse

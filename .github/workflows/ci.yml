@@ -101,6 +101,11 @@ jobs:
           set -euo pipefail
           python3 src/frontends/s31/tests/acceptance/functional/pattern_parameters.py |
             tee zig-out/s31/acceptance/pattern-parameters.json
+      - name: Native M31 subtraction proof and raw-row comparison
+        run: |
+          set -euo pipefail
+          python3 src/frontends/s31/tests/acceptance/math/field_subtraction.py |
+            tee zig-out/s31/acceptance/field-subtraction.json
       - name: Preserve native acceptance evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -404,6 +409,11 @@ jobs:
           set -euo pipefail
           python3 src/frontends/s31/tests/acceptance/mixed_boundary/arithmetic_chip_input.py |
             tee zig-out/s31/acceptance/mixed-general-arithmetic-input.json
+      - name: Subtraction-produced chip port proof controls
+        run: |
+          set -euo pipefail
+          python3 src/frontends/s31/tests/acceptance/mixed_boundary/field_sub_feeder.py |
+            tee zig-out/s31/acceptance/mixed-general-sub-feeder.json
       - name: Preserve general mixed boundary evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

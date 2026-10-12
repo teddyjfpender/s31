@@ -146,8 +146,7 @@ def sub(builder: Builder, lhs: Value, rhs: Value, *, wanted: str | None = None,
     _m31(lhs)
     if lhs.typ != rhs.typ:
         raise TypeErrorS31("std::math::sub requires equally shaped [m31; N] values")
-    opposite = neg(builder, rhs, span=span)
-    return builder.binary("add", lhs, opposite, wanted=wanted, span=span)
+    return builder.binary("sub", lhs, rhs, wanted=wanted, span=span)
 
 
 def square(builder: Builder, value: Value, *, wanted: str | None = None,
