@@ -1,0 +1,11 @@
+use std@1;
+
+// The same five-step addition chain, written by hand.
+circuit pow15(private x: [m31; 4]) -> public [m31; 4] {
+    let x2 = x .* x;
+    let x4 = x2 .* x2;
+    let x5 = x4 .* x;
+    let x10 = x5 .* x5;
+    let result = x10 .* x5;
+    result
+}

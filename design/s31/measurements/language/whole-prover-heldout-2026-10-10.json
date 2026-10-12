@@ -1,0 +1,1560 @@
+{
+  "automatic_lowering_selection_enabled": false,
+  "cases": {
+    "arithmetic_1024": {
+      "family": "arithmetic",
+      "lowering": "direct-gate",
+      "metrics": {
+        "native_verify_process_wall_seconds": {
+          "max": 0.4307812500046566,
+          "median": 0.02195154200308025,
+          "median_absolute_deviation": 0.0004633750068023801,
+          "min": 0.012790290988050401,
+          "observations": 5,
+          "p90_interpolated": 0.2673871832201258
+        },
+        "paired_prove_and_verify_wall_seconds": {
+          "max": 0.8604096249910071,
+          "median": 0.08255766704678535,
+          "median_absolute_deviation": 0.0214182089548558,
+          "min": 0.061139458091929555,
+          "observations": 5,
+          "p90_interpolated": 0.5697709418134764
+        },
+        "proof_bytes": {
+          "max": 115953,
+          "median": 113227,
+          "median_absolute_deviation": 411,
+          "min": 110064,
+          "observations": 5,
+          "p90_interpolated": 115027.0
+        },
+        "prover_peak_rss_bytes": {
+          "max": 13615104,
+          "median": 13549568,
+          "median_absolute_deviation": 0,
+          "min": 13549568,
+          "observations": 5,
+          "p90_interpolated": 13601996.8
+        },
+        "runtime_fri_pow_seconds": {
+          "max": 0.087859,
+          "median": 0.03567,
+          "median_absolute_deviation": 0.018829000000000002,
+          "min": 0.005915,
+          "observations": 5,
+          "p90_interpolated": 0.06908900000000001
+        },
+        "runtime_interaction_pow_seconds": {
+          "max": 0.005316,
+          "median": 0.002619,
+          "median_absolute_deviation": 0.0011819999999999999,
+          "min": 0.001168,
+          "observations": 5,
+          "p90_interpolated": 0.004387200000000001
+        },
+        "runtime_prove_excluding_pow_seconds": {
+          "max": 0.006099,
+          "median": 0.0033979999999999982,
+          "median_absolute_deviation": 0.00013200000000000017,
+          "min": 0.003258000000000004,
+          "observations": 5,
+          "p90_interpolated": 0.0050714
+        },
+        "runtime_prove_seconds": {
+          "max": 0.094251,
+          "median": 0.040383,
+          "median_absolute_deviation": 0.019116,
+          "min": 0.014633,
+          "observations": 5,
+          "p90_interpolated": 0.0764626
+        },
+        "runtime_setup_seconds": {
+          "max": 0.002879,
+          "median": 0.00104,
+          "median_absolute_deviation": 3.6999999999999924e-05,
+          "min": 0.001003,
+          "observations": 5,
+          "p90_interpolated": 0.002161
+        },
+        "runtime_witness_seconds": {
+          "max": 0.000727,
+          "median": 0.000179,
+          "median_absolute_deviation": 1.8999999999999974e-05,
+          "min": 0.00016,
+          "observations": 5,
+          "p90_interpolated": 0.0005158000000000001
+        }
+      },
+      "package_build": {
+        "package_build_peak_rss_bytes": null,
+        "package_build_peak_rss_method": "unavailable: Python build invokes Zig subprocesses",
+        "package_build_wall_seconds": 50.134597749914974,
+        "package_reused": false,
+        "zig_compiler_cache": "uncontrolled host cache; no cache clearing or isolation"
+      },
+      "padded": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 4096,
+        "triple_xor": 0
+      },
+      "preprocessed_cells": 32768,
+      "profile": "direct-m31-v4",
+      "raw": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 2369,
+        "triple_xor": 0
+      },
+      "source_sha256": "8d3baed784fe0dd528bb4e4c484185a6dc7161c3b3e3ccf2177cd897f9491747"
+    },
+    "arithmetic_16": {
+      "family": "arithmetic",
+      "lowering": "direct-gate",
+      "metrics": {
+        "native_verify_process_wall_seconds": {
+          "max": 0.3928194160107523,
+          "median": 0.018895375076681376,
+          "median_absolute_deviation": 0.00204587506595999,
+          "min": 0.013031166978180408,
+          "observations": 5,
+          "p90_interpolated": 0.2435169328004122
+        },
+        "paired_prove_and_verify_wall_seconds": {
+          "max": 0.9143822070909664,
+          "median": 0.15742533409502357,
+          "median_absolute_deviation": 0.09674329310655594,
+          "min": 0.060206916998140514,
+          "observations": 5,
+          "p90_interpolated": 0.6162585074314848
+        },
+        "proof_bytes": {
+          "max": 57695,
+          "median": 54850,
+          "median_absolute_deviation": 440,
+          "min": 54163,
+          "observations": 5,
+          "p90_interpolated": 56733.0
+        },
+        "prover_peak_rss_bytes": {
+          "max": 9289728,
+          "median": 9093120,
+          "median_absolute_deviation": 98304,
+          "min": 8994816,
+          "observations": 5,
+          "p90_interpolated": 9217638.4
+        },
+        "runtime_fri_pow_seconds": {
+          "max": 0.125952,
+          "median": 0.051432,
+          "median_absolute_deviation": 0.028461,
+          "min": 0.022971,
+          "observations": 5,
+          "p90_interpolated": 0.121362
+        },
+        "runtime_interaction_pow_seconds": {
+          "max": 0.005659,
+          "median": 0.003779,
+          "median_absolute_deviation": 0.00013000000000000034,
+          "min": 0.000547,
+          "observations": 5,
+          "p90_interpolated": 0.004959
+        },
+        "runtime_prove_excluding_pow_seconds": {
+          "max": 0.002911000000000004,
+          "median": 0.0013839999999999963,
+          "median_absolute_deviation": 6.499999999999215e-05,
+          "min": 0.0013190000000000042,
+          "observations": 5,
+          "p90_interpolated": 0.002358600000000001
+        },
+        "runtime_prove_seconds": {
+          "max": 0.131115,
+          "median": 0.060002,
+          "median_absolute_deviation": 0.035165,
+          "min": 0.024837,
+          "observations": 5,
+          "p90_interpolated": 0.1265638
+        },
+        "runtime_setup_seconds": {
+          "max": 0.002351,
+          "median": 0.000732,
+          "median_absolute_deviation": 6.7e-05,
+          "min": 0.000665,
+          "observations": 5,
+          "p90_interpolated": 0.001731
+        },
+        "runtime_witness_seconds": {
+          "max": 0.000592,
+          "median": 0.000113,
+          "median_absolute_deviation": 1.4999999999999999e-05,
+          "min": 9.8e-05,
+          "observations": 5,
+          "p90_interpolated": 0.00041
+        }
+      },
+      "package_build": {
+        "package_build_peak_rss_bytes": null,
+        "package_build_peak_rss_method": "unavailable: Python build invokes Zig subprocesses",
+        "package_build_wall_seconds": 50.38455704099033,
+        "package_reused": false,
+        "zig_compiler_cache": "uncontrolled host cache; no cache clearing or isolation"
+      },
+      "padded": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 512,
+        "triple_xor": 0
+      },
+      "preprocessed_cells": 4096,
+      "profile": "direct-m31-v4",
+      "raw": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 353,
+        "triple_xor": 0
+      },
+      "source_sha256": "62fa906e53e19f53508d99f415b220ece7391abb9195b3d3d959a984efe2093f"
+    },
+    "arithmetic_256": {
+      "family": "arithmetic",
+      "lowering": "direct-gate",
+      "metrics": {
+        "native_verify_process_wall_seconds": {
+          "max": 0.4320090831024572,
+          "median": 0.017185874981805682,
+          "median_absolute_deviation": 0.004154624999500811,
+          "min": 0.0123346250038594,
+          "observations": 5,
+          "p90_interpolated": 0.26774164985399695
+        },
+        "paired_prove_and_verify_wall_seconds": {
+          "max": 1.0347162500256673,
+          "median": 0.09176145808305591,
+          "median_absolute_deviation": 0.054360083071514964,
+          "min": 0.03740137501154095,
+          "observations": 5,
+          "p90_interpolated": 0.7508008667966352
+        },
+        "proof_bytes": {
+          "max": 74685,
+          "median": 71996,
+          "median_absolute_deviation": 1739,
+          "min": 70200,
+          "observations": 5,
+          "p90_interpolated": 74305.0
+        },
+        "prover_peak_rss_bytes": {
+          "max": 10272768,
+          "median": 10076160,
+          "median_absolute_deviation": 65536,
+          "min": 10010624,
+          "observations": 5,
+          "p90_interpolated": 10259660.8
+        },
+        "runtime_fri_pow_seconds": {
+          "max": 0.274554,
+          "median": 0.049685,
+          "median_absolute_deviation": 0.047472,
+          "min": 0.002213,
+          "observations": 5,
+          "p90_interpolated": 0.21829920000000003
+        },
+        "runtime_interaction_pow_seconds": {
+          "max": 0.016357,
+          "median": 0.002147,
+          "median_absolute_deviation": 0.001428,
+          "min": 0.000719,
+          "observations": 5,
+          "p90_interpolated": 0.011781800000000002
+        },
+        "runtime_prove_excluding_pow_seconds": {
+          "max": 0.004132999999999998,
+          "median": 0.002404,
+          "median_absolute_deviation": 0.0004270000000000003,
+          "min": 0.001964,
+          "observations": 5,
+          "p90_interpolated": 0.0036025999999999784
+        },
+        "runtime_prove_seconds": {
+          "max": 0.293718,
+          "median": 0.053809,
+          "median_absolute_deviation": 0.048913000000000005,
+          "min": 0.004896,
+          "observations": 5,
+          "p90_interpolated": 0.23218480000000002
+        },
+        "runtime_setup_seconds": {
+          "max": 0.00274,
+          "median": 0.000872,
+          "median_absolute_deviation": 0.00010300000000000001,
+          "min": 0.000763,
+          "observations": 5,
+          "p90_interpolated": 0.0020164
+        },
+        "runtime_witness_seconds": {
+          "max": 0.000656,
+          "median": 0.000152,
+          "median_absolute_deviation": 2.9e-05,
+          "min": 0.000123,
+          "observations": 5,
+          "p90_interpolated": 0.00046680000000000007
+        }
+      },
+      "package_build": {
+        "package_build_peak_rss_bytes": null,
+        "package_build_peak_rss_method": "unavailable: Python build invokes Zig subprocesses",
+        "package_build_wall_seconds": 50.27194474998396,
+        "package_reused": false,
+        "zig_compiler_cache": "uncontrolled host cache; no cache clearing or isolation"
+      },
+      "padded": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 1024,
+        "triple_xor": 0
+      },
+      "preprocessed_cells": 8192,
+      "profile": "direct-m31-v4",
+      "raw": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 833,
+        "triple_xor": 0
+      },
+      "source_sha256": "b690cc81a0a2b0823da015e81e20a3c39d4552340e0e459930471bddefd62e07"
+    },
+    "arithmetic_64": {
+      "family": "arithmetic",
+      "lowering": "direct-gate",
+      "metrics": {
+        "native_verify_process_wall_seconds": {
+          "max": 0.43329075002111495,
+          "median": 0.01899179199244827,
+          "median_absolute_deviation": 0.005165249924175441,
+          "min": 0.012892332975752652,
+          "observations": 5,
+          "p90_interpolated": 0.2683501835912466
+        },
+        "paired_prove_and_verify_wall_seconds": {
+          "max": 0.9192063340451568,
+          "median": 0.29729491705074906,
+          "median_absolute_deviation": 0.13417458394542336,
+          "min": 0.09966004197485745,
+          "observations": 5,
+          "p90_interpolated": 0.6755390340462328
+        },
+        "proof_bytes": {
+          "max": 55668,
+          "median": 54732,
+          "median_absolute_deviation": 153,
+          "min": 54045,
+          "observations": 5,
+          "p90_interpolated": 55354.8
+        },
+        "prover_peak_rss_bytes": {
+          "max": 9125888,
+          "median": 9027584,
+          "median_absolute_deviation": 16384,
+          "min": 9011200,
+          "observations": 5,
+          "p90_interpolated": 9119334.4
+        },
+        "runtime_fri_pow_seconds": {
+          "max": 0.268783,
+          "median": 0.128694,
+          "median_absolute_deviation": 0.109596,
+          "min": 0.019098,
+          "observations": 5,
+          "p90_interpolated": 0.2640706
+        },
+        "runtime_interaction_pow_seconds": {
+          "max": 0.006476,
+          "median": 0.001826,
+          "median_absolute_deviation": 0.0013549999999999999,
+          "min": 0.000471,
+          "observations": 5,
+          "p90_interpolated": 0.005712
+        },
+        "runtime_prove_excluding_pow_seconds": {
+          "max": 0.002097999999999999,
+          "median": 0.001575999999999994,
+          "median_absolute_deviation": 0.00019600000000000173,
+          "min": 0.0012770000000000281,
+          "observations": 5,
+          "p90_interpolated": 0.0018984000000000008
+        },
+        "runtime_prove_seconds": {
+          "max": 0.271886,
+          "median": 0.130741,
+          "median_absolute_deviation": 0.103069,
+          "min": 0.027672,
+          "observations": 5,
+          "p90_interpolated": 0.267208
+        },
+        "runtime_setup_seconds": {
+          "max": 0.001974,
+          "median": 0.000796,
+          "median_absolute_deviation": 0.00012100000000000001,
+          "min": 0.000675,
+          "observations": 5,
+          "p90_interpolated": 0.0016876
+        },
+        "runtime_witness_seconds": {
+          "max": 0.000571,
+          "median": 0.000127,
+          "median_absolute_deviation": 1.1999999999999994e-05,
+          "min": 0.000115,
+          "observations": 5,
+          "p90_interpolated": 0.0004178
+        }
+      },
+      "package_build": {
+        "package_build_peak_rss_bytes": null,
+        "package_build_peak_rss_method": "unavailable: Python build invokes Zig subprocesses",
+        "package_build_wall_seconds": 50.30837929202244,
+        "package_reused": false,
+        "zig_compiler_cache": "uncontrolled host cache; no cache clearing or isolation"
+      },
+      "padded": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 512,
+        "triple_xor": 0
+      },
+      "preprocessed_cells": 4096,
+      "profile": "direct-m31-v4",
+      "raw": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 449,
+        "triple_xor": 0
+      },
+      "source_sha256": "01786681aa0d7d2985689bf849a813f22c25d31e9bd032dae95a17cf2ca04e85"
+    },
+    "hash_1": {
+      "family": "hash",
+      "lowering": "gate",
+      "metrics": {
+        "native_verify_process_wall_seconds": {
+          "max": 0.4684196669841185,
+          "median": 0.0746319170575589,
+          "median_absolute_deviation": 0.0006729159504175186,
+          "min": 0.07154120900668204,
+          "observations": 5,
+          "p90_interpolated": 0.3111737333936617
+        },
+        "paired_prove_and_verify_wall_seconds": {
+          "max": 1.3911422500386834,
+          "median": 0.6222529580118135,
+          "median_absolute_deviation": 0.0034985829843208194,
+          "min": 0.6187543750274926,
+          "observations": 5,
+          "p90_interpolated": 1.2006574500352145
+        },
+        "proof_bytes": {
+          "max": 468946,
+          "median": 464986,
+          "median_absolute_deviation": 3960,
+          "min": 456510,
+          "observations": 5,
+          "p90_interpolated": 468829.2
+        },
+        "prover_peak_rss_bytes": {
+          "max": 1016528896,
+          "median": 1016528896,
+          "median_absolute_deviation": 0,
+          "min": 1016528896,
+          "observations": 5,
+          "p90_interpolated": 1016528896.0
+        },
+        "runtime_fri_pow_seconds": null,
+        "runtime_interaction_pow_seconds": null,
+        "runtime_prove_excluding_pow_seconds": null,
+        "runtime_prove_seconds": {
+          "max": 0.772243,
+          "median": 0.474333,
+          "median_absolute_deviation": 0.005603000000000025,
+          "min": 0.422932,
+          "observations": 5,
+          "p90_interpolated": 0.6538266
+        },
+        "runtime_setup_seconds": {
+          "max": 0.064508,
+          "median": 0.051043,
+          "median_absolute_deviation": 0.0005469999999999989,
+          "min": 0.050355,
+          "observations": 5,
+          "p90_interpolated": 0.0591716
+        },
+        "runtime_witness_seconds": {
+          "max": 0.000552,
+          "median": 0.000123,
+          "median_absolute_deviation": 7.0000000000000075e-06,
+          "min": 0.000116,
+          "observations": 5,
+          "p90_interpolated": 0.0003836
+        }
+      },
+      "package_build": {
+        "package_build_peak_rss_bytes": null,
+        "package_build_peak_rss_method": "unavailable: Python build invokes Zig subprocesses",
+        "package_build_wall_seconds": 67.91891666594893,
+        "package_reused": false,
+        "zig_compiler_cache": "uncontrolled host cache; no cache clearing or isolation"
+      },
+      "padded": {
+        "blake_g": 128,
+        "eq": 16,
+        "m31_to_u32": 16,
+        "qm31_ops": 512,
+        "triple_xor": 16
+      },
+      "preprocessed_cells": 4249888,
+      "profile": "circuit-v1",
+      "raw": {
+        "blake_g": 80,
+        "eq": 0,
+        "m31_to_u32": 16,
+        "qm31_ops": 452,
+        "triple_xor": 8
+      },
+      "source_sha256": "546c8bf85242bfde71aef0440ac0aa9da898f25305b968e78ff148e4051b78cb"
+    },
+    "hash_2": {
+      "family": "hash",
+      "lowering": "gate",
+      "metrics": {
+        "native_verify_process_wall_seconds": {
+          "max": 0.46916616696398705,
+          "median": 0.07637629099190235,
+          "median_absolute_deviation": 0.0034833739046007395,
+          "min": 0.07219533296301961,
+          "observations": 5,
+          "p90_interpolated": 0.31316676696296786
+        },
+        "paired_prove_and_verify_wall_seconds": {
+          "max": 1.4229259169660509,
+          "median": 0.6451859591761604,
+          "median_absolute_deviation": 0.0621512932702899,
+          "min": 0.5830346659058705,
+          "observations": 5,
+          "p90_interpolated": 1.1839766665827485
+        },
+        "proof_bytes": {
+          "max": 475278,
+          "median": 472293,
+          "median_absolute_deviation": 2985,
+          "min": 460744,
+          "observations": 5,
+          "p90_interpolated": 474356.8
+        },
+        "prover_peak_rss_bytes": {
+          "max": 1016987648,
+          "median": 1016971264,
+          "median_absolute_deviation": 0,
+          "min": 1016971264,
+          "observations": 5,
+          "p90_interpolated": 1016981094.4
+        },
+        "runtime_fri_pow_seconds": null,
+        "runtime_interaction_pow_seconds": null,
+        "runtime_prove_excluding_pow_seconds": null,
+        "runtime_prove_seconds": {
+          "max": 0.670665,
+          "median": 0.471905,
+          "median_absolute_deviation": 0.025927000000000033,
+          "min": 0.435359,
+          "observations": 5,
+          "p90_interpolated": 0.5999118
+        },
+        "runtime_setup_seconds": {
+          "max": 0.066365,
+          "median": 0.050484,
+          "median_absolute_deviation": 0.0002009999999999998,
+          "min": 0.050283,
+          "observations": 5,
+          "p90_interpolated": 0.0601198
+        },
+        "runtime_witness_seconds": {
+          "max": 0.000765,
+          "median": 0.00013,
+          "median_absolute_deviation": 5.000000000000013e-06,
+          "min": 0.000124,
+          "observations": 5,
+          "p90_interpolated": 0.000513
+        }
+      },
+      "package_build": {
+        "package_build_peak_rss_bytes": null,
+        "package_build_peak_rss_method": "unavailable: Python build invokes Zig subprocesses",
+        "package_build_wall_seconds": 68.68511512491386,
+        "package_reused": false,
+        "zig_compiler_cache": "uncontrolled host cache; no cache clearing or isolation"
+      },
+      "padded": {
+        "blake_g": 256,
+        "eq": 16,
+        "m31_to_u32": 32,
+        "qm31_ops": 1024,
+        "triple_xor": 16
+      },
+      "preprocessed_cells": 4255440,
+      "profile": "circuit-v1",
+      "raw": {
+        "blake_g": 160,
+        "eq": 0,
+        "m31_to_u32": 32,
+        "qm31_ops": 545,
+        "triple_xor": 16
+      },
+      "source_sha256": "957139abbe8e2680a6ad6e083ee304b52ddcde98d7e2f7401a62dfb2a6ce3757"
+    },
+    "hash_3": {
+      "family": "hash",
+      "lowering": "gate",
+      "metrics": {
+        "native_verify_process_wall_seconds": {
+          "max": 0.4864851669408381,
+          "median": 0.07661354099400342,
+          "median_absolute_deviation": 0.003741083084605634,
+          "min": 0.07120220898650587,
+          "observations": 5,
+          "p90_interpolated": 0.32287741699256006
+        },
+        "paired_prove_and_verify_wall_seconds": {
+          "max": 1.4409517919411883,
+          "median": 0.7204060839721933,
+          "median_absolute_deviation": 0.12261529103852808,
+          "min": 0.5739913329016417,
+          "observations": 5,
+          "p90_interpolated": 1.2017796251690016
+        },
+        "proof_bytes": {
+          "max": 477377,
+          "median": 469876,
+          "median_absolute_deviation": 1246,
+          "min": 466141,
+          "observations": 5,
+          "p90_interpolated": 474875.0
+        },
+        "prover_peak_rss_bytes": {
+          "max": 1017102336,
+          "median": 1017069568,
+          "median_absolute_deviation": 0,
+          "min": 1017069568,
+          "observations": 5,
+          "p90_interpolated": 1017089228.8
+        },
+        "runtime_fri_pow_seconds": null,
+        "runtime_interaction_pow_seconds": null,
+        "runtime_prove_excluding_pow_seconds": null,
+        "runtime_prove_seconds": {
+          "max": 0.688204,
+          "median": 0.548108,
+          "median_absolute_deviation": 0.08971100000000004,
+          "min": 0.426128,
+          "observations": 5,
+          "p90_interpolated": 0.6420268
+        },
+        "runtime_setup_seconds": {
+          "max": 0.067001,
+          "median": 0.050017,
+          "median_absolute_deviation": 0.0012800000000000034,
+          "min": 0.04774,
+          "observations": 5,
+          "p90_interpolated": 0.06071940000000001
+        },
+        "runtime_witness_seconds": {
+          "max": 0.000673,
+          "median": 0.000148,
+          "median_absolute_deviation": 1.0999999999999996e-05,
+          "min": 0.000131,
+          "observations": 5,
+          "p90_interpolated": 0.0004674000000000001
+        }
+      },
+      "package_build": {
+        "package_build_peak_rss_bytes": null,
+        "package_build_peak_rss_method": "unavailable: Python build invokes Zig subprocesses",
+        "package_build_wall_seconds": 69.89226049999706,
+        "package_reused": false,
+        "zig_compiler_cache": "uncontrolled host cache; no cache clearing or isolation"
+      },
+      "padded": {
+        "blake_g": 256,
+        "eq": 16,
+        "m31_to_u32": 64,
+        "qm31_ops": 1024,
+        "triple_xor": 32
+      },
+      "preprocessed_cells": 4255616,
+      "profile": "circuit-v1",
+      "raw": {
+        "blake_g": 240,
+        "eq": 0,
+        "m31_to_u32": 48,
+        "qm31_ops": 625,
+        "triple_xor": 24
+      },
+      "source_sha256": "fb30d9fcfc75cf319395c51b2e032dfd3ee1467825b9c755d97b6b15a6b80f51"
+    },
+    "hash_4": {
+      "family": "hash",
+      "lowering": "gate",
+      "metrics": {
+        "native_verify_process_wall_seconds": {
+          "max": 0.48402262502349913,
+          "median": 0.07797287497669458,
+          "median_absolute_deviation": 0.0007745829643681645,
+          "min": 0.06848212494514883,
+          "observations": 5,
+          "p90_interpolated": 0.3218939749989659
+        },
+        "paired_prove_and_verify_wall_seconds": {
+          "max": 1.589706459082663,
+          "median": 0.6472958329832181,
+          "median_absolute_deviation": 0.05868245800957084,
+          "min": 0.5886133749736473,
+          "observations": 5,
+          "p90_interpolated": 1.2466923422180116
+        },
+        "proof_bytes": {
+          "max": 473621,
+          "median": 465269,
+          "median_absolute_deviation": 1117,
+          "min": 462528,
+          "observations": 5,
+          "p90_interpolated": 470727.0
+        },
+        "prover_peak_rss_bytes": {
+          "max": 1017741312,
+          "median": 1017708544,
+          "median_absolute_deviation": 0,
+          "min": 1016348672,
+          "observations": 5,
+          "p90_interpolated": 1017728204.8
+        },
+        "runtime_fri_pow_seconds": null,
+        "runtime_interaction_pow_seconds": null,
+        "runtime_prove_excluding_pow_seconds": null,
+        "runtime_prove_seconds": {
+          "max": 0.606363,
+          "median": 0.504068,
+          "median_absolute_deviation": 0.07018600000000008,
+          "min": 0.432601,
+          "observations": 5,
+          "p90_interpolated": 0.5935194
+        },
+        "runtime_setup_seconds": {
+          "max": 0.067248,
+          "median": 0.050208,
+          "median_absolute_deviation": 0.0007290000000000005,
+          "min": 0.049479,
+          "observations": 5,
+          "p90_interpolated": 0.0609236
+        },
+        "runtime_witness_seconds": {
+          "max": 0.000833,
+          "median": 0.000159,
+          "median_absolute_deviation": 3.999999999999989e-06,
+          "min": 0.000155,
+          "observations": 5,
+          "p90_interpolated": 0.0005698
+        }
+      },
+      "package_build": {
+        "package_build_peak_rss_bytes": null,
+        "package_build_peak_rss_method": "unavailable: Python build invokes Zig subprocesses",
+        "package_build_wall_seconds": 70.65372420905624,
+        "package_reused": false,
+        "zig_compiler_cache": "uncontrolled host cache; no cache clearing or isolation"
+      },
+      "padded": {
+        "blake_g": 512,
+        "eq": 16,
+        "m31_to_u32": 64,
+        "qm31_ops": 1024,
+        "triple_xor": 32
+      },
+      "preprocessed_cells": 4258432,
+      "profile": "circuit-v1",
+      "raw": {
+        "blake_g": 320,
+        "eq": 0,
+        "m31_to_u32": 64,
+        "qm31_ops": 705,
+        "triple_xor": 32
+      },
+      "source_sha256": "4e79719616ac5b2cfe0a9b2b05eaeaf33ad6c0be9a699f3b9d95814c51c55bf9"
+    },
+    "signed_division_16": {
+      "family": "fixed_width",
+      "lowering": "direct-gate",
+      "metrics": {
+        "native_verify_process_wall_seconds": {
+          "max": 0.3860411250498146,
+          "median": 0.019953667069785297,
+          "median_absolute_deviation": 0.001339623937383294,
+          "min": 0.015801499946974218,
+          "observations": 5,
+          "p90_interpolated": 0.24014199143275622
+        },
+        "paired_prove_and_verify_wall_seconds": {
+          "max": 0.805801875074394,
+          "median": 0.19115012499969453,
+          "median_absolute_deviation": 0.016180666047148407,
+          "min": 0.06353829195722938,
+          "observations": 5,
+          "p90_interpolated": 0.5609149919124321
+        },
+        "proof_bytes": {
+          "max": 75349,
+          "median": 73409,
+          "median_absolute_deviation": 973,
+          "min": 71906,
+          "observations": 5,
+          "p90_interpolated": 74962.2
+        },
+        "prover_peak_rss_bytes": {
+          "max": 10436608,
+          "median": 10240000,
+          "median_absolute_deviation": 49152,
+          "min": 10190848,
+          "observations": 5,
+          "p90_interpolated": 10423500.8
+        },
+        "runtime_fri_pow_seconds": {
+          "max": 0.151419,
+          "median": 0.137994,
+          "median_absolute_deviation": 0.013424999999999992,
+          "min": 0.016473,
+          "observations": 5,
+          "p90_interpolated": 0.1505334
+        },
+        "runtime_interaction_pow_seconds": {
+          "max": 0.006437,
+          "median": 0.002445,
+          "median_absolute_deviation": 0.000999,
+          "min": 0.001446,
+          "observations": 5,
+          "p90_interpolated": 0.0054286000000000004
+        },
+        "runtime_prove_excluding_pow_seconds": {
+          "max": 0.0031719999999999977,
+          "median": 0.0021040000000000017,
+          "median_absolute_deviation": 7.299999999999668e-05,
+          "min": 0.002031000000000005,
+          "observations": 5,
+          "p90_interpolated": 0.0028771999999999956
+        },
+        "runtime_prove_seconds": {
+          "max": 0.157705,
+          "median": 0.144345,
+          "median_absolute_deviation": 0.01336000000000001,
+          "min": 0.02209,
+          "observations": 5,
+          "p90_interpolated": 0.1565814
+        },
+        "runtime_setup_seconds": {
+          "max": 0.001542,
+          "median": 0.000826,
+          "median_absolute_deviation": 5.600000000000006e-05,
+          "min": 0.00077,
+          "observations": 5,
+          "p90_interpolated": 0.0012980000000000001
+        },
+        "runtime_witness_seconds": {
+          "max": 0.000381,
+          "median": 0.00017,
+          "median_absolute_deviation": 3.100000000000002e-05,
+          "min": 0.000111,
+          "observations": 5,
+          "p90_interpolated": 0.0003082
+        }
+      },
+      "package_build": {
+        "package_build_peak_rss_bytes": null,
+        "package_build_peak_rss_method": "unavailable: Python build invokes Zig subprocesses",
+        "package_build_wall_seconds": 55.688999708974734,
+        "package_reused": false,
+        "zig_compiler_cache": "uncontrolled host cache; no cache clearing or isolation"
+      },
+      "padded": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 1024,
+        "triple_xor": 0
+      },
+      "preprocessed_cells": 8192,
+      "profile": "direct-m31-v4",
+      "raw": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 969,
+        "triple_xor": 0
+      },
+      "source_sha256": "9728b6e606e806733b0e40d5bea1127f64abc261ba58dfc34e2a9386dca17bec"
+    },
+    "signed_division_32": {
+      "family": "fixed_width",
+      "lowering": "direct-gate",
+      "metrics": {
+        "native_verify_process_wall_seconds": {
+          "max": 0.3794861249625683,
+          "median": 0.019068207941018045,
+          "median_absolute_deviation": 0.0006644580280408263,
+          "min": 0.01475641701836139,
+          "observations": 5,
+          "p90_interpolated": 0.23558474136516455
+        },
+        "paired_prove_and_verify_wall_seconds": {
+          "max": 0.824053791933693,
+          "median": 0.10642337496392429,
+          "median_absolute_deviation": 0.02664266701322049,
+          "min": 0.0797807079507038,
+          "observations": 5,
+          "p90_interpolated": 0.5738428915152327
+        },
+        "proof_bytes": {
+          "max": 97186,
+          "median": 91336,
+          "median_absolute_deviation": 927,
+          "min": 89475,
+          "observations": 5,
+          "p90_interpolated": 94916.4
+        },
+        "prover_peak_rss_bytes": {
+          "max": 11730944,
+          "median": 11354112,
+          "median_absolute_deviation": 180224,
+          "min": 11026432,
+          "observations": 5,
+          "p90_interpolated": 11586764.8
+        },
+        "runtime_fri_pow_seconds": {
+          "max": 0.157354,
+          "median": 0.060284,
+          "median_absolute_deviation": 0.018984999999999995,
+          "min": 0.03521,
+          "observations": 5,
+          "p90_interpolated": 0.1201624
+        },
+        "runtime_interaction_pow_seconds": {
+          "max": 0.005025,
+          "median": 0.001869,
+          "median_absolute_deviation": 0.0011289999999999998,
+          "min": 0.000664,
+          "observations": 5,
+          "p90_interpolated": 0.0042141999999999995
+        },
+        "runtime_prove_excluding_pow_seconds": {
+          "max": 0.0037669999999999995,
+          "median": 0.0026420000000000055,
+          "median_absolute_deviation": 0.0001490000000000033,
+          "min": 0.002493000000000002,
+          "observations": 5,
+          "p90_interpolated": 0.0034217999999999983
+        },
+        "runtime_prove_seconds": {
+          "max": 0.161865,
+          "median": 0.068213,
+          "median_absolute_deviation": 0.023756999999999993,
+          "min": 0.041975,
+          "observations": 5,
+          "p90_interpolated": 0.12453220000000001
+        },
+        "runtime_setup_seconds": {
+          "max": 0.001506,
+          "median": 0.000902,
+          "median_absolute_deviation": 1.9000000000000028e-05,
+          "min": 0.000883,
+          "observations": 5,
+          "p90_interpolated": 0.0013276
+        },
+        "runtime_witness_seconds": {
+          "max": 0.000355,
+          "median": 0.000142,
+          "median_absolute_deviation": 1.4000000000000015e-05,
+          "min": 0.000128,
+          "observations": 5,
+          "p90_interpolated": 0.00028940000000000004
+        }
+      },
+      "package_build": {
+        "package_build_peak_rss_bytes": null,
+        "package_build_peak_rss_method": "unavailable: Python build invokes Zig subprocesses",
+        "package_build_wall_seconds": 52.59114204207435,
+        "package_reused": false,
+        "zig_compiler_cache": "uncontrolled host cache; no cache clearing or isolation"
+      },
+      "padded": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 2048,
+        "triple_xor": 0
+      },
+      "preprocessed_cells": 16384,
+      "profile": "direct-m31-v4",
+      "raw": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 1853,
+        "triple_xor": 0
+      },
+      "source_sha256": "369a9b9fe6bdbe1d73773095ee7643e40f13e18d0fbe3a7e68251694fd1a314e"
+    },
+    "signed_division_64": {
+      "family": "fixed_width",
+      "lowering": "direct-gate",
+      "metrics": {
+        "native_verify_process_wall_seconds": {
+          "max": 0.39991425001062453,
+          "median": 0.02030270907562226,
+          "median_absolute_deviation": 0.0026348340325057507,
+          "min": 0.013972832937724888,
+          "observations": 5,
+          "p90_interpolated": 0.2483596167992801
+        },
+        "paired_prove_and_verify_wall_seconds": {
+          "max": 0.9435055840294808,
+          "median": 0.23961783293634653,
+          "median_absolute_deviation": 0.17912941484246403,
+          "min": 0.043671166989952326,
+          "observations": 5,
+          "p90_interpolated": 0.6964750172104688
+        },
+        "proof_bytes": {
+          "max": 113204,
+          "median": 112298,
+          "median_absolute_deviation": 847,
+          "min": 110993,
+          "observations": 5,
+          "p90_interpolated": 113159.6
+        },
+        "prover_peak_rss_bytes": {
+          "max": 13533184,
+          "median": 13385728,
+          "median_absolute_deviation": 32768,
+          "min": 13287424,
+          "observations": 5,
+          "p90_interpolated": 13487308.8
+        },
+        "runtime_fri_pow_seconds": {
+          "max": 0.279449,
+          "median": 0.145422,
+          "median_absolute_deviation": 0.130143,
+          "min": 0.002742,
+          "observations": 5,
+          "p90_interpolated": 0.2502166
+        },
+        "runtime_interaction_pow_seconds": {
+          "max": 0.004811,
+          "median": 0.002524,
+          "median_absolute_deviation": 0.0015630000000000002,
+          "min": 0.000618,
+          "observations": 5,
+          "p90_interpolated": 0.004463
+        },
+        "runtime_prove_excluding_pow_seconds": {
+          "max": 0.005229999999999985,
+          "median": 0.0035700000000000176,
+          "median_absolute_deviation": 0.00026200000000001743,
+          "min": 0.003308,
+          "observations": 5,
+          "p90_interpolated": 0.0047239999999999895
+        },
+        "runtime_prove_seconds": {
+          "max": 0.28398,
+          "median": 0.155463,
+          "median_absolute_deviation": 0.12851700000000002,
+          "min": 0.008616,
+          "observations": 5,
+          "p90_interpolated": 0.2547684
+        },
+        "runtime_setup_seconds": {
+          "max": 0.001698,
+          "median": 0.001132,
+          "median_absolute_deviation": 0.00011399999999999995,
+          "min": 0.001017,
+          "observations": 5,
+          "p90_interpolated": 0.0015172
+        },
+        "runtime_witness_seconds": {
+          "max": 0.000378,
+          "median": 0.000178,
+          "median_absolute_deviation": 2.9999999999999916e-06,
+          "min": 0.000175,
+          "observations": 5,
+          "p90_interpolated": 0.0003084
+        }
+      },
+      "package_build": {
+        "package_build_peak_rss_bytes": null,
+        "package_build_peak_rss_method": "unavailable: Python build invokes Zig subprocesses",
+        "package_build_wall_seconds": 52.42939683399163,
+        "package_reused": false,
+        "zig_compiler_cache": "uncontrolled host cache; no cache clearing or isolation"
+      },
+      "padded": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 4096,
+        "triple_xor": 0
+      },
+      "preprocessed_cells": 32768,
+      "profile": "direct-m31-v4",
+      "raw": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 3647,
+        "triple_xor": 0
+      },
+      "source_sha256": "df7a33e033bb32ddca80759c5a377d30ade6c535078dc026cafac1c427a66fdf"
+    },
+    "signed_division_8": {
+      "family": "fixed_width",
+      "lowering": "direct-gate",
+      "metrics": {
+        "native_verify_process_wall_seconds": {
+          "max": 0.4054929999401793,
+          "median": 0.019942749990150332,
+          "median_absolute_deviation": 0.006865457980893552,
+          "min": 0.01104250003118068,
+          "observations": 5,
+          "p90_interpolated": 0.2515776831423864
+        },
+        "paired_prove_and_verify_wall_seconds": {
+          "max": 0.8461356669431552,
+          "median": 0.16885233391076326,
+          "median_absolute_deviation": 0.03553091804496944,
+          "min": 0.03711400006432086,
+          "observations": 5,
+          "p90_interpolated": 0.5761322833830491
+        },
+        "proof_bytes": {
+          "max": 56864,
+          "median": 55684,
+          "median_absolute_deviation": 1031,
+          "min": 53525,
+          "observations": 5,
+          "p90_interpolated": 56598.4
+        },
+        "prover_peak_rss_bytes": {
+          "max": 9191424,
+          "median": 8994816,
+          "median_absolute_deviation": 81920,
+          "min": 8912896,
+          "observations": 5,
+          "p90_interpolated": 9158656.0
+        },
+        "runtime_fri_pow_seconds": {
+          "max": 0.140397,
+          "median": 0.089087,
+          "median_absolute_deviation": 0.051309999999999995,
+          "min": 0.011215,
+          "observations": 5,
+          "p90_interpolated": 0.13538899999999998
+        },
+        "runtime_interaction_pow_seconds": {
+          "max": 0.003273,
+          "median": 0.001822,
+          "median_absolute_deviation": 0.00048499999999999997,
+          "min": 0.001199,
+          "observations": 5,
+          "p90_interpolated": 0.002869
+        },
+        "runtime_prove_excluding_pow_seconds": {
+          "max": 0.0027989999999999994,
+          "median": 0.0012930000000000007,
+          "median_absolute_deviation": 6.000000000004266e-06,
+          "min": 0.0012869999999999965,
+          "observations": 5,
+          "p90_interpolated": 0.0023097999999999973
+        },
+        "runtime_prove_seconds": {
+          "max": 0.14331,
+          "median": 0.092196,
+          "median_absolute_deviation": 0.05111399999999999,
+          "min": 0.014771,
+          "observations": 5,
+          "p90_interpolated": 0.1381312
+        },
+        "runtime_setup_seconds": {
+          "max": 0.002462,
+          "median": 0.000716,
+          "median_absolute_deviation": 2.5000000000000066e-05,
+          "min": 0.000684,
+          "observations": 5,
+          "p90_interpolated": 0.0017736000000000002
+        },
+        "runtime_witness_seconds": {
+          "max": 0.000652,
+          "median": 0.000113,
+          "median_absolute_deviation": 1.4999999999999999e-05,
+          "min": 9.8e-05,
+          "observations": 5,
+          "p90_interpolated": 0.00044280000000000003
+        }
+      },
+      "package_build": {
+        "package_build_peak_rss_bytes": null,
+        "package_build_peak_rss_method": "unavailable: Python build invokes Zig subprocesses",
+        "package_build_wall_seconds": 54.14657283294946,
+        "package_reused": false,
+        "zig_compiler_cache": "uncontrolled host cache; no cache clearing or isolation"
+      },
+      "padded": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 512,
+        "triple_xor": 0
+      },
+      "preprocessed_cells": 4096,
+      "profile": "direct-m31-v4",
+      "raw": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 367,
+        "triple_xor": 0
+      },
+      "source_sha256": "b2dbe7e32dc7bb2f2d932b22abf29a65201c5837f6064004875553f7543d8e97"
+    }
+  },
+  "compiler_sha256": [
+    "a11fda88690944befb5f42e58c90dc1ad8a70d91aa8ff8af99942f6b21c99a74"
+  ],
+  "controls": {
+    "changed_claim_rejected": 60,
+    "independent_oracle_passed": 60,
+    "native_accepted": 60
+  },
+  "corpus_sha256": "10381a57c879f98319e84e91329afc3ef772b8935e29c7d8ce99a125434a5cfa",
+  "cost_accuracy_gate_pass": false,
+  "evaluation_sha256": "5634cd52c5cf4ea95282337b754d3dbd89326d1b3b0367b805f3634d72d3fc80",
+  "exploratory_stage_errors": {
+    "arithmetic": {
+      "native_verify_process_wall_seconds": {
+        "max_relative_error": 0.3556401831222223,
+        "median_observed_relative_mad": 0.17501017287814719,
+        "median_relative_error": 0.11135868743032365,
+        "missing_or_unfit_programs": 0,
+        "p90_relative_error": 0.2962803743762668,
+        "predictions": 4
+      },
+      "prover_process_unattributed_seconds": {
+        "max_relative_error": 0.44764817816523994,
+        "median_observed_relative_mad": 0.07045312018457833,
+        "median_relative_error": 0.1692364478748641,
+        "missing_or_unfit_programs": 0,
+        "p90_relative_error": 0.3789900406610186,
+        "predictions": 4
+      },
+      "runtime_fri_pow_seconds": {
+        "max_relative_error": 0.9988953355339695,
+        "median_observed_relative_mad": 0.702486457583015,
+        "median_relative_error": 0.532800796168897,
+        "missing_or_unfit_programs": 0,
+        "p90_relative_error": 0.8747556009096022,
+        "predictions": 4
+      },
+      "runtime_interaction_pow_seconds": {
+        "max_relative_error": 0.7115570635531923,
+        "median_observed_relative_mad": 0.5582157046967692,
+        "median_relative_error": 0.48023052690449286,
+        "missing_or_unfit_programs": 0,
+        "p90_relative_error": 0.6505156484991994,
+        "predictions": 4
+      },
+      "runtime_prove_excluding_pow_seconds": {
+        "max_relative_error": 0.8745097866853615,
+        "median_observed_relative_mad": 0.08566540007628685,
+        "median_relative_error": 0.20586852315100237,
+        "missing_or_unfit_programs": 0,
+        "p90_relative_error": 0.6789872504106359,
+        "predictions": 4
+      },
+      "runtime_prove_seconds": {
+        "max_relative_error": 0.7615501662118656,
+        "median_observed_relative_mad": 0.6872043467533778,
+        "median_relative_error": 0.5223526679052211,
+        "missing_or_unfit_programs": 0,
+        "p90_relative_error": 0.6940367615324309,
+        "predictions": 4
+      },
+      "runtime_setup_seconds": {
+        "max_relative_error": 0.09418804826993499,
+        "median_observed_relative_mad": 0.10482466034992731,
+        "median_relative_error": 0.07283700842553885,
+        "missing_or_unfit_programs": 0,
+        "p90_relative_error": 0.09244993195228503,
+        "predictions": 4
+      },
+      "runtime_witness_seconds": {
+        "max_relative_error": 0.3670851582569319,
+        "median_observed_relative_mad": 0.11944430711425315,
+        "median_relative_error": 0.12738359993399176,
+        "missing_or_unfit_programs": 0,
+        "p90_relative_error": 0.30369600686692594,
+        "predictions": 4
+      }
+    },
+    "fixed_width": {
+      "native_verify_process_wall_seconds": {
+        "max_relative_error": 0.07457038885856655,
+        "median_observed_relative_mad": 0.09845709490127158,
+        "median_relative_error": 0.04128994278129382,
+        "missing_or_unfit_programs": 0,
+        "p90_relative_error": 0.06923172884823776,
+        "predictions": 4
+      },
+      "prover_process_unattributed_seconds": {
+        "max_relative_error": 0.08828306000761627,
+        "median_observed_relative_mad": 0.25132744812615754,
+        "median_relative_error": 0.06066103719942236,
+        "missing_or_unfit_programs": 0,
+        "p90_relative_error": 0.0839758746424146,
+        "predictions": 4
+      },
+      "runtime_fri_pow_seconds": {
+        "max_relative_error": 1.2157466914044273,
+        "median_observed_relative_mad": 0.44543992986312864,
+        "median_relative_error": 0.47980482625186893,
+        "missing_or_unfit_programs": 0,
+        "p90_relative_error": 1.0246932933243942,
+        "predictions": 4
+      },
+      "runtime_interaction_pow_seconds": {
+        "max_relative_error": 0.2773621875261588,
+        "median_observed_relative_mad": 0.506327651347297,
+        "median_relative_error": 0.2074195354582017,
+        "missing_or_unfit_programs": 0,
+        "p90_relative_error": 0.2582300494835821,
+        "predictions": 4
+      },
+      "runtime_prove_excluding_pow_seconds": {
+        "max_relative_error": 0.2340362464853165,
+        "median_observed_relative_mad": 0.045546243340250696,
+        "median_relative_error": 0.11657094905565861,
+        "missing_or_unfit_programs": 0,
+        "p90_relative_error": 0.2023980713463648,
+        "predictions": 4
+      },
+      "runtime_prove_seconds": {
+        "max_relative_error": 1.0707908723486448,
+        "median_observed_relative_mad": 0.4513412762508179,
+        "median_relative_error": 0.4538675489547037,
+        "missing_or_unfit_programs": 0,
+        "p90_relative_error": 0.9113106775537092,
+        "predictions": 4
+      },
+      "runtime_setup_seconds": {
+        "max_relative_error": 0.09743125399110764,
+        "median_observed_relative_mad": 0.05135640564340506,
+        "median_relative_error": 0.05570635963896653,
+        "missing_or_unfit_programs": 0,
+        "p90_relative_error": 0.09048488425880322,
+        "predictions": 4
+      },
+      "runtime_witness_seconds": {
+        "max_relative_error": 0.3740511447495981,
+        "median_observed_relative_mad": 0.11566745606381656,
+        "median_relative_error": 0.2011390516878382,
+        "missing_or_unfit_programs": 0,
+        "p90_relative_error": 0.33469868172262573,
+        "predictions": 4
+      }
+    },
+    "hash": {
+      "native_verify_process_wall_seconds": {
+        "max_relative_error": 0.04460657932370876,
+        "median_observed_relative_mad": 0.027771029071211983,
+        "median_relative_error": 0.009617819660958577,
+        "missing_or_unfit_programs": 0,
+        "p90_relative_error": 0.034924207068777365,
+        "predictions": 4
+      },
+      "prover_process_unattributed_seconds": {
+        "max_relative_error": 0.3268986181081719,
+        "median_observed_relative_mad": 0.01461373531084334,
+        "median_relative_error": 0.06028966094522033,
+        "missing_or_unfit_programs": 0,
+        "p90_relative_error": 0.25346889693268654,
+        "predictions": 4
+      },
+      "runtime_fri_pow_seconds": {
+        "max_relative_error": null,
+        "median_observed_relative_mad": null,
+        "median_relative_error": null,
+        "missing_or_unfit_programs": 4,
+        "p90_relative_error": null,
+        "predictions": 0
+      },
+      "runtime_interaction_pow_seconds": {
+        "max_relative_error": null,
+        "median_observed_relative_mad": null,
+        "median_relative_error": null,
+        "missing_or_unfit_programs": 4,
+        "p90_relative_error": null,
+        "predictions": 0
+      },
+      "runtime_prove_excluding_pow_seconds": {
+        "max_relative_error": null,
+        "median_observed_relative_mad": null,
+        "median_relative_error": null,
+        "missing_or_unfit_programs": 4,
+        "p90_relative_error": null,
+        "predictions": 0
+      },
+      "runtime_prove_seconds": {
+        "max_relative_error": 0.10989746346167063,
+        "median_observed_relative_mad": 0.09709014654406875,
+        "median_relative_error": 0.06253898299864129,
+        "missing_or_unfit_programs": 0,
+        "p90_relative_error": 0.10494452879081445,
+        "predictions": 4
+      },
+      "runtime_setup_seconds": {
+        "max_relative_error": 0.007687878591261462,
+        "median_observed_relative_mad": 0.01261802661209914,
+        "median_relative_error": 0.005935382633462889,
+        "missing_or_unfit_programs": 0,
+        "p90_relative_error": 0.007630791163702141,
+        "predictions": 4
+      },
+      "runtime_witness_seconds": {
+        "max_relative_error": 0.3564293517707296,
+        "median_observed_relative_mad": 0.047686053783614846,
+        "median_relative_error": 0.11906005353470869,
+        "missing_or_unfit_programs": 0,
+        "p90_relative_error": 0.2920949922026521,
+        "predictions": 4
+      }
+    }
+  },
+  "headline_accuracy": {
+    "paired_prove_and_verify_wall_seconds": {
+      "empirical_interval_coverage": 0.7,
+      "held_out_programs": 12,
+      "intervals_available": 10,
+      "max_relative_error": 1.0078201067847827,
+      "median_absolute_error": 0.06560271558134431,
+      "median_relative_error": 0.30581152150008795,
+      "p90_absolute_error": 0.14961753723069415,
+      "p90_relative_error": 0.7910350271669021
+    },
+    "proof_bytes": {
+      "empirical_interval_coverage": 0.8,
+      "held_out_programs": 12,
+      "intervals_available": 10,
+      "max_relative_error": 0.09788576474789501,
+      "median_absolute_error": 3146.900781153974,
+      "median_relative_error": 0.023296291352846516,
+      "p90_absolute_error": 10716.773975080392,
+      "p90_relative_error": 0.06741462474388653
+    },
+    "prover_peak_rss_bytes": {
+      "empirical_interval_coverage": 0.7,
+      "held_out_programs": 12,
+      "intervals_available": 10,
+      "max_relative_error": 0.08023843821569453,
+      "median_absolute_error": 292577.7801104393,
+      "median_relative_error": 0.010348728527825217,
+      "p90_absolute_error": 1035773.3466690559,
+      "p90_relative_error": 0.04170121009939905
+    }
+  },
+  "host": {
+    "machine": "arm64",
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "python": "3.14.6",
+    "zig": "0.15.2"
+  },
+  "per_family_accuracy": {
+    "arithmetic": {
+      "paired_prove_and_verify_wall_seconds": {
+        "max_relative_error": 0.8000315879138017,
+        "median_relative_error": 0.624655957142387,
+        "p90_relative_error": 0.7730419056731028,
+        "predictions": 4
+      },
+      "proof_bytes": {
+        "max_relative_error": 0.09788576474789501,
+        "median_relative_error": 0.022976018649793255,
+        "p90_relative_error": 0.07771481166457676,
+        "predictions": 4
+      },
+      "prover_peak_rss_bytes": {
+        "max_relative_error": 0.08023843821569453,
+        "median_relative_error": 0.023128765732265952,
+        "p90_relative_error": 0.0646486758071682,
+        "predictions": 4
+      }
+    },
+    "fixed_width": {
+      "paired_prove_and_verify_wall_seconds": {
+        "max_relative_error": 1.0078201067847827,
+        "median_relative_error": 0.4010399499874205,
+        "p90_relative_error": 0.8864124955462391,
+        "predictions": 4
+      },
+      "proof_bytes": {
+        "max_relative_error": 0.06799192115087989,
+        "median_relative_error": 0.04295672280250928,
+        "p90_relative_error": 0.06312001891972913,
+        "predictions": 4
+      },
+      "prover_peak_rss_bytes": {
+        "max_relative_error": 0.042804387877476105,
+        "median_relative_error": 0.023090059760109905,
+        "p90_relative_error": 0.03949485454324493,
+        "predictions": 4
+      }
+    },
+    "hash": {
+      "paired_prove_and_verify_wall_seconds": {
+        "max_relative_error": 0.24135506557251407,
+        "median_relative_error": 0.09423026599014683,
+        "p90_relative_error": 0.200798200019285,
+        "predictions": 4
+      },
+      "proof_bytes": {
+        "max_relative_error": 0.06221895708094627,
+        "median_relative_error": 0.013543839182332297,
+        "p90_relative_error": 0.048336268427320056,
+        "predictions": 4
+      },
+      "prover_peak_rss_bytes": {
+        "max_relative_error": 0.0019915594495363564,
+        "median_relative_error": 0.00041936621434480434,
+        "p90_relative_error": 0.0015571316467245305,
+        "predictions": 4
+      }
+    }
+  },
+  "programs": 12,
+  "schema": "s31-whole-prover-heldout-pinned-v1",
+  "selection_reasons": [
+    "held-out coverage or accuracy gate failed: require three families with four programs each; per metric, p90 relative error <=20%, max <=35%, and empirical interval coverage >=80%",
+    "automatic profile selection also needs profile soundness equivalence and validation on additional hosts and scales"
+  ],
+  "stage_note": "Stage fits are post hoc diagnostics with the frozen padded-row feature; they are excluded from the cost accuracy gate and are not calibrated predictions.",
+  "trials": 60
+}

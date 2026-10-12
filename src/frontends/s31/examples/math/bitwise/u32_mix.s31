@@ -1,0 +1,10 @@
+use std@1;
+
+// Every input word is decomposed once; the later operations reuse its bits.
+circuit u32_mix(private a: u32, private b: u32) -> public u32 {
+    let both = std::int::bit_and(a, b);
+    let different = std::int::bit_xor(a, b);
+    let inverse = std::int::bit_not(both);
+    let result = std::int::bit_or(different, inverse);
+    result
+}

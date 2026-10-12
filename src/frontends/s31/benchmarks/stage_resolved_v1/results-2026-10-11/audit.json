@@ -1,0 +1,9 @@
+{
+  "calibration_sha256": "85ed27e398b7d39b26bc3273b9e3d9470f2e8a15d445fae7984768689aadc8b9",
+  "heldout_score_sha256": "c01aea2104a7235b299ccedfd053b9d785adb6295427e6d62bb8e1f64ed44493",
+  "phase": "native-replay-audit",
+  "plan_sha256": "90b9369a734a30d8f6295e15762d9bde5e5e91a044c6aa62b9a9a6216b9b8446",
+  "replayed_accepted_proofs": 36,
+  "replayed_rejected_changed_claims": 36,
+  "schema": "s31-stage-resolved-prospective-v1"
+}

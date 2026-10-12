@@ -1,0 +1,7 @@
+{
+  "frozen_model_sha256": "461994df2b47d8c7d2a5358c7918f25cb6973f4110f433328a5d789e2bc65593",
+  "protocol_sha256": "94b1bd57a49c3fdbd7ef8931ba21b3452efdfd5573693796a57035aeb3f7a891",
+  "recorded_at_utc": "2026-10-11T04:03:30Z",
+  "schema": "s31-whole-prover-v7r1-model-freeze",
+  "training_corpus_sha256": "9a600ff137d844350ef8121fb6812dfbcc14555a9da5983755cd8b600f067856"
+}

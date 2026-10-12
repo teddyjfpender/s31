@@ -197,6 +197,13 @@ prints source-level field equations, source positions, and canonical IDs.
 six chip expressions above come from the current row evaluator used by both
 prover and verifier.
 
+The cost report also records `constant_min_base` and the finalization span.
+Small fixed-width relations use minimum base 16; other relations use the
+engine's base 256. The effective base can rise when a source already uses a
+long run of consecutive constants. `preprocessed_cells` includes fixed
+lookup tables, which can dominate a small program even after its gate count
+falls. Compare padded rows and proof timing before claiming a proving gain.
+
 The CLI does **not** yet render the pinned generic circuit AIR's full
 instantiated polynomial program as text. The circuit equations in this guide
 give the implemented gate semantics; a complete symbolic export and

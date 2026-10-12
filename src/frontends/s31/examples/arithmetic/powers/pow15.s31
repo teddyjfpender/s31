@@ -1,0 +1,7 @@
+use std@1;
+
+// The static exponent is compiled to five ordinary field multiplications.
+circuit pow15(private x: [m31; 4]) -> public [m31; 4] {
+    let result = std::math::pow<15>(x);
+    result
+}

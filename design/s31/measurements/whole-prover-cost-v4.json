@@ -1,0 +1,139 @@
+{
+  "accuracy_gate": {
+    "minimum_train_programs_per_family": 4,
+    "minimum_validation_programs_per_family": 4,
+    "minimum_validation_trials_per_program": 100,
+    "per_family_proof_bytes_and_rss_trial_interval_coverage_min": 0.8,
+    "per_family_proof_bytes_program_median_p90_relative_error_max": 0.1,
+    "per_family_prover_rss_program_median_p90_relative_error_max": 0.1,
+    "per_family_whole_wall_median_interval_upper_to_measured_mean_max": 8.0,
+    "per_family_whole_wall_program_mean_p90_relative_error_max": 0.25,
+    "per_family_whole_wall_trial_interval_coverage_min": 0.8
+  },
+  "amendment": "training-only v3.1 diagnosis: fixed 26-bit PoW dominated arithmetic wall, five arithmetic FRI PoW sample medians varied 50\u2013140 ms without a meaningful scale trend; stagewise min/max times LOO produced 11x wall upper width. V4 targets expected wall with 100 independent fresh trials per program and calibrates whole-wall trial ratios from leave-one-program-out training predictions. V3.1 held-out outcomes are excluded from feature choice, fitting and interval calibration.",
+  "chip_manifest_policy": "every direct-chip package must carry s31-component-manifest-direct-chip-v2 with exactly one chip_call at call_id 0, bound in sealed native key and package manifest",
+  "chip_stage_features": {
+    "native_verify_process_wall_seconds": "chip_fri_domain_rows",
+    "proof_bytes": "chip_fri_domain_rows",
+    "prover_peak_rss_bytes": "chip_trace_cells",
+    "prover_process_unattributed_seconds": "constant",
+    "runtime_fri_pow_seconds": "constant",
+    "runtime_interaction_pow_seconds": "constant",
+    "runtime_prove_excluding_pow_seconds": "chip_trace_cells",
+    "runtime_runtime_other_seconds": "constant",
+    "runtime_setup_seconds": "constant",
+    "runtime_witness_seconds": "chip_trace_cells"
+  },
+  "features": {
+    "chip_fri_domain_rows": "for direct-chip only, maximum 2^trace_log_size over generated typed-manifest components; captures the largest FRI tier",
+    "chip_trace_cells": "for direct-chip only, sum over generated typed-manifest components of (2^trace_log_size) * (base_trace_columns + interaction_trace_columns); captures total committed AIR trace work",
+    "hash_work": "1 + raw blake_g rows; used for opaque gate hash prove stage",
+    "padded_rows": "sum of padded component rows",
+    "preprocessed_cells": "cost-report fixed/preprocessed cells",
+    "raw_rows": "sum of raw component rows"
+  },
+  "host_policy": "one named host and one compiler fingerprint for every train/validation package; no cross-host reliability claim",
+  "model": "per-family, per-stage log-linear fit on training-program trial means using declared source/AIR feature; fixed 26-bit interaction and FRI PoW stage means pooled as scale-independent constants. Whole-wall point is sum of stage expectations. Proof bytes and RSS retain v3.1 model formulas, independent of held-out v3.1 outcomes.",
+  "point_target": "per-program arithmetic mean of 100 fresh-process prover-plus-native-verifier wall times; a sampling estimate of expected wall under the pinned host/process policy, distinct from v3.1 program median",
+  "prebuild_admission_amendment": "Before any v4 native build or timing, repository source audit found direct-chip rounds must be powers of two from 16 to 32768. Replace proposed train 8 with 16 and held-out 16 with 32; no v4 observations existed.",
+  "pow_bits_required": 26,
+  "pow_variance": "Keep interaction and FRI PoW separate where timers expose them; hash prove includes opaque PoW. Report stage means, medians, p90, CV, and process-wall variance. Never interpret fixed 26-bit PoW as deterministic. Use 100 independent transcript-dependent assignments/program.",
+  "profiles": {
+    "arithmetic": "direct-gate",
+    "chip": "direct-chip",
+    "fixed_width": "direct-gate",
+    "hash": "gate"
+  },
+  "revision": "4",
+  "samples_per_program": 100,
+  "schema": "s31-whole-prover-cost-protocol-v4",
+  "selection_policy": "Automatic lowering stays disabled, including after a local pass; independent source revision, host transfer, cached setup, paired lowering comparisons, and proof soundness equivalence remain separate prerequisites",
+  "source_base_commit": "fe05a6206264c0313764132b4c67190ee25a6b06",
+  "source_pin_policy": "record exact compiler SHA-256 and pinned stwo-zig commit in every package; reject any source fingerprint change between train build, model freeze, validation build and proof",
+  "tool_pin_policy": "hash all S31 benchmark and frontend Python source files by repository-relative path and bytes; require equal digest across package-build, timed trial, train model, validation, and independent publisher replay",
+  "split_policy": "All v4 train and held-out sources and assignments are generated fresh. Fit only v4 train, freeze serialized model and its SHA before any held-out package build. Reject duplicate source/assignment digests within and across splits, require exact host/compiler/profile/FRI match. V3.1 held-out is not used for v4 fit or calibration.",
+  "splits": {
+    "train": {
+      "arithmetic_constant": 13,
+      "arithmetic_rounds": [
+        40,
+        160,
+        640,
+        2560,
+        10240
+      ],
+      "assignment_index_base": 510000,
+      "chip_constant": 13,
+      "chip_rounds": [
+        16,
+        64,
+        512,
+        2048,
+        8192
+      ],
+      "hash_depths": [
+        1,
+        4,
+        7,
+        10
+      ],
+      "signed_output": "quotient_and_remainder",
+      "signed_widths": [
+        8,
+        16,
+        32,
+        64
+      ]
+    },
+    "validation": {
+      "arithmetic_constant": 17,
+      "arithmetic_rounds": [
+        80,
+        320,
+        1280,
+        5120
+      ],
+      "assignment_index_base": 610000,
+      "chip_constant": 17,
+      "chip_rounds": [
+        32,
+        128,
+        1024,
+        4096
+      ],
+      "hash_depths": [
+        2,
+        5,
+        8,
+        11
+      ],
+      "signed_output": "quotient_only",
+      "signed_widths": [
+        8,
+        16,
+        32,
+        64
+      ]
+    }
+  },
+  "stage_features": {
+    "native_verify_process_wall_seconds": "padded_rows",
+    "proof_bytes": "padded_rows",
+    "prover_peak_rss_bytes": "padded_rows",
+    "prover_process_unattributed_seconds": "constant",
+    "runtime_fri_pow_seconds": "constant",
+    "runtime_interaction_pow_seconds": "constant",
+    "runtime_prove_excluding_pow_seconds": "raw_rows",
+    "runtime_prove_seconds_when_pow_opaque": "hash_work",
+    "runtime_runtime_other_seconds": "padded_rows",
+    "runtime_setup_seconds": "preprocessed_cells",
+    "runtime_witness_seconds": "raw_rows"
+  },
+  "status": "predeclared-before-any-v4-package-build-or-native-trial",
+  "targets": [
+    "paired_prove_and_verify_wall_seconds",
+    "proof_bytes",
+    "prover_peak_rss_bytes"
+  ],
+  "wall_interval": "For each training program, fit the full stage model on all other training programs, predict its expected wall, and collect every observed trial-wall / out-of-fold prediction ratio. Use pooled 5th and 95th percentile ratios as the prospective per-trial interval around the full-training expected-wall prediction. This interval is empirical and has no guaranteed tail coverage."
+}

@@ -34,8 +34,10 @@ explicit conversion/range machinery where needed.
 
 ## Text syntax
 
-One file has an optional leading `use std@1;`, zero or more pure `fn`
-declarations, then one `circuit`.
+One file has an optional leading `use std@1;`, zero or more `struct` and pure
+`fn` declarations, then one `circuit`. A
+[nominal record](records.md) groups named, statically typed fields inside
+functions and circuit bodies and disappears before relation emission.
 Functions are specialized and inlined at calls; recursion is rejected.
 Circuit parameters say `public` or `private`, and the result is public.
 Bodies have immutable `let` statements, optional `assert_eq(a,b);` statements
@@ -186,7 +188,7 @@ semantics:
 | `sum_lanes` | One `m31[N]` gives `m31[1]` containing the sum of its declared positions. `dot_lanes` first emits pointwise `mul`, then this node. |
 | `u256_add`, `u256_add_checked`, `u256_sub`, `u256_sub_checked`, `u256_le` | Two `u16[16]` operands give a `u16[16]` sum/difference or an `m31[1]` comparison. Digits are range checked; carries and borrows are Boolean. Checked arithmetic also requires the final carry or borrow to be zero. |
 | `repeat` | `lhs: m31[N]`, `rounds`, and a static `body` of `square`, `add_const`, `mul_const`, or four-lane `mix4` steps. |
-| `select` | Equal `m31[N]` arrays `lhs`, `rhs`; `selector: m31[1]` constrained to a bit. |
+| `select` | Equal `m31[N]` or `u16[N]` arrays `lhs`, `rhs`; `selector: m31[1]` constrained to a bit. |
 | `hash_blake2s`, `hash_blake2s_leaf/pair`, `hash_poseidon2_leaf/pair` | The [exact encodings and framing](hashes.md); each returns `m31[8]`. |
 | `hash_sha256d_header` | `lhs: u16[40]` gives raw double-SHA digest as `u16[16]`; three compression blocks are constrained. |
 | `bitcoin_target_mainnet` | `lhs: u16[40]` gives a nonzero, mainnet-limited compact target as `u16[16]`. |

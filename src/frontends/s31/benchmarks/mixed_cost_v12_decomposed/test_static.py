@@ -1,0 +1,149 @@
+#!/usr/bin/env python3
+"""Native-free guards for V12 fit classification, geometry, schedule, and score."""
+
+from __future__ import annotations
+
+import copy
+import importlib.util
+import unittest
+
+import model as m
+import protocol as p
+
+spec = importlib.util.spec_from_file_location("v12_study", p.HERE / "study.py")
+if spec is None or spec.loader is None:
+    raise RuntimeError("V12 study loader missing")
+study = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(study)
+audit_spec = importlib.util.spec_from_file_location("v12_audit", p.HERE / "audit.py")
+if audit_spec is None or audit_spec.loader is None:
+    raise RuntimeError("V12 audit loader missing")
+audit = importlib.util.module_from_spec(audit_spec)
+audit_spec.loader.exec_module(audit)
+
+
+class DecomposedStaticTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.model = m.fit()
+        cls.protocol = p.prepare_value()
+
+    def test_fit_sources_and_declared_failure(self) -> None:
+        self.assertEqual(m.canonical(self.model), m.FROZEN.read_bytes())
+        self.assertIn("V11", self.model["wall_fit_source"])
+        self.assertIn("failed 14/16", self.model["wall_fit_source"])
+        self.assertEqual(len(self.model["fit_blocks"]), 4)
+        self.assertEqual(len(self.model["nonpow_whole_process_deviations_ns"]), 80)
+        self.assertEqual(self.model["pow_predictive"]["sample_size"], p.CLAIMS)
+        self.assertEqual(self.model["pow_predictive"]["seed"], m.SIMULATION_SEED)
+        self.assertEqual(set(m.SHAPES), set(p.SOURCES))
+        for name in p.SOURCES:
+            prediction = m.prediction(self.model, name)
+            for field in ("warm_wall_one_draw_quantile_ns",
+                          "warm_wall_sample20_median_quantile_ns",
+                          "fri_pow_one_draw_quantile_ns",
+                          "interaction_pow_one_draw_quantile_ns"):
+                q = prediction[field]
+                self.assertLess(q["0.05"], q["0.5"])
+                self.assertLess(q["0.5"], q["0.95"])
+        with self.assertRaises(ValueError):
+            m.prediction(self.model, "training_source_not_frozen")
+
+    def test_fresh_sources_and_interleaved_schedule(self) -> None:
+        self.assertEqual(set(self.protocol["source_roster"]), set(p.SOURCES))
+        self.assertEqual(self.protocol["v12_model_sha256"], p.sha(p.MODEL.read_bytes()))
+        seen: set[str] = set()
+        for name, expected in self.protocol["source_roster"].items():
+            spec = p.SOURCES[name]
+            geometry = expected["expected_geometry"]
+            self.assertEqual(geometry["slots"], 1 + 2 * len(spec["rounds"]))
+            self.assertEqual(geometry["slot_trace_logs"],
+                             [12 if spec["gates"] else 9] +
+                             [entry for rounds in spec["rounds"]
+                              for entry in (rounds.bit_length() - 1, 4)])
+            self.assertEqual(geometry["composition_log_size"], 12)
+            self.assertEqual(expected["source_sha256"], p.sha(p.source(name)))
+            for index in range(p.CLAIMS + 1):
+                source, assignment, statement = p.case(name, index)
+                self.assertEqual(source, p.source(name))
+                for raw, expected_digest in ((assignment, expected["assignment_sha256"][index]),
+                                             (statement, expected["statement_sha256"][index])):
+                    digest = p.sha(raw)
+                    self.assertEqual(digest, expected_digest)
+                    self.assertNotIn(digest, seen)
+                    seen.add(digest)
+        self.assertEqual(len(seen), 168)
+        schedule = p.schedule()
+        self.assertEqual(schedule, self.protocol["scored_schedule"])
+        self.assertEqual(len(schedule), 80)
+        self.assertEqual(len({(item["name"], item["claim_index"]) for item in schedule}), 80)
+        for offset in range(0, 80, 4):
+            block = schedule[offset:offset + 4]
+            self.assertEqual(len({item["name"] for item in block}), 4)
+            self.assertEqual(len({item["claim_index"] for item in block}), 1)
+
+    def test_manifest_and_score_guards(self) -> None:
+        expected = self.protocol["source_roster"]["serial_spiral_n2"]
+        geometry = expected["expected_geometry"]
+        manifest = {"schema": "s31-mixed-component-inspection-general-v3",
+                    "source_sha256": expected["source_sha256"], "call_count": 2,
+                    "slot_count": geometry["slots"], "interaction_pow_bits": 20,
+                    "pcs": {"fri_config": {"pow_bits": 26}},
+                    "slots": [{"trace_log_size": log, "n_constraints": n}
+                              for log, n in zip(geometry["slot_trace_logs"],
+                                                (11, 6, 13, 6, 13), strict=True)],
+                    "calls": [{"rounds": rounds} for rounds in expected["chip_rounds"]],
+                    "tree_columns": geometry["tree_columns"],
+                    "total_constraints": geometry["constraints"],
+                    "main_columns": geometry["tree_columns"][1],
+                    "interaction_columns": geometry["tree_columns"][2],
+                    "max_column_log_size": 12, "composition_log_size": 12,
+                    "registry_manifest_sha256": "digest"}
+        original = study.registry_manifest_digest
+        study.registry_manifest_digest = lambda _: "digest"
+        try:
+            study.check_manifest(manifest, expected)
+            for key, changed in (("max_column_log_size", 11),
+                                 ("composition_log_size", 11)):
+                bad = copy.deepcopy(manifest)
+                bad[key] = changed
+                with self.assertRaises(ValueError):
+                    study.check_manifest(bad, expected)
+            bad = copy.deepcopy(manifest)
+            bad["slots"][1]["trace_log_size"] = 11
+            with self.assertRaises(ValueError):
+                study.check_manifest(bad, expected)
+        finally:
+            study.registry_manifest_digest = original
+
+    def test_runner_and_independent_score_agree_on_synthetic_rows(self) -> None:
+        expected = self.protocol["source_roster"]["chip_spiral_n1"]
+        prediction = expected["prediction"]
+        wall = round(prediction["warm_wall_one_draw_quantile_ns"]["0.5"])
+        size = round(prediction["proof_bytes_center"])
+        prover_rss = round(prediction["prover_peak_rss_median_bytes"])
+        verifier_rss = round(prediction["verifier_peak_rss_median_bytes"])
+        rows = []
+        for index in range(22):
+            rows.append({"claim_index": max(0, index - 1),
+                         "first_verified_process_wall_ns": wall,
+                         "proof_bytes": size,
+                         "native_phases_ns": {"fri_pow_ns": 10_000_000,
+                                              "interaction_pow_ns": 1_000_000},
+                         "prover_process_monotonic_ns": {"peak_rss_bytes": prover_rss},
+                         "external_verifier_process_monotonic_ns": {
+                             "peak_rss_bytes": verifier_rss}})
+        official = study.score_record({"trials": rows, "build_wall_ns": 1},
+                                      expected, p.GATES)
+        independent = audit.calculated_score(rows, prediction, p.GATES)
+        self.assertEqual(official["gates"], independent["gates"])
+        for field in ("wall_median_relative_error", "wall_one_draw_interval_hits",
+                      "wall_one_draw_interval_coverage", "wall_sample20_median_in_band",
+                      "proof_median_relative_error", "proof_interval_coverage",
+                      "prover_rss_median_relative_error", "verifier_rss_median_relative_error"):
+            self.assertEqual(official[field], independent[field])
+        self.assertTrue(official["all_gates_pass"])
+
+
+if __name__ == "__main__":
+    unittest.main()

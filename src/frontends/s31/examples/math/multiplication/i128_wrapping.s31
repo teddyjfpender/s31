@@ -1,0 +1,7 @@
+use std@1;
+
+// The 128-bit pattern for -1 times 2 wraps to the pattern for -2.
+circuit i128_wrapping(private a: i128, private b: i128) -> public i128 {
+    let product = std::int::mul_wrapping(a, b);
+    product
+}

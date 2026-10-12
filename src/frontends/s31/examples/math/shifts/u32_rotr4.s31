@@ -1,0 +1,6 @@
+use std@1;
+
+circuit u32_rotr4(private a: u32) -> public u32 {
+    let result = std::int::rotr<4>(a);
+    result
+}

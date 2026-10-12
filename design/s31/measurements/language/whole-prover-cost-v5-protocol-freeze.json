@@ -1,0 +1,9 @@
+{
+  "schema": "s31-whole-prover-v5-protocol-freeze",
+  "recorded_at_utc": "2026-10-10T20:05:10Z",
+  "protocol_sha256": "da91662ca90a22f26d7c87908d5a650d107d1d4f84fbc5530f69a14713f968d3",
+  "source_base_commit": "ee6d547e41ce9a70826a520aa62759042196f1fc",
+  "engine_gitlink_commit": "7638a3f8f06dc86c25eafe0cfac2d61e773861f6",
+  "compiler_sha256": "904dbbb429d705c0788779842bb6f92734f30446a67a023183348e97d8612a25",
+  "measurement_tool_sha256": "f048238efe2aaec581257cb43c1bcb90ec96592bf6092578708aed9a17858848"
+}

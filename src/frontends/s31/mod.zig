@@ -1,6 +1,7 @@
 pub const program = @import("language/program.zig");
 pub const compiler = @import("language/compiler.zig");
 pub const relation = @import("language/relation.zig");
+pub const record_abi = @import("language/record_abi.zig");
 pub const relation_compiler = @import("language/relation_compiler.zig");
 pub const sha256d = @import("library/hash/sha256d.zig");
 pub const sha_chip_plan = @import("sha/config/sha_chip_plan.zig");
@@ -46,6 +47,7 @@ pub const bitcoin_fold_step = @import("bitcoin/fold/bitcoin_fold_step.zig");
 pub const bitcoin_fold_digest = @import("bitcoin/fold/bitcoin_fold_digest.zig");
 pub const bitcoin_fold_preprocessed_guard = @import("bitcoin/fold/bitcoin_fold_preprocessed_guard.zig");
 pub const canonical = @import("language/canonical.zig");
+pub const proof_privacy = @import("runtime/proof_privacy.zig");
 
 test {
     _ = program;
@@ -92,4 +94,5 @@ test {
     _ = bitcoin_fold_digest;
     _ = bitcoin_fold_preprocessed_guard;
     _ = canonical;
+    _ = proof_privacy;
 }

@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "name": "private_two_selected_chip_feeder",
+  "inputs": [
+    { "name": "x", "kind": "m31", "length": 4, "visibility": "private" },
+    { "name": "y", "kind": "m31", "length": 4, "visibility": "private" },
+    { "name": "bit", "kind": "m31", "length": 1, "visibility": "private" }
+  ],
+  "nodes": [
+    { "name": "a", "op": "repeat", "lhs": "x", "rounds": 16, "body": [{ "op": "square" }, { "op": "add_const", "constant": 13 }] },
+    { "name": "first_left", "op": "add", "lhs": "a", "rhs": "x" },
+    { "name": "first_right", "op": "mul", "lhs": "a", "rhs": "y" },
+    { "name": "feed", "op": "select", "selector": "bit", "lhs": "first_left", "rhs": "first_right" },
+    { "name": "b", "op": "repeat", "lhs": "feed", "rounds": 16, "body": [{ "op": "square" }, { "op": "add_const", "constant": 17 }] },
+    { "name": "second_left", "op": "add", "lhs": "b", "rhs": "y" },
+    { "name": "second_right", "op": "mul", "lhs": "b", "rhs": "x" },
+    { "name": "chosen", "op": "select", "selector": "bit", "lhs": "second_left", "rhs": "second_right" },
+    { "name": "sum", "op": "add", "lhs": "chosen", "rhs": "a" },
+    { "name": "product", "op": "mul", "lhs": "chosen", "rhs": "b" }
+  ],
+  "assertions": [],
+  "public_outputs": ["sum", "product"]
+}

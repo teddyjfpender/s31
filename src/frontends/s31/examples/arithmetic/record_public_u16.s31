@@ -1,0 +1,8 @@
+struct Request { digit: [u16; 1], salt: [m31; 1] }
+struct Result { digit: [u16; 1], square: [m31; 1] }
+
+circuit record_public_u16(public req: Request) -> public Result {
+    let field = std::field::from_u16(req.digit);
+    let square = field .* field + req.salt;
+    Result { digit: req.digit, square: square }
+}

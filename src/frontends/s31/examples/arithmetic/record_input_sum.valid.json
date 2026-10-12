@@ -1,0 +1,6 @@
+{
+  "version": 2,
+  "public_inputs": {"request": {"left": [3], "right": [4]}},
+  "private_inputs": {"mask": {"left": [5], "right": [6]}},
+  "result": [18]
+}

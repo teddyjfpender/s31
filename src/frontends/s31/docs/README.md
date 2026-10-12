@@ -36,6 +36,12 @@ text .s31 ──parse/typecheck/specialize──▶ normalized relation JSON
 - [Two proofs worked by hand](worked-proofs.md): a private cross-lane sum
     and dot product from source through gate equations and public binding,
     followed by a 16-round recurrence with actual transition rows.
+- [One functional polynomial worked by hand](worked-functional-polynomial.md):
+    a typed closure, `poly_eval`, four named lanes, exact retained relation
+    nodes, and the AIR equations that bind the public result.
+- [One program's Lean proof ladder](formal/README.md): the real functional
+   `x⁴` source, generated wire IDs, local AIR rows, Gate address joins,
+   LogUp closure, an explicit forged-witness bound, and remaining premises.
 - [A private choice worked by hand](worked-choice.md): a Boolean selector
    chooses between two public square-plus-seven results. See the filled
    circuit wires, gate equations, two-row polynomial factorization, and the
@@ -46,6 +52,11 @@ text .s31 ──parse/typecheck/specialize──▶ normalized relation JSON
 - [Fixed-width integers from source to AIR](fixed-width-integers.md): all
    ten unsigned and signed scalar types, a checked `u8` proof by hand,
    byte range, carry, sign, and comparison constraints.
+- [Hash-based Tongo-style payments](../examples/payments/README.md): a complete
+   note-spend relation, checked 64-bit amounts, an envelope-bound receipt,
+   native proof acceptance and the zero-knowledge work required for confidentiality.
+- [Proof privacy](proof-privacy.md): ABI visibility, explicit experimental
+   blinding, verifier binding and supported profiles.
 - [Bitcoin header SHA256d and proof of work](bitcoin-sha256d.md): two actual
    linked 80-byte headers, a one-new-header transition leaf, compact target
    decoding, handwritten gate equations, verified proofs, and the SHA chip boundary.
@@ -77,12 +88,22 @@ text .s31 ──parse/typecheck/specialize──▶ normalized relation JSON
    the same key, with hand-worked field arithmetic and circuit equations.
 - [Source language and relation](source.md): syntax, types, field semantics,
    static shapes, normalized JSON, and the public statement.
+- [Versioned text grammar](reference/GRAMMAR_V1.md): exact tokens, declaration
+   forms, expression precedence, and located parser resource limits.
+- [Static functional core](functional-language.md): typed lambdas,
+   higher-order calls, lexical capture, and the exact zero-gate staging
+   boundary, with a four-lane proof example.
+- [Nominal records](records.md): named struct fields, eager evaluation,
+   static type checks, whole-record selection, exact fieldwise AIR cost,
+   and handwritten calculations.
 - [Standard and math library](library.md): the pinned `std@1` package,
    typed operations, static reductions, Horner evaluation, and a proof example.
 - [Circuit lowering](circuits.md): a hand-drawn gate graph, packed M31 lanes,
    fixed/witness columns, address lookups, and the six proof profiles.
 - [Private circuit-to-chip boundary](private-boundary.md): eight source-derived
-   wire addresses, authenticated Gate and chip lookup closure, and the public ABI.
+   wire addresses, authenticated Gate and chip lookup closure, affine
+   one-square steps, an experimental two-call source binding, and the public
+   ABI and confidentiality limits.
 - [AIR and polynomials](air.md): a hand-filled trace, the **actual six
    repeated-step chip constraints**, lookup closure, quotient, and FRI.
 - [Direct SHA AIR by hand](sha-direct-air.md): trace one padded block word
@@ -93,18 +114,39 @@ text .s31 ──parse/typecheck/specialize──▶ normalized relation JSON
    one-level path.
 - [Packages, verification, and audit](proofs.md): build/prove/verify commands,
    what the key binds, artifact names, cost report fields, and current limits.
+- [Generated component manifest](../../../../design/s31/language/COMPONENT_MANIFEST.md):
+   the direct-gate and one-call direct-chip rosters, native rederivation,
+   and the bounded multi-call plan that still lacks proof admission.
+- [General authenticated chip boundary](../../../../design/s31/language/GENERAL_AUTHENTICATED_CHIP_BOUNDARY.md):
+   the proposed tagged multi-call contract, lookup joins, manifest roster,
+   soundness premises and native delivery gates.
+- [Compiler correspondence](../../../../design/s31/language/COMPILER_CORRESPONDENCE.md):
+   the checked Lean arithmetic and SSA fragment and the production boundaries
+   still requiring a refinement proof.
 
 The worked examples use checked-in sources under [`../examples`](../examples):
 
 | Program | What it teaches | Recommended profile |
 | --- | --- | --- |
 | [`math_polynomial4.s31`](../examples/arithmetic/math_polynomial4.s31) | Static power, constants, four M31 lanes, circuit gates | `direct-gate` |
+| [`pow15.s31`](../examples/arithmetic/powers/pow15.s31) | A five-gate static power, its AIR constraints, and a direct comparison with the six-gate binary schedule | `direct-gate` |
+| [`u8_wrapping.s31`](../examples/math/multiplication/u8_wrapping.s31) | Fixed-width multiplication with range-checked byte inputs, output, and carry | `sparse-wide-gate` |
+| [`functional_square4.s31`](../examples/arithmetic/functional_square4.s31) | A higher-order function and closure erased to two multiplication nodes | `direct-gate` |
+| [`record_square_sum.s31`](../examples/arithmetic/record_square_sum.s31) | A named `Powers` record erased to the same three-node relation as a positional tuple | `direct-gate` |
+| [`record_choice.s31`](../examples/control/record_choice.s31) | A computed bit selects every field of a nested record; the AIR geometry matches explicit fieldwise selectors | `direct-gate` |
+| [`record_i32_division.s31`](../examples/math/division/record_i32_division.s31) | A typed quotient/remainder record around one proved signed division | `direct-gate` |
+| [`functional_step16.s31`](../examples/recurrence/functional_step16.s31) | A closure around `iterate<16>` erased to the same one-node recurrence and chip | `direct-chip` |
+| [`functional_u256_sum.s31`](../examples/wide/functional_u256_sum.s31) | A higher-order checked 256-bit reduction with the same sparse-wide AIR cost as its direct form | `sparse-wide-gate` |
+| [`functional_rotate_hash.s31`](../examples/arrays/functional_rotate_hash.s31) | Array views, a captured hash closure and identical AIR cost to a direct Poseidon2 circuit | `direct-gate` |
+| [`byte_choice.s31`](../examples/control/byte_choice.s31) | A witness-dependent choice of two `Bytes32` values, with all sixteen u16 limbs contributing to one public result | `sparse-wide-gate` |
 | [`mathlib4.s31`](../examples/arithmetic/mathlib4.s31) | `use std@1`, Horner polynomial, static dot/sum, library lock | `direct-gate` |
 | [`lane_stats4.s31`](../examples/arithmetic/lane_stats4.s31) | Private arrays, lane sum and dot, one public result | `direct-gate` |
 | [`field_div4.s31`](../examples/arithmetic/field_div4.s31) | Checked inverse and division, one inverse witness shared across calls | `direct-gate` |
 | [`bitcoin_chainwork_step.s31`](../examples/bitcoin/bitcoin_chainwork_step.s31) | Header proof of work, checked block work, and a committed ChainWork transition | `sparse-wide-gate` |
 | [`private_step16.s31`](../examples/boundary/private_step16.s31) | Private chip endpoints and one public aggregate | `direct-chip` |
+| [`private_affine_square16.s31`](../examples/boundary/private_affine_square16.s31) | A nondegenerate affine change of variables around one authenticated chip call | `direct-chip` |
 | [`computed_choice.s31`](../examples/control/computed_choice.s31) | Computed zero bit, two algebraic constraints, and conditional selection | `direct-gate` |
+| [`total_if.s31`](../examples/control/total_if.s31) | Typed witness-dependent `if`, total-branch effect check, and one strict selector | `direct-gate` |
 | [`arith4_m31.s31`](../examples/arithmetic/arith4_m31.s31) | `iterate`, gate unrolling versus one linked AIR chip | `direct-chip` |
 | [`merkle_path1_poseidon.s31`](../examples/hashes/merkle_path1_poseidon.s31) | Private leaf, constrained bit, ordered hashing, public root | `direct-gate` |
 | [`preimage4.s31`](../examples/hashes/preimage4.s31) | Private `u16` witness and an equality assertion | `gate` |

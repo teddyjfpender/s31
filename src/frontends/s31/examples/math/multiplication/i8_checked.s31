@@ -1,0 +1,7 @@
+use std@1;
+
+// -1 * 2 = -2, represented by byte 254.
+circuit i8_checked_product(private a: i8, private b: i8) -> public i8 {
+    let product = std::int::mul_checked(a, b);
+    product
+}

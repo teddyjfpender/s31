@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "name": "mixed_four",
+  "inputs": [
+    { "name": "x", "kind": "m31", "length": 4, "visibility": "private" }
+  ],
+  "nodes": [
+    { "name": "r0", "op": "repeat", "lhs": "x", "rounds": 16, "body": [{ "op": "square" }, { "op": "add_const", "constant": 13 }] },
+    { "name": "r1", "op": "repeat", "lhs": "r0", "rounds": 16, "body": [{ "op": "square" }, { "op": "add_const", "constant": 14 }] },
+    { "name": "r2", "op": "repeat", "lhs": "r1", "rounds": 16, "body": [{ "op": "square" }, { "op": "add_const", "constant": 15 }] },
+    { "name": "r3", "op": "repeat", "lhs": "r2", "rounds": 16, "body": [{ "op": "square" }, { "op": "add_const", "constant": 16 }] },
+    { "name": "sum", "op": "add", "lhs": "r3", "rhs": "x" },
+    { "name": "product", "op": "mul", "lhs": "r3", "rhs": "x" }
+  ],
+  "assertions": [],
+  "public_outputs": ["sum", "product"]
+}

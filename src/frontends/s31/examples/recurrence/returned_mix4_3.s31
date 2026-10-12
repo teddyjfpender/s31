@@ -1,0 +1,12 @@
+use std@1;
+
+// A factory returns the named step as a static function value. The mix4
+// step couples four lanes, while the factory disappears before AIR lowering.
+fn mix(v: [m31; 4]) -> [m31; 4] { std::math::mix4(v) }
+
+fn choose() -> Fn([m31; 4]) -> [m31; 4] { mix }
+
+circuit returned_mix4_3(public x: [m31; 4]) -> public [m31; 4] {
+    let result = iterate<3>(choose(), x);
+    result
+}

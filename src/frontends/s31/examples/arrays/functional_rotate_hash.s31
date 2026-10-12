@@ -1,0 +1,17 @@
+use std@1;
+
+fn apply_hash(
+    f: Fn([m31; 4]) -> Digest<Poseidon2>, value: [m31; 4]
+) -> Digest<Poseidon2> {
+    f(value)
+}
+
+circuit functional_rotate_hash(private x: [m31; 4]) -> public Digest<Poseidon2> {
+    let right = std::array::drop<2>(x);
+    let left = std::array::take<2>(x);
+    let rotated = std::array::concat(right, left);
+    let salt = splat<4>(7_m31);
+    let hash = fun(v: [m31; 4]) -> Digest<Poseidon2> => poseidon2_leaf(v + salt);
+    let result = apply_hash(hash, rotated);
+    result
+}

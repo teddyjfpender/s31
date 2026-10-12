@@ -1,0 +1,39 @@
+# Independent review: source-determined direct Gate physical facts
+
+Reviewed `9afedffdfd7358991d7a83400ffc54a4f3542044` (`SourceDeterminedPhysicalSoundness.lean`, SHA-256 `eaa904213ad3be41fabe85fb223d95e176bf4a39978cc70914ed4ff0ffe3a764`) and `c7a2cabbe59f0d16d7267edcba6cb70297e03a95` (native source-cell fixture, SHA-256 `30b5e18822a2e0f704c89001d76f7165a329863bf35f50d50e5bbc00679c87aa`). This review inspected theorem statements and their called definitions, not just the accompanying prose.
+
+## Result and exact scope
+
+The direct and alias theorems do remove the caller-supplied addition-row count. `checkRelation` or `checkAliasCanonical` fixes a certificate, and `compiledAddRows = 476 - sourceMulCount` supplies the 512-row partition. The proof then reuses `balanced_implies_source_claim` or its alias analogue. I found no circular use of the desired public claim: exact Gate balance is a separate premise, and the forged-claim theorem uses the semantic inequality only by contradiction.
+
+This is **conditional arbitrary-decoded-trace soundness**, not a theorem about accepted native proofs. `UnpartitionedTrace` still requires exact matches for source and public fixed cells, zero arithmetic roots for all 512 rows, unique ideal Gate producers, fixed basis and inverse events, and public input/output pin events. The source check derives none of these. There is also no Lean existence theorem showing that an honest trace satisfies all these facts and ideal balance, so non-vacuity remains an explicit obligation. `hbalance` is ideal multiset equality, not the native verifier's Boolean. The challenge-pair bound additionally assumes canonical event addresses and bounded use/yield multiplicities; it applies to one fixed trace and ideal challenge pair, not adaptive trace selection or Fiat–Shamir/PCS/FRI soundness. A future accepted-proof theorem must derive these premises from authenticated openings and the native statement, including extraction of the decoded trace and the source-to-emitted-fixed-column correspondence.
+
+The native fixture checks four bounded direct-Gate programs with 1, 8, 15, and 16 arithmetic source rows (40 rows total). The generator independently parses each source, checks production normalization, builds a fresh package, runs the full package topology checker, compares each selected exported eight-column row with the positional source schedule, and checks the export's root against the key. Lean checks that the four literal row lists equal its modeled `expectedCells` for the four exact byte literals. I independently compared the fixture's source UTF-8 and normalized JSON with the four Lean byte lists, and their canonical IR SHA-256 values; all four matched. This finite fixture does not quantify over every accepted program or prove that a PCS commitment authenticates those rows.
+
+## Freshness and next soundness step
+
+The fixture's full-column hashes, exporter binary hashes, and preprocessed roots are provenance data in JSON and Lean comments, not propositions checked by Lean. Static validation checks their shape and the source-row equality; `--native` is needed to rederive the exported hashes and roots. The fixture pins Stwo gitlink `fde847ea374ade2ae07ef5b3a42ba07e15655b64`, exporter source SHA-256 `cfad27778fe15f052492e461f74229b4c6a5b7bfde661b4817be629e6c008e6e`, and relation lowering source SHA-256 `7a1c8047468eef045e56eff786ec31c49a980f387f2e824bf94dbe481445bd6c`.
+
+At review time, `python3 -B src/frontends/s31/tests/acceptance/compiler_correspondence/native_source_cells.py` failed its provenance check because an in-progress record range edit had changed `relation_compiler.zig` to SHA-256 `f16f8ed67a4da58ddcfb3e4b55b588b26a77caf5d1d19641f31d15709a75c268`. This is a freshness gate, not a counterexample to the theorem. After that edit settles, regenerate using `--native --write` against fresh packages, rerun static validation and the focused Lean module, and refresh source bindings before treating the fixture as current.
+
+For the next formal step, construct at least one honest decoded witness satisfying `UnpartitionedTrace` and balance to rule out accidental vacuity, then define an explicit native-verifier-to-decoded-trace extraction contract whose conclusion supplies those fields and exact external pins from authenticated commitments. Keep the native exporter/PCS/Fiat–Shamir assumptions visible in the contract; a direct Lean proof from `checkRelation` alone would be unsound.
+
+## Addendum: honest source-cell witness (`38ba7e6`, 2026-10-12)
+
+Reviewed `38ba7e60ffb77ea6dd12e60c4454c0a1e15ea2af`, `HonestSourceCellWitness.lean` SHA-256 `7677a4e4890cb569661d9c7dbde04f199d9dd08733b0f934d3df5bb4285f2d9b`. The construction closes **source-cell arithmetic non-vacuity** for every `checkRelation`-accepted bounded direct source and every four-lane input; the alias theorem does the same for every `checkAliasCanonical`-accepted triple. This remains conditional on byte admission, though concrete accepted byte fixtures exist elsewhere in the formal tree.
+
+The proof derives a total source denotation from the successful parse, uses byte-check soundness to obtain a successful normalized interpreter run, converts that run to `AcceptsTrace`, and reads all operands and outputs from one final SSA value list. Fresh instruction IDs and the append-only execution relation make `wireOfFinal final (22 + id)` coherent for every used source ID; its default zero is not used for admitted instruction operands or outputs. `SourcePlan` then supplies each modeled cell's opcode and three addresses, so `sourceCellsEvaluated` holds and the chosen output address contains the interpreted result. `Qm31Ops.accepts` denotes the nine modeled local residual equations. There is no extra assumed output value or circular use of the conclusion.
+
+The existential witness is a **logical address-to-value function**, not a `Trace 9` with physical main columns. `sourceCellsEvaluated` checks local arithmetic and source opcode/address matches against `expectedCells`; it does not assert the cell's trace position or multiplicity in its own predicate, instantiate the source-independent fixed rows, produce public pin or Gate events, establish unique producers or ideal balance, authenticate a native export, or derive verifier acceptance. The earlier `UnpartitionedTrace` non-vacuity and accepted-proof correspondence gaps therefore remain. A useful next theorem is a full honest modeled `Trace 9` satisfying `UnpartitionedTrace` and balance, with separately stated native authentication assumptions. No Lake or native rebuild was run during this static review because the four-case fixture rebuild was in progress.
+
+## Maintainer refresh after the review
+
+At `0b8ef0f`, the maintainer reran `native_source_cells.py --native --write`
+after the public `u8` compiler edit, then passed its static fixture check.
+The updated relation-lowering source SHA-256 is
+`2b46f1f4f3631a455095260827e416456871c030a783ed1f6df2ee2835b78d54`.
+All four source-row lists, complete fixed-column digests, and preprocessed
+roots stayed byte-identical; compiler and native binary provenance hashes
+changed. The independent review above covers the original fixture's logic
+and source-byte comparison; this refresh is maintainer evidence, not a second
+independent native replay.

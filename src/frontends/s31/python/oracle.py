@@ -34,7 +34,8 @@ _HASH_OPS = frozenset({
 _OPS = frozenset({"constant", "cast_m31", "array_get", "array_concat", "array_slice", "add", "mul", "inv", "is_zero", "bool_not", "bool_and", "bool_or", "bool_xor", "bool_select", "add_const",
                   "mul_const", "sum_lanes", "select", "repeat",
                   "u256_add", "u256_le", "u256_add_checked", "u256_sub", "u256_sub_checked",
-                  "int_view", "int_add_checked", "int_add_wrapping", "int_sub_checked", "int_sub_wrapping", "int_le",
+                  "int_view", "int_add_checked", "int_add_wrapping", "int_sub_checked", "int_sub_wrapping", "int_le", "int_mul_wrapping", "int_mul_checked", "int_cast_checked", "int_bit_and", "int_bit_or", "int_bit_xor", "int_bit_not",
+                  "int_shl", "int_shr_logical", "int_shr_arithmetic", "int_rotl", "int_rotr", "int_div_rem",
                   "hash_sha256d_header", "bitcoin_target_mainnet", "bitcoin_block_work",
                   "bitcoin_prev_hash", "bitcoin_header_bits", "bitcoin_header_time", "u32_lt",
                   "bitcoin_genesis_hash_mainnet"}) | _HASH_OPS
@@ -110,8 +111,17 @@ def _int_spec(node: Mapping[str, Any]) -> tuple[int, bool, int]:
     return width, signed, max(1, width // 16)
 
 
+def _cast_spec(node: Mapping[str, Any]) -> tuple[tuple[int, bool, int], tuple[int, bool, int]]:
+    encoded = _uint(node.get("constant"), f"{node['name']}.constant", 1 << 18)
+    source = _int_spec({"name": node["name"], "constant": encoded & 511})
+    target = _int_spec({"name": node["name"], "constant": encoded >> 9})
+    return source, target
+
+
 def _validated_shapes(relation: Mapping[str, Any]) -> tuple[dict[str, tuple[str, int]], int]:
-    _object(relation, "relation", {"version", "name", "inputs", "nodes", "assertions", "public_outputs"})
+    _object(relation, "relation", {"version", "name", "proof_mode", "inputs", "nodes", "assertions", "public_outputs"})
+    if relation.get("proof_mode", "transparent") not in ("transparent", "blinded"):
+        raise OracleError("relation.proof_mode must be transparent or blinded")
     if relation.get("version") != 1 or type(relation.get("version")) is not int:
         raise OracleError("relation.version must be 1")
     _name(relation.get("name"), "relation.name")
@@ -146,7 +156,8 @@ def _validated_shapes(relation: Mapping[str, Any]) -> tuple[dict[str, tuple[str,
         selector = _operand(node, "selector", shapes)
         if op not in {"select", "bool_select"}:
             _absent(node, "selector")
-        if op not in {"array_get", "array_slice"}:
+        if op not in {"array_get", "array_slice", "int_shl", "int_shr_logical",
+                      "int_shr_arithmetic", "int_rotl", "int_rotr"}:
             _absent(node, "index")
         if op == "constant":
             _absent(node, "lhs", "rhs", "rounds", "body")
@@ -220,12 +231,32 @@ def _validated_shapes(relation: Mapping[str, Any]) -> tuple[dict[str, tuple[str,
             if lhs != ("u16", 16) or rhs != ("u16", 16):
                 raise OracleError(f"{name}: {op} requires two 16-limb u256 operands")
             shape = ("u16", 16) if op in {"u256_add", "u256_add_checked", "u256_sub", "u256_sub_checked"} else ("m31", 1)
-        elif op in {"int_view", "int_add_checked", "int_add_wrapping", "int_sub_checked", "int_sub_wrapping", "int_le"}:
-            _absent(node, "length", "rounds", "body")
+        elif op in {"int_view", "int_add_checked", "int_add_wrapping", "int_sub_checked", "int_sub_wrapping", "int_le", "int_mul_wrapping", "int_mul_checked", "int_bit_and", "int_bit_or", "int_bit_xor", "int_bit_not"}:
+            _absent(node, "selector", "index", "length", "rounds", "body")
             width, _, limb_count = _int_spec(node)
-            if lhs != ("u16", limb_count) or (rhs is not None if op == "int_view" else rhs != lhs):
+            if lhs != ("u16", limb_count) or (rhs is not None if op in {"int_view", "int_bit_not"} else rhs != lhs):
                 raise OracleError(f"{name}: {op} requires {limb_count} u16 limb(s) for {width} bits")
             shape = ("m31", 1) if op == "int_le" else lhs
+        elif op == "int_div_rem":
+            _absent(node, "selector", "index", "length", "rounds", "body")
+            width, _, limb_count = _int_spec(node)
+            if lhs != ("u16", limb_count) or rhs != lhs:
+                raise OracleError(f"{name}: div_rem requires equal-width integers")
+            shape = ("u16", 2 * limb_count)
+        elif op in {"int_shl", "int_shr_logical", "int_shr_arithmetic", "int_rotl", "int_rotr"}:
+            _absent(node, "rhs", "selector", "length", "rounds", "body")
+            width, signed, limb_count = _int_spec(node)
+            count = _uint(node.get("index"), f"{name}.index", width + 1)
+            if lhs != ("u16", limb_count) or (op in {"int_rotl", "int_rotr"} and count == width) or (
+                op == "int_shr_arithmetic" and not signed):
+                raise OracleError(f"{name}: invalid static integer shift")
+            shape = lhs
+        elif op == "int_cast_checked":
+            _absent(node, "rhs", "selector", "index", "length", "rounds", "body")
+            source, target = _cast_spec(node)
+            if lhs != ("u16", source[2]):
+                raise OracleError(f"{name}: cast requires {source[2]} source limb(s)")
+            shape = ("u16", target[2])
         elif op == "bitcoin_block_work":
             _absent(node, "rhs", "selector", "constant", "length", "rounds", "body")
             if lhs != ("u16", 16):
@@ -402,7 +433,47 @@ def evaluate_relation(relation: Mapping[str, Any], assignment: Mapping[str, Any]
             result = ([int(a <= b)] if op == "u256_le" else
                       [(((a - b) if op in {"u256_sub", "u256_sub_checked"} else (a + b)) >> (16 * index)) & 0xffff
                        for index in range(16)])
-        elif op in {"int_view", "int_add_checked", "int_add_wrapping", "int_sub_checked", "int_sub_wrapping", "int_le"}:
+        elif op in {"int_shl", "int_shr_logical", "int_shr_arithmetic", "int_rotl", "int_rotr"}:
+            width, signed, count = _int_spec(node)
+            limit = 1 << width
+            amount = node["index"]
+            bits = sum(word << (16 * index) for index, word in enumerate(lhs))
+            if bits >= limit:
+                raise OracleError(f"{name}: integer operand exceeds {width} bits")
+            if op == "int_shl":
+                shifted = (bits << amount) & (limit - 1)
+            elif op == "int_shr_logical":
+                shifted = bits >> amount
+            elif op == "int_shr_arithmetic":
+                signed_value = bits - limit if bits >= limit // 2 else bits
+                shifted = (signed_value >> amount) & (limit - 1)
+            elif op == "int_rotl":
+                shifted = ((bits << amount) | (bits >> (width - amount))) & (limit - 1) if amount else bits
+            else:
+                shifted = ((bits >> amount) | (bits << (width - amount))) & (limit - 1) if amount else bits
+            result = [(shifted >> (16 * index)) & 0xffff for index in range(count)]
+        elif op == "int_div_rem":
+            width, signed, count = _int_spec(node)
+            numerator = sum(word << (16 * index) for index, word in enumerate(lhs))
+            denominator = sum(word << (16 * index) for index, word in enumerate(rhs))
+            limit = 1 << width
+            if numerator >= limit or denominator >= limit:
+                raise OracleError(f"{name}: division operand exceeds {width}-bit range")
+            half = limit >> 1
+            numerator_negative = signed and numerator >= half
+            denominator_negative = signed and denominator >= half
+            a = numerator - limit if numerator_negative else numerator
+            b = denominator - limit if denominator_negative else denominator
+            if b == 0:
+                raise OracleError(f"{name}: division by zero")
+            q_magnitude, r_magnitude = divmod(abs(a), abs(b))
+            quotient = -q_magnitude if (a < 0) != (b < 0) else q_magnitude
+            remainder = -r_magnitude if a < 0 else r_magnitude
+            if signed and not -half <= quotient < half:
+                raise OracleError(f"{name}: checked integer division overflow")
+            result = [(number >> (16 * index)) & 0xffff
+                      for number in (quotient % limit, remainder % limit) for index in range(count)]
+        elif op in {"int_view", "int_add_checked", "int_add_wrapping", "int_sub_checked", "int_sub_wrapping", "int_le", "int_mul_wrapping", "int_mul_checked", "int_bit_and", "int_bit_or", "int_bit_xor", "int_bit_not"}:
             width, signed, count = _int_spec(node)
             limit = 1 << width
             a = sum(word << (16 * index) for index, word in enumerate(lhs))
@@ -413,8 +484,22 @@ def evaluate_relation(relation: Mapping[str, Any], assignment: Mapping[str, Any]
                 return pattern - limit if signed and pattern >= (limit >> 1) else pattern
             if op == "int_view":
                 result = lhs.copy()
+            elif op == "int_bit_not":
+                result = [((~a & (limit - 1)) >> (16 * index)) & 0xffff for index in range(count)]
+            elif op in {"int_bit_and", "int_bit_or", "int_bit_xor"}:
+                bits = (a & b) if op == "int_bit_and" else (a | b) if op == "int_bit_or" else (a ^ b)
+                result = [(bits >> (16 * index)) & 0xffff for index in range(count)]
             elif op == "int_le":
                 result = [int(interpreted(a) <= interpreted(b))]
+            elif op in {"int_mul_wrapping", "int_mul_checked"}:
+                mathematical = interpreted(a) * interpreted(b)
+                if op == "int_mul_checked":
+                    low = -(limit >> 1) if signed else 0
+                    high = (limit >> 1) - 1 if signed else limit - 1
+                    if not low <= mathematical <= high:
+                        raise OracleError(f"{name}: checked integer multiplication overflow")
+                bits = mathematical % limit
+                result = [(bits >> (16 * index)) & 0xffff for index in range(count)]
             else:
                 mathematical = interpreted(a) + interpreted(b) if "add" in op else interpreted(a) - interpreted(b)
                 if op.endswith("checked"):
@@ -424,6 +509,20 @@ def evaluate_relation(relation: Mapping[str, Any], assignment: Mapping[str, Any]
                         raise OracleError(f"{name}: checked integer arithmetic overflow")
                 bits = mathematical % limit
                 result = [(bits >> (16 * index)) & 0xffff for index in range(count)]
+        elif op == "int_cast_checked":
+            source, target = _cast_spec(node)
+            source_width, source_signed, _ = source
+            target_width, target_signed, count = target
+            pattern = sum(word << (16 * index) for index, word in enumerate(lhs))
+            if pattern >= 1 << source_width:
+                raise OracleError(f"{name}: integer operand exceeds {source_width} bits")
+            number = pattern - (1 << source_width) if source_signed and pattern >= 1 << (source_width - 1) else pattern
+            low = -(1 << (target_width - 1)) if target_signed else 0
+            high = (1 << (target_width - 1)) - 1 if target_signed else (1 << target_width) - 1
+            if not low <= number <= high:
+                raise OracleError(f"{name}: checked integer cast overflow")
+            result = [((number % (1 << target_width)) >> (16 * index)) & 0xffff
+                      for index in range(count)]
         elif op == "hash_sha256d_header":
             header = struct.pack("<40H", *lhs)
             first = hashlib.sha256(header).digest()

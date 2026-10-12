@@ -1,0 +1,5 @@
+struct Pair { square: [m31; 1], again: [m31; 1] }
+circuit pair(public x: [m31; 1]) -> public Pair {
+    let square = x .* x;
+    Pair { square: square, again: square }
+}

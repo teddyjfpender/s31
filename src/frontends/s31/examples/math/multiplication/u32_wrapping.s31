@@ -1,0 +1,7 @@
+use std@1;
+
+// (2^32 - 1) * 2 wraps to 2^32 - 2 across two u16 limbs.
+circuit u32_wrapping(private a: u32, private b: u32) -> public u32 {
+    let product = std::int::mul_wrapping(a, b);
+    product
+}

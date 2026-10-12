@@ -1,0 +1,8 @@
+use std@1;
+
+// The quotient and remainder each occupy four little-endian u16 limbs.
+circuit i64_div_rem(private numerator: i64, private divisor: i64) -> public [u16; 8] {
+    let (quotient, remainder) = std::int::div_rem(numerator, divisor);
+    let result = std::array::concat(std::int::limbs(quotient), std::int::limbs(remainder));
+    result
+}

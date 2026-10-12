@@ -1,0 +1,593 @@
+"""Bounded independent parser and ambiguous-input rejection controls."""
+
+from __future__ import annotations
+
+import sys
+import copy
+import hashlib
+import itertools
+import struct
+import tempfile
+import unittest
+from pathlib import Path
+from unittest.mock import patch
+
+S31 = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(S31 / "python"))
+sys.path.insert(0, str(S31.parents[2] / "scripts"))
+
+from package.correspondence import (DIRECT_COLUMN_IDS, M31_MODULUS,
+                                    PLAIN_BUILTIN_NAMES,
+                                    UnsupportedFragment, _check_constant_island,
+                                    _qm_mul, canonical_ir_bytes, check_gate_topology,
+                                    check_exported_root, check_source_fixed_rows,
+                                    digest, parse_source,
+                                    read_canonical_json)
+from package.direct_gate_schedule import constant_and_padding, exact_direct_gate_schedule
+from language.builtins import BUILTINS
+from library.stdlib import TypeErrorS31
+from text_frontend import SourceError, compile_text
+from export_s31_direct_gate_bridge import render_bridge
+
+
+class CorrespondenceParserTests(unittest.TestCase):
+    def test_circuit_builtin_inventory_matches_production_namespace(self) -> None:
+        # The checker keeps its own small, reviewed reserved-name inventory.
+        # A new builtin must update that inventory before release admission.
+        self.assertEqual(PLAIN_BUILTIN_NAMES,
+                         {name for name in BUILTINS if name.isidentifier()})
+        for name in sorted(PLAIN_BUILTIN_NAMES):
+            source = (f"circuit {name}(public x: [m31; 4]) -> public [m31; 4] "
+                      "{ let y = x .* x; y }")
+            with self.subTest(name=name), self.assertRaisesRegex(
+                    UnsupportedFragment, "reserved by the compiler"):
+                parse_source(source.encode())
+
+    def test_relation_name_limit_matches_production_and_aliases_are_free(self) -> None:
+        def source(input_name: str, producer: str, alias: str | None = None) -> str:
+            return (f"circuit ordinary(public {input_name}: [m31; 4]) "
+                    "-> public [m31; 4] { "
+                    f"let {producer} = {input_name} .* {input_name}; "
+                    + (f"let {alias} = {producer}; {alias}" if alias else producer)
+                    + " }")
+
+        bounded_input = "x" * 128
+        bounded_producer = "y" * 128
+        long_alias = "a" * 129
+        for text in (source(bounded_input, "y"),
+                     source("x", bounded_producer),
+                     source("x", "y", long_alias)):
+            with self.subTest(text=text[:80]):
+                checked, _ = parse_source(text.encode())
+                produced, _ = compile_text(text)
+                self.assertEqual(checked, produced)
+        for text, error in ((source("x" * 129, "y"), "input name"),
+                            (source("x", "y" * 129), "producer name")):
+            with self.subTest(error=error), self.assertRaisesRegex(
+                    UnsupportedFragment, error):
+                parse_source(text.encode())
+            with self.assertRaisesRegex((SourceError, TypeErrorS31),
+                                        "relation names may contain"):
+                compile_text(text)
+
+    def test_exported_fixed_root_matches_sealed_key(self) -> None:
+        root = "1a" * 32
+        topology = {"schema": "s31-direct-gate-topology-v2",
+                    "preprocessed_root": root}
+        key = {"preprocessed_root": root}
+        self.assertTrue(check_exported_root(topology, key))
+        for changed in ("2b" * 32, root.upper(), root[:-1], 7):
+            with self.subTest(changed=changed):
+                topology["preprocessed_root"] = changed
+                with self.assertRaisesRegex(ValueError, "exported direct AIR fixed root"):
+                    check_exported_root(topology, key)
+        self.assertFalse(check_exported_root(
+            {"schema": "s31-direct-gate-topology-v1"}, key))
+
+    def test_exact_canonical_ir_identity_and_source_mutations(self) -> None:
+        source = ("circuit square(public x: [m31; 4]) -> public [m31; 4] "
+                  "{ let once = x .* x; let result = once .* once; result }")
+
+        def identity(text: str) -> str:
+            _, syntax = parse_source(text.encode())
+            return digest(canonical_ir_bytes(syntax))
+
+        baseline = identity(source)
+        # This is the Zig canonical.build digest of the checked production
+        # direct-gate square4 fixture, not a hash computed from this test.
+        self.assertEqual(baseline,
+                         "e7c40b96e601b8ea21557ae6c459f2315152b2aca812b0e8d876798c7e0a63a9")
+        changed = (
+            source.replace("once = x .* x", "once = x + x"),
+            source.replace("result = once .* once", "result = x .* once"),
+            source.replace("public x:", "public input:").replace(
+                "once = x .* x", "once = input .* input"),
+            source.replace("result }", "once }"),
+            source.replace("let once = x .* x; let result = once .* once;",
+                           "let result = x .* x; let once = result .* result;"),
+        )
+        for mutant in changed:
+            with self.subTest(mutant=mutant):
+                self.assertNotEqual(identity(mutant), baseline)
+        # The source map retains local names, but the canonical verifier
+        # identity deliberately quotients alpha-renaming of nonpublic lets.
+        renamed = source.replace("once", "intermediate")
+        self.assertEqual(identity(renamed), baseline)
+
+        # A second native fixture exercises two-digit SSA IDs and mixed
+        # operation order at the fragment's 16-step limit.
+        steps = []
+        for index in range(1, 17):
+            previous = "x" if index == 1 else f"y{index - 1}"
+            operator = ".*" if index % 2 else "+"
+            steps.append(f"let y{index} = x {operator} {previous};")
+        long_source = ("circuit arithmetic(public x: [m31; 4]) -> public "
+                       "[m31; 4] { " + " ".join(steps) + " y16 }")
+        self.assertEqual(identity(long_source),
+                         "62ec751ee84f07845a0e6afb4021805860b2cfea18c373b356ee7682b52dd695")
+
+    def test_lean_export_rejects_topology_changed_after_admission(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            package = Path(directory)
+            source = b"bounded source fixture"
+            relation = b"bounded normalized fixture"
+            original_topology = b'{"n_vars":512}'
+            (package / "source.s31").write_bytes(source)
+            (package / "source.s31.json").write_bytes(relation)
+            topology_path = package / "gate-topology.json"
+            topology_path.write_bytes(original_topology)
+            checked = {
+                "source_sha256": hashlib.sha256(source).hexdigest(),
+                "relation_sha256": hashlib.sha256(relation).hexdigest(),
+                "gate_topology_sha256": hashlib.sha256(original_topology).hexdigest(),
+            }
+
+            def admitted_then_changed(_: Path) -> dict:
+                topology_path.write_bytes(b'{"n_vars":511}')
+                return checked
+
+            with patch("export_s31_direct_gate_bridge.check_package",
+                       side_effect=admitted_then_changed):
+                with self.assertRaisesRegex(ValueError, "checked topology digest"):
+                    render_bridge(package)
+
+    def test_add_mul_and_shared_let_match_production_relation(self) -> None:
+        cases = (
+            "let result = x + x; result",
+            "let square = x .* x; let result = square .* square; result",
+            "let a = x + x; let b = x .* a; let result = a + b; result",
+        )
+        for body in cases:
+            source = ("circuit arithmetic(public x: [m31; 4]) -> public "
+                      f"[m31; 4] {{ {body} }}")
+            with self.subTest(body=body):
+                independent, syntax = parse_source(source.encode())
+                produced, _ = compile_text(source)
+                self.assertEqual(independent, produced)
+                self.assertEqual(len(syntax["instructions"]), len(produced["nodes"]))
+
+    def test_zero_cost_aliases_and_parentheses_match_production(self) -> None:
+        cases = (
+            "let a = x; let y = a .* a; y",
+            "let a = (x); let y = ((a)) + ((a)); (y);",
+            "let a = x + x; let b = (a); let y = ((x) .* (b)); ((y))",
+            "let y = x .* x; let z = y; z;",
+            "let a = x; let y = (a .* (a)); let z = (y); (z);",
+            "let a = x + x; let b = a; let c = b .* b; let d = c; a",
+        )
+        for body in cases:
+            source = ("circuit arithmetic(public x: [m31; 4]) -> public "
+                      f"[m31; 4] {{ {body} }}")
+            with self.subTest(body=body):
+                independent, syntax = parse_source(source.encode())
+                produced, source_map = compile_text(source)
+                self.assertEqual(independent, produced)
+                self.assertEqual(set(source_map),
+                                 {node["name"] for node in independent["nodes"]})
+                self.assertEqual(len(syntax["instructions"]), len(independent["nodes"]))
+                self.assertEqual(syntax["output_name"], independent["public_outputs"][0])
+                # Aliases and parentheses consume no extra canonical IR
+                # nodes or native gates: both representations have the same
+                # verifier identity as the direct arithmetic spelling.
+                direct = " ".join(
+                    f"let {node['name']} = {node['lhs']} "
+                    f"{'+' if node['op'] == 'add' else '.*'} {node['rhs']};"
+                    for node in independent["nodes"])
+                baseline = ("circuit arithmetic(public x: [m31; 4]) -> public "
+                            "[m31; 4] { " + direct + " " + syntax["output_name"] + " }")
+                baseline_relation, baseline_syntax = parse_source(baseline.encode())
+                self.assertEqual(independent, baseline_relation)
+                self.assertEqual(canonical_ir_bytes(syntax),
+                                 canonical_ir_bytes(baseline_syntax))
+                self.assertEqual(exact_direct_gate_schedule(syntax),
+                                 exact_direct_gate_schedule(baseline_syntax))
+
+    def test_alias_chains_preserve_producer_identity_across_operator_pairs(self) -> None:
+        checked = 0
+        for first_op, second_op in itertools.product(("+", ".*"), repeat=2):
+            for aliases in range(5):
+                chain = ["x"]
+                statements = []
+                for index in range(aliases):
+                    name = f"alias{index}"
+                    statements.append(f"let {name} = ({chain[-1]});")
+                    chain.append(name)
+                statements.append(
+                    f"let first = (({chain[-1]}) {first_op} ({chain[-1]}));")
+                statements.append("let first_alias = ((first));")
+                statements.append(
+                    f"let second = (({chain[-1]}) {second_op} (first_alias));")
+                statements.append("let result_alias = (second);")
+                for output in ("first_alias", "result_alias"):
+                    source = ("circuit arithmetic(public x: [m31; 4]) -> public "
+                              "[m31; 4] { " + " ".join(statements) + f" ({output}); }}")
+                    expected, syntax = parse_source(source.encode())
+                    produced, source_map = compile_text(source)
+                    self.assertEqual(expected, produced)
+                    self.assertEqual(set(source_map), {"first", "second"})
+                    self.assertEqual(
+                        syntax["output_name"],
+                        "first" if output == "first_alias" else "second")
+                    self.assertEqual([step["id"] for step in syntax["instructions"]],
+                                     [1, 2])
+                    checked += 1
+        self.assertEqual(checked, 40)
+
+    def test_alias_retargeting_changes_checked_relation_and_ir(self) -> None:
+        source = ("circuit arithmetic(public x: [m31; 4]) -> public [m31; 4] "
+                  "{ let first = x + x; let second = x .* x; "
+                  "let chosen = first; let out = chosen .* second; "
+                  "let returned = out; returned }")
+        original, original_ssa = parse_source(source.encode())
+        changed_operand, operand_ssa = parse_source(
+            source.replace("chosen = first", "chosen = second").encode())
+        changed_output, output_ssa = parse_source(
+            source.replace("returned = out", "returned = first").encode())
+        self.assertNotEqual(original, changed_operand)
+        self.assertNotEqual(original, changed_output)
+        self.assertNotEqual(canonical_ir_bytes(original_ssa),
+                            canonical_ir_bytes(operand_ssa))
+        self.assertNotEqual(canonical_ir_bytes(original_ssa),
+                            canonical_ir_bytes(output_ssa))
+        for changed, text in ((changed_operand, source.replace(
+                "chosen = first", "chosen = second")),
+                (changed_output, source.replace("returned = out", "returned = first"))):
+            with self.subTest(text=text):
+                produced, _ = compile_text(text)
+                self.assertEqual(changed, produced)
+
+    def test_rejects_forward_duplicate_and_unsupported_syntax(self) -> None:
+        cases = (
+            "let result = later .* x; let later = x .* x; result",
+            "let result = x .* x; let result = result + x; result",
+            "let result = std::math::pow<2>(x); result",
+            "let unused = x .* x; x",
+            "let a = x + x; let b = a .* x; b",
+            "let a = x + x; let b = a; let y = b .* x; y",
+            "let a = x + x; let b = x + x; b",
+            "let a = x; let a = x .* x; a",
+            "let a = later; let later = x .* x; later",
+            "let y = x .* x; let z = y; z + y",
+            "let y = (x .* x; y",
+            "let y = x .* (x + x); y",
+            "let y = ((x .* x) .* x); y",
+            "let y = x .* x; let alias = x; alias",
+            "let if = x .* x; if",
+            "let fn = x .* x; fn",
+        )
+        for body in cases:
+            source = ("circuit arithmetic(public x: [m31; 4]) -> public "
+                      f"[m31; 4] {{ {body} }}")
+            with self.subTest(body=body), self.assertRaises(UnsupportedFragment):
+                parse_source(source.encode())
+
+    def test_bounded_source_bytes_and_tokens(self) -> None:
+        source = ("circuit square(public x: [m31; 4]) -> public [m31; 4] "
+                  "{ let y = x .* x; y }")
+        with self.assertRaisesRegex(UnsupportedFragment, "byte limit"):
+            parse_source((source + "\n//" + "a" * 16_384).encode())
+        with self.assertRaisesRegex(UnsupportedFragment, "token limit"):
+            parse_source((source + " x" * 257).encode())
+
+    def test_only_ascii_whitespace_is_accepted_outside_comments(self) -> None:
+        source = ("circuit square(public x: [m31; 4]) -> public [m31; 4] "
+                  "{ let y = x .* x; y }")
+        for separator in ("\u00a0", "\u2003", "\u2028"):
+            with self.subTest(separator=repr(separator)):
+                with self.assertRaisesRegex(UnsupportedFragment, "unsupported token"):
+                    parse_source(source.replace("let y", f"let{separator}y").encode())
+        # The byte grammar ignores comment contents through the next LF.
+        relation, _ = parse_source((source + " // Unicode \u00a0 in a comment\n").encode())
+        self.assertEqual(relation["name"], "square")
+
+    def test_small_canonical_ssa_agrees_with_production_frontend(self) -> None:
+        # Compare two independently implemented parsers across shared wires,
+        # both operators, and a returned earlier binding. These are package
+        # admission controls; they do not replace the Lean theorem.
+        names = ("x", "a", "b", "c")
+        checked = 0
+        for count in range(1, 4):
+            choices = [
+                [(op, left, right) for op in ("+", ".*")
+                 for left in range(index + 1)
+                 for right in range(left, index + 1)]
+                for index in range(count)
+            ]
+            for steps in itertools.product(*choices):
+                if len({(op, left, right) for op, left, right in steps}) != count:
+                    continue
+                body = " ".join(
+                    f"let {names[index + 1]} = {names[left]} {op} {names[right]};"
+                    for index, (op, left, right) in enumerate(steps)
+                )
+                for output in range(1, count + 1):
+                    source = ("circuit scan(public x: [m31; 4]) -> public [m31; 4] "
+                              f"{{ {body} {names[output]} }}")
+                    expected, syntax = parse_source(source.encode())
+                    actual, _ = compile_text(source)
+                    self.assertEqual(expected, actual)
+                    self.assertEqual(syntax["output"], output)
+                    checked += 1
+        self.assertGreater(checked, 100)
+
+    def test_duplicate_keys_and_noncanonical_json_reject(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "ambiguous.json"
+            for data in ('{"op":"mul","op":"add"}\n',
+                         '{"op": NaN}\n', '{ "op": "mul" }\n'):
+                with self.subTest(data=data):
+                    path.write_text(data)
+                    with self.assertRaises(ValueError):
+                        read_canonical_json(path)
+
+    def test_value_free_gate_replay_and_resealed_wrong_selector(self) -> None:
+        source = ("circuit square(public x: [m31; 4]) -> public [m31; 4] "
+                  "{ let y = x .* x; y }")
+        _, syntax = parse_source(source.encode())
+        topo = {
+            "schema": "s31-direct-gate-topology-v1", "program_sha256": "a" * 64,
+            "n_vars": 46, "output": [2, *range(3, 11)],
+            "add": [
+                {"in0": 11, "in1": 19, "out": 22},
+                {"in0": 22, "in1": 20, "out": 23},
+                {"in0": 23, "in1": 21, "out": 24},
+                *({"in0": wire, "in1": 0, "out": index}
+                  for index, wire in enumerate((11, 12, 13, 14, 26, 30, 31, 32), 3)),
+                *({"in0": 1, "in1": 1, "out": wire} for wire in range(36, 42)),
+            ],
+            "sub": [],
+            "mul": [
+                *({"in0": 15 + lane, "in1": 11 + lane, "out": 18 + lane}
+                  for lane in range(1, 4)),
+                *({"in0": 26 + lane, "in1": 32 + lane, "out": 29 + lane}
+                  for lane in range(1, 4)),
+            ],
+            "pointwise_mul": [
+                {"in0": 24, "in1": 24, "out": 25},
+                *({"in0": 25, "in1": (1 if lane == 0 else 15 + lane), "out": 26 + lane}
+                  for lane in range(4)),
+                *({"in0": wire, "in1": 1, "out": wire} for wire in range(11, 15)),
+            ],
+            "permutation_ends": [], "permutation_inputs": [],
+            "permutation_outputs": [], "first_permutation_row": 32,
+        }
+        produced = {gate["out"] for kind in ("add", "sub", "mul", "pointwise_mul")
+                    for gate in topo[kind]}
+        for missing in sorted(set(range(topo["n_vars"])) - produced):
+            topo["add"].append({"in0": 0, "in1": 0, "out": missing})
+        current_rows = sum(len(topo[kind]) for kind in ("add", "sub", "mul", "pointwise_mul"))
+        while current_rows < 64:
+            topo["add"].append({"in0": 1, "in1": 1, "out": topo["n_vars"]})
+            topo["n_vars"] += 1
+            current_rows += 1
+        topo["first_permutation_row"] = current_rows
+
+        def reseal(value: dict) -> dict:
+            uses = [0] * value["n_vars"]
+            for kind in ("add", "sub", "mul", "pointwise_mul"):
+                for gate in value[kind]:
+                    uses[gate["in0"]] += 1
+                    uses[gate["in1"]] += 1
+            for address in value["output"]:
+                uses[address] += 1
+            rows = []
+            for index, kind in enumerate(("add", "sub", "mul", "pointwise_mul")):
+                for gate in value[kind]:
+                    rows.append([*(int(i == index) for i in range(4)),
+                                 gate["in0"], gate["in1"], gate["out"], uses[gate["out"]]])
+            value["columns"] = [{"id": name, "values": [row[index] for row in rows]}
+                                for index, name in enumerate(DIRECT_COLUMN_IDS)]
+            return {"preprocessed_columns": [{
+                "id": column["id"], "commitment_index": index, "rows": len(rows),
+                "log_size": len(rows).bit_length() - 1,
+                "values_sha256": hashlib.sha256(b"".join(
+                    struct.pack("<I", word) for word in column["values"])).hexdigest(),
+            } for index, column in enumerate(value["columns"])]}
+
+        component = reseal(topo)
+        report = {"padded": {"qm31_ops": 64}, "trace_log_size": 6}
+
+        def checked(value: dict, declaration: dict) -> list[dict]:
+            # This synthetic fixture covers selector/ABI replay. Native
+            # acceptance checks the exact fixed constant and padding plan.
+            source_adds = sum(node["op"] == "add" for node in syntax["instructions"])
+            synthetic = ({"add": value["add"][3 + source_adds + 8:],
+                          "sub": value["sub"], "mul": value["mul"][6:]},
+                         value["n_vars"], report["padded"]["qm31_ops"])
+            synthetic_exact = ({kind: value[kind] for kind in
+                                ("add", "sub", "mul", "pointwise_mul")},
+                               value["n_vars"], report["padded"]["qm31_ops"],
+                               [{"id": 1, "op": "mul", **value["pointwise_mul"][0]}])
+            with (patch("package.correspondence._check_constant_island"),
+                  patch("package.correspondence.constant_and_padding", return_value=synthetic),
+                  patch("package.correspondence.exact_direct_gate_schedule",
+                        return_value=synthetic_exact)):
+                return check_gate_topology(syntax, value, declaration, report, "a" * 64)
+
+        self.assertEqual(checked(topo, component)[0]["op"], "mul")
+        rooted = copy.deepcopy(topo)
+        rooted["schema"] = "s31-direct-gate-topology-v2"
+        rooted["preprocessed_root"] = "1a" * 32
+        self.assertEqual(checked(rooted, component)[0]["op"], "mul")
+        del rooted["preprocessed_root"]
+        with self.assertRaisesRegex(ValueError, "topology header"):
+            checked(rooted, component)
+        plus_source = ("circuit sum(public x: [m31; 4]) -> public [m31; 4] "
+                       "{ let y = x + x; y }")
+        _, plus_syntax = parse_source(plus_source.encode())
+        plus = copy.deepcopy(topo)
+        plus["add"].insert(3, plus["pointwise_mul"].pop(0))
+        plus["program_sha256"] = "b" * 64
+        plus_component = reseal(plus)
+        plus_synthetic = ({"add": plus["add"][12:], "sub": plus["sub"],
+                           "mul": plus["mul"][6:]}, plus["n_vars"], 64)
+        plus_exact = ({kind: plus[kind] for kind in
+                       ("add", "sub", "mul", "pointwise_mul")},
+                      plus["n_vars"], 64,
+                      [{"id": 1, "op": "add", **plus["add"][3]}])
+        with (patch("package.correspondence._check_constant_island"),
+              patch("package.correspondence.constant_and_padding", return_value=plus_synthetic),
+              patch("package.correspondence.exact_direct_gate_schedule",
+                    return_value=plus_exact)):
+            self.assertEqual(check_gate_topology(plus_syntax, plus, plus_component,
+                                                 report, "b" * 64)[0]["op"], "add")
+        forged = copy.deepcopy(topo)
+        forged["pointwise_mul"].pop(0)
+        forged["add"].insert(3, {"in0": 24, "in1": 24, "out": 25})
+        forged["pointwise_mul"].append(forged["add"].pop())
+        # The forged compiler can reseal every column digest. It still cannot
+        # make an add gate satisfy the independent source operation check.
+        forged["first_permutation_row"] = 64
+        forged_component = reseal(forged)
+        with self.assertRaisesRegex(ValueError, "unexpected pointwise gates|source gate selector or operands"):
+            checked(forged, forged_component)
+        wrong_operand = copy.deepcopy(topo)
+        wrong_operand["pointwise_mul"][0]["in1"] = 11
+        wrong_operand_component = reseal(wrong_operand)
+        with self.assertRaisesRegex(ValueError, "source gate selector or operands"):
+            checked(wrong_operand, wrong_operand_component)
+        hidden_gate = copy.deepcopy(topo)
+        hidden_gate["add"][-1]["in0"] = 25
+        hidden_component = reseal(hidden_gate)
+        with self.assertRaisesRegex(ValueError, "extra native gate depends on source"):
+            checked(hidden_gate, hidden_component)
+
+    def test_independent_constant_and_padding_schedule(self) -> None:
+        for n_nodes in (1, 2, 16):
+            with self.subTest(n_nodes=n_nodes):
+                gates, n_vars, rows = constant_and_padding(n_nodes)
+                self.assertEqual((n_vars, rows), (512, 512))
+                self.assertEqual(len(gates["sub"]), 1)
+                self.assertEqual(len(gates["mul"]), 21)
+                self.assertEqual(len(gates["add"]), 465 - n_nodes)
+                self.assertEqual(gates["add"][-1]["in0"], 1)
+                self.assertEqual(gates["add"][-1]["in1"], 1)
+                syntax = {"instructions": [
+                    {"id": index, "op": "mul" if index % 2 else "add",
+                     "lhs": 0, "rhs": index - 1}
+                    for index in range(1, n_nodes + 1)], "output": n_nodes}
+                full, total_vars, total_rows, source = exact_direct_gate_schedule(syntax)
+                self.assertEqual((total_vars, total_rows), (512, 512))
+                self.assertEqual(full["add"][0], {"in0": 11, "in1": 17, "out": 18})
+                self.assertEqual(full["mul"][0], {"in0": 15, "in1": 12, "out": 17})
+                self.assertEqual(source[0]["out"], 23)
+                self.assertEqual(source[-1]["out"], 22 + n_nodes)
+                self.assertEqual(full["pointwise_mul"][-4:], [
+                    {"in0": address, "in1": 1, "out": address}
+                    for address in range(11, 15)])
+
+    def test_source_rows_match_exported_columns_for_every_bounded_length(self) -> None:
+        for count in range(1, 17):
+            for pattern in ("add", "mul", "alternating"):
+                with self.subTest(count=count, pattern=pattern):
+                    statements = []
+                    for index in range(1, count + 1):
+                        previous = "x" if index == 1 else f"y{index - 1}"
+                        op = ("+" if pattern == "add" or
+                              (pattern == "alternating" and index % 2 == 0)
+                              else ".*")
+                        statements.append(f"let y{index} = x {op} {previous};")
+                    # Returning y1 leaves later operations dead; their
+                    # fixed cells still exist with zero multiplicity.
+                    output = "y1" if count % 2 == 0 else f"y{count}"
+                    source = ("circuit sample(public x: [m31; 4]) -> public "
+                              "[m31; 4] { " + " ".join(statements) + f" {output} }}")
+                    _, syntax = parse_source(source.encode())
+                    gates, n_vars, n_rows, _ = exact_direct_gate_schedule(syntax)
+                    uses = [0] * n_vars
+                    for group in gates.values():
+                        for gate in group:
+                            uses[gate["in0"]] += 1
+                            uses[gate["in1"]] += 1
+                    for address in [2, *range(3, 11)]:
+                        uses[address] += 1
+                    rows = []
+                    for flag, group in enumerate(gates.values()):
+                        for gate in group:
+                            rows.append([*(int(flag == index) for index in range(4)),
+                                         gate["in0"], gate["in1"], gate["out"],
+                                         uses[gate["out"]]])
+                    self.assertEqual(len(rows), n_rows)
+                    topology = {**gates, "columns": [
+                        {"id": name, "values": [row[index] for row in rows]}
+                        for index, name in enumerate(DIRECT_COLUMN_IDS)]}
+                    schedule = [
+                        {"qm31_start": 0},
+                        *({"qm31_start": 5 + node["id"]}
+                          for node in syntax["instructions"]),
+                    ]
+                    checked = check_source_fixed_rows(syntax, topology, schedule)
+                    source_products = sum(node["op"] == "mul" for node in syntax["instructions"])
+                    source_adds = count - source_products
+                    self.assertEqual(len(topology["add"]), 476 - source_products)
+                    self.assertGreaterEqual(len(topology["add"]), 11 + source_adds)
+                    self.assertEqual(len(checked), count)
+                    self.assertEqual([row["circuit_row"] for row in checked],
+                                     list(range(6, 6 + count)))
+                    self.assertEqual(len({row["trace_row"] for row in checked}), count)
+                    if count == 16 and pattern == "alternating":
+                        first = checked[0]["trace_row"]
+                        for column_index in range(8):
+                            changed = copy.deepcopy(topology)
+                            changed["columns"][column_index]["values"][first] ^= 1
+                            with self.assertRaisesRegex(ValueError, "source instruction 1"):
+                                check_source_fixed_rows(syntax, changed, schedule)
+                        changed_schedule = copy.deepcopy(schedule)
+                        changed_schedule[1]["qm31_start"] += 1
+                        with self.assertRaisesRegex(ValueError, "source instruction 1"):
+                            check_source_fixed_rows(syntax, topology, changed_schedule)
+                        changed_syntax = copy.deepcopy(syntax)
+                        changed_syntax["instructions"][0]["op"] = "add"
+                        with self.assertRaisesRegex(ValueError, "source fixed-row layout"):
+                            check_source_fixed_rows(changed_syntax, topology, schedule)
+                        for kind in ("add", "sub", "mul", "pointwise_mul"):
+                            changed = copy.deepcopy(topology)
+                            changed[kind].pop()
+                            with self.subTest(changed_kind=kind), self.assertRaisesRegex(
+                                    ValueError, "source fixed-row layout"):
+                                check_source_fixed_rows(syntax, changed, schedule)
+
+    def test_independent_qm31_constant_derivation(self) -> None:
+        i = (0, 1, 0, 0)
+        minus_i = (0, M31_MODULUS - 1, 0, 0)
+        self.assertEqual(_qm_mul(i, minus_i), (1, 0, 0, 0))
+        self.assertEqual(_qm_mul((0, 0, 1, 0), (0, 0, 1, 0)), (2, 1, 0, 0))
+        inv_five = pow(5, M31_MODULUS - 2, M31_MODULUS)
+        self.assertEqual(_qm_mul((0, 0, 1, 0),
+                                 (0, 0, 2 * inv_five % M31_MODULUS,
+                                  -inv_five % M31_MODULUS)), (1, 0, 0, 0))
+        self.assertEqual(_qm_mul((0, 0, 0, 1),
+                                 (0, 0, -inv_five % M31_MODULUS,
+                                  -2 * inv_five % M31_MODULUS)), (1, 0, 0, 0))
+        _check_constant_island([{"in0": 1, "in1": 1, "out": 3}], [], [], [], [])
+        _check_constant_island([], [], [], [1], [])
+        with self.assertRaisesRegex(ValueError, "basis"):
+            _check_constant_island([], [], [], [2], [])
+        with self.assertRaisesRegex(ValueError, "contradictory"):
+            _check_constant_island([{"in0": 1, "in1": 1, "out": 1}], [], [], [], [])
+        with self.assertRaisesRegex(ValueError, "underived"):
+            _check_constant_island([{"in0": 3, "in1": 1, "out": 4}], [], [], [], [])
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -1,0 +1,78 @@
+{
+  "cases": [
+    {
+      "canonical_ir_sha256": "308bb5b5a5428a890cf859165c06c1b47ed04a8d9152d8e88f2d3712a9f4b4f6",
+      "changed_public_statement_rejected": true,
+      "name": "i8_to_i16",
+      "native_overflow_rejected": null,
+      "native_verifier_accepted": true,
+      "padded": {
+        "blake_g": 0,
+        "eq": 16,
+        "m31_to_u32": 16,
+        "qm31_ops": 64,
+        "triple_xor": 0
+      },
+      "preprocessed_cells": 66128,
+      "proof_bytes": 236747,
+      "raw": {
+        "blake_g": 0,
+        "eq": 4,
+        "m31_to_u32": 4,
+        "qm31_ops": 48,
+        "triple_xor": 0
+      }
+    },
+    {
+      "canonical_ir_sha256": "1a723c60b1911e282c80bfd318dffadab8eda99081e3d924fa8a545fa43eed4c",
+      "changed_public_statement_rejected": true,
+      "name": "i16_to_i8",
+      "native_overflow_rejected": true,
+      "native_verifier_accepted": true,
+      "padded": {
+        "blake_g": 0,
+        "eq": 16,
+        "m31_to_u32": 16,
+        "qm31_ops": 64,
+        "triple_xor": 0
+      },
+      "preprocessed_cells": 66128,
+      "proof_bytes": 227219,
+      "raw": {
+        "blake_g": 0,
+        "eq": 10,
+        "m31_to_u32": 8,
+        "qm31_ops": 54,
+        "triple_xor": 0
+      }
+    },
+    {
+      "canonical_ir_sha256": "5f364373a4516ade0ac8b44272fd2e16b5fdd93cebbded4c66a9fd2120bf864f",
+      "changed_public_statement_rejected": true,
+      "name": "i128_to_i64",
+      "native_overflow_rejected": true,
+      "native_verifier_accepted": true,
+      "padded": {
+        "blake_g": 0,
+        "eq": 16,
+        "m31_to_u32": 16,
+        "qm31_ops": 128,
+        "triple_xor": 0
+      },
+      "preprocessed_cells": 66640,
+      "proof_bytes": 231179,
+      "raw": {
+        "blake_g": 0,
+        "eq": 11,
+        "m31_to_u32": 12,
+        "qm31_ops": 70,
+        "triple_xor": 0
+      }
+    }
+  ],
+  "constant_min_base": 16,
+  "date": "2026-10-10",
+  "measurement_limits": "AIR rows and fixed cells are deterministic for these sources. Proof bytes are one local run each; the 65536-cell seq_16 table dominates fixed preprocessing. This does not establish a proving-time advantage.",
+  "profile": "sparse-wide-v5",
+  "schema": "s31-checked-integer-casts-v1"
+}

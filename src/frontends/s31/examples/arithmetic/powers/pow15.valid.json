@@ -1,0 +1,19 @@
+{
+  "public_inputs": {},
+  "private_inputs": {
+    "x": [
+      0,
+      1,
+      2,
+      7
+    ]
+  },
+  "public_outputs": {
+    "result": [
+      0,
+      1,
+      32768,
+      1622650073
+    ]
+  }
+}

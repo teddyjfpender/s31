@@ -1,0 +1,2 @@
+{"event":"started","output_dir":"/private/tmp/s31-v22-quiet-holdout-artifacts-07cdb21","protocol_sha256":"2a3ba103db66175a70e33265d33426e18f8c845cf41864ce7bc7141ebeb407de","quiet_host_ps_sha256":"4793eaac130931f9bbd251ec6000507291f9a7f191b636ea7a6df41dbdc5b4f8","schema":"s31-v22-quiet-holdout-attempt-v1","time_ns":1791767670153048000}
+{"all_gates_pass":true,"event":"completed","score_sha256":"f6d96d36e2a276e9f35bd52b7a11951a7b9ccfc4f3814aa72e5ced20d0a74b6b","time_ns":1791767757462137000}

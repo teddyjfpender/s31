@@ -1,0 +1,19 @@
+use std@1;
+
+// This nominal result groups two constrained i32 values. It creates no AIR
+// rows; the one division operation still proves its private remainder.
+struct DivResult {
+    quotient: i32,
+    remainder: i32,
+}
+
+fn divide(numerator: i32, divisor: i32) -> DivResult {
+    let (q, r) = std::int::div_rem(numerator, divisor);
+    DivResult { remainder: r, quotient: q }
+}
+
+circuit record_i32_division(private numerator: i32, private divisor: i32) -> public [u16; 2] {
+    let division = divide(numerator, divisor);
+    let result = std::int::limbs(division.quotient);
+    result
+}

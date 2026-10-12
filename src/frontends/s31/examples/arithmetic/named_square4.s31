@@ -1,0 +1,14 @@
+use std@1;
+
+// A named function is a compile-time value. Passing it through apply
+// introduces no witness, relation node, or AIR row.
+fn square(v: [m31; 4]) -> [m31; 4] { v .* v }
+
+fn apply(f: Fn([m31; 4]) -> [m31; 4], v: [m31; 4]) -> [m31; 4] {
+    f(v)
+}
+
+circuit named_square4(private x: [m31; 4]) -> public [m31; 4] {
+    let result = apply(square, x);
+    result
+}

@@ -1,0 +1,21 @@
+{
+  "public_inputs": {},
+  "private_inputs": {
+    "numerator": [
+      7616,
+      65534
+    ],
+    "divisor": [
+      300,
+      0
+    ]
+  },
+  "public_outputs": {
+    "result": [
+      65125,
+      65535,
+      65380,
+      65535
+    ]
+  }
+}

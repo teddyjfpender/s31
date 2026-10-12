@@ -1,0 +1,19 @@
+# Independent V23 eight-call holdout audit
+
+**Verdict:** The single V23 native attempt **fails** its preregistered conjunctive score. The only failed gate is the immediate same-claim repeat: 187.442 ms observed against 284.862 ms forecast, a 51.97% relative error against the frozen 50% maximum. The eight-call warm-cost target and every other mechanical gate pass. The failed gate remains part of the result; it cannot be discarded because the warm forecast was accurate.
+
+## Frozen attempt and native evidence
+
+- The initial PR preregistration `9143529` stopped in host preflight before an attempt marker, output directory, build, or timing observation. The macOS process-name parser was corrected and the ambient CPU threshold amended and pushed in `a82da38` before the native attempt. The amended canonical protocol SHA-256 is `198a3c61724eae466f6c394dce809509415af3f38aef9335ed95209df3bdbd2b`. The source, claims, forecasts, geometry, and score gates were unchanged. The attempt marker contains one start and one completed event. Its bound two-snapshot `ps` record contains no compiler process and no other process at or above the amended 25% CPU threshold; the largest other reading is 16%. This checks two instants, not continuous exclusivity.
+- The source SHA-256 is `2a73231da2c4d5556ac589b717acd62f44b9a7ed70a1840fc96a8985e3274071`. I independently interpreted its 5,144 source nodes over M31, including five 1,024-operation branches and eight ordered repeated-square calls, and reproduced all 21 frozen output assignments. The native manifest matches eight calls, 17 component slots, 163 constraints, tree columns `[8, 148, 232, 8]`, and every frozen slot field and call ID/feeder/constant/round count.
+- I checked the three generated binary hashes, every one of the 22 proof/assignment/statement/emitted-statement hashes and byte counts, the honest and changed-result log for each proof, process duration endpoints, result/score canonical links, and the attempt marker. The result SHA-256 is `f225b860ffe77ea8a450f429139d9bf0254b1394270957e2c694c19a37a4f027`; the score SHA-256 is `9a01d3318abb0563b98d5137bc981cdb81a755250b81cc2ef9c3414862aa6dcd`. A fresh native replay of `a00r0` returned exit 0 with `verified` for the honest statement and exit 1 with `InvalidMixedInteractionNonce` after changing one public result word.
+
+## Independent score arithmetic
+
+The frozen warm wall center is 225.096 ms; the observed 20-claim median is 230.569 ms (2.37% relative error). All 20 wall observations fall in the frozen one-draw band; all 20 proof sizes fall in the frozen proof interval. The observed proof median is 257,922.5 bytes versus 257,588.5 predicted (0.13%). Recomputed non-PoW median error is 6.79%; native package stage errors are 8.55%–11.94%; prover and verifier peak-RSS median errors are 2.42% and 3.13%. All inherited warm metric gates and V23 extra interval gates pass.
+
+The build took 76.927 s versus 78.172 s forecast (1.62% relative error). First post-build verified proof took 1.220 s versus 1.212 s forecast (0.66%). The immediate repeat took 0.187 s versus 0.285 s forecast (51.97%, **failed**). Build plus 22 separately measured proof/verifier process durations totals 83.287 s versus 84.171 s forecast (1.06% relative error). I recomputed the lifecycle values from the raw trials without importing the producer's scorer; all match the committed score.
+
+## Limits
+
+This is one source and one host. It does not establish reliability across hosts or arbitrary eight-call topologies, an automatic lowering choice, or a Cairo speedup. The first post-build measurement is immediate first use, not a controlled operating-system cold-cache experiment. The lifecycle sum excludes idle gaps. The V17 eight-call miss and this V23 lifecycle-gate failure both remain visible in the cost-model evidence.

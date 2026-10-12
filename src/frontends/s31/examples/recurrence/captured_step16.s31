@@ -1,0 +1,10 @@
+use std@1;
+
+// The captured constant is static. This closure has the same repeat body
+// and chip geometry as a literal named step function.
+circuit captured_step16(public x: [m31; 4]) -> public [m31; 4] {
+    let bias = splat<4>(7_m31);
+    let step = fun(v: [m31; 4]) -> [m31; 4] => v .* v + bias;
+    let result = iterate<16>(step, x);
+    result
+}

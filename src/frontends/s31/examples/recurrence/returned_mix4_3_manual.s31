@@ -1,0 +1,8 @@
+use std@1;
+
+fn mix(v: [m31; 4]) -> [m31; 4] { std::math::mix4(v) }
+
+circuit returned_mix4_3(public x: [m31; 4]) -> public [m31; 4] {
+    let result = iterate<3>(mix, x);
+    result
+}

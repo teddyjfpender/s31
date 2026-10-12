@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "name": "private_selected_chip_feeder",
+  "inputs": [
+    { "name": "x", "kind": "m31", "length": 4, "visibility": "private" },
+    { "name": "y", "kind": "m31", "length": 4, "visibility": "private" },
+    { "name": "bit", "kind": "m31", "length": 1, "visibility": "private" }
+  ],
+  "nodes": [
+    { "name": "a", "op": "repeat", "lhs": "x", "rounds": 16, "body": [{ "op": "square" }, { "op": "add_const", "constant": 13 }] },
+    { "name": "left", "op": "add", "lhs": "a", "rhs": "x" },
+    { "name": "right", "op": "mul", "lhs": "a", "rhs": "y" },
+    { "name": "chosen", "op": "select", "selector": "bit", "lhs": "left", "rhs": "right" },
+    { "name": "b", "op": "repeat", "lhs": "chosen", "rounds": 16, "body": [{ "op": "square" }, { "op": "add_const", "constant": 17 }] },
+    { "name": "sum", "op": "add", "lhs": "b", "rhs": "a" },
+    { "name": "product", "op": "mul", "lhs": "b", "rhs": "y" }
+  ],
+  "assertions": [],
+  "public_outputs": ["sum", "product"]
+}

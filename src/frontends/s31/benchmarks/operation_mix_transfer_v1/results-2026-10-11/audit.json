@@ -1,0 +1,9 @@
+{
+  "heldout_score_sha256": "a62d0359b82e023da7a89a33687fd4e04b52a5ea750bb1e39eeb7de92cf89316",
+  "phase": "native-replay-audit",
+  "plan_sha256": "2fb561a3c2c1cdfd8fe79461e257daa3e0446cf3084f40a7b49be611ef701e1a",
+  "prior_calibration_sha256": "825f3d351a6a437a199db234a1ba86b0c2c36a8d34350991cc6238a8fdee8045",
+  "replayed_accepted_proofs": 72,
+  "replayed_rejected_changed_claims": 72,
+  "schema": "s31-operation-mix-transfer-v1"
+}

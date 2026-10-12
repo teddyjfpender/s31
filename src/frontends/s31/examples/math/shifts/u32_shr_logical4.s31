@@ -1,0 +1,6 @@
+use std@1;
+
+circuit u32_shr_logical4(private a: u32) -> public u32 {
+    let result = std::int::shr_logical<4>(a);
+    result
+}

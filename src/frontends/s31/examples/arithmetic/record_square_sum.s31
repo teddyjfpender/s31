@@ -1,0 +1,18 @@
+use std@1;
+
+// Named source fields carry existing circuit values. Construction and access
+// disappear before the relation, so only the two calculations and sum remain.
+struct Powers {
+    square: [m31; 4],
+    doubled: [m31; 4],
+}
+
+fn powers(x: [m31; 4]) -> Powers {
+    Powers { doubled: x + x, square: x .* x }
+}
+
+circuit record_square_sum(private x: [m31; 4]) -> public [m31; 4] {
+    let p = powers(x);
+    let result = p.square + p.doubled;
+    result
+}

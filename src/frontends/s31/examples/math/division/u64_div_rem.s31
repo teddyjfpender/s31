@@ -1,0 +1,8 @@
+use std@1;
+
+// Full eight-word public ABI: quotient and remainder of a 64-bit division.
+circuit u64_div_rem(private numerator: u64, private divisor: u64) -> public [u16; 8] {
+    let (quotient, remainder) = std::int::div_rem(numerator, divisor);
+    let result = std::array::concat(std::int::limbs(quotient), std::int::limbs(remainder));
+    result
+}

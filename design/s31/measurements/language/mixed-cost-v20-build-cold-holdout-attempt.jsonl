@@ -1,0 +1,2 @@
+{"event":"started","output_dir":"/private/tmp/s31-v20-build-cold-holdout-93114df-artifacts","protocol_sha256":"80c8661bfd0d9a09faf4904194318161018bfbe8a99ed098c73548fdf4650d63","schema":"s31-v20-build-cold-attempt-v1","time_ns":1791766168850086000}
+{"all_gates_pass":true,"event":"completed","score_sha256":"7071a44623175051eb3302132ae2d1a25845f32e3dfe9a3e9d6fd8ef3c1bdbbf","time_ns":1791766260109504000}

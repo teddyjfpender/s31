@@ -1,0 +1,57 @@
+{
+  "metadata": {
+    "rounds": 1,
+    "schema": "s31-mixed-pow-workers-diagnostic-v1",
+    "shapes": [
+      {
+        "assignment_sha256": "698b5fadec0cc4cac28356035b34a1af2976f186bef1d8824dd2a891d9ec7802",
+        "binary_sha256": {
+          "prover": "f1c7a32e25988cd997cf37bfd134a18d02139ea7bada6eec765a46ad64da4437",
+          "verifier": "aa5eb59b871ede6f50c2207ffa646c199acfdf4276c51a0d9b081f76560a6b81"
+        },
+        "changed_public_result_rejected": true,
+        "name": "control_n2",
+        "source_sha256": "4777a8832f0737c97cde9c20d624aad658cfbbfa136298b93296a75f6f795cd9",
+        "statement_sha256": "282a201757b26664a448e34fea9bbbe129044465093a613dd8f123a0101c798d"
+      },
+      {
+        "assignment_sha256": "57cd05289bc66dd3c7ea5c6a468b59ee052a7561d171cb44f894b880ede4fce5",
+        "binary_sha256": {
+          "prover": "89e789fe461fe5b650fd596f6aeb3c681ea062b045d5b07f37d35adf2bb76601",
+          "verifier": "c9c773e652318365c882c3a0c743450dc2e447225597832b8d6c208e9b25432f"
+        },
+        "changed_public_result_rejected": true,
+        "name": "control_n6",
+        "source_sha256": "3456349b95e5b671212fac60478dd617140b25e892c3a3ebfb47af8fa9742b7d",
+        "statement_sha256": "3db106a8f626380bc29d44c4cb75d0c474d52f1ae412a5f6c7a98f501ef20c09"
+      }
+    ],
+    "workers": [
+      18
+    ]
+  },
+  "records": [
+    {
+      "native_prove_including_setup_ns": 116784083,
+      "native_verifier_accepted": true,
+      "proof_bytes": 85145,
+      "proof_sha256": "063392b04c22c5dbeabb1119874d4c002e103180b1b26b8c54bd8dc3a07b9d10",
+      "prover_wall_ns": 125141375,
+      "round": 0,
+      "shape": "control_n2",
+      "verifier_wall_ns": 8768667,
+      "workers": 18
+    },
+    {
+      "native_prove_including_setup_ns": 31251917,
+      "native_verifier_accepted": true,
+      "proof_bytes": 146182,
+      "proof_sha256": "167f6eaa0d9a7d7e641df582788dd88dd319971171d78928f66ce48cef1fbca9",
+      "prover_wall_ns": 39944792,
+      "round": 0,
+      "shape": "control_n6",
+      "verifier_wall_ns": 9966042,
+      "workers": 18
+    }
+  ]
+}

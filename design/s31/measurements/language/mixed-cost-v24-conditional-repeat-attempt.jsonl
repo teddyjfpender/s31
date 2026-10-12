@@ -1,0 +1,2 @@
+{"event":"started","output_dir":"/private/tmp/s31-v24-conditional-repeat-artifacts","preflight_pid":62770,"protocol_sha256":"7fe65548d434faaecbcdc1969456ea0db02df7fa21ba36bdf8ee640f31c7572c","quiet_host_ps_sha256":"f3215eeb16aafb06979fc440af38a3acef254954d067c7d2ee1adfebb932b628","schema":"s31-v24-quiet-holdout-attempt-v1","time_ns":1791769881999844000}
+{"all_gates_pass":true,"event":"completed","score_sha256":"9ee6b9f2d6483f5f3239cd85099cdf2f72caad820e81ca8981cec4d4bfa20d92","time_ns":1791769976212107000}

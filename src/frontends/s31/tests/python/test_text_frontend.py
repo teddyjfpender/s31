@@ -476,8 +476,8 @@ circuit subtract(private a: UInt256, private b: UInt256) -> public [m31; 1] {{
                     changed["public_outputs"][relation["public_outputs"][0]][0] + 1) % P
                 with self.assertRaisesRegex(OracleError, "does not match"):
                     evaluate_relation(relation, changed)
-        with self.assertRaisesRegex(SourceError, "equally typed field or 256-bit"):
-            compile_text("circuit bad(private x: Bytes32, private y: Bytes32, private b: bit) -> public Bytes32 { std::field::select(b, x, y) }")
+        with self.assertRaisesRegex(SourceError, "equally typed circuit values"):
+            compile_text("circuit bad(private x: Bytes32, private y: UInt256, private b: bit) -> public Bytes32 { std::field::select(b, x, y) }")
         with self.assertRaisesRegex(SourceError, "requires a bit"):
             compile_text("circuit bad(private x: UInt256, private y: UInt256, private b: [m31; 1]) -> public UInt256 { std::field::select(b, x, y) }")
 

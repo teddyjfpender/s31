@@ -1,0 +1,12 @@
+use std@1;
+
+// The previous left-to-right binary schedule needs six multiplications.
+circuit pow15(private x: [m31; 4]) -> public [m31; 4] {
+    let x2 = x .* x;
+    let x3 = x2 .* x;
+    let x6 = x3 .* x3;
+    let x7 = x6 .* x;
+    let x14 = x7 .* x7;
+    let result = x14 .* x;
+    result
+}

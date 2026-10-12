@@ -1,0 +1,8 @@
+use std@1;
+
+fn step(v: [m31; 4]) -> [m31; 4] { v .* v + splat<4>(7_m31) }
+
+circuit captured_step16(public x: [m31; 4]) -> public [m31; 4] {
+    let result = iterate<16>(step, x);
+    result
+}

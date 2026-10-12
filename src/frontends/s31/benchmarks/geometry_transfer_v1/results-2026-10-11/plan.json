@@ -1,0 +1,153 @@
+{
+  "build_mode": "ReleaseFast",
+  "diagnostic_relative_median_error_limits": {
+    "paired_after_pow_seconds": 0.3,
+    "paired_wall_seconds": 0.5,
+    "proof_bytes": 0.1,
+    "prover_peak_rss_bytes": 0.15
+  },
+  "estimator": "For each padded-row stratum and metric, the median of its training program medians; no slope, refit, or held-out selection.",
+  "heldout": [
+    96,
+    256,
+    448
+  ],
+  "identity": {
+    "compiler_sha256": "893ce1f78d19783eaafac3094dbbe847bdbb61de9a4b2055d3c8ff50b2e4dd1b",
+    "engine_commit": "7d544c6839497ca19b6c7ef9b982e464f10cfeed",
+    "host": {
+      "machine": "arm64",
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "python": "3.14.6",
+      "zig": "0.15.2"
+    },
+    "independent_scorer_sha256": "d28f1eb719e9a4838718812f713e2430633ae8148023f887ec16478c53594ea1",
+    "study_sha256": "d6fd072053e10cd7ce519afa59bece3e88173f2a001b552fcaf33da95e4e1ece"
+  },
+  "lowering": "direct-gate",
+  "metrics": [
+    "paired_wall_seconds",
+    "paired_after_pow_seconds",
+    "proof_bytes",
+    "prover_peak_rss_bytes"
+  ],
+  "phase": "planned-before-native-work",
+  "samples_per_program": 12,
+  "schema": "s31-direct-gate-geometry-transfer-v1",
+  "scope": "One host/compiler/engine. Above 16 gates is outside the bounded direct-gate release correspondence certificate. Native proof acceptance, changed-claim rejection and independent value checks are required; no automatic lowering decision.",
+  "sources": {
+    "192": {
+      "assignment_sha256": [
+        "65c2674f1ae09254c0263830daaf4979557119420a190efd230f8a57bd3cf1b8",
+        "39e90bf8a82777d407e4548aa81c5dab446074b73fbef09dbb0ee2977bedd430",
+        "dabc83f34b78d064d536c7d057ca7cc77c0b23f4e7bc6a57fc9ecf28af46e329",
+        "26495255cc50413a94c62e2451f4dce9d0e889028d0e5270d2865f2394a38bee",
+        "d634bd4fde713da79c9cd3229f57f3019a204be91f0053f1f53b07d7e9b62edd",
+        "71801cd5b6c39a5902588ce2cc3422e46bb486124f859feed984cad4b6ebb178",
+        "71f694c371eacbf1b9fc95a130ea5a204cb14441f4b37cea36f5f226568bfc30",
+        "3ca6ac3a6d16c42dd3875a1a30bbe70c0f5323f8a183346918e33a9338f55fc7",
+        "63301ea0c7bc24f6ce9e23700ebf39d18076dd41e6e2477009ba5a1dc1825556",
+        "a0b76af7a11ddbd89c0439fdf5d26a50426bea238f46fc9e6568516d077a1725",
+        "8d28d35b78745e3dc76cbeaf9e6b29f8dd1c0cbbd7c3e57f2afc74ca2b09d5d2",
+        "dbf4f5df8003b01c6701669c563f428e0075df6904eb333a0919d5d4508b6459"
+      ],
+      "expected_padded_qm31_rows": 512,
+      "source_sha256": "355582bc62dcf51678fd5f1e85be9a07a51992a41354235d3b5033e52a92536b"
+    },
+    "256": {
+      "assignment_sha256": [
+        "02167e645824fadc09be699787c581d6a653e07d2b4f0f80615f07896461ae31",
+        "aad8803ed6ec3455ff067bb5c7ba9431841175a8d72e663c284a867b40714ec3",
+        "58f699f795bab90b7869ee7d2ca15860c8b3c3a07a726847e3e706c72a48d99b",
+        "6e2deba4c937cbe808c7f9fd84ad8cb0bddf7f0a86d209e2a90a891a1375cbd0",
+        "614863d688ad36512573095436121e1ab805ab0b33e4ed41efebc75753478280",
+        "9fa1cfb6eb626dd0eea716371e0d31dc62fbae42a42fa57a8e6e2ca6a2f915fc",
+        "3a6086be4d96ed8828d5667c81f55ac1bd8734609d5a4d9b16d75452d1c1554b",
+        "5dfafbbb4864bc8d3a69d44676cebf2b3a5ba60b99d8776864a292d98a7df896",
+        "8cd8c0203e812bf045901371ac4afc4719712b5acba3eebd9630bf753c38cb90",
+        "60568cdb253259ca958b49ce491d5b654a7331f52dfc2e9855c09929264460bf",
+        "8a109810ed85d2384a868d57eca38acbabb1f4c2501c708b58fca49856a7bbdc",
+        "dcada3c9542ffd2fa72ca97d339944052448c53c27ff3e42b5b748e53d7a03ae"
+      ],
+      "expected_padded_qm31_rows": 1024,
+      "source_sha256": "690c0ddd95f6c628a8a75f8f71a1b89fa2afabf367f23cea285ed2c86bd8c4d5"
+    },
+    "32": {
+      "assignment_sha256": [
+        "e0631498c3d8b75639829b184e5111f1e848937f153688fce9c4189ab03343c1",
+        "d6b6a152c431251c1721a815d1e33c09ea4dc9eda942c0bb0cef75838ff795e7",
+        "28f979f332fa476377b4b4adbd5aed8f4a4aa998f1abb5f27aad2dc91c57b7f1",
+        "291846b08e1a68e0f25e49d54621483d6253057ebe41704989859d265efa7faa",
+        "ca46b41ae27046594b2fe4d53ec326e36504bd1b45ceed3248369eb7c9f204c9",
+        "d186113063a26c7648b7c23dedd2cfbd205ba5ea4a50f5a2b26ca90ac3e2179f",
+        "fd036b2668766e582b470ada88998b719af200010f6921c91635e87837c4c7cf",
+        "5f69b4ccd0d0f0762c46cfa6fd12e51c53d200c4a76b559c273c3e57254bb73e",
+        "9db4b6ee92ca7cd4d156b0c4fba47d48d3792c27b79c9f081983838dc42d808f",
+        "3c8232a741c2d0ed55dd32cc6bc3aec2f42119aa901664adbaafc02de33d9adc",
+        "e056b219984adbf206ac51a9cf3246e8ea11caffd3ee631234ecc1da8b15c4b3",
+        "8c073af684467015bcc27cfd12d6113d92179b8e4583e303f0ec52c0f13327a6"
+      ],
+      "expected_padded_qm31_rows": 512,
+      "source_sha256": "b8cfbbb95f624636d590c9cefc7bba7d3e289287d7aaaf18ef3c3ee04a477d27"
+    },
+    "384": {
+      "assignment_sha256": [
+        "1bd57b5990537e9c2a6cd811f529351f0ef332b85bc17d735658b5db4d36aa1d",
+        "7f5b9c3da92e5ac63287de6fabacbfe940a4e0cab60416551863b13d883c789b",
+        "f263bf7e93e59371e8fbe1d44e7ba402b64c9b225fdc7f0e10f6f2c99d480be4",
+        "1be7cfba992022eb247bf52cb86e053f549da04617c69eb4e410f299022f81ac",
+        "2ff9815e3af51ea9477240f8b177cf070d231733f92ea01375373e96655197c2",
+        "41a011099e8297f6ded32e49053cbfe8c5ef7606f2c480c472a83fcc5c191089",
+        "f479a30eb421c8af1ce194478271751ee4c0d71ead1fd252b069081e07635c65",
+        "ab1e18c89c44bff3b2f18fba087626049b9889da546f6051381fe23546c485b2",
+        "bb1c407fb9dbe82fe9e8ac7b494395357c8a0ea2dd8b2cc9572e9fea336b283c",
+        "302f8eb7ec1f779425a2496e9f98f73f5653aa8ad252ac449a04ba0e08baca05",
+        "e8d43c702a0e8c16d5cc3c59ff26570e3ae4af0761035ec95339101b98ac3f81",
+        "b6d4d9896b6e912b4aa6a9f6b56595bba8c4e18564f6621a6fb1048b1a5b4199"
+      ],
+      "expected_padded_qm31_rows": 1024,
+      "source_sha256": "63ed0da7ac54b7b1678b74c55209cbce75bcc3441aa9c16f9510cb0e414cbe1f"
+    },
+    "448": {
+      "assignment_sha256": [
+        "ec27985688ef9de154eac206b409a43f5c3de1a2464da2c8d2884df1378eee04",
+        "ef0feb772fef30f27f00f6cbc51910bceed0841ebb839b11d25382562aae72e0",
+        "6d5883f4d5247ffc8df06d6f79beaa340b2593f71116118f032d29f06b4203ee",
+        "9cb1adb3ff7bec5c9ac7aa666bfb92d974e742430d195f801202bd2dc7072493",
+        "92256edd9f7720682714bb680964b0256c3bdb579ea645bd87e377de06c23138",
+        "9ded540e5065e70d34ffc9a86f4e93afba308345adadf2badc1f450080434c6d",
+        "a967979b6d731114ea19d566450a31d67f04ddac9ba5522cb1accf92e68e3f0a",
+        "856d3afaab66b8273825f5e1742d575854b7737c70d8e7e7f0395c242c6b4efc",
+        "6cdab4804d769b9f1fe5e72bcf50653caec972cadb5827481635016fb6bf011e",
+        "207505db6ba9669cc047c95a9f5681a995e2f737c63af75725cf1f2b09a08aef",
+        "80406e2ba31cd50c1ad7070239213e60f251ed85a17af64483bb3b593b1cc080",
+        "8815e030d67070695fdf6811808b6544c4370dda1b760c8731d4fb66bb004be2"
+      ],
+      "expected_padded_qm31_rows": 1024,
+      "source_sha256": "175a2910f3490039e7d4fbf38db47673d1757ce7fe0b15f6ff8d1b9f2546bde9"
+    },
+    "96": {
+      "assignment_sha256": [
+        "0baeb47b9d9f2d326fd0bc9c3ce1dacc3716ef3f54848e769b1ffdec5fda72bc",
+        "c711ca023f211470e3b234517e115f758b71214c86e4925fb106814b02af1fcc",
+        "4461100d7dd3bd26bf15fb49c0f3190d27df5302790543e3f4e28ad805455638",
+        "b8faa007392fa883d4fb77dd300d2f51083b1843c5ee444a7219f6aa4624f918",
+        "ec933721b88f1152071100cfa8fdad9a883bfba0d914e5038984c7f964587609",
+        "ea1ae3fc232953b95584d17bc1fc3dec1ee51fe0f536ce735a4505bac9cd9b12",
+        "1f42feca8d32a7033fa4da08ee26bd26a7314bc03451ee3d964cf63a991d9964",
+        "34553eccd81048685efe544e61ce75d16fe585580332dea26d14ab2027614e00",
+        "a27da699e775425c9da522538af5231464e20d3caa83dd15fd3134cb0abee9b6",
+        "d1c608b7887119930559de9a64dc069dd161095a634ae69067577e8384c85d60",
+        "df71e05faa21a71e35549e47d523457390f89c20b1cfa0f1c0950916529b8a8c",
+        "fd30333fb0c7fb80c94d208b26e1daba1e4c00d48d7ca10baffeb8e9a9ffcfda"
+      ],
+      "expected_padded_qm31_rows": 512,
+      "source_sha256": "ea6d3cbc09786b3a0dfc4671525877d15a251bdc3ea62bf4205e76014a332c89"
+    }
+  },
+  "train": [
+    32,
+    192,
+    384
+  ]
+}

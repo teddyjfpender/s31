@@ -1,0 +1,12 @@
+{
+  "external_chat_anchor_recorded_at_utc": "2026-10-10T19:17:09.372738Z",
+  "transcribed_to_tracked_file_at_utc": "2026-10-10T19:24:58Z",
+  "anchor_context": "The full digest was sent to the parent agent in chat after all 1800 training trials and model fitting, before the first held-out package build or trial. This tracked JSON is a later transcription made during held-out package builds; the earlier chat message is the chronological freeze evidence.",
+  "frozen_model_sha256": "12d674529802bf4823c37708e6410f2581faf29d32b8813b9f70b02b98cc5af7",
+  "training_corpus_sha256": "d60542bc53eb031b2186ad3a0a2ea4c4542508507fe51f44e5825615c6b0ee05",
+  "compiler_sha256": "ba9d281e4006930273a603f33a2d050233593713443d00e8595b714b92a6c93d",
+  "measurement_tool_sha256": "21e1afb1399a02cab88c1202924371a38ba83a02685d90c2ab7472ce9b319ab7",
+  "protocol_sha256": "d6c5e133f7f60f16edefba54e1019275e0a136d3b6e3b90f346f2115d43be447",
+  "s31_source_commit": "fe05a6206264c0313764132b4c67190ee25a6b06",
+  "engine_gitlink_commit": "7638a3f8f06dc86c25eafe0cfac2d61e773861f6"
+}

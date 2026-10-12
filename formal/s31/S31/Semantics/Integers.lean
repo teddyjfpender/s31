@@ -1,0 +1,91 @@
+import S31.Semantics.Words
+
+namespace S31.Integers
+
+def unsigned (limbs : List M31) : Nat := Words.decode 65536 (limbs.map (·.val))
+
+def interpretation (spec : IntegerSpec) (n : Nat) : Int :=
+  if spec.signed && n ≥ spec.limit / 2 then (n : Int) - spec.limit else n
+
+def lower (spec : IntegerSpec) : Int := if spec.signed then -(spec.limit / 2 : Nat) else 0
+def upper (spec : IntegerSpec) : Int :=
+  if spec.signed then (spec.limit / 2 : Nat) - 1 else (spec.limit : Int) - 1
+
+def encode (limbs : Nat) (value : Nat) : List M31 :=
+  (Words.encode 65536 limbs value).map RiscvRefinement.M31.reduce
+
+def evaluate (op : Op) (spec : IntegerSpec) (lhs rhs : List M31) : Result (List M31) := do
+  let base := if spec.width == 8 then 256 else 65536
+  require (lhs.all (fun x => x.val < base) && rhs.all (fun x => x.val < base)) .invalidValue
+  if op == .int_view then return lhs
+  if op == .int_bit_not || op == .int_bit_and || op == .int_bit_or || op == .int_bit_xor then
+    let a : BitVec spec.width := BitVec.ofNat spec.width (unsigned lhs)
+    let b : BitVec spec.width := BitVec.ofNat spec.width (unsigned rhs)
+    let value := if op == .int_bit_not then ~~~a else if op == .int_bit_and then a &&& b
+      else if op == .int_bit_or then a ||| b else a ^^^ b
+    return encode spec.limbs value.toNat
+  if op == .int_mul_wrapping then
+    return encode spec.limbs ((unsigned lhs * unsigned rhs) % spec.limit)
+  let a := interpretation spec (unsigned lhs)
+  let b := interpretation spec (unsigned rhs)
+  if op == .int_le then return [RiscvRefinement.M31.reduce (if a ≤ b then 1 else 0)]
+  if op == .int_mul_checked then
+    let product := a * b
+    require (lower spec ≤ product && product ≤ upper spec) .overflow
+    return encode spec.limbs (product % (spec.limit : Int)).toNat
+  let subtract := op == .int_sub_checked || op == .int_sub_wrapping
+  let checked := op == .int_add_checked || op == .int_sub_checked
+  let value := if subtract then a - b else a + b
+  if checked then require (lower spec ≤ value && value ≤ upper spec) .overflow
+  return encode spec.limbs (value % (spec.limit : Int)).toNat
+
+def castChecked (spec : IntegerCastSpec) (lhs : List M31) : Result (List M31) := do
+  let base := if spec.source.width == 8 then 256 else 65536
+  require (lhs.all (fun x => x.val < base)) .invalidValue
+  let pattern := unsigned lhs
+  require (pattern < spec.source.limit) .invalidValue
+  let value := interpretation spec.source pattern
+  require (lower spec.target ≤ value && value ≤ upper spec.target) .overflow
+  return encode spec.target.limbs (value % (spec.target.limit : Int)).toNat
+
+def staticShift (op : Op) (spec : IntegerSpec) (count : Nat)
+    (lhs : List M31) : Result (List M31) := do
+  let base := if spec.width == 8 then 256 else 65536
+  require (lhs.all (fun x => x.val < base)) .invalidValue
+  require (count ≤ spec.width &&
+    (if op == .int_rotl || op == .int_rotr then count < spec.width else true) &&
+    (if op == .int_shr_arithmetic then spec.signed else true)) .invalidValue
+  let a : BitVec spec.width := BitVec.ofNat spec.width (unsigned lhs)
+  let output := if op == .int_shl then a <<< count
+    else if op == .int_shr_logical then a >>> count
+    else if op == .int_shr_arithmetic then a.sshiftRight count
+    else if op == .int_rotl then a.rotateLeft count else a.rotateRight count
+  return encode spec.limbs output.toNat
+
+/-- Both result words are returned in quotient-then-remainder order. Signed
+division truncates toward zero; the remainder follows the dividend. -/
+def divRem (spec : IntegerSpec) (lhs rhs : List M31) : Result (List M31) := do
+  let base := if spec.width == 8 then 256 else 65536
+  require (lhs.all (fun x => x.val < base) && rhs.all (fun x => x.val < base)) .invalidValue
+  let a := interpretation spec (unsigned lhs)
+  let b := interpretation spec (unsigned rhs)
+  require (b != 0) .divisionByZero
+  let quotientMagnitude := a.natAbs / b.natAbs
+  let remainderMagnitude := a.natAbs % b.natAbs
+  let quotient : Int := if (a < 0) != (b < 0) then -(quotientMagnitude : Int) else quotientMagnitude
+  let remainder : Int := if a < 0 then -(remainderMagnitude : Int) else remainderMagnitude
+  require (lower spec ≤ quotient && quotient ≤ upper spec) .overflow
+  return encode spec.limbs (quotient % (spec.limit : Int)).toNat ++
+    encode spec.limbs (remainder % (spec.limit : Int)).toNat
+
+def u256 (op : Op) (lhs rhs : List M31) : Result (List M31) := do
+  let a := unsigned lhs
+  let b := unsigned rhs
+  if op == .u256_le then return [RiscvRefinement.M31.reduce (if a ≤ b then 1 else 0)]
+  let subtract := op == .u256_sub || op == .u256_sub_checked
+  if op == .u256_add_checked then require (a + b < 2^256) .overflow
+  if op == .u256_sub_checked then require (b ≤ a) .overflow
+  let value : Int := if subtract then (a : Int) - b else (a : Int) + b
+  return encode 16 (value % (2^256 : Int)).toNat
+
+end S31.Integers

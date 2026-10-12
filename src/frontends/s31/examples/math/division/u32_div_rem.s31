@@ -1,0 +1,7 @@
+use std@1;
+
+circuit u32_div_rem(private numerator: u32, private divisor: u32) -> public [u16; 4] {
+    let (quotient, remainder) = std::int::div_rem(numerator, divisor);
+    let result = std::array::concat(std::int::limbs(quotient), std::int::limbs(remainder));
+    result
+}

@@ -1,0 +1,15 @@
+use std@1;
+
+fn step(v: [m31; 4]) -> [m31; 4] {
+    v .* v + splat<4>(7_m31)
+}
+
+// The dedicated repeat chip remains available through a static Fn parameter.
+fn repeat_with(f: Fn([m31; 4]) -> [m31; 4], x: [m31; 4]) -> [m31; 4] {
+    iterate<16>(f, x)
+}
+
+circuit functional_step16(public x: [m31; 4]) -> public [m31; 4] {
+    let result = repeat_with(step, x);
+    result
+}

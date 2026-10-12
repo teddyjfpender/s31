@@ -1,0 +1,773 @@
+{
+  "cases": {
+    "1": {
+      "assignment_sha256": [
+        "37ee07f22347a01af8eecd9033889180cd33c042ee012b7dee16f63aada257b5",
+        "4dd6c725d88a222a9447559d6951865594ddaa41d513a0771c55444e73a7be04",
+        "0a49d8a47d8d74f48d418dd149af034e5bc1e686704937ce7502e67a833bde0d",
+        "5faad8cca5969a2d1b3660258d23453a80e37421f484c0d83e4b3188fc04b075",
+        "87ac0db768c61864e7c08f28f28b516f05ea4d0112988bf43200e5ce8968d83c",
+        "04cb41a8fa0055be8046e9e4baf4ca37605e7c2e2a1c55b3e614a88fc8710d9d",
+        "15e513530966a2b1d5bc9dc159263a80e798d61b2014212725fca1baad349852",
+        "c49795a6289238763d90f7c57d8212b4487ef266638a05aa9c1b748ea5939349",
+        "ea65112bc1e2ec4d03235c53d76d23d3da338f89c893848952040cd4e76ec1c9",
+        "4e0c75cfdb7d6163052b443a81228f8be8675a2d90c3aed047c3acb0c5d1c783",
+        "c61a21c7be19beb6384dc8eb9ae6ff65e26e5beba6a13ad2e3494dcb67072986",
+        "4bd2a19025e74bdb43ec2bc88b60ea0114e18fdf2f8c86a83acf4358a0b66e40",
+        "0ea0f9716fb4b74a8fd1810fcc0ebff848892dc20bee1597ddf08b091e390511",
+        "6bf6c3bf70c0004366d13ee6c88a66646c125fd29cf371147d9f2b45ec1a143e",
+        "784e65d45c419a5f65221b4ff2e0e4928d383d7a71d8f786f8ab4be3650e6987",
+        "27964ec8ad1470a9610fb81f3d5a5991fa02faed5b7e85c30c294bd87718fe1f",
+        "cc685dae2c5fbaef98866e3d9e70fbec7cea8f607d2344d870b89dcd5ad43548",
+        "22e4ac90adecbab8e9ee2233d75be721f2b02d61f43ba26a38f17ce8e6c8b003",
+        "ce8e64fb4cb7b98eb77cd2c6bbcecffa3111ad1652ef4e5b34c1fa917983db30",
+        "8bddc6285ddd8225d2606e5d80aa26e307c7930691eee9c6add83f5b2caf00b9"
+      ],
+      "compiler_sha256": "0324ba2710302783ff4241ce1f60b34d154a83e57c360a74299d80fec76ecf0f",
+      "cost_report": {
+        "fri": {
+          "fold_step": 1,
+          "last_layer_degree_bound": 1,
+          "log_blowup_factor": 1,
+          "pow_bits": 26,
+          "queries": 70
+        },
+        "padded": {
+          "blake_g": 0,
+          "eq": 0,
+          "m31_to_u32": 0,
+          "qm31_ops": 512,
+          "triple_xor": 0
+        },
+        "preprocessed_cells": 4096,
+        "profile": "direct-m31-v4",
+        "raw": {
+          "blake_g": 0,
+          "eq": 0,
+          "m31_to_u32": 0,
+          "qm31_ops": 321,
+          "triple_xor": 0
+        }
+      },
+      "diagnostic_paired_wall_after_reported_pow_seconds": {
+        "max": 0.042168791999633026,
+        "median": 0.039532958499841106,
+        "median_absolute_deviation": 0.002380728999887907,
+        "min": 0.02553520900034613,
+        "observations": 20,
+        "p90_interpolated": 0.0418586046997136
+      },
+      "observed_cost_model": {
+        "measurement_policy": {
+          "paired_total": "prover process wall plus native verifier process wall, excluding package build and audit utilities",
+          "peak_rss": "OS high-water mark for one native process tree; null if unavailable",
+          "process_wall": "includes process startup and resource-wrapper overhead",
+          "proof_of_work": "included in prover process wall and runtime prove; separately reported only when native timers exist",
+          "setup": "cold native setup in every fresh prover process",
+          "uncertainty": "median, median absolute deviation and interpolated p90 describe this observed corpus only"
+        },
+        "metrics": {
+          "native_verify_process_wall_seconds": {
+            "max": 0.020535583000309998,
+            "median": 0.019395666499804065,
+            "median_absolute_deviation": 0.0006149794999146252,
+            "min": 0.0113030840002466,
+            "observations": 20,
+            "p90_interpolated": 0.02009717120008645
+          },
+          "paired_prove_and_verify_wall_seconds": {
+            "max": 0.1880275410003378,
+            "median": 0.07798389600020528,
+            "median_absolute_deviation": 0.01401812450012585,
+            "min": 0.04714704200068809,
+            "observations": 20,
+            "p90_interpolated": 0.13922077530032773
+          },
+          "proof_bytes": {
+            "max": 58221,
+            "median": 54590.5,
+            "median_absolute_deviation": 1341.5,
+            "min": 52552,
+            "observations": 20,
+            "p90_interpolated": 56921.0
+          },
+          "prove_process_wall_seconds": {
+            "max": 0.1695037500003309,
+            "median": 0.06338600000026418,
+            "median_absolute_deviation": 0.017132728999968094,
+            "min": 0.029119667000486515,
+            "observations": 20,
+            "p90_interpolated": 0.119868087800478
+          },
+          "prover_peak_rss_bytes": {
+            "max": 9338880,
+            "median": 9207808.0,
+            "median_absolute_deviation": 32768.0,
+            "min": 9060352,
+            "observations": 20,
+            "p90_interpolated": 9279897.6
+          },
+          "prover_process_unattributed_seconds": {
+            "max": 0.018453333999887283,
+            "median": 0.016875771000197562,
+            "median_absolute_deviation": 0.0010292494998261088,
+            "min": 0.010285125000099538,
+            "observations": 20,
+            "p90_interpolated": 0.018031928899391356
+          },
+          "runtime_fri_pow_seconds": {
+            "max": 0.147584,
+            "median": 0.044580999999999996,
+            "median_absolute_deviation": 0.021762499999999997,
+            "min": 0.011423,
+            "observations": 20,
+            "p90_interpolated": 0.09862710000000005
+          },
+          "runtime_interaction_pow_seconds": {
+            "max": 0.006154,
+            "median": 0.0017620000000000001,
+            "median_absolute_deviation": 0.0012859999999999998,
+            "min": 0.000251,
+            "observations": 20,
+            "p90_interpolated": 0.0040474000000000005
+          },
+          "runtime_prove_excluding_pow_seconds": {
+            "max": 0.0015179999999999916,
+            "median": 0.0014335000000000025,
+            "median_absolute_deviation": 6.600000000000356e-05,
+            "min": 0.0012920000000000015,
+            "observations": 20,
+            "p90_interpolated": 0.0015020999999999988
+          },
+          "runtime_prove_seconds": {
+            "max": 0.149603,
+            "median": 0.0472775,
+            "median_absolute_deviation": 0.020055,
+            "min": 0.013087,
+            "observations": 20,
+            "p90_interpolated": 0.10088250000000006
+          },
+          "runtime_runtime_other_seconds": {
+            "max": 0.0014350000000000057,
+            "median": 0.0012610000000000017,
+            "median_absolute_deviation": 3.850000000000034e-05,
+            "min": 0.0011490000000000042,
+            "observations": 20,
+            "p90_interpolated": 0.001370200000000006
+          },
+          "runtime_setup_seconds": {
+            "max": 0.000869,
+            "median": 0.000825,
+            "median_absolute_deviation": 3.0499999999999982e-05,
+            "min": 0.000763,
+            "observations": 20,
+            "p90_interpolated": 0.0008662
+          },
+          "runtime_total_through_verification_seconds": {
+            "max": 0.151917,
+            "median": 0.049451499999999995,
+            "median_absolute_deviation": 0.019965499999999997,
+            "min": 0.015184,
+            "observations": 20,
+            "p90_interpolated": 0.10309820000000007
+          },
+          "runtime_witness_seconds": {
+            "max": 0.000128,
+            "median": 0.000116,
+            "median_absolute_deviation": 4.9999999999999996e-06,
+            "min": 0.000107,
+            "observations": 20,
+            "p90_interpolated": 0.0001251
+          },
+          "verifier_peak_rss_bytes": {
+            "max": 5488640,
+            "median": 5406720.0,
+            "median_absolute_deviation": 16384.0,
+            "min": 5390336,
+            "observations": 20,
+            "p90_interpolated": 5473894.4
+          }
+        },
+        "schema": "s31-observed-whole-prover-cost-v1",
+        "verified_trials": 20
+      },
+      "package_build_cache": "uncontrolled Zig cache",
+      "package_build_wall_seconds": 0.12321866599995701,
+      "package_manifest_sha256": "24d364f7f86010c566d7383585ada61af0622cc863a3b2fee0b2c33c11e92644",
+      "package_reused": true,
+      "proof_sha256": [
+        "26a031c476481d366a278037201e6861681321ea72b0d4092ef5de6e310870da",
+        "76da4f002538e6212f7748c34fe23550db875c4770bc730a4df5b738f0515bbc",
+        "2e7a6baf670e71179abd26028b422c4d7a64f2f56ec0a45c871543f79371ee3f",
+        "7da7a0b11261d26a5035f2c985b13f4dd71cc5e874783de3e3a85d7ab7173ebd",
+        "7a309302d62571eef8f3edf15d6f67d7b93996561c931a6d54ac0c5d3aae7653",
+        "1ee2d21ebe34a8413c225a0fe032203946acdfb1681c11f153f859f4cabcc7b3",
+        "fba592023ec2058bb94f55c7d72af838c1f7f6a452d02c39c7b068e894a3c8bc",
+        "154e4ae36f01996c57ea8bfaea7ce3328272ca1bdff4e2337e05090c3d4ce502",
+        "3b46de425ebbc32fa9da821a5898519b6fb3189dab534405ee531514edb73793",
+        "82847853bb6a471e456302c3078f2fe2e43d971ff54813689758178c97d0bd71",
+        "dc1e30783da33da7b1a1bf194fe525e274119937121465abd478f6c4c51660af",
+        "368f22cf16a2223b938950c61b2d86c1f17385e33fa6fe9fefd75aff5a89babc",
+        "1ff4ba678cd123651dd4ce1e6de936f8f25d4a1ef0d8a8a1df7dbe9e6121e22d",
+        "d514ee36752b890863541d9af23885908207d80fc3a36cf0e8225f9d0d311b2c",
+        "3577b8b8f1dee8b471dc09e2c8185e91c6ec7a171d75764cfa4956ce81651b6e",
+        "f308492497ee8048800d55fe811c3e4084b981a42e81ee2ba48e89d23662de97",
+        "955e54e9cf1a9a33aa861030ff0c88423bdb0cde26e791992fd60de8b146d0b7",
+        "a3a649fba8257c32bc9fc2f2a5ff0e45a4491745c920d4c61ec463226c10d13d",
+        "75d522132b2d876680ddf8285aa621ab7f98aab9bf6882af86c6f5e5d79fbe6c",
+        "cdd6c51a8738d1aae274b0e291633367cae891b8ab44abc06d76d96383b82ea5"
+      ],
+      "source": "gates-01/exploratory_1.s31",
+      "source_sha256": "8de2911fe64183b9a21f57f01d41cfcff9a9c84d5045e12a93f97c9e9966fd2c",
+      "trial_report_sha256": [
+        "74c4c18d583d4f18b20a4f419f5585b1821cc1668729fb6f9da980247c172af2",
+        "14d7c80dbb11eba331bf1c2554341be0d82b158cdfde5147ac0c1b49bd918cbf",
+        "d41fcab70a3c0135d788a0d452e84ed1863ae1cd82665e6017f9936b2df76682",
+        "de4797a6bc1dc7e2716b80f85f890927ded4682a1e43a82f52cd33064c3ce828",
+        "627555667cb15a87ea13e2a4e0e589cdb104304e8a5c57566ae8cbb1d5887382",
+        "5b6c82bd6ff457c254714518727585ba1394ad1239dff284f4b8864a82b4fb67",
+        "556545d859abcbf492887f021b6f84dee58924fb2fefe027248b4004372b5efd",
+        "f335c96a18cd246b7379eb0821f7f0379308e49bfe14879fc4a2897929c6add7",
+        "7687d11dbda83ffcaaecf17710b876902462ac27214cf8a0bbbfbebf17efbedc",
+        "88bb4ecc1ddb7b27584843592ac820fd885b945b5654a5bbe4aad42a13417c4e",
+        "7caa65ac6cc53451cc35f70da8e9108fb34d5638c19e2d89b6c0fe9986e2ab66",
+        "df22703b00fcd61ced8a06f6fb288985130e11f64bedb034edc73b2e083cc689",
+        "1789f1b42e096f5c675909cda90a43abdab1c6dd9caf5540d44206396dcfd0a8",
+        "8d6332ed1cc9805621ad3a80e9bef2adb4351e0bc688e3628218616df401b025",
+        "454589b7676fcb87d63d90a84cac588eac3e032fd40974ad90132ed49383681e",
+        "db94fc2456eac61b0bafa7cdb0af9a67ad90baa121df710f5d94cdad3902e9d7",
+        "3b9e317ee1cbd908f415195bb668b316bef15620305d1947a5079d12d61c8ae6",
+        "0bdd698218936158808615bdb57745fdbd97d1c304e050b9956a214bea8980be",
+        "ae992fd0ad66a5bb694ffeed3a4d101b46e51f329b7043480cd4546437fc6411",
+        "c2f91d4a89cd7b87c9470f104cc46ca8a918a79f54225427a160d9917b62216c"
+      ]
+    },
+    "16": {
+      "assignment_sha256": [
+        "79d75d56595a9382815f386433b655531b36866c601b2510a982a808d789a367",
+        "6c72bb30f9b8109753c53edc01bde3cd513af2fac1df6f4c0e435df23217ae1c",
+        "5f431cf3b7fc7d625be74e2b9f5d35f87299b9c526b01e0b96353792c3819a64",
+        "2f1bf0b6f49e0a6fdddfe6d9d9a9364bc3d706f65a645fb8baaa512733e63276",
+        "5b17188b0ea27865327295c7605b618d3ea2922b2b749977b45f6f4eba30f7d9",
+        "b9b8cef83c6b277fa68b116a55fdf8a8427796c2393be8e213efa314b1e8c3c0",
+        "3ca112ea8b185db5a9d2a8802d007e7cd51ab99a437694419e6f69f3921fb0d2",
+        "6709641d26e33ae53c75f5ec4d19cc985efb53125427f714720e4ed792445f5b",
+        "f9710a495578f84545745efb41a255a976f78c4346308e27a01b1be0073b5f6a",
+        "544e0888871393beb1baa896d38c7e42c8cc486542643dd21d571f4acf3d97f3",
+        "d02f4d3fba3a1266d9e621f115efba9629f10e49b1c82dfad24322d9d0a36733",
+        "3069d455a9fdbe1d722e796999c7e9dc2f27f5a17c610b7015185fcb6a526591",
+        "8290a24b236468b5210ec09d9dfccfb6da3e52cfabbea5f7cc6c9566594fc661",
+        "2d7a46b4efa34731a8b8e35c1376d54bc54d458a741d64021a967630c3518dad",
+        "859c5d9e541648959ef611b2364d1f3067c2aaa868f821230258821c483b9285",
+        "3fb7f7bed5346422ae3e3714b654037232c30e858aa9f86d0164b4b670bdca27",
+        "c2b40e5a68b6a5ef036e198690e44da946fdf312d30b6c2d7ee8ed25dc0a7352",
+        "3e544502c140ce3b2793f1ff1ae9bf81b98042cf2df067e6ed288500c04748e5",
+        "44f5d2ad50b3a22b3aec291024e5c5d15bab2c2772e080e541b38d59a1e9a5b0",
+        "0637ebb8c35d9bd63c85d0885799db74552caf4a0035009cd276c5793179206a"
+      ],
+      "compiler_sha256": "0324ba2710302783ff4241ce1f60b34d154a83e57c360a74299d80fec76ecf0f",
+      "cost_report": {
+        "fri": {
+          "fold_step": 1,
+          "last_layer_degree_bound": 1,
+          "log_blowup_factor": 1,
+          "pow_bits": 26,
+          "queries": 70
+        },
+        "padded": {
+          "blake_g": 0,
+          "eq": 0,
+          "m31_to_u32": 0,
+          "qm31_ops": 512,
+          "triple_xor": 0
+        },
+        "preprocessed_cells": 4096,
+        "profile": "direct-m31-v4",
+        "raw": {
+          "blake_g": 0,
+          "eq": 0,
+          "m31_to_u32": 0,
+          "qm31_ops": 336,
+          "triple_xor": 0
+        }
+      },
+      "diagnostic_paired_wall_after_reported_pow_seconds": {
+        "max": 0.04342104099991312,
+        "median": 0.040068250000395086,
+        "median_absolute_deviation": 0.00210729150008087,
+        "min": 0.025391540999955033,
+        "observations": 20,
+        "p90_interpolated": 0.041986708099944654
+      },
+      "observed_cost_model": {
+        "measurement_policy": {
+          "paired_total": "prover process wall plus native verifier process wall, excluding package build and audit utilities",
+          "peak_rss": "OS high-water mark for one native process tree; null if unavailable",
+          "process_wall": "includes process startup and resource-wrapper overhead",
+          "proof_of_work": "included in prover process wall and runtime prove; separately reported only when native timers exist",
+          "setup": "cold native setup in every fresh prover process",
+          "uncertainty": "median, median absolute deviation and interpolated p90 describe this observed corpus only"
+        },
+        "metrics": {
+          "native_verify_process_wall_seconds": {
+            "max": 0.021098666999932902,
+            "median": 0.01863847899949178,
+            "median_absolute_deviation": 0.0016331880005964194,
+            "min": 0.011544250000042666,
+            "observations": 20,
+            "p90_interpolated": 0.020650671400380818
+          },
+          "paired_prove_and_verify_wall_seconds": {
+            "max": 0.3934899989990299,
+            "median": 0.12434762449947812,
+            "median_absolute_deviation": 0.04091243749917339,
+            "min": 0.05041512500065437,
+            "observations": 20,
+            "p90_interpolated": 0.27621700009985956
+          },
+          "proof_bytes": {
+            "max": 58140,
+            "median": 55570.5,
+            "median_absolute_deviation": 865.0,
+            "min": 53861,
+            "observations": 20,
+            "p90_interpolated": 57149.9
+          },
+          "prove_process_wall_seconds": {
+            "max": 0.3774529579995942,
+            "median": 0.10727231199962262,
+            "median_absolute_deviation": 0.043240853999577666,
+            "min": 0.03256899999996676,
+            "observations": 20,
+            "p90_interpolated": 0.26356012090009256
+          },
+          "prover_peak_rss_bytes": {
+            "max": 9371648,
+            "median": 9191424.0,
+            "median_absolute_deviation": 57344.0,
+            "min": 9027584,
+            "observations": 20,
+            "p90_interpolated": 9340518.4
+          },
+          "prover_process_unattributed_seconds": {
+            "max": 0.018365999999966763,
+            "median": 0.0171034999997835,
+            "median_absolute_deviation": 0.0009095419997972795,
+            "min": 0.010102290999912365,
+            "observations": 20,
+            "p90_interpolated": 0.01827365389996048
+          },
+          "runtime_fri_pow_seconds": {
+            "max": 0.352356,
+            "median": 0.08465,
+            "median_absolute_deviation": 0.042978,
+            "min": 0.009791,
+            "observations": 20,
+            "p90_interpolated": 0.24628690000000011
+          },
+          "runtime_interaction_pow_seconds": {
+            "max": 0.009427,
+            "median": 0.002023,
+            "median_absolute_deviation": 0.0010875,
+            "min": 0.000314,
+            "observations": 20,
+            "p90_interpolated": 0.004285300000000001
+          },
+          "runtime_prove_excluding_pow_seconds": {
+            "max": 0.002014000000000002,
+            "median": 0.0014864999999999878,
+            "median_absolute_deviation": 3.899999999999737e-05,
+            "min": 0.0013639999999999972,
+            "observations": 20,
+            "p90_interpolated": 0.001599200000000034
+          },
+          "runtime_prove_seconds": {
+            "max": 0.358819,
+            "median": 0.08872949999999999,
+            "median_absolute_deviation": 0.04397949999999999,
+            "min": 0.011819,
+            "observations": 20,
+            "p90_interpolated": 0.24839630000000013
+          },
+          "runtime_runtime_other_seconds": {
+            "max": 0.001690000000000011,
+            "median": 0.0013870000000000098,
+            "median_absolute_deviation": 5.0999999999992024e-05,
+            "min": 0.0012380000000000169,
+            "observations": 20,
+            "p90_interpolated": 0.0014547000000000089
+          },
+          "runtime_setup_seconds": {
+            "max": 0.001071,
+            "median": 0.0008875,
+            "median_absolute_deviation": 4.250000000000006e-05,
+            "min": 0.000792,
+            "observations": 20,
+            "p90_interpolated": 0.0009719000000000002
+          },
+          "runtime_total_through_verification_seconds": {
+            "max": 0.361282,
+            "median": 0.09113650000000001,
+            "median_absolute_deviation": 0.04403100000000001,
+            "min": 0.014203,
+            "observations": 20,
+            "p90_interpolated": 0.25075570000000014
+          },
+          "runtime_witness_seconds": {
+            "max": 0.000161,
+            "median": 0.000127,
+            "median_absolute_deviation": 6.0000000000000035e-06,
+            "min": 0.000118,
+            "observations": 20,
+            "p90_interpolated": 0.00015270000000000003
+          },
+          "verifier_peak_rss_bytes": {
+            "max": 5472256,
+            "median": 5455872.0,
+            "median_absolute_deviation": 0.0,
+            "min": 5439488,
+            "observations": 20,
+            "p90_interpolated": 5457510.4
+          }
+        },
+        "schema": "s31-observed-whole-prover-cost-v1",
+        "verified_trials": 20
+      },
+      "package_build_cache": "uncontrolled Zig cache",
+      "package_build_wall_seconds": 0.15936599999986356,
+      "package_manifest_sha256": "ad5cc8e55936a51eb47c1025e2547183c1a5b8684924a46a026c9d53e0432bef",
+      "package_reused": true,
+      "proof_sha256": [
+        "14655a227f903848107a1737e4f3a8ca60cbfa20d349c2eb97a134f7e73c297a",
+        "2cec8474aa3113fcad07204f0219298e84afa0042713b514734e0d90208963fd",
+        "9844dcd00498d9e5bb03117f0ae2fc7653028faebad549b026d8e2925a54674e",
+        "2626630619bcb869059f9b56b09db2514c7642848f9af27c399466fb1bc67a0e",
+        "5902184906d7ba5fb99c77dab04f03cf99c10bf8bf0fd8d28bb8c4b523c2cd90",
+        "a7f00c1fdb183dca05dba51091086ab1e08c23d2e7aad1febfc3bb968294e2e9",
+        "247aea1318f68554d64ae7543d0eb622ad1f5908c917bb9c845772675fceb614",
+        "c546507b21745731d112f924d08518cf239fa15c98c89c650ee8078e72f1510f",
+        "6f9147b934805505950fc0b8880c2dcad2338b6de36e99daf2f5ed0b36f24c8b",
+        "ba1e9180982e3d1fe6b0b08314dcfabb069565b91aaf4ff3a61a80927be01403",
+        "132fdb4359fc10a0cb7b1cf7f2ecf94f9e7674ce4fbaa1b43d399367f5cd906f",
+        "b5d3bceb431319b26ae79fe13225fff400b01d87eb55ea704519f08833417f2a",
+        "b06b78965b889b9b77789f9bd4b7b20e6cceddf58d04527351f14a805cfad894",
+        "04668585caa211cd7eb06f43f4e2f30bdc0cfc266b5b95051b327ecfdd03b364",
+        "9204d9d08dafc67f1b080b6e1e0c52d240753c3e18f3583a16aa7fae86812645",
+        "6b8a5bbcaac3c24e0721625f3d719c53c97c093599262201d83177a36b1ed758",
+        "f546689bf046960389b14f0bc6f41617808d44c97487abff6847981b5c41862c",
+        "cde93606728c85cb77015d35bffafaf863217ee2de3894110f359736622d26f7",
+        "9f7b48196d3a0099df7499f4d2590544c26b4d5fe077bac45066efd7e838b9da",
+        "ee9041ea621e98f03e783bfb1331666c1e96b228099a81a38e1a8d955843bd39"
+      ],
+      "source": "gates-16/exploratory_16.s31",
+      "source_sha256": "13a6e10bf350a7979723adb637ae089590a14289a49afc88e7a515077e238c53",
+      "trial_report_sha256": [
+        "14e9a686e104b05e9fc506993c4848c3e6a4c46c5686328ee553ea2359af5005",
+        "3ada40b48acd84b237d7feb46b516b80d4dfd293a78d0f6afe4bdc9cef0d84ee",
+        "79dae13c665dacefd9a4a7e42fece25576945a098a4d49997b51c6365a7fd1a2",
+        "bdb7452b3f0afda357a02ea1a12e87c0aa515875c96a0ca5f172e8f7b226f982",
+        "7bb7e5c13611a73e2b0169a4f6d8fe89f464cadaa49c669f8abc0a45b6aabf34",
+        "0ba0d9e0005c7c28681694558544b29fe6e32da917328174e604c727cdb9b487",
+        "988e75cdeaac7525a80792e0375234adbec73f40d8d1867e7c6d53eee9ce433e",
+        "318d89903d34ec0f5f7074cc7ce1d282fbac219163529afd160f862849c8081a",
+        "daaf4b3bd95991df083b42f3f5bb86007fd612a822fd508d1aae0befa056b9be",
+        "d7291a290105958c52ee06c78a210626930fada9880eb35b4983e159800973f1",
+        "6c63bcac7321454cb61ad4eb0462e6e943a3f61a10a32eb6b447ba944f2cb57b",
+        "bd8e0316572a02fb553ee9dcb27cb991f73d5cf04927ec110c8e0c16ac430a68",
+        "f73565ca0f4a1e37175719d6855a4f692504bfaeb52253f1b1c1ab0552deeb30",
+        "f171ddaa2f77883d5535bdb7b168c9c3dc6c223548a6bdd67c28eaf75c0ee0b0",
+        "1151c55d67c6110f4ecf187efacfac440f36c7790973ee74af8a25130edff5d7",
+        "1c6e261a7c70e4b4f67db3eb320266f714e3b9c4ab5e3c1a423507a74d5101a2",
+        "3ebac98aa6279182309c1846589f55de567f586429cf1ae3b8863d27ec752c09",
+        "c697119991f5423fcc31eda35dcce3e501a86c2dbb1702281443a6b7f33a9d84",
+        "a3bd1d96b4de9a0fc56f39cff91bd74fd0f503cbbcead9e17c2cd1d0432c7519",
+        "b97da74bef7ac292b275761ee6448cb4abb1c416d80efafe20327d78ee00cb9c"
+      ]
+    },
+    "4": {
+      "assignment_sha256": [
+        "31768dc2947e08166fee5d0747bb2adfdcd591bde7a6b2d934bfb3b2dbb5c75c",
+        "b272c860721219962c4c7dabc85a6c9221b241625a6e9586db047759d8700a84",
+        "fe0ef06628d5c8ced517a57d2c14f12cf9e64665ca16e12f8a7825c3a39fb44b",
+        "6f2184f345bb482ee2e2674d351f5edf42d949f32880b4e63e0377f1d25fd11b",
+        "dda7025966b75833d97a1e580701be6654956a9c7f7f7c9a923341ea77eed806",
+        "a8831fa6b9c2c636b2d6241e6ead112e66464d2f20849c8c11c52a81e3b98fd7",
+        "0f77447685f2dd1313bfc2875e1106defce60d21adc8cdfca6a1793de352c58d",
+        "65cabfb2e669001099b1a3df6809ba90967dbd4316d0dbacbffdb1c8c51db466",
+        "0c816f2484ce0f35858a7b13645133243242ed590448a48d6f173b87276c5cdb",
+        "a3e924c264e93f0818e9a3facf8c44f8c1b578a9d8ba5b695f718996cba090d8",
+        "0df2e3c985df532e841ae2bee66002c88cc5840e8057dfb03a8c38ec00a8b0ad",
+        "320d5acfd01f9877dca2ce27f5041860e5cc93964dd3bc1ab955baa05807cc5c",
+        "e6167e6e918cd4b80711292435de381a808aa314b14541868c6364ee636a1d9c",
+        "11d5a85dd756e182b2320c2409f7313b76ba94b14e6a787fdb416d806756686b",
+        "349f9a078e20e95a935ffb983b170a11978860d8695330cbbc4c933ce8f25d4e",
+        "8042afefcb40a6c4013725cb71d0acbbd448ff80e5c28b31c0591be9e95381d3",
+        "a6cf4c59c9c61c0c43480e8f1a00bd5d14858fa179022a7682b9a581fb7bf4d1",
+        "1bcd11b95283709488c3a96db775ed592b3c31e8f99e264ef9a7eb9cbcbbe9ad",
+        "2d8ee6ee590afe621a0bb213d5cc711268c1e15fba3c7e2eead1f6946f83b7db",
+        "0bf0197173518646d37c807319f91dda84bf9a605cecc1b4e8687cb0592cb31a"
+      ],
+      "compiler_sha256": "0324ba2710302783ff4241ce1f60b34d154a83e57c360a74299d80fec76ecf0f",
+      "cost_report": {
+        "fri": {
+          "fold_step": 1,
+          "last_layer_degree_bound": 1,
+          "log_blowup_factor": 1,
+          "pow_bits": 26,
+          "queries": 70
+        },
+        "padded": {
+          "blake_g": 0,
+          "eq": 0,
+          "m31_to_u32": 0,
+          "qm31_ops": 512,
+          "triple_xor": 0
+        },
+        "preprocessed_cells": 4096,
+        "profile": "direct-m31-v4",
+        "raw": {
+          "blake_g": 0,
+          "eq": 0,
+          "m31_to_u32": 0,
+          "qm31_ops": 324,
+          "triple_xor": 0
+        }
+      },
+      "diagnostic_paired_wall_after_reported_pow_seconds": {
+        "max": 0.03917225000029201,
+        "median": 0.029538458499905506,
+        "median_absolute_deviation": 0.003147896000573587,
+        "min": 0.02399020899876181,
+        "observations": 20,
+        "p90_interpolated": 0.038543728900211204
+      },
+      "observed_cost_model": {
+        "measurement_policy": {
+          "paired_total": "prover process wall plus native verifier process wall, excluding package build and audit utilities",
+          "peak_rss": "OS high-water mark for one native process tree; null if unavailable",
+          "process_wall": "includes process startup and resource-wrapper overhead",
+          "proof_of_work": "included in prover process wall and runtime prove; separately reported only when native timers exist",
+          "setup": "cold native setup in every fresh prover process",
+          "uncertainty": "median, median absolute deviation and interpolated p90 describe this observed corpus only"
+        },
+        "metrics": {
+          "native_verify_process_wall_seconds": {
+            "max": 0.02008004199979041,
+            "median": 0.014600291499846207,
+            "median_absolute_deviation": 0.002884458000153245,
+            "min": 0.010436041999128065,
+            "observations": 20,
+            "p90_interpolated": 0.019207628600452154
+          },
+          "paired_prove_and_verify_wall_seconds": {
+            "max": 0.4011822089987618,
+            "median": 0.08484433299963712,
+            "median_absolute_deviation": 0.02769539650034858,
+            "min": 0.029106916000273486,
+            "observations": 20,
+            "p90_interpolated": 0.21729932529960946
+          },
+          "proof_bytes": {
+            "max": 58463,
+            "median": 55261.5,
+            "median_absolute_deviation": 721.5,
+            "min": 52907,
+            "observations": 20,
+            "p90_interpolated": 56707.3
+          },
+          "prove_process_wall_seconds": {
+            "max": 0.3907461669996337,
+            "median": 0.07028012499995384,
+            "median_absolute_deviation": 0.026801853500273864,
+            "min": 0.017166999999972177,
+            "observations": 20,
+            "p90_interpolated": 0.20424493369937421
+          },
+          "prover_peak_rss_bytes": {
+            "max": 9338880,
+            "median": 9199616.0,
+            "median_absolute_deviation": 98304.0,
+            "min": 8978432,
+            "observations": 20,
+            "p90_interpolated": 9324134.4
+          },
+          "prover_process_unattributed_seconds": {
+            "max": 0.016610208999785103,
+            "median": 0.011629770499646985,
+            "median_absolute_deviation": 0.0015561249999735717,
+            "min": 0.009138791999936918,
+            "observations": 20,
+            "p90_interpolated": 0.016362291600030086
+          },
+          "runtime_fri_pow_seconds": {
+            "max": 0.376897,
+            "median": 0.0520435,
+            "median_absolute_deviation": 0.024794500000000004,
+            "min": 0.001415,
+            "observations": 20,
+            "p90_interpolated": 0.18185710000000013
+          },
+          "runtime_interaction_pow_seconds": {
+            "max": 0.007943,
+            "median": 0.002581,
+            "median_absolute_deviation": 0.0016305,
+            "min": 0.000295,
+            "observations": 20,
+            "p90_interpolated": 0.0065655
+          },
+          "runtime_prove_excluding_pow_seconds": {
+            "max": 0.0019829999999999987,
+            "median": 0.0014210000000000125,
+            "median_absolute_deviation": 8.649999999999977e-05,
+            "min": 0.0012659999999999998,
+            "observations": 20,
+            "p90_interpolated": 0.0017254999999999966
+          },
+          "runtime_prove_seconds": {
+            "max": 0.378604,
+            "median": 0.0577195,
+            "median_absolute_deviation": 0.0256005,
+            "min": 0.004381,
+            "observations": 20,
+            "p90_interpolated": 0.1895749000000001
+          },
+          "runtime_runtime_other_seconds": {
+            "max": 0.0022059999999999927,
+            "median": 0.0013115000000000002,
+            "median_absolute_deviation": 4.300000000000137e-05,
+            "min": 0.0011570000000000191,
+            "observations": 20,
+            "p90_interpolated": 0.0014701000000000035
+          },
+          "runtime_setup_seconds": {
+            "max": 0.001016,
+            "median": 0.0008545,
+            "median_absolute_deviation": 4.3999999999999985e-05,
+            "min": 0.000794,
+            "observations": 20,
+            "p90_interpolated": 0.0009859
+          },
+          "runtime_total_through_verification_seconds": {
+            "max": 0.380885,
+            "median": 0.060105,
+            "median_absolute_deviation": 0.02546,
+            "min": 0.006726,
+            "observations": 20,
+            "p90_interpolated": 0.1919443000000001
+          },
+          "runtime_witness_seconds": {
+            "max": 0.000254,
+            "median": 0.00011850000000000001,
+            "median_absolute_deviation": 9.5e-06,
+            "min": 0.000104,
+            "observations": 20,
+            "p90_interpolated": 0.00014760000000000004
+          },
+          "verifier_peak_rss_bytes": {
+            "max": 5455872,
+            "median": 5439488.0,
+            "median_absolute_deviation": 0.0,
+            "min": 5423104,
+            "observations": 20,
+            "p90_interpolated": 5441126.4
+          }
+        },
+        "schema": "s31-observed-whole-prover-cost-v1",
+        "verified_trials": 20
+      },
+      "package_build_cache": "uncontrolled Zig cache",
+      "package_build_wall_seconds": 0.11649275000036141,
+      "package_manifest_sha256": "62a50da3c1be175cddada84ff8f6c49b14f2e8c68b0d98a40bccaddb76d32c22",
+      "package_reused": true,
+      "proof_sha256": [
+        "04dd0ecdc836abf947a5aaf1a3a9cf840962d8c0dda8fa4f77ef34b25c30c7b9",
+        "a5d149ddbbc71b926ab8e7509d7f792804306a9260d381d218f8648aa3620974",
+        "9818613d4af6e5d316660dd2c6711405345e5aaff27f85b3509be6bd3bea2f8e",
+        "8cb6c0b7719aa5007e81cd70ba49f6ebdc30bc82e8acc4afc02d054aecee6e04",
+        "ca90cff4a37405f3355619f4a6fba63265a029e79e8d68bd733c98056672a23b",
+        "349d30991254a6b92ae554fa905b4f5eab7817435bc9b480180683690a2e75ff",
+        "5b45bccc379f1f417b5552d92f7e683a68902de59c488ccf4469c668746f5622",
+        "a083387307f4683ab98f2acd4576cc54b0ba52361480aa1eddd190d769ecc129",
+        "22a49449c199290d5b85036f90784735a375e66d521d5409c2e7db7e58c666e9",
+        "13dc552add88e7c57cb28c94bc8f114e6f89d1410dc11db3455f7b60ca249a4a",
+        "cf4c518115dfd5d66f56f4f5afd2aaf918949d8307670c6d0d83baf26c6d2547",
+        "b7f6880d4d9a712ee588d102972d679e472647315a78c42547f826d80d45e03f",
+        "c2332d2a5f456c556a8d46badf04149c8458e6fa00fcd04e245428ee6ea25e12",
+        "53f23a7452ecb0ab53a44df27f4a450ac5048137e2cf3bf3fbf28c59681281dc",
+        "97423990de414583fb340a80bd6f660938e992f8a42febe4d74bd32ac2aed238",
+        "b6f2d9f455cc4cd2bb27dfd00d90351b79c70a005935a53e700fb2c94c9973ae",
+        "f27283c03bf06147d885d1d189a9e5d85913bec859f86ef00b09523203833f7b",
+        "20f85a65847ee15d4ca8d099fe144a3d9952512ef21aacc1449cf36657dec35f",
+        "4ee5a1f76610e43c37359159b274142a96855884caa723b560480ba2236a0d5e",
+        "40bce95da80826bb0d3e44dd219823d10191b7a346fcd5bf7c8bdbde066adc75"
+      ],
+      "source": "gates-04/exploratory_4.s31",
+      "source_sha256": "da679d28d479a32647f2307000ffbb0d2b2d7fde02b000feb21cc34626f3049c",
+      "trial_report_sha256": [
+        "9e50a10b6d852c4d7c9b2965e741eb71854855492c4664f60999a1efc8b804c3",
+        "865cd2abf674ebf5d524bc9843702e0189af778a4fbe3d618bfb90747d70200b",
+        "671b988e32df982089cdd661c0ce753770d87e017f4acdd6136e8022c2452eaa",
+        "9182e20a60eaa2686adc5c2db8da93508ef9edd2736177362ccc188350233f31",
+        "eaf91189a89f6584a4ba82e3431edb64f368ab1c4b6e03368eab71d4790e6e7d",
+        "cce9646b99c6e6119226186bf08755a3d37235a0ac9f02dd28bbfb089183a69f",
+        "0a31c1491a8925f6f9ef936af32bff1af47b20e081a15d0cf113d705a1090fed",
+        "f03b2a769ea78c431073c3f0e137fc40652ec70f136ca301fc25617174a119ac",
+        "c1a46365d3fa5000b55422e1c9e7390e5952063ae96c9bb2e10736df13afe27d",
+        "409cdf30cc54cbd93ed66c5daf9d8c3e6417d0946463410cbb1f115e9d66abcb",
+        "cb5162421ad14bd94562c68a5becd933d875db7b6715611a8d1c6d97de558eb2",
+        "5a3becdd2374de47a6aa860a4cccbfe141284c52327dfb740226833dd2f85815",
+        "afd23c614becf5e1d16a4e7986c88a04022e3f6a6167004967d9eef8c865a848",
+        "de6813bdfdda8099b9212325443a82a2cfff8c7ccb7fcf49a7ceec9be4691cd1",
+        "c123b081b3eee381082efd782464e157d71f86b55e10aa50e226f8a03aae6350",
+        "4ae40f925b8fa8fe8f8a9299347bfd5a65631422d864e77cff8bd5c5d94fccdf",
+        "103ff9f45f17f48bcb269140baad7ff534b15273ff789e5194a0e2c9ea2adef2",
+        "a7f5ff7c04b436a73272071be1027af24f5dcc6a1c5656c4bb6ae4d8d860b7bf",
+        "995772d27c74d77d41d0f5e785617d57169dd16850dc302847bf3dd0df260038",
+        "bc0c091db38d8ee25833d15e4d9b6c63b2a8023b1a554f85b24a30e2085f679e"
+      ]
+    }
+  },
+  "comparison": [
+    {
+      "gates": 1,
+      "padded_qm31_ops_rows": 512,
+      "paired_wall_after_reported_pow_median_seconds": 0.039532958499841106,
+      "paired_wall_median_seconds": 0.07798389600020528,
+      "preprocessed_cells": 4096,
+      "proof_bytes_median": 54590.5,
+      "prover_peak_rss_median_bytes": 9207808.0,
+      "raw_qm31_ops_rows": 321
+    },
+    {
+      "gates": 4,
+      "padded_qm31_ops_rows": 512,
+      "paired_wall_after_reported_pow_median_seconds": 0.029538458499905506,
+      "paired_wall_median_seconds": 0.08484433299963712,
+      "preprocessed_cells": 4096,
+      "proof_bytes_median": 55261.5,
+      "prover_peak_rss_median_bytes": 9199616.0,
+      "raw_qm31_ops_rows": 324
+    },
+    {
+      "gates": 16,
+      "padded_qm31_ops_rows": 512,
+      "paired_wall_after_reported_pow_median_seconds": 0.040068250000395086,
+      "paired_wall_median_seconds": 0.12434762449947812,
+      "preprocessed_cells": 4096,
+      "proof_bytes_median": 55570.5,
+      "prover_peak_rss_median_bytes": 9191424.0,
+      "raw_qm31_ops_rows": 336
+    }
+  ],
+  "host": {
+    "machine": "arm64",
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "python": "3.14.6",
+    "zig": "0.15.2"
+  },
+  "measurement_script_sha256": "1efc98fefd5dea5d8e28ef5550972cbf67e926d4b1932ccd40b45f8b0a518d13",
+  "samples_per_case": 20,
+  "schema": "s31-exploratory-bounded-direct-gate-cost-v1",
+  "scope": "One host, generated public four-lane +/.* recurrences, fresh native prover and verifier processes. Cost reports provide AIR geometry and FRI parameters, not wall-time, proof-byte or RSS predictions. No held-out calibration, extrapolation or automatic lowering. PoW-adjusted wall is a descriptive timer subtraction, not a measurement of a separate native process.",
+  "status": "exploratory-local-observation"
+}

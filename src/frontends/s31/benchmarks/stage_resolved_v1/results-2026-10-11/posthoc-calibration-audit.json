@@ -1,0 +1,14 @@
+{
+  "calibration_sha256": "85ed27e398b7d39b26bc3273b9e3d9470f2e8a15d445fae7984768689aadc8b9",
+  "exact_replay_passed": true,
+  "fit_programs": 6,
+  "fit_trials": 72,
+  "historical_stage_ledger_sha256": "1f25924ae8d40e8e758c291eb0f6bd1542600dedd1d495707f5afb67efd3af0c",
+  "interval_calibration_programs": 3,
+  "interval_calibration_trials": 36,
+  "phase": "post-hoc-second-source-historical-calibration-audit",
+  "prospectively_pinned": false,
+  "ratio_bands_replayed": 8,
+  "stage_records_replayed": 21,
+  "target_centers_replayed": 24
+}

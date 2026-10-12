@@ -1,5 +1,10 @@
 # 6. Packages, native verification, and audit
 
+Input visibility describes the public ABI. An ordinary `circuit` uses the
+legacy transparent proof mode; `private` alone does not establish zero
+knowledge. See [proof privacy](proof-privacy.md) for the explicit experimental
+`blinded circuit` mode and its current security boundary.
+
 ## Build, prove, verify
 
 This sequence starts with a checked-in text program and assignment. Run it
@@ -52,7 +57,7 @@ native verifier still decides proof acceptance.
 | --- | --- |
 | `bin/s31-NAME-prover` | Program-specific witness construction and proving. |
 | `bin/s31-NAME-native-verifier` | Program-specific native proof checker. |
-| `verification-key.json` | Profile, program/canonical-IR hashes, circuit hash, preprocessed root, padded geometry, pinned AIR asset hashes, FRI parameters, optional chip parameters. |
+| `verification-key.json` | Profile, program/canonical-IR hashes, circuit hash, preprocessed root, padded geometry, pinned AIR asset hashes, FRI parameters, optional chip parameters and blinding policy. |
 | `recursive-verification-key.json` | For `gate` and `sparse-wide-gate` packages: sealed outer verifier layout, root, hash, child-key digest and pinned AIR asset hashes. Sparse-wide key v3 also binds outer FRI fold step 4; its leaf defaults to step 1 and can be built with step 4. The native verifier embeds this key. |
 | `recursive-verification-key-level2.json` | Sealed second wrapper layout and child-key digest for both recursive profiles. |
 | `fixed-fold-verification-key.json` | Sealed repeatable fold AIR and root. Gate v3 and sparse-wide v4 use the constrained `u32` counter; the wide key binds the second wrapper key and fourfold FRI schedule. The [worked fold](recursion-wide-fold.md) explains its claim and limits. |
@@ -83,6 +88,73 @@ verification key through a trusted distribution path and check their
 identity. Re-lowering also does not prove that the compiler translated the
 source with the semantics the programmer intended.
 
+For an untrusted package, `s31 verify-pinned` requires SHA-256 digests of the
+normalized source, verification key, native prover, and native verifier from
+a separate trusted channel. A text package also requires the exact `.s31`
+source digest. It copies the package to a private temporary directory, then
+checks and executes that snapshot:
+
+```sh
+python3 src/frontends/s31/python/s31.py verify-pinned PACKAGE PROOF \
+  --source-sha256 SOURCE_DIGEST --key-sha256 KEY_DIGEST \
+  --prover-sha256 PROVER_DIGEST --verifier-sha256 VERIFIER_DIGEST \
+  --text-sha256 TEXT_DIGEST
+```
+
+Omit `--text-sha256` only for a normalized-JSON package with no `source.s31`.
+Pins copied from the package's own manifest provide no external
+authentication. Snapshotting fixes the checked bytes for this invocation;
+pinning does not sandbox its executable or sign a release. The
+`verify-pinned` command covers base proofs; recursive and fold verification
+still require an independently trusted package or installed verifier. The
+[standalone control](../../../../design/s31/security/controls/pinned_package.py)
+uses the same production admission code for audits without running a proof.
+
+For the bounded direct-gate source fragment, use `verify-release` with all
+five external pins. It additionally requires a rooted correspondence
+certificate, recomputes the source-to-normalized relation and exported fixed
+Gate rows, asks the installed verifier to reconstruct its sealed key, and
+verifies the proof from that same package snapshot:
+
+```sh
+python3 src/frontends/s31/python/s31.py verify-release PACKAGE PROOF \
+  --source-sha256 SOURCE_DIGEST --key-sha256 KEY_DIGEST \
+  --prover-sha256 PROVER_DIGEST --verifier-sha256 VERIFIER_DIGEST \
+  --text-sha256 TEXT_DIGEST
+```
+
+This strict command accepts one public `[m31; 4]` input, one to sixteen
+canonical add/multiply lets, zero-cost aliases and parentheses, and a public
+`[m31; 4]` output. Other S31 programs can still use `verify-pinned`; their
+source-to-AIR correspondence is outside this particular certificate.
+
+For that same fragment, the [fixed-root join inspector](../tools/inspect/check_direct_gate_fixed_root_join.py)
+replays `verify-release` admission, asks the packaged prover for a fresh
+topology export, and independently recommits all eight 512-word fixed columns.
+It then runs the generated native verifier on one exact proof and statement
+snapshot and compares the accepted proof's first commitment root with the
+recommitted cells and sealed key:
+
+```sh
+python3 src/frontends/s31/tools/inspect/check_direct_gate_fixed_root_join.py \
+  PACKAGE PROOF STATEMENT --pins /trusted/path/s31-pins.json
+```
+
+The pin file must contain lowercase SHA-256 hex values under exactly `text`,
+`source`, `key`, `prover`, and `verifier`. Obtain them through a trusted
+channel, independent of the package being inspected. The result includes
+the source, canonical IR, statement, proof, and fixed-column digests so the
+equality can be audited. This is a finite package/proof-byte diagnostic. It
+does not show that arbitrary PCS openings represent the displayed rows or
+prove Merkle, FRI, or the installed verifier sound.
+
+Auditors with the pinned Lean toolchain can also run the
+[proved byte checker](../../../../formal/s31/S31/Audit/README.md) on a
+package's `source.s31` and `source.s31.json`, and can supply the compact
+canonical IR bytes as a third file. That optional check exercises the exact
+Lean parser and encoders used in the bounded correspondence theorem; native
+proof verification does not invoke it.
+
 ## What the verifier checks
 
 The verifier is built with the source relation and sealed key. It checks the
@@ -104,7 +176,9 @@ Profile-specific proof headers are:
 | `chip` | `S31NAT2` followed by a NUL byte. |
 | `sparse-gate` / `sparse-chip` | `S31NAT3G` / `S31NAT3C`. |
 | `sparse-wide-gate` | `S31NAT5W`. |
-| `direct-gate` / `direct-chip` | `S31NAT4G` / `S31NAT4C`. |
+| `direct-gate` relation v1, new package / historical package | `S31NAT7G` / `S31NAT4G`. |
+| `direct-gate` record ABI v2 | `S31NAT4G` until a versioned record manifest binding is added. |
+| `direct-chip` historical / manifest bound | `S31NAT4C` / `S31NAT6C` (private bridge: `S31NAT6P`). |
 | `sha-joint` | `S31NAT6S`, a sealed key digest, interaction nonce, and twelve canonical LogUp sums. |
 | `sha-shift` | `S31SCJ03`, an interaction nonce, fifteen canonical LogUp sums, a sealed key digest, and one circuit plus shift-register SHA proof. |
 | `sha-fused` | `S31FCJ04`, an interaction nonce, ten canonical LogUp sums, a sealed key digest, and one circuit plus fused SHA schedule and round proof. |
@@ -171,8 +245,9 @@ gives the exact specialized-chip row constraints; the generic AIR bundle
 remains a pinned build asset. A symbolic exporter with an identity check
 against that asset is still needed for term-by-term audit.
 
-S31 also lacks a private circuit-to-chip boundary for mixed programs,
-automatic chip selection, a dedicated Poseidon2 batch chip, and recursive
-verifier generation. Current performance records apply to their specified
-programs, host, and protocol configurations; row counts alone do not prove
-an end-to-end speedup over Cairo.
+S31 has an authenticated direct-chip boundary for one supported private
+four-lane recurrence. It does not yet admit arbitrary mixed programs or
+multiple chip calls through that boundary. Automatic chip selection and a
+dedicated Poseidon2 batch chip remain open. Current performance records apply
+to their specified programs, host, and protocol configurations; row counts
+alone do not prove an end-to-end speedup over Cairo.

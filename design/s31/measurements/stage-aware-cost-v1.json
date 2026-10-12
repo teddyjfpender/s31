@@ -1,0 +1,59 @@
+{
+  "schema": "s31-stage-aware-cost-protocol-v1",
+  "status": "predeclared-before-native-measurement",
+  "study_name": "prospective-stage-aware-cost-v1",
+  "host_policy": "one named local host, one stable compiler digest across both splits; no second-host generalization claim",
+  "samples_per_program": 20,
+  "split_policy": "fit on train programs and witnesses only; serialize model before validation native trials; reject duplicate source or assignment digests and mixed compiler/profile/FRI policy within family",
+  "splits": {
+    "train": {
+      "arithmetic_rounds": [16, 64, 256, 1024, 4096],
+      "hash_depths": [1, 2, 3, 4],
+      "signed_widths": [8, 16, 32, 64],
+      "signed_output": "quotient_and_remainder",
+      "assignment_index_base": 10000
+    },
+    "validation": {
+      "arithmetic_rounds": [32, 128, 512, 2048],
+      "hash_depths": [5, 6, 7, 8],
+      "signed_widths": [8, 16, 32, 64],
+      "signed_output": "quotient_only",
+      "assignment_index_base": 50000
+    }
+  },
+  "profiles": {"arithmetic": "direct-gate", "hash": "gate", "fixed_width": "direct-gate"},
+  "features": {
+    "raw_rows": "sum of all nonzero raw component rows",
+    "padded_rows": "sum of all nonzero padded component rows",
+    "preprocessed_cells": "cost-report fixed/preprocessed cell count",
+    "hash_work": "1 + raw blake_g rows; hash family only"
+  },
+  "stage_features": {
+    "runtime_witness_seconds": "raw_rows",
+    "runtime_setup_seconds": "preprocessed_cells",
+    "runtime_prove_excluding_pow_seconds": "raw_rows",
+    "runtime_runtime_other_seconds": "padded_rows",
+    "prover_process_unattributed_seconds": "constant",
+    "native_verify_process_wall_seconds": "padded_rows",
+    "runtime_interaction_pow_seconds": "padded_rows",
+    "runtime_fri_pow_seconds": "padded_rows",
+    "runtime_prove_seconds_when_pow_opaque": "hash_work",
+    "proof_bytes": "padded_rows",
+    "prover_peak_rss_bytes": "padded_rows"
+  },
+  "fit": "per family and stage, OLS log(program median) versus log(predeclared positive feature), except constant stage uses median of training program medians; PoW gets its own fitted median and empirical trial/median multiplier distribution; generic hash prove time is one opaque stochastic stage",
+  "interval": "each stage center multiplied by exp(+- maximum leave-one-training-program-out absolute log residual), then by pooled training trial/within-program-median empirical p05/p95 ratios; sum stage endpoints for process wall; descriptive predictive interval, not a confidence interval",
+  "targets": ["paired_prove_and_verify_wall_seconds", "proof_bytes", "prover_peak_rss_bytes"],
+  "accuracy_gate": {
+    "minimum_train_programs_per_family": 4,
+    "minimum_validation_programs_per_family": 4,
+    "minimum_validation_trials_per_program": 20,
+    "per_family_whole_wall_program_median_p90_relative_error_max": 0.25,
+    "per_family_whole_wall_trial_interval_coverage_min": 0.80,
+    "per_family_whole_wall_median_interval_upper_to_measured_median_max": 6.0,
+    "per_family_proof_bytes_program_median_p90_relative_error_max": 0.10,
+    "per_family_prover_rss_program_median_p90_relative_error_max": 0.10,
+    "per_family_proof_bytes_and_rss_trial_interval_coverage_min": 0.80
+  },
+  "selection_policy": "automatic lowering remains disabled even if local accuracy gate passes; profile soundness equivalence, additional hosts, and comparison on paired assignments remain required"
+}

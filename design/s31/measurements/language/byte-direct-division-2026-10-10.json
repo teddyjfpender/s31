@@ -1,0 +1,266 @@
+{
+  "cases": [
+    {
+      "assignment_sha256": [
+        "cf0b147790e1dd4180471e70511d39cd3035e774c8fef3a56337540bf0c6cf08",
+        "95b51fef4d2840a0a0fe1c2cb12ca7a274d41397583a5d353288428b4eecf132",
+        "92dc13fe49741fd21cf63c1fb3448734a522f1e9f734f6b32cf47e5fd02de637",
+        "a95bd01899d964fe386c33567f3370ec6dcc4cdaf8c1afcae0f8e968482b454a",
+        "a347b49aaa32c893e4f2bdc87a07884b2411d625fe3cf51ca2e6244770e231e2"
+      ],
+      "canonical_ir_sha256": "01974444113fe3a63061d4a72ba79d5cbf200e86ca84c9aa99419923da100e10",
+      "host": {
+        "machine": "arm64",
+        "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+        "python": "3.14.6",
+        "zig": "0.15.2"
+      },
+      "name": "u8_div_rem",
+      "profiles": {
+        "direct-gate": {
+          "changed_public_statement_rejected_all": true,
+          "independent_value_oracle_statuses": [
+            "passed",
+            "passed",
+            "passed",
+            "passed",
+            "passed"
+          ],
+          "median_proof_bytes": 54356,
+          "median_prove_excluding_pow_seconds": 0.0012700000000000003,
+          "median_wall_prove_seconds": 0.03876733302604407,
+          "native_verifier_accepted_all": true,
+          "padded": {
+            "blake_g": 0,
+            "eq": 0,
+            "m31_to_u32": 0,
+            "qm31_ops": 512,
+            "triple_xor": 0
+          },
+          "preprocessed_cells": 4096,
+          "profile": "direct-m31-v4",
+          "proof_bytes_per_assignment": [
+            56359,
+            54356,
+            57513,
+            53659,
+            53871
+          ],
+          "raw": {
+            "blake_g": 0,
+            "eq": 0,
+            "m31_to_u32": 0,
+            "qm31_ops": 289,
+            "triple_xor": 0
+          },
+          "visible_fri": {
+            "blowup_factor": 2,
+            "fold_step": 1,
+            "last_layer_degree_bound": 1,
+            "pow_bits": 26,
+            "queries": 70
+          },
+          "wall_prove_seconds_per_assignment": [
+            0.03867270902264863,
+            0.02946470899041742,
+            0.03876733302604407,
+            0.1952130829449743,
+            0.1767659579636529
+          ]
+        },
+        "sparse-wide-gate": {
+          "changed_public_statement_rejected_all": true,
+          "independent_value_oracle_statuses": [
+            "passed",
+            "passed",
+            "passed",
+            "passed",
+            "passed"
+          ],
+          "median_proof_bytes": 223847,
+          "median_prove_excluding_pow_seconds": 0.015385999999999983,
+          "median_wall_prove_seconds": 0.15282995905727148,
+          "native_verifier_accepted_all": true,
+          "padded": {
+            "blake_g": 0,
+            "eq": 16,
+            "m31_to_u32": 16,
+            "qm31_ops": 512,
+            "triple_xor": 0
+          },
+          "preprocessed_cells": 69712,
+          "profile": "sparse-wide-v5",
+          "proof_bytes_per_assignment": [
+            217614,
+            223058,
+            223847,
+            230776,
+            231987
+          ],
+          "raw": {
+            "blake_g": 0,
+            "eq": 0,
+            "m31_to_u32": 0,
+            "qm31_ops": 289,
+            "triple_xor": 0
+          },
+          "visible_fri": {
+            "blowup_factor": 2,
+            "fold_step": 1,
+            "last_layer_degree_bound": 1,
+            "pow_bits": 26,
+            "queries": 70
+          },
+          "wall_prove_seconds_per_assignment": [
+            0.2139733339427039,
+            0.08460254210513085,
+            0.15349358296953142,
+            0.15282995905727148,
+            0.06339870789088309
+          ]
+        }
+      },
+      "program_sha256": "f19106d46da76b28e4c13eee858006988908006eb4e8dfa3f8cf4649424e90d9",
+      "warmup_assignment_sha256": "cf0b147790e1dd4180471e70511d39cd3035e774c8fef3a56337540bf0c6cf08",
+      "wide_over_direct_ratio": {
+        "median_proof_bytes": 4.118,
+        "median_prove_excluding_pow_seconds": 12.115,
+        "median_wall_prove_seconds": 3.942,
+        "preprocessed_cells": 17.02
+      }
+    },
+    {
+      "assignment_sha256": [
+        "1a3dbe9b70e86db4951b1a4b79207934a35c39714aaa42656a0fc7c384187de8",
+        "0359a4d00b37004dd3943b0d42c0d8c246965bbee5c08dd384b4bc8912995330",
+        "c6cb15287cc038192e5827bd86ca8e1c5cc264d1c2af7f627088f85c9ba27946",
+        "278c34c5e67257576c5c960c7f69e299b1a48d13c5f3ac88badc8a89d8ddd5b6",
+        "078c97503e0eb65b809a480c0fef201da7ef795284eaf9fa327e1ec131ad31fa"
+      ],
+      "canonical_ir_sha256": "d5fe4e98aad634c55bed7ef83790ee49de72dfcd610472a756d30e1ae116ec95",
+      "host": {
+        "machine": "arm64",
+        "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+        "python": "3.14.6",
+        "zig": "0.15.2"
+      },
+      "name": "i8_div_rem",
+      "profiles": {
+        "direct-gate": {
+          "changed_public_statement_rejected_all": true,
+          "independent_value_oracle_statuses": [
+            "passed",
+            "passed",
+            "passed",
+            "passed",
+            "passed"
+          ],
+          "median_proof_bytes": 72947,
+          "median_prove_excluding_pow_seconds": 0.0019429999999999933,
+          "median_wall_prove_seconds": 0.0357252910034731,
+          "native_verifier_accepted_all": true,
+          "padded": {
+            "blake_g": 0,
+            "eq": 0,
+            "m31_to_u32": 0,
+            "qm31_ops": 1024,
+            "triple_xor": 0
+          },
+          "preprocessed_cells": 8192,
+          "profile": "direct-m31-v4",
+          "proof_bytes_per_assignment": [
+            72947,
+            74420,
+            72091,
+            73891,
+            65393
+          ],
+          "raw": {
+            "blake_g": 0,
+            "eq": 0,
+            "m31_to_u32": 0,
+            "qm31_ops": 607,
+            "triple_xor": 0
+          },
+          "visible_fri": {
+            "blowup_factor": 2,
+            "fold_step": 1,
+            "last_layer_degree_bound": 1,
+            "pow_bits": 26,
+            "queries": 70
+          },
+          "wall_prove_seconds_per_assignment": [
+            0.02730379195418209,
+            0.04378487495705485,
+            0.07686829206068069,
+            0.0357252910034731,
+            0.03200033295433968
+          ]
+        },
+        "sparse-wide-gate": {
+          "changed_public_statement_rejected_all": true,
+          "independent_value_oracle_statuses": [
+            "passed",
+            "passed",
+            "passed",
+            "passed",
+            "passed"
+          ],
+          "median_proof_bytes": 223935,
+          "median_prove_excluding_pow_seconds": 0.015838999999999992,
+          "median_wall_prove_seconds": 0.10065599996596575,
+          "native_verifier_accepted_all": true,
+          "padded": {
+            "blake_g": 0,
+            "eq": 16,
+            "m31_to_u32": 16,
+            "qm31_ops": 1024,
+            "triple_xor": 0
+          },
+          "preprocessed_cells": 73808,
+          "profile": "sparse-wide-v5",
+          "proof_bytes_per_assignment": [
+            223935,
+            222510,
+            223244,
+            229301,
+            224548
+          ],
+          "raw": {
+            "blake_g": 0,
+            "eq": 0,
+            "m31_to_u32": 0,
+            "qm31_ops": 607,
+            "triple_xor": 0
+          },
+          "visible_fri": {
+            "blowup_factor": 2,
+            "fold_step": 1,
+            "last_layer_degree_bound": 1,
+            "pow_bits": 26,
+            "queries": 70
+          },
+          "wall_prove_seconds_per_assignment": [
+            0.10065599996596575,
+            0.14373800007160753,
+            0.10741129191592336,
+            0.04487179103307426,
+            0.05197750008665025
+          ]
+        }
+      },
+      "program_sha256": "ea17518395d1bc0898b7391cc39de6cfc48992d70507b4afdf4d4dbf758b2e26",
+      "warmup_assignment_sha256": "1a3dbe9b70e86db4951b1a4b79207934a35c39714aaa42656a0fc7c384187de8",
+      "wide_over_direct_ratio": {
+        "median_proof_bytes": 3.07,
+        "median_prove_excluding_pow_seconds": 8.152,
+        "median_wall_prove_seconds": 2.817,
+        "preprocessed_cells": 9.01
+      }
+    }
+  ],
+  "date": "2026-10-10",
+  "measurement_limits": "Wall times include process startup and variable proof-of-work search. Five witnesses are a local comparison, not a cross-machine benchmark. Matching visible FRI settings alone do not establish equal soundness across different AIRs. The historical first-implementation baseline is separate and is not the paired comparator.",
+  "method": "s31 tune; same source and five distinct valid assignments per width; one warmup assignment per profile; ReleaseFast; native verification, changed-public-statement rejection, and independent value oracle required for every run",
+  "schema": "s31-byte-division-profile-comparison-v1"
+}

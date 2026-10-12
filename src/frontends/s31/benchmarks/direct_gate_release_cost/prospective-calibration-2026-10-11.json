@@ -1,0 +1,63 @@
+{
+  "plan_sha256": "72ba0038e227f439e6de078ad94a11e21bae76d352991252c2fbba6993e3dd75",
+  "predictions": {
+    "paired_after_pow_seconds": {
+      "center": 0.03579041699995299,
+      "descriptive_training_max": 0.04703558300010599,
+      "descriptive_training_min": 0.0231623749994298,
+      "training_program_medians": {
+        "1": 0.028961999999786905,
+        "16": 0.03579041699995299,
+        "4": 0.037271353999851736
+      },
+      "training_trials": 36
+    },
+    "paired_wall_seconds": {
+      "center": 0.07360239550052938,
+      "descriptive_training_max": 0.26040308299980097,
+      "descriptive_training_min": 0.0344533749994298,
+      "training_program_medians": {
+        "1": 0.07360239550052938,
+        "16": 0.08832472950052761,
+        "4": 0.07215568699984942
+      },
+      "training_trials": 36
+    },
+    "pow_seconds": {
+      "center": 0.0447245,
+      "descriptive_training_max": 0.221941,
+      "descriptive_training_min": 0.005095,
+      "training_program_medians": {
+        "1": 0.0447245,
+        "16": 0.049498,
+        "4": 0.034129
+      },
+      "training_trials": 36
+    },
+    "proof_bytes": {
+      "center": 55261.5,
+      "descriptive_training_max": 58463.0,
+      "descriptive_training_min": 52552.0,
+      "training_program_medians": {
+        "1": 54480.0,
+        "16": 55356.5,
+        "4": 55261.5
+      },
+      "training_trials": 36
+    },
+    "prover_peak_rss_bytes": {
+      "center": 9191424.0,
+      "descriptive_training_max": 9388032.0,
+      "descriptive_training_min": 9027584.0,
+      "training_program_medians": {
+        "1": 9191424.0,
+        "16": 9191424.0,
+        "4": 9207808.0
+      },
+      "training_trials": 36
+    }
+  },
+  "schema": "s31-bounded-direct-gate-prospective-v1",
+  "status": "sealed-before-heldout-measurement",
+  "train_report_sha256": "6125bc32ae7db04ddf4b477542d30eaf15feced922aed978bd5bfda683f6cc29"
+}

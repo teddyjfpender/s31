@@ -1,0 +1,6 @@
+use std@1;
+
+circuit u32_rotl16(private a: u32) -> public u32 {
+    let result = std::int::rotl<16>(a);
+    result
+}

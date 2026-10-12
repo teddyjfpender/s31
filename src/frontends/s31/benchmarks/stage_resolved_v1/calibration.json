@@ -1,0 +1,341 @@
+{
+  "automatic_lowering_selection_enabled": false,
+  "cases": {
+    "256": {
+      "fit_source_sha256": [
+        "5a9fbeedb42648f49dc6e4b2faa7a33ab5a7f5c22941f9f379e2b2d367b1e520",
+        "690c0ddd95f6c628a8a75f8f71a1b89fa2afabf367f23cea285ed2c86bd8c4d5"
+      ],
+      "stage_centers_seconds": {
+        "external_verifier": {
+          "center": 0.020075906499869234,
+          "fit_program_medians": {
+            "add": 0.020072520999747212,
+            "alternating": 0.020079291999991256
+          }
+        },
+        "native_nonpow_prove": {
+          "center": 0.001879500000000003,
+          "fit_program_medians": {
+            "add": 0.0018859999999999992,
+            "alternating": 0.0018730000000000066
+          }
+        },
+        "native_pow": {
+          "center": 0.06031575,
+          "fit_program_medians": {
+            "add": 0.0346495,
+            "alternating": 0.085982
+          }
+        },
+        "prover_process_residual": {
+          "first_center": 0.42713537450035827,
+          "first_fit_program_values": {
+            "add": 0.42061683300017694,
+            "alternating": 0.4336539160005396
+          },
+          "later_center": 0.01768606300017223,
+          "later_fit_program_medians": {
+            "add": 0.01776329200008872,
+            "alternating": 0.017608834000255737
+          }
+        },
+        "runtime_other": {
+          "center": 0.0014357499999999978,
+          "fit_program_medians": {
+            "add": 0.0013890000000000013,
+            "alternating": 0.0014824999999999942
+          }
+        },
+        "setup": {
+          "center": 0.0011235,
+          "fit_program_medians": {
+            "add": 0.001118,
+            "alternating": 0.001129
+          }
+        },
+        "witness": {
+          "center": 0.00032625,
+          "fit_program_medians": {
+            "add": 0.00032649999999999997,
+            "alternating": 0.000326
+          }
+        }
+      },
+      "target_centers_by_phase": {
+        "first": {
+          "after_reported_pow_seconds": 0.45197628100022746,
+          "first_verified_wall_seconds": 0.5122920310002275,
+          "proof_bytes": 72317.5,
+          "prover_peak_rss_bytes": 10858496.0
+        },
+        "later": {
+          "after_reported_pow_seconds": 0.042526969500041464,
+          "first_verified_wall_seconds": 0.10284271950004147,
+          "proof_bytes": 72317.5,
+          "prover_peak_rss_bytes": 10858496.0
+        }
+      }
+    },
+    "448": {
+      "fit_source_sha256": [
+        "175a2910f3490039e7d4fbf38db47673d1757ce7fe0b15f6ff8d1b9f2546bde9",
+        "20c96796c6cf30429d3bbb512554d824f65f7a2b1c5d0f5fc1230dc5b31aa3b5"
+      ],
+      "stage_centers_seconds": {
+        "external_verifier": {
+          "center": 0.019944000249779492,
+          "fit_program_medians": {
+            "add": 0.019954333499299537,
+            "alternating": 0.019933667000259447
+          }
+        },
+        "native_nonpow_prove": {
+          "center": 0.0019352500000000133,
+          "fit_program_medians": {
+            "add": 0.001938000000000023,
+            "alternating": 0.0019325000000000037
+          }
+        },
+        "native_pow": {
+          "center": 0.09029399999999999,
+          "fit_program_medians": {
+            "add": 0.09653799999999998,
+            "alternating": 0.08405
+          }
+        },
+        "prover_process_residual": {
+          "first_center": 0.40450175050000486,
+          "first_fit_program_values": {
+            "add": 0.4158772089998019,
+            "alternating": 0.3931262920002078
+          },
+          "later_center": 0.01756431249965064,
+          "later_fit_program_medians": {
+            "add": 0.017571249999720255,
+            "alternating": 0.017557374999581023
+          }
+        },
+        "runtime_other": {
+          "center": 0.001525000000000002,
+          "fit_program_medians": {
+            "add": 0.0015320000000000056,
+            "alternating": 0.0015179999999999985
+          }
+        },
+        "setup": {
+          "center": 0.0013280000000000002,
+          "fit_program_medians": {
+            "add": 0.001325,
+            "alternating": 0.0013310000000000002
+          }
+        },
+        "witness": {
+          "center": 0.00049225,
+          "fit_program_medians": {
+            "add": 0.000488,
+            "alternating": 0.0004965
+          }
+        }
+      },
+      "target_centers_by_phase": {
+        "first": {
+          "after_reported_pow_seconds": 0.42972625074978443,
+          "first_verified_wall_seconds": 0.5200202507497844,
+          "proof_bytes": 72848.75,
+          "prover_peak_rss_bytes": 10985472.0
+        },
+        "later": {
+          "after_reported_pow_seconds": 0.04278881274943014,
+          "first_verified_wall_seconds": 0.13308281274943012,
+          "proof_bytes": 72848.75,
+          "prover_peak_rss_bytes": 10985472.0
+        }
+      }
+    },
+    "96": {
+      "fit_source_sha256": [
+        "4718265a0566d2c0cb84e3a5be8a3cca3668b4551d23e0be322828d1caa86580",
+        "ea6d3cbc09786b3a0dfc4671525877d15a251bdc3ea62bf4205e76014a332c89"
+      ],
+      "stage_centers_seconds": {
+        "external_verifier": {
+          "center": 0.019026635750378773,
+          "fit_program_medians": {
+            "add": 0.019093896000413224,
+            "alternating": 0.018959375500344322
+          }
+        },
+        "native_nonpow_prove": {
+          "center": 0.0012370000000000055,
+          "fit_program_medians": {
+            "add": 0.0012485000000000065,
+            "alternating": 0.0012255000000000044
+          }
+        },
+        "native_pow": {
+          "center": 0.06299825,
+          "fit_program_medians": {
+            "add": 0.0576965,
+            "alternating": 0.0683
+          }
+        },
+        "prover_process_residual": {
+          "first_center": 0.4204294999995305,
+          "first_fit_program_values": {
+            "add": 0.4202331669990007,
+            "alternating": 0.42062583300006035
+          },
+          "later_center": 0.016216625000863013,
+          "later_fit_program_medians": {
+            "add": 0.01690587500103423,
+            "alternating": 0.015527375000691797
+          }
+        },
+        "runtime_other": {
+          "center": 0.0012810000000000009,
+          "fit_program_medians": {
+            "add": 0.0011699999999999974,
+            "alternating": 0.0013920000000000043
+          }
+        },
+        "setup": {
+          "center": 0.0008504999999999999,
+          "fit_program_medians": {
+            "add": 0.00087,
+            "alternating": 0.0008309999999999999
+          }
+        },
+        "witness": {
+          "center": 0.000174,
+          "fit_program_medians": {
+            "add": 0.0001795,
+            "alternating": 0.00016849999999999998
+          }
+        }
+      },
+      "target_centers_by_phase": {
+        "first": {
+          "after_reported_pow_seconds": 0.4429986357499093,
+          "first_verified_wall_seconds": 0.5059968857499093,
+          "proof_bytes": 54621.75,
+          "prover_peak_rss_bytes": 9633792.0
+        },
+        "later": {
+          "after_reported_pow_seconds": 0.03878576075124179,
+          "first_verified_wall_seconds": 0.1017840107512418,
+          "proof_bytes": 54621.75,
+          "prover_peak_rss_bytes": 9633792.0
+        }
+      }
+    }
+  },
+  "compiler_sha256": "893ce1f78d19783eaafac3094dbbe847bdbb61de9a4b2055d3c8ff50b2e4dd1b",
+  "diagnostic_limits": {
+    "first_first_verified_wall_seconds_trial_coverage_min": 0.6666666666666666,
+    "later_after_reported_pow_seconds_program_median_error_max": 0.15,
+    "later_after_reported_pow_seconds_trial_coverage_min": 0.8,
+    "later_after_reported_pow_seconds_upper_to_center_max": 1.5,
+    "later_first_verified_wall_seconds_trial_coverage_min": 0.75,
+    "later_first_verified_wall_seconds_upper_to_center_max": 8.0,
+    "later_proof_bytes_program_median_error_max": 0.1,
+    "later_proof_bytes_trial_coverage_min": 0.8,
+    "later_prover_peak_rss_bytes_program_median_error_max": 0.1,
+    "later_prover_peak_rss_bytes_trial_coverage_min": 0.8
+  },
+  "engine_commit": "7d544c6839497ca19b6c7ef9b982e464f10cfeed",
+  "fit_source_sha256": [
+    "175a2910f3490039e7d4fbf38db47673d1757ce7fe0b15f6ff8d1b9f2546bde9",
+    "20c96796c6cf30429d3bbb512554d824f65f7a2b1c5d0f5fc1230dc5b31aa3b5",
+    "4718265a0566d2c0cb84e3a5be8a3cca3668b4551d23e0be322828d1caa86580",
+    "5a9fbeedb42648f49dc6e4b2faa7a33ab5a7f5c22941f9f379e2b2d367b1e520",
+    "690c0ddd95f6c628a8a75f8f71a1b89fa2afabf367f23cea285ed2c86bd8c4d5",
+    "ea6d3cbc09786b3a0dfc4671525877d15a251bdc3ea62bf4205e76014a332c89"
+  ],
+  "historical_stage_ledger_sha256": "1f25924ae8d40e8e758c291eb0f6bd1542600dedd1d495707f5afb67efd3af0c",
+  "host": {
+    "machine": "arm64",
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "python": "3.14.6",
+    "zig": "0.15.2"
+  },
+  "interval_calibration_source_sha256": [
+    "547e90e83166247e51e80aa14bd9db7cd988ce794d1d6bace9a30199ea25ce97",
+    "e44fbed85946ae7c8823101c79d95c74a4907a4c0045b1f31d0243e8ff95cccc",
+    "f607cce94d0b1c9da465db803bfe99a0f0ee7158227018447f191c418cf5ad6c"
+  ],
+  "interval_interpretation": "first-use and later-process empirical historical ratio bands; only 3 first-use calibrators; not confidence intervals or finite-sample tail guarantees",
+  "model_source_sha256": "916af5033d0691ab334ab96a2d4e6910a7f48160d7564574123c5592560e5a82",
+  "prediction_scope": "one host/compiler/engine direct-gate family at 96/256/448 gates; split historical fit/calibration by entire source; no chip or cross-host transfer",
+  "schema": "s31-stage-resolved-cost-v1-calibration",
+  "stage_names": [
+    "witness",
+    "setup",
+    "native_nonpow_prove",
+    "native_pow",
+    "runtime_other",
+    "prover_process_residual",
+    "external_verifier"
+  ],
+  "status": "fit-and-intervals-sealed-before-new-family-native-build",
+  "target_names": [
+    "first_verified_wall_seconds",
+    "after_reported_pow_seconds",
+    "proof_bytes",
+    "prover_peak_rss_bytes"
+  ],
+  "whole_target_ratio_bands_by_phase": {
+    "first": {
+      "after_reported_pow_seconds": {
+        "calibration_trial_count": 3,
+        "lower_ratio": 0.5219411965372982,
+        "method": "three source-level first-use ratios: min/2 to max*2",
+        "upper_ratio": 2.265950393974873
+      },
+      "first_verified_wall_seconds": {
+        "calibration_trial_count": 3,
+        "lower_ratio": 0.5085832526790857,
+        "method": "three source-level first-use ratios: min/2 to max*2",
+        "upper_ratio": 2.4944938819766835
+      },
+      "proof_bytes": {
+        "calibration_trial_count": 3,
+        "lower_ratio": 0.4911466795727175,
+        "method": "three source-level first-use ratios: min/2 to max*2",
+        "upper_ratio": 1.9997894611578722
+      },
+      "prover_peak_rss_bytes": {
+        "calibration_trial_count": 3,
+        "lower_ratio": 0.4931972789115646,
+        "method": "three source-level first-use ratios: min/2 to max*2",
+        "upper_ratio": 1.98868351565447
+      }
+    },
+    "later": {
+      "after_reported_pow_seconds": {
+        "calibration_trial_count": 33,
+        "lower_ratio": 0.7735834142474242,
+        "method": "33 later-trial ratios: empirical 2.5th/97.5th percentiles",
+        "upper_ratio": 1.0834053217927597
+      },
+      "first_verified_wall_seconds": {
+        "calibration_trial_count": 33,
+        "lower_ratio": 0.34882183538132594,
+        "method": "33 later-trial ratios: empirical 2.5th/97.5th percentiles",
+        "upper_ratio": 3.2007921598463955
+      },
+      "proof_bytes": {
+        "calibration_trial_count": 33,
+        "lower_ratio": 0.9574753298886227,
+        "method": "33 later-trial ratios: empirical 2.5th/97.5th percentiles",
+        "upper_ratio": 1.065440049064704
+      },
+      "prover_peak_rss_bytes": {
+        "calibration_trial_count": 33,
+        "lower_ratio": 0.9777134542991093,
+        "method": "33 later-trial ratios: empirical 2.5th/97.5th percentiles",
+        "upper_ratio": 1.026696495152871
+      }
+    }
+  }
+}

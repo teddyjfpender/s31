@@ -7,6 +7,7 @@ const cairo = @import("stwo_cairo_frontend");
 const circuit = @import("stwo_circuit_frontend");
 const cpu = @import("stwo_circuit_cpu_integration");
 const postcard = @import("interop_postcard");
+const direct_component_preflight = @import("direct_component_preflight.zig");
 
 const QM31 = core.fields.qm31.QM31;
 const H = core.vcs_lifted.blake2_merkle.Blake2sPlainMerkleHasher;
@@ -604,12 +605,29 @@ fn verifySparseWideInternal(
 const DIRECT_GATE_MAGIC = "S31NAT4G";
 const DIRECT_CHIP_MAGIC = "S31NAT4C";
 const DIRECT_PRIVATE_MAGIC = "S31NAT5P";
+const DIRECT_CHIP_BOUND_MAGIC = "S31NAT6C";
+const DIRECT_PRIVATE_BOUND_MAGIC = "S31NAT6P";
+const DIRECT_GATE_BOUND_MAGIC = "S31NAT7G";
 
 pub fn serializeDirect(allocator: std.mem.Allocator, proof: *const cpu.Internal.CircuitProof, has_chip: bool) ![]u8 {
+    return serializeDirectVersion(allocator, proof, has_chip, false);
+}
+
+pub fn serializeDirectBound(allocator: std.mem.Allocator, proof: *const cpu.Internal.CircuitProof) ![]u8 {
+    return serializeDirectVersion(allocator, proof, true, true);
+}
+
+pub fn serializeDirectGateBound(allocator: std.mem.Allocator, proof: *const cpu.Internal.CircuitProof) ![]u8 {
+    return serializeDirectVersion(allocator, proof, false, true);
+}
+
+fn serializeDirectVersion(allocator: std.mem.Allocator, proof: *const cpu.Internal.CircuitProof, has_chip: bool, bound: bool) ![]u8 {
     if ((proof.chip_claimed_sum != null) != has_chip or proof.bridge_claimed_sum != null) return error.WrongProofProfile;
     var bytes: std.ArrayList(u8) = .empty;
     errdefer bytes.deinit(allocator);
-    try bytes.appendSlice(allocator, if (has_chip) DIRECT_CHIP_MAGIC else DIRECT_GATE_MAGIC);
+    try bytes.appendSlice(allocator, if (bound)
+        (if (has_chip) DIRECT_CHIP_BOUND_MAGIC else DIRECT_GATE_BOUND_MAGIC)
+    else if (has_chip) DIRECT_CHIP_MAGIC else DIRECT_GATE_MAGIC);
     var nonce: [8]u8 = undefined;
     std.mem.writeInt(u64, &nonce, proof.interaction_pow_nonce, .little);
     try bytes.appendSlice(allocator, &nonce);
@@ -620,10 +638,18 @@ pub fn serializeDirect(allocator: std.mem.Allocator, proof: *const cpu.Internal.
 }
 
 pub fn serializeDirectPrivate(allocator: std.mem.Allocator, proof: *const cpu.Internal.CircuitProof) ![]u8 {
+    return serializeDirectPrivateVersion(allocator, proof, false);
+}
+
+pub fn serializeDirectPrivateBound(allocator: std.mem.Allocator, proof: *const cpu.Internal.CircuitProof) ![]u8 {
+    return serializeDirectPrivateVersion(allocator, proof, true);
+}
+
+fn serializeDirectPrivateVersion(allocator: std.mem.Allocator, proof: *const cpu.Internal.CircuitProof, bound: bool) ![]u8 {
     if (proof.chip_claimed_sum == null or proof.bridge_claimed_sum == null) return error.WrongProofProfile;
     var bytes: std.ArrayList(u8) = .empty;
     errdefer bytes.deinit(allocator);
-    try bytes.appendSlice(allocator, DIRECT_PRIVATE_MAGIC);
+    try bytes.appendSlice(allocator, if (bound) DIRECT_PRIVATE_BOUND_MAGIC else DIRECT_PRIVATE_MAGIC);
     var nonce: [8]u8 = undefined;
     std.mem.writeInt(u64, &nonce, proof.interaction_pow_nonce, .little);
     try bytes.appendSlice(allocator, &nonce);
@@ -646,7 +672,15 @@ pub fn verifyDirect(
     source_digest: [32]u8,
     chip_spec: ?HybridSpec,
 ) !void {
-    return verifyDirectProfile(allocator, layout, template, pcs, preprocessed_root, circuit_hash, public_words, raw, source_digest, chip_spec, null);
+    return verifyDirectProfile(allocator, layout, template, pcs, preprocessed_root, circuit_hash, public_words, raw, source_digest, chip_spec, null, false);
+}
+
+pub fn verifyDirectBound(allocator: std.mem.Allocator, layout: *const circuit.common.direct_arithmetic.Layout, template: *const cpu.air.Bundle, pcs: core.pcs.config_v2.PcsConfigV2, preprocessed_root: H.Hash, circuit_hash: H.Hash, public_words: [8]u32, raw: []const u8, source_digest: [32]u8, chip_spec: HybridSpec) !void {
+    return verifyDirectProfile(allocator, layout, template, pcs, preprocessed_root, circuit_hash, public_words, raw, source_digest, chip_spec, null, true);
+}
+
+pub fn verifyDirectGateBound(allocator: std.mem.Allocator, layout: *const circuit.common.direct_arithmetic.Layout, template: *const cpu.air.Bundle, pcs: core.pcs.config_v2.PcsConfigV2, preprocessed_root: H.Hash, circuit_hash: H.Hash, public_words: [8]u32, raw: []const u8, source_digest: [32]u8) !void {
+    return verifyDirectProfile(allocator, layout, template, pcs, preprocessed_root, circuit_hash, public_words, raw, source_digest, null, null, true);
 }
 
 pub fn verifyDirectPrivate(
@@ -662,7 +696,11 @@ pub fn verifyDirectPrivate(
     chip_spec: HybridSpec,
     boundary: cpu.private_boundary_bridge.Boundary,
 ) !void {
-    return verifyDirectProfile(allocator, layout, template, pcs, preprocessed_root, circuit_hash, public_words, raw, source_digest, chip_spec, boundary);
+    return verifyDirectProfile(allocator, layout, template, pcs, preprocessed_root, circuit_hash, public_words, raw, source_digest, chip_spec, boundary, false);
+}
+
+pub fn verifyDirectPrivateBound(allocator: std.mem.Allocator, layout: *const circuit.common.direct_arithmetic.Layout, template: *const cpu.air.Bundle, pcs: core.pcs.config_v2.PcsConfigV2, preprocessed_root: H.Hash, circuit_hash: H.Hash, public_words: [8]u32, raw: []const u8, source_digest: [32]u8, chip_spec: HybridSpec, boundary: cpu.private_boundary_bridge.Boundary) !void {
+    return verifyDirectProfile(allocator, layout, template, pcs, preprocessed_root, circuit_hash, public_words, raw, source_digest, chip_spec, boundary, true);
 }
 
 fn verifyDirectProfile(
@@ -677,6 +715,7 @@ fn verifyDirectProfile(
     source_digest: [32]u8,
     chip_spec: ?HybridSpec,
     private_boundary: ?cpu.private_boundary_bridge.Boundary,
+    manifest_bound: bool,
 ) !void {
     const has_chip = chip_spec != null;
     if (private_boundary != null and !has_chip) return error.WrongProofProfile;
@@ -684,11 +723,47 @@ fn verifyDirectProfile(
         if (!std.mem.eql(u8, &chip_spec.?.source_digest, &source_digest)) return error.InvalidChipSource;
         try private_boundary.?.validate(core.fields.m31.Modulus);
     }
-    const magic = if (private_boundary != null) DIRECT_PRIVATE_MAGIC else if (has_chip) DIRECT_CHIP_MAGIC else DIRECT_GATE_MAGIC;
+    const magic = if (manifest_bound)
+        (if (private_boundary != null) DIRECT_PRIVATE_BOUND_MAGIC else if (has_chip) DIRECT_CHIP_BOUND_MAGIC else DIRECT_GATE_BOUND_MAGIC)
+    else if (private_boundary != null) DIRECT_PRIVATE_MAGIC else if (has_chip) DIRECT_CHIP_MAGIC else DIRECT_GATE_MAGIC;
     const sum_count: usize = if (private_boundary != null) 3 else if (has_chip) 2 else 1;
     const header_len = magic.len + 8 + sum_count * 16;
     if (raw.len < header_len or raw.len > (16 << 20) or !std.mem.eql(u8, raw[0..magic.len], magic))
         return error.InvalidNativeProof;
+    // Keep this owner in place: every handle points into it. The predecode
+    // geometry check and the final core verifier consume this exact roster.
+    var direct_handles: direct_component_preflight.DirectHandles = undefined;
+    try direct_handles.init(
+        allocator,
+        layout,
+        template,
+        pcs,
+        if (chip_spec) |item| .{ .rounds = item.rounds, .constant = item.constant } else null,
+        private_boundary,
+    );
+    defer direct_handles.deinit();
+    // Inspect the actual verifier handles and bounded proof shape before
+    // allocating for postcard decoding. The source-pinned key was checked by
+    // mvp_runtime before this entrypoint is called.
+    if (manifest_bound and has_chip) {
+        const live = try direct_component_preflight.inspectHandles(allocator, layout, pcs, &direct_handles);
+        if (live.count != sum_count) return error.InvalidDirectHandleRoster;
+        try postcard.proof_preflight.validateFor(4, raw[header_len..], .{
+            .config = .{
+                .pow_bits = pcs.fri_config.pow_bits,
+                .log_blowup_factor = pcs.fri_config.log_blowup_factor,
+                .n_queries = pcs.fri_config.n_queries,
+                .log_last_layer_degree_bound = pcs.fri_config.log_last_layer_degree_bound,
+                .fold_step = pcs.fri_config.fold_step,
+                .lifting_log_size = null,
+            },
+            .tree_columns = live.tree_columns,
+            .max_column_log_size = live.max_column_log_size,
+            .sample_width_limits = live.sample_width_limits,
+            .hash_size = @sizeOf(H.Hash),
+            .max_wire_bytes = (16 << 20) - header_len,
+        });
+    }
     const nonce = std.mem.readInt(u64, raw[magic.len..][0..8], .little);
     var sums: [3]QM31 = undefined;
     for (sums[0..sum_count], 0..) |*sum, index| {
@@ -751,20 +826,13 @@ fn verifyDirectProfile(
     pcs.fri_config.mixInto(&channel);
     var scheme = try core.pcs.verifier.CommitmentSchemeVerifier(H, MC).init(allocator, pcs);
     defer scheme.deinit(allocator);
-    var pp_logs = [_]u32{log_size} ** circuit.common.direct_arithmetic.N_COLUMNS;
-    try scheme.commit(allocator, roots[0], &pp_logs, &channel);
+    var component_logs = try direct_handles.components().columnLogSizes(allocator);
+    defer component_logs.deinitDeep(allocator);
+    if (component_logs.items.len != 3) return error.InvalidDirectHandleTree;
+    try scheme.commit(allocator, roots[0], component_logs.items[0], &channel);
     MC.mixRoot(&channel, circuit_hash);
     channel.mixFelts(&outputs);
-    const chip_log: ?u32 = if (chip_spec) |item| try chip.validateRounds(item.rounds) else null;
-    const main_logs = try sparseLogs(allocator, .{ log_size, 0, 0 }, .{ 12, 0, 0 }, chip_log, chip.main_width + if (private_boundary != null) cpu.private_boundary_bridge.main_width else @as(usize, 0));
-    defer allocator.free(main_logs);
-    const interaction_logs = try sparseLogs(allocator, .{ log_size, 0, 0 }, .{ 8, 0, 0 }, chip_log, chip.interaction_width + if (private_boundary != null) cpu.private_boundary_bridge.interaction_width else @as(usize, 0));
-    defer allocator.free(interaction_logs);
-    if (private_boundary != null) {
-        @memset(main_logs[main_logs.len - cpu.private_boundary_bridge.main_width ..], cpu.private_boundary_bridge.log_size);
-        @memset(interaction_logs[interaction_logs.len - cpu.private_boundary_bridge.interaction_width ..], cpu.private_boundary_bridge.log_size);
-    }
-    try scheme.commit(allocator, roots[1], main_logs, &channel);
+    try scheme.commit(allocator, roots[1], component_logs.items[1], &channel);
     if (!channel.verifyPowNonce(circuit.common.component_list.INTERACTION_POW_BITS, nonce))
         return error.InvalidInteractionNonce;
     channel.mixU64(nonce);
@@ -781,47 +849,14 @@ fn verifyDirectProfile(
         final,
     )).isZero()) return error.InvalidChipLookupSum;
     core.channel.lookup_transcript.mixInteractionClaim(&channel, sums[0..sum_count]);
-    try scheme.commit(allocator, roots[2], interaction_logs, &channel);
-    var bound = try cpu.air.bindDirectArithmetic(allocator, template, log_size, layout);
-    defer bound.deinit();
-    const lifting_bound = pcs.trace_lifting_log_size - pcs.fri_config.log_blowup_factor + 1;
-    var captured: [1]cairo.proving.air.component.Component = undefined;
-    captured[0] = .init(allocator, &bound.components[0], &pp_logs, lifting_bound, lookup.z, lookup.alpha, sums[0]);
-    var handles: [3]core.air.components.Component = undefined;
-    handles[0] = captured[0].asVerifierComponent();
-    var chip_component: chip.Component = undefined;
-    var component_count: usize = 1;
-    if (chip_spec) |item| {
-        chip_component = .{
-            .log_size = try chip.validateRounds(item.rounds),
-            .constant = item.constant,
-            .main_offset = circuit.witness.direct_arithmetic.main_width,
-            .interaction_offset = circuit.witness.direct_arithmetic.interaction_width,
-            .elements = .init(lookup.z, lookup.alpha),
-            .claimed_sum = sums[1],
-        };
-        handles[1] = chip_component.asVerifierComponent();
-        component_count = 2;
-    }
-    var bridge_component: cpu.private_boundary_bridge.Component = undefined;
-    if (private_boundary) |boundary| {
-        bridge_component = .{
-            .main_offset = circuit.witness.direct_arithmetic.main_width + chip.main_width,
-            .interaction_offset = circuit.witness.direct_arithmetic.interaction_width + chip.interaction_width,
-            .boundary = boundary,
-            .rounds = chip_spec.?.rounds,
-            .elements = .init(lookup.z, lookup.alpha),
-            .claimed_sum = sums[2],
-        };
-        handles[2] = bridge_component.asVerifierComponent();
-        component_count = 3;
-    }
+    try scheme.commit(allocator, roots[2], component_logs.items[2], &channel);
+    try direct_handles.setClaims(lookup.z, lookup.alpha, sums[0..sum_count]);
     var capture: core.verifier.ProofCapture(H) = undefined;
     try core.verifier.verifyBorrowedExWithProofCapture(
         H,
         MC,
         allocator,
-        handles[0..component_count],
+        direct_handles.slice(),
         &channel,
         &scheme,
         &stark,

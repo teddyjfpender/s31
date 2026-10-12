@@ -2,7 +2,8 @@
 
 This folder is a small VS Code language extension with a TextMate grammar for
 the implemented S31 text syntax. It recognizes circuit and function
-declarations, public/private inputs, nominal and field types (including
+declarations, static `fun`/`Fn` function values and `let … in` bindings,
+public/private inputs, nominal and field types (including
 `u8`–`u128` and `i8`–`i128`), `std::` paths, `std::int` operations,
 compiler builtins, field literals, operators, and comments. The optional
 **S31 Neon** theme uses bright pink `#FF00C8` for language keywords.

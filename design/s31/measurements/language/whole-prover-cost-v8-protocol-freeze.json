@@ -1,0 +1,9 @@
+{
+  "compiler_sha256": "290eaa667e96039b7a872f5b5566bff3d6c4d7a880bdf022bd38f7990ab72c9a",
+  "engine_gitlink_commit": "7d544c6839497ca19b6c7ef9b982e464f10cfeed",
+  "measurement_tool_sha256": "9dd113abb35bad0ed25b7177c1db5152ece441d6280fb0301f72802361f5084e",
+  "protocol_sha256": "dff9ed804a9a5c50189f569adceae0ba68a25cebcfa4d98c899065f2ab769abd",
+  "recorded_at_utc": "2026-10-11T05:21:19Z",
+  "schema": "s31-whole-prover-v8-protocol-freeze",
+  "source_base_commit": "b4d4270f28ab162e3ed0a17c4d6628ec24ee938f"
+}

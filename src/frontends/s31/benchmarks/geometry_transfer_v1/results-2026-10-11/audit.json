@@ -1,0 +1,10 @@
+{
+  "calibration_sha256": "825f3d351a6a437a199db234a1ba86b0c2c36a8d34350991cc6238a8fdee8045",
+  "heldout_score_sha256": "011c2dc636ff90fb796ec56a6ab3ed250eaf0855c93aa0dd9c3e488380011aeb",
+  "independent_value_checks_in_trial_reports": 72,
+  "phase": "native-replay-audit",
+  "plan_sha256": "363e07741fb98be940c4ba30e805fc4846ebd3fccff48bce9417e9ace629f351",
+  "replayed_accepted_proofs": 72,
+  "replayed_rejected_changed_claims": 72,
+  "schema": "s31-direct-gate-geometry-transfer-v1"
+}

@@ -1,0 +1,9 @@
+struct Request { byte: u8, salt: [m31; 1] }
+struct Result { byte: u8, square: [m31; 1] }
+
+circuit record_public_u8(public req: Request) -> public Result {
+    let limb = std::int::limbs(req.byte);
+    let field = std::field::from_u16(limb);
+    let square = field .* field + req.salt;
+    Result { byte: req.byte, square: square }
+}

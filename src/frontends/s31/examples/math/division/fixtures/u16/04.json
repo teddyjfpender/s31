@@ -1,0 +1,17 @@
+{
+  "public_inputs": {},
+  "private_inputs": {
+    "numerator": [
+      32768
+    ],
+    "divisor": [
+      256
+    ]
+  },
+  "public_outputs": {
+    "result": [
+      128,
+      0
+    ]
+  }
+}

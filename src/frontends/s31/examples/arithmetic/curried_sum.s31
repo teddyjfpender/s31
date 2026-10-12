@@ -1,0 +1,12 @@
+use std@1;
+
+// The returned closure captures a. Both applications happen at compile time.
+fn add_to(a: [m31; 1]) -> Fn([m31; 1]) -> [m31; 1] {
+    fun(b: [m31; 1]) -> [m31; 1] => a + b
+}
+
+circuit curried_sum(private a: [m31; 1], private b: [m31; 1])
+    -> public [m31; 1] {
+    let result = add_to(a)(b);
+    result
+}

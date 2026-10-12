@@ -9,8 +9,95 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: s31-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   language-and-proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          fetch-depth: 0
+          submodules: recursive
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.13"
+      - uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2
+        with:
+          version: 0.15.2
+      - name: Verify pinned engine
+        run: |
+          test -z "$(git submodule status | grep '^[-+]')"
+          test -z "$(git -C deps/stwo-zig status --porcelain --untracked-files=no)"
+      - name: Zig compiler and proof tests
+        run: cd src/frontends/s31 && zig build test -Doptimize=ReleaseSafe -j2
+      - name: Text frontend and oracle tests
+        run: python3 -m unittest discover -s src/frontends/s31/tests/python -p 'test_*.py' -q
+      - name: Mixed stage cost protocol checks
+        run: |
+          python3 -B src/frontends/s31/benchmarks/mixed_stage_cost_v1/cohort.py
+          python3 -B src/frontends/s31/benchmarks/mixed_stage_cost_v1/test_static.py
+          python3 -B src/frontends/s31/benchmarks/paired_record_v2/test_diagnose_stages_v1.py
+          python3 -B -m unittest discover -s src/frontends/s31/benchmarks/direct_gate_release_cost -p 'test_*.py' -q
+      - name: Documentation consistency
+        run: python3 src/frontends/s31/docs/check.py
+      - name: Native proof smoke
+        run: |
+          python3 src/frontends/s31/python/s31.py trial \
+            src/frontends/s31/examples/hashes/preimage4.s31 \
+            src/frontends/s31/examples/hashes/preimage4.valid.json \
+            --lowering gate --out zig-out/s31/ci-preimage-trial
+
+  functional-native-proofs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          submodules: recursive
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.13"
+      - uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2
+        with:
+          version: 0.15.2
+      - name: Verify pinned engine
+        run: |
+          test -z "$(git submodule status | grep '^[-+]')"
+          test -z "$(git -C deps/stwo-zig status --porcelain --untracked-files=no)"
+      - name: Functional arithmetic, recurrence, and wide native proofs
+        run: |
+          set -euo pipefail
+          mkdir -p zig-out/s31/acceptance
+          python3 src/frontends/s31/tests/acceptance/acceptance_functional_core.py |
+            tee zig-out/s31/acceptance/functional-core.json
+      - name: Field and byte conditional native proofs
+        run: |
+          set -euo pipefail
+          python3 src/frontends/s31/tests/acceptance/acceptance_total_if.py |
+            tee zig-out/s31/acceptance/total-if.json
+      - name: Nominal record zero-cost and native proof gate
+        run: |
+          set -euo pipefail
+          python3 src/frontends/s31/tests/acceptance/acceptance_records.py |
+            tee zig-out/s31/acceptance/records.json
+      - name: Whole-product selection native proof and AIR-cost gate
+        run: |
+          set -euo pipefail
+          python3 src/frontends/s31/tests/acceptance/functional/product_control.py |
+            tee zig-out/s31/acceptance/product-control.json
+      - name: Preserve native acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: s31-functional-native-evidence
+          path: zig-out/s31/acceptance/
+          if-no-files-found: warn
+
+  record-public-abi-native-proofs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -27,15 +114,401 @@ jobs:
         run: |
           test -z "$(git submodule status | grep '^[-+]')"
           test -z "$(git -C deps/stwo-zig status --porcelain --untracked-files=no)"
-      - name: Zig compiler and proof tests
-        run: cd src/frontends/s31 && zig build test -Doptimize=ReleaseSafe -j2
-      - name: Text frontend and oracle tests
-        run: python3 -m unittest discover -s src/frontends/s31/tests/python -p 'test_*.py' -q
-      - name: Documentation consistency
-        run: python3 src/frontends/s31/docs/check.py
-      - name: Native proof smoke
+      - name: Versioned public record ABI native proof and key controls
         run: |
-          python3 src/frontends/s31/python/s31.py trial \
-            src/frontends/s31/examples/hashes/preimage4.s31 \
-            src/frontends/s31/examples/hashes/preimage4.valid.json \
-            --lowering gate --out zig-out/s31/ci-preimage-trial
+          set -euo pipefail
+          mkdir -p zig-out/s31/acceptance
+          python3 src/frontends/s31/tests/acceptance/acceptance_public_record_v2.py |
+            tee zig-out/s31/acceptance/public-record-v2.json
+      - name: Pinned Pair record refinement and native alias proof controls
+        run: |
+          set -euo pipefail
+          python3 src/frontends/s31/tests/acceptance/acceptance_record_pair_refinement.py |
+            tee zig-out/s31/acceptance/record-pair-refinement.json
+      - name: Record-valued input ABI native proof and visibility controls
+        run: |
+          set -euo pipefail
+          python3 src/frontends/s31/tests/acceptance/acceptance_record_inputs_v2.py |
+            tee zig-out/s31/acceptance/record-inputs-v2.json
+      - name: Nested record and tuple alias statement controls
+        run: |
+          set -euo pipefail
+          python3 src/frontends/s31/tests/acceptance/record_abi/nested_alias_v2.py |
+            tee zig-out/s31/acceptance/record-nested-alias-v2.json
+      - name: Public bit record ABI range and flat AIR parity controls
+        run: |
+          set -euo pipefail
+          python3 src/frontends/s31/tests/acceptance/acceptance_record_public_bit_v2.py |
+            tee zig-out/s31/acceptance/record-public-bit-v2.json
+      - name: Preserve record ABI acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: s31-record-public-abi-v2-evidence
+          path: zig-out/s31/acceptance/
+          if-no-files-found: warn
+
+  record-chip-abi-native-proofs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          submodules: recursive
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.13"
+      - uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2
+        with:
+          version: 0.15.2
+      - name: Verify pinned engine
+        run: |
+          test -z "$(git submodule status | grep '^[-+]')"
+          test -z "$(git -C deps/stwo-zig status --porcelain --untracked-files=no)"
+      - name: Record ABI public one-call chip native proof and tamper controls
+        run: |
+          set -euo pipefail
+          mkdir -p zig-out/s31/acceptance
+          python3 src/frontends/s31/tests/acceptance/acceptance_record_chip_v2.py |
+            tee zig-out/s31/acceptance/record-chip-v2.json
+      - name: Preserve record chip acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: s31-record-chip-abi-v2-evidence
+          path: zig-out/s31/acceptance/
+          if-no-files-found: warn
+
+  private-boundary-native-proofs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          submodules: recursive
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.13"
+      - uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2
+        with:
+          version: 0.15.2
+      - name: Verify pinned engine
+        run: |
+          test -z "$(git submodule status | grep '^[-+]')"
+          test -z "$(git -C deps/stwo-zig status --porcelain --untracked-files=no)"
+      - name: Private circuit-to-chip native proof controls
+        run: |
+          set -euo pipefail
+          mkdir -p zig-out/s31/acceptance
+          python3 src/frontends/s31/tests/acceptance/acceptance_private_boundary.py |
+            tee zig-out/s31/acceptance/private-boundary.log
+      - name: Generated component manifest native proof controls
+        run: |
+          set -euo pipefail
+          python3 src/frontends/s31/tests/acceptance/acceptance_component_manifest.py |
+            tee zig-out/s31/acceptance/component-manifest.log
+      - name: Bounded compiler correspondence and resealed mutation control
+        run: |
+          set -euo pipefail
+          python3 src/frontends/s31/tests/acceptance/acceptance_compiler_correspondence.py |
+            tee zig-out/s31/acceptance/compiler-correspondence.json
+      - name: Cross-check canonical IR against the native builder
+        run: |
+          set -euo pipefail
+          python3 src/frontends/s31/tests/acceptance/acceptance_canonical_ir_fidelity.py |
+            tee zig-out/s31/acceptance/canonical-ir-fidelity.log
+      - name: Direct-chip component roster and sealed-key controls
+        run: |
+          set -euo pipefail
+          python3 src/frontends/s31/tests/acceptance/acceptance_component_manifest_chip.py |
+            tee zig-out/s31/acceptance/component-manifest-chip.json
+      - name: Preserve private boundary evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: s31-private-boundary-evidence
+          path: zig-out/s31/acceptance/
+          if-no-files-found: warn
+
+  experimental-pair-boundary-native-proofs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          submodules: recursive
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.13"
+      - uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2
+        with:
+          version: 0.15.2
+      - name: Verify pinned engine
+        run: |
+          test -z "$(git submodule status | grep '^[-+]')"
+          test -z "$(git -C deps/stwo-zig status --porcelain --untracked-files=no)"
+      - name: Bounded multi-call source admission
+        working-directory: src/frontends/s31
+        run: zig build test-bounded-call-source --summary all
+      - name: Source-derived pair manifest and plan
+        working-directory: src/frontends/s31
+        run: zig build test-pair-source --summary all
+      - name: Native pair proof and adversarial controls
+        working-directory: src/frontends/s31
+        run: zig build test-pair-native --summary all
+      - name: Long pair trace lifting
+        working-directory: src/frontends/s31
+        run: zig build test-pair-native-long --summary all
+      - name: Source-pinned pair prover and verifier
+        run: |
+          set -euo pipefail
+          mkdir -p zig-out/s31/acceptance
+          python3 src/frontends/s31/tests/acceptance/acceptance_pair_source_pinned.py |
+            tee zig-out/s31/acceptance/pair-source-pinned.json
+      - name: Preserve pair boundary evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: s31-experimental-pair-boundary-evidence
+          path: zig-out/s31/acceptance/
+          if-no-files-found: warn
+
+  experimental-many-boundary-native-proofs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          submodules: recursive
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.13"
+      - uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2
+        with:
+          version: 0.15.2
+      - name: Verify pinned engine
+        run: |
+          test -z "$(git submodule status | grep '^[-+]')"
+          test -z "$(git -C deps/stwo-zig status --porcelain --untracked-files=no)"
+      - name: Source-derived V4 roster and compiled endpoint controls
+        working-directory: src/frontends/s31
+        run: zig build test-bounded-component-manifest test-bounded-compiled-binding -Doptimize=ReleaseFast --summary all
+      - name: Native proofs for every admitted V4 call count
+        working-directory: src/frontends/s31
+        run: zig build test-many-native-matrix -Doptimize=ReleaseFast --summary all
+      - name: Source-pinned V4 proof and independent manifest digest
+        run: |
+          set -euo pipefail
+          mkdir -p zig-out/s31/acceptance
+          python3 src/frontends/s31/tests/acceptance/acceptance_many_source_pinned.py |
+            tee zig-out/s31/acceptance/many-source-pinned.json
+      - name: Preserve V4 boundary evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: s31-experimental-many-boundary-evidence
+          path: zig-out/s31/acceptance/
+          if-no-files-found: warn
+
+  experimental-mixed-four-boundary-native-proofs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          submodules: recursive
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.13"
+      - uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2
+        with:
+          version: 0.15.2
+      - name: Verify pinned engine
+        run: |
+          test -z "$(git submodule status | grep '^[-+]')"
+          test -z "$(git -C deps/stwo-zig status --porcelain --untracked-files=no)"
+      - name: Native nine-component engine proof and adversarial controls
+        working-directory: deps/stwo-zig
+        run: zig build --build-file src/integrations/circuit_cpu/build.zig test -Doptimize=ReleaseFast -Dtest-filter='mixed N=4 native proof' -j1 --summary all
+      - name: Source-derived N4 roster and witness handoffs
+        working-directory: src/frontends/s31
+        run: zig build test-mixed-descriptor test-mixed-n4-witness -Doptimize=ReleaseFast -j1 --summary all
+      - name: Sealed N4 native proof and byte fixture
+        working-directory: src/frontends/s31
+        run: zig build test-mixed-n4-native -Doptimize=ReleaseFast -j1 --summary all
+      - name: Source-pinned N4 prover verifier and inspectable manifest
+        run: |
+          set -euo pipefail
+          mkdir -p zig-out/s31/acceptance
+          python3 src/frontends/s31/tests/acceptance/mixed_boundary/source_pinned_n4.py |
+            tee zig-out/s31/acceptance/mixed-four-source-pinned.json
+      - name: Preserve mixed N4 boundary evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: s31-experimental-mixed-four-boundary-evidence
+          path: zig-out/s31/acceptance/
+          if-no-files-found: warn
+
+  experimental-mixed-general-boundary-native-proofs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          submodules: recursive
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.13"
+      - uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2
+        with:
+          version: 0.15.2
+      - name: Verify pinned engine
+        run: |
+          test -z "$(git submodule status | grep '^[-+]')"
+          test -z "$(git -C deps/stwo-zig status --porcelain --untracked-files=no)"
+      - name: Native engine proof for every mixed call count
+        working-directory: deps/stwo-zig
+        run: zig build --build-file src/integrations/circuit_cpu/build.zig test -Doptimize=ReleaseFast -Dtest-filter='general mixed native proof' -j1 --summary all
+      - name: Sealed source-pinned proof for every mixed call count
+        working-directory: src/frontends/s31
+        run: zig build test-mixed-general-native -Doptimize=ReleaseFast -j1 --summary all
+      - name: Selected private feeder and registry integrity controls
+        working-directory: src/frontends/s31
+        run: zig build test-mixed-registry test-mixed-selected-feeder -Doptimize=ReleaseFast -j1 --summary all
+      - name: Black-box source, manifest, claim, and statement controls
+        run: |
+          set -euo pipefail
+          mkdir -p zig-out/s31/acceptance
+          python3 src/frontends/s31/tests/acceptance/mixed_boundary/source_pinned_general.py |
+            tee zig-out/s31/acceptance/mixed-general-source-pinned.json
+      - name: Public record ABI v2 native proof controls
+        run: |
+          set -euo pipefail
+          python3 src/frontends/s31/tests/acceptance/mixed_boundary/record_general_v2.py |
+            tee zig-out/s31/acceptance/mixed-general-record-v2.json
+      - name: Arithmetic-produced chip port proof controls
+        run: |
+          set -euo pipefail
+          python3 src/frontends/s31/tests/acceptance/mixed_boundary/arithmetic_chip_input.py |
+            tee zig-out/s31/acceptance/mixed-general-arithmetic-input.json
+      - name: Preserve general mixed boundary evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: s31-experimental-mixed-general-boundary-evidence
+          path: zig-out/s31/acceptance/
+          if-no-files-found: warn
+
+  functional-packed-native-proofs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          submodules: recursive
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.13"
+      - uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2
+        with:
+          version: 0.15.2
+      - name: Verify pinned engine
+        run: |
+          test -z "$(git submodule status | grep '^[-+]')"
+          test -z "$(git -C deps/stwo-zig status --porcelain --untracked-files=no)"
+      - name: Packed functional array native proofs
+        run: |
+          set -euo pipefail
+          mkdir -p zig-out/s31/acceptance
+          python3 src/frontends/s31/tests/acceptance/acceptance_functional_packing.py |
+            tee zig-out/s31/acceptance/functional-packing.json
+      - name: Preserve packed array proof evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: s31-functional-packing-evidence
+          path: zig-out/s31/acceptance/
+          if-no-files-found: warn
+
+  functional-library-native-proofs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: functional-library
+            script: functional/library.py
+            report: functional-library.json
+          - name: fixed-width-multiplication
+            script: math/multiplication.py
+            report: fixed-width-multiplication.json
+          - name: fixed-width-casts
+            script: math/casts.py
+            report: fixed-width-casts.json
+          - name: fixed-width-bitwise
+            script: math/bitwise.py
+            report: fixed-width-bitwise.json
+          - name: fixed-width-shifts
+            script: math/shifts.py
+            report: fixed-width-shifts.json
+    name: functional-library-native-proofs (${{ matrix.name }})
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          submodules: recursive
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.13"
+      - uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2
+        with:
+          version: 0.15.2
+      - name: Verify pinned engine
+        run: |
+          test -z "$(git submodule status | grep '^[-+]')"
+          test -z "$(git -C deps/stwo-zig status --porcelain --untracked-files=no)"
+      - name: Native proof and negative controls (${{ matrix.name }})
+        run: |
+          set -euo pipefail
+          mkdir -p zig-out/s31/acceptance
+          python3 src/frontends/s31/tests/acceptance/${{ matrix.script }} |
+            tee zig-out/s31/acceptance/${{ matrix.report }}
+      - name: Preserve native proof evidence (${{ matrix.name }})
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: s31-${{ matrix.name }}-evidence
+          path: zig-out/s31/acceptance/${{ matrix.report }}
+          if-no-files-found: warn
+
+  fixed-width-division-native-proofs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          submodules: recursive
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.13"
+      - uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2
+        with:
+          version: 0.15.2
+      - name: Verify pinned engine
+        run: |
+          test -z "$(git submodule status | grep '^[-+]')"
+          test -z "$(git -C deps/stwo-zig status --porcelain --untracked-files=no)"
+      - name: Fixed-width division native proofs and negative controls
+        run: |
+          set -euo pipefail
+          mkdir -p zig-out/s31/acceptance
+          python3 src/frontends/s31/tests/acceptance/math/division.py |
+            tee zig-out/s31/acceptance/fixed-width-division.json
+      - name: Preserve division proof evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: s31-fixed-width-division-evidence
+          path: zig-out/s31/acceptance/fixed-width-division.json
+          if-no-files-found: warn
