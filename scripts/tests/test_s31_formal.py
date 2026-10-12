@@ -96,7 +96,7 @@ class FormalGateTests(unittest.TestCase):
             self.assertNotEqual(changed, source)
             with self.subTest(path=path), self.assertRaises(checks.FormalError):
                 checks.proof_field_projection_names(changed, path, s31_formal.lean_code)
-        self.assertEqual(len(all_names), 158)
+        self.assertEqual(len(all_names), 168)
 
     def test_inherited_projections_require_real_extends_clause(self) -> None:
         for path, structures in checks.INHERITED_PROJECTIONS_V1.items():

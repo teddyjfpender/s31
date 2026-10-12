@@ -84,6 +84,12 @@ PROOF_FIELD_PROJECTIONS_V1 = {
             "basis3", "maskBasis", "inverseBasis", "inputPins", "outputPins",
         ),
     },
+    "formal/s31/S31/Gadgets/Functional/Correspondence/DerivedRosterArbitraryTrace.lean": {
+        "S31.Functional.Correspondence.DerivedRosterArbitraryTrace.RuntimeFacts": (
+            "arithmetic", "unique", "zero", "basis1", "basis2", "basis3",
+            "maskBasis", "inverseBasis", "inputPins", "outputPins",
+        ),
+    },
     "formal/s31/S31/Gadgets/Functional/Correspondence/AliasRawGateSoundness.lean": {
         "S31.Functional.Correspondence.AliasRawGateSoundness.AliasFixedTraceContext": (
             "relation",
