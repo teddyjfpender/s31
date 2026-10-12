@@ -41,6 +41,8 @@ The [nested application example](../examples/functional/release_nested4/README.m
 checks `identity(make(x))(double(x))`: the function and array arguments are
 themselves static calls. Evaluation emits exactly `x²`, `2x`, and their sum;
 passing either intermediate value adds no AIR row.
+The strict checker also accepts parentheses around a returned callee, as in
+`(identity(make(x)))(double(x))`, with the same residual gates.
 
 ## Auditing a named function all the way to packed rows
 

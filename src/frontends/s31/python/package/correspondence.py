@@ -252,24 +252,57 @@ def parse_source(data: bytes, *, optimized: bool = False) -> tuple[dict[str, Any
         plain = strip_parens(expression)
         if not plain:
             return None
-        name = plain[0]
-        if local is not None and name in local:
-            value = local[name]
-            if not isinstance(value, (NamedFunction, StaticLambda)):
-                if len(plain) >= 2 and plain[1] == "(":
-                    raise UnsupportedFragment("array value is not a static function")
-                return None
-            function = value
-        elif name in function_aliases:
-            function = function_aliases[name]
-        elif name in helpers:
-            function = NamedFunction(name)
-        else:
-            return None
-        if len(plain) < 3 or plain[1] != "(" or plain[-1] != ")":
-            raise UnsupportedFragment("static helper must be called as a whole expression")
         groups: list[list[list[str]]] = []
-        position = 1
+        if plain[0] == "(":
+            # A parenthesized callee can itself be a static application.
+            # Retain its groups so evaluation still runs from left to right.
+            depth = 0
+            closing = -1
+            for index, token in enumerate(plain):
+                depth += (token == "(") - (token == ")")
+                if depth < 0:
+                    raise UnsupportedFragment("unbalanced static callee")
+                if depth == 0:
+                    closing = index
+                    break
+            if closing < 0:
+                raise UnsupportedFragment("unbalanced static callee")
+            if closing + 1 >= len(plain) or plain[closing + 1] != "(":
+                return None
+            head = strip_parens(plain[1:closing])
+            if len(head) == 1 and head[0] in helpers:
+                function: FunctionValue = NamedFunction(head[0])
+            elif len(head) == 1 and head[0] in function_aliases:
+                function = function_aliases[head[0]]
+            elif len(head) == 1 and local is not None and head[0] in local:
+                value = local[head[0]]
+                if not isinstance(value, (NamedFunction, StaticLambda)):
+                    raise UnsupportedFragment("array value is not a static function")
+                function = value
+            else:
+                inner = helper_call(head, local)
+                if inner is None:
+                    return None
+                function, groups = inner
+            position = closing + 1
+        else:
+            name = plain[0]
+            if local is not None and name in local:
+                value = local[name]
+                if not isinstance(value, (NamedFunction, StaticLambda)):
+                    if len(plain) >= 2 and plain[1] == "(":
+                        raise UnsupportedFragment("array value is not a static function")
+                    return None
+                function = value
+            elif name in function_aliases:
+                function = function_aliases[name]
+            elif name in helpers:
+                function = NamedFunction(name)
+            else:
+                return None
+            position = 1
+        if len(plain) < position + 2 or plain[position] != "(" or plain[-1] != ")":
+            raise UnsupportedFragment("static helper must be called as a whole expression")
         while position < len(plain):
             if plain[position] != "(":
                 raise UnsupportedFragment("static application has trailing tokens")
@@ -486,7 +519,7 @@ def parse_source(data: bytes, *, optimized: bool = False) -> tuple[dict[str, Any
                          resolve_function: Callable[[str], FunctionValue]) -> tuple[StaticValue, ...]:
         def nested_call(tokens: list[str]) -> tuple[FunctionValue, list[list[list[str]]]] | None:
             plain = strip_parens(tokens)
-            return helper_call(tokens) if len(plain) > 1 and plain[1] == "(" else None
+            return helper_call(tokens) if len(plain) > 1 and "(" in plain[:2] else None
 
         if len(parts) != len(function_parameters(function)):
             raise UnsupportedFragment("static helper argument count differs")

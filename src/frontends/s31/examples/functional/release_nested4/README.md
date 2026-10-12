@@ -2,10 +2,11 @@
 
 [`functional.s31`](functional.s31) passes the result of `make(x)` as a
 function argument to `identity`, then passes `double(x)` as an array argument
-to the returned function:
+to the returned function. Parentheses around the first call's result make the
+callee explicit and emit no gate:
 
 ```s31
-let result = identity(make(x))(double(x));
+let result = (identity(make(x)))(double(x));
 ```
 
 The source evaluates these arguments from left to right. `make(x)` computes

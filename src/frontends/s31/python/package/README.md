@@ -88,7 +88,8 @@ gates and the matching native AIR geometry.
 The [nested release example](../../examples/functional/release_nested4/README.md)
 passes both a computed `Fn` value and a computed array value as arguments.
 Nested calls are expanded in source evaluation order and require the same
-three gates and native AIR geometry as the direct program.
+three gates and native AIR geometry as the direct program. Parenthesized
+returned callees have the same checked relation.
 
 `inspect-record-proof` also executes from a private copy of the package,
 proof, and statement. Its `unpinned_snapshot` check establishes internal

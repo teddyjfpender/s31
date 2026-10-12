@@ -26,6 +26,12 @@ functions returning named unary functions, `Fn` aliases, direct curried calls,
 and nested static calls as function or array arguments. It compares those
 calls with handwritten gates and rejects wrong return types or applying an
 array as a function.
+`test_nested_corpus.py` adds 84 source variants across two first-gate
+operations, two final operations, seven function-value routes, and three
+spellings. Every admitted source must match production compilation, the
+canonical IR and exact positional gate schedule of a direct program, and an
+independent modular-integer oracle with false-claim rejection. The corpus
+identity is pinned by SHA-256. Parenthesized returned callees are included.
 Other lambda operations and general closures remain outside this bounded
 certificate.
 The separate `test_lexical_corpus.py` exhausts all 30 chains of one to four binders with

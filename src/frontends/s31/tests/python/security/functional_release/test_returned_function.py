@@ -47,6 +47,10 @@ class ReturnedFunctionReleaseTests(unittest.TestCase):
         self.assertEqual(checked[0], compile_text(source)[0])
         self.assertEqual([node["name"] for node in checked[0]["nodes"]],
                          ["_s31_i1_0", "_s31_0", "result"])
+        nested_parens = source.replace("(identity(make(x)))(double(x))",
+                                       "(((identity(make(x)))))(double(x))")
+        self.assertEqual(parse_source(nested_parens.encode()), checked)
+        self.assertEqual(compile_text(nested_parens)[0], checked[0])
 
     def test_nested_zero_arg_factory_can_be_passed_as_function_value(self) -> None:
         source = (SQUARE +

@@ -12,6 +12,6 @@ fn identity(f: Fn([m31; 4]) -> [m31; 4]) -> Fn([m31; 4]) -> [m31; 4] {
 }
 
 circuit nested4(public x: [m31; 4]) -> public [m31; 4] {
-    let result = identity(make(x))(double(x));
+    let result = (identity(make(x)))(double(x));
     result
 }
