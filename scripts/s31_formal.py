@@ -303,6 +303,7 @@ BINDINGS = [
     "src/frontends/s31/python/cli/commands.py",
     "src/frontends/s31/python/package/__init__.py",
     "src/frontends/s31/python/package/context.py",
+    "src/frontends/s31/python/package/source_identity.py",
     "src/frontends/s31/python/package/build.py",
     "src/frontends/s31/python/package/correspondence.py",
     "src/frontends/s31/python/package/direct_gate_schedule.py",
