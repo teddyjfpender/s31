@@ -29,6 +29,7 @@ KINDS = tuple(f"{sign}{width}" for sign in ("u", "i")
 ACCEPT = "src/frontends/s31/tests/acceptance/"
 SECURITY = "src/frontends/s31/tests/python/security/"
 FUNCTIONAL = "src/frontends/s31/tests/python/functional/"
+GENERATED = "src/frontends/s31/tests/python/generated/"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -52,6 +53,8 @@ def checks(mode: str) -> tuple[Check, ...]:
         Check("v1-source-relation", SECURITY + "test_source_relation_fragment.py", (), "unittest"),
         Check("v2-record-source-relation", SECURITY + "test_record_source_fragment.py", (), "unittest"),
         Check("static-sum-dce-source", FUNCTIONAL + "test_static_sum_dce.py", (), "unittest"),
+        Check("static-enum-effects-source", GENERATED + "test_static_enum_effect_generated.py",
+              (), "unittest"),
         Check("direct-add-source", ACCEPT + "math/addition.py", ("--source-only",),
               "addition-source", expected_kinds=KINDS),
         Check("direct-sub-le-source", ACCEPT + "math/direct_binary.py", (),
@@ -153,7 +156,10 @@ def validate_output(check: Check, stdout: str, stderr: str,
         match = re.search(r"Ran (\d+) tests? in [^\n]+", stderr)
         if not match or int(match.group(1)) < 1 or not re.search(r"(?m)^OK\s*$", stderr):
             raise ValueError("unittest did not report a nonempty successful suite")
-        return {"tests": int(match.group(1))}
+        count = int(match.group(1))
+        if check.id == "static-enum-effects-source" and count != 2:
+            raise ValueError("static enum source corpus did not run both checks")
+        return {"tests": count}
     try:
         report = json.loads(stdout)
     except json.JSONDecodeError as exc:

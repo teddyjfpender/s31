@@ -17,7 +17,9 @@ FINGERPRINT = "a" * 64
 def fake_report(check: gate.Check) -> tuple[str, str]:
     fmt = check.format
     if fmt == "unittest":
-        return "", ".....\n----------------------------------------------------------------------\nRan 5 tests in 0.001s\n\nOK\n"
+        count = 2 if check.id == "static-enum-effects-source" else 5
+        return "", (".\n----------------------------------------------------------------------\n"
+                    f"Ran {count} tests in 0.001s\n\nOK\n")
     if fmt.startswith("addition-"):
         native = check.native
         report = {"schema": "s31-int-addition-native-v1" if native else "s31-int-addition-source-v1",
@@ -89,9 +91,9 @@ class FeatureGateTests(unittest.TestCase):
         source = gate.checks("source")
         smoke = gate.checks("smoke")
         full = gate.checks("full")
-        self.assertEqual(len(source), 9)
-        self.assertEqual(len(smoke), 17)
-        self.assertEqual(len(full), 18)
+        self.assertEqual(len(source), 10)
+        self.assertEqual(len(smoke), 18)
+        self.assertEqual(len(full), 19)
         for inventory in (source, smoke, full):
             self.assertEqual(len({check.id for check in inventory}), len(inventory))
             for check in inventory:
@@ -153,6 +155,14 @@ class FeatureGateTests(unittest.TestCase):
             mutation(report)
             with self.assertRaisesRegex(ValueError, "static enum conditional"):
                 gate.validate_output(check, json.dumps(report), "", FINGERPRINT)
+
+    def test_static_enum_source_corpus_requires_both_checks(self) -> None:
+        check = next(item for item in gate.checks("source")
+                     if item.id == "static-enum-effects-source")
+        stdout, stderr = fake_report(check)
+        self.assertEqual(gate.validate_output(check, stdout, stderr)["tests"], 2)
+        with self.assertRaisesRegex(ValueError, "static enum source corpus"):
+            gate.validate_output(check, stdout, stderr.replace("Ran 2", "Ran 1"))
 
     def test_compiler_drift_and_subprocess_failure_are_nonpassing(self) -> None:
         calls = iter((FINGERPRINT, FINGERPRINT, "b" * 64, "b" * 64))

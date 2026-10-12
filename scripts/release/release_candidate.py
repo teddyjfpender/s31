@@ -38,6 +38,7 @@ AUDIT_FIXTURES = {
 }
 FEATURE_CASES = frozenset({
     "v1-source-relation", "v2-record-source-relation", "static-sum-dce-source",
+    "static-enum-effects-source",
     "direct-add-source", "direct-sub-le-source", "direct-mul-source",
     "record-u8-source", "record-u16-source", "record-u32-source",
     "static-sum-dce-native", "static-enum-if-native", "v2-record-source-native",
@@ -50,6 +51,7 @@ FEATURE_COMMANDS = {
     "v1-source-relation": ("src/frontends/s31/tests/python/security/test_source_relation_fragment.py",),
     "v2-record-source-relation": ("src/frontends/s31/tests/python/security/test_record_source_fragment.py",),
     "static-sum-dce-source": ("src/frontends/s31/tests/python/functional/test_static_sum_dce.py",),
+    "static-enum-effects-source": ("src/frontends/s31/tests/python/generated/test_static_enum_effect_generated.py",),
     "direct-add-source": ("src/frontends/s31/tests/acceptance/math/addition.py", "--source-only"),
     "direct-sub-le-source": ("src/frontends/s31/tests/acceptance/math/direct_binary.py",),
     "direct-mul-source": ("src/frontends/s31/tests/acceptance/math/direct_multiplication.py",),
@@ -179,7 +181,7 @@ def validate_reports(audit: dict, feature: dict, formal: dict, *, compiler: str,
         require(feature.get(key) is True, f"feature control failed: {key}")
     require(feature.get("compiler_sha256_start") == compiler and
             feature.get("compiler_sha256_end") == compiler, "feature compiler pin mismatch")
-    require(feature.get("selected") == sorted(FEATURE_CASES), "feature selection is not all 18 checks")
+    require(feature.get("selected") == sorted(FEATURE_CASES), "feature selection is not all 19 checks")
     checks = feature.get("cases")
     require(isinstance(checks, dict) and set(checks) == FEATURE_CASES,
             "feature matrix is incomplete or changed")
@@ -231,7 +233,7 @@ def validate_reports(audit: dict, feature: dict, formal: dict, *, compiler: str,
                 f"formal log digest mismatch: {name}")
     return {"source_commit": source_commit, "formal_commit": formal["source_commit"],
             "engine_commit": engine["commit"],
-            "compiler_sha256": compiler, "audit_profiles": 12, "feature_checks": 18,
+            "compiler_sha256": compiler, "audit_profiles": 12, "feature_checks": 19,
             "formal_commands": 3}
 
 

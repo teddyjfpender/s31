@@ -16,7 +16,7 @@ python3 -B scripts/release/s31_feature_gate.py --mode full \
 ```
 
 `source` runs the independent bounded v1 and v2 source-to-relation tests,
-static-sum dead-code tests, all ten signed/unsigned widths for checked addition,
+static-sum dead-code tests, the 112-program static-enum effect corpus, all ten signed/unsigned widths for checked addition,
 subtraction, order, and checked/wrapping multiplication through source and
 independent value-oracle checks, and public u8/u16/u32 record ABI static checks.
 It builds no native proofs.
