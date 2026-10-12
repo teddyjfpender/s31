@@ -168,7 +168,9 @@ pub fn prove(
     const fixed_root = scheme.trees.items[0].commitment.root();
     const key_digest = try profile.keyDigest(fixed_root);
     const circuit_identity = try profile.circuitIdentity(fixed_root);
-    var bound = try cpu.air.bindSparseWide(a, template, circuit_base.log_sizes, &layout);
+    // Engine.prove validates bound programs on parallel workers. Each program
+    // retains this allocator for validation scratch, so the local arena is unsafe.
+    var bound = try cpu.air.bindSparseWide(allocator, template, circuit_base.log_sizes, &layout);
     defer bound.deinit();
     try main.appendSlice(a, circuit_base.columns);
     const rows = prepared.tuple();
@@ -292,7 +294,7 @@ pub fn prove(
     var captured: [circuit_component_count]cairo.proving.air.component.Component = undefined;
     var handles: [total_component_count]engine.air.component_prover.ComponentProver = undefined;
     for (bound.components, &captured, handles[0..circuit_component_count], circuit_interaction.claimed_sums) |*source, *runtime, *handle, claim| {
-        runtime.* = .init(a, source, &pp_logs, lifting_bound, gate_challenge.z, gate_challenge.alpha, claim);
+        runtime.* = .init(allocator, source, &pp_logs, lifting_bound, gate_challenge.z, gate_challenge.alpha, claim);
         runtime.native_executor = null;
         handle.* = runtime.asProverComponent();
     }
