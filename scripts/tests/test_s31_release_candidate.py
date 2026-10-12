@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import copy
 import hashlib
 import json
 import tempfile
@@ -27,12 +26,19 @@ class CandidateReports(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
+        script = self.root / "scripts/release/s31_v01_audit.py"
+        script.parent.mkdir(parents=True, exist_ok=True)
+        script.write_text("# audit fixture\n")
+        feature_script = self.root / "src/frontends/s31/tests/check.py"
+        feature_script.parent.mkdir(parents=True, exist_ok=True)
+        feature_script.write_text("# feature fixture\n")
         for name in ("formal/s31/proof-inventory.json", "formal/s31/source-bindings.json"):
             path = self.root / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(json.dumps({"file": name}))
         self.audit = {
             "schema": "s31-v01-supported-profile-audit-v1", "release_claim": "not-established",
+            "audit_script_sha256": sha(script.read_bytes()),
             "selected_passed": True, "fixture_identity_consistent": True,
             "matrix_identity_consistent": True, "complete_profile_matrix_passed": True,
             "release_candidate_worktree_clean": True, "compiler_sha256_at_end": COMPILER,
@@ -53,6 +59,10 @@ class CandidateReports(unittest.TestCase):
             "engine": {"commit": ENGINE, "worktree_clean": True},
             "engine_at_end": {"commit": ENGINE, "worktree_clean": True},
         }
+        command = {"argv": ["python3", "-B", "src/frontends/s31/tests/check.py"],
+                   "cwd": str(self.root), "script_sha256": sha(feature_script.read_bytes())}
+        command_sha = sha((json.dumps(command, sort_keys=True, separators=(",", ":"),
+                                       ensure_ascii=True) + "\n").encode("ascii"))
         self.feature = {
             "schema": "s31-scoped-feature-gate-v1", "mode": "full",
             "release_claim": "not-established", "selected_passed": True,
@@ -62,9 +72,9 @@ class CandidateReports(unittest.TestCase):
             "selected": sorted(FEATURE_CASES),
             "cases": {name: {"status": "passed", "returncode": 0,
                              "controls": {"cases": 1},
+                             "command": command, "command_sha256": command_sha,
                              **{key: "d" * 64 for key in (
-                                 "command_sha256", "result_sha256",
-                                 "stdout_sha256", "stderr_sha256")}}
+                                 "result_sha256", "stdout_sha256", "stderr_sha256")}}
                       for name in FEATURE_CASES},
         }
         self.formal = {
@@ -95,6 +105,16 @@ class CandidateReports(unittest.TestCase):
     def test_failed_native_control_fails(self) -> None:
         self.audit["cases"]["direct-gate"]["changed_public_statement_rejected"] = False
         with self.assertRaisesRegex(ValueError, "changed_public_statement_rejected"):
+            self.check()
+
+    def test_changed_audit_script_fails(self) -> None:
+        (self.root / "scripts/release/s31_v01_audit.py").write_text("changed")
+        with self.assertRaisesRegex(ValueError, "audit script differs"):
+            self.check()
+
+    def test_changed_feature_script_fails(self) -> None:
+        (self.root / "src/frontends/s31/tests/check.py").write_text("changed")
+        with self.assertRaisesRegex(ValueError, "script differs"):
             self.check()
 
     def test_partial_feature_gate_fails(self) -> None:

@@ -43,6 +43,11 @@ def digest(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def canonical(value: object) -> bytes:
+    return (json.dumps(value, sort_keys=True, separators=(",", ":"),
+                       ensure_ascii=True) + "\n").encode("ascii")
+
+
 def sha(value: object) -> bool:
     return isinstance(value, str) and len(value) == 64 and all(c in "0123456789abcdef" for c in value)
 
@@ -68,6 +73,10 @@ def validate_reports(audit: dict, feature: dict, formal: dict, *, compiler: str,
     require(sha(compiler), "compiler pin must be a lowercase SHA-256")
     require(audit.get("schema") == "s31-v01-supported-profile-audit-v1", "wrong audit schema")
     require(audit.get("release_claim") == "not-established", "audit overclaims release status")
+    audit_script = root / "scripts/release/s31_v01_audit.py"
+    require(audit_script.is_file() and
+            audit.get("audit_script_sha256") == digest(audit_script),
+            "audit script differs from current tree")
     for key in ("selected_passed", "fixture_identity_consistent", "matrix_identity_consistent",
                 "complete_profile_matrix_passed", "release_candidate_worktree_clean"):
         require(audit.get(key) is True, f"audit control failed: {key}")
@@ -122,6 +131,18 @@ def validate_reports(audit: dict, feature: dict, formal: dict, *, compiler: str,
                 f"feature row failed: {name}")
         for key in ("command_sha256", "result_sha256", "stdout_sha256", "stderr_sha256"):
             require(sha(row.get(key)), f"feature row {name}: invalid {key}")
+        command = row.get("command")
+        require(isinstance(command, dict) and row["command_sha256"] ==
+                hashlib.sha256(canonical(command)).hexdigest(),
+                f"feature row {name}: command identity mismatch")
+        argv = command.get("argv")
+        require(isinstance(argv, list) and len(argv) >= 3 and
+                isinstance(argv[2], str) and command.get("cwd") == str(root),
+                f"feature row {name}: command path malformed")
+        script = (root / argv[2]).resolve()
+        require(script.is_relative_to(root.resolve()) and script.is_file() and
+                command.get("script_sha256") == digest(script),
+                f"feature row {name}: script differs from current tree")
 
     require(formal.get("schema") == "s31-v01-formal-checks-v1", "wrong formal report schema")
     require(formal.get("compiler_sha256") == compiler, "formal compiler pin mismatch")
