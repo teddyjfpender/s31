@@ -204,6 +204,17 @@ claim receives the same raw challenge bound as the direct spelling.
 
 ## Handwritten row example
 
+`AcceptedAliasPublicPhysicalTrace.lean` now constructs one coherent modeled
+source and public-boundary wire assignment for **every** source accepted by the
+exact alias source/normalized/IR byte checker, at every public input. It
+eliminates a caller-supplied honest projected arithmetic witness, including
+for aliases that return an earlier producer while later arithmetic rows are
+still evaluated. Its 512-row completion proves the installed *local*
+arithmetic roots vanish; the unselected rows use synthetic zero-add padding.
+See [the hand-worked alias example](AcceptedAliasPublicPhysicalTrace.md) for
+the selected circuit addresses and grouped AIR rows. Full native fixed-column
+equality, exact Gate balance, and proof authentication remain separate joins.
+
 The checked source fragment can return an earlier result:
 
 ```s31

@@ -183,6 +183,7 @@ import S31.Gadgets.Functional.Correspondence.SyntheticSourceTraceCompletion
 import S31.Gadgets.Functional.Correspondence.AcceptedSourcePhysicalTrace
 import S31.Gadgets.Functional.Correspondence.HonestPublicBoundaryWire
 import S31.Gadgets.Functional.Correspondence.AcceptedPublicPhysicalTrace
+import S31.Gadgets.Functional.Correspondence.AcceptedAliasPublicPhysicalTrace
 import S31.Gadgets.Functional.Correspondence.AcceptedPublicFixedCells
 import S31.Gadgets.Functional.Correspondence.CheckedGateAddressLedger
 import S31.Gadgets.Functional.Correspondence.PinnedGateAddressLedger

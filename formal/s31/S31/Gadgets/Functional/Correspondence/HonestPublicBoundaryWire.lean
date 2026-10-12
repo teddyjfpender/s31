@@ -382,6 +382,50 @@ theorem extended_source_polynomials {final : List Lanes}
       term1 term2 term3 sum1 sum2 instruction.id ho] using
     honest_trace_source_polynomials htrace instruction hmember
 
+/-- Construct one coherent modeled source/public wire assignment from a
+successful positional SSA execution. This lemma is source-parser independent:
+the byte grammar supplies `hexecute`, while all public and source cells are
+determined by the certificate. It also supports an early selected output with
+later eager instructions, since `final[certificate.output]` is read directly. -/
+theorem executed_public_boundary_exists
+    (certificate : Certificate) (input output : Lanes)
+    (hexecute : executeNormalized certificate input = some output) :
+    ∃ wire : Nat → Quad,
+      nativePolynomialRows certificate wire ∧
+      InputBoundary certificate (compiledAddRows certificate) wire input ∧
+      OutputBoundary certificate (compiledAddRows certificate) wire output ∧
+      wire (address certificate.output) = packM31 output ∧
+      wire 1 = unit ⟨0, by decide⟩ := by
+  rw [execute_normalized_eq_execute] at hexecute
+  unfold execute at hexecute
+  cases hrun : certificate.instructions.foldlM executeStep [input] with
+  | none => simp [hrun] at hexecute
+  | some final =>
+      have hselected : final[certificate.output]? = some output := by
+        simpa [hrun] using hexecute
+      have htrace : AcceptsTrace [input] certificate.instructions final :=
+        executing_trace_has_air_rows certificate.instructions [input] final
+          hrun
+      obtain ⟨suffix, hprefix⟩ := accepted_trace_extends htrace
+      have hfirst : final[0]? = some input := by
+        simp [hprefix]
+      have hlen : final.length = 1 + certificate.instructions.length := by
+        simpa using accepted_trace_length htrace
+      obtain ⟨term1, term2, term3, sum1, sum2, hpack⟩ :=
+        S31.Gadgets.Air.PackRows.acceptsPack_honest input
+      let wire := extendedWire input output final
+        term1 term2 term3 sum1 sum2
+      exact ⟨wire,
+        extended_source_polynomials certificate input output
+          term1 term2 term3 sum1 sum2 htrace,
+        honest_input_boundary certificate (compiledAddRows certificate)
+          input output final term1 term2 term3 sum1 sum2 hfirst hpack,
+        honest_output_boundary certificate (compiledAddRows certificate)
+          input output final term1 term2 term3 sum1 sum2 hlen hselected,
+        extendedWire_selected certificate input output final
+          term1 term2 term3 sum1 sum2 hselected,
+        by simp [wire, extendedWire_lower, lowerValue]⟩
+
 /-- Every exact byte-admitted bounded direct-Gate source and every public
 input have one coherent honest assignment for all source arithmetic rows,
 all six input-pack rows, all four input copies, all eleven output rows, and
@@ -414,34 +458,9 @@ theorem checked_direct_public_boundary_exists
     rw [checked_relation_sound sourceBytes normalizedBytes certificate input
       hcheck]
     exact hdenotation
-  rw [execute_normalized_eq_execute] at hexecute
-  unfold execute at hexecute
-  cases hrun : certificate.instructions.foldlM executeStep [input] with
-  | none => simp [hrun] at hexecute
-  | some final =>
-      have hselected : final[certificate.output]? = some output := by
-        simpa [hrun] using hexecute
-      have htrace : AcceptsTrace [input] certificate.instructions final :=
-        executing_trace_has_air_rows certificate.instructions [input] final
-          hrun
-      obtain ⟨suffix, hprefix⟩ := accepted_trace_extends htrace
-      have hfirst : final[0]? = some input := by
-        simp [hprefix]
-      have hlen : final.length = 1 + certificate.instructions.length := by
-        simpa using accepted_trace_length htrace
-      obtain ⟨term1, term2, term3, sum1, sum2, hpack⟩ :=
-        S31.Gadgets.Air.PackRows.acceptsPack_honest input
-      let wire := extendedWire input output final
-        term1 term2 term3 sum1 sum2
-      exact ⟨wire, output, hdenotation,
-        extended_source_polynomials certificate input output
-          term1 term2 term3 sum1 sum2 htrace,
-        honest_input_boundary certificate (compiledAddRows certificate)
-          input output final term1 term2 term3 sum1 sum2 hfirst hpack,
-        honest_output_boundary certificate (compiledAddRows certificate)
-          input output final term1 term2 term3 sum1 sum2 hlen hselected,
-        extendedWire_selected certificate input output final
-          term1 term2 term3 sum1 sum2 hselected,
-        by simp [wire, extendedWire_lower, lowerValue]⟩
+  obtain ⟨wire, hsource, hinput, houtput, hselected, hunit⟩ :=
+    executed_public_boundary_exists certificate input output hexecute
+  exact ⟨wire, output, hdenotation, hsource, hinput, houtput, hselected,
+    hunit⟩
 
 end S31.Functional.Correspondence.HonestPublicBoundaryWire
