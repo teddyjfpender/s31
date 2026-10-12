@@ -192,6 +192,8 @@ BINDINGS = [
     "src/frontends/s31/tests/acceptance/record_abi/nested_alias_v2.py",
     "src/frontends/s31/benchmarks/pow_workers/phase_equivalence.py",
     "src/frontends/s31/tests/acceptance/compiler_correspondence/generated_native_subset.py",
+    "src/frontends/s31/python/package/direct_gate_main_correspondence.py",
+    "src/frontends/s31/tests/acceptance/compiler_correspondence/functional_release.py",
     "src/frontends/s31/tests/acceptance/compiler_correspondence/subtraction_release.py",
     "src/frontends/s31/tests/acceptance/compiler_correspondence/subtraction_optimized_release.py",
     "src/frontends/s31/tests/acceptance/compiler_correspondence/native_source_cells.py",

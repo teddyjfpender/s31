@@ -178,6 +178,12 @@ The [helper byte theorem](../../../../../formal/s31/S31/Gadgets/Functional/Corre
 shows the checked-in pure function inlines to those same rows; a fresh native
 check confirms equal fixed columns and AIR geometry. Native main-row and Gate
 lookup authentication, and proof openings remain separate joins.
+The ordered-subtraction acceptance check also derives every one of the 6,144
+main M31 cells from the admitted source and public input, compares them with a
+fresh honest-prover export, and joins its reported main root to one strictly
+verified proof. This is concrete trace and commitment evidence for that proof;
+it does not establish the missing authentication theorem for arbitrary proof
+openings.
 
 ## A complete modeled 512-row trace
 

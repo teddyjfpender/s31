@@ -16,4 +16,5 @@ from functional_release import run
 if __name__ == "__main__":
     example = S31 / "examples/functional/release_sub4"
     print(json.dumps(run(example, case="ordered-subtraction",
-                         result=lambda value: -2 * value), indent=2, sort_keys=True))
+                         result=lambda value: -2 * value,
+                         full_public_trace=True), indent=2, sort_keys=True))

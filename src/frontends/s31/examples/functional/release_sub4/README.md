@@ -73,8 +73,14 @@ lane 3 equation is `2147483640 - 7 + 14 = 2147483647 = 0 mod p`. Address
 to the same address *and value* produced by the first. Finally, four unpack
 gates bind address `25` to the public output words. The source checker verifies
 these three selectors, addresses, grouped row positions and read counts in
-the exported fixed columns. The native verifier checks the proof under its
-sealed key; the general lookup/PCS soundness proof is still separate work.
+the exported fixed columns. The acceptance check independently reconstructs
+all 512 rows of the native fixed and main columns, including the source rows,
+public masks, and constant gates. It compares all 6,144 main M31 words with
+the exported trace, checks the serialized main digest, and joins the reported
+commitment root to the exact proof accepted by strict verification. A changed
+exported main cell fails that comparison. This is an honest-prover trace
+check; both inspection commands also reject a nonempty private assignment.
+Arbitrary lookup and PCS openings remain separate proof work.
 
 The certificate covers this bounded source and native fixed-row schedule.
 It does not prove the underlying Gate lookup, PCS/FRI, or verifier soundness.
