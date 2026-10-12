@@ -127,8 +127,10 @@ The public Python API remains in `../s31.py`; its functions import these
 modules. The dependency direction is `context -> verify -> build -> CLI`.
 
 `source_relation_fragment.py` is a separate development/audit checker for a
-bounded four-lane fragment with private inputs, canonical splat constants,
-and assertions. Its result is explicitly `source-to-relation-only`; it is not
+bounded one-to-eight-lane M31 fragment with private inputs, canonical splat
+constants, assertions, native subtraction, and one pure two-argument named
+function whose call is statically erased. Its result is explicitly
+`source-to-relation-only`; it is not
 used for package admission or native verification. It independently parses
 source bytes, compares the entire normalized relation, and optionally checks
 direct-gate public ABI and manifest identities. Its [scope and example](../../../../../design/s31/language/SOURCE_RELATION_FRAGMENT.md)

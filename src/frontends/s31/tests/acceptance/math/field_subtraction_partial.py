@@ -12,6 +12,7 @@ S31 = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(S31 / "python"))
 
 import s31  # noqa: E402
+from package.source_relation_fragment import check_package_source_relation  # noqa: E402
 from oracle import evaluate_relation  # noqa: E402
 from text_frontend import compile_text  # noqa: E402
 
@@ -58,6 +59,9 @@ def run() -> dict:
         functional_source.write_text(FUNCTIONAL_SOURCE)
         direct_package = s31.build(source, work / "direct-package", "direct-gate")
         package = s31.build(functional_source, work / "functional-package", "direct-gate")
+        source_check = check_package_source_relation(package)
+        if source_check["capability"] != "source-to-relation-only":
+            raise AssertionError("independent source/relation checker did not admit helper")
         direct_cost = json.loads((direct_package / "cost-report.json").read_text())
         cost = json.loads((package / "cost-report.json").read_text())
         different = [key for key in MATCHED_COST if cost[key] != direct_cost[key]]
@@ -90,12 +94,13 @@ def run() -> dict:
         else:
             raise AssertionError("native verifier accepted a changed fifth-lane claim")
 
-        return {"schema": "s31-field-subtraction-partial-native-v2",
+        return {"schema": "s31-field-subtraction-partial-native-v3",
                 "profile": cost["profile"], "source_words": 5,
                 "raw_qm31_rows": cost["raw"]["qm31_ops"],
                 "padded_qm31_rows": cost["padded"]["qm31_ops"],
                 "proof_bytes": trial["proof_bytes"],
                 "functional_ir_and_geometry_equal": True,
+                "independent_source_relation_checked": True,
                 "honest_proof_accepted": True,
                 "changed_first_lane_rejected": True,
                 "changed_fifth_lane_rejected": True,

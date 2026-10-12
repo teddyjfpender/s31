@@ -134,6 +134,14 @@ claim rejection for all four cases.
 | Repository hygiene | Parser, AST, elaborator, specialization, library and CLI isolated by directory, module READMEs and pinned dependency versions | Syntax, parser, builtin typing, elaboration and specialization live under `python/language/`. Standard and math library implementations live under `python/library/`, with compatibility imports and an expanded source lock/fingerprint. Cost and semantic-equation reports live under `python/inspection/`. Source identity, package building and integrity checks live under `python/package/`. Native trials and fold audits live under `python/runtime/`. Argument parsing and command dispatch live under `python/cli/`; the root executable/API is 44 lines. All modules have READMEs and enter the source fingerprint. A smaller declarative command table remains desirable. |
 | Release artifact | Tagged source, lockfile, supported-profile matrix, signed or otherwise authenticated distribution process, changelog and exact test commands | The [v0.1.0-rc.4 developer prerelease](https://github.com/teddyjfpender/s31/releases/tag/v0.1.0-rc.4) ships a hash-checked complete source bundle with its pinned engine and a finite-evidence archive. It does not satisfy the full v0.1.0 soundness and correspondence requirements in this table; trusted distribution and an independent native PCS/FRI soundness argument remain open. |
 
+The independent bounded [source-to-relation checker](SOURCE_RELATION_FRAGMENT.md)
+now parses one pure named function over homogeneous `[m31; N]` arrays for
+`1 ≤ N ≤ 8`, including ordered subtraction, and checks its static call against
+the exact normalized relation without invoking the production compiler. The
+five-lane functional subtraction acceptance runs that check on the generated
+package and separately verifies its native proof. The checker's capability is
+`source-to-relation-only`; it does not certify the circuit, AIR, or proof.
+
 The typed product extension adds `(A, B)` and `(a, b)` with statically checked
 `.0`/`.1` projections. A tuple is evaluated eagerly and erased before relation
 emission. Tuple patterns are parser sugar over one hygienic binding and static

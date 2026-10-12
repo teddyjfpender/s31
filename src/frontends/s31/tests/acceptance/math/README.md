@@ -13,7 +13,10 @@ speedup.
 and through a named functional helper. It requires identical normalized IR,
 selected profile, raw and padded rows, preprocessing, public binding, and FRI
 settings. The fifth lane occupies the only active position in the second
-packed row. The functional package's generated verifier must accept the honest
+packed row. A separate bounded source parser independently checks the
+functional package's source bytes, normalized relation, public ABI, and
+manifest identities; this check has `source-to-relation-only` scope. The
+functional package's generated verifier must accept the honest
 proof and reject public mutations of both the first and fifth output lanes.
 The script reports AIR geometry and checks expected values with an independent
 modular calculation.

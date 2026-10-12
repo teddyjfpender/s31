@@ -11,7 +11,7 @@ valuable local constraint proofs, but it does not establish that theorem.
 
 [`CompilerCorrespondence.lean`](../../../formal/s31/S31/Gadgets/Functional/CompilerCorrespondence.lean)
 defines an intrinsically typed, four-lane M31 language of arbitrary nested
-`+` and `.*` expressions. For every expression and every four-lane input, it
+`+`, `-`, and `.*` expressions. For every expression and every four-lane input, it
 proves:
 
 1. Static lambda application specializes to the exact direct strict field
@@ -48,6 +48,11 @@ The next boundary is connecting actual source bytes and Python's parser,
 elaborator, and serializer to these checked Lean models, then connecting the
 normalized `Program` to Zig's circuit/chip plan and generated component
 manifest. Source hashes trigger review but do not establish correspondence.
+The separate [bounded independent source/relation checker](SOURCE_RELATION_FRAGMENT.md)
+now checks one pure named `fn` call and ordered subtraction for arrays of one
+to eight lanes against the actual normalized JSON. Its capability is limited
+to source-to-relation checking; it does not refine the general Python parser
+or prove the native AIR/compiler path.
 
 ### Certificate-backed path to the production theorem
 
