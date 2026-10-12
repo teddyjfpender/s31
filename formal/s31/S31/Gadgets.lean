@@ -187,6 +187,7 @@ import S31.Gadgets.Functional.Correspondence.AcceptedAliasPublicPhysicalTrace
 import S31.Gadgets.Functional.Correspondence.AliasJoinedFixedRoster
 import S31.Gadgets.Functional.Correspondence.AliasCheckedFullModeledComposition
 import S31.Gadgets.Functional.Correspondence.AliasDerivedGateMultiplicities
+import S31.Gadgets.Functional.Correspondence.DerivedRosterArbitraryTrace
 import S31.Gadgets.Functional.Correspondence.AcceptedPublicFixedCells
 import S31.Gadgets.Functional.Correspondence.CheckedGateAddressLedger
 import S31.Gadgets.Functional.Correspondence.PinnedGateAddressLedger
