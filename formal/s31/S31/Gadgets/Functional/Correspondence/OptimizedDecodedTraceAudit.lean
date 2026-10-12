@@ -22,7 +22,7 @@ set_option maxHeartbeats 1000000
 theorem pinned_checked_byte_triple :
     checkBytes reversedAndRepeatedBytes reversedAndRepeatedNormalized
       reversedAndRepeatedCanonical = some compactExample := by
-  native_decide
+  decide
 
 def aliasLetBytes : Token := token
   "circuit alias_add(public x: [m31; 4]) -> public [m31; 4] { let a = x + x; let copy = a; let b = copy + x; b }"
@@ -30,7 +30,7 @@ def aliasLetBytes : Token := token
 theorem alias_let_inside_modeled_grammar :
     (parseBytes aliasLetBytes).map (·.raw) =
       some ⟨[⟨1, 0, 0, false⟩, ⟨2, 1, 0, false⟩], 2⟩ := by
-  native_decide
+  decide
 
 theorem optimized_alias_exact_byte_triple :
     checkBytes aliasedReversedSource reversedAndRepeatedNormalized

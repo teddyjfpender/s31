@@ -230,10 +230,11 @@ The reversed duplicate `d` is then merged into canonical producer `c`. -/
 def aliasedReversedSource : Token := token
   "circuit reverse_share(public x: [m31; 4]) -> public [m31; 4] { let base = (x); let a = (base) + x; let keep = (a); let b = base .* x; let c = keep + b; let d = b + a; let returned = (d); returned }"
 
+set_option maxHeartbeats 1000000 in
 set_option maxRecDepth 8192 in
 theorem aliased_reversed_exact_bytes :
     checkBytes aliasedReversedSource reversedAndRepeatedNormalized
-      reversedAndRepeatedCanonical = some compactExample := by native_decide
+      reversedAndRepeatedCanonical = some compactExample := by decide
 
 /-- A lexical alias neither adds an instruction nor changes the semantic
 claim checked against the optimized direct-Gate AIR model. -/
