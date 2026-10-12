@@ -1,0 +1,16 @@
+use std@1;
+
+// The enum tag is static. Only Safe reaches the witness-dependent selector.
+enum Choice { Safe: [m31; 1], Risky: [m31; 1] }
+
+fn choose(choice: Choice, flag: bit) -> [m31; 1] {
+    match choice {
+        Choice::Safe(v) => v + v,
+        Choice::Risky(v) => if flag then std::math::inv(v) else v
+    }
+}
+
+circuit static_enum_if(public flag: bit, private x: [m31; 1]) -> public [m31; 1] {
+    let result = if flag then choose(Choice::Safe(x), flag) else x;
+    result
+}

@@ -1,0 +1,5 @@
+{
+  "public_inputs": {"flag": [0]},
+  "private_inputs": {"x": [7]},
+  "public_outputs": {"result": [7]}
+}

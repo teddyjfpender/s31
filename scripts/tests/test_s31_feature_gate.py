@@ -50,6 +50,17 @@ def fake_report(check: gate.Check) -> tuple[str, str]:
         report = {"native_verifier_accepted": True,
                   "changed_public_statement_rejected": True,
                   "equal_native_air_geometry": True}
+    elif fmt == "static-enum-if-native":
+        report = {"schema": "s31-static-enum-if-acceptance-v1",
+                  "profile": "direct-m31-v4", "raw": {"qm31_ops": 280},
+                  "padded": {"qm31_ops": 512}, "preprocessed_cells": 4096,
+                  "equal_relation_and_air": True,
+                  "selected_and_eager_partial_arms_rejected": True,
+                  "proofs": [{"flag": flag, "x": x, "native_verified": True,
+                              "changed_claim_rejected": True,
+                              "oracle_passed": True,
+                              "proof_bytes": 1000}
+                             for flag, x in ((1, 7), (0, 7), (0, 0))]}
     elif fmt == "record-source-native":
         report = {"schema": "s31-record-source-fragment-native-v2",
                   "capability": "source-to-relation-only",
@@ -79,8 +90,8 @@ class FeatureGateTests(unittest.TestCase):
         smoke = gate.checks("smoke")
         full = gate.checks("full")
         self.assertEqual(len(source), 9)
-        self.assertEqual(len(smoke), 16)
-        self.assertEqual(len(full), 17)
+        self.assertEqual(len(smoke), 17)
+        self.assertEqual(len(full), 18)
         for inventory in (source, smoke, full):
             self.assertEqual(len({check.id for check in inventory}), len(inventory))
             for check in inventory:
@@ -127,6 +138,21 @@ class FeatureGateTests(unittest.TestCase):
         altered["compiler_sha256"] = "b" * 64
         with self.assertRaisesRegex(ValueError, "different compiler fingerprint"):
             gate.validate_output(add, json.dumps(altered), "", FINGERPRINT)
+
+    def test_static_enum_native_report_requires_all_three_proofs(self) -> None:
+        check = next(item for item in gate.checks("full")
+                     if item.id == "static-enum-if-native")
+        stdout, _ = fake_report(check)
+        self.assertEqual(gate.validate_output(check, stdout, "", FINGERPRINT)["cases"], 3)
+        for mutation in (lambda report: report["proofs"].pop(),
+                         lambda report: report["proofs"][2].update({"native_verified": False}),
+                         lambda report: report["proofs"][0].update({"changed_claim_rejected": False}),
+                         lambda report: report["raw"].update({"qm31_ops": 281}),
+                         lambda report: report.update({"selected_and_eager_partial_arms_rejected": False})):
+            report = json.loads(stdout)
+            mutation(report)
+            with self.assertRaisesRegex(ValueError, "static enum conditional"):
+                gate.validate_output(check, json.dumps(report), "", FINGERPRINT)
 
     def test_compiler_drift_and_subprocess_failure_are_nonpassing(self) -> None:
         calls = iter((FINGERPRINT, FINGERPRINT, "b" * 64, "b" * 64))

@@ -558,6 +558,10 @@ payload is eager, so an inverse used to build `Choice::Safe(...)` inside a
 dynamic branch is still rejected. The discarded arm may itself contain a
 witness-dependent `if`: its effect check is deferred with that static arm.
 Choosing that arm later triggers the ordinary inactive-branch check.
+The [runnable example](../examples/functional/static_enum_if/README.md)
+compares both source forms exactly and proves three inputs natively, including
+`x=0` when the dynamic bit chooses the other branch. Both forms use 280 raw
+QM31 operation rows under the direct-Gate profile.
 
 Constructor payloads are eager. For example,
 `match Choice::Square(x .* x) { Choice::Square(y) => x, Choice::Double(y) => y }`

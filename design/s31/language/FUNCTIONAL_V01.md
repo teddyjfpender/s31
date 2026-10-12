@@ -106,6 +106,10 @@ an inactive dynamic branch. A functional regression compares the safe case
 with direct `if` source byte for byte at the normalized relation boundary.
 The deferral also covers a nested dynamic `if` inside an unselected static
 arm; selecting that arm at a concrete call still rejects its partial effect.
+The [native static-enum acceptance](../../../src/frontends/s31/examples/functional/static_enum_if/README.md)
+compares the complete AIR cost tuple with a handwritten selector and verifies
+three public claims with changed-claim rejection, including `x=0` in the
+branch that would otherwise encounter an inverse-of-zero.
 
 The release gate still needs broader geometry equivalence checks and a
 formal correspondence from source conditionals through effect analysis to

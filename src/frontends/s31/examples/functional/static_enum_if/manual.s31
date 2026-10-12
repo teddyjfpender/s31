@@ -1,0 +1,7 @@
+use std@1;
+
+// First-order relation expected after static match and function erasure.
+circuit static_enum_if(public flag: bit, private x: [m31; 1]) -> public [m31; 1] {
+    let result = select(flag, x, x + x);
+    result
+}

@@ -71,6 +71,8 @@ def checks(mode: str) -> tuple[Check, ...]:
     native = [
         Check("static-sum-dce-native", ACCEPT + "functional/static_sum_dce.py", (),
               "static-sum-native", native=True),
+        Check("static-enum-if-native", ACCEPT + "functional/static_enum_if.py", (),
+              "static-enum-if-native", native=True),
         Check("v2-record-source-native", ACCEPT + "record_abi/record_source_fragment_v2.py", (),
               "record-source-native", native=True),
     ]
@@ -212,6 +214,32 @@ def validate_output(check: Check, stdout: str, stderr: str,
                 "native_verifier_accepted", "changed_public_statement_rejected",
                 "equal_native_air_geometry")):
             raise ValueError("static-sum DCE report failed a proof or geometry control")
+    elif fmt == "static-enum-if-native":
+        proofs = report.get("proofs")
+        raw_rows = report.get("raw")
+        padded_rows = report.get("padded")
+        valid_proofs = ([item for item in proofs if
+                         type(item) is dict and
+                         type(item.get("flag")) is int and
+                         type(item.get("x")) is int and
+                         item.get("native_verified") is True and
+                         item.get("changed_claim_rejected") is True and
+                         item.get("oracle_passed") is True and
+                         type(item.get("proof_bytes")) is int and
+                         item["proof_bytes"] > 0]
+                        if type(proofs) is list else [])
+        if (report.get("schema") != "s31-static-enum-if-acceptance-v1" or
+                report.get("profile") != "direct-m31-v4" or
+                type(raw_rows) is not dict or raw_rows.get("qm31_ops") != 280 or
+                type(padded_rows) is not dict or padded_rows.get("qm31_ops") != 512 or
+                report.get("preprocessed_cells") != 4096 or
+                report.get("equal_relation_and_air") is not True or
+                report.get("selected_and_eager_partial_arms_rejected") is not True or
+                type(proofs) is not list or len(proofs) != 3 or
+                len(valid_proofs) != 3 or
+                {(item["flag"], item["x"]) for item in valid_proofs} !=
+                {(1, 7), (0, 7), (0, 0)}):
+            raise ValueError("static enum conditional report failed proof or AIR controls")
     elif fmt == "record-source-native":
         if (report.get("schema") != "s31-record-source-fragment-native-v2" or
                 report.get("capability") != "source-to-relation-only" or
@@ -236,7 +264,8 @@ def validate_output(check: Check, stdout: str, stderr: str,
             raise ValueError("public record ABI report failed a range or alias control")
     else:
         raise ValueError(f"unknown report format: {fmt}")
-    return {"schema": report.get("schema"), "cases": len(report.get("cases", []))}
+    counted = report.get("proofs", []) if fmt == "static-enum-if-native" else report.get("cases", [])
+    return {"schema": report.get("schema"), "cases": len(counted)}
 
 
 def execute(check: Check) -> subprocess.CompletedProcess[bytes]:

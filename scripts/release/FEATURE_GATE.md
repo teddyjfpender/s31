@@ -22,7 +22,8 @@ independent value-oracle checks, and public u8/u16/u32 record ABI static checks.
 It builds no native proofs.
 
 `smoke` includes those source checks and selected native proofs: static-sum DCE
-on a dedicated chip, the bounded v2 record source fragment, u8 addition,
+on a dedicated chip, static enum effect staging with three direct-Gate proofs,
+the bounded v2 record source fragment, u8 addition,
 i8 subtraction/order, u8 checked/wrapping multiplication, and public u8/u32
 record ABI. `full` expands the direct integer native runs to all ten widths and
 adds the public u16 record ABI proof. The bounded v1 checker remains source-only;
