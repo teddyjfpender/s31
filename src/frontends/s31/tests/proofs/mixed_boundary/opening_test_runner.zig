@@ -7,14 +7,18 @@ const builtin = @import("builtin");
 pub const std_options: std.Options = .{ .logFn = testLog };
 pub const s31_opening_authentication = true;
 
-var root_mismatch_logs: [3]u8 = .{ 0, 0, 0 };
+// The test mutates one fixed opening, then seven main openings, then seven
+// interaction openings. Check each rejection in that order, not just totals:
+// aggregate counts could hide a rejection attributed to the wrong tree.
+var root_mismatch_count: usize = 0;
 var unexpected_error_logs: usize = 0;
 
 fn testLog(comptime level: std.log.Level, comptime scope: @Type(.enum_literal), comptime format: []const u8, args: anytype) void {
     if (comptime level == .err and std.mem.eql(u8, format, "PCS Merkle verification failed for tree {d}: {s}")) {
         const tree: usize = args[0];
-        if (tree < root_mismatch_logs.len and std.mem.eql(u8, args[1], "RootMismatch")) {
-            root_mismatch_logs[tree] +|= 1;
+        const expected_tree: usize = if (root_mismatch_count == 0) 0 else if (root_mismatch_count <= 7) 1 else 2;
+        if (root_mismatch_count < 15 and tree == expected_tree and std.mem.eql(u8, args[1], "RootMismatch")) {
+            root_mismatch_count += 1;
             return;
         }
     }
@@ -30,6 +34,6 @@ pub fn main() !void {
         try result;
         if (leaked) return error.TestAllocatorLeak;
     }
-    if (unexpected_error_logs != 0 or !std.mem.eql(u8, &root_mismatch_logs, &.{ 1, 7, 7 }))
+    if (unexpected_error_logs != 0 or root_mismatch_count != 15)
         return error.UnexpectedVerifierLog;
 }
