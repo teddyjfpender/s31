@@ -50,6 +50,14 @@ test "mixed circuit pair and many chip bridge queried openings authenticate to t
     try std.testing.expectEqual(sealed.bytes.len - proof_offset, stream.pos);
     try std.testing.expectEqual(@as(usize, 4), stark.commitment_scheme_proof.queried_values.items.len);
 
+    // Establish that the decode/encode path itself leaves the accepted proof
+    // byte-for-byte unchanged before interpreting any mutant rejection.
+    var roundtrip: std.ArrayList(u8) = .empty;
+    defer roundtrip.deinit(allocator);
+    try roundtrip.appendSlice(allocator, sealed.bytes[0..proof_offset]);
+    try postcard.serializeProof(H, roundtrip.writer(allocator), stark);
+    try std.testing.expectEqualSlices(u8, sealed.bytes, roundtrip.items);
+
     const geometry = sealed.inspection.schedule.native_geometry.?;
     try std.testing.expectEqual(@as(usize, slot_count), geometry.slot_count);
     try std.testing.expectEqual(@as(?cpu.direct_mixed_admission.SourceKind, null), geometry.slots[0].kind);
@@ -119,7 +127,11 @@ test "mixed circuit pair and many chip bridge queried openings authenticate to t
         try changed.appendSlice(allocator, sealed.bytes[0..proof_offset]);
         try postcard.serializeProof(H, changed.writer(allocator), stark);
         try std.testing.expectEqual(sealed.bytes.len, changed.items.len);
-        try std.testing.expect(!std.mem.eql(u8, sealed.bytes, changed.items));
+        var changed_bytes: usize = 0;
+        for (sealed.bytes, changed.items) |before, after| {
+            if (before != after) changed_bytes += 1;
+        }
+        try std.testing.expectEqual(@as(usize, 1), changed_bytes);
         try postcard.proof_preflight.validateFor(4, changed.items[proof_offset..], .{
             .config = .{
                 .pow_bits = pcs.fri_config.pow_bits,

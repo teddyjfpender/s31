@@ -92,15 +92,18 @@ and the circuit AIR/PCS soundness remain separate obligations.
 program and decodes its accepted proof. It changes one queried value in the
 fixed tree and in the first main and interaction column of every native
 slot: circuit, two pair chips, two pair bridges, one many chip, and one many
-bridge. Each of the 15 changed proofs still passes the structural postcard
-preflight and fails native verification at `RootMismatch` for its own PCS
-tree. Run it with:
+bridge. It also changes one Merkle authentication-path sibling in each of
+the four commitment trees (fixed, main, interaction, quotient). The 19
+changed proofs pass structural postcard preflight and fail native verification
+at `RootMismatch` for their own PCS tree. The path controls first require
+byte-exact proof decode/encode round-trip and then exactly one changed proof
+byte. Run it with:
 
 ```sh
 zig build --build-file src/frontends/s31/build.zig test-mixed-opening-authentication -Doptimize=ReleaseFast -j1
 ```
 
-This specifically checks that a queried value in every admitted component
-role is authenticated to the accepted root. It samples one queried value per
-slot and does not independently prove PCS soundness or authenticate
-unopened rows outside the verifier's cryptographic assumptions.
+This checks that a queried value in every admitted component role and one
+sampled path sibling per commitment tree are authenticated to the accepted
+roots. It does not independently prove PCS soundness or authenticate unopened
+rows outside the verifier's cryptographic assumptions.
