@@ -83,6 +83,29 @@ first commitment. It is a fixture and proof-byte regression. The native
 command accepts explicit untrusted columns; the comparison does not prove
 Merkle binding, PCS opening authentication, or FRI.
 
+`four_case_fixed_root_join.py` repeats this root join for the selected
+one-, eight-, 15-, and 16-gate source programs. For each case it rebuilds a
+source-bound package, checks its fresh full 512-row diagnostic against the
+independent source schedule and pinned native fixture, recommits all 4,096
+fixed cells through the production PCS path, and joins that root with the
+sealed key, fresh topology, and one proof accepted by the generated verifier.
+It also changes a single byte in that proof's fixed root and requires
+`InvalidPreprocessedRoot`, then checks cell, column-order, canonicality, and
+shape controls through the same recommit command. Use `--case case00` for a
+short single-case run or omit it for all four:
+
+```sh
+python3 src/frontends/s31/tests/acceptance/compiler_correspondence/four_case_fixed_root_join.py --case case00
+```
+
+These are four finite public-source regressions; they do not establish a
+general compiler correspondence theorem or authenticate arbitrary proof
+openings to the displayed rows.
+On 2026-10-12, the fresh four-case run accepted four proofs, joined each
+4,096-cell recommitment to its sealed key and proof root, rejected all 24
+fixed-column controls, and rejected all four one-byte proof-root changes at
+`InvalidPreprocessedRoot`.
+
 The 2026-10-12 fresh native run passed: all three roots were
 `791ada776d80d9b30c5b0217cae11135c67658e1822296564efe3e591cb62ef8`;
 the generated verifier accepted a 55,911-byte proof (SHA-256
