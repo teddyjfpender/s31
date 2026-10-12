@@ -1,5 +1,28 @@
 # S31 v0.1 supported-profile audit
 
+## Complete source bundle
+
+GitHub's automatic source archives omit `deps/stwo-zig`. After the candidate
+checker passes on a clean commit, make an offline-buildable archive containing
+the **complete tracked source trees** at the candidate and pinned engine
+commits:
+
+```sh
+python3 -B scripts/release/source_bundle.py --tag v0.1.0-rc.N \
+  --out zig-out/s31/s31-v0.1.0-rc.N-source-with-stwo-zig.tar.gz
+```
+
+Extract into a directory outside another Git checkout and run the bundled
+`SOURCE-BUNDLE.md` instructions. The bundle has no `.git` directories. Its
+`SOURCE-BUNDLE.json` pins both commits, both Git tree IDs, a SHA-256 over the
+engine code and build assets used by S31, and the compiler fingerprint. The
+compiler validates the engine digest and fingerprint before building a package.
+Publish and independently check the archive's SHA-256 alongside the asset.
+The bundle is complete rather than a selected set of engine files; its size is
+dominated by tracked stwo-zig test vectors and research reports.
+
+## Supported-profile audit
+
 `s31_v01_audit.py` enumerates **every lowering exposed by the current `s31
 build --lowering` CLI**, plus the supported fold-step-4 schedules for `gate`
 and `sparse-wide-gate`. It fails if the lowering inventory changes without a
