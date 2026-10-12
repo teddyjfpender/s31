@@ -582,3 +582,32 @@ python3 -B src/frontends/s31/tests/acceptance/record_abi/record_source_fragment_
 The checker reports only `source-to-relation-only`. It does not certify native
 gate extraction, AIR, or the proof system. Its accepted grammar and exact
 checks are in the [design note](../../../../../../design/s31/language/RECORD_SOURCE_RELATION_FRAGMENT_V2.md).
+
+## Independent bounded source-to-statement projection
+
+[`independent_statement_fragment_v2.py`](independent_statement_fragment_v2.py)
+extends that exact M31 record grammar from source bytes through canonical v2
+statement bytes to the eight proof words. It derives the ABI digest, required
+public leaf paths, alias identities, and final distinct-wire order from the
+independent source parser. It does not import the production ABI codec or
+compiler. For the `Pair` program above, the named claim has `x.left=2`,
+`x.right=3`, `result.left=17`, and `result.right=3`. The last leaf aliases
+`x.right`; the projected proof words are `[2, 3, 17, 3, 0, 0, 0, 0]`.
+
+The fast unit gate compares 30 bounded source/layout/alias programs with the
+production Python statement decoder. It also rejects changed paths, split
+aliases, M31 overflow, wrong scalar types, missing leaves, duplicate keys,
+and noncanonical bytes. The optional native gate sends the same handwritten
+three accepted and six rejected claims through Zig's statement parser, without
+creating proofs:
+
+```sh
+python3 -B -m unittest src/frontends/s31/tests/python/security/test_record_statement_fragment.py
+python3 -B src/frontends/s31/tests/acceptance/record_abi/record_source_statement_fragment_v2.py
+python3 -B src/frontends/s31/tests/acceptance/record_abi/record_source_statement_fragment_v2.py --native
+```
+
+This adds the `source-to-statement-projection-only` audit capability. It checks
+the public claim that a verifier would receive; it does not establish that a
+proof is valid, that the source computation produced those values, or that all
+record types are supported. See the [exact contract](../../../../../../design/s31/language/RECORD_SOURCE_STATEMENT_FRAGMENT_V2.md).
