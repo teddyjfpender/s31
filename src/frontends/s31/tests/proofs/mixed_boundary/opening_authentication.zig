@@ -65,6 +65,36 @@ test "mixed circuit pair and many chip bridge queried openings authenticate to t
     try std.testing.expectEqual(cpu.direct_mixed_admission.SourceKind.pair_bridge, geometry.slots[2].kind.?);
     try std.testing.expectEqual(cpu.direct_mixed_admission.SourceKind.many_chip, geometry.slots[5].kind.?);
     try std.testing.expectEqual(cpu.direct_mixed_admission.SourceKind.many_bridge, geometry.slots[6].kind.?);
+
+    // The bridge commits each endpoint as a constant main-column polynomial.
+    // A normal proof opens every main column at the verifier's query points,
+    // so these serialized values disclose the complete four-word private
+    // input and every subsequent chip handoff to anyone holding the proof.
+    // This is a privacy regression guard, not a confidentiality assertion.
+    const opened_main = stark.commitment_scheme_proof.queried_values.items[1];
+    var private_state = initial;
+    for (0..call_count) |call_id| {
+        const bridge_slot = geometry.slots[2 + 2 * call_id];
+        const bridge_at: usize = @intCast(bridge_slot.main_offset);
+        try std.testing.expectEqual(@as(u32, 8), bridge_slot.main_columns);
+        for (0..4) |lane| {
+            const openings = opened_main[bridge_at + lane];
+            try std.testing.expect(openings.len > 0);
+            for (openings) |opened|
+                try std.testing.expectEqual(private_state[lane], opened);
+        }
+        for (0..16) |_| {
+            for (&private_state) |*word|
+                word.* = word.*.mul(word.*).add(M31.fromCanonical(@intCast(13 + call_id)));
+        }
+        for (0..4) |lane| {
+            const openings = opened_main[bridge_at + 4 + lane];
+            try std.testing.expect(openings.len > 0);
+            for (openings) |opened|
+                try std.testing.expectEqual(private_state[lane], opened);
+        }
+    }
+
     const pcs = geometry.pcs;
     var sample_width_limits: [4]u32 = .{ 0, 0, 0, 1 };
     for (geometry.tree_columns[0..3], 0..) |width, tree| {

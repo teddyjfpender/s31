@@ -51,10 +51,14 @@ circuit_gate_values(output_addresses) = chip_state_at_end(call_id)
 chip_AIR_accepts(the complete indexed trace between those states)
 ```
 
-The endpoints may be omitted from the public statement. That does **not**
-guarantee confidentiality: the current bridge repeats each endpoint in an
-opened trace column. A separate blinded bridge and privacy argument are
-required before a confidential API can be advertised.
+The endpoints may be omitted from the public statement. The current bridge
+repeats each endpoint in a constant trace column, and an accepted proof opens
+that column at every PCS query. A proof holder can therefore read the exact
+private endpoint words from its serialized proof; the
+[N=3 proof-byte regression and review](../security/REVIEW_MIXED_PRIVATE_ENDPOINT_DISCLOSURE_2026-10-12.md)
+demonstrate this for both pair and many bridge roles. A confidential API
+requires a new masked proof profile and a privacy argument covering all
+witness-bearing traces and claimed sums.
 
 ## One proof, two authenticated joins
 
