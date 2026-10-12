@@ -111,13 +111,15 @@ def check(package: Path, proof: Path, statement: Path, pins: dict[str, str]) -> 
             proof_copy.write_bytes(proof_bytes)
             statement_copy.write_bytes(statement_bytes)
             result = _check_snapshot(snapshot, manifest, certificate,
-                                     proof_copy, statement_copy)
+                                     proof_copy, statement_copy,
+                                     proof_bytes, statement_bytes)
     result["pinned_artifacts_sha256"] = dict(sorted(pins.items()))
     return result
 
 
 def _check_snapshot(package: Path, manifest: dict, certificate: dict,
-                    proof: Path, statement: Path) -> dict:
+                    proof: Path, statement: Path,
+                    proof_bytes: bytes, statement_bytes: bytes) -> dict:
     if (manifest.get("lowering") != "direct-gate" or
             certificate.get("status", {}).get("source_to_normalized") !=
             "source-to-normalized-checked"):
@@ -153,8 +155,9 @@ def _check_snapshot(package: Path, manifest: dict, certificate: dict,
     # Verify the exact caller-supplied proof and statement before interpreting
     # the proof header. The generated verifier consumes its package's key.
     _invoke(verifier, proof, statement, package / "verification-key.json")
-    raw = proof.read_bytes()
-    proof_fixed, proof_main, _ = proof_roots(raw)
+    if proof.read_bytes() != proof_bytes or statement.read_bytes() != statement_bytes:
+        raise ValueError("private proof or statement snapshot changed during verification")
+    proof_fixed, proof_main, _ = proof_roots(proof_bytes)
     if proof_fixed.hex() != fixed_root:
         raise ValueError("accepted proof fixed root differs from recommitted source roster")
     return {
@@ -169,8 +172,8 @@ def _check_snapshot(package: Path, manifest: dict, certificate: dict,
         "recommitted_fixed_root": fixed_root,
         "accepted_proof_fixed_root": proof_fixed.hex(),
         "accepted_proof_main_root": proof_main.hex(),
-        "proof_sha256": hashlib.sha256(raw).hexdigest(),
-        "proof_bytes": len(raw),
-        "statement_sha256": hashlib.sha256(statement.read_bytes()).hexdigest(),
+        "proof_sha256": hashlib.sha256(proof_bytes).hexdigest(),
+        "proof_bytes": len(proof_bytes),
+        "statement_sha256": hashlib.sha256(statement_bytes).hexdigest(),
         "native_verifier_accepted": True,
     }
