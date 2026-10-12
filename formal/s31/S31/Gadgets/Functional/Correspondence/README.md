@@ -1,5 +1,18 @@
 # Bounded source to raw Gate AIR
 
+## Latest derived-roster join
+
+[The arbitrary-trace theorem](DerivedRosterArbitraryTrace.md) joins exact
+source-byte admission, a 512-row source-derived fixed roster, and the
+conditional raw Gate soundness theorem. The [derived multiplicity checker](AliasDerivedGateMultiplicities.lean)
+computes each output use count from scheduled reads and the nine public
+feeders. This closes the caller-supplied multiplicity gap in the modeled
+roster. The theorem assumes decoded fixed cells agree with the roster,
+installed arithmetic and Gate runtime facts, and ideal exact balance.
+Authentication of committed cells and native verifier refinement remain
+separate obligations. See the [independent theorem review](../../../../../../design/s31/security/INDEPENDENT_REVIEW_DERIVED_ROSTER_ARBITRARY_TRACE_2026-10-12.md)
+and [formal live evidence](../../../../../../design/s31/security/FORMAL_LIVE_EVIDENCE_2026-10-12.md).
+
 ## Canonical add/mul DAG optimization
 
 `CanonicalDagOptimization.lean` models the add/mul branch of Zig

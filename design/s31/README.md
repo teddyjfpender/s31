@@ -13,6 +13,22 @@
 
 The [MVP roadmap](MVP_ROADMAP.md) tracks open work; the [functional v0.1.0 release contract](language/FUNCTIONAL_V01.md) records the language, soundness and zero-cost gates; the [frontend source map](../../src/frontends/s31/README.md#source-layout) shows the corresponding implementation directories.
 
+## Current release evidence
+
+The [formal live audit](security/FORMAL_LIVE_EVIDENCE_2026-10-12.md)
+records 2,531 kernel-audited theorems and the limits of the modeled
+correspondence argument. The [derived-roster theorem](../../formal/s31/S31/Gadgets/Functional/Correspondence/DerivedRosterArbitraryTrace.md)
+covers all 512 fixed rows of an arbitrary decoded Gate trace under explicit
+fixed-cell agreement and runtime premises; its [independent review](security/INDEPENDENT_REVIEW_DERIVED_ROSTER_ARBITRARY_TRACE_2026-10-12.md)
+checks those premises and a concrete satisfiable fixture. The [V24 cost
+audit](measurements/INDEPENDENT_V24_CONDITIONAL_REPEAT_AUDIT_2026-10-12.md)
+reports a passed, frozen conditional-repeat forecast on one new source and
+host. Earlier V17 and V23 failures remain in the [roadmap](MVP_ROADMAP.md),
+which also tracks unfinished native PCS/FRI and compiler correspondence work.
+
+The status paragraph below is the dated 2026-10-07 implementation snapshot;
+the roadmap carries the later feature and release-gate changes.
+
 Status: v0.1 circuit relation compiler plus specialized linked-chip, sparse-arithmetic and direct-M31 proof profiles, a narrow authenticated private repeated-step boundary, personalized BLAKE2s tree functions, pinned field-native Poseidon2 tree functions, a limited typed text frontend, byte-exact single-header SHA256d chips, two-level recursive chains, and bounded same-key claim folds for gate and sparse-wide proofs, 2026-10-07. The implementation lives in [`src/frontends/s31`](../../src/frontends/s31). The [text language guide](../../src/frontends/s31/docs/reference/TEXT_LANGUAGE.md), [language and AIR guide](../../src/frontends/s31/docs/reference/LANGUAGE_AND_AIR.md), [private boundary guide](../../src/frontends/s31/docs/private-boundary.md), and [sparse-wide fold walkthrough](../../src/frontends/s31/docs/recursion-wide-fold.md) explain the current syntax, constraints and proof composition; the [MVP roadmap](MVP_ROADMAP.md) records the profiles, hash suite, measurements and remaining gates. General chip extraction, arbitrary private circuit-to-chip boundaries, a complete in-circuit joined SHA verifier, and a growing Bitcoin header-chain proof remain research milestones. The older slice-0 material below is preserved as its original design and comparison record.
 
 The [recursion security ledger](recursion/RECURSION_SECURITY.md) records exact

@@ -6,6 +6,11 @@ arithmetic, hash, and fixed-width corpus, see
 The [twelve-program held-out record](language/whole-prover-heldout-2026-10-10.json)
 pins the measured latency-model failure, proof-byte and RSS errors, and
 native trial controls.
+The latest [V24 independent audit](INDEPENDENT_V24_CONDITIONAL_REPEAT_AUDIT_2026-10-12.md)
+reports a passed frozen conditional-repeat forecast on one source and host;
+the [V23 failure](MIXED_COST_V23_N8_HOLDOUT_RESULT.md) and earlier V17
+failure are retained. These results do not establish cross-host calibration
+or an automatic lowering policy.
 
 These are retained records of specific experiments, not current performance claims. The JSON payloads are kept byte-for-byte when files move so their command lines, source names, and hashes remain historical evidence.
 
