@@ -40,6 +40,8 @@ python3 src/frontends/s31/benchmarks/mixed_cost_v19_revision_holdout/study.py ru
   --out /absolute/isolated/v19-artifacts
 python3 src/frontends/s31/benchmarks/mixed_cost_v19_revision_holdout/audit.py \
   --out /absolute/isolated/v19-artifacts --native --write
+python3 src/frontends/s31/benchmarks/mixed_cost_v19_revision_holdout/lifecycle.py \
+  design/s31/measurements/language/mixed-cost-v19-revision-holdout-result.json
 ```
 
 The attempt marker is created with `O_EXCL` before the package build. An
