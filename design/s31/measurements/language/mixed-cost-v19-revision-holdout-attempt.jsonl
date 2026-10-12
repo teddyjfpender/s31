@@ -1,0 +1,2 @@
+{"event":"started","output_dir":"/private/tmp/s31-v19-revision-holdout-aa15b22-artifacts","protocol_sha256":"70adc15315812a206c0d41fdb6521dff8a84131ecb970693ba208845cc845977","schema":"s31-v19-revision-attempt-v1","time_ns":1791765254947575000}
+{"all_gates_pass":true,"event":"completed","score_sha256":"0fd231823a27809b55a89a94755ec561f20e20a86bb465ce83acac8e271b1444","time_ns":1791765345756924000}
