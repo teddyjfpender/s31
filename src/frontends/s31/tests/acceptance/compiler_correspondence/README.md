@@ -83,6 +83,13 @@ first commitment. It is a fixture and proof-byte regression. The native
 command accepts explicit untrusted columns; the comparison does not prove
 Merkle binding, PCS opening authentication, or FRI.
 
+The 2026-10-12 fresh native run passed: all three roots were
+`791ada776d80d9b30c5b0217cae11135c67658e1822296564efe3e591cb62ef8`;
+the generated verifier accepted a 55,911-byte proof (SHA-256
+`78c032715cd56be1d3f71e725ee11a75d89d04146a51f47a527c4cca20b58548`).
+The decoded-root mismatch and all six fixed-column controls were rejected.
+These are observed bytes from that local trial, not a cross-build guarantee.
+
 ### Four-case full-roster checks
 
 `full_native_roster.py` checks a 1-gate direct multiplication, an 8-gate
