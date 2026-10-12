@@ -33,6 +33,10 @@ frontend below supports broader lambdas and closures.
 The [inline lambda release example](../examples/functional/release_inline_lambda4/README.md)
 passes `fun(v: [m31; 4]) -> [m31; 4] => v .* v` directly to `apply_twice`.
 Its two applications produce only the handwritten `x²` and `x⁴` gates.
+The [curried release example](../examples/functional/release_curried4/README.md)
+checks `make(x)(x)`: `make` computes `x²`, returns a closure capturing that
+wire, and the second application emits `x + x²`. The closure value adds no
+witness or AIR row.
 
 ## Auditing a named function all the way to packed rows
 

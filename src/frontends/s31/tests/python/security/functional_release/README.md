@@ -21,6 +21,9 @@ capture across lexical shadowing, and rejection of unbound or ill-typed forms.
 It also compares an inline lambda passed to a higher-order helper with
 handwritten gates and production compilation, and rejects malformed inline
 lambda types or captures.
+`test_returned_function.py` checks returned captured lambdas, zero-argument
+functions returning named unary functions, `Fn` aliases, direct curried calls,
+and rejection of wrong return types or applying an array as a function.
 Other lambda operations and general closures remain outside this bounded
 certificate.
 The separate `test_lexical_corpus.py` exhausts all 30 chains of one to four binders with

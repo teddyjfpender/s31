@@ -49,9 +49,9 @@ Verification callers must use the yielded snapshot while its context is open.
 General direct-gate text packages remain buildable; programs outside the
 bounded certificate grammar fail this stricter admission. This gate still
 inherits the certificate's stated AIR/PCS and native implementation assumptions.
-The v2 grammar now includes up to eight pure static functions with one or two
-parameters each, of type `[m31; 4]` or unary
-`Fn([m31; 4]) -> [m31; 4]`, and bounded straight-line bodies of add,
+The v2 grammar now includes up to eight pure static functions with zero to two
+parameters, of type `[m31; 4]` or unary
+`Fn([m31; 4]) -> [m31; 4]`, and either result type. It accepts bounded bodies of add,
 pointwise-multiply, and earlier-declared function calls. Their calls are
 independently expanded to existing circuit wires and fresh generated wires before the
 same positional SSA, topology, fixed-root, and key checks. The
@@ -81,6 +81,10 @@ An [inline-lambda release example](../../examples/functional/release_inline_lamb
 passes a lambda directly to a `Fn` parameter and invokes it twice. Its
 independent certificate checks the exact two-gate result and native AIR
 geometry against handwritten arithmetic.
+The [curried release example](../../examples/functional/release_curried4/README.md)
+returns a captured unary function from a named helper and applies it directly
+as `make(x)(x)`. The independent certificate requires only the two handwritten
+gates and the matching native AIR geometry.
 
 `inspect-record-proof` also executes from a private copy of the package,
 proof, and statement. Its `unpinned_snapshot` check establishes internal

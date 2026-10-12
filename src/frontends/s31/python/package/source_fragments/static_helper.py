@@ -1,8 +1,9 @@
 """Independent static function grammar for the v2 gate certificate.
 
-Functions are monomorphic. A parameter may be a four-lane field value or a
-unary function over that value. Calls may target earlier declarations or a
-function parameter; concrete named function values resolve at compile time.
+Functions are monomorphic. A parameter and result may be a four-lane field
+value or a unary function over that value. Calls may target earlier
+declarations or a function parameter; concrete named function values and
+returned closures resolve at compile time.
 The parser retains source binders; the package checker separately replays
 applications as ordinary circuit gates.
 """
@@ -12,6 +13,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable
 
+from package.source_fragments.static_lambda import (StaticLambda, UnsupportedStaticLambda,
+                                                    parse_static_lambda)
+
 
 class UnsupportedStaticHelper(ValueError):
     """A function is outside the certified source fragment."""
@@ -19,9 +23,10 @@ class UnsupportedStaticHelper(ValueError):
 
 @dataclass(frozen=True)
 class StaticExpr:
-    kind: str  # gate, call, or ref
+    kind: str  # gate, call, ref, named_function, or lambda
     value: str  # arithmetic operator or called function name
     operands: tuple[str, ...]
+    lambda_body: StaticLambda | None = None
 
 
 @dataclass(frozen=True)
@@ -40,6 +45,7 @@ class StaticParam:
 class StaticHelper:
     name: str
     params: tuple[StaticParam, ...]
+    result_kind: str
     statements: tuple[StaticStep, ...]
     body: StaticExpr
 
@@ -90,20 +96,21 @@ def peel_static_helpers(tokens: list[str], valid_name: Callable[[str], bool]) ->
             raise UnsupportedStaticHelper("duplicate static function")
         take("(")
         params: list[StaticParam] = []
-        while True:
-            param = name()
-            if param == helper_name or param in (item.name for item in params) or param in helpers:
-                raise UnsupportedStaticHelper("duplicate or shadowed function parameter")
-            take(":")
-            params.append(StaticParam(param, parameter_type()))
-            if len(params) > 2:
-                raise UnsupportedStaticHelper("function accepts at most two parameters")
-            if tokens[cursor:cursor + 1] != [","]:
-                break
-            take(",")
+        if tokens[cursor:cursor + 1] != [")"]:
+            while True:
+                param = name()
+                if param == helper_name or param in (item.name for item in params) or param in helpers:
+                    raise UnsupportedStaticHelper("duplicate or shadowed function parameter")
+                take(":")
+                params.append(StaticParam(param, parameter_type()))
+                if len(params) > 2:
+                    raise UnsupportedStaticHelper("function accepts at most two parameters")
+                if tokens[cursor:cursor + 1] != [","]:
+                    break
+                take(",")
         take(")")
         take("->")
-        lane_type()
+        result_kind = parameter_type()
         take("{")
         available = {param.name: param.kind for param in params}
         statements: list[StaticStep] = []
@@ -120,20 +127,57 @@ def peel_static_helpers(tokens: list[str], valid_name: Callable[[str], bool]) ->
                 return True
             return (expected == "unary_function" and argument in helpers and
                     len(helpers[argument].params) == 1 and
-                    helpers[argument].params[0].kind == "array")
+                    helpers[argument].params[0].kind == "array" and
+                    helpers[argument].result_kind == "array")
+
+        def expression_kind(expr: StaticExpr) -> str:
+            if expr.kind == "gate":
+                return "array"
+            if expr.kind in {"lambda", "named_function"}:
+                return "unary_function"
+            if expr.kind == "call":
+                return (helpers[expr.value].result_kind if expr.value in helpers
+                        else "array")
+            return available[expr.operands[0]]
 
         def expression() -> StaticExpr:
+            if tokens[cursor:cursor + 1] == ["fun"]:
+                start = cursor
+                depth = 0
+                while cursor < len(tokens):
+                    upcoming = tokens[cursor]
+                    if depth == 0 and upcoming in {";", "}"}:
+                        break
+                    token = take()
+                    depth += (token in {"(", "[", "{"}) - (token in {")", "]", "}"})
+                    if depth < 0:
+                        raise UnsupportedStaticHelper("unbalanced static lambda in function")
+                if depth != 0:
+                    raise UnsupportedStaticHelper("unbalanced static lambda in function")
+                def capture_array(captured: str) -> str:
+                    if available.get(captured) != "array":
+                        raise UnsupportedStaticHelper("lambda captures an unbound array")
+                    return captured
+                try:
+                    parsed = parse_static_lambda(
+                        tokens[start:cursor], valid_name, capture_array,
+                    )
+                except UnsupportedStaticLambda as exc:
+                    raise UnsupportedStaticHelper(str(exc)) from exc
+                assert parsed is not None
+                return StaticExpr("lambda", "", (), parsed)
             first = name()
             if tokens[cursor:cursor + 1] == ["("]:
                 expected_kinds = callable_signature(first)
                 take("(")
                 args: list[str] = []
-                while True:
-                    argument = name()
-                    args.append(argument)
-                    if tokens[cursor:cursor + 1] != [","]:
-                        break
-                    take(",")
+                if tokens[cursor:cursor + 1] != [")"]:
+                    while True:
+                        argument = name()
+                        args.append(argument)
+                        if tokens[cursor:cursor + 1] != [","]:
+                            break
+                        take(",")
                 take(")")
                 if len(args) != len(expected_kinds):
                     raise UnsupportedStaticHelper("function call argument count differs")
@@ -147,7 +191,9 @@ def peel_static_helpers(tokens: list[str], valid_name: Callable[[str], bool]) ->
                 if available.get(first) != "array" or available.get(second) != "array":
                     raise UnsupportedStaticHelper("function gate needs earlier wires")
                 return StaticExpr("gate", operator, (first, second))
-            if available.get(first) != "array":
+            if first in helpers and argument_kind(first, "unary_function"):
+                return StaticExpr("named_function", first, ())
+            if first not in available:
                 raise UnsupportedStaticHelper("unbound function result")
             return StaticExpr("ref", "", (first,))
 
@@ -158,18 +204,20 @@ def peel_static_helpers(tokens: list[str], valid_name: Callable[[str], bool]) ->
                 raise UnsupportedStaticHelper("duplicate or shadowed function local")
             take("=")
             bound = expression()
-            if bound.kind == "ref":
-                raise UnsupportedStaticHelper("function local must produce arithmetic")
             take(";")
             statements.append(StaticStep(local, bound))
             if len(statements) > 16:
                 raise UnsupportedStaticHelper("helper exceeds 16 arithmetic operations")
-            available[local] = "array"
+            available[local] = expression_kind(bound)
 
         body = expression()
-        if body.kind == "ref" and (not statements or body.operands[0] != statements[-1].name):
+        if expression_kind(body) != result_kind:
+            raise UnsupportedStaticHelper("function result type differs")
+        if (result_kind == "array" and body.kind == "ref" and
+                (not statements or body.operands[0] != statements[-1].name)):
             raise UnsupportedStaticHelper("helper must return its last operation")
         take("}")
-        helpers[helper_name] = StaticHelper(helper_name, tuple(params), tuple(statements), body)
+        helpers[helper_name] = StaticHelper(helper_name, tuple(params), result_kind,
+                                            tuple(statements), body)
 
     return helpers, tokens[cursor:]

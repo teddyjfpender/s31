@@ -1,18 +1,20 @@
 # Certified source fragments
 
 `static_helper.py` parses up to eight pure, monomorphic functions before the
-v2 direct-gate circuit grammar. Each accepts one or two parameters of type
-`[m31; 4]` or the unary `Fn([m31; 4]) -> [m31; 4]`, local arithmetic or call
-lets, and a final add, pointwise
-multiply, earlier-declared function call, or last local value. Calls to later
-functions and recursion are rejected. A `Fn` value can resolve to an earlier
-named unary function or the bounded `static_lambda.py` form; it can pass through function parameters or source-only
-aliases in circuit blocks and lexical lets. Array operands name a parameter
-or earlier local. There are at most sixteen gates across the entire
-circuit. The checker statically expands calls in declaration order and
+v2 direct-gate circuit grammar. Each accepts zero to two parameters of type
+`[m31; 4]` or unary `Fn([m31; 4]) -> [m31; 4]`, and returns either type.
+Statements may bind arithmetic, calls or source-only function values; the
+result may return a typed lambda that captures earlier array values. Calls to
+later functions and recursion are rejected. A `Fn` value may be an earlier
+named unary function, a bounded `static_lambda.py` value, or a returned
+closure. It can pass through function parameters and source-only aliases.
+Array operands name a parameter or earlier local. There are at most sixteen
+gates across the entire circuit. The checker statically expands calls in declaration order and
 independently derives the production specializer's generated wire names, so
 its complete normalized relation must match the package. Function values and
 applications have no separate AIR representation.
+Gate-free function factories still consume a separate 64-call expansion
+budget, so a short source cannot force unbounded static work.
 
 `lexical_let.py` independently parses bounded expression-level
 `let name = bound in body` inside a circuit let. The bound expression is
@@ -44,6 +46,9 @@ The same parser checks an inline lambda supplied to a monomorphic `Fn`
 parameter, capturing visible wires at that call site. The
 [inline native example](../../../examples/functional/release_inline_lambda4/README.md)
 applies one such value twice and matches two handwritten gates.
+The [curried native example](../../../examples/functional/release_curried4/README.md)
+returns a function that captures a gate result, then applies it with
+`make(x)(x)`. Its static closure and postfix application add no AIR rows.
 This fragment is intentionally exact: other lambda operations and closures,
 calls nested inside an argument expression, partial operations, subtraction,
 and hidden effects remain outside this v2 certificate. They remain usable

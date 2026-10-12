@@ -125,9 +125,9 @@ python3 src/frontends/s31/python/s31.py verify-release PACKAGE PROOF \
 
 This strict command accepts one public `[m31; 4]` input, one to sixteen
 canonical add/multiply gates, zero-cost aliases and parentheses, and a public
-`[m31; 4]` output. It also accepts up to eight pure named functions with one
-or two parameters, each either `[m31; 4]` or the monomorphic unary
-`Fn([m31; 4]) -> [m31; 4]`, earlier-declared calls, and at most sixteen
+`[m31; 4]` output. It also accepts up to eight pure named functions with zero
+to two parameters, each either `[m31; 4]` or the monomorphic unary
+`Fn([m31; 4]) -> [m31; 4]`, either result type, earlier-declared calls, and at most sixteen
 straight-line add or pointwise-multiply operations across the circuit. Named
 function values and aliases erase at compile time; calls lower to the same
 gates and fixed-root checks. The [worked release example](../examples/functional/release_square4/README.md)
@@ -142,12 +142,15 @@ exactly the same two-gate AIR as its handwritten program. The
 [captured lambda example](../examples/functional/release_closure4/README.md)
 certifies a bounded arithmetic and lexical-let body in a unary lambda, including
 a capture whose name is shadowed later; it has exactly the handwritten four-gate AIR.
-Other lambda operations, general closures, and function values in the public
-ABI remain outside this strict certificate.
 The [inline lambda example](../examples/functional/release_inline_lambda4/README.md)
 passes `fun(v: [m31; 4]) -> [m31; 4] => v .* v` directly to a typed helper.
 Two applications leave exactly two multiplication gates, with no function
 value or call row in the AIR.
+The [returned closure example](../examples/functional/release_curried4/README.md)
+certifies a factory whose returned function captures an earlier gate result.
+`make(x)(x)` leaves exactly the two handwritten arithmetic gates. Other lambda
+operations, closure types, and function values in the public ABI remain
+outside this strict certificate.
 
 For that same fragment, the [fixed-root join inspector](../tools/inspect/check_direct_gate_fixed_root_join.py)
 replays `verify-release` admission, asks the packaged prover for a fresh

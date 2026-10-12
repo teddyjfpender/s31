@@ -75,6 +75,7 @@ OPTIMIZED_SCHEMA = "s31-direct-gate-correspondence-v3"
 M31_MODULUS = 2**31 - 1
 MAX_SOURCE_BYTES = 16_384
 MAX_RELATION_NAME_CHARS = 128
+MAX_STATIC_CALLS = 64
 # Reviewed plain-name subset of language.builtins.BUILTINS. The production
 # parser reserves these as circuit names; keep this independent inventory in
 # sync with that namespace through the differential test.
@@ -247,7 +248,7 @@ def parse_source(data: bytes, *, optimized: bool = False) -> tuple[dict[str, Any
                 reference(plain[position + 1:]))
 
     def helper_call(expression: list[str],
-                    local: dict[str, StaticValue] | None = None) -> tuple[FunctionValue, list[list[str]]] | None:
+                    local: dict[str, StaticValue] | None = None) -> tuple[FunctionValue, list[list[list[str]]]] | None:
         plain = strip_parens(expression)
         if not plain:
             return None
@@ -265,24 +266,33 @@ def parse_source(data: bytes, *, optimized: bool = False) -> tuple[dict[str, Any
             function = NamedFunction(name)
         else:
             return None
-        if len(plain) < 4 or plain[1] != "(" or plain[-1] != ")":
+        if len(plain) < 3 or plain[1] != "(" or plain[-1] != ")":
             raise UnsupportedFragment("static helper must be called as a whole expression")
-        parts: list[list[str]] = [[]]
-        depth = 0
-        for token in plain[2:-1]:
-            if token == "(":
-                depth += 1
-            elif token == ")":
-                depth -= 1
-                if depth < 0:
-                    raise UnsupportedFragment("unbalanced helper call")
-            if token == "," and depth == 0:
-                parts.append([])
+        groups: list[list[list[str]]] = []
+        position = 1
+        while position < len(plain):
+            if plain[position] != "(":
+                raise UnsupportedFragment("static application has trailing tokens")
+            position += 1
+            parts: list[list[str]] = [[]] if plain[position:position + 1] != [")"] else []
+            depth = 0
+            while position < len(plain):
+                token = plain[position]
+                position += 1
+                if token == "(":
+                    depth += 1
+                elif token == ")":
+                    if depth == 0:
+                        break
+                    depth -= 1
+                if token == "," and depth == 0:
+                    parts.append([])
+                else:
+                    parts[-1].append(token)
             else:
-                parts[-1].append(token)
-        if depth != 0 or len(parts) != len(function_parameters(function)):
-            raise UnsupportedFragment("static helper argument count differs")
-        return function, parts
+                raise UnsupportedFragment("unbalanced helper call")
+            groups.append(parts)
+        return function, groups
 
     take("circuit")
     circuit = identifier()
@@ -368,8 +378,11 @@ def parse_source(data: bytes, *, optimized: bool = False) -> tuple[dict[str, Any
             return ("array",)
         return tuple(param.kind for param in helpers[function.name].params)
 
+    def function_result_kind(function: FunctionValue) -> str:
+        return "array" if isinstance(function, StaticLambda) else helpers[function.name].result_kind
+
     def expand_callable(function: FunctionValue, arguments: tuple[StaticValue, ...],
-                        wanted: str | None) -> str:
+                        wanted: str | None) -> StaticValue:
         if isinstance(function, NamedFunction):
             return expand_helper(function.name, arguments, wanted)
         if len(arguments) != 1:
@@ -399,7 +412,7 @@ def parse_source(data: bytes, *, optimized: bool = False) -> tuple[dict[str, Any
         return evaluate_body(function.body, captured, wanted)
 
     def evaluate_static(expression: StaticExpr, local: dict[str, StaticValue],
-                        wanted: str | None) -> str:
+                        wanted: str | None) -> StaticValue:
         if expression.kind == "gate":
             left, right = expression.operands
             result = gate_name(wanted)
@@ -418,11 +431,19 @@ def parse_source(data: bytes, *, optimized: bool = False) -> tuple[dict[str, Any
                               for argument in expression.operands)
             return expand_callable(function, arguments, wanted)
         if expression.kind == "ref":
-            return wire_value(local[expression.operands[0]])
+            return local[expression.operands[0]]
+        if expression.kind == "named_function":
+            return NamedFunction(expression.value)
+        if expression.kind == "lambda":
+            template = expression.lambda_body
+            if template is None:
+                raise UnsupportedFragment("missing static lambda body")
+            captures = tuple((name, wire_value(local[name])) for name, _ in template.captures)
+            return StaticLambda(template.parameter, template.body, captures)
         raise UnsupportedFragment("invalid static function expression")
 
     def expand_helper(function: str, arguments: tuple[StaticValue, ...],
-                      wanted: str | None) -> str:
+                      wanted: str | None) -> StaticValue:
         nonlocal helper_calls
         helper = helpers[function]
         if len(arguments) != len(helper.params):
@@ -434,22 +455,37 @@ def parse_source(data: bytes, *, optimized: bool = False) -> tuple[dict[str, Any
                 raise UnsupportedFragment("static function value has wrong type")
             elif (isinstance(argument, NamedFunction) and
                   (argument.name not in helpers or
-                   function_parameters(argument) != ("array",))):
+                   function_parameters(argument) != ("array",) or
+                   function_result_kind(argument) != "array")):
                 raise UnsupportedFragment("static function value has wrong type")
         helper_calls += 1
+        if helper_calls > MAX_STATIC_CALLS:
+            raise UnsupportedFragment("static helper expansion exceeds 64 calls")
         serial = helper_calls
         used_helpers.add(function)
         local = {param.name: argument for param, argument in zip(helper.params, arguments)}
         for index, step in enumerate(helper.statements):
-            target = (wanted if wanted is not None and helper.body.kind == "ref" and
+            target = (wanted if wanted is not None and helper.result_kind == "array" and
+                      helper.body.kind == "ref" and
                       helper.body.operands[0] == step.name else
                       f"_s31_i{serial}_{index}")
             local[step.name] = evaluate_static(step.expression, local, target)
-        return evaluate_static(helper.body, local, wanted)
+        result = evaluate_static(helper.body, local, wanted)
+        if helper.result_kind == "array":
+            wire_value(result)
+        elif not isinstance(result, (NamedFunction, StaticLambda)):
+            raise UnsupportedFragment("static function did not return a function value")
+        elif (isinstance(result, NamedFunction) and
+              (function_parameters(result) != ("array",) or
+               function_result_kind(result) != "array")):
+            raise UnsupportedFragment("returned function value has wrong type")
+        return result
 
     def source_arguments(function: FunctionValue, parts: list[list[str]],
                          resolve_array: Callable[[str], str],
                          resolve_function: Callable[[str], FunctionValue]) -> tuple[StaticValue, ...]:
+        if len(parts) != len(function_parameters(function)):
+            raise UnsupportedFragment("static helper argument count differs")
         arguments: list[StaticValue] = []
         for kind, part in zip(function_parameters(function), parts):
             if kind == "array":
@@ -469,6 +505,19 @@ def parse_source(data: bytes, *, optimized: bool = False) -> tuple[dict[str, Any
                 arguments.append(inline if inline is not None else
                                  resolve_function(reference(part)))
         return tuple(arguments)
+
+    def evaluate_calls(function: FunctionValue, groups: list[list[list[str]]],
+                       resolve_array: Callable[[str], str],
+                       resolve_function: Callable[[str], FunctionValue],
+                       wanted: str | None) -> StaticValue:
+        result: StaticValue = function
+        for index, parts in enumerate(groups):
+            if not isinstance(result, (NamedFunction, StaticLambda)):
+                raise UnsupportedFragment("cannot apply an array as a function")
+            arguments = source_arguments(result, parts, resolve_array, resolve_function)
+            result = expand_callable(result, arguments,
+                                     wanted if index == len(groups) - 1 else None)
+        return result
 
     def evaluate_lexical(expression: Atom | Let, local: dict[str, StaticValue],
                          wanted: str | None) -> StaticValue:
@@ -505,10 +554,9 @@ def parse_source(data: bytes, *, optimized: bool = False) -> tuple[dict[str, Any
             return resolve(plain_atom[0])
         call = helper_call(atom, local)
         if call is not None:
-            function, arguments = call
-            return expand_callable(function, source_arguments(function, arguments,
-                                                              resolve_array, resolve_function),
-                                   wanted)
+            function, groups = call
+            return evaluate_calls(function, groups, resolve_array, resolve_function,
+                                  wanted)
         left, operator, right = binding_rhs(atom)
         if operator == "alias":
             return resolve(left)
@@ -583,7 +631,7 @@ def parse_source(data: bytes, *, optimized: bool = False) -> tuple[dict[str, Any
             continue
         call = helper_call(rhs)
         if call is not None:
-            function, arguments = call
+            function, groups = call
             def resolve_wire(argument: str) -> str:
                 if argument not in wires:
                     raise UnsupportedFragment("forward or unbound function argument")
@@ -594,10 +642,11 @@ def parse_source(data: bytes, *, optimized: bool = False) -> tuple[dict[str, Any
                 if argument in helpers:
                     return NamedFunction(argument)
                 raise UnsupportedFragment("unbound static function value")
-            produced = expand_callable(function, source_arguments(function, arguments,
-                                                                  resolve_wire, resolve_function),
-                                       name)
-            if produced != name:
+            produced = evaluate_calls(function, groups, resolve_wire, resolve_function,
+                                      name)
+            if isinstance(produced, (NamedFunction, StaticLambda)):
+                function_aliases[name] = produced
+            elif produced != name:
                 wires[name] = wires[produced]
             continue
         left, op_token, right = binding_rhs(rhs)

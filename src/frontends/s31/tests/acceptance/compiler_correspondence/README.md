@@ -59,6 +59,16 @@ proof passes strict release verification, and a changed public result fails.
 python3 src/frontends/s31/tests/acceptance/compiler_correspondence/inline_lambda_release.py
 ```
 
+`curried_release.py` checks a helper that computes a gate, returns a closure
+capturing its result, and applies it with `make(x)(x)`. The independently
+reconstructed two-gate relation, canonical IR and native AIR geometry must
+match the handwritten program; a real strict release proof passes and a changed
+public result fails.
+
+```sh
+python3 src/frontends/s31/tests/acceptance/compiler_correspondence/curried_release.py
+```
+
 `generated_native_subset.py` selects four sources from the pinned 384-source
 mutation corpus: one gate; eight alias-spelled gates with an earlier return;
 fifteen gates with a final return; and sixteen comment-spelled gates with an
