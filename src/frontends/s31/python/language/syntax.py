@@ -24,15 +24,15 @@ class Token:
 class FunctionType:
     """A compile-time function type; no relation or AIR representation."""
 
-    params: tuple[Type | FunctionType | TupleType | RecordType, ...]
-    result: Type | FunctionType | TupleType | RecordType
+    params: tuple[Type | FunctionType | TupleType | RecordType | SumType, ...]
+    result: Type | FunctionType | TupleType | RecordType | SumType
 
 
 @dataclass(frozen=True)
 class TupleType:
     """A compile-time product of typed values, erased before AIR lowering."""
 
-    elements: tuple[Type | FunctionType | TupleType | RecordType, ...]
+    elements: tuple[Type | FunctionType | TupleType | RecordType | SumType, ...]
 
 
 @dataclass(frozen=True)
@@ -41,6 +41,23 @@ class RecordType:
 
     name: str
     fields: tuple[tuple[str, Type | TupleType | RecordType], ...]
+
+
+@dataclass(frozen=True)
+class SumType:
+    """Nominal source-only sum; its constructor tag never becomes a wire."""
+
+    name: str
+    variants: tuple[tuple[str, Type | TupleType | RecordType], ...]
+
+
+@dataclass(frozen=True)
+class StaticVariant:
+    """Known constructor and eagerly evaluated payload at specialization."""
+
+    signature: SumType
+    variant: str
+    payload: Any
 
 
 @dataclass(frozen=True)
@@ -58,9 +75,11 @@ class Expr:
     args: tuple[Expr, ...]
     token: Token
     generic: int | None = None
-    params: tuple[tuple[str, Type | FunctionType | TupleType | RecordType], ...] = ()
-    result_type: Type | FunctionType | TupleType | RecordType | None = None
+    params: tuple[tuple[str, Type | FunctionType | TupleType | RecordType | SumType], ...] = ()
+    result_type: Type | FunctionType | TupleType | RecordType | SumType | None = None
     record_type: RecordType | None = None
+    sum_type: SumType | None = None
+    variants: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -74,8 +93,8 @@ class Statement:
 @dataclass(frozen=True)
 class Function:
     name: str
-    params: tuple[tuple[str, Type | FunctionType | TupleType | RecordType], ...]
-    result: Type | FunctionType | TupleType | RecordType
+    params: tuple[tuple[str, Type | FunctionType | TupleType | RecordType | SumType], ...]
+    result: Type | FunctionType | TupleType | RecordType | SumType
     statements: tuple[Statement, ...]
     body: Expr
 

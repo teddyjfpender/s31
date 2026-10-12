@@ -60,8 +60,8 @@ two operands of the same nominal type. Neither field arithmetic nor
 | --- | --- |
 | `add_checked(a,b)`, `sub_checked(a,b)` | Exact integer result in the type's signed or unsigned range; overflow or underflow has no valid witness. |
 | `add_wrapping(a,b)`, `sub_wrapping(a,b)` | Low $W$ bits of the result, interpreted according to the result type. |
-| `mul_wrapping(a,b)` | Low $W$ product bits, using constrained base-256 columns. |
-| `mul_checked(a,b)` | Exact product in the type's range; proves the full product and rejects overflow. |
+| `mul_wrapping(a,b)` | Low $W$ product bits, using constrained radix columns. |
+| `mul_checked(a,b)` | Exact product in the type's range; rejects overflow. The generic profile proves the full product; direct unsigned checked multiplication uses bounded low columns and high-coefficient zero checks. |
 | `div_rem(a,b)` | One constrained division with quotient and remainder; rejects zero divisors and signed `MIN / -1`. |
 | `div_checked(a,b)`, `rem_checked(a,b)` | Select the quotient or remainder from a constrained division. |
 | `le(a,b)`, `lt(a,b)`, `ge(a,b)`, `gt(a,b)` | Signed ordering for `iW`, unsigned ordering for `uW`; constrained `bit` result. |
@@ -102,6 +102,16 @@ $q$ and enforces $256x=q$. As $0\le q<65536$ and the product stays below the
 M31 modulus, this proves $0\le x<256$ as an ordinary integer inequality.
 The carry is separately constrained by $c^2-c=0$. These witness wires are
 verified circuit wires, not trusted host calculations.
+
+The `direct-gate` profile proves the same byte rule without that range table.
+It creates eight bit wires $x_0,\ldots,x_7$ for each byte $x$ and checks
+$x_k(x_k-1)=0$ and $x=\sum_{k=0}^7 2^k x_k$ with arithmetic gates. For a
+16-bit limb it uses sixteen bits. The checked addition equation and final
+carry condition are arithmetic gates too, so the resulting circuit has one
+QM31 AIR component and no generic equality or range-conversion component.
+This is more arithmetic rows than the lookup version but avoids the shared
+65,536-cell range-table preprocessing. The generated verifier still binds
+the same width-tagged relation and public result.
 
 For widths above 8, with base $B=65536$ and little-endian digits indexed by
 $j$, each addition step proves
@@ -315,7 +325,11 @@ fixed-width bit-vector operations for any width. The native gate checks the
 production circuit and public statement separately; a full Lean proof of
 the Zig lowering is still future work.
 
-## Wrapping multiplication by hand
+## Wrapping multiplication by hand: sparse-wide profile
+
+The next two sections describe the byte-and-lookup `sparse-wide-gate`
+lowering. For the arithmetic-only `direct-gate` lowering, follow the
+[hand-worked `u16` product](worked-direct-multiplication.md).
 
 The [checked-in `u8` program](../examples/math/multiplication/u8_wrapping.s31)
 contains `std::int::mul_wrapping(a,b)`. Its private inputs are 250 and 7;
@@ -383,7 +397,7 @@ Native acceptance tests check representative complete circuits and false
 public claims. The Lean model does not by itself prove that Zig emits the
 modeled columns.
 
-## Checked multiplication by hand
+## Checked multiplication by hand: sparse-wide profile
 
 `std::int::mul_checked` computes all $2W$ product bits. Its byte columns run
 through index $2W/8-1$, and the final carry is constrained to zero. Write the
@@ -736,6 +750,7 @@ To inspect this exact program locally:
 python3 src/frontends/s31/python/s31.py lower src/frontends/s31/examples/math/int_u8_checked.s31
 python3 src/frontends/s31/python/s31.py oracle src/frontends/s31/examples/math/int_u8_checked.s31 src/frontends/s31/examples/math/int_u8_checked.valid.json
 python3 src/frontends/s31/python/s31.py trial src/frontends/s31/examples/math/int_u8_checked.s31 src/frontends/s31/examples/math/int_u8_checked.valid.json --lowering sparse-wide-gate --out zig-out/s31/int-u8-checked
+python3 src/frontends/s31/python/s31.py trial src/frontends/s31/examples/math/int_u8_checked.s31 src/frontends/s31/examples/math/int_u8_checked.valid.json --lowering direct-gate --out zig-out/s31/int-u8-direct
 ```
 
 `lower` shows width-bearing relation nodes. `oracle` evaluates the relation

@@ -27,7 +27,7 @@ circuit range_copy(public req: Request) -> public Result {
         relation, _ = compile_text(source)
         self.assertEqual(relation["inputs"][0]["kind"], "u16")
         self.assertEqual(relation["public_outputs"], [relation["inputs"][0]["name"]])
-        with self.assertRaisesRegex(AbiError, "private bit and u16"):
+        with self.assertRaisesRegex(AbiError, "private bit, u8, and u16"):
             compile_text(source.replace("public req", "private req"))
         derived = """struct Request { digit: [u16; 1] }
 struct Result { digit: [u16; 1] }

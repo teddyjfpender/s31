@@ -10,7 +10,7 @@ from s31_stdlib import Builder, INT_TYPES, P, StaticGroup, StepState, Type, Type
 from language.builtins import (INT_BINARY_CALLS, INT_CAST_CALLS, INT_COMPARE_CALLS, INT_STATIC_SHIFT_CALLS,
                                MAX_CALL_DEPTH, STANDARD_ALIASES)
 from language.products import assert_product_equal, select_product
-from language.syntax import Circuit, Expr, Function, FunctionType, RecordType, SourceError, StaticClosure, StaticNamedFunction, StaticRecord, StaticTuple, Statement, TupleType
+from language.syntax import Circuit, Expr, Function, FunctionType, RecordType, SourceError, StaticClosure, StaticNamedFunction, StaticRecord, StaticTuple, StaticVariant, Statement, SumType, TupleType
 
 
 class Compiler:
@@ -69,7 +69,7 @@ class Compiler:
         return thing
 
     @staticmethod
-    def source_type(thing: Any) -> Type | FunctionType | TupleType | RecordType | None:
+    def source_type(thing: Any) -> Type | FunctionType | TupleType | RecordType | SumType | None:
         if isinstance(thing, (Value, StepState)):
             return thing.typ
         if isinstance(thing, (StaticClosure, StaticNamedFunction)):
@@ -77,6 +77,8 @@ class Compiler:
         if isinstance(thing, StaticTuple):
             return thing.signature
         if isinstance(thing, StaticRecord):
+            return thing.signature
+        if isinstance(thing, StaticVariant):
             return thing.signature
         return None
 
@@ -114,7 +116,7 @@ class Compiler:
                 else:
                     target = statement.name
                 value = self.eval_expr(statement.args[0], local, wanted=target)
-                if not isinstance(value, (Value, StaticGroup, StaticClosure, StaticNamedFunction, StaticTuple, StaticRecord, int)):
+                if not isinstance(value, (Value, StaticGroup, StaticClosure, StaticNamedFunction, StaticTuple, StaticRecord, StaticVariant, int)):
                     raise self.located(statement.args[0], "let requires a circuit or static value")
                 local[statement.name] = value
             else:
@@ -183,7 +185,7 @@ class Compiler:
         try:
             if expr.kind == "let":
                 bound = self.eval_expr(expr.args[0], env)
-                if not isinstance(bound, (Value, StaticGroup, StaticClosure, StaticNamedFunction, StaticTuple, StaticRecord, int)):
+                if not isinstance(bound, (Value, StaticGroup, StaticClosure, StaticNamedFunction, StaticTuple, StaticRecord, StaticVariant, int)):
                     raise TypeErrorS31("let requires a circuit or static value")
                 local = env.copy()
                 local[expr.value] = bound
@@ -218,11 +220,27 @@ class Compiler:
             if expr.kind == "tuple":
                 elements = tuple(self.eval_expr(item, env) for item in expr.args)
                 types = tuple(self.source_type(item) for item in elements)
-                if not all(isinstance(typ, (Type, FunctionType, TupleType, RecordType)) for typ in types):
+                if not all(isinstance(typ, (Type, FunctionType, TupleType, RecordType, SumType)) for typ in types):
                     raise TypeErrorS31("tuple elements need declared source types")
                 return StaticTuple(TupleType(types), elements)
             if expr.kind == "record":
                 return self.make_record(expr, tuple(self.eval_expr(item, env) for item in expr.args))
+            if expr.kind == "variant":
+                typ = expr.sum_type
+                if typ is None:
+                    raise TypeErrorS31("invalid enum constructor")
+                payload = self.eval_expr(expr.args[0], env)
+                expected = dict(typ.variants).get(expr.value)
+                if self.source_type(payload) != expected:
+                    raise TypeErrorS31(f"{typ.name}::{expr.value} expects {expected}")
+                return StaticVariant(typ, expr.value, payload)
+            if expr.kind == "match":
+                source = self.eval_expr(expr.args[0], env)
+                if not isinstance(source, StaticVariant) or source.signature != expr.sum_type:
+                    raise TypeErrorS31("match requires a static enum value of the declared type")
+                index = expr.variants.index(source.variant)
+                binder, _ = expr.params[index]
+                return self.eval_expr(expr.args[index + 1], env | {binder: source.payload}, wanted=wanted)
             if expr.kind == "project":
                 source = self.eval_expr(expr.args[0], env)
                 index = int(expr.value)
@@ -601,11 +619,27 @@ class Compiler:
         if expr.kind == "tuple":
             elements = tuple(self.step_expr(item, env) for item in expr.args)
             types = tuple(self.source_type(item) for item in elements)
-            if not all(isinstance(typ, (Type, FunctionType, TupleType, RecordType)) for typ in types):
+            if not all(isinstance(typ, (Type, FunctionType, TupleType, RecordType, SumType)) for typ in types):
                 raise self.located(expr, "tuple elements need declared source types")
             return StaticTuple(TupleType(types), elements)
         if expr.kind == "record":
             return self.make_record(expr, tuple(self.step_expr(item, env) for item in expr.args))
+        if expr.kind == "variant":
+            typ = expr.sum_type
+            if typ is None:
+                raise self.located(expr, "invalid enum constructor")
+            payload = self.step_expr(expr.args[0], env)
+            expected = dict(typ.variants).get(expr.value)
+            if self.source_type(payload) != expected:
+                raise self.located(expr, f"{typ.name}::{expr.value} expects {expected}")
+            return StaticVariant(typ, expr.value, payload)
+        if expr.kind == "match":
+            source = self.step_expr(expr.args[0], env)
+            if not isinstance(source, StaticVariant) or source.signature != expr.sum_type:
+                raise self.located(expr, "match requires a static enum value of the declared type")
+            index = expr.variants.index(source.variant)
+            binder, _ = expr.params[index]
+            return self.step_expr(expr.args[index + 1], env | {binder: source.payload})
         if expr.kind == "project":
             source = self.step_expr(expr.args[0], env)
             index = int(expr.value)

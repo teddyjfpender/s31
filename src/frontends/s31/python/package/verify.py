@@ -42,10 +42,11 @@ def verify_package(package: Path) -> dict:
             for name in text_artifacts) and
             not has_text):
         raise ValueError("S31 text artifacts require source binding metadata")
-    if has_text and manifest.get("text_frontend_version") != 1:
+    if (has_text and (type(manifest.get("text_frontend_version")) is not int or
+                      manifest["text_frontend_version"] != 1)):
         raise ValueError("S31 text package requires frontend version 1")
     source = parse_source_json((package / "source.s31.json").read_bytes())
-    if source.get("version") not in (1, 2):
+    if type(source.get("version")) is not int or source["version"] not in (1, 2):
         raise ValueError("unsupported S31 relation version")
     if source["version"] == 2 and manifest.get("lowering") not in {"direct-gate", "direct-chip"}:
         raise ValueError("record ABI v2 requires direct-gate or direct-chip lowering")

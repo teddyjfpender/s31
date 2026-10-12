@@ -37,6 +37,8 @@ The [language and proof documentation](src/frontends/s31/docs/README.md)
 starts with handwritten examples. The [S31 package README](src/frontends/s31/README.md)
 lists the compiler, prover, verifier, benchmarks, and acceptance gates. The
 [design dossier](design/s31/README.md) records architecture and measurements.
+The [v0.1 supported-profile audit](scripts/release/README.md) runs a current-head
+native proof matrix and states its release limits.
 
 ## Dependency boundary
 

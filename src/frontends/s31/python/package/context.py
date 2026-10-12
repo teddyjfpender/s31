@@ -98,7 +98,8 @@ def parse_source_json(data: bytes) -> dict:
 def load_source(path: Path) -> tuple[dict, bytes]:
     data = path.read_bytes()
     source = parse_source_json(data)
-    if source.get("version") not in (1, 2) or not isinstance(source.get("name"), str):
+    if (type(source.get("version")) is not int or source["version"] not in (1, 2) or
+            not isinstance(source.get("name"), str)):
         raise ValueError("S31 requires a version 1 or 2 relation source")
     return source, data
 

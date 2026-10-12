@@ -3,7 +3,9 @@
 
 from __future__ import annotations
 
+import argparse
 import copy
+import hashlib
 import json
 import shutil
 import sys
@@ -83,18 +85,57 @@ def reject_rehashed_digest(package: Path, work: Path) -> None:
         raise AssertionError("rehashed false manifest digest was admitted")
 
 
-def reject_resealed(package: Path, work: Path, name: str, key: dict, proof: Path,
-                    statement: Path, mutate) -> None:
+def bound_circuit_hash(key: dict) -> str:
+    """Independent transcription of the direct chip's two SHA-256 bindings."""
+    precommitment = direct_chip_v2_digest(key["component_manifest"])
+    effective = hashlib.sha256(
+        b"S31-DIRECT-CHIP-MANIFEST-TRANSCRIPT-V2\x00" +
+        bytes.fromhex(key["program_sha256"]) + bytes.fromhex(precommitment)
+    ).digest()
+    private = key.get("private_boundary")
+    h = hashlib.sha256()
+    h.update(b"S31-DIRECT-M31-PRIVATE-V5\x00" if private is not None else
+             b"S31-DIRECT-M31-V4\x00")
+    h.update(effective)
+    h.update(bytes.fromhex(key["preprocessed_root"]))
+    for value in (key["trace_log_size"], 1, 1, key["chip"]["rounds"],
+                  key["chip"]["constant"]):
+        h.update(value.to_bytes(4, "little"))
+    if private is not None:
+        for address in private["input"] + private["output"]:
+            h.update(address.to_bytes(4, "little"))
+    return h.hexdigest()
+
+
+def reseal_false_manifest(key: dict, mutate) -> dict:
     forged_key = copy.deepcopy(key)
     mutate(forged_key["component_manifest"])
+    false_manifest = forged_key["component_manifest"]
+    false_call = false_manifest["chip_call"]
+    # Make all dependent fields internally coherent. A stale digest or circuit
+    # identity would reject before testing source-derived native AIR binding.
+    forged_key["chip"] = {field: false_call[field] for field in
+                          ("relation_id", "rounds", "constant")}
+    forged_key["private_boundary"] = false_call["private_boundary"]
+    forged_key["manifest_precommitment_sha256"] = direct_chip_v2_digest(false_manifest)
+    forged_key["circuit_hash"] = bound_circuit_hash(forged_key)
+    false_manifest["circuit_hash"] = forged_key["circuit_hash"]
+    return forged_key
+
+
+def reject_resealed(package: Path, work: Path, name: str, key: dict, proof: Path,
+                    statement: Path, mutate) -> None:
+    forged_key = reseal_false_manifest(key, mutate)
     key_path = work / f"{name}-key.json"
     write_json(key_path, forged_key)
     prefix = work / f"{name}-sealed"
+    options = ([f"-Ds31-stdlib-sha256={key['stdlib_lock_sha256']}"]
+               if key.get("stdlib_lock_sha256") else [])
     s31.invoke(
         "zig", "build", "--build-file", str(BUILD_FILE), "install",
         "-Doptimize=ReleaseFast", "-Ds31-version=1", "-Ds31-lowering=direct-chip",
         f"-Ds31-source={package / 'source.s31.json'}", f"-Ds31-name={key['name']}",
-        f"-Ds31-key={key_path}", "--prefix", str(prefix),
+        f"-Ds31-key={key_path}", *options, "--prefix", str(prefix),
     )
     verifier = prefix / "bin" / f"s31-{key['name']}-native-verifier"
     reject_native(verifier, proof, statement, key_path)
@@ -109,11 +150,15 @@ def mutations(private: bool):
     yield "omitted-component", lambda m: m["components"].pop()
     yield "extra-component", lambda m: m["components"].append(copy.deepcopy(m["components"][-1]))
     yield "component-order", lambda m: m["components"].__setitem__(slice(0, 2), m["components"][:2][::-1])
+    yield "fixed-column-values", lambda m: m["preprocessed_columns"][0].__setitem__("values_sha256", "0" * 64)
     if private:
         yield "bridge-address", lambda m: m["chip_call"]["private_boundary"]["input"].__setitem__(0, m["chip_call"]["private_boundary"]["input"][0] + 1)
+        yield "bridge-output-address", lambda m: m["chip_call"]["private_boundary"]["output"].__setitem__(0, m["chip_call"]["private_boundary"]["output"][0] + 1)
+        yield "bridge-program-binding", lambda m: m["components"][2].__setitem__("program_binding_sha256", "0" * 64)
 
 
-def check_case(source: Path, assignment: Path, private: bool) -> dict:
+def check_case(source: Path, assignment: Path, private: bool,
+               selected_controls: set[str] | None = None) -> dict:
     with tempfile.TemporaryDirectory(prefix="s31-chip-manifest-") as directory:
         work = Path(directory)
         package = s31.build(source, work / "package", "direct-chip")
@@ -137,6 +182,8 @@ def check_case(source: Path, assignment: Path, private: bool) -> dict:
             raise AssertionError("generated one-call chip manifest has the wrong roster")
         if direct_chip_v2_digest(sidecar) != key["manifest_precommitment_sha256"]:
             raise AssertionError("Python and native typed manifest digests differ")
+        if bound_circuit_hash(key) != key["circuit_hash"]:
+            raise AssertionError("Python and native direct chip circuit identities differ")
         without_identity = copy.deepcopy(sidecar)
         without_identity["circuit_hash"] = "0" * 64
         if direct_chip_v2_digest(without_identity) != key["manifest_precommitment_sha256"]:
@@ -146,6 +193,11 @@ def check_case(source: Path, assignment: Path, private: bool) -> dict:
             raise AssertionError("native chip proof control failed")
         reject_rehashed_digest(package, work)
         controls = list(mutations(private))
+        if selected_controls is not None:
+            controls = [(name, mutate) for name, mutate in controls
+                        if name in selected_controls]
+            if {name for name, _ in controls} != selected_controls:
+                raise AssertionError("selected manifest control is unavailable for this profile")
         for name, mutate in controls:
             reject_package(package, work, name, "sidecar", mutate)
             reject_package(package, work, name, "report", mutate)
@@ -208,12 +260,19 @@ def check_case(source: Path, assignment: Path, private: bool) -> dict:
 
 
 def main() -> None:
-    cases = [
-        check_case(S31 / "examples/arithmetic/arith4_m31.s31.json",
-                   S31 / "examples/arithmetic/arith4.valid.json", False),
-        check_case(S31 / "examples/boundary/private_affine_square16.s31",
-                   S31 / "examples/boundary/private_affine_square16.valid.json", True),
-    ]
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--private-only", action="store_true")
+    parser.add_argument("--control", choices=[name for name, _ in mutations(True)])
+    args = parser.parse_args()
+    selected = {args.control} if args.control else None
+    cases = []
+    if not args.private_only:
+        cases.append(check_case(S31 / "examples/arithmetic/arith4_m31.s31.json",
+                                S31 / "examples/arithmetic/arith4.valid.json", False,
+                                selected))
+    cases.append(check_case(S31 / "examples/boundary/private_affine_square16.s31",
+                            S31 / "examples/boundary/private_affine_square16.valid.json",
+                            True, selected))
     print(json.dumps({"schema": "s31-component-manifest-chip-acceptance-v1", "cases": cases},
                      indent=2, sort_keys=True))
 

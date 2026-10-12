@@ -36,6 +36,11 @@ jobs:
         run: cd src/frontends/s31 && zig build test -Doptimize=ReleaseSafe -j2
       - name: Text frontend and oracle tests
         run: python3 -m unittest discover -s src/frontends/s31/tests/python -p 'test_*.py' -q
+      - name: Fixed-width integer source and independent oracle matrix
+        run: |
+          python3 src/frontends/s31/tests/acceptance/math/addition.py --source-only > /dev/null
+          python3 src/frontends/s31/tests/acceptance/math/direct_binary.py > /dev/null
+          python3 src/frontends/s31/tests/acceptance/math/direct_multiplication.py > /dev/null
       - name: Mixed stage cost protocol checks
         run: |
           python3 -B src/frontends/s31/benchmarks/mixed_stage_cost_v1/cohort.py
@@ -44,6 +49,8 @@ jobs:
           python3 -B -m unittest discover -s src/frontends/s31/benchmarks/direct_gate_release_cost -p 'test_*.py' -q
       - name: Documentation consistency
         run: python3 src/frontends/s31/docs/check.py
+      - name: Release profile inventory and fail-closed audit controls
+        run: python3 -B -m unittest scripts.tests.test_s31_v01_release_audit -q
       - name: Native proof smoke
         run: |
           python3 src/frontends/s31/python/s31.py trial \

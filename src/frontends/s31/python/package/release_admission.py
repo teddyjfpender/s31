@@ -37,7 +37,8 @@ def bounded_direct_gate_snapshot(
     """
     with admitted_snapshot(package, pins) as (snapshot, manifest):
         if (manifest.get("lowering") != "direct-gate" or
-                manifest.get("text_frontend_version") != 1 or
+                type(manifest.get("text_frontend_version")) is not int or
+                manifest["text_frontend_version"] != 1 or
                 "source_text_sha256" not in manifest):
             raise ValueError("bounded release admission requires a direct-gate text package")
         artifacts = manifest.get("artifacts")

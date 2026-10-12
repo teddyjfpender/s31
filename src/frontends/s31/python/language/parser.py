@@ -10,7 +10,7 @@ from language.builtins import (BUILTINS, BINARY_POWER, INT_SOURCE_TYPES,
                                MAX_EXPRESSION_DEPTH, MAX_NUMBER_DIGITS,
                                MAX_TOKENS, MAX_TYPE_DEPTH,
                                TOKEN_RE, UNARY_POWER)
-from language.syntax import Circuit, Expr, Function, FunctionType, RecordType, SourceError, Statement, Token, TupleType
+from language.syntax import Circuit, Expr, Function, FunctionType, RecordType, SourceError, Statement, SumType, Token, TupleType
 
 
 @dataclass(frozen=True)
@@ -65,6 +65,7 @@ class Parser:
         self.pattern_expansion = 0
         self.records: dict[str, RecordType] = {}
         self.record_layouts: dict[str, tuple[int, int]] = {}
+        self.sums: dict[str, SumType] = {}
 
     def peek(self) -> Token:
         return self.tokens[self.at]
@@ -89,7 +90,7 @@ class Parser:
     def identifier(self) -> str:
         token = self.peek()
         if token.kind != "ident" or token.text in {
-            "use", "let", "in", "if", "then", "else", "fun", "Fn", "fn", "struct", "circuit", "blinded",
+            "use", "let", "in", "if", "then", "else", "match", "fun", "Fn", "fn", "struct", "enum", "circuit", "blinded",
             "public", "private", "assert_eq",
         }:
             raise self.error("expected identifier")
@@ -183,7 +184,7 @@ class Parser:
             raise self.error("duplicate tuple binding", pattern.token)
         return bindings
 
-    def parse_type(self) -> Type | FunctionType | TupleType | RecordType:
+    def parse_type(self) -> Type | FunctionType | TupleType | RecordType | SumType:
         if self.type_depth >= MAX_TYPE_DEPTH:
             raise self.error("type nesting limit exceeded")
         self.type_depth += 1
@@ -192,7 +193,7 @@ class Parser:
         finally:
             self.type_depth -= 1
 
-    def _parse_type(self) -> Type | FunctionType | TupleType | RecordType:
+    def _parse_type(self) -> Type | FunctionType | TupleType | RecordType | SumType:
         token = self.peek()
         if self.accept("Fn"):
             self.expect("(")
@@ -257,6 +258,9 @@ class Parser:
         if token.kind == "ident" and token.text in self.records:
             self.at += 1
             return self.records[token.text]
+        if token.kind == "ident" and token.text in self.sums:
+            self.at += 1
+            return self.sums[token.text]
         raise self.error("expected a circuit type or a static Fn(...) -> type")
 
     def record_field_layout(self, typ: Type | FunctionType | TupleType | RecordType) -> tuple[int, int]:
@@ -278,7 +282,7 @@ class Parser:
             "Digest", "Poseidon2", "Blake2sReduced", "Fn", "bit", "m31", "u16",
         }
         if (not name[0].isupper() or name in reserved or name in BUILTINS or
-                name in self.records or name in function_names):
+                name in self.records or name in self.sums or name in function_names):
             raise self.error(f"duplicate or reserved struct type {name}", token)
         if len(self.records) >= 128:
             raise self.error("struct declaration limit exceeded", token)
@@ -313,6 +317,88 @@ class Parser:
             raise self.error("struct nesting or flattened field limit exceeded", token)
         self.records[name] = RecordType(name, tuple(fields))
         self.record_layouts[name] = depth, leaves
+
+    def sum_declaration(self, function_names: set[str]) -> None:
+        token = self.expect("enum")
+        name = self.identifier()
+        reserved = set(INT_SOURCE_TYPES) | {
+            "UInt256", "Bytes32", "BlockHash", "Target", "Work", "ChainWork", "Bytes80",
+            "Digest", "Poseidon2", "Blake2sReduced", "Fn", "bit", "m31", "u16",
+        }
+        if (not name[0].isupper() or name in reserved or name in BUILTINS or
+                name in self.records or name in self.sums or name in function_names):
+            raise self.error(f"duplicate or reserved enum type {name}", token)
+        if len(self.sums) >= 128:
+            raise self.error("enum declaration limit exceeded", token)
+        self.expect("{")
+        variants: list[tuple[str, Type | TupleType | RecordType]] = []
+        seen: set[str] = set()
+        while True:
+            variant_token = self.peek()
+            variant = self.identifier()
+            if variant in seen:
+                raise self.error(f"duplicate {name} variant {variant}", variant_token)
+            seen.add(variant)
+            self.expect(":")
+            payload = self.parse_type()
+            # Sum payloads are first-order products of previously declared types.
+            # This also excludes nested sums and function-valued payloads.
+            depth, leaves = self.record_field_layout(payload)
+            if depth > MAX_TYPE_DEPTH or leaves > 1024:
+                raise self.error("enum payload nesting or flattened field limit exceeded", variant_token)
+            variants.append((variant, payload))
+            if len(variants) > 64:
+                raise self.error("enum variant limit exceeded", variant_token)
+            if self.accept("}"):
+                break
+            self.expect(",")
+            if self.accept("}"):
+                break
+        self.accept(";")
+        self.sums[name] = SumType(name, tuple(variants))
+
+    def match_expression(self, token: Token) -> Expr:
+        scrutinee = self.expression()
+        self.expect("{")
+        sum_type: SumType | None = None
+        variants: list[str] = []
+        binders: list[tuple[str, Type | TupleType | RecordType]] = []
+        bodies: list[Expr] = []
+        while True:
+            arm_token = self.peek()
+            type_name = self.identifier()
+            if type_name not in self.sums:
+                raise self.error(f"unknown enum type {type_name}", arm_token)
+            current = self.sums[type_name]
+            if sum_type is None:
+                sum_type = current
+            elif current != sum_type:
+                raise self.error("match arms must use the same enum type", arm_token)
+            self.expect("::")
+            variant = self.identifier()
+            types = dict(current.variants)
+            if variant not in types:
+                raise self.error(f"unknown {type_name} variant {variant}", arm_token)
+            if variant in variants:
+                raise self.error(f"duplicate {type_name} match arm {variant}", arm_token)
+            self.expect("(")
+            binder = self.identifier()
+            self.expect(")")
+            self.expect("=>")
+            variants.append(variant)
+            binders.append((binder, types[variant]))
+            bodies.append(self.expression())
+            if self.accept("}"):
+                break
+            self.expect(",")
+            if self.accept("}"):
+                break
+        assert sum_type is not None
+        missing = [variant for variant, _ in sum_type.variants if variant not in variants]
+        if missing:
+            raise self.error(f"non-exhaustive {sum_type.name} match; missing {', '.join(missing)}", token)
+        return Expr("match", "", (scrutinee, *bodies), token,
+                    params=tuple(binders), sum_type=sum_type, variants=tuple(variants))
 
     def record_literal(self, typ: RecordType, token: Token) -> Expr:
         self.expect("{")
@@ -450,6 +536,8 @@ class Parser:
             for name, value, location in reversed(self.pattern_bindings(pattern, bound)):
                 body = Expr("let", name, (value, body), location)
             lhs = body
+        elif self.accept("match"):
+            lhs = self.match_expression(token)
         elif self.accept("if"):
             condition = self.expression()
             self.expect("then")
@@ -501,6 +589,19 @@ class Parser:
             name = token.text
             while self.accept("::"):
                 name += "::" + self.identifier()
+            qualified = name.split("::")
+            if len(qualified) == 2 and qualified[0] in self.sums:
+                typ = self.sums[qualified[0]]
+                if qualified[1] not in dict(typ.variants):
+                    raise self.error(f"unknown {typ.name} variant {qualified[1]}", token)
+                if self.peek().text != "(":
+                    raise self.error("enum constructor requires one payload argument", token)
+                args = self.call_arguments()
+                if len(args) != 1:
+                    raise self.error("enum constructor requires one payload argument", token)
+                lhs = Expr("variant", qualified[1], args, token, sum_type=typ)
+                # Constructor is complete; postfix projection/application remains available.
+                return self._expression_suffix(lhs, min_power)
             generic = None
             if self.accept("<"):
                 generic = self.number()
@@ -515,6 +616,9 @@ class Parser:
                 raise self.error("type argument requires a call")
         else:
             raise self.error(f"expected expression, found {token.text!r}")
+        return self._expression_suffix(lhs, min_power)
+
+    def _expression_suffix(self, lhs: Expr, min_power: int) -> Expr:
         while True:
             if self.peek().text == ".":
                 dot = self.expect(".")
@@ -563,19 +667,21 @@ class Parser:
                 raise self.error("only the compiler-owned standard library std@1 is supported")
             self.stdlib_explicit = True
         functions: dict[str, Function] = {}
-        while self.peek().text in {"fn", "struct"}:
+        while self.peek().text in {"fn", "struct", "enum"}:
             if self.peek().text == "struct":
                 self.record_declaration(set(functions))
+            elif self.peek().text == "enum":
+                self.sum_declaration(set(functions))
             else:
                 fn = self.declaration()
                 assert isinstance(fn, Function)
-                if fn.name in functions or fn.name in BUILTINS or fn.name in self.records:
+                if fn.name in functions or fn.name in BUILTINS or fn.name in self.records or fn.name in self.sums:
                     raise self.error(f"duplicate or reserved function {fn.name}")
                 functions[fn.name] = fn
         circuit = self.declaration()
         if not isinstance(circuit, Circuit):
             raise self.error("expected one circuit")
-        if circuit.name in self.records or circuit.name in functions or circuit.name in BUILTINS:
+        if circuit.name in self.records or circuit.name in self.sums or circuit.name in functions or circuit.name in BUILTINS:
             raise self.error(f"circuit name conflicts with an existing declaration {circuit.name}",
                              circuit.token)
         if self.peek().kind != "eof":

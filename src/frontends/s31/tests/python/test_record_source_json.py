@@ -32,6 +32,17 @@ class RecordSourceJsonTests(unittest.TestCase):
             with self.subTest(encoded=encoded), self.assertRaisesRegex(ValueError, "duplicate S31 source JSON key"):
                 parse_source_json(encoded)
 
+    def test_load_source_rejects_boolean_or_float_relation_version(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "source.s31.json"
+            for encoded in (b'{"version":true,"name":"record"}',
+                            b'{"version":1.0,"name":"record"}',
+                            b'{"version":2.0,"name":"record"}'):
+                with self.subTest(encoded=encoded):
+                    path.write_bytes(encoded)
+                    with self.assertRaisesRegex(ValueError, "version 1 or 2"):
+                        load_source(path)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -560,3 +560,25 @@ python3 -B src/frontends/s31/tests/acceptance/record_abi/nested_narrow_seal_v2.p
 The valid field rename also changes exact source bytes; this proves the
 combined source/ABI seal on these two packages, not an isolated ABI-only
 transcript field or universal compiler correspondence.
+
+## Independent bounded record source check
+
+[`record_source_fragment_v2.py`](record_source_fragment_v2.py) checks one
+hand-written program with a public and a private `Pair` input, two arithmetic
+lets, a declaration-ordered result whose constructor lists fields in reverse
+order, and a result alias of a public input wire. The independent parser
+reconstructs the complete version-2 relation and ABI digest from the text.
+The script builds an actual direct-gate package, checks its emitted source,
+relation, ABI artifact, and manifest, and verifies a native proof for public
+words `[2, 3, 17, 3, 0, 0, 0, 0]`. A different but ABI-valid `result.left`
+claim must fail inside proof verification. Focused unit tests re-seal changed
+relation and ABI artifacts and require the independent checker to reject them.
+
+```sh
+python3 -B -m unittest src/frontends/s31/tests/python/security/test_record_source_fragment.py
+python3 -B src/frontends/s31/tests/acceptance/record_abi/record_source_fragment_v2.py
+```
+
+The checker reports only `source-to-relation-only`. It does not certify native
+gate extraction, AIR, or the proof system. Its accepted grammar and exact
+checks are in the [design note](../../../../../../design/s31/language/RECORD_SOURCE_RELATION_FRAGMENT_V2.md).

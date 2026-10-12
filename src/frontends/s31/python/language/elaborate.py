@@ -16,7 +16,7 @@ from s31_stdlib import MAX_INPUT_WORDS, P, Type, TypeErrorS31
 from language.builtin_types import BIT, M31_ONE, circuit, infer_builtin
 from language.builtins import MAX_CALL_DEPTH, STANDARD_ALIASES
 from language.products import assertable_types, selectable_type
-from language.syntax import Circuit, Expr, Function, FunctionType, RecordType, SourceError, Statement, TupleType
+from language.syntax import Circuit, Expr, Function, FunctionType, RecordType, SourceError, Statement, SumType, TupleType
 from language.types import FieldLiteral, SourceType, StaticArray
 
 
@@ -55,6 +55,13 @@ class Elaborator:
             return calls | body_calls, steps | body_steps
         if expr.kind == "lambda":
             return self.referenced_calls(expr.args[0], bound | {name for name, _ in expr.params})
+        if expr.kind == "match":
+            calls, steps = self.referenced_calls(expr.args[0], bound)
+            for (binder, _), arm in zip(expr.params, expr.args[1:]):
+                arm_calls, arm_steps = self.referenced_calls(arm, bound | {binder})
+                calls.update(arm_calls)
+                steps.update(arm_steps)
+            return calls, steps
         calls: set[str] = set()
         steps: set[str] = set()
         if expr.kind == "name" and expr.value not in bound and expr.value in self.functions:
@@ -170,6 +177,11 @@ class Elaborator:
                 return
             if expr.kind == "lambda":
                 visit(expr.args[0], scope | {name: None for name, _ in expr.params})
+                return
+            if expr.kind == "match":
+                visit(expr.args[0], scope)
+                for (binder, _), arm in zip(expr.params, expr.args[1:]):
+                    visit(arm, scope | {binder: None})
                 return
             if expr.kind == "call" and expr.value not in scope:
                 step_args = ({0} if expr.value == "iterate" else
@@ -301,7 +313,7 @@ class Elaborator:
                 return StaticArray(elements)
             if expr.kind == "tuple":
                 elements = tuple(self.expr(item, env, step_mode=step_mode) for item in expr.args)
-                if not all(isinstance(item, (Type, FunctionType, TupleType, RecordType))
+                if not all(isinstance(item, (Type, FunctionType, TupleType, RecordType, SumType))
                            for item in elements):
                     raise TypeErrorS31("tuple elements need declared source types")
                 return TupleType(elements)
@@ -314,6 +326,30 @@ class Elaborator:
                     if found != expected:
                         raise TypeErrorS31(f"{typ.name}.{field} expects {expected}")
                 return typ
+            if expr.kind == "variant":
+                typ = expr.sum_type
+                if typ is None or len(expr.args) != 1:
+                    raise TypeErrorS31("invalid enum constructor")
+                variants = dict(typ.variants)
+                expected = variants.get(expr.value)
+                if expected is None:
+                    raise TypeErrorS31(f"unknown {typ.name} variant {expr.value}")
+                actual = self.expr(expr.args[0], env, step_mode=step_mode)
+                if actual != expected:
+                    raise TypeErrorS31(f"{typ.name}::{expr.value} expects {expected}")
+                return typ
+            if expr.kind == "match":
+                typ = expr.sum_type
+                if typ is None or len(expr.args) != len(expr.params) + 1:
+                    raise TypeErrorS31("invalid enum match")
+                scrutinee = self.expr(expr.args[0], env, step_mode=step_mode)
+                if scrutinee != typ:
+                    raise TypeErrorS31(f"match expects {typ.name}")
+                results = [self.expr(arm, env | {binder: payload_type}, step_mode=step_mode)
+                           for (binder, payload_type), arm in zip(expr.params, expr.args[1:])]
+                if any(result != results[0] for result in results[1:]):
+                    raise TypeErrorS31("match arms must have the same type")
+                return results[0]
             if expr.kind == "project":
                 source = self.expr(expr.args[0], env, step_mode=step_mode)
                 index = int(expr.value)

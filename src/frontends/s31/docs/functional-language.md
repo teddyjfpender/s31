@@ -354,6 +354,62 @@ in the condition itself remains an ordinary precondition of the whole
 expression. `iterate` steps keep their restricted recurrence syntax and do
 not admit a witness-dependent `if`.
 
+## Static sum types and exhaustive matches
+
+An `enum` gives a source program a finite choice whose **tag is known when
+the circuit is compiled**. It is useful for choosing an algorithm, a hash
+family, or a helper implementation without paying for a tag wire or a
+selector. Each variant carries exactly one first-order payload (which may be
+a tuple or an earlier struct).
+
+```s31
+enum Choice { Square: [m31; 4], Double: [m31; 4] }
+
+fn choose(x: [m31; 4]) -> Choice { Choice::Square(x) }
+
+fn run(choice: Choice) -> [m31; 4] {
+    match choice {
+        Choice::Square(y) => y .* y,
+        Choice::Double(y) => y + y
+    }
+}
+
+circuit chosen_square(private x: [m31; 4]) -> public [m31; 4] {
+    let result = run(choose(x));
+    result
+}
+```
+
+The compiler evaluates `Choice::Square(x)` to a static pair `(Square, x)`.
+`run` receives that pair, binds `y = x` in the `Square` arm, and specializes
+`y .* y`. It does not evaluate the `Double` arm. The resulting relation has
+the same four-lane multiplication as `let result = x .* x; result`; no enum
+tag, match, or branch selector appears in the relation or AIR. The compiler
+still typechecks **both** arms and requires each variant exactly once.
+
+Constructor payloads are eager. For example,
+`match Choice::Square(x .* x) { Choice::Square(y) => x, Choice::Double(y) => y }`
+evaluates `x .* x` during specialization, then removes the unobserved total
+node before native lowering. A partial payload operation retains its proof
+obligation, even when the selected arm ignores it. The totality pass
+checks that a witness-dependent `if` does not hide such an operation in an
+inactive branch. Circuit boundaries and witness-dependent `if` results cannot
+have enum type, because their tag would depend on proof data and would need
+a different relation representation. A function may accept or return an enum
+as long as every call specializes to a known constructor.
+
+The reviewed dead-code pass currently removes only unobserved `constant`,
+`add`, `mul`, `add_const`, and `mul_const` nodes in enum-bearing sources. It
+keeps every other operation and all ancestors needed by outputs, assertions,
+public ABI fields, and retained nodes. The
+[design note](../../../../design/s31/language/STATIC_SUM_DCE.md) gives the
+algorithm, schema boundary, and remaining proof obligations. A native
+`direct-chip` trial confirms that an ignored total payload adds no AIR rows
+to a 16-round recurrence; the native verifier accepts the proof and rejects
+a changed public claim.
+The [hand-worked static choice](worked-static-sum.md) traces that source
+through its retained relation node, recurrence AIR, and proof claim.
+
 ## Evaluation and staging
 
 Let `ρ` map source names to compile-time values or references to circuit

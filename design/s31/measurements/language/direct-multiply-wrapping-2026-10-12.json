@@ -1,0 +1,247 @@
+{
+  "cases": [
+    {
+      "changed_public_statement_rejected": true,
+      "kind": "u8",
+      "mode": "wrapping",
+      "native_overflow_rejected": false,
+      "native_verifier_accepted": true,
+      "padded": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 256,
+        "triple_xor": 0
+      },
+      "preprocessed_cells": 2048,
+      "proof_bytes": 41667,
+      "raw": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 174,
+        "triple_xor": 0
+      },
+      "source_and_oracle_checked": true
+    },
+    {
+      "changed_public_statement_rejected": true,
+      "kind": "u16",
+      "mode": "wrapping",
+      "native_overflow_rejected": false,
+      "native_verifier_accepted": true,
+      "padded": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 512,
+        "triple_xor": 0
+      },
+      "preprocessed_cells": 4096,
+      "proof_bytes": 55459,
+      "raw": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 324,
+        "triple_xor": 0
+      },
+      "source_and_oracle_checked": true
+    },
+    {
+      "changed_public_statement_rejected": true,
+      "kind": "u32",
+      "mode": "wrapping",
+      "native_overflow_rejected": false,
+      "native_verifier_accepted": true,
+      "padded": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 1024,
+        "triple_xor": 0
+      },
+      "preprocessed_cells": 8192,
+      "proof_bytes": 72825,
+      "raw": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 642,
+        "triple_xor": 0
+      },
+      "source_and_oracle_checked": true
+    },
+    {
+      "changed_public_statement_rejected": true,
+      "kind": "u64",
+      "mode": "wrapping",
+      "native_overflow_rejected": false,
+      "native_verifier_accepted": true,
+      "padded": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 2048,
+        "triple_xor": 0
+      },
+      "preprocessed_cells": 16384,
+      "proof_bytes": 92992,
+      "raw": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 1250,
+        "triple_xor": 0
+      },
+      "source_and_oracle_checked": true
+    },
+    {
+      "changed_public_statement_rejected": true,
+      "kind": "u128",
+      "mode": "wrapping",
+      "native_overflow_rejected": false,
+      "native_verifier_accepted": true,
+      "padded": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 4096,
+        "triple_xor": 0
+      },
+      "preprocessed_cells": 32768,
+      "proof_bytes": 113783,
+      "raw": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 2576,
+        "triple_xor": 0
+      },
+      "source_and_oracle_checked": true
+    },
+    {
+      "changed_public_statement_rejected": true,
+      "kind": "i8",
+      "mode": "wrapping",
+      "native_overflow_rejected": false,
+      "native_verifier_accepted": true,
+      "padded": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 256,
+        "triple_xor": 0
+      },
+      "preprocessed_cells": 2048,
+      "proof_bytes": 40611,
+      "raw": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 174,
+        "triple_xor": 0
+      },
+      "source_and_oracle_checked": true
+    },
+    {
+      "changed_public_statement_rejected": true,
+      "kind": "i16",
+      "mode": "wrapping",
+      "native_overflow_rejected": false,
+      "native_verifier_accepted": true,
+      "padded": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 512,
+        "triple_xor": 0
+      },
+      "preprocessed_cells": 4096,
+      "proof_bytes": 55241,
+      "raw": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 324,
+        "triple_xor": 0
+      },
+      "source_and_oracle_checked": true
+    },
+    {
+      "changed_public_statement_rejected": true,
+      "kind": "i32",
+      "mode": "wrapping",
+      "native_overflow_rejected": false,
+      "native_verifier_accepted": true,
+      "padded": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 1024,
+        "triple_xor": 0
+      },
+      "preprocessed_cells": 8192,
+      "proof_bytes": 72492,
+      "raw": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 642,
+        "triple_xor": 0
+      },
+      "source_and_oracle_checked": true
+    },
+    {
+      "changed_public_statement_rejected": true,
+      "kind": "i64",
+      "mode": "wrapping",
+      "native_overflow_rejected": false,
+      "native_verifier_accepted": true,
+      "padded": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 2048,
+        "triple_xor": 0
+      },
+      "preprocessed_cells": 16384,
+      "proof_bytes": 89411,
+      "raw": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 1250,
+        "triple_xor": 0
+      },
+      "source_and_oracle_checked": true
+    },
+    {
+      "changed_public_statement_rejected": true,
+      "kind": "i128",
+      "mode": "wrapping",
+      "native_overflow_rejected": false,
+      "native_verifier_accepted": true,
+      "padded": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 4096,
+        "triple_xor": 0
+      },
+      "preprocessed_cells": 32768,
+      "proof_bytes": 116686,
+      "raw": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 2576,
+        "triple_xor": 0
+      },
+      "source_and_oracle_checked": true
+    }
+  ],
+  "compiler_sha256": "2580b5755d69a429842010aaab9ff2eef434f0a4030fd991a65105123b1eec22",
+  "native": true,
+  "schema": "s31-direct-integer-multiplication-v1"
+}

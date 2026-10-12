@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from s31_stdlib import Type
-from language.syntax import FunctionType, RecordType, TupleType
+from language.syntax import FunctionType, RecordType, SumType, TupleType
 
 
 @dataclass(frozen=True)
@@ -22,7 +22,7 @@ class FieldLiteral:
     value: int
 
 
-SourceType = Type | FunctionType | TupleType | RecordType | StaticArray | FieldLiteral
+SourceType = Type | FunctionType | TupleType | RecordType | SumType | StaticArray | FieldLiteral
 
 
 def is_circuit(typ: SourceType) -> bool:

@@ -1,5 +1,17 @@
 # Bounded source to raw Gate AIR
 
+## Optimized source to projected AIR cells
+
+[The optimized source AIR bridge](OptimizedSourceAirRows.md) composes exact
+source/normalized/canonical byte admission, commutative operand sorting and
+common subexpression elimination, the compact direct-Gate projected cell
+schedule, local operation polynomials, and the packed public input boundary.
+For the handwritten reversed/CSE program, Lean checks that four source lets
+use three compact operation rows at physical positions 3, 503, and 4. An
+arbitrary coherent wire satisfying those modeled cells has the source result
+at the selected output address. Native emitter and proof authentication remain
+explicitly outside this theorem.
+
 ## Latest derived-roster join
 
 [The arbitrary-trace theorem](DerivedRosterArbitraryTrace.md) joins exact

@@ -1,5 +1,6 @@
 import S31.Gadgets.Arithmetic
 import S31.Gadgets.IntegerMultiply
+import S31.Gadgets.UnsignedCheckedShortcut
 import S31.Gadgets.IntegerCast
 import S31.Gadgets.IntegerBits
 import S31.Gadgets.IntegerShift
@@ -138,6 +139,7 @@ import S31.Gadgets.Functional.Arrays
 import S31.Gadgets.Functional.ArrayNodes
 import S31.Gadgets.Functional.ArithmeticNodes
 import S31.Gadgets.Functional.CompilerCorrespondence
+import S31.Gadgets.Functional.StaticSumValues
 import S31.Gadgets.Functional.SSACertificate
 import S31.Gadgets.Functional.SSAEmitterProof
 import S31.Gadgets.Functional.SSANamedProgram
@@ -205,8 +207,10 @@ import S31.Gadgets.Functional.Correspondence.PinnedSquare4CompleteModeledTrace
 import S31.Gadgets.Functional.Correspondence.GeneratedNativeSourceCells
 import S31.Gadgets.Functional.Correspondence.GeneratedNativeFullRowRoles
 import S31.Gadgets.Functional.Correspondence.CanonicalDagOptimization
+import S31.Gadgets.Functional.Correspondence.ConservativeDeadCode
 import S31.Gadgets.Functional.Correspondence.CanonicalDagCompleteness
 import S31.Gadgets.Functional.Correspondence.OptimizedTextBytes
+import S31.Gadgets.Functional.Correspondence.OptimizedSourceAirRows
 import S31.Gadgets.Functional.Correspondence.ZeroPhysicalTraceWitness
 import S31.Gadgets.Functional.Correspondence.AliasProjectedExportBridge
 import S31.Gadgets.Functional.Correspondence.PinnedFullOutputRoster

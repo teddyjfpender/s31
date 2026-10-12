@@ -537,3 +537,13 @@ either alias, a tuple index, a field path, or the canonical JSON encoding
 fails statement validation.
 The [test README](../tests/acceptance/record_abi/README.md) lists all
 malformed statement and typed-assignment controls.
+
+For one bounded record syntax fragment, an
+[independent source checker](../tests/acceptance/record_abi/record_source_fragment_v2.py)
+reconstructs the complete flat relation and named ABI from the `.s31` text.
+It admits one nominal M31 record, simple add/multiply lets, and a record
+result, including aliases and private record inputs. This checker can catch a
+changed operator, wire, visibility, field path, or result alias even when
+the altered package hashes are recomputed. Its `source-to-relation-only`
+result stops at the normalized relation and ABI; the linked native example
+also proves and verifies one handwritten assignment.

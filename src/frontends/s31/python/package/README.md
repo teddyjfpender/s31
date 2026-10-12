@@ -110,3 +110,22 @@ not read it. See the [design brief](../../../../../design/s31/language/DIRECT_GA
 
 The public Python API remains in `../s31.py`; its functions import these
 modules. The dependency direction is `context -> verify -> build -> CLI`.
+
+`source_relation_fragment.py` is a separate development/audit checker for a
+bounded four-lane fragment with private inputs, canonical splat constants,
+and assertions. Its result is explicitly `source-to-relation-only`; it is not
+used for package admission or native verification. It independently parses
+source bytes, compares the entire normalized relation, and optionally checks
+direct-gate public ABI and manifest identities. Its [scope and example](../../../../../design/s31/language/SOURCE_RELATION_FRAGMENT.md)
+explain the exact grammar and remaining circuit/AIR gap.
+
+`record_source_fragment.py` independently parses a bounded version-2 source
+with one nominal M31 record, up to two public/private record inputs, explicit
+scalar add/multiply lets, and a record result. It reconstructs every relation
+input, node, named leaf path, alias, and the v2 ABI digest from source bytes.
+The optional package check compares canonical relation and ABI artifacts even
+if their manifest hashes are recomputed after tampering. Its capability is
+also `source-to-relation-only`; ordinary package verification and native proof
+checking do not treat it as a full compiler or AIR certificate. See the
+[bounded record plan](../../../../../design/s31/language/RECORD_SOURCE_RELATION_FRAGMENT_V2.md)
+and [native package gate](../../tests/acceptance/record_abi/record_source_fragment_v2.py).

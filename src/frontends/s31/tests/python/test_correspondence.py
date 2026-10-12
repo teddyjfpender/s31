@@ -31,6 +31,22 @@ from export_s31_direct_gate_bridge import render_bridge
 
 
 class CorrespondenceParserTests(unittest.TestCase):
+    def test_new_language_keywords_are_not_accepted_as_names(self) -> None:
+        source = ("circuit ordinary(public x: [m31; 4]) -> public [m31; 4] "
+                  "{ let y = x .* x; y }")
+        for keyword in ("enum", "match"):
+            variants = (
+                source.replace("ordinary", keyword),
+                source.replace("public x:", f"public {keyword}:").replace("x .* x", f"{keyword} .* {keyword}"),
+                source.replace("let y =", f"let {keyword} =").replace("; y }", f"; {keyword} }}"),
+            )
+            for candidate in variants:
+                with self.subTest(keyword=keyword, source=candidate):
+                    with self.assertRaises(SourceError):
+                        compile_text(candidate)
+                    with self.assertRaisesRegex(UnsupportedFragment, "non-keyword identifier"):
+                        parse_source(candidate.encode())
+
     def test_circuit_builtin_inventory_matches_production_namespace(self) -> None:
         # The checker keeps its own small, reviewed reserved-name inventory.
         # A new builtin must update that inventory before release admission.

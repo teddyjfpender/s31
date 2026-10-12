@@ -1,0 +1,247 @@
+{
+  "cases": [
+    {
+      "changed_public_statement_rejected": true,
+      "kind": "u8",
+      "mode": "checked",
+      "native_overflow_rejected": true,
+      "native_verifier_accepted": true,
+      "padded": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 256,
+        "triple_xor": 0
+      },
+      "preprocessed_cells": 2048,
+      "proof_bytes": 39484,
+      "raw": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 175,
+        "triple_xor": 0
+      },
+      "source_and_oracle_checked": true
+    },
+    {
+      "changed_public_statement_rejected": true,
+      "kind": "u16",
+      "mode": "checked",
+      "native_overflow_rejected": true,
+      "native_verifier_accepted": true,
+      "padded": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 512,
+        "triple_xor": 0
+      },
+      "preprocessed_cells": 4096,
+      "proof_bytes": 56600,
+      "raw": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 327,
+        "triple_xor": 0
+      },
+      "source_and_oracle_checked": true
+    },
+    {
+      "changed_public_statement_rejected": true,
+      "kind": "u32",
+      "mode": "checked",
+      "native_overflow_rejected": true,
+      "native_verifier_accepted": true,
+      "padded": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 1024,
+        "triple_xor": 0
+      },
+      "preprocessed_cells": 8192,
+      "proof_bytes": 70937,
+      "raw": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 655,
+        "triple_xor": 0
+      },
+      "source_and_oracle_checked": true
+    },
+    {
+      "changed_public_statement_rejected": true,
+      "kind": "u64",
+      "mode": "checked",
+      "native_overflow_rejected": true,
+      "native_verifier_accepted": true,
+      "padded": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 2048,
+        "triple_xor": 0
+      },
+      "preprocessed_cells": 16384,
+      "proof_bytes": 90606,
+      "raw": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 1272,
+        "triple_xor": 0
+      },
+      "source_and_oracle_checked": true
+    },
+    {
+      "changed_public_statement_rejected": true,
+      "kind": "u128",
+      "mode": "checked",
+      "native_overflow_rejected": true,
+      "native_verifier_accepted": true,
+      "padded": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 4096,
+        "triple_xor": 0
+      },
+      "preprocessed_cells": 32768,
+      "proof_bytes": 113331,
+      "raw": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 2669,
+        "triple_xor": 0
+      },
+      "source_and_oracle_checked": true
+    },
+    {
+      "changed_public_statement_rejected": true,
+      "kind": "i8",
+      "mode": "checked",
+      "native_overflow_rejected": true,
+      "native_verifier_accepted": true,
+      "padded": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 256,
+        "triple_xor": 0
+      },
+      "preprocessed_cells": 2048,
+      "proof_bytes": 40158,
+      "raw": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 211,
+        "triple_xor": 0
+      },
+      "source_and_oracle_checked": true
+    },
+    {
+      "changed_public_statement_rejected": true,
+      "kind": "i16",
+      "mode": "checked",
+      "native_overflow_rejected": true,
+      "native_verifier_accepted": true,
+      "padded": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 512,
+        "triple_xor": 0
+      },
+      "preprocessed_cells": 4096,
+      "proof_bytes": 51246,
+      "raw": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 437,
+        "triple_xor": 0
+      },
+      "source_and_oracle_checked": true
+    },
+    {
+      "changed_public_statement_rejected": true,
+      "kind": "i32",
+      "mode": "checked",
+      "native_overflow_rejected": true,
+      "native_verifier_accepted": true,
+      "padded": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 1024,
+        "triple_xor": 0
+      },
+      "preprocessed_cells": 8192,
+      "proof_bytes": 72662,
+      "raw": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 925,
+        "triple_xor": 0
+      },
+      "source_and_oracle_checked": true
+    },
+    {
+      "changed_public_statement_rejected": true,
+      "kind": "i64",
+      "mode": "checked",
+      "native_overflow_rejected": true,
+      "native_verifier_accepted": true,
+      "padded": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 2048,
+        "triple_xor": 0
+      },
+      "preprocessed_cells": 16384,
+      "proof_bytes": 92138,
+      "raw": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 1814,
+        "triple_xor": 0
+      },
+      "source_and_oracle_checked": true
+    },
+    {
+      "changed_public_statement_rejected": true,
+      "kind": "i128",
+      "mode": "checked",
+      "native_overflow_rejected": true,
+      "native_verifier_accepted": true,
+      "padded": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 4096,
+        "triple_xor": 0
+      },
+      "preprocessed_cells": 32768,
+      "proof_bytes": 114721,
+      "raw": {
+        "blake_g": 0,
+        "eq": 0,
+        "m31_to_u32": 0,
+        "qm31_ops": 3880,
+        "triple_xor": 0
+      },
+      "source_and_oracle_checked": true
+    }
+  ],
+  "compiler_sha256": "2580b5755d69a429842010aaab9ff2eef434f0a4030fd991a65105123b1eec22",
+  "native": true,
+  "schema": "s31-direct-integer-multiplication-v1"
+}

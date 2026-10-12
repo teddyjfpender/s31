@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from typing import TypeAlias
 
 from language.builtins import BUILTINS, MAX_CALL_DEPTH, STANDARD_ALIASES
-from language.syntax import Circuit, Expr, Function, FunctionType, RecordType, SourceError, Statement, TupleType
+from language.syntax import Circuit, Expr, Function, FunctionType, RecordType, SourceError, Statement, SumType, TupleType
 
 
 # Keep this partition exhaustive. A newly added builtin must receive a
@@ -88,7 +88,20 @@ class RecordValue:
     fields: tuple[tuple[str, AbstractValue], ...]
 
 
-AbstractValue: TypeAlias = Closure | OpaqueFunction | NamedFunctionRef | FirstOrder | TupleValue | RecordValue
+@dataclass(frozen=True)
+class KnownVariant:
+    signature: SumType
+    variant: str
+    payload: AbstractValue
+
+
+@dataclass(frozen=True)
+class UnknownVariant:
+    signature: SumType
+
+
+AbstractValue: TypeAlias = (Closure | OpaqueFunction | NamedFunctionRef | FirstOrder |
+                            TupleValue | RecordValue | KnownVariant | UnknownVariant)
 FIRST_ORDER = FirstOrder()
 OPAQUE_FUNCTION = OpaqueFunction()
 
@@ -117,6 +130,30 @@ class TotalityChecker:
     def error(self, expr: Expr, message: str) -> SourceError:
         return SourceError(f"{self.filename}:{expr.token.line}:{expr.token.column}: {message}")
 
+    def join_values(self, values: tuple[AbstractValue, ...]) -> AbstractValue:
+        """Keep product shape while forgetting an unknown match's static choice."""
+        first = values[0]
+        if all(value == first for value in values[1:]):
+            return first
+        if isinstance(first, (KnownVariant, UnknownVariant)) and all(
+               isinstance(value, (KnownVariant, UnknownVariant)) and
+               value.signature == first.signature for value in values):
+            return UnknownVariant(first.signature)
+        if isinstance(first, TupleValue) and all(
+                isinstance(value, TupleValue) and len(value.elements) == len(first.elements)
+                for value in values):
+            return TupleValue(tuple(self.join_values(tuple(value.elements[index] for value in values))
+                                    for index in range(len(first.elements))))
+        if isinstance(first, RecordValue) and all(
+                isinstance(value, RecordValue) and value.signature == first.signature
+                for value in values):
+            return RecordValue(first.signature, tuple(
+                (name, self.join_values(tuple(value.fields[index][1] for value in values)))
+                for index, (name, _) in enumerate(first.fields)))
+        if all(isinstance(value, (Closure, OpaqueFunction, NamedFunctionRef)) for value in values):
+            return OPAQUE_FUNCTION
+        return FIRST_ORDER
+
     def parameter(self, typ: object) -> AbstractValue:
         cached = self.parameter_shapes.get(id(typ))
         if cached is not None and cached[0] is typ:
@@ -127,6 +164,8 @@ class TotalityChecker:
             fields = tuple((name, self.parameter(field_type))
                            for name, field_type in typ.fields)
             result = RecordValue(typ, fields)
+        elif isinstance(typ, SumType):
+            result = UnknownVariant(typ)
         else:
             result = OPAQUE_FUNCTION if isinstance(typ, FunctionType) else FIRST_ORDER
         self.parameter_shapes[id(typ)] = (typ, result)
@@ -206,6 +245,28 @@ class TotalityChecker:
                            for (name, _), item in zip(expr.record_type.fields, components))
             return Effect(RecordValue(expr.record_type, fields),
                           frozenset().union(*(item.failure for item in components)))
+        if expr.kind == "variant":
+            if expr.sum_type is None:
+                raise self.error(expr, "invalid enum constructor")
+            payload = self.expr(expr.args[0], env)
+            return Effect(KnownVariant(expr.sum_type, expr.value, payload.value), payload.failure)
+        if expr.kind == "match":
+            source = self.expr(expr.args[0], env)
+            if not isinstance(source.value, (KnownVariant, UnknownVariant)) or expr.sum_type is None:
+                raise self.error(expr, "match requires a static enum value")
+            if source.value.signature != expr.sum_type:
+                raise self.error(expr, f"match expects {expr.sum_type.name}")
+            if isinstance(source.value, KnownVariant):
+                index = expr.variants.index(source.value.variant)
+                binder, _ = expr.params[index]
+                arm = self.expr(expr.args[index + 1], env | {binder: source.value.payload})
+                return Effect(arm.value, source.failure | arm.failure)
+            variants = dict(expr.sum_type.variants)
+            arms = tuple(self.expr(body, env | {binder: self.parameter(variants[variant])})
+                         for variant, (binder, _), body in zip(expr.variants, expr.params, expr.args[1:]))
+            failure = source.failure | frozenset().union(*(arm.failure for arm in arms))
+            values = tuple(arm.value for arm in arms)
+            return Effect(self.join_values(values), failure)
         if expr.kind == "project":
             source = self.expr(expr.args[0], env)
             index = int(expr.value)
