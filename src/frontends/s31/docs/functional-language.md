@@ -37,6 +37,10 @@ The [curried release example](../examples/functional/release_curried4/README.md)
 checks `make(x)(x)`: `make` computes `x²`, returns a closure capturing that
 wire, and the second application emits `x + x²`. The closure value adds no
 witness or AIR row.
+The [nested application example](../examples/functional/release_nested4/README.md)
+checks `identity(make(x))(double(x))`: the function and array arguments are
+themselves static calls. Evaluation emits exactly `x²`, `2x`, and their sum;
+passing either intermediate value adds no AIR row.
 
 ## Auditing a named function all the way to packed rows
 

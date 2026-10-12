@@ -69,6 +69,16 @@ public result fails.
 python3 src/frontends/s31/tests/acceptance/compiler_correspondence/curried_release.py
 ```
 
+`nested_release.py` checks `identity(make(x))(double(x))`. The nested function
+and array arguments must leave exactly the three handwritten arithmetic gates
+in the same order. It compares complete normalized relation, canonical IR and
+native AIR geometry, accepts a strict release proof and rejects a changed
+public result.
+
+```sh
+python3 src/frontends/s31/tests/acceptance/compiler_correspondence/nested_release.py
+```
+
 `generated_native_subset.py` selects four sources from the pinned 384-source
 mutation corpus: one gate; eight alias-spelled gates with an earlier return;
 fifteen gates with a final return; and sixteen comment-spelled gates with an

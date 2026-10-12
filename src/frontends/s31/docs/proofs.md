@@ -151,6 +151,10 @@ certifies a factory whose returned function captures an earlier gate result.
 `make(x)(x)` leaves exactly the two handwritten arithmetic gates. Other lambda
 operations, closure types, and function values in the public ABI remain
 outside this strict certificate.
+The [nested application example](../examples/functional/release_nested4/README.md)
+also certifies function and array arguments computed by earlier static calls.
+`identity(make(x))(double(x))` emits exactly the three handwritten gates, in
+left-to-right evaluation order.
 
 For that same fragment, the [fixed-root join inspector](../tools/inspect/check_direct_gate_fixed_root_join.py)
 replays `verify-release` admission, asks the packaged prover for a fresh

@@ -38,6 +38,25 @@ class ReturnedFunctionReleaseTests(unittest.TestCase):
         self.assertEqual([node["name"] for node in checked[0]["nodes"]],
                          ["_s31_i1_0", "result"])
 
+    def test_nested_function_and_array_arguments_match_handwritten_gates(self) -> None:
+        example = S31 / "examples/functional/release_nested4"
+        source = (example / "functional.s31").read_text()
+        manual = (example / "manual.s31").read_text()
+        checked = parse_source(source.encode())
+        self.assertEqual(checked, parse_source(manual.encode()))
+        self.assertEqual(checked[0], compile_text(source)[0])
+        self.assertEqual([node["name"] for node in checked[0]["nodes"]],
+                         ["_s31_i1_0", "_s31_0", "result"])
+
+    def test_nested_zero_arg_factory_can_be_passed_as_function_value(self) -> None:
+        source = (SQUARE +
+                  f"fn choose() -> Fn({T}) -> {T} {{ square }}\n" +
+                  f"fn identity(f: Fn({T}) -> {T}) -> Fn({T}) -> {T} {{ f }}\n" +
+                  CIRCUIT.replace("EXPR", "identity(choose())(x)"))
+        checked = parse_source(source.encode())
+        self.assertEqual(checked[0], compile_text(source)[0])
+        self.assertEqual(len(checked[0]["nodes"]), 1)
+
     def test_returned_named_function_alias_and_relay_match_production(self) -> None:
         factory = f"fn make(a: {T}) -> Fn({T}) -> {T} {{ " \
                   f"fun(v: {T}) -> {T} => a + v }}\n"
@@ -75,6 +94,8 @@ class ReturnedFunctionReleaseTests(unittest.TestCase):
             CIRCUIT.replace("EXPR", "apply(make, x)"),
             SQUARE + f"fn choose() -> Fn({T}) -> {T} {{ square }}\n" +
             CIRCUIT.replace("EXPR", "choose(x)"),
+            SQUARE + f"fn identity(f: Fn({T}) -> {T}) -> Fn({T}) -> {T} {{ f }}\n" +
+            CIRCUIT.replace("EXPR", "identity(square(x))(x)"),
         )
         for index, source in enumerate(bad):
             with self.subTest(rejection=index), self.assertRaises(UnsupportedFragment):

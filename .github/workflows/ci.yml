@@ -131,6 +131,11 @@ jobs:
           set -euo pipefail
           python3 src/frontends/s31/tests/acceptance/compiler_correspondence/curried_release.py |
             tee zig-out/s31/acceptance/curried-release.json
+      - name: Nested static arguments strict release proof and zero-cost gates
+        run: |
+          set -euo pipefail
+          python3 src/frontends/s31/tests/acceptance/compiler_correspondence/nested_release.py |
+            tee zig-out/s31/acceptance/nested-release.json
       - name: Native M31 subtraction proof and raw-row comparison
         run: |
           set -euo pipefail

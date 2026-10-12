@@ -484,12 +484,19 @@ def parse_source(data: bytes, *, optimized: bool = False) -> tuple[dict[str, Any
     def source_arguments(function: FunctionValue, parts: list[list[str]],
                          resolve_array: Callable[[str], str],
                          resolve_function: Callable[[str], FunctionValue]) -> tuple[StaticValue, ...]:
+        def nested_call(tokens: list[str]) -> tuple[FunctionValue, list[list[list[str]]]] | None:
+            plain = strip_parens(tokens)
+            return helper_call(tokens) if len(plain) > 1 and plain[1] == "(" else None
+
         if len(parts) != len(function_parameters(function)):
             raise UnsupportedFragment("static helper argument count differs")
         arguments: list[StaticValue] = []
         for kind, part in zip(function_parameters(function), parts):
             if kind == "array":
-                arguments.append(resolve_array(reference(part)))
+                nested = nested_call(part)
+                value = (evaluate_calls(*nested, resolve_array, resolve_function, None)
+                         if nested is not None else resolve_array(reference(part)))
+                arguments.append(wire_value(value))
             else:
                 try:
                     inline = parse_static_lambda(
@@ -502,8 +509,15 @@ def parse_source(data: bytes, *, optimized: bool = False) -> tuple[dict[str, Any
                     )
                 except UnsupportedStaticLambda as exc:
                     raise UnsupportedFragment(str(exc)) from exc
-                arguments.append(inline if inline is not None else
-                                 resolve_function(reference(part)))
+                if inline is not None:
+                    arguments.append(inline)
+                    continue
+                nested = nested_call(part)
+                value = (evaluate_calls(*nested, resolve_array, resolve_function, None)
+                         if nested is not None else resolve_function(reference(part)))
+                if not isinstance(value, (NamedFunction, StaticLambda)):
+                    raise UnsupportedFragment("static function argument is not a function value")
+                arguments.append(value)
         return tuple(arguments)
 
     def evaluate_calls(function: FunctionValue, groups: list[list[list[str]]],

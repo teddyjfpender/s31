@@ -145,6 +145,8 @@ The same bounded lambdas may be supplied inline as arguments to unary `Fn`
 parameters, including captures from the current lexical scope.
 Pure helpers may also return these `Fn` values, including a closure over an
 earlier helper gate, and direct postfix application specializes the result.
+Function and array arguments may themselves be nested static calls; the checker
+replays those calls in evaluation order before applying the enclosing helper.
 The checker replays generated and anonymous wire names, requires exact
 normalized relation and canonical SSA equality, then checks the native gate
 topology and fixed-root key before native proof verification. The
@@ -163,6 +165,9 @@ its handwritten two-gate form at 322 raw and 512 padded QM31 rows. The
 [curried fixture](../../../src/frontends/s31/examples/functional/release_curried4/README.md)
 returns a captured function and matches its handwritten two-gate form at 322
 raw and 512 padded QM31 rows. The
+[nested application fixture](../../../src/frontends/s31/examples/functional/release_nested4/README.md)
+passes a computed function and computed array argument, matching three
+handwritten gates at 323 raw and 512 padded QM31 rows. The
 certificate does not cover other lambda operations or closure types, general
 higher-order source, records, private inputs, other AIR profiles, or the native
 PCS/FRI proof system, and it does not replace the full compiler correspondence
