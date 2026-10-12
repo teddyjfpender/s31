@@ -2,7 +2,8 @@
 
 `paired.py` compiles one `std::int::mul_checked` `.s31` circuit under
 `direct-gate` and `sparse-wide-gate`. Both native provers receive the **same
-20 distinct seeded assignments** by default, in the same order. These cover
+20 distinct seeded assignments** by default. Which profile runs first
+alternates by assignment. These cover
 zero, one, the integer bounds, a product near the bound, and a cross-limb
 product where the width permits; the remaining pairs are deterministic
 in-range samples. The script
@@ -31,9 +32,12 @@ compiler, and assignment digests; each profile's raw/padded geometry,
 preprocessing cells, visible FRI settings, per-assignment proof bytes and
 prove times, median prove/verify times, and all verifier/oracle controls.
 The complete per-trial reports and proofs are under `tune/`.
+The [whole-process evidence gate](../fixed_integer_cost/README.md) checks
+current host/compiler and saved artifact identities, the balanced trial order,
+and exact native-stage accounting before the runner completes.
 
 `direct_over_sparse_*_ratio` is a descriptive local ratio. Every measured
-process performs cold native setup. Profiles run sequentially, so host load,
+process performs cold native setup. Host load,
 thermal state, process startup, OS cache, and transcript-dependent proof of
 work may affect timings. Matching visible FRI settings does not establish
 equal soundness across different AIRs. A run on one source and one host does

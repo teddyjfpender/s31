@@ -11,9 +11,12 @@ from pathlib import Path
 
 S31 = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(S31 / "python"))
+sys.path.insert(0, str(S31 / "benchmarks" / "fixed_integer_cost"))
 
 import s31
+from evidence import analyze
 from oracle import evaluate_relation
+from paired_tune import tune_interleaved
 from text_frontend import compile_text
 from validate import PROFILE_FIELDS, host_identity, validate
 
@@ -74,8 +77,8 @@ def run(kind: str, count: int, seed: int, output: Path) -> dict:
         path.parent.mkdir(parents=True, exist_ok=True)
         s31.write_json(path, value)
         assignments.append(path)
-    report = s31.tune(source, assignments, output / "tune",
-                      ["direct-gate", "sparse-wide-gate"], assignments[0])
+    report = tune_interleaved(source, assignments, output / "tune",
+                              ("direct-gate", "sparse-wide-gate"))
     if s31.compiler_fingerprint() != compiler_sha256 or host_identity() != host:
         raise AssertionError("compiler or host identity changed during paired measurement")
     profiles = report["profiles"]
@@ -106,6 +109,7 @@ def run(kind: str, count: int, seed: int, output: Path) -> dict:
     }
     s31.write_json(output / "summary.json", concise)
     validate(output)
+    analyze(output)
     return concise
 
 

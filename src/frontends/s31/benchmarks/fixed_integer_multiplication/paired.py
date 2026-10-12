@@ -13,9 +13,12 @@ from pathlib import Path
 
 S31 = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(S31 / "python"))
+sys.path.insert(0, str(S31 / "benchmarks" / "fixed_integer_cost"))
 
 import s31
+from evidence import analyze, host_identity
 from oracle import OracleError, evaluate_relation
+from paired_tune import tune_interleaved
 from text_frontend import compile_text
 
 
@@ -126,8 +129,10 @@ def prepare(kind: str, count: int, seed: int, output: Path) -> tuple[Path, list[
 
 def run(kind: str, count: int, seed: int, output: Path) -> dict:
     output = output.resolve()
+    compiler_sha = s31.compiler_fingerprint()
+    host = host_identity()
     source, assignments, overflow = prepare(kind, count, seed, output)
-    report = s31.tune(source, assignments, output / "tune", list(LOWERINGS), assignments[0])
+    report = tune_interleaved(source, assignments, output / "tune", LOWERINGS)
     profiles = report["profiles"]
     if (set(profiles) != set(LOWERINGS) or
             report["distinct_assignment_count"] != count or
@@ -138,7 +143,8 @@ def run(kind: str, count: int, seed: int, output: Path) -> dict:
                 profile["independent_value_oracle_statuses"] != ["passed"] * count
                 for profile in profiles.values())):
         raise AssertionError("paired native proof, verifier, or oracle controls failed")
-    compiler_sha = s31.compiler_fingerprint()
+    if s31.compiler_fingerprint() != compiler_sha or host_identity() != host:
+        raise AssertionError("compiler or host identity changed during paired measurement")
     overflow_controls: dict[str, bool] = {}
     for lowering in LOWERINGS:
         package = Path(profiles[lowering]["package"])
@@ -158,7 +164,7 @@ def run(kind: str, count: int, seed: int, output: Path) -> dict:
             raise AssertionError(f"{lowering}: native prover accepted overflowing product")
         overflow_controls[lowering] = True
     concise = {
-        "schema": "s31-fixed-multiplication-paired-v1",
+        "schema": "s31-fixed-multiplication-paired-v2",
         "kind": kind, "count": count, "seed": seed,
         "source_sha256": hashlib.sha256(source.read_bytes()).hexdigest(),
         "program_sha256": report["program_sha256"],
@@ -170,7 +176,7 @@ def run(kind: str, count: int, seed: int, output: Path) -> dict:
         "checked_overflow_oracle_rejected": True,
         "independent_value_oracle_provenance": report["independent_value_oracle_provenance"],
         "same_visible_fri_settings": report["same_visible_fri_settings"],
-        "host": report["host"],
+        "host": host,
         "tune_timing_note": report["timing_note"],
         "profiles": {
             name: {**{field: profile[field] for field in (
@@ -194,6 +200,7 @@ def run(kind: str, count: int, seed: int, output: Path) -> dict:
                         "vary. Matching visible FRI settings alone do not establish equal soundness."),
     }
     s31.write_json(output / "summary.json", concise)
+    analyze(output)
     return concise
 
 

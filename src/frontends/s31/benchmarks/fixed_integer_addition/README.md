@@ -2,7 +2,8 @@
 
 `paired.py` builds the same nominal integer source under `direct-gate` and
 `sparse-wide-gate`, then runs both native provers on the same seeded assignment
-corpus. The first five assignments cover zero, the upper bound, signed
+corpus. It alternates which profile runs first for each assignment. The first
+five assignments cover zero, the upper bound, signed
 minimum, one, and either a 16-bit carry or a small in-range value. Additional
 assignments are deterministic random in-range pairs. The independent integer
 oracle runs before proof construction; each native profile must accept every
@@ -21,7 +22,9 @@ settings, source/program/IR/assignment digests, compiler fingerprint, and a
 hash of the host instance name. The raw `tune/tune-report.json`, package
 manifests, trial reports, and proof files stay under the same output directory.
 The runner checks that its compiler fingerprint and host identity are stable
-across measurement.
+across measurement. The [whole-process evidence gate](../fixed_integer_cost/README.md)
+also checks the balanced schedule and reconciles each trial's native stage
+timers with prover and verifier process wall.
 
 Before using an archived measurement as **current local** cost evidence, run:
 
