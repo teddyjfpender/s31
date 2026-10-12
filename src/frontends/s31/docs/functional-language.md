@@ -12,6 +12,13 @@ call site and emits only the underlying relation operations.
 The [record guide](records.md) shows named fields with the same static-product
 erasure and a separate nominal type check.
 
+The [strict release example](../examples/functional/release_square4/README.md)
+shows one named pure helper admitted by the independent v2 direct-gate
+certificate. Its handwritten form has the same two relation nodes and native
+AIR geometry; the functional package's proof passes `verify-release`. The
+strict certificate currently covers this bounded helper grammar, while the
+ordinary text frontend supports the broader function syntax below.
+
 ## Auditing a named function all the way to packed rows
 
 This small program is also the five-lane subtraction acceptance fixture:

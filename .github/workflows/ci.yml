@@ -101,6 +101,11 @@ jobs:
           set -euo pipefail
           python3 src/frontends/s31/tests/acceptance/functional/pattern_parameters.py |
             tee zig-out/s31/acceptance/pattern-parameters.json
+      - name: Named functional helper strict release proof and zero-cost gate
+        run: |
+          set -euo pipefail
+          python3 src/frontends/s31/tests/acceptance/compiler_correspondence/functional_release.py |
+            tee zig-out/s31/acceptance/functional-release.json
       - name: Native M31 subtraction proof and raw-row comparison
         run: |
           set -euo pipefail

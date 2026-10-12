@@ -1,5 +1,24 @@
 # Generated source to native proof samples
 
+## Strict release of a named functional helper
+
+`functional_release.py` builds the checked-in
+[`release_square4`](../../../examples/functional/release_square4/README.md)
+function and handwritten form under `direct-gate`. Their normalized relation,
+canonical IR, raw and padded rows, preprocessing, public binding, finalization,
+and FRI settings must agree. The independently checked v2 certificate covers
+the function source and native gate topology. The functional package proves
+`2·x²` for four public lanes, its native verifier accepts, `verify-release`
+accepts from a pinned package snapshot, and a changed public claim fails.
+
+```sh
+python3 src/frontends/s31/tests/acceptance/compiler_correspondence/functional_release.py
+```
+
+This is a bounded one-helper certificate and native regression. It does not
+prove arbitrary functional source compilation or the underlying STARK
+cryptographic assumptions.
+
 `generated_native_subset.py` selects four sources from the pinned 384-source
 mutation corpus: one gate; eight alias-spelled gates with an earlier return;
 fifteen gates with a final return; and sixteen comment-spelled gates with an

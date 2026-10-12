@@ -49,6 +49,15 @@ Verification callers must use the yielded snapshot while its context is open.
 General direct-gate text packages remain buildable; programs outside the
 bounded certificate grammar fail this stricter admission. This gate still
 inherits the certificate's stated AIR/PCS and native implementation assumptions.
+The v2 grammar now includes one pure static helper with one or two
+`[m31; 4]` parameters and one add or pointwise-multiply body operation.
+Its calls are independently expanded to existing circuit wires before the
+same positional SSA, topology, fixed-root, and key checks. The
+[release acceptance](../../tests/acceptance/compiler_correspondence/functional_release.py)
+compares the function with handwritten gates, proves the function package,
+passes `verify-release`, and rejects a changed public claim. The independent
+helper parser lives in [source_fragments](source_fragments/README.md) and is
+included in the compiler fingerprint.
 
 `inspect-record-proof` also executes from a private copy of the package,
 proof, and statement. Its `unpinned_snapshot` check establishes internal
