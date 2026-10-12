@@ -39,6 +39,17 @@ public claim. The function value itself contributes no gate or AIR row.
 python3 src/frontends/s31/tests/acceptance/compiler_correspondence/higher_order_release.py
 ```
 
+`closure_release.py` checks an explicitly captured wire in a unary lambda,
+passes that lambda through `Fn`, and shadows the captured name in a later
+lexical `let`. The independently reconstructed three-gate relation, canonical
+IR, and native AIR geometry must equal the handwritten source. The native
+proof and strict release verifier accept the true result and reject a changed
+public result.
+
+```sh
+python3 src/frontends/s31/tests/acceptance/compiler_correspondence/closure_release.py
+```
+
 `generated_native_subset.py` selects four sources from the pinned 384-source
 mutation corpus: one gate; eight alias-spelled gates with an earlier return;
 fifteen gates with a final return; and sixteen comment-spelled gates with an

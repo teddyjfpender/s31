@@ -139,7 +139,8 @@ source bytes for a bounded public four-lane direct-gate fragment. It covers
 up to eight acyclic pure functions, calls to earlier declarations, local
 arithmetic lets, expression-level lexical `let … in` inside circuit lets, and
 named unary `Fn([m31; 4]) -> [m31; 4]` values passed through static aliases
-and function parameters.
+and function parameters. It also admits unary lambdas whose body is one add or
+pointwise multiply over the argument and existing captured wires.
 The checker replays generated and anonymous wire names, requires exact
 normalized relation and canonical SSA equality, then checks the native gate
 topology and fixed-root key before native proof verification. The
@@ -148,7 +149,10 @@ topology and fixed-root key before native proof verification. The
 and [named-function-value](../../../src/frontends/s31/examples/functional/release_higher_order4/README.md)
 fixtures each match their handwritten two-gate form at 322 raw and 512 padded
 QM31 rows, pass `verify-release`, and reject a changed public result. This is
-finite evidence for this fragment. It does not certify lambdas, closures,
+finite evidence for this fragment. The
+[captured-lambda fixture](../../../src/frontends/s31/examples/functional/release_closure4/README.md)
+matches its handwritten three-gate form at 323 raw and 512 padded QM31 rows
+and tests lexical capture across a shadowed name. The certificate does not cover general lambda bodies or closures,
 general higher-order source,
 records, private inputs, other AIR profiles, or the native PCS/FRI proof
 system, and it does not replace the full compiler correspondence proof above.

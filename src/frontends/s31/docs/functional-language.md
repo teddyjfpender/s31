@@ -25,9 +25,11 @@ arithmetic in a native proof.
 The [named function value release example](../examples/functional/release_higher_order4/README.md)
 passes `twice_square` through a lexical `let` and a monomorphic `Fn` parameter.
 The independent certificate checks that the value adds no gate or AIR row;
-the native proof covers the same two gates as the handwritten source. This
-strict subset admits named unary functions and static aliases, while the full
-frontend below also admits lambdas and closures.
+the native proof covers the same two gates as the handwritten source. The
+[captured lambda release example](../examples/functional/release_closure4/README.md)
+certifies a one-gate lambda body and its lexical capture across a shadowed
+name, with the same three AIR gates as handwritten arithmetic. The ordinary
+frontend below supports broader lambdas and closures.
 
 ## Auditing a named function all the way to packed rows
 

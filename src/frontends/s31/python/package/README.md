@@ -72,6 +72,11 @@ through `Fn` parameters. The
 requires the function value to disappear completely: its package has the
 same normalized relation and native AIR geometry as two handwritten gates,
 passes `verify-release`, and rejects a changed public claim.
+The [captured-lambda release acceptance](../../tests/acceptance/compiler_correspondence/closure_release.py)
+additionally checks a unary lambda with one gate in its body. Its lexical
+capture is resolved at function creation, and passing the closure through a
+`Fn` parameter adds no relation or AIR node. A later lexical binding with the
+same name leaves the captured wire unchanged.
 
 `inspect-record-proof` also executes from a private copy of the package,
 proof, and statement. Its `unpinned_snapshot` check establishes internal

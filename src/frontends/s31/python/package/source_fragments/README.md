@@ -5,8 +5,8 @@ v2 direct-gate circuit grammar. Each accepts one or two parameters of type
 `[m31; 4]` or the unary `Fn([m31; 4]) -> [m31; 4]`, local arithmetic or call
 lets, and a final add, pointwise
 multiply, earlier-declared function call, or last local value. Calls to later
-functions and recursion are rejected. A `Fn` value must resolve to an earlier
-named unary function; it can pass through function parameters or source-only
+functions and recursion are rejected. A `Fn` value can resolve to an earlier
+named unary function or the bounded `static_lambda.py` form; it can pass through function parameters or source-only
 aliases in circuit blocks and lexical lets. Array operands name a parameter
 or earlier local. There are at most sixteen gates across the entire
 circuit. The checker statically expands calls in declaration order and
@@ -20,8 +20,9 @@ evaluated eagerly, without a requested output name; a newly emitted gate
 therefore receives the next `_s31_N` wire. The body sees a lexical reference
 to that wire and receives the outer circuit let's requested name. Bindings
 may shadow earlier source names, and nested lets are limited to depth 16.
-The expression leaf is one existing wire, one `+` or `.*` gate, or a call to
-one of the pure functions above. The binder itself produces no relation node.
+The expression leaf is one existing wire, one `+` or `.*` gate, a call to
+one of the pure functions above, or a static function alias. The binder itself
+produces no relation node.
 The [worked native example](../../../examples/functional/release_let4/README.md)
 shows the complete two-gate lowering and exact AIR-cost comparison.
 
@@ -33,8 +34,12 @@ documented assumptions.
 
 The [worked higher-order example](../../../examples/functional/release_higher_order4/README.md)
 shows a named function passed through a `Fn` parameter and erased to two
-ordinary gates. This fragment is intentionally exact: anonymous lambdas,
-captured closures, calls nested inside an argument expression, partial operations, subtraction,
+ordinary gates. The [captured lambda example](../../../examples/functional/release_closure4/README.md)
+fixes an existing wire in a unary lambda's environment and demonstrates that a
+later lexical shadow does not change the capture. `static_lambda.py` admits only
+one `+` or `.*` gate in the lambda body, over the parameter and existing wires.
+This fragment is intentionally exact: general lambda bodies and closures,
+calls nested inside an argument expression, partial operations, subtraction,
 multi-operator arithmetic expressions, and hidden effects
 remain outside this v2 certificate. They remain usable through the
 ordinary S31 compiler and verifier; the stricter release gate admits them

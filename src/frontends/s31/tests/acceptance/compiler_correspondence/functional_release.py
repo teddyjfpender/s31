@@ -7,6 +7,7 @@ import json
 import sys
 import tempfile
 from pathlib import Path
+from typing import Callable
 
 S31 = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(S31 / "python"))
@@ -23,7 +24,8 @@ SAME_AIR = ("canonical_ir_sha256", "profile", "chip", "raw", "padded",
 P = (1 << 31) - 1
 
 
-def run(example: Path = EXAMPLE, *, case: str = "composed") -> dict:
+def run(example: Path = EXAMPLE, *, case: str = "composed",
+        result: Callable[[int], int] = lambda value: 2 * value * value) -> dict:
     functional_source = example / "functional.s31"
     direct_source = example / "manual.s31"
     functional_text = functional_source.read_text()
@@ -50,7 +52,7 @@ def run(example: Path = EXAMPLE, *, case: str = "composed") -> dict:
             raise AssertionError("functional package lacks rooted correspondence certificate")
 
         values = [0, 1, 2, 7]
-        expected = [(2 * value * value) % P for value in values]
+        expected = [result(value) % P for value in values]
         assignment = work / "assignment.json"
         s31.write_json(assignment, {"public_inputs": {"x": values},
                                     "private_inputs": {},

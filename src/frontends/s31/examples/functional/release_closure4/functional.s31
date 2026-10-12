@@ -1,0 +1,8 @@
+fn apply(f: Fn([m31; 4]) -> [m31; 4], v: [m31; 4]) -> [m31; 4] { f(v) }
+
+circuit closure4(public x: [m31; 4]) -> public [m31; 4] {
+    let saved = x .* x;
+    let f = fun(v: [m31; 4]) -> [m31; 4] => saved + v;
+    let result = let saved = x + x in apply(f, saved);
+    result
+}
