@@ -40,6 +40,7 @@
   ],
   "exporter_binary_sha256": "76afacfd73304ccaef6bb5be1ab6b79200c92cb600ca893fb5b66c083a366d00",
   "exporter_source_sha256": "85e6ace7b5494466e9282d01c192f9617666f2b8284e8ffc1596bd222465b044",
+  "functional_source_sha256": "e97bd111c23037dda56bbcf37dd6125f56b9840b457ec39917d1be92078f7dfe",
   "group_counts": {
     "add": 474,
     "mul": 27,

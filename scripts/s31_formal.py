@@ -649,7 +649,9 @@ def generated_native_square4_topology() -> str:
 def generated() -> dict[Path, str]:
     render_pinned_values = runpy.run_path(str(PINNED_CONSTANT_TOOL))["render"]
     render_alias8_native_fixture = runpy.run_path(str(ALIAS8_NATIVE_FIXTURE_TOOL))["render"]
-    render_ordered_subtraction_fixture = runpy.run_path(str(ORDERED_SUBTRACTION_FIXTURE_TOOL))["render"]
+    ordered_subtraction_fixture = runpy.run_path(str(ORDERED_SUBTRACTION_FIXTURE_TOOL))
+    render_ordered_subtraction_fixture = ordered_subtraction_fixture["render"]
+    render_ordered_subtraction_helper = ordered_subtraction_fixture["render_helper"]
     render_ordered_subtraction_native = runpy.run_path(str(ORDERED_SUBTRACTION_NATIVE_TOOL))["render"]
     check_native_qm31_relation_schedule()
     check_native_eq_relation_schedule()
@@ -712,6 +714,9 @@ def generated() -> dict[Path, str]:
         FORMAL / "S31/Gadgets/Functional/Correspondence/GeneratedOrderedSubtractionRelease.lean":
             render_ordered_subtraction_fixture(
                 ROOT / "src/frontends/s31/examples/functional/release_sub4/manual.s31"),
+        FORMAL / "S31/Gadgets/Functional/Correspondence/GeneratedOrderedSubtractionHelper.lean":
+            render_ordered_subtraction_helper(
+                ROOT / "src/frontends/s31/examples/functional/release_sub4/functional.s31"),
         FORMAL / "S31/Gadgets/Functional/Correspondence/GeneratedOrderedSubtractionNativeRows.lean":
             render_ordered_subtraction_native(),
         FORMAL / "S31/Evidence/Coverage.lean": render_coverage(

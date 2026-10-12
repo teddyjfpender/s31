@@ -50,7 +50,10 @@ spelling. A second source-bound fixture captures the three selected fixed
 cells from the sealed native export and checks them against a Lean projection
 of the parsed DAG. The conditional native-row theorem then forces the same
 public result when one coherent address-to-value map satisfies their packed
-arithmetic rows. The functional helper source, the actual committed main-row
+arithmetic rows. A separate Lean parser checks the exact `functional.s31`
+helper bytes, proves static inlining yields that same DAG, and composes the
+conditional native-row result. A fresh package check compares complete fixed
+columns and AIR geometry for both spellings. The actual committed main-row
 values, Gate lookup authentication, and proof openings remain separate joins.
 
 ## Remaining proof obligations

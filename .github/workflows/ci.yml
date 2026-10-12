@@ -116,6 +116,16 @@ jobs:
           set -euo pipefail
           python3 src/frontends/s31/tests/acceptance/compiler_correspondence/functional_optimized_release.py |
             tee zig-out/s31/acceptance/functional-optimized-release.json
+      - name: Ordered-subtraction helper strict release proof and zero-cost gates
+        run: |
+          set -euo pipefail
+          python3 src/frontends/s31/tests/acceptance/compiler_correspondence/subtraction_release.py |
+            tee zig-out/s31/acceptance/ordered-subtraction-release.json
+      - name: Ordered-subtraction reuse strict release proof
+        run: |
+          set -euo pipefail
+          python3 src/frontends/s31/tests/acceptance/compiler_correspondence/subtraction_optimized_release.py |
+            tee zig-out/s31/acceptance/ordered-subtraction-optimized-release.json
       - name: Lexical let strict release proof and zero-cost gates
         run: |
           set -euo pipefail

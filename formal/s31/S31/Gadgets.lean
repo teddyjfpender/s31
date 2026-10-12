@@ -157,11 +157,14 @@ import S31.Gadgets.Functional.SSATextBytes
 import S31.Gadgets.Functional.Correspondence.SourceFunctionBytes
 import S31.Gadgets.Functional.Correspondence.OrderedSubtractionRelease
 import S31.Gadgets.Functional.Correspondence.OrderedSubtractionBytes
+import S31.Gadgets.Functional.Correspondence.OrderedSubtractionHelperBytes
 import S31.Gadgets.Functional.Correspondence.GeneratedOrderedSubtractionRelease
+import S31.Gadgets.Functional.Correspondence.GeneratedOrderedSubtractionHelper
 import S31.Gadgets.Functional.Correspondence.OrderedSubtractionConcrete
 import S31.Gadgets.Functional.Correspondence.OrderedSubtractionNativeRows
 import S31.Gadgets.Functional.Correspondence.GeneratedOrderedSubtractionNativeRows
 import S31.Gadgets.Functional.Correspondence.OrderedSubtractionNativeSoundness
+import S31.Gadgets.Functional.Correspondence.OrderedSubtractionHelperNative
 import S31.Gadgets.Functional.Correspondence.SourceFunctionCanonicalBytes
 import S31.Gadgets.Functional.SSANormalizedBytes
 import S31.Gadgets.Functional.SSACanonicalIrBytes

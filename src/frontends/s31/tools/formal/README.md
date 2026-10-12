@@ -39,10 +39,12 @@ compiler for every input program or the complete STARK protocol.
 
 `ordered_subtraction_fixture.py` emits exact checked-in `release_sub4/manual.s31`
 and production normalized JSON bytes for Lean's independent three-operation
-parser. `ordered_subtraction_native_fixture.py` builds or opens the matching
-direct-Gate package, compares its fresh `inspect-topology` output with the
-sealed package and verification key, and checks the three source-owned fixed
-cells against an independent add/sub gate schedule. It writes the small native
+parser. The same tool pins `functional.s31` and checks static inlining against
+the same reviewed relation. `ordered_subtraction_native_fixture.py` builds the manual and
+functional direct-Gate packages, compares their complete fixed columns and
+AIR geometry, checks fresh `inspect-topology` output against each sealed
+package and verification key, and checks the three source-owned fixed cells
+against an independent add/sub gate schedule. It writes the small native
 snapshot and Lean fixture with:
 
 ```sh
@@ -50,5 +52,7 @@ python3 src/frontends/s31/tools/formal/ordered_subtraction_native_fixture.py --n
 ```
 
 Running the tool without flags checks the committed snapshot and Lean text.
+The exporter binary hash is local provenance; fresh runs compare portable
+source, fixed-column, and key identities.
 The fixture proves selected fixed-cell correspondence; authentication of main
 trace values, Gate lookups, and proof openings requires separate theorems.

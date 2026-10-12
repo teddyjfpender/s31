@@ -174,8 +174,10 @@ and [concrete release theorem](../../../../../formal/s31/S31/Gadgets/Functional/
 connect the checked-in `manual.s31` bytes and production normalized JSON to
 those three rows. The [native row theorem](../../../../../formal/s31/S31/Gadgets/Functional/Correspondence/OrderedSubtractionNativeSoundness.lean)
 adds the exported selector and address cells and one coherent wire-value map.
-The helper source spelling, native main-row and Gate lookup authentication,
-and proof openings remain separate joins.
+The [helper byte theorem](../../../../../formal/s31/S31/Gadgets/Functional/Correspondence/OrderedSubtractionHelperNative.lean)
+shows the checked-in pure function inlines to those same rows; a fresh native
+check confirms equal fixed columns and AIR geometry. Native main-row and Gate
+lookup authentication, and proof openings remain separate joins.
 
 ## A complete modeled 512-row trace
 
