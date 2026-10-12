@@ -22,3 +22,6 @@ python3 src/frontends/s31/tests/acceptance/compiler_correspondence/optimized_rel
 The optimization is an explicit build choice. The default conservative
 certificate does not admit this source. The certificate and native test do
 not constitute a proof of the entire Python compiler or the PCS/FRI system.
+The [Lean byte and AIR example](../../../../../../formal/s31/S31/Gadgets/Functional/Correspondence/LiveOptimizedRelease.md)
+checks this exact source, its generated relation and compact circuit bytes,
+then states the conditional modeled AIR claim for arbitrary satisfying rows.

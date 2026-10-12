@@ -329,6 +329,8 @@ BINDINGS = [
     "src/frontends/s31/python/package/build.py",
     "src/frontends/s31/python/package/correspondence.py",
     "src/frontends/s31/python/package/release_admission.py",
+    "src/frontends/s31/tests/python/test_live_optimized_release_binding.py",
+    "src/frontends/s31/tests/acceptance/compiler_correspondence/optimized_release.py",
     "src/frontends/s31/python/package/direct_gate_schedule.py",
     "src/frontends/s31/python/package/manifest_digest.py",
     "src/frontends/s31/python/package/bounded_manifest_v4.py",

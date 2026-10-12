@@ -330,6 +330,8 @@
     "src/frontends/s31/python/package/build.py": "aa0b1eb5035166a009c80d1067207ac283a120e257fbcd877f70ffb934ff4a63",
     "src/frontends/s31/python/package/correspondence.py": "728fa7cb999e393dedd867e94bd0bb9a8ee80a220b5b35d5ccf6ebfa8aa9ae48",
     "src/frontends/s31/python/package/release_admission.py": "bbbd9a780379e2fd25594cbbf5bc9b8ad4c3eb386c459d4b57b39db25fa6e5fd",
+    "src/frontends/s31/tests/python/test_live_optimized_release_binding.py": "4d60a3e4ea93625c652c0fe7635b5976d6dc8fcb13d5170b0a8e8d93f59e5793",
+    "src/frontends/s31/tests/acceptance/compiler_correspondence/optimized_release.py": "3064aa3a07be259f22caa46e2050e6b91d791d6d5bc9fa02ee380f485d34492b",
     "src/frontends/s31/python/package/direct_gate_schedule.py": "dbb3741e670ae69587741bb2c1e0a2d53569463770cf2f60a267774b9390d766",
     "src/frontends/s31/python/package/manifest_digest.py": "ce38935df360d30c2af419932f842bd2d5ffb37a6da7f99b5aa8da626997636f",
     "src/frontends/s31/python/package/bounded_manifest_v4.py": "4a3a4a66645da3c48c8dfd9bbf2d9782db1669911d3bf63cf1810c861a9484a7",

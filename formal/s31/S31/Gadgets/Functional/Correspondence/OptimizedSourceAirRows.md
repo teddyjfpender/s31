@@ -83,8 +83,10 @@ PYTHONPATH=src/frontends/s31/python \
 ```
 
 This is one honest-prover, public-only native test under the pinned compiler
-and Stwo dependency. The v3 certificate is opt-in: ordinary package release
-admission currently rejects it. The equality of inspected rows and proof
+and Stwo dependency. The v3 certificate is opt-in. The separate
+[`optimized_release.py`](../../../../../../src/frontends/s31/tests/acceptance/compiler_correspondence/optimized_release.py)
+uses the v3 package build and strict release path for a live-output CSE case.
+The equality of inspected rows and proof
 commitments is an executable implementation check; it does not prove native
 emitter refinement for every optimized source, arbitrary PCS opening
 authentication, or FRI soundness.
