@@ -23,42 +23,11 @@ S31 = ROOT / "src/frontends/s31"
 sys.path.insert(0, str(S31 / "python"))
 
 import s31  # noqa: E402
+from package.fixed_root_join import proof_roots  # noqa: E402
 
 SOURCE = S31 / "examples/arithmetic/functional_square4_manual.s31"
 ASSIGNMENT = S31 / "examples/arithmetic/functional_square4.valid.json"
-MAGIC = b"S31NAT7G"
-CONFIG = (26, 1, 70, 0, 1)
 P = (1 << 31) - 1
-
-
-def proof_roots(raw: bytes) -> tuple[bytes, bytes, int]:
-    """Read only the bounded direct-Gate header and first two postcard roots."""
-    if raw[:8] != MAGIC or len(raw) < 128:
-        raise ValueError("wrong bounded direct-Gate proof profile")
-    offset = 8 + 8 + 16  # magic, interaction nonce, one QM31 circuit sum
-
-    def varint() -> int:
-        nonlocal offset
-        value = 0
-        start = offset
-        for shift in range(0, 70, 7):
-            if offset >= len(raw):
-                raise ValueError("truncated proof varint")
-            byte = raw[offset]
-            offset += 1
-            value |= (byte & 127) << shift
-            if byte < 128:
-                if value >= 1 << 64 or (offset - start > 1 and byte == 0):
-                    raise ValueError("noncanonical proof varint")
-                return value
-        raise ValueError("oversized proof varint")
-
-    if tuple(varint() for _ in range(5)) != CONFIG or offset >= len(raw) or raw[offset] != 0:
-        raise ValueError("direct-Gate proof PCS config changed")
-    offset += 1  # optional lifting log size: None
-    if varint() != 4 or offset + 64 > len(raw):
-        raise ValueError("wrong direct-Gate commitment count")
-    return raw[offset:offset + 32], raw[offset + 32:offset + 64], offset + 32
 
 
 def main_words(report: dict) -> bytes:

@@ -19,6 +19,8 @@ from pathlib import Path
 
 import alias8_fixed_root_recommit as fixed
 import full_native_roster as roster
+from package.fixed_root_join import check as check_package_proof
+from package.trust import pinned_paths
 
 
 def rejected_input(prover: Path, columns: list[list[int]], work: Path,
@@ -79,12 +81,22 @@ def run_case(work: Path, sample, prefix: str, pinned: dict) -> dict:
     package = case_work / f"package-{prefix}"
     manifest = roster.s31.verify_package(package)
     prover = package / "bin" / f"s31-{manifest['name']}-prover"
-    root = fixed.recommit(prover, columns, case_work, "honest")
+    trial_dir = case_work / f"trial-{sample.label.replace(':', '-')}"
+    # The fresh-package test derives pins from this already source-checked
+    # package to exercise the pinned snapshot path. This is a regression pin,
+    # not an externally authenticated production trust root.
+    pins = {name: hashlib.sha256(path.read_bytes()).hexdigest()
+            for name, path in pinned_paths(package).items()}
+    joined = check_package_proof(package, trial_dir / "proof.bin",
+                                 trial_dir / "statement.json", pins)
+    root = joined["recommitted_fixed_root"]
     if (root != data["sealed_key_root"] or
             root != proof["proof_fixed_root"] or
-            root != data["topology"]["preprocessed_root"]):
+            root != data["topology"]["preprocessed_root"] or
+            joined["source_text_sha256"] != data["source_sha256"] or
+            joined["proof_sha256"] != proof["proof_sha256"] or
+            joined["native_verifier_accepted"] is not True):
         raise ValueError(f"{prefix}: native recommit, key, topology, and accepted proof roots differ")
-    trial_dir = case_work / f"trial-{sample.label.replace(':', '-')}"
     accepted = (trial_dir / "proof.bin").read_bytes()
     if hashlib.sha256(accepted).hexdigest() != proof["proof_sha256"]:
         raise ValueError(f"{prefix}: accepted proof bytes differ from reported digest")

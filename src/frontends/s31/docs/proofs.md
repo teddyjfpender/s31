@@ -127,6 +127,27 @@ This strict command accepts one public `[m31; 4]` input, one to sixteen
 canonical add/multiply lets, zero-cost aliases and parentheses, and a public
 `[m31; 4]` output. Other S31 programs can still use `verify-pinned`; their
 source-to-AIR correspondence is outside this particular certificate.
+
+For that same fragment, the [fixed-root join inspector](../tools/inspect/check_direct_gate_fixed_root_join.py)
+replays `verify-release` admission, asks the packaged prover for a fresh
+topology export, and independently recommits all eight 512-word fixed columns.
+It then runs the generated native verifier on one exact proof and statement
+snapshot and compares the accepted proof's first commitment root with the
+recommitted cells and sealed key:
+
+```sh
+python3 src/frontends/s31/tools/inspect/check_direct_gate_fixed_root_join.py \
+  PACKAGE PROOF STATEMENT --pins /trusted/path/s31-pins.json
+```
+
+The pin file must contain lowercase SHA-256 hex values under exactly `text`,
+`source`, `key`, `prover`, and `verifier`. Obtain them through a trusted
+channel, independent of the package being inspected. The result includes
+the source, canonical IR, statement, proof, and fixed-column digests so the
+equality can be audited. This is a finite package/proof-byte diagnostic. It
+does not show that arbitrary PCS openings represent the displayed rows or
+prove Merkle, FRI, or the installed verifier sound.
+
 Auditors with the pinned Lean toolchain can also run the
 [proved byte checker](../../../../formal/s31/S31/Audit/README.md) on a
 package's `source.s31` and `source.s31.json`, and can supply the compact
