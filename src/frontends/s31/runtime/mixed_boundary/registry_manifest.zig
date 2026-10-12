@@ -123,6 +123,14 @@ pub fn fromSchedule(schedule: *const mixed.SelectedSchedule) !Manifest {
             slot.evaluation_log_size != slot.trace_log_size + spec.evaluation_log_delta or
             slot.preprocessed_count != 0))
             return error.InvalidMixedRegistryManifest;
+        // A call's private circuit ports and its chip/bridge program binding
+        // are one identity. Do not accept an internally resealed schedule
+        // that retargets an endpoint while retaining the old native bindings.
+        if (choice.call_id) |id| {
+            if (id >= schedule.call_count or
+                !std.meta.eql(slot.program_binding_sha256, mixed.nativeProgramBinding(source_kind, slot.air_source_sha256, schedule.calls[id])))
+                return error.InvalidMixedProgramBinding;
+        }
         entry.* = .{
             .registry_key = spec.key,
             .registry_id = spec.id,
@@ -347,8 +355,7 @@ test "mixed registry manifest is source-derived and ordered for all bounded coun
         inline for (0..3) |tree| {
             changed_native = native;
             changed_native.columns[tree][0].mask_width = 3;
-            try std.testing.expectError(error.InvalidMixedLiveManifestBinding,
-                requireNativeGeometry(&manifest, &changed_native));
+            try std.testing.expectError(error.InvalidMixedLiveManifestBinding, requireNativeGeometry(&manifest, &changed_native));
         }
         // Composition is the fourth committed tree. It has no per-column
         // mask array, but its width and lifting height still must match the
@@ -452,10 +459,10 @@ test "mixed registry manifest rejects resealed AIR and polynomial shape substitu
     // Equality with verifier-owned source, rather than that checksum, decides
     // admission. Cover fields that previously had no direct mutation case.
     inline for (.{
-        "selected manifest", "canonical IR", "circuit AIR", "circuit program",
-        "fixed index", "chip AIR", "chip program", "trace log", "evaluation log",
-        "main width", "interaction width", "constraint count",
-        "main total", "interaction total", "constraint total",
+        "selected manifest", "canonical IR",      "circuit AIR",       "circuit program",
+        "fixed index",       "chip AIR",          "chip program",      "trace log",
+        "evaluation log",    "main width",        "interaction width", "constraint count",
+        "main total",        "interaction total", "constraint total",
     }) |case| {
         var changed = authentic;
         if (comptime std.mem.eql(u8, case, "selected manifest")) changed.selected_manifest_sha256[0] ^= 1;

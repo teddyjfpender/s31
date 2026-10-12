@@ -392,7 +392,10 @@ fn advance(main_at: *u32, interaction_at: *u32, constraint_at: *u32, slot: Slot)
     constraint_at.* = try std.math.add(u32, constraint_at.*, slot.n_constraints);
 }
 
-fn nativeProgramBinding(kind: SourceKind, source_sha256: Digest, call: Call) Digest {
+/// Bind a registered native AIR to the exact compiled call it consumes.
+/// The typed registry manifest checks this again when joining call metadata
+/// to chip and bridge slots.
+pub fn nativeProgramBinding(kind: SourceKind, source_sha256: Digest, call: Call) Digest {
     var h = Sha256.init(.{});
     h.update("S31-MIXED-NATIVE-COMPONENT-PROTOTYPE-V1\x00");
     hashInt(&h, @as(u8, @intFromEnum(kind)));
@@ -559,10 +562,21 @@ test "mixed composition admission derives interleaved pair and many sources" {
     projected = try inspectSource(allocator, source, air_bytes);
     projected.calls[2].input[0] += 1;
     projected.digest = digestSelectedSchedule(&projected);
+    // A fresh diagnostic checksum does not let a retargeted private port
+    // retain the chip/bridge bindings for the original compiled address.
+    try std.testing.expect(hasCurrentDigest(&projected));
+    try std.testing.expectError(error.InvalidMixedProgramBinding, @import("registry_manifest.zig").fromSchedule(&projected));
     try std.testing.expect(!try matchesSource(allocator, &projected, source, air_bytes));
+    projected = try inspectSource(allocator, source, air_bytes);
+    projected.calls[2].output[0] += 1000;
+    projected.digest = digestSelectedSchedule(&projected);
+    try std.testing.expect(hasCurrentDigest(&projected));
+    try std.testing.expectError(error.InvalidMixedProgramBinding, @import("registry_manifest.zig").fromSchedule(&projected));
     projected = try inspectSource(allocator, source, air_bytes);
     projected.slots[2].program_binding_sha256[0] ^= 1;
     projected.digest = digestSelectedSchedule(&projected);
+    try std.testing.expect(hasCurrentDigest(&projected));
+    try std.testing.expectError(error.InvalidMixedProgramBinding, @import("registry_manifest.zig").fromSchedule(&projected));
     try std.testing.expect(!try matchesSource(allocator, &projected, source, air_bytes));
     projected = try inspectSource(allocator, source, air_bytes);
     projected.native_geometry.?.pcs.fri_config.n_queries += 1;
