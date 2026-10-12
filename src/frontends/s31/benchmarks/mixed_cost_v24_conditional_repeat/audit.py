@@ -30,6 +30,19 @@ _spec.loader.exec_module(old_audit)
 AUDIT = f.LANGUAGE / "mixed-cost-v24-conditional-repeat-audit.json"
 
 
+def check_extra_gates(saved: dict, independent: dict, gates: dict) -> None:
+    """Reject saved V24 gate flags that disagree with independent warm scoring."""
+    expected = {
+        "sample20_wall_median_in_band": independent["wall_sample20_median_in_band"],
+        "wall_one_draw_hits": independent["wall_one_draw_interval_hits"] >=
+            gates["wall_one_draw_hits_min"],
+        "proof_interval_hits": independent["proof_interval_coverage"] >=
+            gates["proof_interval_hits_min"] / f.CLAIMS,
+    }
+    if saved != expected:
+        raise ValueError("independently recomputed V24 extra gates differ")
+
+
 def run(out: Path, native: bool) -> dict:
     # Replay may run on a later checkout. The native attempt itself still
     # required the stricter current-stack `frozen()` preflight.
@@ -167,15 +180,7 @@ def run(out: Path, native: bool) -> dict:
     official = score["metrics"]
     # These V24 gates are layered on the reused V18 scorer. Recompute them
     # from independently scored rows, rather than trusting their saved flags.
-    independent_extra = {
-        "sample20_wall_median_in_band": independently["wall_sample20_median_in_band"],
-        "wall_one_draw_hits": independently["wall_one_draw_interval_hits"] >=
-            protocol["gates"]["wall_one_draw_hits_min"],
-        "proof_interval_hits": independently["proof_interval_coverage"] >=
-            protocol["gates"]["proof_interval_hits_min"] / f.CLAIMS,
-    }
-    if score["extra_gates"] != independent_extra:
-        raise ValueError("independently recomputed V24 extra gates differ")
+    check_extra_gates(score["extra_gates"], independently, protocol["gates"])
     mapped = {"wall_median_ns": "observed_warm_wall_median_ns",
               "proof_median_bytes": "observed_proof_median_bytes"}
     for key, value in independently.items():
