@@ -149,17 +149,15 @@ private theorem projected_public_band (certificate : Certificate) :
       simp [PublicBand, expectedCopyCell]
       omega
 
-/-- A checked source/public row cannot occupy a source-independent constant
-derivation or padding row. This is a structural fact about the modeled roster,
-not equality with production fixed-column commitments. -/
-theorem projected_constant_rows_disjoint
-    (sourceBytes normalizedBytes : List Nat) (certificate : Certificate)
-    (hcheck : checkRelation sourceBytes normalizedBytes = some certificate) :
+/-- Any bounded source/public row projection is disjoint from the
+source-independent constant island. The conclusion depends on the admitted
+producer budget, rather than on a particular spelling of the source. -/
+theorem projected_constant_rows_disjoint_of_budget
+    (certificate : Certificate)
+    (hbudget : certificate.instructions.length ≤ 16) :
     List.Disjoint ((projectedCells certificate).map ColumnCell.traceRow)
       (constantPositions certificate) := by
   intro row hprojected hconstant
-  have hbudget := checked_relation_instruction_bound sourceBytes
-    normalizedBytes certificate hcheck
   have hspace := constant_add_start_bounded certificate hbudget
   have hconstantBand := constant_position_band certificate hbudget
     row hconstant
@@ -179,6 +177,17 @@ theorem projected_constant_rows_disjoint
   · have hpublicBand := projected_public_band certificate cell hpublic
     unfold PublicBand at hpublicBand
     rcases hpublicBand with h | h | h | h <;> omega
+
+/-- Direct byte admission supplies the producer budget for the structural
+projection/island disjointness theorem. -/
+theorem projected_constant_rows_disjoint
+    (sourceBytes normalizedBytes : List Nat) (certificate : Certificate)
+    (hcheck : checkRelation sourceBytes normalizedBytes = some certificate) :
+    List.Disjoint ((projectedCells certificate).map ColumnCell.traceRow)
+      (constantPositions certificate) :=
+  projected_constant_rows_disjoint_of_budget certificate
+    (checked_relation_instruction_bound sourceBytes normalizedBytes
+      certificate hcheck)
 
 def joinedCells (certificate : Certificate) (island : List ColumnCell) :
     List ColumnCell := projectedCells certificate ++ island
