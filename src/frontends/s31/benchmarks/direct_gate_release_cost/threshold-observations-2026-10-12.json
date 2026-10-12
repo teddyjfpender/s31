@@ -1,0 +1,155 @@
+{
+  "cases": {
+    "addition-chain": {
+      "certified_source_correspondence": true,
+      "compiler_sha256": "f1d9c54cf5f98f8824400e9eab2355ab40dd4c979cb6d1ebfdbb9c048480170c",
+      "cost": {
+        "fri": {
+          "fold_step": 1,
+          "last_layer_degree_bound": 1,
+          "log_blowup_factor": 1,
+          "pow_bits": 26,
+          "queries": 70
+        },
+        "padded": {
+          "blake_g": 0,
+          "eq": 0,
+          "m31_to_u32": 0,
+          "qm31_ops": 512,
+          "triple_xor": 0
+        },
+        "preprocessed_cells": 4096,
+        "raw": {
+          "blake_g": 0,
+          "eq": 0,
+          "m31_to_u32": 0,
+          "qm31_ops": 329,
+          "triple_xor": 0
+        }
+      },
+      "manifest_sha256": "67cdacb03c7542fab1c6667649d3cf1b2bb6d0bb34d5535a702f2ed77a844968",
+      "package_build_wall_seconds": 53.36939637499745,
+      "paired_wall_median_seconds": 0.0673348545024055,
+      "proof_bytes_median": 55004.0,
+      "proof_sha256": [
+        "106b45b4eb76273f90434f1a633954e080d3024be0d301e79f7ac8cd39c71ec3",
+        "e7585c540de6bbfde569bb036d6e9f907db87f31e53102267bdd120ae16c61b5",
+        "439e623ab44616075e1efbfd703ce424d5fac7b213fd1b308091e3b36da352d4",
+        "98380e5afba3f2a23da25c18109aa1e5cb6b3b7f6123c8f438afd3fdeb74fba2",
+        "e78a67d051852a2d023849786dad77b6ce1a538d188630c3bfc532e99f854f35",
+        "b88751768f7e06242d5cd68c3baf9f08836e281c0e8edb862e7e686d78d4d77a",
+        "fbf88787acdf6b0425a2a7800dc6dcb4c30ea3b677009d110465fe43f854f10b",
+        "a441d31ea225e5f00ad459f4955c6ae6409e4fe88e2775ba0a3effd1d6ec4f7a",
+        "8f4491f758b9fd7dd4d6d16546a8b5df7aaefb16f8dce05a24c8a71571008384",
+        "4f0b95e6518a07c2ace27c784b3fecba6f7c0a30c61210e27a3df3d5cdc3f2a2",
+        "5b1e45c50432b230344934e040e541a0f7d958cb73dfa63668ec87c796d8d738",
+        "4a01e9a37325caa16d2fe197e318c45d514def36c51ec4e3ce3d7ce4370bf997"
+      ],
+      "prover_rss_median_bytes": 9134080.0,
+      "source_sha256": "d5b0e027a64cdafa245fb039a73dd830f68a828223293bdc145139b53fee1e8c",
+      "trial_report_sha256": [
+        "883f6036ebf14e04e93cc3f2551d130a606be81f9a9b461995ce85af95ec1dab",
+        "ecdc8ef1d8dbb2719b6acf6dfa359fae6133a95e946f16437138dce159b9f77b",
+        "4ba957bf98a0ee20573c971dce5112a705c77f4c522d86cccfc6ff8b8dc0956c",
+        "f1c322ed7f84ce84ed55ec7a5645c517d96031ac1309623657d27f3acf4c5db3",
+        "77b738ae1e38c5c4aa8c7a55b7a73f06b8db6f9770e17528026e18281ddd3415",
+        "b346d8b2c5d39c85781b1a6fb777e47f03b8d16f7af4f86cb175c538d14338ba",
+        "39378158e69f407e1f1e5f64dfa74cd55bc2b3baf8b162796e1bb975f7f16091",
+        "3350d12cfca1026cee9aba40d9e98494dffd92b653ce2e8142dfdd44f69f86c6",
+        "02f487996aa2b6962c22ab0b8db742e117d2484de2d77279e3a3dfabff398554",
+        "c510fd5fd42b8f019b13011b069ec2b5ae6687e771915e340020c160753ea4d1",
+        "97da99eff4e914e07464c7556721ce6e3ed5b389580fe4d6a5d063df5eda4400",
+        "6caa9094f3c4d54d39438307cf852885297302524923fff027ee6b62f3f0d32f"
+      ],
+      "wall_after_reported_pow": {
+        "max": 0.04299966700053401,
+        "median": 0.035503812996718564,
+        "median_absolute_deviation": 0.001424062490302136,
+        "min": 0.03225474999477808,
+        "observations": 12,
+        "p90_interpolated": 0.03843152079990972
+      }
+    },
+    "linear-chain": {
+      "certified_source_correspondence": false,
+      "compiler_sha256": "f1d9c54cf5f98f8824400e9eab2355ab40dd4c979cb6d1ebfdbb9c048480170c",
+      "cost": {
+        "fri": {
+          "fold_step": 1,
+          "last_layer_degree_bound": 1,
+          "log_blowup_factor": 1,
+          "pow_bits": 26,
+          "queries": 70
+        },
+        "padded": {
+          "blake_g": 0,
+          "eq": 0,
+          "m31_to_u32": 0,
+          "qm31_ops": 1024,
+          "triple_xor": 0
+        },
+        "preprocessed_cells": 8192,
+        "raw": {
+          "blake_g": 0,
+          "eq": 0,
+          "m31_to_u32": 0,
+          "qm31_ops": 513,
+          "triple_xor": 0
+        }
+      },
+      "manifest_sha256": "827fcdc4613a6d66fdc752b0a134d781ab881bd98ea2031dd45a4920f9855b1c",
+      "package_build_wall_seconds": 53.380913249988225,
+      "paired_wall_median_seconds": 0.08125466650380986,
+      "proof_bytes_median": 71553.0,
+      "proof_sha256": [
+        "aba19588626f62ee4d4b273a1154d0abc55f71cfce896758d16265228349c1bf",
+        "32464cf77ea1a4907fdb03d6c1a5f3b93a4a28c10a642db8c7aaefa92a2f1c41",
+        "671769a62208fc484ae37ca31c5a558c0024982415d81e102afbc8a9f84f3117",
+        "9ceffd44a45d85e614fcbd84845449f6c5661b07d8b71fe3a8dbb52e7c08e948",
+        "b27f5c4156d7d7cabf7037b01e478a11f637f5911bc72ca6b0c82170f90c3f6b",
+        "83bdac1f40938ba743bbe24fa48728f7b3838c2b7f2b520cde70642ac0406c9e",
+        "c5e2bcce28a57763998a6e66794e19314d0955eb5117c664f0ae63b98e22c129",
+        "b228d5bad135ffdac4a33308dacddbf6d90748660f8b820c64b2ddd84540118d",
+        "83653e095bc7f237a11905d010fc3505b66df3ae49b17cc37953eb72a8e9c858",
+        "725fd983d08fe3cad8cc6796e93a8f1ca053b4ccae0ca6b3d33077cca04c650e",
+        "ec0e205fb4382069c3d0d52aea2b917624f8f685929650fa94f59737aed57b16",
+        "0157c5b27b36ef5f95df8fda5f87a84f4fb4aa6410c30165410b0618d907cad2"
+      ],
+      "prover_rss_median_bytes": 10813440.0,
+      "source_sha256": "9b739669a2229598dac0985cd5a18c4bcc2ec8ef87137d90f538210576b2553e",
+      "trial_report_sha256": [
+        "a45a5b39edc1178840ebff681a810d4aa9d0cfe2dff051ad41fc9c138cfad143",
+        "dabff7e7793f07682ff53681d9a67397f91df4f5c18a95621909bf157229a088",
+        "30096d8a4db65a58a0e4b3aaacb917bc5bdcdbdc507c17d523dd84c328ea1b4c",
+        "6cc8d597b2d1387aa7911a69681bce7ff5c5a7a28fcc053dbcfe6502558548bb",
+        "92339e2dbec2ff19221a0ec03601c1de1e1c39fd8f56ba588a511b3c4acf02ae",
+        "a35828e09bf8c4fa51ce34aa8f58116c37347e2ad5c19095e156ced46764d03e",
+        "61bd2fa7264a1da28945efdb2f173d0d8ddec07620cc11cf1107238d6fbeed9e",
+        "d8f4a34d1214ffd6c4df585ba6628b641ad945061bf8141390dea1f4c1232794",
+        "b88ee8f88c7fa11e8e11261579f08233780e141d66c80c89cecb45874158f4aa",
+        "6bd300d3f5cf32634172f9508cde3c8bf2b44456500929273c0efcaca04c7e45",
+        "8007f503fbbeda894425a0e839052ccf5323b7eab10fe678cb76a027535f25c5",
+        "4bf4bb012632cacfe39cd757f9940bf34d77289f9ca3cb4fc689dfd1ec62d8be"
+      ],
+      "wall_after_reported_pow": {
+        "max": 0.5340275410073418,
+        "median": 0.03984654149666196,
+        "median_absolute_deviation": 0.0006973954931050394,
+        "min": 0.03774183399874624,
+        "observations": 12,
+        "p90_interpolated": 0.041144420487668
+      }
+    }
+  },
+  "host": {
+    "machine": "arm64",
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "python": "3.14.6",
+    "zig": "0.15.2"
+  },
+  "samples_per_case": 12,
+  "schema": "s31-direct-gate-addition-chain-threshold-v1",
+  "scope": "Equivalent four-lane 194*x functions on one host; 9-gate addition chain is source-certified, 193-gate linear chain is outside the bounded certificate. Each proof uses a fresh native prover and verifier. PoW-adjusted wall is timer subtraction, not a separate execution mode.",
+  "script_sha256": "829c004dc8923d5a3f29efbbf5adbacbe34373bc3104223c1b21b8480c908320",
+  "status": "exploratory-local-observation"
+}
