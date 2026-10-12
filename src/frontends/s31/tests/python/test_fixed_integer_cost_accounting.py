@@ -6,6 +6,7 @@ import json
 import sys
 import tempfile
 import unittest
+from contextlib import contextmanager
 from pathlib import Path
 from unittest.mock import patch
 
@@ -59,10 +60,19 @@ def evidence_fixture(root: Path) -> tuple[dict, dict]:
     summary_profiles = {}
     for lowering, profile_name in evidence.LOWERINGS.items():
         package = root / "tune" / "packages" / lowering
-        put(package / "manifest.json", {
+        manifest = {
             "compiler_sha256": compiler, "source_text_sha256": source_hash,
             "program_sha256": "p" * 64, "canonical_ir_sha256": "r" * 64,
             "lowering": lowering,
+        }
+        put(package / "manifest.json", manifest)
+        abi = {"public_inputs": [], "public_outputs": [
+            {"name": "out", "kind": "u16", "length": 1}]}
+        put(package / "public-abi.json", abi)
+        put(package / "cost-report.json", {
+            "profile": profile_name, "raw": {"qm31_ops": 5},
+            "padded": {"qm31_ops": 16}, "preprocessed_cells": 128,
+            "fri": {"queries": 70},
         })
         trials = []
         for index in range(5):
@@ -95,6 +105,7 @@ def evidence_fixture(root: Path) -> tuple[dict, dict]:
             "profile": profile_name, "visible_fri": {"queries": 70},
             "raw": {"qm31_ops": 5}, "padded": {"qm31_ops": 16},
             "preprocessed_cells": 128,
+            "public_abi": abi,
             "proof_bytes_per_assignment": [5] * 5, "median_proof_bytes": 5,
             "wall_prove_seconds_per_assignment": [.020] * 5,
             "median_wall_prove_seconds": .020,
@@ -139,13 +150,25 @@ def evidence_fixture(root: Path) -> tuple[dict, dict]:
 
 
 class CostAccountingTest(unittest.TestCase):
+    @contextmanager
+    def gate_context(self):
+        host = {"host_id_sha256": "h" * 64, "platform": "test", "machine": "cpu",
+                "python": "3.14", "zig": "0.15.2"}
+        with (patch.object(evidence.s31, "compiler_fingerprint", return_value="c" * 64),
+              patch.object(evidence, "host_identity", return_value=host),
+              patch.object(evidence.s31, "oracle_provenance", return_value={"version": 1}),
+              patch.object(evidence.s31, "verify_package",
+                           side_effect=lambda package: json.loads(
+                               (package / "manifest.json").read_text())),
+              patch.object(evidence.s31, "visible_fri",
+                           side_effect=lambda cost, _: cost["fri"])):
+            yield
+
     def test_artifact_gate_and_tampered_timing(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp).resolve()
-            host, oracle = evidence_fixture(root)
-            with (patch.object(evidence.s31, "compiler_fingerprint", return_value="c" * 64),
-                  patch.object(evidence, "host_identity", return_value=host),
-                  patch.object(evidence.s31, "oracle_provenance", return_value=oracle)):
+            evidence_fixture(root)
+            with self.gate_context():
                 report = evidence.analyze(root)
                 self.assertEqual(report["count"], 5)
                 self.assertAlmostEqual(
@@ -164,15 +187,51 @@ class CostAccountingTest(unittest.TestCase):
     def test_artifact_gate_rejects_unbalanced_schedule(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp).resolve()
-            host, oracle = evidence_fixture(root)
+            evidence_fixture(root)
             tune_path = root / "tune/tune-report.json"
             tune = json.loads(tune_path.read_text())
             tune["trial_schedule"][2:4] = tune["trial_schedule"][0:2]
             put(tune_path, tune)
-            with (patch.object(evidence.s31, "compiler_fingerprint", return_value="c" * 64),
-                  patch.object(evidence, "host_identity", return_value=host),
-                  patch.object(evidence.s31, "oracle_provenance", return_value=oracle)):
+            with self.gate_context():
                 with self.assertRaisesRegex(ValueError, "schedule"):
+                    evidence.analyze(root)
+
+    def test_rejects_unsealed_package_or_metric_drift(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp).resolve()
+            evidence_fixture(root)
+            with self.gate_context():
+                with patch.object(evidence.s31, "verify_package",
+                                  side_effect=ValueError("package artifact changed")):
+                    with self.assertRaisesRegex(ValueError, "package artifact changed"):
+                        evidence.analyze(root)
+                cost_path = root / "tune/packages/direct-gate/cost-report.json"
+                cost = json.loads(cost_path.read_text())
+                cost["preprocessed_cells"] = 999
+                put(cost_path, cost)
+                with self.assertRaisesRegex(ValueError, "sealed package cost"):
+                    evidence.analyze(root)
+
+    def test_rejects_changed_statement_control_drift(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp).resolve()
+            evidence_fixture(root)
+            trial_dir = root / "tune/runs/direct-gate/000"
+            changed_path = trial_dir / "changed-statement.json"
+            changed = json.loads(changed_path.read_text())
+            changed["public_outputs"]["out"][0] += 1
+            put(changed_path, changed)
+            with self.gate_context():
+                with self.assertRaisesRegex(ValueError, "public statement or oracle"):
+                    evidence.analyze(root)
+            changed["public_outputs"]["out"][0] -= 1
+            put(changed_path, changed)
+            trial_path = trial_dir / "trial-report.json"
+            trial = json.loads(trial_path.read_text())
+            trial["changed_public_statement_rejected"] = "public_inputs.fake[0]"
+            put(trial_path, trial)
+            with self.gate_context():
+                with self.assertRaisesRegex(ValueError, "public statement or oracle"):
                     evidence.analyze(root)
 
     def test_complete_process_decomposition(self) -> None:

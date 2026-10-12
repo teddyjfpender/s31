@@ -29,6 +29,13 @@ requires the runner's recorded native overflow rejection. The gate does not
 rerun the native verifier; the original trial and prover controls remain in
 `tune/` for replay.
 
+The gate also revalidates sealed package artifacts and matches the cost-report
+geometry, visible FRI settings, and public ABI to the saved profile. It
+reconstructs the exact one-word changed public statement and checks that the
+trial names that changed word. The schedule matches the runner's alternating
+order, but saved trials have no independent timestamp or order witness; an
+offline check cannot prove the processes actually ran in that order.
+
 For each assignment, whole-process wall is measured prover-process wall plus
 measured native-verifier-process wall. The prover side is accounted as:
 
@@ -52,3 +59,6 @@ Twenty distinct witnesses are the default; five is a smoke check. It is not
 an unseen-program predictor or a claim that different AIRs have equal
 soundness. The older V8r1 held-out whole-prover model remains historical for
 its pinned compiler and host until a new prospective corpus is measured.
+With an odd witness count, one profile necessarily runs first once more than
+the other. For short runs, FRI proof-of-work variance can dominate wall time;
+inspect paired samples and stage times before drawing a speed conclusion.

@@ -8,6 +8,7 @@ this offline gate does not rerun a verifier.
 from __future__ import annotations
 
 import argparse
+import copy
 import hashlib
 import json
 import math
@@ -89,6 +90,30 @@ def stage_parts(trial: dict, label: str) -> dict:
             "whole_process": trial["prove_seconds"] + trial["verify_seconds"]}
 
 
+def expected_changed_statement(statement: dict, public_abi: dict) -> tuple[dict, str]:
+    """Independently reconstruct the single public-word control in runtime.trials."""
+    changed = copy.deepcopy(statement)
+    for category in ("public_outputs", "public_inputs"):
+        fields = public_abi.get(category)
+        require(isinstance(fields, list), f"invalid public ABI {category}")
+        for field in fields:
+            require(isinstance(field, dict) and isinstance(field.get("name"), str) and
+                    field.get("kind") in ("u16", "m31") and
+                    isinstance(changed.get(category), dict),
+                    f"invalid public ABI field in {category}")
+            name = field["name"]
+            words = changed[category].get(name)
+            require(isinstance(words, list) and len(words) == field.get("length"),
+                    f"invalid public ABI value for {category}.{name}")
+            if words:
+                bound = 65536 if field["kind"] == "u16" else (1 << 31) - 1
+                require(type(words[0]) is int and 0 <= words[0] < bound,
+                        f"invalid public word for {category}.{name}")
+                words[0] = (words[0] + 1) % bound
+                return changed, f"{category}.{name}[0]"
+    raise ValueError("no public word available for changed-statement control")
+
+
 def analyze(output: Path) -> dict:
     output = output.resolve()
     summary = load(output / "summary.json")
@@ -161,7 +186,16 @@ def analyze(output: Path) -> dict:
                 profile.get("independent_value_oracle_statuses") == ["passed"] * count,
                 f"{lowering}: profile or proof controls failed")
         package = output / "tune" / "packages" / lowering
-        manifest = load(package / "manifest.json")
+        manifest = s31.verify_package(package)
+        cost = load(package / "cost-report.json")
+        public_abi = load(package / "public-abi.json")
+        require(cost.get("profile") == profile_name and
+                cost.get("raw") == profile.get("raw") and
+                cost.get("padded") == profile.get("padded") and
+                cost.get("preprocessed_cells") == profile.get("preprocessed_cells") and
+                s31.visible_fri(cost, lowering) == profile.get("visible_fri") and
+                profile.get("public_abi") == public_abi,
+                f"{lowering}: sealed package cost or ABI differs from paired evidence")
         for name, value in (("compiler_sha256", summary["compiler_sha256"]),
                             ("source_text_sha256", summary["source_sha256"]),
                             ("program_sha256", summary["program_sha256"]),
@@ -203,9 +237,12 @@ def analyze(output: Path) -> dict:
             claim = load(assignment)
             statement = load(trial_dir / "statement.json")
             changed = load(trial_dir / "changed-statement.json")
+            expected_changed, expected_field = expected_changed_statement(
+                statement, public_abi)
             require(statement == {"public_inputs": claim["public_inputs"],
                                   "public_outputs": claim["public_outputs"]} and
-                    changed != statement and
+                    changed == expected_changed and
+                    trial.get("changed_public_statement_rejected") == expected_field and
                     trial["independent_value_oracle"].get("computed_public_outputs") ==
                     claim["public_outputs"],
                     f"{label}: public statement or oracle value differs")
