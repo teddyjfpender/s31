@@ -80,7 +80,7 @@ After the candidate commit is pushed, run:
 
 ```sh
 python3 -B scripts/release/release_candidate.py \
-  --audit zig-out/s31/release-audit-final.json \
+  --audit zig-out/s31/release-audit-candidate.json \
   --features zig-out/s31/feature-gate-full-final.json \
   --formal zig-out/s31/formal-checks-final.json \
   --compiler-sha256 '<PINNED_COMPILER_SHA256>' \
