@@ -66,3 +66,11 @@ sealed key; the general lookup/PCS soundness proof is still separate work.
 
 The certificate covers this bounded source and native fixed-row schedule.
 It does not prove the underlying Gate lookup, PCS/FRI, or verifier soundness.
+
+The [Lean packed-row theorem](../../../../../formal/s31/S31/Gadgets/Functional/Correspondence/OrderedSubtractionRelease.lean)
+proves that **every** auxiliary witness satisfying these three add/sub rows
+has output `0 - (x + x)` in all four lanes, and constructs an honest witness
+for every input. It also identifies each row with the executable normalized
+node operation. This is a local arbitrary-witness theorem; the source-byte
+parser, emitted native rows, and proof openings are not yet joined to it in
+Lean.

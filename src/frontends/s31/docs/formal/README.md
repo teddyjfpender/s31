@@ -162,6 +162,11 @@ The independent release checker now admits ordered subtraction and checks its
 native selector, operands, row position, and fixed root. The Lean exact-byte
 and physical-roster composition on this page still covers add and pointwise
 multiply source gates; it has not been extended to subtraction.
+The [ordered subtraction theorem](../../../../../formal/s31/S31/Gadgets/Functional/Correspondence/OrderedSubtractionRelease.lean)
+now proves the three-row `release_sub4` arithmetic relation for arbitrary
+intermediate witnesses and honest existence, using the installed packed-row
+model and executable normalized node semantics. It does not close the
+source-byte or native commitment joins.
 
 ## A complete modeled 512-row trace
 

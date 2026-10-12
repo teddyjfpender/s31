@@ -33,6 +33,17 @@ arithmetic rows; lookup balance, trace scheduling, public pins, and STARK
 verification are separate proof obligations. The existing `TextSquare4*`
 modules go deeper into those boundaries for one source-bound example.
 
+[`OrderedSubtractionRelease.lean`](../../../formal/s31/S31/Gadgets/Functional/Correspondence/OrderedSubtractionRelease.lean)
+checks the three add/sub packed rows of the `release_sub4` example. It proves
+that arbitrary satisfying intermediate values force `0 - (x+x)` in all four
+lanes, constructs an honest witness for every input, and equates those rows
+with executable normalized nodes. The independent v2/v3 package checker now
+handles ordered subtraction through its native fixed-row schedule and release
+proofs. The Lean byte parser and physical-roster theorem below still cover
+source add/pointwise-multiply gates, so a Lean theorem joining this new
+subtraction example's exact source bytes to authenticated native rows remains
+open.
+
 ## Remaining proof obligations
 
 | Boundary | Completion criterion |
