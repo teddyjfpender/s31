@@ -45,13 +45,18 @@ fingerprint or host:
 python3 src/frontends/s31/benchmarks/mixed_cost_v19_revision_holdout/freeze.py check-record
 ```
 
-For the original stricter `check`, use the preregistration commit from the PR
-history in a separate worktree. Its production checkout is the one measured:
+For the original stricter `check`, reconstruct the measured production tree
+from the pinned `aa15b22` base, then apply only the V19 preregistration patch
+from PR history in a separate worktree. Checking out the PR preregistration
+commit directly may include unrelated compiler changes inherited from its
+parent:
 
 ```sh
 v19_prereg_commit=$(git log --all --format=%H \
   --grep='^Preregister V19 current-revision cost replication$' -1)
-git worktree add --detach /tmp/s31-v19-preregistered "$v19_prereg_commit"
+git worktree add --detach /tmp/s31-v19-preregistered \
+  aa15b22ca817485599cda160b0e50ea5bc35f3cf
+git -C /tmp/s31-v19-preregistered cherry-pick "$v19_prereg_commit"
 git -C /tmp/s31-v19-preregistered submodule update --init deps/stwo-zig
 python3 /tmp/s31-v19-preregistered/src/frontends/s31/benchmarks/mixed_cost_v19_revision_holdout/freeze.py check
 ```
