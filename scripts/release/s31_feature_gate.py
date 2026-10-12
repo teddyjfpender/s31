@@ -114,6 +114,14 @@ def raw(value: bytes | str) -> bytes:
     return value if isinstance(value, bytes) else value.encode("utf-8")
 
 
+def failure_excerpt(value: bytes | str) -> str:
+    """Keep compiler diagnostics at the start as well as the command tail."""
+    decoded = raw(value).decode("utf-8", errors="replace")
+    if len(decoded) <= 5000:
+        return decoded
+    return decoded[:3000] + "\n... stderr omitted ...\n" + decoded[-2000:]
+
+
 def canonical(value: object) -> bytes:
     return (json.dumps(value, sort_keys=True, separators=(",", ":"),
                        ensure_ascii=True) + "\n").encode("ascii")
@@ -278,7 +286,7 @@ def run_suite(mode: str, selected: set[str] | None = None, *,
             if after != start:
                 raise ValueError("compiler fingerprint drift during command")
             if result.returncode != 0:
-                raise ValueError(f"check exited {result.returncode}: {raw(result.stderr)[-2000:].decode('utf-8', errors='replace')}")
+                raise ValueError(f"check exited {result.returncode}: {failure_excerpt(result.stderr)}")
             row["controls"] = validate_output(check, raw(result.stdout).decode("utf-8"),
                                               raw(result.stderr).decode("utf-8"), start)
             row["status"] = "passed"

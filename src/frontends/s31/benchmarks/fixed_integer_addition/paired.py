@@ -105,7 +105,10 @@ def run(kind: str, count: int, seed: int, output: Path) -> dict:
             name: {field: profile[field] for field in PROFILE_FIELDS}
             for name, profile in profiles.items()
         },
-        "limitations": "One host and one program; native setup is cold in every fresh prover process. Sequential profiles and transcript proof-of-work are sensitive to load and order. Equal visible FRI settings do not establish equal soundness.",
+        "limitations": ("One host and one program; native setup is cold in every fresh "
+                        "prover process. Paired profile order alternates by assignment, "
+                        "while transcript proof-of-work and external load still vary. "
+                        "Equal visible FRI settings do not establish equal soundness."),
     }
     s31.write_json(output / "summary.json", concise)
     validate(output)

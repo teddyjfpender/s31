@@ -140,6 +140,14 @@ class FeatureGateTests(unittest.TestCase):
         self.assertEqual(failed["cases"]["v1-source-relation"]["returncode"], 1)
         self.assertIn("forged proof accepted", failed["cases"]["v1-source-relation"]["error"])
 
+        long_stderr = "early Zig compile error\n" + "x" * 6000 + "\nlate build summary"
+        def failed_build(check: gate.Check) -> subprocess.CompletedProcess[str]:
+            return subprocess.CompletedProcess(check.argv(), 1, "", long_stderr)
+        failed = gate.run_suite("source", {"v1-source-relation"},
+                                execute_fn=failed_build, fingerprint_fn=lambda: FINGERPRINT)
+        self.assertIn("early Zig compile error", failed["cases"]["v1-source-relation"]["error"])
+        self.assertIn("late build summary", failed["cases"]["v1-source-relation"]["error"])
+
     def test_raw_output_hash_and_script_mutation(self) -> None:
         selected = {"v1-source-relation"}
 

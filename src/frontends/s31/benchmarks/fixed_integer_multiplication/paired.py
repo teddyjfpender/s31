@@ -195,9 +195,10 @@ def run(kind: str, count: int, seed: int, output: Path) -> dict:
         "direct_over_sparse_median_proof_bytes_ratio": round(
             profiles["direct-gate"]["median_proof_bytes"] /
             profiles["sparse-wide-gate"]["median_proof_bytes"], 4),
-        "limitations": ("One host and one source; profiles run sequentially with cold native setup "
-                        "for each distinct witness. Host load, process start, OS cache, and proof-of-work "
-                        "vary. Matching visible FRI settings alone do not establish equal soundness."),
+        "limitations": ("One host and one source; paired profile order alternates by assignment, "
+                        "with cold native setup for each distinct witness. Host load, process start, "
+                        "OS cache, and proof-of-work vary. Matching visible FRI settings alone "
+                        "do not establish equal soundness."),
     }
     s31.write_json(output / "summary.json", concise)
     analyze(output)
