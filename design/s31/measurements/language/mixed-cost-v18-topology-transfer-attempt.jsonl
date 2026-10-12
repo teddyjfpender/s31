@@ -1,0 +1,2 @@
+{"event":"started","output_dir":"/private/tmp/s31-v18-mixed-topology-e9be79a/.v18-artifacts","protocol_sha256":"07dab408bad90494613a8d67d5b5240cb8bb746398a07b59df4ea87503ad4840","schema":"s31-mixed-cost-v18-attempt-v1","time_ns":1791762960695629000}
+{"all_gates_pass":true,"event":"completed","score_sha256":"e7defea74f7403e772344431a4cfd46d89d41836aba7629a6a19f9d4f154eafc","time_ns":1791763232073019000}
