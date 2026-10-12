@@ -65,6 +65,18 @@ including both selector values and field wrap; the strict typed public ABI is
 flattened independently and a forged result must fail. The seed and
 two-source corpus SHA-256 are pinned in the test.
 
+`test_static_enum_effect_generated.py` adds 112 static-enum programs over
+array lengths 1–7, addition and multiplication, both positions of a dynamic
+conditional, and four routes through a direct helper, relay, constructor
+factory, or captured lambda. Each must have the exact normalized relation of
+a handwritten arithmetic conditional. Independent M31 calculations check
+both bit values and reject changed public outputs, including zero and field
+wrap inputs. Sixteen negative programs require rejection when the selected
+static arm or an eagerly evaluated constructor payload contains an inverse
+inside a dynamic conditional. The two-source corpus digest is pinned. The
+[native one-lane gate](../../acceptance/functional/static_enum_if.py) separately
+checks AIR cost and proof verification; this corpus checks source lowering.
+
 A second gate perturbs valid source text and requires located diagnostics for
 rejected mutations. Deep expressions and function types must hit explicit,
 located nesting limits. The scalar corpus is deterministic (`SEED = 0x531F00D`);

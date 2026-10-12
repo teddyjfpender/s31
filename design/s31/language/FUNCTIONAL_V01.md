@@ -110,6 +110,11 @@ The [native static-enum acceptance](../../../src/frontends/s31/examples/function
 compares the complete AIR cost tuple with a handwritten selector and verifies
 three public claims with changed-claim rejection, including `x=0` in the
 branch that would otherwise encounter an inverse-of-zero.
+The [generated source corpus](../../../src/frontends/s31/tests/python/generated/README.md)
+checks 112 static-enum programs across array lengths 1–7, two arithmetic
+operations, both conditional directions and four function routes against
+handwritten relations and independent M31 values. Sixteen selected or eager
+partial-arm mutations must fail compilation.
 
 The release gate still needs broader geometry equivalence checks and a
 formal correspondence from source conditionals through effect analysis to
