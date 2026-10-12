@@ -1,0 +1,2 @@
+{"event":"started","output_dir":"/private/tmp/s31-v21-unseen-topology-artifacts-4c0872c","protocol_sha256":"fc5b28ea6d6e98891c62c06862ea2e7983ef1d95802abb310d9764d35b68b7fd","schema":"s31-v21-unseen-topology-attempt-v1","time_ns":1791766865379403000}
+{"all_gates_pass":true,"event":"completed","score_sha256":"59b22ac286b6e21fb3f5c20f9e47898bbc1910192185b8cc3d6ed107a8a3246e","time_ns":1791766968613288000}
