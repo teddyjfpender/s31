@@ -48,6 +48,12 @@ Those are handled by adjacent formal modules and native tests, with full
 compiler correspondence still open. `checkRoot` permits a public bit leaf;
 the whole-descriptor validator separately rejects private input bit leaves.
 
+The [public u32 boundary example](../Functional/RecordU32BoundaryV2.md)
+walks through a two-u16-limb record value, repeated result aliases, its
+eight-word proof projection, and the exact Lean packing theorems. Its model
+starts after validated descriptors and does not claim native parser or AIR
+refinement.
+
 Focused check:
 
 ```sh

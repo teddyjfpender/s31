@@ -41,7 +41,9 @@ result blocks; that is a separate relation and proof obligation.
 
 `checkLayout` recursively checks every record and tuple node has 1–64
 children, record sibling names are distinct, no path has more than 32 node
-edges, each `m31` leaf has width 1–8, and each `bit` leaf has width one.
+edges, `m31` and `u16` leaves have width 1–8, `bit` and `u8` have width one,
+and `u32` has width exactly two. The two `u32` words are ordered low limb,
+then high limb; the [u32 model](RecordU32BoundaryV2.md) proves their packing.
 `checkRoot` additionally checks that this root has at most 1,024 leaves.
 `checkNativeRoot` rejects a tuple at the root, matching the native root
 shape rule. Empty nodes, duplicate sibling names, invalid widths, an
@@ -79,7 +81,7 @@ JSON parser or `typeTree` creates the same `RawLayout`, validates identifier
 syntax, or matches leaves to relation wires. `checkRoot`'s 1,024-leaf bound
 is **per root**; Zig also checks 1,024 leaves across all roots. Native nominal
 record-name consistency across roots and the private-input prohibition on
-`bit` leaves remain separate checks. The theorem requires canonical M31
+`bit`, `u8`, `u16`, and `u32` leaves remain separate checks. The theorem requires canonical M31
 words as a premise and does not establish the tighter public-bit value range
 `0..1` or canonical JSON encoding. It also does not establish ABI digest
 binding, proof authentication, AIR acceptance, or polynomial commitment

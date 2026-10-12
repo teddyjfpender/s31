@@ -239,6 +239,7 @@ import S31.Gadgets.Functional.RecordDescriptorValidationV2
 import S31.Gadgets.Functional.RecordDescriptorLexicalV2
 import S31.Gadgets.Functional.GeneratedRecordLayoutCorpusV2
 import S31.Gadgets.Functional.RecordStatementV2
+import S31.Gadgets.Functional.RecordU32BoundaryV2
 import S31.Gadgets.Functional.RecordDescriptorWireRefinementV2
 import S31.Gadgets.Functional.GeneratedRecordStatementCorpusV2
 import S31.Gadgets.Functional.RecordPinnedPairAliasV2

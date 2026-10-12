@@ -70,12 +70,12 @@ theorem concatBlocks_length {α : Type} (leaves : List (WordBlock α)) :
       simp [head.exactWidth, ih]
 
 /-!
-Public bit, u8, and u16 leaves tag already existing M31 words. This model records
+Public bit, u8, u16, and u32 leaves tag already existing M31 words. This model records
 the additional native statement range checks. The production direct-gate
 compiler separately reconstructs public u8 input words from eight Boolean
-bits and public u16 input words from sixteen Boolean bits; neither those
+bits and each public u16/u32 limb from sixteen Boolean bits; neither those
 compiler links nor JSON parsing follow from this model.
-Private bit, u8, and u16 leaves are outside the admitted native ABI subset.
+Private bit, u8, u16, and u32 leaves are outside the admitted native ABI subset.
 -/
 
 inductive PublicLeafKind where
@@ -83,6 +83,7 @@ inductive PublicLeafKind where
   | bit
   | u8
   | u16
+  | u32
 deriving DecidableEq
 
 def publicLeafBound : PublicLeafKind → Nat
@@ -90,6 +91,7 @@ def publicLeafBound : PublicLeafKind → Nat
   | .bit => 2
   | .u8 => 256
   | .u16 => 65536
+  | .u32 => 65536
 
 structure TaggedPublicBlock where
   kind : PublicLeafKind
@@ -127,6 +129,13 @@ theorem tagged_public_u8_range (leaf : TaggedPublicBlock)
     (isU8 : leaf.kind = .u8) (word : Nat)
     (present : word ∈ leaf.block.words) : word < 256 := by
   simpa [isU8, publicLeafBound] using leaf.range word present
+
+/-- A tagged public u32 cell is one 16-bit limb. The two-word shape is
+checked by the separate validated type tree. -/
+theorem tagged_public_u32_limb_range (leaf : TaggedPublicBlock)
+    (isU32 : leaf.kind = .u32) (word : Nat)
+    (present : word ∈ leaf.block.words) : word < 65536 := by
+  simpa [isU32, publicLeafBound] using leaf.range word present
 
 theorem u8_edge_words_valid :
     0 < publicLeafBound .u8 ∧ 255 < publicLeafBound .u8 := by

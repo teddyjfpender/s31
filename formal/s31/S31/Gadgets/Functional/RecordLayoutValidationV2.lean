@@ -6,7 +6,7 @@ The raw constructors distinguish named record fields from tuple indices and
 carry every leaf's declared kind and width. Unlike `WellTagged`, this input
 contains no path-uniqueness proof. `checkRoot` checks finite local
 obligations from the production type-tree walk: nonempty bounded nodes,
-distinct sibling field names, depth, a per-root leaf bound, and M31/bit/u16
+distinct sibling field names, depth, a per-root leaf bound, and M31/bit/u16/u32
 leaf widths.
 
 The theorems discharge the tag and width premises of the generic nested
@@ -44,17 +44,24 @@ def leafCount : RawLayout → Nat
 
 def ValidLeaf (kind : PublicLeafKind) (width : Nat) : Prop :=
   1 ≤ width ∧ width ≤ 8 ∧ (kind = .bit → width = 1) ∧
-    (kind = .u8 → width = 1)
+    (kind = .u8 → width = 1) ∧ (kind = .u32 → width = 2)
 
 def checkLeaf (kind : PublicLeafKind) (width : Nat) : Bool :=
   decide (1 ≤ width) && decide (width ≤ 8) &&
     decide (kind = .bit → width = 1) &&
-    decide (kind = .u8 → width = 1)
+    decide (kind = .u8 → width = 1) &&
+    decide (kind = .u32 → width = 2)
 
 theorem checkLeaf_iff (kind : PublicLeafKind) (width : Nat) :
     checkLeaf kind width = true ↔ ValidLeaf kind width := by
   simp only [checkLeaf, Bool.and_eq_true, decide_eq_true_eq, ValidLeaf]
   tauto
+
+theorem u32_two_limb_shape : checkLeaf .u32 2 = true := by decide
+
+theorem u32_one_limb_rejected : checkLeaf .u32 1 = false := by decide
+
+theorem u32_three_limb_rejected : checkLeaf .u32 3 = false := by decide
 
 /-- `remaining` counts allowed record/tuple edges; a leaf needs no edge. -/
 def checkLayout : Nat → RawLayout → Bool

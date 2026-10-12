@@ -126,7 +126,7 @@ theorem widths_eq_orderedWidths (root : String) (layout : RawLayout)
     orderedNominalLeaves, List.map_map, Function.comp_def]
   exact List.map_congr_left (fun position _ => (matching position).symm)
 
-/-- Bit, u8, and u16 bounds are stronger than the canonical M31 bound. Thus the
+/-- Bit, u8, u16, and u32 limb bounds are stronger than the canonical M31 bound. Thus the
 native per-kind statement range check suffices for the flat word decoder. -/
 theorem kindsInRange_canonical (root : String) (layout : RawLayout)
     (values : LeafPosition (erase layout) → WordBlock Nat)
@@ -148,6 +148,9 @@ theorem kindsInRange_canonical (root : String) (layout : RawLayout)
       simp [hKind, publicLeafBound] at bounded
       omega
   | u16 =>
+      simp [hKind, publicLeafBound] at bounded
+      omega
+  | u32 =>
       simp [hKind, publicLeafBound] at bounded
       omega
 
