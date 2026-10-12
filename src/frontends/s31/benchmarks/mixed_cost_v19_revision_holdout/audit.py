@@ -11,7 +11,13 @@ import subprocess
 from pathlib import Path
 
 import freeze as f
-import study as s
+
+_study_spec = importlib.util.spec_from_file_location(
+    "s31_v19_cost_study", f.HERE / "study.py")
+if _study_spec is None or _study_spec.loader is None:
+    raise RuntimeError("V19 study module unavailable")
+s = importlib.util.module_from_spec(_study_spec)
+_study_spec.loader.exec_module(s)
 
 _spec = importlib.util.spec_from_file_location(
     "s31_v18_cost_audit", f.HERE.parent / "mixed_cost_v18_topology_transfer/audit.py")
