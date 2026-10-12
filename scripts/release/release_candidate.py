@@ -44,6 +44,27 @@ FEATURE_CASES = frozenset({
     "direct-add-all-native", "direct-sub-le-all-native", "direct-mul-all-native",
     "record-u8-native", "record-u16-native", "record-u32-native",
 })
+# Exact finite commands expected from the pinned full-mode feature runner.
+# The interpreter path may vary by host; the script and arguments may not.
+FEATURE_COMMANDS = {
+    "v1-source-relation": ("src/frontends/s31/tests/python/security/test_source_relation_fragment.py",),
+    "v2-record-source-relation": ("src/frontends/s31/tests/python/security/test_record_source_fragment.py",),
+    "static-sum-dce-source": ("src/frontends/s31/tests/python/functional/test_static_sum_dce.py",),
+    "direct-add-source": ("src/frontends/s31/tests/acceptance/math/addition.py", "--source-only"),
+    "direct-sub-le-source": ("src/frontends/s31/tests/acceptance/math/direct_binary.py",),
+    "direct-mul-source": ("src/frontends/s31/tests/acceptance/math/direct_multiplication.py",),
+    "record-u8-source": ("src/frontends/s31/tests/acceptance/record_abi/public_u8_direct_gate_v2.py",),
+    "record-u16-source": ("src/frontends/s31/tests/acceptance/record_abi/public_u16_direct_gate_v2.py",),
+    "record-u32-source": ("src/frontends/s31/tests/acceptance/record_abi/public_u32_direct_gate_v2.py",),
+    "static-sum-dce-native": ("src/frontends/s31/tests/acceptance/functional/static_sum_dce.py",),
+    "v2-record-source-native": ("src/frontends/s31/tests/acceptance/record_abi/record_source_fragment_v2.py",),
+    "direct-add-all-native": ("src/frontends/s31/tests/acceptance/math/addition.py", "--lowering", "direct-gate"),
+    "direct-sub-le-all-native": ("src/frontends/s31/tests/acceptance/math/direct_binary.py", "--native"),
+    "direct-mul-all-native": ("src/frontends/s31/tests/acceptance/math/direct_multiplication.py", "--native", "--mode", "both"),
+    "record-u8-native": ("src/frontends/s31/tests/acceptance/record_abi/public_u8_direct_gate_v2.py", "--native"),
+    "record-u16-native": ("src/frontends/s31/tests/acceptance/record_abi/public_u16_direct_gate_v2.py", "--native"),
+    "record-u32-native": ("src/frontends/s31/tests/acceptance/record_abi/public_u32_direct_gate_v2.py", "--native"),
+}
 FORMAL_COMMANDS = {
     "bindings": ["python3", "-B", "scripts/s31_formal.py"],
     "lake_build": ["lake", "build", "S31"],
@@ -177,8 +198,10 @@ def validate_reports(audit: dict, feature: dict, formal: dict, *, compiler: str,
                 f"feature row {name}: command identity mismatch")
         argv = command.get("argv")
         require(isinstance(argv, list) and len(argv) >= 3 and
-                isinstance(argv[2], str) and command.get("cwd") == str(root),
-                f"feature row {name}: command path malformed")
+                isinstance(argv[0], str) and argv[0] != "" and argv[1] == "-B" and
+                tuple(argv[2:]) == FEATURE_COMMANDS[name] and
+                command.get("cwd") == str(root),
+                f"feature row {name}: command differs from expected full-mode check")
         script = (root / argv[2]).resolve()
         require(script.is_relative_to(root.resolve()) and script.is_file() and
                 command.get("script_sha256") == digest(script),

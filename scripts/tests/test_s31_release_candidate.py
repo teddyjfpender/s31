@@ -10,7 +10,7 @@ import subprocess
 from pathlib import Path
 
 from scripts.release.release_candidate import (
-    AUDIT_CASES, AUDIT_FIXTURES, FEATURE_CASES, FORMAL_COMMANDS,
+    AUDIT_CASES, AUDIT_FIXTURES, FEATURE_CASES, FEATURE_COMMANDS, FORMAL_COMMANDS,
     validate_reports, require_formal_tree_unchanged,
 )
 
@@ -39,9 +39,10 @@ class CandidateReports(unittest.TestCase):
                     fixture = self.root / "src/frontends/s31/examples" / name
                     fixture.parent.mkdir(parents=True, exist_ok=True)
                     fixture.write_text(name)
-        feature_script = self.root / "src/frontends/s31/tests/check.py"
-        feature_script.parent.mkdir(parents=True, exist_ok=True)
-        feature_script.write_text("# feature fixture\n")
+        for script_name, *_ in FEATURE_COMMANDS.values():
+            feature_script = self.root / script_name
+            feature_script.parent.mkdir(parents=True, exist_ok=True)
+            feature_script.write_text("# feature fixture\n")
         for name in ("formal/s31/proof-inventory.json", "formal/s31/source-bindings.json"):
             path = self.root / name
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -81,10 +82,21 @@ class CandidateReports(unittest.TestCase):
             "engine": {"commit": ENGINE, "worktree_clean": True},
             "engine_at_end": {"commit": ENGINE, "worktree_clean": True},
         }
-        command = {"argv": ["python3", "-B", "src/frontends/s31/tests/check.py"],
-                   "cwd": str(self.root), "script_sha256": sha(feature_script.read_bytes())}
-        command_sha = sha((json.dumps(command, sort_keys=True, separators=(",", ":"),
-                                       ensure_ascii=True) + "\n").encode("ascii"))
+        cases = {}
+        for name, expected in FEATURE_COMMANDS.items():
+            command = {"argv": ["python3", "-B", *expected],
+                       "cwd": str(self.root),
+                       "script_sha256": sha((self.root / expected[0]).read_bytes())}
+            command_sha = sha((json.dumps(command, sort_keys=True, separators=(",", ":"),
+                                           ensure_ascii=True) + "\n").encode("ascii"))
+            outcome = {"command_sha256": command_sha, "returncode": 0,
+                       "stdout_sha256": "d" * 64, "stderr_sha256": "d" * 64}
+            cases[name] = {"status": "passed", "returncode": 0,
+                           "controls": {"cases": 1}, "command": command,
+                           **outcome,
+                           "result_sha256": sha((json.dumps(
+                               outcome, sort_keys=True, separators=(",", ":"),
+                               ensure_ascii=True) + "\n").encode("ascii"))}
         self.feature = {
             "schema": "s31-scoped-feature-gate-v1", "mode": "full",
             "gate_script_sha256": sha(gate_script.read_bytes()),
@@ -93,16 +105,7 @@ class CandidateReports(unittest.TestCase):
             "script_identity_consistent": True,
             "compiler_sha256_start": COMPILER, "compiler_sha256_end": COMPILER,
             "selected": sorted(FEATURE_CASES),
-            "cases": {name: {"status": "passed", "returncode": 0,
-                             "controls": {"cases": 1},
-                             "command": command, "command_sha256": command_sha,
-                             "stdout_sha256": "d" * 64, "stderr_sha256": "d" * 64,
-                             "result_sha256": sha((json.dumps({
-                                 "command_sha256": command_sha, "returncode": 0,
-                                 "stdout_sha256": "d" * 64, "stderr_sha256": "d" * 64,
-                             }, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
-                                 + "\n").encode("ascii"))}
-                      for name in FEATURE_CASES},
+            "cases": cases,
         }
         self.formal = {
             "schema": "s31-v01-formal-checks-v1", "compiler_sha256": COMPILER,
@@ -155,8 +158,21 @@ class CandidateReports(unittest.TestCase):
             self.check()
 
     def test_changed_feature_script_fails(self) -> None:
-        (self.root / "src/frontends/s31/tests/check.py").write_text("changed")
+        (self.root / FEATURE_COMMANDS["record-u8-native"][0]).write_text("changed")
         with self.assertRaisesRegex(ValueError, "script differs"):
+            self.check()
+
+    def test_feature_case_command_substitution_fails(self) -> None:
+        row = self.feature["cases"]["record-u8-native"]
+        row["command"]["argv"][2] = FEATURE_COMMANDS["record-u16-native"][0]
+        row["command_sha256"] = sha((json.dumps(
+            row["command"], sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+            + "\n").encode("ascii"))
+        row["result_sha256"] = sha((json.dumps({
+            "command_sha256": row["command_sha256"], "returncode": 0,
+            "stdout_sha256": row["stdout_sha256"], "stderr_sha256": row["stderr_sha256"],
+        }, sort_keys=True, separators=(",", ":"), ensure_ascii=True) + "\n").encode("ascii"))
+        with self.assertRaisesRegex(ValueError, "command differs from expected"):
             self.check()
 
     def test_changed_feature_gate_runner_fails(self) -> None:
