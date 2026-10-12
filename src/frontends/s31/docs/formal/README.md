@@ -184,6 +184,10 @@ fresh honest-prover export, and joins its reported main root to one strictly
 verified proof. This is concrete trace and commitment evidence for that proof;
 it does not establish the missing authentication theorem for arbitrary proof
 openings.
+The reusable [pinned public trace audit](../../tools/audit/README.md) runs
+that check for any source admitted by the bounded public direct-Gate release
+checker. CI exercises a square helper, ordered subtraction, and optimized
+subtraction through the same auditor.
 
 ## A complete modeled 512-row trace
 

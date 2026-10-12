@@ -10,6 +10,7 @@ from pathlib import Path
 
 S31 = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(S31 / "python"))
+sys.path.insert(0, str(S31 / "tools/audit"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import s31
@@ -18,6 +19,7 @@ from package.correspondence import (OPTIMIZED_SCHEMA, canonical_ir_bytes,
                                     check_optimized_package, parse_source,
                                     parse_source_optimized)
 from package.trust import pinned_paths
+from public_trace import check as audit_public_trace
 from text_frontend import compile_text
 
 EXAMPLE = S31 / "examples/functional/release_sub4"
@@ -81,6 +83,8 @@ def run() -> dict:
             pass
         else:
             raise AssertionError("strict release accepted a changed subtraction claim")
+        audit = audit_public_trace(package, work / "proof/proof.bin",
+                                   work / "proof/statement.json", pins)
         return {"schema": "s31-ordered-subtraction-optimized-release-v1",
                 "source_operations": len(relation["nodes"]),
                 "native_arithmetic_gates": len(syntax["instructions"]),
@@ -88,7 +92,13 @@ def run() -> dict:
                 "padded_qm31_rows": cost["padded"]["qm31_ops"],
                 "manual_and_optimized_air_equal": True,
                 "strict_release_proof_accepted": True,
-                "changed_public_claim_rejected": True}
+                "changed_public_claim_rejected": True,
+                "source_derived_main_cells": audit["main_cells"],
+                "source_derived_main_columns_sha256": audit["main_columns_sha256"],
+                "accepted_proof_main_root": audit["main_root"],
+                "changed_main_cell_rejected": audit["changed_main_cell_rejected"],
+                "private_assignment_diagnostic_rejected":
+                    audit["private_assignment_diagnostic_rejected"]}
 
 
 if __name__ == "__main__":

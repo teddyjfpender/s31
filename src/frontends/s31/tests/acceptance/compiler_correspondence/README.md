@@ -383,13 +383,15 @@ exact proof accepted by the generated native verifier. A changed main-root
 proof byte and a changed public claim are rejected by that verifier; changed
 export cells and swapped columns fail the independent trace comparison.
 
-`subtraction_release.py` runs the same complete reconstruction for the
-three-operation pure helper. It compares every fixed and main cell from the
-native export with the independent source schedule, checks the public words
-and serialized main digest, then joins the reported main root to the exact
-proof accepted by strict release verification. A changed main cell fails the
-independent comparison. Both trace inspection commands reject a nonempty
-private assignment before exporting any rows or roots.
+The reusable [pinned public trace audit](../../../tools/audit/README.md) performs
+the same complete reconstruction for any source admitted by the strict public
+four-lane release checker. The `subtraction_release.py` and optimized v3
+acceptance cases run it on ordered subtraction. It compares every fixed and
+main cell from the native export with the independent source schedule, checks
+the public words and serialized main digest, then joins the reported main
+root to the exact proof accepted by strict release verification. A changed
+main cell fails the independent comparison. Both trace inspection commands
+reject a nonempty private assignment before exporting any rows or roots.
 
 This is a finite, honest-prover source-to-main-commitment regression under the
 native exporter and PCS commitment implementation. It does not authenticate
