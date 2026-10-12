@@ -22,7 +22,9 @@ against the binary fallback. It compares `pow<15>` with a handwritten
 five-gate graph, then evaluates honest and false field claims across small,
 boundary, and large exponents. For large `2^k−1` powers and their shifted
 forms, it pins shorter saved-power chains and checks every multiplication's
-two previously computed parents. The eight-lane
+two previously computed parents. It also compares the 19 reference pairs
+with the [kernel-checked certificate](../../../../../../formal/s31/S31/Gadgets/Functional/PowerChains.lean).
+The eight-lane
 [native comparison](../../acceptance/math/power_chain.py) verifies both the
 19-step and 30-step `pow<65535>` schedules across four calls.
 

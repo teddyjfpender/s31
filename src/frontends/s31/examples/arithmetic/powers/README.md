@@ -31,6 +31,9 @@ The [native acceptance](../../../tests/acceptance/math/power_chain.py)
 symbolically derives the output exponent from every emitted multiplication,
 recomputes all eight output values independently, proves both circuits,
 checks each generated verifier, and rejects a changed public result. It pins
-the AIR geometry above. A single local run produced 58,843 and 69,354 proof
-bytes respectively; those byte counts and proving times are observations, not
+the AIR geometry above. The [Lean chain certificate](../../../../../../formal/s31/S31/Gadgets/Functional/PowerChains.lean)
+proves the arithmetic meaning of each star-chain step, and a source test
+checks its 19 reference pairs against the compiler's schedule. A single local
+run produced 58,843 and 69,354 proof bytes respectively; those byte counts and
+proving times are observations, not
 portable performance guarantees.

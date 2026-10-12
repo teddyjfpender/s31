@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import sys
 import unittest
 from pathlib import Path
@@ -57,6 +58,20 @@ class PowerChainTests(unittest.TestCase):
                 for index, next_power in enumerate(chain[1:], 1):
                     self.assertGreater(next_power, chain[index - 1])
                     self.assertIn(next_power - chain[index - 1], chain[:index])
+
+    def test_large_chain_matches_kernel_checked_reference_indices(self) -> None:
+        lean = (S31.parents[2] / "formal/s31/S31/Gadgets/Functional/PowerChains.lean").read_text()
+        match = re.search(r"def pow65535Refs : List \(Nat × Nat\) := \[(.*?)\]", lean, re.S)
+        self.assertIsNotNone(match)
+        assert match is not None
+        body = match.group(1)
+        pairs = [(int(lhs), int(rhs)) for lhs, rhs in
+                 re.findall(r"\(\s*(\d+)\s*,\s*(\d+)\s*\)", body)]
+        self.assertEqual(re.sub(r"\(\s*\d+\s*,\s*\d+\s*\)|[\s,]", "", body), "")
+        chain = exponent_chain(65535)
+        actual = [(index - 1, chain.index(chain[index] - chain[index - 1]))
+                  for index in range(1, len(chain))]
+        self.assertEqual(pairs, actual)
 
     def test_pow15_matches_handwritten_five_gate_graph(self) -> None:
         optimized = """circuit p(private x: [m31; 1]) -> public [m31; 1] {
