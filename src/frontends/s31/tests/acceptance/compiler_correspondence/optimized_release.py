@@ -21,15 +21,18 @@ EXAMPLE = S31 / "examples/functional/release_optimized4"
 P = (1 << 31) - 1
 
 
-def run() -> dict:
-    source = EXAMPLE / "functional.s31"
-    manual_source = EXAMPLE / "manual.s31"
+def run(example: Path = EXAMPLE, *, case: str = "straightline",
+        source_to_canonical: tuple[int, ...] = (0, 1, 2, 3, 3, 4),
+        source_lets: int = 5) -> dict:
+    source = example / "functional.s31"
+    manual_source = example / "manual.s31"
     relation, syntax = parse_source_optimized(source.read_bytes())
     _, manual_syntax = parse_source_optimized(manual_source.read_bytes())
-    if (syntax["source_to_canonical"] != [0, 1, 2, 3, 3, 4] or
+    if (syntax["source_to_canonical"] != list(source_to_canonical) or
+            len(relation["nodes"]) != source_lets or
             len(syntax["instructions"]) != 4 or
             len(manual_syntax["instructions"]) != 4):
-        raise AssertionError("reversed addition was not reused")
+        raise AssertionError("source operations were not shared as expected")
 
     with tempfile.TemporaryDirectory(prefix="s31-optimized-release-") as directory:
         work = Path(directory)
@@ -57,6 +60,8 @@ def run() -> dict:
         different = [field for field in SAME_AIR if cost[field] != manual_cost[field]]
         if different:
             raise AssertionError(f"optimized source changed native AIR geometry: {different}")
+        if cost["raw"]["qm31_ops"] != 324 or cost["padded"]["qm31_ops"] != 512:
+            raise AssertionError("optimized source exceeded its pinned direct-gate AIR cost")
         if cost["canonical_ir_sha256"] != checked["key_core"]["canonical_ir_sha256"]:
             raise AssertionError("native canonical IR differs from checked source")
 
@@ -110,8 +115,8 @@ def run() -> dict:
         finally:
             manifest_path.write_bytes(original_manifest)
 
-        return {"schema": "s31-optimized-release-v1",
-                "source_lets": 5, "native_arithmetic_gates": 4,
+        return {"schema": "s31-optimized-release-v1", "case": case,
+                "source_lets": source_lets, "native_arithmetic_gates": 4,
                 "raw_qm31_rows": cost["raw"]["qm31_ops"],
                 "padded_qm31_rows": cost["padded"]["qm31_ops"],
                 "proof_bytes": trial["proof_bytes"],

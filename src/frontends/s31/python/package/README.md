@@ -140,6 +140,9 @@ public output. Use `--work PATH` to retain the exact package and proof. This
 remains a separate opt-in trace regression; the checked-in
 [`optimized_release.py`](../../tests/acceptance/compiler_correspondence/optimized_release.py)
 exercises v3 release admission and both live outputs of the repeated gate.
+[`functional_optimized_release.py`](../../tests/acceptance/compiler_correspondence/functional_optimized_release.py)
+checks gate reuse across two live pure helper calls; seven normalized nodes
+occupy four native arithmetic gates with handwritten AIR geometry.
 Both require a clean pinned Stwo dependency. The
 [worked source/AIR/root example](../../../../formal/s31/S31/Gadgets/Functional/Correspondence/OptimizedSourceAirRows.md)
 gives the handwritten four-lane computation.

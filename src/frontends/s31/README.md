@@ -56,6 +56,9 @@ For checked commutative gate reuse in the bounded public four-lane
 `direct-gate` profile, use `build --correspondence optimized`. The
 [worked v3 example](examples/functional/release_optimized4/README.md) has
 five source arithmetic lets, four native gates, and a strict release proof.
+The [functional gate-sharing example](examples/functional/release_functional_cse4/README.md)
+uses repeated pure helper calls: seven source arithmetic nodes specialize to
+the same four native gates as handwritten code.
 
 For a single source-to-proof audit, `trial` builds or reuses a package, proves an
 assignment, runs its native verifier, checks that a changed public word is

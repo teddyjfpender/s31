@@ -1,12 +1,14 @@
 # S31 examples
 
-Examples are grouped by the concept they demonstrate. Each `.s31` source stays
-beside its checked normalized `.s31.json` relation and matching assignment
-(`.valid.json`). Some early examples provide only the normalized relation.
+Examples are grouped by the concept they demonstrate. Where a checked
+normalized `.s31.json` relation and assignment (`.valid.json`) are provided,
+they stay beside the corresponding `.s31` source. Some release examples build
+those artifacts during their acceptance test.
 
 | Directory | Programs |
 | --- | --- |
 | [`arithmetic/`](arithmetic/) | Field arithmetic, polynomials, and reductions. |
+| [`functional/`](functional/) | Pure helpers, closures, static application, and checked gate sharing. |
 | [`recurrence/`](recurrence/) | Higher-order static steps that retain the dedicated recurrence chip. |
 | [`boundary/`](boundary/) | A private four-lane circuit-to-chip recurrence with one public aggregate. |
 | [`arrays/`](arrays/) | Static arrays, views, slices, and matrix operations. |

@@ -187,6 +187,11 @@ feed its output. Its AIR geometry matches a handwritten four-gate program at
 The generated package passes five-pin `verify-release` with an accepted native
 proof and rejects a changed claim and certificate downgrade. This is a
 checked finite example, not a general optimization theorem. The
+[repeated helper fixture](../../../src/frontends/s31/examples/functional/release_functional_cse4/README.md)
+checks two live calls to a pure `mix` helper: seven normalized operations
+share four native gates, with the same 324 raw and 512 padded QM31 rows as
+handwritten arithmetic. A 12-case generated corpus checks related helper
+spelling and alias variants against the independent v3 parser. The
 certificate does not cover other lambda operations or closure types, general
 higher-order source, records, private inputs, other AIR profiles, or the native
 PCS/FRI proof system, and it does not replace the full compiler correspondence

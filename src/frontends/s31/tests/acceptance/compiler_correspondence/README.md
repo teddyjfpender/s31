@@ -32,6 +32,18 @@ certificate schema downgrade and unknown schema markers.
 python3 src/frontends/s31/tests/acceptance/compiler_correspondence/optimized_release.py
 ```
 
+`functional_optimized_release.py` applies the same package, cost, proof,
+five-pin release, false-claim and downgrade checks to three pure helpers.
+Two live calls of `mix(x)` expand to seven normalized arithmetic nodes but
+reuse four native gates. A 12-case pure differential corpus additionally
+checks helper repetition, operand order and function aliases against the
+production frontend and handwritten canonical IR.
+
+```sh
+python3 -m unittest src.frontends.s31.tests.python.test_optimized_functional_correspondence
+python3 src/frontends/s31/tests/acceptance/compiler_correspondence/functional_optimized_release.py
+```
+
 `lexical_release.py` repeats the package, cost, proof, release-verifier and
 changed-claim controls for the checked-in
 [`release_let4`](../../../examples/functional/release_let4/README.md)

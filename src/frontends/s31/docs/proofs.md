@@ -145,6 +145,10 @@ has five source lets and four native arithmetic gates; both copies of the
 repeated addition feed the public output. Its v3 package passes
 the same five-pin `verify-release` command; the default conservative build
 does not certify this source.
+The [repeated helper example](../examples/functional/release_functional_cse4/README.md)
+uses three pure named functions and two live calls. Its seven normalized
+arithmetic nodes compact to four native gates; a separate strict release
+proof confirms the same AIR geometry as handwritten arithmetic.
 The [named function value example](../examples/functional/release_higher_order4/README.md)
 passes a function through a `Fn` parameter and a lexical binding, then proves
 exactly the same two-gate AIR as its handwritten program. The
