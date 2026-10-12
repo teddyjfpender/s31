@@ -1,5 +1,14 @@
 # Bounded source to raw Gate AIR
 
+## Optimized source row capacity
+
+[The optimized physical roster proof](OptimizedPhysicalRoster.md) derives the
+compact program's 16-producer budget from the accepted optimizer, then fixes
+its 512-row direct-Gate partition and proves 28 distinct source/public
+positions for a four-let program with one CSE hit. This removes a free row
+budget assumption for the modeled optimized source path. Native emission and
+proof authentication remain separate checks.
+
 ## Optimized source to projected AIR cells
 
 [The optimized source AIR bridge](OptimizedSourceAirRows.md) composes exact

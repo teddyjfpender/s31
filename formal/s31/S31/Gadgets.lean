@@ -211,6 +211,7 @@ import S31.Gadgets.Functional.Correspondence.ConservativeDeadCode
 import S31.Gadgets.Functional.Correspondence.CanonicalDagCompleteness
 import S31.Gadgets.Functional.Correspondence.OptimizedTextBytes
 import S31.Gadgets.Functional.Correspondence.OptimizedSourceAirRows
+import S31.Gadgets.Functional.Correspondence.OptimizedPhysicalRoster
 import S31.Gadgets.Functional.Correspondence.ZeroPhysicalTraceWitness
 import S31.Gadgets.Functional.Correspondence.AliasProjectedExportBridge
 import S31.Gadgets.Functional.Correspondence.PinnedFullOutputRoster
