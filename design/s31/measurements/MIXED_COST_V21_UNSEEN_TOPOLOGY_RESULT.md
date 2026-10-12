@@ -23,6 +23,8 @@ All **22 honest proofs** were accepted by the generated external native verifier
 
 The measured 99.979 seconds is the **sum of separately measured process durations**, excluding idle gaps. The package build accounts for 93.75% of that sum, or 4.545 seconds amortized per proof at this 22-proof batch size. Build plus the first proof was 94.699 seconds. The first proof is the first proof process after build and manifest inspection, not a controlled OS cold-cache experiment.
 
+**Host contention limits the timing inference.** During the ~01:01–01:03 UTC native attempt, a Lean `AxiomAudit` process and a `leanchecker` process were each consuming about one CPU core, and focused Zig tests overlapped. The preregistered protocol forbids a retry, so the result remains the one observed attempt. The mechanical accuracy gates passed under this contention, but the 16.60% build error and warm timing cannot be treated as a clean quiet-host transfer validation.
+
 The canonical source, protocol, marker, result, score, and audit SHA-256 digests are respectively:
 
 ```text
