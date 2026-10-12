@@ -397,6 +397,48 @@ def verify_rejects(verifier: Path, proof: Path, statement: Path) -> None:
         )
 
 
+def reject_compensated_component_claims(
+    work: Path, verifier: Path, statement: Path, raw: bytes,
+    count: int, first_slot: int, second_slot: int, label: str,
+) -> None:
+    """Move one QM31 unit between slots while preserving lookup closure.
+
+    Slots have distinct chip/bridge AIRs. A verifier checking only their
+    aggregate sum would accept the changed header; transcript and component
+    claim binding must reject it later.
+    """
+    slot_count = 1 + 2 * count
+    if not (0 <= first_slot < second_slot < slot_count):
+        raise AssertionError("invalid compensated component pair")
+    changed = bytearray(raw)
+    first_at = SUMS_OFFSET + 16 * first_slot
+    second_at = SUMS_OFFSET + 16 * second_slot
+    first = int.from_bytes(changed[first_at:first_at + 4], "little")
+    second = int.from_bytes(changed[second_at:second_at + 4], "little")
+    if first >= MODULUS or second >= MODULUS:
+        raise AssertionError("honest proof has a noncanonical component claim")
+    changed[first_at:first_at + 4] = ((first + 1) % MODULUS).to_bytes(4, "little")
+    changed[second_at:second_at + 4] = ((second - 1) % MODULUS).to_bytes(4, "little")
+    if (len(changed) != len(raw) or
+            ((first + second) % MODULUS) !=
+            ((int.from_bytes(changed[first_at:first_at + 4], "little") +
+              int.from_bytes(changed[second_at:second_at + 4], "little")) % MODULUS) or
+            changed[:SUMS_OFFSET] != raw[:SUMS_OFFSET] or
+            changed[SUMS_OFFSET + 16 * slot_count:] != raw[SUMS_OFFSET + 16 * slot_count:]):
+        raise AssertionError("compensated mutation changed envelope or total sum")
+    altered = work / f"bad-{count}-{label}-compensated-claims.bin"
+    altered.write_bytes(changed)
+    result = subprocess.run((str(verifier), str(altered), str(statement)),
+                            text=True, capture_output=True, check=False, timeout=30)
+    if (result.returncode <= 0 or
+            "InvalidMixedNativeEnvelope" in result.stderr or
+            "InvalidMixedLookupSum" in result.stderr):
+        raise AssertionError(
+            f"{label} compensated claims escaped or failed before component "
+            f"claim binding: exit={result.returncode}, stderr={result.stderr}"
+        )
+
+
 def exercise(work: Path, count: int) -> dict:
     source_value, assignment_value = family(count)
     source = work / f"general-{count}.s31.json"
@@ -481,18 +523,18 @@ def exercise(work: Path, count: int) -> dict:
             altered = work / f"bad-{count}-public-word-{lane}.json"
             altered.write_text(json.dumps({**saved, "public_words": words}))
             verify_rejects(verifier, proof, altered)
-        # Preserve the total QM31 claimed sum while changing two individual
-        # component claims. The transcript and installed AIR claims must still
-        # reject this coordinated mutation.
-        compensated = bytearray(raw)
-        first = int.from_bytes(compensated[SUMS_OFFSET:SUMS_OFFSET + 4], "little")
-        second_at = SUMS_OFFSET + 16
-        second = int.from_bytes(compensated[second_at:second_at + 4], "little")
-        compensated[SUMS_OFFSET:SUMS_OFFSET + 4] = ((first + 1) % MODULUS).to_bytes(4, "little")
-        compensated[second_at:second_at + 4] = ((second - 1) % MODULUS).to_bytes(4, "little")
-        altered = work / f"bad-{count}-compensated-sums.bin"
-        altered.write_bytes(compensated)
-        verify_rejects(verifier, altered, statement)
+        reject_compensated_component_claims(
+            work, verifier, statement, raw, count, 0, 1, "circuit-chip")
+        if count >= 3:
+            # The last call uses the many AIR; the first uses the pair AIR.
+            # Preserve global lookup closure while retargeting claim weight
+            # across two different bridge and chip instances.
+            reject_compensated_component_claims(
+                work, verifier, statement, raw, count, 2, 2 * count,
+                "pair-many-bridge")
+            reject_compensated_component_claims(
+                work, verifier, statement, raw, count, 1, 2 * count - 1,
+                "pair-many-chip")
         header_end = SUMS_OFFSET + 16 * (1 + 2 * count)
         for label, data in (
             ("truncated-header", raw[:header_end - 1]),
