@@ -2,12 +2,14 @@
 
 Run explicitly on a clean pinned Stwo dependency. The normal package builder
 remains v2-only. This script attaches the separate v3 correspondence artifact
-to a fresh package, checks native proof roots, and rejects rooted mutations.
+to a fresh package, derives all public main cells from normalized source,
+joins the native proof roots, and rejects rooted and full-trace mutations.
 """
 
 from __future__ import annotations
 
 import argparse
+import copy
 import hashlib
 import json
 import shutil
@@ -23,7 +25,8 @@ sys.path.insert(0, str(S31 / "python"))
 from package.build import build
 from package.context import file_hash, invoke, write_json
 from package.correspondence import (check_optimized_package, digest,
-                                    make_optimized_certificate)
+                                    make_optimized_certificate, parse_source_optimized)
+from package.direct_gate_main_correspondence import check_export, source_values
 from package.fixed_root_join import proof_roots
 
 SOURCE = ("circuit reverse_share(public x: [m31; 4]) -> public [m31; 4] { "
@@ -130,6 +133,12 @@ def proof_join(package: Path, checked: dict, work: Path) -> dict:
                             "public_outputs": {"d": OUTPUT}})
     write_json(statement, {"public_inputs": {"x": INPUT},
                            "public_outputs": {"d": OUTPUT}})
+    source_bytes = (package / "source.s31").read_bytes()
+    _, syntax = parse_source_optimized(source_bytes)
+    _, source_output = source_values(syntax, INPUT)
+    if (hashlib.sha256(source_bytes).hexdigest() != checked["source_sha256"] or
+            list(source_output) != OUTPUT or syntax["output_name"] != "d"):
+        raise ValueError("independently evaluated normalized source differs from claim")
     invoke(str(prover), "prove", str(assignment), str(proof_path))
     invoke(str(verifier), str(proof_path), str(statement), str(key_path))
     proof = proof_path.read_bytes()
@@ -140,12 +149,31 @@ def proof_join(package: Path, checked: dict, work: Path) -> dict:
     physical = json.loads(invoke(str(prover), "inspect-physical-rows", str(assignment)))
     main = json.loads(invoke(str(prover), "inspect-physical-root", str(assignment)))
     main_blob = main_words(physical.get("main_columns"))
+    reference = check_export(syntax, INPUT, physical, main)
     if (physical.get("fixed_columns") != [column["values"] for column in topology["columns"]] or
             physical.get("public_words") != INPUT + OUTPUT or
             main.get("public_words") != INPUT + OUTPUT or
             main.get("main_columns_sha256") != hashlib.sha256(main_blob).hexdigest() or
             proof_main.hex() != main.get("main_root")):
         raise ValueError("accepted optimized proof main root differs from exported public trace")
+    if reference["source_derived_main_columns_sha256"] != hashlib.sha256(main_blob).hexdigest():
+        raise ValueError("source-derived main trace digest differs from accepted proof root report")
+    for label, changed_trace in (
+        ("main-cell", copy.deepcopy(physical)),
+        ("column-order", copy.deepcopy(physical)),
+    ):
+        if label == "main-cell":
+            changed_trace["main_columns"][0][0] = (changed_trace["main_columns"][0][0] + 1) % P
+        else:
+            changed_trace["main_columns"][0], changed_trace["main_columns"][1] = (
+                changed_trace["main_columns"][1], changed_trace["main_columns"][0])
+        try:
+            check_export(syntax, INPUT, changed_trace, main)
+        except ValueError as error:
+            if "native main columns differ" not in str(error):
+                raise
+        else:
+            raise AssertionError(f"forged optimized {label} matched source-derived trace")
     rejected_root(verifier, proof, main_offset - 32, statement, key_path, work,
                   "InvalidPreprocessedRoot")
     rejected_root(verifier, proof, main_offset, statement, key_path, work,
@@ -173,6 +201,9 @@ def proof_join(package: Path, checked: dict, work: Path) -> dict:
         "fixed_columns_sha256": hashlib.sha256(fixed).hexdigest(),
         "main_cells": 6144,
         "main_columns_sha256": hashlib.sha256(main_blob).hexdigest(),
+        "source_derived_public_words": reference["source_derived_public_words"],
+        "source_derived_main_columns_sha256": reference["source_derived_main_columns_sha256"],
+        "source_derived_main_cells": reference["source_derived_main_cells"],
         "sealed_fixed_root": fixed_root,
         "accepted_proof_fixed_root": proof_fixed.hex(),
         "accepted_proof_main_root": proof_main.hex(),
@@ -183,6 +214,8 @@ def proof_join(package: Path, checked: dict, work: Path) -> dict:
         "changed_fixed_selector_changed_root": True,
         "changed_main_root_rejected": "InvalidInteractionNonce",
         "changed_public_claim_rejected": "InvalidInteractionNonce",
+        "forged_main_cell_rejected": True,
+        "swapped_main_columns_rejected": True,
     }
 
 
