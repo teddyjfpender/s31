@@ -62,3 +62,35 @@ its pinned compiler and host until a new prospective corpus is measured.
 With an odd witness count, one profile necessarily runs first once more than
 the other. For short runs, FRI proof-of-work variance can dominate wall time;
 inspect paired samples and stage times before drawing a speed conclusion.
+
+## Prospective current-compiler protocol
+
+`prospective.py` is a separate, small training/calibration/holdout protocol.
+Its [design brief](../../../../../design/s31/measurements/language/FIXED_INTEGER_PROSPECTIVE_COST_V1.md)
+sets the split, stage equation, uncertainty bands, score thresholds, and
+limits. It does not reuse historical V8r1 timing to fit this compiler.
+
+Run on an otherwise quiet host. Keep the generated directory and pin the
+plan and model hashes in commits or an external timestamp before advancing
+to the next phase:
+
+```sh
+study=zig-out/s31/benchmarks/fixed-integer-prospective-v1
+python3 src/frontends/s31/benchmarks/fixed_integer_cost/prospective.py plan "$study"
+python3 src/frontends/s31/benchmarks/fixed_integer_cost/prospective.py validate "$study"
+# Freeze plan.sha256 before the first native build.
+python3 src/frontends/s31/benchmarks/fixed_integer_cost/prospective.py collect-training "$study"
+python3 src/frontends/s31/benchmarks/fixed_integer_cost/prospective.py fit "$study"
+# Freeze model.sha256 before any u128 build or proof.
+python3 src/frontends/s31/benchmarks/fixed_integer_cost/prospective.py collect-holdout "$study"
+python3 src/frontends/s31/benchmarks/fixed_integer_cost/prospective.py score "$study"
+python3 src/frontends/s31/benchmarks/fixed_integer_cost/prospective.py validate "$study"
+```
+
+The native-free preflight is `python3 -m unittest discover -s
+src/frontends/s31/benchmarks/fixed_integer_cost -p 'test_prospective.py'`.
+`collect-training` verifies and skips a complete prior case on restart; it
+stops on an incomplete or inconsistent case and preserves that evidence.
+The `score.json` has four u128 profiles, not an unseen cross-program or
+cross-host reliability claim. It is valid only with the sealed plan/model
+and exact saved native proof artifacts.

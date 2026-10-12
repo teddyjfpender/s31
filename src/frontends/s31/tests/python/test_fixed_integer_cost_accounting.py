@@ -266,6 +266,7 @@ class CostAccountingTest(unittest.TestCase):
             for index, path in enumerate(assignments):
                 path.write_text(json.dumps({"index": index}))
             calls = []
+            events = []
 
             def build(_source: Path, package: Path, lowering: str) -> Path:
                 package.mkdir(parents=True)
@@ -278,9 +279,15 @@ class CostAccountingTest(unittest.TestCase):
                 return package
 
             def trial(package: Path, assignment: Path, target: Path) -> dict:
+                events.append("trial")
                 if "runs" in target.parts:
                     calls.append((int(assignment.stem), package.name))
                 return trial_row()
+
+            def before_trials(packages: dict, manifests: dict) -> None:
+                self.assertEqual(set(packages), set(evidence.LOWERINGS))
+                self.assertEqual(set(manifests), set(evidence.LOWERINGS))
+                events.append("preproof-prediction")
 
             with (patch.object(paired_tune.s31, "build", side_effect=build),
                   patch.object(paired_tune.s31, "verify_package", return_value={
@@ -291,7 +298,8 @@ class CostAccountingTest(unittest.TestCase):
                   patch.object(paired_tune.s31, "invoke", return_value="0.15.2")):
                 report = paired_tune.tune_interleaved(
                     source, assignments, root / "out",
-                    ("direct-gate", "sparse-wide-gate"))
+                    ("direct-gate", "sparse-wide-gate"), before_trials)
+            self.assertEqual(events[0], "preproof-prediction")
             self.assertEqual(calls, [
                 (0, "direct-gate"), (0, "sparse-wide-gate"),
                 (1, "sparse-wide-gate"), (1, "direct-gate"),

@@ -54,7 +54,8 @@ def corpus(kind: str, count: int, seed: int) -> list[tuple[int, int]]:
     return cases
 
 
-def run(kind: str, count: int, seed: int, output: Path) -> dict:
+def run(kind: str, count: int, seed: int, output: Path,
+        before_trials=None) -> dict:
     output = output.resolve()
     output.mkdir(parents=True, exist_ok=True)
     compiler_sha256 = s31.compiler_fingerprint()
@@ -78,7 +79,7 @@ def run(kind: str, count: int, seed: int, output: Path) -> dict:
         s31.write_json(path, value)
         assignments.append(path)
     report = tune_interleaved(source, assignments, output / "tune",
-                              ("direct-gate", "sparse-wide-gate"))
+                              ("direct-gate", "sparse-wide-gate"), before_trials)
     if s31.compiler_fingerprint() != compiler_sha256 or host_identity() != host:
         raise AssertionError("compiler or host identity changed during paired measurement")
     profiles = report["profiles"]

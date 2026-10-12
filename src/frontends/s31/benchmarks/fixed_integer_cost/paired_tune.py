@@ -17,7 +17,7 @@ from runtime.cost_model import observed_cost_model
 
 
 def tune_interleaved(source: Path, assignments: list[Path], output: Path,
-                     lowerings: tuple[str, str]) -> dict:
+                     lowerings: tuple[str, str], before_trials=None) -> dict:
     if len(lowerings) != 2 or len(set(lowerings)) != 2 or not assignments:
         raise ValueError("paired tune requires two distinct lowerings and assignments")
     source = source.resolve()
@@ -40,6 +40,10 @@ def tune_interleaved(source: Path, assignments: list[Path], output: Path,
     relations = {manifest["canonical_ir_sha256"] for manifest in manifests.values()}
     if len(programs) != 1 or len(relations) != 1:
         raise ValueError("paired profiles compiled different canonical relations")
+    if before_trials is not None:
+        # A prospective caller may seal predictions using package geometry
+        # here, before warmup or any measured native proof process starts.
+        before_trials(packages, manifests)
     for lowering in lowerings:
         s31.trial(packages[lowering], assignments[0], output / "warmup" / lowering)
     trials = {lowering: [] for lowering in lowerings}
