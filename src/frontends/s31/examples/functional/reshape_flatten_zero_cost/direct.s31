@@ -1,0 +1,6 @@
+use std@1;
+
+circuit reshape_flatten6(private x: [m31; 6]) -> public [m31; 1] {
+    let result = std::array::get<3>(x);
+    result
+}

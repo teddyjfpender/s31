@@ -261,12 +261,16 @@ relation.
 `reshape<R>(flat)` divides a flat static group or runtime array into `R`
 consecutive rows. Static groups limit both dimensions to 1..16 and emit no
 relation nodes. Runtime arrays require 1..16 rows and exact divisibility;
-each row is an `array_slice` of `[m31; N/R]` or `[u16; N/R]`. A runtime
-`flatten(rows)` joins equal-shaped rows with `array_concat`; static
-rectangular groups still flatten by reference alone. Reshape followed by
-flatten is functionally the identity, but the current compiler may still
-lower intermediate row slices and joins. The cost report shows those gates
-when they occur.
+each row is a lazy view of `[m31; N/R]` or `[u16; N/R]`. A runtime
+`flatten(rows)` joins equal-shaped rows with `array_concat` when necessary;
+static rectangular groups still flatten by reference alone. When all runtime
+rows came from the **same array** and cover it exactly in their original
+order, flatten returns that array's reference. It emits no intermediate
+slice, concat, or packing gates. A separately used row materializes an
+`array_slice` when consumed; reordered, repeated, or missing rows retain
+their constrained views and concatenations. The [six-lane native cost and
+proof example](../examples/functional/reshape_flatten_zero_cost/README.md)
+compares an unaligned three-row reshape with a direct selection.
 
 For example, the [shifted runtime slice](../examples/arrays/array_slice_shifted.s31)
 starts from private `x=[2,3,5,7,11,13,17]`:
@@ -288,7 +292,8 @@ example](../examples/arrays/array_slice_aligned.s31) takes positions 4..7 from a
 eight-lane private array and borrows its second packed word without adding
 slice gates. The [runtime matrix example](../examples/arrays/array_matrix_runtime.s31)
 reshapes eight private lanes into two four-lane rows, rejoins them, and
-selects position 6, which is 17 in the sample assignment. The
+selects position 6, which is 17 in the sample assignment. Its normalized
+relation contains only that selection. The
 [u16 example](../examples/arrays/array_slice_u16.s31) preserves the source's
 range constraints while exposing the two-lane slice `[65535,7]`.
 

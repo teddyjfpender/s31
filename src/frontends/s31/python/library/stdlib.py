@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import struct
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Callable
 
 
@@ -66,6 +66,21 @@ class Value:
     typ: Type
     ref: str | None = None
     constant: int | None = None
+    slice_view: SliceView | None = None
+
+
+@dataclass(frozen=True)
+class SliceView:
+    # A reshape row is a source-only view until a consumer needs its wire.
+    # Keeping the exact source object makes complete ordered flattening an
+    # identity without ever emitting speculative slice/concat relation nodes.
+    source: Value
+    start: int
+    length: int
+    # A row can first be materialized by a later operand that does not pass
+    # its own span to `realize`. Keep the reshape location for source maps,
+    # but exclude it from semantic cache identity.
+    origin_span: tuple[tuple[str, int], ...] = field(default=(), compare=False, hash=False)
 
 
 @dataclass(frozen=True)
@@ -104,6 +119,7 @@ class Builder:
         self.constrained_bits: set[str] = set()
         self.computed_bits: set[str] = set()
         self.inverse_cache: dict[str, Value] = {}
+        self.slice_view_cache: dict[SliceView, Value] = {}
         self.next_temp = 0
 
     def unique(self, wanted: str | None = None) -> str:
@@ -251,6 +267,15 @@ class Builder:
                 span: dict[str, int] | None = None) -> Value:
         if value.ref is not None:
             return value
+        if value.slice_view is not None:
+            view = value.slice_view
+            if view not in self.slice_view_cache:
+                source_span = span if span is not None else (dict(view.origin_span) or None)
+                self.slice_view_cache[view] = self.realize(
+                    self.array_slice(view.source, view.start, view.length,
+                                     wanted=wanted, span=source_span),
+                    wanted=wanted, span=source_span)
+            return self.slice_view_cache[view]
         if value.constant is not None:
             return self.emit("constant", value.typ, wanted=wanted, span=span,
                              constant=value.constant, length=value.typ.length)
@@ -445,8 +470,13 @@ class Builder:
                 raise TypeErrorS31("std::array::reshape requires an m31 or u16 array")
             if not 1 <= rows <= 16 or length % rows:
                 raise TypeErrorS31("std::array::reshape requires 1..16 rows with exact divisibility")
+            if rows == 1:
+                return StaticGroup((group,))
             width = length // rows
-            return StaticGroup(tuple(self.array_slice(group, row * width, width, span=span)
+            return StaticGroup(tuple(Value(Type(group.typ.kind, width),
+                                           slice_view=SliceView(
+                                               group, row * width, width,
+                                               tuple(sorted(span.items())) if span else ()))
                                      for row in range(rows)))
         if not isinstance(group, StaticGroup) or not all(isinstance(item, Value) for item in group.elements):
             raise TypeErrorS31("std::array::reshape requires a flat static array of values")
@@ -466,6 +496,21 @@ class Builder:
             first = rows[0]
             if first.typ.kind not in {"m31", "u16"} or any(row.typ != first.typ for row in rows):
                 raise TypeErrorS31("std::array::flatten requires equal runtime row shapes")
+            # Flattening every row of one reshape in its original order is
+            # exactly the source array. Check the full interval, not merely
+            # matching row types: reordered or repeated rows must still lower
+            # to explicit, constrained concatenation.
+            views = tuple(row.slice_view for row in rows)
+            if all(view is not None for view in views):
+                source = views[0].source
+                if (source.typ.kind == first.typ.kind and
+                        source.typ.length == len(rows) * first.typ.length and
+                        all(view.source is source and
+                            view.start == index * first.typ.length and
+                            view.length == first.typ.length and
+                            view.start + view.length <= source.typ.length
+                            for index, view in enumerate(views))):
+                    return source
             result = first
             for index, row in enumerate(rows[1:], 1):
                 result = self.array_concat(result, row,

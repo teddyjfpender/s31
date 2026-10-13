@@ -236,4 +236,45 @@ theorem rotateFourView_accepts (a b c d : M31) (output : List M31) :
     arrayTakeFn, arrayDropFn, Fin.append] using
     (arrayCode_accepts rotateFourView [a, b, c, d] output rfl)
 
+/-- Splitting a list into consecutive fixed-width windows and joining those
+windows yields exactly the covered prefix. This is the semantic equation used
+by the source compiler's lazy runtime `reshape` views. -/
+theorem orderedSlices_take {α : Type} (xs : List α) (rows width : Nat) :
+    (List.range rows).flatMap (fun row => (xs.drop (row * width)).take width) =
+      xs.take (rows * width) := by
+  induction rows with
+  | zero => simp
+  | succ rows ih =>
+    rw [List.range_succ, List.flatMap_append]
+    simp only [List.flatMap_cons, List.flatMap_nil, List.append_nil]
+    rw [ih, Nat.succ_mul, List.take_add]
+
+/-- Exact divisibility and complete ordered coverage make flattening the
+runtime row views an identity for every input value and element type. -/
+theorem orderedSlices_rejoin {α : Type} (xs : List α) (rows width : Nat)
+    (h : xs.length = rows * width) :
+    (List.range rows).flatMap (fun row => (xs.drop (row * width)).take width) = xs := by
+  rw [orderedSlices_take, List.take_of_length_le (by omega)]
+
+theorem inputCode_accepts {n : Nat} (x : Fin n → M31) (output : List M31) :
+    (arrayCode (.var .here : Expr [.array n] (.array n))).strictAccepts
+      fieldArity Gadgets.Hash.fieldPrimitive (List.ofFn x) output ↔
+      output = List.ofFn x := by
+  simpa [arrayInputSource, denote, Env.get] using
+    (arrayCode_accepts (.var .here : Expr [.array n] (.array n))
+      (List.ofFn x) output (by simp))
+
+/-- The strict field graph that aliases the original input accepts exactly
+the output obtained by rejoining all consecutive reshape rows. This proves
+the algebraic erasure rule; the native Python/Zig acceptance gate separately
+checks that the implementation selects it only under the interval guard. -/
+theorem orderedSlices_graph_iff_input {n : Nat} (x : Fin n → M31)
+    (output : List M31) (rows width : Nat) (h : n = rows * width) :
+    (arrayCode (.var .here : Expr [.array n] (.array n))).strictAccepts
+      fieldArity Gadgets.Hash.fieldPrimitive (List.ofFn x) output ↔
+      output = (List.range rows).flatMap
+        (fun row => ((List.ofFn x).drop (row * width)).take width) := by
+  rw [inputCode_accepts]
+  rw [orderedSlices_rejoin (List.ofFn x) rows width (by simpa using h)]
+
 end S31.Functional

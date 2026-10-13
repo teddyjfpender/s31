@@ -284,7 +284,9 @@ packing boundary. Their handwritten relations and native proof acceptance
 are exercised by `python3 acceptance_array_views.py`. Runtime
 [`take`/`drop`](../../examples/arrays/array_slice_shifted.s31) and
 [`reshape`/`flatten`](../../examples/arrays/array_matrix_runtime.s31) have corresponding
-handwritten relations and native proof tests. A runtime slice must be nonempty
+handwritten relations and native proof tests. Complete ordered runtime
+reshape/flatten returns the original array reference; a separately consumed
+row still materializes its slice. A runtime slice must be nonempty
 and stay within its source; its relation equation is
 `out[j] = source[offset+j]` for every selected lane. Aligned packed words
 borrow existing wires, while shifted words require constrained repacking.

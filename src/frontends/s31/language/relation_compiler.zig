@@ -2307,7 +2307,7 @@ test "runtime slices borrow aligned packed words and constrain shifted words" {
     const cases = .{
         .{ "array_slice_aligned", @embedFile("../examples/arrays/array_slice_aligned.s31.json"), @embedFile("../examples/arrays/array_slice_aligned.valid.json") },
         .{ "array_slice_shifted", @embedFile("../examples/arrays/array_slice_shifted.s31.json"), @embedFile("../examples/arrays/array_slice_shifted.valid.json") },
-        .{ "array_matrix_runtime", @embedFile("../examples/arrays/array_matrix_runtime.s31.json"), @embedFile("../examples/arrays/array_matrix_runtime.valid.json") },
+        .{ "array_matrix_runtime", @embedFile("../examples/arrays/expanded_matrix_runtime/relation.s31.json"), @embedFile("../examples/arrays/expanded_matrix_runtime/valid.json") },
         .{ "array_slice_u16", @embedFile("../examples/arrays/array_slice_u16.s31.json"), @embedFile("../examples/arrays/array_slice_u16.valid.json") },
     };
     inline for (cases) |case| {

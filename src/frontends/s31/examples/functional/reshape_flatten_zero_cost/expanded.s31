@@ -1,0 +1,12 @@
+use std@1;
+
+// A deliberately expanded spelling of the same value, used as a cost
+// reference for the packing work avoided by complete reshape/flatten.
+circuit reshape_flatten6(private x: [m31; 6]) -> public [m31; 1] {
+    let a = std::array::take<2>(x);
+    let b = std::array::take<2>(std::array::drop<2>(x));
+    let c = std::array::drop<4>(x);
+    let flat = std::array::concat(std::array::concat(a, b), c);
+    let result = std::array::get<3>(flat);
+    result
+}

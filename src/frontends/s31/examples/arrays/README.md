@@ -6,6 +6,14 @@ field arithmetic. The adjacent `.s31.json` files are equivalent normalized
 relations for the older direct-IR examples; `.valid.json` files contain
 complete public/private assignments.
 
+`array_matrix_runtime.s31` erases its complete ordered `reshape<2>` and
+`flatten` to the original private array before selecting lane 6. Its matching
+`.s31.json` contains only the selection. The
+[`expanded_matrix_runtime` fixture](expanded_matrix_runtime/README.md)
+keeps the explicit slice/concat relation so the Zig circuit test continues
+to check explicit aligned views. For a shifted view whose erasure saves gates,
+see [the six-lane comparison](../functional/reshape_flatten_zero_cost/README.md).
+
 [`functional_rotate_hash.s31`](functional_rotate_hash.s31) passes a four-lane
 array through a captured hash closure. It takes the last two lanes, appends
 the first two, adds a captured field salt, and hashes the result with

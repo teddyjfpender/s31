@@ -417,6 +417,17 @@ capture emit no nodes. For the fixture `[0,1,2,3]`, the hash receives
 padded QM31 operation rows. The functional acceptance gate pins the complete
 AIR cost and checks a native proof against an independent Poseidon2 oracle.
 
+Complete ordered runtime `reshape` followed by `flatten` is another source
+abstraction with no circuit cost. The [six-lane example](../examples/functional/reshape_flatten_zero_cost/README.md)
+uses three two-lane rows, whose middle row crosses a packed QM31 boundary.
+The functional and direct sources emit the same normalized relation and 291
+raw QM31 rows; spelling the slices and joins explicitly emits 332 raw rows.
+All three pad to 512 rows, so this is a reduction in raw circuit work rather
+than a claim of a smaller proof for this particular shape. The corresponding
+[Lean lemma](../../../../formal/s31/S31/Gadgets/Functional/ArrayNodes.lean)
+proves ordered complete windows rejoin to the original value. Reordered,
+repeated, or missing rows keep explicit constrained view nodes.
+
 The [Lean array theorem](../../../../formal/s31/S31/Gadgets/Functional/Arrays.lean)
 proves pointwise field-array specialization and strict graph soundness for
 arbitrary intermediate witnesses, including statically bounded views and the
