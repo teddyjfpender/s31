@@ -113,7 +113,7 @@
     "src/frontends/s31/tools/formal/alias8_native_fixture.py": "9e4112ee0cddd04abd2eb22a67ae230816e7b083f2ae4f5cd66c20a627e4ab93",
     "src/frontends/s31/tools/formal/ordered_subtraction_fixture.py": "43aa23ba0e4dc188ca8f432c1dca6e514925fe7c2b67553f85f60d813e553f31",
     "src/frontends/s31/tools/formal/ordered_subtraction_native_fixture.py": "9f63da77a33790416a8aa0b9fba187a45208090ae7d4f759b152996f998dab4a",
-    "formal/s31/fixtures/correspondence/ordered_subtraction_native.json": "73f440cda2ad51ee2c1c291bf9ee00ed33177a311f3da80df43fcaeb9d149465",
+    "formal/s31/fixtures/correspondence/ordered_subtraction_native.json": "2707b50a1164a74aba8c35fc6072bad171b4edfcb6bca293b852bfbacd2343a6",
     "src/frontends/s31/language/canonical.zig": "42228724c17cf303de876407ef719cad15136ddf97c760d70d47f4d54fe90706",
     "src/frontends/s31/language/record_abi.zig": "ff593462c04f7707249c80d503dd91169285b227a4fb4b7a8921e3dd8f7f3423",
     "src/frontends/s31/language/relation_compiler.zig": "cf7b6fd3bdd76a158c893a0d5075052c4b2c135718d3f675f1b01971b391ec05",
