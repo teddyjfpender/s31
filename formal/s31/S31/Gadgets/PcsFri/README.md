@@ -114,6 +114,29 @@ from the repository root with:
 zig test -O ReleaseSafe --dep stwo_core -Mroot=formal/s31/tests/pcs_fri_decoder_native.zig -Mstwo_core=deps/stwo-zig/src/core/mod.zig
 ```
 
+## One FRI fold's field algebra
+
+[`FoldAlgebra.lean`](FoldAlgebra.lean) defines the inverse-butterfly pair
+operation `(left + right) + α (left - right) / x`. For affine evaluations at
+`x` and `-x`, `pairFold_affine` proves that this equals `2(c₀ + α c₁)` when
+`x ≠ 0`. The factor two reflects the native inverse butterfly, which does
+not divide by two. `circleAccumulate_affine` adds the native `α²`-weighted
+previous value, and `challengeAt_succ` proves that repeated squaring gives
+successive powers `α^(2^step)`.
+
+The [native algebra regression](../../../tests/pcs_fri_fold_native.zig) compares
+the pinned engine's circle-to-line fold and four line halvings with a separate
+formula that never calls the engine butterfly or single-step fold. It uses
+bit-reversed native domain coordinates and explicit challenge powers. The
+[source guard](../../../../../scripts/s31_formal_lib/pcs_fri_fold.py) binds
+the inverse butterfly, coordinate inversion, challenge squaring, sparse fold
+helpers, and both verifier call sites; mutation controls reject changes to
+each critical step. Run the native regression from the repository root with:
+
+```sh
+zig test -O ReleaseSafe --dep stwo_core -Mroot=formal/s31/tests/pcs_fri_fold_native.zig -Mstwo_core=deps/stwo-zig/src/core/mod.zig
+```
+
 ## What remains to join
 
 The Lean decoder model starts with a strictly sorted frontier and a committed
@@ -121,7 +144,8 @@ projected row. It proves the deterministic one-layer decode inside that model.
 A machine-checked refinement of Zig's sorting, deduplication, witness cursor
 and capture copy loops to that decoder remains open, as does a proof that the
 tree was built from precisely those columns in that order. It
-does not prove BLAKE2s collision resistance, Fiat–Shamir sampling, FRI fold
-correctness, low-degree proximity, or a whole-proof security bound. See the
+does not prove BLAKE2s collision resistance, Fiat–Shamir sampling, the
+nonzero-coordinate condition for all production domains, all FRI fold inputs,
+low-degree proximity, or a whole-proof security bound. See the
 [published-bound audit](../../../../../design/s31/security/PCS_FRI_PUBLISHED_BOUND_AUDIT.md)
 for the parameter and reduction gaps.
