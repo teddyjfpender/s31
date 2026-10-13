@@ -368,10 +368,14 @@ def check_gate_ownership(package: Path, manifest: dict[str, Any]) -> dict[str, A
     raw = [first["in0"]]
     for index, term in enumerate((first["in1"], middle["in1"], tail["in1"]), 1):
         product = _gate_by_output(topology["mul"], term)
+        _require(_all_producers(topology, term) == [("mul", product)],
+                 "public input pack product has an extra producer")
         _require(product["in0"] == constant(BASIS[index]),
                  "public input pack basis differs")
         raw.append(product["in1"])
     _require(len(set(raw)) == 4, "public input pack repeats a scalar wire")
+    _require(all(wire > 10 for wire in raw),
+             "public input scalar aliases a reserved wire")
     for wire in raw:
         _require(_all_producers(topology, wire) == [
             ("pointwise_mul", {"in0": wire, "in1": constant(BASIS[0]), "out": wire})],
