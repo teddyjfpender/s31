@@ -89,6 +89,12 @@ independent uniform raw draws, the all-missed sequence count is bounded by
 `((2^(k-i) - |bad|)·2^i)^s` out of `(2^k)^s` sequences. Native M31 word
 reduction, transcript independence, and authenticated checking of both
 rows remain separate obligations.
+The `masked_sparse_miss_fraction_le` theorem further composes this fixed-set
+count with the **exact** M31-reduce-and-mask preimage bound. For
+`2 ≤ k ≤ 31`, if independent ideal uniform 32-bit words supply the raw
+queries, its missed fraction is at most
+`((2^(k-i)-|bad|)/2^(k-i) + 2/2^32)^s`. The extra two-word term records the
+native mask bias; it grants no concrete BLAKE2s or adaptive BCS claim.
 
 [`ConservativeEnvelope.lean`](ConservativeEnvelope.lean) proves an arithmetic
 limit of one **published upper-bound expression**: in Circle STARKs Remark 26,
