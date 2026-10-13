@@ -1,0 +1,36 @@
+{
+  "assertions": [],
+  "inputs": [
+    {
+      "kind": "m31",
+      "length": 3,
+      "name": "x",
+      "visibility": "public"
+    }
+  ],
+  "name": "three",
+  "nodes": [
+    {
+      "lhs": "x",
+      "name": "a",
+      "op": "add",
+      "rhs": "x"
+    },
+    {
+      "lhs": "a",
+      "name": "b",
+      "op": "sub",
+      "rhs": "x"
+    },
+    {
+      "lhs": "a",
+      "name": "c",
+      "op": "mul",
+      "rhs": "b"
+    }
+  ],
+  "public_outputs": [
+    "c"
+  ],
+  "version": 1
+}
