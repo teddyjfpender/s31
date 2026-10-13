@@ -158,6 +158,10 @@ def make_parser() -> argparse.ArgumentParser:
         sub.add_argument("--statement", type=Path)
         sub.add_argument("--lean-checker", type=Path, required=True)
         sub.add_argument("--lean-checker-sha256", required=True)
+        sub.add_argument("--structural-lean-checker", type=Path,
+                         help="also require typed-tree erasure admission")
+        sub.add_argument("--structural-lean-checker-sha256",
+                         help="externally trusted SHA-256 of the structural checker")
         for kind in ("source", "key", "prover", "verifier", "text"):
             sub.add_argument(f"--{kind}-sha256", required=True)
     sub = commands.add_parser("verify-recursive", help="verify an outer proof against its embedded child key")

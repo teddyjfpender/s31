@@ -45,6 +45,11 @@ private witness that yields the same public claim. The checker path must name
 a regular file through directories without symlinks. This opt-in audit gives
 the full private assignment to the verifier-side Lean checker, so callers
 must not use it where that witness has to remain hidden from the verifier.
+Supplying both `--structural-lean-checker` and
+`--structural-lean-checker-sha256` to either Lean verification command also
+runs the independently pinned typed-tree erasure checker on the same package
+snapshot. It currently admits only its bounded M31 tree arm; see
+[`GeneralLinearSSAStructuralDerivation.md`](../../../../../formal/s31/S31/Gadgets/Functional/Correspondence/GeneralLinearSSAStructuralDerivation.md).
 For example:
 
 ```sh
