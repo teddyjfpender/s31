@@ -196,9 +196,10 @@ for a lower field of size `Q`, subject to explicit nonsquare and imaginary
 unit premises. The modeled M31 coefficient pair has cardinality `q²`, its
 imaginary unit squares to `−1`, and `2+i` is nonsquare by the
 [concrete pair bridge](../../../formal/s31/S31/Gadgets/PcsFri/ConcreteCM31Tower.lean).
-A Lean field instance and native Zig refinement are still required to apply
-the generic count directly to compiled CM31 values. The native channel's
-adaptive independent-uniform-seed premise is also unproved. The
+A [modeled CM31 field instance](../../../formal/s31/S31/Gadgets/PcsFri/CM31FieldInstance.lean)
+now instantiates the generic count with no free field premises. Native Zig
+refinement is still required to apply it to compiled CM31 values. The native
+channel's adaptive independent-uniform-seed premise is also unproved. The
 [paired denominator theorem](../../../formal/s31/S31/Gadgets/PcsFri/PairedTowerCircle.lean)
 proves all-row nonvanishing from a modeled circle equation and `y.c1 ≠ 0`;
 connecting that premise to every native accepted point remains open.

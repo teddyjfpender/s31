@@ -58,8 +58,10 @@ indeed a nonsquare: its norm down to `M31` is `5`, and `q mod 5=2` makes
 [Lean conic count](../../../formal/s31/S31/Gadgets/PcsFri/OodGuardFiniteCount.lean)
 proves the formula for any qualifying finite lower field; the
 [M31 pair bridge](../../../formal/s31/S31/Gadgets/PcsFri/ConcreteCM31Tower.lean)
-proves the modeled pair size and nonresidue facts. A Lean field instance and
-compiled Zig refinement still separate that generic count from native CM31.
+proves the modeled pair size and nonresidue facts. The
+[modeled CM31 field instance](../../../formal/s31/S31/Gadgets/PcsFri/CM31FieldInstance.lean)
+instantiates the generic count at `q²`; compiled Zig refinement still
+separates this algebraic result from native CM31.
 The [draft experimental paired verifier](https://github.com/teddyjfpender/stwo-zig/pull/249)
 rejects this larger set before publishing the transcript state; the pinned production
 path does not have that early guard. `y.c1=0` alone does **not** imply the
