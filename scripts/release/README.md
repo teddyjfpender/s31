@@ -25,7 +25,9 @@ command runs no native proof.
 GitHub's automatic source archives omit `deps/stwo-zig`. After the candidate
 checker passes on a clean commit, make an offline-buildable archive containing
 the **complete tracked source trees** at the candidate and pinned engine
-commits:
+commits. Every archive member must stay under the single tag-named root;
+long Git paths are covered by a PAX regression test, and symlinks may not
+escape that root:
 
 ```sh
 python3 -B scripts/release/source_bundle.py --tag v0.1.0-rc.N \

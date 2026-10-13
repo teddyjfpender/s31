@@ -49,8 +49,10 @@ jobs:
           python3 -B -m unittest discover -s src/frontends/s31/benchmarks/direct_gate_release_cost -p 'test_*.py' -q
       - name: Documentation consistency
         run: python3 src/frontends/s31/docs/check.py
-      - name: Release profile inventory and fail-closed audit controls
-        run: python3 -B -m unittest scripts.tests.test_s31_v01_release_audit -q
+      - name: Release archive and profile controls
+        run: |
+          python3 -B -m unittest scripts.tests.test_source_bundle -q
+          python3 -B -m unittest scripts.tests.test_s31_v01_release_audit -q
       - name: Native proof smoke
         run: |
           python3 src/frontends/s31/python/s31.py trial \
