@@ -46,6 +46,12 @@ null or listed as missing, `status` stays `incomplete`, and
 `proven_release_admissible` stays false. This report cannot discharge P01 or
 produce native soundness bits.
 
+For the narrower sealed `gate` profile, the follow-up
+[`PCS_FRI_GATE_FINAL_DOMAIN.md`](PCS_FRI_GATE_FINAL_DOMAIN.md) derives the
+split composition bound and conditional final FRI domain from the pinned AIR
+bundle and verifier source. The general extractor still reports null for these
+fields, including for gate; its outputs remain profile-agnostic.
+
 Generated-key tests cover all four extractor layouts and hostile tuple,
 schema, height, order, and evaluation-domain changes:
 
