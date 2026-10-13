@@ -140,6 +140,7 @@ BINDINGS = [
     "src/frontends/s31/python/package/structural_derivation.py",
     "src/frontends/s31/python/package/pure_native_rows.py",
     "src/frontends/s31/tests/python/security/test_structural_derivation.py",
+    "formal/s31/scripts/check_record_v2_source_correspondence.py",
     "src/frontends/s31/tests/acceptance/compiler_correspondence/combined_helper_tuple_native_rows.py",
     "src/frontends/s31/tests/acceptance/record_abi/native_parser_corpus.zig",
     "src/frontends/s31/tests/acceptance/record_abi/record_source_execution_fragment_v2.py",
