@@ -53,6 +53,14 @@ refer to their producer's original name. The output ABI has one public input
 vector `x` followed by one public output vector `result`, each of four
 canonical M31 words. The private `y` is absent from the public ABI.
 
+The optional Lean effects package gate checks this JSON as bytes before
+interpreting it. Its strict relation shape requires exactly the six top-level
+fields above. A binary node has `name`, `lhs`, `op`, and `rhs`; a constant node
+has `name`, `lhs`, `op`, and `constant`. An explicit transparent `proof_mode` or
+an unused null field is rejected, even if a general JSON-to-`Program` parser
+would assign it the same meaning. The Lean graph theorem then ties every
+ordered node and assertion in these bytes to the source-derived SSA.
+
 For a conservatively compiled text package in this accepted grammar, the builder now emits
 `source-relation-certificate.json`. Package verification reparses the source
 bytes independently, compares the *entire* normalized relation, and

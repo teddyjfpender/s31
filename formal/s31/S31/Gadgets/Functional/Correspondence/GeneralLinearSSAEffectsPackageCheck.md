@@ -7,6 +7,18 @@ for any program in the bounded effectful M31 grammar. A compiled package
 does not have a witness, so this static result says nothing about whether
 its assertions can be satisfied.
 
+`checkSourceRelationBytes` first requires the production effectful relation
+JSON shape: exactly the six top-level fields shown in the source-relation
+example, four fields per input, the operator-specific binary or constant
+node fields, and two fields per assertion. It rejects an explicit
+`"proof_mode": "transparent"` or a null `constant` on a binary node even
+though both would decode to the same typed `Program`. Canonical whitespace and
+key order are checked as before. `checked_source_relation_graph` proves that
+accepted exact bytes decode to the program whose circuit name, ordered nodes,
+and assertions came from the independently parsed source and certificate.
+The theorem is conditional on checker acceptance; it does not prove the
+production Python parser equivalent to Lean's source parser.
+
 The package gate accepts the two exact production v1 ABI encoding labels:
 the generic `gate` label and the canonical M31 `direct-gate` label. It checks
 the original descriptor and its source-derived field layout before
