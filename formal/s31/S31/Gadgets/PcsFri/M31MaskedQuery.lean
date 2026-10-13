@@ -13,8 +13,8 @@ The random-oracle independence of successive words is an external premise.
 namespace S31.Gadgets.PcsFri.M31MaskedQuery
 
 private def p : Nat := 2 ^ 31 - 1
-private def rawSize : Nat := 2 ^ 32
-private def size (k : Nat) : Nat := 2 ^ k
+def rawSize : Nat := 2 ^ 32
+def size (k : Nat) : Nat := 2 ^ k
 
 private def index (k word : Nat) : Nat := (word % p) % size k
 
@@ -146,7 +146,7 @@ private def baseline (k : Nat) : Nat := 2 * 2 ^ (31 - k)
 def weightedCount (k : Nat) (good : Finset (Fin (size k))) : Nat :=
   ∑ i ∈ good, preimages k i.val
 
-private def sampleIndex (k word : Nat) : Fin (size k) :=
+def sampleIndex (k word : Nat) : Fin (size k) :=
   ⟨index k word, Nat.mod_lt _ (by simp [size])⟩
 
 /-- The actual finite set of 32-bit raw words mapping into `good`. -/

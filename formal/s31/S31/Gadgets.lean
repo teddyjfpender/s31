@@ -288,6 +288,7 @@ import S31.Gadgets.PcsFri.MultiproofDecoder
 import S31.Gadgets.PcsFri.FoldAlgebra
 import S31.Gadgets.PcsFri.LayerAcceptance
 import S31.Gadgets.PcsFri.RawLayerRefinement
+import S31.Gadgets.PcsFri.MaskedLayerBound
 
 /-! Local constraint relations, with arbitrary-witness soundness and honest
 witness completeness. All range and representation premises are explicit. -/
