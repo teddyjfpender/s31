@@ -66,7 +66,9 @@ Four input-state premises remain explicit:
 
 These are necessary for the induction but are **not yet derived from** the
 canonical assignment/ABI byte checker in this theorem. Callers must supply
-proofs of them. The theorem concludes equality for the named public output
+proofs of them. The [finite input-state checker](GeneralLinearSSAInputState.md)
+now supplies those proofs from a typed assignment; the JSON-to-typed-assignment
+join remains open. The theorem concludes equality for the named public output
 value when `Program.evaluate assignment = .ok words`; it does not prove that
 `words` are the verifier's authenticated eight public words.
 
