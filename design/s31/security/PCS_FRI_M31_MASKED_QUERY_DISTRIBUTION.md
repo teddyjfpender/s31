@@ -16,6 +16,16 @@ records hashes of the channel, hasher, field and query source files. This
 contract is a change detector, while the Lean theorem is an arithmetic
 statement about the explicitly modeled map.
 
+The [word reduction proof](../../../formal/s31/S31/Gadgets/PcsFri/M31WordReduction.lean)
+also justifies that map for the native little-endian vector path. Zig first
+computes `folded = (word & p) +% (word >> 31)`, then subtracts `p` when
+`folded >= p`. For every `u32` input, Lean proves the first expression is
+`word % 2^31 + word / 2^31`, is at most `p+1` (so `+%` cannot overflow),
+and the conditional result is exactly `word % p`. The query proof composes
+this reducer equality with the low-bit mask. The separate big-endian scalar
+fallback and the correctness of the BLAKE2s digest implementation are not
+covered by this arithmetic theorem.
+
 ## Counting by hand
 
 Since `2^32 = 2p + 2`, every residue in `0 .. p-1` has two raw preimages,

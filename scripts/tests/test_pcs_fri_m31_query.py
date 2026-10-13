@@ -32,6 +32,8 @@ class M31QuerySourceControls(unittest.TestCase):
              "if (false) out = reduceToM31(out);"),
             ("hasher", "const reduced = @select(u32, folded >= p, folded -% p, folded);",
              "const reduced = folded;"),
+            ("hasher", "const folded = (input & p) +% (input >> @as(V4, @splat(31)));",
+             "const folded = (input & p) -% (input >> @as(V4, @splat(31)));"),
             ("m31", "pub const Modulus: u32 = 0x7fffffff;",
              "pub const Modulus: u32 = 0x7ffffffe;"),
             ("m31", "return @min(r, r -% Modulus);", "return r;"),

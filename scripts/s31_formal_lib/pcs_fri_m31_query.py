@@ -48,14 +48,14 @@ def check_sources(queries: str, channel: str, hasher: str, m31: str) -> None:
         "return out;",
     )
     reduce = region(hasher, "pub fn reduceToM31(", "fn readU32Le(")
-    for stage in (
+    ordered_once(
+        reduce, "M31 vector then scalar reduction",
         "const p: V4 = @splat(m31.Modulus);",
         "const folded = (input & p) +% (input >> @as(V4, @splat(31)));",
         "const reduced = @select(u32, folded >= p, folded -% p, folded);",
+        "return @bitCast(words);",
         "const reduced = M31.fromU64(word);",
-    ):
-        if reduce.count(stage) != 1:
-            raise ValueError(f"M31 reduction changed: {stage!r}")
+    )
     if "pub const Modulus: u32 = 0x7fffffff;" not in m31:
         raise ValueError("M31 modulus changed")
     reduce64 = region(m31, "inline fn reduce64(", "inline fn reduceProduct(")
