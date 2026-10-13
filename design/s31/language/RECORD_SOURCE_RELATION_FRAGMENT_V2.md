@@ -8,8 +8,9 @@ compares 23 honest and 23 changed-result cases with Zig `Program.evaluate`.
 The [Lean record value theorem](../../../formal/s31/S31/Gadgets/Records/SourceValueV2.lean)
 composes the original no-pattern grammar's checked SSA interpreter across
 ordered result fields and rejects swapped or split-alias certificates. The
-flat pattern extension below has an executable exact-source replay but has not
-yet been added to that Lean byte grammar. These are bounded semantic checks; they
+flat pattern extension below is also checked by the independent Lean
+exact-byte parser and typed-Program admission, though it remains outside the
+separate `SourceValueV2` grammar. These are bounded semantic checks; they
 do not authenticate native trace openings or establish full compiler soundness.
 The production v2 record compiler, native descriptor parser, statement codec,
 and representative native proofs already exist. This increment checks an exact
@@ -105,9 +106,13 @@ circuit mix(public x: Pair, private y: Pair) -> public Pair {
 The typed structural certificate records each projection against the exact
 source bytes, then independently replays the same wire mapping and public
 ABI. Changing a bound field and resealing the relation, ABI, and certificate
-still fails that source replay. This extension has no Lean byte-parser or
-native AIR correspondence theorem for the pattern syntax; the bounded Lean
-record theorem continues to apply only to its separately accepted grammar.
+still fails that source replay. The Lean `GeneralRecordV2SourceCorrespondence`
+parser now accepts these bounded flat patterns directly from source bytes,
+checks their ordered structural projections, and reconstructs the relation.
+`GeneralRecordV2ProgramAdmission` checks equality with the actual typed
+`Program` after erasing the source-derived v2 metadata. Neither theorem
+establishes native AIR or PCS/FRI correctness; computed pattern right sides
+and nested patterns remain outside the accepted grammar.
 
 ## Exact checks
 

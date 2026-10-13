@@ -5,6 +5,11 @@ It covers the bounded scalar M31 record grammar: one or two nominal record
 inputs with up to four one-word fields each, up to eight `+` or `.*` local
 nodes, and an ordered public record result. The static Lean admission still
 checks the **exact source bytes** against the normalized relation and ABI.
+It also accepts bounded flat input-record patterns: each selected field
+becomes an ordered structural projection onto the input's existing scalar
+wire. Such a projection adds no Gate operation or physical row; subsequent
+arithmetic uses the same source-derived address as direct field selection.
+Computed record right sides and nested patterns are outside this grammar.
 
 ## A hand-written example
 

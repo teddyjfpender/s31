@@ -40,6 +40,24 @@ circuit copy(public x: Triple, private y: Triple) -> public Triple {
     Triple { c: x.c, b: p, a: p }
 }
 """,
+    """struct Pair { left: [m31; 1], right: [m31; 1] }
+circuit mix(public x: Pair, private y: Pair) -> public Pair {
+    let Pair { right: saved, left } = x;
+    let Pair { right: secret } = y;
+    let p = left .* secret;
+    let q = p + saved;
+    Pair { right: saved, left: q }
+}
+""",
+    """struct Pair { left: [m31; 1], right: [m31; 1] }
+circuit interleave(public x: Pair, private y: Pair) -> public Pair {
+    let Pair { left: saved } = x;
+    let p = x.right + y.left;
+    let Pair { right: secret } = y;
+    let q = p .* secret;
+    Pair { right: saved, left: q }
+}
+""",
 )
 
 
@@ -124,7 +142,49 @@ def main() -> None:
     forged["source.s31.json"] = forged["source.s31.json"].replace(
         b'"version": 2', b'"version": 2, "version": 2')
     run(checker, forged, False, "duplicate relation key")
-    print("record-v2 exact-source corpus: 3 accepted, 5 rejected")
+
+    pattern = package_files(SOURCES[3])
+    forged = copy.deepcopy(pattern)
+    tree = json.loads(forged["typed-structural-derivation.json"])
+    tree["program"]["steps"][0]["expr"]["field"] = "left"
+    forged["typed-structural-derivation.json"] = encode(tree)
+    run(checker, forged, False, "resealed wrong record-pattern field")
+
+    forged = copy.deepcopy(pattern)
+    tree = json.loads(forged["typed-structural-derivation.json"])
+    tree["program"]["steps"][2]["expr"]["source"]["name"] = "x"
+    forged["typed-structural-derivation.json"] = encode(tree)
+    run(checker, forged, False, "resealed private pattern source as public")
+
+    forged = copy.deepcopy(pattern)
+    relation = json.loads(forged["source.s31.json"])
+    relation["nodes"][0]["rhs"] = "_s31_abi_input_1"
+    forged["source.s31.json"] = encode(relation)
+    tree = json.loads(forged["typed-structural-derivation.json"])
+    tree["relation_sha256"] = hashlib.sha256(forged["source.s31.json"]).hexdigest()
+    forged["typed-structural-derivation.json"] = encode(tree)
+    run(checker, forged, False, "resealed pattern's private arithmetic wire")
+
+    source = pattern["source.s31"]
+    for old, new, reason in (
+        (b"let Pair { right: saved, left }",
+         b"let Pair { right: saved, left: saved }",
+         "duplicate pattern binder"),
+        (b"let Pair { right: saved, left }",
+         b"let Other { right: saved, left }", "wrong nominal pattern"),
+        (b"= x;", b"= Pair { left: x.left, right: x.right };",
+         "computed pattern right side"),
+        (b"let Pair { right: saved, left }",
+         b"let Pair { left: saved, right: left }",
+         "field swap differs from sealed relation"),
+    ):
+        if source.count(old) != 1:
+            raise AssertionError(f"ambiguous pattern fixture: {reason}")
+        forged = copy.deepcopy(pattern)
+        forged["source.s31"] = source.replace(old, new)
+        run(checker, forged, False, reason)
+
+    print("record-v2 exact-source corpus: 5 accepted, 12 rejected")
 
 
 if __name__ == "__main__":

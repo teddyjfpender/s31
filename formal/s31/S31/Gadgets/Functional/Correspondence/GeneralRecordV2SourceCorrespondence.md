@@ -3,7 +3,13 @@
 `GeneralRecordV2SourceCorrespondence.lean` reads the actual `.s31` bytes. It
 accepts one nominal record with one to four `[m31; 1]` fields, one or two
 record inputs with at least one public input, one to eight arithmetic `let`s
-(`+` or `.*`), and a result constructor containing every declared field. The
+(`+` or `.*`), and a result constructor containing every declared field. A
+flat `let R { field: local, other } = input;` may bind a subset of fields from
+an already evaluated record input; at most sixteen distinct bindings enter
+the checked grammar. Each projection retains the input field's original flat
+wire, while the typed structural certificate records the ordered aliases.
+Computed pattern right sides and nested products remain outside this grammar
+because omitted fields may carry eager effects. The
 checker accepts ASCII whitespace and `//` comments and rejects all
 other syntax. This is a bounded class, not the full S31 text language.
 
@@ -53,6 +59,14 @@ The Lean executable checks four package artifacts together:
 the canonical relation bytes to the source-derived graph. `eval_node_output`
 defines the M31 addition/multiplication value step; `same_result_wire_same_value`
 states the alias consequence for a pair of result references.
+`flat_pattern_alias_operand` proves that a valid bound local keeps its source
+name in the structural expression while the arithmetic operand points to its
+existing input wire. The general exact-byte source checker reconstructs
+ordered projections and the complete relation; `checked_expected_graph`
+applies to every source it accepts. The static Program admission checker then
+compares the source-derived graph with the actual typed `Program`. The focused
+corpus checks duplicate binders, wrong nominal type, computed pattern input,
+field swaps, and resealed package mutations through that executable checker.
 
 `checkSourceTopology` is a second, name-only check used by the typed-program
 admission gate. Its successful result is stored in `Static` and proves that
@@ -69,9 +83,11 @@ cd ../..
 python3 -B formal/s31/scripts/check_record_v2_source_correspondence.py
 ```
 
-The focused corpus includes compiler-produced packages with two, three, and
-four fields and negative packages whose structural projection, normalized
-operand, ABI leaf order, source tail, or JSON key shape has been changed.
+The focused corpus includes five compiler-produced packages, including a
+renamed/subset flat pattern and patterns interleaved with arithmetic, and
+twelve negative packages. The new adversarial
+cases reseal a wrong pattern field, substitute a private input projection with
+a public one, or change the arithmetic operand in the normalized relation.
 
 ## Boundary of this result
 
