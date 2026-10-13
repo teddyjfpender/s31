@@ -1,4 +1,5 @@
 import S31.Gadgets.PcsFri.CM31FieldInstance
+import S31.Gadgets.PcsFri.NativeTowerInverse
 import Mathlib.Algebra.Field.TransferInstance
 
 /-!
@@ -52,5 +53,52 @@ theorem circle_coefficients_of_field (x y : QM31)
       ← add_eq_qmAdd, ← one_eq_qmOne]
     exact hcircle
   exact circle_coefficient_equations x y hnative
+
+def toPair (x : QM31) : PairedTowerCircle.Pair CM31 := ⟨x.c0, x.c1⟩
+
+theorem toPair_add (x y : QM31) :
+    toPair (x + y) = PairedTowerCircle.add (toPair x) (toPair y) := by
+  rw [add_eq_qmAdd]
+  apply NativeTowerInverse.pair_ext
+  · exact (CM31FieldInstance.add_eq_cmAdd x.c0 y.c0).symm
+  · exact (CM31FieldInstance.add_eq_cmAdd x.c1 y.c1).symm
+
+theorem toPair_one :
+    toPair (1 : QM31) = PairedTowerCircle.one := by
+  rw [one_eq_qmOne]
+  rfl
+
+theorem toPair_square (x : QM31) :
+    toPair (x ^ 2) = PairedTowerCircle.square (r : CM31) (toPair x) := by
+  rw [square_eq_qmSquare]
+  apply NativeTowerInverse.pair_ext
+  · change cmAdd (cmSquare x.c0) (cmMulByR (cmSquare x.c1)) =
+      x.c0 ^ 2 + (r : CM31) * x.c1 ^ 2
+    rw [CM31FieldInstance.square_eq_cmSquare x.c0,
+      CM31FieldInstance.square_eq_cmSquare x.c1,
+      CM31FieldInstance.add_eq_cmAdd]
+    rw [cm_mul_by_r, ← CM31FieldInstance.mul_eq_cmMul,
+      mul_comm (cmSquare x.c1) r]
+  · change cmAdd (cmMul x.c0 x.c1) (cmMul x.c0 x.c1) =
+      2 * x.c0 * x.c1
+    rw [← CM31FieldInstance.add_eq_cmAdd,
+      ← CM31FieldInstance.mul_eq_cmMul]
+    ring
+
+/-- A genuine modeled QM31 circle point with the native upper-coordinate
+guard has a nonzero paired quotient denominator at every base-circle row. -/
+theorem denominator_ne_zero_of_field_circle (x y : QM31) (a b : CM31)
+    (hcircle : x ^ 2 + y ^ 2 = 1)
+    (hbase : a ^ 2 + b ^ 2 = 1)
+    (hguard : y.c1 ≠ 0) :
+    (x.c0 - a) * y.c1 - (y.c0 - b) * x.c1 ≠ 0 := by
+  have hpair : PairedTowerCircle.add
+      (PairedTowerCircle.square (r : CM31) (toPair x))
+      (PairedTowerCircle.square (r : CM31) (toPair y)) =
+      PairedTowerCircle.one := by
+    rw [← toPair_square, ← toPair_square, ← toPair_add,
+      ← toPair_one, hcircle]
+  exact CM31FieldInstance.denominator_ne_zero_cm31
+    (toPair x) (toPair y) a b hpair hbase hguard
 
 end S31.Gadgets.PcsFri.QM31FieldInstance

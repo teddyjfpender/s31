@@ -111,6 +111,9 @@ native-shaped formulas. Consequently, a field-level `x²+y²=1` circle equation
 implies all four coefficient equations used by the OOD argument. This is an
 algebraic bridge between models; compiled Zig execution and the channel's
 sampling distribution remain separate obligations.
+The `denominator_ne_zero_of_field_circle` theorem now converts that same
+modeled field circle equation into the paired quotient denominator guarantee
+for every base-circle row, assuming the sampled point has `y.c1 ≠ 0`.
 
 [`NativeTowerInverse.lean`](NativeTowerInverse.lean) proves the checked
 quadratic inverse formula for both modeled native towers. A nonzero CM31
