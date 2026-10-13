@@ -413,6 +413,9 @@ pub const BoundedCallMap = struct {
 };
 pub const Maps = struct {
     nodes: std.ArrayListUnmanaged(Span) = .empty,
+    /// Requested only by bounded generic Gate topology inspection. Ordinary
+    /// cost reports and proving keep their original allocation profile.
+    capture_node_wires: bool = false,
     node_wires: std.ArrayListUnmanaged(NodeWires) = .empty,
     assertions: std.ArrayListUnmanaged(AssertionSpan) = .empty,
     bindings: std.ArrayListUnmanaged(BindingSpan) = .empty,
@@ -934,9 +937,11 @@ fn compileWithSpansMode(comptime V: type, allocator: std.mem.Allocator, program:
             .blake_g_end = ctx.circuit.blake_g_gate.items.len,
         });
         if (maps) |out| {
-            const wires = try allocator.alloc(u32, entry.lanes.data.len);
-            for (entry.lanes.data, wires) |wire, *address| address.* = wire.idx;
-            try out.node_wires.append(allocator, .{ .id = @intCast(id), .wires = wires });
+            if (out.capture_node_wires) {
+                const wires = try allocator.alloc(u32, entry.lanes.data.len);
+                for (entry.lanes.data, wires) |wire, *address| address.* = wire.idx;
+                try out.node_wires.append(allocator, .{ .id = @intCast(id), .wires = wires });
+            }
         }
         try checkCircuitBudget(V, &ctx, false);
     }

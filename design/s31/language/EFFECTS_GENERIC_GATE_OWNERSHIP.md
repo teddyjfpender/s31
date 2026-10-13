@@ -55,7 +55,13 @@ verifier key. It checks exact source spans, assertion spans, public binding
 spans, ABI order, circuit identity and fixed root identity. The remaining
 large fixed lookup tables are held by the native verifier's own `check-key`
 reconstruction and its fixed PCS commitment; they are not copied into this
-small diagnostic export.
+small diagnostic export. The `qm31_ops_mults` and
+`m31_to_u32_multiplicity` columns are checked against the native roster hashes;
+their multiplicities are **not** independently derived from the source. The
+checker rules out extra producer rows for source nodes, scalar inputs, pack
+and extraction intermediates, conversions and public pins. Producer ownership
+of unrelated finalization wires is
+left to the pinned native compiler and Gate AIR verifier.
 
 ## Trust and limits
 

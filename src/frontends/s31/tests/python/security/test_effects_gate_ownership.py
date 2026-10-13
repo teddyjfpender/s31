@@ -94,6 +94,27 @@ class EffectsGateOwnershipTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.check(altered)
 
+    def test_extra_public_pack_producer_rejected(self) -> None:
+        altered = copy.deepcopy(self.topology)
+        public_wire = altered["node_wires"][0]["wires"][0]
+        tail = next(gate for gate in altered["add"] if gate["out"] == public_wire)
+        middle = next(gate for gate in altered["add"] if gate["out"] == tail["in0"])
+        first = next(gate for gate in altered["add"] if gate["out"] == middle["in0"])
+        altered["sub"].append({"in0": first["in0"], "in1": 0, "out": first["out"]})
+        # Bypass the earlier fixed-column seal to exercise the independent
+        # producer ownership check directly.
+        with patch("package.effects_gate_ownership._check_columns"):
+            with self.assertRaisesRegex(ValueError, "public input pack wire has an extra producer"):
+                self.check(altered)
+
+    def test_extra_public_conversion_producer_rejected(self) -> None:
+        altered = copy.deepcopy(self.topology)
+        output_wire = altered["m31_to_u32"][0]["out"]
+        altered["sub"].append({"in0": 1, "in1": 0, "out": output_wire})
+        with patch("package.effects_gate_ownership._check_columns"):
+            with self.assertRaisesRegex(ValueError, "conversion has an extra producer"):
+                self.check(altered)
+
     def test_wrong_fixed_column_or_root_rejected(self) -> None:
         altered = copy.deepcopy(self.topology)
         next(item for item in altered["columns"] if item["id"] == "qm31_ops_sub_flag")["values"][0] ^= 1

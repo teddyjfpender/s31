@@ -119,6 +119,11 @@ def _gate_by_output(gates: list[dict[str, int]], wire: int) -> dict[str, int]:
     return found[0]
 
 
+def _all_producers(topology: dict[str, Any], wire: int) -> list[tuple[str, dict[str, int]]]:
+    return [(kind, gate) for kind in ("add", "sub", "mul", "pointwise_mul")
+            for gate in topology[kind] if gate["out"] == wire]
+
+
 def _cm_mul(x: tuple[int, int], y: tuple[int, int]) -> tuple[int, int]:
     return ((x[0] * y[0] - x[1] * y[1]) % M31,
             (x[0] * y[1] + x[1] * y[0]) % M31)
@@ -309,8 +314,7 @@ def check_gate_ownership(package: Path, manifest: dict[str, Any]) -> dict[str, A
         if item["visibility"] != "private":
             continue
         wire = node_wire[item["id"]]
-        producers = [(kind, gate) for kind in ("add", "sub", "mul", "pointwise_mul")
-                     for gate in topology[kind] if gate["out"] == wire]
+        producers = _all_producers(topology, wire)
         _require(producers == [("add", {"in0": wire, "in1": 0, "out": wire})],
                  "private input lacks its unique packed guess yield")
 
@@ -326,6 +330,8 @@ def check_gate_ownership(package: Path, manifest: dict[str, Any]) -> dict[str, A
         _require(same_json_shape(gate, {"in0": node_wire[node["lhs"]],
                                         "in1": rhs, "out": node_wire[node["id"]]}),
                  f"source node {node['id']} differs from emitted Gate row")
+        _require(_all_producers(topology, node_wire[node["id"]]) == [(kind, gate)],
+                 f"source node {node['id']} has an extra producing Gate row")
     spans = report["source_map"]
     _require(len(spans) == len(wires), "source span count differs from SSA")
     cursor = 0
@@ -356,6 +362,9 @@ def check_gate_ownership(package: Path, manifest: dict[str, Any]) -> dict[str, A
     tail = _gate_by_output(topology["add"], node_wire[public_id])
     middle = _gate_by_output(topology["add"], tail["in0"])
     first = _gate_by_output(topology["add"], middle["in0"])
+    for gate in (first, middle, tail):
+        _require(_all_producers(topology, gate["out"]) == [("add", gate)],
+                 "public input pack wire has an extra producer")
     raw = [first["in0"]]
     for index, term in enumerate((first["in1"], middle["in1"], tail["in1"]), 1):
         product = _gate_by_output(topology["mul"], term)
@@ -364,24 +373,28 @@ def check_gate_ownership(package: Path, manifest: dict[str, Any]) -> dict[str, A
         raw.append(product["in1"])
     _require(len(set(raw)) == 4, "public input pack repeats a scalar wire")
     for wire in raw:
-        _require(any(gate == {"in0": wire, "in1": constant(BASIS[0]), "out": wire}
-                     for gate in topology["pointwise_mul"]),
+        _require(_all_producers(topology, wire) == [
+            ("pointwise_mul", {"in0": wire, "in1": constant(BASIS[0]), "out": wire})],
                  "public input scalar wire lacks an M31 range Gate")
     # Reconstruct output lane extraction from its source packed wire.
     output_wire = node_wire[ssa["output"]]
     extracted = []
     for index, basis in enumerate(BASIS):
-        masked = [gate["out"] for gate in topology["pointwise_mul"]
+        masked = [gate for gate in topology["pointwise_mul"]
                   if gate["in0"] == output_wire and gate["in1"] == constant(basis)]
-        _require(len(masked) == 1, "public output lane lacks unique extraction")
+        _require(len(masked) == 1 and
+                 _all_producers(topology, masked[0]["out"]) == [("pointwise_mul", masked[0])],
+                 "public output lane lacks unique extraction")
         if index:
-            scaled = [gate["out"] for gate in topology["mul"]
-                      if gate["in0"] == masked[0] and
+            scaled = [gate for gate in topology["mul"]
+                      if gate["in0"] == masked[0]["out"] and
                       gate["in1"] == constant(BASIS_INV[index - 1])]
-            _require(len(scaled) == 1, "public output lane lacks inverse-basis scaling")
-            extracted.append(scaled[0])
+            _require(len(scaled) == 1 and
+                     _all_producers(topology, scaled[0]["out"]) == [("mul", scaled[0])],
+                     "public output lane lacks inverse-basis scaling")
+            extracted.append(scaled[0]["out"])
         else:
-            extracted.append(masked[0])
+            extracted.append(masked[0]["out"])
     _require(len(topology["output"]) == 9 and topology["output"] == list(range(2, 11)),
              "native public output pins differ from eight-word Gate ABI")
     bindings = report["public_binding"]
@@ -401,11 +414,19 @@ def check_gate_ownership(package: Path, manifest: dict[str, Any]) -> dict[str, A
         for lane, base in enumerate(bases):
             position = word_start + lane
             conversion = topology["m31_to_u32"][position]
+            _require(sum(gate["out"] == conversion["out"]
+                         for gate in topology["m31_to_u32"]) == 1 and
+                     not _all_producers(topology, conversion["out"]),
+                     "public M31-to-u32 conversion has an extra producer")
             _require(conversion["input"] == base and
                      same_json_shape(_gate_by_output(topology["add"], topology["output"][position + 1]),
                                      {"in0": conversion["out"], "in1": 0,
                                       "out": topology["output"][position + 1]}),
                      "public word pin differs from source lane or conversion Gate")
+            _require(_all_producers(topology, topology["output"][position + 1]) == [
+                ("add", {"in0": conversion["out"], "in1": 0,
+                         "out": topology["output"][position + 1]})],
+                "public pin has an extra producing Gate row")
     _require(bindings[0]["conversion_qm31_start"] == cursor and
              bindings[0]["conversion_qm31_end"] == cursor and
              bindings[1]["conversion_qm31_start"] == cursor and

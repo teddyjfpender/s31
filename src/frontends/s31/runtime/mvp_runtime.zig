@@ -1072,7 +1072,7 @@ fn inspectGateTopology(allocator: std.mem.Allocator, source: relation.Program) !
         return error.UnsupportedGateTopologyInspection;
     var ir = try s31.canonical.build(allocator, source);
     defer ir.deinit();
-    var maps = s31.relation_compiler.Maps{};
+    var maps = s31.relation_compiler.Maps{ .capture_node_wires = true };
     defer maps.deinit(allocator);
     var ctx = try s31.relation_compiler.compileWithSpans(circuit.builder.NoValue, allocator, source, null, &maps);
     defer ctx.deinit();
