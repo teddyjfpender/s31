@@ -307,7 +307,7 @@
     "formal/s31/S31/Gadgets/Packed.lean": "f0dae2dcdad85c57aeb7f5e534e53ddd606dd8464a865e3a1afc0fc5de67d02f",
     "formal/s31/S31/Gadgets/Packing.lean": "f4c2031a9c1e5d58c5735b75aa5c093609002a6c1e34f912af1b078524fc1b5e",
     "formal/s31/S31/Gadgets/PcsFri/QueryAndTranscript.lean": "e82190409053019d327e738a450c2a1b8676beecc92770f4a3e7563ad445cfa8",
-    "formal/s31/S31/Gadgets/PcsFri/QuerySampling.lean": "1ecc75faa3ff81b739aca12b575a71cd93858a3eff9559994e2a860821131555",
+    "formal/s31/S31/Gadgets/PcsFri/QuerySampling.lean": "4f0a57cf22106b8f5b0768064c8d856dd1dc2420d97a220daf73c3294838ebbd",
     "formal/s31/S31/Gadgets/Radix.lean": "97ea555f406453f8db281e611b27f5d550f7fd5d5c9e4ad8ef69331cb4d80989",
     "formal/s31/S31/Gadgets/Records/GeneratedMixedEightV2.lean": "3dc1c4acf2e19a811b38163a2bfa6297c6a88d2756ab8ab26116820c1c6c1170",
     "formal/s31/S31/Gadgets/Records/NamedCodecV2.lean": "34c6c7d009eeaaa0a710ae671cdc5245ec6d4d6d2bbab9d44f50bfe697987909",

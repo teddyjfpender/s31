@@ -27,6 +27,7 @@ from scripts.s31_formal_lib.checks import (
 )
 from scripts.s31_formal_lib.protocol_order import check_protocol_order
 from scripts.s31_formal_lib.pcs_fri_order import check_pcs_fri_order
+from scripts.s31_formal_lib.pcs_fri_projection import check_pcs_fri_projection
 from scripts.riscv_refinement import _skip_lean_string, _strip_lean_comments
 from scripts.riscv_refinement_lib.model import RefinementError
 
@@ -305,11 +306,13 @@ BINDINGS = [
     "deps/stwo-zig/src/prover/prove.zig",
     "deps/stwo-zig/src/core/verifier.zig",
     "deps/stwo-zig/src/core/pcs/verifier.zig",
+    "deps/stwo-zig/src/core/pcs/utils.zig",
     "deps/stwo-zig/src/core/pcs/config_v2.zig",
     "deps/stwo-zig/src/core/pcs/mod.zig",
     "deps/stwo-zig/src/core/fri.zig",
     "deps/stwo-zig/src/core/fri/config.zig",
     "deps/stwo-zig/src/core/fri/folding.zig",
+    "deps/stwo-zig/src/core/poly/circle/domain.zig",
     "deps/stwo-zig/src/core/fri/merkle_queries.zig",
     "deps/stwo-zig/src/core/fri/tests.zig",
     "deps/stwo-zig/src/core/queries.zig",
@@ -317,7 +320,11 @@ BINDINGS = [
     "deps/stwo-zig/src/core/vcs_lifted/blake2_merkle.zig",
     "deps/stwo-zig/src/core/vcs_lifted/channel_profile.zig",
     "deps/stwo-zig/src/core/vcs_lifted/verifier.zig",
+    "deps/stwo-zig/src/prover/vcs_lifted/leaves.zig",
+    "deps/stwo-zig/src/prover/pcs/scheme_views.zig",
     "scripts/s31_formal_lib/pcs_fri_order.py",
+    "scripts/s31_formal_lib/pcs_fri_projection.py",
+    "scripts/tests/test_pcs_fri_projection.py",
     "deps/stwo-zig/src/core/pcs/quotients/fri_answers.zig",
     "deps/stwo-zig/src/core/pcs/quotients/samples.zig",
     "deps/stwo-zig/src/core/tests/borrowed_pcs_capture_success_test.zig",
@@ -764,6 +771,7 @@ def main() -> None:
         parser.error("--report requires --audit, --kernel-log, --parity and --controls; exclude --write")
     check_protocol_order(ROOT)
     check_pcs_fri_order(ROOT)
+    check_pcs_fri_projection(ROOT)
     print("S31 protocol order: main and interaction commitments precede their challenge draws")
     print("S31 PCS/FRI order: roots, challenges, PoW, raw queries and normalization bound")
     failures = []

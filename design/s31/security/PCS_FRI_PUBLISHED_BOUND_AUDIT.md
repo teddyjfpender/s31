@@ -40,6 +40,39 @@ verifier, and rejects extra zero-fold FRI layers before absorbing any FRI
 root. These close local capture/round-shape gaps. They do not establish
 Merkle binding, FRI proximity, or a whole-proof security bound.
 
+## Cross-domain query geometry
+
+The [S-two whitepaper, §5.3](https://eprint.iacr.org/2026/532.pdf) says its
+then-current regular Merkle layout opens points that are **not** consistent
+under circle-group squaring. That caveat must not be applied automatically to
+this pinned Zig engine. Its lifted prover leaves and PCS verifier both use
+`prepareTreeQueryPositions` from `core/pcs/utils.zig`. For a query `q` on a
+size-`2^k` canonical circle domain and a smaller tree of size `2^l`, the
+mapping is
+
+```text
+q_l = ((q >> (k - l + 1)) << 1) + (q & 1).
+```
+
+The low bit selects the conjugate half of the circle domain; the other bits
+are in FFT bit-reverse order. If `C_k(q)` denotes the resulting circle-group
+index, the canonical-coset definitions imply
+`C_l(q_l) = 2^(k-l) C_k(q) (mod 2^31)`. For example, at `k=5`, `l=3`,
+`q=7` maps to `q_l=1`; four times the group index `503316480` is
+`2013265920`, exactly the smaller-domain group index. The larger-tree branch
+selects a preimage, so projecting its result back recovers the original
+query. The [independent integer-index check](../../../scripts/s31_formal_lib/pcs_fri_projection.py)
+enumerates 20,460 cases across both tree-height directions and checks the
+pinned prover/verifier source mapping, including conjugate-bit preservation.
+
+FRI's circle-to-line step instead discards the conjugate bit: its query set
+folds by right-shifting the raw index while its sparse evaluation reverses
+the remaining bits before selecting the line-domain point. This is the
+expected `P -> x(P)` projection. These finite geometry checks address one
+specific whitepaper divergence; a theorem relating every lifted Merkle leaf,
+FRI opening and cross-domain batch to the paper's interactive verifier is
+still missing.
+
 ## Why `26 + 70 = 96` is not a theorem
 
 The upstream [Stwo Cairo README](https://github.com/starkware-libs/stwo-cairo#security--soundness)
@@ -84,9 +117,10 @@ the emitted constraint count `C`, degree `d`, list-size bound, and every
 component's geometry. The [official Stwo whitepaper summary](https://github.com/starkware-libs/stwo/blob/dev/.agents/papers/llm/Stwo_Whitepaper.llm.md)
 also records a BCS/Fiat–Shamir bound of the form
 `(T+R)*max_i epsilon_i + 3*(T^2+1)/2^lambda`, for a stated adversary hash
-budget `T` and number of rounds `R`. Its implementation notes flag a
-non-squaring-consistent FRI query variant for which the writeup does not give
-a complete list-decoding-regime proof.
+budget `T` and number of rounds `R`. The whitepaper's non-squaring-consistent
+implementation caveat concerns its regular cross-domain Merkle layout; the
+pinned Zig source uses the transposed-consistent map checked above. The other
+protocol and cryptographic hypotheses still require an end-to-end reduction.
 
 ## What a conservative profile requires
 

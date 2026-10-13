@@ -54,6 +54,7 @@ jobs:
           python3 -B -m unittest scripts.tests.test_source_bundle -q
           python3 -B -m unittest scripts.tests.test_s31_v01_release_audit -q
           python3 -B -m unittest scripts.tests.test_pcs_fri_order -q
+          python3 -B -m unittest scripts.tests.test_pcs_fri_projection -q
       - name: Native proof smoke
         run: |
           python3 src/frontends/s31/python/s31.py trial \

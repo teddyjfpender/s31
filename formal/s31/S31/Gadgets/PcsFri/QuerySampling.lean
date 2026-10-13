@@ -39,7 +39,7 @@ theorem good_sequences_card (s : Nat) (good : Finset D) :
 /-- In the uniform product sample space, the exact probability of all
 queries missing an inconsistency is `(good-density)^s`. A real FRI proof
 still needs a theorem bounding this density from the committed oracle. -/
-theorem ideal_all_good_fraction [Fintype D]
+theorem ideal_all_good_fraction [Fintype D] [Nonempty D]
     (s : Nat) (good : Finset D) :
     ((goodSequences s good).card : ℚ) /
         (Fintype.card (Fin s → D) : ℚ) =
