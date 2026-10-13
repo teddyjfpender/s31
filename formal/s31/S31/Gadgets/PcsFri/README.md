@@ -39,6 +39,17 @@ counts the exceptional and subfield seeds for the current native field sizes.
 These results do not prove how the native transcript distributes seeds, a
 Zig-to-Lean refinement, or the PCS soundness bound.
 
+[`ConcreteCircleCount.lean`](ConcreteCircleCount.lean) counts the actual
+modeled CM31 and QM31 affine circles using the rational map and its one
+exceptional point. It constructs an injective embedding of the CM31 circle
+into the QM31 circle and proves that the complement has exactly
+`q⁴−q²` points for `q=2³¹−1`. The already-proved CM31 guard accepts
+`(q²−1)²` seeds, leaving a cardinality difference of `q²−1`.
+These are the cardinalities of concrete modeled fields and a concrete set
+difference. The theorem does not identify the native accepted seed image
+with a subset of that complement, prove a two-point OOD bad-set bound, or
+prove the adaptive transcript draw uniform.
+
 [`OodAcceptedSupport.lean`](OodAcceptedSupport.lean) checks the exact M31
 arithmetic for the experimental paired verifier's `y.c1 != 0` early guard.
 Its passing support is `(q²−1)²`, smaller than the paper's `q⁴−q−2` OOD

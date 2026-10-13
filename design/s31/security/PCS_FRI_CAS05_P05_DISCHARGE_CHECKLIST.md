@@ -71,10 +71,16 @@ The paper's single-point Protocol 4 instead uses
 rejects `y.c1=0` ([native draw](https://github.com/teddyjfpender/stwo-zig/blob/234ac67b2819e6b102e8d43da93a38a4a902075e/src/core/pcs/paired_sparse_cascade_experimental.zig#L76-L91));
 its accepted image has size `A=(q²−1)²`. The
 [Lean support arithmetic](../../../formal/s31/S31/Gadgets/PcsFri/OodAcceptedSupport.lean)
-shows, **given those circle cardinalities**, that `q²−1` points in the
-two-point universe are omitted and that the conditional uniform mass ratio
+and [concrete circle count](../../../formal/s31/S31/Gadgets/PcsFri/ConcreteCircleCount.lean)
+show that the modeled CM31 and QM31 circles have `q²−1` and `q⁴−1` points,
+respectively; the complement of the embedded CM31 circle has `q⁴−q²` points.
+Together with the already-proved guarded seed count, `q²−1` is the
+cardinality difference between that complement and the accepted seeds.
+The conditional uniform mass ratio
 is `q²/(q²−1)`. Its `twoPointSupport` definition is not itself a formal
-field-point counting theorem. This ratio transfers a
+field-point counting theorem; the new count supplies that separate fact.
+The cardinality difference does not prove that the accepted image lies
+inside the complement. The ratio transfers a
 **fixed bad-set count only if** that count is first proved for the two-point
 universe. It does not establish adaptive Fiat–Shamir sampling.
 
