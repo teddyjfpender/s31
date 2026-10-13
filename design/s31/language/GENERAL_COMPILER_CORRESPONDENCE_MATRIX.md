@@ -48,7 +48,9 @@ completeness for its packed M31 arithmetic rows. The
 complete pure SSA AIR traces and an aligned named normalized program compute
 the same selected output through the actual `Program.evaluate` interpreter.
 Its assignment-to-initial-environment correspondence remains an explicit
-premise; it is not yet derived from the canonical assignment/ABI byte gate.
+premise in the inner theorem. `GeneralLinearSSAInputState.lean` now discharges
+those premises with a finite checker over a typed assignment. The remaining
+join is from canonical assignment/ABI bytes to that exact typed assignment.
 This does **not** authenticate native committed rows or verify the
 certificate's SHA-256 identities. A runtime Lean gate checks the actual
 five-lane production fixture and rejects malformed byte and graph mutations.
