@@ -27,6 +27,10 @@ SOURCE_SHA256 = {
         "b53626bfa0c8ea38ca20dbe1698e90d4919a683e6d776c40cb79011f1ea7bdfc",
     "deps/stwo-zig/src/core/pcs/quotients/row_evaluation.zig":
         "30e9e8768b083ca3d218b9d4903d7e3805b4219971e7d92847303d9de5778442",
+    "deps/stwo-zig/src/core/fields/cm31.zig":
+        "4b7a14c91fba7c467f92e924ce90c7230a22d08329591e3d5b8874d862b31288",
+    "deps/stwo-zig/src/core/fields/qm31.zig":
+        "a60c2a5a6f10bf91b1bfab41a526e41b589d0d1d83275e0516cf68b7228be931",
 }
 
 
@@ -49,6 +53,8 @@ def classify(sources: dict[str, bytes], gitlink: str) -> dict[str, object]:
     verifier = sources["deps/stwo-zig/src/core/verifier.zig"].decode()
     prover = sources["deps/stwo-zig/src/prover/prove.zig"].decode()
     quotient = sources["deps/stwo-zig/src/core/pcs/quotients/row_evaluation.zig"].decode()
+    cm31 = sources["deps/stwo-zig/src/core/fields/cm31.zig"].decode()
+    qm31 = sources["deps/stwo-zig/src/core/fields/qm31.zig"].decode()
     required = (
         (circle, "pub fn secureFieldPointFromRandomSeedChecked(t: QM31)"),
         (circle, "const one_plus_t_square_inv = try t_square.add(QM31.one()).inv();"),
@@ -62,18 +68,30 @@ def classify(sources: dict[str, bytes], gitlink: str) -> dict[str, object]:
         (quotient, "const pix = sample_point.x.c1;"),
         (quotient, "const piy = sample_point.y.c1;"),
         (quotient, "denominators[i] = prx.sub(domain_x).mul(piy).sub(pry.sub(domain_y).mul(pix));"),
+        (cm31, "a + bi"),
+        (qm31, "u^2 = 2 + i"),
+        (qm31, "pub const R: CM31 = CM31.fromU32Unchecked(2, 1);"),
     )
     for source, marker in required:
         if marker not in source:
             raise ValueError("reviewed OOD control flow changed: " + marker)
 
+    # R=2+i is a nonsquare in CM31: its norm to M31 is 5, and 5 is a
+    # nonsquare modulo q (q mod 5 = 2). Thus a²-R*b²=1 has q²+1 solutions
+    # over CM31, two with b=0. For regular t=a+b*u, the u coefficient of
+    # y=2t/(1+t²) vanishes iff b=0 or a²-R*b²=1. The sets overlap at the
+    # two b=0 norm-one points; the two t²=-1 exceptional roots are in CM31.
+    # Hence 2*q²-3 regular seeds have y.c1=0. This is an algebraic seed-set
+    # count, not a native rejection or security probability.
+    if Q % 4 != 3 or Q % 5 != 2 or pow(5, (Q - 1) // 2, Q) != Q - 1:
+        raise ValueError("reviewed QM31 quadratic-tower assumptions changed")
     # The rational parametrization has two exceptional roots of t²+1 in
     # CM31 and none in M31 (q ≡ 3 mod 4). For every other CM31 seed both
     # output coordinates have zero c1, so the reviewed denominator is zero
     # at every M31 domain row. These counts assume an ideal uniform QM31
     # seed; the native channel's distribution is not proved here.
     return {
-        "schema": "s31-pcs-fri-ood-seed-geometry-v1",
+        "schema": "s31-pcs-fri-ood-seed-geometry-v2",
         "status": "reviewed_source_and_conditional_field_count_only",
         "engine_gitlink_commit": gitlink,
         "source_sha256": observed,
@@ -84,13 +102,15 @@ def classify(sources: dict[str, bytes], gitlink: str) -> dict[str, object]:
         "base_field_seed_fraction_if_uniform": ratio(Q, Q**4),
         "quadratic_subfield_nonexceptional_seed_count": Q**2 - 2,
         "quadratic_subfield_nonexceptional_fraction_if_uniform": ratio(Q**2 - 2, Q**4),
+        "y_c1_zero_regular_seed_count": 2 * Q**2 - 3,
+        "y_c1_zero_regular_fraction_if_uniform": ratio(2 * Q**2 - 3, Q**4),
         "reviewed_point_wrapper_explicitly_excludes_quadratic_subfield": False,
         "reviewed_row_quotient_denominator_zero_for_quadratic_subfield_point": True,
         "published_ood_distribution_instantiated": False,
         "native_proven_security_bits": None,
         "remaining_discharge": [
             "prove the native Fiat–Shamir seed distribution and exact point image",
-            "model exceptional and subfield seeds in the complete prover/verifier schedule",
+            "model exceptional, subfield, and other y.c1-zero seeds in the complete prover/verifier schedule",
             "establish the paper's OOD sampling premise or prove a bound for the actual accepted-seed distribution",
             "connect every native quotient denominator to that sampled point and its committed oracle",
         ],
