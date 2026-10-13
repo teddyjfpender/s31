@@ -118,7 +118,8 @@ Thus **QM31 cannot certify an absolute 96-bit bound through this ungrinded
 published envelope at a hash-query budget of `2²⁸` or more**, regardless of
 domain or raw query count. This statement is scoped to the quoted theorem
 and zero proved grinding credit. After dividing by `T`, the same universal
-necessary term becomes `1/q⁴ < 2⁻¹²⁴`; it **does not obstruct** a paper
+necessary term becomes `1/q⁴`, slightly greater than `2⁻¹²⁴` but below
+`2⁻⁹⁶`; it **does not obstruct** a paper
 work-factor 96-bit claim. The hypothetical `T=2³²`, `s=232` calculation
 above demonstrates paper-style numerical feasibility. A larger challenge
 field, a proved reduction

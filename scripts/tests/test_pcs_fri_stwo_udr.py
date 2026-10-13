@@ -74,6 +74,8 @@ class StwoUDRTests(unittest.TestCase):
         self.assertFalse(row["proven_release_admissible"])
         self.assertGreater(Fraction(1 << 28, F), Fraction(1, 1 << 96))
         self.assertLess(Fraction((1 << 28) - 1, F), Fraction(1, 1 << 96))
+        self.assertGreater(Fraction(1, F), Fraction(1, 1 << 124))
+        self.assertLess(Fraction(1, F), Fraction(1, 1 << 96))
         small_budget = necessary_tradeoffs(1 << 20, 96, 1)
         self.assertEqual([r["hypothetical_B"] for r in small_budget], [2, 4, 8, 16, 32])
         self.assertEqual([r["nonquery_envelope_exceeds_absolute_target"]
