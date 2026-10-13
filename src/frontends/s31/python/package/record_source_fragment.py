@@ -3,7 +3,9 @@
 Capability: ``source-to-relation-only``. This checker deliberately does not
 import the production S31 lexer, parser, elaborator, compiler, ABI builder,
 relation validator, package verifier, or native circuit compiler. It derives
-one small source grammar's exact relation and ABI from source bytes.
+one small source grammar's exact relation and ABI from source bytes. Flat
+nominal record patterns may bind fields of a declared input to static aliases;
+computed pattern sources and nested products remain outside this grammar.
 """
 
 from __future__ import annotations
@@ -25,6 +27,7 @@ MAX_TOKENS = 512
 MAX_FIELDS = 4
 MAX_INPUTS = 2
 MAX_LETS = 8
+MAX_PATTERN_BINDINGS = 16
 MAX_RELATION_BYTES = 65_536
 ABI_DOMAIN = b"s31-public-record-boundary-v2\0"
 ABI_ENCODING = "canonical typed-only JSON statement with named paths and aliased M31/bit/u8/u16/u32 leaves"
@@ -182,6 +185,7 @@ def parse_record_source_fragment(data: bytes, *,
         raise UnsupportedRecordSourceFragment("at least one public record input required")
 
     lets: dict[str, str] = {}
+    pattern_bindings = 0
 
     def operand() -> tuple[str, dict[str, Any]]:
         name = identifier()
@@ -201,6 +205,48 @@ def parse_record_source_fragment(data: bytes, *,
     structural_steps: list[dict[str, Any]] = []
     while peek() == "let":
         take("let")
+        if peek() == record_name:
+            # A flat nominal record input is an already evaluated value.
+            # Its pattern only projects existing leaves; it emits no gate.
+            take(record_name)
+            take("{")
+            selected: list[tuple[str, str]] = []
+            while True:
+                field = identifier()
+                if field not in fields or field in (seen for seen, _ in selected):
+                    raise UnsupportedRecordSourceFragment("unknown or repeated record pattern field")
+                if peek() == ":":
+                    take(":")
+                    binder = identifier()
+                else:
+                    binder = field
+                if (binder in lets or binder in roots or
+                        binder in {record_name, circuit_name, "result"} or
+                        binder in (name for _, name in selected)):
+                    raise UnsupportedRecordSourceFragment("duplicate or shadowing record binder")
+                selected.append((field, binder))
+                pattern_bindings += 1
+                if pattern_bindings > MAX_PATTERN_BINDINGS:
+                    raise UnsupportedRecordSourceFragment("too many record pattern bindings")
+                if peek() != ",":
+                    break
+                take(",")
+            take("}")
+            take("=")
+            source = identifier()
+            if source not in roots:
+                raise UnsupportedRecordSourceFragment("record pattern expects a declared input")
+            take(";")
+            for field, binder in selected:
+                lets[binder] = roots[source][field]
+                if _derivation is not None:
+                    structural_steps.append({
+                        "kind": "let", "name": binder,
+                        "expr": {"kind": "project",
+                                 "source": {"kind": "name", "name": source},
+                                 "field": field},
+                    })
+            continue
         name = identifier()
         if name in lets or name in roots or name in {record_name, circuit_name, "result"}:
             raise UnsupportedRecordSourceFragment("duplicate or shadowing local")

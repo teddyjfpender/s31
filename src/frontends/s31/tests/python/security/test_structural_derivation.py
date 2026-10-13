@@ -45,6 +45,14 @@ circuit paired(public x: Pair, private y: Pair) -> public Pair {
     Pair { right: x.right, left: z }
 }
 """
+RECORD_PATTERN = """struct Pair { left: [m31; 1], right: [m31; 1] }
+circuit paired(public x: Pair, private y: Pair) -> public Pair {
+    let Pair { right: saved, left: public_left } = x;
+    let Pair { right: private_right } = y;
+    let z = public_left .* private_right;
+    Pair { right: saved, left: z }
+}
+"""
 EFFECTFUL = """circuit constrained(public x: [m31; 2], private y: [m31; 2]) -> public [m31; 2] {
     let z = x + splat<2>(7_m31);
     assert_eq(z, y);
@@ -112,6 +120,41 @@ class StructuralDerivationTests(unittest.TestCase):
         changed["public_outputs"]["z"] = [15]
         with self.assertRaisesRegex(ValueError, "claimed public result"):
             evaluate(checked, encoded(changed))
+
+    def test_record_pattern_aliases_are_checked_from_exact_source(self) -> None:
+        checked = fixture(RECORD_PATTERN)
+        certificate, source, relation_bytes, abi_bytes = checked
+        self.assertEqual(json.loads(relation_bytes), json.loads(fixture(RECORD)[2]))
+        steps = certificate["program"]["steps"]
+        self.assertEqual([(step["name"], step["expr"].get("field"))
+                          for step in steps[:3]],
+                         [("saved", "right"), ("public_left", "left"),
+                          ("private_right", "right")])
+        assignment = encoded({
+            "public_inputs": {"_s31_abi_input_0": [2], "_s31_abi_input_1": [3]},
+            "private_inputs": {"_s31_abi_input_2": [5], "_s31_abi_input_3": [7]},
+            "public_outputs": {"z": [14], "_s31_abi_input_1": [3]},
+        })
+        self.assertEqual(evaluate(checked, assignment)["public_words"],
+                         [2, 3, 14, 3, 0, 0, 0, 0])
+
+        for index, key, replacement in ((1, "field", "right"),
+                                        (2, "source", {"kind": "name", "name": "x"})):
+            with self.subTest(index=index, key=key):
+                forged = copy.deepcopy(certificate)
+                forged["program"]["steps"][index]["expr"][key] = replacement
+                wrong_relation = encoded(derive_relation(forged["program"]))
+                wrong_abi = encoded(abi(json.loads(wrong_relation), "direct-gate"))
+                forged["relation_sha256"] = hashlib.sha256(wrong_relation).hexdigest()
+                forged["public_abi_sha256"] = hashlib.sha256(wrong_abi).hexdigest()
+                with self.assertRaisesRegex(ValueError, "differs from source relation"):
+                    check_certificate(source, wrong_relation, wrong_abi,
+                                      "direct-gate", encoded(forged))
+
+        changed_source = source.replace(b"right: saved", b"right:  saved")
+        with self.assertRaisesRegex(ValueError, "differs from exact source replay"):
+            check_certificate(changed_source, relation_bytes, abi_bytes,
+                              "direct-gate", encoded(certificate))
 
     def test_effectful_constant_and_assertion_replay(self) -> None:
         checked = fixture(EFFECTFUL)

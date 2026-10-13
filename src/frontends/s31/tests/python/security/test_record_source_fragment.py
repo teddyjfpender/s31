@@ -33,6 +33,15 @@ circuit mix(public x: Pair, private y: Pair) -> public Pair {
     Pair { right: x.right, left: q }
 }
 """
+PATTERN_SOURCE = """struct Pair { left: [m31; 1], right: [m31; 1] }
+circuit mix(public x: Pair, private y: Pair) -> public Pair {
+    let Pair { right: saved, left } = x;
+    let Pair { right: secret } = y;
+    let p = left .* secret;
+    let q = p + saved;
+    Pair { right: saved, left: q }
+}
+"""
 
 
 def encoded(value: object) -> bytes:
@@ -78,6 +87,7 @@ class RecordSourceFragmentTests(unittest.TestCase):
     def test_honest_source_matches_compiler_and_abi(self) -> None:
         variants = [
             SOURCE,
+            PATTERN_SOURCE,
             """// no arithmetic: record fields are aliases
 struct Pair { left: [m31; 1], right: [m31; 1] }
 circuit echo(public x: Pair) -> public Pair {
@@ -106,6 +116,42 @@ circuit edge(public x: Quad) -> public Quad {
         relation = parse_record_source_fragment(SOURCE.encode())
         self.assertEqual(expected_public_abi(relation)["boundary_sha256"],
                          "7f753c6d58f189e17c3e57211a408dd23d196c0d818137e28dd114f32362f8d7")
+
+    def test_flat_pattern_erases_to_exact_handwritten_relation(self) -> None:
+        handwritten = """struct Pair { left: [m31; 1], right: [m31; 1] }
+circuit mix(public x: Pair, private y: Pair) -> public Pair {
+    let p = x.left .* y.right;
+    let q = p + x.right;
+    Pair { right: x.right, left: q }
+}
+"""
+        expected, _ = compile_text(handwritten)
+        actual, _ = compile_text(PATTERN_SOURCE)
+        self.assertEqual(actual, expected)
+        self.assertEqual(parse_record_source_fragment(PATTERN_SOURCE.encode()), expected)
+        self.assertEqual(expected_public_abi(actual), expected_public_abi(expected))
+
+    def test_pattern_scope_nominal_type_and_eager_rhs_boundary(self) -> None:
+        variants = (
+            PATTERN_SOURCE.replace("Pair { right: saved, left }", "Pair { right: saved, right: left }"),
+            PATTERN_SOURCE.replace("Pair { right: saved, left }", "Pair { right: saved, left: saved }"),
+            PATTERN_SOURCE.replace("Pair { right: saved, left }", "Pair { unknown: saved }"),
+            PATTERN_SOURCE.replace("Pair { right: saved, left }", "Pair {}"),
+            PATTERN_SOURCE.replace("Pair { right: saved, left }", "Other { right: saved, left }"),
+            PATTERN_SOURCE.replace("= x;", "= Pair { left: x.left, right: x.right };", 1),
+            PATTERN_SOURCE.replace("= x;", "= future;", 1),
+            PATTERN_SOURCE.replace("let Pair { right: secret } = y;", "let Pair { right: saved } = y;"),
+            PATTERN_SOURCE.replace("let Pair { right: secret } = y;", "let Pair { right: p } = y;"),
+        )
+        for source in variants:
+            with self.subTest(source=source):
+                with self.assertRaises(UnsupportedRecordSourceFragment):
+                    parse_record_source_fragment(source.encode())
+        repeated = "\n".join(f"let Pair {{ left: alias_{index} }} = x;"
+                             for index in range(17))
+        bounded = PATTERN_SOURCE.replace("    let Pair { right: saved, left } = x;", repeated)
+        with self.assertRaisesRegex(UnsupportedRecordSourceFragment, "too many record pattern bindings"):
+            parse_record_source_fragment(bounded.encode())
 
     def test_resealed_relation_and_abi_forgery_rejected(self) -> None:
         relation = parse_record_source_fragment(SOURCE.encode())

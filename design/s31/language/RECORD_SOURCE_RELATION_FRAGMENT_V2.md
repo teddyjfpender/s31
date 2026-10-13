@@ -6,8 +6,10 @@ also computes this grammar's M31 results from independently parsed source and
 flat assignments. Its [46-case corpus](../../../src/frontends/s31/tests/acceptance/record_abi/record_source_execution_fragment_v2.py)
 compares 23 honest and 23 changed-result cases with Zig `Program.evaluate`.
 The [Lean record value theorem](../../../formal/s31/S31/Gadgets/Records/SourceValueV2.lean)
-composes the checked SSA interpreter across ordered result fields and rejects
-swapped or split-alias certificates. These are bounded semantic checks; they
+composes the original no-pattern grammar's checked SSA interpreter across
+ordered result fields and rejects swapped or split-alias certificates. The
+flat pattern extension below has an executable exact-source replay but has not
+yet been added to that Lean byte grammar. These are bounded semantic checks; they
 do not authenticate native trace openings or establish full compiler soundness.
 The production v2 record compiler, native descriptor parser, statement codec,
 and representative native proofs already exist. This increment checks an exact
@@ -42,9 +44,16 @@ changing an existing release boundary.
   The total distinct public input and output words cannot exceed eight.
 * Zero to eight sequential `let name = operand + operand;` or
   `let name = operand .* operand;` statements. Each operand is an earlier let
-  or a field selection `input.field`. No literals, calls, aliases, assertions,
-  recursion, casts, nested records, tuples, or other operators enter this
-  first fragment. Inputs and lets may not shadow any declared names.
+  or a field selection `input.field`. A flat input may also be destructured
+  with `let R { field: local, other } = input;`, selecting a nonempty subset of
+  distinct declared fields. At most sixteen distinct binders are admitted.
+  The exact nominal `R` must match the input declaration. Each binding maps to
+  an existing flattened input wire and emits no arithmetic node. The right
+  side is restricted to a declared input; computed record expressions, which
+  can have eager effects even when fields are omitted, remain outside this
+  checker. No literals, calls, assertions, recursion, casts, nested records,
+  tuples, or other operators enter this fragment. Inputs and lets may not
+  shadow any declared names.
 * The final expression is one `R { field: operand, ... }` with every field
   exactly once. Constructor order may vary; emitted leaves follow declaration
   order. Duplicate output wires appear once in `public_outputs`, in first
@@ -77,6 +86,28 @@ The current production compiler emits the relation exactly in this order and
 the canonical v2 ABI artifact has `boundary_sha256` equal to
 `7f753c6d58f189e17c3e57211a408dd23d196c0d818137e28dd114f32362f8d7`.
 This value is a differential fixture, not an input to the independent checker.
+
+The equivalent source below binds `saved` and `left` from `x`, and `secret`
+from `y`. Its two arithmetic nodes and every ABI path are byte-for-byte the
+same as a source that writes `x.left`, `x.right`, and `y.right` directly:
+
+```s31
+struct Pair { left: [m31; 1], right: [m31; 1] }
+circuit mix(public x: Pair, private y: Pair) -> public Pair {
+    let Pair { right: saved, left } = x;
+    let Pair { right: secret } = y;
+    let p = left .* secret;
+    let q = p + saved;
+    Pair { right: saved, left: q }
+}
+```
+
+The typed structural certificate records each projection against the exact
+source bytes, then independently replays the same wire mapping and public
+ABI. Changing a bound field and resealing the relation, ABI, and certificate
+still fails that source replay. This extension has no Lean byte-parser or
+native AIR correspondence theorem for the pattern syntax; the bounded Lean
+record theorem continues to apply only to its separately accepted grammar.
 
 ## Exact checks
 
