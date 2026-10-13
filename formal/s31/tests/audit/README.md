@@ -2,9 +2,11 @@
 
 `general_linear_public_abi.py` checks three source-derived certificate
 fixtures against exact `.s31` bytes, ABI, assignment, and 32-byte public word
-files. It includes two public inputs, a private input, zero padding, 34
-rejection controls for arithmetic, constants, assertions, proof mode and ABI,
-and one expected acceptance for the unbound circuit name. Build the runtime gate first:
+files. It includes two public inputs, a private input, zero padding, and 36
+rejection controls for arithmetic, constants, assertions, proof mode, circuit
+name, and ABI. A source and relation renamed together remain accepted because
+this Lean gate does not recompute the certificate's SHA-256 fields. Build the
+runtime gate first:
 
 ```sh
 lake build s31-general-linear-public-abi-check

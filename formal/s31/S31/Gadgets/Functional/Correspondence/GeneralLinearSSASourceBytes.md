@@ -44,8 +44,10 @@ This parser deliberately covers plain binary add/sub/mul `let` statements,
 one circuit, 1–4 named inputs, 1–8 equal-length M31 lanes, 1–16 nodes, and
 no helpers, aliases, constants, or assertions. Its source/certificate gate
 also caps certificate bytes at 65 KiB. The circuit name is validated as an
-identifier but is absent from the certificate's SSA field set, so it is not
-identity-bound by this Lean checker. The package verifier separately checks
+identifier but is absent from the certificate's SSA field set, so the
+source/certificate checker alone does not bind it. `parseSourceName` recovers
+the name from the same validated source bytes for the public ABI relation
+join. The package verifier separately checks
 source and relation digests, public ABI, native rows, and proof artifacts.
 The theorem's `AcceptsTrace` premise is a mathematical row-satisfaction
 premise; the native PCS/FRI verifier-to-that-premise bridge remains open.

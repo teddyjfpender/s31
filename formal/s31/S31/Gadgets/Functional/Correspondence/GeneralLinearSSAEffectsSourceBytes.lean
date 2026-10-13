@@ -10,9 +10,9 @@ at its original textual position. The parsed source determines the exact
 indexed effects SSA compared with canonical compiler certificate bytes.
 
 Static helpers, grouped expressions, and scalar types are outside
-this deliberately bounded grammar. The circuit name is syntax-checked but
-is absent from the certificate's SSA projection, so this semantic check does
-not authenticate its spelling or the source SHA-256 field.
+this deliberately bounded grammar. The circuit name is absent from the
+certificate's SSA projection. `parseSourceName` exposes it separately for
+the source/relation ABI join; the source SHA-256 field remains unchecked here.
 -/
 
 namespace S31.Functional.Correspondence.GeneralLinearSSAEffectsSourceBytes
@@ -245,6 +245,18 @@ def parseSource (bytes : List Nat) : Option EmittedSSA := do
     { lane_count := length, inputs, nodes := state.nodes,
       assertions := state.assertions, output }
   return result
+
+/-- Recover the circuit identifier from exactly the complete effects source
+grammar. The optional `use std@1;` prefix is parsed as in `parseSource`. -/
+def parseSourceName (bytes : List Nat) : Option String := do
+  let _ ← parseSource bytes
+  let tokens ← lexFuel (bytes.length + 1) bytes
+  let tokens ← if tokens.head? == some (token "use") then
+    expectMany [token "use", token "std", token "@", token "1", token ";"] tokens
+    else some tokens
+  let rest ← expect (token "circuit") tokens
+  let (name, _) ← takeIdent rest
+  return nameString name
 
 def sourceMeaning (ssa : EmittedSSA) : Option Source := do
   let certificate ← ssa.decode

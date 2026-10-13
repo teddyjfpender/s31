@@ -105,6 +105,7 @@ def main() -> None:
         ("relation-visibility", lambda value: value["inputs"][0].update(visibility="private")),
         ("relation-lane-count", lambda value: value["inputs"][0].update(length=3)),
         ("relation-output-name", lambda value: value.update(public_outputs=["x"])),
+        ("relation-circuit-name", lambda value: value.update(name="other_circuit")),
         ("relation-invalid-node", lambda value: value["nodes"][0].update(rhs="missing")),
         ("relation-arithmetic-op", lambda value: value["nodes"][0].update(op="sub")),
         ("relation-arithmetic-operand", lambda value: value["nodes"][0].update(rhs="x")),
@@ -137,6 +138,8 @@ def main() -> None:
     ]
     source_raw = baseline["source"].read_bytes()
     mutants += [
+        ("source-circuit-name", "source", source_raw.replace(
+            b"circuit ordered", b"circuit renamed", 1)),
         ("source-public-visibility", "source", source_raw.replace(
             b"public x", b"private x", 1)),
         ("source-input-order", "source", source_raw.replace(
@@ -144,10 +147,14 @@ def main() -> None:
     ]
     with tempfile.TemporaryDirectory(prefix="s31-lean-public-abi-") as temp:
         renamed = copy.deepcopy(relation)
-        renamed["name"] = "other_circuit"
-        renamed_path = Path(temp) / "relation-circuit-name.data"
+        renamed["name"] = "renamed"
+        renamed_path = Path(temp) / "matching-renamed-relation.data"
         renamed_path.write_bytes(canonical(renamed))
-        run(executable, "ordered", {**baseline, "relation": renamed_path}, True)
+        renamed_source_path = Path(temp) / "matching-renamed-source.s31"
+        renamed_source_path.write_bytes(source_raw.replace(
+            b"circuit ordered", b"circuit renamed", 1))
+        run(executable, "ordered", {**baseline, "source": renamed_source_path,
+                                    "relation": renamed_path}, True)
         for label, target, contents in mutants:
             path = Path(temp) / f"{label}.data"
             path.write_bytes(contents)
@@ -173,7 +180,7 @@ def main() -> None:
             path = Path(temp) / f"{label}.relation.json"
             path.write_bytes(canonical(value))
             run(executable, "effects", {**effects, "relation": path}, False)
-    print(f"Lean public ABI controls: 3 matching + 1 name-mismatch accepted, "
+    print(f"Lean public ABI controls: 3 fixtures + 1 matched rename accepted, "
           f"{len(mutants) + 3} rejected")
 
 

@@ -81,8 +81,10 @@ M31 modulus, and a selected named output. Static helpers, grouped
 expressions, scalar types, other operations, and non-ASCII syntax are outside
 this grammar. It caps source at 16 KiB and certificate at 65 KiB.
 
-This theorem does **not** recompute SHA-256, bind the spelling of the circuit
-name, prove that Zig emits these modeled rows, establish native public-word
+This theorem does **not** recompute SHA-256 or bind the spelling of the circuit
+name by itself. `parseSourceName` exposes the name from the same validated
+source bytes for the public ABI relation join. It does not prove that Zig emits
+these modeled rows, establish native public-word
 or private-witness pinning, or derive its row-satisfaction premise from a
 Stwo PCS/FRI verifier result. Those remain distinct correspondence and
 soundness obligations. In particular, a private input is an input to the
