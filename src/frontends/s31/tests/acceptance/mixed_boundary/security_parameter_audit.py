@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Mapping
 
 
-ENGINE_REVISION = "02bc8b3e8d28c7ef871192f36dfc5d18fb2f55d3"
+ENGINE_REVISION = "d073ebb89fca94b638e3b99729d346deb29edfc9"
 SOURCE_SHA256 = {
     "deps/stwo-zig/src/integrations/circuit_cpu/direct_many_preflight.zig": "9119ff9fe58c343d66e437e6236aa1feca3660fc5d2bdafa3173ad48d0bf888d",
     "deps/stwo-zig/src/integrations/circuit_cpu/direct_mixed_schedule.zig": "55c4aeec92520828c173640335688bb9b7837fafd7bea7ff1dfb50150b50a326",

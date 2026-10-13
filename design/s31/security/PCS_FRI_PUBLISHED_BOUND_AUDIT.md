@@ -1,7 +1,7 @@
 # Native PCS/FRI: published-bound audit
 
 This note covers the S31 profile pinned to stwo-zig
-`02bc8b3e8d28c7ef871192f36dfc5d18fb2f55d3`. It does **not** assign a
+`d073ebb89fca94b638e3b99729d346deb29edfc9`. It does **not** assign a
 whole-proof security level. It separates the native checks visible in source
 from the hypotheses needed to apply a published STARK soundness theorem.
 
@@ -46,6 +46,25 @@ exported commitment vector differs from the roots committed into the PCS
 verifier, and rejects extra zero-fold FRI layers before absorbing any FRI
 root. These close local capture/round-shape gaps. They do not establish
 Merkle binding, FRI proximity, or a whole-proof security bound.
+
+The later pinned engine update from PR #243 adds native lifted-Merkle
+rejection controls under the **same authenticated root**: changing an opened
+row, one sibling, or the queried index is rejected; an accepted capture is
+replayed independently to the root, and a failed capture leaves no partial
+capture behind. Its query-projection test covers both smaller and larger tree
+domains and the conjugate half-bit. The
+[Lean Merkle opening model](../../../formal/s31/S31/Gadgets/PcsFri/MerkleOpening.lean)
+reconstructs a full path using the verifier's low-bit child orientation and
+right shift. It proves a local binding reduction: two accepted different rows
+at one root and index imply either a collision of those rows' leaf hashes or
+a parent-hash collision on child pairs **actually visited by those two
+paths**. Given an accepted opening of a tree whose leaf row is the projected
+committed-column row, the same theorem forces an accepted native row to equal
+that row unless this witnessed collision event occurs. This is a conditional
+symbolic theorem. It does not yet prove that the Zig multiproof decoder
+reconstructs the model's full paths, that its leaf encoding matches the
+modeled row order, that the committed tree has the modeled columns, or a
+quantitative BLAKE2s collision bound.
 
 ## Cross-domain query geometry
 
