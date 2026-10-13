@@ -51,6 +51,7 @@ def checks(mode: str) -> tuple[Check, ...]:
         raise ValueError(f"unknown mode: {mode}")
     base = [
         Check("v1-source-relation", SECURITY + "test_source_relation_fragment.py", (), "unittest"),
+        Check("static-tuple-erasure-source", SECURITY + "test_static_tuple_erasure.py", (), "unittest"),
         Check("v2-record-source-relation", SECURITY + "test_record_source_fragment.py", (), "unittest"),
         Check("static-sum-dce-source", FUNCTIONAL + "test_static_sum_dce.py", (), "unittest"),
         Check("static-enum-effects-source", GENERATED + "test_static_enum_effect_generated.py",

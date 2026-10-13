@@ -246,6 +246,12 @@ explain the exact grammar and remaining circuit/AIR gap.
 The [general correspondence matrix](../../../../../design/s31/language/GENERAL_COMPILER_CORRESPONDENCE_MATRIX.md)
 lists all production expression forms and normalized operations with their
 remaining proof obligations.
+The checked grammar also includes flat 2–4 field tuples of existing M31 array
+wires with constant-index projections. These source-only values add no
+relation node. Tuple sources use the Lean effects profile, whose independent
+byte parser checks their erasure. The paired
+[`static_tuple_erasure.py`](../../tests/acceptance/compiler_correspondence/static_tuple_erasure.py)
+build compares the complete native cost report to scalar spelling.
 
 `record_source_fragment.py` independently parses a bounded version-2 source
 with one nominal M31 record, up to two public/private record inputs, explicit

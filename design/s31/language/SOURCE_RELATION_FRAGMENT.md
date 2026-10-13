@@ -113,13 +113,23 @@ rows for five active lanes; this checker establishes the text-to-relation
 mapping, while the separate Lean packed-row proof and native trial address
 the local AIR relation and one generated proof.
 
+The checker also accepts a flat static tuple of 2–4 existing equal-length M31
+array wires, an alias of that tuple, and canonical constant-index projections.
+These operations are erased before the normalized relation: only arithmetic
+on the selected wires creates nodes. Tuple programs select the Lean effects
+profile because its independent source-byte parser checks this structural
+erasure. The exact grammar, one hand-computed relation, a Lean interpreter
+theorem, and a live equal-cost native build are in
+[`STATIC_TUPLE_ERASURE.md`](STATIC_TUPLE_ERASURE.md).
+
 ## Exact accepted syntax
 
 One circuit declaration with one to four equal-length `[m31; N]` inputs for
 `1 ≤ N ≤ 8`, each marked `public` or `private`, a public `[m31; N]` result,
 up to 32 `let` statements,
-up to 16 arithmetic nodes, up to 16 `assert_eq(name, name);` statements, and
-one returned wire name. The sum of all public input and output words must be
+up to 16 arithmetic nodes, up to 16 `assert_eq(wire, wire);` statements, and
+one returned wire. In the tuple subfragment, `wire` may be a static
+projection such as `p.0`. The sum of all public input and output words must be
 at most eight. The body must contain at least
 one arithmetic node. A let right hand side may be an earlier name,
 `splat<N>(C_m31)` with `0 ≤ C < 2³¹−1` and canonical decimal spelling, or one
@@ -128,10 +138,19 @@ constant becomes one `add_const` node with the canonical negated constant.
 Constant-left subtraction is outside this fragment. For addition and
 multiplication, constants may occur on either side; both operands cannot be
 constants. Parentheses may wrap
-atoms or whole let expressions; assertion operands and the returned wire are
-plain names. Whitespace and `//` to end-of-line comments are
+atoms or whole let expressions outside the tuple subfragment. Assertion
+operands and the returned wire are plain names or admitted static projections.
+Whitespace and `//` to end-of-line comments are
 ignored. The lexer bounds input at 16,384 bytes and 512 tokens. Identifiers
 are ASCII and at most 128 characters.
+
+Within the tuple subfragment, `let p = (a, b);` constructs a flat typed
+product of 2–4 earlier M31 wires, `let q = p;` aliases it, and `p.0` selects
+the first wire. Such projections may be used as arithmetic operands,
+assertion operands, or the returned wire. Product-valued arithmetic/results,
+out-of-range or noncanonical indices, nested/grouped products, and mixing
+these tuples with named static helpers are rejected. The Lean source-byte
+parser makes the same restrictions before the effects profile is claimed.
 
 Up to eight preceding `fn` declarations may each take one or two distinct
 `[m31; N]` parameters and return `[m31; N]`. Each pure body must apply one

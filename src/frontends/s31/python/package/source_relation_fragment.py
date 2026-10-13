@@ -23,7 +23,7 @@ CAPABILITY = "source-to-relation-only"
 CERTIFICATE_SCHEMA = "s31-source-relation-certificate-v1"
 LEAN_SEMANTIC_PROFILE = "linear-ssa-m31-v1"
 LEAN_EFFECTS_PROFILE = "linear-ssa-m31-effects-v1"
-TOKEN = re.compile(r"[ \t\n\v\f\r]+|//[^\n]*|->|\.\*|[()\[\];:{}=+,<>@-]|[A-Za-z_][A-Za-z_0-9]*|[0-9]+_m31|[0-9]+")
+TOKEN = re.compile(r"[ \t\n\v\f\r]+|//[^\n]*|->|\.\*|[()\[\];:{}=+,.<>@-]|[A-Za-z_][A-Za-z_0-9]*|[0-9]+_m31|[0-9]+")
 NAME = re.compile(r"[A-Za-z_][A-Za-z_0-9]*\Z")
 LITERAL = re.compile(r"(0|[1-9][0-9]*)_m31\Z")
 MAX_TOKENS = 512
@@ -115,7 +115,7 @@ def _literal(token: str) -> int:
     return value
 
 
-def parse_source_fragment(data: bytes) -> dict[str, Any]:
+def parse_source_fragment(data: bytes, *, _static_products: list[bool] | None = None) -> dict[str, Any]:
     """Derive exact version-1 relation JSON without calling the S31 compiler."""
     tokens = _tokens(data)
     cursor = 0
@@ -200,19 +200,69 @@ def parse_source_fragment(data: bytes) -> dict[str, Any]:
             right_index=params.index(body[2]),
             length=first_length, arity=len(params))
 
-    # Env values are a producer name or a static canonical M31 integer.
-    env: dict[str, str | int] = {}
+    # A product is a compile-time tuple of already typed M31 lane arrays.
+    # It has no normalized node or witness cell; projection selects a wire.
+    env: dict[str, str | int | tuple[str, ...]] = {}
+    static_product_used = False
 
     def atom(parts: list[str]) -> str | int:
+        nonlocal static_product_used
+        if static_product_used and parts and parts[0] == "(":
+            raise UnsupportedSourceRelationFragment("grouped product operand is outside Lean byte grammar")
         parts = _unwrapped(parts)
         if len(parts) == 1 and parts[0] in env:
-            return env[parts[0]]
+            found = env[parts[0]]
+            if isinstance(found, tuple):
+                raise UnsupportedSourceRelationFragment("tuple needs a static projection")
+            return found
+        if (len(parts) == 3 and parts[1] == "." and parts[0] in env and
+                re.fullmatch(r"(0|[1-9][0-9]*)", parts[2])):
+            found = env[parts[0]]
+            index = int(parts[2])
+            if not isinstance(found, tuple) or index >= len(found):
+                raise UnsupportedSourceRelationFragment("invalid tuple projection")
+            static_product_used = True
+            return found[index]
         if (len(parts) == 7 and parts[:5] == ["splat", "<", str(lane_length), ">", "("]
                 and parts[-1] == ")"):
             return _literal(parts[5])
         raise UnsupportedSourceRelationFragment("expected earlier name or matching splat<N>(literal)")
 
-    def expression(parts: list[str]) -> tuple[str | int, str | None, str | int | None]:
+    def expression(parts: list[str]) -> tuple[str | int | tuple[str, ...], str | None,
+                                             str | int | None]:
+        nonlocal static_product_used
+        # The grammar admits a flat product of 2..4 existing M31 arrays.
+        # Source values are wires; nested products and runtime indexing are
+        # outside this independently checked fragment.
+        if len(parts) >= 5 and parts[0] == "(" and parts[-1] == ")":
+            inside = parts[1:-1]
+            depth = 0
+            fields: list[list[str]] = [[]]
+            for token in inside:
+                depth += (token == "(") - (token == ")")
+                if depth < 0:
+                    raise UnsupportedSourceRelationFragment("unbalanced tuple constructor")
+                if token == "," and depth == 0:
+                    fields.append([])
+                else:
+                    fields[-1].append(token)
+            if depth != 0:
+                raise UnsupportedSourceRelationFragment("unbalanced tuple constructor")
+            if len(fields) > 1:
+                if not 2 <= len(fields) <= 4 or any(not field for field in fields):
+                    raise UnsupportedSourceRelationFragment("tuple needs 2..4 fields")
+                if any(not (len(field) == 1 or
+                            (len(field) == 3 and field[1] == "." and
+                             re.fullmatch(r"(0|[1-9][0-9]*)", field[2])))
+                       for field in fields):
+                    raise UnsupportedSourceRelationFragment("tuple field must be a direct wire or projection")
+                values = tuple(atom(field) for field in fields)
+                if not all(isinstance(value, str) for value in values):
+                    raise UnsupportedSourceRelationFragment("tuple fields must be M31 wires")
+                static_product_used = True
+                return values, None, None
+        if static_product_used and parts and parts[0] == "(":
+            raise UnsupportedSourceRelationFragment("grouped product expression is outside Lean byte grammar")
         parts = _unwrapped(parts)
         depth = 0
         operators: list[int] = []
@@ -225,6 +275,9 @@ def parse_source_fragment(data: bytes) -> dict[str, Any]:
         if depth != 0 or len(operators) > 1:
             raise UnsupportedSourceRelationFragment("only one binary operation per let")
         if not operators:
+            if len(parts) == 1 and isinstance(env.get(parts[0]), tuple):
+                static_product_used = True
+                return env[parts[0]], None, None
             return atom(parts), None, None
         position = operators[0]
         return atom(parts[:position]), parts[position], atom(parts[position + 1:])
@@ -293,7 +346,8 @@ def parse_source_fragment(data: bytes) -> dict[str, Any]:
             if name in helpers:
                 raise UnsupportedSourceRelationFragment("local name shadows function")
             take("=")
-            parts = _unwrapped(before_semicolon())
+            raw_parts = before_semicolon()
+            parts = _unwrapped(raw_parts)
             if (len(parts) in {4, 6} and parts[0] in helpers and parts[1] == "(" and
                     parts[-1] == ")" and
                     (len(parts) == 4 or parts[3] == ",") and
@@ -307,13 +361,15 @@ def parse_source_fragment(data: bytes) -> dict[str, Any]:
                 op = helper.operator
                 helpers_used.add(helper.name)
             else:
-                lhs, op, rhs = expression(parts)
+                lhs, op, rhs = expression(raw_parts)
             let_count += 1
             if let_count > MAX_LETS:
                 raise UnsupportedSourceRelationFragment("too many lets")
             if op is None:
                 env[name] = lhs
                 continue
+            if isinstance(lhs, tuple) or isinstance(rhs, tuple):
+                raise UnsupportedSourceRelationFragment("arithmetic needs projected M31 wires")
             if isinstance(lhs, int) and isinstance(rhs, int):
                 raise UnsupportedSourceRelationFragment("constant-only operation unsupported")
             if op == "-" and isinstance(lhs, int):
@@ -339,9 +395,15 @@ def parse_source_fragment(data: bytes) -> dict[str, Any]:
             continue
         take("assert_eq")
         take("(")
-        lhs = atom([take()])
+        lhs_parts: list[str] = []
+        while peek() not in {",", None}:
+            lhs_parts.append(take())
+        lhs = atom(lhs_parts)
         take(",")
-        rhs = atom([take()])
+        rhs_parts: list[str] = []
+        while peek() not in {")", None}:
+            rhs_parts.append(take())
+        rhs = atom(rhs_parts)
         take(")")
         take(";")
         if not isinstance(lhs, str) or not isinstance(rhs, str):
@@ -353,7 +415,10 @@ def parse_source_fragment(data: bytes) -> dict[str, Any]:
         assertions.append({"lhs": lhs, "rhs": rhs})
         if len(assertions) > MAX_ASSERTIONS:
             raise UnsupportedSourceRelationFragment("too many assertions")
-    result = atom([take()])
+    result_parts: list[str] = []
+    while peek() not in {";", "}", None}:
+        result_parts.append(take())
+    result = atom(result_parts)
     if not isinstance(result, str):
         raise UnsupportedSourceRelationFragment("result must be a wire")
     if peek() == ";":
@@ -365,8 +430,13 @@ def parse_source_fragment(data: bytes) -> dict[str, Any]:
         raise UnsupportedSourceRelationFragment("at least one arithmetic node required")
     if set(helpers) != helpers_used:
         raise UnsupportedSourceRelationFragment("unused function is outside fragment")
-    return {"version": 1, "name": circuit, "inputs": inputs, "nodes": nodes,
+    if static_product_used and helpers:
+        raise UnsupportedSourceRelationFragment("product and static helper combination is outside Lean byte grammar")
+    relation = {"version": 1, "name": circuit, "inputs": inputs, "nodes": nodes,
             "assertions": assertions, "public_outputs": [result]}
+    if _static_products is not None:
+        _static_products.append(static_product_used)
+    return relation
 
 
 def check_source_relation(source_bytes: bytes, relation_bytes: bytes) -> dict[str, str]:
@@ -429,7 +499,14 @@ def make_source_relation_certificate(source_bytes: bytes,
     relation. Those remain separate trust obligations.
     """
     identity = check_source_relation(source_bytes, relation_bytes)
-    ssa, effects = _indexed_ssa(parse_source_fragment(source_bytes))
+    static_products: list[bool] = []
+    ssa, effects = _indexed_ssa(parse_source_fragment(source_bytes,
+                                                      _static_products=static_products))
+    if static_products == [True]:
+        # The pure Lean source byte parser does not accept tuple syntax.
+        # Select the effects parser, whose exact byte grammar includes the
+        # static erasure, even when the graph has no arithmetic effects.
+        effects.append("static-products")
     return {"schema": CERTIFICATE_SCHEMA, **identity, "ssa": ssa,
             "lean_semantic_profile": LEAN_EFFECTS_PROFILE if effects else LEAN_SEMANTIC_PROFILE,
             "unmodeled_features": []}

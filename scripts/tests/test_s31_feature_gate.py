@@ -132,9 +132,9 @@ class FeatureGateTests(unittest.TestCase):
         source = gate.checks("source")
         smoke = gate.checks("smoke")
         full = gate.checks("full")
-        self.assertEqual(len(source), 10)
-        self.assertEqual(len(smoke), 18)
-        self.assertEqual(len(full), 21)
+        self.assertEqual(len(source), 11)
+        self.assertEqual(len(smoke), 19)
+        self.assertEqual(len(full), 22)
         for inventory in (source, smoke, full):
             self.assertEqual(len({check.id for check in inventory}), len(inventory))
             for check in inventory:

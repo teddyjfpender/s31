@@ -23,7 +23,7 @@ that every syntactically valid program is admissible or total.
 | Assertions | At most 16 equality assertions between named wires | Arbitrary expressions, result-independent effects, native assertion enforcement |
 | Static functions | Up to 8 used pure one- or two-argument helpers, each one arithmetic expression; calls receive named wires | General function bodies, higher-order values, closures, recursive-call rejection, specialization fuel |
 | `use std@1` | Exact import spelling is accepted when no standard-library call is used; package lock checked separately | Independently specified standard-library calls and pinned source semantics |
-| Natural/field literals, arrays, tuples, records | Field literal only inside canonical `splat`; other forms excluded | Typed static values, product projection and erasure, array shape changes, record ABI |
+| Natural/field literals, arrays, tuples, records | Field literal inside canonical `splat`; flat 2–4 element tuples of existing equal-length M31 wire arrays, static `.0`–`.3` projection and aliases are source-byte checked and erased before SSA. A separate bounded v2 record checker covers input field projection and output construction. | Nested products, array shape changes, general record specialization, v2 record-to-`Program.evaluate` theorem, and a shared typed certificate across all structural forms |
 | Sums, pattern matching, `if` | Excluded | Static constructor semantics, exhaustive branches, dynamic bit selection |
 | Lambdas, `Fn`, application | Excluded | Closure capture, polymorphic function values, inlining and name allocation |
 | Blinded mode and dynamic builtins | Excluded | Privacy policy, relation op witnesses, circuit/chip boundary proofs |
@@ -76,6 +76,19 @@ accepted arithmetic AIR trace, exact named nodes, and a structurally
 resolved assertion list, successful `Program.evaluate` forces every
 assertion polynomial. It composes with the checked effectful SSA source model
 to show that accepted normalized programs preserve source assertion effects.
+The effectful Lean source-byte parser also admits flat static tuples of 2–4
+existing M31 arrays and canonical constant-index projection. Its local
+`project_product_exact` theorem states that a projection selects precisely
+the indexed producer ID; construction and selection allocate no SSA node.
+The existing exact-byte effectful `Program.evaluate` theorem therefore also
+applies to admitted tuple programs. `StaticTupleErasure.lean` specializes the
+checked-run interpreter theorem to literal tuple source bytes; the runtime
+Lean checker verifies that those bytes are in the admitted grammar. The
+independent Python parser reconstructs its complete normalized relation and
+certificate; a live paired native build checks equal relation bytes and
+complete cost reports against scalar spelling. See
+[`STATIC_TUPLE_ERASURE.md`](STATIC_TUPLE_ERASURE.md) for exact scope and
+measurements.
 The public-output theorem also proves that an accepted evaluator binds its
 declared M31 output to the checked effectful source value.
 `GeneralLinearSSAEffectsByteRun.lean` now composes the exact effectful
