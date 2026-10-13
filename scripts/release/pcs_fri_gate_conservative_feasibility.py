@@ -76,6 +76,12 @@ def feasibility_from_gate(report: dict, target_bits: int = 96) -> dict:
     high_m = circle(m_max)
     leading_lower, leading_upper = remark26_leading_interval(low_m)
     target = Fraction(1, 1 << target_bits)
+    # Remark 26's leading positive envelope term is monotone in B >= 2,
+    # m >= 3 and L >= 1 at fixed N. The m=3, L=1, B=2 interval uses
+    # floor(sqrt(2)) = 1, so even its lower endpoint bounds every such
+    # candidate expression from below. See ConservativeEnvelope.lean for
+    # a kernel-checked universal 96-bit instance at N >= 256.
+    universal_remark26_obstruction = leading_lower > target
     potential_credit = min(pow_bits, target_bits)
     query_ruled_out = draws < minimum_johnson_draws(blowup_log, target_bits, potential_credit)
     design_space = []
@@ -150,6 +156,13 @@ def feasibility_from_gate(report: dict, target_bits: int = 96) -> dict:
                 fraction_text(leading_upper),
             "favorable_remark26_leading_upper_envelope_alone_exceeds_target":
                 leading_lower > target,
+            "remark26_leading_envelope_lower_floor_for_all_B_ge_2_m_ge_3_L_ge_1":
+                fraction_text(leading_lower),
+            "every_such_remark26_upper_envelope_exceeds_target":
+                universal_remark26_obstruction,
+            "proof_scope": "conditional on N=1048576, D=N*B and the published Circle Remark 26 expression applying to the native oracle; this is a limit of that proof envelope, not an attack lower bound",
+            "lean_96_bit_arithmetic_theorem":
+                "S31.PcsFri.ConservativeEnvelope.remark26_leading_exceeds_96_of_at_least_256",
             "extrema_warning": "m=3 minimizes this leading commitment envelope; m=N/2 minimizes the query envelope. They are incompatible choices, and L=1 is not the extracted native batch width.",
         },
         "hypothetical_query_only_design_space": design_space,
