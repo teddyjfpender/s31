@@ -5,6 +5,12 @@ handwritten `.s31` example, its positional SSA IDs, active packed-row
 equations, and a theorem binding supplied source bytes to modeled AIR
 acceptance.
 
+[The effectful source-byte bridge](GeneralLinearSSAEffectsSourceBytes.md)
+independently parses source with constants and `assert_eq`, checks its exact
+indexed graph against canonical compiler certificate bytes, and proves that
+any modeled AIR trace satisfying those rows and assertions has the parsed
+source's result.
+
 ## General linear M31 SSA kernel
 
 [The general linear SSA correspondence](GeneralLinearSSA.md) proves, for any
@@ -19,9 +25,10 @@ from native committed rows to the modeled AIR equations.
 [The effects profile](GeneralLinearSSAEffects.md) extends that graph kernel
 with canonical constant arithmetic and live equality assertions. It proves
 soundness and conditional completeness for arbitrary finite graphs, and a
-strict byte gate checks a production affine/assertion fixture against a
-handwritten Lean source meaning. Native rows, source text interpretation,
-public ABI, and proof authentication remain separate obligations.
+strict byte gate checks a production affine/assertion fixture; the effectful
+source-byte bridge also derives its meaning directly from bounded `.s31`
+syntax. Native rows, public ABI, and proof authentication remain separate
+obligations.
 
 ## Optimized source row capacity
 

@@ -69,10 +69,12 @@ assertion loss, and constants outside M31. Valid visibility changes are
 rejected by the *fixture roster*, while the generic checker only checks
 visibility spelling.
 
-The byte checker validates digest **syntax** and the certificate's graph. It
-does not recompute source/relation SHA-256, independently parse `.s31` source
-bytes, prove public ABI binding, connect the graph to emitted native Zig rows,
-or establish PCS/FRI authentication. Those are separate boundaries. Records,
+The certificate byte checker validates digest **syntax** and the graph.
+The [effectful source-byte bridge](GeneralLinearSSAEffectsSourceBytes.md)
+independently parses a bounded `.s31` subset and compares its graph with
+that certificate. Neither checker recomputes source/relation SHA-256, proves
+public ABI binding, connects the graph to emitted native Zig rows, or
+establishes PCS/FRI authentication. Those are separate boundaries. Records,
 arrays beyond homogeneous M31 lanes, control flow, static loops, library
 calls, hashes, chips, and recursion remain outside this theorem.
 
