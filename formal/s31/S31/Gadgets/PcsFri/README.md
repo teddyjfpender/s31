@@ -166,9 +166,9 @@ sibling, group position, commitment, or
 path length rejects. The [source guard](../../../../../scripts/s31_formal_lib/pcs_fri_merkle_admission.py)
 pins the checker, both native layer-packing choices, proof-root capture, and
 all four generic call sites, with fourteen hostile mutations. The SHA
-release verifier paths are outside this gate and still lack the corresponding
-DEEP and FRI operational admission gates; their P04/P05/P06 obligations stay
-open.
+release verifier paths use a separate shared replay gate described in the
+[SHA release capture note](../../../../../design/s31/security/SHA_RELEASE_CAPTURE_ADMISSION_2026-10-13.md).
+Both families still have open P04/P05/P06 theorem obligations.
 
 [`FriLeafEncoding.lean`](FriLeafEncoding.lean) proves that flattening a list
 of QM31 values into their `(a,b,c,d)` M31 coordinates is injective. Thus a
@@ -181,6 +181,45 @@ The new runtime gate gives executable evidence for the native-opening side of
 still open. The committed opening for a fixed putative oracle, BLAKE2s
 collision resistance, Fiat–Shamir sampling, and FRI proximity remain explicit
 premises. The proven-profile preflight still fails closed.
+
+## One DEEP quotient row by hand
+
+For a sampled point with y-coordinate `s` and its conjugate with y-coordinate
+`s'`, let a column's two sampled values be `v` and `v'`, and let `α` be its
+random mixing weight. The native line coefficients are
+
+```text
+a = α(v' − v)
+c = α(s' − s)
+b = α(v(s' − s) − (v' − v)s)
+```
+
+At a queried circle row `(x,y)` with opened column value `w`, this column's
+line residual is `c w − (a y + b)`. Substituting `(s,v)` or `(s',v')` makes
+the residual zero. For a numeric illustration over the integers, take
+`s=2`, `s'=5`, `v=7`, `v'=11`, `α=3`. Then `a=12`, `c=9`, `b=39`:
+the residual at the first sample is `9·7−(12·2+39)=0`, and at the conjugate
+sample it is `9·11−(12·5+39)=0`. Field arithmetic uses the same identities.
+
+For several columns sampled at the same point, native code first sums each
+`c·w`, and separately sums the `a` and `b` coefficients. The batch numerator
+is `Σ(c·w) − ((Σa)y + Σb)`. The
+[`DeepQuotientAlgebra.lean`](DeepQuotientAlgebra.lean) theorem proves this
+equals the sum of individual line residuals. The denominator for the sample
+point `(prx+j·pix, pry+j·piy)` and queried base-circle point `(x,y)` is
+`(prx−x)piy − (pry−y)pix`. The native workspace uses the equivalent expanded
+form `prx·piy−pry·pix−x·piy+y·pix`; a Lean theorem equates the two. Native
+batch inversion rejects a zero denominator, and the Lean cross-multiplication
+theorem assumes exactly that nonzero condition.
+
+The [source contract](../../../../../scripts/s31_formal_lib/pcs_fri_quotient_algebra.py)
+checks these expression sites, sample-value and random-weight wiring, the
+per-column contribution plan, the zero-rejecting CM31 inversion path, and
+the final quotient accumulation. The tests mutate each of those paths and
+require rejection. This gives local algebra
+and source custody. It does not prove Zig operational semantics, that the
+opened `w` comes from the committed oracle, the batched polynomial degree,
+or the published OODS/DEEP soundness theorem. P05 remains open.
 
 ## One FRI fold's field algebra
 

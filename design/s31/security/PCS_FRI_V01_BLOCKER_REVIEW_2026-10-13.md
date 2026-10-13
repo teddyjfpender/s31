@@ -94,6 +94,17 @@ not close P04, P05 or P06: native-to-Lean semantics, fixed-oracle ownership,
 Merkle collision bounds, and the theorem's global proximity relation remain
 open.
 
+The [DEEP quotient algebra model](../../../formal/s31/S31/Gadgets/PcsFri/DeepQuotientAlgebra.lean)
+proves that the native weighted line vanishes at both sampled conjugate
+values, that the workspace's circle denominator equals its expanded form,
+and that the optimized batch numerator is the sum of per-column residuals.
+Cross multiplication assumes a nonzero denominator, which native batch
+inversion rejects when false. A [source guard](../../../scripts/s31_formal_lib/pcs_fri_quotient_algebra.py)
+pins the corresponding Zig expressions and has mutation controls. This is
+local arithmetic evidence. P05 still needs Zig execution semantics,
+authenticated sampled and opened values, degree correction, and a complete
+reduction to the published OODS/DEEP batch-evaluation theorem.
+
 The [raw-query epoch audit](../../../scripts/s31_formal_lib/pcs_fri_query_epoch.py)
 closes one bounded-counter subcase of P07 for the pinned engine. The verifier
 absorbs the verified PoW nonce with `mixU64`, which resets `n_draws` through
