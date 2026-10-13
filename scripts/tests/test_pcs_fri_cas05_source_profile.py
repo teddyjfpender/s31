@@ -7,14 +7,118 @@ import unittest
 from fractions import Fraction
 
 from scripts.release.pcs_fri_cas05_source_profile import (
-    Q, conditional_ood_support, profile_geometry, verify_hashes,
+    Q, check_fixed_source_custody, conditional_ood_support,
+    profile_geometry, verify_hashes,
 )
 
 
 THETA = Fraction(16383, 65536)
 
 
+def _zig_body(signature: str, *lines: str) -> str:
+    body = "\n".join(lines)
+    # Keep the small mutation fixture's braces balanced. It is a source-guard
+    # test input; the whole draft source is independently pinned by SHA-256.
+    return f"{signature} {{\n{body}\n" + "}" * (1 + body.count("{") - body.count("}"))
+
+
+def _custody_fixture() -> dict[str, str]:
+    return {
+        "src/core/pcs/paired_sparse_cascade_experimental.zig": "\n".join((
+            _zig_body("fn matches(",
+                "statement.profile, proof.profile",
+                "statement.source_root, &proof.source_root",
+                "statement.claims.len != proof.claims.len",
+                "for (statement.claims, proof.claims) {",
+                "if (!expected.eql(actual)) return false;"),
+            _zig_body("pub fn drawBatchAfterOod(",
+                "staged.mixU64(CLAIM_GROUP_TAG);",
+                "for (claims, 0..) |height, index| {",
+                "staged.mixU64(CLAIM_HEIGHT_TAG);",
+                "staged.mixFelts(height);",
+                "const batch = staged.drawSecureFelt();",
+                "channel.* = staged;"),
+            _zig_body("pub fn verifyAgainstStatement(",
+                "try validateProof(proof);",
+                "if (!matches(statement, proof)) return error.UnexpectedSparseStatement;",
+                "const batch = try drawBatchAfterOod(&staged, proof.claims);",
+                "var opened = try xdm.verifyAndCollect(",
+                "var answers = try paired.fromVerifiedOpenings(",
+                "try verifyFolds(allocator, proof, raw, answers.values, alphas);",
+                "channel.* = staged;"),
+        )),
+        "src/core/pcs/transposed_merkle_sparse.zig": _zig_body(
+            "pub fn verifyAndCollect(",
+            "if (!std.mem.eql(u8, &header.root, &expected_root)) return error.UnexpectedSparseRoot;",
+            "for (values[height][offset..][0..cols]) |*value| value.* = try c.felt();",
+            "return error.DuplicateProjectedValue;",
+            "tree.hashLeaf(values[0][offset..][0..cols])",
+            "const left = try childHash(",
+            "tree.hashInserted(left, right, values[height][offset..][0..cols])",
+            "tree.hashUpper(left, right)",
+            "if (used != count) return error.WitnessTooLong;",
+            "if (!std.mem.eql(u8, &root, &expected_root)) return error.RootMismatch;",
+            "return .{ .allocator = allocator, .profile = expected, .values = values };"),
+        "src/core/pcs/transposed_paired_sparse.zig": _zig_body(
+            "pub fn fromVerifiedOpenings(",
+            "if (raw_queries.len != profile.query_count or claims.len != profile.height_count)",
+            "if (height_claims.len != profile.columns[height]) return error.InvalidSparseShape;",
+            "coefficient.* = try constraints.complexConjugateLineCoeffs(point, claim, QM31.one());",
+            "const original = opened.at(height, query, j, col);",
+            "const quotient = numerator.mulCM31(inverse);",
+            "answer = answer.add(pair[0].mul(QM31.fromBase(original)))",
+            "values[height][query * 2 + j] = answer;"),
+        "src/core/pcs/paired_sparse_relation_experimental.zig": _zig_body(
+            "pub fn verifyAndExtract(",
+            "try cascade.verifyAgainstStatement(a, proof, &staged, statement);",
+            "const opened = try xdm.verifyAndCollect(",
+            "try relation.check(a);",
+            "channel.* = staged;"),
+    }
+
+
 class Cas05SourceProfileTests(unittest.TestCase):
+    def test_fixed_source_custody_rejects_hostile_rewiring(self) -> None:
+        source = _custody_fixture()
+        check_fixed_source_custody(source)
+        edits = (
+            ("src/core/pcs/paired_sparse_cascade_experimental.zig",
+             "if (!expected.eql(actual)) return false;",
+             "if (!expected.eql(actual)) return true;"),
+            ("src/core/pcs/paired_sparse_cascade_experimental.zig",
+             "staged.mixFelts(height);",
+             "// staged.mixFelts(height);"),
+            ("src/core/pcs/paired_sparse_cascade_experimental.zig",
+             "if (!matches(statement, proof)) return error.UnexpectedSparseStatement;",
+             "if (matches(statement, proof)) return error.UnexpectedSparseStatement;"),
+            ("src/core/pcs/transposed_merkle_sparse.zig",
+             "return error.DuplicateProjectedValue;",
+             "return error.InvalidSparseProjection;"),
+            ("src/core/pcs/transposed_merkle_sparse.zig",
+             "if (!std.mem.eql(u8, &root, &expected_root)) return error.RootMismatch;",
+             "// root check removed"),
+            ("src/core/pcs/transposed_paired_sparse.zig",
+             "const original = opened.at(height, query, j, col);",
+             "const original = untrusted.at(height, query, j, col);"),
+            ("src/core/pcs/paired_sparse_relation_experimental.zig",
+             "try relation.check(a);",
+             "// relation.check(a) removed"),
+        )
+        for path, old, new in edits:
+            with self.subTest(path=path, old=old):
+                changed = dict(source)
+                changed[path] = changed[path].replace(old, new)
+                with self.assertRaisesRegex(ValueError, "custody"):
+                    check_fixed_source_custody(changed)
+
+        changed = dict(source)
+        path = "src/core/pcs/paired_sparse_cascade_experimental.zig"
+        changed[path] = changed[path].replace(
+            "staged.mixFelts(height);\nconst batch = staged.drawSecureFelt();",
+            "const batch = staged.drawSecureFelt();\nstaged.mixFelts(height);")
+        with self.assertRaisesRegex(ValueError, "reordered"):
+            check_fixed_source_custody(changed)
+
     def test_source_pin_rejects_changed_bytes_and_roster(self) -> None:
         sources = {"verifier.zig": b"source-v1", "prover.zig": b"source-v1"}
         expected = {name: hashlib.sha256(data).hexdigest()

@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import subprocess
 import sys
 from fractions import Fraction
@@ -32,6 +33,7 @@ SOURCE_SHA256 = {
     "src/core/pcs/transposed_merkle_sparse.zig": "6fbb6bd496a9d2916cdaa141c0c44f05fc26ed45ba74e27fedb017b20ee661a9",
     "src/core/pcs/transposed_merkle_cascade.zig": "7bc0793234e902ae37080e2c8b90d4df87120fd3a87c441d669c928fcb85bb92",
     "src/core/pcs/transposed_paired_sparse.zig": "56bd8cf46b8897044b4dc9f70d4dd22c8bd10d01b584165daa21625f4e3dffca",
+    "src/core/pcs/paired_sparse_relation_experimental.zig": "86911ee4d2f7fd78ee1e23a2116fb9acfa49466b4e52aa7130225c3de3acf75c",
     "src/prover/pcs/paired_sparse_cascade_experimental.zig": "e76677cdf644a47561d8f02e7b65715cd38d57a4e1af10db7c729371fb82030f",
     "src/prover/pcs/transposed_cascade_experimental.zig": "b079122ef4c3203a0150fce52c0f29833d9f73fe56b357f530299861a8983316",
 }
@@ -41,6 +43,96 @@ def _contains(source: str, markers: tuple[str, ...], label: str) -> None:
     for marker in markers:
         if marker not in source:
             raise ValueError(f"reviewed {label} shape changed: {marker}")
+
+
+def _function(source: str, signature: str) -> str:
+    """Extract one balanced Zig body so markers in comments/other methods do not count."""
+    source = re.sub(r"//[^\n]*", "", source)
+    if source.count(signature) != 1:
+        raise ValueError(f"reviewed CAS05 custody function changed: {signature}")
+    opening = source.find("{", source.index(signature) + len(signature))
+    if opening < 0:
+        raise ValueError(f"reviewed CAS05 custody function incomplete: {signature}")
+    depth = 1
+    for end in range(opening + 1, len(source)):
+        if source[end] == "{":
+            depth += 1
+        elif source[end] == "}":
+            depth -= 1
+            if depth == 0:
+                return source[opening + 1:end]
+    raise ValueError(f"reviewed CAS05 custody function incomplete: {signature}")
+
+
+def _ordered(body: str, label: str, *markers: str) -> None:
+    positions = []
+    for marker in markers:
+        if body.count(marker) != 1:
+            raise ValueError(f"reviewed CAS05 {label} custody changed: {marker}")
+        positions.append(body.index(marker))
+    if positions != sorted(positions):
+        raise ValueError(f"reviewed CAS05 {label} custody reordered")
+
+
+def check_fixed_source_custody(decoded: dict[str, str]) -> None:
+    """Pin the XDM04 row/public-claim handoff used by the local Lean theorem.
+
+    This is a source-order control, not a claim that Zig executes a Lean model.
+    Whole-file SHA-256 checks in `classify_sources` additionally pin all bytes.
+    """
+    cascade = decoded["src/core/pcs/paired_sparse_cascade_experimental.zig"]
+    xdm = decoded["src/core/pcs/transposed_merkle_sparse.zig"]
+    paired = decoded["src/core/pcs/transposed_paired_sparse.zig"]
+    relation = decoded["src/core/pcs/paired_sparse_relation_experimental.zig"]
+    _ordered(_function(cascade, "fn matches("), "public statement match",
+             "statement.profile, proof.profile",
+             "statement.source_root, &proof.source_root",
+             "statement.claims.len != proof.claims.len",
+             "for (statement.claims, proof.claims)",
+             "if (!expected.eql(actual)) return false;")
+    _ordered(_function(cascade, "pub fn drawBatchAfterOod("),
+             "claim-before-batch transcript",
+             "staged.mixU64(CLAIM_GROUP_TAG);",
+             "for (claims, 0..) |height, index|",
+             "staged.mixU64(CLAIM_HEIGHT_TAG);",
+             "staged.mixFelts(height);",
+             "const batch = staged.drawSecureFelt();",
+             "channel.* = staged;")
+    _ordered(_function(cascade, "pub fn verifyAgainstStatement("),
+             "statement-bound batch admission",
+             "try validateProof(proof);",
+             "if (!matches(statement, proof)) return error.UnexpectedSparseStatement;",
+             "const batch = try drawBatchAfterOod(&staged, proof.claims);",
+             "var opened = try xdm.verifyAndCollect(",
+             "var answers = try paired.fromVerifiedOpenings(",
+             "try verifyFolds(allocator, proof, raw, answers.values, alphas);",
+             "channel.* = staged;")
+    _ordered(_function(xdm, "pub fn verifyAndCollect("), "XDM04 row publication",
+             "if (!std.mem.eql(u8, &header.root, &expected_root)) return error.UnexpectedSparseRoot;",
+             "for (values[height][offset..][0..cols]) |*value| value.* = try c.felt();",
+             "return error.DuplicateProjectedValue;",
+             "tree.hashLeaf(values[0][offset..][0..cols])",
+             "const left = try childHash(",
+             "tree.hashInserted(left, right, values[height][offset..][0..cols])",
+             "tree.hashUpper(left, right)",
+             "if (used != count) return error.WitnessTooLong;",
+             "if (!std.mem.eql(u8, &root, &expected_root)) return error.RootMismatch;",
+             "return .{ .allocator = allocator, .profile = expected, .values = values };")
+    _ordered(_function(paired, "pub fn fromVerifiedOpenings("),
+             "XDM04 opening to own quotient",
+             "if (raw_queries.len != profile.query_count or claims.len != profile.height_count)",
+             "if (height_claims.len != profile.columns[height]) return error.InvalidSparseShape;",
+             "coefficient.* = try constraints.complexConjugateLineCoeffs(point, claim, QM31.one());",
+             "const original = opened.at(height, query, j, col);",
+             "const quotient = numerator.mulCM31(inverse);",
+             "answer = answer.add(pair[0].mul(QM31.fromBase(original)))",
+             "values[height][query * 2 + j] = answer;")
+    _ordered(_function(relation, "pub fn verifyAndExtract("),
+             "independent accepted-relation extraction",
+             "try cascade.verifyAgainstStatement(a, proof, &staged, statement);",
+             "const opened = try xdm.verifyAndCollect(",
+             "try relation.check(a);",
+             "channel.* = staged;")
 
 
 def verify_hashes(sources: dict[str, bytes], expected: dict[str, str]) -> dict[str, str]:
@@ -57,6 +149,7 @@ def classify_sources(sources: dict[str, bytes]) -> dict:
     """Classify only the exact draft source bytes reviewed at `DRAFT_COMMIT`."""
     observed = verify_hashes(sources, SOURCE_SHA256)
     decoded = {name: data.decode("utf-8") for name, data in sources.items()}
+    check_fixed_source_custody(decoded)
     _contains(decoded["src/core/pcs/transposed_merkle_sparse.zig"], (
         "pub const MAX_LOG_SIZE: u32 = 22;",
         "self.query_count == 0 or self.query_count > (1 << 14)",
@@ -69,6 +162,9 @@ def classify_sources(sources: dict[str, bytes]) -> dict:
         "pub const MAX_LOG_SIZE: u32 = 16;",
         "pub const MAX_WIRE_BYTES: usize = 64 * 1024 * 1024;",
         "self.query_count * (@as(usize, 1) << @intCast(self.height_count)) > (1 << 16)",
+        'h.update("S31XDL03");',
+        'h.update("S31XDI03");',
+        'h.update("S31XDU03");',
     ), "legacy XDM03 source profile")
     _contains(decoded["src/core/pcs/paired_sparse_cascade_experimental.zig"], (
         "pub const OUTER_VERSION: u16 = 6;",
@@ -115,6 +211,8 @@ def classify_sources(sources: dict[str, bytes]) -> dict:
         "pub inline fn mulM31(lhs: QM31, rhs: M31) QM31 {",
         "const product = m31_mod.mulVec4(lanes, @splat(rhs.v));",
         "return fromU32Unchecked(product[0], product[1], product[2], product[3]);",
+        "pub inline fn complexConjugate(self: QM31) QM31 {",
+        ".c1 = self.c1.neg(),",
     ), "CAS05 QM31 row arithmetic")
     _contains(decoded["src/core/fields/cm31.zig"], (
         "pub inline fn fromBase(x: M31) CM31 {",

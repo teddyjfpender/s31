@@ -228,6 +228,27 @@ This remains algebra plus a source pin: the Lean theorem does not execute
 Zig, prove authenticated source openings, fix OOD claims before `λ`, bound
 the global derived oracle degree, or provide native security bits.
 
+[`PairedBatchSourceCustody.lean`](PairedBatchSourceCustody.lean) joins the next
+local boundary. It models one XDM04 opening at either a tagged height-zero
+leaf or a tagged inserted source node, followed by its upper Merkle path.
+For two different rows accepted at the same source root, level, and position,
+it constructs a collision in those exact node or upper-path hash inputs.
+Given the native and committed openings and absence of such a collision,
+the opened M31 row equals the committed row in the original column order.
+The CAS05 statement match then replaces proof-supplied claims with the
+public claim roster; its sampled OOD y-coordinate determines every line
+coefficient, independent of the batch challenge. The combined theorem
+checks the conjugate y-span, nonzero quotient denominator, and equality of
+the native-shaped batch with the committed source-row polynomial. The
+[CAS05 source audit](../../../../../scripts/release/pcs_fri_cas05_source_profile.py)
+pins XDM04's row-fill, duplicate, leaf/inserted/upper hash, root-check and
+publication order, plus statement matching, claim absorption before the
+batch draw, and the `opened.at` handoff. Hostile source mutations are tested.
+The Lean theorem still takes native-success-to-modeled-opening and
+prover-tree construction as premises; it does not prove compiled Zig
+semantics, hash collision resistance, global oracle degree, or adaptive
+Fiat–Shamir sampling.
+
 [`TwoPointDegreeCorrection.lean`](TwoPointDegreeCorrection.lean) proves the
 ordinary-polynomial degree step under exact reconstruction. For distinct
 points `a,b`, values `vₐ,vᵦ` determine an affine line `L`. If polynomial `f`
