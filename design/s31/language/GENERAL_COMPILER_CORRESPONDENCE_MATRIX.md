@@ -23,7 +23,7 @@ that every syntactically valid program is admissible or total.
 | Assertions | At most 16 equality assertions between named wires | Arbitrary expressions, result-independent effects, native assertion enforcement |
 | Static functions | Up to 8 used pure one- or two-argument helpers, each one arithmetic expression; calls receive named wires | General function bodies, higher-order values, closures, recursive-call rejection, specialization fuel |
 | `use std@1` | Exact import spelling is accepted when no standard-library call is used; package lock checked separately | Independently specified standard-library calls and pinned source semantics |
-| Natural/field literals, arrays, tuples, records | Field literal inside canonical `splat`; flat 2–4 element tuples of existing equal-length M31 wire arrays, static `.0`–`.3` projection and aliases are source-byte checked and erased before SSA. A separate bounded v2 record checker covers input field projection and output construction. A Lean exact-byte parser proves the bounded record value step for arbitrary M31 inputs; a follow-on theorem joins checked result fields to actual `Program.evaluate` under explicit graph, assignment, output-roster, and trace alignment premises. | Nested products, array shape changes, general record specialization, Python/relation JSON equivalence for the Lean record parser, discharge of the v2 evaluator alignment premises from relation bytes, and a shared typed certificate across all structural forms |
+| Natural/field literals, arrays, tuples, records | Field literal inside canonical `splat`; flat 2–4 element tuples of existing equal-length M31 wire arrays, static `.0`–`.3` projection and aliases are source-byte checked and erased before SSA. The bounded v2 record checker covers input field projection and output construction. The Lean record bridge now checks exact source/tree/relation/ABI bytes, decodes the actual typed normalized `Program`, and proves evaluator equality for every assignment. One public one-field add record also has statement and native fixed-row release admission. | Nested products, array shape changes, general record specialization, general record statement ownership, native AIR theorem, and a shared typed certificate across all structural forms |
 | Sums, pattern matching, `if` | Excluded | Static constructor semantics, exhaustive branches, dynamic bit selection |
 | Lambdas, `Fn`, application | Excluded | Closure capture, polymorphic function values, inlining and name allocation |
 | Blinded mode and dynamic builtins | Excluded | Privacy policy, relation op witnesses, circuit/chip boundary proofs |
@@ -55,8 +55,11 @@ verification, and the full release feature gate requires a real combined
 helper/tuple package to pass. The general `s31 verify-release` and ordinary
 package verifier do not invoke it; those paths still rely on Python structural
 erasure. The
-record-v2 arm, universal Python/Lean parser equivalence, native AIR-row
-authentication, and PCS/FRI remain open. See
+general record-v2 release arm, universal Python/Lean parser equivalence,
+native AIR-row theorem, and PCS/FRI remain open. The one-field public add
+record has an opt-in pinned row gate; see
+[`GeneralRecordV2ProgramAdmission.md`](../../../formal/s31/S31/Gadgets/Functional/Correspondence/GeneralRecordV2ProgramAdmission.md).
+See
 [`GeneralLinearSSAStructuralDerivation.md`](../../../formal/s31/S31/Gadgets/Functional/Correspondence/GeneralLinearSSAStructuralDerivation.md)
 for a hand-worked tuple/helper example and exact gate scope. The production compiler
 accepts a helper call after tuple projections; this executable certificate
@@ -74,9 +77,11 @@ one-helper, two-parameter grammar with source-only tuple lets, projections,
 aliases, and helper calls. Wider Python helper/product syntax stays on the
 typed structural route. The bounded v2 record case has executable
 source/relation/ABI/value checks and an exact-byte Lean source-value theorem.
-A separate theorem reaches actual `Program.evaluate` when its source graph,
-typed input state, public outputs, and accepted trace are aligned;
-source/parser/relation JSON equivalence and native authentication remain open. See
+`GeneralRecordV2ProgramAdmission.lean` checks the actual typed normalized
+program against a source-derived graph and proves `Program.evaluate` identity
+for every assignment to that checked program. The one-field public add class
+also has a pinned statement and fixed-row gate. Universal Python/Lean parser
+equivalence and a native AIR theorem remain open. See
 [`TYPED_STRUCTURAL_DERIVATION.md`](TYPED_STRUCTURAL_DERIVATION.md).
 
 For the pure profile, `formal/s31/S31/Gadgets/Functional/Correspondence/GeneralLinearSSABytes.lean`
