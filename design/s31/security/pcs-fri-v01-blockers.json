@@ -1,0 +1,392 @@
+{
+  "engine_gitlink_commit": "039dacb59980e1e871571958b396b2e29f93c0e5",
+  "evidence_sha256": {
+    "deps/stwo-zig/src/core/fri/config.zig": "69508e1f697dbf3adbe6748383aed86d937cc09d0a633cde0f9d5e6281e3149c",
+    "deps/stwo-zig/src/core/pcs/verifier.zig": "e119335172e17db5fd1345f476c7f6ad7fdf67e394a5b18d5c2085e892ffe3d5",
+    "design/s31/security/MIXED_N1_N8_CONDITIONAL_ERROR_LEDGER_2026-10-12.md": "1f55450e5750b8c7cd9d88714c0213c9f1f894a8457e5c4c7379757b181925f9",
+    "design/s31/security/PCS_FRI_PUBLISHED_BOUND_AUDIT.md": "361ad4957d9bdff886ee53a7babd1bd4e7a4940653213df9086e8e3c10354cae",
+    "formal/s31/S31/Gadgets/PcsFri/FoldAlgebra.lean": "def1114388ff78f5f9423bc0aada485ec3dda8c433576a087ef94df299dc9da3",
+    "formal/s31/S31/Gadgets/PcsFri/LayerAcceptance.lean": "dd4232047a06bccdb1d780998ab789b253a481e3ddeffc5b216b1a189c243b3c",
+    "formal/s31/S31/Gadgets/PcsFri/M31MaskedQuery.lean": "2d2d7e74d0fe319d891dce4b4f6680184bba13d4d8578e93c3d0cdbdbaa19c5e",
+    "formal/s31/S31/Gadgets/PcsFri/M31WordReduction.lean": "014571cf368ec470ae426dc6141bca1c418eb8a627caddd546af1673b9a7f8fb",
+    "formal/s31/S31/Gadgets/PcsFri/MerkleOpening.lean": "557c111bad6d84b5739f95cae48b4992954fa1cee83bec0625aafb19348d2076",
+    "formal/s31/S31/Gadgets/PcsFri/MultiproofDecoder.lean": "084a9db05e81ad972be83afbd4c1c64b84424f063ff41d68ddb8f6d413044f44",
+    "formal/s31/S31/Gadgets/PcsFri/QueryAndTranscript.lean": "e82190409053019d327e738a450c2a1b8676beecc92770f4a3e7563ad445cfa8",
+    "formal/s31/proof-inventory.json": "36d43df380c409571e0f79a18fbbacacdfb7c7740d74283c798001df8f1fcb9a",
+    "scripts/release/pcs_fri_proven_preflight.py": "485573b3a14719e1d3d8b11e4a481c9e70965c3da9d6852d15eab14c8f5f79f9",
+    "scripts/s31_formal_lib/pcs_fri_leaf_encoding.py": "125e0532c2e874dce00ff681a648d37cb00d21e4a577ab1511aa96e557257de4",
+    "scripts/s31_formal_lib/pcs_fri_order.py": "2e0168a0d1d21b5c58854823f9d92a9740b6a5c775e427d35d90f5f3d43cf4be",
+    "scripts/s31_formal_lib/pcs_fri_projection.py": "4300221fe2bea69a229d037c37d80b5829ab7ed9edcbe88f011530ff51ed2187",
+    "src/frontends/s31/runtime/mvp_runtime.zig": "910f99a26d296dfb9df9ad4425f645c4a5fb1a6520eb5bf17f8276291a5e91fd",
+    "src/frontends/s31/sha/package/sha_fused_package_runtime.zig": "eac17fd037560a25488d32501252a3bad9cc18b162fda6c041cbe688d8404776",
+    "src/frontends/s31/sha/package/sha_package_runtime.zig": "b83d39902d41f13d5d8fb5882a054f216e22a49426a99844f32110f575ba8f8d",
+    "src/frontends/s31/sha/package/sha_shift_package_runtime.zig": "0b1f83a47cc6c8712f03d110a8d987a4dc525dfd9a787bf69e27ced653435ab2"
+  },
+  "native_proven_security_bits": null,
+  "obligations": [
+    {
+      "gap_kind": "uninstantiated_theorem_premise",
+      "id": "P01_ACTUAL_GEOMETRY",
+      "missing_discharge": "derive theorem parameters from every sealed native package and check all finite-domain, degree and small-table preconditions",
+      "partial_evidence": [
+        "scripts/release/pcs_fri_proven_preflight.py",
+        "formal/s31/proof-inventory.json"
+      ],
+      "published_anchor": "https://eprint.iacr.org/2024/278.pdf#appendix-B",
+      "published_requirement": "Circle STARKs Theorems 6/7: bind each N, D, C, d, L, m, rate, list bound and every component domain to the verified oracle",
+      "status": "open"
+    },
+    {
+      "gap_kind": "unproven_native_refinement",
+      "id": "P02_AIR_AND_INTERACTION_REFINEMENT",
+      "missing_discharge": "complete source/compiler-to-native AIR correspondence, committed-column origin and program-wide lookup/interaction soundness",
+      "partial_evidence": [
+        "formal/s31/proof-inventory.json",
+        "design/s31/security/MIXED_N1_N8_CONDITIONAL_ERROR_LEDGER_2026-10-12.md"
+      ],
+      "published_anchor": "https://eprint.iacr.org/2026/532.pdf",
+      "published_requirement": "Circle STARKs Theorem 7 and Stwo flat-AIR IOPP: committed columns, constraints, logUp multiplicities and composition must realize the theorem relation",
+      "status": "open"
+    },
+    {
+      "gap_kind": "unproven_native_refinement",
+      "id": "P03_LIFTED_MULTI_DOMAIN_PCS_REFINEMENT",
+      "missing_discharge": "end-to-end native verifier simulation including all heights, batching, quotient openings and oracle ownership",
+      "partial_evidence": [
+        "scripts/s31_formal_lib/pcs_fri_projection.py",
+        "formal/s31/S31/Gadgets/PcsFri/LayerAcceptance.lean"
+      ],
+      "published_anchor": "https://eprint.iacr.org/2026/532.pdf",
+      "published_requirement": "Stwo multi-domain circle FRI and batch evaluation: all native lifted roots and cross-domain openings realize one cross-domain oracle relation",
+      "status": "open"
+    },
+    {
+      "gap_kind": "unproven_native_refinement",
+      "id": "P04_FRI_ROUND_AND_TERMINAL_REFINEMENT",
+      "missing_discharge": "compose local fold and acceptance models with the complete native commitment, opening and terminal control flow",
+      "partial_evidence": [
+        "formal/s31/S31/Gadgets/PcsFri/FoldAlgebra.lean",
+        "formal/s31/S31/Gadgets/PcsFri/LayerAcceptance.lean"
+      ],
+      "published_anchor": "https://eprint.iacr.org/2024/278.pdf#appendix-B",
+      "published_requirement": "Circle STARKs Theorem 6: committed round words, independent challenge order, every fold equation and terminal degree check match Protocol 2",
+      "status": "open"
+    },
+    {
+      "gap_kind": "unproven_native_refinement",
+      "id": "P05_OODS_DEEP_DEGREE_CORRECTION",
+      "missing_discharge": "prove the native quotient construction and OODS verifier checks instantiate the published batch-evaluation relation",
+      "partial_evidence": [
+        "scripts/s31_formal_lib/pcs_fri_order.py",
+        "deps/stwo-zig/src/core/pcs/verifier.zig"
+      ],
+      "published_anchor": "https://eprint.iacr.org/2026/532.pdf",
+      "published_requirement": "Circle STARKs Theorem 7 and Stwo batch-OOD theorem: sampled values, DEEP quotients and degree correction imply the claimed polynomial identity",
+      "status": "open"
+    },
+    {
+      "gap_kind": "unproven_crypto_and_native_refinement",
+      "id": "P06_MERKLE_BINDING_AND_DECODER",
+      "missing_discharge": "native decoder-to-model semantics, committed-column origin and a cryptographic collision/binding reduction for the exact Blake2s layout",
+      "partial_evidence": [
+        "formal/s31/S31/Gadgets/PcsFri/MerkleOpening.lean",
+        "formal/s31/S31/Gadgets/PcsFri/MultiproofDecoder.lean",
+        "scripts/s31_formal_lib/pcs_fri_leaf_encoding.py"
+      ],
+      "published_anchor": "https://eprint.iacr.org/2026/532.pdf",
+      "published_requirement": "BCS oracle commitments authenticate precisely the queried rows at the committed roots with a quantitative collision bound",
+      "status": "open"
+    },
+    {
+      "gap_kind": "unproven_crypto_and_budget_reduction",
+      "id": "P07_FIAT_SHAMIR_AND_POW_BUDGET",
+      "missing_discharge": "ROM/BCS reduction for native Blake2s, nonce selection, PoW accounting, 32-bit draw-counter wrap bound and transcript domain separation",
+      "partial_evidence": [
+        "formal/s31/S31/Gadgets/PcsFri/QueryAndTranscript.lean",
+        "scripts/s31_formal_lib/pcs_fri_order.py"
+      ],
+      "published_anchor": "https://eprint.iacr.org/2026/532.pdf",
+      "published_requirement": "Stwo NIROP/BCS theorem: bound adversary hash budget T, rounds R, hash collision term and exact native grinding and transcript schedule",
+      "status": "open"
+    },
+    {
+      "gap_kind": "unproven_native_and_random_oracle_refinement",
+      "id": "P08_QUERY_SET_AND_RAW_WORD_MODEL",
+      "missing_discharge": "derive a fixed good set from the native committed oracle before each draw and connect ideal raw-word independence to the native channel",
+      "partial_evidence": [
+        "formal/s31/S31/Gadgets/PcsFri/M31MaskedQuery.lean",
+        "formal/s31/S31/Gadgets/PcsFri/M31WordReduction.lean"
+      ],
+      "published_anchor": "https://eprint.iacr.org/2024/278.pdf#appendix-B",
+      "published_requirement": "Circle STARKs Theorem 6 query term assumes a fixed good set and independent uniform positions; native M31 masking must be accounted for",
+      "status": "open"
+    },
+    {
+      "gap_kind": "uninstantiated_theorem_error_ledger",
+      "id": "P09_COMPLETE_ERROR_LEDGER",
+      "missing_discharge": "evaluate all theorem terms with actual package parameters and an explicit adversary budget; the current preflight computes only necessary illustrative terms",
+      "partial_evidence": [
+        "scripts/release/pcs_fri_proven_preflight.py",
+        "design/s31/security/PCS_FRI_PUBLISHED_BOUND_AUDIT.md"
+      ],
+      "published_anchor": "https://eprint.iacr.org/2024/278.pdf#appendix-B",
+      "published_requirement": "Circle STARKs Theorems 6/7 and Stwo NIROP: sum every justified commitment, AIR, OODS, FRI, Merkle and Fiat-Shamir term before comparing with target bits",
+      "status": "open"
+    },
+    {
+      "gap_kind": "unmatched_protocol_schedule",
+      "id": "P10_GROUPED_FOLD_SCHEDULE",
+      "missing_discharge": "prove soundness of one challenge reused over each four-fold group and its exact native commitment schedule",
+      "partial_evidence": [
+        "deps/stwo-zig/src/core/fri/config.zig",
+        "formal/s31/S31/Gadgets/PcsFri/FoldAlgebra.lean"
+      ],
+      "published_anchor": "https://eprint.iacr.org/2024/278.pdf#appendix-B",
+      "published_requirement": "A grouped four-fold native round needs its own reduction to the paper's single-fold challenge schedule or a theorem covering that schedule",
+      "status": "open"
+    }
+  ],
+  "profiles": {
+    "chip": {
+      "blocker_ids": [
+        "P01_ACTUAL_GEOMETRY",
+        "P02_AIR_AND_INTERACTION_REFINEMENT",
+        "P03_LIFTED_MULTI_DOMAIN_PCS_REFINEMENT",
+        "P04_FRI_ROUND_AND_TERMINAL_REFINEMENT",
+        "P05_OODS_DEEP_DEGREE_CORRECTION",
+        "P06_MERKLE_BINDING_AND_DECODER",
+        "P07_FIAT_SHAMIR_AND_POW_BUDGET",
+        "P08_QUERY_SET_AND_RAW_WORD_MODEL",
+        "P09_COMPLETE_ERROR_LEDGER"
+      ],
+      "fri_fold_step": 1,
+      "native_proven_security_bits": null,
+      "proven_release_admissible": false
+    },
+    "direct-chip": {
+      "blocker_ids": [
+        "P01_ACTUAL_GEOMETRY",
+        "P02_AIR_AND_INTERACTION_REFINEMENT",
+        "P03_LIFTED_MULTI_DOMAIN_PCS_REFINEMENT",
+        "P04_FRI_ROUND_AND_TERMINAL_REFINEMENT",
+        "P05_OODS_DEEP_DEGREE_CORRECTION",
+        "P06_MERKLE_BINDING_AND_DECODER",
+        "P07_FIAT_SHAMIR_AND_POW_BUDGET",
+        "P08_QUERY_SET_AND_RAW_WORD_MODEL",
+        "P09_COMPLETE_ERROR_LEDGER"
+      ],
+      "fri_fold_step": 1,
+      "native_proven_security_bits": null,
+      "proven_release_admissible": false
+    },
+    "direct-gate": {
+      "blocker_ids": [
+        "P01_ACTUAL_GEOMETRY",
+        "P02_AIR_AND_INTERACTION_REFINEMENT",
+        "P03_LIFTED_MULTI_DOMAIN_PCS_REFINEMENT",
+        "P04_FRI_ROUND_AND_TERMINAL_REFINEMENT",
+        "P05_OODS_DEEP_DEGREE_CORRECTION",
+        "P06_MERKLE_BINDING_AND_DECODER",
+        "P07_FIAT_SHAMIR_AND_POW_BUDGET",
+        "P08_QUERY_SET_AND_RAW_WORD_MODEL",
+        "P09_COMPLETE_ERROR_LEDGER"
+      ],
+      "fri_fold_step": 1,
+      "native_proven_security_bits": null,
+      "proven_release_admissible": false
+    },
+    "gate": {
+      "blocker_ids": [
+        "P01_ACTUAL_GEOMETRY",
+        "P02_AIR_AND_INTERACTION_REFINEMENT",
+        "P03_LIFTED_MULTI_DOMAIN_PCS_REFINEMENT",
+        "P04_FRI_ROUND_AND_TERMINAL_REFINEMENT",
+        "P05_OODS_DEEP_DEGREE_CORRECTION",
+        "P06_MERKLE_BINDING_AND_DECODER",
+        "P07_FIAT_SHAMIR_AND_POW_BUDGET",
+        "P08_QUERY_SET_AND_RAW_WORD_MODEL",
+        "P09_COMPLETE_ERROR_LEDGER"
+      ],
+      "fri_fold_step": 1,
+      "native_proven_security_bits": null,
+      "proven_release_admissible": false
+    },
+    "gate-fri4": {
+      "blocker_ids": [
+        "P01_ACTUAL_GEOMETRY",
+        "P02_AIR_AND_INTERACTION_REFINEMENT",
+        "P03_LIFTED_MULTI_DOMAIN_PCS_REFINEMENT",
+        "P04_FRI_ROUND_AND_TERMINAL_REFINEMENT",
+        "P05_OODS_DEEP_DEGREE_CORRECTION",
+        "P06_MERKLE_BINDING_AND_DECODER",
+        "P07_FIAT_SHAMIR_AND_POW_BUDGET",
+        "P08_QUERY_SET_AND_RAW_WORD_MODEL",
+        "P09_COMPLETE_ERROR_LEDGER",
+        "P10_GROUPED_FOLD_SCHEDULE"
+      ],
+      "fri_fold_step": 4,
+      "native_proven_security_bits": null,
+      "proven_release_admissible": false
+    },
+    "sha-fused": {
+      "blocker_ids": [
+        "P01_ACTUAL_GEOMETRY",
+        "P02_AIR_AND_INTERACTION_REFINEMENT",
+        "P03_LIFTED_MULTI_DOMAIN_PCS_REFINEMENT",
+        "P04_FRI_ROUND_AND_TERMINAL_REFINEMENT",
+        "P05_OODS_DEEP_DEGREE_CORRECTION",
+        "P06_MERKLE_BINDING_AND_DECODER",
+        "P07_FIAT_SHAMIR_AND_POW_BUDGET",
+        "P08_QUERY_SET_AND_RAW_WORD_MODEL",
+        "P09_COMPLETE_ERROR_LEDGER"
+      ],
+      "fri_fold_step": 1,
+      "native_proven_security_bits": null,
+      "proven_release_admissible": false
+    },
+    "sha-joint": {
+      "blocker_ids": [
+        "P01_ACTUAL_GEOMETRY",
+        "P02_AIR_AND_INTERACTION_REFINEMENT",
+        "P03_LIFTED_MULTI_DOMAIN_PCS_REFINEMENT",
+        "P04_FRI_ROUND_AND_TERMINAL_REFINEMENT",
+        "P05_OODS_DEEP_DEGREE_CORRECTION",
+        "P06_MERKLE_BINDING_AND_DECODER",
+        "P07_FIAT_SHAMIR_AND_POW_BUDGET",
+        "P08_QUERY_SET_AND_RAW_WORD_MODEL",
+        "P09_COMPLETE_ERROR_LEDGER"
+      ],
+      "fri_fold_step": 1,
+      "native_proven_security_bits": null,
+      "proven_release_admissible": false
+    },
+    "sha-shift": {
+      "blocker_ids": [
+        "P01_ACTUAL_GEOMETRY",
+        "P02_AIR_AND_INTERACTION_REFINEMENT",
+        "P03_LIFTED_MULTI_DOMAIN_PCS_REFINEMENT",
+        "P04_FRI_ROUND_AND_TERMINAL_REFINEMENT",
+        "P05_OODS_DEEP_DEGREE_CORRECTION",
+        "P06_MERKLE_BINDING_AND_DECODER",
+        "P07_FIAT_SHAMIR_AND_POW_BUDGET",
+        "P08_QUERY_SET_AND_RAW_WORD_MODEL",
+        "P09_COMPLETE_ERROR_LEDGER"
+      ],
+      "fri_fold_step": 1,
+      "native_proven_security_bits": null,
+      "proven_release_admissible": false
+    },
+    "sparse-chip": {
+      "blocker_ids": [
+        "P01_ACTUAL_GEOMETRY",
+        "P02_AIR_AND_INTERACTION_REFINEMENT",
+        "P03_LIFTED_MULTI_DOMAIN_PCS_REFINEMENT",
+        "P04_FRI_ROUND_AND_TERMINAL_REFINEMENT",
+        "P05_OODS_DEEP_DEGREE_CORRECTION",
+        "P06_MERKLE_BINDING_AND_DECODER",
+        "P07_FIAT_SHAMIR_AND_POW_BUDGET",
+        "P08_QUERY_SET_AND_RAW_WORD_MODEL",
+        "P09_COMPLETE_ERROR_LEDGER"
+      ],
+      "fri_fold_step": 1,
+      "native_proven_security_bits": null,
+      "proven_release_admissible": false
+    },
+    "sparse-gate": {
+      "blocker_ids": [
+        "P01_ACTUAL_GEOMETRY",
+        "P02_AIR_AND_INTERACTION_REFINEMENT",
+        "P03_LIFTED_MULTI_DOMAIN_PCS_REFINEMENT",
+        "P04_FRI_ROUND_AND_TERMINAL_REFINEMENT",
+        "P05_OODS_DEEP_DEGREE_CORRECTION",
+        "P06_MERKLE_BINDING_AND_DECODER",
+        "P07_FIAT_SHAMIR_AND_POW_BUDGET",
+        "P08_QUERY_SET_AND_RAW_WORD_MODEL",
+        "P09_COMPLETE_ERROR_LEDGER"
+      ],
+      "fri_fold_step": 1,
+      "native_proven_security_bits": null,
+      "proven_release_admissible": false
+    },
+    "sparse-wide-gate": {
+      "blocker_ids": [
+        "P01_ACTUAL_GEOMETRY",
+        "P02_AIR_AND_INTERACTION_REFINEMENT",
+        "P03_LIFTED_MULTI_DOMAIN_PCS_REFINEMENT",
+        "P04_FRI_ROUND_AND_TERMINAL_REFINEMENT",
+        "P05_OODS_DEEP_DEGREE_CORRECTION",
+        "P06_MERKLE_BINDING_AND_DECODER",
+        "P07_FIAT_SHAMIR_AND_POW_BUDGET",
+        "P08_QUERY_SET_AND_RAW_WORD_MODEL",
+        "P09_COMPLETE_ERROR_LEDGER"
+      ],
+      "fri_fold_step": 1,
+      "native_proven_security_bits": null,
+      "proven_release_admissible": false
+    },
+    "sparse-wide-gate-fri4": {
+      "blocker_ids": [
+        "P01_ACTUAL_GEOMETRY",
+        "P02_AIR_AND_INTERACTION_REFINEMENT",
+        "P03_LIFTED_MULTI_DOMAIN_PCS_REFINEMENT",
+        "P04_FRI_ROUND_AND_TERMINAL_REFINEMENT",
+        "P05_OODS_DEEP_DEGREE_CORRECTION",
+        "P06_MERKLE_BINDING_AND_DECODER",
+        "P07_FIAT_SHAMIR_AND_POW_BUDGET",
+        "P08_QUERY_SET_AND_RAW_WORD_MODEL",
+        "P09_COMPLETE_ERROR_LEDGER",
+        "P10_GROUPED_FOLD_SCHEDULE"
+      ],
+      "fri_fold_step": 4,
+      "native_proven_security_bits": null,
+      "proven_release_admissible": false
+    }
+  },
+  "proof_targets": [
+    "https://eprint.iacr.org/2024/278.pdf",
+    "https://eprint.iacr.org/2026/532.pdf"
+  ],
+  "proven_release_admissible": false,
+  "release": "v0.1.0",
+  "schema": "s31-pcs-fri-v01-blockers-v1",
+  "source_visible_nominal_fri": {
+    "fold_step_by_profile": {
+      "chip": 1,
+      "direct-chip": 1,
+      "direct-gate": 1,
+      "gate": 1,
+      "gate-fri4": 4,
+      "sha-fused": 1,
+      "sha-joint": 1,
+      "sha-shift": 1,
+      "sparse-chip": 1,
+      "sparse-gate": 1,
+      "sparse-wide-gate": 1,
+      "sparse-wide-gate-fri4": 4
+    },
+    "interpretation": "source-pinned nominal configuration; not a proven security level",
+    "log_blowup_factor": 1,
+    "log_last_layer_degree_bound": 0,
+    "pow_bits": 26,
+    "raw_queries": 70,
+    "source_paths": [
+      "src/frontends/s31/runtime/mvp_runtime.zig",
+      "src/frontends/s31/sha/package/sha_package_runtime.zig",
+      "src/frontends/s31/sha/package/sha_shift_package_runtime.zig",
+      "src/frontends/s31/sha/package/sha_fused_package_runtime.zig"
+    ]
+  },
+  "status": "blocked",
+  "whole_prover_cost": {
+    "current_engine_matches_v8r1": false,
+    "independent_review": "design/s31/measurements/WHOLE_PROVER_V8R1_RESULT.md",
+    "limits": [
+      "held-out evaluator required a post-freeze roster-only repair",
+      "no demonstrated transfer to the current engine/compiler stack",
+      "no cross-host prediction or tail-latency guarantee",
+      "no soundness-equivalent automatic lowering; selection remains disabled"
+    ],
+    "status": "scoped-local-result-only",
+    "v8r1_evidence_engine_gitlink_commit": "7d544c6839497ca19b6c7ef9b982e464f10cfeed"
+  }
+}
