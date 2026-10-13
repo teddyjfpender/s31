@@ -5,9 +5,12 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import tempfile
 import unittest
+from pathlib import Path
 
 from package.context import abi
+from package.pure_native_rows import admitted_source_package
 from package.source_relation_fragment import (UnsupportedSourceRelationFragment,
                                               parse_source_fragment)
 from package.structural_derivation import (UnsupportedStructuralDerivation,
@@ -64,11 +67,18 @@ def fixture(source: str) -> tuple[dict, bytes, bytes, bytes]:
     return certificate, source.encode(), relation_bytes, abi_bytes
 
 
+def evaluate(fixture_parts: tuple[dict, bytes, bytes, bytes], assignment: bytes) -> dict:
+    certificate, source_bytes, relation_bytes, abi_bytes = fixture_parts
+    return evaluate_assignment(source_bytes, relation_bytes, abi_bytes,
+                               "direct-gate", encoded(certificate), assignment)
+
+
 class StructuralDerivationTests(unittest.TestCase):
     def test_tuple_helper_and_combined_erasure(self) -> None:
         expected = None
         for source in (TUPLE, HELPER, COMBINED):
-            certificate, data, relation_bytes, abi_bytes = fixture(source)
+            checked = fixture(source)
+            certificate, data, relation_bytes, abi_bytes = checked
             if expected is None:
                 expected = relation_bytes
             self.assertEqual(expected, relation_bytes)
@@ -76,7 +86,7 @@ class StructuralDerivationTests(unittest.TestCase):
                 "public_inputs": {"x": [7, 11], "y": [3, 5]},
                 "private_inputs": {}, "public_outputs": {"z": [4, 6]},
             })
-            self.assertEqual(evaluate_assignment(certificate, assignment)["public_words"],
+            self.assertEqual(evaluate(checked, assignment)["public_words"],
                              [7, 11, 3, 5, 4, 6, 0, 0])
             self.assertEqual(certificate["source_sha256"], hashlib.sha256(data).hexdigest())
             self.assertEqual(certificate["public_abi_sha256"],
@@ -85,7 +95,8 @@ class StructuralDerivationTests(unittest.TestCase):
             parse_source_fragment(COMBINED.encode())
 
     def test_record_field_projection_and_declared_output_order(self) -> None:
-        certificate, _, relation_bytes, _ = fixture(RECORD)
+        checked = fixture(RECORD)
+        certificate, _, relation_bytes, _ = checked
         relation = json.loads(relation_bytes)
         self.assertEqual(relation["public_outputs"], ["z", "_s31_abi_input_1"])
         self.assertEqual([leaf["path"][-1]["field"] for leaf in
@@ -95,15 +106,16 @@ class StructuralDerivationTests(unittest.TestCase):
             "private_inputs": {"_s31_abi_input_2": [5], "_s31_abi_input_3": [7]},
             "public_outputs": {"z": [14], "_s31_abi_input_1": [3]},
         })
-        self.assertEqual(evaluate_assignment(certificate, assignment)["public_words"],
+        self.assertEqual(evaluate(checked, assignment)["public_words"],
                          [2, 3, 14, 3, 0, 0, 0, 0])
         changed = json.loads(assignment)
         changed["public_outputs"]["z"] = [15]
         with self.assertRaisesRegex(ValueError, "claimed public result"):
-            evaluate_assignment(certificate, encoded(changed))
+            evaluate(checked, encoded(changed))
 
     def test_effectful_constant_and_assertion_replay(self) -> None:
-        certificate, _, relation_bytes, _ = fixture(EFFECTFUL)
+        checked = fixture(EFFECTFUL)
+        certificate, _, relation_bytes, _ = checked
         relation = json.loads(relation_bytes)
         self.assertEqual(relation["nodes"], [{"name": "z", "lhs": "x",
                                               "op": "add_const", "constant": 7}])
@@ -111,11 +123,11 @@ class StructuralDerivationTests(unittest.TestCase):
         assignment = {"public_inputs": {"x": [1, 2]},
                       "private_inputs": {"y": [8, 9]},
                       "public_outputs": {"z": [8, 9]}}
-        self.assertEqual(evaluate_assignment(certificate, encoded(assignment))["public_words"],
+        self.assertEqual(evaluate(checked, encoded(assignment))["public_words"],
                          [1, 2, 8, 9, 0, 0, 0, 0])
         assignment["private_inputs"]["y"] = [8, 10]
         with self.assertRaisesRegex(ValueError, "source assertion is false"):
-            evaluate_assignment(certificate, encoded(assignment))
+            evaluate(checked, encoded(assignment))
 
     def test_resealed_wrong_tuple_projection_rejected(self) -> None:
         certificate, source, _, _ = fixture(TUPLE)
@@ -129,6 +141,35 @@ class StructuralDerivationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "differs from source relation"):
             check_certificate(source, relation_bytes, abi_bytes, "direct-gate",
                               encoded(forged))
+        with self.assertRaisesRegex(ValueError, "differs from source relation"):
+            evaluate_assignment(source, relation_bytes, abi_bytes, "direct-gate",
+                                encoded(forged), encoded({
+                                    "public_inputs": {"x": [7, 11], "y": [3, 5]},
+                                    "private_inputs": {}, "public_outputs": {"z": [0, 0]},
+                                }))
+
+    def test_native_admission_requires_exact_combined_source(self) -> None:
+        certificate, source, relation_bytes, abi_bytes = fixture(COMBINED)
+        with tempfile.TemporaryDirectory(prefix="s31-combined-admission-") as directory:
+            package = Path(directory)
+            (package / "source.s31").write_bytes(source)
+            (package / "source.s31.json").write_bytes(relation_bytes)
+            (package / "public-abi.json").write_bytes(abi_bytes)
+            artifact = package / "typed-structural-derivation.json"
+            artifact.write_bytes(encoded(certificate))
+            self.assertTrue(admitted_source_package(package))
+
+            forged = copy.deepcopy(certificate)
+            forged["program"]["steps"][1]["expr"]["field"] = "1"
+            wrong_relation = encoded(derive_relation(forged["program"]))
+            wrong_abi = encoded(abi(json.loads(wrong_relation), "direct-gate"))
+            forged["relation_sha256"] = hashlib.sha256(wrong_relation).hexdigest()
+            forged["public_abi_sha256"] = hashlib.sha256(wrong_abi).hexdigest()
+            (package / "source.s31.json").write_bytes(wrong_relation)
+            (package / "public-abi.json").write_bytes(wrong_abi)
+            artifact.write_bytes(encoded(forged))
+            with self.assertRaisesRegex(ValueError, "differs from source relation"):
+                admitted_source_package(package)
 
     def test_resealed_wrong_helper_body_rejected(self) -> None:
         certificate, source, _, _ = fixture(HELPER)
@@ -161,14 +202,14 @@ class StructuralDerivationTests(unittest.TestCase):
         with self.assertRaises(UnsupportedStructuralDerivation):
             make_certificate(b"circuit c() -> public [m31; 1] { if true { 1 } else { 2 } }",
                              b"{}\n", b"{}\n", "direct-gate")
-        certificate, _, _, _ = fixture(TUPLE)
+        checked = fixture(TUPLE)
         assignment = b'{"public_inputs":{"x":[7,11],"x":[7,11],"y":[3,5]},"private_inputs":{},"public_outputs":{"z":[4,6]}}'
         with self.assertRaisesRegex(ValueError, "duplicate structural assignment key"):
-            evaluate_assignment(certificate, assignment)
+            evaluate(checked, assignment)
         bad_bool = encoded({"public_inputs": {"x": [True, 11], "y": [3, 5]},
                             "private_inputs": {}, "public_outputs": {"z": [4, 6]}})
         with self.assertRaisesRegex(ValueError, "noncanonical structural M31 input"):
-            evaluate_assignment(certificate, bad_bool)
+            evaluate(checked, bad_bool)
 
 
 if __name__ == "__main__":

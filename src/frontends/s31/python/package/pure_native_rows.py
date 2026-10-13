@@ -4,8 +4,9 @@ The four-lane case already has a separate direct-gate certificate. This
 checker reuses its full exported-column/manifest replay, then compares every
 native gate against an independent, shape-indexed schedule. The fixed-root
 comparison relies on the pinned native inspector and verifier; this is not a
-PCS/FRI soundness theorem. Static tuple construction and projection are
-admitted only when exact source bytes independently erase to that graph.
+PCS/FRI soundness theorem. Static tuples and the bounded helper-after-tuple
+form are admitted only when exact source bytes independently erase to that
+graph. The latter has no Lean byte-run theorem.
 """
 
 from __future__ import annotations
@@ -19,12 +20,18 @@ from package.correspondence import (check_exported_root, parse_canonical_json,
 from package.context import AIR_BUNDLE_SHA256, PROJECTION_SHA256
 from package.direct_gate_schedule import exact_direct_gate_schedule
 from package.manifest_digest import direct_gate_v2_digest
-from package.source_relation_fragment import check_source_relation_certificate
+from package.source_relation_fragment import (UnsupportedSourceRelationFragment,
+                                              _indexed_ssa,
+                                              check_source_relation_certificate)
 from package.source_relation_fragment import (LEAN_EFFECTS_PROFILE,
                                               LEAN_SEMANTIC_PROFILE,
                                               parse_source_fragment)
+from package.structural_derivation import (ARTIFACT as STRUCTURAL_ARTIFACT,
+                                           check_certificate as check_structural_certificate,
+                                           derive_relation as derive_structural_relation)
 
 SCHEMA = "s31-pure-linear-native-rows-v1"
+STRUCTURAL_SCHEMA = "s31-pure-linear-native-rows-v2"
 ARTIFACT = "pure-native-rows-certificate.json"
 TOPOLOGY = "gate-topology.json"
 
@@ -60,7 +67,11 @@ def admitted_ssa(certificate: dict[str, Any], source_bytes: bytes | None = None)
             return False
     elif profile != LEAN_SEMANTIC_PROFILE:
         return False
-    ssa = certificate["ssa"]
+    return _admitted_graph(certificate["ssa"])
+
+
+def _admitted_graph(ssa: dict[str, Any]) -> bool:
+    """The same bounded native graph shape for either checked source route."""
     inputs, nodes, lanes = ssa["inputs"], ssa["nodes"], ssa["lane_count"]
     input_count = len(inputs)
     if (type(lanes) is not int or
@@ -88,6 +99,64 @@ def admitted_ssa(certificate: dict[str, Any], source_bytes: bytes | None = None)
             input_count <= ssa["output"] < input_count + len(nodes))
 
 
+def admitted_structural(certificate: dict[str, Any], source_bytes: bytes) -> bool:
+    """Admit only the newly checked helper plus tuple source combination.
+
+    The caller must first replay the certificate against exact source,
+    relation, and ABI bytes. This predicate is not a certificate verifier.
+    """
+    program = certificate.get("program")
+    if (certificate.get("schema") != "s31-typed-structural-derivation-v1" or
+            certificate.get("lowering") != "direct-gate" or
+            type(program) is not dict or program.get("fragment") != "m31-v1" or
+            not program.get("helpers")):
+        return False
+    products: list[bool] = []
+    try:
+        relation = parse_source_fragment(source_bytes, _static_products=products,
+                                         _allow_helper_products=True)
+    except UnsupportedSourceRelationFragment:
+        return False
+    if products != [True] or not any(
+            step.get("kind") == "let" and step.get("expr", {}).get("kind") == "apply"
+            for step in program["steps"]):
+        return False
+    ssa, effects = _indexed_ssa(relation)
+    return not effects and _admitted_graph(ssa)
+
+
+def _checked_source(package: Path) -> tuple[dict[str, Any], str, str]:
+    """Select an exact-byte source route and return its SSA and bound digest."""
+    source_bytes = (package / "source.s31").read_bytes()
+    relation_bytes = (package / "source.s31.json").read_bytes()
+    source_path = package / "source-relation-certificate.json"
+    if source_path.is_file() and not source_path.is_symlink():
+        source_certificate = check_source_relation_certificate(
+            source_bytes, relation_bytes, source_path.read_bytes())
+        if admitted_ssa(source_certificate, source_bytes):
+            return source_certificate["ssa"], "source_relation_certificate_sha256", _hash(source_path.read_bytes())
+    structural_path = package / STRUCTURAL_ARTIFACT
+    if structural_path.is_file() and not structural_path.is_symlink():
+        structural = check_structural_certificate(
+            source_bytes, relation_bytes, (package / "public-abi.json").read_bytes(),
+            "direct-gate", structural_path.read_bytes())
+        if admitted_structural(structural, source_bytes):
+            ssa, effects = _indexed_ssa(derive_structural_relation(structural["program"]))
+            if effects:
+                raise ValueError("structural native graph has unreviewed effects")
+            return ssa, "typed_structural_derivation_sha256", _hash(structural_path.read_bytes())
+    raise UnsupportedPureNativeRows("outside reviewed one/two public input pure graph")
+
+
+def admitted_source_package(package: Path) -> bool:
+    """Admission always replays exact source and certificate bytes first."""
+    try:
+        _checked_source(package)
+    except UnsupportedPureNativeRows:
+        return False
+    return True
+
+
 def _read(package: Path, name: str) -> dict[str, Any]:
     return parse_canonical_json((package / name).read_bytes(), name)
 
@@ -96,12 +165,7 @@ def make_certificate(package: Path) -> dict[str, Any]:
     """Recompute source, public projection, full fixed cells and sealed root."""
     source_bytes = (package / "source.s31").read_bytes()
     relation_bytes = (package / "source.s31.json").read_bytes()
-    source_certificate_bytes = (package / "source-relation-certificate.json").read_bytes()
-    source_certificate = check_source_relation_certificate(
-        source_bytes, relation_bytes, source_certificate_bytes)
-    if not admitted_ssa(source_certificate, source_bytes):
-        raise UnsupportedPureNativeRows("outside reviewed one/two public input pure graph")
-    ssa = source_certificate["ssa"]
+    ssa, binding_key, binding_digest = _checked_source(package)
     lanes = ssa["lane_count"]
     inputs = ssa["inputs"]
     input_count = len(inputs)
@@ -212,9 +276,12 @@ def make_certificate(package: Path) -> dict[str, Any]:
         source_rows.append({"id": node["id"], "op": node["op"],
                             "trace_row": trace_row, "in0": gate["in0"],
                             "in1": gate["in1"], "out": gate["out"]})
-    return {"schema": SCHEMA, "capability": "source-relation-to-native-fixed-rows-only",
+    structural = binding_key == "typed_structural_derivation_sha256"
+    return {"schema": STRUCTURAL_SCHEMA if structural else SCHEMA,
+            "capability": ("typed-structural-to-native-fixed-rows-only" if structural else
+                           "source-relation-to-native-fixed-rows-only"),
             "source_sha256": _hash(source_bytes), "relation_sha256": relation_sha256,
-            "source_relation_certificate_sha256": _hash(source_certificate_bytes),
+            binding_key: binding_digest,
             "topology_sha256": _hash((package / TOPOLOGY).read_bytes()),
             "preprocessed_root": key["preprocessed_root"],
             "lane_count": lanes, "source_rows": source_rows,
@@ -232,15 +299,7 @@ def verify_artifact(package: Path, manifest: dict[str, Any]) -> bool:
         if listed or present:
             raise ValueError("short-lane native artifact requires direct-gate text source")
         return False
-    source_path = package / "source-relation-certificate.json"
-    if not source_path.is_file():
-        if listed or present:
-            raise ValueError("short-lane native artifact lacks source certificate")
-        return False
-    source_cert = check_source_relation_certificate(
-        (package / "source.s31").read_bytes(),
-        (package / "source.s31.json").read_bytes(), source_path.read_bytes())
-    if not admitted_ssa(source_cert, (package / "source.s31").read_bytes()):
+    if not admitted_source_package(package):
         if listed or present:
             raise ValueError("unsupported source carries short-lane native artifact")
         return False

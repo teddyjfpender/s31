@@ -413,13 +413,9 @@ def _strict_assignment(data: bytes) -> dict[str, Any]:
     return parsed
 
 
-def evaluate_assignment(certificate: dict[str, Any], assignment_bytes: bytes) -> dict[str, Any]:
-    """Compute admitted source values and check an exact flat typed assignment.
-
-    This executable oracle is independent of the production evaluator. It
-    gives no native witness-custody theorem; v2 additionally lacks the v1
-    exact-byte Lean `Program.evaluate` theorem.
-    """
+def _evaluate_checked_assignment(certificate: dict[str, Any],
+                                 assignment_bytes: bytes) -> dict[str, Any]:
+    """Evaluate only after the exact source/certificate replay has succeeded."""
     if certificate.get("schema") != SCHEMA:
         raise ValueError("wrong typed structural certificate schema")
     relation = derive_relation(certificate["program"])
@@ -467,6 +463,21 @@ def evaluate_assignment(certificate: dict[str, Any], assignment_bytes: bytes) ->
     return {"schema": "s31-typed-structural-value-v1",
             "public_words": words + [0] * (8 - len(words)),
             "source_outputs": {name: wires[name] for name in relation["public_outputs"]}}
+
+
+def evaluate_assignment(source_bytes: bytes, relation_bytes: bytes, abi_bytes: bytes,
+                        lowering: str, certificate_bytes: bytes,
+                        assignment_bytes: bytes) -> dict[str, Any]:
+    """Check the exact source-bound certificate before computing source values.
+
+    This executable oracle is independent of the production evaluator. It
+    gives no native witness-custody theorem; v2 additionally lacks the v1
+    exact-byte Lean `Program.evaluate` theorem. A schema-only dictionary is
+    deliberately insufficient to call the public value API.
+    """
+    certificate = check_certificate(source_bytes, relation_bytes, abi_bytes,
+                                    lowering, certificate_bytes)
+    return _evaluate_checked_assignment(certificate, assignment_bytes)
 
 
 def verify_artifact(package: Path, manifest: dict[str, Any]) -> bool:

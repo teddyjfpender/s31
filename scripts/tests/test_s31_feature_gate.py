@@ -109,6 +109,13 @@ def fake_report(check: gate.Check) -> tuple[str, str]:
                   "capability": "source-to-relation-only",
                   "native_verifier_accepted": True,
                   "abi_valid_changed_claim_rejected_by_proof": True}
+    elif fmt == "combined-helper-tuple-native":
+        report = {"schema": "s31-combined-helper-tuple-native-rows-v1",
+                  "source_rows": [{"id": 2, "in0": 16, "in1": 20,
+                                   "op": "sub", "out": 21, "trace_row": 493}],
+                  "fixed_root": "a" * 64, "flat_air_equal": True,
+                  "native_proof_verified": True,
+                  "changed_fixed_root_rejected": True, "proof_bytes": 1000}
     elif fmt.startswith("record-u32-"):
         report = {"schema": "s31-public-u32-record-v2", "native": check.native,
                   "compiler_sha256": FINGERPRINT, "limb_order": "little-endian",
@@ -132,9 +139,9 @@ class FeatureGateTests(unittest.TestCase):
         source = gate.checks("source")
         smoke = gate.checks("smoke")
         full = gate.checks("full")
-        self.assertEqual(len(source), 11)
-        self.assertEqual(len(smoke), 19)
-        self.assertEqual(len(full), 22)
+        self.assertEqual(len(source), 12)
+        self.assertEqual(len(smoke), 21)
+        self.assertEqual(len(full), 24)
         for inventory in (source, smoke, full):
             self.assertEqual(len({check.id for check in inventory}), len(inventory))
             for check in inventory:
@@ -204,6 +211,19 @@ class FeatureGateTests(unittest.TestCase):
         self.assertEqual(gate.validate_output(check, stdout, stderr)["tests"], 2)
         with self.assertRaisesRegex(ValueError, "static enum source corpus"):
             gate.validate_output(check, stdout, stderr.replace("Ran 2", "Ran 1"))
+
+    def test_combined_helper_tuple_native_report_requires_root_and_tamper_control(self) -> None:
+        check = next(item for item in gate.checks("full")
+                     if item.id == "combined-helper-tuple-native")
+        stdout, _ = fake_report(check)
+        gate.validate_output(check, stdout, "")
+        for mutation in (lambda report: report.update({"flat_air_equal": False}),
+                         lambda report: report.update({"fixed_root": "x" * 64}),
+                         lambda report: report.update({"changed_fixed_root_rejected": False})):
+            report = json.loads(stdout)
+            mutation(report)
+            with self.assertRaisesRegex(ValueError, "combined helper/tuple"):
+                gate.validate_output(check, json.dumps(report), "")
 
     def test_power_chain_native_report_requires_proofs_edge_and_costs(self) -> None:
         check = next(item for item in gate.checks("full")

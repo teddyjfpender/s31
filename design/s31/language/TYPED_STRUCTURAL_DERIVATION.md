@@ -11,8 +11,9 @@ This covers the existing bounded version-1 M31 source grammar and the bounded
 version-2 nominal record grammar. It also covers a helper call using wires
 obtained from a static tuple, a combination accepted by the production parser
 but outside the narrower Lean effects byte parser. That combination receives
-this executable certificate, not a Lean `Program.evaluate` certificate or a
-source-bound native-row certificate.
+this executable certificate and, for the reviewed all-public short-lane
+direct-Gate graph, a separate source-bound native fixed-row certificate. It
+does not receive a Lean `Program.evaluate` byte-run certificate.
 
 ## One rule for three uses
 
@@ -104,6 +105,17 @@ ABI, and value check, but no v2 exact-byte `Program.evaluate` theorem. Native
 fixed-row custody applies only when the separate direct-Gate row checker
 enrolls the erased graph; arbitrary native trace authentication, production
 parser equivalence, and PCS/FRI soundness remain separate obligations.
+
+For the tuple-plus-helper example above, the short-lane native checker now
+replays the exact source-bound structural certificate, derives the SSA graph,
+and checks every emitted fixed Gate cell, source address and public-word span.
+The sample `x-y` graph has one subtraction source row at fixed trace row 493
+in the padded 512-row direct-Gate layout. Its fixed columns, fixed commitment,
+and whole-prover cost report equal the flat `let z = x - y` spelling. An
+accepted native proof carries that commitment; changing it makes the native
+verifier reject. This is fixed-row correspondence conditional on the pinned
+native inspector/verifier and PCS, not a Lean theorem about the combined
+source bytes or proof soundness.
 
 ```sh
 PYTHONPATH=src/frontends/s31/python python3 -m unittest \
