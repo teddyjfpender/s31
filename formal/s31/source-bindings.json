@@ -380,6 +380,8 @@
     "formal/s31/tests/run_pcs_fri_raw_refinement_native.sh": "7b16b0e970ea4cdc3e3ac5b14c23f21980d25a52afc27bf85f754a1cbc12c3b6",
     "formal/s31/tests/pcs_fri_deep_custody_native.zig": "432419bfebc17c91aed7973179fa877b098612fdbeb01e49ec4d372d59989d93",
     "formal/s31/tests/run_pcs_fri_deep_custody_native.sh": "d08515f38ae6bf3d2b1247ee34838c025690dfa8c52087c39ea921115e04e108",
+    "formal/s31/tests/pcs_fri_quotient_degree_gap_native.zig": "c9e10813663185961bf3b8617d47ee99cd0bdcbc5cac4c6b218f6ab0f65c2238",
+    "formal/s31/tests/run_pcs_fri_quotient_degree_gap_native.sh": "6aa40522e63c53ac13165a0fa0d86eb1492aaa8906aa748bf82138724ed90bc5",
     "deps/stwo-zig/src/core/pcs/quotients/fri_answers.zig": "5280b74c1762860fad733066a40d96dada813908532e3b8854e0a3f02f182181",
     "deps/stwo-zig/src/core/pcs/quotients/row_evaluation.zig": "30e9e8768b083ca3d218b9d4903d7e3805b4219971e7d92847303d9de5778442",
     "deps/stwo-zig/src/core/constraints.zig": "4b8eb20e43d45ec28777f343a43e25566788c598b895d1f230b62da25e33dfea",

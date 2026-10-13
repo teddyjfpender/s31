@@ -398,6 +398,8 @@ BINDINGS = [
     "formal/s31/tests/run_pcs_fri_raw_refinement_native.sh",
     "formal/s31/tests/pcs_fri_deep_custody_native.zig",
     "formal/s31/tests/run_pcs_fri_deep_custody_native.sh",
+    "formal/s31/tests/pcs_fri_quotient_degree_gap_native.zig",
+    "formal/s31/tests/run_pcs_fri_quotient_degree_gap_native.sh",
     "deps/stwo-zig/src/core/pcs/quotients/fri_answers.zig",
     "deps/stwo-zig/src/core/pcs/quotients/row_evaluation.zig",
     "deps/stwo-zig/src/core/constraints.zig",
