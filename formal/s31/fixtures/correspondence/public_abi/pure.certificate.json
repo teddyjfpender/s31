@@ -1,0 +1,41 @@
+{
+  "capability": "source-to-relation-only",
+  "lean_semantic_profile": "linear-ssa-m31-v1",
+  "relation_sha256": "6d37f3c7d2988a3db8e66bd346c64e95c0b34bbb7df6ed350b869bd7029d1008",
+  "schema": "s31-source-relation-certificate-v1",
+  "source_sha256": "074303b966fcec929ef628447c884a436947c02fb6d15c8732feffa56bb0b634",
+  "ssa": {
+    "assertions": [],
+    "inputs": [
+      {
+        "id": 0,
+        "name": "a",
+        "visibility": "private"
+      },
+      {
+        "id": 1,
+        "name": "b",
+        "visibility": "private"
+      }
+    ],
+    "lane_count": 5,
+    "nodes": [
+      {
+        "id": 2,
+        "lhs": 0,
+        "name": "delta",
+        "op": "sub",
+        "rhs": 1
+      },
+      {
+        "id": 3,
+        "lhs": 2,
+        "name": "doubled",
+        "op": "add",
+        "rhs": 2
+      }
+    ],
+    "output": 3
+  },
+  "unmodeled_features": []
+}

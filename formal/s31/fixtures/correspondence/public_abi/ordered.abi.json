@@ -1,0 +1,23 @@
+{
+  "encoding": "eight canonical M31 words, encoded little-endian u32; unused words are zero",
+  "public_inputs": [
+    {
+      "kind": "m31",
+      "length": 2,
+      "name": "x"
+    },
+    {
+      "kind": "m31",
+      "length": 2,
+      "name": "y"
+    }
+  ],
+  "public_outputs": [
+    {
+      "kind": "m31",
+      "length": 2,
+      "name": "sum"
+    }
+  ],
+  "schema": "s31-public-abi-v1"
+}

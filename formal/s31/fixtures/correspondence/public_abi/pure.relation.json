@@ -1,0 +1,36 @@
+{
+  "assertions": [],
+  "inputs": [
+    {
+      "kind": "m31",
+      "length": 5,
+      "name": "a",
+      "visibility": "private"
+    },
+    {
+      "kind": "m31",
+      "length": 5,
+      "name": "b",
+      "visibility": "private"
+    }
+  ],
+  "name": "calc",
+  "nodes": [
+    {
+      "lhs": "a",
+      "name": "delta",
+      "op": "sub",
+      "rhs": "b"
+    },
+    {
+      "lhs": "delta",
+      "name": "doubled",
+      "op": "add",
+      "rhs": "delta"
+    }
+  ],
+  "public_outputs": [
+    "doubled"
+  ],
+  "version": 1
+}

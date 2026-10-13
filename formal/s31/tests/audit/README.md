@@ -1,5 +1,16 @@
 # Executable source audit tests
 
+`general_linear_public_abi.py` checks three source-derived certificate
+fixtures against exact `.s31` bytes, ABI, assignment, and 32-byte public word
+files. It includes two public inputs, a private input, zero padding, 34
+rejection controls for arithmetic, constants, assertions, proof mode and ABI,
+and one expected acceptance for the unbound circuit name. Build the runtime gate first:
+
+```sh
+lake build s31-general-linear-public-abi-check
+python3 tests/audit/general_linear_public_abi.py
+```
+
 `general_linear_ssa_effects_certificate.py` runs the strict Lean effects
 certificate gate on the production affine/assertion fixture and rejects
 arithmetic, assertion, JSON-canonicalization, and size mutations. Build and

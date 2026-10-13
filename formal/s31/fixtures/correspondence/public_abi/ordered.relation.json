@@ -1,0 +1,36 @@
+{
+  "assertions": [],
+  "inputs": [
+    {
+      "kind": "m31",
+      "length": 2,
+      "name": "x",
+      "visibility": "public"
+    },
+    {
+      "kind": "m31",
+      "length": 2,
+      "name": "y",
+      "visibility": "public"
+    },
+    {
+      "kind": "m31",
+      "length": 2,
+      "name": "salt",
+      "visibility": "private"
+    }
+  ],
+  "name": "ordered",
+  "nodes": [
+    {
+      "lhs": "x",
+      "name": "sum",
+      "op": "add",
+      "rhs": "y"
+    }
+  ],
+  "public_outputs": [
+    "sum"
+  ],
+  "version": 1
+}

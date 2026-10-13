@@ -1,0 +1,24 @@
+{
+  "private_inputs": {
+    "salt": [
+      99,
+      100
+    ]
+  },
+  "public_inputs": {
+    "x": [
+      1,
+      2
+    ],
+    "y": [
+      3,
+      4
+    ]
+  },
+  "public_outputs": {
+    "sum": [
+      4,
+      6
+    ]
+  }
+}

@@ -1,0 +1,4 @@
+circuit ordered(public x: [m31; 2], public y: [m31; 2], private salt: [m31; 2]) -> public [m31; 2] {
+  let sum = x + y;
+  sum
+}
