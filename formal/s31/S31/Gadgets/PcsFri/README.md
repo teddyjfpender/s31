@@ -84,19 +84,43 @@ stwo-zig PR #244 rejects `q ≥ 2^height`, so the modeled final index is zero.
 Merkle-opening predicate; `successful_capture_refines_projected_row` then
 applies the witnessed-collision theorem to identify the opened row.
 
+[`MultiproofDecoder.lean`](MultiproofDecoder.lean) adds a deterministic
+one-layer decoder for the sorted frontier. It makes the native XOR sibling
+test equivalent to an even index followed by its odd successor. For any
+successful decode with strictly increasing input indices,
+`buildLayer_structure` proves that chunks cover the input frontier exactly,
+the emitted parents are precisely the chunk parents, the consumed hashes are
+exactly a prefix of the supplied witnesses, and paired chunks start at even
+indices. `decoded_layer_has_edge` proves every input node has an event in
+`MultiproofCapture.layerEdges`; `decoded_layer_follows` selects that event
+through the existing `follow` function, checks the captured one-layer
+parent hash, and proves that the reached node is in the emitted parent
+frontier. Executable Lean examples cover a paired branch, two sparse
+witness branches, a short witness, and a surplus witness suffix.
+
 The [pinned source control](../../../../../scripts/s31_formal_lib/pcs_fri_capture.py)
-checks the decoder's range guard, pair/witness branches, sibling assignment,
-right shift, root check and capture publication order. Five mutation controls
-alter those stages and require rejection. This source control and the native
-tests make the implementation relationship reviewable; the proof does not
-yet derive the chunk sequence from Zig execution.
+now checks sorting, deduplication, chunk advancement, witness cursor, and
+ancestor matching in addition to the existing root and publication checks.
+Mutation tests require each changed stage to be rejected. These checks pin
+source structure; they are not a semantics or refinement proof for Zig.
+The [focused native regression](../../tests/pcs_fri_decoder_native.zig) runs
+against the pinned `stwo_core` module. It authenticates an unsorted input
+with a duplicate through the paired and witnessed branches, checks the
+captured sibling paths, and requires short, extra, or changed witnesses and
+inconsistent duplicate rows to fail without publishing a capture. Run it
+from the repository root with:
+
+```sh
+zig test -O ReleaseSafe --dep stwo_core -Mroot=formal/s31/tests/pcs_fri_decoder_native.zig -Mstwo_core=deps/stwo-zig/src/core/mod.zig
+```
 
 ## What remains to join
 
-The Lean decoder model starts with native-style chunk events and a committed
-projected row. A machine-checked refinement of Zig's sorting, deduplication,
-witness cursor and capture copy loops to those events remains open, as does a
-proof that the tree was built from precisely those columns in that order. It
+The Lean decoder model starts with a strictly sorted frontier and a committed
+projected row. It proves the deterministic one-layer decode inside that model.
+A machine-checked refinement of Zig's sorting, deduplication, witness cursor
+and capture copy loops to that decoder remains open, as does a proof that the
+tree was built from precisely those columns in that order. It
 does not prove BLAKE2s collision resistance, Fiat–Shamir sampling, FRI fold
 correctness, low-degree proximity, or a whole-proof security bound. See the
 [published-bound audit](../../../../../design/s31/security/PCS_FRI_PUBLISHED_BOUND_AUDIT.md)

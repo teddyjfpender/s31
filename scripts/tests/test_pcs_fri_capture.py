@@ -33,6 +33,38 @@ class PcsFriCaptureTest(unittest.TestCase):
                 "(first.idx ^ 1) == prev_layer.items[p + 1].idx",
                 "(first.idx ^ 2) == prev_layer.items[p + 1].idx"))
 
+    def test_sorted_query_order_removed(self) -> None:
+        with self.assertRaisesRegex(ValueError, "lifted Merkle"):
+            check_capture_source(change_once(
+                "std.sort.heap(\n                usize,\n                query_order,",
+                "// query order left unsorted\n            std.sort.heap(\n                usize,\n                omitted_order,"))
+
+    def test_duplicate_query_consistency_guard_removed(self) -> None:
+        with self.assertRaisesRegex(ValueError, "lifted Merkle"):
+            check_capture_source(change_once(
+                "return MerkleVerificationError.DuplicateQueryMismatch;",
+                "return MerkleVerificationError.RootMismatch;"))
+
+    def test_paired_chunk_fails_to_advance_by_two(self) -> None:
+        with self.assertRaisesRegex(ValueError, "lifted Merkle"):
+            check_capture_source(change_once("chunk_len = 2;", "chunk_len = 1;"))
+
+    def test_witness_cursor_fails_to_advance(self) -> None:
+        with self.assertRaisesRegex(ValueError, "lifted Merkle"):
+            check_capture_source(change_once("witness_idx += 1;", "witness_idx += 0;"))
+
+    def test_trailing_witness_accepted(self) -> None:
+        with self.assertRaisesRegex(ValueError, "lifted Merkle"):
+            check_capture_source(change_once(
+                "if (witness_idx != decommitment.hash_witness.len)",
+                "if (witness_idx > decommitment.hash_witness.len)"))
+
+    def test_capture_ancestor_check_removed(self) -> None:
+        with self.assertRaisesRegex(ValueError, "lifted Merkle"):
+            check_capture_source(change_once(
+                "std.debug.assert(prev_layer.items[node_index].idx == ancestor);",
+                "// ancestor correspondence unchecked"))
+
     def test_parent_index_shift_changed(self) -> None:
         with self.assertRaisesRegex(ValueError, "lifted Merkle"):
             check_capture_source(change_once(
