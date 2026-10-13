@@ -8,6 +8,7 @@ const circuit = @import("stwo_circuit_frontend");
 const cpu = @import("stwo_circuit_cpu_integration");
 const postcard = @import("interop_postcard");
 const direct_component_preflight = @import("direct_component_preflight.zig");
+const deep_capture_admission = @import("deep_capture_admission.zig");
 const fri_capture_admission = @import("fri_capture_admission.zig");
 
 const QM31 = core.fields.qm31.QM31;
@@ -252,6 +253,10 @@ fn verifyProfile(
         &capture,
     );
     defer capture.deinit(allocator);
+    try deep_capture_admission.validate(allocator, pcs.trace_lifting_log_size,
+        capture.queries.raw, capture.column_log_sizes, capture.sampled_points,
+        capture.sampled_values, capture.queried_values, capture.deep_answers,
+        capture.deep_randomness);
     try fri_capture_admission.validate(
         H,
         allocator,
@@ -462,6 +467,10 @@ pub fn verifySparse(
         &capture,
     );
     defer capture.deinit(allocator);
+    try deep_capture_admission.validate(allocator, pcs.trace_lifting_log_size,
+        capture.queries.raw, capture.column_log_sizes, capture.sampled_points,
+        capture.sampled_values, capture.queried_values, capture.deep_answers,
+        capture.deep_randomness);
     try fri_capture_admission.validate(
         H,
         allocator,
@@ -608,6 +617,10 @@ fn verifySparseWideInternal(
     var capture: core.verifier.ProofCapture(H) = undefined;
     try core.verifier.verifyBorrowedExWithProofCapture(H, MC, allocator, &handles, &channel, &scheme, &stark, true, &capture);
     defer capture.deinit(allocator);
+    try deep_capture_admission.validate(allocator, pcs.trace_lifting_log_size,
+        capture.queries.raw, capture.column_log_sizes, capture.sampled_points,
+        capture.sampled_values, capture.queried_values, capture.deep_answers,
+        capture.deep_randomness);
     try fri_capture_admission.validate(
         H,
         allocator,
@@ -892,6 +905,10 @@ fn verifyDirectProfile(
         &capture,
     );
     defer capture.deinit(allocator);
+    try deep_capture_admission.validate(allocator, pcs.trace_lifting_log_size,
+        capture.queries.raw, capture.column_log_sizes, capture.sampled_points,
+        capture.sampled_values, capture.queried_values, capture.deep_answers,
+        capture.deep_randomness);
     try fri_capture_admission.validate(
         H,
         allocator,

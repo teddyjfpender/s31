@@ -35,6 +35,7 @@ from scripts.s31_formal_lib.pcs_fri_leaf_encoding import check_pcs_fri_leaf_enco
 from scripts.s31_formal_lib.pcs_fri_layer import check_pcs_fri_layer
 from scripts.s31_formal_lib.pcs_fri_raw_refinement import check_pcs_fri_raw_refinement
 from scripts.s31_formal_lib.pcs_fri_operational_admission import check_pcs_fri_operational_admission
+from scripts.s31_formal_lib.pcs_fri_deep_custody import check_pcs_fri_deep_custody
 from scripts.riscv_refinement import _skip_lean_string, _strip_lean_comments
 from scripts.riscv_refinement_lib.model import RefinementError
 
@@ -347,6 +348,7 @@ BINDINGS = [
     "scripts/s31_formal_lib/pcs_fri_layer.py",
     "scripts/s31_formal_lib/pcs_fri_raw_refinement.py",
     "scripts/s31_formal_lib/pcs_fri_operational_admission.py",
+    "scripts/s31_formal_lib/pcs_fri_deep_custody.py",
     "scripts/tests/test_pcs_fri_projection.py",
     "scripts/tests/test_pcs_fri_capture.py",
     "scripts/tests/test_pcs_fri_fold.py",
@@ -354,17 +356,21 @@ BINDINGS = [
     "scripts/tests/test_pcs_fri_layer.py",
     "scripts/tests/test_pcs_fri_raw_refinement.py",
     "scripts/tests/test_pcs_fri_operational_admission.py",
+    "scripts/tests/test_pcs_fri_deep_custody.py",
     "formal/s31/tests/pcs_fri_fold_native.zig",
     "formal/s31/tests/pcs_fri_layer_native.zig",
     "formal/s31/tests/run_pcs_fri_layer_native.sh",
     "formal/s31/tests/pcs_fri_raw_refinement_native.zig",
     "formal/s31/tests/run_pcs_fri_raw_refinement_native.sh",
+    "formal/s31/tests/pcs_fri_deep_custody_native.zig",
+    "formal/s31/tests/run_pcs_fri_deep_custody_native.sh",
     "deps/stwo-zig/src/core/pcs/quotients/fri_answers.zig",
     "deps/stwo-zig/src/core/pcs/quotients/samples.zig",
     "deps/stwo-zig/src/core/tests/borrowed_pcs_capture_success_test.zig",
     "src/frontends/circuit/stark_verifier/verify.zig",
     "src/frontends/s31/runtime/native_verifier.zig",
     "src/frontends/s31/runtime/fri_capture_admission.zig",
+    "src/frontends/s31/runtime/deep_capture_admission.zig",
     "src/frontends/s31/sha/proving/sha_direct_circuit_prover.zig",
     "src/frontends/s31/sha/verification/sha_direct_circuit_native_verifier.zig",
     "src/core/fields/m31.zig",
@@ -814,6 +820,7 @@ def main() -> None:
     check_pcs_fri_layer(ROOT)
     check_pcs_fri_raw_refinement(ROOT)
     check_pcs_fri_operational_admission(ROOT)
+    check_pcs_fri_deep_custody(ROOT)
     print("S31 protocol order: main and interaction commitments precede their challenge draws")
     print("S31 PCS/FRI order: roots, challenges, PoW, raw queries and normalization bound")
     print("S31 M31 raw query distribution: reduction and low-bit mask source bound")
@@ -823,6 +830,7 @@ def main() -> None:
     print("S31 FRI layers: reconstruction, authenticated transitions and terminal checks bound")
     print("S31 FRI raw slots: capture projection and differential audit stages bound")
     print("S31 FRI capture admission: raw transitions and terminal check bound")
+    print("S31 raw DEEP custody: captured-row recomputation before FRI replay bound")
     failures = []
     for path, expected in generated().items():
         if args.write:

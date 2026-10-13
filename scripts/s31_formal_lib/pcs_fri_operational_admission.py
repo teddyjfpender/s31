@@ -14,9 +14,7 @@ def check_sources(native: str, admission: str) -> None:
         "defer capture.deinit(allocator);",
         "try fri_capture_admission.validate(",
         "pcs.fri_config.folding(),",
-        "capture.queries.raw,",
-        "capture.deep_answers,",
-        "capture.fri,",
+        "capture.queries.raw,\n        capture.deep_answers,\n        capture.fri,",
         "capture.last_layer_coefficients,",
     )
     regions = (
