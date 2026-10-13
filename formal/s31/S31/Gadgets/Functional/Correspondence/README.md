@@ -1,5 +1,16 @@
 # Bounded source to raw Gate AIR
 
+## General linear M31 SSA kernel
+
+[The general linear SSA correspondence](GeneralLinearSSA.md) proves, for any
+M31 array length and finite number of inputs and `add`/`sub`/`mul` nodes,
+that a checked positional graph's complete packed AIR row relation and its
+executable normalized-node relation accept exactly the selected source-term
+value. It covers reused operands, unused nodes, short final rows, arbitrary
+inactive padding, and arbitrary satisfying witnesses. Its separately stated
+boundary is the binding from real `.s31` and JSON bytes to this graph and
+from native committed rows to the modeled AIR equations.
+
 ## Optimized source row capacity
 
 [The optimized decoded-trace theorem](OptimizedDecodedTrace.md) connects an
