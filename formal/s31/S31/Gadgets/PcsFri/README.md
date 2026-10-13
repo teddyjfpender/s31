@@ -622,6 +622,12 @@ the concrete canonical coset is still a premise in the theorem; the current
 Lean proof does not refine Zig's `bitReverseIndex`, `CanonicCoset.at`, or the
 Merkle openings into that premise.
 
+The degree-one expression for each **single pair** is freely interpolable
+when `2y` is invertible. It provides no evidence that *all* opened pairs come
+from one globally low-degree committed oracle. The degree-three local
+polynomial and row-schedule lemmas are a native formula refinement, not a
+correlated-agreement result.
+
 For a hand check over ordinary rational arithmetic, set
 `(p₀,p₁,q₀,q₁)=(1,2,3,4)`, `(x,y)=(2,3)`, and `α=5`. The previous pair is
 `(5,-3)` and source pair is `(15,-9)`. The native calculation is
