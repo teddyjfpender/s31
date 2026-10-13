@@ -30,7 +30,7 @@ def exact(value: Fraction) -> str:
 
 
 def candidate_cas05_geometry(paper_inputs: dict, height_count: int) -> dict:
-    """Compare an explicitly hypothetical CAS05 short cascade to Protocol 3."""
+    """Map the short terminal to Protocol 3's *variable-r* idealized shape."""
     if type(height_count) is not int or not 2 <= height_count <= 8:
         raise ValueError("CAS05 height_count must be an integer in 2..8")
     d0 = paper_inputs["D0_with_composition_quotient"]
@@ -42,21 +42,59 @@ def candidate_cas05_geometry(paper_inputs: dict, height_count: int) -> dict:
     full_folds = len(paper_inputs["fri_fold_domain_sizes"])
     if full_folds != k - beta:
         raise ValueError("paper full FRI fold roster changed")
+    short_folds = paper_inputs["fri_fold_domain_sizes"][:height_count]
+    if short_folds != [d0 >> (i + 1) for i in range(height_count)]:
+        raise ValueError("paper short FRI fold roster changed")
+    paper_n = k - beta
+    paper_r = height_count - 1
+    if not 0 <= paper_r < paper_n:
+        raise ValueError("paper Protocol 3 requires 0 <= r < n")
+    terminal_words = 1 << (paper_n - 1 - paper_r)
+    terminal_rows = d0 >> height_count
+    if terminal_words * blowup != terminal_rows:
+        raise ValueError("short terminal degree/rate geometry changed")
+    query_count = paper_inputs["queries"]
+    # Source-level caps inspected at native draft commit 9cd3f2989. The
+    # sparse verifier's profile was widened independently of the host
+    # prover, which still constructs a dense XDM03 source commitment.
+    sparse_scalar_caps = (k <= 22 and k >= height_count + 2 and
+                          query_count <= (1 << 14))
+    host_scalar_caps = (k <= 16 and k >= height_count + 2 and
+                        query_count * (1 << height_count) <= (1 << 16))
     return {
         "assumed_largest_log_size": k,
         "assumed_height_count": height_count,
         "assumed_log_blowup": beta,
         "initial_domain_rows": d0,
         "source_rows_by_height": [d0 >> height for height in range(height_count)],
-        "terminal_domain_rows": d0 >> height_count,
-        "terminal_QM31_coefficient_words": 1 << (k - height_count - beta),
+        "terminal_domain_rows": terminal_rows,
+        "terminal_QM31_coefficient_words": terminal_words,
+        "published_protocol3_n": paper_n,
+        "published_protocol3_r": paper_r,
+        "published_protocol3_variable_r_hypothesis_satisfied": True,
+        "published_terminal_space": f"F[x]_{{<2^({paper_n}-1-{paper_r})}}",
+        "published_short_fold_domain_sizes": short_folds,
+        "published_short_fold_error_bounds_unique_decoding": [
+            exact(Fraction(3 * size, F)) for size in short_folds],
+        "minimum_idealized_BCS_round_count": 3 + 1 + height_count + 1,
+        "native_draft_source_caps_at_commit_9cd3f2989": {
+            "sparse_verifier_visible_log_height_query_caps_pass": sparse_scalar_caps,
+            "dense_host_prover_visible_log_height_query_caps_pass": host_scalar_caps,
+            "sparse_verifier_max_log_size": 22,
+            "dense_host_prover_max_log_size": 16,
+            "both_require_nonzero_columns_at_each_height": True,
+            "full_profile_or_proof_admissible": False,
+        },
         "paper_full_single_fold_rounds": full_folds,
         "cas05_committed_fold_rounds": height_count,
-        "paper_folds_without_a_matching_cas05_round": full_folds - height_count,
-        "published_full_cascade_refinement_established": False,
-        "qualification": ("CAS05 directly checks a high-degree terminal polynomial. "
-                          "A shortened-cascade soundness theorem and BCS round count "
-                          "must be derived; the full-cascade formula does not apply verbatim."),
+        "full_roster_folds_elided_by_early_terminal": full_folds - height_count,
+        "native_protocol3_refinement_established": False,
+        "qualification": ("S-two Protocol 3 and Theorem 4 already permit variable r "
+                          "and a directly checked higher-degree terminal polynomial. "
+                          "The idealized short roster uses only the listed folds; "
+                          "native CAS05 still needs a verifier-to-Protocol-3 refinement, "
+                          "a scalable host prover, OOD and BCS reductions, and a "
+                          "source-derived round count."),
     }
 
 
@@ -85,6 +123,29 @@ def sensitivity(scenario: dict, target_bits: int = 96,
     target = Fraction(1, 1 << target_bits)
     geometry = (candidate_cas05_geometry(inputs, candidate_height_count)
                 if candidate_height_count is not None else None)
+    short_formula = None
+    if geometry is not None:
+        short_errors = {name: value for name, value in errors.items()
+                        if not name.startswith("fri_fold_") or
+                        int(name.removeprefix("fri_fold_")) < candidate_height_count}
+        # Keep the scenario's explicit R. It may overcount a short idealized
+        # transcript, but native R has not been measured or reduced to BCS.
+        if rounds < geometry["minimum_idealized_BCS_round_count"]:
+            raise ValueError("scenario R undercounts the short idealized protocol")
+        short_max = max(short_errors.values())
+        short_total = (t + rounds) * short_max + collision
+        short_formula = {
+            "status": "idealized_variable_r_paper_formula_only",
+            "fold_error_roster": {name: exact(value) for name, value in short_errors.items()
+                                  if name.startswith("fri_fold_")},
+            "explicit_scenario_R_used": rounds,
+            "minimum_idealized_R": geometry["minimum_idealized_BCS_round_count"],
+            "largest_round_bound_with_hypothetical_guarded_OOD": exact(short_max),
+            "BCS_expression_with_hypothetical_guarded_OOD": exact(short_total),
+            "work_factor_expression_meets_target": short_total <= t * target,
+            "absolute_expression_meets_target": short_total <= target,
+            "native_security_bits": None,
+        }
     return {
         "schema": "s31-paired-ood-theorem-sensitivity-v1",
         "status": "conditional_arithmetic_only_native_theorem_join_open",
@@ -108,6 +169,7 @@ def sensitivity(scenario: dict, target_bits: int = 96,
         },
         "paper_idealized_scenario": paper,
         "hypothetical_cas05_geometry": geometry,
+        "hypothetical_short_protocol3_formula": short_formula,
         "candidate_same_bad_set_numerator_only": {
             "published_ood_upper_bound_expression": exact(paper_ood),
             "accepted_support_ood_expression": exact(candidate_ood),
@@ -128,7 +190,7 @@ def sensitivity(scenario: dict, target_bits: int = 96,
             "the native Fiat-Shamir seed is ideal-uniform at each relevant adaptive transcript state",
             "abort on exceptional or y.c1-zero seed has the modeled schedule and cost",
             "the native masked raw-query law, duplicate queries, and line-pair checks refine the theorem query",
-            "CAS05's short high-degree terminal refines a stated shortened-FRI theorem",
+            "native CAS05's high-degree terminal, line domains, and all folds refine variable-r Protocol 3",
             "the BLAKE2s Merkle/transcript/PoW protocol has a quantified BCS reduction for T and R",
             "the reported paper scenario matches a source-pinned installed binary and key",
         ],

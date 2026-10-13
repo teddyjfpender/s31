@@ -78,20 +78,88 @@ far committed words. Authentication of selected rows cannot by itself prove
 that the committed whole word has the claimed degree. A finite test suite
 cannot replace the quantitative BCS/ROM reduction.
 
-### The short-cascade issue
+### The short terminal is covered by the *idealized* variable-round theorem
 
-The draft profile caps `height_count` at **8**, while its terminal polynomial
-has `2^(k−height_count−β)` QM31 coefficients and is evaluated on a domain of
-`2^(k−height_count)` points. For the illustrative full Protocol-4 geometry
-`N=2²⁰`, `B=2`, `D₀=N B²=2²²`, the paper ledger lists **21** single-fold
-domains down to `B`. CAS05 with eight heights instead stops after eight
-folds, checks an **8192-coefficient** terminal polynomial on a **16384-row**
-domain, and has **13 fewer committed fold rounds**. Direct terminal checking
-can be a sensible protocol design, but the published full-cascade round list,
-error expressions, and BCS round count do not transfer verbatim. A theorem
-for this exact shortened cascade, including the degree and query bound at
-its larger terminal domain, is required. The executable sensitivity tool
-reports this geometry without claiming its soundness.
+The paper itself permits early termination. In its **Protocol 2** (single
+domain), the number of folds is `r+1` with `0≤r<n`, and the final `g_r` is
+revealed in plain and checked in the line-polynomial space
+`L_r=F[x]_{<2^(n−1−r)}`. **Protocol 3** uses the same variable `r` for its
+multi-domain cascade, sends `g_r` in plain, and accepts only when
+`g_r∈L_{n−1−r}` and every sampled fold identity holds. **Theorem 4** is a
+round-by-round soundness theorem for that Protocol 3; Appendix A.3,
+**Remark 9** supplies its unique-decoding version. **Theorem 5** transfers
+those bounds to the degree-corrected original-plus-quotient ensemble under
+its small-table condition. The earlier
+[Circle STARKs Protocols 1–2 and Theorem 6](https://eprint.iacr.org/2024/278.pdf)
+also parameterize the number of folds and check the larger final Reed–Solomon
+codeword in full, but they are single-domain and do not replace Theorem 4.
+
+For an initial domain `D₀=2^k`, blowup `B=2^β`, and native `H` folds, the
+paper indices are `n=k−β`, `r=H−1`. The terminal domain is `2^(k−H)` points
+and its degree bound is **strictly below** `2^(n−1−r)=2^(k−β−H)`; exactly
+that many QM31 coefficients are serialized. The profile condition
+`H+β≤k` implies `r<n`. The
+[Lean geometry theorem](../../../formal/s31/S31/Gadgets/PcsFri/ShortTerminalGeometry.lean)
+checks these exponent identities for every such shape. It is a shape proof,
+not a verifier semantics or proximity proof.
+
+For the illustrative full Protocol-4 geometry `N=2²⁰`, `B=2`,
+`D₀=N B²=2²²`, the previous full-cascade ledger lists **21** single-fold
+domains down to `B`. The hypothetical `H=8` profile instead maps to
+`n=21`, `r=7`, and the first eight paper fold-domain sizes:
+
+```text
+2²¹, 2²⁰, 2¹⁹, 2¹⁸, 2¹⁷, 2¹⁶, 2¹⁵, 2¹⁴.
+```
+
+Its directly checked terminal has **8192 coefficients** on a
+**16384-point** domain, still at rate `1/2`. In the unique-decoding regime,
+the paper's fold-error roster for these eight idealized rounds is
+`3·2²¹/|QM31|, …, 3·2¹⁴/|QM31|`; the uniform ideal query term remains
+`(1−θ)^s`. The minimal counted idealized BCS schedule is three AIR rounds,
+one batching round, eight folds and one query phase: **13 rounds**. An
+actual native transcript can have a different `R`, so the executable
+sensitivity tool retains the caller's explicit `R` and reports this minimum
+separately. Its existing full-cascade input with `R=26` is a conservative
+arithmetic overcount for the short hypothetical; it is not a measured native
+round count. The 13 omitted full-cascade folds must be removed from any
+short-roster formula, even though the largest fold error remains the first
+one.
+
+This `k=22` example separates two native draft paths at [source commit
+`9cd3f2989`](https://github.com/teddyjfpender/stwo-zig/commit/9cd3f2989).
+The **sparse CAS05 verifier profile** admits `k≤22`, `2≤H≤8`, and up to
+16,384 raw queries, subject to its wire and column bounds; its visible
+height/query caps therefore permit `k=22,H=8,s=232`. The current **host
+prover** still builds the dense XDM03 source commitment, whose profile
+requires `k≤16` and `s·2^H≤2^16`; it cannot produce that large shape.
+Every admitted profile also needs nonzero source columns at each of its `H`
+heights. The one-table paper scenario used by the arithmetic tool is not
+an emitted native key or a complete native source roster. At the maximum
+host-source height `k=16`, the same `B=2,H=8` shape has a 128-coefficient
+terminal on 256 points; its full paper fold roster would have 15 rounds,
+seven of which are omitted by the short profile. These are source-level
+geometry observations, not accepted-proof or prover scalability claims.
+
+For an explicit *paper-only* UDR arithmetic illustration at
+`θ=16383/65536`, `s=232`, `T=2³²`, and caller-supplied `R=26`, the eight
+fold bounds run from approximately `2^-101.415` to `2^-108.415`. The
+uniform query term is approximately `2^-96.282`. Substituting the
+**hypothetical** guarded OOD denominator into the otherwise published
+formula gives about `2^-64.282` absolute error and `2^-96.282` after
+division by `T`. The latter is the paper's work-factor convention; neither
+figure is a native certificate. The script emits exact rational fractions
+for all these terms and retains `R=26` instead of silently changing the
+Fiat–Shamir/BCS round count.
+
+Thus **early terminal degree is not, by itself, a missing published theorem**.
+The unresolved theorem join is exact native refinement: every authenticated
+CAS05 source/line word, projection, normalization, challenge, terminal
+evaluation and raw query must implement Protocol 3's relation for precisely
+those eight rounds. Guarded OOD support, adaptive transcript/BCS and
+installed-binary custody remain separate blockers. The
+[executable sensitivity tool](../../../scripts/release/pcs_fri_paired_ood_bridge.py)
+still reports no native security bits and exits 2 under `--require-proven`.
 
 ## The guarded OOD support, exactly
 
@@ -167,5 +235,6 @@ python3 -B scripts/release/pcs_fri_paired_ood_bridge.py scenario.json \
 
 The last command returns 2 even if the hypothetical expression is small.
 The complete native release needs source-pinned installed-binary
-correspondence, a short-cascade multi-domain theorem, the guarded OOD
-reduction, and the BCS/ROM/merkle budget before any security-bit claim.
+correspondence to the published **variable-round** multi-domain theorem, the
+guarded OOD reduction, and the BCS/ROM/Merkle budget before any security-bit
+claim.
