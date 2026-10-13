@@ -61,6 +61,17 @@ def check_sources(verifier: str, admission: str, qm31: str, hasher: str,
             hasher.count("const value_bytes = column_values[at + i].toBytesLe();") != 1:
         raise ValueError("Merkle leaf M31 byte encoding changed")
 
+    commit = region(fri, "pub fn commit(", "pub fn sampleQueryPositions(")
+    ordered_once(
+        commit, "first FRI layer packing decision",
+        ".pack_leaves = column_commitment_domain.logSize() >= LOG_PACKED_LEAF_SIZE and\n"
+        "                    config.fold_step > 1,",
+    )
+    ordered_once(
+        commit, "inner FRI layer packing decision",
+        ".pack_leaves = layer_domain.logSize() >= LOG_PACKED_LEAF_SIZE and\n"
+        "                        this_fold_step > 1,",
+    )
     for start, end in (
         ("fn verifyImpl(", "fn FriInnerLayerVerifier("),
         ("fn verifyAndFoldImpl(", "const FoldedLayerState"),
@@ -68,6 +79,7 @@ def check_sources(verifier: str, admission: str, qm31: str, hasher: str,
         part = region(fri, start, end)
         ordered_once(
             part, "FRI proof root into verified capture",
+            "const leaf_log_size: u32 = if (self.pack_leaves) LOG_PACKED_LEAF_SIZE else 0;",
             "var merkle_verifier = try vcs_verifier.MerkleVerifierLifted(H).init(",
             "merkle_verifier.verifyWithPathCapture(",
             "destination.* = try buildFriLayerQueryCapture(\n"

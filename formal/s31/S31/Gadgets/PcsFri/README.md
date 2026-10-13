@@ -154,17 +154,21 @@ cd formal/s31 && lake build S31.Gadgets.PcsFri.FriMerkleBinding
 
 S31's [`fri_merkle_admission.zig`](../../../../../src/frontends/s31/runtime/fri_merkle_admission.zig)
 now independently rehashes every raw FRI subset after the core verifier and
-operational capture gate succeed, before any of the four native verifier paths
-returns success or publishes a converted witness. It checks the transcript
+operational capture gate succeed, before any of the four generic runtime
+verifier paths returns success or publishes a converted witness. It checks the transcript
 query position at each layer, the exact packed or unpacked row shape, each
 QM31 value's four M31 coordinates in native order, the complete subset
 subtree, every captured upper sibling, and equality with the layer's recorded
 commitment. Malformed dimensions and out-of-domain positions reject. An
-honest S31 Blake2sM31 proof with a packed first layer and an unpacked partial
-inner fold passes; changing a value, sibling, group position, commitment, or
+honest S31 Blake2sM31 proofs with fold steps two and four, each with a packed
+first layer and an unpacked partial inner fold, pass; changing a value,
+sibling, group position, commitment, or
 path length rejects. The [source guard](../../../../../scripts/s31_formal_lib/pcs_fri_merkle_admission.py)
-pins the checker, proof-root capture, and all four call sites, with eleven
-hostile mutations.
+pins the checker, both native layer-packing choices, proof-root capture, and
+all four generic call sites, with fourteen hostile mutations. The SHA
+release verifier paths are outside this gate and still lack the corresponding
+DEEP and FRI operational admission gates; their P04/P05/P06 obligations stay
+open.
 
 [`FriLeafEncoding.lean`](FriLeafEncoding.lean) proves that flattening a list
 of QM31 values into their `(a,b,c,d)` M31 coordinates is injective. Thus a

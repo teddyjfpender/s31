@@ -34,6 +34,9 @@ class FriMerkleAdmissionControls(unittest.TestCase):
             ("qm31", "return .{ self.c0.a, self.c0.b, self.c1.a, self.c1.b };", "return .{ self.c0.b, self.c0.a, self.c1.a, self.c1.b };"),
             ("hasher", "self.inner.update(std.mem.sliceAsBytes(column_values));", "self.inner.update(&.{});"),
             ("fri", "                    self.proof.commitment,", "                    [_]u8{0} ** 32,"),
+            ("fri", ".pack_leaves = column_commitment_domain.logSize() >= LOG_PACKED_LEAF_SIZE and", ".pack_leaves = false and"),
+            ("fri", ".pack_leaves = layer_domain.logSize() >= LOG_PACKED_LEAF_SIZE and", ".pack_leaves = false and"),
+            ("fri", "const leaf_log_size: u32 = if (self.pack_leaves) LOG_PACKED_LEAF_SIZE else 0;", "const leaf_log_size: u32 = 0;"),
         )
         for name, old, new in mutations:
             with self.subTest(name=name, old=old):
