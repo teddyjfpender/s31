@@ -58,6 +58,15 @@ The public-four-lane overlap with the older direct-Gate checker has an
 executable join requiring equal indexed graphs; its row theorem still assumes
 modeled authentication.
 
+The effectful fragment has a separate named evaluator induction for binary
+and canonical M31 constant nodes. It proves every accepted modeled arithmetic
+row evaluates to the same value in the actual normalized environment, for an
+arbitrary number of steps and lanes, under explicit initial-name alignment
+and freshness premises. A single named assertion check is equivalent to its
+zero-polynomial constraint once its operands are aligned. The full effects
+source-byte, assertion-loop, public-claim, and native-row composition is
+still outstanding.
+
 ### Narrow source-to-native row admission
 
 `pure-native-rows-certificate.json` joins the checked source-to-relation
