@@ -53,9 +53,13 @@ proves that modeled full paths replay to the checked root. The native
 now composes the executable layer decoder for any height. If its full decode
 ends in one checked root with no surplus witness, every initial query has a
 path of exactly that height to the root, and the original compressed witness
-is consumed exactly once in frontier order. The model checks sorted frontiers
-at each level; proving that native Zig's initial sort and parent construction
-maintain the invariant is still open. The native all-height simulation remains
+is consumed exactly once in frontier order. The
+[`MultiproofSortedFrontier.lean`](../../../formal/s31/S31/Gadgets/PcsFri/MultiproofSortedFrontier.lean)
+theorem proves that a strictly sorted input frontier emits strictly sorted
+parents, including the nonpaired even-index case. It then proves the native
+one-sort loop equivalent to the guarded all-height model from a sorted initial
+frontier. The native Zig sort/dedup, finite-width index arithmetic, and path
+copy loops still need a semantic bridge. The native all-height simulation remains
 to be proved. The test does not establish that
 the native committed tree was built from the intended oracle columns, nor a
 quantitative BLAKE2s collision reduction. The Merkle binding theorem compares
