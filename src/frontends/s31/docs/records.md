@@ -143,7 +143,11 @@ and the positional tuple version. A pattern can bind only the fields needed
 by its caller; construction still evaluates every field. The pattern checks
 the struct's nominal type before projecting, so a same-shaped struct with a
 different name cannot match it. Named patterns also nest inside tuple patterns
-and work in expression-level `let … in` bindings.
+and work in expression-level `let … in` bindings. Explicit field patterns
+also rename a field or unpack a nested product, for example
+`Outer { inner: Inner { value: x }, pair: (y, z) }`. Each record layer checks
+its own nominal type. The [nested pattern example](../examples/functional/nested_record_patterns/README.md)
+compiles to exactly the same normalized relation as direct arithmetic.
 
 ## What is checked before proving
 

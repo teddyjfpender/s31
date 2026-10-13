@@ -60,6 +60,13 @@ malformed product types, inactive partial operations through returned
 closures, and exact `Fn` projection paths through recurrence helpers. A
 non-step function in the same nested product must not acquire step context.
 
+`test_nested_record_patterns.py` checks renamed and nested record/tuple
+binders in helpers, lambdas, block lets and expression lets. A checked-in
+functional example must have the exact same normalized relation as direct
+arithmetic. The tests also cover independent field results, forged public
+outputs, nominal mismatches, duplicate names and partial effects in omitted
+fields of an inactive conditional branch.
+
 Run through the repository's Python discovery command:
 
 ```sh

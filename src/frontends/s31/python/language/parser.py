@@ -127,7 +127,12 @@ class Parser:
                     if field in fields:
                         raise self.error(f"duplicate {typ.name} pattern field {field}", field_token)
                     fields.append(field)
-                    children.append(Pattern(field, (), field_token))
+                    # A shorthand field binds its own name. An explicit
+                    # ``field: pattern`` can rename it or destructure a
+                    # nested product. Both forms are static projections of
+                    # the same eagerly evaluated record value.
+                    children.append(self.pattern() if self.accept(":") else
+                                    Pattern(field, (), field_token))
                     if self.accept("}"):
                         break
                     self.expect(",")

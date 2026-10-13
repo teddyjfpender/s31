@@ -1,0 +1,5 @@
+circuit nested_pattern(public x: [m31; 1], public y: [m31; 1])
+    -> public [m31; 1] {
+    let result = (y .* x) + (x + y);
+    result
+}

@@ -162,6 +162,11 @@ Nested patterns also work, as in `let ((left, right), saved) = nested;`.
 names within one tuple pattern are rejected, and the parser uses a hidden
 name that source text cannot capture. The pair expression runs once in both
 forms, including every component's effects.
+Nominal record fields may also contain nested tuple and record patterns. The
+[worked nested example](../examples/functional/nested_record_patterns/README.md)
+binds `Inputs { terms: Terms { base: a, boost }, pair: (b, c) }` in a helper
+parameter. Each record layer is checked by name, then erased into static
+projections; its complete normalized relation equals direct arithmetic.
 The residual relation has exactly three nodes, `square = mul(x,x)`,
 `double = add(x,x)`, and `result = add(square,double)`. At the gate relation
 level, each lane has the equations `square[i] - x[i]² = 0`,
