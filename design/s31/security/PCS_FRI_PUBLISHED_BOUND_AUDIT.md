@@ -1,7 +1,7 @@
 # Native PCS/FRI: published-bound audit
 
 This note covers the S31 profile pinned to stwo-zig
-`fde847ea374ade2ae07ef5b3a42ba07e15655b64`. It does **not** assign a
+`02bc8b3e8d28c7ef871192f36dfc5d18fb2f55d3`. It does **not** assign a
 whole-proof security level. It separates the native checks visible in source
 from the hypotheses needed to apply a published STARK soundness theorem.
 
@@ -25,10 +25,20 @@ checks these barriers against the pinned implementation. The
 [Lean model](../../../formal/s31/S31/Gadgets/PcsFri/QueryAndTranscript.lean)
 proves that fixed-state root and draw-counter *hash inputs* retain their
 payloads, and that sorting/deduplicating or folding the query set cannot omit
-a predicate for any raw sampled position. Neither result proves hash
+a predicate for any raw sampled position. A separate
+[ideal-query counting theorem](../../../formal/s31/S31/Gadgets/PcsFri/QuerySampling.lean)
+shows that, under independent uniform sampling with replacement, the chance
+that all `s` raw draws fall in a fixed consistency set of density `alpha` is
+exactly `alpha^s`, even if draws repeat. These results do not prove hash
 collision resistance, independent Fiat–Shamir randomness, or low-degree
 testing. The BLAKE2s channel's 32-bit draw counter wraps; a full transcript
 argument must also bound the number of draws below that wrap point.
+
+The pinned engine update from PR #242 additionally rejects a proof whose
+exported commitment vector differs from the roots committed into the PCS
+verifier, and rejects extra zero-fold FRI layers before absorbing any FRI
+root. These close local capture/round-shape gaps. They do not establish
+Merkle binding, FRI proximity, or a whole-proof security bound.
 
 ## Why `26 + 70 = 96` is not a theorem
 

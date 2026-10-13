@@ -44,6 +44,20 @@ class PcsFriOrderTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Blake2s query"):
             check_sources(pcs, fri, queries, channel.replace(before, "// omitted", 1), merkle)
 
+    def test_missing_exported_root_binding_rejected(self) -> None:
+        pcs, fri, queries, channel, merkle = sources()
+        before = "if (!std.meta.eql(tree.root, commitment))"
+        self.assertIn(before, pcs)
+        with self.assertRaisesRegex(ValueError, "PCS DEEP"):
+            check_sources(pcs.replace(before, "if (false)", 1), fri, queries, channel, merkle)
+
+    def test_extra_zero_fold_round_guard_removed_rejected(self) -> None:
+        pcs, fri, queries, channel, merkle = sources()
+        before = "proof_in.inner_layers.len != config_mod.nFoldSteps("
+        self.assertIn(before, fri)
+        with self.assertRaisesRegex(ValueError, "FRI commitment"):
+            check_sources(pcs, fri.replace(before, "false and (", 1), queries, channel, merkle)
+
 
 if __name__ == "__main__":
     unittest.main()

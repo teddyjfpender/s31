@@ -17,13 +17,15 @@ from pathlib import Path
 from typing import Mapping
 
 
-ENGINE_REVISION = "fde847ea374ade2ae07ef5b3a42ba07e15655b64"
+ENGINE_REVISION = "02bc8b3e8d28c7ef871192f36dfc5d18fb2f55d3"
 SOURCE_SHA256 = {
     "deps/stwo-zig/src/integrations/circuit_cpu/direct_many_preflight.zig": "9119ff9fe58c343d66e437e6236aa1feca3660fc5d2bdafa3173ad48d0bf888d",
     "deps/stwo-zig/src/integrations/circuit_cpu/direct_mixed_schedule.zig": "55c4aeec92520828c173640335688bb9b7837fafd7bea7ff1dfb50150b50a326",
     "deps/stwo-zig/src/integrations/circuit_cpu/direct_mixed_general_arithmetic.zig": "3c5b2b6c3996a5a1886f4fc57d92082f7eb91578df0b63f9f585fd45acc2899c",
-    "deps/stwo-zig/src/core/pcs/config_v2.zig": "9c872b5565693261c0a07e9dd9a35467872511ab4a831afd275dde7b2c150a7d",
-    "deps/stwo-zig/src/core/pcs/verifier.zig": "a7b4e1977dc29feb9341eacceda8e09bd77a6a11dcdb7d0e4c1eb18445570581",
+    "deps/stwo-zig/src/core/pcs/config_v2.zig": "b58f464074d5c8ca5e002764e529afc9f3e1fe81f12320a180fc1f850ef05178",
+    "deps/stwo-zig/src/core/pcs/verifier.zig": "e119335172e17db5fd1345f476c7f6ad7fdf67e394a5b18d5c2085e892ffe3d5",
+    "deps/stwo-zig/src/core/fri.zig": "faf714cff9965603535b747f8abad63b1e6dc55699b331e5cab0716ddf50de8e",
+    "deps/stwo-zig/src/core/fri/config.zig": "de08fde01ea6e6b871ca41d63627be765d00a8dfe607e8c2c58194eec8d9359a",
     "deps/stwo-zig/src/core/queries.zig": "68e13fbb48c0cd684b94198c5452e003984237a2fe2000dd332ac57234328bce",
     "deps/stwo-zig/src/core/channel/blake2s.zig": "407a80a913acb15b7e0138a593f1d2636f4297969714932cce59ed928e29f575",
     "deps/stwo-zig/src/core/channel/lookup_transcript.zig": "3180e2d704a07547a1df3a4c2da3b2dc675b7e18fb8715e39d889f8ddc9bc991",

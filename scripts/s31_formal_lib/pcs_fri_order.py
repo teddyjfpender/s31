@@ -33,6 +33,9 @@ def check_sources(pcs: str, fri: str, queries: str, channel: str, merkle_channel
     pcs_impl = region(pcs, "fn verifyValuesImpl(", "fn queryTreeLogSize(")
     ordered_once(
         pcs_impl, "PCS DEEP and query barriers",
+        "if (proof.commitments.items.len != self.trees.items.len)",
+        "for (self.trees.items, proof.commitments.items) |tree, commitment|",
+        "if (!std.meta.eql(tree.root, commitment))",
         "channel.mixFelts(sampled_values_flat);",
         "const deep_randomness = channel.drawSecureFelt();",
         "FriVerifier.commit(",
@@ -50,6 +53,8 @@ def check_sources(pcs: str, fri: str, queries: str, channel: str, merkle_channel
         raise ValueError("FRI commitment and challenge barriers: challenge draw count changed")
     ordered_once(
         fri_commit, "FRI commitment and challenge barriers",
+        "if (config.fold_step == 0 or column_bound.logDegreeBound() < config.fold_step)",
+        "proof_in.inner_layers.len != config_mod.nFoldSteps(",
         "MC.mixRoot(channel, proof_in.first_layer.commitment);",
         ".folding_alpha = channel.drawSecureFelt(),\n                .proof =",
         "MC.mixRoot(channel, inner_proof.commitment);",
