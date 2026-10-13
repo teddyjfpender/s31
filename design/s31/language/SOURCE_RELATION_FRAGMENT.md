@@ -86,7 +86,12 @@ can apply; the SHA-256 digests alone do not prove parser correctness.
 The [five-lane fixture](../../../formal/s31/fixtures/correspondence/source_relation_ssa_v1.json)
 has exact source and normalized-relation siblings. A test regenerates all
 three identities and the complete certificate; the Lean checker can parse
-the same serialized bytes.
+the same serialized bytes. The Lean runtime gate requires the canonical JSON
+serialization and a handwritten source term for this fixture. The general
+Lean theorem checks the emitted indexed add/sub/mul graph against that supplied
+term and proves its packed AIR rows compute the term for every lane assignment
+and every accepted witness. The package's independent Python parser remains
+the trusted source-byte admission step.
 
 The checker also accepts this bounded functional spelling:
 

@@ -90,7 +90,9 @@ def checkPublic4Join (sourceBytes relationBytes : List Nat)
       certificateBytes sourceTerm with
     | .ok result => some result
     | .error _ => none
-  if ssa.lane_count = 4 ∧ new = liftCertificate old then
+  if ssa.lane_count = 4 ∧
+      ssa.inputs.map EmittedInput.visibility = ["public"] ∧
+      new = liftCertificate old then
     some ()
   else none
 
@@ -111,10 +113,17 @@ theorem checked_public4_join_sound
       | ok result =>
           obtain ⟨ssa, new⟩ := result
           by_cases hmatch : ssa.lane_count = 4 ∧
+              ssa.inputs.map EmittedInput.visibility = ["public"] ∧
               new = liftCertificate old
           · exact public4_byte_checkers_join sourceBytes relationBytes
-              certificateBytes old sourceTerm ssa new input hOld hNew hmatch.2
-          · simp [hOld, hNew, hmatch] at h
+              certificateBytes old sourceTerm ssa new input hOld hNew hmatch.2.2
+          · have hcondition : ssa.lane_count = 4 ∧
+                ssa.inputs.map EmittedInput.visibility = ["public"] ∧
+                new = liftCertificate old := by
+              simp [hOld, hNew] at h
+              obtain ⟨hfour, name, hinput, hpublic, hsame⟩ := h
+              exact ⟨hfour, by simp [hinput, hpublic], hsame⟩
+            exact False.elim (hmatch hcondition)
 
 /-- For the intersection, the *modeled* authenticated native Gate rows
 compute the very source value independently admitted by the new certificate.

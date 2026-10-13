@@ -102,8 +102,9 @@ are equal after the explicit positional lift, they assign the same value to
 every input. With the older modeled topology and `AuthenticatedRows` premises,
 the row witness also has that value. Neither theorem derives native row
 authentication from a PCS/FRI verifier. `checkPublic4Join` is the executable
-intersection gate: it checks lane count and graph equality instead of
-leaving those equalities to a caller.
+intersection gate: it checks lane count, one public input, and graph equality
+instead of leaving those equalities to a caller. It does not compare the
+source-level input name or prove a native public-input ABI binding.
 
 ## Recheck
 
