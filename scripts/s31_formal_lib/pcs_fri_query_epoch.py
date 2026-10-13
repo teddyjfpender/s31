@@ -2,8 +2,9 @@
 
 This proves a narrow arithmetic fact about the selected native source path:
 after absorbing the verified PoW nonce, 70 raw queries consume exactly nine
-successive eight-word channel blocks with counters 0 through 8. It does not
-model BLAKE2s as a random oracle or bound pre-query rejection-loop draws.
+successive eight-word channel blocks with counters 0 through 8. The pinned
+channel now traps before any u32 counter wrap, including during unbounded
+pre-query rejection loops. This does not model BLAKE2s as a random oracle.
 """
 
 from __future__ import annotations
@@ -55,6 +56,10 @@ def audit_sources(pcs: str, fri: str, queries: str, channel: str,
                  "S31 protocol revision query bridge")
     require_once(pcs, ".config = verifier_revision.legacyView(config),",
                  "native verifier query bridge")
+    checked_increment = region(channel, "fn nextDrawCounter(", "pub const Blake2sChannel =")
+    require_once(checked_increment,
+                 "return std.math.add(u32, current, 1) catch error.DrawCounterExhausted;",
+                 "channel checked counter increment")
 
     reset = region(channel, "pub inline fn updateDigest(", "pub fn mixFelts(")
     require_once(reset, "self.n_draws = 0;", "channel counter reset")
@@ -64,10 +69,11 @@ def audit_sources(pcs: str, fri: str, queries: str, channel: str,
     require_once(mix_nonce, "self.mixU32s(&[_]u32{", "nonce absorption reset")
     draw = region(channel, "pub fn drawU32s(", "pub fn drawSecureFelt(")
     ordered_once(draw, "u32 query block counter", "const counter = u32ToBytesLe(self.n_draws);",
-                 "@memcpy(hash_input[32..36], counter[0..]);", "self.n_draws +%= 1;",
+                 "@memcpy(hash_input[32..36], counter[0..]);",
+                 "self.n_draws = nextDrawCounter(self.n_draws) catch @panic(\"BLAKE2s draw counter exhausted\");",
                  "const hash = hashBytes(hash_input[0..]);", "var out: [FELTS_PER_HASH]u32",
                  "return out;")
-    if draw.count("self.n_draws") != 2:
+    if draw.count("self.n_draws") != 3:
         raise ValueError("u32 query block counter gained another mutation or read")
     require_once(draw, "while (i < FELTS_PER_HASH) : (i += 1)", "query block extraction")
 
@@ -118,6 +124,7 @@ def audit_sources(pcs: str, fri: str, queries: str, channel: str,
         "hash_draws": blocks,
         "counter_inputs": list(range(blocks)),
         "counter_wrap_in_this_epoch": False,
+        "native_blake2s_counter_overflow_fail_closed": True,
         "full_transcript_counter_wrap_proven": False,
         "random_oracle_independence_proven": False,
     }

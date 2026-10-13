@@ -44,8 +44,9 @@ python3 -B -m scripts.s31_formal_lib.pcs_fri_query_epoch
 ```
 
 For the pinned v0.1 path, the post-PoW raw-query epoch uses counters 0–8.
-The report explicitly leaves full transcript wrap and random-oracle
-independence unproved.
+The native BLAKE2s channel now traps before counter overflow in any draw,
+including an unbounded rejection loop. The report still leaves a formal
+full-transcript control-flow argument and random-oracle independence unproved.
 
 ## Formal receipt
 

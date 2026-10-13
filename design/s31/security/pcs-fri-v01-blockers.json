@@ -1,5 +1,5 @@
 {
-  "engine_gitlink_commit": "039dacb59980e1e871571958b396b2e29f93c0e5",
+  "engine_gitlink_commit": "59e1f115250b8af01712b9bf3d71616e53094964",
   "evidence_sha256": {
     "deps/stwo-zig/src/core/fri/config.zig": "69508e1f697dbf3adbe6748383aed86d937cc09d0a633cde0f9d5e6281e3149c",
     "deps/stwo-zig/src/core/pcs/verifier.zig": "e119335172e17db5fd1345f476c7f6ad7fdf67e394a5b18d5c2085e892ffe3d5",
@@ -12,12 +12,12 @@
     "formal/s31/S31/Gadgets/PcsFri/MerkleOpening.lean": "557c111bad6d84b5739f95cae48b4992954fa1cee83bec0625aafb19348d2076",
     "formal/s31/S31/Gadgets/PcsFri/MultiproofDecoder.lean": "084a9db05e81ad972be83afbd4c1c64b84424f063ff41d68ddb8f6d413044f44",
     "formal/s31/S31/Gadgets/PcsFri/QueryAndTranscript.lean": "e82190409053019d327e738a450c2a1b8676beecc92770f4a3e7563ad445cfa8",
-    "formal/s31/proof-inventory.json": "1960a881da7d1420d44d657813310aa7f0395d6fd109f690cd8eb0746e91af2d",
+    "formal/s31/proof-inventory.json": "6b0f6b36341539aa9305b8b043ac72cb9c3d846b0ae8997d34c28ed6232ebba6",
     "scripts/release/pcs_fri_proven_preflight.py": "485573b3a14719e1d3d8b11e4a481c9e70965c3da9d6852d15eab14c8f5f79f9",
     "scripts/s31_formal_lib/pcs_fri_leaf_encoding.py": "125e0532c2e874dce00ff681a648d37cb00d21e4a577ab1511aa96e557257de4",
     "scripts/s31_formal_lib/pcs_fri_order.py": "2e0168a0d1d21b5c58854823f9d92a9740b6a5c775e427d35d90f5f3d43cf4be",
     "scripts/s31_formal_lib/pcs_fri_projection.py": "4300221fe2bea69a229d037c37d80b5829ab7ed9edcbe88f011530ff51ed2187",
-    "scripts/s31_formal_lib/pcs_fri_query_epoch.py": "64e30fa68a135f090cdf77bd9e2b3037b119cf21e008b2eaea0d714a12769a4e",
+    "scripts/s31_formal_lib/pcs_fri_query_epoch.py": "6ca7bc7e43203a7fd11c347604283ba5b415bca0fb2091b7a3d82a0fe3fd7584",
     "src/frontends/s31/runtime/mvp_runtime.zig": "910f99a26d296dfb9df9ad4425f645c4a5fb1a6520eb5bf17f8276291a5e91fd",
     "src/frontends/s31/sha/package/sha_fused_package_runtime.zig": "eac17fd037560a25488d32501252a3bad9cc18b162fda6c041cbe688d8404776",
     "src/frontends/s31/sha/package/sha_package_runtime.zig": "b83d39902d41f13d5d8fb5882a054f216e22a49426a99844f32110f575ba8f8d",
@@ -101,7 +101,7 @@
     {
       "gap_kind": "unproven_crypto_and_budget_reduction",
       "id": "P07_FIAT_SHAMIR_AND_POW_BUDGET",
-      "missing_discharge": "ROM/BCS reduction for native Blake2s, nonce selection, PoW accounting, pre-query 32-bit draw-counter wrap bound and transcript domain separation; only the post-nonce raw-query epoch is bounded",
+      "missing_discharge": "ROM/BCS reduction for native Blake2s, nonce selection, PoW accounting, transcript domain separation and a full selected-channel control-flow proof; the pinned channel now fails closed before u32 counter reuse",
       "partial_evidence": [
         "formal/s31/S31/Gadgets/PcsFri/QueryAndTranscript.lean",
         "scripts/s31_formal_lib/pcs_fri_order.py",
@@ -362,14 +362,15 @@
       8
     ],
     "counter_wrap_in_this_epoch": false,
-    "engine_gitlink_commit": "039dacb59980e1e871571958b396b2e29f93c0e5",
+    "engine_gitlink_commit": "59e1f115250b8af01712b9bf3d71616e53094964",
     "full_transcript_counter_wrap_proven": false,
     "hash_draws": 9,
+    "native_blake2s_counter_overflow_fail_closed": true,
     "random_oracle_independence_proven": false,
     "raw_queries": 70,
     "scope": "verified PoW nonce absorption through v0.1 raw query sampling",
     "source_sha256": {
-      "deps/stwo-zig/src/core/channel/blake2s.zig": "407a80a913acb15b7e0138a593f1d2636f4297969714932cce59ed928e29f575",
+      "deps/stwo-zig/src/core/channel/blake2s.zig": "fe0598dd15f70cc84b7098684b6a6f2e0ec319c4f7b5390c3ccd5f781ca32fc1",
       "deps/stwo-zig/src/core/fri.zig": "5f84501d1ffbaf5d33d6f7063bea7e6fd88a4cb65140ff360b75cb11f812121f",
       "deps/stwo-zig/src/core/pcs/config_v2.zig": "b58f464074d5c8ca5e002764e529afc9f3e1fe81f12320a180fc1f850ef05178",
       "deps/stwo-zig/src/core/pcs/verifier.zig": "e119335172e17db5fd1345f476c7f6ad7fdf67e394a5b18d5c2085e892ffe3d5",
