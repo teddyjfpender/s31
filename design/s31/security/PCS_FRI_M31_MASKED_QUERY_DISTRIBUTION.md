@@ -55,6 +55,16 @@ set with probability at most the corresponding bound raised to `s`.
 Repetition is allowed; sorting and deduplication after sampling do not
 improve this all-good probability.
 
+The `exact_raw_product_fraction` theorem makes the repeated-draw step a
+finite counting statement. Its sample space is the set of all functions
+`Fin s -> Fin 2^32`, each representing an ordered `s`-tuple of raw words.
+The event includes exactly those functions whose every word maps into the
+fixed good set. Its cardinality divided by the sample-space cardinality
+equals `maskedMass(k, good)^s`; `exact_raw_product_*_vs_alpha` then applies
+the proved one-draw bias bound to that actual fraction. This is the
+uniform product sample space. Applying it to BLAKE2s transcript outputs
+requires the stated independence and ideal-word assumption.
+
 This result does not prove that BLAKE2s outputs are independent ideal words,
 that an adversarial prover cannot choose the good set after seeing queries,
 that a native Merkle opening is binding, or that the FRI agreement parameter
