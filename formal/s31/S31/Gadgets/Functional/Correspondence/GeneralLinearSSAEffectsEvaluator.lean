@@ -251,4 +251,416 @@ theorem named_effect_fold_of_air {n maximum : Nat}
       refine ⟨finalEnv, ?_, hcarryFinal, habsentFinal⟩
       simpa [List.foldlM_cons, hstep] using hfold
 
+/-- Ordered assertion effects, with exactly the same per-assertion check as
+the normalized `Program.environment` loop. -/
+def checkNamedAssertions (env : S31.Env) :
+    List (String × String) → S31.Result Unit
+  | [] => .ok ()
+  | (lhs, rhs) :: rest => do
+      checkNamedAssertion env lhs rhs
+      checkNamedAssertions env rest
+
+/-- This recursive checker is definitionally the assertion loop used by
+`Program.environment`, written here as a reusable theorem boundary. -/
+theorem normalized_assertion_loop_eq (env : S31.Env)
+    (assertions : List (String × String)) :
+    (do
+      for (lhs, rhs) in assertions do
+        let left ← S31.need (S31.lookup env lhs) .unknownOperand
+        let right ← S31.need (S31.lookup env rhs) .unknownOperand
+        S31.require (left == right) .assertionFailed
+      pure ()) = checkNamedAssertions env assertions := by
+  induction assertions with
+  | nil => rfl
+  | cons pair rest ih =>
+      obtain ⟨lhs, rhs⟩ := pair
+      cases hleft : S31.need (S31.lookup env lhs) .unknownOperand with
+      | error err =>
+          simp [checkNamedAssertions, checkNamedAssertion, hleft,
+            Bind.bind, Except.bind]
+      | ok left =>
+          cases hright : S31.need (S31.lookup env rhs) .unknownOperand with
+          | error err =>
+              simp [checkNamedAssertions, checkNamedAssertion,
+                hleft, hright, Bind.bind, Except.bind]
+          | ok right =>
+              cases hcheck : S31.require (left == right) .assertionFailed with
+              | error err =>
+                  simp [checkNamedAssertions, checkNamedAssertion,
+                    hleft, hright, hcheck, Bind.bind, Except.bind]
+              | ok _ =>
+                  simp [checkNamedAssertions, checkNamedAssertion,
+                    hleft, hright, hcheck, Bind.bind, Except.bind,
+                    Pure.pure, Except.pure]
+                  exact ih
+
+def namedAssertions (names : List String) :
+    List (Nat × Nat) → List (String × String) :=
+  List.map fun (lhs, rhs) => (nameAt names lhs, nameAt names rhs)
+
+/-- Every modeled assertion polynomial is enforced by the corresponding
+named normalized assertion sequence, including assertions on dead producers.
+`Carries` is the explicit indexed-to-named environment invariant. -/
+theorem named_assertions_of_air {n : Nat}
+    (names : List String) (env : S31.Env)
+    (final : List (Lanes n)) (assertions : List (Nat × Nat))
+    (hcarries : Carries names env final)
+    (hassert : GeneralLinearSSAEffects.assertionsAir final assertions) :
+    checkNamedAssertions env (namedAssertions names assertions) = .ok () := by
+  obtain ⟨pairs, hresolve, hpoly⟩ := hassert
+  induction assertions generalizing pairs with
+  | nil =>
+      simp [checkNamedAssertions, namedAssertions]
+  | cons pair rest ih =>
+      obtain ⟨lhs, rhs⟩ := pair
+      simp only [GeneralLinearSSAEffects.resolveAssertions,
+        List.mapM_cons] at hresolve
+      cases hleft : final[lhs]? with
+      | none => simp [hleft] at hresolve
+      | some left =>
+          cases hright : final[rhs]? with
+          | none => simp [hleft, hright] at hresolve
+          | some right =>
+              simp only [hleft, hright, Option.bind_some] at hresolve
+              change (GeneralLinearSSAEffects.resolveAssertions final rest).bind
+                (fun tail => some ((left, right) :: tail)) = some pairs at hresolve
+              cases hrest : GeneralLinearSSAEffects.resolveAssertions
+                  final rest with
+              | none => simp [hrest] at hresolve
+              | some tail =>
+                  have hpairs : pairs = (left, right) :: tail := by
+                    simpa [hrest] using hresolve.symm
+                  subst pairs
+                  have hfirst : GeneralLinearSSAEffects.assertionPoly
+                      left right := hpoly (left, right) (by simp)
+                  have htail : ∀ p ∈ tail,
+                      GeneralLinearSSAEffects.assertionPoly p.1 p.2 := by
+                    intro p hmem
+                    exact hpoly p (by simp [hmem])
+                  have hsingle :=
+                    (named_assertion_iff_air env
+                      (nameAt names lhs) (nameAt names rhs)
+                      left right
+                      (hcarries lhs left hleft)
+                      (hcarries rhs right hright)).mpr hfirst
+                  simpa [checkNamedAssertions, namedAssertions,
+                    hsingle] using ih tail hrest htail
+
+/-- Conversely, an accepted normalized assertion sequence constrains every
+resolved indexed pair. This direction makes actual interpreter acceptance
+usable for soundness without assuming assertion polynomials in advance. -/
+theorem assertion_air_of_named_checks {n : Nat}
+    (names : List String) (env : S31.Env)
+    (final : List (Lanes n)) (assertions : List (Nat × Nat))
+    (pairs : List (Lanes n × Lanes n))
+    (hcarries : Carries names env final)
+    (hresolved : GeneralLinearSSAEffects.resolveAssertions final assertions =
+      some pairs)
+    (hcheck : checkNamedAssertions env (namedAssertions names assertions) =
+      .ok ()) :
+    ∀ pair ∈ pairs,
+      GeneralLinearSSAEffects.assertionPoly pair.1 pair.2 := by
+  induction assertions generalizing pairs with
+  | nil =>
+      have hnil : pairs = [] := by
+        simpa [GeneralLinearSSAEffects.resolveAssertions] using
+          hresolved.symm
+      subst pairs
+      simp
+  | cons first rest ih =>
+      obtain ⟨lhs, rhs⟩ := first
+      simp only [GeneralLinearSSAEffects.resolveAssertions,
+        List.mapM_cons] at hresolved
+      cases hleft : final[lhs]? with
+      | none => simp [hleft] at hresolved
+      | some left =>
+          cases hright : final[rhs]? with
+          | none => simp [hleft, hright] at hresolved
+          | some right =>
+              simp only [hleft, hright, Option.bind_some] at hresolved
+              change (GeneralLinearSSAEffects.resolveAssertions final rest).bind
+                (fun tail => some ((left, right) :: tail)) = some pairs
+                at hresolved
+              cases hrest : GeneralLinearSSAEffects.resolveAssertions final rest with
+              | none => simp [hrest] at hresolved
+              | some tail =>
+                  have hpairs : pairs = (left, right) :: tail := by
+                    simpa [hrest] using hresolved.symm
+                  subst pairs
+                  have hsingle : checkNamedAssertion env
+                      (nameAt names lhs) (nameAt names rhs) = .ok () := by
+                    unfold checkNamedAssertions namedAssertions at hcheck
+                    cases hfirst : checkNamedAssertion env
+                        (nameAt names lhs) (nameAt names rhs) with
+                    | error err =>
+                        simp [hfirst, Bind.bind, Except.bind] at hcheck
+                    | ok result => cases result; rfl
+                  have htailCheck :
+                      checkNamedAssertions env
+                        (namedAssertions names rest) = .ok () := by
+                    simpa [checkNamedAssertions, namedAssertions, hsingle]
+                      using hcheck
+                  have hfirstPoly :=
+                    (named_assertion_iff_air env
+                      (nameAt names lhs) (nameAt names rhs)
+                      left right
+                      (hcarries lhs left hleft)
+                      (hcarries rhs right hright)).mp hsingle
+                  intro pair hmem
+                  rcases List.mem_cons.mp hmem with heq | htail
+                  · subst pair
+                    exact hfirstPoly
+                  · exact ih tail hrest htailCheck pair htail
+
+private theorem named_effect_fold_eq_nodes (names : List String)
+    (steps : List GeneralLinearSSAEffects.Step) (env : S31.Env) :
+    (steps.map (namedEffectNode names)).foldlM
+      (fun env node => do
+        return env ++ [(node.name, ← S31.evaluateNode env node)]) env =
+      steps.foldlM (namedEffectStep names) env := by
+  rw [List.foldlM_map]
+  rfl
+
+/-- Accepted modeled effectful rows and assertion polynomials execute
+through the real normalized `Program.environment`. The exact source graph,
+typed input state and fresh-name invariants remain explicit premises. -/
+theorem effect_program_environment_follows_air {n : Nat}
+    (program : S31.Program) (assignment : S31.Assignment)
+    (names : List String) (certificate : GeneralLinearSSAEffects.Certificate)
+    (initial final : List (Lanes n)) (inputEnv : S31.Env)
+    (hvalid : ∃ shapes, program.validate = .ok shapes)
+    (hprivate : S31.exactFields assignment.privateInputs
+      ((program.inputs.filter (fun i => i.visibility == .private)).map
+        (·.name)) = true)
+    (hinputs : program.inputs.mapM (fun (i : S31.Input) => do
+      let raw := if i.visibility == S31.Visibility.«public» then
+        assignment.publicInputs else assignment.privateInputs
+      return (i.name, ← S31.assigned raw i.name i.shape)) = .ok inputEnv)
+    (hnodes : program.nodes =
+      certificate.steps.map (namedEffectNode names))
+    (hassertions : program.assertions =
+      namedAssertions names certificate.assertions)
+    (hrows : GeneralLinearSSAEffects.AcceptsTrace initial
+      certificate.steps final)
+    (hassert : GeneralLinearSSAEffects.assertionsAir final
+      certificate.assertions)
+    (hcarries : Carries names inputEnv initial)
+    (habent : Absent names inputEnv initial.length
+      (initial.length + certificate.steps.length))
+    (hdistinct : Distinct names
+      (initial.length + certificate.steps.length)) :
+    ∃ finalEnv,
+      program.environment assignment = .ok finalEnv ∧
+      Carries names finalEnv final := by
+  obtain ⟨shapes, hvalidate⟩ := hvalid
+  obtain ⟨finalEnv, hfold, hcarryFinal, _⟩ :=
+    named_effect_fold_of_air names inputEnv hrows rfl hdistinct
+      hcarries habent
+  have hnodesFold :
+      program.nodes.foldlM
+        (fun env node => do
+          return env ++ [(node.name, ← S31.evaluateNode env node)]) inputEnv =
+        .ok finalEnv := by
+    rw [hnodes]
+    rw [named_effect_fold_eq_nodes]
+    exact hfold
+  have hassertRun := named_assertions_of_air names finalEnv final
+    certificate.assertions hcarryFinal hassert
+  have hloop :
+      ((do
+        for (lhs, rhs) in program.assertions do
+          let left ← S31.need (S31.lookup finalEnv lhs) .unknownOperand
+          let right ← S31.need (S31.lookup finalEnv rhs) .unknownOperand
+          S31.require (left == right) .assertionFailed
+        pure ()) : S31.Result Unit) = .ok () := by
+    rw [hassertions]
+    rw [normalized_assertion_loop_eq]
+    exact hassertRun
+  refine ⟨finalEnv, ?_, hcarryFinal⟩
+  unfold S31.Program.environment
+  rw [hvalidate]
+  simp only [hprivate, hinputs]
+  simp only [S31.require, ↓reduceIte,
+    Bind.bind, Except.bind, Pure.pure, Except.pure] at hnodesFold ⊢
+  simp only [hnodesFold]
+  let body : (String × String) → PUnit →
+      S31.Result (ForInStep PUnit) := fun (lhs, rhs) _ => do
+    let left ← S31.need (S31.lookup finalEnv lhs) .unknownOperand
+    let right ← S31.need (S31.lookup finalEnv rhs) .unknownOperand
+    S31.require (left == right) .assertionFailed
+    pure (.yield .unit)
+  have hloop' :
+      (do let _ ← forIn program.assertions PUnit.unit body
+          pure ()) = .ok () := by
+    simpa [body] using hloop
+  have hfor : forIn program.assertions PUnit.unit body =
+      (.ok PUnit.unit : S31.Result PUnit) := by
+    cases hrun : forIn program.assertions PUnit.unit body with
+    | error err => simp [hrun] at hloop'
+    | ok result => cases result; rfl
+  simp only [body, S31.require, ↓reduceIte, Bind.bind, Except.bind,
+    Pure.pure, Except.pure] at hfor
+  simpa only [hfor]
+
+/-- Reverse assertion direction: acceptance by the actual normalized
+environment, together with arbitrary accepted arithmetic AIR rows, forces
+all modeled assertion polynomials. The resolved-pair premise is structural
+certificate well-formedness, not an assertion-success premise. -/
+theorem effect_program_environment_implies_assertions_air {n : Nat}
+    (program : S31.Program) (assignment : S31.Assignment)
+    (names : List String) (certificate : GeneralLinearSSAEffects.Certificate)
+    (initial final : List (Lanes n)) (inputEnv observed : S31.Env)
+    (pairs : List (Lanes n × Lanes n))
+    (hvalid : ∃ shapes, program.validate = .ok shapes)
+    (hprivate : S31.exactFields assignment.privateInputs
+      ((program.inputs.filter (fun i => i.visibility == .private)).map
+        (·.name)) = true)
+    (hinputs : program.inputs.mapM (fun (i : S31.Input) => do
+      let raw := if i.visibility == S31.Visibility.«public» then
+        assignment.publicInputs else assignment.privateInputs
+      return (i.name, ← S31.assigned raw i.name i.shape)) = .ok inputEnv)
+    (hnodes : program.nodes =
+      certificate.steps.map (namedEffectNode names))
+    (hassertions : program.assertions =
+      namedAssertions names certificate.assertions)
+    (hrows : GeneralLinearSSAEffects.AcceptsTrace initial
+      certificate.steps final)
+    (hresolved : GeneralLinearSSAEffects.resolveAssertions final
+      certificate.assertions = some pairs)
+    (hcarries : Carries names inputEnv initial)
+    (habent : Absent names inputEnv initial.length
+      (initial.length + certificate.steps.length))
+    (hdistinct : Distinct names
+      (initial.length + certificate.steps.length))
+    (henv : program.environment assignment = .ok observed) :
+    GeneralLinearSSAEffects.assertionsAir final certificate.assertions := by
+  obtain ⟨shapes, hvalidate⟩ := hvalid
+  obtain ⟨finalEnv, hfold, hcarryFinal, _⟩ :=
+    named_effect_fold_of_air names inputEnv hrows rfl hdistinct
+      hcarries habent
+  have hnodesFold :
+      program.nodes.foldlM
+        (fun env node => do
+          return env ++ [(node.name, ← S31.evaluateNode env node)]) inputEnv =
+        .ok finalEnv := by
+    rw [hnodes, named_effect_fold_eq_nodes]
+    exact hfold
+  unfold S31.Program.environment at henv
+  rw [hvalidate] at henv
+  simp only [hprivate, hinputs] at henv
+  simp only [S31.require, ↓reduceIte, Bind.bind, Except.bind,
+    Pure.pure, Except.pure] at hnodesFold henv
+  simp only [hnodesFold] at henv
+  let body : (String × String) → PUnit →
+      S31.Result (ForInStep PUnit) := fun (lhs, rhs) _ => do
+    let left ← S31.need (S31.lookup finalEnv lhs) .unknownOperand
+    let right ← S31.need (S31.lookup finalEnv rhs) .unknownOperand
+    S31.require (left == right) .assertionFailed
+    pure (.yield .unit)
+  have hloopRaw : forIn program.assertions PUnit.unit body =
+      (.ok PUnit.unit : S31.Result PUnit) := by
+    cases hrun : forIn program.assertions PUnit.unit body with
+    | error err =>
+        simp only [body, S31.require, ↓reduceIte, Bind.bind,
+          Except.bind, Pure.pure, Except.pure] at hrun
+        rw [hrun] at henv
+        cases henv
+    | ok result => cases result; rfl
+  have hloop :
+      ((do
+        for (lhs, rhs) in program.assertions do
+          let left ← S31.need (S31.lookup finalEnv lhs) .unknownOperand
+          let right ← S31.need (S31.lookup finalEnv rhs) .unknownOperand
+          S31.require (left == right) .assertionFailed
+        pure ()) : S31.Result Unit) = .ok () := by
+    have hloopRaw' := hloopRaw
+    simp only [body, S31.require, ↓reduceIte, Bind.bind,
+      Except.bind, Pure.pure, Except.pure] at hloopRaw'
+    simp only [S31.require, ↓reduceIte, Bind.bind,
+      Except.bind, Pure.pure, Except.pure] at ⊢
+    simpa only [hloopRaw', Bind.bind, Except.bind,
+      Pure.pure, Except.pure]
+  rw [normalized_assertion_loop_eq] at hloop
+  rw [hassertions] at hloop
+  exact ⟨pairs, hresolved,
+    assertion_air_of_named_checks names finalEnv final
+      certificate.assertions pairs hcarryFinal hresolved hloop⟩
+
+/-- The accepted normalized interpreter cannot silently drop an effectful
+source assertion. Arithmetic AIR rows and the exact indexed/named graph are
+explicit premises; assertion polynomials are derived from the interpreter's
+own successful assertion loop, never assumed. -/
+theorem effectful_interpreter_preserves_source_assertions {n : Nat}
+    (program : S31.Program) (assignment : S31.Assignment)
+    (names : List String) (certificate : GeneralLinearSSAEffects.Certificate)
+    (source : GeneralLinearSSAEffects.Source)
+    (inputs : Nat → Lanes n) (inputEnv : S31.Env)
+    (final : List (Lanes n)) (words : List S31.M31)
+    (hcertificate : GeneralLinearSSAEffects.check certificate source =
+      some ())
+    (hvalid : ∃ shapes, program.validate = .ok shapes)
+    (hprivate : S31.exactFields assignment.privateInputs
+      ((program.inputs.filter (fun i => i.visibility == .private)).map
+        (·.name)) = true)
+    (hinputs : program.inputs.mapM (fun (i : S31.Input) => do
+      let raw := if i.visibility == S31.Visibility.«public» then
+        assignment.publicInputs else assignment.privateInputs
+      return (i.name, ← S31.assigned raw i.name i.shape)) = .ok inputEnv)
+    (hnodes : program.nodes =
+      certificate.steps.map (namedEffectNode names))
+    (hassertions : program.assertions =
+      namedAssertions names certificate.assertions)
+    (hrows : GeneralLinearSSAEffects.AcceptsTrace
+      (GeneralLinearSSAEffects.initialValues certificate.inputs inputs)
+      certificate.steps final)
+    (hcarries : Carries names inputEnv
+      (GeneralLinearSSAEffects.initialValues certificate.inputs inputs))
+    (habent : Absent names inputEnv
+      (GeneralLinearSSAEffects.initialValues certificate.inputs inputs).length
+      ((GeneralLinearSSAEffects.initialValues certificate.inputs inputs).length +
+        certificate.steps.length))
+    (hdistinct : Distinct names
+      ((GeneralLinearSSAEffects.initialValues certificate.inputs inputs).length +
+        certificate.steps.length))
+    (haccept : program.evaluate assignment = .ok words) :
+    source.accepts inputs (source.output.eval inputs) := by
+  have hsem := GeneralLinearSSAEffects.checked_execution
+    certificate source inputs hcertificate
+  have hrun := GeneralLinearSSAEffects.accepted_trace_executes hrows
+  unfold GeneralLinearSSAEffects.execute at hsem
+  rw [hrun] at hsem
+  cases hout : final[certificate.output]? with
+  | none => simp [hout] at hsem
+  | some output =>
+      cases hass : GeneralLinearSSAEffects.resolveAssertions final
+          certificate.assertions with
+      | none => simp [hout, hass] at hsem
+      | some pairs =>
+          have hpair : (output, pairs) =
+              (source.output.eval inputs,
+                source.assertions.map fun pair =>
+                  (pair.1.eval inputs, pair.2.eval inputs)) :=
+            Option.some.inj (by simpa [hout, hass] using hsem)
+          have houtput : final[certificate.output]? =
+              some (source.output.eval inputs) := by
+            have houtputVal : output = source.output.eval inputs :=
+              congrArg Prod.fst hpair
+            simpa [houtputVal] using hout
+          have henv : ∃ observed,
+              program.environment assignment = .ok observed := by
+            unfold S31.Program.evaluate at haccept
+            cases h : program.environment assignment with
+            | error err =>
+                simp [h, Bind.bind, Except.bind] at haccept
+            | ok observed => exact ⟨observed, rfl⟩
+          obtain ⟨observed, henv⟩ := henv
+          have hassert := effect_program_environment_implies_assertions_air
+            program assignment names certificate
+            (GeneralLinearSSAEffects.initialValues certificate.inputs inputs)
+            final inputEnv observed pairs hvalid hprivate hinputs hnodes
+            hassertions hrows hass hcarries habent hdistinct henv
+          exact GeneralLinearSSAEffects.checked_air_sound certificate
+            source inputs (source.output.eval inputs) final hcertificate
+            hrows houtput hassert
+
 end S31.Functional.Correspondence.GeneralLinearSSAEffectsEvaluator
