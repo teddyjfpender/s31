@@ -57,6 +57,7 @@ structure Static (sourceBytes : List Nat) (treeBytes relationBytes abiBytes : St
     sourceBytes treeBytes relationBytes abiBytes = .ok checked
   program : S31.Program
   aligned : program = sourceProgram checked.source
+  validated : ∃ shapes, program.validate = .ok shapes
 
 /-- The original exact-byte validator runs first. No v2 field is silently
 ignored: it has already been reconstructed from source before erasure. -/
@@ -70,9 +71,11 @@ def checkStatic (sourceBytes : List Nat) (treeBytes relationBytes abiBytes : Str
       let core ← coreRelation full
       let program ← S31.Json.program core
       if aligned : program = sourceProgram checked.source then
-        match program.validate with
+        match validation : program.validate with
         | .error _ => throw "source-derived normalized Program fails validation"
-        | .ok _ => return ⟨checked, sourceChecked, program, aligned⟩
+        | .ok shapes =>
+            return ⟨checked, sourceChecked, program, aligned,
+              ⟨shapes, validation⟩⟩
       else
         throw "record source and normalized Program differ"
 
