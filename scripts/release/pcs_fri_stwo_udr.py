@@ -174,17 +174,24 @@ def scenario_arithmetic(scenario: dict, target_bits: int = 96) -> dict:
     max_error = max(errors.values())
     collision = Fraction(3 * (t * t + 1), 1 << hash_bits)
     bcs = (t + rounds) * max_error + collision
+    work_factor = bcs / t
     nonquery_max = max(value for name, value in errors.items() if name != "fri_query")
-    available_for_query = (target - collision) / (t + rounds)
-    needed_queries = (minimum_query_draws(alpha, t + rounds, collision, target)
-                      if collision < target else None)
+    absolute_query_budget = (target - collision) / (t + rounds)
+    work_query_budget = (t * target - collision) / (t + rounds)
+    absolute_queries = (minimum_query_draws(alpha, t + rounds, collision, target)
+                        if collision < target else None)
+    work_queries = (minimum_query_draws(alpha, t + rounds, collision, t * target)
+                    if collision < t * target else None)
+    absolute_nonquery_fits = (t + rounds) * nonquery_max + collision <= target
+    work_nonquery_fits = (t + rounds) * nonquery_max + collision <= t * target
     return {
         "schema": "s31-stwo-2026-udr-hypothetical-formula-v1",
         "status": "hypothetical_paper_arithmetic_only",
         "native_proven_security_bits": None,
         "proven_release_admissible": False,
         "target_bits": target_bits,
-        "conditional_formula_meets_target": bcs <= target,
+        "conditional_absolute_error_meets_target": bcs <= target,
+        "conditional_paper_work_factor_meets_target": work_factor <= target,
         "paper_inputs": {"N": n, "B": b, "rho": exact(rho), "theta": exact(theta),
                          "alpha": exact(alpha), "queries": s, "T": t, "R": rounds,
                          "lambda_bits": hash_bits, "air_degree": degree,
@@ -203,14 +210,18 @@ def scenario_arithmetic(scenario: dict, target_bits: int = 96) -> dict:
         "nonquery_largest_round_bound": exact(nonquery_max),
         "BCS_collision_term": exact(collision),
         "BCS_total_formula": exact(bcs),
-        "query_budget_after_BCS": exact(available_for_query),
-        "minimum_queries_for_chosen_theta_if_other_rounds_fit": needed_queries,
-        "other_rounds_fit_target": (t + rounds) * nonquery_max + collision <= target,
+        "BCS_total_over_T_paper_security_measure": exact(work_factor),
+        "absolute_query_budget_after_BCS": exact(absolute_query_budget),
+        "paper_work_factor_query_budget_after_BCS": exact(work_query_budget),
+        "minimum_queries_for_absolute_target_if_other_rounds_fit": absolute_queries,
+        "minimum_queries_for_paper_work_factor_target_if_other_rounds_fit": work_queries,
+        "other_rounds_fit_absolute_target": absolute_nonquery_fits,
+        "other_rounds_fit_paper_work_factor_target": work_nonquery_fits,
         "native_mapping_and_cryptographic_unknowns": [
             "native executable, key and committed columns instantiate all scenario table and batch widths",
             "source AIR and logUp constraints instantiate the published flat-AIR relation",
             "native lifted openings, FRI insertion/folds and quotient ensemble instantiate Protocols 3 and 4",
-            "native non-squaring-consistent query sampler has a matching unique-decoding reduction",
+            "exact native query sampler matches the theorem's query distribution and projection model",
             "native OOD sampler and conjugate quotient use the paper's claimed cardinality and degree bound",
             "native BLAKE2s transcript, Merkle paths and grinding instantiate the BCS/ROM theorem",
             "T and R are justified for the chosen adversary and the actual transcript",
@@ -237,8 +248,10 @@ def necessary_tradeoffs(n: int, target_bits: int, t: int,
         ood = Fraction(1 + (b + 2) * n, PAPER_OOD_POINTS)
         first_fold = Fraction(3 * n * b // 2, F)
         floor = multiplier * max(ood, first_fold) + collision
-        query_only = (udr_boundary_minimum_draws(b, multiplier, collision, target)
-                      if collision < target else None)
+        absolute_query_only = (udr_boundary_minimum_draws(b, multiplier, collision, target)
+                               if collision < target else None)
+        work_query_only = (udr_boundary_minimum_draws(b, multiplier, collision, t * target)
+                           if collision < t * target else None)
         out.append({
             "hypothetical_B": b,
             "candidate_D0": n * b,
@@ -246,8 +259,11 @@ def necessary_tradeoffs(n: int, target_bits: int, t: int,
             "OOD_published_bound": exact(ood),
             "first_FRI_fold_published_bound": exact(first_fold),
             "BCS_necessary_nonquery_envelope": exact(floor),
-            "nonquery_envelope_exceeds_target": floor > target,
-            "minimum_queries_at_excluded_udr_boundary_if_nonquery_terms_fit": query_only,
+            "BCS_necessary_nonquery_envelope_over_T": exact(floor / t),
+            "nonquery_envelope_exceeds_absolute_target": floor > target,
+            "nonquery_envelope_exceeds_paper_work_factor_target": floor > t * target,
+            "minimum_queries_at_excluded_udr_boundary_for_absolute_target": absolute_query_only,
+            "minimum_queries_at_excluded_udr_boundary_for_paper_work_factor_target": work_query_only,
             "native_supported_or_admissible": None,
         })
         b *= 2
@@ -261,7 +277,9 @@ def gate_udr_ledger(report: dict, target_bits: int = 96, t: int = 1 << 32,
     n = observed["candidate_max_trace_rows"]
     native_b = 1 << observed["log_blowup_factor"]
     rows = necessary_tradeoffs(n, target_bits, t)
-    native_row = next(row for row in rows if row["hypothetical_B"] == native_b)
+    native_row = next((row for row in rows if row["hypothetical_B"] == native_b), None)
+    if native_row is None:
+        raise ValueError("native Gate N/B is outside the paper's N*B^2 domain capacity")
     candidate = scenario_arithmetic(scenario, target_bits) if scenario is not None else None
     target = Fraction(1, 1 << target_bits)
     # Independently of N/B, Lemma 7 contains a positive numerator >=1,
@@ -282,8 +300,10 @@ def gate_udr_ledger(report: dict, target_bits: int = 96, t: int = 1 << 32,
             "configured_fold_step": observed["fold_step"],
             "key_sha256": observed["verification_key_sha256"],
         },
-        "QM31_universal_BCS_OOD_floor_if_paper_applies": exact(universal_ood_floor),
-        "QM31_universal_OOD_floor_exceeds_target": universal_ood_floor > target,
+        "QM31_universal_absolute_BCS_OOD_floor_if_paper_applies": exact(universal_ood_floor),
+        "QM31_universal_absolute_OOD_floor_exceeds_target": universal_ood_floor > target,
+        "QM31_universal_paper_work_factor_OOD_floor_if_paper_applies": exact(Fraction(1, F)),
+        "QM31_universal_paper_work_factor_OOD_floor_exceeds_target": Fraction(1, F) > target,
         "native_geometry_necessary_row": native_row,
         "all_hypothetical_blowup_rows": rows,
         "unbound_native_theorem_terms": {

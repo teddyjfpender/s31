@@ -35,6 +35,13 @@ below `q`, and, for every nonempty table, `1−θ > (1/B)(1+2/N_t)`.
 | Final FRI query | `(1−θ)^s` | `s` independent paper-protocol query draws |
 | BCS/ROM composition | `(T+R) max_i ε_i + 3(T²+1)/2^λ` | Hash-query budget `T`, protocol rounds `R`, candidate `λ=256` |
 
+The paper's parameter examples assess **work-factor security** using
+`ε(T)/T ≤ 2⁻σ`, where `ε(T)` is the complete BCS expression. A separate,
+strictly stronger **absolute-error** claim would require
+`ε(T) ≤ 2⁻σ` for the specified `T`. The ledger reports both measures and
+never infers one from the other without the factor `T`. Neither conditional
+paper calculation is a native security certificate.
+
 The OOD denominator is explicit: since `q≡3 (mod 4)` and `q⁴≡1 (mod 4)`,
 the affine circles have `|C(𝔽_q)|=q+1` and `|C(F)|=q⁴−1`, hence
 `|C(F) \ C(𝔽_q)|=q⁴−q−2`. The formulas are quoted **upper bounds**. A
@@ -49,9 +56,12 @@ paper-protocol scenario. It checks the listed parameter preconditions and
 calculates every listed bound as a reduced numerator/denominator pair. It
 requires a stated `T` and `R`; the floor on `R` counts three AIR rounds, one
 batching round, every listed fold, and a query phase. The resulting Boolean
-`conditional_formula_meets_target` means only that these **chosen paper
-inputs** fit the requested absolute soundness bound. No scenario field can
-assert native correspondence.
+`conditional_paper_work_factor_meets_target` compares `ε(T)/T` with the
+chosen target; `conditional_absolute_error_meets_target` separately compares
+`ε(T)` with it. Both mean only that these **chosen paper inputs** fit their
+respective arithmetic expression. `R=25` in the example below is a candidate
+minimum, not a source-derived count of the actual transcript. No scenario
+field can assert native correspondence.
 
 ## A concrete unique-decoding example
 
@@ -59,9 +69,11 @@ Take one idealized table of height `N=2²⁰`, `B=2`, one AIR constraint, one
 use and one yield per row, dimension `r=1`, batch width `M=2`, single folds
 from size `2²⁰` to `2`, and `R=25`. Choose `θ=16383/65536`, just inside
 `δ/2=1/4`, and `T=2³²`. At `s=232` the exact BCS expression is about
-`0.822513 × 2⁻⁶⁴`; at `s=231` it exceeds `2⁻⁶⁴`. This is a conditional
-64-bit **paper arithmetic** example, with 232 raw queries and an idealized
-protocol. It is neither the native 70-query Gate nor a released 64-bit proof.
+`0.822513 × 2⁻⁶⁴`, so `ε(T)/T` is about
+`0.822513 × 2⁻⁹⁶`; at `s=231` both thresholds fail. This is a conditional
+**96-bit paper work-factor** and **64-bit absolute-error** arithmetic
+example, with 232 raw queries and an idealized protocol. It is neither the
+native 70-query Gate nor a released 96-bit proof.
 
 At the same geometry, `T=1` and `s=243` make the hypothetical expression
 about `0.903414 × 2⁻⁹⁶`; `s=242` fails. `T=1` is not a useful deployment
@@ -78,7 +90,7 @@ can increase it. The query count is the least integer at the excluded
 `θ=δ/2` boundary for the query term alone. Strict `θ<δ/2` can need more
 queries; these numbers do not rescue a failed nonquery ratio.
 
-| `B` | `|D₀|=NB` | Minimum `R` | 64-bit nonquery ratio | Query-only minimum, 64 bits | 96-bit nonquery ratio | Query-only minimum, 96 bits |
+| `B` | `|D₀|=NB` | Minimum `R` | Nonquery ratio: absolute 64 / paper work-factor 96 | Query-only minimum: absolute 64 / paper work-factor 96 | Nonquery ratio: absolute 96 | Query-only minimum: absolute 96 |
 | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | 2 | 2,097,152 | 25 | 0.015625004 | 232 | 67,108,881 | 309 |
 | 4 | 4,194,304 | 26 | 0.023437504 | 142 | 100,663,313 | 189 |
@@ -86,14 +98,15 @@ queries; these numbers do not rescue a failed nonquery ratio.
 | 16 | 16,777,216 | 28 | 0.093750001 | 106 | 402,653,188 | 141 |
 | 32 | 33,554,432 | 29 | 0.187500002 | 101 | 805,306,375 | 134 |
 
-All 64-bit nonquery ratios are below one, although the complete native proof
-and cost remain unknown. All 96-bit nonquery ratios exceed one by many orders
-at this `N,T`. The 80-bit nonquery ratios also exceed one: approximately
+All paper work-factor 96-bit nonquery ratios are below one, although the
+complete native proof and cost remain unknown. All **absolute** 96-bit
+nonquery ratios exceed one by many orders at this `N,T`. The absolute 80-bit
+nonquery ratios also exceed one: approximately
 `1024, 1536, 3072, 6144, 12288` as `B` grows. At `T=1`, 96-bit
-nonquery arithmetic fits only `B=2` or `4` for this height; higher blowups
+absolute nonquery arithmetic fits only `B=2` or `4` for this height; higher blowups
 increase the first-fold bound enough to fail. This is an unusually strong
 illustration that **more blowup and more queries alone do not solve the
-published field-size terms**.
+published absolute-error field-size terms**.
 
 An even broader necessary condition ignores `N`, `B`, and every fold. Lemma 7
 has OOD numerator at least one and denominator below `q⁴<2¹²⁴`; Theorem 6
@@ -104,9 +117,13 @@ therefore **strictly greater than** `T/q⁴`. For `T≥2²⁸` this alone exceed
 Thus **QM31 cannot certify an absolute 96-bit bound through this ungrinded
 published envelope at a hash-query budget of `2²⁸` or more**, regardless of
 domain or raw query count. This statement is scoped to the quoted theorem
-and zero proved grinding credit. A larger challenge field, a proved reduction
+and zero proved grinding credit. After dividing by `T`, the same universal
+necessary term becomes `1/q⁴ < 2⁻¹²⁴`; it **does not obstruct** a paper
+work-factor 96-bit claim. The hypothetical `T=2³²`, `s=232` calculation
+above demonstrates paper-style numerical feasibility. A larger challenge
+field, a proved reduction
 that gives effective grinding credit to the limiting round, or a stronger
-theorem may change the conclusion.
+theorem may change the absolute-error conclusion.
 
 ## Native status and next proof obligations
 
@@ -125,11 +142,13 @@ To admit an actual conservative profile, establish all of the following:
    paper's flat-AIR and cross-domain oracle relation.
 2. Prove the native OOD sampler and quotient openings realize the degree-
    corrected `f` plus `(f−v)/v_Q` ensemble and circle-point assumptions.
-3. Prove a query-distribution reduction for the native non-squaring-consistent
-   sampler, and the exact FRI fold, insertion, and terminal checks.
+3. Prove the exact native query sampler matches the theorem's query
+   distribution and projection model, plus the FRI fold, insertion, and
+   terminal checks.
 4. Prove the native BLAKE2s transcript, Merkle authentication, challenge
    domain separation, and any PoW credit instantiate the paper's BCS/ROM
    bound for a declared adversary budget `T`.
 5. Recompute every bound with actual parameters. Preserve the 96-bit target
-   unless the release policy is explicitly changed; an arithmetic 64-bit
-   scenario is evidence of a tradeoff, not an automatic target reduction.
+   and state whether it means the paper's `ε(T)/T` work-factor convention or
+   an absolute `ε(T)` claim. A paper-style arithmetic pass is not an automatic
+   native-security claim.
