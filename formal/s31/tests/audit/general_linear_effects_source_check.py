@@ -64,9 +64,28 @@ def run() -> None:
         b"  assert_eq(y, a);\n"
         b"  let unused = y + x;\n  a\n}\n"
     )
+    aliased = (
+        b"use std@1;\n"
+        b"circuit aliased(public x: [m31; 3], private y: [m31; 3]) "
+        b"-> public [m31; 3] {\n"
+        b"  let bias = splat<3>(7_m31);\n"
+        b"  let input_copy = x;\n"
+        b"  let shifted = input_copy + bias;\n"
+        b"  let scaled = shifted .* splat<3>(9_m31);\n"
+        b"  let expected = scaled;\n"
+        b"  assert_eq(y, expected);\n"
+        b"  let out = y - input_copy;\n"
+        b"  let selected = out;\n  selected\n}\n"
+    )
+    long_aliases = (
+        b"circuit long_aliases(public x: [m31; 1]) -> public [m31; 1] {\n"
+        + b"  let a0 = x;\n"
+        + b"".join(f"  let a{i} = a{i-1};\n".encode() for i in range(1, 31))
+        + b"  let result = a30 + splat<1>(1_m31);\n  result\n}\n"
+    )
     with tempfile.TemporaryDirectory(prefix="s31-lean-effects-source-") as tmp:
         work = Path(tmp)
-        for source in (base_source, const_left, live_unused):
+        for source in (base_source, const_left, live_unused, aliased, long_aliases):
             check(source, certificate(source), True, work)
 
         # This Lean semantic gate validates digest spelling but does not
@@ -89,6 +108,14 @@ def run() -> None:
               base_cert, False, work, grammar_error=True)
         check(const_left.replace(b"3_m31) + x", b"3_m31) - x"),
               certificate(const_left), False, work, grammar_error=True)
+        check(aliased.replace(b"let input_copy = x;", b"let input_copy = future;"),
+              certificate(aliased), False, work, grammar_error=True)
+        check(aliased.replace(b"let input_copy = x;", b"let input_copy = bias;"),
+              certificate(aliased), False, work)
+        check(aliased.replace(b"let selected = out;", b"let selected = bias;"),
+              certificate(aliased), False, work, grammar_error=True)
+        check(long_aliases.replace(b"  result\n}", b"  let extra = result;\n  result\n}"),
+              certificate(long_aliases), False, work, grammar_error=True)
 
         # These remain grammatical but disagree with the certificate roster.
         check(base_source.replace(b"y - x", b"x - y"), base_cert,
@@ -102,7 +129,7 @@ def run() -> None:
         forged["ssa"]["assertions"] = []
         check(base_source, canonical(forged), False, work)
         check(base_source, base_cert + b" " * 65536, False, work)
-    print("Lean effects source-byte bridge: 3 semantic pairs plus 1 digest-boundary control admitted, 10 rejected")
+    print("Lean effects source-byte bridge: 5 semantic pairs plus 1 digest-boundary control admitted, 14 rejected")
 
 
 if __name__ == "__main__":

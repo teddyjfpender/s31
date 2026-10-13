@@ -27,6 +27,28 @@ names, ordered instructions, constants, assertion pair `(1,3)`, and output
 ID 4. A source edit that reverses the final subtraction or removes the
 assertion fails this comparison even if the package digests are rewritten.
 
+Static bindings do not create an arithmetic row. For example, this equivalent
+spelling still emits the same five wire IDs and three arithmetic nodes:
+
+```s31
+let bias = splat<3>(7_m31);
+let input_copy = x;
+let shifted = input_copy + bias;
+let scaled = shifted .* splat<3>(9_m31);
+let expected = scaled;
+assert_eq(y, expected);
+let out = y - input_copy;
+let selected = out;
+selected
+```
+
+Here `bias` is the static field constant 7, while `input_copy`, `expected`,
+and `selected` are aliases. The parser resolves each name to its producer
+before assigning an SSA ID. An assertion through `expected` still checks
+the `scaled` row; returning `selected` still selects `out`. The production
+source fragment and the Lean parser agree on this erasure for the bounded
+syntax above.
+
 For each lane `i=0,1,2`, the modeled rows and assertion require:
 
 | Row or effect | Zero residual over M31 |
@@ -51,10 +73,11 @@ assertion hold, the public claim satisfies the independently parsed source
 meaning. The proof is not a finite test of the example values.
 
 The source parser accepts one circuit, 1–4 distinct named inputs, 1–8
-equal-length M31 lanes subject to the eight-word public ABI budget, 1–16
-binary or constant arithmetic nodes, and up to 16 assertions. It accepts an
+equal-length M31 lanes subject to the eight-word public ABI budget, up to
+32 `let` statements including aliases and named constants, 1–16 binary or
+constant arithmetic nodes, and up to 16 assertions. It accepts an
 optional `use std@1;` line, canonical `splat<N>(k_m31)` values below the
-M31 modulus, and a selected named output. Static helpers, aliases, grouped
+M31 modulus, and a selected named output. Static helpers, grouped
 expressions, scalar types, other operations, and non-ASCII syntax are outside
 this grammar. It caps source at 16 KiB and certificate at 65 KiB.
 
@@ -75,9 +98,10 @@ lake env leanchecker S31.Gadgets.Functional.Correspondence.GeneralLinearSSAEffec
 python3 tests/audit/general_linear_effects_source_check.py
 ```
 
-The controls admit three source/certificate pairs and reject ten mutations,
+The controls admit five source/certificate pairs and reject fourteen mutations,
 including bad field literals, a forward assertion, a duplicate assertion,
-changed subtraction order, changed constants, and a removed assertion. A
+changed subtraction order, changed constants, a removed assertion, alias
+forward references, and a 33rd let. A
 separate accepted control replaces both digest fields with arbitrary valid
 hex strings. It makes the Lean checker's digest boundary visible in CI;
 the package verifier must reject that replacement before accepting a proof.
