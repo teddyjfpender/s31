@@ -38,6 +38,13 @@ evaluation points. The paper's variable-round Protocol 3 allows this
 terminal shape. Neither that shape nor the one-table fixture describes a
 source-bound installed CAS05 key.
 
+The `k=22,H=8` geometry is within the experimental XDM04 verifier's visible
+cap, but its current full-tree CAS05 host estimates 301,858,784 bytes of
+source/tree storage and rejects it under a 192 MiB preallocation budget.
+The native `k=17,H=2` fixture from [stwo-zig PR #264](https://github.com/teddyjfpender/stwo-zig/pull/264)
+crosses the legacy XDM03 height cap; it does not realize this paper-only
+`k=22` profile or change any theorem premise below.
+
 Run:
 
 ```sh

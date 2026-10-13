@@ -3,7 +3,7 @@
 **Status:** CAS05 is experimental. Its verifier is outside production PCS, and
 there are **no proven native PCS/FRI security bits** or conservative release
 profile. This checklist is an independent proof-interface review of
-[stwo-zig PR #249 at `decc70d87`](https://github.com/teddyjfpender/stwo-zig/tree/decc70d870b65818f5279ed29c647aaad953e340).
+[stwo-zig PR #249 at `234ac67b2`](https://github.com/teddyjfpender/stwo-zig/tree/234ac67b2819e6b102e8d43da93a38a4a902075e).
 It complements the [theorem bridge ledger](PCS_FRI_CAS05_THEOREM_BRIDGE.md)
 and the [v0.1 blocker matrix](pcs-fri-v01-blockers.json); neither a source
 guard nor a passing proof fixture discharges P05.
@@ -13,16 +13,16 @@ guard nor a passing proof fixture discharges P05.
 A complete CAS05 verifier call first matches an **independently supplied**
 profile, source root, and ordered OOD claims. It replays the tagged transcript
 on a staged channel and publishes that channel only after every check passes
-([verifier lines 176–225](https://github.com/teddyjfpender/stwo-zig/blob/decc70d870b65818f5279ed29c647aaad953e340/src/core/pcs/paired_sparse_cascade_experimental.zig#L176-L225)).
-The [XDM04 verifier](https://github.com/teddyjfpender/stwo-zig/blob/decc70d870b65818f5279ed29c647aaad953e340/src/core/pcs/transposed_merkle_sparse.zig#L177-L279)
+([verifier lines 176–225](https://github.com/teddyjfpender/stwo-zig/blob/234ac67b2819e6b102e8d43da93a38a4a902075e/src/core/pcs/paired_sparse_cascade_experimental.zig#L176-L225)).
+The [XDM04 verifier](https://github.com/teddyjfpender/stwo-zig/blob/234ac67b2819e6b102e8d43da93a38a4a902075e/src/core/pcs/transposed_merkle_sparse.zig#L177-L279)
 authenticates two original-source rows at each height against one transposed
 root. For each authenticated M31 word, the
-[paired batch](https://github.com/teddyjfpender/stwo-zig/blob/decc70d870b65818f5279ed29c647aaad953e340/src/core/pcs/transposed_paired_sparse.zig#L55-L80)
+[paired batch](https://github.com/teddyjfpender/stwo-zig/blob/234ac67b2819e6b102e8d43da93a38a4a902075e/src/core/pcs/transposed_paired_sparse.zig#L55-L80)
 derives **that word's own two-point conjugate quotient**, then combines
 `f₀, q₀, f₁, q₁, …` with successive powers of one `λ`. The verifier
 [authenticates two line words per layer and checks every sampled fold and the
-short terminal polynomial](https://github.com/teddyjfpender/stwo-zig/blob/decc70d870b65818f5279ed29c647aaad953e340/src/core/pcs/paired_sparse_cascade_experimental.zig#L238-L325).
-The [audit extractor](https://github.com/teddyjfpender/stwo-zig/blob/decc70d870b65818f5279ed29c647aaad953e340/src/core/pcs/paired_sparse_relation_experimental.zig#L258-L371)
+short terminal polynomial](https://github.com/teddyjfpender/stwo-zig/blob/234ac67b2819e6b102e8d43da93a38a4a902075e/src/core/pcs/paired_sparse_cascade_experimental.zig#L238-L325).
+The [audit extractor](https://github.com/teddyjfpender/stwo-zig/blob/234ac67b2819e6b102e8d43da93a38a4a902075e/src/core/pcs/paired_sparse_relation_experimental.zig#L258-L371)
 replays and records this **sampled** relation. Its returned rows are useful
 evidence; they do not establish whole-oracle degree or a security bound.
 
@@ -30,7 +30,7 @@ evidence; they do not establish whole-oracle degree or a security bound.
 CAS05 byte wire, external statement, authenticated root and line opening, and
 transcript state to one explicit ideal oracle relation. Keep proof-supplied
 metadata distinct from the public statement throughout. The
-[outer decoder](https://github.com/teddyjfpender/stwo-zig/blob/decc70d870b65818f5279ed29c647aaad953e340/src/core/pcs/paired_sparse_cascade_wire.zig#L112-L227)
+[outer decoder](https://github.com/teddyjfpender/stwo-zig/blob/234ac67b2819e6b102e8d43da93a38a4a902075e/src/core/pcs/paired_sparse_cascade_wire.zig#L112-L227)
 alone is only a shape and canonical-field check.
 
 ## 2. Prove the two-point theorem join
@@ -59,7 +59,7 @@ precommitted source and OOD claims substitutes for Protocol 3's explicit
 post-`λ` batch commitment. The sampled fold must refine the published
 normalized recurrence: CAS05's height-`i` insertion has a `2⁻ⁱ` source
 factor after normalizing its unhalved butterflies
-([native relation and scope](https://github.com/teddyjfpender/stwo-zig/blob/decc70d870b65818f5279ed29c647aaad953e340/design/pcs/SPARSE_CASCADE_EXPERIMENTAL.md)).
+([native relation and scope](https://github.com/teddyjfpender/stwo-zig/blob/234ac67b2819e6b102e8d43da93a38a4a902075e/design/pcs/SPARSE_CASCADE_EXPERIMENTAL.md)).
 Apply Theorem 4 only after these oracle and degree joins are proved.
 
 ## 3. Prove the native query, OOD, and commitment games
@@ -68,7 +68,7 @@ The paper's two-point sampler is uniform on
 `C(QM31) \ C(CM31)`, whose affine size is `q⁴−q²` for `q=2³¹−1`.
 The paper's single-point Protocol 4 instead uses
 `C(QM31) \ C(M31)`, size `q⁴−q−2`. CAS05 samples a rational-map seed and
-rejects `y.c1=0` ([native draw](https://github.com/teddyjfpender/stwo-zig/blob/decc70d870b65818f5279ed29c647aaad953e340/src/core/pcs/paired_sparse_cascade_experimental.zig#L76-L91));
+rejects `y.c1=0` ([native draw](https://github.com/teddyjfpender/stwo-zig/blob/234ac67b2819e6b102e8d43da93a38a4a902075e/src/core/pcs/paired_sparse_cascade_experimental.zig#L76-L91));
 its accepted image has size `A=(q²−1)²`. The
 [Lean support arithmetic](../../../formal/s31/S31/Gadgets/PcsFri/OodAcceptedSupport.lean)
 shows, **given those circle cardinalities**, that `q²−1` points in the
@@ -78,7 +78,7 @@ field-point counting theorem. This ratio transfers a
 **fixed bad-set count only if** that count is first proved for the two-point
 universe. It does not establish adaptive Fiat–Shamir sampling.
 
-Raw queries are [low-bit masks of BLAKE2s words](https://github.com/teddyjfpender/stwo-zig/blob/decc70d870b65818f5279ed29c647aaad953e340/src/core/queries.zig#L5-L28)
+Raw queries are [low-bit masks of BLAKE2s words](https://github.com/teddyjfpender/stwo-zig/blob/234ac67b2819e6b102e8d43da93a38a4a902075e/src/core/queries.zig#L5-L28)
 drawn after all roots and terminal coefficients. Repeats count as separate
 draws, while lower-height projections can overlap. The
 [Lean sparse-query model](../../../formal/s31/S31/Gadgets/PcsFri/SparseMultiHeightAgreement.lean)
@@ -92,18 +92,22 @@ and guard-abort law, the adaptive masked query law, and a BCS/ROM reduction
 for the actual shared Blake2s transcript and tree encodings. Count all
 adversarial oracle work, the exact round schedule, and collision events;
 CAS05 currently has no PoW stage
-([transcript ledger](https://github.com/teddyjfpender/stwo-zig/blob/decc70d870b65818f5279ed29c647aaad953e340/design/pcs/CAS05_BCS_ROM_JOIN.md)).
+([transcript ledger](https://github.com/teddyjfpender/stwo-zig/blob/234ac67b2819e6b102e8d43da93a38a4a902075e/design/pcs/CAS05_BCS_ROM_JOIN.md)).
 
 ## 4. Admit only a measured, source-bound profile
 
 The sparse verifier admits `k≤22`, `2≤H≤8`, and at most `16,384` raw queries,
 subject to its wire and column bounds
-([XDM04 profile](https://github.com/teddyjfpender/stwo-zig/blob/decc70d870b65818f5279ed29c647aaad953e340/src/core/pcs/transposed_merkle_sparse.zig#L14-L41)).
-The dense host prover still uses XDM03's `k≤16` and `queries·2ᴴ≤2¹⁶`
-limits ([source profile](https://github.com/teddyjfpender/stwo-zig/blob/decc70d870b65818f5279ed29c647aaad953e340/src/core/pcs/transposed_merkle_cascade.zig#L14-L42)).
-For example `k=22`, `H=8`, `B=2` leaves 8,192 terminal coefficients on
-16,384 line-domain rows, but this is a verifier geometry, not a proof the
-current host prover can produce.
+([XDM04 profile](https://github.com/teddyjfpender/stwo-zig/blob/234ac67b2819e6b102e8d43da93a38a4a902075e/src/core/pcs/transposed_merkle_sparse.zig#L14-L41)).
+The CAS05 host now invokes a separate
+[`commitSparse` constructor](https://github.com/teddyjfpender/stwo-zig/blob/234ac67b2819e6b102e8d43da93a38a4a902075e/src/prover/pcs/transposed_cascade_experimental.zig).
+It validates the XDM04 query shape but still materializes the full tree and
+preflights a 192 MiB tree-plus-logical-source budget. The legacy XDM03
+constructor retains `k≤16` and `queries·2ᴴ≤2¹⁶`. A native `k=17,H=2`
+CAS05 proof verifies through the statement-bound wire, while `k=22,H=8`
+with one source column per height exceeds the host budget. That `k=22`
+verifier geometry leaves 8,192 terminal coefficients on 16,384 line-domain
+rows; it is not yet a host proof or an admitted profile.
 
 **Discharge test:** extract the actual installed S31 key's domain roster,
 degree bounds, column widths, query count, and proof selector; prove its

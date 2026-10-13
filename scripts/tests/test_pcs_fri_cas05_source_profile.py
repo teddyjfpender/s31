@@ -25,10 +25,13 @@ class Cas05SourceProfileTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "roster changed"):
             verify_hashes({"verifier.zig": b"source-v1"}, expected)
 
-    def test_sparse_verifier_and_dense_host_have_different_caps(self) -> None:
+    def test_sparse_verifier_legacy_and_cas05_host_caps_are_distinct(self) -> None:
         wide = profile_geometry(22, 8, 1, 232, (1,) * 8, THETA)
         self.assertTrue(wide["native_sparse_verifier_visible_caps_pass"])
-        self.assertFalse(wide["native_dense_host_visible_caps_pass"])
+        self.assertFalse(wide["legacy_xdm03_dense_host_visible_caps_pass"])
+        self.assertFalse(wide["native_cas05_bounded_sparse_host_visible_caps_pass"])
+        self.assertGreater(wide["native_cas05_host_preflight_estimate_bytes"],
+                           wide["native_cas05_host_preflight_budget_bytes"])
         self.assertEqual(wide["terminal_domain_rows"], 1 << 14)
         self.assertEqual(wide["terminal_qm31_coefficient_words"], 1 << 13)
         self.assertEqual(wide["paper_protocol3_indices_if_refined"],
@@ -44,22 +47,48 @@ class Cas05SourceProfileTests(unittest.TestCase):
         self.assertFalse(wide["native_profile_or_theorem_admitted"])
 
         host = profile_geometry(16, 8, 1, 232, (1,) * 8, THETA)
-        self.assertTrue(host["native_dense_host_visible_caps_pass"])
+        self.assertTrue(host["legacy_xdm03_dense_host_visible_caps_pass"])
+        self.assertTrue(host["native_cas05_bounded_sparse_host_visible_caps_pass"])
         self.assertEqual(host["terminal_qm31_coefficient_words"], 128)
-        # A single additional query crosses XDM03's full-fiber cap.
+        # This crosses only the legacy XDM03 full-fiber cap.
         exceeded = profile_geometry(16, 8, 1, 257, (1,) * 8, THETA)
-        self.assertFalse(exceeded["native_dense_host_visible_caps_pass"])
+        self.assertFalse(exceeded["legacy_xdm03_dense_host_visible_caps_pass"])
+        self.assertTrue(exceeded["native_cas05_bounded_sparse_host_visible_caps_pass"])
         self.assertTrue(exceeded["native_sparse_verifier_visible_caps_pass"])
+
+        # The native k=17,H=2 fixture from stwo-zig #264 is accepted by
+        # CAS05's preflight but remains outside legacy XDM03.
+        k17 = profile_geometry(17, 2, 1, 3, (1, 1), THETA)
+        self.assertFalse(k17["legacy_xdm03_dense_host_visible_caps_pass"])
+        self.assertTrue(k17["native_cas05_bounded_sparse_host_visible_caps_pass"])
+        self.assertEqual(k17["native_cas05_host_merkle_tree_bytes"],
+                         ((1 << 18) - 1) * 32)
+        self.assertEqual(k17["native_cas05_host_logical_borrowed_source_bytes"],
+                         ((1 << 17) + (1 << 16)) * 4)
+        self.assertEqual(k17["native_cas05_host_preflight_estimate_bytes"], 9175008)
+        self.assertEqual(k17["native_cas05_host_preflight_budget_bytes"],
+                         192 * 1024 * 1024)
+        self.assertFalse(k17["native_profile_or_theorem_admitted"])
+
+        k21 = profile_geometry(21, 8, 1, 232, (1,) * 8, THETA)
+        self.assertTrue(k21["native_cas05_bounded_sparse_host_visible_caps_pass"])
+        k22_narrow = profile_geometry(22, 2, 1, 3, (1, 1), THETA)
+        self.assertTrue(k22_narrow["native_sparse_verifier_visible_caps_pass"])
+        self.assertFalse(k22_narrow["native_cas05_bounded_sparse_host_visible_caps_pass"])
+        self.assertGreater(k22_narrow["native_cas05_host_merkle_tree_bytes"],
+                           k22_narrow["native_cas05_host_preflight_budget_bytes"])
 
     def test_sparse_wire_and_theorem_conditions_are_distinct(self) -> None:
         too_wide = profile_geometry(22, 8, 1, 1 << 14, (64,) * 8, THETA)
         self.assertFalse(too_wide["native_sparse_verifier_visible_caps_pass"])
+        self.assertFalse(too_wide["native_cas05_bounded_sparse_host_visible_caps_pass"])
         self.assertTrue(too_wide["published_single_point_small_table_numeric_all_pass"])
         # A large theta can violate the paper condition even for a native
         # shape that satisfies the visible source caps.
         bad_theta = profile_geometry(16, 8, 1, 1, (1,) * 8,
                                      Fraction(999, 1000))
-        self.assertTrue(bad_theta["native_dense_host_visible_caps_pass"])
+        self.assertTrue(bad_theta["legacy_xdm03_dense_host_visible_caps_pass"])
+        self.assertTrue(bad_theta["native_cas05_bounded_sparse_host_visible_caps_pass"])
         self.assertFalse(bad_theta["candidate_theta_in_strict_unique_decoding_interval"])
         self.assertFalse(bad_theta["published_single_point_small_table_numeric_all_pass"])
         self.assertFalse(bad_theta["native_profile_or_theorem_admitted"])

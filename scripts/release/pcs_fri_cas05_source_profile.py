@@ -19,7 +19,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 PRODUCTION_GITLINK = "59e1f115250b8af01712b9bf3d71616e53094964"
-DRAFT_COMMIT = "decc70d870b65818f5279ed29c647aaad953e340"
+DRAFT_COMMIT = "234ac67b2819e6b102e8d43da93a38a4a902075e"
 DRAFT_REF = "origin/codex/paired-degree-protocol-20261013"
 Q = 2**31 - 1
 SOURCE_SHA256 = {
@@ -28,8 +28,8 @@ SOURCE_SHA256 = {
     "src/core/pcs/transposed_merkle_sparse.zig": "6fbb6bd496a9d2916cdaa141c0c44f05fc26ed45ba74e27fedb017b20ee661a9",
     "src/core/pcs/transposed_merkle_cascade.zig": "7bc0793234e902ae37080e2c8b90d4df87120fd3a87c441d669c928fcb85bb92",
     "src/core/pcs/transposed_paired_sparse.zig": "56bd8cf46b8897044b4dc9f70d4dd22c8bd10d01b584165daa21625f4e3dffca",
-    "src/prover/pcs/paired_sparse_cascade_experimental.zig": "091b61057bbb25402b69d2865c0d5ad1047ebaf897579a8b8c367f95d1a36727",
-    "src/prover/pcs/transposed_cascade_experimental.zig": "89e8235797d8b6484747e34a0f2020d1c7bb7488fd2fc76ba4a4aa00807b54c5",
+    "src/prover/pcs/paired_sparse_cascade_experimental.zig": "e76677cdf644a47561d8f02e7b65715cd38d57a4e1af10db7c729371fb82030f",
+    "src/prover/pcs/transposed_cascade_experimental.zig": "b079122ef4c3203a0150fce52c0f29833d9f73fe56b357f530299861a8983316",
 }
 
 
@@ -65,7 +65,7 @@ def classify_sources(sources: dict[str, bytes]) -> dict:
         "pub const MAX_LOG_SIZE: u32 = 16;",
         "pub const MAX_WIRE_BYTES: usize = 64 * 1024 * 1024;",
         "self.query_count * (@as(usize, 1) << @intCast(self.height_count)) > (1 << 16)",
-    ), "dense host source profile")
+    ), "legacy XDM03 source profile")
     _contains(decoded["src/core/pcs/paired_sparse_cascade_experimental.zig"], (
         "pub const OUTER_VERSION: u16 = 6;",
         "pub fn terminalLength(self: Profile) usize",
@@ -91,15 +91,20 @@ def classify_sources(sources: dict[str, bytes]) -> dict:
         ".add(pair[1].mul(quotient));",
     ), "authenticated original and own-quotient batch")
     _contains(decoded["src/prover/pcs/paired_sparse_cascade_experimental.zig"], (
-        "var source = try source_prover.Commitment.commit(a, input.source_columns);",
+        "var source = try source_prover.Commitment.commitSparse(a, input.source_columns, input.n_queries);",
         "try old.validateSourceDegree(a, domains[i], columns, log_size - input.log_blowup);",
         "batches[i] = try old.pairedHeight(a, domains[i], columns, claims[i], point, challenges);",
         "return error.TerminalDegreeExceeded;",
     ), "CAS05 host prover")
     _contains(decoded["src/prover/pcs/transposed_cascade_experimental.zig"], (
         "const profile = xdm.Profile{",
-        "try profile.validate();",
-    ), "dense host commitment")
+        "pub const MAX_SPARSE_HOST_BYTES: usize = 192 * 1024 * 1024;",
+        "pub fn estimatedSparseHostBytes(k: u32, source_words: usize) !usize {",
+        "return commitImpl(allocator, source_columns, query_count, .sparse);",
+        "try (sparse.Profile{",
+        "if (try estimatedSparseHostBytes(k, source_words) > MAX_SPARSE_HOST_BYTES)",
+        "if (self.mode != .dense) return error.UnsupportedProofFormat;",
+    ), "bounded sparse CAS05 host commitment")
     return {"draft_commit": DRAFT_COMMIT, "source_sha256": observed,
             "source_classification": "versioned_experimental_original_plus_own_quotient_cascade"}
 
@@ -126,6 +131,15 @@ def profile_geometry(k: int, heights: int, beta: int, queries: int,
         (1 << (heights - i)) * count * 4 for i, count in enumerate(columns)))
     dense_admitted = (k <= 16 and queries * (1 << heights) <= 1 << 16 and
                       dense_fixed <= 64 * 1024 * 1024 - 128)
+    # The experimental CAS05 host uses the XDM04 shape but still allocates
+    # the full XDM03-format Merkle tree. Its source columns are borrowed;
+    # this is the exact constructor preflight, not a whole-prover peak bound.
+    tree_bytes = ((1 << (k + 1)) - 1) * 32
+    source_bytes = sum((1 << (k - i)) * count * 4
+                       for i, count in enumerate(columns))
+    host_preflight_bytes = tree_bytes + source_bytes
+    host_budget_bytes = 192 * 1024 * 1024
+    cas05_host_admitted = sparse_admitted and host_preflight_bytes <= host_budget_bytes
     blowup = 1 << beta
     domains = [1 << (k - i) for i in range(heights)]
     code_dimensions = [rows // blowup for rows in domains]
@@ -145,9 +159,14 @@ def profile_geometry(k: int, heights: int, beta: int, queries: int,
                     "log_blowup": beta, "queries": queries, "columns": columns,
                     "theta": str(theta)},
         "native_sparse_verifier_visible_caps_pass": sparse_admitted,
-        "native_dense_host_visible_caps_pass": dense_admitted,
+        "legacy_xdm03_dense_host_visible_caps_pass": dense_admitted,
+        "native_cas05_bounded_sparse_host_visible_caps_pass": cas05_host_admitted,
         "sparse_fixed_source_wire_bytes_before_witness": sparse_fixed,
-        "dense_fixed_source_wire_bytes_before_witness": dense_fixed,
+        "legacy_xdm03_dense_fixed_source_wire_bytes_before_witness": dense_fixed,
+        "native_cas05_host_merkle_tree_bytes": tree_bytes,
+        "native_cas05_host_logical_borrowed_source_bytes": source_bytes,
+        "native_cas05_host_preflight_estimate_bytes": host_preflight_bytes,
+        "native_cas05_host_preflight_budget_bytes": host_budget_bytes,
         "source_domain_rows_by_height": domains,
         "candidate_code_dimensions_by_height": code_dimensions,
         "published_single_point_small_table_margins_by_height":
@@ -169,7 +188,9 @@ def profile_geometry(k: int, heights: int, beta: int, queries: int,
         "full_single_fold_count": k - beta,
         "short_fold_count": heights,
         "native_profile_or_theorem_admitted": False,
-        "qualification": ("Visible source caps and exact candidate geometry only. "
+        "qualification": ("Visible source caps, CAS05 host tree/source preflight, "
+                          "and exact candidate geometry only; the preflight "
+                          "omits FRI working arrays and proof buffers. "
                           "The source code dimensions are not an authenticated "
                           "S31 AIR table roster. The paper's single-point "
                           "small-table inequality is only a numeric comparator; "

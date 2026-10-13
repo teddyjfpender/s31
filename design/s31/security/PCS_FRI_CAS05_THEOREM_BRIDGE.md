@@ -129,20 +129,23 @@ round count. The 13 omitted full-cascade folds must be removed from any
 short-roster formula, even though the largest fold error remains the first
 one.
 
-This `k=22` example separates two native draft paths at [source commit
-`9cd3f2989`](https://github.com/teddyjfpender/stwo-zig/commit/9cd3f2989).
+This `k=22` example separates the verifier shape and bounded host at
+[reviewed draft commit `234ac67b2`](https://github.com/teddyjfpender/stwo-zig/commit/234ac67b2819e6b102e8d43da93a38a4a902075e).
 The **sparse CAS05 verifier profile** admits `k≤22`, `2≤H≤8`, and up to
 16,384 raw queries, subject to its wire and column bounds; its visible
-height/query caps therefore permit `k=22,H=8,s=232`. The current **host
-prover** still builds the dense XDM03 source commitment, whose profile
-requires `k≤16` and `s·2^H≤2^16`; it cannot produce that large shape.
-Every admitted profile also needs nonzero source columns at each of its `H`
+height/query caps therefore permit `k=22,H=8,s=232`. The current **CAS05
+host prover** uses an XDM04-profile constructor, but builds the full Merkle
+tree and rejects that shape under its 192 MiB tree-plus-source budget. The
+legacy XDM03 constructor separately retains `k≤16` and `s·2^H≤2^16`.
+Every candidate profile also needs nonzero source columns at each of its `H`
 heights. The one-table paper scenario used by the arithmetic tool is not
-an emitted native key or a complete native source roster. At the maximum
-host-source height `k=16`, the same `B=2,H=8` shape has a 128-coefficient
-terminal on 256 points; its full paper fold roster would have 15 rounds,
-seven of which are omitted by the short profile. These are source-level
-geometry observations, not accepted-proof or prover scalability claims.
+an emitted native key or a complete native source roster. The `k=17,H=2`
+host fixture shows that the new path crosses the legacy height
+cap; it does not measure the `k=22,H=8` scenario. At `k=16`, the same
+`B=2,H=8` shape has a 128-coefficient terminal on 256 points; its full paper
+fold roster would have 15 rounds, seven of which are omitted by the short
+profile. These are source-level geometry observations, not accepted-proof or
+prover scalability claims.
 
 For an explicit *paper-only* UDR arithmetic illustration at
 `θ=16383/65536`, `s=232`, `T=2³²`, and caller-supplied `R=26`, the eight
@@ -243,9 +246,9 @@ and zero grinding credit. At `N=2²⁰`, `B=2`, a deliberately tiny one-table
 model with `T=2³²`, `R=26`, `θ=16383/65536`, and `s=232` fits the paper's
 **96-bit work-factor** convention `ε(T)/T≤2⁻⁹⁶`, while its absolute error is
 roughly 64 bits. The current production Gate is configured for 70 raw
-queries, and the CAS05 draft only has small host fixtures. The 232-query
-idealized result does not imply that either native prover fits its cost or
-the theorem.
+queries, while the new height-crossing CAS05 fixture uses `k=17,s=3`.
+The 232-query idealized result does not imply that either native prover
+fits its cost or the theorem.
 
 The [paired OOD sensitivity tool](../../../scripts/release/pcs_fri_paired_ood_bridge.py)
 starts with the **same explicitly idealized** scenario, re-evaluates only the
