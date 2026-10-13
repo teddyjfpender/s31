@@ -54,9 +54,12 @@ modeled authentication.
 ### Narrow source-to-native row admission
 
 `pure-native-rows-certificate.json` joins the checked source-to-relation
-certificate to a fresh native direct-Gate topology for **one public**
-`[m31; N]` input and output, with `N` from 1 through 3 and 1–16 distinct,
-canonically ordered `add`, `sub`, or `mul` SSA nodes. The checker derives a
+certificate to a fresh native direct-Gate topology for either one public
+`[m31; N]` input with `N` from 1 through 3, or two public equal-length
+`[m31; N]` inputs with `N` equal to 1 or 2. The result is one public array
+of the same length, and the graph has 1–16 distinct, canonically ordered
+`add`, `sub`, or `mul` SSA nodes; the public result selects one of those nodes.
+The checker derives a
 complete gate schedule from that source graph, then independently compares
 every gate address, operation selector, multiplicity and fixed-column cell
 with the native topology and component-manifest digests. It also checks exact
@@ -71,8 +74,9 @@ This certificate's capability is
 inspector, verifier and PCS for the claim that the exported root commits to
 the checked columns. It does not prove the witness satisfies the AIR, that
 the native verifier enforces the public input claim, or PCS/FRI soundness.
-Two source inputs cannot enter this checker yet: the native topology inspector
-currently accepts exactly one input. Private inputs, constants, assertions,
+Two public inputs fit within the eight-word ABI only at these lengths:
+`2N` input words plus `N` result words must be at most eight. Returning an
+input directly, private inputs, constants, assertions,
 noncanonical commutative node order, duplicate expressions that native CSE
 would merge, and all other operations are outside this row claim.
 

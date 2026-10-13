@@ -1,4 +1,4 @@
-"""Source-bound native row admission for one public M31 array of 1–3 lanes.
+"""Source-bound native rows for one short public M31 input or two up to 2 lanes.
 
 The four-lane case already has a separate direct-gate certificate. This
 checker reuses its full exported-column/manifest replay, then compares every
@@ -40,13 +40,16 @@ def admitted_ssa(certificate: dict[str, Any]) -> bool:
         return False
     ssa = certificate["ssa"]
     inputs, nodes, lanes = ssa["inputs"], ssa["nodes"], ssa["lane_count"]
-    if (type(lanes) is not int or not 1 <= lanes <= 3 or
-            len(inputs) != 1 or inputs[0]["id"] != 0 or
-            inputs[0]["visibility"] != "public" or
+    input_count = len(inputs)
+    if (type(lanes) is not int or
+            not ((input_count == 1 and 1 <= lanes <= 3) or
+                 (input_count == 2 and 1 <= lanes <= 2)) or
+            any(item["id"] != index or item["visibility"] != "public"
+                for index, item in enumerate(inputs)) or
             not 1 <= len(nodes) <= 16 or ssa["assertions"]):
         return False
     seen: set[tuple[str, int, int]] = set()
-    for index, node in enumerate(nodes, 1):
+    for index, node in enumerate(nodes, input_count):
         op, lhs, rhs = node["op"], node["lhs"], node["rhs"]
         if (node["id"] != index or op not in {"add", "sub", "mul"} or
                 type(lhs) is not int or type(rhs) is not int or
@@ -57,7 +60,10 @@ def admitted_ssa(certificate: dict[str, Any]) -> bool:
         if key in seen:
             return False
         seen.add(key)
-    return type(ssa["output"]) is int and 0 <= ssa["output"] <= len(nodes)
+    # Selecting a raw public input skips the native unpack conversion rows.
+    # The reviewed schedule applies only when the selected value is a node.
+    return (type(ssa["output"]) is int and
+            input_count <= ssa["output"] < input_count + len(nodes))
 
 
 def _read(package: Path, name: str) -> dict[str, Any]:
@@ -72,9 +78,11 @@ def make_certificate(package: Path) -> dict[str, Any]:
     source_certificate = check_source_relation_certificate(
         source_bytes, relation_bytes, source_certificate_bytes)
     if not admitted_ssa(source_certificate):
-        raise UnsupportedPureNativeRows("outside reviewed public 1–3 lane pure graph")
+        raise UnsupportedPureNativeRows("outside reviewed one/two public input pure graph")
     ssa = source_certificate["ssa"]
     lanes = ssa["lane_count"]
+    inputs = ssa["inputs"]
+    input_count = len(inputs)
     manifest, key, report, component, topology = (
         _read(package, name) for name in ("manifest.json", "verification-key.json",
                                      "cost-report.json", "component-manifest.json",
@@ -115,22 +123,28 @@ def make_certificate(package: Path) -> dict[str, Any]:
     expected_abi = {
         "schema": "s31-public-abi-v1",
         "encoding": "eight canonical M31 words, encoded little-endian u32; unused words are zero",
-        "public_inputs": [{"name": ssa["inputs"][0]["name"], "kind": "m31", "length": lanes}],
+        "public_inputs": [{"name": item["name"], "kind": "m31", "length": lanes}
+                          for item in inputs],
         "public_outputs": [{"name": relation["public_outputs"][0],
                             "kind": "m31", "length": lanes}],
     }
     if not same_json_shape(_read(package, "public-abi.json"), expected_abi):
         raise ValueError("short-lane public ABI differs from source")
-    if not same_json_shape(report.get("input_packing"), [{
-            "name": ssa["inputs"][0]["name"], "lanes": lanes,
-            "qm31_wires": 1}]):
+    if not same_json_shape(report.get("input_packing"), [
+            {"name": item["name"], "lanes": lanes, "qm31_wires": 1}
+            for item in inputs]):
         raise ValueError("short-lane input packing differs from source")
-    packed_rows = 2 * (lanes - 1)
+    packed_rows_per_input = 2 * (lanes - 1)
+    packed_rows = input_count * packed_rows_per_input
     expected_map = []
-    for index, name in enumerate([ssa["inputs"][0]["name"],
+    for index, name in enumerate([*(item["name"] for item in inputs),
                                   *(node["name"] for node in ssa["nodes"])]):
-        start = 0 if index == 0 else packed_rows + index - 1
-        end = packed_rows if index == 0 else start + 1
+        if index < input_count:
+            start = index * packed_rows_per_input
+            end = start + packed_rows_per_input
+        else:
+            start = packed_rows + index - input_count
+            end = start + 1
         row = {"name": name, "canonical_id": index,
                "qm31_start": start, "qm31_end": end}
         for component_name in ("eq", "triple_xor", "m31_to_u32", "blake_g"):
@@ -142,11 +156,11 @@ def make_certificate(package: Path) -> dict[str, Any]:
     source_end = packed_rows + len(ssa["nodes"])
     binding_start = source_end + 2 * lanes - 1
     expected_bindings = []
-    for index, name in enumerate((ssa["inputs"][0]["name"],
+    for index, name in enumerate((*(item["name"] for item in inputs),
                                   relation["public_outputs"][0])):
-        start = 0 if index == 0 else lanes
-        conversion_start = source_end if index == 0 else source_end
-        conversion_end = source_end if index == 0 else binding_start
+        start = index * lanes
+        conversion_start = source_end
+        conversion_end = source_end if index < input_count else binding_start
         expected_bindings.append({
             "name": name, "word_start": start, "word_count": lanes,
             "conversion_qm31_start": conversion_start,
@@ -159,7 +173,8 @@ def make_certificate(package: Path) -> dict[str, Any]:
         raise ValueError("short-lane public word projection differs from source")
 
     expected_gates, n_vars, n_rows, source_gates = exact_direct_gate_schedule({
-        "lane_count": lanes, "instructions": ssa["nodes"], "output": ssa["output"]})
+        "lane_count": lanes, "input_count": input_count,
+        "instructions": ssa["nodes"], "output": ssa["output"]})
     actual_gates = replay_direct_topology(topology, component, report, relation_sha256)
     if (not same_json_shape(topology["n_vars"], n_vars) or
             not same_json_shape(topology["first_permutation_row"], n_rows) or

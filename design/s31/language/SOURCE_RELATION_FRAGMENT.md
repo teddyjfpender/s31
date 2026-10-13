@@ -183,7 +183,8 @@ relation/ABI/manifest test fixtures with all affected hashes recomputed.
 Passing this check alone does not validate the compiler's optimizer, circuit
 row schedule, private-input gate allocation, public input binding inside the
 native verifier, AIR constraints, lookup closure, or PCS/FRI soundness. For
-one-public-input, pure 1–3 lane direct-Gate packages, the separate
+one-public-input pure 1–3 lane or two-public-input pure 1–2 lane direct-Gate
+packages, the separate
 `pure-native-rows-certificate.json` adds exact fixed-row admission as described
 in the general correspondence matrix. It does not promote private circuits
 to that profile. A formal theorem and independent checks of the remaining

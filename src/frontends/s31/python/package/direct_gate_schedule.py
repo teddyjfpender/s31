@@ -1,4 +1,4 @@
-"""Independent exact gate schedule for the bounded 1–4 lane direct profile.
+"""Independent exact gate schedule for bounded one/two-input direct profiles.
 
 Only add/sub/mul SSA nodes are admitted; source alias lets are erased before this
 schedule. They request no constants, so the
@@ -150,23 +150,26 @@ class _Constants:
                 self.qm31[value] = result_var
 
 
-def constant_and_padding(n_nodes: int, lanes: int = 4) -> tuple[dict[str, list[dict[str, int]]], int, int]:
+def constant_and_padding(n_nodes: int, lanes: int = 4, input_count: int = 1
+                         ) -> tuple[dict[str, list[dict[str, int]]], int, int]:
     """Return exact constant gates, padding, final variable count and rows."""
-    if not 1 <= n_nodes <= 16 or not 1 <= lanes <= 4:
+    if (not 1 <= n_nodes <= 16 or not 1 <= lanes <= 4 or
+            input_count not in (1, 2) or (input_count == 2 and lanes > 2)):
         raise ValueError("outside bounded direct-gate schedule")
-    first_output = 11 + 3 * lanes + n_nodes
+    extra_input_addresses = (input_count - 1) * (3 * lanes - 2)
+    first_output = 11 + 3 * lanes + extra_input_addresses + n_nodes
     inverse_values = (INV_I, INV_U, INV_IU)
     model = _Constants(
-        next_address=9 + 6 * lanes + n_nodes,
+        next_address=9 + 6 * lanes + extra_input_addresses + n_nodes,
         pending=[(U, 2), (I, 11 + lanes), (IU, 12 + lanes),
                  *((inverse_values[lane - 1], first_output + 3 * lane - 1)
                    for lane in range(1, lanes))],
     )
     model.derive()
     constant_rows = len(model.adds) + len(model.subs) + len(model.muls)
-    # 2*(lanes-1) pack + n source + lanes masks + (lanes-1) inverse
-    # products + 8 ABI copies + lanes guessed-M31 self-products.
-    raw_rows = 5 * lanes + 5 + n_nodes + constant_rows
+    # Each extra input adds 2*(lanes-1) packing gates and `lanes`
+    # guessed-M31 self-products. The eight ABI copies remain fixed.
+    raw_rows = 5 * lanes + 5 + extra_input_addresses + n_nodes + constant_rows
     padded_rows = max(16, 1 << (raw_rows - 1).bit_length())
     for _ in range(padded_rows - raw_rows):
         model.adds.append(gate(1, 1, model.fresh()))
@@ -178,23 +181,36 @@ def exact_direct_gate_schedule(syntax: dict[str, Any]) -> tuple[
     """Independently construct every grouped gate triple for admitted syntax."""
     instructions = syntax["instructions"]
     lanes = syntax.get("lane_count", 4)
-    if type(lanes) is not int or not 1 <= lanes <= 4:
+    input_count = syntax.get("input_count", 1)
+    if (type(lanes) is not int or not 1 <= lanes <= 4 or
+            type(input_count) is not int or input_count not in (1, 2) or
+            (input_count == 2 and lanes > 2)):
         raise ValueError("outside bounded direct-gate lane count")
     gates: dict[str, list[dict[str, int]]] = {
         "add": [], "sub": [], "mul": [], "pointwise_mul": [],
     }
-    raw = list(range(11, 11 + lanes))
     basis = [1, 11 + lanes, 2, 12 + lanes]
-    packed = raw[0]
-    for lane in range(1, lanes):
-        term = 13 + lanes + 2 * (lane - 1)
-        result = term + 1
-        gates["mul"].append(gate(basis[lane], raw[lane], term))
-        gates["add"].append(gate(packed, term, result))
-        packed = result
-
-    wires = {0: packed}
-    next_address = 11 + 3 * lanes
+    raw_inputs: list[list[int]] = []
+    wires: dict[int, int] = {}
+    next_address = 11
+    for input_id in range(input_count):
+        raw = list(range(next_address, next_address + lanes))
+        raw_inputs.append(raw)
+        next_address += lanes
+        if input_id == 0:
+            # The first pack interns i and iu, even for a single active lane.
+            next_address += 2
+        packed = raw[0]
+        for lane in range(1, lanes):
+            term = next_address
+            result = term + 1
+            gates["mul"].append(gate(basis[lane], raw[lane], term))
+            gates["add"].append(gate(packed, term, result))
+            packed = result
+            next_address += 2
+        wires[input_id] = packed
+    if next_address != 11 + 3 * lanes + (input_count - 1) * (3 * lanes - 2):
+        raise AssertionError("invalid bounded input allocation model")
     source_gates: list[dict[str, int | str]] = []
     for node in instructions:
         operation = node["op"]
@@ -218,15 +234,17 @@ def exact_direct_gate_schedule(syntax: dict[str, Any]) -> tuple[
             next_address += 1
             gates["mul"].append(gate(masked, inverse, result))
         public_result.append(result)
-    if next_address != 9 + 6 * lanes + len(instructions):
+    if next_address != (9 + 6 * lanes +
+                        (input_count - 1) * (3 * lanes - 2) + len(instructions)):
         raise AssertionError("invalid bounded-lane allocation model")
 
-    for index, source in enumerate([*raw, *public_result,
-                                    *([0] * (8 - 2 * lanes))], 3):
+    public_words = [word for raw in raw_inputs for word in raw] + public_result
+    for index, source in enumerate([*public_words,
+                                    *([0] * (8 - len(public_words)))], 3):
         gates["add"].append(gate(source, 0, index))
-    constants, n_vars, rows = constant_and_padding(len(instructions), lanes)
+    constants, n_vars, rows = constant_and_padding(len(instructions), lanes, input_count)
     for kind, rows_for_kind in constants.items():
         gates[kind].extend(rows_for_kind)
-    for address in raw:
+    for address in (word for raw in raw_inputs for word in raw):
         gates["pointwise_mul"].append(gate(address, 1, address))
     return gates, n_vars, rows, source_gates
