@@ -35,7 +35,8 @@ The kernel theorem `checked_relation_graph` states these equalities and the
 helper declaration order for every
 input accepted by `checkRelation`; it is conditional on the validator result.
 `checkPackage` additionally checks source-derived public ABI bytes and the
-lowering label. The decoder requires every field, rejects unknown fields,
+lowering label; `checked_package_graph` carries the same graph theorem through
+that exact package entry point. The decoder requires every field, rejects unknown fields,
 canonicalizes JSON spelling, and excludes the record-v2 arm. It bounds source,
 tree, certificate, relation, expression depth, lanes, helpers, steps, and SSA
 nodes. The executable is a standalone opt-in audit. It is not called by

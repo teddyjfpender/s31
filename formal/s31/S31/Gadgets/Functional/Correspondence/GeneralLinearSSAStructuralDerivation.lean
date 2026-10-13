@@ -414,6 +414,11 @@ structure CheckedPackage where
   joined : Checked
   static : StaticPackage
 
+private def expectedEncoding (tree : Tree) : String :=
+  if tree.lowering == "gate" then
+    "eight little-endian u32 words; unused words are zero"
+  else GeneralLinearSSAPublicABI.encoding
+
 /-- The package variant also checks the source-derived public ABI and ties
 the structural artifact's lowering label to the exact accepted ABI encoding. -/
 def checkPackage (sourceBytes : List Nat) (treeBytes certificateBytes
@@ -427,10 +432,65 @@ def checkPackage (sourceBytes : List Nat) (treeBytes certificateBytes
           match GeneralLinearSSAPublicABI.parseDescriptor abiBytes with
           | .error error => .error error
           | .ok descriptor =>
-              let expected := if joined.tree.lowering == "gate" then
-                "eight little-endian u32 words; unused words are zero"
-                else GeneralLinearSSAPublicABI.encoding
-              if descriptor.encoding = expected then .ok ⟨joined, static⟩
+              if descriptor.encoding = expectedEncoding joined.tree then
+                .ok ⟨joined, static⟩
               else .error "structural lowering and public ABI encoding differ"
+
+/-- Package admission actually calls the source/tree relation validator and
+the source-derived public ABI validator on the same literal bytes. -/
+theorem checked_package_relation (sourceBytes : List Nat)
+    (treeBytes certificateBytes relationBytes abiBytes : String)
+    (checked : CheckedPackage)
+    (h : checkPackage sourceBytes treeBytes certificateBytes relationBytes
+      abiBytes = .ok checked) :
+    checkRelation sourceBytes treeBytes certificateBytes relationBytes =
+      .ok checked.joined ∧
+    checkStatic sourceBytes certificateBytes relationBytes abiBytes =
+      .ok checked.static := by
+  unfold checkPackage at h
+  cases hrel : checkRelation sourceBytes treeBytes certificateBytes relationBytes with
+  | error error => simp [hrel] at h
+  | ok joined =>
+      cases hstatic : checkStatic sourceBytes certificateBytes relationBytes
+          abiBytes with
+      | error error => simp [hrel, hstatic] at h
+      | ok static =>
+          cases hdesc : GeneralLinearSSAPublicABI.parseDescriptor abiBytes with
+          | error error => simp [hrel, hstatic, hdesc] at h
+          | ok descriptor =>
+              by_cases hencoding : descriptor.encoding = expectedEncoding joined.tree
+              · have heq : (⟨joined, static⟩ : CheckedPackage) = checked := by
+                  simpa [hrel, hstatic, hdesc, hencoding] using h
+                have hj : joined = checked.joined :=
+                  congrArg CheckedPackage.joined heq
+                have hs : static = checked.static :=
+                  congrArg CheckedPackage.static heq
+                constructor
+                · simpa [← hj] using hrel
+                · simpa [← hs] using hstatic
+              · simp [hrel, hstatic, hdesc, hencoding] at h
+
+/-- The executable's successful package result inherits the exact source,
+tree, relation, node, assertion, and helper-order join. -/
+theorem checked_package_graph (sourceBytes : List Nat)
+    (treeBytes certificateBytes relationBytes abiBytes : String)
+    (checked : CheckedPackage)
+    (h : checkPackage sourceBytes treeBytes certificateBytes relationBytes
+      abiBytes = .ok checked) :
+    deriveSSA checked.joined.tree = some checked.joined.source.ssa ∧
+    GeneralLinearSSAEffectsSourceBytes.parseSource sourceBytes =
+      some checked.joined.source.ssa ∧
+    GeneralLinearSSAPublicABI.parseRelation relationBytes =
+      .ok checked.joined.source.program ∧
+    GeneralLinearSSAPublicABI.expectedEffectsNodes checked.joined.source.ssa =
+      some checked.joined.source.program.nodes ∧
+    GeneralLinearSSAPublicABI.expectedEffectsAssertions checked.joined.source.ssa =
+      some checked.joined.source.program.assertions ∧
+    GeneralLinearSSAEffectsSourceBytes.parseSourceHelperNames sourceBytes =
+      some (checked.joined.tree.helpers.map (·.name)) :=
+  checked_relation_graph sourceBytes treeBytes certificateBytes relationBytes
+    checked.joined.tree checked.joined.source
+    (checked_package_relation sourceBytes treeBytes certificateBytes
+      relationBytes abiBytes checked h).1
 
 end S31.Functional.Correspondence.GeneralLinearSSAStructuralDerivation
