@@ -26,6 +26,7 @@ from scripts.s31_formal_lib.checks import (
     inventory, render_coverage,
 )
 from scripts.s31_formal_lib.protocol_order import check_protocol_order
+from scripts.s31_formal_lib.pcs_fri_order import check_pcs_fri_order
 from scripts.riscv_refinement import _skip_lean_string, _strip_lean_comments
 from scripts.riscv_refinement_lib.model import RefinementError
 
@@ -304,6 +305,16 @@ BINDINGS = [
     "deps/stwo-zig/src/prover/prove.zig",
     "deps/stwo-zig/src/core/verifier.zig",
     "deps/stwo-zig/src/core/pcs/verifier.zig",
+    "deps/stwo-zig/src/core/fri.zig",
+    "deps/stwo-zig/src/core/fri/config.zig",
+    "deps/stwo-zig/src/core/fri/folding.zig",
+    "deps/stwo-zig/src/core/fri/merkle_queries.zig",
+    "deps/stwo-zig/src/core/queries.zig",
+    "deps/stwo-zig/src/core/channel/blake2s.zig",
+    "deps/stwo-zig/src/core/vcs_lifted/blake2_merkle.zig",
+    "deps/stwo-zig/src/core/vcs_lifted/channel_profile.zig",
+    "deps/stwo-zig/src/core/vcs_lifted/verifier.zig",
+    "scripts/s31_formal_lib/pcs_fri_order.py",
     "deps/stwo-zig/src/core/pcs/quotients/fri_answers.zig",
     "deps/stwo-zig/src/core/pcs/quotients/samples.zig",
     "deps/stwo-zig/src/core/tests/borrowed_pcs_capture_success_test.zig",
@@ -749,7 +760,9 @@ def main() -> None:
     if args.report and (args.write or not all((args.audit, args.parity, args.controls, args.kernel_log))):
         parser.error("--report requires --audit, --kernel-log, --parity and --controls; exclude --write")
     check_protocol_order(ROOT)
+    check_pcs_fri_order(ROOT)
     print("S31 protocol order: main and interaction commitments precede their challenge draws")
+    print("S31 PCS/FRI order: roots, challenges, PoW, raw queries and normalization bound")
     failures = []
     for path, expected in generated().items():
         if args.write:

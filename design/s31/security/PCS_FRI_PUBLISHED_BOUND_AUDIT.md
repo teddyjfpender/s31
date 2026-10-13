@@ -1,0 +1,119 @@
+# Native PCS/FRI: published-bound audit
+
+This note covers the S31 profile pinned to stwo-zig
+`fde847ea374ade2ae07ef5b3a42ba07e15655b64`. It does **not** assign a
+whole-proof security level. It separates the native checks visible in source
+from the hypotheses needed to apply a published STARK soundness theorem.
+
+## What the verifier actually fixes
+
+The selected mixed N1–N8 profile uses 26 FRI/PCS proof-of-work bits, log
+blowup 1 (factor 2), 70 raw queries with replacement, a constant last-layer
+polynomial, and fold step 1. The gate build also permits an explicitly
+selected fold step 4. The existing [conditional error ledger](MIXED_N1_N8_CONDITIONAL_ERROR_LEDGER_2026-10-12.md)
+identifies the source owners, the separate 20-bit interaction nonce, and the
+terms still missing from a whole-proof bound.
+
+The pinned `Blake2sM31MerkleChannel` hashes a 32-byte digest concatenated
+with a 32-byte root for each root absorption. It resets the draw counter on
+absorption. A draw hashes the digest, the little-endian 32-bit counter, and a
+zero byte. The PCS verifier absorbs claimed OODS values before DEEP
+randomness; FRI absorbs each layer root before drawing its folding challenge;
+it absorbs the final polynomial and the verified PoW nonce before drawing
+queries. The [source guard](../../../scripts/s31_formal_lib/pcs_fri_order.py)
+checks these barriers against the pinned implementation. The
+[Lean model](../../../formal/s31/S31/Gadgets/PcsFri/QueryAndTranscript.lean)
+proves that fixed-state root and draw-counter *hash inputs* retain their
+payloads, and that sorting/deduplicating or folding the query set cannot omit
+a predicate for any raw sampled position. Neither result proves hash
+collision resistance, independent Fiat–Shamir randomness, or low-degree
+testing. The BLAKE2s channel's 32-bit draw counter wraps; a full transcript
+argument must also bound the number of draws below that wrap point.
+
+## Why `26 + 70 = 96` is not a theorem
+
+The upstream [Stwo Cairo README](https://github.com/starkware-libs/stwo-cairo#security--soundness)
+calls its 26-bit PoW, blowup-2, 70-query target **96 bits of conjectured
+soundness**. The native `securityBits()` calculation is `pow_bits +
+log_blowup_factor * n_queries`; it only calculates that heuristic.
+Call sites that print or gate on `securityBits()` should label it a
+**nominal work-plus-query score**, never a proven lower bound on security.
+
+In [Circle STARKs, Appendix B, Theorem 6 and Remark 26](https://eprint.iacr.org/2024/278.pdf),
+the proven Johnson-regime query term is `epsilon_Q = alpha^s`, with
+`alpha = (1 + 1/(2m)) * sqrt(rho)`, `m >= 3`, and circle-code rate
+`rho = (N+1)/|D|`. For blowup 2, `rho` is slightly **above** 1/2.
+Consequently `alpha > 1/sqrt(2)` and 70 queries provide **less than 35
+bits in this published query bound**. With `m=3` and negligible finite-domain
+correction, the term is about `2^-19.43`. Even *optimistically* granting the
+full 26 PoW bits as a multiplier of that error would yield fewer than 61
+bits in the `m -> infinity` limit, or about 45.4 bits for `m=3`.
+Such addition itself needs a random-oracle/adversary-budget proof; PoW bits
+cannot simply be added to every error term.
+
+The complete paper bound is stricter. Theorem 6 includes commitment/folding
+error `epsilon_C` in addition to `alpha^s`. One leading upper-bound term from
+Remark 26 is
+
+```text
+(L - 2/3) * (m + 1/2)^7 / (3 * (rho_minus)^(3/2)) * |D|^2 / |F|
+```
+
+where `L` is the batch width, `rho_minus = 1/blowup`, and this implementation
+uses `|F| = (2^31-1)^4` for QM31 challenges. As a deliberately favorable
+arithmetic illustration, take `N=512`, `L=1`, and `m=3`. This single term
+is approximately `2^-93.0` for blowup 2, `2^-89.5` for blowup 4, and
+`2^-86.0` for blowup 8. Actual S31 batch widths and the remaining terms
+can make the paper's *upper bound* worse. These figures are not attacks or
+estimates of real prover success; they demonstrate that increasing the query
+count alone cannot certify a 96-bit **proven** bound from this theorem.
+
+Appendix B, Theorem 7 adds AIR composition and OODS terms, including
+`ell_plus * ((C-1)/|F| + d*(N+2)/(|F|+1-|D|))`; a valid substitution needs
+the emitted constraint count `C`, degree `d`, list-size bound, and every
+component's geometry. The [official Stwo whitepaper summary](https://github.com/starkware-libs/stwo/blob/dev/.agents/papers/llm/Stwo_Whitepaper.llm.md)
+also records a BCS/Fiat–Shamir bound of the form
+`(T+R)*max_i epsilon_i + 3*(T^2+1)/2^lambda`, for a stated adversary hash
+budget `T` and number of rounds `R`. Its implementation notes flag a
+non-squaring-consistent FRI query variant for which the writeup does not give
+a complete list-decoding-regime proof.
+
+## What a conservative profile requires
+
+Before advertising a proven security number, an implementation-specific
+reduction must map the emitted AIR, DEEP quotients, lifted multi-height PCS,
+Merkle opening layout, raw-query distribution, and Fiat–Shamir schedule to
+the theorem's exact protocol. It must check the domain-size and degree
+conditions for each program, include the lookup/interaction argument, and
+choose an explicit adversary budget. Fold step 4 additionally needs a
+separate reduction: one commitment/challenge is used across a group of
+butterfly folds, so it is not automatically the paper's sequence of
+independent single-fold challenges.
+
+For any proposed `N, C, d, L, m, T`, a conservative parameter tool should
+evaluate **all** of the published terms with exact rational arithmetic and
+reject a profile if a theorem precondition fails. It may suggest more
+queries and blowup, but the QM31 `|D|^2/|F|` term can then dominate. Larger
+circuits or a high adversary budget may require a wider challenge field or
+a different proved protocol. No fixed `pow=26, queries=70, blowup=2`
+tuple can be certified for every S31 program by parameter arithmetic alone.
+
+Reproduce the illustrative query and leading commitment-term arithmetic:
+
+```sh
+python3 - <<'PY'
+from math import log2
+p, N, m, L, s = 2**31-1, 512, 3, 1, 70
+for blowup in (2, 4, 8):
+    D = N*blowup
+    rho = (N+1)/D
+    alpha = (1+1/(2*m))*rho**0.5
+    leading = (L-2/3)*(m+0.5)**7/(3*(1/blowup)**1.5)*D**2/p**4
+    print(blowup, -s*log2(alpha), -log2(leading))
+PY
+```
+
+The two printed columns are query-term bits and leading commitment-term
+bits in an **idealized application of the paper's bound**, not a bound for
+the S31 implementation. Exact program geometry and the missing protocol
+reduction remain blockers.
