@@ -39,6 +39,7 @@ from scripts.s31_formal_lib.pcs_fri_layer import check_pcs_fri_layer
 from scripts.s31_formal_lib.pcs_fri_raw_refinement import check_pcs_fri_raw_refinement
 from scripts.s31_formal_lib.pcs_fri_operational_admission import check_pcs_fri_operational_admission
 from scripts.s31_formal_lib.pcs_fri_deep_custody import check_pcs_fri_deep_custody
+from scripts.s31_formal_lib.sha_release_capture import check_sha_release_capture
 from scripts.riscv_refinement import _skip_lean_string, _strip_lean_comments
 from scripts.riscv_refinement_lib.model import RefinementError
 
@@ -383,6 +384,15 @@ BINDINGS = [
     "src/frontends/s31/runtime/native_verifier.zig",
     "src/frontends/s31/runtime/fri_capture_admission.zig",
     "src/frontends/s31/runtime/deep_capture_admission.zig",
+    "src/frontends/s31/sha/verification/pcs_capture_admission.zig",
+    "src/frontends/s31/sha/verification/sha_joint_native_verifier.zig",
+    "src/frontends/s31/sha/verification/sha_shift_circuit_native_verifier.zig",
+    "src/frontends/s31/sha/verification/sha_fused_circuit_native_verifier.zig",
+    "src/frontends/s31/sha/package/sha_package_runtime.zig",
+    "src/frontends/s31/sha/package/sha_shift_package_runtime.zig",
+    "src/frontends/s31/sha/package/sha_fused_package_runtime.zig",
+    "scripts/s31_formal_lib/sha_release_capture.py",
+    "scripts/tests/test_sha_release_capture.py",
     "src/frontends/s31/sha/proving/sha_direct_circuit_prover.zig",
     "src/frontends/s31/sha/verification/sha_direct_circuit_native_verifier.zig",
     "src/core/fields/m31.zig",
@@ -837,9 +847,11 @@ def main() -> None:
     check_pcs_fri_raw_refinement(ROOT)
     check_pcs_fri_operational_admission(ROOT)
     check_pcs_fri_deep_custody(ROOT)
+    check_sha_release_capture(ROOT)
     print("S31 protocol order: main and interaction commitments precede their challenge draws")
     print("S31 PCS/FRI order: roots, challenges, PoW, raw queries and normalization bound")
     print("S31 PCS/FRI challenge custody: DEEP, PoW nonce and FRI alphas source-pinned")
+    print("S31 SHA release capture: raw DEEP, FRI fold and Merkle replay paths bound")
     print("S31 M31 raw query distribution: reduction and low-bit mask source bound")
     print("S31 lifted Merkle capture: range, siblings, shifts and root-before-publication bound")
     print("S31 FRI packed Merkle binding: leaf slots and upper path custody bound")

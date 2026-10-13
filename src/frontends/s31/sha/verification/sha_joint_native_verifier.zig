@@ -12,6 +12,7 @@ const sha = @import("s31_sha_provider");
 const caller = @import("../air/sha_caller_air.zig");
 const profile_mod = @import("../config/sha_joint_profile.zig");
 const envelope = @import("../package/sha_joint_envelope.zig");
+const pcs_capture_admission = @import("pcs_capture_admission.zig");
 
 const QM31 = core.fields.qm31.QM31;
 const M31 = core.fields.m31.M31;
@@ -246,6 +247,7 @@ pub fn verify(allocator: std.mem.Allocator, admission: Admission, raw: []const u
     var capture: core.verifier.ProofCapture(H) = undefined;
     try core.verifier.verifyBorrowedExWithProofCapture(H, MC, allocator, &handles, &channel, &scheme, &stark, true, &capture);
     defer capture.deinit(allocator);
+    try pcs_capture_admission.validate(H, allocator, pcs, capture);
 }
 
 /// The verifier parses only these pinned bytes. This helper makes the bundle
