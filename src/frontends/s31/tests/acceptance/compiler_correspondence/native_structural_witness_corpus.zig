@@ -10,6 +10,52 @@ const s31 = @import("stwo_s31_prototype");
 
 const QM31 = core.fields.qm31.QM31;
 
+fn equalItems(comptime T: type, left: []const T, right: []const T) bool {
+    if (left.len != right.len) return false;
+    for (left, right) |a, b| if (!std.meta.eql(a, b)) return false;
+    return true;
+}
+
+/// Compare the entire gate graph, including the output and permutation
+/// rosters. A row count alone permits a changed opcode or operand address.
+fn sameCircuitGraph(a: *const circuit.builder.Circuit, b: *const circuit.builder.Circuit) bool {
+    return a.n_vars == b.n_vars and
+        equalItems(circuit.builder.circuit.BinaryGate, a.add.items, b.add.items) and
+        equalItems(circuit.builder.circuit.BinaryGate, a.sub.items, b.sub.items) and
+        equalItems(circuit.builder.circuit.BinaryGate, a.mul.items, b.mul.items) and
+        equalItems(circuit.builder.circuit.BinaryGate, a.pointwise_mul.items, b.pointwise_mul.items) and
+        equalItems(circuit.builder.circuit.EqGate, a.eq.items, b.eq.items) and
+        equalItems(circuit.builder.circuit.TripleXorGate, a.triple_xor.items, b.triple_xor.items) and
+        equalItems(circuit.builder.circuit.M31ToU32Gate, a.m31_to_u32.items, b.m31_to_u32.items) and
+        equalItems(circuit.builder.circuit.BlakeGGate, a.blake_g_gate.items, b.blake_g_gate.items) and
+        std.mem.eql(u32, a.permutation.ends.items, b.permutation.ends.items) and
+        std.mem.eql(u32, a.permutation.inputs.items, b.permutation.inputs.items) and
+        std.mem.eql(u32, a.permutation.outputs.items, b.permutation.outputs.items) and
+        std.mem.eql(u32, a.output.items, b.output.items);
+}
+
+fn sameMaps(a: *const s31.relation_compiler.Maps, b: *const s31.relation_compiler.Maps) bool {
+    if (!equalItems(s31.relation_compiler.Span, a.nodes.items, b.nodes.items) or
+        !equalItems(s31.relation_compiler.AssertionSpan, a.assertions.items, b.assertions.items) or
+        !std.meta.eql(a.finalization, b.finalization) or
+        a.node_wires.items.len != b.node_wires.items.len or
+        a.bindings.items.len != b.bindings.items.len) return false;
+    for (a.node_wires.items, b.node_wires.items) |left, right| {
+        if (left.id != right.id or !std.mem.eql(u32, left.wires, right.wires)) return false;
+    }
+    for (a.bindings.items, b.bindings.items) |left, right| {
+        if (!std.mem.eql(u8, left.name, right.name) or
+            left.word_start != right.word_start or left.word_count != right.word_count or
+            left.conversion_qm31_start != right.conversion_qm31_start or
+            left.conversion_qm31_end != right.conversion_qm31_end or
+            left.conversion_m31_to_u32_start != right.conversion_m31_to_u32_start or
+            left.conversion_m31_to_u32_end != right.conversion_m31_to_u32_end or
+            left.binding_qm31_start != right.binding_qm31_start or
+            left.binding_qm31_end != right.binding_qm31_end) return false;
+    }
+    return true;
+}
+
 const Node = struct {
     id: u32,
     name: ?[]const u8 = null,
@@ -30,6 +76,8 @@ const Case = struct {
     expected_valid: bool,
     expected_circuit_valid: bool,
     expected_public_match: bool,
+    tamper_extra_gate_for_test: bool = false,
+    tamper_changed_gate_for_test: bool = false,
 };
 const Corpus = struct { schema: []const u8, cases: []Case };
 
@@ -51,6 +99,48 @@ fn checkNodeWords(label: []const u8, values: []const QM31, expected: Node, addre
     const actual = laneWords(values[address]);
     if (!std.mem.eql(u32, actual[0..expected.words.len], expected.words))
         return fail(label, "compiled node value differs from source equation");
+}
+
+fn isZeroConstant(nodes: []const s31.canonical.Node, id: u32) bool {
+    return id < nodes.len and nodes[id].tag == .constant and nodes[id].constant.? == 0;
+}
+
+/// One canonical packed arithmetic node must own exactly its one primitive
+/// gate. The only admitted zero-row arithmetic node is add with the builder's
+/// literal-zero peephole; its result must alias the other operand wire.
+fn checkCanonicalSpans(
+    label: []const u8,
+    nodes: []const s31.canonical.Node,
+    maps: *const s31.relation_compiler.Maps,
+) !void {
+    if (maps.nodes.items.len != nodes.len or maps.node_wires.items.len != nodes.len)
+        return fail(label, "canonical node span count differs");
+    for (nodes, maps.nodes.items, maps.node_wires.items, 0..) |node, span, wire, id| {
+        if (span.id != id or wire.id != id or wire.wires.len != 1 or
+            span.qm31_end < span.qm31_start or span.eq_end < span.eq_start or
+            span.m31_to_u32_end < span.m31_to_u32_start or
+            span.triple_xor_end < span.triple_xor_start or span.blake_g_end < span.blake_g_start)
+            return fail(label, "canonical node span malformed");
+        const rows = span.qm31_end - span.qm31_start;
+        switch (node.tag) {
+            .constant => if (rows != 0) return fail(label, "constant node emitted unexpected arithmetic gate"),
+            .add, .sub, .mul, .add_const, .mul_const => {
+                const zero_left = node.tag == .add and isZeroConstant(nodes, node.lhs.?);
+                const zero_right = node.tag == .add and isZeroConstant(nodes, node.rhs.?);
+                const expected_rows: usize = if (zero_left or zero_right) 0 else 1;
+                if (rows != expected_rows or span.eq_start != span.eq_end or
+                    span.m31_to_u32_start != span.m31_to_u32_end or
+                    span.triple_xor_start != span.triple_xor_end or span.blake_g_start != span.blake_g_end)
+                    return fail(label, "canonical arithmetic node has extra or missing gates");
+                if (expected_rows == 0) {
+                    const other_id = if (zero_left) node.rhs.? else node.lhs.?;
+                    if (wire.wires[0] != maps.node_wires.items[other_id].wires[0])
+                        return fail(label, "elided zero addition did not alias operand");
+                }
+            },
+            else => return fail(label, "canonical node outside native structural subset"),
+        }
+    }
 }
 
 fn checkGate(
@@ -95,6 +185,11 @@ fn checkGate(
     if (constant_mode and output == lhs and
         ((is_add and expected.constant.? == 0) or
             (is_mul and expected.constant.? == 1))) return;
+    if (is_add and !constant_mode and canonical_nodes[canonical_id].tag == .add) {
+        const canonical = canonical_nodes[canonical_id];
+        if ((isZeroConstant(canonical_nodes, canonical.lhs.?) and output == rhs.?) or
+            (isZeroConstant(canonical_nodes, canonical.rhs.?) and output == lhs)) return;
+    }
     if (constant_mode and is_mul and expected.constant.? == 0 and
         ctx.values()[output].isZero()) return;
     var found = false;
@@ -140,19 +235,21 @@ fn checkCase(allocator: std.mem.Allocator, item: Case) !void {
     defer maps.deinit(allocator);
     var witness = try s31.relation_compiler.compileDirectWithSpans(QM31, allocator, program.value, assignment.value, &maps, false);
     defer witness.deinit();
-    if (witness.circuit.n_vars != topology.circuit.n_vars or
-        witness.circuit.nQm31OpsRows() != topology.circuit.nQm31OpsRows() or
-        maps.node_wires.items.len != ir.nodes.len or
-        topology_maps.node_wires.items.len != maps.node_wires.items.len)
-    {
-        std.debug.print("n_vars {d}/{d}; rows {d}/{d}; node wires {d}/{d}/{d}\n", .{
-            witness.circuit.n_vars,         topology.circuit.n_vars,
-            witness.circuit.nQm31OpsRows(), topology.circuit.nQm31OpsRows(),
-            maps.node_wires.items.len,      topology_maps.node_wires.items.len,
-            item.expected_nodes.len,
-        });
-        return fail(item.label, "compiled topology or node count differs");
+    // Deliberate adversarial controls for the acceptance runner. These gates
+    // satisfy zero = zero, so checking only gate validity would miss them.
+    if (item.tamper_extra_gate_for_test)
+        try witness.circuit.add.append(allocator, .{ .in0 = 0, .in1 = 0, .out = 0 });
+    if (item.tamper_changed_gate_for_test) {
+        if (witness.circuit.add.items.len == 0) return fail(item.label, "no add gate to tamper");
+        witness.circuit.add.items[0].in0 = 0;
     }
+    if (!sameCircuitGraph(&witness.circuit, &topology.circuit) or
+        !sameMaps(&maps, &topology_maps) or
+        !std.mem.eql(u128, witness.constants.keys(), topology.constants.keys()) or
+        !equalItems(circuit.builder.Var, witness.constantVars(), topology.constantVars()) or
+        maps.node_wires.items.len != ir.nodes.len)
+        return fail(item.label, "witness and witness-free gate graphs differ");
+    try checkCanonicalSpans(item.label, ir.nodes, &maps);
     if (ir.source_map.len != program.value.inputs.len + item.expected_nodes.len)
         return fail(item.label, "canonical source map length differs");
     if (item.expected_output_source_id) |source_id| {

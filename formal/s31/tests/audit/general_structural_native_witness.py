@@ -50,6 +50,12 @@ CASES = (
      b"let z = zero + splat<2>(7_m31); assert_eq(z,y); z }",
      {"public_inputs": {"x": [P - 1, 3]}, "private_inputs": {"y": [7, 7]},
       "public_outputs": {"z": [7, 7]}}),
+    ("zero_add_peephole", b"circuit zero_add(public x: [m31; 2], "
+     b"private y: [m31; 2]) -> public [m31; 2] { "
+     b"let zero = x .* splat<2>(0_m31); let z = zero + y; "
+     b"assert_eq(z,y); z }",
+     {"public_inputs": {"x": [P - 1, 3]}, "private_inputs": {"y": [7, 9]},
+      "public_outputs": {"z": [7, 9]}}),
     ("tuple_helper", source("helper_tuple", 2),
      {"public_inputs": {"x": [7, 11]}, "private_inputs": {"y": [3, 5]},
       "public_outputs": {"z": [4, 6]}}),
@@ -149,8 +155,16 @@ def main() -> None:
                 raise AssertionError(f"wrong native CSE map rejection: {exc}") from exc
         else:
             raise AssertionError("native wrong canonical source map accepted")
-    print("generic structural/native audit: six source families accepted; "
-          "four Lean and three native resealed mutations rejected")
+        for field in ("tamper_extra_gate_for_test", "tamper_changed_gate_for_test"):
+            try:
+                native_check(raw, inputs, nodes, work, **{field: True})
+            except ValueError as exc:
+                if "witness and witness-free gate graphs differ" not in str(exc):
+                    raise AssertionError(f"wrong gate graph rejection: {exc}") from exc
+            else:
+                raise AssertionError(f"native {field} accepted")
+    print("generic structural/native audit: seven source families accepted; "
+          "four Lean and five native resealed mutations rejected")
 
 
 if __name__ == "__main__":
