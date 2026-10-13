@@ -883,7 +883,12 @@ fn inspect(allocator: std.mem.Allocator, source: relation.Program) !void {
             chip_request,
         );
         if (!chip_mode) generated_sparse_roster = try sparse_component_roster.generate(
-            allocator, &pp, source_digest, ir.sha256, root, circuit_hash,
+            allocator,
+            &pp,
+            source_digest,
+            ir.sha256,
+            root,
+            circuit_hash,
             cpu.air.bundle_sha256,
         );
         trace_log = pp.traceLogSize();
@@ -901,7 +906,12 @@ fn inspect(allocator: std.mem.Allocator, source: relation.Program) !void {
         circuit_hash = try circuit.common.circuit_hash.hostCircuitHash(component_logs, 1, root);
         if (!chip_mode and source.proof_mode != .blinded) {
             generated_gate_roster = try gate_component_roster.generate(
-                allocator, &pp, source_digest, ir.sha256, root, circuit_hash,
+                allocator,
+                &pp,
+                source_digest,
+                ir.sha256,
+                root,
+                circuit_hash,
                 cpu.air.bundle_sha256,
             );
         }
@@ -1015,12 +1025,38 @@ fn eligibleTwoPublicInputsTopology(allocator: std.mem.Allocator, source: relatio
     return output.kind == .m31 and output.length == left.length;
 }
 
+fn eligibleScalarRecordV2Topology(allocator: std.mem.Allocator, source: relation.Program) !bool {
+    // Fixed columns contain no assignment or private witness values. This
+    // diagnostic is limited to the exact-source Lean record fragment; its
+    // independent package admission still happens outside this command.
+    if (source.version != 2 or source.public_abi == null or
+        source.inputs.len == 0 or source.inputs.len > 8 or
+        source.nodes.len == 0 or source.nodes.len > 8 or
+        source.assertions.len != 0 or source.public_outputs.len == 0 or
+        source.public_outputs.len > 4) return false;
+    for (source.inputs) |input| {
+        if (input.kind != .m31 or input.length != 1) return false;
+    }
+    for (source.nodes) |node| {
+        if (node.op != .add and node.op != .mul) return false;
+    }
+    for (source.public_outputs) |name| {
+        const shape = (try source.shapeOf(allocator, name)) orelse return false;
+        if (shape.kind != .m31 or shape.length != 1) return false;
+    }
+    return true;
+}
+
 fn inspectDirectTopology(allocator: std.mem.Allocator, source: relation.Program) !void {
     // The command is deliberately bounded: package admission invokes it only
     // for the small, independently parsed source fragment.
-    if (source.version != 1 or source.nodes.len > 16 or
-        source.proof_mode != .transparent or
-        (source.inputs.len != 1 and !(try eligibleTwoPublicInputsTopology(allocator, source))))
+    if (source.proof_mode != .transparent or
+        !(if (source.version == 2)
+            try eligibleScalarRecordV2Topology(allocator, source)
+        else
+            source.version == 1 and source.nodes.len <= 16 and
+                (source.inputs.len == 1 or
+                    try eligibleTwoPublicInputsTopology(allocator, source))))
         return error.UnsupportedTopologyInspection;
     var ctx = try s31.relation_compiler.compileDirect(circuit.builder.NoValue, allocator, source, null, false);
     defer ctx.deinit();
@@ -4283,7 +4319,12 @@ fn validateCompiledKey(allocator: std.mem.Allocator, source: relation.Program, k
         );
         if (key.sparse_component_roster_sha256) |sealed| {
             var generated = try sparse_component_roster.generate(
-                allocator, &pp, source_digest, ir_digest, expected_root, expected_hash,
+                allocator,
+                &pp,
+                source_digest,
+                ir_digest,
+                expected_root,
+                expected_hash,
                 cpu.air.bundle_sha256,
             );
             defer generated.deinit();
@@ -4301,7 +4342,12 @@ fn validateCompiledKey(allocator: std.mem.Allocator, source: relation.Program, k
         expected_hash = try circuit.common.circuit_hash.hostCircuitHash(component_logs, 1, expected_root);
         if (key.gate_component_roster_sha256) |sealed| {
             var generated = try gate_component_roster.generate(
-                allocator, &pp, source_digest, ir_digest, expected_root, expected_hash,
+                allocator,
+                &pp,
+                source_digest,
+                ir_digest,
+                expected_root,
+                expected_hash,
                 cpu.air.bundle_sha256,
             );
             defer generated.deinit();
