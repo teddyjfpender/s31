@@ -104,6 +104,14 @@ denominator at every base-circle row. This does not prove the compiled Zig
 operations implement the modeled field, nor that Fiat–Shamir samples seeds
 uniformly from it.
 
+[`QM31FieldInstance.lean`](QM31FieldInstance.lean) transports the field laws
+from the AIR's four-coordinate quadratic tower to the native-shaped QM31
+coefficient structure. Its addition, one, and square agree with the explicit
+native-shaped formulas. Consequently, a field-level `x²+y²=1` circle equation
+implies all four coefficient equations used by the OOD argument. This is an
+algebraic bridge between models; compiled Zig execution and the channel's
+sampling distribution remain separate obligations.
+
 [`NativeTowerInverse.lean`](NativeTowerInverse.lean) proves the checked
 quadratic inverse formula for both modeled native towers. A nonzero CM31
 coefficient pair has denominator `a²+b² ≠ 0`; a nonzero QM31 pair over the
