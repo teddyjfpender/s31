@@ -4,6 +4,7 @@
     "deps/stwo-zig/src/core/fri/config.zig": "69508e1f697dbf3adbe6748383aed86d937cc09d0a633cde0f9d5e6281e3149c",
     "deps/stwo-zig/src/core/pcs/verifier.zig": "e119335172e17db5fd1345f476c7f6ad7fdf67e394a5b18d5c2085e892ffe3d5",
     "design/s31/security/MIXED_N1_N8_CONDITIONAL_ERROR_LEDGER_2026-10-12.md": "1f55450e5750b8c7cd9d88714c0213c9f1f894a8457e5c4c7379757b181925f9",
+    "design/s31/security/PCS_FRI_PACKAGE_GEOMETRY.md": "63822b495fb9c7b8778775c1affb336fe54038d8258573f08e702b45bf6b8c92",
     "design/s31/security/PCS_FRI_PUBLISHED_BOUND_AUDIT.md": "361ad4957d9bdff886ee53a7babd1bd4e7a4940653213df9086e8e3c10354cae",
     "formal/s31/S31/Gadgets/PcsFri/FoldAlgebra.lean": "def1114388ff78f5f9423bc0aada485ec3dda8c433576a087ef94df299dc9da3",
     "formal/s31/S31/Gadgets/PcsFri/LayerAcceptance.lean": "dd4232047a06bccdb1d780998ab789b253a481e3ddeffc5b216b1a189c243b3c",
@@ -13,6 +14,7 @@
     "formal/s31/S31/Gadgets/PcsFri/MultiproofDecoder.lean": "084a9db05e81ad972be83afbd4c1c64b84424f063ff41d68ddb8f6d413044f44",
     "formal/s31/S31/Gadgets/PcsFri/QueryAndTranscript.lean": "e82190409053019d327e738a450c2a1b8676beecc92770f4a3e7563ad445cfa8",
     "formal/s31/proof-inventory.json": "3333a4cd7ba84ecb591539bcc9de5e6cfe3da331e9bcc88499e930ba53200c10",
+    "scripts/release/pcs_fri_package_geometry.py": "a6a01bfe581bee1d0f833767c3bb643867f7c65033e14e2554bac84bc0968b17",
     "scripts/release/pcs_fri_proven_preflight.py": "485573b3a14719e1d3d8b11e4a481c9e70965c3da9d6852d15eab14c8f5f79f9",
     "scripts/s31_formal_lib/pcs_fri_challenge_custody.py": "fca83b9d5f335add7f5dafeffd30c32922d14c94a441350940af319f3d070634",
     "scripts/s31_formal_lib/pcs_fri_leaf_encoding.py": "125e0532c2e874dce00ff681a648d37cb00d21e4a577ab1511aa96e557257de4",
@@ -31,9 +33,11 @@
     {
       "gap_kind": "uninstantiated_theorem_premise",
       "id": "P01_ACTUAL_GEOMETRY",
-      "missing_discharge": "derive theorem parameters from every sealed native package and check all finite-domain, degree and small-table preconditions",
+      "missing_discharge": "derive final FRI D, C, d, L, m, rate and list bound from every sealed native package; complete missing component rosters and check all finite-domain, degree and small-table preconditions",
       "partial_evidence": [
         "scripts/release/pcs_fri_proven_preflight.py",
+        "scripts/release/pcs_fri_package_geometry.py",
+        "design/s31/security/PCS_FRI_PACKAGE_GEOMETRY.md",
         "formal/s31/proof-inventory.json"
       ],
       "published_anchor": "https://eprint.iacr.org/2024/278.pdf#appendix-B",
