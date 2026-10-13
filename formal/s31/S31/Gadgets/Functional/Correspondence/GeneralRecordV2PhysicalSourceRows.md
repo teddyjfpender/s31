@@ -41,6 +41,10 @@ The multiply row requires `wire[18] = wire[17] .* wire[14]`. Each row also
 has a one-hot operation selector and three fixed wire addresses. In Lean,
 `cellAccepts` means all nine local polynomial residuals vanish, including
 the selector and four output-coordinate equations.
+Because M31 addition and pointwise multiplication commute, `FixedSourceCell`
+accepts either operand orientation. The value theorem applies commutativity
+when native lowering swaps the written operands; selectors and output
+addresses still match exactly. This rule does not extend to subtraction.
 
 The ordered source result is `(18,6)`. The typed public claim is
 `[2,3,18,6,0,0,0,0]`; private inputs do not enter that public array. If both
@@ -82,7 +86,9 @@ is executed during proof admission.
 uses the independent exact-source parser and a fresh native
 `inspect-topology` export for the same pinned package. It checks every source
 arithmetic node against its physical row's selector and addresses, replays
-all eight full fixed columns against the component manifest, and asks the
+the exact source-row lookup multiplicity from all fixed operand uses and
+public output slots, replays all eight full fixed columns against the
+component manifest, and asks the
 pinned native prover to recommit all 4096 fixed cells. That root must equal
 the pinned verification key's preprocessed root. The snapshot uses external
 SHA-256 pins for source relation, text, key, prover, and verifier.
@@ -95,13 +101,19 @@ python3 src/frontends/s31/tools/audit/record_source_cells.py PACKAGE \
 ```
 
 The native export is now available for this bounded v2 record profile.
-The acceptance corpus checks a public `double` at physical row 0 and a
-private `paired` multiplication at row 508, then rejects a changed output
-address in each export:
+The acceptance corpus checks a public `double` at physical row 0, a private
+`paired` multiplication at row 508, and a two-gate record pattern whose add
+operands are swapped by native lowering. It rejects changed source output
+addresses and use multiplicities:
 
 ```sh
 python3 -B src/frontends/s31/tests/acceptance/record_abi/record_source_cells_v2.py
 ```
+
+The [multi-field native row certificate](GeneralRecordV2MultiFieldNativeRows.md)
+composes this fixed-column audit, pinned exact-byte Lean `Program` admission,
+typed public boundary checks, and a native proof invocation within one
+private package snapshot.
 
 This audit authenticates neither the **main witness trace** nor the Gate
 lookup interaction. Native PCS fixed-root recommitment is still trusted as

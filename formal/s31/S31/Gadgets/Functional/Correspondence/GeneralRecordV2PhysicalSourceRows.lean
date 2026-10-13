@@ -37,8 +37,10 @@ def SourceCells (nodes : List Arithmetic) (address : String → Nat)
     cell.addFlag = (if node.op == "+" then 1 else 0) ∧
     cell.subFlag = 0 ∧ cell.mulFlag = 0 ∧
     cell.pointwiseMulFlag = (if node.op == "+" then 0 else 1) ∧
-    cell.in0 = address node.lhs.wire ∧
-    cell.in1 = address node.rhs.wire ∧
+    ((cell.in0 = address node.lhs.wire ∧
+      cell.in1 = address node.rhs.wire) ∨
+     (cell.in0 = address node.rhs.wire ∧
+      cell.in1 = address node.lhs.wire)) ∧
     cell.out = address node.name ∧
     cellAccepts cell wire
 
@@ -61,8 +63,10 @@ def FixedSourceCell (source : Source) (node : Arithmetic)
   cell.addFlag = (if node.op == "+" then 1 else 0) ∧
   cell.subFlag = 0 ∧ cell.mulFlag = 0 ∧
   cell.pointwiseMulFlag = (if node.op == "+" then 0 else 1) ∧
-  cell.in0 = sourceAddress source node.lhs.wire ∧
-  cell.in1 = sourceAddress source node.rhs.wire ∧
+  ((cell.in0 = sourceAddress source node.lhs.wire ∧
+    cell.in1 = sourceAddress source node.rhs.wire) ∨
+   (cell.in0 = sourceAddress source node.rhs.wire ∧
+    cell.in1 = sourceAddress source node.lhs.wire)) ∧
   cell.out = sourceAddress source node.name
 
 instance (source : Source) (node : Arithmetic) (cell : ColumnCell) :
@@ -103,11 +107,11 @@ theorem checked_cells_with_roots (source : Source)
     SourceCells source.nodes (sourceAddress source) cells wire := by
   intro node hnode
   obtain ⟨cell, hcell, hflags0, hflags1, hflags2, hflags3,
-    hin0, hin1, hout⟩ :=
+    horient, hout⟩ :=
     (checked_fixed_source_cells source cells hfixed).2.2.2
       node hnode
   exact ⟨cell, hcell, hflags0, hflags1, hflags2, hflags3,
-    hin0, hin1, hout, hroots cell hcell⟩
+    horient, hout, hroots cell hcell⟩
 
 private theorem scalar_operation (node : Arithmetic) (lhs rhs : Nat) :
     S31.Gadgets.Air.Qm31Ops.evaluate (s31Op (node.op != "+"))
@@ -126,7 +130,7 @@ private theorem scalar_operation (node : Arithmetic) (lhs rhs : Nat) :
       Nat.cast_mul] using
       (ZMod.natCast_mod (lhs * rhs) 2147483647).symm
 
-private theorem checked_cell_output (node : Arithmetic)
+private theorem checked_cell_output_ordered (node : Arithmetic)
     (address : String → Nat) (wire : Nat → Quad) (cell : ColumnCell)
     (lhs rhs : Nat)
     (hflags0 : cell.addFlag = if node.op == "+" then 1 else 0)
@@ -154,6 +158,32 @@ private theorem checked_cell_output (node : Arithmetic)
       hleft, hright] using hair
   exact ((accepts_encoded _ _ _ _).mp hrow).trans
     (scalar_operation node lhs rhs)
+
+private theorem checked_cell_output (node : Arithmetic)
+    (address : String → Nat) (wire : Nat → Quad) (cell : ColumnCell)
+    (lhs rhs : Nat)
+    (hflags0 : cell.addFlag = if node.op == "+" then 1 else 0)
+    (hflags1 : cell.subFlag = 0) (hflags2 : cell.mulFlag = 0)
+    (hflags3 : cell.pointwiseMulFlag = if node.op == "+" then 0 else 1)
+    (horient :
+      (cell.in0 = address node.lhs.wire ∧
+        cell.in1 = address node.rhs.wire) ∨
+      (cell.in0 = address node.rhs.wire ∧
+        cell.in1 = address node.lhs.wire))
+    (hout : cell.out = address node.name)
+    (hair : cellAccepts cell wire)
+    (hleft : wire (address node.lhs.wire) = scalarCell lhs)
+    (hright : wire (address node.rhs.wire) = scalarCell rhs) :
+    wire (address node.name) =
+      scalarCell (if node.op == "+" then (lhs + rhs) % S31.modulus
+        else (lhs * rhs) % S31.modulus) := by
+  rcases horient with ⟨hin0, hin1⟩ | ⟨hin0, hin1⟩
+  · exact checked_cell_output_ordered node address wire cell lhs rhs
+      hflags0 hflags1 hflags2 hflags3 hin0 hin1 hout hair hleft hright
+  · let flipped : Arithmetic := { node with lhs := node.rhs, rhs := node.lhs }
+    have hswap := checked_cell_output_ordered flipped address wire cell rhs lhs
+      hflags0 hflags1 hflags2 hflags3 hin0 hin1 hout hair hright hleft
+    simpa only [flipped, Nat.add_comm rhs lhs, Nat.mul_comm rhs lhs] using hswap
 
 /-- Every successful independent source fold is reflected in all of its
 source-owned physical Gate cells. The cells can be any observed 512-row slice;
@@ -183,10 +213,10 @@ theorem source_fold_physical_cells (nodes : List Arithmetic)
               let output := if node.op == "+" then (lhs + rhs) % S31.modulus
                 else (lhs * rhs) % S31.modulus
               obtain ⟨cell, _, hflags0, hflags1, hflags2, hflags3,
-                hin0, hin1, hout, hair⟩ := hcells node (by simp)
+                horient, hout, hair⟩ := hcells node (by simp)
               have houtput : wire (address node.name) = scalarCell output :=
                 checked_cell_output node address wire cell lhs rhs hflags0
-                  hflags1 hflags2 hflags3 hin0 hin1 hout hair
+                  hflags1 hflags2 hflags3 horient hout hair
                   (hinput _ _ hleft) (hinput _ _ hright)
               have hnext : Matches address wire ((node.name, output) :: initial) := by
                 intro name word hlookup

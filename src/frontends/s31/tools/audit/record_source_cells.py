@@ -64,61 +64,77 @@ def source_cells(relation: dict, topology: dict) -> list[dict[str, int | str]]:
     matched: list[dict[str, int | str]] = []
     for node in nodes:
         try:
-            expected = ((1, 0, 0, 0) if node["op"] == "add" else
-                        (0, 0, 0, 1)) + (address[node["lhs"]],
-                                         address[node["rhs"]],
-                                         address[node["name"]])
+            flags = (1, 0, 0, 0) if node["op"] == "add" else (0, 0, 0, 1)
+            lhs, rhs, out = (address[node[key]] for key in ("lhs", "rhs", "name"))
         except KeyError as exc:
             raise ValueError("source operand is not a declared earlier wire") from exc
-        found = [index for index, row in enumerate(rows) if row[:7] == expected]
+        # Both admitted operations commute. Native lowering may reorder their
+        # operands while retaining the same source relation and polynomial.
+        found = [index for index, row in enumerate(rows)
+                 if row[:4] == flags and row[6] == out and
+                 (row[4], row[5]) in ((lhs, rhs), (rhs, lhs))]
         if len(found) != 1:
             raise ValueError(f"source node {node['name']} has {len(found)} matching Gate rows")
+        row = rows[found[0]]
+        # Reconstruct this producer's exact lookup multiplicity from all 512
+        # fixed operand uses plus the public output slots. The complete
+        # topology replay separately checks every row and column digest.
+        expected_uses = sum((candidate[4] == out) + (candidate[5] == out)
+                            for candidate in rows) + topology["output"].count(out)
+        if expected_uses == 0 or row[7] != expected_uses:
+            raise ValueError(f"source node {node['name']} has wrong or zero Gate use multiplicity")
         matched.append({"name": node["name"], "op": node["op"],
-                        "physical_row": found[0], "in0": expected[4],
-                        "in1": expected[5], "out": expected[6]})
+                        "physical_row": found[0], "in0": row[4],
+                        "in1": row[5], "out": out,
+                        "use_multiplicity": expected_uses})
     if len({item["physical_row"] for item in matched}) != len(matched):
         raise ValueError("two source instructions share one physical row")
     return matched
 
 
+def audit_snapshot(snapshot: Path, manifest: dict, pins: dict[str, str]) -> dict:
+    """Audit one already pinned and verified private package snapshot."""
+    check_package_record_source_relation(snapshot)
+    relation = parse_record_source_fragment((snapshot / "source.s31").read_bytes())
+    relation_sha = _sha((snapshot / "source.s31.json").read_bytes())
+    key = parse_canonical_json((snapshot / "verification-key.json").read_bytes(),
+                               "verification-key.json")
+    component = parse_canonical_json((snapshot / "component-manifest.json").read_bytes(),
+                                     "component-manifest.json")
+    report = parse_canonical_json((snapshot / "cost-report.json").read_bytes(),
+                                  "cost-report.json")
+    prover = snapshot / "bin" / f"s31-{manifest['name']}-prover"
+    topology = json.loads(invoke(str(prover), "inspect-topology"))
+    if (key.get("schema") != "s31-verification-key-direct-record-v2" or
+            topology.get("preprocessed_root") != key.get("preprocessed_root") or
+            component.get("preprocessed_root") != key.get("preprocessed_root") or
+            report.get("preprocessed_root") != key.get("preprocessed_root")):
+        raise ValueError("record fixed-root metadata differs")
+    replay_direct_topology(topology, component, report, relation_sha)
+    matched = source_cells(relation, topology)
+    with tempfile.TemporaryDirectory(prefix="s31-record-fixed-recommit-") as directory:
+        path = Path(directory) / "fixed-columns.json"
+        write_json(path, {"schema": "s31-direct-gate-fixed-columns-v1",
+                          "fixed_columns": [column["values"]
+                                            for column in topology["columns"]]})
+        recommitted = json.loads(invoke(str(prover),
+                                       "inspect-fixed-root-from-columns", str(path)))
+    if (set(recommitted) != {"schema", "fixed_root"} or
+            recommitted["schema"] != "s31-direct-gate-recommitted-fixed-root-v1" or
+            recommitted["fixed_root"] != key["preprocessed_root"]):
+        raise ValueError("recommitted native fixed columns differ from the pinned key")
+    return {"schema": "s31-record-v2-source-fixed-cells-v1",
+            "source_sha256": pins["text"],
+            "relation_sha256": relation_sha,
+            "fixed_root": recommitted["fixed_root"],
+            "source_cells": matched,
+            "fixed_rows": ROW_COUNT,
+            "scope": "fixed columns only; no witness or PCS/FRI authentication"}
+
+
 def audit(package: Path, pins: dict[str, str]) -> dict:
     with admitted_snapshot(package, pins) as (snapshot, manifest):
-        check_package_record_source_relation(snapshot)
-        relation = parse_record_source_fragment((snapshot / "source.s31").read_bytes())
-        relation_sha = _sha((snapshot / "source.s31.json").read_bytes())
-        key = parse_canonical_json((snapshot / "verification-key.json").read_bytes(),
-                                   "verification-key.json")
-        component = parse_canonical_json((snapshot / "component-manifest.json").read_bytes(),
-                                         "component-manifest.json")
-        report = parse_canonical_json((snapshot / "cost-report.json").read_bytes(),
-                                      "cost-report.json")
-        prover = snapshot / "bin" / f"s31-{manifest['name']}-prover"
-        topology = json.loads(invoke(str(prover), "inspect-topology"))
-        if (key.get("schema") != "s31-verification-key-direct-record-v2" or
-                topology.get("preprocessed_root") != key.get("preprocessed_root") or
-                component.get("preprocessed_root") != key.get("preprocessed_root") or
-                report.get("preprocessed_root") != key.get("preprocessed_root")):
-            raise ValueError("record fixed-root metadata differs")
-        replay_direct_topology(topology, component, report, relation_sha)
-        matched = source_cells(relation, topology)
-        with tempfile.TemporaryDirectory(prefix="s31-record-fixed-recommit-") as directory:
-            path = Path(directory) / "fixed-columns.json"
-            write_json(path, {"schema": "s31-direct-gate-fixed-columns-v1",
-                              "fixed_columns": [column["values"]
-                                                for column in topology["columns"]]})
-            recommitted = json.loads(invoke(str(prover),
-                                           "inspect-fixed-root-from-columns", str(path)))
-        if (set(recommitted) != {"schema", "fixed_root"} or
-                recommitted["schema"] != "s31-direct-gate-recommitted-fixed-root-v1" or
-                recommitted["fixed_root"] != key["preprocessed_root"]):
-            raise ValueError("recommitted native fixed columns differ from the pinned key")
-        return {"schema": "s31-record-v2-source-fixed-cells-v1",
-                "source_sha256": pins["text"],
-                "relation_sha256": relation_sha,
-                "fixed_root": recommitted["fixed_root"],
-                "source_cells": matched,
-                "fixed_rows": ROW_COUNT,
-                "scope": "fixed columns only; no witness or PCS/FRI authentication"}
+        return audit_snapshot(snapshot, manifest, pins)
 
 
 def main() -> int:

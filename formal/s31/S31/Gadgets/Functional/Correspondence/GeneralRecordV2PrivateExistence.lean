@@ -143,8 +143,8 @@ theorem trace_live_source_cells (source : Source) (trace : Trace 9)
       (producedWire (allYields (nativeRows trace) trace.externalYields)) := by
   intro node hnode
   obtain ⟨cell, hcell, hshape, hpositive⟩ := hlive node hnode
-  obtain ⟨hadd, hsub, hmul, hpoint, hin0, hin1, hout⟩ := hshape
-  exact ⟨cell, hcell, hadd, hsub, hmul, hpoint, hin0, hin1, hout,
+  obtain ⟨hadd, hsub, hmul, hpoint, horient, hout⟩ := hshape
+  exact ⟨cell, hcell, hadd, hsub, hmul, hpoint, horient, hout,
     trace_cell_accept trace cell (hfixed cell hcell) hpositive
       hroots hbalance hunique⟩
 
