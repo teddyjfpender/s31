@@ -88,6 +88,41 @@ def check(work: Path, items: dict[str, bytes], accepted: bool) -> None:
                              f"{result.stdout} {result.stderr}")
 
 
+def check_statement(work: Path, items: dict[str, bytes], assignment: bytes,
+                    statement: bytes, accepted: bool) -> None:
+    names = ("source", "tree", "certificate", "relation", "abi")
+    paths = []
+    for name in names:
+        path = work / name
+        path.write_bytes(items[name])
+        paths.append(str(path))
+    assignment_path, statement_path = work / "assignment", work / "statement"
+    assignment_path.write_bytes(assignment)
+    statement_path.write_bytes(statement)
+    command = ([str(CHECKER)] if CHECKER.is_file() else
+               ["lake", "env", "lean", "--run", str(SOURCE_CHECKER)])
+    result = subprocess.run([*command, "statement", *paths,
+                             str(assignment_path), str(statement_path)],
+                            cwd=FORMAL, capture_output=True, text=True,
+                            check=False, timeout=30)
+    if (result.returncode == 0) != accepted:
+        raise AssertionError(f"statement accepted={result.returncode == 0}, "
+                             f"expected={accepted}: {result.stdout} {result.stderr}")
+
+
+def assignment_for(kind: str, lanes: int, relation: dict) -> tuple[bytes, bytes]:
+    x = [7 + index for index in range(lanes)]
+    y = ([value + 7 for value in x] if kind == "constant" else
+         [3 + index for index in range(lanes)])
+    difference = [(left - right) % (2**31 - 1) for left, right in zip(x, y)]
+    output = ([value + 7 for value in x] if kind == "constant" else
+              [value * value % (2**31 - 1) for value in difference]
+              if kind == "helpers" else difference)
+    name = relation["public_outputs"][0]
+    public = {"public_inputs": {"x": x}, "public_outputs": {name: output}}
+    return canonical({**public, "private_inputs": {"y": y}}), canonical(public)
+
+
 def reseal(tree: dict, original: dict[str, bytes]) -> dict[str, bytes]:
     """Recompute every untrusted relation/ABI digest after a wrong erasure."""
     relation = derive_relation(tree["program"])
@@ -111,8 +146,23 @@ def main() -> None:
                 honest = artifacts(source(kind, lanes))
                 check(work, honest, True)
                 accepted += 1
+                relation = json.loads(honest["relation"])
+                assignment, statement = assignment_for(kind, lanes, relation)
+                check_statement(work, honest, assignment, statement, True)
+                accepted += 1
                 if lanes != 2:
                     continue
+                changed_statement = json.loads(statement)
+                output_name = relation["public_outputs"][0]
+                changed_statement["public_outputs"][output_name][0] += 1
+                check_statement(work, honest, assignment,
+                                canonical(changed_statement), False)
+                rejected += 1
+                changed_assignment = json.loads(assignment)
+                changed_assignment["private_inputs"]["y"][0] += 1
+                check_statement(work, honest,
+                                canonical(changed_assignment), statement, False)
+                rejected += 1
                 # Change the tree and re-seal its relation and ABI where
                 # possible. The unchanged source must still win.
                 tree = json.loads(honest["tree"])

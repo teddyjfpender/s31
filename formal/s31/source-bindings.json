@@ -128,7 +128,7 @@
     "scripts/release/record_v2_multifield_row_certificate.py": "e1fe064531a2934a6834d8aa0e631c6083cd50c0bf19f89c5e660deb03faae54",
     "src/frontends/s31/tools/audit/record_source_cells.py": "0fbd65a112b34723458e0332a6ed5284ea1fa076ba5d2305fa93aa4de94d524c",
     "src/frontends/s31/tests/acceptance/record_abi/record_source_cells_v2.py": "4d55680f60fd49dd42349e2ec0d33d1176627424e0b378409717520d99eac32a",
-    "src/frontends/s31/tests/acceptance/compiler_correspondence/combined_helper_tuple_native_rows.py": "523e09516db2087674736e84d70555485af91215f2ed8c0e9f94e3ec9b5341b2",
+    "src/frontends/s31/tests/acceptance/compiler_correspondence/combined_helper_tuple_native_rows.py": "5534fb5377f62123ab58e0bf9d3cc94cbcacab2f61671498b30c9cad5e963a10",
     "src/frontends/s31/tests/acceptance/record_abi/native_parser_corpus.zig": "a05f9260247b687369f97f22d9580cc51ec545e9d50342681c762b204612f0a7",
     "src/frontends/s31/tests/acceptance/record_abi/record_source_execution_fragment_v2.py": "884d98659c99faac6a06867f7592d3fac0aec1c28403703a12fec5e36d58121d",
     "src/frontends/s31/language/relation_compiler.zig": "105d023fa4566c81bf8e3b2468b5a9d1e8260c2903e2ae1a04b0facc9adcc8f7",

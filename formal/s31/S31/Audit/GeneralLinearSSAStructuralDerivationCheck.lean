@@ -22,6 +22,23 @@ private def readText (path : String) (limit : Nat) : IO (Option String) := do
 
 def run (args : List String) : IO UInt32 := do
   match args with
+  | ["statement", sourcePath, treePath, certificatePath, relationPath,
+      abiPath, assignmentPath, statementPath] =>
+      let some source ← readSource sourcePath | return 1
+      let some tree ← readText treePath 131072 | return 1
+      let some certificate ← readText certificatePath 65536 | return 1
+      let some relation ← readText relationPath 65536 | return 1
+      let some abi ← readText abiPath 65536 | return 1
+      let some assignment ← readText assignmentPath 65536 | return 1
+      let some statement ← readText statementPath 65536 | return 1
+      match checkStatement source tree certificate relation abi assignment
+          statement with
+      | .error message =>
+          IO.eprintln s!"rejected: {message}"
+          return 1
+      | .ok _ =>
+          IO.println "accepted: structural source/typed Program/assignment/public statement"
+          return 0
   | [sourcePath, treePath, certificatePath, relationPath, abiPath] =>
       let some source ← readSource sourcePath | return 1
       let some tree ← readText treePath 131072 | return 1
@@ -36,7 +53,7 @@ def run (args : List String) : IO UInt32 := do
           IO.println "accepted: structural tree/source/relation/public ABI"
           return 0
   | _ =>
-      IO.eprintln "usage: SOURCE STRUCTURAL_TREE CERTIFICATE RELATION ABI"
+      IO.eprintln "usage: SOURCE STRUCTURAL_TREE CERTIFICATE RELATION ABI | statement SOURCE STRUCTURAL_TREE CERTIFICATE RELATION ABI ASSIGNMENT PUBLIC_STATEMENT_JSON"
       return 2
 
 end S31.Audit.GeneralLinearSSAStructuralDerivationCheck
