@@ -96,7 +96,10 @@ def run(checker: Path) -> dict[str, object]:
                                             str(columns_path)))
             proof = work / "trial/proof.bin"
             proof_bytes = proof.read_bytes()
-            proof_fixed, _, fixed_offset = proof_roots(proof_bytes)
+            proof_fixed, _, main_offset = proof_roots(proof_bytes)
+            fixed_offset = main_offset - len(proof_fixed)
+            if proof_bytes[fixed_offset:main_offset] != proof_fixed:
+                raise AssertionError("proof decoder did not identify fixed commitment bytes")
             if (recommitted.get("schema") != "s31-direct-gate-recommitted-fixed-root-v1" or
                     proof_fixed.hex() != native_cert["preprocessed_root"] or
                     proof_fixed.hex() != recommitted.get("fixed_root") or
