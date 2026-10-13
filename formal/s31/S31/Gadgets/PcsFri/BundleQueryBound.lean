@@ -1,4 +1,5 @@
 import S31.Gadgets.PcsFri.QuerySampling
+import S31.Gadgets.PcsFri.M31MaskedQuery
 
 /-!
 An ideal raw FRI query selects a complete local fiber bundle. If every row
@@ -15,6 +16,7 @@ masked sampler is uniform. Those are separate PCS/FRI obligations.
 namespace S31.Gadgets.PcsFri.BundleQueryBound
 
 open S31.Gadgets.PcsFri.QuerySampling
+open S31.Gadgets.PcsFri.M31MaskedQuery
 
 variable {D K : Type*} [Fintype D] [DecidableEq D] [DecidableEq K]
 
@@ -55,5 +57,26 @@ theorem goodBundle_sequences_card_le (s : Nat) (bad : Finset D)
   rw [good_sequences_card]
   gcongr
   exact goodBundle_card_le_goodRows bad bundle
+
+/-- Join the bundle-counting step with the exact native M31-reduce-and-mask
+preimage count. Under *independent ideal uniform raw words*, the all-missed
+fraction is bounded by good-row density plus the native two-word bias. This
+does not establish Fiat–Shamir independence or the verifier-to-bundle link. -/
+theorem masked_bundle_miss_fraction_le {K : Type*} [DecidableEq K]
+    (k draws : Nat) (hk : 2 ≤ k) (hk31 : k ≤ 31)
+    (bad : Finset (Fin (size k))) (bundle : Fin (size k) → K) :
+    ((goodSequences draws (goodRawFin k (goodBundle bad bundle))).card : ℚ) /
+      (Fintype.card (Fin draws → Fin rawSize) : ℚ) ≤
+        (((size k - bad.card : Nat) : ℚ) / (size k : ℚ) +
+          2 / (rawSize : ℚ)) ^ draws := by
+  have hcount : (goodBundle bad bundle).card ≤ size k - bad.card := by
+    simpa using goodBundle_card_le_goodRows bad bundle
+  have hdensity : uniformMass k (goodBundle bad bundle) ≤
+      ((size k - bad.card : Nat) : ℚ) / (size k : ℚ) := by
+    unfold uniformMass
+    exact div_le_div_of_nonneg_right (by exact_mod_cast hcount) (by positivity)
+  exact exact_raw_product_ge_two_vs_alpha k hk hk31
+    (goodBundle bad bundle) draws
+    (((size k - bad.card : Nat) : ℚ) / (size k : ℚ)) hdensity
 
 end S31.Gadgets.PcsFri.BundleQueryBound
