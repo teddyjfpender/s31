@@ -14,9 +14,10 @@ the native protocol matches the paper or that an adversary can succeed with
 that probability.
 
 The [BCS transcript epoch model](BcsTranscriptEpoch.lean) proves that a
-verified nonce starts a fresh query-input epoch with nine distinct pre-hash
-messages for the sealed 70-query schedule, conditional on an injective u32
-counter encoding. The [native and independent-model replay](../../../../../design/s31/security/PCS_FRI_BCS_TRANSCRIPT_REFINEMENT.md)
+modeled verified nonce starts a fresh query-input epoch with nine distinct
+pre-hash messages for the sealed 70-query schedule. The nine concrete
+little-endian u32 counter encodings are checked in Lean. The
+[native and independent-model replay](../../../../../design/s31/security/PCS_FRI_BCS_TRANSCRIPT_REFINEMENT.md)
 checks the direct Gate's actual Blake2s-M31 bytes and challenge order. These
 results leave the cryptographic Fiat–Shamir/BCS reduction open.
 

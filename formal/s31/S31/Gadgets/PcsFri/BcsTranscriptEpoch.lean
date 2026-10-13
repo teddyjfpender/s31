@@ -51,6 +51,26 @@ theorem sealed_gate_query_epoch :
     have h : i < 9 := List.mem_range.mp hi
     omega
 
+/-- Concrete little-endian u32 bytes for the bounded query counters. -/
+def counterLE32 (n : Nat) : Bytes :=
+  [UInt8.ofNat n, UInt8.ofNat (n / 256),
+   UInt8.ofNat (n / 65536), UInt8.ofNat (n / 16777216)]
+
+/-- For the sealed 70-query epoch the native counter encodings 0 through 8
+are distinct. This uses exact finite reduction, without a global injectivity
+assumption for a wrapping u32 encoding. -/
+theorem sealed_gate_query_inputs_nodup (H : Bytes → Bytes)
+    (before nonceLE : Bytes) :
+    (queryInputs H before nonceLE counterLE32 9).Nodup := by
+  have hencoded : ((List.range 9).map counterLE32).Nodup := by
+    decide
+  unfold queryInputs
+  apply (List.nodup_map_iff_inj_on List.nodup_range).2
+  intro i hi j hj heq
+  have hcounter := (List.nodup_map_iff_inj_on List.nodup_range).mp hencoded
+  exact hcounter i hi j hj (draw_message_injective_at_fixed_digest
+    (afterNonce H before nonceLE) (counterLE32 i) (counterLE32 j) heq)
+
 /-- The abstract successful query epoch requires a checked nonce. -/
 def checkedQueryInputs (valid : Bytes → Bool) (H : Bytes → Bytes)
     (before nonceLE : Bytes) (counterLE : Nat → Bytes)

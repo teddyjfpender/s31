@@ -128,18 +128,25 @@ class BcsTranscriptTest(unittest.TestCase):
     def test_pow_prefix_and_predicate_changed(self) -> None:
         self.reject(4, "pub const POW_PREFIX: u32 = 0x12345678;",
                     "pub const POW_PREFIX: u32 = 0;")
+        self.reject(4, "return verifyNonceWithPrefix(prefix, nonce, n_bits);",
+                    "return true;")
         self.reject(4, "return trailingZeroBits(out[0..16]) >= n_bits;",
                     "return true;")
 
     def test_channel_draw_and_rejection_changed(self) -> None:
         self.reject(4, "hash_input[36] = 0;", "hash_input[36] = 1;")
         self.reject(4, "if (x >= two_p)", "if (x >= m31.Modulus)")
+        self.reject(4, "return std.math.add(u32, current, 1) catch error.DrawCounterExhausted;",
+                    "return current +% 1;")
 
     def test_hash_reduction_and_query_count_changed(self) -> None:
         self.reject(11, "const reduced = @select(u32, folded >= p, folded -% p, folded);",
                     "const reduced = input;")
         self.reject(8, "const words = channel.drawU32s();",
                     "const words = [_]u32{0} ** 8;")
+        self.reject(8, "const words = channel.drawU32s();",
+                    "_ = channel.drawU32s();\n        const words = channel.drawU32s();")
+        self.reject(3, "self.config.n_queries,", "70,")
 
 
 if __name__ == "__main__":

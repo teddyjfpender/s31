@@ -80,10 +80,11 @@ Hostile edits to these barriers must fail. It records the pinned engine
 gitlink and hashes of the reviewed source files.
 
 [`BcsTranscriptEpoch.lean`](../../../formal/s31/S31/Gadgets/PcsFri/BcsTranscriptEpoch.lean)
-proves, for an uninterpreted hash and injective counter-byte encoder, that
-the nine post-nonce draw *inputs* are distinct and their counters cannot
-overflow a u32. It also states that a successful modeled query epoch requires
-a valid nonce. It says nothing about distinct hash outputs.
+proves, for an uninterpreted hash, that the nine post-nonce draw *inputs* are
+distinct and their counters cannot overflow a u32. The nine concrete
+little-endian counter encodings are checked without a global injectivity
+assumption. It also states that a successful modeled query epoch requires a
+valid nonce. It says nothing about distinct hash outputs.
 
 Run the focused evidence from the S31 root:
 
@@ -102,6 +103,12 @@ python3 -B -m scripts.s31_formal_lib.pcs_fri_bcs_transcript
    Specify and bound the adversary's total hash work `T`, rounds `R`,
    output/collision parameter `lambda`, and the real effect of both grinding
    stages. Do not add 20 and 26 PoW bits to a soundness estimate by fiat.
+   Each channel digest has at most `p^8 < 2^248` states after reduction,
+   so `lambda = 256` cannot be inherited from raw BLAKE2s. Native root and
+   field absorption lack operation tags; for example, a 32-byte root and two
+   QM31 values of the same bytes form an identical next-hash input at the
+   same digest. The fixed call schedule may still suffice, but the reduction
+   must state and justify the required cross-role framing assumption.
 3. Quantitative Merkle binding and BLAKE2s/ROM assumptions, including
    operation framing and cross-role hash-input collisions, joined to the
    independently reviewed FRI/PCS error terms.

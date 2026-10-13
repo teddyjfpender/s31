@@ -237,6 +237,13 @@ def audit_sources(frontend: str, verifier: str, pcs: str, fri: str,
                  ".z = values[0], .alpha = values[1]")
     ordered_once(queries, "raw query blocks", "while (produced < n_queries)",
                  "const words = channel.drawU32s();", "out[produced] = @as(usize, word & query_mask);")
+    query_loop = region(queries, "pub fn drawQueries(", "pub fn sortedUniquePositions(")
+    if re.findall(r"channel\.[A-Za-z0-9_]+\(", query_loop) != ["channel.drawU32s("]:
+        raise ValueError("raw query loop gained an extra channel operation")
+    fri_query = region(fri, "pub fn sampleQueryPositionsWithRaw(", "pub fn decommit(")
+    ordered_once(fri_query, "configured FRI query count",
+                 "const raw = try queries_mod.drawQueries(",
+                 "self.config.n_queries,", "var new_queries = try queries_mod.Queries.init(")
     for label, start, end, stages in (
         ("field absorption", "pub fn mixFelts(", "pub fn mixU32s(",
          ("hasher.update(self.digest[0..]);", "self.updateDigest(hasher.finalize());")),
@@ -256,6 +263,9 @@ def audit_sources(frontend: str, verifier: str, pcs: str, fri: str,
         ordered_once(region(channel, start, end), label, *stages)
     if "self.n_draws = 0;" not in region(channel, "pub inline fn updateDigest(", "pub fn mixFelts("):
         raise ValueError("absorption no longer resets draw epoch")
+    if "return std.math.add(u32, current, 1) catch error.DrawCounterExhausted;" not in channel or \
+       "self.n_draws = nextDrawCounter(self.n_draws) catch @panic(\"BLAKE2s draw counter exhausted\");" not in channel:
+        raise ValueError("draw counter no longer fails closed")
     if "std.mem.sliceAsBytes(felts)" not in channel or "std.mem.sliceAsBytes(data)" not in channel:
         raise ValueError("little-endian absorption encoding changed")
     for offset in (8, 16, 24, 32, 40, 48, 56):
@@ -266,6 +276,10 @@ def audit_sources(frontend: str, verifier: str, pcs: str, fri: str,
             raise ValueError("u32 counter encoding changed")
     if "pub const POW_PREFIX: u32 = 0x12345678;" not in channel:
         raise ValueError("PoW domain prefix changed")
+    pow_verify = region(channel, "pub fn verifyPowNonce(", "pub fn computePowPrefix(")
+    ordered_once(pow_verify, "PoW predicate dispatch",
+                 "const prefix = self.computePowPrefix(n_bits);",
+                 "return verifyNonceWithPrefix(prefix, nonce, n_bits);")
     if "const out = Hasher.hashFixedSingleBlock(40, &input);" not in channel:
         raise ValueError("PoW nonce hash changed")
     if "@memcpy(input[0..32], prefix[0..]);" not in channel or \
@@ -307,12 +321,16 @@ def audit(root: Path = ROOT) -> dict[str, object]:
         "deps/stwo-zig/src/core/vcs/blake2_hash.zig",
     )
     audit_sources(*((root / name).read_text() for name in names))
+    saved_fixture = json.loads((root / "formal/s31/tests/pcs_fri_bcs_transcript.json").read_text())
+    fresh_fixture = json.loads(json.dumps(fixture()))
+    if saved_fixture != fresh_fixture:
+        raise ValueError("independent transcript fixture changed or is stale")
     pinned = subprocess.check_output(["git", "-C", str(root), "rev-parse", "HEAD:deps/stwo-zig"], text=True).strip()
     checked = subprocess.check_output(["git", "-C", str(root / "deps/stwo-zig"), "rev-parse", "HEAD"], text=True).strip()
     if checked != pinned:
         raise ValueError("native engine differs from pinned gitlink")
     return {"native_sources_sha256": {name: hashlib.sha256((root / name).read_bytes()).hexdigest()
-                                      for name in names}, "engine_gitlink_commit": pinned, "fixture": fixture(),
+                                      for name in names}, "engine_gitlink_commit": pinned, "fixture": fresh_fixture,
             "proven_native_bcs_soundness": False}
 
 

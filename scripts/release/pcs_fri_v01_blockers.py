@@ -89,8 +89,8 @@ OBLIGATIONS = (
         "gap_kind": "unproven_crypto_and_budget_reduction",
         "published_requirement": "Stwo NIROP/BCS theorem: bound adversary hash budget T, rounds R, hash collision term and exact native grinding and transcript schedule",
         "published_anchor": STWO,
-        "partial_evidence": ["formal/s31/S31/Gadgets/PcsFri/QueryAndTranscript.lean", "scripts/s31_formal_lib/pcs_fri_order.py", "scripts/s31_formal_lib/pcs_fri_challenge_custody.py", "scripts/s31_formal_lib/pcs_fri_query_epoch.py", "scripts/release/pcs_fri_gate_error_ledger.py", "design/s31/security/PCS_FRI_GATE_ERROR_LEDGER.md"],
-        "missing_discharge": "ROM/BCS reduction for native Blake2s, nonce selection, PoW accounting, transcript domain separation and a full selected-channel control-flow proof; pinned source checks bind captured DEEP/FRI challenges and verified nonce to selected uses, and the channel fails closed before u32 counter reuse",
+        "partial_evidence": ["formal/s31/S31/Gadgets/PcsFri/QueryAndTranscript.lean", "formal/s31/S31/Gadgets/PcsFri/BcsTranscriptEpoch.lean", "scripts/s31_formal_lib/pcs_fri_order.py", "scripts/s31_formal_lib/pcs_fri_challenge_custody.py", "scripts/s31_formal_lib/pcs_fri_query_epoch.py", "scripts/s31_formal_lib/pcs_fri_bcs_transcript.py", "formal/s31/tests/pcs_fri_bcs_transcript_native.zig", "formal/s31/tests/pcs_fri_bcs_transcript.json", "scripts/release/pcs_fri_gate_error_ledger.py", "design/s31/security/PCS_FRI_GATE_ERROR_LEDGER.md", "design/s31/security/PCS_FRI_BCS_TRANSCRIPT_REFINEMENT.md"],
+        "missing_discharge": "ROM/BCS reduction for exact M31-reduced Blake2s and unframed root/field absorption, total hash-work/round/collision budget, both PoW stages, and a full selected-verifier Zig control-flow proof; scoped native/Python direct Gate fixture and source guards establish deterministic bytes and order only",
     },
     {
         "id": "P08_QUERY_SET_AND_RAW_WORD_MODEL",

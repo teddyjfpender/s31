@@ -28,6 +28,7 @@ from scripts.s31_formal_lib.checks import (
 from scripts.s31_formal_lib.protocol_order import check_protocol_order
 from scripts.s31_formal_lib.pcs_fri_order import check_pcs_fri_order
 from scripts.s31_formal_lib.pcs_fri_challenge_custody import check_pcs_fri_challenge_custody
+from scripts.s31_formal_lib.pcs_fri_bcs_transcript import audit as audit_pcs_fri_bcs_transcript
 from scripts.s31_formal_lib.pcs_fri_m31_query import check_pcs_fri_m31_query
 from scripts.s31_formal_lib.pcs_fri_projection import check_pcs_fri_projection
 from scripts.s31_formal_lib.pcs_fri_capture import check_pcs_fri_capture
@@ -848,6 +849,7 @@ def main() -> None:
     check_protocol_order(ROOT)
     check_pcs_fri_order(ROOT)
     check_pcs_fri_challenge_custody(ROOT)
+    audit_pcs_fri_bcs_transcript(ROOT)
     check_pcs_fri_m31_query(ROOT)
     check_pcs_fri_projection(ROOT)
     check_pcs_fri_capture(ROOT)
@@ -864,6 +866,7 @@ def main() -> None:
     print("S31 protocol order: main and interaction commitments precede their challenge draws")
     print("S31 PCS/FRI order: roots, challenges, PoW, raw queries and normalization bound")
     print("S31 PCS/FRI challenge custody: DEEP, PoW nonce and FRI alphas source-pinned")
+    print("S31 direct Gate BCS transcript: native bytes, PoW barriers and query epoch source-pinned")
     print("S31 SHA release capture: raw DEEP, FRI fold and Merkle replay paths bound")
     print("S31 M31 raw query distribution: reduction and low-bit mask source bound")
     print("S31 lifted Merkle capture: range, siblings, shifts and root-before-publication bound")
