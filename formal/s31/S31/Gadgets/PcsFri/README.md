@@ -146,6 +146,22 @@ proves the identity over any field where `2` is nonzero and includes the
 counterexample. It does not prove the paper's FRI soundness theorem applies
 to the native oracle and query schedule.
 
+[`PairedProtocolRecurrence.lean`](PairedProtocolRecurrence.lean) extends that
+local identity to every height of the experimental CAS05 accepted-row
+relation. Its `native_batch_eq_protocol3` theorem checks the exact sequence
+`f₀ + λq₀ + λ²f₁ + λ³q₁ + ⋯`, with each quotient paired with its own
+original column. `line_residual_eq_interpolation` equates the native
+cross-multiplied two-point line residual with the independent direct
+interpolation expression, assuming distinct OOD y-coordinates.
+`accepted_rows_refine_protocol3` says that if every forwarded native row
+passes the stated fold equation, then every queried row satisfies the
+normalized Eq. 68 recurrence after the explicit `2^i` rescaling. The
+experimental native [source guard](https://github.com/teddyjfpender/stwo-zig/blob/codex/paired-degree-protocol-20261013/scripts/check_cas05_relation_extractor.py)
+pins the corresponding batch-power and fold call order. These are algebra
+and source-shape checks; they do not prove that Zig executes the model, that
+the derived source batch is a degree-bounded committed oracle, or that
+Protocol 3's proximity theorem applies to the native query/transcript game.
+
 [`BundleQueryBound.lean`](BundleQueryBound.lean) proves the elementary query
 event needed by the experimental full-fiber cascade: if a query checks every
 row in its selected bundle, the raw positions whose bundles touch a fixed
