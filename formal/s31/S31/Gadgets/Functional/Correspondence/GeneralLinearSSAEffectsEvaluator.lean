@@ -663,4 +663,93 @@ theorem effectful_interpreter_preserves_source_assertions {n : Nat}
             source inputs (source.output.eval inputs) final hcertificate
             hrows houtput hassert
 
+/-- For a checked effectful source certificate, accepted arithmetic rows and
+the actual normalized evaluator force the assigned public output to equal the
+source value. Successful evaluation supplies assertion acceptance; its AIR
+assertion polynomials are derived from that success, not assumed. Exact graph,
+input-state, and output-name alignment remain explicit premises. -/
+theorem effectful_interpreter_public_output_claim {n : Nat}
+    (program : S31.Program) (assignment : S31.Assignment)
+    (names : List String) (certificate : GeneralLinearSSAEffects.Certificate)
+    (source : GeneralLinearSSAEffects.Source)
+    (inputs : Nat → Lanes n) (inputEnv : S31.Env)
+    (final : List (Lanes n)) (words : List S31.M31)
+    (hcertificate : GeneralLinearSSAEffects.check certificate source =
+      some ())
+    (hvalid : ∃ shapes, program.validate = .ok shapes)
+    (hprivate : S31.exactFields assignment.privateInputs
+      ((program.inputs.filter (fun i => i.visibility == .private)).map
+        (·.name)) = true)
+    (hinputs : program.inputs.mapM (fun (i : S31.Input) => do
+      let raw := if i.visibility == S31.Visibility.«public» then
+        assignment.publicInputs else assignment.privateInputs
+      return (i.name, ← S31.assigned raw i.name i.shape)) = .ok inputEnv)
+    (hnodes : program.nodes =
+      certificate.steps.map (namedEffectNode names))
+    (hassertions : program.assertions =
+      namedAssertions names certificate.assertions)
+    (houtputs : program.outputs = [nameAt names certificate.output])
+    (hrows : GeneralLinearSSAEffects.AcceptsTrace
+      (GeneralLinearSSAEffects.initialValues certificate.inputs inputs)
+      certificate.steps final)
+    (hcarries : Carries names inputEnv
+      (GeneralLinearSSAEffects.initialValues certificate.inputs inputs))
+    (habent : Absent names inputEnv
+      (GeneralLinearSSAEffects.initialValues certificate.inputs inputs).length
+      ((GeneralLinearSSAEffects.initialValues certificate.inputs inputs).length +
+        certificate.steps.length))
+    (hdistinct : Distinct names
+      ((GeneralLinearSSAEffects.initialValues certificate.inputs inputs).length +
+        certificate.steps.length))
+    (haccept : program.evaluate assignment = .ok words) :
+    S31.assigned assignment.publicOutputs
+      (nameAt names certificate.output) ⟨.m31, n⟩ =
+        .ok (laneValue (source.output.eval inputs)) := by
+  have hsem := GeneralLinearSSAEffects.checked_execution
+    certificate source inputs hcertificate
+  have hrun := GeneralLinearSSAEffects.accepted_trace_executes hrows
+  unfold GeneralLinearSSAEffects.execute at hsem
+  rw [hrun] at hsem
+  cases hout : final[certificate.output]? with
+  | none => simp [hout] at hsem
+  | some output =>
+      cases hass : GeneralLinearSSAEffects.resolveAssertions final
+          certificate.assertions with
+      | none => simp [hout, hass] at hsem
+      | some pairs =>
+          have hpair : (output, pairs) =
+              (source.output.eval inputs,
+                source.assertions.map fun pair =>
+                  (pair.1.eval inputs, pair.2.eval inputs)) :=
+            Option.some.inj (by simpa [hout, hass] using hsem)
+          have houtput : final[certificate.output]? =
+              some (source.output.eval inputs) := by
+            have houtputVal : output = source.output.eval inputs :=
+              congrArg Prod.fst hpair
+            simpa [houtputVal] using hout
+          have henv : ∃ observed,
+              program.environment assignment = .ok observed := by
+            unfold S31.Program.evaluate at haccept
+            cases h : program.environment assignment with
+            | error err =>
+                simp [h, Bind.bind, Except.bind] at haccept
+            | ok observed => exact ⟨observed, rfl⟩
+          obtain ⟨observed, henv⟩ := henv
+          have hassert := effect_program_environment_implies_assertions_air
+            program assignment names certificate
+            (GeneralLinearSSAEffects.initialValues certificate.inputs inputs)
+            final inputEnv observed pairs hvalid hprivate hinputs hnodes
+            hassertions hrows hass hcarries habent hdistinct henv
+          obtain ⟨finalEnv, henvFinal, hcarryFinal⟩ :=
+            effect_program_environment_follows_air program assignment names
+              certificate
+              (GeneralLinearSSAEffects.initialValues certificate.inputs inputs)
+              final inputEnv hvalid hprivate hinputs hnodes hassertions
+              hrows hassert hcarries habent hdistinct
+          exact public_output_claim_of_environment program assignment
+            finalEnv (nameAt names certificate.output)
+            (source.output.eval inputs) words henvFinal houtputs
+            (hcarryFinal certificate.output
+              (source.output.eval inputs) houtput) haccept
+
 end S31.Functional.Correspondence.GeneralLinearSSAEffectsEvaluator

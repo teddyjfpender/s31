@@ -40,13 +40,23 @@ theorems prove this for every assertion, in both directions.
 `effectful_interpreter_preserves_source_assertions` uses successful actual
 `Program.evaluate` to **derive** the assertion polynomials. It then applies
 the checked effectful SSA source model's soundness theorem. The proof does
-not assume the assertions pass or compare source and interpreter final
-outputs in a test.
+not assume the assertions pass.
+
+`effectful_interpreter_public_output_claim` also binds the public output
+assignment to `source.output.eval inputs`. It first derives the selected
+source value from the checked certificate and accepted arithmetic rows. It
+then derives assertion AIR acceptance from the actual evaluator's successful
+assertion loop, reconstructs the final named environment, and uses the
+evaluator's own public output check. For the example above, a successful
+evaluation with `a=[3]` and `b=[3]` forces the assigned public output to be
+`[6]`; assigning `[7]` cannot satisfy `Program.evaluate`.
 
 The theorem still accepts explicit premises for the exact named node graph,
 typed initial assignment, distinct names, and modeled arithmetic AIR rows.
-It does not prove production compiler equivalence, public output ownership,
-native committed row authentication, or PCS/FRI soundness.
+It does not prove production compiler equivalence, native committed row
+authentication, or PCS/FRI soundness. The public output result is about the
+normalized evaluator and an explicitly aligned source certificate, not a
+native proof's public pin.
 
 ## Check
 
