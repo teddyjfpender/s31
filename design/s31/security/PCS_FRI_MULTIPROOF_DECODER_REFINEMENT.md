@@ -55,6 +55,21 @@ with:
 formal/s31/tests/run_pcs_fri_decoder_refinement_native.sh
 ```
 
+The [general-height native suite](../../../formal/s31/tests/pcs_fri_decoder_general_native.zig)
+extends the independent complete-tree oracle to heights `0`, `1`, `2`, `4`,
+and `6`, using singleton, alternating, full, and irregular sparse query sets.
+Every case submits reversed queries and two duplicates, then checks every
+captured sibling against the full tree. It also checks that inconsistent
+duplicates, a query outside the declared tree, a short column, a short or
+surplus witness, and a changed witness fail without publishing a capture.
+A separate single-query case constructs an authentication path at height
+`@bitSizeOf(usize)` for `maxInt(usize)` and checks the full copy. This covers
+the native verifier's finite-width range-guard boundary without allocating an
+enormous tree; S31's higher-level capture admission currently restricts
+heights to less than the word width. An empty-tree case checks its special
+no-query, no-witness contract.
+These examples sample arbitrary-height behavior; they do not exhaust it.
+
 This is a **finite executable refinement check**, not a proof of arbitrary
 height Zig semantics. The existing
 [`MultiproofDecoder.lean`](../../../formal/s31/S31/Gadgets/PcsFri/MultiproofDecoder.lean)
@@ -73,9 +88,15 @@ one-sort loop equivalent to the guarded all-height model from a sorted initial
 frontier. The new `decodeNativeShape_witness_accounting` and
 `decodeNativeShape_follows` theorems give exact model witness order and a
 path for every initial query through that one-sort shape. The native Zig
-sort/dedup, finite-width index arithmetic, and path-copy loops still need a
-semantic proof. The trace checker supplies differential evidence, not that
-proof. The test does not establish that
+[`MultiproofCallerOrder.lean`](../../../formal/s31/S31/Gadgets/PcsFri/MultiproofCallerOrder.lean)
+model now maps those unique paths back to each original request slot. Its
+theorems prove a checked full path for every slot at arbitrary depth and equal
+paths for equal duplicate requests. The native source guard pins the
+`unique_index` increment, source and destination offsets, original position
+copy, and publication after the root check. The native Zig sort/dedup,
+finite-width index arithmetic, and path-copy loops still need a semantic
+proof. The trace checker and general-height suite supply differential
+evidence, not that proof. The tests do not establish that
 the native committed tree was built from the intended oracle columns, nor a
 quantitative BLAKE2s collision reduction. The Merkle binding theorem compares
 openings at the **same root, height, and index** and extracts a concrete leaf

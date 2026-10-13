@@ -106,6 +106,17 @@ class PcsFriCaptureTest(unittest.TestCase):
                 "const source_start = unique_index * path_depth;",
                 "const source_start = original_index * path_depth;"))
 
+    def test_unique_path_copy_skips_duplicate_group_change(self) -> None:
+        with self.assertRaisesRegex(ValueError, "lifted Merkle"):
+            check_capture_source(change_once(
+                "unique_index += 1;", "unique_index += 2;"))
+
+    def test_publication_loses_original_position_order(self) -> None:
+        with self.assertRaisesRegex(ValueError, "lifted Merkle"):
+            check_capture_source(change_once(
+                ".positions = try allocator.dupe(usize, query_positions),",
+                ".positions = try allocator.dupe(usize, unique_positions.items),"))
+
     def test_publish_before_root_check_rejected(self) -> None:
         publication = "destination.* = capture;"
         root_check = "if (!vcs_hash.eql(prev_layer.items[0].hash, self.root))"

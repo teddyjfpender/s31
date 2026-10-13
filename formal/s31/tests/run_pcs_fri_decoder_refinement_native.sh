@@ -14,3 +14,6 @@ python3 -B -m unittest scripts.tests.test_pcs_fri_capture
 zig test -O ReleaseSafe -j2 --dep stwo_core \
   -Mroot=formal/s31/tests/pcs_fri_decoder_refinement_native.zig \
   -Mstwo_core=deps/stwo-zig/src/core/mod.zig
+zig test -O ReleaseSafe -j2 --dep stwo_core \
+  -Mroot=formal/s31/tests/pcs_fri_decoder_general_native.zig \
+  -Mstwo_core=deps/stwo-zig/src/core/mod.zig
