@@ -169,6 +169,24 @@ and source-shape checks; they do not prove that Zig executes the model, that
 the derived source batch is a degree-bounded committed oracle, or that
 Protocol 3's proximity theorem applies to the native query/transcript game.
 
+[`TwoPointDegreeCorrection.lean`](TwoPointDegreeCorrection.lean) proves the
+ordinary-polynomial degree step under exact reconstruction. For distinct
+points `a,b`, values `vₐ,vᵦ` determine an affine line `L`. If polynomial `f`
+has those values, then `(X−a)(X−b)` divides `f−L`, yielding its *own*
+quotient `q`. The proof establishes both directions: if `deg f < d` and
+`d ≥ 2`, then `q=0` or `2+deg q<d`; if `f=L+(X−a)(X−b)q` and the same
+quotient bound holds, then `deg f<d`. Exact reconstruction determines one
+unique own quotient for fixed `f` and claims. The module also proves that batching any finite
+roster as `f₀+λq₀+λ²f₁+λ³q₁+⋯` preserves the `d` bound and that evaluating
+this derived polynomial yields the previously modeled Protocol 3 row batch.
+For a hand calculation over rationals, take `f=X²+1`, `a=1`, `b=3`:
+the claims are `2,10`, their line is `L=4X−2`, and
+`f−L=(X−1)(X−3)`, so `q=1`. Here `deg f=2<3` and `2+deg q=2<3`.
+The native circle denominator is a circle vanishing **line**, while this
+module's divisor is quadratic in `F[X]`. Transferring the degree claim to
+the native circle basis still requires a proved point-removal and degree
+refinement; these theorems assign no native security bits.
+
 [`BundleQueryBound.lean`](BundleQueryBound.lean) proves the elementary query
 event needed by the experimental full-fiber cascade: if a query checks every
 row in its selected bundle, the raw positions whose bundles touch a fixed
