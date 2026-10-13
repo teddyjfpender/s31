@@ -1,0 +1,100 @@
+{
+  "assertions": [],
+  "inputs": [
+    {
+      "kind": "u16",
+      "length": 4,
+      "name": "quantity_a",
+      "visibility": "private"
+    },
+    {
+      "kind": "u16",
+      "length": 4,
+      "name": "price_a",
+      "visibility": "private"
+    },
+    {
+      "kind": "u16",
+      "length": 4,
+      "name": "quantity_b",
+      "visibility": "private"
+    },
+    {
+      "kind": "u16",
+      "length": 4,
+      "name": "price_b",
+      "visibility": "private"
+    },
+    {
+      "kind": "u16",
+      "length": 4,
+      "name": "delivery_fee",
+      "visibility": "private"
+    }
+  ],
+  "name": "invoice",
+  "nodes": [
+    {
+      "constant": 64,
+      "lhs": "quantity_a",
+      "name": "_s31_0",
+      "op": "int_view"
+    },
+    {
+      "constant": 64,
+      "lhs": "price_a",
+      "name": "_s31_1",
+      "op": "int_view"
+    },
+    {
+      "constant": 64,
+      "lhs": "quantity_b",
+      "name": "_s31_2",
+      "op": "int_view"
+    },
+    {
+      "constant": 64,
+      "lhs": "price_b",
+      "name": "_s31_3",
+      "op": "int_view"
+    },
+    {
+      "constant": 64,
+      "lhs": "delivery_fee",
+      "name": "_s31_4",
+      "op": "int_view"
+    },
+    {
+      "constant": 64,
+      "lhs": "_s31_0",
+      "name": "first",
+      "op": "int_mul_checked",
+      "rhs": "_s31_1"
+    },
+    {
+      "constant": 64,
+      "lhs": "_s31_2",
+      "name": "second",
+      "op": "int_mul_checked",
+      "rhs": "_s31_3"
+    },
+    {
+      "constant": 64,
+      "lhs": "first",
+      "name": "subtotal",
+      "op": "int_add_checked",
+      "rhs": "second"
+    },
+    {
+      "constant": 64,
+      "lhs": "subtotal",
+      "name": "total",
+      "op": "int_add_checked",
+      "rhs": "_s31_4"
+    }
+  ],
+  "public_outputs": [
+    "total"
+  ],
+  "version": 1
+}

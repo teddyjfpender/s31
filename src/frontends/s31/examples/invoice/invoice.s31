@@ -1,0 +1,17 @@
+use std@1;
+
+// Prices and the delivery fee are integer cents. Overflow is rejected.
+fn line_total(quantity: u64, unit_price: u64) -> u64 {
+    std::int::mul_checked(quantity, unit_price)
+}
+
+// The fixture proves 3 * 125 + 2 * 450 + 25 = 1300 cents.
+circuit invoice(private quantity_a: u64, private price_a: u64,
+                private quantity_b: u64, private price_b: u64,
+                private delivery_fee: u64) -> public u64 {
+    let first = line_total(quantity_a, price_a);
+    let second = line_total(quantity_b, price_b);
+    let subtotal = std::int::add_checked(first, second);
+    let total = std::int::add_checked(subtotal, delivery_fee);
+    total
+}

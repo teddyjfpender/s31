@@ -8,6 +8,13 @@ sys.path.insert(0, str(S31_SOURCE_ROOT / "python"))
 
 import json
 
+# Diagnostics must work before imports that require the engine's assets.
+if __name__ == "__main__" and sys.argv[1:2] == ["doctor"]:
+    sys.dont_write_bytecode = True
+    from cli.doctor import main as doctor_main
+
+    raise SystemExit(doctor_main(sys.argv[2:]))
+
 from cli.commands import main
 from package.build import build, build_json, build_text, package_for
 from package.context import (

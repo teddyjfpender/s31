@@ -43,7 +43,9 @@ class ProverLogTests(unittest.TestCase):
                          "release_admission.py", "gate_component_roster.py",
                          "sparse_component_roster.py", "fixed_root_join.py",
                          "direct_gate_main_correspondence.py",
-                         "source_relation_fragment.py", "record_source_fragment.py"})
+                     "source_relation_fragment.py", "record_source_fragment.py",
+                     "pure_native_rows.py", "lean_effects_admission.py", "effects_gate_ownership.py",
+                     "record_value_fragment.py"})
         self.assertTrue(package_files.issubset(s31.TEXT_FRONTEND_SOURCES))
         runtime_files = set((S31_SOURCE_ROOT / "python/runtime").glob("*.py"))
         self.assertEqual({path.name for path in runtime_files},
@@ -52,7 +54,7 @@ class ProverLogTests(unittest.TestCase):
         self.assertTrue(runtime_files.issubset(s31.TEXT_FRONTEND_SOURCES))
         cli_files = set((S31_SOURCE_ROOT / "python/cli").glob("*.py"))
         self.assertEqual({path.name for path in cli_files},
-                         {"__init__.py", "parser.py", "commands.py"})
+                         {"__init__.py", "parser.py", "commands.py", "doctor.py"})
         self.assertTrue(cli_files.issubset(s31.TEXT_FRONTEND_SOURCES))
 
     def test_pins_the_runtime_stage_format(self) -> None:
