@@ -62,6 +62,19 @@ s31 verify-effects-lean PACKAGE PROOF ASSIGNMENT \
 The exact scope and remaining native proof obligations are in the
 [Lean gate note](../../../../../formal/s31/S31/Gadgets/Functional/Correspondence/GeneralLinearSSAEffectsPackageCheck.md).
 
+`verify-effects-gate-lean` adds the [bounded generic Gate ownership check](../../../../../design/s31/language/EFFECTS_GENERIC_GATE_OWNERSHIP.md)
+to that same opt-in path. It accepts four-lane M31 circuits with exactly one
+public input, up to three private inputs, 1–16 arithmetic nodes, and up to 16
+full-width assertions. Constants 0 and 1 and programs whose optimizer changes
+the one-node/one-gate mapping are rejected. The checker asks the externally
+pinned prover to export its actual bounded topology, checks every source
+arithmetic and assertion row, reconstructs all eight public word pins, and
+hashes the 13 dynamic fixed columns against the key-sealed 45-column roster.
+The native verifier independently checks the key before proof verification.
+Use the same arguments as `verify-effects-lean`, changing only the command
+name. This command also reveals the full private assignment to verifier-side
+Lean. The native proof is not bound to that particular assignment.
+
 `trust.py` checks externally supplied SHA-256 pins for the normalized source,
 key, prover and verifier before full package validation; a text package also requires
 the exact `.s31` source pin. The `verify-pinned` CLI command uses this admission

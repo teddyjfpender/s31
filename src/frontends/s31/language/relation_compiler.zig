@@ -385,6 +385,8 @@ pub const Span = struct {
 };
 
 pub const AssertionSpan = struct { index: usize, qm31_start: usize, qm31_end: usize, eq_start: usize, eq_end: usize };
+/// Packed wire addresses retained solely for bounded topology admission.
+pub const NodeWires = struct { id: u32, wires: []const u32 };
 pub const BindingSpan = struct {
     name: []const u8,
     word_start: usize,
@@ -411,6 +413,7 @@ pub const BoundedCallMap = struct {
 };
 pub const Maps = struct {
     nodes: std.ArrayListUnmanaged(Span) = .empty,
+    node_wires: std.ArrayListUnmanaged(NodeWires) = .empty,
     assertions: std.ArrayListUnmanaged(AssertionSpan) = .empty,
     bindings: std.ArrayListUnmanaged(BindingSpan) = .empty,
     sha_boundaries: std.ArrayListUnmanaged(ShaBoundaryMap) = .empty,
@@ -423,6 +426,8 @@ pub const Maps = struct {
 
     pub fn deinit(self: *Maps, allocator: std.mem.Allocator) void {
         self.nodes.deinit(allocator);
+        for (self.node_wires.items) |item| allocator.free(item.wires);
+        self.node_wires.deinit(allocator);
         self.assertions.deinit(allocator);
         self.bindings.deinit(allocator);
         self.sha_boundaries.deinit(allocator);
@@ -928,6 +933,11 @@ fn compileWithSpansMode(comptime V: type, allocator: std.mem.Allocator, program:
             .blake_g_start = blake_start,
             .blake_g_end = ctx.circuit.blake_g_gate.items.len,
         });
+        if (maps) |out| {
+            const wires = try allocator.alloc(u32, entry.lanes.data.len);
+            for (entry.lanes.data, wires) |wire, *address| address.* = wire.idx;
+            try out.node_wires.append(allocator, .{ .id = @intCast(id), .wires = wires });
+        }
         try checkCircuitBudget(V, &ctx, false);
     }
 

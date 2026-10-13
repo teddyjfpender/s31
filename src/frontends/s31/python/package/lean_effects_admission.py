@@ -96,6 +96,7 @@ def bounded_effects_snapshot(
 def verify_effectful_proof(
     package: Path, proof: Path, assignment: Path, statement: Path | None,
     pins: dict[str, str], checker_path: Path, checker_sha256: str,
+    require_gate_ownership: bool = False,
 ) -> str:
     """Admit exact source and statement bytes, then invoke native verification.
 
@@ -113,6 +114,11 @@ def verify_effectful_proof(
                 assignment, captured_assignment, MAX_LEAN_INPUT_BYTES)
             with bounded_effects_snapshot(package, pins, checker_path,
                                           checker_sha256) as (snapshot, manifest, checker):
+                if require_gate_ownership:
+                    from package.effects_gate_ownership import check_gate_ownership
+                    verifier = snapshot / "bin" / f"s31-{manifest['name']}-native-verifier"
+                    invoke(str(verifier), "check-key", str(snapshot / "verification-key.json"))
+                    check_gate_ownership(snapshot, manifest)
                 source = snapshot / "source.s31"
                 certificate = snapshot / "source-relation-certificate.json"
                 relation = snapshot / "source.s31.json"

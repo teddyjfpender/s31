@@ -252,6 +252,25 @@ const Report = struct {
 /// Value-free builder gates and the exact direct AIR preprocessed columns.
 /// This is an inspection artifact, not a verifier key or a PCS commitment.
 const DirectTopologyColumn = struct { id: []const u8, values: []const u32 };
+const GateTopologyConstant = struct { wire: u32, limbs: [4]u32 };
+const GateTopology = struct {
+    schema: []const u8 = "s31-generic-gate-topology-v1",
+    program_sha256: []const u8,
+    canonical_ir_sha256: []const u8,
+    preprocessed_root: []const u8,
+    n_vars: u32,
+    first_permutation_row: usize,
+    node_wires: []const s31.relation_compiler.NodeWires,
+    constants: []const GateTopologyConstant,
+    output: []const u32,
+    add: []const circuit.builder.circuit.BinaryGate,
+    sub: []const circuit.builder.circuit.BinaryGate,
+    mul: []const circuit.builder.circuit.BinaryGate,
+    pointwise_mul: []const circuit.builder.circuit.BinaryGate,
+    eq: []const circuit.builder.circuit.EqGate,
+    m31_to_u32: []const circuit.builder.circuit.M31ToU32Gate,
+    columns: []const DirectTopologyColumn,
+};
 const DirectTopology = struct {
     schema: []const u8 = "s31-direct-gate-topology-v2",
     program_sha256: []const u8,
@@ -318,6 +337,8 @@ pub fn main() !void {
         try inspect(allocator, parsed.value);
     } else if (std.mem.eql(u8, command, "inspect-topology") and args.len == 2 and direct_mode and !chip_mode) {
         try inspectDirectTopology(allocator, parsed.value);
+    } else if (std.mem.eql(u8, command, "inspect-gate-topology") and args.len == 2 and !direct_mode and !chip_mode and !sparse_mode and !wide_mode) {
+        try inspectGateTopology(allocator, parsed.value);
     } else if (std.mem.eql(u8, command, "inspect-physical-rows") and args.len == 3 and direct_mode and !chip_mode) {
         try inspectBoundedPhysicalRows(allocator, parsed.value, args[2], .rows);
     } else if (std.mem.eql(u8, command, "inspect-physical-root") and args.len == 3 and direct_mode and !chip_mode) {
@@ -478,7 +499,7 @@ fn parseInspectStep(args: []const []const u8, base_len: usize) !u32 {
 }
 
 fn usage() error{InvalidArguments} {
-    std.debug.print("usage: s31-program check | inspect | inspect-topology (bounded direct-gate only) | inspect-physical-rows ASSIGNMENT.json | inspect-physical-root ASSIGNMENT.json | inspect-main-root-from-columns MAIN.json (public bounded direct-gate only) | run ASSIGNMENT.json | prove ASSIGNMENT.json PROOF\n", .{});
+    std.debug.print("usage: s31-program check | inspect | inspect-topology (bounded direct-gate only) | inspect-gate-topology (bounded generic Gate only) | inspect-physical-rows ASSIGNMENT.json | inspect-physical-root ASSIGNMENT.json | inspect-main-root-from-columns MAIN.json (public bounded direct-gate only) | run ASSIGNMENT.json | prove ASSIGNMENT.json PROOF\n", .{});
     std.debug.print("       inspect-fixed-root-from-columns FIXED.json (direct-gate diagnostic, explicit 8x512 canonical M31 columns)\n", .{});
     std.debug.print("       prove-for-external-verification ASSIGNMENT.json PROOF (record direct-gate v2 only; output is UNVERIFIED until separate native verifier accepts)\n", .{});
     std.debug.print("       recurse-check ASSIGNMENT.json CHILD-PROOF CHILD-KEY.json | recurse-prove ASSIGNMENT.json CHILD-PROOF OUTER-PROOF CHILD-KEY.json [--low-memory]\n", .{});
@@ -1035,6 +1056,71 @@ fn inspectDirectTopology(allocator: std.mem.Allocator, source: relation.Program)
         .permutation_outputs = ctx.circuit.permutation.outputs.items,
         .first_permutation_row = pp.first_permutation_row,
         .columns = columns,
+    };
+    const encoded = try std.json.Stringify.valueAlloc(temp, exported, .{});
+    std.debug.print("{s}\n", .{encoded});
+}
+
+fn inspectGateTopology(allocator: std.mem.Allocator, source: relation.Program) !void {
+    // The general Gate trace contains multi-million-row fixed tables. Export
+    // only bounded dynamic columns, retaining the verifier-key root and the
+    // source-bound roster digest as the custody boundary for all 45 columns.
+    if (source.version != 1 or source.proof_mode != .transparent or
+        source.inputs.len > 4 or source.nodes.len > 16 or source.assertions.len > 16)
+        return error.UnsupportedGateTopologyInspection;
+    for (source.inputs) |input| if (input.kind != .m31 or input.length != 4)
+        return error.UnsupportedGateTopologyInspection;
+    var ir = try s31.canonical.build(allocator, source);
+    defer ir.deinit();
+    var maps = s31.relation_compiler.Maps{};
+    defer maps.deinit(allocator);
+    var ctx = try s31.relation_compiler.compileWithSpans(circuit.builder.NoValue, allocator, source, null, &maps);
+    defer ctx.deinit();
+    try padForProfile(circuit.builder.NoValue, &ctx);
+    var pp = try preprocessed.PreprocessedCircuit.fromBuilderCircuit(allocator, &ctx.circuit);
+    defer pp.deinit(allocator);
+    if (pp.first_permutation_row > 1024 or ctx.circuit.eq.items.len > 1024 or
+        ctx.circuit.m31_to_u32.items.len > 1024) return error.UnsupportedGateTopologyInspection;
+    var arena = std.heap.ArenaAllocator.init(allocator);
+    defer arena.deinit();
+    const temp = arena.allocator();
+    var columns: std.ArrayListUnmanaged(DirectTopologyColumn) = .empty;
+    for (pp.columns) |column| {
+        if (!std.mem.startsWith(u8, column.id, "eq_") and
+            !std.mem.startsWith(u8, column.id, "qm31_ops_") and
+            !std.mem.startsWith(u8, column.id, "m31_to_u32_")) continue;
+        if (column.values.len > 1024) return error.UnsupportedGateTopologyInspection;
+        const values = try temp.alloc(u32, column.values.len);
+        for (column.values, values) |value, *word| word.* = value.toU32();
+        try columns.append(temp, .{ .id = column.id, .values = values });
+    }
+    const constants = try temp.alloc(GateTopologyConstant, ctx.constants.count());
+    for (ctx.constants.keys(), ctx.constants.values(), constants) |key, wire, *item| {
+        item.* = .{ .wire = wire.idx, .limbs = .{
+            @truncate(key), @truncate(key >> 32), @truncate(key >> 64), @truncate(key >> 96),
+        } };
+    }
+    var source_digest: [32]u8 = undefined;
+    std.crypto.hash.sha2.Sha256.hash(embedded_source, &source_digest, .{});
+    const source_hex = std.fmt.bytesToHex(source_digest, .lower);
+    const ir_hex = std.fmt.bytesToHex(ir.sha256, .lower);
+    const root_hex = std.fmt.bytesToHex(try pp.preprocessedRoot(allocator, 1), .lower);
+    const exported: GateTopology = .{
+        .program_sha256 = &source_hex,
+        .canonical_ir_sha256 = &ir_hex,
+        .preprocessed_root = &root_hex,
+        .n_vars = ctx.circuit.n_vars,
+        .first_permutation_row = pp.first_permutation_row,
+        .node_wires = maps.node_wires.items,
+        .constants = constants,
+        .output = ctx.circuit.output.items,
+        .add = ctx.circuit.add.items,
+        .sub = ctx.circuit.sub.items,
+        .mul = ctx.circuit.mul.items,
+        .pointwise_mul = ctx.circuit.pointwise_mul.items,
+        .eq = ctx.circuit.eq.items,
+        .m31_to_u32 = ctx.circuit.m31_to_u32.items,
+        .columns = columns.items,
     };
     const encoded = try std.json.Stringify.valueAlloc(temp, exported, .{});
     std.debug.print("{s}\n", .{encoded});

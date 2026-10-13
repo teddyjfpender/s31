@@ -180,11 +180,12 @@ def dispatch(args: argparse.Namespace) -> None:
         return
 
     package = args.package.resolve()
-    if args.command == "verify-effects-lean":
+    if args.command in {"verify-effects-lean", "verify-effects-gate-lean"}:
         print(verify_effectful_proof(
             package, args.proof, args.assignment, args.statement,
             _external_pins(args), args.lean_checker,
-            args.lean_checker_sha256), end="")
+            args.lean_checker_sha256,
+            require_gate_ownership=args.command == "verify-effects-gate-lean"), end="")
         return
     if args.command in {"verify-pinned", "verify-release"}:
         pins = _external_pins(args)

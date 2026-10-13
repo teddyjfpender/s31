@@ -147,18 +147,19 @@ def make_parser() -> argparse.ArgumentParser:
     sub.add_argument("--statement", type=Path)
     for kind in ("source", "key", "prover", "verifier", "text"):
         sub.add_argument(f"--{kind}-sha256", required=True)
-    sub = commands.add_parser(
-        "verify-effects-lean",
-        help="verify a bounded effectful proof after externally pinned Lean source and statement admission",
-    )
-    sub.add_argument("package", type=Path)
-    sub.add_argument("proof", type=Path)
-    sub.add_argument("assignment", type=Path)
-    sub.add_argument("--statement", type=Path)
-    sub.add_argument("--lean-checker", type=Path, required=True)
-    sub.add_argument("--lean-checker-sha256", required=True)
-    for kind in ("source", "key", "prover", "verifier", "text"):
-        sub.add_argument(f"--{kind}-sha256", required=True)
+    for command, help_text in (
+        ("verify-effects-lean", "verify a bounded effectful proof after externally pinned Lean source and statement admission"),
+        ("verify-effects-gate-lean", "also admit four-lane effectful source nodes, assertions and public pins against key-sealed generic Gate rows"),
+    ):
+        sub = commands.add_parser(command, help=help_text)
+        sub.add_argument("package", type=Path)
+        sub.add_argument("proof", type=Path)
+        sub.add_argument("assignment", type=Path)
+        sub.add_argument("--statement", type=Path)
+        sub.add_argument("--lean-checker", type=Path, required=True)
+        sub.add_argument("--lean-checker-sha256", required=True)
+        for kind in ("source", "key", "prover", "verifier", "text"):
+            sub.add_argument(f"--{kind}-sha256", required=True)
     sub = commands.add_parser("verify-recursive", help="verify an outer proof against its embedded child key")
     sub.add_argument("package", type=Path)
     sub.add_argument("proof", type=Path)
