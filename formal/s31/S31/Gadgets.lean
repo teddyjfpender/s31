@@ -295,6 +295,7 @@ import S31.Gadgets.Packed
 import S31.Gadgets.PcsFri.QueryAndTranscript
 import S31.Gadgets.PcsFri.BcsTranscriptEpoch
 import S31.Gadgets.PcsFri.QuerySampling
+import S31.Gadgets.PcsFri.BundleQueryBound
 import S31.Gadgets.PcsFri.M31MaskedQuery
 import S31.Gadgets.PcsFri.MerkleOpening
 import S31.Gadgets.PcsFri.MultiproofCapture
