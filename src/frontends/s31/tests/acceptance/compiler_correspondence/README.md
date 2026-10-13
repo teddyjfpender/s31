@@ -159,6 +159,20 @@ in `tests/python/generated/test_source_mutation_correspondence.py`. These
 samples test the native path; they do not prove parser or emitter refinement in
 Lean, nor the underlying PCS/FRI soundness assumptions.
 
+## Static tuple direct-Gate rows and fixed root
+
+The static tuple native-row control admits one all-public two-input source
+through independent Lean source and assignment parsing, the complete
+source-derived direct-Gate fixed row replay, native fixed-column
+recommitment, and an accepted proof carrying that same fixed root. Mutating
+the proof root or source projection must fail. It uses at most eight Zig
+build jobs and does not claim arbitrary proof-opening authentication.
+
+```sh
+cd formal/s31 && lake build s31-general-linear-effects-package-check && cd ../..
+python3 -B src/frontends/s31/tests/acceptance/compiler_correspondence/static_tuple_native_rows.py
+```
+
 ## Pinned square4 fixed-root binding
 
 `native_fixed_root_binding.py` checks the complete 512-row, eight-column

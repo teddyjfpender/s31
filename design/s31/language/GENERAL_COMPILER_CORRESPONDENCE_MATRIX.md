@@ -125,6 +125,12 @@ certificate to a fresh native direct-Gate topology for either one public
 `[m31; N]` inputs with `N` equal to 1 or 2. The result is one public array
 of the same length, and the graph has 1–16 distinct, canonically ordered
 `add`, `sub`, or `mul` SSA nodes; the public result selects one of those nodes.
+The source may also contain a flat static tuple of already typed M31 arrays
+and constant-index projection. That case must pass the independent exact-byte
+product parser and the separate Lean effects parser. Product construction and
+projection allocate no normalized node, so the same source-derived full Gate
+schedule applies. The source bytes are mandatory for product enrollment;
+passing only an effects-profile certificate cannot enroll it.
 The checker derives a
 complete gate schedule from that source graph, then independently compares
 every gate address, operation selector, multiplicity and fixed-column cell
@@ -140,6 +146,14 @@ This certificate's capability is
 inspector, verifier and PCS for the claim that the exported root commits to
 the checked columns. It does not prove the witness satisfies the AIR, that
 the native verifier enforces the public input claim, or PCS/FRI soundness.
+`tests/acceptance/compiler_correspondence/static_tuple_native_rows.py` builds
+an all-public tuple package, runs the independent Lean source and assignment
+checker, replays the complete 512-row topology, recommits all eight native
+fixed columns, and compares that root with the key and a native-accepted
+proof's fixed commitment. It also checks that changing that commitment makes
+the verifier reject. This is a checked honest proof and tamper control, not an
+independent cryptographic proof-opening theorem or authentication of arbitrary
+native traces.
 Two public inputs fit within the eight-word ABI only at these lengths:
 `2N` input words plus `N` result words must be at most eight. Returning an
 input directly, private inputs, constants, assertions,

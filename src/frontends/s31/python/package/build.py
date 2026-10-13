@@ -369,7 +369,7 @@ def build_text(source_path: Path, output: Path, lowering: str = "gate", fri_fold
         if lowering == "direct-gate" and source_relation_certificate is not None:
             from package.pure_native_rows import admitted_ssa, make_certificate as make_pure_native
 
-            if admitted_ssa(source_relation_certificate):
+            if admitted_ssa(source_relation_certificate, text_data):
                 topology = json.loads(invoke(
                     str(package / "bin" / f"s31-{manifest['name']}-prover"),
                     "inspect-topology"))
