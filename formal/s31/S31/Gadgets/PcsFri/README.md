@@ -114,6 +114,16 @@ from the repository root with:
 zig test -O ReleaseSafe --dep stwo_core -Mroot=formal/s31/tests/pcs_fri_decoder_native.zig -Mstwo_core=deps/stwo-zig/src/core/mod.zig
 ```
 
+The [finite native decoder refinement check](../../../../../design/s31/security/PCS_FRI_MULTIPROOF_DECODER_REFINEMENT.md)
+goes further: an independent complete eight-leaf tree supplies every one of
+the 255 nonempty query subsets. The test compares all three captured sibling
+levels for each query against the original tree, including reverse query order
+and a duplicate, under S31's plain BLAKE2s Merkle hasher. It also checks the
+log-size ordering of a two-column leaf and five malformed inputs. This covers
+the pinned native implementation on that finite domain; a general Zig
+semantics theorem, committed-column origin and collision bound are still
+required for P06.
+
 ## Packed FRI leaves bind the modeled layer oracle
 
 [`FriMerkleBinding.lean`](FriMerkleBinding.lean) identifies the exact leaf for

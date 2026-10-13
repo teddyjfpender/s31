@@ -65,6 +65,8 @@ jobs:
         run: |
           python3 -B -m unittest scripts.tests.test_pcs_fri_layer -v
           bash formal/s31/tests/run_pcs_fri_layer_native.sh
+      - name: Lifted Merkle decoder finite refinement controls
+        run: formal/s31/tests/run_pcs_fri_decoder_refinement_native.sh
       - name: Check pinned square4 native base rows and mutation controls
         run: |
           set -euo pipefail
