@@ -7,10 +7,18 @@ const prover = @import("stwo_prover_engine");
 const CpuBackend = @import("stwo_cpu_backend").CpuBackend;
 
 const QM31 = core.fields.qm31.QM31;
-const Hasher = core.vcs_lifted.blake2_merkle.Blake2sMerkleHasher;
-const MerkleChannel = core.vcs_lifted.blake2_merkle.Blake2sMerkleChannel;
-const Channel = core.channel.blake2s.Blake2sChannel;
+const Profile = core.vcs_lifted.channel_profile.proving_5a7c5ed.Blake2sM31MerkleChannel;
+const Hasher = Profile.MerkleHasher;
+const MerkleChannel = Profile;
+const Channel = Profile.Channel;
 const Verifier = core.fri.FriVerifier(Hasher, MerkleChannel);
+
+comptime {
+    if (Channel != core.channel.blake2s.Blake2sM31Channel)
+        @compileError("FRI regression must use the S31 M31 transcript channel");
+    if (Hasher != core.vcs_lifted.blake2_merkle.Blake2sPlainMerkleHasher)
+        @compileError("FRI regression must use the S31 plain Merkle hasher");
+}
 
 test "FRI acceptance: sparse reconstruction places queried values and consumes witnesses across subsets" {
     const allocator = std.testing.allocator;

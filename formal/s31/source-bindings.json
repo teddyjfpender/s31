@@ -338,7 +338,7 @@
     "scripts/tests/test_pcs_fri_leaf_encoding.py": "e3720d68f585c961ce5b773401ae74c99db05c7e80c735fd5dbd6a678efbfda5",
     "scripts/tests/test_pcs_fri_layer.py": "15764a837b220056f4d9c93dcb0f72dea94e4980265c4ca73475f504f59feade",
     "formal/s31/tests/pcs_fri_fold_native.zig": "74440da5053e471e0f4c1be9ce4b105180fc68c611a52eb684189e66b5e9bc51",
-    "formal/s31/tests/pcs_fri_layer_native.zig": "549a1da1b42dcdaf00a23d824ef973cd4342c10700faab024f3ca609e037fe57",
+    "formal/s31/tests/pcs_fri_layer_native.zig": "2880fce322261211e6f1902dd5f3159bcaf9ec43bf525380964237e44c1ecb40",
     "formal/s31/tests/run_pcs_fri_layer_native.sh": "646d1b96665e920f241fdc2b4458ce95e160a9f163fcc8575bad5b6b0bfb4dc8",
     "deps/stwo-zig/src/core/pcs/quotients/fri_answers.zig": "5280b74c1762860fad733066a40d96dada813908532e3b8854e0a3f02f182181",
     "deps/stwo-zig/src/core/pcs/quotients/samples.zig": "18848c2e180236b0d6807a4d2863f127a8830366ac1df038f5042359e9401e2e",
