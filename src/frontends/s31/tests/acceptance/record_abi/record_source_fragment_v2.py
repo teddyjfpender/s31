@@ -17,6 +17,10 @@ from package.record_source_fragment import (  # noqa: E402
     CAPABILITY, check_package_record_source_relation, parse_record_source_fragment,
 )
 from package.verify import verify_package  # noqa: E402
+from package.structural_derivation import (  # noqa: E402
+    ARTIFACT as STRUCTURAL_ARTIFACT, check_certificate as check_structural_certificate,
+    evaluate_assignment as evaluate_structural_assignment,
+)
 from text_frontend import compile_text  # noqa: E402
 
 SOURCE = """struct Pair { left: [m31; 1], right: [m31; 1] }
@@ -77,6 +81,13 @@ def run() -> dict:
         relation = json.loads((package / "source.s31.json").read_bytes())
         if relation != checked_relation:
             raise AssertionError("built relation differs from independent source parse")
+        structural = check_structural_certificate(
+            source_bytes, (package / "source.s31.json").read_bytes(),
+            (package / "public-abi.json").read_bytes(), "direct-gate",
+            (package / STRUCTURAL_ARTIFACT).read_bytes())
+        if evaluate_structural_assignment(structural, canonical(ASSIGNMENT))[
+                "public_words"] != [2, 3, 17, 3, 0, 0, 0, 0]:
+            raise AssertionError("typed record derivation differs from public words")
         assignment_path = work / "assignment.json"
         assignment_path.write_bytes(canonical(ASSIGNMENT))
         trial_dir = work / "trial"

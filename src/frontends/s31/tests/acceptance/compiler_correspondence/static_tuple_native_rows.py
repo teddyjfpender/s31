@@ -19,6 +19,10 @@ from package.context import invoke, write_json  # noqa: E402
 from package.fixed_root_join import proof_roots  # noqa: E402
 from package.pure_native_rows import ARTIFACT, admitted_ssa, make_certificate  # noqa: E402
 from package.source_relation_fragment import check_source_relation_certificate  # noqa: E402
+from package.structural_derivation import (  # noqa: E402
+    ARTIFACT as STRUCTURAL_ARTIFACT, check_certificate as check_structural_certificate,
+    evaluate_assignment as evaluate_structural_assignment,
+)
 from package.verify import verify_package  # noqa: E402
 
 SOURCE = """circuit tuple_native(public x: [m31; 2], public y: [m31; 2]) -> public [m31; 2] {
@@ -64,6 +68,10 @@ def run(checker: Path) -> dict[str, object]:
             source_cert = check_source_relation_certificate(
                 source_bytes, (package / "source.s31.json").read_bytes(),
                 (package / "source-relation-certificate.json").read_bytes())
+            structural = check_structural_certificate(
+                source_bytes, (package / "source.s31.json").read_bytes(),
+                (package / "public-abi.json").read_bytes(), "direct-gate",
+                (package / STRUCTURAL_ARTIFACT).read_bytes())
             if not admitted_ssa(source_cert, source_bytes) or admitted_ssa(source_cert):
                 raise AssertionError("tuple admission did not require exact source bytes")
             native_cert = make_certificate(package)
@@ -79,6 +87,9 @@ def run(checker: Path) -> dict[str, object]:
             s31.write_json(assignment, {"public_inputs": {"x": [1, 2], "y": [3, 4]},
                                         "private_inputs": {},
                                         "public_outputs": {"out": [4, 6]}})
+            if evaluate_structural_assignment(structural, assignment.read_bytes())[
+                    "public_words"] != [1, 2, 3, 4, 4, 6, 0, 0]:
+                raise AssertionError("typed structural value differs from public ABI words")
             _checked_lean(checker, package, assignment)
             trial = s31.trial(package, assignment, work / "trial")
             if not trial["native_verifier_accepted"]:

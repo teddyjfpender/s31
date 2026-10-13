@@ -37,7 +37,8 @@ AUDIT_FIXTURES = {
     "sha-fused": ("bitcoin/bitcoin_header_pow.s31.json", "bitcoin/bitcoin_header_pow.valid.json", None),
 }
 FEATURE_CASES = frozenset({
-    "v1-source-relation", "static-tuple-erasure-source", "v2-record-source-relation", "static-sum-dce-source",
+    "v1-source-relation", "static-tuple-erasure-source", "v2-record-source-relation",
+    "typed-structural-derivation-source", "static-sum-dce-source",
     "static-enum-effects-source",
     "direct-add-source", "direct-sub-le-source", "direct-mul-source",
     "record-u8-source", "record-u16-source", "record-u32-source",
@@ -52,6 +53,7 @@ FEATURE_COMMANDS = {
     "v1-source-relation": ("src/frontends/s31/tests/python/security/test_source_relation_fragment.py",),
     "static-tuple-erasure-source": ("src/frontends/s31/tests/python/security/test_static_tuple_erasure.py",),
     "v2-record-source-relation": ("src/frontends/s31/tests/python/security/test_record_source_fragment.py",),
+    "typed-structural-derivation-source": ("src/frontends/s31/tests/python/security/test_structural_derivation.py",),
     "static-sum-dce-source": ("src/frontends/s31/tests/python/functional/test_static_sum_dce.py",),
     "static-enum-effects-source": ("src/frontends/s31/tests/python/generated/test_static_enum_effect_generated.py",),
     "direct-add-source": ("src/frontends/s31/tests/acceptance/math/addition.py", "--source-only"),
