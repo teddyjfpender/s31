@@ -304,6 +304,7 @@ import S31.Gadgets.PcsFri.RawLayerRefinement
 import S31.Gadgets.PcsFri.OperationalExtraction
 import S31.Gadgets.PcsFri.RawDeepCustody
 import S31.Gadgets.PcsFri.DeepQuotientAlgebra
+import S31.Gadgets.PcsFri.DegreeCorrectionGap
 import S31.Gadgets.PcsFri.FriMerkleBinding
 import S31.Gadgets.PcsFri.FriLeafEncoding
 import S31.Gadgets.PcsFri.MaskedLayerBound
