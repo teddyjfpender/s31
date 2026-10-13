@@ -18,6 +18,12 @@ def q : ℕ := 2 ^ 31 - 1
 /-- The paper samples outside the base-field circle: `(q^4-1)-(q+1)`. -/
 def paperSupport (p : ℕ) : ℕ := p ^ 4 - p - 2
 
+/-- The two-point conjugate construction described in Section 4.5 instead
+samples outside the intermediate-field circle. Its affine support has size
+`(q^4-1)-(q^2-1)`. This definition is cardinality arithmetic; applying a
+two-point OOD soundness bound still requires a separate theorem. -/
+def twoPointSupport (p : ℕ) : ℕ := p ^ 4 - p ^ 2
+
 /-- Regular rational-map seeds whose image has nonzero `y.c1`. -/
 def acceptedSupport (p : ℕ) : ℕ := p ^ 4 - (2 * p ^ 2 - 3) - 2
 
@@ -52,6 +58,40 @@ end FieldCount
 theorem paper_support_minus_accepted :
     paperSupport q - acceptedSupport q = 2 * q ^ 2 - q - 3 := by
   norm_num [paperSupport, acceptedSupport, q]
+
+theorem two_point_support_minus_accepted :
+    twoPointSupport q - acceptedSupport q = q ^ 2 - 1 := by
+  norm_num [twoPointSupport, acceptedSupport, q]
+
+theorem accepted_support_lt_two_point_support :
+    acceptedSupport q < twoPointSupport q := by
+  norm_num [twoPointSupport, acceptedSupport, q]
+
+/-- Exact uniform-conditioning ratio for the two-point universe. The native
+Fiat–Shamir draw has not been proved uniform on either support. -/
+def twoPointConditioningFactor : ℚ :=
+  (twoPointSupport q : ℚ) / (acceptedSupport q : ℚ)
+
+theorem two_point_conditioning_factor_eq :
+    twoPointConditioningFactor =
+      (q ^ 2 : ℚ) / ((q ^ 2 - 1 : ℕ) : ℚ) := by
+  norm_num [twoPointConditioningFactor, twoPointSupport, acceptedSupport, q]
+
+/-- A fixed bad-set bound over the two-point universe transfers to the
+guarded support with this exact conditioning factor. This theorem supplies
+only the finite mass step, not the bad-set bound or adaptive sampler law. -/
+theorem conditional_two_point_bad_mass_le (a b : ℕ) (hab : a ≤ b) :
+    (a : ℚ) / (acceptedSupport q : ℚ) ≤
+      ((b : ℚ) / (twoPointSupport q : ℚ)) * twoPointConditioningFactor := by
+  have ha : (a : ℚ) ≤ b := by exact_mod_cast hab
+  have hden : (0 : ℚ) < acceptedSupport q := by
+    norm_num [acceptedSupport, q]
+  have htwo : (twoPointSupport q : ℚ) ≠ 0 := by
+    exact ne_of_gt (lt_of_lt_of_le hden (by
+      exact_mod_cast (le_of_lt accepted_support_lt_two_point_support)))
+  unfold twoPointConditioningFactor
+  rw [div_mul_div_cancel₀ htwo]
+  exact div_le_div_of_nonneg_right ha (le_of_lt hden)
 
 theorem accepted_support_positive : 0 < acceptedSupport q := by
   norm_num [acceptedSupport, q]
