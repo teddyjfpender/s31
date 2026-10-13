@@ -13,10 +13,11 @@ import gzip
 import hashlib
 import io
 import json
+import posixpath
 import subprocess
 import sys
 import tarfile
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 ROOT = Path(__file__).resolve().parents[2]
 ENGINE = ROOT / "deps/stwo-zig"
@@ -43,14 +44,31 @@ def add_archive(target: tarfile.TarFile, repository: Path, commit: str,
     try:
         with tarfile.open(fileobj=proc.stdout, mode="r|") as archive:
             for entry in archive:
+                source_path = PurePosixPath(entry.name)
+                if (not source_path.parts or source_path.is_absolute() or
+                        ".." in source_path.parts or
+                        not (entry.isfile() or entry.isdir() or entry.issym())):
+                    raise RuntimeError(f"unsafe Git archive entry: {entry.name}")
+                # Extract before rewriting the header. Git archive may carry a
+                # PAX `path` field for long names, which otherwise overrides
+                # TarInfo.name when the outer archive is written.
+                contents = archive.extractfile(entry) if entry.isfile() else None
                 entry.name = prefix + entry.name
+                if entry.issym():
+                    target_path = posixpath.normpath(posixpath.join(
+                        posixpath.dirname(entry.name), entry.linkname))
+                    root = prefix.rstrip("/")
+                    if target_path != root and not target_path.startswith(root + "/"):
+                        raise RuntimeError(f"symlink escapes source bundle: {entry.name}")
+                entry.pax_headers = {}
                 entry.uid = entry.gid = 0
                 entry.uname = entry.gname = ""
-                target.addfile(entry, archive.extractfile(entry) if entry.isfile() else None)
+                target.addfile(entry, contents)
                 count += 1
     finally:
         proc.stdout.close()
-    if proc.wait() != 0:
+        status = proc.wait()
+    if status != 0:
         raise RuntimeError(f"git archive failed for {repository}")
     return count
 
