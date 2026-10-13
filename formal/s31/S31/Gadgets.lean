@@ -293,6 +293,7 @@ import S31.Gadgets.PcsFri.MerkleOpening
 import S31.Gadgets.PcsFri.MultiproofCapture
 import S31.Gadgets.PcsFri.MultiproofDecoder
 import S31.Gadgets.PcsFri.FoldAlgebra
+import S31.Gadgets.PcsFri.GroupedFoldSchedule
 import S31.Gadgets.PcsFri.LayerAcceptance
 import S31.Gadgets.PcsFri.RawLayerRefinement
 import S31.Gadgets.PcsFri.OperationalExtraction
