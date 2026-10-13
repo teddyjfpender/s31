@@ -1,6 +1,6 @@
 # Conditional error ledger for the source-pinned mixed N1–N8 profile
 
-**Scope.** This is a source audit of the source-embedded `general_package` verifier and pinned `d073ebb89fca94b638e3b99729d346deb29edfc9` stwo-zig engine. It is an error-budget *ledger*, not a claimed security level. No native proof run was needed for the original arithmetic ledger. It applies to the admitted direct Gate + pair/many chip/bridge roster (`1 + 2N` components, `1 <= N <= 8`), not all S31 programs. The pin update binds the exported proof root vector to verifier-committed roots and rejects surplus zero-fold FRI layers; neither change supplies a whole-proof soundness theorem.
+**Scope.** This is a source audit of the source-embedded `general_package` verifier and pinned `041ef9d43d341089d45670bd045de7ddbffc79bb` stwo-zig engine. It is an error-budget *ledger*, not a claimed security level. No native proof run was needed for the original arithmetic ledger. It applies to the admitted direct Gate + pair/many chip/bridge roster (`1 + 2N` components, `1 <= N <= 8`), not all S31 programs. The pin update binds the exported proof root vector to verifier-committed roots and rejects surplus zero-fold FRI layers; neither change supplies a whole-proof soundness theorem.
 
 ## Verified protocol settings and transcript order
 
@@ -42,6 +42,6 @@ PY
 
 Output: `722185 12585504 5055289 101.73063785772997`. This check does not run a prover or verify the soundness premises.
 
-Focused existing check: `zig test src/frontends/s31/runtime/mixed_boundary/lookup_budget.zig -O ReleaseSafe` passed all three tests, including N1/N8 envelope arithmetic, invalid geometry, and characteristic/overflow rejection. The current reviewed pin is `d073ebb89fca94b638e3b99729d346deb29edfc9 deps/stwo-zig`.
+Focused existing check: `zig test src/frontends/s31/runtime/mixed_boundary/lookup_budget.zig -O ReleaseSafe` passed all three tests, including N1/N8 envelope arithmetic, invalid geometry, and characteristic/overflow rejection. The current reviewed pin is `041ef9d43d341089d45670bd045de7ddbffc79bb deps/stwo-zig`.
 
 The [source-pinned diagnostic auditor](../../../src/frontends/s31/tests/acceptance/mixed_boundary/security_parameter_audit.py) automates these parameter checks. Run `python3 src/frontends/s31/tests/acceptance/mixed_boundary/security_parameter_audit.py --json` from the repository root. It checks the reviewed engine gitlink and clean submodule HEAD, exact hashes of the relevant engine and S31 source files, fixed PCS settings, the honest LogUp zero-denominator rejection, both mixed transcript orders, the FRI PoW/query order, and geometry constants. On this snapshot it emits `5055289/((2^31-1)^4)` as a **conditional** lookup bound and `"whole_proof_security_bits": null` with explicit unbounded terms. Any source drift requires a new review and pin update; passing the auditor does not prove the pinned implementation sound. Run its fast negative controls with `python3 -m unittest discover -s src/frontends/s31/tests/acceptance/mixed_boundary -p 'test_security_parameter_audit.py' -v` (seven passed, including changed PoW bits, query count, denominator handling, and challenge order).
