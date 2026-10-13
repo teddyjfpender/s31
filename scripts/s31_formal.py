@@ -30,6 +30,7 @@ from scripts.s31_formal_lib.pcs_fri_order import check_pcs_fri_order
 from scripts.s31_formal_lib.pcs_fri_projection import check_pcs_fri_projection
 from scripts.s31_formal_lib.pcs_fri_capture import check_pcs_fri_capture
 from scripts.s31_formal_lib.pcs_fri_fold import check_pcs_fri_fold
+from scripts.s31_formal_lib.pcs_fri_leaf_encoding import check_pcs_fri_leaf_encoding
 from scripts.riscv_refinement import _skip_lean_string, _strip_lean_comments
 from scripts.riscv_refinement_lib.model import RefinementError
 
@@ -323,15 +324,21 @@ BINDINGS = [
     "deps/stwo-zig/src/core/vcs_lifted/blake2_merkle.zig",
     "deps/stwo-zig/src/core/vcs_lifted/channel_profile.zig",
     "deps/stwo-zig/src/core/vcs_lifted/verifier.zig",
+    "deps/stwo-zig/src/core/vcs_lifted/testdata/lifted_height_vectors.zig",
+    "deps/stwo-zig/src/core/crypto/blake2s_backend.zig",
+    "deps/stwo-zig/src/core/fields/m31.zig",
+    "deps/stwo-zig/src/prover/vcs_lifted/columns.zig",
     "deps/stwo-zig/src/prover/vcs_lifted/leaves.zig",
     "deps/stwo-zig/src/prover/pcs/scheme_views.zig",
     "scripts/s31_formal_lib/pcs_fri_order.py",
     "scripts/s31_formal_lib/pcs_fri_projection.py",
     "scripts/s31_formal_lib/pcs_fri_capture.py",
     "scripts/s31_formal_lib/pcs_fri_fold.py",
+    "scripts/s31_formal_lib/pcs_fri_leaf_encoding.py",
     "scripts/tests/test_pcs_fri_projection.py",
     "scripts/tests/test_pcs_fri_capture.py",
     "scripts/tests/test_pcs_fri_fold.py",
+    "scripts/tests/test_pcs_fri_leaf_encoding.py",
     "formal/s31/tests/pcs_fri_fold_native.zig",
     "deps/stwo-zig/src/core/pcs/quotients/fri_answers.zig",
     "deps/stwo-zig/src/core/pcs/quotients/samples.zig",
@@ -782,10 +789,12 @@ def main() -> None:
     check_pcs_fri_projection(ROOT)
     check_pcs_fri_capture(ROOT)
     check_pcs_fri_fold(ROOT)
+    check_pcs_fri_leaf_encoding(ROOT)
     print("S31 protocol order: main and interaction commitments precede their challenge draws")
     print("S31 PCS/FRI order: roots, challenges, PoW, raw queries and normalization bound")
     print("S31 lifted Merkle capture: range, siblings, shifts and root-before-publication bound")
     print("S31 FRI fold: native butterfly, coordinates, challenges and verifier calls bound")
+    print("S31 lifted Merkle leaves: sorted M31 little-endian rows and Rust-oracle roots bound")
     failures = []
     for path, expected in generated().items():
         if args.write:
