@@ -23,6 +23,10 @@ DRAFT_COMMIT = "234ac67b2819e6b102e8d43da93a38a4a902075e"
 DRAFT_REF = "origin/codex/paired-degree-protocol-20261013"
 Q = 2**31 - 1
 SOURCE_SHA256 = {
+    "src/core/fields/m31.zig": "a5d47cc1a8c57a858b943c25e63eb1561b9f994fdff36ea38517bc166ea66d73",
+    "src/core/fields/cm31.zig": "4b7a14c91fba7c467f92e924ce90c7230a22d08329591e3d5b8874d862b31288",
+    "src/core/fields/qm31.zig": "a60c2a5a6f10bf91b1bfab41a526e41b589d0d1d83275e0516cf68b7228be931",
+    "src/core/constraints.zig": "4b8eb20e43d45ec28777f343a43e25566788c598b895d1f230b62da25e33dfea",
     "src/core/pcs/paired_sparse_cascade_experimental.zig": "6b0dba9fb57cdc4690d51326b338760c488c33519354d9ef758a751a201b5487",
     "src/core/pcs/paired_sparse_cascade_wire.zig": "22fecbb35c2a075a7f26786b0b44cfc3523c109ec31d3928a442cfc6c16b8542",
     "src/core/pcs/transposed_merkle_sparse.zig": "6fbb6bd496a9d2916cdaa141c0c44f05fc26ed45ba74e27fedb017b20ee661a9",
@@ -86,13 +90,45 @@ def classify_sources(sources: dict[str, bytes]) -> dict:
         "pub fn verifyAgainstStatement(",
     ), "CAS05 versioned wire")
     _contains(decoded["src/core/pcs/transposed_paired_sparse.zig"], (
+        "const p = domain.at(utils.bitReverseIndex(base + j, log_size));",
+        "const denominator = point.x.c0.sub(CM31.fromBase(p.x)).mul(point.y.c1)",
+        ".sub(point.y.c0.sub(CM31.fromBase(p.y)).mul(point.x.c1));",
+        "const inverse = try denominator.inv();",
+        "coefficient.* = try constraints.complexConjugateLineCoeffs(point, claim, QM31.one());",
         "pair[0] = power;",
+        "power = power.mul(batch);",
         "pair[1] = power;",
         "const original = opened.at(height, query, j, col);",
+        "const numerator = coefficient.c.mulM31(original)",
+        ".sub(coefficient.a.mulM31(p.y)).sub(coefficient.b);",
         "const quotient = numerator.mulCM31(inverse);",
         "answer = answer.add(pair[0].mul(QM31.fromBase(original)))",
         ".add(pair[1].mul(quotient));",
+        "values[height][query * 2 + j] = answer;",
     ), "authenticated original and own-quotient batch")
+    _contains(decoded["src/core/fields/qm31.zig"], (
+        "pub inline fn fromBase(x: M31) QM31 {",
+        "return .{ .c0 = CM31.fromBase(x), .c1 = CM31.zero() };",
+        "pub inline fn mulCM31(self: QM31, rhs: CM31) QM31 {",
+        ".c0 = self.c0.mul(rhs),",
+        ".c1 = self.c1.mul(rhs),",
+        "pub inline fn mulM31(lhs: QM31, rhs: M31) QM31 {",
+        "const product = m31_mod.mulVec4(lanes, @splat(rhs.v));",
+        "return fromU32Unchecked(product[0], product[1], product[2], product[3]);",
+    ), "CAS05 QM31 row arithmetic")
+    _contains(decoded["src/core/fields/cm31.zig"], (
+        "pub inline fn fromBase(x: M31) CM31 {",
+        "return .{ .a = x, .b = M31.zero() };",
+        "pub fn inv(self: CM31) Error!CM31 {",
+        "if (self.isZero()) return Error.DivisionByZero;",
+    ), "CAS05 CM31 embedding and checked inverse")
+    _contains(decoded["src/core/constraints.zig"], (
+        "pub fn complexConjugateLineCoeffs(",
+        "if (point.y.eql(point.y.complexConjugate())) return error.DegenerateLine;",
+        "const a = value.complexConjugate().sub(value);",
+        "const c = point.complexConjugate().y.sub(point.y);",
+        "const b = value.mul(c).sub(a.mul(point.y));",
+    ), "CAS05 conjugate line")
     _contains(decoded["src/prover/pcs/paired_sparse_cascade_experimental.zig"], (
         "var source = try source_prover.Commitment.commitSparse(a, input.source_columns, input.n_queries);",
         "try old.validateSourceDegree(a, domains[i], columns, log_size - input.log_blowup);",
