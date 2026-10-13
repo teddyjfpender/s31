@@ -357,6 +357,8 @@ def verify_package(package: Path) -> dict:
     )
     from package.source_relation_fragment import verify_source_relation_artifact
     verify_source_relation_artifact(package, manifest)
+    from package.pure_native_rows import verify_artifact as verify_pure_native_artifact
+    pure_native_admitted = verify_pure_native_artifact(package, manifest)
 
     certificate_path = package / "correspondence-certificate.json"
     certificate_listed = certificate_path.name in manifest["artifacts"]
@@ -376,7 +378,8 @@ def verify_package(package: Path) -> dict:
         try:
             parse_source((package / "source.s31").read_bytes())
         except UnsupportedFragment:
-            if certificate_listed or certificate_path.exists() or topology_present:
+            if (certificate_listed or certificate_path.exists() or
+                    (topology_present and not pure_native_admitted)):
                 raise ValueError("unsupported source cannot carry a correspondence certificate")
         else:
             check_package(package)
