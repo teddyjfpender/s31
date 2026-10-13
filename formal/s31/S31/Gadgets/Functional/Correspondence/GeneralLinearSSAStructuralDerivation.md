@@ -46,6 +46,43 @@ To apply it to an untrusted package, the caller must independently pin the
 package and checker bytes and pass the same captured source, tree,
 certificate, relation, and ABI files to this executable.
 
+## Structural execution and public statement
+
+The `statement` mode checks the structural tree and the effectful runtime
+through one Lean entry point. Both read the **same** source, certificate,
+relation, and ABI bytes. It explicitly requires the independently decoded
+SSA graphs and typed `Program`s to agree. It then parses an external typed
+assignment and public statement, runs `Program.evaluate`, and checks that the
+statement's named public inputs and outputs equal the assignment's. The
+theorem `checked_statement_sound` applies to every accepted program in this
+bounded M31 grammar, rather than to a particular source fixture. It proves
+that structural erasure yields the runtime SSA, the relation contains the
+corresponding ordered nodes and assertions, the source denotation holds for
+the checked assignment, and the typed evaluator accepts those values.
+
+For the example above, assign `x = [7, 11]` and `y = [3, 5]`. The tuple and
+two projections carry wire IDs with no arithmetic rows. The helper body
+emits one `sub` node: `[7, 11] - [3, 5] = [4, 6]` in M31. The public statement
+contains `x` and `out = [4, 6]`; it omits private `y`. A changed `y`, `out`,
+tuple projection, or helper operand order is rejected. The admitted opcode
+families are binary add, subtract, and pointwise multiply, plus canonical
+M31 add and multiply constants; assertions are checked by the normalized
+interpreter. The exact parser and typed structural bounds still apply.
+
+```sh
+s31-general-linear-structural-check statement SOURCE STRUCTURAL_TREE CERTIFICATE RELATION ABI ASSIGNMENT PUBLIC_STATEMENT_JSON
+```
+
+The assignment is supplied to this checker externally. Native proof
+verification does **not** reveal or authenticate that particular private
+assignment. The native helper/tuple fixture separately verifies an actual
+direct-Gate proof, pins its fixed root, and rejects a changed proof root. The
+Lean theorem does not establish that the native verifier binds every private
+witness value, every main row, or PCS/FRI openings to this external
+assignment. Those are explicit missing premises for a proof-acceptance
+theorem. The existing strict structural release still uses static mode since
+its verifier inputs contain no typed private assignment to pass to this mode.
+
 This does **not** prove that Python emits the same tree for every accepted
 source, recompute embedded SHA-256 fields in Lean, cover record-v2 or general
 S31 syntax, authenticate native AIR rows, or prove PCS/FRI soundness. Package

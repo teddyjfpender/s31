@@ -57,7 +57,7 @@ def run() -> dict[str, object]:
 
     def bounded_invoke(*args: str) -> str:
         if args[:2] == ("zig", "build"):
-            args = (*args[:2], "-j4", *args[2:])
+            args = (*args[:2], "-j2", *args[2:])
         return old_invoke(*args)
 
     package_build.invoke = bounded_invoke
@@ -121,6 +121,41 @@ def run() -> dict[str, object]:
             checker = ROOT / "formal/s31/.lake/build/bin/s31-general-linear-structural-check"
             if not checker.is_file():
                 raise AssertionError("structural release requires the built Lean checker")
+
+            def statement_check(assignment_path: Path,
+                                statement_path: Path,
+                                tree_path: Path = combined / STRUCTURAL_ARTIFACT) -> bool:
+                completed = subprocess.run(
+                    [str(checker), "statement", str(combined / "source.s31"),
+                     str(tree_path), str(source_certificate),
+                     str(combined / "source.s31.json"),
+                     str(combined / "public-abi.json"),
+                     str(assignment_path), str(statement_path)],
+                    capture_output=True, text=True, timeout=30, check=False)
+                return completed.returncode == 0 and completed.stdout.strip() == \
+                    "accepted: structural source/typed Program/assignment/public statement"
+
+            statement_path = work / "trial/statement.json"
+            if not statement_check(assignment, statement_path):
+                raise AssertionError("Lean structural statement rejected native proof assignment")
+            wrong_statement = work / "wrong-statement.json"
+            wrong_public = json.loads(statement_path.read_bytes())
+            wrong_public["public_outputs"]["out"][0] += 1
+            s31.write_json(wrong_statement, wrong_public)
+            if statement_check(assignment, wrong_statement):
+                raise AssertionError("Lean structural statement accepted wrong public output")
+            wrong_assignment = work / "wrong-assignment.json"
+            wrong_values = json.loads(assignment.read_bytes())
+            wrong_values["public_inputs"]["x"][0] += 1
+            s31.write_json(wrong_assignment, wrong_values)
+            if statement_check(wrong_assignment, statement_path):
+                raise AssertionError("Lean structural statement accepted wrong assignment")
+            wrong_tree = work / "wrong-tree.json"
+            wrong_structure = json.loads(structural_bytes)
+            wrong_structure["program"]["steps"][1]["expr"]["field"] = "1"
+            s31.write_json(wrong_tree, wrong_structure)
+            if statement_check(assignment, statement_path, wrong_tree):
+                raise AssertionError("Lean structural statement accepted wrong tuple projection")
             checker_pin = hashlib.sha256(checker.read_bytes()).hexdigest()
             pins = {kind: hashlib.sha256(path.read_bytes()).hexdigest()
                     for kind, path in pinned_paths(combined).items()}
@@ -188,6 +223,10 @@ def run() -> dict[str, object]:
                     "flat_air_equal": True,
                     "native_proof_verified": True,
                     "structural_lean_release_verified": True,
+                    "structural_lean_statement_verified": True,
+                    "wrong_structural_statement_rejected": True,
+                    "wrong_structural_assignment_rejected": True,
+                    "wrong_structural_tree_rejected": True,
                     "structural_lean_checker_sha256": checker_pin,
                     "structural_release_script_sha256": release_script_sha256,
                     "wrong_checker_pin_rejected": True,

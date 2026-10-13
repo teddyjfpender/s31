@@ -3,7 +3,13 @@
 `structural_derivation_lean.py` runs the generic M31 typed-tree erasure gate
 over generated tuple, helper, constant, assertion, and private-input programs.
 It checks compiler/Python/Lean agreement, re-sealed wrong erasures, exact
-field shape, and unsupported fragments:
+field shape, and unsupported fragments. The same generated programs also run
+the `statement` mode with concrete private assignments and public statements;
+wrong private values or public results are rejected. The separate native
+helper/tuple fixture verifies an actual direct-Gate proof and exercises this
+mode against its source package. The statement-mode theorem covers any
+program admitted by the bounded Lean grammar, while native private witness
+and PCS authentication remain separate obligations:
 
 ```sh
 lake build s31-general-linear-structural-check

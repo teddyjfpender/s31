@@ -493,4 +493,121 @@ theorem checked_package_graph (sourceBytes : List Nat)
     (checked_package_relation sourceBytes treeBytes certificateBytes
       relationBytes abiBytes checked h).1
 
+/-- A single dynamic admission for the bounded typed structural fragment.
+The structural and effectful checks consume the same exact source,
+certificate, relation, and ABI bytes. The explicit equality guard prevents a
+future change to either decoder from silently splitting their typed programs
+or indexed SSA graphs. The assignment is an external witness supplied to this
+checker, not a witness extracted from a native proof. -/
+structure CheckedStatement where
+  package : CheckedPackage
+  runtime : StatementRun
+
+def checkStatement (sourceBytes : List Nat)
+    (treeBytes certificateBytes relationBytes abiBytes assignmentBytes
+      statementBytes : String) : Parse CheckedStatement := do
+  let package ← checkPackage sourceBytes treeBytes certificateBytes relationBytes
+    abiBytes
+  let runtime ← checkRunStatement sourceBytes certificateBytes relationBytes
+    abiBytes assignmentBytes statementBytes
+  if package.joined.source.ssa != runtime.run.ssa ||
+      package.joined.source.program != runtime.run.program then
+    throw "structural and runtime compiler graphs differ"
+  return ⟨package, runtime⟩
+
+/-- Successful execution projects both independently checked admissions and
+their explicit graph/program join. -/
+theorem checked_statement_parts (sourceBytes : List Nat)
+    (treeBytes certificateBytes relationBytes abiBytes assignmentBytes
+      statementBytes : String) (checked : CheckedStatement)
+    (h : checkStatement sourceBytes treeBytes certificateBytes relationBytes
+      abiBytes assignmentBytes statementBytes = .ok checked) :
+    checkPackage sourceBytes treeBytes certificateBytes relationBytes abiBytes =
+      .ok checked.package ∧
+    checkRunStatement sourceBytes certificateBytes relationBytes abiBytes
+      assignmentBytes statementBytes = .ok checked.runtime ∧
+    checked.package.joined.source.ssa = checked.runtime.run.ssa ∧
+    checked.package.joined.source.program = checked.runtime.run.program := by
+  unfold checkStatement at h
+  cases hp : checkPackage sourceBytes treeBytes certificateBytes relationBytes
+      abiBytes with
+  | error error => simp [hp, Bind.bind, Except.bind] at h
+  | ok package =>
+      cases hr : checkRunStatement sourceBytes certificateBytes relationBytes
+          abiBytes assignmentBytes statementBytes with
+      | error error => simp [hp, hr, Bind.bind, Except.bind] at h
+      | ok runtime =>
+          by_cases hgraphs :
+              (package.joined.source.ssa != runtime.run.ssa ||
+                package.joined.source.program != runtime.run.program) = true
+          · simp [hp, hr, hgraphs, Bind.bind, Except.bind] at h
+          · have heq : (⟨package, runtime⟩ : CheckedStatement) = checked := by
+              simpa [hp, hr, hgraphs, Bind.bind, Except.bind,
+                Pure.pure, Except.pure] using h
+            cases heq
+            have hsame : package.joined.source.ssa = runtime.run.ssa ∧
+                package.joined.source.program = runtime.run.program := by
+              simpa using hgraphs
+            simpa [hp, hr] using hsame
+
+/-- General source/typed-tree/SSA/interpreter correspondence for every
+accepted bounded M31 structural program and external typed assignment. The
+structural erasure has no opcode-specific shortcut: binary add, subtract,
+pointwise multiply, and canonical add/multiply constants are all checked by
+the independent source and runtime certificate. Public statement names and
+values are checked from the same runtime assignment. Native fixed/main row
+authentication, private-witness extraction, and PCS/FRI soundness are not
+conclusions of this theorem. -/
+theorem checked_statement_sound (sourceBytes : List Nat)
+    (treeBytes certificateBytes relationBytes abiBytes assignmentBytes
+      statementBytes : String) (checked : CheckedStatement)
+    (h : checkStatement sourceBytes treeBytes certificateBytes relationBytes
+      abiBytes assignmentBytes statementBytes = .ok checked) :
+    deriveSSA checked.package.joined.tree =
+      some checked.runtime.run.ssa ∧
+    GeneralLinearSSAEffectsSourceBytes.parseSource sourceBytes =
+      some checked.runtime.run.ssa ∧
+    GeneralLinearSSAPublicABI.parseRelation relationBytes =
+      .ok checked.runtime.run.program ∧
+    GeneralLinearSSAPublicABI.expectedEffectsNodes checked.runtime.run.ssa =
+      some checked.runtime.run.program.nodes ∧
+    GeneralLinearSSAPublicABI.expectedEffectsAssertions
+      checked.runtime.run.ssa =
+      some checked.runtime.run.program.assertions ∧
+    GeneralLinearSSAByteRun.parseTypedAssignment statementBytes =
+      .ok checked.runtime.statement ∧
+    checked.runtime.statement.publicInputs =
+      checked.runtime.run.assignment.publicInputs ∧
+    checked.runtime.statement.publicOutputs =
+      checked.runtime.run.assignment.publicOutputs ∧
+    ∃ (n : Nat) (values : Nat → GeneralLinearSSA.Lanes n)
+      (claimed : GeneralLinearSSA.Lanes n),
+      GeneralLinearSSAEffectsSourceBytes.denotation sourceBytes values claimed ∧
+      checked.runtime.publicBytes = GeneralLinearSSAPublicABI.publicWordBytes
+        (GeneralLinearSSAPublicABI.orderedPublicWords
+          checked.runtime.run.ssa.inputs values claimed) ∧
+      GeneralLinearSSAByteRun.parseTypedAssignment assignmentBytes =
+        .ok checked.runtime.run.assignment ∧
+      checked.runtime.run.program.evaluate checked.runtime.run.assignment =
+        .ok checked.runtime.run.words := by
+  obtain ⟨hp, hr, hssa, hprogram⟩ := checked_statement_parts
+    sourceBytes treeBytes certificateBytes relationBytes abiBytes
+    assignmentBytes statementBytes checked h
+  obtain ⟨herasure, hsource, hrelation, hnodes, hassertions, _⟩ :=
+    checked_package_graph sourceBytes treeBytes certificateBytes relationBytes
+      abiBytes checked.package hp
+  obtain ⟨hstatement, hinputs, houtputs⟩ :=
+    GeneralLinearSSAEffectsPackageCheck.checked_statement_fields
+      sourceBytes certificateBytes relationBytes abiBytes assignmentBytes
+      statementBytes checked.runtime hr
+  obtain ⟨n, values, claimed, hdenotation, hbytes, hassignment, hevaluate⟩ :=
+    GeneralLinearSSAEffectsPackageCheck.checked_statement_sound
+      sourceBytes certificateBytes relationBytes abiBytes assignmentBytes
+      statementBytes checked.runtime hr
+  rw [hssa] at herasure hsource hnodes hassertions
+  rw [hprogram] at hrelation hnodes hassertions
+  exact ⟨herasure, hsource, hrelation, hnodes, hassertions,
+    hstatement, hinputs, houtputs, n, values, claimed, hdenotation,
+    hbytes, hassignment, hevaluate⟩
+
 end S31.Functional.Correspondence.GeneralLinearSSAStructuralDerivation
