@@ -1,4 +1,4 @@
-# Named record claim codec (public ABI v2)
+# Record source values and named public claims
 
 `SourceValueV2.lean` models the bounded width-one M31 record source fragment's
 execution. It checks each result field against a shared SSA program, proves
@@ -8,6 +8,24 @@ source/value checker and native Zig differential corpus are described in
 [`RECORD_SOURCE_RELATION_FRAGMENT_V2.md`](../../../../../design/s31/language/RECORD_SOURCE_RELATION_FRAGMENT_V2.md).
 This theorem models the admitted fragment and does not parse production source
 bytes or authenticate proof openings.
+
+[`SourceBytesV2.lean`](SourceBytesV2.lean) parses a bounded nominal record
+directly from ASCII source bytes: one `struct` with one to four width-one M31
+fields, one or two record inputs, up to eight binary `let` bindings, and a
+record result whose constructor fields may be reordered or aliased. It
+resolves every `root.field` and local name to a positional wire, then carries
+a checked result-field certificate. `parsed_value_correspondence` proves that
+all accepted byte programs compute the parsed field expressions for every
+M31 input assignment. The exact `Pair` text is checked against the existing
+two-node record model; an unknown field is rejected, and changing a field
+projection changes the certificate. This is a Lean byte-language theorem. It
+does not yet compare the production Python parser or relation JSON, join v2
+record outputs to `Program.evaluate`, or authenticate native trace rows.
+
+```sh
+cd formal/s31
+LEAN_NUM_THREADS=1 lake env lean S31/Gadgets/Records/SourceBytesV2.lean
+```
 
 [`NamedCodecV2.lean`](NamedCodecV2.lean) joins the checked type-tree walk and
 the public statement word decoder for one already parsed root. The native
