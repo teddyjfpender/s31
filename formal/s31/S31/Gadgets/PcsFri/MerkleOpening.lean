@@ -156,6 +156,56 @@ def projectedPosition (liftingLog columnLog position : Nat) : Nat :=
   else
     2 * (position / 2 ^ (liftingLog - columnLog + 1)) + position % 2
 
+/-- A valid query never addresses beyond the column's circle domain. The
+positive-log condition matches native circle-domain construction; using a
+total `Nat → V` column function does not silently excuse an out-of-range
+projection. -/
+theorem projectedPosition_lt (liftingLog columnLog position : Nat)
+    (liftingPositive : 0 < liftingLog) (columnPositive : 0 < columnLog)
+    (positionInDomain : position < 2 ^ liftingLog) :
+    projectedPosition liftingLog columnLog position < 2 ^ columnLog := by
+  have bitBound : position % 2 < 2 := Nat.mod_lt _ (by omega)
+  by_cases smaller : liftingLog < columnLog
+  · have sourcePower : 2 ^ liftingLog = 2 ^ (liftingLog - 1) * 2 := by
+      have h : liftingLog - 1 + 1 = liftingLog := by omega
+      calc
+        2 ^ liftingLog = 2 ^ (liftingLog - 1 + 1) := by rw [h]
+        _ = 2 ^ (liftingLog - 1) * 2 := by rw [pow_succ]
+    have targetPower : 2 ^ columnLog =
+        2 ^ liftingLog * 2 ^ (columnLog - liftingLog) := by
+      rw [← pow_add]
+      congr 1
+      omega
+    have halfBound : position / 2 < 2 ^ (liftingLog - 1) :=
+      (Nat.div_lt_iff_lt_mul (by omega : 0 < 2)).2 (by
+        simpa [sourcePower, Nat.mul_comm] using positionInDomain)
+    have scaledBound :
+        (position / 2) * 2 ^ (columnLog - liftingLog) <
+          2 ^ (liftingLog - 1) * 2 ^ (columnLog - liftingLog) :=
+      Nat.mul_lt_mul_of_pos_right halfBound (by positivity)
+    simp only [projectedPosition, if_pos smaller]
+    rw [targetPower, sourcePower]
+    nlinarith
+  · have liftingAtLeast : columnLog ≤ liftingLog := by omega
+    have exponentSum :
+        liftingLog - columnLog + 1 + (columnLog - 1) = liftingLog := by omega
+    have sourcePower : 2 ^ liftingLog =
+        2 ^ (liftingLog - columnLog + 1) * 2 ^ (columnLog - 1) := by
+      rw [← pow_add, exponentSum]
+    have targetPower : 2 ^ columnLog = 2 ^ (columnLog - 1) * 2 := by
+      have h : columnLog - 1 + 1 = columnLog := by omega
+      calc
+        2 ^ columnLog = 2 ^ (columnLog - 1 + 1) := by rw [h]
+        _ = 2 ^ (columnLog - 1) * 2 := by rw [pow_succ]
+    have halfBound :
+        position / 2 ^ (liftingLog - columnLog + 1) < 2 ^ (columnLog - 1) :=
+      (Nat.div_lt_iff_lt_mul (by positivity :
+        0 < 2 ^ (liftingLog - columnLog + 1))).2 (by
+          simpa [sourcePower, Nat.mul_comm] using positionInDomain)
+    simp only [projectedPosition, if_neg smaller]
+    rw [targetPower]
+    omega
+
 /-- Ideal lifted leaf row, in the same pre-agreed column order that the native
 Merkle hasher uses after sorting columns by log size. -/
 def projectedRow (liftingLog position : Nat) (columns : List (Column V)) : List V :=
