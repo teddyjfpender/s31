@@ -28,9 +28,10 @@
     "formal/s31/S31/Gadgets/PcsFri/M31MaskedQuery.lean": "2d2d7e74d0fe319d891dce4b4f6680184bba13d4d8578e93c3d0cdbdbaa19c5e",
     "formal/s31/S31/Gadgets/PcsFri/M31WordReduction.lean": "014571cf368ec470ae426dc6141bca1c418eb8a627caddd546af1673b9a7f8fb",
     "formal/s31/S31/Gadgets/PcsFri/MerkleOpening.lean": "8d075c1f4ccd193747c4f34070064640d1c5cc81c0b98debad00bdfa519b6dbe",
+    "formal/s31/S31/Gadgets/PcsFri/MultiproofAllHeights.lean": "127b7747ae9f1c0f24cf016a43e1c0d24382507adb9227591ae0899079420032",
     "formal/s31/S31/Gadgets/PcsFri/MultiproofDecoder.lean": "084a9db05e81ad972be83afbd4c1c64b84424f063ff41d68ddb8f6d413044f44",
     "formal/s31/S31/Gadgets/PcsFri/QueryAndTranscript.lean": "e82190409053019d327e738a450c2a1b8676beecc92770f4a3e7563ad445cfa8",
-    "formal/s31/proof-inventory.json": "a8e84004e7f8b2b5ed34723b326bb856e2b5e1403476eb6e260800d9520f3bf1",
+    "formal/s31/proof-inventory.json": "d3abe8a2d6500a8733939ba4177708906a34e350e347d88b182c8b33cab94dcf",
     "formal/s31/tests/pcs_fri_bcs_transcript.json": "b1814cfd5920cbf21f73713e99acbe5736bc78afa6b9dd8a599eb50e44f0160f",
     "formal/s31/tests/pcs_fri_bcs_transcript_native.zig": "536220985f8284a4c14bdafd22b3b235fb26104a09525621bdc2e2fd787392d4",
     "formal/s31/tests/pcs_fri_lifted_capture_native.zig": "52a5edc8e25f4ec941aa5d57ab3609da62834a04a9f3409b9645e7f9e0b35717",
@@ -146,6 +147,7 @@
       "partial_evidence": [
         "formal/s31/S31/Gadgets/PcsFri/MerkleOpening.lean",
         "formal/s31/S31/Gadgets/PcsFri/MultiproofDecoder.lean",
+        "formal/s31/S31/Gadgets/PcsFri/MultiproofAllHeights.lean",
         "scripts/s31_formal_lib/pcs_fri_leaf_encoding.py",
         "scripts/s31_formal_lib/sha_release_capture.py"
       ],

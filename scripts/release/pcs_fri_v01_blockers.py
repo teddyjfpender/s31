@@ -81,7 +81,7 @@ OBLIGATIONS = (
         "gap_kind": "unproven_crypto_and_native_refinement",
         "published_requirement": "BCS oracle commitments authenticate precisely the queried rows at the committed roots with a quantitative collision bound",
         "published_anchor": STWO,
-        "partial_evidence": ["formal/s31/S31/Gadgets/PcsFri/MerkleOpening.lean", "formal/s31/S31/Gadgets/PcsFri/MultiproofDecoder.lean", "scripts/s31_formal_lib/pcs_fri_leaf_encoding.py", "scripts/s31_formal_lib/sha_release_capture.py"],
+        "partial_evidence": ["formal/s31/S31/Gadgets/PcsFri/MerkleOpening.lean", "formal/s31/S31/Gadgets/PcsFri/MultiproofDecoder.lean", "formal/s31/S31/Gadgets/PcsFri/MultiproofAllHeights.lean", "scripts/s31_formal_lib/pcs_fri_leaf_encoding.py", "scripts/s31_formal_lib/sha_release_capture.py"],
         "missing_discharge": "native decoder-to-model semantics, committed-column origin and a cryptographic collision/binding reduction for the exact Blake2s layout",
     },
     {
