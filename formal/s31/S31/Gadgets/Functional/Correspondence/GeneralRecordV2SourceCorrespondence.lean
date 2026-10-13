@@ -311,7 +311,7 @@ wire values; arithmetic allocates exactly one new M31 value. -/
 def lookupValue (values : List (String × Nat)) (name : String) : Option Nat :=
   (values.find? (·.1 == name)).map Prod.snd
 
-private def evalNode (values : List (String × Nat)) (node : Arithmetic) :
+def evalNode (values : List (String × Nat)) (node : Arithmetic) :
     Option (List (String × Nat)) := do
   let lhs ← lookupValue values node.lhs.wire
   let rhs ← lookupValue values node.rhs.wire

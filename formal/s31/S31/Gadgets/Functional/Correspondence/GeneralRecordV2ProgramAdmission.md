@@ -10,6 +10,12 @@ independently from the parsed source. `Static` carries a Lean proof that those
 four exact byte inputs passed the source checker. Its `aligned` proof gives
 `Program.evaluate` equality for every assignment, including private inputs
 and aliased result fields. No compiler-produced graph is an axiom here.
+`Static` also retains the successful normalized-program validation result.
+That structural equality is distinct from agreement between the independent
+source scalar evaluator and the typed evaluator. The separate
+[`GeneralRecordV2ValueCorrespondence.md`](GeneralRecordV2ValueCorrespondence.md)
+proves the add/mul node fold and ordered result-value correspondence under
+explicit public/private input alignment and name-freshness premises.
 
 For example:
 
