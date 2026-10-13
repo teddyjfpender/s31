@@ -58,6 +58,12 @@ the four base-field equations entailed by the native-shaped circle test.
 The formal gate pins the corresponding Zig function bodies and OOD rational
 map call site. These checks still assume that native M31 operations implement
 field arithmetic and do not constitute a Zig operational-semantics proof.
+[`ConcreteCM31Tower.lean`](ConcreteCM31Tower.lean) gives the modeled M31
+coefficient pair exactly `p²` elements, checks that its imaginary unit
+squares to `-1`, and specializes the prior nonresidue result to show that
+no modeled pair squares to `2+i`. The pair has not yet been installed as a
+Lean field or identified with the compiled Zig representation, so the
+guard-count theorem still carries those concrete refinement premises.
 
 [`ShortTerminalGeometry.lean`](ShortTerminalGeometry.lean) checks the exact
 shape of the experimental cascade against S-two's variable-round Protocol 3.
