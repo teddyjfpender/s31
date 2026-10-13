@@ -18,6 +18,27 @@ NAMES = (
     "verify_bitwise_xor_8", "verify_bitwise_xor_12", "verify_bitwise_xor_4",
     "verify_bitwise_xor_7", "verify_bitwise_xor_9", "range_check_16",
 )
+# An independent copy of the verifier's circuit component facts. A package
+# author must not be able to change lookup metadata by updating the roster,
+# its internal digest, and the untrusted verification key together. Dynamic
+# trace heights remain package-specific; these shapes and relation uses do not.
+FACTS = (
+    (4, 4, "eq_in0_address", (("Gate", 2),)),
+    (12, 8, "qm31_ops_in0_address", (("Gate", 2),)),
+    (20, 24, "triple_xor_input_addr_0", (("Gate", 3), ("VerifyBitwiseXor_8", 8))),
+    (4, 12, "m31_to_u32_input_addr", (("Gate", 1), ("RangeCheck_16", 3))),
+    (52, 52, "blake_g_gate_input_addr_a", (("Gate", 6),
+        ("VerifyBitwiseXor_12", 2), ("VerifyBitwiseXor_4", 2),
+        ("VerifyBitwiseXor_7", 2), ("VerifyBitwiseXor_8", 6),
+        ("VerifyBitwiseXor_8_B", 2), ("VerifyBitwiseXor_9", 2))),
+    (2, 4, "fixed", ()),
+    (16, 32, "fixed", ()),
+    (1, 4, "fixed", ()),
+    (1, 4, "fixed", ()),
+    (1, 4, "fixed", ()),
+    (1, 4, "fixed", ()),
+)
+FIXED_LOGS = {5: 16, 6: 20, 7: 8, 8: 14, 9: 18, 10: 16}
 ARTIFACT = "gate-component-roster.json"
 TOP_FIELDS = {"schema", "profile", "program_sha256", "canonical_ir_sha256",
               "air_bundle_sha256", "preprocessed_root", "circuit_hash",
@@ -101,6 +122,16 @@ def validate(package: Path, lowering: str, artifacts: dict,
                     not isinstance(use.get("relation_id"), str) or
                     type(use.get("uses")) is not int or use["uses"] < 0):
                 raise ValueError("invalid gate component lookup roster")
+        base, interaction, source, uses = FACTS[index]
+        if (component["base_trace_columns"] != base or
+                component["interaction_trace_columns"] != interaction or
+                component["log_size_source"] != source or
+                component["lookup_uses_per_row"] != [
+                    {"relation_id": relation, "uses": count}
+                    for relation, count in uses] or
+                (index in FIXED_LOGS and
+                 component["trace_log_size"] != FIXED_LOGS[index])):
+            raise ValueError("gate component facts differ from reviewed native AIR")
     columns = roster.get("preprocessed_columns")
     if not isinstance(columns, list) or len(columns) != 45:
         raise ValueError("invalid gate preprocessed column roster")

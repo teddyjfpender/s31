@@ -12,7 +12,7 @@ from pathlib import Path
 S31 = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(S31 / "python"))
 
-from package.gate_component_roster import ARTIFACT, KEY_SCHEMA, NAMES, digest, validate
+from package.gate_component_roster import ARTIFACT, FACTS, FIXED_LOGS, KEY_SCHEMA, NAMES, digest, validate
 
 
 class GateComponentRosterTests(unittest.TestCase):
@@ -27,14 +27,18 @@ class GateComponentRosterTests(unittest.TestCase):
             "circuit_hash": "4" * 64, "claimed_sums": 11,
             "components": [
                 {"name": name, "source_index": index, "proof_index": index,
-                 "claimed_sum_index": index, "trace_log_size": 4,
-                 "base_trace_columns": 4, "interaction_trace_columns": 4,
-                 "log_size_source": "eq_in0_address",
-                 "lookup_uses_per_row": [{"relation_id": "Gate", "uses": 2}]}
+                 "claimed_sum_index": index,
+                 "trace_log_size": FIXED_LOGS.get(index, 4),
+                 "base_trace_columns": FACTS[index][0],
+                 "interaction_trace_columns": FACTS[index][1],
+                 "log_size_source": FACTS[index][2],
+                 "lookup_uses_per_row": [
+                     {"relation_id": relation, "uses": count}
+                     for relation, count in FACTS[index][3]]}
                 for index, name in enumerate(NAMES)
             ],
             "preprocessed_columns": [
-                {"id": "eq_in0_address" if index == 0 else f"fixed_{index}",
+                {"id": FACTS[index][2] if index < 5 else f"fixed_{index}",
                  "commitment_index": index, "log_size": 4,
                  "rows": 16, "values_sha256": "5" * 64}
                 for index in range(45)
@@ -77,6 +81,25 @@ class GateComponentRosterTests(unittest.TestCase):
         # Package consistency alone cannot authenticate an attacker-authored
         # package; the embedded native verifier reconstructs the roster.
         self.check()
+
+    def test_coherent_relation_metadata_reseal_is_rejected(self) -> None:
+        for mutate in (
+            lambda r: r["components"][1]["lookup_uses_per_row"][0].update(uses=1),
+            lambda r: r["components"][4]["lookup_uses_per_row"][0].update(relation_id="RangeCheck_16"),
+            lambda r: r["components"][6].update(interaction_trace_columns=28),
+            lambda r: r["components"][6].update(trace_log_size=19),
+        ):
+            with self.subTest(mutate=mutate):
+                altered = copy.deepcopy(self.roster)
+                mutate(altered)
+                key = copy.deepcopy(self.key)
+                report = copy.deepcopy(self.report)
+                key["gate_component_roster_sha256"] = digest(altered)
+                report["gate_component_roster"] = altered
+                report["gate_component_roster_sha256"] = digest(altered)
+                (self.package / ARTIFACT).write_text(json.dumps(altered))
+                with self.assertRaisesRegex(ValueError, "reviewed native AIR"):
+                    validate(self.package, "gate", self.artifacts, key, report)
 
     def test_bad_roster_order_or_digest_is_rejected(self) -> None:
         self.roster["components"][0]["proof_index"] = 1
