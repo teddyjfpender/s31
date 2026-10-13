@@ -74,6 +74,53 @@ heights to less than the word width. An empty-tree case checks its special
 no-query, no-witness contract.
 These examples sample arbitrary-height behavior; they do not exhaust it.
 
+The general-height suite also builds a 16-leaf commitment from **three**
+columns with log sizes `[4,2,4]`. At leaf `i`, the short column is projected
+to `2·⌊i/8⌋ + (i mod 2)`, and the native leaf row must be ordered as
+`[column 1, column 0, column 2]`. The test checks all full paths for queries
+`[15,9,4,1,9]`. Changing the repeated row in **any** of the three columns
+must return `DuplicateQueryMismatch`; changing one nonduplicate projected
+value must fail at the root without publishing a capture. This is a finite
+check of row assembly and tie order against an independently built tree.
+
+## Executable raw-query model
+
+[`MultiproofRawQueries.lean`](../../../formal/s31/S31/Gadgets/PcsFri/MultiproofRawQueries.lean)
+adds an executable front end to the existing all-height decoder. It checks
+`position < 2^height` and equality of **rows** for repeated positions before
+hashing. It removes identical rows, sorts by position, decodes the compressed
+witness, checks the root and unused-witness suffix, and maps full paths back to
+the original caller slots. It proves that successful parsing supplies a
+strictly sorted initial frontier and contains every caller leaf, so the prior
+all-height and caller-order theorems apply without those model premises.
+The model checks final index `0`; `parsedDecode_root_index_zero` proves that
+this index follows from the bounded position and complete path for every
+nonempty accepted query set. Native Zig checks the final hash and singleton
+frontier directly.
+
+For a small hand calculation, take height `1`, leaf hash equal to the sum of
+the row, and parent hash `100·left + right`. Caller queries are
+`[(1,[11]), (0,[10]), (1,[11])]`, and the compressed witness is empty. The
+parser produces frontier `[(0,10),(1,11)]`; the paired chunk yields root
+`1011`. Captured paths return in caller order as `[[10],[11],[10]]`.
+Changing the final row to `[12]`, using position `3`, or omitting the one
+witness needed for a lone query all make the executable model return `none`.
+The native verifier is also run with this exact toy hash and these exact
+vectors, so the source-bound test compares the two executable semantics at
+the parser, root, and caller-copy boundary. The toy hash is intentionally
+insecure; the vector checks control flow, not cryptographic binding.
+
+The theorem `verifyRaw_each_opening` proves that every slot returned by this
+model is a full opening at the declared height and root. The theorem
+`verifyRaw_refines_committed_row` then identifies that row with the projected
+committed columns **if** an opening from the actual committed tree is supplied
+and the two concrete openings do not witness a hash collision. The model does
+not establish that Zig executes this function, that native leaf bytes encode
+the same rows, or that the actual prover committed the projected columns.
+The source guard pins the row comparison, row assembly cursor, leaf hashing,
+frontier loop, and caller-order copy; the native tests give differential
+evidence for those stages.
+
 This is a **finite executable refinement check**, not a proof of arbitrary
 height Zig semantics. The existing
 [`MultiproofDecoder.lean`](../../../formal/s31/S31/Gadgets/PcsFri/MultiproofDecoder.lean)

@@ -302,6 +302,7 @@ import S31.Gadgets.PcsFri.MultiproofDecoder
 import S31.Gadgets.PcsFri.MultiproofAllHeights
 import S31.Gadgets.PcsFri.MultiproofSortedFrontier
 import S31.Gadgets.PcsFri.MultiproofCallerOrder
+import S31.Gadgets.PcsFri.MultiproofRawQueries
 import S31.Gadgets.PcsFri.FoldAlgebra
 import S31.Gadgets.PcsFri.GroupedFoldSchedule
 import S31.Gadgets.PcsFri.LayerAcceptance
