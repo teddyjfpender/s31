@@ -33,6 +33,18 @@ captured path for 3: [L2,P01,P4567]
 captured path for 7: [L6,P45,P0123]
 ```
 
+The same exhaustive check now runs an **independent post-verification trace
+checker** for each accepted subset. Starting from the supplied leaf values,
+the compressed witness, and the published capture, it sorts and deduplicates
+the query nodes, emits one `pair` or `witness` event per frontier chunk,
+records each witness offset, hashes the parent, and checks every copied path
+entry against its corresponding ancestor. It requires witness offsets to be
+exactly `0, 1, …, n−1`, no unused witness, and the final hash to equal the
+root. Changed captured siblings, reordered witnesses, short witnesses, and
+surplus witnesses have explicit rejection tests. The check is single-column
+and uses finite eight-leaf examples; the existing two-column test separately
+checks the log-size ordering used for leaf hashing.
+
 The test also requires a short witness, surplus witness, changed hash,
 inconsistent duplicate row, and out-of-domain index to fail without publishing
 a capture. The companion [source guard](../../../scripts/s31_formal_lib/pcs_fri_capture.py)
@@ -58,9 +70,12 @@ is consumed exactly once in frontier order. The
 theorem proves that a strictly sorted input frontier emits strictly sorted
 parents, including the nonpaired even-index case. It then proves the native
 one-sort loop equivalent to the guarded all-height model from a sorted initial
-frontier. The native Zig sort/dedup, finite-width index arithmetic, and path
-copy loops still need a semantic bridge. The native all-height simulation remains
-to be proved. The test does not establish that
+frontier. The new `decodeNativeShape_witness_accounting` and
+`decodeNativeShape_follows` theorems give exact model witness order and a
+path for every initial query through that one-sort shape. The native Zig
+sort/dedup, finite-width index arithmetic, and path-copy loops still need a
+semantic proof. The trace checker supplies differential evidence, not that
+proof. The test does not establish that
 the native committed tree was built from the intended oracle columns, nor a
 quantitative BLAKE2s collision reduction. The Merkle binding theorem compares
 openings at the **same root, height, and index** and extracts a concrete leaf

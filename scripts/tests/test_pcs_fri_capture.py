@@ -39,6 +39,18 @@ class PcsFriCaptureTest(unittest.TestCase):
                 "std.sort.heap(\n                usize,\n                query_order,",
                 "// query order left unsorted\n            std.sort.heap(\n                usize,\n                omitted_order,"))
 
+    def test_query_tie_breaker_changed(self) -> None:
+        with self.assertRaisesRegex(ValueError, "lifted Merkle"):
+            check_capture_source(change_once(
+                "(lhs_position == rhs_position and lhs < rhs);",
+                "(lhs_position == rhs_position and lhs > rhs);"))
+
+    def test_empty_tree_witness_guard_removed(self) -> None:
+        with self.assertRaisesRegex(ValueError, "lifted Merkle"):
+            check_capture_source(change_once(
+                "if (decommitment.hash_witness.len != 0) return MerkleVerificationError.WitnessTooLong;",
+                "if (false) return MerkleVerificationError.WitnessTooLong;"))
+
     def test_duplicate_query_consistency_guard_removed(self) -> None:
         with self.assertRaisesRegex(ValueError, "lifted Merkle"):
             check_capture_source(change_once(
@@ -53,6 +65,12 @@ class PcsFriCaptureTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "lifted Merkle"):
             check_capture_source(change_once("witness_idx += 1;", "witness_idx += 0;"))
 
+    def test_odd_child_order_reversed(self) -> None:
+        with self.assertRaisesRegex(ValueError, "lifted Merkle"):
+            check_capture_source(change_once(
+                "left_hash = witness;\n                            right_hash = first.hash;",
+                "left_hash = first.hash;\n                            right_hash = witness;"))
+
     def test_trailing_witness_accepted(self) -> None:
         with self.assertRaisesRegex(ValueError, "lifted Merkle"):
             check_capture_source(change_once(
@@ -64,6 +82,18 @@ class PcsFriCaptureTest(unittest.TestCase):
             check_capture_source(change_once(
                 "std.debug.assert(prev_layer.items[node_index].idx == ancestor);",
                 "// ancestor correspondence unchecked"))
+
+    def test_capture_sibling_index_changed(self) -> None:
+        with self.assertRaisesRegex(ValueError, "lifted Merkle"):
+            check_capture_source(change_once(
+                "paths[unique_index * path_depth + layer] = siblings[node_index];",
+                "paths[unique_index * path_depth + layer] = siblings[0];"))
+
+    def test_column_tie_order_changed(self) -> None:
+        with self.assertRaisesRegex(ValueError, "lifted Merkle"):
+            check_capture_source(change_once(
+                "if (lhs_size == rhs_size) return lhs < rhs;",
+                "if (lhs_size == rhs_size) return lhs > rhs;"))
 
     def test_parent_index_shift_changed(self) -> None:
         with self.assertRaisesRegex(ValueError, "lifted Merkle"):

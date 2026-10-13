@@ -144,7 +144,12 @@ goes further: an independent complete eight-leaf tree supplies every one of
 the 255 nonempty query subsets. The test compares all three captured sibling
 levels for each query against the original tree, including reverse query order
 and a duplicate, under S31's plain BLAKE2s Merkle hasher. It also checks the
-log-size ordering of a two-column leaf and five malformed inputs. This covers
+log-size ordering of a two-column leaf and five malformed inputs. An independent
+post-verification checker additionally reconstructs the pair/witness event
+trace for every subset, checks each published path entry at its ancestor, and
+requires exact witness offset order and final root equality. The one-sort Lean
+model now has explicit all-height witness accounting and per-query path
+theorems. These checks cover
 the pinned native implementation on that finite domain; a general Zig
 semantics theorem, committed-column origin and collision bound are still
 required for P06.

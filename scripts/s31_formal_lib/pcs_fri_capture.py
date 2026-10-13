@@ -15,8 +15,15 @@ def check_capture_source(source: str) -> None:
     ordered_once(
         verify, "lifted Merkle query and capture",
         "if (queried_values.len != self.column_log_sizes.len)",
+        "if (self.column_log_sizes.len == 0) {",
+        "if (query_positions.len != 0) return MerkleVerificationError.InvalidQueryShape;",
+        "if (decommitment.hash_witness.len != 0) return MerkleVerificationError.WitnessTooLong;",
         "if (self.height < @bitSizeOf(usize))",
         "if (position >= domain_size) return MerkleVerificationError.InvalidQueryShape;",
+        "const lhs_position = context.positions[lhs];",
+        "const rhs_position = context.positions[rhs];",
+        "return lhs_position < rhs_position or",
+        "(lhs_position == rhs_position and lhs < rhs);",
         "const query_order = try allocator.alloc(usize, query_positions.len);",
         "std.sort.heap(\n                usize,\n                query_order,",
         "for (query_order) |original_index| {",
@@ -32,12 +39,14 @@ def check_capture_source(source: str) -> None:
         "if (witness_idx >= decommitment.hash_witness.len)",
         "const witness = decommitment.hash_witness[witness_idx];",
         "witness_idx += 1;",
-        "if ((first.idx & 1) == 0)",
+        "if ((first.idx & 1) == 0) {\n                            left_hash = first.hash;\n                            right_hash = witness;\n                        } else {\n                            left_hash = witness;\n                            right_hash = first.hash;\n                        }",
         "siblings[p] = witness;",
         ".idx = first.idx >> 1,",
         ".hash = H.hashChildren(.{ .left = left_hash, .right = right_hash }),",
         "p += chunk_len;",
         "const ancestor = position >> @intCast(layer);",
+        "while (node_index < prev_layer.items.len and",
+        "prev_layer.items[node_index].idx < ancestor)",
         "std.debug.assert(prev_layer.items[node_index].idx == ancestor);",
         "paths[unique_index * path_depth + layer] = siblings[node_index];",
         "prev_layer.clearRetainingCapacity();",
@@ -50,6 +59,14 @@ def check_capture_source(source: str) -> None:
         "@memcpy(\n                        capture.siblings[destination_start..][0..path_depth],",
         "unique_path_siblings.?[source_start..][0..path_depth],",
         "destination.* = capture;",
+    )
+    column_order = region(source, "fn lessByLogSize(", "fn maxLogSize(")
+    ordered_once(
+        column_order, "lifted Merkle column order",
+        "const lhs_size = log_sizes[lhs];",
+        "const rhs_size = log_sizes[rhs];",
+        "if (lhs_size == rhs_size) return lhs < rhs;",
+        "return lhs_size < rhs_size;",
     )
 
 
