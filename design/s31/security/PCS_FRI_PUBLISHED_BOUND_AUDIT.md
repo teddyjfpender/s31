@@ -81,7 +81,18 @@ committed-column row, conditional on the tree's committed-column origin and
 absence of the *local* collision event. The
 [pinned decoder source control](../../../scripts/s31_formal_lib/pcs_fri_capture.py)
 and native tests check the implementation's branch, sibling, shift and
-publication structure. A machine-checked semantics of Zig's sorting,
+publication structure. The
+[Lean deterministic decoder](../../../formal/s31/S31/Gadgets/PcsFri/MultiproofDecoder.lean)
+now proves, assuming a strictly sorted frontier, that a successful one-layer
+decode covers every input node exactly, emits the modeled parents, consumes
+the precise witness prefix, and gives each node a valid event in the modeled
+path walk. Source mutation controls additionally pin sorting, deduplication,
+chunk advancement, witness cursor advancement, and ancestor matching. A
+[focused native adversarial test](../../../formal/s31/tests/pcs_fri_decoder_native.zig)
+checks paired decoding, duplicate query capture, witness underflow and
+overflow, a changed witness, and inconsistent duplicate rows against the
+pinned engine. A
+machine-checked semantics of Zig's sorting,
 deduplication, witness cursor and capture-copy loops into the modeled chunk
 events is **still missing**. No quantitative cryptographic or FRI bound
 follows from this model alone.
