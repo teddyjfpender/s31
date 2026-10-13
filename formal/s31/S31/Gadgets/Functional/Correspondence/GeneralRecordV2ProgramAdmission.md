@@ -10,7 +10,12 @@ independently from the parsed source. `Static` carries a Lean proof that those
 four exact byte inputs passed the source checker. Its `aligned` proof gives
 `Program.evaluate` equality for every assignment, including private inputs
 and aliased result fields. No compiler-produced graph is an axiom here.
-`Static` also retains the successful normalized-program validation result.
+`Static` also retains the successful normalized-program validation result and
+the `checkSourceTopology` result. This value-independent pass checks every
+operand against earlier source wires and checks every public result reference.
+It runs on the source reconstructed from the exact bytes before `checkStatic`
+returns, so a downstream correspondence theorem can use `accepted.topology`
+without asking a caller to supply a separate graph-totality assumption.
 That structural equality is distinct from agreement between the independent
 source scalar evaluator and the typed evaluator. The separate
 [`GeneralRecordV2ValueCorrespondence.md`](GeneralRecordV2ValueCorrespondence.md)
@@ -75,3 +80,6 @@ The corpus checks three exact-source accepted record packages and five
 source/tree/relation/ABI mutations. With a real package it also accepts a
 native proof and rejects a changed public result, source-derived Gate row, and fixed
 root. The checker executable is declared in `formal/s31/lakefile.toml`.
+The topology check is part of this pinned Lean path. The general native
+verifier and ordinary record-v2 package path do not automatically invoke it;
+their admission remains separate.

@@ -29,9 +29,12 @@ The proof has three independent parts:
    a decoded row. Ideal exact Gate balance and unique production turn its
    read/write values into one address-indexed wire map. A positive
    multiplicity is required for a row output to enter that map.
-2. `checkSourceTopology` checks operand availability and result references
-   using names only. `checked_topology_total` proves that a successful check
-   makes the scalar source graph executable for **every** canonical input.
+2. `checkStatic` runs `checkSourceTopology` on the source reconstructed from
+   exact bytes and stores its proof in the admission certificate. The name
+   check verifies operand availability and result references without reading
+   any values. `checked_topology_total` then proves the scalar source graph
+   executable for **every** canonical input. Explicit regressions reject an
+   unavailable operand and an unavailable result name.
 3. `private_assignment_exists` extracts private words from the Gate map,
    checks the public input partition, propagates source values through all
    live source cells, checks public output pins, and invokes the independent
@@ -53,6 +56,7 @@ Native PCS/FRI must authenticate the fixed and main commitments, the LogUp
 argument must reduce verifier acceptance to exact Gate balance at the chosen
 security profile, and Fiat–Shamir must justify the challenge distribution.
 The current theorem assumes those decoded-trace facts directly. It also
-requires that `checkSourceTopology` and the public partition checks pass for
-the accepted source package; this module does not wire the checker into the
-release admission CLI.
+requires the public partition checks to pass for the accepted source package.
+The pinned narrow record release invokes `checkStatic` through its Lean CLI,
+so it runs the topology check. This does not wire the broader native verifier
+or all record-v2 packages through that Lean admission path.

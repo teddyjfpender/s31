@@ -162,21 +162,6 @@ def SourceTotal (source : Source) : Prop :=
       ∀ name ∈ (resultWires source).eraseDups,
         ∃ word, lookupValue values name = some word
 
-/-- A value-independent pass over source wire names. It accepts exactly when
-each operand is already available and every record result names an available
-wire. This is cheap to run on the parsed source before any trace is read. -/
-def checkNodes : List Arithmetic → List String → Option (List String)
-  | [], names => some names
-  | node :: rest, names =>
-      if names.contains node.lhs.wire && names.contains node.rhs.wire then
-        checkNodes rest (node.name :: names)
-      else none
-
-def checkSourceTopology (source : Source) : Bool :=
-  match checkNodes source.nodes (inputWires source) with
-  | none => false
-  | some names => (resultWires source).all names.contains
-
 private def Covered (names : List String)
     (values : List (String × Nat)) : Prop :=
   ∀ name ∈ names, ∃ word, lookupValue values name = some word
@@ -338,7 +323,6 @@ theorem private_assignment_exists
       (allYields (nativeRows trace) trace.externalYields))
     (hscalarInputs : ScalarInputs accepted.checked.source
       (producedWire (allYields (nativeRows trace) trace.externalYields)))
-    (hsourceTopology : checkSourceTopology accepted.checked.source = true)
     (hpublicInputs : checkInputAlignment accepted.checked.source
       (recoveredAssignment accepted.checked.source
         (producedWire (allYields (nativeRows trace) trace.externalYields))
@@ -362,7 +346,7 @@ theorem private_assignment_exists
   let assignment := recoveredAssignment source wire publicInputs publicOutputs
   have hcanonical := canonical_wire_words source wire
   obtain ⟨values, hfold, hresults⟩ :=
-    checked_topology_total source hsourceTopology
+    checked_topology_total source accepted.topology
       (inputWords source wire) hcanonical.1 hcanonical.2
   have hcells : SourceCells source.nodes (sourceAddress source) cells wire :=
     trace_live_source_cells source trace cells hfixedTrace hlive hlocalAir
@@ -381,6 +365,24 @@ theorem private_assignment_exists
 theorem worked_topology_check :
     checkSourceTopology
       GeneralRecordV2ValueCorrespondence.workedSource = true := by
+  decide
+
+private def missingOperandSource : Source :=
+  { GeneralRecordV2ValueCorrespondence.workedSource with
+    nodes := [⟨"sum", ⟨"unavailable", Lean.Json.null⟩,
+      ⟨"_s31_abi_input_2", Lean.Json.null⟩, "+"⟩] }
+
+private def missingResultSource : Source :=
+  { GeneralRecordV2ValueCorrespondence.workedSource with
+    result := [⟨"left", ⟨"unavailable", Lean.Json.null⟩⟩,
+      ⟨"right", ⟨"sum", Lean.Json.null⟩⟩] }
+
+theorem unavailable_operand_rejected :
+    checkSourceTopology missingOperandSource = false := by
+  decide
+
+theorem unavailable_result_rejected :
+    checkSourceTopology missingResultSource = false := by
   decide
 
 end S31.Functional.Correspondence.GeneralRecordV2PrivateExistence

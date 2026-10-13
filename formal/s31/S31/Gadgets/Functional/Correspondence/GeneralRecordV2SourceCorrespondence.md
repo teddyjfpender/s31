@@ -54,6 +54,12 @@ the canonical relation bytes to the source-derived graph. `eval_node_output`
 defines the M31 addition/multiplication value step; `same_result_wire_same_value`
 states the alias consequence for a pair of result references.
 
+`checkSourceTopology` is a second, name-only check used by the typed-program
+admission gate. Its successful result is stored in `Static` and proves that
+the independent scalar source evaluator can run for every canonical input.
+This rejects unavailable operands and result references even if a future
+parser change were to admit them.
+
 Build and run the focused gate:
 
 ```sh

@@ -58,9 +58,12 @@ structure Static (sourceBytes : List Nat) (treeBytes relationBytes abiBytes : St
   program : S31.Program
   aligned : program = sourceProgram checked.source
   validated : ∃ shapes, program.validate = .ok shapes
+  topology : checkSourceTopology checked.source = true
 
 /-- The original exact-byte validator runs first. No v2 field is silently
-ignored: it has already been reconstructed from source before erasure. -/
+ignored: it has already been reconstructed from source before erasure. The
+value-independent topology pass then fails closed on any unresolved source
+operand or public result. -/
 def checkStatic (sourceBytes : List Nat) (treeBytes relationBytes abiBytes : String) :
     Parse (Static sourceBytes treeBytes relationBytes abiBytes) := do
   match sourceChecked : GeneralRecordV2SourceCorrespondence.check
@@ -74,8 +77,11 @@ def checkStatic (sourceBytes : List Nat) (treeBytes relationBytes abiBytes : Str
         match validation : program.validate with
         | .error _ => throw "source-derived normalized Program fails validation"
         | .ok shapes =>
-            return ⟨checked, sourceChecked, program, aligned,
-              ⟨shapes, validation⟩⟩
+            if topology : checkSourceTopology checked.source = true then
+              return ⟨checked, sourceChecked, program, aligned,
+                ⟨shapes, validation⟩, topology⟩
+            else
+              throw "source graph has unresolved operands or results"
       else
         throw "record source and normalized Program differ"
 
