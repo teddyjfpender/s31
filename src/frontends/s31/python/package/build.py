@@ -326,6 +326,19 @@ def build_text(source_path: Path, output: Path, lowering: str = "gate", fri_fold
             manifest["correspondence_schema"] = OPTIMIZED_SCHEMA
         for name in ("source.s31", "source-map.json", "typed-interface.json"):
             manifest["artifacts"][name] = file_hash(package / name)
+        if correspondence == "conservative":
+            from package.source_relation_fragment import (
+                UnsupportedSourceRelationFragment, make_source_relation_certificate,
+            )
+            try:
+                source_relation_certificate = make_source_relation_certificate(
+                    text_data, normalized)
+            except UnsupportedSourceRelationFragment:
+                pass
+            else:
+                source_relation_path = package / "source-relation-certificate.json"
+                write_json(source_relation_path, source_relation_certificate)
+                manifest["artifacts"][source_relation_path.name] = file_hash(source_relation_path)
         if source_path.read_bytes() != text_data or manifest["compiler_sha256"] != compiler_fingerprint():
             raise RuntimeError("S31 text source or compiler inputs changed during package build")
         write_json(manifest_path, manifest)

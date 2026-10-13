@@ -1,10 +1,10 @@
 # Bounded source-to-relation fragment
 
-Status: executable independent Python check, **`source-to-relation-only`**.
-This is a development and audit capability, not a package-admission
-certificate or a proof that the generated circuit/AIR implements the source.
+Status: independently replayed, production-emitted package certificate for
+the **`source-to-relation-only`** boundary. It is not a proof that the
+generated circuit/AIR implements the source.
 The existing public-only [direct-gate certificate](DIRECT_GATE_CORRESPONDENCE_CERTIFICATE.md)
-remains the separate package-admission path.
+remains the separate source-to-native-row package-admission path.
 
 ## Example and claim
 
@@ -53,6 +53,41 @@ refer to their producer's original name. The output ABI has one public input
 vector `x` followed by one public output vector `result`, each of four
 canonical M31 words. The private `y` is absent from the public ABI.
 
+For a conservatively compiled text package in this accepted grammar, the builder now emits
+`source-relation-certificate.json`. Package verification reparses the source
+bytes independently, compares the *entire* normalized relation, and
+reconstructs the exact certificate. The artifact has `schema`, `capability`,
+source/relation SHA-256 identities and an indexed `ssa` object. Every input
+and node has a stable integer ID. Its node operands and assertion pairs use
+those IDs, and `output` names the returned ID. For this example, the relevant
+SSA projection is:
+
+```json
+{
+  "lane_count": 4,
+  "inputs": [{"id": 0, "name": "x", "visibility": "public"},
+             {"id": 1, "name": "y", "visibility": "private"}],
+  "nodes": [
+    {"id": 2, "name": "twice", "op": "add", "lhs": 0, "rhs": 0},
+    {"id": 3, "name": "product", "op": "mul", "lhs": 1, "rhs": 0},
+    {"id": 4, "name": "result", "op": "add_const", "lhs": 3, "constant": 7}
+  ],
+  "assertions": [[1, 2]],
+  "output": 4
+}
+```
+
+This certificate records `lean_semantic_profile: null` and
+`unmodeled_features: ["assertions", "constant-arithmetic"]` because the
+current generic Lean SSA theorem does not cover those constructs. A program
+with only add/sub/mul nodes and no assertions gets profile
+`linear-ssa-m31-v1`. The profile reports the graph shape to which that theorem
+can apply; the SHA-256 digests alone do not prove parser correctness.
+The [five-lane fixture](../../../formal/s31/fixtures/correspondence/source_relation_ssa_v1.json)
+has exact source and normalized-relation siblings. A test regenerates all
+three identities and the complete certificate; the Lean checker can parse
+the same serialized bytes.
+
 The checker also accepts this bounded functional spelling:
 
 ```s31
@@ -90,14 +125,19 @@ plain names. Whitespace and `//` to end-of-line comments are
 ignored. The lexer bounds input at 16,384 bytes and 512 tokens. Identifiers
 are ASCII and at most 128 characters.
 
-An optional single preceding `fn` declaration may take exactly two distinct
-`[m31; N]` parameters and return `[m31; N]`. Its pure body must apply one
-`+`, `-`, or `.*` to its parameters. One or more lets may call it with two
-previously named wires; the checker substitutes those wires in the declared
-operand order and compares the exact residual relation. The helper must be
-used, and circuit/input/local names may not shadow it. Function values,
-captures, recursion, multiple helpers, and effects are outside this bounded
+Up to eight preceding `fn` declarations may each take one or two distinct
+`[m31; N]` parameters and return `[m31; N]`. Each pure body must apply one
+`+`, `-`, or `.*` to its parameters. One or more lets may call a helper with
+the corresponding number of previously named wires; the checker substitutes those wires in the declared
+operand order and compares the exact residual relation. Each helper must be
+used, and circuit/input/local names may not shadow a helper. Function values,
+captures, recursion, nested helper calls, and effects are outside this bounded
 grammar.
+
+A leading `use std@1;` is accepted as version-pinned source metadata. The
+accepted expression grammar cannot call a standard-library function, so the
+import adds no relation operation here; package verification checks the
+separate standard-library lock.
 
 The checker rejects imports, nested binary expressions, array
 indexing, other types, calls other than the exact `splat<N>` atom or declared
@@ -113,6 +153,14 @@ feature cannot silently expand this capability.
 `package.source_relation_fragment.check_source_relation(source_bytes,
 relation_bytes)` returns exact source/relation SHA-256 digests and the
 `source-to-relation-only` capability after a full structural comparison.
+`make_source_relation_certificate` builds the indexed artifact, and
+`check_source_relation_certificate` reproduces and compares it from raw bytes.
+All conservative text packages whose source is inside this grammar must carry
+that artifact; a missing, extra, or re-sealed but false artifact is rejected
+by ordinary package verification. Other source programs remain outside this
+certificate and do not silently gain its status. The explicit optimized
+direct-gate mode has its own correspondence certificate and does not claim
+this conservative translation.
 `check_package_source_relation(package_path)` additionally compares the
 direct-gate public ABI, including the exact `[m31; N]` word count, and relevant
 package manifest identities and artifact
@@ -127,6 +175,6 @@ relation/ABI/manifest test fixtures with all affected hashes recomputed.
 Passing this check does not validate the compiler's optimizer, circuit row
 schedule, private-input gate allocation, public input binding inside the
 native verifier, AIR constraints, lookup closure, or PCS/FRI soundness. It is
-not wired into `verify-release` and does not promote private circuits to the
-existing direct-gate certificate. A formal theorem and independent checks of
+not a `verify-release` source-to-native-row certificate and does not promote
+private circuits to the existing direct-gate certificate. A formal theorem and independent checks of
 those later boundaries remain open.

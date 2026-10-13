@@ -185,15 +185,23 @@ not read it. See the [design brief](../../../../../design/s31/language/DIRECT_GA
 The public Python API remains in `../s31.py`; its functions import these
 modules. The dependency direction is `context -> verify -> build -> CLI`.
 
-`source_relation_fragment.py` is a separate development/audit checker for a
+`source_relation_fragment.py` is an independent checker for a
 bounded one-to-eight-lane M31 fragment with private inputs, canonical splat
-constants, assertions, native subtraction, and one pure two-argument named
-function whose call is statically erased. Its result is explicitly
-`source-to-relation-only`; it is not
-used for package admission or native verification. It independently parses
-source bytes, compares the entire normalized relation, and optionally checks
-direct-gate public ABI and manifest identities. Its [scope and example](../../../../../design/s31/language/SOURCE_RELATION_FRAGMENT.md)
+constants, assertions, native subtraction, and up to eight pure one- or two-argument
+named functions whose calls are statically erased. Its result is explicitly
+`source-to-relation-only`. The builder emits an indexed
+`source-relation-certificate.json` for conservative text in that grammar,
+regardless of native lowering;
+ordinary package verification independently recomputes and requires it. This
+is package admission for the source-to-relation boundary only. The standalone
+native verifier does not read it, and it does not establish relation-to-AIR
+or PCS/FRI soundness. The checker independently parses source bytes, compares
+the entire normalized relation, and optionally checks direct-gate public ABI
+and manifest identities. Its [scope and example](../../../../../design/s31/language/SOURCE_RELATION_FRAGMENT.md)
 explain the exact grammar and remaining circuit/AIR gap.
+The [general correspondence matrix](../../../../../design/s31/language/GENERAL_COMPILER_CORRESPONDENCE_MATRIX.md)
+lists all production expression forms and normalized operations with their
+remaining proof obligations.
 
 `record_source_fragment.py` independently parses a bounded version-2 source
 with one nominal M31 record, up to two public/private record inputs, explicit
