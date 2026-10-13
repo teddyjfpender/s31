@@ -57,6 +57,24 @@ class PcsFriCaptureTest(unittest.TestCase):
                 "return MerkleVerificationError.DuplicateQueryMismatch;",
                 "return MerkleVerificationError.RootMismatch;"))
 
+    def test_duplicate_row_comparison_uses_original_query_slot(self) -> None:
+        with self.assertRaisesRegex(ValueError, "lifted Merkle"):
+            check_capture_source(change_once(
+                "} else if (!dedup.items[dedup.items.len - 1].eql(col[original_index])) {",
+                "} else if (!dedup.items[dedup.items.len - 1].eql(col[0])) {"))
+
+    def test_leaf_row_assembly_keeps_column_cursor(self) -> None:
+        with self.assertRaisesRegex(ValueError, "lifted Merkle"):
+            check_capture_source(change_once(
+                "row[col_i] = col[col_pos[col_i]];",
+                "row[col_i] = col[0];"))
+
+    def test_leaf_row_cursor_advances(self) -> None:
+        with self.assertRaisesRegex(ValueError, "lifted Merkle"):
+            check_capture_source(change_once(
+                "col_pos[col_i] += 1;",
+                "col_pos[col_i] += 0;"))
+
     def test_paired_chunk_fails_to_advance_by_two(self) -> None:
         with self.assertRaisesRegex(ValueError, "lifted Merkle"):
             check_capture_source(change_once("chunk_len = 2;", "chunk_len = 1;"))
