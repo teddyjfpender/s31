@@ -59,6 +59,10 @@ def main() -> None:
     changed_assertion["assertions"][0]["rhs"] = "shifted"
     changed_abi = copy.deepcopy(abi)
     changed_abi["public_outputs"][0]["length"] = 2
+    changed_encoding = copy.deepcopy(abi)
+    changed_encoding["encoding"] = "unrecognized encoding"
+    generic_abi = copy.deepcopy(abi)
+    generic_abi["encoding"] = "eight little-endian u32 words; unused words are zero"
     changed_certificate = copy.deepcopy(certificate)
     changed_certificate["ssa"]["nodes"][0]["constant"] = 8
     changed_private = copy.deepcopy(assignment)
@@ -74,6 +78,7 @@ def main() -> None:
         ("relation", canonical(changed_constant)),
         ("relation", canonical(changed_assertion)),
         ("abi", canonical(changed_abi)),
+        ("abi", canonical(changed_encoding)),
         ("certificate", canonical(changed_certificate)),
         ("source", b"x" * 65537),
     ]
@@ -94,6 +99,10 @@ def main() -> None:
         paths["statement"] = statement_path
         check(executable, "static", paths, True)
         check(executable, "statement", paths, True)
+        generic_abi_path = directory / "generic-gate.abi.json"
+        generic_abi_path.write_bytes(canonical(generic_abi))
+        check(executable, "static", {**paths, "abi": generic_abi_path}, True)
+        check(executable, "statement", {**paths, "abi": generic_abi_path}, True)
         for index, (name, content) in enumerate(static_mutants):
             mutant = directory / f"static-{index}"
             mutant.write_bytes(content)
@@ -110,7 +119,8 @@ def main() -> None:
             ("source.s31.json", "relation"),
             ("public-abi.json", "abi"),
         ):
-            shutil.copyfile(paths[target], package / name)
+            shutil.copyfile(generic_abi_path if name == "public-abi.json"
+                            else paths[target], package / name)
         manifest = {
             "name": "affine_guard", "source_text_sha256": "reviewed fixture",
             "artifacts": {"source-relation-certificate.json": "reviewed fixture"},
@@ -164,7 +174,7 @@ def main() -> None:
                     len(checked_statement) != 1 or
                     checked_statement != native_statements):
                 raise AssertionError("native verifier did not consume Lean-checked statement copy")
-    print(f"generic effects gate accepted fixture; rejected "
+    print(f"generic effects gate accepted both production ABI encodings; rejected "
           f"{len(static_mutants)} static and {len(dynamic_mutants)} statement mutations; "
           "pinned package and same-statement dispatch passed")
 

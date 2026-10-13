@@ -7,6 +7,12 @@ for any program in the bounded effectful M31 grammar. A compiled package
 does not have a witness, so this static result says nothing about whether
 its assertions can be satisfied.
 
+The package gate accepts the two exact production v1 ABI encoding labels:
+the generic `gate` label and the canonical M31 `direct-gate` label. It checks
+the original descriptor and its source-derived field layout before
+normalizing the generic label for the existing M31 byte-run theorem. The
+public statement still has to contain canonical M31 values.
+
 `checkRun` parses a canonical typed assignment, derives every indexed input
 lane and the claimed output from those bytes inside Lean, and calls the
 theorem-backed [`checkEffectsByteRun`](GeneralLinearSSAEffectsByteRun.lean).
@@ -44,6 +50,11 @@ native public-pin ownership, or PCS/FRI soundness. The equality between the
 native verifier's JSON statement interpretation and Lean's JSON interpretation
 also remains an implementation trust boundary; the wrapper binds identical
 statement bytes to both processes.
+
+The private assignment is an independently checked witness for the same
+public claim. Native verification sees the public statement, not those
+private assignment bytes, so this gate does **not** prove the native proof
+used that particular private witness.
 
 ## Recheck
 

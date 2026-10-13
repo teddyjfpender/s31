@@ -101,7 +101,9 @@ def verify_effectful_proof(
 
     The same private copy of the public statement is checked by Lean and
     passed to the native verifier. The assignment is copied before package
-    admission and checked for changes after native verification.
+    admission and checked for changes after native verification. It is an
+    independently checked witness for the public claim; the native proof is
+    not bound to this particular private assignment.
     """
     with proof_inputs_snapshot(proof, statement,
                                statement_limit=MAX_LEAN_INPUT_BYTES) as (captured_proof, captured_statement):

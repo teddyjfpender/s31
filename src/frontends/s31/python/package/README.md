@@ -39,7 +39,10 @@ source/certificate/relation/ABI bytes, then asks Lean to check the exact
 canonical assignment and public statement bytes. The same captured public
 statement is given to the installed native verifier. This command requires a
 `linear-ssa-m31-effects-v1` source relation certificate and rejects all other
-profiles. For example:
+profiles. The supplied private assignment is checked against the source, but
+the native proof is bound only to the public statement; it may use a different
+private witness that yields the same public claim. The checker path must name
+a regular file through directories without symlinks. For example:
 
 ```sh
 s31 verify-effects-lean PACKAGE PROOF ASSIGNMENT \

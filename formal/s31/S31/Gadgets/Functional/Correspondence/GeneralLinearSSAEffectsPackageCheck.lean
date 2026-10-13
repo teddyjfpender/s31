@@ -21,6 +21,26 @@ structure StaticPackage where
   certificate : GeneralLinearSSAEffects.Certificate
   program : S31.Program
   outputName : String
+  leanAbi : String
+
+/-- The generic Gate package has the same v1 M31 field layout but uses a
+different, less specific encoding label from direct Gate packages. Admit only
+these two exact descriptors. The existing byte-run theorem consumes the
+canonical-label rendering, so the generic label is replaced only after its
+original bytes and every field have been checked. -/
+private def checkPackageAbi (bytes : String) (laneCount : Nat)
+    (inputs : List GeneralLinearSSA.EmittedInput)
+    (outputName : String) : Check String := do
+  let found ← parseDescriptor bytes
+  let expected := expectedDescriptor laneCount inputs outputName
+  if found = expected then return bytes
+  let generic := { expected with
+    encoding := "eight little-endian u32 words; unused words are zero" }
+  if found = generic then
+    let normalized := bytes.replace generic.encoding expected.encoding
+    checkDescriptor normalized laneCount inputs outputName
+    return normalized
+  throw "public ABI differs from source-derived SSA layout"
 
 /-- Exact source, certificate, normalized relation, and public ABI bytes.
 This does not assert satisfiability of source assertions. -/
@@ -35,8 +55,8 @@ def checkStatic (sourceBytes : List Nat) (certificateBytes relationBytes
   let outputName ← match ssa.names[ssa.output]? with
     | none => throw "selected output name missing"
     | some name => pure name
-  checkDescriptor abiBytes ssa.lane_count ssa.inputs outputName
-  return ⟨ssa, meaning, certificate, program, outputName⟩
+  let leanAbi ← checkPackageAbi abiBytes ssa.lane_count ssa.inputs outputName
+  return ⟨ssa, meaning, certificate, program, outputName, leanAbi⟩
 
 private def rawLanes (raw : S31.RawValues) (name : String) (n : Nat) :
     Check (GeneralLinearSSA.Lanes n) := do
@@ -74,7 +94,7 @@ def checkRun (sourceBytes : List Nat) (certificateBytes relationBytes
     (fun input => inputLanes assignment input static.ssa.lane_count)
   let claimed ← rawLanes assignment.publicOutputs static.outputName
     static.ssa.lane_count
-  checkEffectsByteRun sourceBytes certificateBytes relationBytes abiBytes
+  checkEffectsByteRun sourceBytes certificateBytes relationBytes static.leanAbi
     assignmentBytes rawPublicBytes (indexedValues inputValues) claimed
 
 /-- Successful generic runtime admission inherits the exact-byte semantic
@@ -116,7 +136,7 @@ theorem checked_run_sound (sourceBytes : List Nat)
                     Bind.bind, Except.bind] at hcheck
               | ok claimed =>
                   have hrun : checkEffectsByteRun sourceBytes certificateBytes
-                      relationBytes abiBytes assignmentBytes rawPublicBytes
+                      relationBytes static.leanAbi assignmentBytes rawPublicBytes
                       (indexedValues inputValues) claimed = .ok run := by
                     simpa [hstatic, hassignment, hinputs, hclaimed,
                       Bind.bind, Except.bind, Pure.pure, Except.pure]
@@ -125,7 +145,7 @@ theorem checked_run_sound (sourceBytes : List Nat)
                     claimed, ?_⟩
                   simpa [hassignment] using
                     checked_effects_byte_run sourceBytes certificateBytes
-                      relationBytes abiBytes assignmentBytes rawPublicBytes
+                      relationBytes static.leanAbi assignmentBytes rawPublicBytes
                       (indexedValues inputValues) claimed run hrun
 
 structure StatementRun where
