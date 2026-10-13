@@ -328,7 +328,7 @@
     "formal/s31/S31/Gadgets/Packed.lean": "f0dae2dcdad85c57aeb7f5e534e53ddd606dd8464a865e3a1afc0fc5de67d02f",
     "formal/s31/S31/Gadgets/Packing.lean": "f4c2031a9c1e5d58c5735b75aa5c093609002a6c1e34f912af1b078524fc1b5e",
     "formal/s31/S31/Gadgets/PcsFri/FoldAlgebra.lean": "def1114388ff78f5f9423bc0aada485ec3dda8c433576a087ef94df299dc9da3",
-    "formal/s31/S31/Gadgets/PcsFri/FriMerkleBinding.lean": "441c987ed20fa896920f2cd12b1632aa973a76d02ad2dbf3d09b31d7820aeacb",
+    "formal/s31/S31/Gadgets/PcsFri/FriMerkleBinding.lean": "c48e87d5f7ae5f43511e48901228318c1adc975dab5509541132b28bc567cff4",
     "formal/s31/S31/Gadgets/PcsFri/LayerAcceptance.lean": "dd4232047a06bccdb1d780998ab789b253a481e3ddeffc5b216b1a189c243b3c",
     "formal/s31/S31/Gadgets/PcsFri/M31MaskedQuery.lean": "2d2d7e74d0fe319d891dce4b4f6680184bba13d4d8578e93c3d0cdbdbaa19c5e",
     "formal/s31/S31/Gadgets/PcsFri/M31WordReduction.lean": "014571cf368ec470ae426dc6141bca1c418eb8a627caddd546af1673b9a7f8fb",

@@ -56,6 +56,7 @@ def authenticatedSlot (leafHash : List F → H) (parentHash : H × H → H)
   let absolute := p * width layer + r
   let position := leafPosition opening.leafLog absolute
   let offset := leafOffset opening.leafLog absolute
+  (opening.nativeRow position).length = 2 ^ opening.leafLog ∧
   acceptedOpening leafHash parentHash opening.root opening.height position
     (opening.nativeRow position) (opening.nativePath position) ∧
   acceptedOpening leafHash parentHash opening.root opening.height position
@@ -85,7 +86,7 @@ theorem authenticatedSlot_eq_oracle
     (hslot : authenticatedSlot leafHash parentHash layer opening p r) :
     layer.opened p r = layer.oracle (p * width layer + r) := by
   dsimp [authenticatedSlot] at hslot
-  rcases hslot with ⟨native, committed, nativeValue, noCollision⟩
+  rcases hslot with ⟨_, native, committed, nativeValue, noCollision⟩
   have sameRows : opening.nativeRow
       (leafPosition opening.leafLog (p * width layer + r)) =
       oracleLeaf layer opening.leafLog
@@ -120,9 +121,10 @@ theorem inconsistentSlot_rejected
 /-- Local authenticated slots suffice for the existing layer oracle premise. -/
 def authenticatedLayer (leafHash : List F → H) (parentHash : H × H → H)
     (raw : List Nat) (layer : Layer F) (opening : LayerOpening F H) : Prop :=
-  ∀ q ∈ raw, ∀ r < width layer,
-    authenticatedSlot leafHash parentHash layer opening
-      (foldPosition layer.step q) r
+  opening.leafLog ≤ layer.step ∧
+    ∀ q ∈ raw, ∀ r < width layer,
+      authenticatedSlot leafHash parentHash layer opening
+        (foldPosition layer.step q) r
 
 theorem authenticatedLayer_oracleBound
     (leafHash : List F → H) (parentHash : H × H → H)
@@ -131,7 +133,7 @@ theorem authenticatedLayer_oracleBound
     oracleBoundLayer raw layer := by
   intro q hq r hr
   exact authenticatedSlot_eq_oracle leafHash parentHash layer opening
-    (foldPosition layer.step q) r (hauth q hq r hr)
+    (foldPosition layer.step q) r (hauth.2 q hq r hr)
 
 /-- Per-layer Merkle certificates follow the same arbitrary query-fold
 schedule as operational FRI admission. A missing certificate fails closed. -/
