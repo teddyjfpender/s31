@@ -229,3 +229,122 @@ test "S31 compact tiled and streaming retained columns originate in source evalu
     try checkCommitment(allocator, streaming_tree, &extensions, &extended_logs, height);
     try checkCommitment(allocator, owned_tiled_tree, &extensions, &extended_logs, height);
 }
+
+fn tiledProject(height: u32, column_log: u32, tile_log: u32, tile: usize, offset: usize) usize {
+    if (column_log + tile_log > height) {
+        const block_log = column_log + tile_log - height;
+        return (tile << @intCast(block_log)) + project(tile_log, block_log, offset);
+    }
+    return 2 * (tile >> @intCast(height - tile_log - column_log + 1)) + (offset & 1);
+}
+
+test "compact tile block and short-column projections agree for all small valid shapes" {
+    // The Lean theorem covers arbitrary natural heights. Exhaustive finite
+    // replay checks the machine shifts at every tile boundary up to log 10.
+    for (2..11) |height_usize| {
+        const height: u32 = @intCast(height_usize);
+        for (1..height + 1) |column_log_usize| {
+            const column_log: u32 = @intCast(column_log_usize);
+            for (1..height) |tile_log_usize| {
+                const tile_log: u32 = @intCast(tile_log_usize);
+                const tile_rows = @as(usize, 1) << @intCast(tile_log);
+                const count = @as(usize, 1) << @intCast(height);
+                for (0..count) |position| {
+                    const tile = position / tile_rows;
+                    const offset = position % tile_rows;
+                    try std.testing.expectEqual(project(height, column_log, position), tiledProject(height, column_log, tile_log, tile, offset));
+                }
+            }
+        }
+    }
+}
+
+fn checkCompleteTreeGeneral(allocator: std.mem.Allocator, tree: anytype, extensions: []const []M31, logs: []const u32, height: u32) !void {
+    const count = @as(usize, 1) << @intCast(height);
+    const order = try allocator.alloc(usize, logs.len);
+    defer allocator.free(order);
+    for (order, 0..) |*slot, i| slot.* = i;
+    const Sort = struct {
+        logs: []const u32,
+        fn less(self: @This(), left: usize, right: usize) bool {
+            return self.logs[left] < self.logs[right] or
+                (self.logs[left] == self.logs[right] and left < right);
+        }
+    };
+    std.sort.heap(usize, order, Sort{ .logs = logs }, Sort.less);
+    const row = try allocator.alloc(M31, logs.len);
+    defer allocator.free(row);
+    const nodes = try allocator.alloc(H.Hash, 2 * count);
+    defer allocator.free(nodes);
+    for (0..count) |position| {
+        for (order, row) |index, *value|
+            value.* = extensions[index][project(height, logs[index], position)];
+        nodes[count + position] = leaf(row);
+    }
+    var at = count - 1;
+    while (at > 0) : (at -= 1)
+        nodes[at] = H.hashChildren(.{ .left = nodes[2 * at], .right = nodes[2 * at + 1] });
+    try std.testing.expectEqualDeep(nodes[1], tree.root());
+    for (0..height + 1) |level| {
+        const width = @as(usize, 1) << @intCast(level);
+        try std.testing.expectEqualSlices(u8, std.mem.sliceAsBytes(nodes[width .. 2 * width]), std.mem.sliceAsBytes(tree.commitment.layers[level]));
+    }
+}
+
+fn checkGeneratedShape(seed: usize) !void {
+    const allocator = std.testing.allocator;
+    const n = 2 + seed % 4;
+    const sources = try allocator.alloc(Column, n);
+    defer allocator.free(sources);
+    const extensions = try allocator.alloc([]M31, n);
+    defer allocator.free(extensions);
+    const logs = try allocator.alloc(u32, n);
+    defer allocator.free(logs);
+    var filled: usize = 0;
+    defer for (0..filled) |i| {
+        allocator.free(sources[i].values);
+        allocator.free(extensions[i]);
+    };
+    var max_log: u32 = 0;
+    for (0..n) |index| {
+        const source_log: u32 = @intCast(2 + (seed * 7 + index * index * 3 + index) % 6);
+        sources[index] = try sourceColumn(allocator, source_log, seed * 17 + index);
+        extensions[index] = expectedExtension(allocator, sources[index], 1) catch |err| {
+            allocator.free(sources[index].values);
+            return err;
+        };
+        logs[index] = source_log + 1;
+        max_log = @max(max_log, logs[index]);
+        filled += 1;
+    }
+    const tile_route = seed % 4 != 0;
+    const threshold: u32 = if (tile_route)
+        @min(max_log, @as(u32, @intCast(4 + seed % 4)))
+    else
+        max_log + 1;
+    const height = max_log + @as(u32, @intCast(seed % 2));
+    const config = core.pcs.config_v2.PcsConfigV2.fromFriAndLiftingSize(try core.pcs.config_v2.FriConfigV2.init(0, 0, 1, 8, 1), height);
+    try std.testing.expectEqual(tile_route, prover.pcs.tiled_commit.applies(sources, 1, threshold));
+    var streaming = try Scheme.initRevision(allocator, config);
+    defer streaming.deinit(allocator);
+    streaming.setCompactPolynomialStorage(threshold);
+    var streaming_channel = Channel{};
+    try streaming.commitBorrowedStreamingWithRecorder(allocator, sources, 0, null, &streaming_channel);
+    try checkRetention(allocator, streaming.trees.items[0], sources, extensions, threshold);
+    try checkCompleteTreeGeneral(allocator, streaming.trees.items[0], extensions, logs, height);
+    if (tile_route) {
+        var tiled = try Scheme.initRevision(allocator, config);
+        defer tiled.deinit(allocator);
+        tiled.setCompactPolynomialStorage(threshold);
+        var tiled_channel = Channel{};
+        try prover.pcs.tiled_commit.commit(Cpu, H, &tiled, allocator, sources, .borrowed,
+            .{ .tile_bytes = 1, .group_bytes = 1 << 12 }, &tiled_channel);
+        try std.testing.expectEqualSlices(u8, &tiled_channel.digestBytes(), &streaming_channel.digestBytes());
+        try checkRetention(allocator, tiled.trees.items[0], sources, extensions, threshold);
+        try checkCompleteTreeGeneral(allocator, tiled.trees.items[0], extensions, logs, height);
+    }
+}
+
+test "generated compact column shapes match all projected leaves and parents" {
+    for (0..16) |seed| try checkGeneratedShape(seed);
+}
