@@ -20,6 +20,7 @@ SOURCE_PATHS = {
     "prover": "deps/stwo-zig/src/prover/vcs_lifted/prover.zig",
     "revision": "deps/stwo-zig/src/prover/pcs/revision_lifting.zig",
     "commitment_tree": "deps/stwo-zig/src/prover/pcs/commitment_tree.zig",
+    "commit_ops": "deps/stwo-zig/src/prover/pcs/commit_ops.zig",
     "cpu_backend": "deps/stwo-zig/src/backends/cpu_scalar/mod.zig",
     "s31_integration": "deps/stwo-zig/src/integrations/circuit_cpu/prove.zig",
     "tiled": "deps/stwo-zig/src/prover/pcs/tiled_commit.zig",
@@ -148,6 +149,14 @@ def check_prover_origin_texts(source: Mapping[str, str]) -> None:
                  "lifted prover origin host backend",
                  "return vcs_lifted_prover.MerkleProverLifted(H);",
                  "return MerkleTree(H).commit(allocator, columns);")
+    ordered_once(region(commitment_tree, "pub fn compactPolynomialStorage(",
+                        "pub fn releaseCoefficients("),
+                 "lifted prover origin retained compact columns",
+                 "const coefficients = self.coefficients orelse return error.MissingCompactCoefficients;",
+                 "if (column.log_size < minimum_log_size) {",
+                 "column.values = &.{};",
+                 "column.coefficient_values = coefficient.coefficients();",
+                 "self.compact_polynomials = true;")
     cpu_backend = source["cpu_backend"]
     ordered_once(region(cpu_backend, "pub fn MerkleTree(comptime H: type) type {",
                         "pub fn commitLazyMerkle("),
@@ -164,6 +173,14 @@ def check_prover_origin_texts(source: Mapping[str, str]) -> None:
                  "prover.pcs.tiled_commit.commit(CpuBackend, Hasher, scheme, allocator, columns, .owned, .{}, channel)",
                  "scheme.commitOwnedStreamingWithRecorder(allocator, columns, 0, null, channel);",
                  "try Engine.flushPendingCommit(scheme, allocator, channel);")
+    ordered_once(region(integration, "fn commitBorrowed(scheme: *Engine.Scheme,",
+                        "fn tiles(scheme: *const Engine.Scheme,"),
+                 "lifted prover origin S31 borrowed route",
+                 "if (tiles(scheme, columns)) {",
+                 "const descriptors = try allocator.dupe(prover.pcs.ColumnEvaluation, columns);",
+                 "prover.pcs.tiled_commit.commit(CpuBackend, Hasher, scheme, allocator, descriptors, .borrowed, .{}, channel);",
+                 "scheme.commitBorrowedStreamingWithRecorder(allocator, columns, 0, null, channel);",
+                 "try Engine.flushPendingCommit(scheme, allocator, channel);")
     tiled = source["tiled"]
     ordered_once(region(tiled, "pub fn commit(", "fn hashParents("),
                  "lifted prover origin tiled route",
@@ -172,6 +189,24 @@ def check_prover_origin_texts(source: Mapping[str, str]) -> None:
                  "const leaves = try LeafOps.buildBatched(allocator, allocator, refs, 1024);",
                  "hashParents(H, current, out);",
                  "while (level > 0) : (level -= 1) hashParents(H, merkle.layers[level], merkle.layers[level - 1]);")
+    ordered_once(region(tiled, "// 6. The compact tree:", "fn adopt("),
+                 "lifted prover origin tiled coefficient ownership",
+                 "const tree_columns = try allocator.alloc(ColumnEvaluation, n);",
+                 "coefficient.* = try CircleCoefficients.initOwned(buffer);",
+                 "tree_column.* = if (values.len != 0)",
+                 ".{ .log_size = log, .values = values }",
+                 ".{ .log_size = log, .values = &.{}, .coefficient_values = buffer };",
+                 ".compact_polynomials = true,",
+                 "try scheme.appendCommittedTree(allocator, tree, channel);")
+    commit_ops = source["commit_ops"]
+    ordered_once(region(commit_ops, "fn commitStreamingWithBacking(", "fn boundedBatchEnd("),
+                 "lifted prover origin streaming input ownership",
+                 "std.sort.heap(",
+                 "try builder.planCompactTree(owned_columns, order);",
+                 "const column = owned_columns[original_index];",
+                 "const values = allocator.dupe(M31, column.values)",
+                 "try tree_builders.addColumnsOwnedIndexed(&builder, batch, order[consumed..end], recorder);",
+                 "try builder.commitWithRecorder(recorder, channel);")
     streaming = source["streaming"]
     if streaming.count("const next_layer = try LayerOps.buildNextLayer(") != 1 or \
             streaming.count("out_layers[i] = layers_bottom_up.items[out_layers.len - 1 - i];") != 1:
