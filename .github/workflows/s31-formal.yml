@@ -61,6 +61,10 @@ jobs:
           mkdir -p zig-out/s31/formal
           python3 scripts/s31_formal.py | tee zig-out/s31/formal/source-checks.log
           python3 -m unittest scripts.tests.test_s31_formal 2>&1 | tee -a zig-out/s31/formal/source-checks.log
+      - name: FRI layer acceptance controls
+        run: |
+          python3 -B -m unittest scripts.tests.test_pcs_fri_layer -v
+          bash formal/s31/tests/run_pcs_fri_layer_native.sh
       - name: Check pinned square4 native base rows and mutation controls
         run: |
           set -euo pipefail

@@ -137,6 +137,38 @@ each critical step. Run the native regression from the repository root with:
 zig test -O ReleaseSafe --dep stwo_core -Mroot=formal/s31/tests/pcs_fri_fold_native.zig -Mstwo_core=deps/stwo-zig/src/core/mod.zig
 ```
 
+## Authenticated layer transitions and the terminal check
+
+The [native layer regression](../../../tests/pcs_fri_layer_native.zig) checks
+width-four sparse reconstruction across three query groups against an explicit
+queried-value/witness map, including witness count and bit-reversed domain
+indices. It then generates a small affine circle column with one inner FRI
+layer and replays
+the pinned verifier with the same transcript. The honest proof passes. A
+changed first queried value fails first-layer authentication; changing the
+first folding challenge after transcript replay fails authentication of the
+next layer's queried value. An extra inner-layer witness value fails exact
+witness consumption. Changing the final polynomial coefficient fails its
+queried evaluation check, and an oversized terminal polynomial fails the
+degree check during commitment replay. The first layer uses two folds; the
+inner layer uses the remaining one fold.
+
+The [layer source guard](../../../../../scripts/s31_formal_lib/pcs_fri_layer.py)
+binds query/witness reconstruction, Merkle verification, current-to-next
+query and value updates, layer schedule, and the terminal degree and
+evaluation gates. Mutation controls reject removal or rewiring of the
+critical stages. Formal CI runs the test with the pinned prover, CPU backend,
+and verifier modules:
+
+```sh
+bash formal/s31/tests/run_pcs_fri_layer_native.sh
+python3 -B -m unittest scripts.tests.test_pcs_fri_layer -v
+```
+
+This is an adversarial native regression and source contract. It does not
+establish a machine-checked refinement of the full verifier, prove that all
+opened rows are low degree, or give a FRI proximity bound.
+
 ## What remains to join
 
 The Lean decoder model starts with a strictly sorted frontier and a committed
