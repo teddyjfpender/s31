@@ -294,6 +294,15 @@ This is an adversarial native regression and source contract. It does not
 establish a machine-checked refinement of the full verifier, prove that all
 opened rows are low degree, or give a FRI proximity bound.
 
+The [independent terminal evaluator](../../../../../design/s31/security/PCS_FRI_OPERATIONAL_TERMINAL_REFINEMENT.md)
+strengthens the post-verification capture gate: it reduces adjacent terminal
+coefficients with the native basis factors, independently of the verifier's
+pending-stack `LinePoly.evalAtPoint` implementation. A hand-calculated
+four-coefficient example, randomized differential checks, raw-slot capture
+tests, and source mutations cover the evaluator. The gate reuses its scratch
+buffer across raw queries. The Zig-success-to-Lean operational extraction
+premise remains open.
+
 ## What remains to join
 
 The Lean decoder model starts with a strictly sorted frontier and a committed

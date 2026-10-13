@@ -3,7 +3,8 @@
 //! This independently replays each raw FRI query through captured subsets and
 //! the algebraic pair fold before recursive witness conversion. It checks
 //! operational consistency of the published capture, not Merkle binding or
-//! FRI proximity. The terminal evaluator is the same native LinePoly routine.
+//! FRI proximity. The terminal evaluator uses an independent pair reduction
+//! over the line polynomial coefficients.
 const std = @import("std");
 const core = @import("stwo_core");
 
@@ -87,6 +88,69 @@ fn foldCircle(
     );
 }
 
+/// Independent pair-reduction evaluator for native line-polynomial
+/// coefficients. The buffers are reused across raw queries to avoid a heap
+/// allocation for every terminal check.
+const TerminalBasisEvaluator = struct {
+    allocator: std.mem.Allocator,
+    factors: []QM31,
+    scratch: []QM31,
+
+    fn init(allocator: std.mem.Allocator, coefficient_count: usize) !TerminalBasisEvaluator {
+        if (coefficient_count == 0 or !std.math.isPowerOfTwo(coefficient_count))
+            return error.InvalidFriCapture;
+        const log_size: usize = std.math.log2_int(usize, coefficient_count);
+        const factors = try allocator.alloc(QM31, log_size);
+        errdefer allocator.free(factors);
+        const scratch = try allocator.alloc(QM31, coefficient_count);
+        return .{ .allocator = allocator, .factors = factors, .scratch = scratch };
+    }
+
+    fn deinit(self: *TerminalBasisEvaluator) void {
+        self.allocator.free(self.scratch);
+        self.allocator.free(self.factors);
+    }
+
+    fn eval(self: *TerminalBasisEvaluator, coefficients: []const QM31, x: M31) !QM31 {
+        if (coefficients.len != self.scratch.len) return error.InvalidFriCapture;
+        var doubled_x = QM31.fromBase(x);
+        for (self.factors) |*factor| {
+            factor.* = doubled_x;
+            const square = doubled_x.square();
+            doubled_x = square.add(square).sub(QM31.one());
+        }
+
+        @memcpy(self.scratch, coefficients);
+        var active = self.scratch.len;
+        var depth = self.factors.len;
+        while (active > 1) {
+            const half = active / 2;
+            const factor = self.factors[depth - 1];
+            for (0..half) |i| {
+                self.scratch[i] = self.scratch[2 * i].add(
+                    self.scratch[2 * i + 1].mul(factor),
+                );
+            }
+            active = half;
+            depth -= 1;
+        }
+        return self.scratch[0];
+    }
+};
+
+/// Evaluate the native line-polynomial coefficient basis without calling
+/// LinePoly.evalAtPoint or poly.utils.fold. Adjacent pairs use the last
+/// doubling factor; each later reduction uses the preceding factor.
+pub fn evaluateTerminalPolynomial(
+    allocator: std.mem.Allocator,
+    coefficients: []const QM31,
+    x: M31,
+) !QM31 {
+    var evaluator = try TerminalBasisEvaluator.init(allocator, coefficients.len);
+    defer evaluator.deinit();
+    return evaluator.eval(coefficients, x);
+}
+
 /// Check an already verified FRI capture in exact raw transcript order.
 /// Success ensures the published arrays form an operational FRI path for every
 /// raw slot. It does not authenticate them against a committed oracle by itself.
@@ -163,10 +227,8 @@ pub fn validate(
         config.log_last_layer_degree_bound + config.log_blowup_factor)
         return error.InvalidFriCapture;
 
-    var polynomial = core.poly.line.LinePoly.initOwned(
-        try allocator.dupe(QM31, coefficients),
-    );
-    defer polynomial.deinit(allocator);
+    var terminal_evaluator = try TerminalBasisEvaluator.init(allocator, coefficients.len);
+    defer terminal_evaluator.deinit();
     for (raw, deep_answers, 0..) |initial_position, first_value, slot| {
         var position = initial_position;
         var current = first_value;
@@ -193,7 +255,7 @@ pub fn validate(
         const x = line_domain.at(core.utils.bitReverseIndex(
             position, line_domain.logSize(),
         ));
-        const expected = try polynomial.evalAtPoint(allocator, QM31.fromBase(x));
+        const expected = try terminal_evaluator.eval(coefficients, x);
         if (!current.eql(expected)) return error.InvalidFriCapture;
     }
 }
