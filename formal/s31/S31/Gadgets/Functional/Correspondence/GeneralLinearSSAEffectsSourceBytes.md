@@ -72,7 +72,8 @@ if all arithmetic rows, the final output selection, and every equality
 assertion hold, the public claim satisfies the independently parsed source
 meaning. The proof is not a finite test of the example values.
 
-The source parser accepts one circuit, 1–4 distinct named inputs, 1–8
+The source parser accepts one circuit, up to eight distinct and used static
+helpers with one or two M31 array parameters and a single binary body, 1–4 distinct named inputs, 1–8
 equal-length M31 lanes subject to the eight-word public ABI budget, up to
 32 `let` statements including aliases and named constants, 1–16 binary or
 constant arithmetic nodes, and up to 16 assertions. It accepts an
@@ -82,9 +83,32 @@ M31 modulus, and a selected named or statically projected output. Flat
 constant-index projection selects exactly one existing producer. The
 `project_product_exact` theorem checks that local erasure, and the existing
 exact-byte `Program.evaluate` theorem applies to any tuple source admitted
-by this parser. Static helpers, grouped
-expressions, scalar types, other operations, and non-ASCII syntax are outside
-this grammar. It caps source at 16 KiB and certificate at 65 KiB.
+by this parser. Helper calls bind named wires, may reuse or reorder operands,
+and introduce exactly one arithmetic SSA node each. The parser rejects
+duplicate or unused helpers, calls with the wrong arity, grouped expressions,
+scalar types, other operations, and non-ASCII syntax. It caps source at
+16 KiB and certificate at 65 KiB.
+
+For example, two calls share the same rule rather than requiring two
+specialized proofs:
+
+```s31
+fn delta(a: [m31; 2], b: [m31; 2]) -> [m31; 2] { a - b }
+fn square(v: [m31; 2]) -> [m31; 2] { v .* v }
+circuit chain(public x: [m31; 2], private y: [m31; 2]) -> public [m31; 2] {
+    let d = delta(x, y); // SSA id 2, d = x - y
+    let out = square(d); // SSA id 3, out = d * d lane by lane
+    assert_eq(x, x);
+    out
+}
+```
+
+The normalized graph is `sub(0,1)` then `mul(2,2)`; the assertion reads
+input id 0 twice. On `x=[5,6]`, `y=[2,4]`, the result is `[9,4]`. Every
+accepted modeled row must satisfy `dᵢ−xᵢ+yᵢ=0` and
+`outᵢ−dᵢ²=0` modulo 2³¹−1. The general byte-run theorem applies to any
+helper chain accepted by the parser, within the same interpreter and AIR
+premises as the rest of this fragment.
 
 This theorem does **not** recompute SHA-256 or bind the spelling of the circuit
 name by itself. `parseSourceName` exposes the name from the same validated
@@ -105,10 +129,15 @@ lake env leanchecker S31.Gadgets.Functional.Correspondence.GeneralLinearSSAEffec
 python3 tests/audit/general_linear_effects_source_check.py
 ```
 
-The controls admit five source/certificate pairs and reject fourteen mutations,
+The source-byte controls admit five source/certificate pairs and reject fourteen mutations,
 including bad field literals, a forward assertion, a duplicate assertion,
 changed subtraction order, changed constants, a removed assertion, alias
 forward references, and a 33rd let. A
 separate accepted control replaces both digest fields with arbitrary valid
 hex strings. It makes the Lean checker's digest boundary visible in CI;
 the package verifier must reject that replacement before accepting a proof.
+`tests/audit/multi_helper_effects_package.py` separately compares 16 generated
+one-to-eight-helper programs with the production compiler and independent
+Python parser, runs Lean's exact-byte statement checker on each, and rejects
+re-sealed wrong relation and certificate bytes. This is differential evidence,
+not a Python/Lean parser equivalence theorem.

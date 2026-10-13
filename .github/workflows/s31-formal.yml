@@ -119,6 +119,9 @@ jobs:
       - name: Lean generic effectful package and statement controls
         working-directory: formal/s31
         run: python3 tests/audit/general_linear_effects_package.py
+      - name: Lean multi-helper source, relation, and statement controls
+        working-directory: formal/s31
+        run: python3 tests/audit/multi_helper_effects_package.py
       - name: Static tuple source to native direct-Gate fixed rows and proof root
         run: |
           set -euo pipefail

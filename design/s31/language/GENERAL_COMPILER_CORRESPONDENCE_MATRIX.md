@@ -116,6 +116,18 @@ complete cost reports against scalar spelling. See
 measurements.
 The public-output theorem also proves that an accepted evaluator binds its
 declared M31 output to the checked effectful source value.
+The exact-byte Lean effects parser now resolves up to eight distinct used
+one- or two-parameter M31 helpers with a single binary body each. Each call
+adds one ordered SSA node after resolving its arguments; unary bodies may
+reuse the same input twice. The package checker can therefore apply the
+existing arbitrary-graph interpreter theorem to a chain of helpers, including
+one with private inputs and source assertions. Sixteen generated programs
+cover helper counts 1, 2, 4, and 8 across lane lengths 1–4, comparing
+production output, the independent Python relation, and Lean's exact-byte
+statement gate. Re-sealed wrong graph bytes fail both independent checkers.
+This is empirical parser agreement, not a Python/Lean parser equivalence
+theorem. The Python checker admits additional grouped helper spelling that
+Lean still rejects fail-closed.
 `GeneralLinearSSAEffectsByteRun.lean` now composes the exact effectful
 source/certificate/relation/ABI/typed-assignment byte checks and the actual
 assertion-checking normalized interpreter. It proves accepted public claims

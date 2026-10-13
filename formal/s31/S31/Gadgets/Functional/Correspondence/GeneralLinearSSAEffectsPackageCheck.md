@@ -82,4 +82,5 @@ cd formal/s31
 lake build s31-general-linear-effects-package-check
 lake env leanchecker S31.Gadgets.Functional.Correspondence.GeneralLinearSSAEffectsPackageCheck
 python3 tests/audit/general_linear_effects_package.py
+python3 tests/audit/multi_helper_effects_package.py
 ```
