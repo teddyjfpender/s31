@@ -53,7 +53,7 @@ def run(checker: Path) -> dict[str, object]:
 
     def bounded_invoke(*args: str) -> str:
         if args[:2] == ("zig", "build"):
-            args = (*args[:2], "-j8", *args[2:])
+            args = (*args[:2], "-j4", *args[2:])
         return old_invoke(*args)
 
     package_build.invoke = bounded_invoke
