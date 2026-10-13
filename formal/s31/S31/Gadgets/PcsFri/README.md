@@ -22,8 +22,14 @@ Zig-to-Lean refinement, or the PCS soundness bound.
 arithmetic for the experimental paired verifier's `y.c1 != 0` early guard.
 Its passing support is `(q²−1)²`, smaller than the paper's `q⁴−q−2` OOD
 set; conditioning a fixed bad event can inflate its mass by the exact factor
-`(q⁴−q−2)/(q²−1)² < 1+2⁻⁶⁰`. The field-theoretic count of rejected seeds,
-native seed uniformity, and adaptation to the published OOD theorem remain
+`(q⁴−q−2)/(q²−1)² < 1+2⁻⁶⁰`.
+[`OodGuardFiniteCount.lean`](OodGuardFiniteCount.lean) proves the rejected
+regular-seed count `2Q−3` and accepted count `(Q−1)²` for a finite lower
+field of size `Q`, assuming a nonsquare tower parameter and a square root
+of `−1` in that lower field. The modeled CM31 pair has size `q²`, a square
+root of `−1`, and a nonsquare `2+i`; a Lean field instance and native
+Zig refinement are still needed to instantiate the generic count directly.
+Native seed uniformity and adaptation to the published OOD theorem remain
 separate obligations. [`PairedDenominator.lean`](PairedDenominator.lean)
 proves the local nonvanishing step: if the QM31 point has circle coefficient
 equations over CM31, its quadratic-extension parameter is nonsquare, and its
