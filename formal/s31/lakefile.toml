@@ -26,3 +26,7 @@ root = "S31.Audit.AliasRelationCheck"
 [[lean_exe]]
 name = "s31-source-function-check"
 root = "S31.Audit.SourceFunctionCheck"
+
+[[lean_exe]]
+name = "s31-general-linear-certificate-check"
+root = "S31.Audit.GeneralLinearSSACertificateCheck"

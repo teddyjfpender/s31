@@ -38,6 +38,19 @@ the artifact lists each unsupported feature and sets the Lean profile to
 null. This is an executable trusted checker boundary until the source-byte
 parser itself is modeled or verified in Lean.
 
+For the pure profile, `formal/s31/S31/Gadgets/Functional/Correspondence/GeneralLinearSSABytes.lean`
+independently decodes the complete certificate bytes and enforces canonical
+JSON spelling before checking the indexed graph against a separately supplied
+Lean source term. `GeneralLinearSSA.lean` proves arbitrary-witness soundness
+and honest completeness for its packed M31 arithmetic rows, and their
+equivalence to normalized `evaluateNode` steps. This does **not** derive the
+Lean term from `.s31` bytes, authenticate native committed rows, or verify
+the certificate's SHA-256 identities. A runtime Lean gate checks the actual
+five-lane production fixture and rejects malformed byte and graph mutations.
+The public-four-lane overlap with the older direct-Gate checker has an
+executable join requiring equal indexed graphs; its row theorem still assumes
+modeled authentication.
+
 At this revision, **20 of 147** checked-in `.s31` example files fit this
 source fragment; an independent comparison with the production compiler
 found **zero** relation mismatches among those 20. This file count is a
