@@ -30,7 +30,7 @@
     "formal/s31/S31/Gadgets/PcsFri/MerkleOpening.lean": "8d075c1f4ccd193747c4f34070064640d1c5cc81c0b98debad00bdfa519b6dbe",
     "formal/s31/S31/Gadgets/PcsFri/MultiproofDecoder.lean": "084a9db05e81ad972be83afbd4c1c64b84424f063ff41d68ddb8f6d413044f44",
     "formal/s31/S31/Gadgets/PcsFri/QueryAndTranscript.lean": "e82190409053019d327e738a450c2a1b8676beecc92770f4a3e7563ad445cfa8",
-    "formal/s31/proof-inventory.json": "fac4da3295e28da929682f19c04e33239b42b5d6b74c9fe6229ef2a9d11c7d58",
+    "formal/s31/proof-inventory.json": "a8e84004e7f8b2b5ed34723b326bb856e2b5e1403476eb6e260800d9520f3bf1",
     "formal/s31/tests/pcs_fri_bcs_transcript.json": "b1814cfd5920cbf21f73713e99acbe5736bc78afa6b9dd8a599eb50e44f0160f",
     "formal/s31/tests/pcs_fri_bcs_transcript_native.zig": "536220985f8284a4c14bdafd22b3b235fb26104a09525621bdc2e2fd787392d4",
     "formal/s31/tests/pcs_fri_lifted_capture_native.zig": "52a5edc8e25f4ec941aa5d57ab3609da62834a04a9f3409b9645e7f9e0b35717",
