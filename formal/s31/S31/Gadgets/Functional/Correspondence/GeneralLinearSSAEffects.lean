@@ -612,6 +612,42 @@ theorem executing_trace_has_air_rows {n : Nat}
               simp [executeStep, Step.id, hid, habove] at h
           · simp [executeStep, Step.id, hid] at h
 
+/-- A checked certificate always has its deterministic honest arithmetic
+trace, regardless of whether its source assertions hold. In particular,
+arithmetic row acceptance need not be assumed when proving correspondence
+with the normalized interpreter; assertion acceptance remains separate. -/
+theorem checked_honest_arithmetic {n : Nat}
+    (certificate : Certificate) (source : Source)
+    (inputs : Nat → Lanes n)
+    (hcheck : check certificate source = some ()) :
+    ∃ final : List (Lanes n),
+      AcceptsTrace (initialValues certificate.inputs inputs)
+        certificate.steps final ∧
+      final[certificate.output]? = some (source.output.eval inputs) ∧
+      ∃ pairs,
+        resolveAssertions final certificate.assertions = some pairs := by
+  have hsem := checked_execution certificate source inputs hcheck
+  unfold execute at hsem
+  cases hrun : certificate.steps.foldlM executeStep
+      (initialValues certificate.inputs inputs) with
+  | none => simp [hrun] at hsem
+  | some final =>
+      cases hout : final[certificate.output]? with
+      | none => simp [hrun, hout] at hsem
+      | some output =>
+          cases hass : resolveAssertions final certificate.assertions with
+          | none => simp [hrun, hout, hass] at hsem
+          | some pairs =>
+              have hpair : (output, pairs) =
+                  (source.output.eval inputs,
+                    source.assertions.map fun pair =>
+                      (pair.1.eval inputs, pair.2.eval inputs)) :=
+                Option.some.inj (by simpa [hrun, hout, hass] using hsem)
+              have houtput : output = source.output.eval inputs :=
+                congrArg Prod.fst hpair
+              exact ⟨final, executing_trace_has_air_rows _ _ _ hrun,
+                houtput ▸ hout, pairs, hass⟩
+
 def assertionsAir {n : Nat} (values : List (Lanes n))
     (assertions : List (Nat × Nat)) : Prop :=
   ∃ pairs, resolveAssertions values assertions = some pairs ∧

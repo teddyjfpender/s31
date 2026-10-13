@@ -84,6 +84,10 @@ for the same fragment when source assertions hold, the typed public output
 matches the source result, and public ABI word encoding succeeds; the
 normalized evaluator then accepts without assuming an AIR witness or
 assertion acceptance.
+For interpreter soundness alone, the checked certificate also constructs
+its deterministic honest arithmetic trace, so successful evaluation implies
+source assertion truth and the public output value without a supplied AIR
+trace premise. This does not authenticate a prover supplied native trace.
 
 ### Narrow source-to-native row admission
 
