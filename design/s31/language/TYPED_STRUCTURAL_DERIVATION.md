@@ -104,9 +104,11 @@ tuple projections; `CombinedHelperTupleErasure.lean` specializes the
 checked-run interpreter theorem to literal two-lane source bytes. Its runtime
 audit checks that the source parses to one ordered subtraction, while the
 kernel theorem for that concrete parse result remains open. The ordinary
-package builder does not yet emit an
-effects source-relation certificate for this combination, so the Lean runtime
-audit constructs one from the independent relation parser. The v2
+package builder now emits an effects source-relation certificate for the
+strict one-helper, two-parameter tuple/projection/call subset. The package
+verifier replays it from exact source and relation bytes, and the Lean runtime
+gate can use that artifact. Wider helper/product syntax stays on the typed
+structural route. The v2
 record checker and the common product theorem provide an executable relation,
 ABI, and value check, but no v2 exact-byte `Program.evaluate` theorem. Native
 fixed-row custody applies only when the separate direct-Gate row checker

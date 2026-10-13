@@ -18,6 +18,8 @@ import package.build as package_build  # noqa: E402
 from package.fixed_root_join import proof_roots  # noqa: E402
 from package.pure_native_rows import (ARTIFACT, STRUCTURAL_SCHEMA,  # noqa: E402
                                       admitted_source_package, make_certificate)
+from package.source_relation_fragment import (LEAN_EFFECTS_PROFILE,  # noqa: E402
+                                              check_source_relation_certificate)
 from package.structural_derivation import (ARTIFACT as STRUCTURAL_ARTIFACT,  # noqa: E402
                                            check_certificate, evaluate_assignment)
 from package.verify import verify_package  # noqa: E402
@@ -64,8 +66,15 @@ def run() -> dict[str, object]:
             flat = s31.build(flat_source, work / "flat", "direct-gate")
             verify_package(combined)
             verify_package(flat)
-            if (combined / "source-relation-certificate.json").exists():
-                raise AssertionError("combined helper/tuple unexpectedly entered Lean byte grammar")
+            source_certificate = combined / "source-relation-certificate.json"
+            if not source_certificate.is_file():
+                raise AssertionError("combined helper/tuple lacks an effects source certificate")
+            enrolled = check_source_relation_certificate(
+                (combined / "source.s31").read_bytes(),
+                (combined / "source.s31.json").read_bytes(),
+                source_certificate.read_bytes())
+            if enrolled["lean_semantic_profile"] != LEAN_EFFECTS_PROFILE:
+                raise AssertionError("combined source did not enter Lean effects profile")
             if not admitted_source_package(combined):
                 raise AssertionError("exact combined source did not enter native row checker")
             cert = make_certificate(combined)

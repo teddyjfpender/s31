@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""Exercise the exact-byte Lean helper/tuple interpreter gate and mutations.
+"""Exercise emitted helper/tuple effects certificates through the Lean gate.
 
-The ordinary builder still omits a source-relation certificate for combined
-helper/product text. This audit constructs the bounded effects certificate
-from the independent Python relation parser, then checks its entire payload
-with the Lean byte gate. It is not package enrollment or compiler equivalence.
+The ordinary builder now emits this restricted certificate. The audit derives
+the same bytes from the independent Python source parser and checks them with
+the Lean byte gate. This is not a Python-parser equivalence proof.
 """
 
 from __future__ import annotations
@@ -20,7 +19,8 @@ FORMAL = Path(__file__).resolve().parents[2]
 ROOT = FORMAL.parents[1]
 sys.path.insert(0, str(ROOT / "src/frontends/s31/python"))
 
-from package.source_relation_fragment import _indexed_ssa, parse_source_fragment  # noqa: E402
+from package.source_relation_fragment import (make_source_relation_certificate,  # noqa: E402
+                                              parse_enrolled_source_fragment)
 
 SOURCE = ("fn subtract(a: [m31; 2], b: [m31; 2]) -> [m31; 2] { a - b }\n"
           "circuit combined_native(public x: [m31; 2], public y: [m31; 2]) -> public [m31; 2] {\n"
@@ -35,18 +35,12 @@ def canonical(value: object) -> bytes:
 
 
 def artifacts(source: bytes) -> tuple[bytes, bytes, bytes]:
-    relation = parse_source_fragment(source, _allow_helper_products=True)
+    relation = parse_enrolled_source_fragment(source)
     relation_bytes = canonical(relation)
-    ssa, effects = _indexed_ssa(relation)
-    if effects or ssa["nodes"] != [{"id": 2, "name": "out", "op": "sub",
-                                     "lhs": 0, "rhs": 1}]:
+    certificate = make_source_relation_certificate(source, relation_bytes)
+    if certificate["ssa"]["nodes"] != [{"id": 2, "name": "out", "op": "sub",
+                                           "lhs": 0, "rhs": 1}]:
         raise AssertionError("independent parser did not derive one ordered subtraction")
-    certificate = {"capability": "source-to-relation-only",
-                   "lean_semantic_profile": "linear-ssa-m31-effects-v1",
-                   "relation_sha256": hashlib.sha256(relation_bytes).hexdigest(),
-                   "schema": "s31-source-relation-certificate-v1",
-                   "source_sha256": hashlib.sha256(source).hexdigest(),
-                   "ssa": ssa, "unmodeled_features": []}
     abi = {"schema": "s31-public-abi-v1",
            "encoding": "eight canonical M31 words, encoded little-endian u32; unused words are zero",
            "public_inputs": [{"name": name, "kind": "m31", "length": 2}

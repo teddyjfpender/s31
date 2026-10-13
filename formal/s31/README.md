@@ -86,9 +86,9 @@ ABI, assignment, and statement to the actual `Program.evaluate` result for
 arbitrary checked inputs. The explicit subtraction corollary assumes the
 concrete parser result; that kernel parse proof remains open. The runtime
 audit checks an honest result and rejects changed helper order, projection,
-relation, and claim. The ordinary
-builder still omits an effects source-relation certificate for this combined
-form, and Python-parser equivalence and native PCS soundness remain open.
+relation, and claim. The ordinary builder now emits the effects certificate
+for a strict one-helper tuple/projection/call subset, and package verification
+replays it. Python-parser equivalence and native PCS soundness remain open.
 
 The hand-written `capturedSquare` term models
 `let saved = x in let f = fun(y : m31) -> m31 => y * y + saved in f(saved)`.
