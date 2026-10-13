@@ -1,4 +1,29 @@
 {
+  "degree_correction": {
+    "engine_gitlink_commit": "59e1f115250b8af01712b9bf3d71616e53094964",
+    "native_batch_fri_input": "one_accumulated_deep_quotient_word",
+    "native_nonquotient_degree_test_identified": false,
+    "native_proven_security_bits": null,
+    "p05_discharged": false,
+    "published_degree_corrected_nonquotient_premise_met": false,
+    "reason": "The reviewed prover commits one lazy quotient provider to FRI; the reviewed verifier supplies one accumulated friAnswers quotient word to its one FRI verifier. Merkle authentication of original query rows is not a low-degree test of their polynomials.",
+    "remaining_discharge": [
+      "implement and prove the paper's quotient plus nonquotient degree-corrected ensemble, including exact bounds and multi-domain ownership; or prove a sound alternative theorem for this quotient-only protocol",
+      "prove native Zig control-flow and installed-binary correspondence to the reviewed source",
+      "bind original and sampled columns to committed oracles and instantiate all OODS/FRI parameters and error terms"
+    ],
+    "schema": "s31-pcs-fri-p05-degree-correction-v1",
+    "source_sha256": {
+      "deps/stwo-zig/src/core/fri.zig": "5f84501d1ffbaf5d33d6f7063bea7e6fd88a4cb65140ff360b75cb11f812121f",
+      "deps/stwo-zig/src/core/pcs/quotients/fri_answers.zig": "5280b74c1762860fad733066a40d96dada813908532e3b8854e0a3f02f182181",
+      "deps/stwo-zig/src/core/pcs/verifier.zig": "e119335172e17db5fd1345f476c7f6ad7fdf67e394a5b18d5c2085e892ffe3d5",
+      "deps/stwo-zig/src/prover/fri.zig": "22acc5c7af16cc06fa646e5eedfe9a9a5bee95a273b53dbac83a599576f3e609",
+      "deps/stwo-zig/src/prover/pcs/quotient_ops.zig": "f4684c25d35e15fc57a6d6283df241402004253c6719a1237f3f8e01ebba2115",
+      "deps/stwo-zig/src/prover/pcs/quotients/lazy_provider.zig": "7d8c02ad443bba0941f10a8d22ecb1ef81e77b9837c3e1f561445fe31d0e728e",
+      "deps/stwo-zig/src/prover/pcs/scheme.zig": "88ab21970d32dda383a191ce5f12c329ce127f2829712a99068dd369d147e93f"
+    },
+    "status": "published_degree_corrected_theorem_not_applicable"
+  },
   "engine_gitlink_commit": "59e1f115250b8af01712b9bf3d71616e53094964",
   "evidence_sha256": {
     "deps/stwo-zig/src/core/constraints.zig": "4b8eb20e43d45ec28777f343a43e25566788c598b895d1f230b62da25e33dfea",
@@ -10,8 +35,10 @@
     "deps/stwo-zig/src/core/pcs/quotients/fri_answers.zig": "5280b74c1762860fad733066a40d96dada813908532e3b8854e0a3f02f182181",
     "deps/stwo-zig/src/core/pcs/quotients/row_evaluation.zig": "30e9e8768b083ca3d218b9d4903d7e3805b4219971e7d92847303d9de5778442",
     "deps/stwo-zig/src/core/pcs/verifier.zig": "e119335172e17db5fd1345f476c7f6ad7fdf67e394a5b18d5c2085e892ffe3d5",
+    "deps/stwo-zig/src/prover/pcs/scheme.zig": "88ab21970d32dda383a191ce5f12c329ce127f2829712a99068dd369d147e93f",
     "design/s31/security/MIXED_N1_N8_CONDITIONAL_ERROR_LEDGER_2026-10-12.md": "1f55450e5750b8c7cd9d88714c0213c9f1f894a8457e5c4c7379757b181925f9",
     "design/s31/security/PCS_FRI_BCS_TRANSCRIPT_REFINEMENT.md": "d4120284971918f12777c7b1fa9d1a3406422d5ae3375773393064e2ca61569a",
+    "design/s31/security/PCS_FRI_DEGREE_CORRECTION_GAP.md": "2b840a7e880062f364b8e21b0dea4f8faa0f9265679bbab865ec532b189307ee",
     "design/s31/security/PCS_FRI_GATE_ERROR_LEDGER.md": "af201b0e7330bf7263748b3d84aa389ab652b33035c31f24b8a1520243cd0068",
     "design/s31/security/PCS_FRI_GATE_FINAL_DOMAIN.md": "8398e385723dc045e82e85506103bcbc939ce5a8a3731d13e229f826424968b5",
     "design/s31/security/PCS_FRI_GATE_INTERACTION.md": "e8acdd1122c9c9064cd750021b0f4297823ff3afbc8704bdc98d158f2173c3d7",
@@ -22,6 +49,7 @@
     "formal/s31/S31/Gadgets/Air/GatePublicInteraction.lean": "c4be2f2e83f1e6302177d936c502c82f5f710f69f38e5b222298d26e90693224",
     "formal/s31/S31/Gadgets/PcsFri/BcsTranscriptEpoch.lean": "ec37a56242d0dc06a47e27cb120e66628260a5d836d25a6af94843ea9351a20b",
     "formal/s31/S31/Gadgets/PcsFri/DeepQuotientAlgebra.lean": "df6ca80de3582d9c10e37f1a632795ac571a212c981e46dd51d6fe41631442cd",
+    "formal/s31/S31/Gadgets/PcsFri/DegreeCorrectionGap.lean": "a3430d680b836333d277b1f0a62b1e41dc9629a50e2e00f278b144f24bd5d120",
     "formal/s31/S31/Gadgets/PcsFri/FoldAlgebra.lean": "def1114388ff78f5f9423bc0aada485ec3dda8c433576a087ef94df299dc9da3",
     "formal/s31/S31/Gadgets/PcsFri/GroupedFoldSchedule.lean": "843dd229c3ab13152bf1d43471e21d451b362d4e3609784f98c2dc0a41391a55",
     "formal/s31/S31/Gadgets/PcsFri/LayerAcceptance.lean": "dd4232047a06bccdb1d780998ab789b253a481e3ddeffc5b216b1a189c243b3c",
@@ -31,10 +59,11 @@
     "formal/s31/S31/Gadgets/PcsFri/MultiproofAllHeights.lean": "127b7747ae9f1c0f24cf016a43e1c0d24382507adb9227591ae0899079420032",
     "formal/s31/S31/Gadgets/PcsFri/MultiproofDecoder.lean": "084a9db05e81ad972be83afbd4c1c64b84424f063ff41d68ddb8f6d413044f44",
     "formal/s31/S31/Gadgets/PcsFri/QueryAndTranscript.lean": "e82190409053019d327e738a450c2a1b8676beecc92770f4a3e7563ad445cfa8",
-    "formal/s31/proof-inventory.json": "d3abe8a2d6500a8733939ba4177708906a34e350e347d88b182c8b33cab94dcf",
+    "formal/s31/proof-inventory.json": "4543aa3dc7c534524cfe5abd2d07e42e1b3061406bfb17f2c95f76cbd142a8b5",
     "formal/s31/tests/pcs_fri_bcs_transcript.json": "b1814cfd5920cbf21f73713e99acbe5736bc78afa6b9dd8a599eb50e44f0160f",
     "formal/s31/tests/pcs_fri_bcs_transcript_native.zig": "536220985f8284a4c14bdafd22b3b235fb26104a09525621bdc2e2fd787392d4",
     "formal/s31/tests/pcs_fri_lifted_capture_native.zig": "52a5edc8e25f4ec941aa5d57ab3609da62834a04a9f3409b9645e7f9e0b35717",
+    "scripts/release/pcs_fri_degree_correction.py": "5233380eb2ff1989fbfaf0a71884eb9f73e21034b15624e900a033d6f397b3f7",
     "scripts/release/pcs_fri_gate_error_ledger.py": "6878d696ab9b9cabcb69b779634e56c544303e8a85c9afa28c914f5eef7daab0",
     "scripts/release/pcs_fri_gate_final_domain.py": "52faf71eaf361684797c929df855ee8ae20ca91d43e86f6050a4b13b0268e23d",
     "scripts/release/pcs_fri_gate_interaction.py": "2c42caa33fd60a1db3767aafd7d87a50894c5c12b69318e4c0dd9e0d8b6438ac",
@@ -123,11 +152,15 @@
     {
       "gap_kind": "unproven_native_refinement",
       "id": "P05_OODS_DEEP_DEGREE_CORRECTION",
-      "missing_discharge": "prove Zig row-quotient semantics, committed sampled/opened value ownership, native batch degree correction and OODS checks instantiate the published batch-evaluation relation; local field algebra alone does not discharge P05",
+      "missing_discharge": "the source-pinned native path checks only one accumulated DEEP quotient with FRI, so the published degree-corrected theorem's nonquotient degree-test premise is absent. Implement and refine its full ensemble or prove an alternative quotient-only theorem with exact parameters; also prove Zig row-quotient semantics, committed sampled/opened value ownership and OODS checks",
       "partial_evidence": [
         "scripts/s31_formal_lib/pcs_fri_order.py",
         "scripts/s31_formal_lib/pcs_fri_quotient_algebra.py",
+        "scripts/release/pcs_fri_degree_correction.py",
         "formal/s31/S31/Gadgets/PcsFri/DeepQuotientAlgebra.lean",
+        "formal/s31/S31/Gadgets/PcsFri/DegreeCorrectionGap.lean",
+        "design/s31/security/PCS_FRI_DEGREE_CORRECTION_GAP.md",
+        "deps/stwo-zig/src/prover/pcs/scheme.zig",
         "deps/stwo-zig/src/core/pcs/verifier.zig",
         "deps/stwo-zig/src/core/pcs/quotients/row_evaluation.zig",
         "deps/stwo-zig/src/core/pcs/quotients/fri_answers.zig",
