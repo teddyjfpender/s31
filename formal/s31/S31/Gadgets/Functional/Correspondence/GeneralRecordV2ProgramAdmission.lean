@@ -118,6 +118,10 @@ structure Run (sourceBytes : List Nat) (treeBytes relationBytes abiBytes : Strin
   assignment : S31.Assignment
   values : List S31.M31
   evaluated : static.program.evaluate assignment = .ok values
+  sourceInputWord : Nat
+  sourceOutputWord : Nat
+  sourceEvaluated : GeneralRecordV2SourceCorrespondence.evaluate
+    static.checked.source [sourceInputWord] = some [sourceOutputWord]
 
 def Run.words {sourceBytes : List Nat} {treeBytes relationBytes abiBytes : String}
     (run : Run sourceBytes treeBytes relationBytes abiBytes) : List Nat :=
@@ -129,9 +133,14 @@ theorem checked_public_run_source_evaluate
     {sourceBytes : List Nat} {treeBytes relationBytes abiBytes : String}
     (run : Run sourceBytes treeBytes relationBytes abiBytes) :
     (sourceProgram run.static.checked.source).evaluate run.assignment =
-      .ok run.values := by
-  rw [← run.static.aligned]
-  exact run.evaluated
+      .ok run.values ∧
+    GeneralRecordV2SourceCorrespondence.evaluate
+      run.static.checked.source [run.sourceInputWord] =
+        some [run.sourceOutputWord] := by
+  constructor
+  · rw [← run.static.aligned]
+    exact run.evaluated
+  · exact run.sourceEvaluated
 
 /-- This is an opt-in proof preflight for the no-private, single-field record
 class. All assigned values come from the same canonical statement bytes that
@@ -168,9 +177,18 @@ def checkPublicRun (sourceBytes : List Nat) (treeBytes relationBytes abiBytes
   let assignment : S31.Assignment :=
     { publicInputs := [((inputWires source).head!, [inputWord])],
       privateInputs := [], publicOutputs := [(output, [resultWord])] }
-  match evaluated : static.program.evaluate assignment with
-  | .error error =>
-      throw s!"source-derived Program rejected public claim: {repr error}"
-  | .ok values => return ⟨static, assignment, values, evaluated⟩
+  match sourceEvaluated : GeneralRecordV2SourceCorrespondence.evaluate
+      source [inputWord] with
+  | none => throw "source scalar evaluator rejected public input"
+  | some sourceWords =>
+      if sourceOutputAgrees : sourceWords = [resultWord] then
+        match evaluated : static.program.evaluate assignment with
+        | .error error =>
+            throw s!"source-derived Program rejected public claim: {repr error}"
+        | .ok values =>
+            return ⟨static, assignment, values, evaluated, inputWord,
+              resultWord, by simpa [sourceOutputAgrees] using sourceEvaluated⟩
+      else
+        throw "source scalar evaluator rejected public claim"
 
 end S31.Functional.Correspondence.GeneralRecordV2ProgramAdmission

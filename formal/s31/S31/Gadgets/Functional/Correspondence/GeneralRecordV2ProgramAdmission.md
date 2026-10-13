@@ -25,7 +25,8 @@ The source-derived normalized input is `_s31_abi_input_0`, the node is
 `y = add(_s31_abi_input_0, _s31_abi_input_0)`, and the unique public output is
 `y`. For `x.value = 7`, the canonical record statement claims `result.value =
 14`; the Lean executable constructs its assignment from those two public
-leaves and runs the actual typed `Program.evaluate`, yielding
+leaves and runs both the independent scalar source evaluator and the actual
+typed `Program.evaluate`, yielding
 `[7, 14, 0, 0, 0, 0, 0, 0]`. Changing the result to 15 is rejected before
 native verification. The statement check is deliberately limited to one
 public input field, one arithmetic node, and one distinct result wire. The

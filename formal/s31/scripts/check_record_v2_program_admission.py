@@ -37,7 +37,7 @@ def check_real(package: Path, proof: Path, statement: Path, checker: Path) -> No
         try:
             release.verify(package, proof, wrong_claim, pins, checker, checker_digest)
         except ValueError as exc:
-            if "Program rejected public claim" not in str(exc):
+            if "source scalar evaluator rejected public claim" not in str(exc):
                 raise
         else:
             raise AssertionError("wrong public result reached the native verifier")
