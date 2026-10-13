@@ -15,6 +15,16 @@ counts the exceptional and subfield seeds for the current native field sizes.
 These results do not prove how the native transcript distributes seeds, a
 Zig-to-Lean refinement, or the PCS soundness bound.
 
+[`M31RejectionSampler.lean`](M31RejectionSampler.lean) proves the exact
+two-preimage arithmetic of the pinned BLAKE2s channel's 32-bit word filter:
+for each `r < p`, the accepted words reducing to `r` are exactly `r` and
+`r+p`, and these words are distinct. The
+[source-bound sampler audit](../../../../../design/s31/security/PCS_FRI_OOD_SEED_GEOMETRY.md)
+pins the channel implementation and explains why independent uniform hash
+blocks would give a uniform QM31 seed on successful draw. This Lean file
+does not prove that ideal-random-oracle premise, the Zig refinement, or the
+adaptive BCS reduction.
+
 [`ConservativeEnvelope.lean`](ConservativeEnvelope.lean) proves an arithmetic
 limit of one **published upper-bound expression**: in Circle STARKs Remark 26,
 its leading commitment/folding term exceeds `2^-96` whenever the candidate

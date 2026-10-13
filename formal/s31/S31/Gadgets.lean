@@ -312,6 +312,7 @@ import S31.Gadgets.PcsFri.OperationalExtraction
 import S31.Gadgets.PcsFri.RawDeepCustody
 import S31.Gadgets.PcsFri.DeepQuotientAlgebra
 import S31.Gadgets.PcsFri.OodRationalMap
+import S31.Gadgets.PcsFri.M31RejectionSampler
 import S31.Gadgets.PcsFri.DegreeCorrectionGap
 import S31.Gadgets.PcsFri.FriMerkleBinding
 import S31.Gadgets.PcsFri.FriLeafEncoding
