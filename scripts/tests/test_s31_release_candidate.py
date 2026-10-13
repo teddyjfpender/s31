@@ -33,6 +33,8 @@ class CandidateReports(unittest.TestCase):
         script.write_text("# audit fixture\n")
         gate_script = self.root / "scripts/release/s31_feature_gate.py"
         gate_script.write_text("# feature gate fixture\n")
+        receipt_script = self.root / "scripts/release/formal_receipt.py"
+        receipt_script.write_text("# formal receipt fixture\n")
         (self.root / "scripts/release/structural_lean_release.py").write_text(
             "# structural release fixture\n")
         for source, assignment, manual in AUDIT_FIXTURES.values():
@@ -118,7 +120,9 @@ class CandidateReports(unittest.TestCase):
             "cases": cases,
         }
         self.formal = {
-            "schema": "s31-v01-formal-checks-v1", "compiler_sha256": COMPILER,
+            "schema": "s31-v01-formal-checks-v1", "status": "passed",
+            "failure": None, "receipt_script_sha256": sha(receipt_script.read_bytes()),
+            "compiler_sha256": COMPILER,
             "source_commit": SOURCE,
             "inventory_sha256": sha((self.root / "formal/s31/proof-inventory.json").read_bytes()),
             "bindings_sha256": sha((self.root / "formal/s31/source-bindings.json").read_bytes()),
@@ -137,6 +141,16 @@ class CandidateReports(unittest.TestCase):
 
     def test_valid_finite_packet(self) -> None:
         self.assertEqual(self.check()["feature_checks"], 24)
+
+    def test_missing_formal_success_status_fails(self) -> None:
+        del self.formal["status"]
+        with self.assertRaisesRegex(ValueError, "formal receipt reports failure"):
+            self.check()
+
+    def test_missing_formal_receipt_runner_pin_fails(self) -> None:
+        del self.formal["receipt_script_sha256"]
+        with self.assertRaisesRegex(ValueError, "formal receipt runner differs"):
+            self.check()
 
     def test_missing_audit_profile_fails(self) -> None:
         del self.audit["cases"]["sha-fused"]
