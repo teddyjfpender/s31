@@ -32,8 +32,9 @@ controls do not admit private or derived narrow leaves, or narrow leaves in
 chip or mixed profiles.
 
 The formal gate checks that the committed Lean inventory and source bindings
-match the candidate tree, `lake build S31` succeeded, and `leanchecker S31`
-succeeded for the evidence-bearing revision. Lean proofs cover specified local
+match the candidate tree, `lake build S31 s31-general-linear-structural-check`
+succeeded, and `leanchecker S31` succeeded for the evidence-bearing revision.
+Lean proofs cover specified local
 semantics and scoped correspondence lemmas. **Full production compiler
 correspondence, native PCS/FRI refinement, and a general soundness theorem
 remain open.**
@@ -77,7 +78,7 @@ The JSON has this shape (actual hashes and paths are required):
   "bindings_sha256": "<SHA-256 of formal/s31/source-bindings.json>",
   "checks": {
     "bindings": {"command": ["python3", "-B", "scripts/s31_formal.py"], "returncode": 0, "log": "<path>", "log_sha256": "<SHA-256>"},
-  "lake_build": {"command": ["lake", "build", "S31", "s31-general-linear-structural-check"], "returncode": 0, "log": "<path>", "log_sha256": "<SHA-256>", "structural_checker_sha256": "<SHA-256>"},
+    "lake_build": {"command": ["lake", "build", "S31", "s31-general-linear-structural-check"], "returncode": 0, "log": "<path>", "log_sha256": "<SHA-256>", "structural_checker_sha256": "<SHA-256>"},
     "leanchecker": {"command": ["lake", "env", "leanchecker", "S31"], "returncode": 0, "log": "<path>", "log_sha256": "<SHA-256>"}
   },
   "lean_threads": 1
