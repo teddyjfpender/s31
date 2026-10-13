@@ -66,9 +66,24 @@ def check_sources(pcs: str, fri: str, queries: str, channel: str, merkle_channel
     ordered_once(
         fri_query, "FRI raw query ownership",
         "const raw = try queries_mod.drawQueries(",
-        "self.queries = try queries_mod.Queries.init(",
+        "var new_queries = try queries_mod.Queries.init(",
+        "const unique = try allocator.dupe(usize, new_queries.positions);",
+        "const retained_raw = try allocator.dupe(usize, raw);",
+        "if (self.queries) |*queries| queries.deinit(allocator);",
+        "if (self.sampled_raw_queries) |positions| allocator.free(positions);",
+        "self.queries = new_queries;",
+        "self.sampled_raw_queries = retained_raw;",
         ".raw = raw,",
-        ".unique = try allocator.dupe(usize, self.queries.?.positions),",
+        ".unique = unique,",
+    )
+    fri_capture = region(
+        fri, "fn decommitImpl(", "const capture_layers = if (capture_out != null)")
+    ordered_once(
+        fri_capture, "FRI capture query custody",
+        "if ((raw_query_positions == null) != (capture_out == null))",
+        "const sampled = self.sampled_raw_queries orelse",
+        "if (!std.mem.eql(usize, positions, sampled))",
+        "const queries = self.queries orelse",
     )
     normalize = region(queries, "pub fn sortedUniquePositions(", "pub fn isStrictlyIncreasing(")
     ordered_once(

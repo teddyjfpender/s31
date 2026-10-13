@@ -37,6 +37,22 @@ class PcsFriOrderTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "FRI commitment"):
             check_sources(pcs, fri.replace(before, after, 1), queries, channel, merkle)
 
+    def test_fri_capture_accepts_only_sampled_raw_queries(self) -> None:
+        pcs, fri, queries, channel, merkle = sources()
+        before = "if (!std.mem.eql(usize, positions, sampled))"
+        self.assertIn(before, fri)
+        with self.assertRaisesRegex(ValueError, "FRI capture query custody"):
+            check_sources(pcs, fri.replace(before, "if (false)", 1),
+                          queries, channel, merkle)
+
+    def test_fri_sampled_raw_retention_required(self) -> None:
+        pcs, fri, queries, channel, merkle = sources()
+        before = "self.sampled_raw_queries = retained_raw;"
+        self.assertIn(before, fri)
+        with self.assertRaisesRegex(ValueError, "FRI raw query ownership"):
+            check_sources(pcs, fri.replace(before, "// raw draw forgotten", 1),
+                          queries, channel, merkle)
+
     def test_missing_query_counter_encoding_rejected(self) -> None:
         pcs, fri, queries, channel, merkle = sources()
         before = "@memcpy(hash_input[32..36], counter[0..]);"
