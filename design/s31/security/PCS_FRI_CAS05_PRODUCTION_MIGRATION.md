@@ -5,8 +5,11 @@ or soundness certificate. S31 production still pins stwo-zig commit
 `59e1f115250b8af01712b9bf3d71616e53094964`, whose PCS feeds only a DEEP
 quotient word to FRI. The experimental [stwo-zig PR #249](https://github.com/teddyjfpender/stwo-zig/pull/249)
 has a separate original-plus-own-quotient path. This note reviews its commit
-`0b494c95d5e1ef79f8f1f8388cd1b6c061748c51`; a changed draft needs a new
-source review. Neither path currently supplies proven native security bits.
+`decc70d870b65818f5279ed29c647aaad953e340`. [S31 PR #170](https://github.com/teddyjfpender/s31/pull/170)
+rechecked the source pin after this revision added canonical in-memory value
+validation for the sampled point, claims, and line coordinates. A changed
+draft needs a new source review. Neither path currently supplies proven native
+security bits.
 
 The [S-two whitepaper theorem map](https://github.com/starkware-libs/stwo/blob/dev/.agents/papers/llm/Stwo_Whitepaper.llm.md)
 states that degree-corrected batch evaluation tests **both** the original
