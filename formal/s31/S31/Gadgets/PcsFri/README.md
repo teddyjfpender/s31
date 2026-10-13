@@ -46,9 +46,11 @@ into the QM31 circle and proves that the complement has exactly
 `q⁴−q²` points for `q=2³¹−1`. The already-proved CM31 guard accepts
 `(q²−1)²` seeds, leaving a cardinality difference of `q²−1`.
 These are the cardinalities of concrete modeled fields and a concrete set
-difference. The theorem does not identify the native accepted seed image
-with a subset of that complement, prove a two-point OOD bad-set bound, or
-prove the adaptive transcript draw uniform.
+difference. [`GuardedCircleImage.lean`](GuardedCircleImage.lean) proves that
+the modeled successful rational-map image lies in that complement; the
+field-coordinate count bridge is in [`OodGuardFieldCount.lean`](OodGuardFieldCount.lean).
+None of these results proves a two-point OOD bad-set bound or the adaptive
+transcript draw uniform.
 
 [`OodAcceptedSupport.lean`](OodAcceptedSupport.lean) checks the exact M31
 arithmetic for the experimental paired verifier's `y.c1 != 0` early guard.
@@ -305,6 +307,16 @@ shifts the quotient back by `T^{n−1}`. The proof identifies the native
 three-term line with a nonzero scalar times that minimal polynomial. Its
 leading Fourier coefficient is nonzero by the existing circle geometry,
 so the quotient loses exactly one band radius as a bound.
+
+[`ConcreteCircleMinpoly.lean`](ConcreteCircleMinpoly.lean) supplies the
+degree-two minimal-polynomial premise for a concrete guarded QM31 circle
+point. It constructs the CM31→QM31 algebra map, proves that a point with
+`y.c1≠0` has a Fourier parameter `x+i*y` outside CM31, and proves that
+parameter's inverse and Fourier coordinates recover the original point.
+It then proves its minimal polynomial over CM31 is monic of degree two.
+This removes a field-algebra premise when applying the Laurent quotient
+theorem to the modeled CAS05 point; authenticating that point and all
+source rows is still separate.
 
 Here is the arithmetic over `F₅` by hand. Take `i=2` (`i²=−1`), `d=2`
 (a nonsquare), and `(x₀,y₀,x₁,y₁)=(0,0,2,2)`. The modeled tower circle
