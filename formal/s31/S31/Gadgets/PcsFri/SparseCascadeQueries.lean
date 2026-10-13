@@ -1,4 +1,5 @@
 import S31.Gadgets.PcsFri.QuerySampling
+import S31.Gadgets.PcsFri.M31MaskedQuery
 import Mathlib.Tactic
 
 /-!
@@ -232,5 +233,44 @@ theorem good_sparse_sequences_card_le (k i draws : Nat) (hi : i < k)
     simpa [Nat.sub_mul] using hcount
   rw [S31.Gadgets.PcsFri.QuerySampling.good_sequences_card]
   exact Nat.pow_le_pow_left hgood _
+
+/-- The exact native M31 word reduction and low-bit mask add at most two
+32-bit-word preimages of bias to the sparse fixed-bad-set miss bound. This
+is conditional on independent ideal uniform 32-bit words; it is not a
+Fiat–Shamir or BCS theorem for concrete BLAKE2s. -/
+theorem masked_sparse_miss_fraction_le (k i draws : Nat)
+    (hi : i < k) (hk : 2 ≤ k) (hk31 : k ≤ 31)
+    (bad : Finset (Fin (2 ^ (k - i)))) :
+    ((QuerySampling.goodSequences draws
+      (M31MaskedQuery.goodRawFin k (goodSparsePair k i bad))).card : ℚ) /
+      (Fintype.card (Fin draws → Fin M31MaskedQuery.rawSize) : ℚ) ≤
+        (((2 ^ (k - i) - bad.card : Nat) : ℚ) / (2 ^ (k - i) : ℚ) +
+          2 / (M31MaskedQuery.rawSize : ℚ)) ^ draws := by
+  have hgood : (goodSparsePair k i bad).card ≤
+      (2 ^ (k - i) - bad.card) * 2 ^ i := by
+    simpa [QuerySampling.good_sequences_card] using
+      good_sparse_sequences_card_le k i 1 hi bad
+  have ha : (0 : ℚ) < 2 ^ (k - i) := by positivity
+  have hm : (0 : ℚ) < 2 ^ i := by positivity
+  have hpow : (2 : Nat) ^ k = 2 ^ (k - i) * 2 ^ i := by
+    rw [← pow_add]
+    congr 1
+    omega
+  have hmass : M31MaskedQuery.uniformMass k (goodSparsePair k i bad) ≤
+      ((2 ^ (k - i) - bad.card : Nat) : ℚ) / (2 ^ (k - i) : ℚ) := by
+    unfold M31MaskedQuery.uniformMass M31MaskedQuery.size
+    conv_lhs => rhs; rw [hpow, Nat.cast_mul]
+    norm_num only [Nat.cast_pow, Nat.cast_ofNat]
+    apply (div_le_div_iff₀ (mul_pos ha hm) ha).2
+    have hq : ((goodSparsePair k i bad).card : ℚ) ≤
+        (((2 ^ (k - i) - bad.card) * 2 ^ i : Nat) : ℚ) := by
+      exact_mod_cast hgood
+    have hmul := mul_le_mul_of_nonneg_right hq (le_of_lt ha)
+    push_cast at hmul ⊢
+    nlinarith [hmul]
+  simpa [M31MaskedQuery.size] using
+    M31MaskedQuery.exact_raw_product_ge_two_vs_alpha k hk hk31
+      (goodSparsePair k i bad) draws
+      (((2 ^ (k - i) - bad.card : Nat) : ℚ) / (2 ^ (k - i) : ℚ)) hmass
 
 end S31.Gadgets.PcsFri.SparseCascadeQueries
