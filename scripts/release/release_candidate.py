@@ -257,6 +257,11 @@ def validate_reports(audit: dict, feature: dict, formal: dict, *, compiler: str,
             log = root / log
         require(log.is_file() and not log.is_symlink() and row.get("log_sha256") == digest(log),
                 f"formal log digest mismatch: {name}")
+    structural_feature = checks["combined-helper-tuple-native"]["controls"]
+    structural_formal = commands["lake_build"].get("structural_checker_sha256")
+    require(sha(structural_formal) and
+            structural_feature.get("structural_lean_checker_sha256") == structural_formal,
+            "structural checker differs from formal build receipt")
     return {"source_commit": source_commit, "formal_commit": formal["source_commit"],
             "engine_commit": engine["commit"],
             "compiler_sha256": compiler, "audit_profiles": 12,

@@ -34,6 +34,10 @@ class FormalReceiptTests(unittest.TestCase):
         self.assertEqual(cwd, self.root if command[0] == "python3"
                          else self.root / "formal/s31")
         stdout.write((" ".join(command) + ": OK\n").encode())
+        if command == formal_receipt.FORMAL_COMMANDS["lake_build"]:
+            checker = self.root / "formal/s31/.lake/build/bin/s31-general-linear-structural-check"
+            checker.parent.mkdir(parents=True, exist_ok=True)
+            checker.write_bytes(b"built structural checker")
         return subprocess.CompletedProcess(command, 0)
 
     def test_success_records_real_logs_and_exact_command_order(self) -> None:
@@ -51,6 +55,9 @@ class FormalReceiptTests(unittest.TestCase):
         for name, row in result["checks"].items():
             self.assertEqual(row["command"], formal_receipt.FORMAL_COMMANDS[name])
             self.assertEqual(row["log_sha256"], formal_receipt.digest(Path(row["log"])))
+        self.assertEqual(result["checks"]["lake_build"]["structural_checker_sha256"],
+                         formal_receipt.digest(self.root /
+                             "formal/s31/.lake/build/bin/s31-general-linear-structural-check"))
 
     def test_failure_stops_before_later_checks(self) -> None:
         def execute(command: list[str], **kwargs) -> subprocess.CompletedProcess:
@@ -62,6 +69,15 @@ class FormalReceiptTests(unittest.TestCase):
         self.assertEqual(result["status"], "failed")
         self.assertEqual(result["failure"], "lake_build exited 9")
         self.assertEqual(list(result["checks"]), ["bindings", "lake_build"])
+
+    def test_successful_build_without_checker_fails_closed(self) -> None:
+        def execute(command: list[str], **kwargs) -> subprocess.CompletedProcess:
+            kwargs["stdout"].write(b"OK\n")
+            return subprocess.CompletedProcess(command, 0)
+
+        with self.assertRaisesRegex(ValueError, "did not produce the structural checker"):
+            formal_receipt.run(self.out, self.logs, root=self.root,
+                               take_snapshot=lambda _: self.clean, execute=execute)
 
     def test_source_drift_fails_even_if_every_command_exits_zero(self) -> None:
         changed = formal_receipt.Snapshot(self.clean.commit, "e" * 64,

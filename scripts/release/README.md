@@ -2,7 +2,7 @@
 
 ## Bounded M31 structural release verification
 
-For a direct-Gate package in the Lean `m31-v1` structural grammar, use
+For a direct-Gate package in the Lean `linear-ssa-m31-effects-v1` structural grammar, use
 [`structural_lean_release.py`](structural_lean_release.py) to verify a proof.
 This strict release class requires every structural, source-relation, and ABI
 artifact and a separately pinned Lean executable. It checks a captured package
@@ -22,13 +22,15 @@ python3 -B scripts/release/structural_lean_release.py PACKAGE PROOF \
 ```
 
 The full release-candidate feature gate requires a real two-lane helper and
-tuple package to pass this command's admission function and native proof
-verification. It also requires wrong-checker-pin and missing-tree rejection.
-`release_candidate.py` rejects a full feature receipt that omits those
-controls. The formal receipt builds the Lean structural executable before this
-feature runs. The older `s31 verify-release` command covers a separate direct-Gate
+tuple package to pass this command and native proof verification. It also
+requires wrong-checker-pin and missing-tree rejection. `release_candidate.py`
+rejects a full feature receipt that omits those controls or whose checker
+digest differs from the formal receipt's built executable. The older
+`s31 verify-release` command covers a separate direct-Gate
 certificate class and does not invoke this Lean checker. Neither path proves
-native AIR or PCS/FRI soundness.
+native AIR or PCS/FRI soundness. This package gate checks source, relation,
+tree, and public ABI bytes; it does not check a private assignment against a
+particular proof.
 
 ## Proven PCS/FRI preflight
 

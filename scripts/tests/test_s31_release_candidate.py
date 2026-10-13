@@ -96,6 +96,7 @@ class CandidateReports(unittest.TestCase):
             cases[name] = {"status": "passed", "returncode": 0,
                            "controls": ({"cases": 1,
                                          "structural_lean_release_verified": True,
+                                         "structural_lean_checker_sha256": "e" * 64,
                                          "structural_release_script_sha256": sha((
                                              self.root / "scripts/release/structural_lean_release.py").read_bytes()),
                                          "wrong_checker_pin_rejected": True,
@@ -128,6 +129,7 @@ class CandidateReports(unittest.TestCase):
             log.write_text(f"{name}: OK\n")
             self.formal["checks"][name] = {"command": command, "returncode": 0,
                                            "log": str(log), "log_sha256": sha(log.read_bytes())}
+        self.formal["checks"]["lake_build"]["structural_checker_sha256"] = "e" * 64
 
     def check(self) -> dict:
         return validate_reports(self.audit, self.feature, self.formal,
@@ -193,6 +195,17 @@ class CandidateReports(unittest.TestCase):
         self.feature["cases"]["combined-helper-tuple-native"]["controls"].pop(
             "structural_lean_release_verified")
         with self.assertRaisesRegex(ValueError, "requires Lean structural admission"):
+            self.check()
+
+    def test_structural_checker_must_match_formal_build(self) -> None:
+        self.feature["cases"]["combined-helper-tuple-native"]["controls"][
+            "structural_lean_checker_sha256"] = "f" * 64
+        with self.assertRaisesRegex(ValueError, "structural checker differs"):
+            self.check()
+        self.feature["cases"]["combined-helper-tuple-native"]["controls"][
+            "structural_lean_checker_sha256"] = "e" * 64
+        self.formal["checks"]["lake_build"].pop("structural_checker_sha256")
+        with self.assertRaisesRegex(ValueError, "structural checker differs"):
             self.check()
 
     def test_feature_result_identity_fails(self) -> None:

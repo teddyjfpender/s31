@@ -330,6 +330,7 @@ def validate_output(check: Check, stdout: str, stderr: str,
                 report.get("flat_air_equal") is not True or
                 report.get("native_proof_verified") is not True or
                 report.get("structural_lean_release_verified") is not True or
+                not valid_digest(report.get("structural_lean_checker_sha256")) or
                 report.get("structural_release_script_sha256") != digest(
                     (ROOT / "scripts/release/structural_lean_release.py").read_bytes()) or
                 report.get("wrong_checker_pin_rejected") is not True or
@@ -362,7 +363,8 @@ def validate_output(check: Check, stdout: str, stderr: str,
     controls = {"schema": report.get("schema"), "cases": len(counted)}
     if fmt == "combined-helper-tuple-native":
         controls.update({field: report[field] for field in (
-            "structural_lean_release_verified", "structural_release_script_sha256",
+            "structural_lean_release_verified", "structural_lean_checker_sha256",
+            "structural_release_script_sha256",
             "wrong_checker_pin_rejected", "missing_structural_tree_rejected")})
     return controls
 

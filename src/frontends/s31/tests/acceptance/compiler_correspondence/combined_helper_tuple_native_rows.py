@@ -188,6 +188,7 @@ def run() -> dict[str, object]:
                     "flat_air_equal": True,
                     "native_proof_verified": True,
                     "structural_lean_release_verified": True,
+                    "structural_lean_checker_sha256": checker_pin,
                     "structural_release_script_sha256": release_script_sha256,
                     "wrong_checker_pin_rejected": True,
                     "missing_structural_tree_rejected": True,
