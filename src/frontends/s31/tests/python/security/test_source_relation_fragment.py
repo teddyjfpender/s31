@@ -270,8 +270,10 @@ class SourceRelationFragmentTests(unittest.TestCase):
                       + " ".join([*body, names[-1]]) + " }")
             try:
                 independent = parse_source_fragment(source.encode())
-            except UnsupportedSourceRelationFragment:
+            except UnsupportedSourceRelationFragment as exc:
                 # Duplicate assertions are intentionally outside the grammar.
+                if "repeated assertion" not in str(exc):
+                    raise
                 continue
             production, _ = compile_text(source)
             self.assertEqual(independent, production)
