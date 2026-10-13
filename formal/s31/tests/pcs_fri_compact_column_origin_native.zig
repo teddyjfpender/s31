@@ -348,3 +348,221 @@ fn checkGeneratedShape(seed: usize) !void {
 test "generated compact column shapes match all projected leaves and parents" {
     for (0..16) |seed| try checkGeneratedShape(seed);
 }
+
+fn checkTileBlocks(seed: usize, group_budget: usize) !bool {
+    const allocator = std.testing.allocator;
+    const n = 2 + seed % 3;
+    const columns = try allocator.alloc(Column, n);
+    defer allocator.free(columns);
+    const extensions = try allocator.alloc([]M31, n);
+    defer allocator.free(extensions);
+    const coefficients = try allocator.alloc(CircleCoefficients, n);
+    defer allocator.free(coefficients);
+    const block_sources = try allocator.alloc(prover.poly.circle.coset_blocks.Source, n);
+    defer allocator.free(block_sources);
+    var initialized: usize = 0;
+    defer for (0..initialized) |i| {
+        coefficients[i].deinit(allocator);
+        allocator.free(extensions[i]);
+        allocator.free(columns[i].values);
+    };
+
+    const blowup: u32 = @intCast(1 + seed % 2);
+    var evaluation_log: u32 = 0;
+    var min_coset_log: u32 = std.math.maxInt(u32);
+    for (0..n) |i| {
+        // Independent values, including equal-height columns with distinct
+        // contents. The interpolation below is the committer's input, while
+        // `expectedExtension` evaluates the original source values directly.
+        const log: u32 = @intCast(3 + (seed * 3 + i * i + i) % 6);
+        columns[i] = try sourceColumn(allocator, log, 500 + seed * 13 + i);
+        extensions[i] = expectedExtension(allocator, columns[i], blowup) catch |err| {
+            allocator.free(columns[i].values);
+            return err;
+        };
+        const source_domain = CanonicCoset.new(log).circleDomain();
+        const evaluation = try CircleEvaluation.init(source_domain, columns[i].values);
+        coefficients[i] = prover.poly.circle.poly.interpolateFromEvaluation(allocator, evaluation) catch |err| {
+            allocator.free(extensions[i]);
+            allocator.free(columns[i].values);
+            return err;
+        };
+        const coset_log = log + blowup;
+        block_sources[i] = .{ .coefficients = coefficients[i].coefficients(), .coset_log = coset_log };
+        evaluation_log = @max(evaluation_log, coset_log);
+        min_coset_log = @min(min_coset_log, coset_log);
+        initialized += 1;
+    }
+
+    const minimum_tile_log = evaluation_log - min_coset_log + 1;
+    const tile_log = @min(evaluation_log, minimum_tile_log + @as(u32, @intCast(seed % 3)));
+    var tiles = try prover.poly.circle.coset_blocks.Tiles.init(allocator, block_sources, evaluation_log, tile_log, group_budget);
+    defer tiles.deinit();
+    try std.testing.expectEqual(@as(usize, 1) << @intCast(evaluation_log - tile_log), tiles.tileCount());
+    try std.testing.expectEqual(@as(usize, 1) << @intCast(tile_log), tiles.tileRows());
+    for (block_sources, tiles.block_logs, 0..) |source, block_log, i| {
+        try std.testing.expectEqual(tile_log - (evaluation_log - source.coset_log), block_log);
+        try std.testing.expectEqual(@as(usize, 1) << @intCast(block_log), tiles.block(i).len);
+    }
+
+    // Reverse order crosses group boundaries and returns to a previous group;
+    // the last replay checks that a cached group is refreshed correctly.
+    for (0..tiles.tileCount() + 1) |step| {
+        const tile = if (step == tiles.tileCount()) @as(usize, 0) else tiles.tileCount() - step - 1;
+        try tiles.load(tile);
+        for (block_sources, tiles.block_logs, extensions, 0..) |source, block_log, expected, i| {
+            for (tiles.block(i), 0..) |value, local| {
+                const index = (tile << @intCast(block_log)) + local;
+                try std.testing.expectEqualDeep(expected[index], value);
+            }
+            // Each row selects one block entry through the same projection
+            // as the tiled committer, including repeated short-column reads.
+            for (0..tiles.tileRows()) |offset| {
+                const position = project(tile_log, block_log, offset);
+                try std.testing.expectEqualDeep(
+                    expected[tiledProject(evaluation_log, source.coset_log, tile_log, tile, offset)],
+                    tiles.block(i)[position],
+                );
+            }
+        }
+    }
+    return tiles.group_log != 0 and tiles.group_arena.len != 0;
+}
+
+test "compact block evaluation equals direct source interpolation across tiles and grouped reloads" {
+    var grouped_cases: usize = 0;
+    for (0..16) |seed| {
+        try std.testing.expect(!(try checkTileBlocks(seed, 0)));
+        if (try checkTileBlocks(seed, 1 << 18)) grouped_cases += 1;
+    }
+    try std.testing.expect(grouped_cases > 0);
+}
+
+fn checkOpeningAfterSourceRelease(seed: usize) !void {
+    const allocator = std.testing.allocator;
+    const source_logs = [_]u32{
+        @intCast(5 + seed % 3),
+        @intCast(6 + (seed * 2) % 3),
+        @intCast(5 + (seed + 1) % 4),
+    };
+    var sources: [source_logs.len]Column = undefined;
+    var extensions: [source_logs.len][]M31 = undefined;
+    var logs: [source_logs.len]u32 = undefined;
+    var ready: usize = 0;
+    var sources_live = true;
+    defer {
+        for (0..ready) |i| {
+            if (sources_live) allocator.free(sources[i].values);
+            allocator.free(extensions[i]);
+        }
+    }
+    var max_log: u32 = 0;
+    for (source_logs, 0..) |source_log, i| {
+        sources[i] = try sourceColumn(allocator, source_log, 900 + seed * 5 + i);
+        extensions[i] = expectedExtension(allocator, sources[i], 1) catch |err| {
+            allocator.free(sources[i].values);
+            return err;
+        };
+        logs[i] = source_log + 1;
+        max_log = @max(max_log, logs[i]);
+        ready += 1;
+    }
+    const height = max_log + @as(u32, @intCast(seed % 2));
+    const config = core.pcs.config_v2.PcsConfigV2.fromFriAndLiftingSize(try core.pcs.config_v2.FriConfigV2.init(0, 0, 1, 8, 1), height);
+    const threshold: u32 = 6;
+    try std.testing.expect(prover.pcs.tiled_commit.applies(&sources, 1, threshold));
+    var tiled = try Scheme.initRevision(allocator, config);
+    defer tiled.deinit(allocator);
+    tiled.setCompactPolynomialStorage(threshold);
+    var tiled_channel = Channel{};
+    try prover.pcs.tiled_commit.commit(Cpu, H, &tiled, allocator, &sources, .borrowed,
+        .{ .tile_bytes = 1 << 10, .group_bytes = 1 << 12 }, &tiled_channel);
+    var streaming = try Scheme.initRevision(allocator, config);
+    defer streaming.deinit(allocator);
+    streaming.setCompactPolynomialStorage(threshold);
+    var streaming_channel = Channel{};
+    try streaming.commitBorrowedStreamingWithRecorder(allocator, &sources, 0, null, &streaming_channel);
+    try std.testing.expectEqualSlices(u8, &tiled_channel.digestBytes(), &streaming_channel.digestBytes());
+    try checkRetention(allocator, tiled.trees.items[0], &sources, &extensions, threshold);
+    try checkRetention(allocator, streaming.trees.items[0], &sources, &extensions, threshold);
+
+    // Both commitments were given borrowed source buffers. Once they are
+    // released, their owned coefficients/small evaluations must still support
+    // openings at the original caller order, including a duplicate query.
+    for (sources) |source| allocator.free(source.values);
+    sources_live = false;
+    const positions = [_]usize{ (@as(usize, 1) << @intCast(height)) - 1, 0, 3, 3, (@as(usize, 1) << @intCast(height - 1)) + 1 };
+    for ([_]*Scheme{ &tiled, &streaming }) |scheme| {
+        const tree = scheme.trees.items[0];
+        try checkCompleteTreeGeneral(allocator, tree, &extensions, &logs, height);
+        var opening = try tree.decommit(allocator, &positions);
+        defer opening.deinit(allocator);
+        for (opening.queried_values, extensions, logs) |values, expected, log| {
+            for (&positions, values) |position, value|
+                try std.testing.expectEqualDeep(expected[project(height, log, position)], value);
+        }
+        const queried: []const []const M31 = @ptrCast(opening.queried_values);
+        var verifier = try Verifier.initWithHeight(allocator, tree.root(), &logs, height);
+        defer verifier.deinit(allocator);
+        try verifier.verify(allocator, &positions, queried, opening.decommitment.decommitment);
+    }
+}
+
+test "compact borrowed commits retain openings after source buffers are released" {
+    for (0..8) |seed| try checkOpeningAfterSourceRelease(seed);
+}
+
+test "pruned compact commitment opens source polynomial after borrowed values are released" {
+    const allocator = std.testing.allocator;
+    const source_log: u32 = 19;
+    const height: u32 = source_log + 1;
+    const source_domain = CanonicCoset.new(source_log).circleDomain();
+    const values = try allocator.alloc(M31, source_domain.size());
+    var source_live = true;
+    defer if (source_live) allocator.free(values);
+    // A closed-form source polynomial gives an independent expected value at
+    // any queried point without materializing the million-word extension.
+    for (values, 0..) |*value, i|
+        value.* = source_domain.at(core.utils.bitReverseIndex(i, source_log)).x;
+    var sources = [_]Column{.{ .log_size = source_log, .values = values }};
+    const config = core.pcs.config_v2.PcsConfigV2.fromFriAndLiftingSize(try core.pcs.config_v2.FriConfigV2.init(0, 0, 1, 8, 1), height);
+    var scheme = try Scheme.initRevision(allocator, config);
+    defer scheme.deinit(allocator);
+    scheme.setCompactPolynomialStorage(6);
+    var channel = Channel{};
+    try prover.pcs.tiled_commit.commit(Cpu, H, &scheme, allocator, &sources, .borrowed,
+        .{ .tile_bytes = 1 << 14, .group_bytes = 1 << 18 }, &channel);
+    var streaming = try Scheme.initRevision(allocator, config);
+    defer streaming.deinit(allocator);
+    streaming.setCompactPolynomialStorage(6);
+    var streaming_channel = Channel{};
+    try streaming.commitBorrowedStreamingWithRecorder(allocator, &sources, 0, null, &streaming_channel);
+    try std.testing.expectEqualSlices(u8, &channel.digestBytes(), &streaming_channel.digestBytes());
+    for ([_]*Scheme{ &scheme, &streaming }) |candidate| {
+        const tree = candidate.trees.items[0];
+        try std.testing.expect(tree.compact_polynomials);
+        try std.testing.expectEqual(@as(usize, 0), tree.columns[0].values.len);
+        try std.testing.expect(tree.columns[0].coefficient_values != null);
+        try std.testing.expect(tree.columns[0].coefficient_values.?.ptr != values.ptr);
+        try std.testing.expectEqual(@as(usize, 0), tree.commitment.layers[height].len);
+        try std.testing.expect(tree.commitment.layers[height - 4].len != 0);
+    }
+    allocator.free(values);
+    source_live = false;
+
+    const positions = [_]usize{ (@as(usize, 1) << @intCast(height)) - 1, 0, 7, 7, (@as(usize, 1) << @intCast(height - 1)) + 3 };
+    const extended = CanonicCoset.new(height).circleDomain();
+    for ([_]*Scheme{ &scheme, &streaming }) |candidate| {
+        const tree = candidate.trees.items[0];
+        var opening = try tree.decommit(allocator, &positions);
+        defer opening.deinit(allocator);
+        for (&positions, opening.queried_values[0]) |position, got| {
+            const want = extended.at(core.utils.bitReverseIndex(position, height)).x;
+            try std.testing.expectEqualDeep(want, got);
+        }
+        const queried: []const []const M31 = @ptrCast(opening.queried_values);
+        var verifier = try Verifier.initWithHeight(allocator, tree.root(), &.{height}, height);
+        defer verifier.deinit(allocator);
+        try verifier.verify(allocator, &positions, queried, opening.decommitment.decommitment);
+    }
+}

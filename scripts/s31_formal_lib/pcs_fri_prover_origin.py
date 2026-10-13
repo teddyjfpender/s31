@@ -20,6 +20,7 @@ SOURCE_PATHS = {
     "prover": "deps/stwo-zig/src/prover/vcs_lifted/prover.zig",
     "revision": "deps/stwo-zig/src/prover/pcs/revision_lifting.zig",
     "commitment_tree": "deps/stwo-zig/src/prover/pcs/commitment_tree.zig",
+    "coefficient_opening": "deps/stwo-zig/src/prover/pcs/coefficient_opening.zig",
     "commit_ops": "deps/stwo-zig/src/prover/pcs/commit_ops.zig",
     "cpu_backend": "deps/stwo-zig/src/backends/cpu_scalar/mod.zig",
     "s31_integration": "deps/stwo-zig/src/integrations/circuit_cpu/prove.zig",
@@ -185,7 +186,10 @@ def check_prover_origin_texts(source: Mapping[str, str]) -> None:
     tiled = source["tiled"]
     ordered_once(region(tiled, "pub fn commit(", "fn hashParents("),
                  "lifted prover origin tiled route",
+                 "buffer.* = if (ownership == .owned) @constCast(column.values) else try allocator.dupe(M31, column.values);",
+                 "circle.poly.interpolateOwnedValuesWithTwiddles(self.domain, self.values, self.transform)",
                  "std.sort.heap(usize, order, HeightOrder{ .columns = columns }, HeightOrder.less);",
+                 "try sources.append(allocator, .{ .coefficients = buffer, .coset_log = log });",
                  "for (order, refs) |index, *ref| {",
                  "const leaves = try LeafOps.buildBatched(allocator, allocator, refs, 1024);",
                  "hashParents(H, current, out);",
@@ -203,6 +207,26 @@ def check_prover_origin_texts(source: Mapping[str, str]) -> None:
                  "ref.values = values[pair..][0..2];",
                  "ref.log_size = 1;")
     coset_blocks = source["coset_blocks"]
+    ordered_once(region(coset_blocks, "pub fn foldWeights(", "pub const Shape = struct {"),
+                 "lifted prover origin block folding",
+                 "const n = domain.size();",
+                 "weights[filled + h] = weights[h].mul(x);",
+                 "x = core.circle.CirclePointM31.doubleX(x);",
+                 "@memcpy(dst, coefficients[start..][0..block]);",
+                 "m31.addPacked(m31.loadPacked(dst[k..].ptr), m31.mulPacked(m31.loadPacked(src[k..].ptr), w))",
+                 "m31.storePacked(dst[k..].ptr, sum);",
+                 "d.* = d.add(value.mul(weight));")
+    ordered_once(region(coset_blocks, "pub fn blockJob(", "pub const FoldJob = struct {"),
+                 "lifted prover origin block evaluation",
+                 "const shape = try self.get(coset_log, block_log, part, coefficients.len, true);",
+                 ".weights = shape.weights,",
+                 "foldToDomain(self.coefficients, self.weights, self.values);",
+                 "poly.evaluateBuffersWithTwiddles(&.{self.values}, self.domain, self.transform)")
+    ordered_once(region(coset_blocks, "pub fn get(self: *Shapes,", "pub fn blockJob("),
+                 "lifted prover origin block domain",
+                 "const full = CanonicCoset.new(coset_log).circleDomain();",
+                 "const domain = try coset_partition.domain(full, coset_log - block_log, part);",
+                 "const weights = try foldWeights(a, domain, coefficient_count);")
     ordered_once(region(coset_blocks, "pub const Tiles = struct {",
                         "pub fn deinit(self: *Tiles) void {"),
                  "lifted prover origin large-column block shape",
@@ -213,6 +237,33 @@ def check_prover_origin_texts(source: Mapping[str, str]) -> None:
                         "pub fn prepare(self: *Tiles,"),
                  "lifted prover origin tile block read",
                  "return self.arena[self.offsets[index]..][0 .. @as(usize, 1) << @intCast(self.block_logs[index])];")
+    ordered_once(region(coset_blocks, "pub fn prepare(self: *Tiles,", "/// `prepare` and run the jobs:"),
+                 "lifted prover origin grouped tile reload",
+                 "const group = tile >> @intCast(self.group_log);",
+                 "if (self.group_log != 0 and self.loaded_group != group) {",
+                 "self.loaded_group = null;",
+                 "runJobs(FoldJob, prefolds.items);",
+                 "self.loaded_group = group;",
+                 "shapes.blockJob(coefficients, source.coset_log, tile, self.block(index))")
+    ordered_once(region(coset_blocks, "pub fn load(self: *Tiles,", 'test "coset blocks: folded sub-coset FFTs'),
+                 "lifted prover origin tile execution",
+                 "try self.prepare(&shapes, tile, &jobs);",
+                 "runJobs(BlockJob, jobs.items);",
+                 "for (jobs.items) |job| if (job.failure) |err| return err;")
+    coefficient_opening = source["coefficient_opening"]
+    ordered_once(region(coefficient_opening, "pub fn decommitForBackend(", "const Expansion = struct {"),
+                 "lifted prover origin compact opening",
+                 "const column = tree.columns[indices[end]];",
+                 "try column.validateRetained();",
+                 "const coefficients = job.column.coefficient_values orelse continue;",
+                 "@memcpy(job.values[0..coefficients.len], coefficients);",
+                 "_ = try B.evaluateCircleBuffers(",
+                 "return traversal.decommit(H, Reader{")
+    ordered_once(coefficient_opening.split("const Expansion = struct {", 1)[1],
+                 "lifted prover origin host selected expansion",
+                 "const coefficients = self.column.coefficient_values orelse return;",
+                 "@memcpy(self.values[0..coefficients.len], coefficients);",
+                 'try @import("../poly/circle/transforms.zig").evaluateSelectedBufferWithTwiddles(')
     ordered_once(region(tiled, "fn hashParentsSerial(", "fn checkAgainstStreaming("),
                  "lifted prover origin tiled parent recurrence",
                  "const children: *const [16]H.Hash = @ptrCast(&prev[2 * i]);",
