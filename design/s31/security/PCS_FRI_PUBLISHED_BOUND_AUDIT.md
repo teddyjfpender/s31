@@ -1,7 +1,7 @@
 # Native PCS/FRI: published-bound audit
 
 This note covers the S31 profile pinned to stwo-zig
-`d073ebb89fca94b638e3b99729d346deb29edfc9`. It does **not** assign a
+`041ef9d43d341089d45670bd045de7ddbffc79bb`. It does **not** assign a
 whole-proof security level. It separates the native checks visible in source
 from the hypotheses needed to apply a published STARK soundness theorem.
 

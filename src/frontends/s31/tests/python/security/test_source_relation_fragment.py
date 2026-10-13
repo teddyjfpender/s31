@@ -6,6 +6,7 @@ import ast
 import copy
 import hashlib
 import json
+import random
 import re
 import sys
 import tempfile
@@ -16,7 +17,7 @@ S31 = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(S31 / "python"))
 
 from package.source_relation_fragment import (CAPABILITY, CERTIFICATE_SCHEMA,
-                                              LEAN_SEMANTIC_PROFILE,
+                                              LEAN_EFFECTS_PROFILE, LEAN_SEMANTIC_PROFILE,
                                               MAX_CERTIFICATE_BYTES,
                                               UnsupportedSourceRelationFragment,
                                               check_package_source_relation,
@@ -200,11 +201,87 @@ class SourceRelationFragmentTests(unittest.TestCase):
 
         richer_relation, _ = compile_text(SOURCE)
         richer = make_source_relation_certificate(SOURCE.encode(), encoded(richer_relation))
-        self.assertIsNone(richer["lean_semantic_profile"])
-        self.assertEqual(richer["unmodeled_features"],
-                         ["assertions", "constant-arithmetic"])
+        self.assertEqual(richer["lean_semantic_profile"], LEAN_EFFECTS_PROFILE)
+        self.assertEqual(richer["unmodeled_features"], [])
         self.assertEqual(len(richer["ssa"]["assertions"]), 1)
         self.assertEqual(richer["ssa"]["nodes"][2]["constant"], 7)
+
+    def test_effectful_profile_records_constant_and_assertion_semantics(self) -> None:
+        cases = [
+            ("let out = x + splat<2>(7_m31); out", "add_const", 7, []),
+            ("let out = x .* splat<2>(9_m31); out", "mul_const", 9, []),
+            ("let out = x - x; assert_eq(out, x); out", "sub", None, [[1, 0]]),
+            ("let out = x - splat<2>(7_m31); assert_eq(out, x); out",
+             "add_const", 2147483640, [[1, 0]]),
+        ]
+        for body, op, constant, assertions in cases:
+            with self.subTest(body=body):
+                source = ("circuit calc(private x: [m31; 2]) -> public [m31; 2] "
+                          "{ " + body + " }")
+                relation, _ = compile_text(source)
+                cert = make_source_relation_certificate(source.encode(), encoded(relation))
+                self.assertEqual(cert["lean_semantic_profile"], LEAN_EFFECTS_PROFILE)
+                self.assertEqual(cert["unmodeled_features"], [])
+                self.assertEqual(cert["ssa"]["nodes"][0]["op"], op)
+                self.assertEqual(cert["ssa"]["assertions"], assertions)
+                if constant is not None:
+                    self.assertEqual(cert["ssa"]["nodes"][0]["constant"], constant)
+                self.assertEqual(check_source_relation_certificate(
+                    source.encode(), encoded(relation), encoded(cert)), cert)
+                for mutate in (lambda forged: forged["ssa"]["nodes"][0].update(op="add"),
+                               lambda forged: forged.update(lean_semantic_profile=LEAN_SEMANTIC_PROFILE),
+                               lambda forged: forged["ssa"].update(assertions=[])):
+                    forged = copy.deepcopy(cert)
+                    mutate(forged)
+                    if forged != cert:
+                        with self.assertRaisesRegex(ValueError, "certificate differs"):
+                            check_source_relation_certificate(
+                                source.encode(), encoded(relation), encoded(forged))
+
+    def test_effectful_fragment_matches_production_on_generated_programs(self) -> None:
+        rng = random.Random(20261013)
+        admitted = 0
+        for _ in range(250):
+            lanes = rng.randrange(1, 9)
+            n_inputs = rng.randrange(1, 4)
+            visibilities = ["private"] * n_inputs
+            if lanes * 2 <= 8 and rng.randrange(2):
+                visibilities[0] = "public"
+            names = [f"x{i}" for i in range(n_inputs)]
+            declarations = ", ".join(
+                f"{visibilities[i]} {name}: [m31; {lanes}]"
+                for i, name in enumerate(names))
+            body: list[str] = []
+            has_effect = False
+            for index in range(rng.randrange(1, 13)):
+                lhs, op, rhs = rng.choice(names), rng.choice(("+", "-", ".*")), rng.choice(names)
+                if rng.randrange(3) == 0:
+                    constant = rng.choice((0, 1, 7, 2_147_483_646,
+                                           rng.randrange(2_147_483_647)))
+                    rhs = f"splat<{lanes}>({constant}_m31)"
+                    has_effect = True
+                out = f"v{index}"
+                body.append(f"let {out} = {lhs} {op} {rhs};")
+                names.append(out)
+                if rng.randrange(5) == 0:
+                    body.append(f"assert_eq({rng.choice(names)}, {rng.choice(names)});")
+                    has_effect = True
+            source = (f"circuit test({declarations}) -> public [m31; {lanes}] {{ "
+                      + " ".join([*body, names[-1]]) + " }")
+            try:
+                independent = parse_source_fragment(source.encode())
+            except UnsupportedSourceRelationFragment as exc:
+                # Duplicate assertions are intentionally outside the grammar.
+                if "repeated assertion" not in str(exc):
+                    raise
+                continue
+            production, _ = compile_text(source)
+            self.assertEqual(independent, production)
+            certificate = make_source_relation_certificate(source.encode(), encoded(production))
+            self.assertEqual(certificate["lean_semantic_profile"] == LEAN_EFFECTS_PROFILE,
+                             has_effect)
+            admitted += 1
+        self.assertGreaterEqual(admitted, 230)
 
     def test_lean_subtraction_fixture_matches_native_acceptance_source(self) -> None:
         formal = S31.parents[2] / "formal/s31/S31/Gadgets/Functional/Correspondence/SourceFunctionBytes.lean"

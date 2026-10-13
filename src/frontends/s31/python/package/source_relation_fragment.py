@@ -22,6 +22,7 @@ from package.correspondence import (MAX_RELATION_NAME_CHARS, MAX_SOURCE_BYTES,
 CAPABILITY = "source-to-relation-only"
 CERTIFICATE_SCHEMA = "s31-source-relation-certificate-v1"
 LEAN_SEMANTIC_PROFILE = "linear-ssa-m31-v1"
+LEAN_EFFECTS_PROFILE = "linear-ssa-m31-effects-v1"
 TOKEN = re.compile(r"[ \t\n\v\f\r]+|//[^\n]*|->|\.\*|[()\[\];:{}=+,<>@-]|[A-Za-z_][A-Za-z_0-9]*|[0-9]+_m31|[0-9]+")
 NAME = re.compile(r"[A-Za-z_][A-Za-z_0-9]*\Z")
 LITERAL = re.compile(r"(0|[1-9][0-9]*)_m31\Z")
@@ -384,8 +385,8 @@ def _indexed_ssa(relation: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
     """Project a checked relation into a stable, source-derived SSA roster.
 
     This projection is deliberately complete for this parser's grammar. In
-    particular, constants and assertions remain visible even though the
-    current Lean graph theorem does not model them.
+    particular, constants and assertions remain visible. Their presence
+    selects the separate effectful semantic profile.
     """
     names: dict[str, int] = {}
     inputs: list[dict[str, Any]] = []
@@ -395,7 +396,7 @@ def _indexed_ssa(relation: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
         inputs.append({"id": identifier, "name": item["name"],
                        "visibility": item["visibility"]})
     nodes: list[dict[str, Any]] = []
-    unmodeled: set[str] = set()
+    effects: set[str] = set()
     for item in relation["nodes"]:
         identifier = len(names)
         op = item["op"]
@@ -405,7 +406,7 @@ def _indexed_ssa(relation: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
             node["rhs"] = names[item["rhs"]]
         elif op in {"add_const", "mul_const"}:
             node["constant"] = item["constant"]
-            unmodeled.add("constant-arithmetic")
+            effects.add("constant-arithmetic")
         else:
             raise ValueError(f"unreviewed source relation operation: {op}")
         names[item["name"]] = identifier
@@ -413,10 +414,10 @@ def _indexed_ssa(relation: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
     assertions = [[names[item["lhs"]], names[item["rhs"]]]
                   for item in relation["assertions"]]
     if assertions:
-        unmodeled.add("assertions")
+        effects.add("assertions")
     return ({"lane_count": relation["inputs"][0]["length"],
              "inputs": inputs, "nodes": nodes, "assertions": assertions,
-             "output": names[relation["public_outputs"][0]]}, sorted(unmodeled))
+             "output": names[relation["public_outputs"][0]]}, sorted(effects))
 
 
 def make_source_relation_certificate(source_bytes: bytes,
@@ -428,10 +429,10 @@ def make_source_relation_certificate(source_bytes: bytes,
     relation. Those remain separate trust obligations.
     """
     identity = check_source_relation(source_bytes, relation_bytes)
-    ssa, unmodeled = _indexed_ssa(parse_source_fragment(source_bytes))
+    ssa, effects = _indexed_ssa(parse_source_fragment(source_bytes))
     return {"schema": CERTIFICATE_SCHEMA, **identity, "ssa": ssa,
-            "lean_semantic_profile": LEAN_SEMANTIC_PROFILE if not unmodeled else None,
-            "unmodeled_features": unmodeled}
+            "lean_semantic_profile": LEAN_EFFECTS_PROFILE if effects else LEAN_SEMANTIC_PROFILE,
+            "unmodeled_features": []}
 
 
 def check_source_relation_certificate(source_bytes: bytes, relation_bytes: bytes,
