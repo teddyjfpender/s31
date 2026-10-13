@@ -77,13 +77,17 @@ resolved assertion list, successful `Program.evaluate` forces every
 assertion polynomial. It composes with the checked effectful SSA source model
 to show that accepted normalized programs preserve source assertion effects.
 The public-output theorem also proves that an accepted evaluator binds its
-declared M31 output to the checked effectful source value. The exact effectful
-source-byte/relation certificate, native AIR row authentication and public
-pins, and PCS/FRI still require separate joins. Honest completeness holds
-for the same fragment when source assertions hold, the typed public output
-matches the source result, and public ABI word encoding succeeds; the
-normalized evaluator then accepts without assuming an AIR witness or
-assertion acceptance.
+declared M31 output to the checked effectful source value.
+`GeneralLinearSSAEffectsByteRun.lean` now composes the exact effectful
+source/certificate/relation/ABI/typed-assignment byte checks and the actual
+assertion-checking normalized interpreter. It proves accepted public claims
+satisfy the independently parsed source computation and every source
+assertion for arbitrary checked M31 inputs. Native AIR row authentication,
+public-pin ownership, and PCS/FRI still require separate joins.
+Honest completeness holds for the same fragment when source assertions hold,
+the typed public output matches the source result, and public ABI word
+encoding succeeds; the normalized evaluator then accepts without assuming
+an AIR witness or assertion acceptance.
 For interpreter soundness alone, the checked certificate also constructs
 its deterministic honest arithmetic trace, so successful evaluation implies
 source assertion truth and the public output value without a supplied AIR

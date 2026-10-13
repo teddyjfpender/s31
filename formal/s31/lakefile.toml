@@ -50,3 +50,7 @@ root = "S31.Audit.GeneralLinearSSAPublicABICheck"
 [[lean_exe]]
 name = "s31-general-linear-byte-run-check"
 root = "S31.Audit.GeneralLinearSSAByteRunCheck"
+
+[[lean_exe]]
+name = "s31-general-linear-effects-byte-run-check"
+root = "S31.Audit.GeneralLinearSSAEffectsByteRunCheck"
