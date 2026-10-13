@@ -82,12 +82,14 @@ pub fn Reduction(comptime H: type) type {
             rows: []const []const M31,
             paths: []const []const Hash,
         ) error{ InvalidOpening, DuplicateMismatch }!void {
-            if (height >= @bitSizeOf(usize) or positions.len != rows.len or
-                positions.len != paths.len)
+            if (height >= @bitSizeOf(usize) or positions.len == 0 or
+                positions.len != rows.len or positions.len != paths.len)
                 return error.InvalidOpening;
             const domain_size: usize = @as(usize, 1) << @intCast(height);
+            const row_width = rows[0].len;
             for (positions, rows, paths, 0..) |position, row, path, i| {
-                if (position >= domain_size or row.len == 0 or !canonical(row) or
+                if (position >= domain_size or row_width == 0 or
+                    row.len != row_width or !canonical(row) or
                     path.len != height)
                     return error.InvalidOpening;
                 for (positions[0..i], 0..) |prior_position, j| {

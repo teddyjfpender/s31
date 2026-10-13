@@ -40,7 +40,8 @@ certificate: (1, 5) != (2, 6), but both parent digests are 4
 
 The native test also makes a leaf collision using rows `[1]` and `[257]`
 under that toy hash, checks that changing either certificate invalidates it,
-and rejects out-of-domain indices, short paths, noncanonical rows, wrong
+exercises a collision first appearing at the second parent level with an odd
+leaf index, and rejects out-of-domain indices, short paths, noncanonical rows, wrong
 roots, and same-row inputs. Its separate duplicate-query audit accepts native
 copied paths, then rejects changed duplicate rows or paths, out-of-domain
 aliases, and malformed lengths. With the selected BLAKE2s hasher, a

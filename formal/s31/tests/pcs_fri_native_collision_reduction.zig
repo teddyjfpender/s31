@@ -62,6 +62,23 @@ test "distinct accepted child pairs produce an explicit parent collision" {
     }
 }
 
+test "late parent collision follows odd-child order and every path level" {
+    const first = [_]M31{M31.fromCanonical(1)};
+    const second = [_]M31{M31.fromCanonical(4)};
+    const collision = try R.extract(5, 2, 1, &first, &.{ 2, 6 }, &second, &.{ 5, 4 });
+    try std.testing.expect(R.check(collision));
+    switch (collision) {
+        .parent => |parent| {
+            try std.testing.expectEqual(@as(usize, 1), parent.level);
+            try std.testing.expectEqual(@as(u8, 3), parent.first_children.left);
+            try std.testing.expectEqual(@as(u8, 6), parent.first_children.right);
+            try std.testing.expectEqual(@as(u8, 1), parent.second_children.left);
+            try std.testing.expectEqual(@as(u8, 4), parent.second_children.right);
+        },
+        else => return error.WrongCollisionKind,
+    }
+}
+
 test "malformed paths, out-of-domain aliases, noncanonical rows and equal rows reject" {
     const first = [_]M31{M31.fromCanonical(1)};
     const second = [_]M31{M31.fromCanonical(2)};
@@ -101,6 +118,12 @@ test "duplicate audit rejects changed rows and paths as well as malformed shapes
     const short = [_][]const Toy.Hash{ &.{7}, &.{8}, &.{} };
     try std.testing.expectError(error.InvalidOpening,
         R.auditDuplicateQueries(1, &positions, &rows, &short));
+    const wider = [_]M31{ one[0], M31.zero() };
+    const mixed_width = [_][]const M31{ &two, &wider, &two };
+    try std.testing.expectError(error.InvalidOpening,
+        R.auditDuplicateQueries(1, &positions, &mixed_width, &paths));
+    try std.testing.expectError(error.InvalidOpening,
+        R.auditDuplicateQueries(1, &.{}, &.{}, &.{}));
 }
 
 test "duplicate audit accepts native copied paths then detects corruption" {
