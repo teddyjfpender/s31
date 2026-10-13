@@ -11,6 +11,13 @@ inactive padding, and arbitrary satisfying witnesses. Its separately stated
 boundary is the binding from real `.s31` and JSON bytes to this graph and
 from native committed rows to the modeled AIR equations.
 
+[The effects profile](GeneralLinearSSAEffects.md) extends that graph kernel
+with canonical constant arithmetic and live equality assertions. It proves
+soundness and conditional completeness for arbitrary finite graphs, and a
+strict byte gate checks a production affine/assertion fixture against a
+handwritten Lean source meaning. Native rows, source text interpretation,
+public ABI, and proof authentication remain separate obligations.
+
 ## Optimized source row capacity
 
 [The optimized decoded-trace theorem](OptimizedDecodedTrace.md) connects an

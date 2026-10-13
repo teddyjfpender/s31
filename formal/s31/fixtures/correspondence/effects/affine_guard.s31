@@ -1,0 +1,8 @@
+use std@1;
+circuit affine_guard(public x: [m31; 3], private y: [m31; 3]) -> public [m31; 3] {
+    let shifted = x + splat<3>(7_m31);
+    let scaled = shifted .* splat<3>(9_m31);
+    assert_eq(y, scaled);
+    let out = y - x;
+    out
+}

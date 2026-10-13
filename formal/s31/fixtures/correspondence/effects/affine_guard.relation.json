@@ -1,0 +1,47 @@
+{
+  "assertions": [
+    {
+      "lhs": "y",
+      "rhs": "scaled"
+    }
+  ],
+  "inputs": [
+    {
+      "kind": "m31",
+      "length": 3,
+      "name": "x",
+      "visibility": "public"
+    },
+    {
+      "kind": "m31",
+      "length": 3,
+      "name": "y",
+      "visibility": "private"
+    }
+  ],
+  "name": "affine_guard",
+  "nodes": [
+    {
+      "constant": 7,
+      "lhs": "x",
+      "name": "shifted",
+      "op": "add_const"
+    },
+    {
+      "constant": 9,
+      "lhs": "shifted",
+      "name": "scaled",
+      "op": "mul_const"
+    },
+    {
+      "lhs": "y",
+      "name": "out",
+      "op": "sub",
+      "rhs": "x"
+    }
+  ],
+  "public_outputs": [
+    "out"
+  ],
+  "version": 1
+}

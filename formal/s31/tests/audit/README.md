@@ -1,5 +1,15 @@
 # Executable source audit tests
 
+`general_linear_ssa_effects_certificate.py` runs the strict Lean effects
+certificate gate on the production affine/assertion fixture and rejects
+arithmetic, assertion, JSON-canonicalization, and size mutations. Build and
+run from `formal/s31`:
+
+```sh
+lake build s31-general-linear-effects-certificate-check
+python3 tests/audit/general_linear_ssa_effects_certificate.py
+```
+
 `test_source_function_check.py` exercises the optional Lean
 `s31-source-function-check` executable against production S31 text
 compilation and the independent Python source parser. It checks exact
