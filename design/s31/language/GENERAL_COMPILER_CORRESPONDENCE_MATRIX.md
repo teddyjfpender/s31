@@ -40,12 +40,17 @@ parser itself is modeled or verified in Lean.
 
 For the pure profile, `formal/s31/S31/Gadgets/Functional/Correspondence/GeneralLinearSSABytes.lean`
 independently decodes the complete certificate bytes and enforces canonical
-JSON spelling before checking the indexed graph against a separately supplied
-Lean source term. `GeneralLinearSSA.lean` proves arbitrary-witness soundness
-and honest completeness for its packed M31 arithmetic rows, and their
-equivalence to normalized `evaluateNode` steps. This does **not** derive the
-Lean term from `.s31` bytes, authenticate native committed rows, or verify
-the certificate's SHA-256 identities. A runtime Lean gate checks the actual
+JSON spelling before checking the indexed graph. The bounded independent
+source-byte parser derives the Lean term from exact `.s31` bytes.
+`GeneralLinearSSA.lean` proves arbitrary-witness soundness and honest
+completeness for its packed M31 arithmetic rows. The
+`GeneralLinearSSAProgramEvaluate.lean` bridge now proves that arbitrary
+complete pure SSA AIR traces and an aligned named normalized program compute
+the same selected output through the actual `Program.evaluate` interpreter.
+Its assignment-to-initial-environment correspondence remains an explicit
+premise; it is not yet derived from the canonical assignment/ABI byte gate.
+This does **not** authenticate native committed rows or verify the
+certificate's SHA-256 identities. A runtime Lean gate checks the actual
 five-lane production fixture and rejects malformed byte and graph mutations.
 The public-four-lane overlap with the older direct-Gate checker has an
 executable join requiring equal indexed graphs; its row theorem still assumes
