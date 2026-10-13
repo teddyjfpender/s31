@@ -57,4 +57,24 @@ theorem guruswami_sudan_list_floor
   apply (le_div_iff₀ hdenom).2
   nlinarith
 
+theorem b2_johnson_boundary_requires_m_at_least_nine :
+    (8 : ℝ) < Real.sqrt (1 / 2) /
+      (2 * ((3 / 4 : ℝ) - Real.sqrt (1 / 2))) := by
+  have hroot_nonneg : 0 ≤ Real.sqrt (1 / 2 : ℝ) := Real.sqrt_nonneg _
+  have hroot_sq : (Real.sqrt (1 / 2 : ℝ)) ^ 2 = 1 / 2 := by
+    norm_num [Real.sq_sqrt]
+  have hroot_low : (12 / 17 : ℝ) < Real.sqrt (1 / 2) := by nlinarith
+  have hroot_high : Real.sqrt (1 / 2 : ℝ) < 3 / 4 := by nlinarith
+  apply (lt_div_iff₀ (by nlinarith :
+    0 < (2 : ℝ) * ((3 / 4 : ℝ) - Real.sqrt (1 / 2)))).2
+  nlinarith
+
+private def remark15B2M9Floor : ℚ :=
+  6 * (2 * (6 : ℚ) ^ 4 / (3 * (1 / 2)) + 1) * (2 ^ 20 : ℚ) /
+    (q : ℚ) ^ 4
+
+theorem remark15_b2_m9_favorable_floor_exceeds_96 :
+    (1 : ℚ) / 2 ^ 96 < remark15B2M9Floor := by
+  norm_num [remark15B2M9Floor, q]
+
 end S31.PcsFri.StwoMultidomainEnvelope

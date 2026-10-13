@@ -56,18 +56,37 @@ Its companion Lean theorem checks the stated line-rate bound for all
 `N≥2^20,B≥2`. Python additionally computes tighter rational floors using
 integer square-root intervals, with no floating-point comparison.
 
+**The Appendix A Remark 15 improvement must also be checked.** That remark
+removes a factor of three from the first-fold bound and uses the circle-code
+rate `ρ=1/B`. Taking `m=3` at `B=2` would make this improved expression fall
+slightly below `2^-96`, but `m=3` is **not available** in the proven Johnson
+range. The paper defines
+
+```text
+m(θ) = max(ceil(√ρ / (2·(1−θ−√ρ))), 3).
+```
+
+At `B=2`, Johnson requires `θ≥δ/2=1/4`, hence `1−θ≤3/4`, and the fraction
+inside the ceiling is already greater than `8` at that most favorable
+boundary. Thus `m≥9`; the improved Remark 15 upper-bound expression is over
+`92·2^-96` even at its favorable multiplicity. Lean checks both the
+boundary-ratio inequality and a looser rational floor using `ℓ≥6`. For
+`B=4,8,16,32`, `m≥3` and the improved expressions also exceed the target.
+The checker evaluates these floors independently of Theorem 4's general
+first-fold bound.
+
 This is a **limit of the quoted proof envelope**. An upper bound larger than a
 target does not imply that a prover can cheat at that probability, nor that a
 tighter or different theorem is impossible. Without a native-to-Protocol-3
 refinement, even the candidate substitution is conditional.
 
-| Hypothetical `B` | Johnson first-fold envelope exceeds | Unique-decoding raw queries needed at excluded `θ=δ/2` boundary | Max BCS adversary hash queries `T` allowed by quoted unique-decoding first-fold term alone at 96 bits, assuming `R≥1` |
-| ---: | ---: | ---: | ---: |
-| 2 | `2^-95` | 232 | 84 |
-| 4 | `2^-91` | 142 | 41 |
-| 8 | `2^-86` | 116 | 20 |
-| 16 | `2^-82` | 106 | 9 |
-| 32 | `2^-77` | 101 | 4 |
+| Hypothetical `B` | General Johnson first-fold bound exceeds | Minimum Johnson `m` | Tighter Remark 15 bound / `2^-96` exceeds | Unique-decoding raw queries needed at excluded `θ=δ/2` boundary | Max BCS adversary hash queries `T` allowed by quoted unique-decoding first-fold term alone at 96 bits, assuming `R≥1` |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 2 | `2^-95` | 9 | 92 | 232 | 84 |
+| 4 | `2^-91` | 3 | 21 | 142 | 41 |
+| 8 | `2^-86` | 3 | 482 | 116 | 20 |
+| 16 | `2^-82` | 3 | 10,922 | 106 | 9 |
+| 32 | `2^-77` | 3 | 247,152 | 101 | 4 |
 
 These `B` values are the entire power-of-two candidate set satisfying the
 paper's circle-domain capacity `N·B²≤2^30` at `N=2^20`. Every first-fold

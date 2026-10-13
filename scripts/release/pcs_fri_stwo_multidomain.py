@@ -42,6 +42,48 @@ def sqrt_upper(value: Fraction, scale_bits: int = 32) -> Fraction:
     return Fraction(root, scale)
 
 
+def sqrt_lower(value: Fraction, scale_bits: int = 32) -> Fraction:
+    """A dyadic lower bound, calculated with integers only."""
+    if value <= 0 or not 1 <= scale_bits <= 128:
+        raise ValueError("invalid rational square-root input")
+    scale = 1 << scale_bits
+    root = isqrt(value.numerator * scale * scale // value.denominator)
+    return Fraction(root, scale)
+
+
+def johnson_minimum_m(blowup: int) -> int:
+    """Least paper GS multiplicity for theta >= delta/2, certified by intervals."""
+    if blowup < 2 or blowup & (blowup - 1):
+        raise ValueError("invalid Johnson blowup")
+    rho = Fraction(1, blowup)
+    alpha_max = (1 + rho) / 2
+    for bits in (32, 64, 128):
+        low, high = sqrt_lower(rho, bits), sqrt_upper(rho, bits)
+        if not 0 < low <= high < alpha_max:
+            continue
+        def ceil_ratio(root: Fraction) -> int:
+            value = root / (2 * (alpha_max - root))
+            return -(-value.numerator // value.denominator)
+        lower_m, upper_m = max(3, ceil_ratio(low)), max(3, ceil_ratio(high))
+        if lower_m == upper_m:
+            return lower_m
+    raise ValueError("GS multiplicity interval straddles an integer boundary")
+
+
+def remark15_first_fold_floor(n: int, blowup: int) -> Fraction:
+    """Floor on Appendix A Remark 15's tighter first-fold upper bound.
+
+    At theta >= delta/2, m(theta) is at least johnson_minimum_m(B).  Its
+    GS list size uses the *circle* code rate rho=1/B, as in Remark 15.
+    """
+    if type(n) is not int or n < 1 or blowup < 2 or blowup & (blowup - 1):
+        raise ValueError("invalid candidate theorem geometry")
+    rho = Fraction(1, blowup)
+    ell_floor = Fraction(johnson_minimum_m(blowup) + 1, 2) / sqrt_upper(rho)
+    s0 = n * blowup // 2
+    return ell_floor * (2 * ell_floor**4 / (3 * rho) + 1) * s0 / F_ORDER
+
+
 def first_fold_johnson_floor(n: int, blowup: int) -> Fraction:
     """Lower floor on Theorem 4's *upper-bound expression*, with m >= 3.
 
@@ -94,6 +136,7 @@ def multidomain_from_gate(report: dict, target_bits: int = 96,
         s0 = n * b // 2
         line_rate = Fraction(1, b) + Fraction(1, s0)
         johnson_floor = first_fold_johnson_floor(n, b)
+        improved_floor = remark15_first_fold_floor(n, b)
         udr_fold = Fraction(3 * s0, F_ORDER)
         # BCS has (T+R)*max_i epsilon_i.  R>=1, while all other terms are
         # omitted.  Therefore this is a *necessary* test for use of the
@@ -109,6 +152,11 @@ def multidomain_from_gate(report: dict, target_bits: int = 96,
             "candidate_first_line_code_rate": ratio(line_rate),
             "johnson_first_fold_published_envelope_strictly_above": ratio(johnson_floor),
             "johnson_first_fold_envelope_exceeds_target": johnson_floor > target,
+            "johnson_minimum_GS_multiplicity_at_theta_delta_over_2": johnson_minimum_m(b),
+            "johnson_remark15_tighter_first_fold_envelope_strictly_above":
+                ratio(improved_floor),
+            "johnson_remark15_tighter_first_fold_envelope_exceeds_target":
+                improved_floor > target,
             "johnson_query_lower_floor_for_70_draws": (
                 ratio(johnson_query_floor) if johnson_query_floor is not None else None),
             "johnson_query_lower_floor_exceeds_target": (
@@ -150,9 +198,10 @@ def multidomain_from_gate(report: dict, target_bits: int = 96,
         },
         "hypothetical_adversary_hash_queries_T": adversary_hash_queries,
         "field_order_if_native_QM31_matches_paper_F": F_ORDER,
-        "johnson_universal_first_fold_envelope_lower_floor_for_N_at_least_2pow20_B_at_least_2":
+        "theorem4_general_johnson_first_fold_envelope_lower_floor_for_N_at_least_2pow20_B_at_least_2":
             ratio(universal_floor),
-        "johnson_universal_floor_exceeds_96_bit_target": universal_floor > Fraction(1, 1 << 96),
+        "theorem4_general_johnson_floor_exceeds_96_bit_target":
+            universal_floor > Fraction(1, 1 << 96),
         "candidate_theorem_arithmetic": candidates,
         "theorem_hypotheses_not_dischargeable_from_geometry": [
             "native D0, S0, per-domain polynomial rates and exact FRI round schedule equal Protocol 3",
