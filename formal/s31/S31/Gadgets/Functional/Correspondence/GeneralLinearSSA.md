@@ -48,14 +48,14 @@ empty `unmodeled_features`. It rejects unknown decoded fields. Its
 `certificate_bytes_air_sound` theorem starts from the executable byte
 checker result. The digest check covers lowercase hexadecimal syntax; it
 does not recompute SHA-256 or bind the digest to source/relation file bytes.
-Canonical JSON spelling and duplicate-key rejection remain package-checker
-obligations because the decoded JSON object loses those raw-byte distinctions.
 The JSON parser's runtime result for a concrete file is checked by executing
 the checker, not by `decide` in the Lean kernel.
 The byte decoder compares the entire input to the canonical, sorted,
 two-space-indented JSON encoding used by the production package checker.
 It rejects duplicate keys, extra fields, alternate whitespace, and alternate
-key order. Runtime mutation controls exercise each case.
+key order. Runtime mutation controls exercise each case. The renderer uses
+Lean's JSON string escaping, so this byte gate currently targets the source
+fragment's ASCII identifier grammar.
 
 Each five-lane operation uses two packed rows: one for lanes 0–3 and one for
 lane 4. The final row's other three input limbs may contain any M31 values;
@@ -101,7 +101,9 @@ proves an exact intersection. If both byte checkers accept and their graphs
 are equal after the explicit positional lift, they assign the same value to
 every input. With the older modeled topology and `AuthenticatedRows` premises,
 the row witness also has that value. Neither theorem derives native row
-authentication from a PCS/FRI verifier.
+authentication from a PCS/FRI verifier. `checkPublic4Join` is the executable
+intersection gate: it checks lane count and graph equality instead of
+leaving those equalities to a caller.
 
 ## Recheck
 

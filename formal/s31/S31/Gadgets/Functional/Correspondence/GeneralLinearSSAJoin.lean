@@ -79,6 +79,43 @@ theorem public4_byte_checkers_join
     old input hOld, SSACertificate.execute_normalized_eq_execute]
   exact hrun
 
+/-- An executable intersection gate. It derives the graph equality from the
+two independently decoded certificates and requires the emitted lane count
+to be exactly four. It still needs the old source/relation bytes and new
+certificate bytes to be supplied from the actual package. -/
+def checkPublic4Join (sourceBytes relationBytes : List Nat)
+    (certificateBytes : String) (sourceTerm : Term) : Option Unit := do
+  let old ← SSANormalizedBytes.checkRelation sourceBytes relationBytes
+  let (ssa, new) ← match GeneralLinearSSABytes.checkCertificate
+      certificateBytes sourceTerm with
+    | .ok result => some result
+    | .error _ => none
+  if ssa.lane_count = 4 ∧ new = liftCertificate old then
+    some ()
+  else none
+
+theorem checked_public4_join_sound
+    (sourceBytes relationBytes : List Nat) (certificateBytes : String)
+    (sourceTerm : Term) (input : Lanes 4)
+    (h : checkPublic4Join sourceBytes relationBytes certificateBytes
+      sourceTerm = some ()) :
+    SSATextBytes.denotation sourceBytes input =
+      some (sourceTerm.eval (fun _ => input)) := by
+  unfold checkPublic4Join at h
+  cases hOld : SSANormalizedBytes.checkRelation sourceBytes relationBytes with
+  | none => simp [hOld] at h
+  | some old =>
+      cases hNew : GeneralLinearSSABytes.checkCertificate certificateBytes
+          sourceTerm with
+      | error message => simp [hOld, hNew] at h
+      | ok result =>
+          obtain ⟨ssa, new⟩ := result
+          by_cases hmatch : ssa.lane_count = 4 ∧
+              new = liftCertificate old
+          · exact public4_byte_checkers_join sourceBytes relationBytes
+              certificateBytes old sourceTerm ssa new input hOld hNew hmatch.2
+          · simp [hOld, hNew, hmatch] at h
+
 /-- For the intersection, the *modeled* authenticated native Gate rows
 compute the very source value independently admitted by the new certificate.
 `AuthenticatedRows` is an explicit assumption; no native PCS/FRI link follows.
