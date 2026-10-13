@@ -35,9 +35,9 @@ formula above and compares **every** retained prover leaf and parent, not
 just the final root.
 
 The direct circuit integration also has compact-storage **tiled** and
-**streaming** commit routes before that lift. The source guard pins their
-selection but this test does not establish their all-input equivalence to
-the complete-tree model. That remains part of P06.
+**streaming** commit routes before that lift. The compact origin fixture below
+tests both routes and the retained columns on a mixed-height S31 profile.
+Their all-input equivalence to the complete-tree model remains part of P06.
 
 ## What Lean proves
 
@@ -94,9 +94,40 @@ assembly. Mutation tests show that
 removing or changing representative stages fails the guard. This is a source
 change detector, and the native test samples a finite set of trees.
 
+### Compact tiled and streaming fixture
+
+[`pcs_fri_compact_column_origin_native.zig`](../../../formal/s31/tests/pcs_fri_compact_column_origin_native.zig)
+uses the S31 `Blake2sM31MerkleChannel`, configured CPU backend, one-bit
+blowup, source column log sizes `[9,3,9,5,7,8]`, compact threshold `6`, and
+lifted height `11`. Thus the first extended column has log size `10`; the
+second has log size `4` and keeps its evaluation. The five larger columns
+retain coefficient buffers and discard their extended evaluations. The
+fixture checks both the borrowed and owned tiled routes, plus the streaming
+route, including transcript bytes.
+
+The expected value at every extended-domain position is computed by
+**barycentric evaluation of the original source column** at the circle-domain
+point. That calculation does not read the tiled blocks, streaming buffers,
+retained coefficients, or opening code. It checks every reconstructed
+coefficient polynomial against those expected values and checks the small
+retained evaluation directly. It then projects the expected values to every
+lifted row, hashes every leaf and parent independently, and compares every
+prover node. Finally it checks unsorted duplicate openings and all captured
+siblings against this complete tree. A changed root, queried value, or
+verifier column-log order is rejected.
+
+For one row `q`, the committed input is the ordered list
+`[C1[project(11,4,q)], C3[project(11,6,q)], C4[project(11,8,q)],
+C5[project(11,9,q)], C0[project(11,10,q)], C2[project(11,10,q)]]`.
+The index is in the **extended** column, whose values came from the source
+polynomial. This is why an opening from a compact coefficient buffer must
+reconstruct exactly that extended value; merely comparing two compact
+committers would not establish source-column origin.
+
 The remaining P06 bridge must prove the relevant Zig paths refine the Lean
-tree for all valid inputs, connect both selected compact commit routes and
-their retained column buffers to these exact words, connect the reviewed source to the
-installed binary, and provide a quantitative binding/collision bound for the
-pinned plain BLAKE2s layout. Until then, P06 is open and native proven
-security bits remain unset.
+tree for all valid inputs, including tile boundary, pruned-layer, and cached
+tree cases; connect the reviewed source to the installed binary; and provide
+a quantitative binding/collision bound for the pinned plain BLAKE2s layout.
+The fixture covers one finite shape and only the direct uncached CPU route.
+Until those obligations close, P06 is open and native proven security bits
+remain unset.
