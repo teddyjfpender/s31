@@ -18,6 +18,16 @@ counts the exceptional and subfield seeds for the current native field sizes.
 These results do not prove how the native transcript distributes seeds, a
 Zig-to-Lean refinement, or the PCS soundness bound.
 
+[`OodAcceptedSupport.lean`](OodAcceptedSupport.lean) checks the exact M31
+arithmetic for the experimental paired verifier's `y.c1 != 0` early guard.
+Its passing support is `(q²−1)²`, smaller than the paper's `q⁴−q−2` OOD
+set; conditioning a fixed bad event can inflate its mass by the exact factor
+`(q⁴−q−2)/(q²−1)² < 1+2⁻⁶⁰`. The field-theoretic count of rejected seeds,
+native seed uniformity, denominator nonvanishing, and adaptation to the
+published OOD theorem remain separate obligations. The full
+[CAS05 theorem ledger](../../../../../design/s31/security/PCS_FRI_CAS05_THEOREM_BRIDGE.md)
+lists them alongside the short-cascade FRI gap.
+
 [`M31RejectionSampler.lean`](M31RejectionSampler.lean) proves the exact
 two-preimage arithmetic of the pinned BLAKE2s channel's 32-bit word filter:
 for each `r < p`, the accepted words reducing to `r` are exactly `r` and
