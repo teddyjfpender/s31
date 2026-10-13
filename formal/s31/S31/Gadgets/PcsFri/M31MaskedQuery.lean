@@ -163,6 +163,28 @@ theorem weighted_count_eq_good_raw_words (k : Nat)
   exact Finset.sum_card_fiberwise_eq_card_filter
     (Finset.range rawSize) good (sampleIndex k)
 
+/-- The same raw-word event represented in the finite uniform sample type. -/
+def goodRawFin (k : Nat) (good : Finset (Fin (size k))) :
+    Finset (Fin rawSize) :=
+  Finset.univ.filter (fun word => sampleIndex k word.val ∈ good)
+
+theorem good_raw_fin_card (k : Nat) (good : Finset (Fin (size k))) :
+    (goodRawFin k good).card = weightedCount k good := by
+  rw [weighted_count_eq_good_raw_words]
+  symm
+  apply Finset.card_bij
+    (fun n hn => (⟨n, Finset.mem_range.mp (Finset.mem_filter.mp hn).1⟩ : Fin rawSize))
+  · intro n hn
+    simp only [goodRawFin, Finset.mem_filter, Finset.mem_univ, true_and]
+    exact (Finset.mem_filter.mp hn).2
+  · intro a ha b hb h
+    exact congrArg Fin.val h
+  · intro i hi
+    refine ⟨i.val, ?_, ?_⟩
+    · simp only [Finset.mem_filter, Finset.mem_range]
+      exact ⟨i.isLt, (Finset.mem_filter.mp hi).2⟩
+    · exact Fin.ext rfl
+
 theorem preimages_one_zero : preimages 1 0 = baseline 1 + 1 := by
   rw [preimages_exact 1 0 (by omega) (by omega) (by norm_num [size])]
   norm_num [baseline, size]
@@ -317,6 +339,26 @@ def maskedMass (k : Nat) (good : Finset (Fin (size k))) : ℚ :=
 def uniformMass (k : Nat) (good : Finset (Fin (size k))) : ℚ :=
   (good.card : ℚ) / (size k : ℚ)
 
+/-- The product-space event checks each raw index before any deduplication. -/
+theorem raw_good_sequence_iff (k draws : Nat)
+    (good : Finset (Fin (size k))) (words : Fin draws → Fin rawSize) :
+    words ∈ QuerySampling.goodSequences draws (goodRawFin k good) ↔
+      ∀ j, sampleIndex k (words j).val ∈ good := by
+  simp [QuerySampling.good_sequences_member, goodRawFin]
+
+/-- Exact fraction of all `draws`-tuples of 32-bit words whose masked M31
+indices lie in the fixed good set. This is finite product counting, not a
+claim that the native Fiat-Shamir transcript is an ideal random oracle. -/
+theorem exact_raw_product_fraction (k draws : Nat)
+    (good : Finset (Fin (size k))) :
+    ((QuerySampling.goodSequences draws (goodRawFin k good)).card : ℚ) /
+      (Fintype.card (Fin draws → Fin rawSize) : ℚ) =
+        maskedMass k good ^ draws := by
+  haveI : Nonempty (Fin rawSize) :=
+    ⟨⟨0, by norm_num [rawSize]⟩⟩
+  rw [QuerySampling.ideal_all_good_fraction]
+  simp only [good_raw_fin_card, Fintype.card_fin, maskedMass]
+
 private theorem uniform_mass_as_raw (k : Nat) (hk31 : k ≤ 31)
     (good : Finset (Fin (size k))) :
     uniformMass k good =
@@ -386,5 +428,25 @@ theorem independent_masked_ge_two_vs_alpha (k : Nat) (hk : 2 ≤ k)
   have hn : 0 ≤ maskedMass k good := by unfold maskedMass; positivity
   exact pow_le_pow_left₀ hn
     (masked_mass_ge_two_vs_alpha k hk hk31 good alpha hα) draws
+
+/-- Exact finite product-space fraction, now bounded in terms of the ideal
+uniform agreement parameter. Interpreting the fraction as native transcript
+probability still requires independent ideal raw words and a fixed good set. -/
+theorem exact_raw_product_one_vs_alpha (good : Finset (Fin (size 1)))
+    (draws : Nat) (alpha : ℚ) (hα : uniformMass 1 good ≤ alpha) :
+    ((QuerySampling.goodSequences draws (goodRawFin 1 good)).card : ℚ) /
+      (Fintype.card (Fin draws → Fin rawSize) : ℚ) ≤
+        (alpha + 1 / (rawSize : ℚ)) ^ draws := by
+  rw [exact_raw_product_fraction]
+  exact independent_masked_one_vs_alpha good draws alpha hα
+
+theorem exact_raw_product_ge_two_vs_alpha (k : Nat) (hk : 2 ≤ k)
+    (hk31 : k ≤ 31) (good : Finset (Fin (size k)))
+    (draws : Nat) (alpha : ℚ) (hα : uniformMass k good ≤ alpha) :
+    ((QuerySampling.goodSequences draws (goodRawFin k good)).card : ℚ) /
+      (Fintype.card (Fin draws → Fin rawSize) : ℚ) ≤
+        (alpha + 2 / (rawSize : ℚ)) ^ draws := by
+  rw [exact_raw_product_fraction]
+  exact independent_masked_ge_two_vs_alpha k hk hk31 good draws alpha hα
 
 end S31.Gadgets.PcsFri.M31MaskedQuery
