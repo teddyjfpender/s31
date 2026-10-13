@@ -114,8 +114,9 @@ def run(checker: Path) -> dict[str, object]:
                                        str(work / "trial/statement.json"),
                                        str(package / "verification-key.json")),
                                       capture_output=True, text=True, check=False, timeout=120)
-            if rejected.returncode == 0:
-                raise AssertionError("native verifier accepted a changed fixed commitment")
+            if (rejected.returncode == 0 or
+                    rejected.stderr.strip() != "error: InvalidPreprocessedRoot"):
+                raise AssertionError("native verifier did not reject the changed fixed root")
 
             changed_source = SOURCE.replace("pair.0 + pair.1", "pair.0 + pair.0").encode()
             try:
