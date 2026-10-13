@@ -34,6 +34,13 @@ collision resistance, independent Fiat–Shamir randomness, or low-degree
 testing. The BLAKE2s channel's 32-bit draw counter wraps; a full transcript
 argument must also bound the number of draws below that wrap point.
 
+The same Lean module gives a **conditional** finite-model union bound:
+`bad acceptance ≤ Merkle-failure budget + Fiat–Shamir-failure budget + alpha^s`.
+Its premises explicitly require native-to-IOP refinement, a fixed IOP
+consistency set, and separate bounds on the first two failure events. None
+of those premises is discharged for the native prover; the theorem makes the
+missing interfaces visible without claiming an end-to-end security result.
+
 The pinned engine update from PR #242 additionally rejects a proof whose
 exported commitment vector differs from the roots committed into the PCS
 verifier, and rejects extra zero-fold FRI layers before absorbing any FRI
