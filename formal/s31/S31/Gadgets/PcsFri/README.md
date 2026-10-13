@@ -154,6 +154,16 @@ the pinned native implementation on that finite domain; a general Zig
 semantics theorem, committed-column origin and collision bound are still
 required for P06.
 
+The [native collision reduction](../../../../../design/s31/security/PCS_FRI_NATIVE_MERKLE_COLLISION_REDUCTION.md)
+checks two full native BLAKE2s openings of one root, height and index. When
+their canonical M31 rows differ, it constructs a checkable leaf or parent
+hash collision witness. Its toy-hash tests exercise both outcomes; native
+BLAKE2s tests reject a conflicting row without such a collision. A separate
+native audit checks exact equality of rows and paths copied to duplicate query
+positions. This is a concrete conditional binding step, while the hash
+probability bound and general compressed-decoder
+refinement remain open.
+
 ## Packed FRI leaves bind the modeled layer oracle
 
 [`FriMerkleBinding.lean`](FriMerkleBinding.lean) identifies the exact leaf for
