@@ -33,8 +33,15 @@ assertion lists. The equality includes `none`, so a modeled failed check is
 preserved. `effect_value_eq` covers each retained partial/effect node's
 returned value or failure.
 
+The production text compiler now checks each changed normalized relation
+with an [independent pruning certificate](../../../../../../src/frontends/s31/docs/reference/PRUNING_CERTIFICATE.md).
+It requires exact retained-node identity, reviewed total removals, preserved
+roots and dependencies, and matching source locations. A failed check stops
+compilation before AIR lowering.
+
 The model does **not** establish that Python `dead_code.py` computes this
-closure. It assumes positional IDs, a reviewed list of dependencies, and a
+closure or that the certificate checker implements the Lean predicates. It
+assumes positional IDs, a reviewed list of dependencies, and a
 deterministic value/failure semantics for external operations. It does not
 model external I/O event order, source spans, record ABI validation, JSON
 serialization, the Zig compiler, AIR emission, or native proof verification.

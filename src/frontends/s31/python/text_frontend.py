@@ -5,6 +5,7 @@ The implementation lives in ``language/`` by compiler responsibility.
 
 from __future__ import annotations
 
+import copy
 import sys
 from pathlib import Path
 from typing import Any
@@ -16,9 +17,22 @@ from language.parser import Parser, lex
 from language.elaborate import Elaborator
 from language.effects import TotalityChecker
 from language.dead_code import prune_total_dead_nodes
+from language.prune_certificate import PruneCertificateError, verify_pruning
 from language.specialize import Compiler
 from language.syntax import (Circuit, Expr, Function, FunctionType, SourceError,
                              StaticClosure, Statement, Token)
+
+
+def _certified_prune(
+    relation: dict[str, Any], source_map: dict[str, dict[str, int]],
+) -> tuple[dict[str, Any], dict[str, dict[str, int]]]:
+    # Snapshot before invoking the optimizer. An accidental in-place rewrite
+    # must not make its own before/after certificate vacuous.
+    original = copy.deepcopy(relation)
+    original_map = copy.deepcopy(source_map)
+    pruned, locations = prune_total_dead_nodes(relation, source_map)
+    verify_pruning(original, original_map, pruned, locations)
+    return pruned, locations
 
 
 def compile_text(source: str, filename: str = "<source>") -> tuple[dict[str, Any], dict[str, dict[str, int]]]:
@@ -36,7 +50,7 @@ def compile_text(source: str, filename: str = "<source>") -> tuple[dict[str, Any
         # byte-for-byte stable while erasing dead total work in enum and
         # static-power sources. Only pure, total field nodes can be erased.
         if parser.sums or baseline.builder.static_power_calls:
-            relation, source_map = prune_total_dead_nodes(relation, source_map)
+            relation, source_map = _certified_prune(relation, source_map)
         if not baseline.builder.static_power_opportunities:
             return relation, source_map
 
@@ -51,9 +65,11 @@ def compile_text(source: str, filename: str = "<source>") -> tuple[dict[str, Any
             if "relation item expansion limit exceeded" not in str(exc):
                 raise
             return relation, source_map
-        fused_relation, fused_map = prune_total_dead_nodes(fused_relation, fused_map)
+        fused_relation, fused_map = _certified_prune(fused_relation, fused_map)
         return ((fused_relation, fused_map) if len(fused_relation["nodes"]) < len(relation["nodes"])
                 else (relation, source_map))
+    except PruneCertificateError as exc:
+        raise SourceError(f"{filename}: unsafe dead-code pruning: {exc}") from exc
     except RecursionError as exc:
         raise SourceError(f"{filename}: expression nesting limit exceeded") from exc
 
