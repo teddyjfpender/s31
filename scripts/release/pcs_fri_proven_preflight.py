@@ -4,8 +4,10 @@
 The output is deliberately never a native S31 security certificate. Circle
 STARKs, Appendix B, Theorem 6 bounds the query error by alpha**s with
 alpha = (1 + 1/(2m)) sqrt((N+1)/(N*B)). Remark 26 gives a convenient
-commitment-error envelope. Both require a protocol-to-theorem reduction before
-they can be used to certify the pinned Zig verifier.
+commitment-error envelope. The native M31 channel reduces each 32-bit hash
+word modulo 2**31-1 before the query sampler masks its low bits. We separately
+bound that small ideal-oracle sampling bias. All terms still require a
+protocol-to-theorem reduction before certifying the pinned Zig verifier.
 """
 
 from __future__ import annotations
@@ -74,6 +76,68 @@ def minimum_queries(c: Candidate) -> int:
     return high
 
 
+def masked_m31_max_set_bias(log_domain_size: int) -> Fraction:
+    """Exact largest excess over uniform for any set of masked query indices.
+
+    A uniform u32 reduced modulo p=2**31-1 has three preimages for residues
+    0 and 1 and two for every other residue. For k>=2, masking to 2**k
+    positions adds one preimage each at indices 0 and 1, removes two at the
+    last index, and leaves the rest at their uniform baseline. At k=1 the
+    positive excess is one preimage; at k=0 there is only one position.
+    The bound is conditional on independent uniform 256-bit hash outputs.
+    """
+    if not 0 <= log_domain_size <= 31:
+        raise ValueError("M31-masked query domain must have 0..31 bits")
+    if log_domain_size == 0:
+        return Fraction(0)
+    return Fraction(1 if log_domain_size == 1 else 2, 1 << 32)
+
+
+def sqrt_upper(value: Fraction, precision: int = 192) -> Fraction:
+    """Outward dyadic upper endpoint, computed with integer square root."""
+    if value < 0 or precision < 1:
+        raise ValueError("square-root interval needs nonnegative input")
+    scale = 1 << precision
+    floor = isqrt((value.numerator * scale * scale) // value.denominator)
+    lower = Fraction(floor, scale)
+    return lower if lower * lower == value else Fraction(floor + 1, scale)
+
+
+def ideal_m31_masked_query_upper(c: Candidate) -> Fraction:
+    """Conservative one-query agreement under the ideal native M31 channel.
+
+    The paper's alpha bounds the density of a fixed good set under uniform
+    positions. Any set's mass under the native reduced-and-masked draw is at
+    most its uniform density plus the exact positive variation below. This
+    is not a Fiat-Shamir or implementation-security bound.
+    """
+    domain_log = (c.trace_rows * c.blowup).bit_length() - 1
+    return sqrt_upper(alpha_squared(c)) + masked_m31_max_set_bias(domain_log)
+
+
+def minimum_ideal_m31_masked_queries(c: Candidate) -> int:
+    """Sufficient count for the bias-adjusted ideal query term only."""
+    upper = ideal_m31_masked_query_upper(c)
+    if upper >= 1:
+        raise ValueError("bias-adjusted agreement bound must be below one")
+
+    def meets(queries: int) -> bool:
+        return upper.numerator**queries * (1 << c.target_bits) <= \
+            upper.denominator**queries
+
+    high = 1
+    while not meets(high):
+        high *= 2
+    low = high // 2
+    while low + 1 < high:
+        mid = (low + high) // 2
+        if meets(mid):
+            high = mid
+        else:
+            low = mid
+    return high
+
+
 def remark26_leading_interval(c: Candidate) -> tuple[Fraction, Fraction]:
     """Outward rational interval for Remark 26's leading envelope term.
 
@@ -96,6 +160,9 @@ def assess(c: Candidate) -> dict[str, object]:
     lower, upper = remark26_leading_interval(c)
     target = Fraction(1, 1 << c.target_bits)
     needed = minimum_queries(c)
+    masked_upper = ideal_m31_masked_query_upper(c)
+    masked_needed = minimum_ideal_m31_masked_queries(c)
+    masked_bias = masked_m31_max_set_bias((c.trace_rows * c.blowup).bit_length() - 1)
     return {
         "schema": "s31-pcs-fri-published-preflight-v1",
         "paper": PAPER,
@@ -103,6 +170,10 @@ def assess(c: Candidate) -> dict[str, object]:
         "alpha_squared": f"{alpha2.numerator}/{alpha2.denominator}",
         "ungrinded_query_term_meets_target": query_meets(c, c.target_bits, c.raw_queries),
         "minimum_ungrinded_queries_for_target": needed,
+        "ideal_m31_masked_max_set_bias": f"{masked_bias.numerator}/{masked_bias.denominator}",
+        "ideal_m31_masked_agreement_upper": f"{masked_upper.numerator}/{masked_upper.denominator}",
+        "minimum_ideal_m31_masked_queries_for_target": masked_needed,
+        "ideal_m31_masked_query_term_meets_target": c.raw_queries >= masked_needed,
         "remark26_leading_envelope_interval": [
             f"{lower.numerator}/{lower.denominator}",
             f"{upper.numerator}/{upper.denominator}",

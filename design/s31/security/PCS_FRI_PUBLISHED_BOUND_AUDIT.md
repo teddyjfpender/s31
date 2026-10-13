@@ -34,6 +34,19 @@ collision resistance, independent Fiat–Shamir randomness, or low-degree
 testing. The BLAKE2s channel's 32-bit draw counter wraps; a full transcript
 argument must also bound the number of draws below that wrap point.
 
+The native M31 channel's ideal-oracle query distribution is not exactly
+uniform: it reduces each 32-bit BLAKE2s output word modulo
+`p=2^31-1` before the query sampler masks the low `k` bits. Residues
+0 and 1 have three raw preimages, while the other residues have two. For
+`k>=2`, query indices 0 and 1 each have one extra preimage relative to
+uniform, the last index has two fewer, and the others have exactly the
+uniform count. Thus any fixed set's one-draw probability exceeds its
+uniform density by at most `2/2^32 = 2^-31`; at `k=1` the bound is
+`2^-32`. Independent ideal hashes would give a conservative query
+term `(alpha + 2^-31)^s` for the usual domains. This does not establish
+independence for Fiat–Shamir draws or turn the native verifier into the
+paper's interactive protocol.
+
 The same Lean module gives a **conditional** finite-model union bound:
 `bad acceptance ≤ Merkle-failure budget + Fiat–Shamir-failure budget + alpha^s`.
 Its premises explicitly require native-to-IOP refinement, a fixed IOP
@@ -210,6 +223,9 @@ alone below `2^-96` for those illustrative inputs. The leading Remark 26
 envelope term already exceeds `2^-96` in that illustration; this only says
 that particular published envelope cannot certify the target there. A smaller
 actual error, another theorem, or another parameterization is not ruled out.
+The preflight reports both the paper's uniform-query arithmetic and an
+outward rational upper bound after the native M31 mask bias. Both require
+348 queries in this example; neither certifies the native protocol.
 
 ```sh
 python3 -B scripts/release/pcs_fri_proven_preflight.py
