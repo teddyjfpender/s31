@@ -72,6 +72,13 @@ and `5`. The projected circle row is `5` because `23` is odd. Folding that
 pair produces line row `2`, which lies in the next opened pair `2,3`.
 Exactly four raw rows project to source row `5`: `17,19,21,23`. This is the
 `2^i` preimage count proved for every valid height and row.
+For any fixed set of bad source rows, the module counts its raw preimages
+exactly and proves that a sparse pair that checks both rows misses the set
+on no more raw positions than the projected single-row event. Under
+independent uniform raw draws, the all-missed sequence count is bounded by
+`((2^(k-i) - |bad|)·2^i)^s` out of `(2^k)^s` sequences. Native M31 word
+reduction, transcript independence, and authenticated checking of both
+rows remain separate obligations.
 
 [`ConservativeEnvelope.lean`](ConservativeEnvelope.lean) proves an arithmetic
 limit of one **published upper-bound expression**: in Circle STARKs Remark 26,
