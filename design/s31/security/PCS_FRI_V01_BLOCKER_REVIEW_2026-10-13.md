@@ -89,6 +89,21 @@ link every selected native verifier path to the checked channel. It also does
 not establish independent random-oracle words, BLAKE2s security, grinding
 soundness or a Fiat–Shamir reduction. P07 remains open.
 
+The [challenge custody audit](../../../scripts/s31_formal_lib/pcs_fri_challenge_custody.py)
+pins a further local P07 join: the verifier's DEEP draw after sampled-value
+absorption is passed to the native quotient calculation and copied into the
+successful proof capture; the same proof nonce must pass the native PoW check,
+be absorbed before query sampling, and appear in that capture. For each FRI
+layer, the committed root precedes the stored folding-alpha draw, and the
+stored alpha is passed to both native folding and the successful layer
+capture. The final layer check precedes capture publication. Mutation tests
+reject altered DEEP inputs, nonce checks, alpha capture/fold arguments, and
+omitted terminal checking. This checks pinned source structure only: it is
+not an operational semantics proof, a proof of challenge independence, or a
+cryptographic analysis of BLAKE2s or grinding. In particular, a later change
+to the native call graph, channel implementation, or recursive consumer
+requires fresh review even if this local audit passes. P07 stays open.
+
 The `N=512`, blowup-2, `m=3`, `s=70` example in the preflight is illustrative.
 Its Johnson query term alone fails a 96-bit target, and the preflight finds
 348 ungrinded queries for that term alone. This is **not** a recommended

@@ -12,8 +12,9 @@
     "formal/s31/S31/Gadgets/PcsFri/MerkleOpening.lean": "557c111bad6d84b5739f95cae48b4992954fa1cee83bec0625aafb19348d2076",
     "formal/s31/S31/Gadgets/PcsFri/MultiproofDecoder.lean": "084a9db05e81ad972be83afbd4c1c64b84424f063ff41d68ddb8f6d413044f44",
     "formal/s31/S31/Gadgets/PcsFri/QueryAndTranscript.lean": "e82190409053019d327e738a450c2a1b8676beecc92770f4a3e7563ad445cfa8",
-    "formal/s31/proof-inventory.json": "6b0f6b36341539aa9305b8b043ac72cb9c3d846b0ae8997d34c28ed6232ebba6",
+    "formal/s31/proof-inventory.json": "a03316cb9b60a475eb87244e3f1eb10805746dd2eaa1422e155fa418515f29dc",
     "scripts/release/pcs_fri_proven_preflight.py": "485573b3a14719e1d3d8b11e4a481c9e70965c3da9d6852d15eab14c8f5f79f9",
+    "scripts/s31_formal_lib/pcs_fri_challenge_custody.py": "fca83b9d5f335add7f5dafeffd30c32922d14c94a441350940af319f3d070634",
     "scripts/s31_formal_lib/pcs_fri_leaf_encoding.py": "125e0532c2e874dce00ff681a648d37cb00d21e4a577ab1511aa96e557257de4",
     "scripts/s31_formal_lib/pcs_fri_order.py": "2e0168a0d1d21b5c58854823f9d92a9740b6a5c775e427d35d90f5f3d43cf4be",
     "scripts/s31_formal_lib/pcs_fri_projection.py": "4300221fe2bea69a229d037c37d80b5829ab7ed9edcbe88f011530ff51ed2187",
@@ -101,10 +102,11 @@
     {
       "gap_kind": "unproven_crypto_and_budget_reduction",
       "id": "P07_FIAT_SHAMIR_AND_POW_BUDGET",
-      "missing_discharge": "ROM/BCS reduction for native Blake2s, nonce selection, PoW accounting, transcript domain separation and a full selected-channel control-flow proof; the pinned channel now fails closed before u32 counter reuse",
+      "missing_discharge": "ROM/BCS reduction for native Blake2s, nonce selection, PoW accounting, transcript domain separation and a full selected-channel control-flow proof; pinned source checks bind captured DEEP/FRI challenges and verified nonce to selected uses, and the channel fails closed before u32 counter reuse",
       "partial_evidence": [
         "formal/s31/S31/Gadgets/PcsFri/QueryAndTranscript.lean",
         "scripts/s31_formal_lib/pcs_fri_order.py",
+        "scripts/s31_formal_lib/pcs_fri_challenge_custody.py",
         "scripts/s31_formal_lib/pcs_fri_query_epoch.py"
       ],
       "published_anchor": "https://eprint.iacr.org/2026/532.pdf",
