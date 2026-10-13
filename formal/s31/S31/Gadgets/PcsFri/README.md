@@ -50,6 +50,15 @@ arithmetic refinement and the guarded sampler correspondence are still open.
 The full [CAS05 theorem ledger](../../../../../design/s31/security/PCS_FRI_CAS05_THEOREM_BRIDGE.md)
 lists the remaining theorem joins.
 
+[`NativeTowerFormulas.lean`](NativeTowerFormulas.lean) checks the CM31
+Karatsuba multiplication, CM31 square, multiplication by `2+i`, and QM31
+square, including its base-field fast path, against schoolbook formulas over a
+commutative ring. It also exposes
+the four base-field equations entailed by the native-shaped circle test.
+The formal gate pins the corresponding Zig function bodies and OOD rational
+map call site. These checks still assume that native M31 operations implement
+field arithmetic and do not constitute a Zig operational-semantics proof.
+
 [`ShortTerminalGeometry.lean`](ShortTerminalGeometry.lean) checks the exact
 shape of the experimental cascade against S-two's variable-round Protocol 3.
 With largest domain `2^k`, blowup `2^β`, and `H` folds, the published indices
