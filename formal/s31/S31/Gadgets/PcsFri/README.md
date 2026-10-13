@@ -83,6 +83,15 @@ denominator at every base-circle row. This does not prove the compiled Zig
 operations implement the modeled field, nor that Fiat–Shamir samples seeds
 uniformly from it.
 
+[`NativeTowerInverse.lean`](NativeTowerInverse.lean) proves the checked
+quadratic inverse formula for both modeled native towers. A nonzero CM31
+coefficient pair has denominator `a²+b² ≠ 0`; a nonzero QM31 pair over the
+modeled CM31 field has denominator `c₀²−(2+i)c₁² ≠ 0`. Multiplying each
+modeled inverse by its input gives one. The formal source guard now pins the
+corresponding Zig zero checks, denominators, `2+i` multiplication and returned
+conjugate coefficients. Native M31 execution and compiled inverse behavior
+are still separate refinements.
+
 [`ShortTerminalGeometry.lean`](ShortTerminalGeometry.lean) checks the exact
 shape of the experimental cascade against S-two's variable-round Protocol 3.
 With largest domain `2^k`, blowup `2^β`, and `H` folds, the published indices
