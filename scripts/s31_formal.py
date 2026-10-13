@@ -43,6 +43,7 @@ from scripts.s31_formal_lib.pcs_fri_raw_refinement import check_pcs_fri_raw_refi
 from scripts.s31_formal_lib.pcs_fri_operational_admission import check_pcs_fri_operational_admission
 from scripts.s31_formal_lib.pcs_fri_deep_custody import check_pcs_fri_deep_custody
 from scripts.s31_formal_lib.pcs_fri_quotient_algebra import check_pcs_fri_quotient_algebra
+from scripts.s31_formal_lib.pcs_fri_native_tower import check_pcs_fri_native_tower
 from scripts.s31_formal_lib.sha_release_capture import check_sha_release_capture
 from scripts.riscv_refinement import _skip_lean_string, _strip_lean_comments
 from scripts.riscv_refinement_lib.model import RefinementError
@@ -387,6 +388,7 @@ BINDINGS = [
     "scripts/s31_formal_lib/pcs_fri_operational_admission.py",
     "scripts/s31_formal_lib/pcs_fri_deep_custody.py",
     "scripts/s31_formal_lib/pcs_fri_quotient_algebra.py",
+    "scripts/s31_formal_lib/pcs_fri_native_tower.py",
     "scripts/release/pcs_fri_degree_correction.py",
     "scripts/tests/test_pcs_fri_projection.py",
     "scripts/tests/test_pcs_fri_prover_column_origin.py",
@@ -402,6 +404,7 @@ BINDINGS = [
     "scripts/tests/test_pcs_fri_operational_admission.py",
     "scripts/tests/test_pcs_fri_deep_custody.py",
     "scripts/tests/test_pcs_fri_quotient_algebra.py",
+    "scripts/tests/test_pcs_fri_native_tower.py",
     "scripts/tests/test_pcs_fri_degree_correction.py",
     "formal/s31/tests/pcs_fri_fold_native.zig",
     "formal/s31/tests/pcs_fri_layer_native.zig",
@@ -903,6 +906,7 @@ def main() -> None:
     check_pcs_fri_operational_admission(ROOT)
     check_pcs_fri_deep_custody(ROOT)
     check_pcs_fri_quotient_algebra(ROOT)
+    check_pcs_fri_native_tower(ROOT)
     check_sha_release_capture(ROOT)
     print("S31 protocol order: main and interaction commitments precede their challenge draws")
     print("S31 PCS/FRI order: roots, challenges, PoW, raw queries and normalization bound")
@@ -921,6 +925,7 @@ def main() -> None:
     print("S31 FRI capture admission: raw transitions and terminal check bound")
     print("S31 raw DEEP custody: captured-row recomputation before FRI replay bound")
     print("S31 DEEP quotient algebra: weighted line, denominator and row sum source bound")
+    print("S31 CM31/QM31 tower: square, parameter and circle formulas source bound")
     failures = []
     for path, expected in generated().items():
         if args.write:
