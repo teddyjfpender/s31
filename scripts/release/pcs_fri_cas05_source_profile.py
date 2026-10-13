@@ -19,11 +19,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 PRODUCTION_GITLINK = "59e1f115250b8af01712b9bf3d71616e53094964"
-DRAFT_COMMIT = "0b494c95d5e1ef79f8f1f8388cd1b6c061748c51"
+DRAFT_COMMIT = "decc70d870b65818f5279ed29c647aaad953e340"
 DRAFT_REF = "origin/codex/paired-degree-protocol-20261013"
 Q = 2**31 - 1
 SOURCE_SHA256 = {
-    "src/core/pcs/paired_sparse_cascade_experimental.zig": "04fdaffe629a5731f4f10a8dde634595d4f3494295bdfa3bca7f11028abc201d",
+    "src/core/pcs/paired_sparse_cascade_experimental.zig": "6b0dba9fb57cdc4690d51326b338760c488c33519354d9ef758a751a201b5487",
     "src/core/pcs/paired_sparse_cascade_wire.zig": "22fecbb35c2a075a7f26786b0b44cfc3523c109ec31d3928a442cfc6c16b8542",
     "src/core/pcs/transposed_merkle_sparse.zig": "6fbb6bd496a9d2916cdaa141c0c44f05fc26ed45ba74e27fedb017b20ee661a9",
     "src/core/pcs/transposed_merkle_cascade.zig": "7bc0793234e902ae37080e2c8b90d4df87120fd3a87c441d669c928fcb85bb92",
@@ -73,6 +73,9 @@ def classify_sources(sources: dict[str, bytes]) -> dict:
         "var opened = try xdm.verifyAndCollect(",
         "var answers = try paired.fromVerifiedOpenings(",
         "try verifyFolds(allocator, proof, raw, answers.values, alphas);",
+        "try requireCanonicalQM31(proof.sampled_point.x);",
+        "for (claims) |claim| try requireCanonicalQM31(claim);",
+        "for (column) |coordinate| try requireCanonicalM31(coordinate);",
     ), "CAS05 verifier")
     _contains(decoded["src/core/pcs/paired_sparse_cascade_wire.zig"], (
         'pub const MAGIC = "S31CAS05";',
