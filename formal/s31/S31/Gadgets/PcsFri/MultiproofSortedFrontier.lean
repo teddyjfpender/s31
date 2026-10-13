@@ -204,6 +204,45 @@ theorem decodeNativeShape_eq_checked (parentHash : H × H → H) :
           simp [decodeNativeShape, decodeLayers, sorted, built,
             ih parents remaining parentsSorted]
 
+/-- The unguarded one-sort decoder consumes precisely the witness hashes
+recorded by its chunk trace, in layer and frontier order. This transfers the
+all-height accounting theorem through the sorted-frontier correspondence. -/
+theorem decodeNativeShape_witness_accounting (parentHash : H × H → H)
+    (depth : Nat) (nodes : List (Node H)) (witnesses : List H)
+    (layers : List (List (Chunk H))) (finalNodes : List (Node H))
+    (remaining : List H)
+    (sorted : List.Pairwise (fun a b => a.index < b.index) nodes)
+    (accepted : decodeNativeShape parentHash depth nodes witnesses =
+      some (layers, finalNodes, remaining)) :
+    layers.flatMap (fun layer => layer.flatMap chunkWitness) ++ remaining =
+      witnesses := by
+  have checked : decodeLayers parentHash depth nodes witnesses =
+      some (layers, finalNodes, remaining) := by
+    rw [← decodeNativeShape_eq_checked parentHash depth nodes witnesses sorted]
+    exact accepted
+  exact decodeLayers_witness_accounting parentHash depth nodes witnesses layers
+    finalNodes remaining checked
+
+/-- Every member of the initial frontier has a full modeled path through the
+one-sort decoder. The path-copy behavior of native Zig remains a separate
+implementation obligation. -/
+theorem decodeNativeShape_follows [DecidableEq H] (parentHash : H × H → H)
+    (depth : Nat) (nodes : List (Node H)) (witnesses : List H)
+    (layers : List (List (Chunk H))) (finalNodes : List (Node H))
+    (remaining : List H)
+    (sorted : List.Pairwise (fun a b => a.index < b.index) nodes)
+    (accepted : decodeNativeShape parentHash depth nodes witnesses =
+      some (layers, finalNodes, remaining)) (node : Node H)
+    (member : node ∈ nodes) :
+    ∃ path target, target ∈ finalNodes ∧
+      follow parentHash node layers = some (path, target) := by
+  have checked : decodeLayers parentHash depth nodes witnesses =
+      some (layers, finalNodes, remaining) := by
+    rw [← decodeNativeShape_eq_checked parentHash depth nodes witnesses sorted]
+    exact accepted
+  exact decodeLayers_follows parentHash depth nodes witnesses layers finalNodes
+    remaining checked node member
+
 /-- On the model of the native one-sort loop, an accepted single-root decode
 gives every original query a checked path of the declared height. -/
 theorem decodeNativeShape_single_root [DecidableEq H]
