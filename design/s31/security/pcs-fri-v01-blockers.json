@@ -70,7 +70,7 @@
     "formal/s31/S31/Gadgets/PcsFri/MultiproofSortedFrontier.lean": "1d3df594753d792059c83b814e4f8fc54fb92d09bd48b6c099b4b77a8445a5a1",
     "formal/s31/S31/Gadgets/PcsFri/QueryAndTranscript.lean": "e82190409053019d327e738a450c2a1b8676beecc92770f4a3e7563ad445cfa8",
     "formal/s31/S31/Gadgets/PcsFri/StwoUDRFeasibility.lean": "800b21db063cd399ce6a8ffa888b00cdd989a1676cc569ebf9e36d4b4d3736ae",
-    "formal/s31/proof-inventory.json": "2e62e1d784e3d8c147188d939cbd04e032e1597daf8ff5ac6e6edebdf95381cf",
+    "formal/s31/proof-inventory.json": "51abda3315ed5490b42eeaa81a4942607e9e6fe2aef285c1f6b05beed7bde7e4",
     "formal/s31/tests/lib/pcs_merkle_collision_reduction.zig": "5c55608feb286cdd26737c698f0249fa7adc5888fe2719666735580675e70d84",
     "formal/s31/tests/pcs_fri_bcs_transcript.json": "b1814cfd5920cbf21f73713e99acbe5736bc78afa6b9dd8a599eb50e44f0160f",
     "formal/s31/tests/pcs_fri_bcs_transcript_native.zig": "536220985f8284a4c14bdafd22b3b235fb26104a09525621bdc2e2fd787392d4",
