@@ -28,10 +28,10 @@ below `q`, and, for every nonempty table, `1−θ > (1/B)(1+2/N_t)`.
 | Published round | Unique-decoding upper-bound expression | Ledger inputs |
 | --- | --- | --- |
 | Flat AIR logUp | `r(k_in+k_out+Σ_t (r_t+s_t)N_t)/q⁴` | Maximum message dimension `r`, public message counts, each table's use and yield counts and height |
-| Flat AIR composition | `Σ_t(k_t+r_t+s_t)/q⁴` | `k_t` is the number of AIR constraints in table `t`, not its column count |
-| Flat AIR OOD | `[1+(B+2)N]/|C(F) \ C(𝔽_q)|` | Circle-point cardinality and largest table |
-| Multi-domain FRI batching | `(M−1)NB/q⁴` | Maximum domain batch width `M` |
-| Each FRI fold `j` | `3|S_j|/q⁴` | Explicit candidate post-projection domains `S_j` |
+| Flat AIR composition | `max(2+max_t(k_t+r_t+s_t), Σ_t(k_t+r_t+s_t))/q⁴` | Conservative envelope of the conflicting Theorem 3 and Appendix Lemma 6/Table 4 displays; `k_t` counts AIR constraints |
+| Flat AIR OOD | `[1+(B+2)N]/|C(F) \ C(𝔽_q)|` | Appendix Lemma 7; Theorem 3 displays `1+deg(A)N`, which is smaller under `deg(A)≤B+1` |
+| Multi-domain FRI batching | `(M−1)NB²/q⁴` | Full Protocol 4 ensemble includes the composition quotient on `D₀=NB²`; `M` is the maximum batch width |
+| Each FRI fold `j` | `3|S_j|/q⁴` | Full-ensemble projected domains `S_j`: `NB²/2, NB²/4, …, B` |
 | Final FRI query | `(1−θ)^s` | `s` independent paper-protocol query draws |
 | BCS/ROM composition | `(T+R) max_i ε_i + 3(T²+1)/2^λ` | Hash-query budget `T`, protocol rounds `R`, candidate `λ=256` |
 
@@ -51,6 +51,21 @@ assigns **zero grinding credit** because no corresponding native reduction is
 proved. The paper's degree-corrected batch evaluation uses both `f` and
 `(f−v)/v_Q`; a quotient-only ensemble would require a different argument.
 
+Theorem 3 displays composition numerator `2+max_t(k_t+r_t+s_t)`, while
+Appendix A.4 Lemma 6 and Table 4 display `Σ_t(k_t+r_t+s_t)`. The ledger
+exposes both exact rational expressions and uses their maximum; neither is
+silently discarded. Theorem 3 itself states the Johnson interval, while the
+Appendix's unique-decoding remark supplies list size one for this scenario.
+Theorem 3's OOD numerator is `1+deg(A)N`; Appendix Lemma 7's
+`1+(B+2)N` dominates it under the setup degree cap. Both OOD expressions
+are exposed, and the Appendix bound is used.
+
+Protocol 1 commits the overall composition quotient `q` on a domain of
+size `NB²`; Protocol 4 includes `q` in its batch evaluation ensemble. Thus
+the full-ensemble FRI starts at `D₀=NB²`, with `log₂(NB)` post-projection
+domains down to `B`. A computation starting at `NB` omits that committed
+oracle and understates the batching and first-fold terms.
+
 The script's `scenario_arithmetic` accepts a fully explicit *hypothetical*
 paper-protocol scenario. It checks the listed parameter preconditions and
 calculates every listed bound as a reduced numerator/denominator pair. It
@@ -67,7 +82,7 @@ field can assert native correspondence.
 
 Take one idealized table of height `N=2²⁰`, `B=2`, one AIR constraint, one
 use and one yield per row, dimension `r=1`, batch width `M=2`, single folds
-from size `2²⁰` to `2`, and `R=25`. Choose `θ=16383/65536`, just inside
+from size `2²¹` to `2`, and `R=26`. Choose `θ=16383/65536`, just inside
 `δ/2=1/4`, and `T=2³²`. At `s=232` the exact BCS expression is about
 `0.822513 × 2⁻⁶⁴`, so `ε(T)/T` is about
 `0.822513 × 2⁻⁹⁶`; at `s=231` both thresholds fail. This is a conditional
@@ -76,7 +91,7 @@ example, with 232 raw queries and an idealized protocol. It is neither the
 native 70-query Gate nor a released 96-bit proof.
 
 At the same geometry, `T=1` and `s=243` make the hypothetical expression
-about `0.903414 × 2⁻⁹⁶`; `s=242` fails. `T=1` is not a useful deployment
+about `0.938161 × 2⁻⁹⁶`; `s=242` fails. `T=1` is not a useful deployment
 adversary budget. Both examples are executable in the focused test file
 [`test_pcs_fri_stwo_udr.py`](../../../scripts/tests/test_pcs_fri_stwo_udr.py).
 
@@ -90,20 +105,19 @@ can increase it. The query count is the least integer at the excluded
 `θ=δ/2` boundary for the query term alone. Strict `θ<δ/2` can need more
 queries; these numbers do not rescue a failed nonquery ratio.
 
-| `B` | `|D₀|=NB` | Minimum `R` | Nonquery ratio: absolute 64 / paper work-factor 96 | Query-only minimum: absolute 64 / paper work-factor 96 | Nonquery ratio: absolute 96 | Query-only minimum: absolute 96 |
+| `B` | `|D₀|=NB²` | Minimum `R` | Approx. nonquery ratio: absolute 64 / paper work-factor 96 | Query-only minimum: absolute 64 / paper work-factor 96 | Approx. nonquery ratio: absolute 96 | Query-only minimum: absolute 96 |
 | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 2 | 2,097,152 | 25 | 0.015625004 | 232 | 67,108,881 | 309 |
-| 4 | 4,194,304 | 26 | 0.023437504 | 142 | 100,663,313 | 189 |
-| 8 | 8,388,608 | 27 | 0.046875001 | 116 | 201,326,594 | 155 |
-| 16 | 16,777,216 | 28 | 0.093750001 | 106 | 402,653,188 | 141 |
-| 32 | 33,554,432 | 29 | 0.187500002 | 101 | 805,306,375 | 134 |
+| 2 | 4,194,304 | 26 | 0.023437501 | 232 | 100,663,297 | 309 |
+| 4 | 16,777,216 | 27 | 0.093750001 | 142 | 402,653,188 | 189 |
+| 8 | 67,108,864 | 28 | 0.375000004 | 116 | 1,610,612,750 | 155 |
+| 16 | 268,435,456 | 29 | 1.500000013 | 106 | 6,442,451,000 | 141 |
+| 32 | 1,073,741,824 | 30 | 6.000000054 | 101 | 25,769,804,004 | 134 |
 
-All paper work-factor 96-bit nonquery ratios are below one, although the
-complete native proof and cost remain unknown. All **absolute** 96-bit
+The paper work-factor 96-bit nonquery ratios fit for `B=2,4,8` and fail
+for `B=16,32`; the complete native proof and cost remain unknown. All **absolute** 96-bit
 nonquery ratios exceed one by many orders at this `N,T`. The absolute 80-bit
-nonquery ratios also exceed one: approximately
-`1024, 1536, 3072, 6144, 12288` as `B` grows. At `T=1`, 96-bit
-absolute nonquery arithmetic fits only `B=2` or `4` for this height; higher blowups
+nonquery ratios also exceed one at every `B`. At `T=1`, 96-bit
+absolute nonquery arithmetic fits only `B=2` for this height; higher blowups
 increase the first-fold bound enough to fail. This is an unusually strong
 illustration that **more blowup and more queries alone do not solve the
 published absolute-error field-size terms**.

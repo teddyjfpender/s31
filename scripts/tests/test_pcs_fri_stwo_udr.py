@@ -21,7 +21,7 @@ def one_table_scenario(t: int = 1 << 32, queries: int = 232) -> dict:
         "grinding_bits": 0,
         "N": n, "B": 2,
         "theta_numerator": 16383, "theta_denominator": 65536,
-        "queries": queries, "T": t, "R": 25, "lambda_bits": 256,
+        "queries": queries, "T": t, "R": 26, "lambda_bits": 256,
         "air_degree": 3, "max_message_dimension": 1,
         "public_input_messages": 0, "public_output_messages": 0,
         "fri_batch_max_width": 2,
@@ -32,16 +32,27 @@ def one_table_scenario(t: int = 1 << 32, queries: int = 232) -> dict:
 
 
 class StwoUDRTests(unittest.TestCase):
-    def test_exact_all_rounds_and_64_bit_hypothetical(self) -> None:
+    def test_full_composition_domain_and_both_published_formulas(self) -> None:
         result = scenario_arithmetic(one_table_scenario(), 64)
         errors = result["published_round_error_bounds"]
+        alternatives = result["published_formula_discrepancy_bounds"]
         n = 1 << 20
         self.assertEqual(errors["air_logup"], f"{2 * n}/{F}")
-        self.assertEqual(errors["air_composition"], f"3/{F}")
+        self.assertEqual(alternatives["air_composition_theorem3_displayed"], f"5/{F}")
+        self.assertEqual(alternatives["air_composition_appendix_lemma6_table4"], f"3/{F}")
+        self.assertEqual(errors["air_composition"], f"5/{F}")
+        self.assertEqual(alternatives["air_ood_theorem3_displayed"],
+                         f"{1 + 3 * n}/{PAPER_OOD_POINTS}")
+        self.assertEqual(alternatives["air_ood_appendix_lemma7"],
+                         f"{1 + 4 * n}/{PAPER_OOD_POINTS}")
         self.assertEqual(errors["air_ood"], f"{1 + 4 * n}/{PAPER_OOD_POINTS}")
-        self.assertEqual(errors["fri_cross_domain_batching"], f"{2 * n}/{F}")
-        self.assertEqual(errors["fri_fold_0"], f"{3 * n}/{F}")
-        self.assertEqual(len([name for name in errors if name.startswith("fri_fold_")]), 20)
+        self.assertEqual(result["paper_inputs"]["D0_with_composition_quotient"], 4 * n)
+        self.assertEqual(result["paper_inputs"]["fri_fold_domain_sizes"][0], 2 * n)
+        self.assertEqual(result["paper_inputs"]["fri_fold_domain_sizes"][-1], 2)
+        self.assertEqual(result["paper_inputs"]["R"], 26)
+        self.assertEqual(errors["fri_cross_domain_batching"], f"{4 * n}/{F}")
+        self.assertEqual(errors["fri_fold_0"], f"{6 * n}/{F}")
+        self.assertEqual(len([name for name in errors if name.startswith("fri_fold_")]), 21)
         self.assertEqual(Fraction(errors["fri_query"]), Fraction(49153, 65536) ** 232)
         self.assertTrue(result["conditional_absolute_error_meets_target"])
         self.assertTrue(result["other_rounds_fit_absolute_target"])
@@ -61,6 +72,16 @@ class StwoUDRTests(unittest.TestCase):
         self.assertFalse(scenario_arithmetic(one_table_scenario(queries=231), 96)[
             "conditional_paper_work_factor_meets_target"])
 
+        two_tables = one_table_scenario()
+        two_tables["tables"].append({"rows": n // 2, "air_constraints": 1,
+                                     "uses": 1, "yields": 1, "max_use_multiplicity": 1})
+        two = scenario_arithmetic(two_tables, 64)
+        self.assertEqual(two["published_formula_discrepancy_bounds"][
+            "air_composition_theorem3_displayed"], f"5/{F}")
+        self.assertEqual(two["published_formula_discrepancy_bounds"][
+            "air_composition_appendix_lemma6_table4"], f"6/{F}")
+        self.assertEqual(two["published_round_error_bounds"]["air_composition"], f"6/{F}")
+
     def test_96_bit_tradeoff_and_universal_qm31_obstruction(self) -> None:
         row = gate_udr_ledger(reviewed_shape(), 96, 1 << 32)
         self.assertEqual(row["native_source_observations"]["configured_raw_queries"], 70)
@@ -78,9 +99,11 @@ class StwoUDRTests(unittest.TestCase):
         self.assertLess(Fraction(1, F), Fraction(1, 1 << 96))
         small_budget = necessary_tradeoffs(1 << 20, 96, 1)
         self.assertEqual([r["hypothetical_B"] for r in small_budget], [2, 4, 8, 16, 32])
+        self.assertEqual([r["candidate_D0"] for r in small_budget],
+                         [1 << 22, 1 << 24, 1 << 26, 1 << 28, 1 << 30])
         self.assertEqual([r["nonquery_envelope_exceeds_absolute_target"]
                           for r in small_budget],
-                         [False, False, True, True, True])
+                         [False, True, True, True, True])
         hypothetical = one_table_scenario(t=1, queries=243)
         self.assertTrue(scenario_arithmetic(hypothetical, 96)[
             "conditional_absolute_error_meets_target"])
@@ -93,7 +116,7 @@ class StwoUDRTests(unittest.TestCase):
             lambda x: x.__setitem__("paper_protocol_variant", "native"),
             lambda x: x.__setitem__("grinding_bits", 26),
             lambda x: x.__setitem__("theta_numerator", 1 << 14),
-            lambda x: x.__setitem__("R", 24),
+            lambda x: x.__setitem__("R", 25),
             lambda x: x.__setitem__("air_degree", 4),
             lambda x: x["tables"][0].__setitem__("max_use_multiplicity", 2**31 - 1),
             lambda x: x["tables"][0].__setitem__("air_constraints", 0),

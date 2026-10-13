@@ -81,10 +81,10 @@ def udr_boundary_minimum_draws(blowup: int, multiplier: int,
 
 
 def circle_fold_sizes(n: int, blowup: int) -> list[int]:
-    """Hypothetical Protocol-3 single-fold cascade ending at line domain 2."""
-    size = n * blowup // 2
+    """Protocol-4 full ensemble: D0=N*B², then line domains through B."""
+    size = n * blowup * blowup // 2
     values = []
-    while size >= 2:
+    while size >= blowup:
         values.append(size)
         size //= 2
     return values
@@ -155,17 +155,29 @@ def scenario_arithmetic(scenario: dict, target_bits: int = 96) -> dict:
     if rounds < min_rounds:
         raise ValueError("R undercounts AIR, FRI batching, folds or query phase")
 
-    # Appendix A.4 Lemmas 5–7 with list size ell=1 by Remark 8. Lemma 6
-    # and Table 4 give the sum across components; Lemma 7 uses (B+2)N.
+    # Appendix A.4 Lemmas 5–7 with list size ell=1 by Remark 8. Theorem 3
+    # displays a different composition numerator from Lemma 6 and Table 4;
+    # keep both and use their maximum. Lemma 7's OOD numerator also exceeds
+    # Theorem 3's displayed 1+deg(A)*N under the paper's deg(A)<=B+1 cap.
     logup_numerator = max_message_dim * (
         inputs + outputs + sum((uses + yields) * row for row, _, uses, yields, _ in parsed))
-    composition_numerator = sum(constraints + uses + yields
-                                for _, constraints, uses, yields, _ in parsed)
+    composition_appendix_numerator = sum(constraints + uses + yields
+                                         for _, constraints, uses, yields, _ in parsed)
+    composition_theorem3_numerator = 2 + max(constraints + uses + yields
+                                             for _, constraints, uses, yields, _ in parsed)
+    composition_numerator = max(composition_appendix_numerator,
+                                composition_theorem3_numerator)
+    alternative_bounds = {
+        "air_composition_theorem3_displayed": Fraction(composition_theorem3_numerator, F),
+        "air_composition_appendix_lemma6_table4": Fraction(composition_appendix_numerator, F),
+        "air_ood_theorem3_displayed": Fraction(1 + degree * n, PAPER_OOD_POINTS),
+        "air_ood_appendix_lemma7": Fraction(1 + (b + 2) * n, PAPER_OOD_POINTS),
+    }
     errors = {
         "air_logup": Fraction(logup_numerator, F),
         "air_composition": Fraction(composition_numerator, F),
         "air_ood": Fraction(1 + (b + 2) * n, PAPER_OOD_POINTS),
-        "fri_cross_domain_batching": Fraction((width - 1) * n * b, F),
+        "fri_cross_domain_batching": Fraction((width - 1) * n * b * b, F),
         "fri_query": alpha**s,
     }
     fold_errors = [Fraction(3 * size, F) for size in folds]
@@ -192,7 +204,8 @@ def scenario_arithmetic(scenario: dict, target_bits: int = 96) -> dict:
         "target_bits": target_bits,
         "conditional_absolute_error_meets_target": bcs <= target,
         "conditional_paper_work_factor_meets_target": work_factor <= target,
-        "paper_inputs": {"N": n, "B": b, "rho": exact(rho), "theta": exact(theta),
+        "paper_inputs": {"N": n, "B": b, "D0_with_composition_quotient": n * b * b,
+                         "rho": exact(rho), "theta": exact(theta),
                          "alpha": exact(alpha), "queries": s, "T": t, "R": rounds,
                          "lambda_bits": hash_bits, "air_degree": degree,
                          "paper_protocol_variant": scenario["paper_protocol_variant"],
@@ -206,6 +219,13 @@ def scenario_arithmetic(scenario: dict, target_bits: int = 96) -> dict:
                                      "max_use_multiplicity": multiplicity}
                                     for row, constraints, uses, yields, multiplicity in parsed]},
         "published_round_error_bounds": {key: exact(value) for key, value in errors.items()},
+        "published_formula_discrepancy_bounds": {
+            key: exact(value) for key, value in alternative_bounds.items()},
+        "conservative_formula_selection": {
+            "air_composition": "maximum of Theorem 3 display and Appendix Lemma 6/Table 4",
+            "air_ood": "Appendix Lemma 7; dominates Theorem 3 display under deg(A)<=B+1",
+            "fri_batching_and_folds": "full Protocol 4 ensemble includes q at D0=N*B^2",
+        },
         "largest_round_bound": exact(max_error),
         "nonquery_largest_round_bound": exact(nonquery_max),
         "BCS_collision_term": exact(collision),
@@ -246,7 +266,7 @@ def necessary_tradeoffs(n: int, target_bits: int, t: int,
         multiplier = t + r_min
         collision = Fraction(3 * (t * t + 1), 1 << lambda_bits)
         ood = Fraction(1 + (b + 2) * n, PAPER_OOD_POINTS)
-        first_fold = Fraction(3 * n * b // 2, F)
+        first_fold = Fraction(3 * n * b * b // 2, F)
         floor = multiplier * max(ood, first_fold) + collision
         absolute_query_only = (udr_boundary_minimum_draws(b, multiplier, collision, target)
                                if collision < target else None)
@@ -254,7 +274,7 @@ def necessary_tradeoffs(n: int, target_bits: int, t: int,
                            if collision < t * target else None)
         out.append({
             "hypothetical_B": b,
-            "candidate_D0": n * b,
+            "candidate_D0": n * b * b,
             "minimal_paper_rounds_R": r_min,
             "OOD_published_bound": exact(ood),
             "first_FRI_fold_published_bound": exact(first_fold),
