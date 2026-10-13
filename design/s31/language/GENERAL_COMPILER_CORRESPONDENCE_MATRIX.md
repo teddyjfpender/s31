@@ -79,7 +79,11 @@ to show that accepted normalized programs preserve source assertion effects.
 The public-output theorem also proves that an accepted evaluator binds its
 declared M31 output to the checked effectful source value. The exact effectful
 source-byte/relation certificate, native AIR row authentication and public
-pins, and PCS/FRI still require separate joins.
+pins, and PCS/FRI still require separate joins. Honest completeness holds
+for the same fragment when source assertions hold, the typed public output
+matches the source result, and public ABI word encoding succeeds; the
+normalized evaluator then accepts without assuming an AIR witness or
+assertion acceptance.
 
 ### Narrow source-to-native row admission
 

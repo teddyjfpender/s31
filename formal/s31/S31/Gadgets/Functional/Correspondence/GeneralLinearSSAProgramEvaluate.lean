@@ -382,6 +382,34 @@ theorem public_output_claim_of_environment {n : Nat}
       rw [← heq] at hassigned
       simpa [hshape] using hassigned
 
+/-- The converse evaluator step: once the environment computes the declared
+output, a matching typed public assignment and successful ABI word encoding
+make the actual `Program.evaluate` accept those words. -/
+theorem program_evaluate_of_environment_and_public_claim {n : Nat}
+    (program : S31.Program) (assignment : S31.Assignment)
+    (finalEnv : S31.Env) (name : String) (claimed : Lanes n)
+    (words : List S31.M31)
+    (henv : program.environment assignment = .ok finalEnv)
+    (houtputs : program.outputs = [name])
+    (hlookup : S31.lookup finalEnv name = some (laneValue claimed))
+    (hassigned : S31.assigned assignment.publicOutputs name ⟨.m31, n⟩ =
+      .ok (laneValue claimed))
+    (hwords : program.claimedWords assignment = .ok words) :
+    program.evaluate assignment = .ok words := by
+  have hshape : (laneValue claimed).shape = ⟨.m31, n⟩ := by
+    simp [laneValue, S31.Value.shape]
+  have hself : (laneValue claimed == laneValue claimed) = true := by
+    have hwordsSelf :
+        (List.ofFn claimed == List.ofFn claimed) = true :=
+      (beq_iff_eq).mpr rfl
+    simpa [laneValue, BEq.beq, S31.instBEqValue.beq,
+      S31.instBEqKind.beq] using hwordsSelf
+  have hagree : program.outputsAgree assignment finalEnv = .ok () := by
+    simp [S31.Program.outputsAgree, houtputs, S31.outputsAgreeNames,
+      hlookup, hshape, hassigned, hself]
+  simp [S31.Program.evaluate, henv, hwords, hagree,
+    Bind.bind, Except.bind, Pure.pure, Except.pure]
+
 /-- An accepted real `Program.evaluate` must agree with the selected
 constrained AIR value once its exact named environment has been derived.
 There is no direct interpreter-vs-source output comparison premise. -/
