@@ -33,6 +33,7 @@ MAX_LETS = 32
 MAX_NODES = 16
 MAX_ASSERTIONS = 16
 MAX_RELATION_BYTES = 65_536
+MAX_CERTIFICATE_BYTES = 65_536
 
 
 class UnsupportedSourceRelationFragment(ValueError):
@@ -436,6 +437,8 @@ def make_source_relation_certificate(source_bytes: bytes,
 def check_source_relation_certificate(source_bytes: bytes, relation_bytes: bytes,
                                       certificate_bytes: bytes) -> dict[str, Any]:
     """Reject any certificate that differs from a fresh independent replay."""
+    if len(certificate_bytes) > MAX_CERTIFICATE_BYTES:
+        raise ValueError("source relation certificate exceeds byte bound")
     actual = parse_canonical_json(certificate_bytes, "source-relation-certificate.json")
     expected = make_source_relation_certificate(source_bytes, relation_bytes)
     if not _same_json_shape(actual, expected):
@@ -464,6 +467,8 @@ def verify_source_relation_artifact(package: Path, manifest: dict[str, Any]) -> 
         return
     if not listed or not present or path.is_symlink():
         raise ValueError("checked source requires a source relation certificate")
+    if path.stat().st_size > MAX_CERTIFICATE_BYTES:
+        raise ValueError("source relation certificate exceeds byte bound")
     data = path.read_bytes()
     if artifacts[path.name] != hashlib.sha256(data).hexdigest():
         raise ValueError("source relation certificate artifact hash differs")

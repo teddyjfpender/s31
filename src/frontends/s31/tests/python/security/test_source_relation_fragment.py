@@ -17,6 +17,7 @@ sys.path.insert(0, str(S31 / "python"))
 
 from package.source_relation_fragment import (CAPABILITY, CERTIFICATE_SCHEMA,
                                               LEAN_SEMANTIC_PROFILE,
+                                              MAX_CERTIFICATE_BYTES,
                                               UnsupportedSourceRelationFragment,
                                               check_package_source_relation,
                                               check_source_relation_certificate,
@@ -117,6 +118,15 @@ class SourceRelationFragmentTests(unittest.TestCase):
             artifact.write_bytes(encoded(certificate))
             manifest["artifacts"][artifact.name] = digest(artifact.read_bytes())
             verify_source_relation_artifact(package, manifest)
+            oversized = b" " * (MAX_CERTIFICATE_BYTES + 1)
+            artifact.write_bytes(oversized)
+            manifest["artifacts"][artifact.name] = digest(oversized)
+            with self.assertRaisesRegex(ValueError, "exceeds byte bound"):
+                verify_source_relation_artifact(package, manifest)
+            with self.assertRaisesRegex(ValueError, "exceeds byte bound"):
+                check_source_relation_certificate(source_bytes, relation_bytes, oversized)
+            artifact.write_bytes(encoded(certificate))
+            manifest["artifacts"][artifact.name] = digest(artifact.read_bytes())
             manifest["lowering"] = "gate"
             verify_source_relation_artifact(package, manifest)
             manifest["lowering"] = "direct-gate"
