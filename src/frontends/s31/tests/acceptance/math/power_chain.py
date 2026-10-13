@@ -16,8 +16,9 @@ import s31  # noqa: E402
 P = (1 << 31) - 1
 EXAMPLES = S31 / "examples/arithmetic/powers"
 EXPONENT = 65535**4
+FUSED_EXPONENT = (EXPONENT - 1) % (P - 1) + 1
 EXPECTED = {
-    "addition-chain": {"nodes": 76, "raw": 471, "padded": 512,
+    "addition-chain": {"nodes": 39, "raw": 397, "padded": 512,
                        "preprocessed_cells": 4096},
     "binary": {"nodes": 120, "raw": 559, "padded": 1024,
                "preprocessed_cells": 8192},
@@ -60,8 +61,9 @@ def run() -> dict:
                                ("binary", "pow65535_binary4.s31")):
             package = s31.build(EXAMPLES / filename, work / kind, "direct-gate")
             relation = json.loads((package / "source.s31.json").read_text())
-            if symbolic_exponent(relation) != EXPONENT:
-                raise AssertionError(f"{kind} does not compute x**{EXPONENT}")
+            expected_exponent = FUSED_EXPONENT if kind == "addition-chain" else EXPONENT
+            if symbolic_exponent(relation) != expected_exponent:
+                raise AssertionError(f"{kind} has the wrong symbolic exponent")
             cost = json.loads((package / "cost-report.json").read_text())
             expected = EXPECTED[kind]
             if (len(relation["nodes"]) != expected["nodes"] or
@@ -88,10 +90,42 @@ def run() -> dict:
                           "changed_claim_rejected": True,
                           "independent_oracle_passed": True,
                           "symbolic_exponent_checked": True})
-    return {"schema": "s31-power-chain-native-v1", "lanes": 8,
+        # A positive exponent divisible by p-1 must remain p-1 rather than
+        # becoming zero: zero to a positive power is zero, not one.
+        edge_source = work / "zero-residue.s31"
+        edge_source.write_text(
+            "use std@1;\n"
+            "circuit power_zero_residue(private x: [m31; 8]) -> public [m31; 8] {\n"
+            "    let first = std::math::pow<2147483646>(x);\n"
+            "    let result = std::math::pow<2>(first);\n"
+            "    result\n}\n")
+        edge_values = [0, 1, 2, 3, 7, P - 1, 1234567, 42]
+        edge_assignment = work / "zero-residue.valid.json"
+        s31.write_json(edge_assignment, {"public_inputs": {},
+                                         "private_inputs": {"x": edge_values},
+                                         "public_outputs": {"result": [0, *([1] * 7)]}})
+        edge_package = s31.build(edge_source, work / "zero-residue", "direct-gate")
+        edge_relation = json.loads((edge_package / "source.s31.json").read_text())
+        if (symbolic_exponent(edge_relation, name="power_zero_residue") != P - 1 or
+                len(edge_relation["nodes"]) != 37):
+            raise AssertionError("zero-residue power did not keep the positive exponent")
+        edge_trial = s31.trial(edge_package, edge_assignment, work / "zero-residue-trial")
+        if (edge_trial["native_verifier_accepted"] is not True or
+                not edge_trial["changed_public_statement_rejected"] or
+                edge_trial["independent_value_oracle"]["status"] != "passed"):
+            raise AssertionError("zero-residue native proof controls failed")
+    return {"schema": "s31-power-chain-native-v2", "lanes": 8,
             "stages": 4, "exponent_per_stage": 65535,
-            "saved_arithmetic_nodes": 44, "saved_raw_qm31_rows": 88,
-            "halved_padded_rows": True, "cases": cases}
+            "fused_exponent": FUSED_EXPONENT,
+            "saved_arithmetic_nodes": 81, "saved_raw_qm31_rows": 162,
+            "halved_padded_rows": True, "cases": cases,
+            "zero_residue": {"symbolic_exponent": P - 1, "nodes": 37,
+                             "zero_input_verified": True,
+                             "nonzero_input_verified": True,
+                             "native_verified": True,
+                             "changed_claim_rejected": True,
+                             "independent_oracle_passed": True,
+                             "proof_bytes": edge_trial["proof_bytes"]}}
 
 
 if __name__ == "__main__":

@@ -252,16 +252,24 @@ def validate_output(check: Check, stdout: str, stderr: str,
             raise ValueError("static enum conditional report failed proof or AIR controls")
     elif fmt == "power-native":
         cases = report.get("cases")
-        expected = {"addition-chain": (76, 471, 512, 4096),
+        edge = report.get("zero_residue")
+        expected = {"addition-chain": (39, 397, 512, 4096),
                     "binary": (120, 559, 1024, 8192)}
-        if (report.get("schema") != "s31-power-chain-native-v1" or
+        if (report.get("schema") != "s31-power-chain-native-v2" or
                 report.get("lanes") != 8 or report.get("stages") != 4 or
                 report.get("exponent_per_stage") != 65535 or
-                report.get("saved_arithmetic_nodes") != 44 or
-                report.get("saved_raw_qm31_rows") != 88 or
+                report.get("fused_exponent") != 2146172967 or
+                report.get("saved_arithmetic_nodes") != 81 or
+                report.get("saved_raw_qm31_rows") != 162 or
                 report.get("halved_padded_rows") is not True or
                 type(cases) is not list or len(cases) != 2 or
-                {case.get("kind") for case in cases if type(case) is dict} != set(expected)):
+                {case.get("kind") for case in cases if type(case) is dict} != set(expected) or
+                type(edge) is not dict or edge.get("symbolic_exponent") != 2147483646 or
+                edge.get("nodes") != 37 or
+                any(edge.get(key) is not True for key in
+                    ("zero_input_verified", "nonzero_input_verified", "native_verified",
+                     "changed_claim_rejected", "independent_oracle_passed")) or
+                type(edge.get("proof_bytes")) is not int or edge["proof_bytes"] <= 0):
             raise ValueError("power chain report has wrong scope or cost delta")
         for case in cases:
             if ((case.get("nodes"), case.get("raw_qm31_rows"),
@@ -276,15 +284,16 @@ def validate_output(check: Check, stdout: str, stderr: str,
                 raise ValueError("power chain report failed geometry or proof control")
     elif fmt == "factor-power-native":
         cases = report.get("cases")
-        expected = {"factor-chain": (84, 487, 512, 4096),
+        expected = {"factor-chain": (47, 413, 512, 4096),
                     "binary": (128, 575, 1024, 8192)}
-        if (report.get("schema") != "s31-factor-power-native-v1" or
+        if (report.get("schema") != "s31-factor-power-native-v2" or
                 report.get("lanes") != 8 or report.get("stages") != 4 or
                 report.get("exponent_per_stage") != 196605 or
+                report.get("fused_exponent") != 2041318647 or
                 report.get("binary_source_sha256") !=
                 "0d84aa30895d22dd5c105c7a0a384913d53ef0b0f45364dcbd4470cf93b952a3" or
-                report.get("saved_arithmetic_nodes") != 44 or
-                report.get("saved_raw_qm31_rows") != 88 or
+                report.get("saved_arithmetic_nodes") != 81 or
+                report.get("saved_raw_qm31_rows") != 162 or
                 report.get("halved_padded_rows") is not True or
                 type(cases) is not list or len(cases) != 2 or
                 {case.get("kind") for case in cases if type(case) is dict} != set(expected)):

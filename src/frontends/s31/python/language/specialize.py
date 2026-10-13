@@ -14,11 +14,12 @@ from language.syntax import Circuit, Expr, Function, FunctionType, RecordType, S
 
 
 class Compiler:
-    def __init__(self, functions: dict[str, Function], circuit: Circuit, filename: str) -> None:
+    def __init__(self, functions: dict[str, Function], circuit: Circuit, filename: str,
+                 *, fuse_static_powers: bool = False) -> None:
         self.functions = functions
         self.circuit = circuit
         self.filename = filename
-        self.builder = Builder(circuit.name)
+        self.builder = Builder(circuit.name, fuse_static_powers=fuse_static_powers)
         self.call_stack: list[str] = []
         self.inline_count = 0
         self.source_names = {name for name, _, _ in circuit.params}

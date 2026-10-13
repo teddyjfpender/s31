@@ -116,6 +116,35 @@ jobs:
           set -euo pipefail
           python3 src/frontends/s31/tests/acceptance/functional/pattern_parameters.py |
             tee zig-out/s31/acceptance/pattern-parameters.json
+      - name: Preserve native acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: s31-functional-native-evidence
+          path: zig-out/s31/acceptance/
+          if-no-files-found: warn
+
+  # Cold native builds made the combined functional job exceed its wall-clock
+  # limit. Keep the same controls, with each evidence family on its own runner.
+  functional-correspondence-native-proofs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          submodules: recursive
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.13"
+      - uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2
+        with:
+          version: 0.15.2
+      - name: Verify pinned engine
+        run: |
+          test -z "$(git submodule status | grep '^[-+]')"
+          test -z "$(git -C deps/stwo-zig status --porcelain --untracked-files=no)"
+      - name: Prepare acceptance output
+        run: mkdir -p zig-out/s31/acceptance
       - name: Composed functional strict release proof and zero-cost gates
         run: |
           set -euo pipefail
@@ -176,6 +205,33 @@ jobs:
           set -euo pipefail
           python3 src/frontends/s31/tests/acceptance/compiler_correspondence/helper_composition_release.py |
             tee zig-out/s31/acceptance/helper-composition-release.json
+      - name: Preserve native acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: s31-functional-correspondence-native-evidence
+          path: zig-out/s31/acceptance/
+          if-no-files-found: warn
+
+  functional-field-sub-native-proofs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          submodules: recursive
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.13"
+      - uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2
+        with:
+          version: 0.15.2
+      - name: Verify pinned engine
+        run: |
+          test -z "$(git submodule status | grep '^[-+]')"
+          test -z "$(git -C deps/stwo-zig status --porcelain --untracked-files=no)"
+      - name: Prepare acceptance output
+        run: mkdir -p zig-out/s31/acceptance
       - name: Native M31 subtraction proof and raw-row comparison
         run: |
           set -euo pipefail
@@ -190,7 +246,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: s31-functional-native-evidence
+          name: s31-functional-field-sub-native-evidence
           path: zig-out/s31/acceptance/
           if-no-files-found: warn
 
@@ -484,21 +540,77 @@ jobs:
           set -euo pipefail
           python3 src/frontends/s31/tests/acceptance/mixed_boundary/record_general_v2.py |
             tee zig-out/s31/acceptance/mixed-general-record-v2.json
-      - name: Arithmetic-produced chip port proof controls
-        run: |
-          set -euo pipefail
-          python3 src/frontends/s31/tests/acceptance/mixed_boundary/arithmetic_chip_input.py |
-            tee zig-out/s31/acceptance/mixed-general-arithmetic-input.json
-      - name: Subtraction-produced chip port proof controls
-        run: |
-          set -euo pipefail
-          python3 src/frontends/s31/tests/acceptance/mixed_boundary/field_sub_feeder.py |
-            tee zig-out/s31/acceptance/mixed-general-sub-feeder.json
       - name: Preserve general mixed boundary evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: s31-experimental-mixed-general-boundary-evidence
+          path: zig-out/s31/acceptance/
+          if-no-files-found: warn
+
+  # The general boundary matrix already uses most of its 90-minute budget;
+  # prove each produced chip port in a separate cold-runner job.
+  experimental-mixed-general-arithmetic-feeder-native-proofs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          submodules: recursive
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.13"
+      - uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2
+        with:
+          version: 0.15.2
+      - name: Verify pinned engine
+        run: |
+          test -z "$(git submodule status | grep '^[-+]')"
+          test -z "$(git -C deps/stwo-zig status --porcelain --untracked-files=no)"
+      - name: Prepare acceptance output
+        run: mkdir -p zig-out/s31/acceptance
+      - name: Arithmetic-produced chip port proof controls
+        run: |
+          set -euo pipefail
+          python3 src/frontends/s31/tests/acceptance/mixed_boundary/arithmetic_chip_input.py |
+            tee zig-out/s31/acceptance/mixed-general-arithmetic-input.json
+      - name: Preserve native acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: s31-experimental-mixed-general-arithmetic-feeder-evidence
+          path: zig-out/s31/acceptance/
+          if-no-files-found: warn
+
+  experimental-mixed-general-subtraction-feeder-native-proofs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          submodules: recursive
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.13"
+      - uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2
+        with:
+          version: 0.15.2
+      - name: Verify pinned engine
+        run: |
+          test -z "$(git submodule status | grep '^[-+]')"
+          test -z "$(git -C deps/stwo-zig status --porcelain --untracked-files=no)"
+      - name: Prepare acceptance output
+        run: mkdir -p zig-out/s31/acceptance
+      - name: Subtraction-produced chip port proof controls
+        run: |
+          set -euo pipefail
+          python3 src/frontends/s31/tests/acceptance/mixed_boundary/field_sub_feeder.py |
+            tee zig-out/s31/acceptance/mixed-general-sub-feeder.json
+      - name: Preserve native acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: s31-experimental-mixed-general-subtraction-feeder-evidence
           path: zig-out/s31/acceptance/
           if-no-files-found: warn
 

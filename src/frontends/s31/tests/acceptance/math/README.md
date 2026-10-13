@@ -4,8 +4,11 @@
 binary multiplication schedule. It derives each circuit's output exponent
 from its complete normalized multiplication graph, calculates eight expected
 field values independently, proves both native circuits, verifies their
-claims, and rejects changed public results. It pins 76 versus 120 source
-nodes, 471 versus 559 raw QM31 rows, and 512 versus 1,024 padded rows.
+claims, and rejects changed public results. It pins 39 versus 120 source
+nodes, 397 versus 559 raw QM31 rows, and 512 versus 1,024 padded rows.
+It also proves a positive exponent divisible by `p-1` at zero and nonzero
+inputs, then rejects a changed public result; this catches accidental
+replacement of `0^(p-1)` with `0^0`.
 The [worked source](../../../examples/arithmetic/powers/README.md) explains
 the saved-power identity and includes the two programs.
 
@@ -13,9 +16,10 @@ the saved-power identity and includes the two programs.
 binary circuit generated directly from the exponent's bits. It checks the
 entire normalized multiplication graph symbolically, eight independent
 modular outputs, native proof acceptance and changed-claim rejection. It
-pins 84 versus 128 multiplication nodes, 487 versus 575 raw QM31 rows, and
+pins 47 versus 128 multiplication nodes, 413 versus 575 raw QM31 rows, and
 512 versus 1,024 padded rows. Its factor schedule builds `x³` in two gates
-and then reuses the 19-step `65535` chain.
+and then reuses the 19-step `65535` chain for a standalone call. Composing
+four calls uses a shorter positive-exponent reduction.
 
 `field_subtraction.py` checks that dynamic field subtraction emits one native
 subtraction relation node and fewer native QM31 rows than the prior
