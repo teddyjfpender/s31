@@ -69,6 +69,18 @@ theorem own_quotient_cross_mul
   rw [own_quotient_eq_interpolation _ _ _ _ _ _ _ hspan]
   field_simp [hden]
 
+/-- Rescaling both claimed values rescales the interpolating line. Thus the
+height-dependent oracle scaling can be applied to each original and its own
+quotient without changing their pairing. -/
+theorem conjugateInterpolant_scale (scale sampleY conjugateY
+    sampleValue conjugateValue rowY : F) :
+    conjugateInterpolant sampleY conjugateY
+      (scale * sampleValue) (scale * conjugateValue) rowY =
+      scale * conjugateInterpolant sampleY conjugateY
+        sampleValue conjugateValue rowY := by
+  unfold conjugateInterpolant
+  ring
+
 /-- The native two-word-at-a-time accumulator, with the running challenge
 power incremented after *each* original or own-quotient word. -/
 def batchLoop (challenge power : F) : List (F × F) → F
@@ -84,6 +96,24 @@ def batchPowers (challenge : F) (column : Nat) : List (F × F) → F
       challenge ^ (2 * column) * original +
         challenge ^ (2 * column + 1) * quotient +
         batchPowers challenge (column + 1) rest
+
+def scaleColumns (scale : F) (columns : List (F × F)) : List (F × F) :=
+  columns.map fun (original, quotient) =>
+    (scale * original, scale * quotient)
+
+theorem batchLoop_scale (scale challenge power : F)
+    (columns : List (F × F)) :
+    batchLoop challenge power (scaleColumns scale columns) =
+      scale * batchLoop challenge power columns := by
+  induction columns generalizing power with
+  | nil => simp [batchLoop, scaleColumns]
+  | cons head tail ih =>
+      rcases head with ⟨original, quotient⟩
+      have htail := ih (power * challenge * challenge)
+      simp only [scaleColumns] at htail
+      simp only [scaleColumns, List.map_cons, batchLoop]
+      rw [htail]
+      ring
 
 /-- No challenge reset occurs between columns; each quotient receives the
 immediately following power. -/
@@ -107,6 +137,30 @@ theorem batchLoop_eq_powers (challenge : F) (column : Nat)
 theorem native_batch_eq_protocol3 (challenge : F) (columns : List (F × F)) :
     batchLoop challenge 1 columns = batchPowers challenge 0 columns := by
   simpa using batchLoop_eq_powers challenge 0 columns
+
+theorem batchPowers_scale (scale challenge : F) (column : Nat)
+    (columns : List (F × F)) :
+    batchPowers challenge column (scaleColumns scale columns) =
+      scale * batchPowers challenge column columns := by
+  calc
+    batchPowers challenge column (scaleColumns scale columns) =
+        batchLoop challenge (challenge ^ (2 * column))
+          (scaleColumns scale columns) :=
+      (batchLoop_eq_powers challenge column _).symm
+    _ = scale * batchLoop challenge (challenge ^ (2 * column)) columns :=
+      batchLoop_scale scale challenge _ columns
+    _ = scale * batchPowers challenge column columns := by
+      rw [batchLoop_eq_powers]
+
+/-- The published height-i source batch can be understood as the same
+Protocol 3 roster after scaling each original and its own quotient. -/
+theorem scaled_height_batch (height : Nat) (challenge : F)
+    (columns : List (F × F)) :
+    batchPowers challenge 0
+      (scaleColumns (((2 : F) ^ height)⁻¹) columns) =
+      batchPowers challenge 0 columns / (2 : F) ^ height := by
+  rw [batchPowers_scale]
+  simp [div_eq_mul_inv, mul_comm]
 
 /-- Native one-step unnormalized inverse butterfly. -/
 def pair (left right coord challenge : F) : F :=
