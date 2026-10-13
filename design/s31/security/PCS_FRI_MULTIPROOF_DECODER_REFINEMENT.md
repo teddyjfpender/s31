@@ -49,7 +49,14 @@ height Zig semantics. The existing
 proves one-layer model properties and
 [`MultiproofCapture.lean`](../../../formal/s31/S31/Gadgets/PcsFri/MultiproofCapture.lean)
 proves that modeled full paths replay to the checked root. The native
-all-height simulation remains to be proved. The test does not establish that
+[`MultiproofAllHeights.lean`](../../../formal/s31/S31/Gadgets/PcsFri/MultiproofAllHeights.lean)
+now composes the executable layer decoder for any height. If its full decode
+ends in one checked root with no surplus witness, every initial query has a
+path of exactly that height to the root, and the original compressed witness
+is consumed exactly once in frontier order. The model checks sorted frontiers
+at each level; proving that native Zig's initial sort and parent construction
+maintain the invariant is still open. The native all-height simulation remains
+to be proved. The test does not establish that
 the native committed tree was built from the intended oracle columns, nor a
 quantitative BLAKE2s collision reduction. The Merkle binding theorem compares
 openings at the **same root, height, and index** and extracts a concrete leaf
