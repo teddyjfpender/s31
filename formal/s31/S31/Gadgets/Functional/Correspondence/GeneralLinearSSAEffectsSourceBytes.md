@@ -77,7 +77,12 @@ equal-length M31 lanes subject to the eight-word public ABI budget, up to
 32 `let` statements including aliases and named constants, 1–16 binary or
 constant arithmetic nodes, and up to 16 assertions. It accepts an
 optional `use std@1;` line, canonical `splat<N>(k_m31)` values below the
-M31 modulus, and a selected named output. Static helpers, grouped
+M31 modulus, and a selected named or statically projected output. Flat
+2–4 field tuples of existing M31 array wires are source-only values;
+constant-index projection selects exactly one existing producer. The
+`project_product_exact` theorem checks that local erasure, and the existing
+exact-byte `Program.evaluate` theorem applies to any tuple source admitted
+by this parser. Static helpers, grouped
 expressions, scalar types, other operations, and non-ASCII syntax are outside
 this grammar. It caps source at 16 KiB and certificate at 65 KiB.
 

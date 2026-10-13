@@ -13,6 +13,9 @@ Static helpers, grouped expressions, and scalar types are outside
 this deliberately bounded grammar. The circuit name is absent from the
 certificate's SSA projection. `parseSourceName` exposes it separately for
 the source/relation ABI join; the source SHA-256 field remains unchecked here.
+Flat tuples of 2..4 preexisting equal-length M31 wire arrays are accepted as
+source-only products. Construction, aliasing, and constant-index projection
+erase before the normalized graph is built.
 -/
 
 namespace S31.Functional.Correspondence.GeneralLinearSSAEffectsSourceBytes
@@ -52,7 +55,7 @@ private def lexFuel : Nat → List Nat → Option (List Token)
       else if head == 46 then
         match tail with
         | 42 :: rest => do return [46, 42] :: (← lexFuel fuel rest)
-        | _ => none
+        | _ => do return [46] :: (← lexFuel fuel tail)
       else if List.contains
           [40, 41, 44, 91, 93, 59, 58, 123, 125, 61, 43, 64, 60, 62] head then
         do return [head] :: (← lexFuel fuel tail)
@@ -107,6 +110,7 @@ private def literal (digits : Token) : Option Nat := do
 private inductive Atom where
   | wire (id : Nat)
   | constant (value : Nat)
+  | product (fields : List Nat)
 
 private def initialBindings : List Token → Nat → List (Token × Atom)
   | [], _ => []
@@ -116,6 +120,18 @@ private def findBinding (name : Token) : List (Token × Atom) → Option Atom
   | [] => none
   | (key, value) :: rest =>
       if key == name then some value else findBinding name rest
+
+private def projectProduct (value : Atom) (index : Nat) : Option Atom :=
+  match value with
+  | .product fields => .wire <$> fields[index]?
+  | _ => none
+
+/-- A source-only projection selects exactly the existing indexed producer.
+It creates no new SSA ID and cannot select an absent field. -/
+theorem project_product_exact (fields : List Nat) (index id : Nat) :
+    projectProduct (.product fields) index = some (.wire id) ↔
+      fields[index]? = some id := by
+  simp [projectProduct]
 
 private def takeAtom (length : Nat) (bindings : List (Token × Atom)) :
     List Token → Option (Atom × List Token)
@@ -132,15 +148,42 @@ private def takeAtom (length : Nat) (bindings : List (Token × Atom)) :
       else do
         let (name, rest) ← takeIdent (head :: rest)
         let value ← findBinding name bindings
-        return (value, rest)
+        if rest.head? == some (token ".") then do
+          let rest ← expect (token ".") rest
+          let indexToken :: rest := rest | none
+          let indexText := nameString indexToken
+          let index ← indexText.toNat?
+          if toString index != indexText then none else
+          return (← projectProduct value index, rest)
+        else return (value, rest)
   | [] => none
 
 private def takeWire (bindings : List (Token × Atom)) (remaining : List Token) :
     Option (Nat × List Token) := do
-  let (name, rest) ← takeIdent remaining
-  match (← findBinding name bindings) with
+  let (value, rest) ← takeAtom 0 bindings remaining
+  match value with
   | .wire id => return (id, rest)
   | .constant _ => none
+  | .product _ => none
+
+private def takeProductMore : Nat → List (Token × Atom) → List Nat →
+    List Token → Option (Atom × List Token)
+  | 0, _, _, _ => none
+  | fuel + 1, bindings, fields, remaining => do
+      let (id, rest) ← takeWire bindings remaining
+      let fields := fields ++ [id]
+      if fields.length > 4 then none else
+      if rest.head? == some (token ")") then
+        return (.product fields, ← expect (token ")") rest)
+      let rest ← expect (token ",") rest
+      takeProductMore fuel bindings fields rest
+
+private def takeProduct (bindings : List (Token × Atom))
+    (remaining : List Token) : Option (Atom × List Token) := do
+  let rest ← expect (token "(") remaining
+  let (first, rest) ← takeWire bindings rest
+  let rest ← expect (token ",") rest
+  takeProductMore 3 bindings [first] rest
 
 private structure State where
   remaining : List Token
@@ -157,7 +200,9 @@ private def parseLet (length : Nat) (state : State) : Option State := do
   if state.bindings.any (fun binding => binding.1 == name) ||
       state.letCount ≥ 32 then none else
   let rest ← expect (token "=") rest
-  let (left, rest) ← takeAtom length state.bindings rest
+  let (left, rest) ← if rest.head? == some (token "(") then
+    takeProduct state.bindings rest
+    else takeAtom length state.bindings rest
   if rest.head? == some (token ";") then
     let rest ← expect (token ";") rest
     let next : State := { state with remaining := rest, bindings := state.bindings ++ [(name, left)], letCount := state.letCount + 1 }
@@ -182,6 +227,8 @@ private def parseLet (length : Nat) (state : State) : Option State := do
         let operation := if op == .mul then "mul_const" else "add_const"
         some ({ id := id, name := nameString name, op := operation, lhs := lhs, rhs := none, constant := some value } : EmittedNode)
     | .constant _, .constant _ => none
+    | _, .product _ => none
+    | .product _, _ => none
   let next : State := { state with remaining := rest, bindings := state.bindings ++ [(name, .wire id)], letCount := state.letCount + 1, nodes := state.nodes ++ [node] }
   return next
 
@@ -233,14 +280,11 @@ def parseSource (bytes : List Nat) : Option EmittedSSA := do
     { remaining := rest, bindings := initialBindings names 0, inputCount := inputs.length,
       letCount := 0, nodes := [], assertions := [], seenAssertions := [] }
   if state.nodes.isEmpty then none else
-  let (outputName, rest) ← takeIdent state.remaining
+  let (output, rest) ← takeWire state.bindings state.remaining
   let rest ← if rest.head? == some (token ";") then
     expect (token ";") rest else some rest
   let rest ← expect (token "}") rest
   if !rest.isEmpty then none else
-  let output ← match (← findBinding outputName state.bindings) with
-    | .wire id => some id
-    | .constant _ => none
   let result : EmittedSSA :=
     { lane_count := length, inputs, nodes := state.nodes,
       assertions := state.assertions, output }
