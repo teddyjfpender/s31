@@ -6,6 +6,7 @@ import ast
 import copy
 import hashlib
 import json
+import random
 import re
 import sys
 import tempfile
@@ -236,6 +237,49 @@ class SourceRelationFragmentTests(unittest.TestCase):
                         with self.assertRaisesRegex(ValueError, "certificate differs"):
                             check_source_relation_certificate(
                                 source.encode(), encoded(relation), encoded(forged))
+
+    def test_effectful_fragment_matches_production_on_generated_programs(self) -> None:
+        rng = random.Random(20261013)
+        admitted = 0
+        for _ in range(250):
+            lanes = rng.randrange(1, 9)
+            n_inputs = rng.randrange(1, 4)
+            visibilities = ["private"] * n_inputs
+            if lanes * 2 <= 8 and rng.randrange(2):
+                visibilities[0] = "public"
+            names = [f"x{i}" for i in range(n_inputs)]
+            declarations = ", ".join(
+                f"{visibilities[i]} {name}: [m31; {lanes}]"
+                for i, name in enumerate(names))
+            body: list[str] = []
+            has_effect = False
+            for index in range(rng.randrange(1, 13)):
+                lhs, op, rhs = rng.choice(names), rng.choice(("+", "-", ".*")), rng.choice(names)
+                if rng.randrange(3) == 0:
+                    constant = rng.choice((0, 1, 7, 2_147_483_646,
+                                           rng.randrange(2_147_483_647)))
+                    rhs = f"splat<{lanes}>({constant}_m31)"
+                    has_effect = True
+                out = f"v{index}"
+                body.append(f"let {out} = {lhs} {op} {rhs};")
+                names.append(out)
+                if rng.randrange(5) == 0:
+                    body.append(f"assert_eq({rng.choice(names)}, {rng.choice(names)});")
+                    has_effect = True
+            source = (f"circuit test({declarations}) -> public [m31; {lanes}] {{ "
+                      + " ".join([*body, names[-1]]) + " }")
+            try:
+                independent = parse_source_fragment(source.encode())
+            except UnsupportedSourceRelationFragment:
+                # Duplicate assertions are intentionally outside the grammar.
+                continue
+            production, _ = compile_text(source)
+            self.assertEqual(independent, production)
+            certificate = make_source_relation_certificate(source.encode(), encoded(production))
+            self.assertEqual(certificate["lean_semantic_profile"] == LEAN_EFFECTS_PROFILE,
+                             has_effect)
+            admitted += 1
+        self.assertGreaterEqual(admitted, 230)
 
     def test_lean_subtraction_fixture_matches_native_acceptance_source(self) -> None:
         formal = S31.parents[2] / "formal/s31/S31/Gadgets/Functional/Correspondence/SourceFunctionBytes.lean"
