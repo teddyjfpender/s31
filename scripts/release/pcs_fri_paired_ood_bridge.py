@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """Exact OOD-support sensitivity for the experimental paired PCS/FRI design.
 
-The paper-protocol input is checked by pcs_fri_stwo_udr.  This tool changes
-only the OOD denominator to the conditional image of the native CAS05 guard,
-as a *hypothetical sensitivity calculation*.  The paper theorem has not been
-proved for that distribution or for CAS05's transcript and oracle protocol.
-No output field is a native security certificate.
+The paper-protocol input is checked by pcs_fri_stwo_udr. This tool changes
+only the *single-point Protocol-4* OOD denominator to the conditional image
+of the native CAS05 guard, as a hypothetical sensitivity calculation. CAS05
+uses a conjugate two-point quotient whose Section-4.5 OOD universe and
+bad-set theorem differ; substituting this denominator does not model that
+theorem. Nor has the paper theorem been proved for CAS05's transcript and
+oracle protocol. No output field is a native security certificate.
 """
 
 from __future__ import annotations
