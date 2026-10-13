@@ -148,9 +148,13 @@ Within the tuple subfragment, `let p = (a, b);` constructs a flat typed
 product of 2–4 earlier M31 wires, `let q = p;` aliases it, and `p.0` selects
 the first wire. Such projections may be used as arithmetic operands,
 assertion operands, or the returned wire. Product-valued arithmetic/results,
-out-of-range or noncanonical indices, nested/grouped products, and mixing
-these tuples with named static helpers are rejected. The Lean source-byte
-parser makes the same restrictions before the effects profile is claimed.
+out-of-range or noncanonical indices, and nested/grouped products are
+rejected. The ordinary source-relation certificate still rejects a tuple
+combined with a named helper. The separate typed structural checker and the
+Lean effects byte parser admit a bounded combination: one binary M31 helper
+called on previously bound wires after static projections. The Lean theorem
+checks source semantics through `Program.evaluate` when a matching canonical
+effects certificate is supplied; automatic package enrollment remains open.
 
 Up to eight preceding `fn` declarations may each take one or two distinct
 `[m31; N]` parameters and return `[m31; N]`. Each pure body must apply one

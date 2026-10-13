@@ -9,9 +9,10 @@ are resolved before SSA numbering. Every assertion operand must be in scope
 at its original textual position. The parsed source determines the exact
 indexed effects SSA compared with canonical compiler certificate bytes.
 
-Static helpers, grouped expressions, and scalar types are outside
-this deliberately bounded grammar. The circuit name is absent from the
-certificate's SSA projection. `parseSourceName` exposes it separately for
+Grouped expressions and scalar types are outside this deliberately bounded
+grammar. One named binary M31 helper may precede the circuit; its parameter
+bindings and call arguments are resolved before SSA numbering. The circuit
+name is absent from the certificate's SSA projection. `parseSourceName` exposes it separately for
 the source/relation ABI join; the source SHA-256 field remains unchecked here.
 Flat tuples of 2..4 preexisting equal-length M31 wire arrays are accepted as
 source-only products. Construction, aliasing, and constant-index projection
@@ -27,6 +28,38 @@ open S31.Functional.Correspondence.GeneralLinearSSAEffects
 
 private def nameString (name : Token) : String :=
   String.ofList (name.map Char.ofNat)
+
+private structure Helper where
+  name : Token
+  length : Nat
+  op : SourceFunctionBytes.Op
+  leftSecond : Bool
+  rightSecond : Bool
+
+/-- Parse the complete body of one nonrecursive, binary array helper. The
+boolean operands retain parameter order even for subtraction. -/
+private def parseHelper (remaining : List Token) : Option (Helper × List Token) := do
+  let rest ← expect (token "fn") remaining
+  let (name, rest) ← takeIdent rest
+  let rest ← expect (token "(") rest
+  let (first, rest) ← takeIdent rest
+  let rest ← expect (token ":") rest
+  let (length, rest) ← takeLength rest
+  let rest ← expect (token ",") rest
+  let (second, rest) ← takeIdent rest
+  if first == second || name == first || name == second then none else
+  let rest ← expect (token ":") rest
+  let rest ← takeSameLength length rest
+  let rest ← expectMany [token ")", token "->"] rest
+  let rest ← takeSameLength length rest
+  let rest ← expect (token "{") rest
+  let (left, rest) ← takeIdent rest
+  let leftSecond ← resolve left first second
+  let (op, rest) ← takeOp rest
+  let (right, rest) ← takeIdent rest
+  let rightSecond ← resolve right first second
+  let rest ← expect (token "}") rest
+  return (⟨name, length, op, leftSecond, rightSecond⟩, rest)
 
 /-- Separate lexer so the preexisting pure source grammar is unchanged. It
 recognizes `@`, `<`, `>` and suffixed M31 literals in addition to the ordinary
@@ -188,18 +221,51 @@ private def takeProduct (bindings : List (Token × Atom))
 private structure State where
   remaining : List Token
   bindings : List (Token × Atom)
+  helper : Option Helper
+  helperUsed : Bool
   inputCount : Nat
   letCount : Nat
   nodes : List EmittedNode
   assertions : List (Nat × Nat)
   seenAssertions : List (Nat × Nat)
 
+private def helperOpName : SourceFunctionBytes.Op → String
+  | .add => "add"
+  | .sub => "sub"
+  | .mul => "mul"
+
+/-- A call consumes only previously bound wire arrays. Products must first be
+projected; neither the call nor a projection introduces a hidden input. -/
+private def parseHelperLet (state : State) (helper : Helper) (name : Token)
+    (remaining : List Token) : Option State := do
+  if state.nodes.length ≥ 16 then none else
+  let rest ← expect helper.name remaining
+  let rest ← expect (token "(") rest
+  let (first, rest) ← takeWire state.bindings rest
+  let rest ← expect (token ",") rest
+  let (second, rest) ← takeWire state.bindings rest
+  let rest ← expectMany [token ")", token ";"] rest
+  let id := state.inputCount + state.nodes.length
+  let lhs := choose helper.leftSecond first second
+  let rhs := choose helper.rightSecond first second
+  let node : EmittedNode :=
+    { id := id, name := nameString name, op := helperOpName helper.op,
+      lhs := lhs, rhs := some rhs, constant := none }
+  let withCall : State := { state with remaining := rest, helperUsed := true }
+  let withName : State := { withCall with bindings := state.bindings ++ [(name, .wire id)] }
+  let next : State := { withName with letCount := state.letCount + 1, nodes := state.nodes ++ [node] }
+  return next
+
 private def parseLet (length : Nat) (state : State) : Option State := do
   let rest ← expect (token "let") state.remaining
   let (name, rest) ← takeIdent rest
   if state.bindings.any (fun binding => binding.1 == name) ||
+      state.helper.any (fun helper => helper.name == name) ||
       state.letCount ≥ 32 then none else
   let rest ← expect (token "=") rest
+  if let some helper := state.helper then
+    if rest.head? == some helper.name then
+      return ← parseHelperLet state helper name rest
   let (left, rest) ← if rest.head? == some (token "(") then
     takeProduct state.bindings rest
     else takeAtom length state.bindings rest
@@ -266,19 +332,28 @@ def parseSource (bytes : List Nat) : Option EmittedSSA := do
   let tokens ← if tokens.head? == some (token "use") then
     expectMany [token "use", token "std", token "@", token "1", token ";"] tokens
     else some tokens
+  let (helper, tokens) ← if tokens.head? == some (token "fn") then
+    (parseHelper tokens).map (fun (found, rest) => (some found, rest))
+    else some (none, tokens)
   let rest ← expect (token "circuit") tokens
-  let (_, rest) ← takeIdent rest
+  let (circuitName, rest) ← takeIdent rest
+  if helper.any (fun found => found.name == circuitName) then none else
   let rest ← expect (token "(") rest
   let (length, inputs, names, rest) ← parseOneInput none [] [] rest
   let (length, inputs, names, rest) ←
     parseMoreInputs 4 length inputs names rest
+  if helper.any (fun found => found.length != length ||
+      names.contains found.name) then none else
   let rest ← expectMany [token "->", token "public"] rest
   let rest ← takeSameLength length rest
   if length * (1 + (inputs.filter (·.visibility == "public")).length) > 8 then none else
   let rest ← expect (token "{") rest
   let state ← parseStatements 48 length
-    { remaining := rest, bindings := initialBindings names 0, inputCount := inputs.length,
+    { remaining := rest, bindings := initialBindings names 0, helper,
+      helperUsed := false,
+      inputCount := inputs.length,
       letCount := 0, nodes := [], assertions := [], seenAssertions := [] }
+  if helper.isSome && !state.helperUsed then none else
   if state.nodes.isEmpty then none else
   let (output, rest) ← takeWire state.bindings state.remaining
   let rest ← if rest.head? == some (token ";") then
@@ -297,6 +372,9 @@ def parseSourceName (bytes : List Nat) : Option String := do
   let tokens ← lexFuel (bytes.length + 1) bytes
   let tokens ← if tokens.head? == some (token "use") then
     expectMany [token "use", token "std", token "@", token "1", token ";"] tokens
+    else some tokens
+  let tokens ← if tokens.head? == some (token "fn") then
+    (parseHelper tokens).map Prod.snd
     else some tokens
   let rest ← expect (token "circuit") tokens
   let (name, _) ← takeIdent rest
