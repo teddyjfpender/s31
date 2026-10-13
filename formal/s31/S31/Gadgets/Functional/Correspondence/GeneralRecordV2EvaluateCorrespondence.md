@@ -61,3 +61,7 @@ not authenticate a native trace or proof. Run
 `python3 formal/s31/scripts/check_record_v2_assignment_correspondence.py`
 to exercise three compiled source packages, private-input mutation, extra
 public output, and noncanonical JSON rejection.
+
+The [physical source-row theorem and emitted fixed-column audit](GeneralRecordV2PhysicalSourceRows.md)
+add a conditional Gate-cell join with its native trace and commitment
+assumptions stated separately.
