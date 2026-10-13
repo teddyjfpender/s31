@@ -10,10 +10,10 @@ quantified security break. The proven-profile release gate remains closed.
 
 [`pcs_fri_quotient_degree_gap_native.zig`](../../../formal/s31/tests/pcs_fri_quotient_degree_gap_native.zig)
 uses the pinned engine gitlink
-`59e1f115250b8af01712b9bf3d71616e53094964`, an eight-row canonical
-circle domain (`lifting_log_size = 3`), and the Gate-like FRI blowup factor
-two. Thus the degree bound supplied to FRI is `log_degree_bound = 2`, whose
-circle FFT space is
+`59e1f115250b8af01712b9bf3d71616e53094964` and an eight-row canonical
+circle domain (`lifting_log_size = 3`). Under a Gate-like blowup factor of
+two, the corresponding verifier degree bound would be
+`log_degree_bound = 2`. The test compares values against its circle FFT space
 
 ```text
 L′₄(M31) = M31[x]_<2 + y · M31[x]_<2
@@ -29,8 +29,8 @@ in `CM31`. The native row denominator is the circle line
 D(x,y) = (prx·piy − pry·pix) − piy·x + pix·y   in CM31[x,y].
 ```
 
-It vanishes at `Q`. Let `bar` mean conjugation in `CM31/M31`. The test commits
-to the **values** of the base-field polynomial
+It vanishes at `Q`. Let `bar` mean conjugation in `CM31/M31`. The test
+constructs the **values** of the base-field polynomial
 
 ```text
 f(x,y) = D(x,y) · bar(D)(x,y),     f(Q) = 0.
