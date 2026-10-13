@@ -13,6 +13,13 @@ lower floor for `sqrt(blowup)` and exact arithmetic. It does not prove that
 the native protocol matches the paper or that an adversary can succeed with
 that probability.
 
+The [BCS transcript epoch model](BcsTranscriptEpoch.lean) proves that a
+verified nonce starts a fresh query-input epoch with nine distinct pre-hash
+messages for the sealed 70-query schedule, conditional on an injective u32
+counter encoding. The [native and independent-model replay](../../../../../design/s31/security/PCS_FRI_BCS_TRANSCRIPT_REFINEMENT.md)
+checks the direct Gate's actual Blake2s-M31 bytes and challenge order. These
+results leave the cryptographic Fiat–Shamir/BCS reduction open.
+
 ## One lifted Merkle opening by hand
 
 Suppose a two-level tree authenticates an opened row `R` at leaf index `1`.

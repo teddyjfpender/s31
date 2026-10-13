@@ -55,6 +55,12 @@ The native BLAKE2s channel now traps before counter overflow in any draw,
 including an unbounded rejection loop. The report still leaves a formal
 full-transcript control-flow argument and random-oracle independence unproved.
 
+The selected direct Gate has a further [P07 byte-level transcript refinement](../../design/s31/security/PCS_FRI_BCS_TRANSCRIPT_REFINEMENT.md):
+an independent Python model is checked against a native Zig replay for both
+PoW barriers, lookup/PCS/FRI challenge draws, and all 70 raw queries. The
+source audit rejects order and encoding mutations. This is deterministic
+correspondence evidence, not a BCS or 96-bit soundness certificate.
+
 ## Formal receipt
 
 Run the Lean source-binding check, full build, and kernel replay on a clean
