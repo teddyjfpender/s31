@@ -1,3 +1,4 @@
+import S31.Gadgets.PcsFri.QuerySampling
 import Mathlib.Tactic
 
 /-!
@@ -154,5 +155,82 @@ theorem projected_fiber_card (k i : Nat) (hi : i < k)
     · intro middle _
       refine ⟨e.symm (projected, middle), ?_, ?_⟩ <;> simp
   simpa using hcard
+
+/-- Raw rows whose sparse projected circle row belongs to a fixed bad set. -/
+def projectedBadRaw (k i : Nat) (hi : i < k)
+    (bad : Finset (Fin (2 ^ (k - i)))) : Finset (Fin (2 ^ k)) :=
+  Finset.univ.filter (fun raw => (sparseSplit k i hi raw).1 ∈ bad)
+
+/-- The exact count of raw rows that project into a fixed bad source-row set.
+This is the finite counting premise behind sparse-path query analysis. -/
+theorem projected_bad_raw_card (k i : Nat) (hi : i < k)
+    (bad : Finset (Fin (2 ^ (k - i)))) :
+    (projectedBadRaw k i hi bad).card = bad.card * 2 ^ i := by
+  classical
+  have hfiber (row : Fin (2 ^ (k - i))) :
+      (Finset.univ.filter (fun raw : Fin (2 ^ k) =>
+        (sparseSplit k i hi raw).1 = row)).card = 2 ^ i := by
+    convert projected_fiber_card k i hi row using 1
+    apply congrArg Finset.card
+    ext raw
+    simp only [Finset.mem_filter, Finset.mem_univ, true_and]
+    rw [Fin.ext_iff, sparseSplit_projected]
+  calc
+    (projectedBadRaw k i hi bad).card =
+        ∑ row ∈ bad, (Finset.univ.filter (fun raw : Fin (2 ^ k) =>
+          (sparseSplit k i hi raw).1 = row)).card := by
+            simpa [projectedBadRaw] using
+              (Finset.sum_card_fiberwise_eq_card_filter
+                (Finset.univ : Finset (Fin (2 ^ k))) bad
+                (fun raw => (sparseSplit k i hi raw).1)).symm
+    _ = bad.card * 2 ^ i := by simp [hfiber]
+
+/-- A sparse pair misses a bad set only if neither of its two opened rows is
+bad. This is the event the native CAS05 verifier must refine. -/
+def goodSparsePair (k i : Nat) (bad : Finset (Fin (2 ^ (k - i)))) :
+    Finset (Fin (2 ^ k)) :=
+  Finset.univ.filter (fun raw => ∀ row ∈ bad,
+    row.val ≠ pairBase raw.val i ∧ row.val ≠ pairBase raw.val i + 1)
+
+theorem good_sparse_disjoint_projected_bad (k i : Nat) (hi : i < k)
+    (bad : Finset (Fin (2 ^ (k - i)))) :
+    Disjoint (goodSparsePair k i bad) (projectedBadRaw k i hi bad) := by
+  apply Finset.disjoint_left.mpr
+  intro raw hgood hbad
+  have hmiss := (Finset.mem_filter.mp hgood).2
+  have hselected := (Finset.mem_filter.mp hbad).2
+  have hrow := hmiss (sparseSplit k i hi raw).1 hselected
+  have hvalue := sparseSplit_projected k i hi raw
+  rcases projected_in_opened_pair raw.val i with heven | hodd
+  · exact hrow.1 (hvalue.trans heven)
+  · exact hrow.2 (hvalue.trans hodd)
+
+/-- Under independent *uniform* raw queries, missing a fixed bad source-row
+set in every opened pair is bounded by ordinary row-distance sampling on
+that source height. This says nothing about native BCS or Merkle binding. -/
+theorem good_sparse_sequences_card_le (k i draws : Nat) (hi : i < k)
+    (bad : Finset (Fin (2 ^ (k - i)))) :
+    (S31.Gadgets.PcsFri.QuerySampling.goodSequences draws
+      (goodSparsePair k i bad)).card ≤
+      ((2 ^ (k - i) - bad.card) * 2 ^ i) ^ draws := by
+  have hsubset : goodSparsePair k i bad ⊆
+      Finset.univ \ projectedBadRaw k i hi bad := by
+    intro raw hgood
+    simp only [Finset.mem_sdiff, Finset.mem_univ, true_and]
+    exact fun hbad => Finset.disjoint_left.mp
+      (good_sparse_disjoint_projected_bad k i hi bad) hgood hbad
+  have hcount := Finset.card_le_card hsubset
+  have htotal : Fintype.card (Fin (2 ^ k)) =
+      2 ^ (k - i) * 2 ^ i := by
+    rw [Fintype.card_fin, ← pow_add]
+    congr 1
+    omega
+  have hgood : (goodSparsePair k i bad).card ≤
+      (2 ^ (k - i) - bad.card) * 2 ^ i := by
+    rw [Finset.card_sdiff, Finset.inter_univ, Finset.card_univ, htotal,
+      projected_bad_raw_card] at hcount
+    simpa [Nat.sub_mul] using hcount
+  rw [S31.Gadgets.PcsFri.QuerySampling.good_sequences_card]
+  exact Nat.pow_le_pow_left hgood _
 
 end S31.Gadgets.PcsFri.SparseCascadeQueries
