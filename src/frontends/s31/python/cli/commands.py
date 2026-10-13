@@ -18,6 +18,7 @@ from inspection.source_layout import source_layout
 from package.build import build, package_for
 from package.context import invoke, load_source, lower_text, write_json
 from package.release_admission import bounded_direct_gate_snapshot
+from package.lean_effects_admission import verify_effectful_proof
 from package.trust import admitted_snapshot, unpinned_snapshot
 from package.verify import verify_package
 from runtime.folds import _audit_fold_chain_admitted
@@ -179,6 +180,12 @@ def dispatch(args: argparse.Namespace) -> None:
         return
 
     package = args.package.resolve()
+    if args.command == "verify-effects-lean":
+        print(verify_effectful_proof(
+            package, args.proof, args.assignment, args.statement,
+            _external_pins(args), args.lean_checker,
+            args.lean_checker_sha256), end="")
+        return
     if args.command in {"verify-pinned", "verify-release"}:
         pins = _external_pins(args)
         snapshot_context = (bounded_direct_gate_snapshot(package, pins)
