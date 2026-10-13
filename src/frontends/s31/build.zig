@@ -128,6 +128,21 @@ pub fn build(b: *std.Build) void {
     if (b.args) |args| record_parser_corpus.addArgs(args);
     b.step("record-statement-parser-corpus", "Check compiled record claims in the Zig parser")
         .dependOn(&record_parser_corpus.step);
+    const structural_witness_root = b.createModule(.{
+        .root_source_file = b.path("tests/acceptance/compiler_correspondence/native_structural_witness_corpus.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    structural_witness_root.addImport("stwo_core", core);
+    structural_witness_root.addImport("stwo_circuit_frontend", circuit);
+    structural_witness_root.addImport("stwo_s31_prototype", frontend);
+    const structural_witness = b.addRunArtifact(b.addExecutable(.{
+        .name = "s31-structural-native-witness-corpus",
+        .root_module = structural_witness_root,
+    }));
+    if (b.args) |args| structural_witness.addArgs(args);
+    b.step("structural-native-witness-corpus", "Check bounded source node values against native direct Gate compiler")
+        .dependOn(&structural_witness.step);
     const record_descriptor_corpus_root = b.createModule(.{
         .root_source_file = b.path("tests/acceptance/record_abi/native_descriptor_corpus.zig"),
         .target = target,

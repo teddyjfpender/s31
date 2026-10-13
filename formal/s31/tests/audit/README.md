@@ -14,7 +14,25 @@ and PCS authentication remain separate obligations:
 ```sh
 lake build s31-general-linear-structural-check
 python3 tests/audit/structural_derivation_lean.py
+python3 tests/audit/structural_derivation_lean.py --native
 ```
+
+`--native` also compiles the same 12 source-derived normalized relations with
+the production Zig direct-Gate compiler, once with and once without witness
+values. It compares the compiler-owned address of every source node in both
+paths and checks each **declared** M31 lane against arithmetic calculated
+directly from the four handwritten source bodies. Four additional cases
+exercise reduction near the M31 modulus. Twelve changed public claims and
+four changed private inputs are rejected by the normalized evaluator. The
+native audit separates mathematical gate validity from public-statement
+binding: a changed claim can leave a valid circuit trace but makes the
+compiled public words differ from the claim; the changed input to an
+assertion makes the trace invalid. An altered expected intermediate is
+rejected by the corpus runner. Unused packed QM31 lanes are outside the
+source type and are not compared. This is a finite source-pinned compiler
+regression, not a theorem about arbitrary source text, native committed rows,
+or proof acceptance. The private assignment is supplied externally; the
+native verifier does not authenticate that particular assignment.
 
 `general_linear_public_abi.py` checks three source-derived certificate
 fixtures against exact `.s31` bytes, ABI, assignment, and 32-byte public word
