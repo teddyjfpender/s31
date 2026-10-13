@@ -1,4 +1,5 @@
 import S31.Gadgets.PcsFri.QuerySampling
+import S31.Gadgets.PcsFri.M31WordReduction
 import Mathlib.Data.Nat.Count
 import Mathlib.Data.Int.CardIntervalMod
 import Mathlib.Tactic
@@ -16,6 +17,13 @@ private def rawSize : Nat := 2 ^ 32
 private def size (k : Nat) : Nat := 2 ^ k
 
 private def index (k word : Nat) : Nat := (word % p) % size k
+
+/-- The bit-folded native M31 word and the arithmetic query model yield the
+same masked index for every 32-bit input. -/
+theorem native_reduced_index_eq (k word : Nat) (hword : word < 2 ^ 32) :
+    M31WordReduction.reducedWord word % size k = index k word := by
+  rw [M31WordReduction.reduced_word_eq_modulus word hword]
+  rfl
 
 def preimages (k i : Nat) : Nat :=
   Nat.count (fun word => index k word = i) rawSize
