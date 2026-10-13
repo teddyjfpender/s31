@@ -17,21 +17,23 @@ from pathlib import Path
 from typing import Mapping
 
 
-ENGINE_REVISION = "fde847ea374ade2ae07ef5b3a42ba07e15655b64"
+ENGINE_REVISION = "02bc8b3e8d28c7ef871192f36dfc5d18fb2f55d3"
 SOURCE_SHA256 = {
     "deps/stwo-zig/src/integrations/circuit_cpu/direct_many_preflight.zig": "9119ff9fe58c343d66e437e6236aa1feca3660fc5d2bdafa3173ad48d0bf888d",
     "deps/stwo-zig/src/integrations/circuit_cpu/direct_mixed_schedule.zig": "55c4aeec92520828c173640335688bb9b7837fafd7bea7ff1dfb50150b50a326",
     "deps/stwo-zig/src/integrations/circuit_cpu/direct_mixed_general_arithmetic.zig": "3c5b2b6c3996a5a1886f4fc57d92082f7eb91578df0b63f9f585fd45acc2899c",
-    "deps/stwo-zig/src/core/pcs/config_v2.zig": "9c872b5565693261c0a07e9dd9a35467872511ab4a831afd275dde7b2c150a7d",
-    "deps/stwo-zig/src/core/pcs/verifier.zig": "a7b4e1977dc29feb9341eacceda8e09bd77a6a11dcdb7d0e4c1eb18445570581",
+    "deps/stwo-zig/src/core/pcs/config_v2.zig": "b58f464074d5c8ca5e002764e529afc9f3e1fe81f12320a180fc1f850ef05178",
+    "deps/stwo-zig/src/core/pcs/verifier.zig": "e119335172e17db5fd1345f476c7f6ad7fdf67e394a5b18d5c2085e892ffe3d5",
+    "deps/stwo-zig/src/core/fri.zig": "faf714cff9965603535b747f8abad63b1e6dc55699b331e5cab0716ddf50de8e",
+    "deps/stwo-zig/src/core/fri/config.zig": "de08fde01ea6e6b871ca41d63627be765d00a8dfe607e8c2c58194eec8d9359a",
     "deps/stwo-zig/src/core/queries.zig": "68e13fbb48c0cd684b94198c5452e003984237a2fe2000dd332ac57234328bce",
     "deps/stwo-zig/src/core/channel/blake2s.zig": "407a80a913acb15b7e0138a593f1d2636f4297969714932cce59ed928e29f575",
     "deps/stwo-zig/src/core/channel/lookup_transcript.zig": "3180e2d704a07547a1df3a4c2da3b2dc675b7e18fb8715e39d889f8ddc9bc991",
     "deps/stwo-zig/src/prover/air/logup_columns.zig": "a4bc2efa8ba1a29c959b4d6b2f279a5032dde1ff7b8354675e87e02b4ebc4469",
     "deps/stwo-zig/src/frontends/circuit/common/component_list.zig": "d2f1e8facad581464f365958fb8e9fb9270fb28c09363b8361898df4136ceb2b",
     "src/frontends/s31/runtime/mixed_boundary/lookup_budget.zig": "9c9547a7265e18a6330b3342b6e5763d7b68fbe341dd4f6c8968921e21b02bc6",
-    "src/frontends/s31/runtime/mixed_boundary/inspection.zig": "5495bb31a166850eeb4aad456d5a719ec440043f3b9844bc181445274ccf4f92",
-    "src/frontends/s31/runtime/mixed_boundary/registry_manifest.zig": "c37a5bb758a75a5013c9a74baf06efcdf04a9c4aa25243c707c6d9fd726a1e31",
+    "src/frontends/s31/runtime/mixed_boundary/inspection.zig": "ec1106af5a075aee5fa53d434beb2f9e62f7a9fffb4792f8ba3a1b17757d0ba9",
+    "src/frontends/s31/runtime/mixed_boundary/registry_manifest.zig": "67c3f6c6ebfe3b9f1133b9c15d94680759c67072fc80b02b97be39d5660a6e5a",
     "src/frontends/s31/runtime/mixed_boundary/general_package.zig": "9cf45bc4a34ae27a60e68942e8e745c3033e693dbb5a4fd3b2480c48631dd11c",
     "src/frontends/s31/runtime/mixed_boundary/general_verifier_main.zig": "5e7e6eb0e963d7106c1ef973d7e50b539dfc772d4b4f1cff227bf0e65bed9f26",
     "src/frontends/s31/runtime/mixed_boundary/general_prover_main.zig": "f2e34b432be5ec28661da6d104486dde93790ca39164d56c317c4a0a33a21ac9",
