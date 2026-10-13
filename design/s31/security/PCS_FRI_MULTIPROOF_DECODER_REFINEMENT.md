@@ -121,6 +121,13 @@ The source guard pins the row comparison, row assembly cursor, leaf hashing,
 frontier loop, and caller-order copy; the native tests give differential
 evidence for those stages.
 
+The separate [committed-column origin note](PCS_FRI_COMMITTED_COLUMN_ORIGIN.md)
+constructs an ideal complete Merkle tree from the projected columns, proves
+that each projected row has an opening to its computed root, and checks the
+pinned prover's leaves, parents, decommit rows, and verifier paths against an
+independent native tree. Zig-to-Lean equivalence and quantitative binding
+remain open.
+
 This is a **finite executable refinement check**, not a proof of arbitrary
 height Zig semantics. The existing
 [`MultiproofDecoder.lean`](../../../formal/s31/S31/Gadgets/PcsFri/MultiproofDecoder.lean)
