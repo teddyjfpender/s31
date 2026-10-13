@@ -93,6 +93,14 @@ PoW barriers, lookup/PCS/FRI challenge draws, and all 70 raw queries. The
 source audit rejects order and encoding mutations. This is deterministic
 correspondence evidence, not a BCS or 96-bit soundness certificate.
 
+The experimental CAS05 branch has a separate
+[short-cascade field-capacity diagnostic](pcs_fri_cas05_field_capacity.py) and
+[decision ledger](../../design/s31/security/PCS_FRI_CAS05_CONSERVATIVE_PROFILE_DECISION.md).
+It compares exact published unique-decoding expressions for hypothetical
+even-degree challenge fields and distinguishes absolute error from the
+paper's work-factor convention. Its `--require-proven` option always fails;
+the calculation neither admits CAS05 nor assigns native security bits.
+
 ## Formal receipt
 
 Run the Lean source-binding check, full build, and kernel replay on a clean
