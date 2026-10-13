@@ -42,7 +42,19 @@ The separate `typed-structural-derivation.json` artifact now records a typed
 source tree and checks one generic construct/project erasure rule across
 static tuples, helper parameter binding, and nominal record fields. It
 replays the tree independently to the complete relation and ABI, then checks
-canonical source values for a supplied assignment. The production compiler
+canonical source values for a supplied assignment.
+The bounded `m31-v1` arm now also has a Lean decoder and independent generic
+erasure evaluator. For every accepted exact-byte package it requires the
+tree's complete ordered indexed SSA, Lean's source-byte SSA, and the parsed
+normalized relation to agree, including inputs, nodes, assertions, and
+selected output. `checked_relation_graph` proves this conditional join in the
+kernel. The new checker is a standalone optional audit. The
+`verify-effects-lean`, `verify-effects-gate-lean`, and release commands do not
+invoke it, so release admission still relies on Python structural erasure. The
+record-v2 arm, universal Python/Lean parser equivalence, native AIR-row
+authentication, and PCS/FRI remain open. See
+[`GeneralLinearSSAStructuralDerivation.md`](../../../formal/s31/S31/Gadgets/Functional/Correspondence/GeneralLinearSSAStructuralDerivation.md)
+for a hand-worked tuple/helper example and exact gate scope. The production compiler
 accepts a helper call after tuple projections; this executable certificate
 admits that combination, and the reviewed all-public short-lane direct-Gate
 profile additionally receives source-bound native fixed-row checking. The

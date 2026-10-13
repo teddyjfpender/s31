@@ -1,5 +1,15 @@
 # Executable source audit tests
 
+`structural_derivation_lean.py` runs the generic M31 typed-tree erasure gate
+over generated tuple, helper, constant, assertion, and private-input programs.
+It checks compiler/Python/Lean agreement, re-sealed wrong erasures, exact
+field shape, and unsupported fragments:
+
+```sh
+lake build s31-general-linear-structural-check
+python3 tests/audit/structural_derivation_lean.py
+```
+
 `general_linear_public_abi.py` checks three source-derived certificate
 fixtures against exact `.s31` bytes, ABI, assignment, and 32-byte public word
 files. It includes two public inputs, a private input, zero padding, and 36
