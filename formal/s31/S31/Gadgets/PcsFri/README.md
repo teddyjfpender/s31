@@ -247,14 +247,45 @@ For example, let `q=uT+vT⁻¹` and `V=aT+b+cT⁻¹`, with `a,c,u,v≠0`. Then
 `cv` cannot cancel with lower terms. Adding an interpolation line with
 support in `[-1,1]` still leaves the original in `L_2`.
 
-The exact relation `f=ℓ+Vq` is an **assumption**, not yet a theorem from two
-extension-point claims or native opened rows. CAS05 commits evaluation rows;
-no formal map currently refines those rows into this Laurent coefficient
-object, and no theorem identifies this `L_n` with the paper's `L_n'` circle
-basis. We also still need a coordinate-ring divisibility theorem saying that
-vanishing at the two extension points supplies such a `q`. Pointwise native
-division cannot establish any of these polynomial or degree claims. No native
-PCS/FRI security bits follow from this model alone.
+[`CircleLaurentQuotient.lean`](CircleLaurentQuotient.lean) closes the **coefficient
+model's quotient existence step**. If `f∈L_n`, `ℓ∈L_1`, `n≥1`, and their
+evaluations agree at an invertible OOD Fourier coordinate `z`, the theorem
+constructs `q∈L_{n−1}` with `f=ℓ+Vq`. Its explicit field assumptions are
+that `z` has a monic degree-two minimal polynomial over the coefficient
+field, the native line `V` vanishes at `z`, and the modeled OOD circle
+equations and `y.c1≠0` guard hold. It shifts `f−ℓ` by `T^n`, obtains an
+ordinary polynomial of degree at most `2n`, divides by `minpoly(z)`, and
+shifts the quotient back by `T^{n−1}`. The proof identifies the native
+three-term line with a nonzero scalar times that minimal polynomial. Its
+leading Fourier coefficient is nonzero by the existing circle geometry,
+so the quotient loses exactly one band radius as a bound.
+
+Here is the arithmetic over `F₅` by hand. Take `i=2` (`i²=−1`), `d=2`
+(a nonsquare), and `(x₀,y₀,x₁,y₁)=(0,0,2,2)`. The modeled tower circle
+equations hold: `2·(2²+2²)=1 mod 5`, and `y₁=2≠0`. The Fourier coordinate
+at the OOD point is `z=u`, where `u²=2` in `F₂₅`; its conjugate is `−u`.
+The native line and its shifted ordinary polynomial are
+
+```text
+V(T) = 2T + T⁻¹              T·V(T) = 2T² + 1 = 2(T²−2).
+```
+
+Choose `ℓ(T)=1+T` and `q(T)=T+T⁻¹`. Then
+
+```text
+f(T) = ℓ(T)+V(T)q(T) = 2T² + T + 4 + T⁻²  (mod 5).
+f(u)=ℓ(u)=1+u,       f(−u)=ℓ(−u)=1−u.
+```
+
+Thus `f∈L₂` and the constructed quotient is in `L₁`; multiplying by the
+line recovers the polynomial identity, not just values at opened rows.
+
+CAS05 commits evaluation rows, and no formal map currently refines those
+rows into this Laurent coefficient object. The native OOD Fourier coordinate
+also needs a refinement to the modeled degree-two root and line-root
+hypotheses. No theorem identifies this `L_n` with the paper's `L_n'` circle
+basis. Pointwise native division alone establishes none of those joins, so
+this theorem assigns no native PCS/FRI security bits.
 
 [`BundleQueryBound.lean`](BundleQueryBound.lean) proves the elementary query
 event needed by the experimental full-fiber cascade: if a query checks every
