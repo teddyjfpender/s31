@@ -42,6 +42,16 @@ proves the identity over any field where `2` is nonzero and includes the
 counterexample. It does not prove the paper's FRI soundness theorem applies
 to the native oracle and query schedule.
 
+[`BundleQueryBound.lean`](BundleQueryBound.lean) proves the elementary query
+event needed by the experimental full-fiber cascade: if a query checks every
+row in its selected bundle, the raw positions whose bundles touch a fixed
+bad-row set include all the bad rows themselves. Thus `s` independent uniform
+raw draws miss bad bundles no more often than they miss the bad rows, even
+when bundle positions overlap or raw queries repeat. This is a finite
+counting theorem. It still requires a proof that the native verifier checks
+each required bundled row and that the Fiat–Shamir sampler realizes the
+assumed draw distribution.
+
 [`ConservativeEnvelope.lean`](ConservativeEnvelope.lean) proves an arithmetic
 limit of one **published upper-bound expression**: in Circle STARKs Remark 26,
 its leading commitment/folding term exceeds `2^-96` whenever the candidate
