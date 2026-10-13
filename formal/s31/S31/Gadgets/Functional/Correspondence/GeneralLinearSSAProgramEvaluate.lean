@@ -107,7 +107,7 @@ def Distinct (names : List String) (maximum : Nat) : Prop :=
   ∀ i j, i < maximum → j < maximum →
     nameAt names i = nameAt names j → i = j
 
-private theorem lookup_append_some (env suffix : S31.Env)
+theorem lookup_append_some (env suffix : S31.Env)
     (name : String) (value : S31.Value)
     (h : S31.lookup env name = some value) :
     S31.lookup (env ++ suffix) name = some value := by
@@ -117,7 +117,7 @@ private theorem lookup_append_some (env suffix : S31.Env)
   | none => simp [hfind] at h
   | some pair => simpa [hfind] using h
 
-private theorem lookup_append_fresh (env : S31.Env)
+theorem lookup_append_fresh (env : S31.Env)
     (name : String) (value : S31.Value)
     (h : S31.lookup env name = none) :
     S31.lookup (env ++ [(name, value)]) name = some value := by
@@ -127,7 +127,7 @@ private theorem lookup_append_fresh (env : S31.Env)
   | none => simp
   | some pair => simp [hfind] at h
 
-private theorem lookup_append_other (env : S31.Env)
+theorem lookup_append_other (env : S31.Env)
     (name newName : String) (value : S31.Value)
     (h : S31.lookup env name = none) (hne : name ≠ newName) :
     S31.lookup (env ++ [(newName, value)]) name = none := by

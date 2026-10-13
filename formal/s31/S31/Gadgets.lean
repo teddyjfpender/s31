@@ -164,6 +164,7 @@ import S31.Gadgets.Functional.Correspondence.GeneralLinearSSAEffectsSourceBytes
 import S31.Gadgets.Functional.Correspondence.GeneralLinearSSAPublicABI
 import S31.Gadgets.Functional.Correspondence.GeneralLinearSSAProgramEvaluate
 import S31.Gadgets.Functional.Correspondence.GeneralLinearSSAInputState
+import S31.Gadgets.Functional.Correspondence.GeneralLinearSSAEffectsEvaluator
 import S31.Gadgets.Functional.Correspondence.GeneralLinearSSAJoin
 import S31.Gadgets.Functional.Correspondence.OrderedSubtractionRelease
 import S31.Gadgets.Functional.Correspondence.OrderedSubtractionBytes
