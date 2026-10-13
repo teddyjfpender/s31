@@ -40,12 +40,25 @@ def check_sources(cm31: str, qm31: str, circle: str) -> None:
             "const ab = self.a.mul(self.b);",
             ".a = a2.sub(b2),",
             ".b = ab.add(ab),")
+    require(function(cm31, "pub fn inv(self: CM31) Error!CM31 {"),
+            "CM31 checked inverse",
+            "if (self.isZero()) return Error.DivisionByZero;",
+            "return self.invUncheckedNonZero();")
+    require(function(cm31, "pub inline fn invUncheckedNonZero(self: CM31) CM31 {"),
+            "CM31 inverse formula",
+            "const denom = self.a.square().add(self.b.square());",
+            "const inv_denom = denom.invUncheckedNonZero();",
+            ".a = self.a.mul(inv_denom),",
+            ".b = self.b.neg().mul(inv_denom),")
     require(function(qm31, "fn mulByR(value: CM31) CM31 {"),
             "QM31 tower parameter",
             "const two_a = value.a.add(value.a);",
             "const two_b = value.b.add(value.b);",
             ".a = two_a.sub(value.b),",
             ".b = value.a.add(two_b),")
+    require(function(qm31, "fn mulByI(value: CM31) CM31 {"),
+            "QM31 imaginary multiplication",
+            ".a = value.b.neg(),", ".b = value.a,")
     require(function(qm31, "pub inline fn fromBase(x: M31) QM31 {"),
             "QM31 base embedding",
             ".c0 = CM31.fromBase(x),", ".c1 = CM31.zero()")
@@ -60,6 +73,19 @@ def check_sources(cm31: str, qm31: str, circle: str) -> None:
             "const ab = self.c0.mul(self.c1);",
             ".c0 = a2.add(mulByR(b2)),",
             ".c1 = ab.add(ab),")
+    require(function(qm31, "pub fn inv(self: QM31) Error!QM31 {"),
+            "QM31 checked inverse",
+            "if (self.isZero()) return Error.DivisionByZero;",
+            "const b2 = self.c1.square();",
+            "var r_b2 = b2.add(b2);",
+            "r_b2 = r_b2.add(mulByI(b2));",
+            "const a2 = self.c0.square();",
+            "const denom = a2.sub(r_b2);",
+            "if (denom.isZero()) return Error.DivisionByZero;",
+            "const denom_inverse = denom.invUncheckedNonZero();",
+            "const negative_b = self.c1.neg();",
+            ".c0 = self.c0.mul(denom_inverse),",
+            ".c1 = negative_b.mul(denom_inverse),")
     require(function(circle, "pub inline fn isOnCircle(self: Self) bool {"),
             "native circle relation",
             "const lhs = self.x.square().add(self.y.square());",

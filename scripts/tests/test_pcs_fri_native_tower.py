@@ -31,6 +31,12 @@ class NativeTowerSourceTests(unittest.TestCase):
             (1, "return self.c0.b.isZero() and self.c1.isZero();",
              "return self.c0.b.isZero() or self.c1.isZero();"),
             (1, ".c0 = a2.add(mulByR(b2)),", ".c0 = a2.sub(mulByR(b2)),"),
+            (0, "const denom = self.a.square().add(self.b.square());",
+             "const denom = self.a.square().sub(self.b.square());"),
+            (1, "const denom = a2.sub(r_b2);",
+             "const denom = a2.add(r_b2);"),
+            (1, "if (denom.isZero()) return Error.DivisionByZero;",
+             "if (denom.isZero()) return QM31.zero();"),
             (2, "const lhs = self.x.square().add(self.y.square());",
              "const lhs = self.x.square().sub(self.y.square());"),
         )
