@@ -4,6 +4,10 @@ The S31 verifier calls the pinned `stwo-zig` lifted Merkle verifier. Its proof
 contains a **compressed** list of sibling hashes, while the FRI capture
 records one **full** authentication path per requested leaf. The deterministic
 decoder is the bridge between those representations.
+The reviewed `deps/stwo-zig` gitlink is `59e1f115250b8af01712b9bf3d71616e53094964`;
+its `verifyImpl` rejects positions outside `2^height` when the height is below
+the machine word width. The native runner checks that the submodule checkout
+matches the gitlink before exercising this guard.
 
 [`pcs_fri_decoder_refinement_native.zig`](../../../formal/s31/tests/pcs_fri_decoder_refinement_native.zig)
 builds a complete eight-leaf tree independently of the decoder. For every one
