@@ -113,8 +113,8 @@ OBLIGATIONS = (
         "gap_kind": "unmatched_protocol_schedule",
         "published_requirement": "A grouped four-fold native round needs its own reduction to the paper's single-fold challenge schedule or a theorem covering that schedule",
         "published_anchor": CIRCLE + "#appendix-B",
-        "partial_evidence": ["deps/stwo-zig/src/core/fri/config.zig", "formal/s31/S31/Gadgets/PcsFri/FoldAlgebra.lean"],
-        "missing_discharge": "prove soundness of one challenge reused over each four-fold group and its exact native commitment schedule",
+        "partial_evidence": ["deps/stwo-zig/src/core/fri/config.zig", "deps/stwo-zig/src/core/fri.zig", "deps/stwo-zig/src/core/fri/folding.zig", "scripts/s31_formal_lib/pcs_fri_fold.py", "scripts/s31_formal_lib/pcs_fri_challenge_custody.py", "formal/s31/S31/Gadgets/PcsFri/GroupedFoldSchedule.lean", "design/s31/security/PCS_FRI_GROUPED_FOLD_OBSTRUCTION_2026-10-13.md"],
+        "missing_discharge": "prove a grouped-round correlated-agreement and commitment-error bound for one alpha and powers alpha^(2^j), including circle-to-line insertion, adaptive group commitments and exact native-to-theorem refinement; a four-fresh-challenge reduction is invalid",
     },
 )
 
