@@ -150,6 +150,34 @@ python3 -B -m unittest scripts.tests.test_pcs_fri_merkle_binding -v
 cd formal/s31 && lake build S31.Gadgets.PcsFri.FriMerkleBinding
 ```
 
+### Post-verification FRI Merkle admission
+
+S31's [`fri_merkle_admission.zig`](../../../../../src/frontends/s31/runtime/fri_merkle_admission.zig)
+now independently rehashes every raw FRI subset after the core verifier and
+operational capture gate succeed, before any of the four native verifier paths
+returns success or publishes a converted witness. It checks the transcript
+query position at each layer, the exact packed or unpacked row shape, each
+QM31 value's four M31 coordinates in native order, the complete subset
+subtree, every captured upper sibling, and equality with the layer's recorded
+commitment. Malformed dimensions and out-of-domain positions reject. An
+honest S31 Blake2sM31 proof with a packed first layer and an unpacked partial
+inner fold passes; changing a value, sibling, group position, commitment, or
+path length rejects. The [source guard](../../../../../scripts/s31_formal_lib/pcs_fri_merkle_admission.py)
+pins the checker, proof-root capture, and all four call sites, with eleven
+hostile mutations.
+
+[`FriLeafEncoding.lean`](FriLeafEncoding.lean) proves that flattening a list
+of QM31 values into their `(a,b,c,d)` M31 coordinates is injective. Thus a
+leaf collision on unequal QM31 rows is a collision on distinct encoded
+M31 rows, conditional on the native hasher receiving that encoding. This
+remains a source-pinned correspondence, not a formal execution proof.
+
+The new runtime gate gives executable evidence for the native-opening side of
+`authenticatedSlot`; a Lean proof that Zig success implies that relation is
+still open. The committed opening for a fixed putative oracle, BLAKE2s
+collision resistance, Fiat–Shamir sampling, and FRI proximity remain explicit
+premises. The proven-profile preflight still fails closed.
+
 ## One FRI fold's field algebra
 
 [`FoldAlgebra.lean`](FoldAlgebra.lean) defines the inverse-butterfly pair

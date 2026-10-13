@@ -10,6 +10,7 @@ const postcard = @import("interop_postcard");
 const direct_component_preflight = @import("direct_component_preflight.zig");
 const deep_capture_admission = @import("deep_capture_admission.zig");
 const fri_capture_admission = @import("fri_capture_admission.zig");
+const fri_merkle_admission = @import("fri_merkle_admission.zig");
 
 const QM31 = core.fields.qm31.QM31;
 const H = core.vcs_lifted.blake2_merkle.Blake2sPlainMerkleHasher;
@@ -266,6 +267,7 @@ fn verifyProfile(
         capture.fri,
         capture.last_layer_coefficients,
     );
+    try fri_merkle_admission.validate(allocator, capture.queries.raw, capture.fri);
     if (converted_out) |out| {
         if (spec != null) return error.UnsupportedRecursiveProfile;
         const config = try cpu.verifier_proof.proofConfig(stark.commitment_scheme_proof.sampled_values.items[0].len, pcs);
@@ -480,6 +482,7 @@ pub fn verifySparse(
         capture.fri,
         capture.last_layer_coefficients,
     );
+    try fri_merkle_admission.validate(allocator, capture.queries.raw, capture.fri);
 }
 
 const SPARSE_WIDE_MAGIC = "S31NAT5W";
@@ -630,6 +633,7 @@ fn verifySparseWideInternal(
         capture.fri,
         capture.last_layer_coefficients,
     );
+    try fri_merkle_admission.validate(allocator, capture.queries.raw, capture.fri);
     if (converted_out) |out| {
         const trace_log = std.math.sub(u32, pcs.trace_lifting_log_size, pcs.fri_config.log_blowup_factor) catch
             return error.InvalidProofConfig;
@@ -918,6 +922,7 @@ fn verifyDirectProfile(
         capture.fri,
         capture.last_layer_coefficients,
     );
+    try fri_merkle_admission.validate(allocator, capture.queries.raw, capture.fri);
 }
 
 fn sparseLogs(

@@ -297,6 +297,7 @@ import S31.Gadgets.PcsFri.RawLayerRefinement
 import S31.Gadgets.PcsFri.OperationalExtraction
 import S31.Gadgets.PcsFri.RawDeepCustody
 import S31.Gadgets.PcsFri.FriMerkleBinding
+import S31.Gadgets.PcsFri.FriLeafEncoding
 import S31.Gadgets.PcsFri.MaskedLayerBound
 
 /-! Local constraint relations, with arbitrary-witness soundness and honest
