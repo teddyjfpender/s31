@@ -189,11 +189,19 @@ The [Lean support module](../../../formal/s31/S31/Gadgets/PcsFri/OodAcceptedSupp
 checks these exact cardinality identities and the last inequality at the
 real M31 modulus. It proves a generic **conditional** mass step: if a bad
 event has at most `b` points in the paper support and at most `a≤b` in the
-guarded support, then `a/A ≤ (b/P)(P/A)`. The separate finite-field count
-`2q²−3` and the premise that the native channel supplies an independent
-uniform seed at every relevant transcript state are not proved in Lean.
-Also, the early guard's success does not itself prove every native quotient
-denominator is nonzero; that all-row statement needs a separate proof.
+guarded support, then `a/A ≤ (b/P)(P/A)`. The
+[finite-field theorem](../../../formal/s31/S31/Gadgets/PcsFri/OodGuardFiniteCount.lean)
+now proves the exact `2Q−3` rejected-regular and `(Q−1)²` accepted counts
+for a lower field of size `Q`, subject to explicit nonsquare and imaginary
+unit premises. The modeled M31 coefficient pair has cardinality `q²`, its
+imaginary unit squares to `−1`, and `2+i` is nonsquare by the
+[concrete pair bridge](../../../formal/s31/S31/Gadgets/PcsFri/ConcreteCM31Tower.lean).
+A Lean field instance and native Zig refinement are still required to apply
+the generic count directly to compiled CM31 values. The native channel's
+adaptive independent-uniform-seed premise is also unproved. The
+[paired denominator theorem](../../../formal/s31/S31/Gadgets/PcsFri/PairedTowerCircle.lean)
+proves all-row nonvanishing from a modeled circle equation and `y.c1 ≠ 0`;
+connecting that premise to every native accepted point remains open.
 
 It would be unsound to replace `P` by `A` in the published OOD round formula
 and call the result a theorem. One must prove that its bad-set numerator

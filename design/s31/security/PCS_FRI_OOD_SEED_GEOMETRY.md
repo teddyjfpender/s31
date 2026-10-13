@@ -54,7 +54,13 @@ nonsquare in `CM31`; two have `b=0`. Removing the two exceptional roots of
 `1+t²` leaves **`2q²−3` regular seeds** with `y.c1=0`, or
 `(2q²−3)/q⁴` (about `2^-61`) under a uniform-seed assumption. Here `R` is
 indeed a nonsquare: its norm down to `M31` is `5`, and `q mod 5=2` makes
-`5` a nonsquare in `M31`. The [draft experimental paired verifier](https://github.com/teddyjfpender/stwo-zig/pull/249)
+`5` a nonsquare in `M31`. The
+[Lean conic count](../../../formal/s31/S31/Gadgets/PcsFri/OodGuardFiniteCount.lean)
+proves the formula for any qualifying finite lower field; the
+[M31 pair bridge](../../../formal/s31/S31/Gadgets/PcsFri/ConcreteCM31Tower.lean)
+proves the modeled pair size and nonresidue facts. A Lean field instance and
+compiled Zig refinement still separate that generic count from native CM31.
+The [draft experimental paired verifier](https://github.com/teddyjfpender/stwo-zig/pull/249)
 rejects this larger set before publishing the transcript state; the pinned production
 path does not have that early guard. `y.c1=0` alone does **not** imply the
 row quotient denominator is zero at every row, so this larger count is not
