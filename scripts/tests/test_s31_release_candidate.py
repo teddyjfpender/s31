@@ -33,6 +33,8 @@ class CandidateReports(unittest.TestCase):
         script.write_text("# audit fixture\n")
         gate_script = self.root / "scripts/release/s31_feature_gate.py"
         gate_script.write_text("# feature gate fixture\n")
+        (self.root / "scripts/release/structural_lean_release.py").write_text(
+            "# structural release fixture\n")
         for source, assignment, manual in AUDIT_FIXTURES.values():
             for name in (source, assignment, manual):
                 if name is not None:
@@ -92,7 +94,15 @@ class CandidateReports(unittest.TestCase):
             outcome = {"command_sha256": command_sha, "returncode": 0,
                        "stdout_sha256": "d" * 64, "stderr_sha256": "d" * 64}
             cases[name] = {"status": "passed", "returncode": 0,
-                           "controls": {"cases": 1}, "command": command,
+                           "controls": ({"cases": 1,
+                                         "structural_lean_release_verified": True,
+                                         "structural_lean_checker_sha256": "e" * 64,
+                                         "structural_release_script_sha256": sha((
+                                             self.root / "scripts/release/structural_lean_release.py").read_bytes()),
+                                         "wrong_checker_pin_rejected": True,
+                                         "missing_structural_tree_rejected": True}
+                                        if name == "combined-helper-tuple-native"
+                                        else {"cases": 1}), "command": command,
                            **outcome,
                            "result_sha256": sha((json.dumps(
                                outcome, sort_keys=True, separators=(",", ":"),
@@ -119,6 +129,7 @@ class CandidateReports(unittest.TestCase):
             log.write_text(f"{name}: OK\n")
             self.formal["checks"][name] = {"command": command, "returncode": 0,
                                            "log": str(log), "log_sha256": sha(log.read_bytes())}
+        self.formal["checks"]["lake_build"]["structural_checker_sha256"] = "e" * 64
 
     def check(self) -> dict:
         return validate_reports(self.audit, self.feature, self.formal,
@@ -178,6 +189,23 @@ class CandidateReports(unittest.TestCase):
     def test_changed_feature_gate_runner_fails(self) -> None:
         (self.root / "scripts/release/s31_feature_gate.py").write_text("changed")
         with self.assertRaisesRegex(ValueError, "feature gate script differs"):
+            self.check()
+
+    def test_missing_structural_release_control_fails(self) -> None:
+        self.feature["cases"]["combined-helper-tuple-native"]["controls"].pop(
+            "structural_lean_release_verified")
+        with self.assertRaisesRegex(ValueError, "requires Lean structural admission"):
+            self.check()
+
+    def test_structural_checker_must_match_formal_build(self) -> None:
+        self.feature["cases"]["combined-helper-tuple-native"]["controls"][
+            "structural_lean_checker_sha256"] = "f" * 64
+        with self.assertRaisesRegex(ValueError, "structural checker differs"):
+            self.check()
+        self.feature["cases"]["combined-helper-tuple-native"]["controls"][
+            "structural_lean_checker_sha256"] = "e" * 64
+        self.formal["checks"]["lake_build"].pop("structural_checker_sha256")
+        with self.assertRaisesRegex(ValueError, "structural checker differs"):
             self.check()
 
     def test_feature_result_identity_fails(self) -> None:

@@ -78,7 +78,7 @@ FEATURE_COMMANDS = {
 }
 FORMAL_COMMANDS = {
     "bindings": ["python3", "-B", "scripts/s31_formal.py"],
-    "lake_build": ["lake", "build", "S31"],
+    "lake_build": ["lake", "build", "S31", "s31-general-linear-structural-check"],
     "leanchecker": ["lake", "env", "leanchecker", "S31"],
 }
 FORMAL_FILES = {
@@ -218,6 +218,16 @@ def validate_reports(audit: dict, feature: dict, formal: dict, *, compiler: str,
         require(script.is_relative_to(root.resolve()) and script.is_file() and
                 command.get("script_sha256") == digest(script),
                 f"feature row {name}: script differs from current tree")
+        if name == "combined-helper-tuple-native":
+            require(all(row["controls"].get(field) is True for field in (
+                "structural_lean_release_verified", "wrong_checker_pin_rejected",
+                "missing_structural_tree_rejected")),
+                "combined helper/tuple release requires Lean structural admission")
+            structural_script = root / "scripts/release/structural_lean_release.py"
+            require(structural_script.is_file() and not structural_script.is_symlink() and
+                    row["controls"].get("structural_release_script_sha256") ==
+                    digest(structural_script),
+                "structural release verifier differs from current tree")
 
     require(formal.get("schema") == "s31-v01-formal-checks-v1", "wrong formal report schema")
     require(formal.get("status") in (None, "passed") and formal.get("failure") is None,
@@ -247,6 +257,11 @@ def validate_reports(audit: dict, feature: dict, formal: dict, *, compiler: str,
             log = root / log
         require(log.is_file() and not log.is_symlink() and row.get("log_sha256") == digest(log),
                 f"formal log digest mismatch: {name}")
+    structural_feature = checks["combined-helper-tuple-native"]["controls"]
+    structural_formal = commands["lake_build"].get("structural_checker_sha256")
+    require(sha(structural_formal) and
+            structural_feature.get("structural_lean_checker_sha256") == structural_formal,
+            "structural checker differs from formal build receipt")
     return {"source_commit": source_commit, "formal_commit": formal["source_commit"],
             "engine_commit": engine["commit"],
             "compiler_sha256": compiler, "audit_profiles": 12,

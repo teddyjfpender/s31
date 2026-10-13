@@ -3,7 +3,9 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -12,6 +14,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[6]
 S31 = ROOT / "src/frontends/s31"
 sys.path.insert(0, str(S31 / "python"))
+sys.path.insert(0, str(ROOT))
 
 import s31  # noqa: E402
 import package.build as package_build  # noqa: E402
@@ -23,6 +26,8 @@ from package.source_relation_fragment import (LEAN_EFFECTS_PROFILE,  # noqa: E40
 from package.structural_derivation import (ARTIFACT as STRUCTURAL_ARTIFACT,  # noqa: E402
                                            check_certificate, evaluate_assignment)
 from package.verify import verify_package  # noqa: E402
+from package.trust import pinned_paths  # noqa: E402
+from scripts.release.structural_lean_release import verify as verify_structural_release  # noqa: E402
 
 SOURCE = """fn subtract(a: [m31; 2], b: [m31; 2]) -> [m31; 2] { a - b }
 circuit combined_native(public x: [m31; 2], public y: [m31; 2]) -> public [m31; 2] {
@@ -113,6 +118,51 @@ def run() -> dict[str, object]:
             trial = s31.trial(combined, assignment, work / "trial")
             if trial["native_verifier_accepted"] is not True:
                 raise AssertionError("native verifier rejected combined proof")
+            checker = ROOT / "formal/s31/.lake/build/bin/s31-general-linear-structural-check"
+            if not checker.is_file():
+                raise AssertionError("structural release requires the built Lean checker")
+            checker_pin = hashlib.sha256(checker.read_bytes()).hexdigest()
+            pins = {kind: hashlib.sha256(path.read_bytes()).hexdigest()
+                    for kind, path in pinned_paths(combined).items()}
+            release_script = ROOT / "scripts/release/structural_lean_release.py"
+            release_script_sha256 = hashlib.sha256(release_script.read_bytes()).hexdigest()
+            release_command = [
+                sys.executable, str(release_script),
+                str(combined), str(work / "trial/proof.bin"),
+                "--statement", str(work / "trial/statement.json"),
+                "--lean-checker", str(checker),
+                "--lean-checker-sha256", checker_pin,
+            ]
+            for kind, digest in pins.items():
+                release_command.extend((f"--{kind}-sha256", digest))
+            released = subprocess.run(release_command, cwd=ROOT,
+                                      capture_output=True, text=True,
+                                      timeout=120, check=False)
+            if released.returncode or not released.stdout.strip():
+                raise AssertionError("strict Lean structural release failed: "
+                                     f"{released.stdout} {released.stderr}")
+            if hashlib.sha256(release_script.read_bytes()).hexdigest() != release_script_sha256:
+                raise AssertionError("structural release script changed during native trial")
+            try:
+                verify_structural_release(
+                    combined, work / "trial/proof.bin", work / "trial/statement.json",
+                    pins, checker, "0" * 64)
+            except ValueError as exc:
+                if "pin mismatch" not in str(exc):
+                    raise
+            else:
+                raise AssertionError("structural release accepted an untrusted Lean checker")
+            missing = work / "missing-structural"
+            shutil.copytree(combined, missing)
+            (missing / STRUCTURAL_ARTIFACT).unlink()
+            try:
+                verify_structural_release(
+                    missing, work / "trial/proof.bin", work / "trial/statement.json",
+                    pins, checker, checker_pin)
+            except (ValueError, FileNotFoundError):
+                pass
+            else:
+                raise AssertionError("structural release accepted a missing typed tree")
             proof_bytes = (work / "trial/proof.bin").read_bytes()
             proof_fixed, _, main_offset = proof_roots(proof_bytes)
             fixed_offset = main_offset - len(proof_fixed)
@@ -137,6 +187,11 @@ def run() -> dict[str, object]:
                     "fixed_root": proof_fixed.hex(),
                     "flat_air_equal": True,
                     "native_proof_verified": True,
+                    "structural_lean_release_verified": True,
+                    "structural_lean_checker_sha256": checker_pin,
+                    "structural_release_script_sha256": release_script_sha256,
+                    "wrong_checker_pin_rejected": True,
+                    "missing_structural_tree_rejected": True,
                     "changed_fixed_root_rejected": True,
                     "proof_bytes": trial["proof_bytes"]}
     finally:

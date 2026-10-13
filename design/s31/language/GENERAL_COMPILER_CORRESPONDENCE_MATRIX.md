@@ -48,9 +48,13 @@ erasure evaluator. For every accepted exact-byte package it requires the
 tree's complete ordered indexed SSA, Lean's source-byte SSA, and the parsed
 normalized relation to agree, including inputs, nodes, assertions, and
 selected output. `checked_relation_graph` proves this conditional join in the
-kernel. The new checker is a standalone optional audit. The
-`verify-effects-lean`, `verify-effects-gate-lean`, and release commands do not
-invoke it, so release admission still relies on Python structural erasure. The
+kernel. The strict bounded-M31
+[`structural_lean_release.py`](../../../scripts/release/structural_lean_release.py)
+entry point now requires it on a pinned package snapshot before native proof
+verification, and the full release feature gate requires a real combined
+helper/tuple package to pass. The general `s31 verify-release` and ordinary
+package verifier do not invoke it; those paths still rely on Python structural
+erasure. The
 record-v2 arm, universal Python/Lean parser equivalence, native AIR-row
 authentication, and PCS/FRI remain open. See
 [`GeneralLinearSSAStructuralDerivation.md`](../../../formal/s31/S31/Gadgets/Functional/Correspondence/GeneralLinearSSAStructuralDerivation.md)

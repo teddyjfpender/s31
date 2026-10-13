@@ -86,6 +86,11 @@ def run(out: Path, logs_dir: Path, *, root: Path = ROOT,
                              stderr=subprocess.STDOUT, check=False)
         checks[name] = {"command": command, "returncode": result.returncode,
                         "log": str(log.resolve()), "log_sha256": digest(log)}
+        if name == "lake_build" and result.returncode == 0:
+            checker = root / "formal/s31/.lake/build/bin/s31-general-linear-structural-check"
+            if not checker.is_file() or checker.is_symlink():
+                raise ValueError("formal lake build did not produce the structural checker")
+            checks[name]["structural_checker_sha256"] = digest(checker)
         after = take_snapshot(root)
         if after != before:
             failure = f"source, compiler, formal inventory, or worktree drift after {name}"

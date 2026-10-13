@@ -121,7 +121,7 @@
     "src/frontends/s31/python/package/structural_derivation.py": "ce3779dadfa6386539c0d47e1f7a8286c480b10e2bf5ae4fd35cf791d5209abf",
     "src/frontends/s31/python/package/pure_native_rows.py": "3fcbe2b7f483a5239e7f9f33369f02812834a5e8ec52a7f273ca2dbd64f5eb7f",
     "src/frontends/s31/tests/python/security/test_structural_derivation.py": "b75ce7aed4ae26d2dbec19b232f6c24f3128a1369c903cce90b5d26422947310",
-    "src/frontends/s31/tests/acceptance/compiler_correspondence/combined_helper_tuple_native_rows.py": "13a701a41db35454133632447483f4818ec7f0b866bc723c259a7be395346d9c",
+    "src/frontends/s31/tests/acceptance/compiler_correspondence/combined_helper_tuple_native_rows.py": "523e09516db2087674736e84d70555485af91215f2ed8c0e9f94e3ec9b5341b2",
     "src/frontends/s31/tests/acceptance/record_abi/native_parser_corpus.zig": "a05f9260247b687369f97f22d9580cc51ec545e9d50342681c762b204612f0a7",
     "src/frontends/s31/tests/acceptance/record_abi/record_source_execution_fragment_v2.py": "884d98659c99faac6a06867f7592d3fac0aec1c28403703a12fec5e36d58121d",
     "src/frontends/s31/language/relation_compiler.zig": "46e1ce8bb225b753688f458cfb1c6fc644c752f42b70f2d34be11d00ecb804fa",

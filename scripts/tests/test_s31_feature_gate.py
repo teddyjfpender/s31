@@ -111,6 +111,12 @@ def fake_report(check: gate.Check) -> tuple[str, str]:
                   "abi_valid_changed_claim_rejected_by_proof": True}
     elif fmt == "combined-helper-tuple-native":
         report = {"schema": "s31-combined-helper-tuple-native-rows-v1",
+                  "structural_lean_release_verified": True,
+                  "structural_lean_checker_sha256": "e" * 64,
+                  "structural_release_script_sha256": gate.digest((
+                      gate.ROOT / "scripts/release/structural_lean_release.py").read_bytes()),
+                  "wrong_checker_pin_rejected": True,
+                  "missing_structural_tree_rejected": True,
                   "source_rows": [{"id": 2, "in0": 16, "in1": 20,
                                    "op": "sub", "out": 21, "trace_row": 493}],
                   "fixed_root": "a" * 64, "flat_air_equal": True,
@@ -219,7 +225,11 @@ class FeatureGateTests(unittest.TestCase):
         gate.validate_output(check, stdout, "")
         for mutation in (lambda report: report.update({"flat_air_equal": False}),
                          lambda report: report.update({"fixed_root": "x" * 64}),
-                         lambda report: report.update({"changed_fixed_root_rejected": False})):
+                         lambda report: report.update({"changed_fixed_root_rejected": False}),
+                         lambda report: report.update({"structural_lean_release_verified": False}),
+                         lambda report: report.update({"structural_lean_checker_sha256": "invalid"}),
+                         lambda report: report.pop("wrong_checker_pin_rejected"),
+                         lambda report: report.update({"missing_structural_tree_rejected": False})):
             report = json.loads(stdout)
             mutation(report)
             with self.assertRaisesRegex(ValueError, "combined helper/tuple"):
