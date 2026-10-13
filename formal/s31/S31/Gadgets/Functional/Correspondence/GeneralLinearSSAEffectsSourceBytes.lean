@@ -4,11 +4,12 @@ import S31.Gadgets.Functional.Correspondence.SourceFunctionBytes
 /-!
 An independent byte parser for a bounded effectful S31 circuit. It accepts
 binary M31 array arithmetic, canonical `splat<N>(k_m31)` constants, and
-interleaved `assert_eq` statements. Every assertion operand must be in scope
+interleaved `assert_eq` statements. Static splat bindings and wire aliases
+are resolved before SSA numbering. Every assertion operand must be in scope
 at its original textual position. The parsed source determines the exact
 indexed effects SSA compared with canonical compiler certificate bytes.
 
-Static helpers, aliases, grouped expressions, and scalar types are outside
+Static helpers, grouped expressions, and scalar types are outside
 this deliberately bounded grammar. The circuit name is syntax-checked but
 is absent from the certificate's SSA projection, so this semantic check does
 not authenticate its spelling or the source SHA-256 field.
@@ -107,7 +108,16 @@ private inductive Atom where
   | wire (id : Nat)
   | constant (value : Nat)
 
-private def takeAtom (length : Nat) (names : List Token) :
+private def initialBindings : List Token → Nat → List (Token × Atom)
+  | [], _ => []
+  | name :: rest, id => (name, .wire id) :: initialBindings rest (id + 1)
+
+private def findBinding (name : Token) : List (Token × Atom) → Option Atom
+  | [] => none
+  | (key, value) :: rest =>
+      if key == name then some value else findBinding name rest
+
+private def takeAtom (length : Nat) (bindings : List (Token × Atom)) :
     List Token → Option (Atom × List Token)
   | head :: rest =>
       if head == token "splat" then do
@@ -121,19 +131,22 @@ private def takeAtom (length : Nat) (names : List Token) :
         | [] => none
       else do
         let (name, rest) ← takeIdent (head :: rest)
-        let id ← findName name names
-        return (.wire id, rest)
+        let value ← findBinding name bindings
+        return (value, rest)
   | [] => none
 
-private def takeWire (names : List Token) (remaining : List Token) :
+private def takeWire (bindings : List (Token × Atom)) (remaining : List Token) :
     Option (Nat × List Token) := do
   let (name, rest) ← takeIdent remaining
-  let id ← findName name names
-  return (id, rest)
+  match (← findBinding name bindings) with
+  | .wire id => return (id, rest)
+  | .constant _ => none
 
 private structure State where
   remaining : List Token
-  names : List Token
+  bindings : List (Token × Atom)
+  inputCount : Nat
+  letCount : Nat
   nodes : List EmittedNode
   assertions : List (Nat × Nat)
   seenAssertions : List (Nat × Nat)
@@ -141,13 +154,19 @@ private structure State where
 private def parseLet (length : Nat) (state : State) : Option State := do
   let rest ← expect (token "let") state.remaining
   let (name, rest) ← takeIdent rest
-  if state.names.contains name || state.nodes.length ≥ 16 then none else
+  if state.bindings.any (fun binding => binding.1 == name) ||
+      state.letCount ≥ 32 then none else
   let rest ← expect (token "=") rest
-  let (left, rest) ← takeAtom length state.names rest
+  let (left, rest) ← takeAtom length state.bindings rest
+  if rest.head? == some (token ";") then
+    let rest ← expect (token ";") rest
+    let next : State := { state with remaining := rest, bindings := state.bindings ++ [(name, left)], letCount := state.letCount + 1 }
+    return next
+  if state.nodes.length ≥ 16 then none else
   let (op, rest) ← takeOp rest
-  let (right, rest) ← takeAtom length state.names rest
+  let (right, rest) ← takeAtom length state.bindings rest
   let rest ← expect (token ";") rest
-  let id := state.names.length
+  let id := state.inputCount + state.nodes.length
   let node ← match left, right with
     | .wire lhs, .wire rhs =>
         let operation := match op with
@@ -163,15 +182,15 @@ private def parseLet (length : Nat) (state : State) : Option State := do
         let operation := if op == .mul then "mul_const" else "add_const"
         some ({ id := id, name := nameString name, op := operation, lhs := lhs, rhs := none, constant := some value } : EmittedNode)
     | .constant _, .constant _ => none
-  let next : State := { state with remaining := rest, names := state.names ++ [name], nodes := state.nodes ++ [node] }
+  let next : State := { state with remaining := rest, bindings := state.bindings ++ [(name, .wire id)], letCount := state.letCount + 1, nodes := state.nodes ++ [node] }
   return next
 
 private def parseAssertion (state : State) : Option State := do
   if state.assertions.length ≥ 16 then none else
   let rest ← expectMany [token "assert_eq", token "("] state.remaining
-  let (lhs, rest) ← takeWire state.names rest
+  let (lhs, rest) ← takeWire state.bindings rest
   let rest ← expect (token ",") rest
-  let (rhs, rest) ← takeWire state.names rest
+  let (rhs, rest) ← takeWire state.bindings rest
   let rest ← expectMany [token ")", token ";"] rest
   let ordered := (min lhs rhs, max lhs rhs)
   if state.seenAssertions.contains ordered then none else
@@ -210,15 +229,18 @@ def parseSource (bytes : List Nat) : Option EmittedSSA := do
   let rest ← takeSameLength length rest
   if length * (1 + (inputs.filter (·.visibility == "public")).length) > 8 then none else
   let rest ← expect (token "{") rest
-  let state ← parseStatements 32 length
-    { remaining := rest, names, nodes := [], assertions := [], seenAssertions := [] }
+  let state ← parseStatements 48 length
+    { remaining := rest, bindings := initialBindings names 0, inputCount := inputs.length,
+      letCount := 0, nodes := [], assertions := [], seenAssertions := [] }
   if state.nodes.isEmpty then none else
   let (outputName, rest) ← takeIdent state.remaining
   let rest ← if rest.head? == some (token ";") then
     expect (token ";") rest else some rest
   let rest ← expect (token "}") rest
   if !rest.isEmpty then none else
-  let output ← findName outputName state.names
+  let output ← match (← findBinding outputName state.bindings) with
+    | .wire id => some id
+    | .constant _ => none
   let result : EmittedSSA :=
     { lane_count := length, inputs, nodes := state.nodes,
       assertions := state.assertions, output }
