@@ -53,8 +53,22 @@ path does not have that early guard. `y.c1=0` alone does **not** imply the
 row quotient denominator is zero at every row, so this larger count is not
 a failure count for the pinned production path.
 
+The pinned BLAKE2s channel draws eight 32-bit words per block, rejects the
+whole block if **any** word is at least `2q`, and reduces the accepted words
+modulo `q`. Each residue has exactly two accepted representatives, `r` and
+`r+q`. Consequently, **if** each fresh hash block is an independent uniform
+256-bit string, the first four words of a successful block are exactly uniform
+over `QM31`. One block succeeds with exact probability
+`(2q/2³²)^8 = (1−2^-31)^8`. Independent retries preserve that conditional
+uniformity; a finite draw counter can still exhaust. The diagnostic pins the
+channel and M31 reduction sources and checks the counting argument in a small
+exhaustive analogue. This is a fixed-transcript ideal-random-oracle statement.
+It does not prove concrete BLAKE2s is a random oracle, or supply the adaptive
+Fiat–Shamir/BCS reduction needed when a prover can choose commitments and
+try many transcript states.
+
 The [source-bound diagnostic](../../../scripts/release/pcs_fri_ood_seed_geometry.py)
-pins the native gitlink and six exact file hashes, checks the reviewed
+pins the native gitlink and eight exact file hashes, checks the reviewed
 sampling and denominator code, and reports these fractions as exact rational
 numbers:
 
