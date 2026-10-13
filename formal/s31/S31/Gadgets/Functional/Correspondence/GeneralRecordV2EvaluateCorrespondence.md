@@ -49,3 +49,15 @@ private assignment, and reject an extra output name for the alias form.
 This proof covers the bounded record-v2 source grammar's M31 add/mul value
 semantics and its typed public claim. It does not establish that native AIR
 cells match `Program.evaluate`, or that PCS/FRI authenticates those cells.
+
+The executable `s31-general-record-v2-program-admission-check` exposes this
+check through `SOURCE TREE RELATION ABI --assignment ASSIGNMENT`. The assignment
+must be canonical typed JSON with `public_inputs`, `private_inputs`, and
+`public_outputs` maps of one-word M31 arrays. This mode runs `checkStatic`
+and `checkSourceAssignment`, then prints the ordered source result and padded
+public claim. The existing five-argument `STATEMENT` mode remains the older
+one-field public-only preflight. The assignment mode checks values but does
+not authenticate a native trace or proof. Run
+`python3 formal/s31/scripts/check_record_v2_assignment_correspondence.py`
+to exercise three compiled source packages, private-input mutation, extra
+public output, and noncanonical JSON rejection.
