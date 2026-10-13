@@ -43,6 +43,14 @@ the conjugate-circle half. `projectedRow` gathers these values in an agreed
 column order. `accepted_row_refines_projected_commitment` says an accepted
 opening of this committed row and an accepted opening of a different native
 row under the same root and index produce one of the witnessed collisions.
+`projectedPosition_compose` proves that projecting from a lifted tree to a
+natural-height tree and then to a column equals direct column projection for
+arbitrary `column ≤ tree ≤ lifting` heights. The sealed gate height-21 case is
+`gate21_tree_column_position`. The
+[`PCS_FRI_GATE_LIFTED_PROJECTION.md`](../../../../../design/s31/security/PCS_FRI_GATE_LIFTED_PROJECTION.md)
+diagnostic records key-derived column logs and native source guards. This
+integer-index identity does not establish that Zig's opened values come from
+the projected committed column oracles.
 
 The pinned native test in `deps/stwo-zig/src/core/vcs_lifted/verifier.zig`
 replays a captured two-level path to its root and checks rejection after

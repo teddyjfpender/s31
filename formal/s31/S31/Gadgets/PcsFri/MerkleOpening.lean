@@ -206,6 +206,57 @@ theorem projectedPosition_lt (liftingLog columnLog position : Nat)
     rw [targetPower]
     omega
 
+/-- On a lifted tree at least as tall as a column, native projection divides
+the coset index while retaining the conjugate-circle bit. -/
+theorem projectedPosition_of_le (liftingLog columnLog position : Nat)
+    (h : columnLog ≤ liftingLog) :
+    projectedPosition liftingLog columnLog position =
+      2 * ((position / 2) / 2 ^ (liftingLog - columnLog)) + position % 2 := by
+  simp only [projectedPosition, if_neg (Nat.not_lt.mpr h)]
+  have exponent : liftingLog - columnLog + 1 = 1 + (liftingLog - columnLog) := by omega
+  rw [exponent, pow_add, pow_one]
+  rw [Nat.div_div_eq_div_mul]
+
+/-- Projecting a lifted query first to a shorter tree and then to a column
+agrees exactly with direct projection to that column. This is a pure index
+lemma; it does not assert that the native Merkle row contains that value. -/
+theorem projectedPosition_compose (liftingLog treeLog columnLog position : Nat)
+    (columnLeTree : columnLog ≤ treeLog) (treeLeLifting : treeLog ≤ liftingLog) :
+    projectedPosition treeLog columnLog
+      (projectedPosition liftingLog treeLog position) =
+    projectedPosition liftingLog columnLog position := by
+  rw [projectedPosition_of_le treeLog columnLog _ columnLeTree,
+      projectedPosition_of_le liftingLog treeLog _ treeLeLifting,
+      projectedPosition_of_le liftingLog columnLog _ (by omega)]
+  have bitBound : position % 2 < 2 := Nat.mod_lt _ (by omega)
+  have half :
+      (2 * ((position / 2) / 2 ^ (liftingLog - treeLog)) + position % 2) / 2 =
+        (position / 2) / 2 ^ (liftingLog - treeLog) := by omega
+  have bit :
+      (2 * ((position / 2) / 2 ^ (liftingLog - treeLog)) + position % 2) % 2 =
+        position % 2 := by omega
+  rw [half, bit, Nat.div_div_eq_div_mul, ← pow_add]
+  have exponent : liftingLog - treeLog + (treeLog - columnLog) =
+      liftingLog - columnLog := by omega
+  rw [exponent]
+
+/-- The explicit-height gate profile queries a tree at the full lifted
+height, so its first projection is the identity. -/
+theorem projectedPosition_same (liftingLog position : Nat) :
+    projectedPosition liftingLog liftingLog position = position := by
+  rw [projectedPosition_of_le liftingLog liftingLog position (Nat.le_refl _)]
+  simp
+  omega
+
+/-- For the sealed fold-step-1 gate geometry with height 21, the per-column
+index is the direct projection even when modeled via the tree query. The
+premise `columnLog ≤ 21` is separately checked from the package roster. -/
+theorem gate21_tree_column_position (columnLog position : Nat)
+    (columnLeHeight : columnLog ≤ 21) :
+    projectedPosition 21 columnLog (projectedPosition 21 21 position) =
+      projectedPosition 21 columnLog position := by
+  exact projectedPosition_compose 21 21 columnLog position columnLeHeight (Nat.le_refl _)
+
 /-- Ideal lifted leaf row, in the same pre-agreed column order that the native
 Merkle hasher uses after sorting columns by log size. -/
 def projectedRow (liftingLog position : Nat) (columns : List (Column V)) : List V :=
