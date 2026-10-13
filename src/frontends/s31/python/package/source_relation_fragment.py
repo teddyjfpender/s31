@@ -251,7 +251,10 @@ def parse_source_fragment(data: bytes, *, _static_products: list[bool] | None = 
             if len(fields) > 1:
                 if not 2 <= len(fields) <= 4 or any(not field for field in fields):
                     raise UnsupportedSourceRelationFragment("tuple needs 2..4 fields")
-                if any(len(field) not in {1, 3} for field in fields):
+                if any(not (len(field) == 1 or
+                            (len(field) == 3 and field[1] == "." and
+                             re.fullmatch(r"(0|[1-9][0-9]*)", field[2])))
+                       for field in fields):
                     raise UnsupportedSourceRelationFragment("tuple field must be a direct wire or projection")
                 values = tuple(atom(field) for field in fields)
                 if not all(isinstance(value, str) for value in values):

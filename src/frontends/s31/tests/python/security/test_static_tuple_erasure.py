@@ -34,6 +34,7 @@ class StaticTupleErasureTests(unittest.TestCase):
             "let p = (x, y); let out = p.0 + p.1; out",
             "let p = (x, y); let q = p; let out = q.1 - p.0; out",
             "let p = (x, y, x, y); let out = p.2 .* p.3; out",
+            "let p = (x, y); let q = (p.1, p.0); let out = q.0 + q.1; out",
             "let first = x + y; let p = (first, x); "
             "assert_eq(p.0, first); let out = p.1 + y; out",
             "let p = (x, y); let dead = p.1 .* x; p.0",

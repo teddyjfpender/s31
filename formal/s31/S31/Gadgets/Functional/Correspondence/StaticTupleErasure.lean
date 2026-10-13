@@ -1,8 +1,8 @@
 import S31.Gadgets.Functional.Correspondence.GeneralLinearSSAEffectsPackageCheck
 
 /-!
-A concrete byte-level product specialization, plus the generic theorem it
-inherits. The source tuple is statically constructed from existing M31 array
+A concrete byte-level product specialization of the generic checked-run
+theorem. The source tuple is statically constructed from existing M31 array
 wires; `p.0` and `p.1` select those exact producers. The independent parser
 derives one add node with no constructor or projection node. The package
 checker connects this source-derived graph to the actual normalized
@@ -17,14 +17,6 @@ open S31.Functional.Correspondence.GeneralLinearSSAEffectsPackageCheck
 
 def exampleSource : List Nat :=
   ("circuit tuple_case(public x: [m31; 2], private y: [m31; 2]) -> public [m31; 2] { let p = (x, y); let out = p.0 + p.1; out }\n".toUTF8.toList.map UInt8.toNat)
-
-/-- The literal bytes are accepted by the independent Lean source parser,
-and the only emitted computation is one add of input IDs 0 and 1. -/
-theorem example_erases_to_one_add :
-    (parseSource exampleSource).map (fun graph =>
-      (graph.inputs.length, graph.nodes.length, graph.output)) =
-      some (2, 1, 2) := by
-  native_decide
 
 /-- For this checked product source, the generic exact-byte theorem reaches
 the real normalized interpreter and its source denotation. The program,

@@ -81,8 +81,9 @@ existing M31 arrays and canonical constant-index projection. Its local
 `project_product_exact` theorem states that a projection selects precisely
 the indexed producer ID; construction and selection allocate no SSA node.
 The existing exact-byte effectful `Program.evaluate` theorem therefore also
-applies to admitted tuple programs. `StaticTupleErasure.lean` checks a literal
-tuple program's source bytes and instantiates the interpreter claim. The
+applies to admitted tuple programs. `StaticTupleErasure.lean` specializes the
+checked-run interpreter theorem to literal tuple source bytes; the runtime
+Lean checker verifies that those bytes are in the admitted grammar. The
 independent Python parser reconstructs its complete normalized relation and
 certificate; a live paired native build checks equal relation bytes and
 complete cost reports against scalar spelling. See

@@ -54,7 +54,9 @@ Gate row. The exact-byte Lean check reconstructs the producer IDs from the
 source, matches the certificate and relation, then runs the actual normalized
 interpreter on a typed assignment. `project_product_exact` proves the local
 index selection rule; `checked_example_program_evaluate` applies the generic
-byte-run theorem to the written program. The checker sees the supplied
+byte-run theorem whenever the checked-run premise holds for these literal
+source bytes. The live checker confirms that premise for the recorded input.
+The checker sees the supplied
 private assignment, so this audit does not provide private-witness secrecy.
 The native proof is not bound to that particular assignment by this theorem.
 
