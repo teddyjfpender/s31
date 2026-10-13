@@ -86,6 +86,35 @@ theorem checked_descriptor (bytes : String) (laneCount : Nat)
 def parseRelation (bytes : String) : Parse S31.Program := do
   S31.Json.program (← canonicalJson bytes)
 
+/-- The effectful text compiler emits exactly these JSON fields. `Program`
+parsing alone loses whether an optional field was absent or explicitly null,
+and treats a missing `proof_mode` as transparent. This check retains the
+production wire shape before the semantic graph comparison. -/
+private def exactFields (json : Json) (names : List String) : Parse Unit := do
+  fields json names
+  for name in names do
+    let _ ← field json name
+
+def checkEffectsRelationWireShape (bytes : String) : Parse Unit := do
+  let json ← canonicalJson bytes
+  exactFields json ["version", "name", "inputs", "nodes", "assertions",
+    "public_outputs"]
+  let inputs ← (← field json "inputs").getArr?
+  for input in inputs do
+    exactFields input ["name", "kind", "length", "visibility"]
+  let nodes ← (← field json "nodes").getArr?
+  for node in nodes do
+    let op ← string (← field node "op")
+    if op == "add" || op == "sub" || op == "mul" then
+      exactFields node ["name", "lhs", "op", "rhs"]
+    else if op == "add_const" || op == "mul_const" then
+      exactFields node ["name", "lhs", "op", "constant"]
+    else
+      throw "operation outside effects relation wire shape"
+  let assertions ← (← field json "assertions").getArr?
+  for assertion in assertions do
+    exactFields assertion ["lhs", "rhs"]
+
 def visibilityName : S31.Visibility → String
   | .public => "public"
   | .private => "private"

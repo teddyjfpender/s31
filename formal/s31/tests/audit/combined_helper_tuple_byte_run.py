@@ -96,12 +96,20 @@ def main() -> None:
             canonical(mutated_relation)).hexdigest()
         check(work, {**base, "relation": canonical(mutated_relation),
                      "certificate": canonical(mutated_certificate)}, False)
+        # Both alternatives decode to the same typed Program, but neither is
+        # the exact relation JSON field shape emitted by the text compiler.
+        alternate_mode = json.loads(relation)
+        alternate_mode["proof_mode"] = "transparent"
+        check(work, {**base, "relation": canonical(alternate_mode)}, False)
+        alternate_node = json.loads(relation)
+        alternate_node["nodes"][0]["constant"] = None
+        check(work, {**base, "relation": canonical(alternate_node)}, False)
         bad_claim = dict(assignment)
         bad_claim["public_outputs"] = {"out": [5, 6]}
         check(work, {**base, "assignment": canonical(bad_claim),
                      "statement": canonical({"public_inputs": bad_claim["public_inputs"],
                                               "public_outputs": bad_claim["public_outputs"]})}, False)
-    print("combined helper/tuple Lean byte run: honest accepted, five semantic mutations rejected")
+    print("combined helper/tuple Lean byte run: honest accepted, five semantic and two wire-shape mutations rejected")
 
 
 if __name__ == "__main__":

@@ -23,6 +23,92 @@ structure StaticPackage where
   outputName : String
   leanAbi : String
 
+structure CheckedSourceRelation where
+  ssa : GeneralLinearSSAEffects.EmittedSSA
+  meaning : GeneralLinearSSAEffects.Source
+  certificate : GeneralLinearSSAEffects.Certificate
+  program : S31.Program
+
+/-- Retain the exact production relation JSON field shape while connecting its
+typed program to the independently parsed source and effects certificate. -/
+def checkSourceRelationBytes (sourceBytes : List Nat)
+    (certificateBytes relationBytes : String) : Check CheckedSourceRelation := do
+  let _ ← checkEffectsRelationWireShape relationBytes
+  let (ssa, meaning, certificate) ←
+    GeneralLinearSSAEffectsSourceBytes.checkSourceCertificate sourceBytes
+      certificateBytes
+  let program ← checkEffectsSourceRelationSSA sourceBytes relationBytes ssa
+  return ⟨ssa, meaning, certificate, program⟩
+
+theorem checked_source_relation_bytes (sourceBytes : List Nat)
+    (certificateBytes relationBytes : String) (checked : CheckedSourceRelation)
+    (hcheck : checkSourceRelationBytes sourceBytes certificateBytes relationBytes =
+      .ok checked) :
+    checkEffectsRelationWireShape relationBytes = .ok () ∧
+    GeneralLinearSSAEffectsSourceBytes.checkSourceCertificate sourceBytes
+      certificateBytes = .ok (checked.ssa, checked.meaning, checked.certificate) ∧
+    checkEffectsSourceRelationSSA sourceBytes relationBytes checked.ssa =
+      .ok checked.program := by
+  unfold checkSourceRelationBytes at hcheck
+  cases hshape : checkEffectsRelationWireShape relationBytes with
+  | error error => simp [hshape, Bind.bind, Except.bind] at hcheck
+  | ok shapeUnit =>
+      cases shapeUnit
+      cases hsource : GeneralLinearSSAEffectsSourceBytes.checkSourceCertificate
+          sourceBytes certificateBytes with
+      | error error => simp [hshape, hsource, Bind.bind, Except.bind] at hcheck
+      | ok parts =>
+          rcases parts with ⟨ssa, meaning, certificate⟩
+          cases hrelation : checkEffectsSourceRelationSSA sourceBytes
+              relationBytes ssa with
+          | error error =>
+              simp [hshape, hsource, hrelation, Bind.bind, Except.bind] at hcheck
+          | ok program =>
+              have heq :
+                  (⟨ssa, meaning, certificate, program⟩ : CheckedSourceRelation) =
+                    checked := by
+                simpa [hshape, hsource, hrelation, Bind.bind, Except.bind,
+                  Pure.pure, Except.pure] using hcheck
+              cases heq
+              simp [hshape, hsource, hrelation]
+
+/-- A successful strict byte check connects the literal normalized JSON to
+the independently parsed source SSA, every ordered arithmetic node and
+assertion, and the transparent proof mode. The theorem is conditional on
+checker success; Python/Lean parser equivalence is a separate obligation. -/
+theorem checked_source_relation_graph (sourceBytes : List Nat)
+    (certificateBytes relationBytes : String) (checked : CheckedSourceRelation)
+    (hcheck : checkSourceRelationBytes sourceBytes certificateBytes relationBytes =
+      .ok checked) :
+    checkEffectsRelationWireShape relationBytes = .ok () ∧
+    parseRelation relationBytes = .ok checked.program ∧
+    GeneralLinearSSAEffectsSourceBytes.parseSource sourceBytes = some checked.ssa ∧
+    expectedEffectsNodes checked.ssa = some checked.program.nodes ∧
+    expectedEffectsAssertions checked.ssa = some checked.program.assertions ∧
+    checked.program.proofMode = .transparent ∧
+    GeneralLinearSSAEffectsSourceBytes.parseSourceName sourceBytes =
+      some checked.program.name ∧
+    ∃ outputName, checked.ssa.names[checked.ssa.output]? = some outputName ∧
+      RelationMatches checked.program checked.ssa.lane_count
+        checked.ssa.inputs outputName := by
+  obtain ⟨hshape, hsource, hrelation⟩ :=
+    checked_source_relation_bytes sourceBytes certificateBytes relationBytes
+      checked hcheck
+  have hparse :=
+    (GeneralLinearSSAEffectsSourceBytes.checked_source_parts sourceBytes
+      certificateBytes checked.ssa checked.meaning checked.certificate hsource).1
+  obtain ⟨hsourceName, hbase⟩ :=
+    checked_relation_name
+      (GeneralLinearSSAEffectsSourceBytes.parseSourceName sourceBytes)
+      (checkEffectsRelationSSA relationBytes checked.ssa) checked.program hrelation
+  obtain ⟨hgraph, hnodes, hassertions, hmode⟩ :=
+    checked_effects_relation_graph relationBytes checked.ssa checked.program hbase
+  obtain ⟨outputName, houtput, hparsed, hmatch⟩ :=
+    checked_relation_ssa relationBytes checked.ssa.lane_count checked.ssa.inputs
+      checked.ssa.names checked.ssa.output checked.program hgraph
+  exact ⟨hshape, hparsed, hparse, hnodes, hassertions, hmode,
+    hsourceName, outputName, houtput, hmatch⟩
+
 /-- The generic Gate package has the same v1 M31 field layout but uses a
 different, less specific encoding label from direct Gate packages. Admit only
 these two exact descriptors. The existing byte-run theorem consumes the
@@ -46,10 +132,11 @@ private def checkPackageAbi (bytes : String) (laneCount : Nat)
 This does not assert satisfiability of source assertions. -/
 def checkStatic (sourceBytes : List Nat) (certificateBytes relationBytes
     abiBytes : String) : Check StaticPackage := do
-  let (ssa, meaning, certificate) ←
-    GeneralLinearSSAEffectsSourceBytes.checkSourceCertificate sourceBytes
-      certificateBytes
-  let program ← checkEffectsSourceRelationSSA sourceBytes relationBytes ssa
+  let checked ← checkSourceRelationBytes sourceBytes certificateBytes relationBytes
+  let ssa := checked.ssa
+  let meaning := checked.meaning
+  let certificate := checked.certificate
+  let program := checked.program
   if !checkEffectsAlignment ssa certificate then
     throw "effects SSA alignment differs"
   let outputName ← match ssa.names[ssa.output]? with
