@@ -211,6 +211,15 @@ the needed lemma, not for bypassing it.
 
 ## Quantitative feasibility without a native claim
 
+The [conservative-profile capacity decision](PCS_FRI_CAS05_CONSERVATIVE_PROFILE_DECISION.md)
+separately checks the published absolute-error and paper work-factor targets
+for the short eight-fold shape across hypothetical even extension degrees.
+For its explicitly tiny one-table fixture and `T=2³²`, QM31 cannot meet
+absolute 96 bits through the quoted ungrinded theorem expression regardless
+of query count; degree six is the first even-degree field whose nonquery
+expression fits, and then the selected proximity parameter needs 309 raw
+queries. This is an architecture diagnostic, not a native security claim.
+
 The [published unique-decoding ledger](PCS_FRI_STWO_UDR_FEASIBILITY.md)
 checks all quoted idealized round expressions with exact rational arithmetic
 and zero grinding credit. At `N=2²⁰`, `B=2`, a deliberately tiny one-table
