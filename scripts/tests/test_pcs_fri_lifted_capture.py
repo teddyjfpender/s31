@@ -19,11 +19,12 @@ class LiftedCaptureSourceControls(unittest.TestCase):
             "lifted": (CORE / "vcs_lifted/verifier.zig").read_text(),
             "config": (CORE / "pcs/config_v2.zig").read_text(),
             "hasher": (CORE / "vcs_lifted/blake2_merkle.zig").read_text(),
+            "collision": (ROOT / "formal/s31/tests/lib/pcs_merkle_collision_reduction.zig").read_text(),
         }
 
     def check(self, sources: dict[str, str]) -> None:
         check_sources(*(sources[name] for name in
-                        ("verifier", "admission", "pcs", "lifted", "config", "hasher")))
+                        ("verifier", "admission", "pcs", "lifted", "config", "hasher", "collision")))
 
     def test_pinned_source(self) -> None:
         self.check(self.sources)
@@ -50,6 +51,8 @@ class LiftedCaptureSourceControls(unittest.TestCase):
             ("config", "const height = self.liftingLogSize(tree_index);", "const height = 0;"),
             ("hasher", "self.inner.update(std.mem.sliceAsBytes(column_values));",
              "self.inner.update(&.{});"),
+            ("collision", "if (!childrenEq(first_children, second_children) and",
+             "if (childrenEq(first_children, second_children) and"),
         )
         for name, old, new in mutations:
             with self.subTest(name=name, old=old):

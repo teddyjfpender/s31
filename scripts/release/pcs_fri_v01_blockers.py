@@ -82,8 +82,8 @@ OBLIGATIONS = (
         "gap_kind": "unproven_crypto_and_native_refinement",
         "published_requirement": "BCS oracle commitments authenticate precisely the queried rows at the committed roots with a quantitative collision bound",
         "published_anchor": STWO,
-        "partial_evidence": ["formal/s31/S31/Gadgets/PcsFri/MerkleOpening.lean", "formal/s31/S31/Gadgets/PcsFri/MultiproofDecoder.lean", "formal/s31/S31/Gadgets/PcsFri/MultiproofAllHeights.lean", "formal/s31/S31/Gadgets/PcsFri/MultiproofSortedFrontier.lean", "scripts/s31_formal_lib/pcs_fri_leaf_encoding.py", "scripts/s31_formal_lib/sha_release_capture.py"],
-        "missing_discharge": "native decoder-to-model semantics, committed-column origin and a cryptographic collision/binding reduction for the exact Blake2s layout",
+        "partial_evidence": ["formal/s31/S31/Gadgets/PcsFri/MerkleOpening.lean", "formal/s31/S31/Gadgets/PcsFri/MultiproofDecoder.lean", "formal/s31/S31/Gadgets/PcsFri/MultiproofAllHeights.lean", "formal/s31/S31/Gadgets/PcsFri/MultiproofSortedFrontier.lean", "scripts/s31_formal_lib/pcs_fri_leaf_encoding.py", "scripts/s31_formal_lib/pcs_fri_lifted_capture.py", "scripts/s31_formal_lib/sha_release_capture.py", "src/frontends/s31/runtime/pcs_lifted_capture_admission.zig", "formal/s31/tests/lib/pcs_merkle_collision_reduction.zig", "formal/s31/tests/pcs_fri_native_collision_reduction.zig", "formal/s31/tests/run_pcs_fri_native_collision_reduction.sh", "design/s31/security/PCS_FRI_NATIVE_MERKLE_COLLISION_REDUCTION.md"],
+        "missing_discharge": "general native compressed-decoder-to-Lean semantics, committed-column origin, and a quantitative collision/binding bound for the exact plain BLAKE2s layout; the native same-shape collision extractor supplies a conditional local reduction only",
     },
     {
         "id": "P07_FIAT_SHAMIR_AND_POW_BUDGET",

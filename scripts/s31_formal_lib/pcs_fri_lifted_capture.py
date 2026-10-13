@@ -11,7 +11,7 @@ CALL = "try pcs_lifted_capture_admission.validate(allocator, pcs, roots, &captur
 
 
 def check_sources(verifier: str, admission: str, pcs: str, lifted: str,
-                  config: str, hasher: str) -> None:
+                  config: str, hasher: str, collision: str) -> None:
     if verifier.count('const pcs_lifted_capture_admission = @import("pcs_lifted_capture_admission.zig");') != 1:
         raise ValueError("PCS lifted admission import changed")
     if verifier.count(CALL) != 4:
@@ -65,9 +65,33 @@ def check_sources(verifier: str, admission: str, pcs: str, lifted: str,
         (lifted, ".positions = try allocator.dupe(usize, query_positions),", "native path order"),
         (config, "const height = self.liftingLogSize(tree_index);", "configured tree height"),
         (hasher, "self.inner.update(std.mem.sliceAsBytes(column_values));", "native row encoding"),
+        (hasher, "pub const Blake2sPlainMerkleHasher = Blake2sPlainMerkleHasherGeneric(false);",
+         "selected plain BLAKE2s hasher"),
+        (hasher, "return InnerHasher.concatAndHashWithMode(mode, children.left, children.right);",
+         "plain parent encoding"),
     ):
         if anchor not in source:
             raise ValueError(f"{label} source mapping changed: {anchor!r}")
+
+    ordered_once(collision, "native duplicate-query audit",
+                 "pub fn auditDuplicateQueries(",
+                 "positions.len != paths.len)",
+                 "const row_width = rows[0].len;",
+                 "if (position >= domain_size or row_width == 0 or",
+                 "row.len != row_width or !canonical(row) or",
+                 "for (positions[0..i], 0..) |prior_position, j| {",
+                 "if (!rowsEq(row, rows[j]) or !std.mem.eql(Hash, path, paths[j]))",
+                 "return error.DuplicateMismatch;")
+    ordered_once(collision, "native Merkle collision reduction",
+                 "first_path.len != height or second_path.len != height or",
+                 "!canonical(first_row) or !canonical(second_row))",
+                 "if (!hashEq(pathRoot(position, first_row, first_path), root) or",
+                 "if (rowsEq(first_row, second_row)) return error.SameRow;",
+                 "if (hashEq(first, second)) {",
+                 "const first_children = children(index, first, first_sibling);",
+                 "const next_first = H.hashChildren(first_children);",
+                 "if (!childrenEq(first_children, second_children) and",
+                 "return error.InternalInvariant;")
 
 
 def check_pcs_fri_lifted_capture(root: Path) -> None:
@@ -80,4 +104,5 @@ def check_pcs_fri_lifted_capture(root: Path) -> None:
         (core / "vcs_lifted/verifier.zig").read_text(),
         (core / "pcs/config_v2.zig").read_text(),
         (core / "vcs_lifted/blake2_merkle.zig").read_text(),
+        (root / "formal/s31/tests/lib/pcs_merkle_collision_reduction.zig").read_text(),
     )

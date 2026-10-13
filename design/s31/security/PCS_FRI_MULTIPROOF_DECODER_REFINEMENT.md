@@ -83,3 +83,10 @@ or parent collision; it makes no global injectivity assumption. P06 stays open
 until those native origin and cryptographic obligations are discharged.
 Empty-tree placeholders and cross-height reuse of a plain-hash root are outside
 this finite check and need explicit protocol-level shape handling.
+
+The follow-up [native collision reduction](PCS_FRI_NATIVE_MERKLE_COLLISION_REDUCTION.md)
+works at arbitrary representable path depth: for two accepted full paths with
+different canonical rows at the same root, height and index, it constructs a
+checkable leaf or parent collision certificate. It also adds an exact
+duplicate-query audit to the native test utility. This
+does not supply a quantitative BLAKE2s bound or the general decoder proof.
