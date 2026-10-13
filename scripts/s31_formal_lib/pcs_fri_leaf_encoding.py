@@ -94,6 +94,11 @@ def check_sources(sources: dict[str, str]) -> None:
 
 
 def source_index(position: int, height: int, column_log: int) -> int:
+    """Project a nontrivial column (log size >= 1) into a lifted leaf.
+
+    The pinned PCS handles a constant-size/empty tree separately; this
+    function deliberately refuses that case instead of inventing an index.
+    """
     if not (1 <= column_log <= height and 0 <= position < 1 << height):
         raise ValueError("leaf position or column height outside domain")
     return ((position >> (height - column_log + 1)) << 1) + (position & 1)
