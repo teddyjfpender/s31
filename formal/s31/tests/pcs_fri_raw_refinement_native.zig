@@ -340,3 +340,54 @@ test "FRI raw-slot refinement audits varied native layer schedules" {
         try runSchedule(allocator, schedule.log_size, schedule.step);
     }
 }
+
+test "FRI raw-slot refinement independently evaluates terminal polynomial basis" {
+    const allocator = std.testing.allocator;
+    const base = struct {
+        fn q(value: u32) QM31 {
+            return QM31.fromU32Unchecked(value, 0, 0, 0);
+        }
+    }.q;
+    const four = [_]QM31{ base(1), base(2), base(3), base(4) };
+    const hand = try admission.evaluateTerminalPolynomial(
+        allocator,
+        &four,
+        M31.fromCanonical(5),
+    );
+    // The lower pairs use 2*5^2-1=49, then the last pair uses 5.
+    try std.testing.expect(hand.eql(base(1094)));
+    try std.testing.expectError(error.InvalidFriCapture,
+        admission.evaluateTerminalPolynomial(allocator, &.{}, M31.one()));
+    try std.testing.expectError(error.InvalidFriCapture,
+        admission.evaluateTerminalPolynomial(allocator, &.{ base(1), base(2), base(3) }, M31.one()));
+
+    var prng = std.Random.DefaultPrng.init(0x7373_3131_f124_2026);
+    const random = prng.random();
+    for (0..7) |log_size| {
+        const count = @as(usize, 1) << @intCast(log_size);
+        const coefficients = try allocator.alloc(QM31, count);
+        defer allocator.free(coefficients);
+        for (coefficients) |*coefficient| {
+            coefficient.* = QM31.fromU32Unchecked(
+                random.intRangeLessThan(u32, 0, core.fields.m31.Modulus),
+                random.intRangeLessThan(u32, 0, core.fields.m31.Modulus),
+                random.intRangeLessThan(u32, 0, core.fields.m31.Modulus),
+                random.intRangeLessThan(u32, 0, core.fields.m31.Modulus),
+            );
+        }
+        var native = core.poly.line.LinePoly.initOwned(
+            try allocator.dupe(QM31, coefficients),
+        );
+        defer native.deinit(allocator);
+        for (0..8) |_| {
+            const x = M31.fromCanonical(
+                random.intRangeLessThan(u32, 0, core.fields.m31.Modulus),
+            );
+            const independently_evaluated = try admission.evaluateTerminalPolynomial(
+                allocator, coefficients, x,
+            );
+            const verifier_evaluated = try native.evalAtPoint(allocator, QM31.fromBase(x));
+            try std.testing.expect(independently_evaluated.eql(verifier_evaluated));
+        }
+    }
+}
