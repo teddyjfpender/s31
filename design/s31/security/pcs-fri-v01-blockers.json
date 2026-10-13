@@ -12,17 +12,19 @@
     "formal/s31/S31/Gadgets/PcsFri/MerkleOpening.lean": "557c111bad6d84b5739f95cae48b4992954fa1cee83bec0625aafb19348d2076",
     "formal/s31/S31/Gadgets/PcsFri/MultiproofDecoder.lean": "084a9db05e81ad972be83afbd4c1c64b84424f063ff41d68ddb8f6d413044f44",
     "formal/s31/S31/Gadgets/PcsFri/QueryAndTranscript.lean": "e82190409053019d327e738a450c2a1b8676beecc92770f4a3e7563ad445cfa8",
-    "formal/s31/proof-inventory.json": "a03316cb9b60a475eb87244e3f1eb10805746dd2eaa1422e155fa418515f29dc",
+    "formal/s31/proof-inventory.json": "3333a4cd7ba84ecb591539bcc9de5e6cfe3da331e9bcc88499e930ba53200c10",
     "scripts/release/pcs_fri_proven_preflight.py": "485573b3a14719e1d3d8b11e4a481c9e70965c3da9d6852d15eab14c8f5f79f9",
     "scripts/s31_formal_lib/pcs_fri_challenge_custody.py": "fca83b9d5f335add7f5dafeffd30c32922d14c94a441350940af319f3d070634",
     "scripts/s31_formal_lib/pcs_fri_leaf_encoding.py": "125e0532c2e874dce00ff681a648d37cb00d21e4a577ab1511aa96e557257de4",
     "scripts/s31_formal_lib/pcs_fri_order.py": "2e0168a0d1d21b5c58854823f9d92a9740b6a5c775e427d35d90f5f3d43cf4be",
     "scripts/s31_formal_lib/pcs_fri_projection.py": "4300221fe2bea69a229d037c37d80b5829ab7ed9edcbe88f011530ff51ed2187",
     "scripts/s31_formal_lib/pcs_fri_query_epoch.py": "6ca7bc7e43203a7fd11c347604283ba5b415bca0fb2091b7a3d82a0fe3fd7584",
+    "scripts/s31_formal_lib/sha_release_capture.py": "3a0a70b7085c40b0ff1b4a7cf84353e686e372e7722d68dffba5b940e1b86a6a",
     "src/frontends/s31/runtime/mvp_runtime.zig": "910f99a26d296dfb9df9ad4425f645c4a5fb1a6520eb5bf17f8276291a5e91fd",
     "src/frontends/s31/sha/package/sha_fused_package_runtime.zig": "eac17fd037560a25488d32501252a3bad9cc18b162fda6c041cbe688d8404776",
     "src/frontends/s31/sha/package/sha_package_runtime.zig": "b83d39902d41f13d5d8fb5882a054f216e22a49426a99844f32110f575ba8f8d",
-    "src/frontends/s31/sha/package/sha_shift_package_runtime.zig": "0b1f83a47cc6c8712f03d110a8d987a4dc525dfd9a787bf69e27ced653435ab2"
+    "src/frontends/s31/sha/package/sha_shift_package_runtime.zig": "0b1f83a47cc6c8712f03d110a8d987a4dc525dfd9a787bf69e27ced653435ab2",
+    "src/frontends/s31/sha/verification/pcs_capture_admission.zig": "3fb48376564101d6e6230f61bf04538b7fcfd997a38cd925d6f649d38518c05e"
   },
   "native_proven_security_bits": null,
   "obligations": [
@@ -68,7 +70,8 @@
       "missing_discharge": "compose local fold and acceptance models with the complete native commitment, opening and terminal control flow",
       "partial_evidence": [
         "formal/s31/S31/Gadgets/PcsFri/FoldAlgebra.lean",
-        "formal/s31/S31/Gadgets/PcsFri/LayerAcceptance.lean"
+        "formal/s31/S31/Gadgets/PcsFri/LayerAcceptance.lean",
+        "src/frontends/s31/sha/verification/pcs_capture_admission.zig"
       ],
       "published_anchor": "https://eprint.iacr.org/2024/278.pdf#appendix-B",
       "published_requirement": "Circle STARKs Theorem 6: committed round words, independent challenge order, every fold equation and terminal degree check match Protocol 2",
@@ -80,7 +83,8 @@
       "missing_discharge": "prove the native quotient construction and OODS verifier checks instantiate the published batch-evaluation relation",
       "partial_evidence": [
         "scripts/s31_formal_lib/pcs_fri_order.py",
-        "deps/stwo-zig/src/core/pcs/verifier.zig"
+        "deps/stwo-zig/src/core/pcs/verifier.zig",
+        "src/frontends/s31/sha/verification/pcs_capture_admission.zig"
       ],
       "published_anchor": "https://eprint.iacr.org/2026/532.pdf",
       "published_requirement": "Circle STARKs Theorem 7 and Stwo batch-OOD theorem: sampled values, DEEP quotients and degree correction imply the claimed polynomial identity",
@@ -93,7 +97,8 @@
       "partial_evidence": [
         "formal/s31/S31/Gadgets/PcsFri/MerkleOpening.lean",
         "formal/s31/S31/Gadgets/PcsFri/MultiproofDecoder.lean",
-        "scripts/s31_formal_lib/pcs_fri_leaf_encoding.py"
+        "scripts/s31_formal_lib/pcs_fri_leaf_encoding.py",
+        "scripts/s31_formal_lib/sha_release_capture.py"
       ],
       "published_anchor": "https://eprint.iacr.org/2026/532.pdf",
       "published_requirement": "BCS oracle commitments authenticate precisely the queried rows at the committed roots with a quantitative collision bound",

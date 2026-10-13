@@ -18,8 +18,9 @@ pins all three release package dispatches, their verifier calls, and the
 post-verification replay order. The generic runtime has its own equivalent
 barriers. Other SHA research verifiers are outside this release roster.
 
-These checks detect disagreement in the accepted capture and prevent its
-publication when replay fails. They reuse core quotient, terminal and Merkle
+These checks detect disagreement in the accepted capture and prevent verifier
+success when replay fails. The SHA verifiers discard the capture after this
+check. They reuse core quotient, terminal and Merkle
 primitives; they do not prove those primitives correct, bind a fixed global
 oracle, establish collision resistance, or derive random-oracle challenges.
 They also do not prove the native verifier implements the Lean acceptance
