@@ -66,3 +66,7 @@ root = "S31.Audit.GeneralLinearSSAStructuralDerivationCheck"
 [[lean_exe]]
 name = "s31-general-record-v2-source-check"
 root = "S31.Audit.GeneralRecordV2SourceCheck"
+
+[[lean_exe]]
+name = "s31-general-record-v2-program-admission-check"
+root = "S31.Audit.GeneralRecordV2ProgramAdmissionCheck"

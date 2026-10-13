@@ -105,7 +105,7 @@ private def parseMoreFields : Nat → List String → List Token →
         parseMoreFields fuel (found ++ [name]) rest
       else return (found, ← expect (token "}") remaining)
 
-private structure Root where
+structure Root where
   name : String
   visibility : String
   deriving Repr
@@ -129,7 +129,7 @@ private def parseMoreRoots (record circuit : String) (roots : List Root)
     return (roots ++ [root], ← expect (token ")") rest)
   else return (roots, ← expect (token ")") remaining)
 
-private structure Operand where
+structure Operand where
   wire : String
   expr : Json
 
@@ -151,7 +151,7 @@ private def parseOperand (fields : List String) (roots : List Root)
     return (⟨name, nameExpr name⟩, rest)
   else none
 
-private structure Arithmetic where
+structure Arithmetic where
   name : String
   lhs : Operand
   rhs : Operand
@@ -178,7 +178,7 @@ private def parseLets : Nat → String → String → List String → List Root 
       parseLets fuel record circuit fields roots
         (nodes ++ [⟨name, lhs, rhs, operation⟩]) rest
 
-private structure ResultField where
+structure ResultField where
   name : String
   value : Operand
 
@@ -257,7 +257,7 @@ private def leaf (root field wireName : String) : Json :=
   obj [("path", arr [obj [("root", str root)], obj [("field", str field)]]),
     ("kind", str "m31"), ("length", num 1), ("wire", str wireName)]
 
-private def boundary (source : Source) : Json :=
+def boundary (source : Source) : Json :=
   let roots := (source.roots.zipIdx).map fun (root, rootIndex) =>
     obj [("name", str root.name), ("type", recordType source),
       ("visibility", str root.visibility),
@@ -289,7 +289,7 @@ private def structuralProgram (source : Source) : Json :=
     ("record", str source.record), ("fields", toJson source.fields),
     ("inputs", arr roots), ("steps", arr steps), ("result", result)]
 
-private def relation (source : Source) : Json :=
+def relation (source : Source) : Json :=
   let inputs := ((source.roots.zipIdx).flatMap fun (root, rootIndex) =>
     (source.fields.zipIdx).map fun (_, fieldIndex) =>
       obj [("name", str (wire source rootIndex fieldIndex)),
@@ -319,12 +319,12 @@ private def evalNode (values : List (String × Nat)) (node : Arithmetic) :
     else (lhs * rhs) % S31.modulus
   return (node.name, value) :: values
 
-private def inputWires (source : Source) : List String :=
+def inputWires (source : Source) : List String :=
   (source.roots.zipIdx).flatMap fun (_, rootIndex) =>
     (source.fields.zipIdx).map fun (_, fieldIndex) =>
       wire source rootIndex fieldIndex
 
-private def resultWires (source : Source) : List String :=
+def resultWires (source : Source) : List String :=
   source.fields.map fun field =>
     ((source.result.find? (·.name == field)).map (·.value.wire)).getD ""
 
