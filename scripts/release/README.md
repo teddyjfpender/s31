@@ -1,5 +1,24 @@
 # S31 v0.1 supported-profile audit
 
+## Proven PCS/FRI preflight
+
+The v0.1.0 policy requires a published, implementation-matched PCS/FRI
+soundness bound. The current fixed `pow=26, blowup=2, queries=70` profile is
+only a nominal target. Run the exact-arithmetic [published-bound preflight](pcs_fri_proven_preflight.py)
+to inspect necessary Johnson-regime query arithmetic for an illustrative
+geometry:
+
+```sh
+python3 -B scripts/release/pcs_fri_proven_preflight.py
+python3 -B scripts/release/pcs_fri_proven_preflight.py --require-proven
+```
+
+`--require-proven` exits nonzero until native protocol refinement, all
+published error terms, and cryptographic assumptions have a checked release
+certificate. Passing native acceptance tests or increasing the query count
+does not change that status. See the [bound audit](../../design/s31/security/PCS_FRI_PUBLISHED_BOUND_AUDIT.md)
+for the precise missing interfaces.
+
 ## Formal receipt
 
 Run the Lean source-binding check, full build, and kernel replay on a clean

@@ -1,7 +1,7 @@
 # Native PCS/FRI: published-bound audit
 
 This note covers the S31 profile pinned to stwo-zig
-`041ef9d43d341089d45670bd045de7ddbffc79bb`. It does **not** assign a
+`039dacb59980e1e871571958b396b2e29f93c0e5`. It does **not** assign a
 whole-proof security level. It separates the native checks visible in source
 from the hypotheses needed to apply a published STARK soundness theorem.
 
@@ -97,6 +97,14 @@ deduplication, witness cursor and capture-copy loops into the modeled chunk
 events is **still missing**. No quantitative cryptographic or FRI bound
 follows from this model alone.
 
+The pinned engine's FRI capture additionally requires its raw query positions
+to equal the verifier-owned transcript draw before copying them into the
+published capture. A same-fold permutation or repeated position cannot
+replace a sampled position while preserving a successful capture. The lifted
+Merkle capture publishes a valid empty-tree result only after rejecting
+nonempty query and witness data. These are native custody and shape checks;
+they do not establish the Fiat–Shamir or PCS soundness reduction.
+
 ## Cross-domain query geometry
 
 The [S-two whitepaper, §5.3](https://eprint.iacr.org/2026/532.pdf) says its
@@ -191,9 +199,34 @@ separate reduction: one commitment/challenge is used across a group of
 butterfly folds, so it is not automatically the paper's sequence of
 independent single-fold challenges.
 
-For any proposed `N, C, d, L, m, T`, a conservative parameter tool should
-evaluate **all** of the published terms with exact rational arithmetic and
-reject a profile if a theorem precondition fails. It may suggest more
+The [published-bound preflight](../../../scripts/release/pcs_fri_proven_preflight.py)
+evaluates Theorem 6's Johnson query term with exact integer arithmetic,
+checks basic domain and multiplicity preconditions, and encloses one leading
+term of Remark 26's commitment-error **upper-bound expression** between two
+exact rational values. Its default `N=512, B=2, m=3, L=1, s=70` is an
+illustration, **not** an assertion that every native proof has that geometry.
+It finds that 348 ungrinded raw queries would be needed to put the query term
+alone below `2^-96` for those illustrative inputs. The leading Remark 26
+envelope term already exceeds `2^-96` in that illustration; this only says
+that particular published envelope cannot certify the target there. A smaller
+actual error, another theorem, or another parameterization is not ruled out.
+
+```sh
+python3 -B scripts/release/pcs_fri_proven_preflight.py
+python3 -B scripts/release/pcs_fri_proven_preflight.py --require-proven
+```
+
+The second command **must exit nonzero**, including when a caller supplies
+many queries: no native-to-paper protocol reduction or whole-proof bound is
+installed. Its output always has `native_proven_security_bits: null` and
+`proven_release_admissible: false`. It rejects fold step 4 because the
+single-fold paper theorem does not apply to the native grouped schedule as
+given. It does not account for proof-of-work bits, which require the
+Fiat–Shamir adversary-budget theorem and the exact native nonce schedule.
+
+For any proposed `N, C, d, L, m, T`, a future conservative certificate must
+evaluate **all** published terms with justified arithmetic and reject a
+profile if a theorem precondition fails. It may suggest more
 queries and blowup, but the QM31 `|D|^2/|F|` term can then dominate. Larger
 circuits or a high adversary budget may require a wider challenge field or
 a different proved protocol. No fixed `pow=26, queries=70, blowup=2`
