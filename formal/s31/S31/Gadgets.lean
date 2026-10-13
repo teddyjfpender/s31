@@ -313,6 +313,7 @@ import S31.Gadgets.PcsFri.MultiproofCompactTiles
 import S31.Gadgets.PcsFri.FoldAlgebra
 import S31.Gadgets.PcsFri.PairedProtocolRecurrence
 import S31.Gadgets.PcsFri.TwoPointDegreeCorrection
+import S31.Gadgets.PcsFri.CircleVanishingLine
 import S31.Gadgets.PcsFri.FriCascadeNormalization
 import S31.Gadgets.PcsFri.GroupedFoldSchedule
 import S31.Gadgets.PcsFri.LayerAcceptance
