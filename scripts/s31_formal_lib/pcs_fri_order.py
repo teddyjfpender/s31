@@ -40,8 +40,10 @@ def check_sources(pcs: str, fri: str, queries: str, channel: str, merkle_channel
         "channel.mixU64(proof.proof_of_work);",
         "fri_verifier.sampleQueryPositionsWithRaw(",
         "tree.verifyWithPathCapture(",
+        "tree.verify(",
         "const fri_answers = try quotients.friAnswers(",
         "fri_verifier.decommitWithQueryCapture(",
+        "fri_verifier.decommit(allocator, fri_answers)",
     )
     fri_commit = region(fri, "pub fn commit(", "pub fn sampleQueryPositions(")
     if fri_commit.count("channel.drawSecureFelt()") != 2:

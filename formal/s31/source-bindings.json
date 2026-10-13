@@ -312,7 +312,7 @@
     "deps/stwo-zig/src/core/vcs_lifted/blake2_merkle.zig": "5c5da473db0ab9539ff12db3d1f244cab615741f2f96f66af3a5caaf3388e102",
     "deps/stwo-zig/src/core/vcs_lifted/channel_profile.zig": "93d77873303bdb149114d7222f60b84065b0fcb41bda556ce1b0c0a78dea0a0f",
     "deps/stwo-zig/src/core/vcs_lifted/verifier.zig": "7e5b6023c40107654084389d13c46ed4500d4def8f61a9c87070a80424d8e0bc",
-    "scripts/s31_formal_lib/pcs_fri_order.py": "5e3aa93e98d0d366f47c8325fef6a8fe9004cb6cd1c35c6263116d13801a177d",
+    "scripts/s31_formal_lib/pcs_fri_order.py": "3a399d17fb89b357fc69a1aadd99db1efc6c125386a36dfcbef749dc830342f3",
     "deps/stwo-zig/src/core/pcs/quotients/fri_answers.zig": "5280b74c1762860fad733066a40d96dada813908532e3b8854e0a3f02f182181",
     "deps/stwo-zig/src/core/pcs/quotients/samples.zig": "18848c2e180236b0d6807a4d2863f127a8830366ac1df038f5042359e9401e2e",
     "deps/stwo-zig/src/core/tests/borrowed_pcs_capture_success_test.zig": "edd75abb3777604307da7493f4a45aac24984645d1bb6fde4eaae21869abe966",
