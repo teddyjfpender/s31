@@ -39,8 +39,22 @@ fractions conditional on uniformity**, not native failure probabilities or
 soundness errors. A Fiat–Shamir attacker may choose commitment attempts and
 the actual transcript distribution remains unproved.
 
+There are also regular seeds outside `CM31` for which `y.c1=0`. Write
+`t=a+bu`, with `a,b∈CM31` and `u²=R=2+i`. Taking the `u` coefficient of
+`y=2t/(1+t²)` shows that `y.c1=0` exactly when `b=0` or
+`a²−Rb²=1`. The norm-one equation has `q²+1` solutions because `R` is a
+nonsquare in `CM31`; two have `b=0`. Removing the two exceptional roots of
+`1+t²` leaves **`2q²−3` regular seeds** with `y.c1=0`, or
+`(2q²−3)/q⁴` (about `2^-61`) under a uniform-seed assumption. Here `R` is
+indeed a nonsquare: its norm down to `M31` is `5`, and `q mod 5=2` makes
+`5` a nonsquare in `M31`. The [draft experimental paired verifier](https://github.com/teddyjfpender/stwo-zig/pull/249)
+rejects this larger set before publishing the transcript state; the pinned production
+path does not have that early guard. `y.c1=0` alone does **not** imply the
+row quotient denominator is zero at every row, so this larger count is not
+a failure count for the pinned production path.
+
 The [source-bound diagnostic](../../../scripts/release/pcs_fri_ood_seed_geometry.py)
-pins the native gitlink and four exact file hashes, checks the reviewed
+pins the native gitlink and six exact file hashes, checks the reviewed
 sampling and denominator code, and reports these fractions as exact rational
 numbers:
 
