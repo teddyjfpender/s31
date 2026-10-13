@@ -76,6 +76,9 @@ def classify_sources(sources: dict[str, bytes]) -> dict:
         "try requireCanonicalQM31(proof.sampled_point.x);",
         "for (claims) |claim| try requireCanonicalQM31(claim);",
         "for (column) |coordinate| try requireCanonicalM31(coordinate);",
+        "const point = try circle.secureFieldPointFromRandomSeedChecked(staged.drawSecureFelt());",
+        "if (point.y.c1.isZero()) return error.DegenerateOodPoint;",
+        "channel.* = staged;",
     ), "CAS05 verifier")
     _contains(decoded["src/core/pcs/paired_sparse_cascade_wire.zig"], (
         'pub const MAGIC = "S31CAS05";',
