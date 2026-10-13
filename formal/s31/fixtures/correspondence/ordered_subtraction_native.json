@@ -1,7 +1,7 @@
 {
   "all_fixed_columns_sha256": "eb815a6b49b79b74b69515fea78dac6dac51ea6a23419b2b896e0fecfb33af5b",
   "canonical_ir_sha256": "0bacd4183e1cfd02b43ba7b676d7658d400436b3779ded4ae6e8bd74795af830",
-  "compiler_sha256": "bd6cea891b393945ff03cf148094d176037ae36302328407e96c6841ed8d0cf8",
+  "compiler_sha256": "bd41bca06d4761854a9522a1379eb783e6bc9d3be50aff7e26417641d99223ff",
   "engine_gitlink": "039dacb59980e1e871571958b396b2e29f93c0e5",
   "expected_source_rows": [
     [
@@ -38,7 +38,7 @@
       4
     ]
   ],
-  "exporter_binary_sha256": "f2ffca3c4eadaba2fb83a54a1033f646828ac91ff32ba7a84edad72fe5fd6370",
+  "exporter_binary_sha256": "8532eb3a2e2a658d07a8f21def36ed0a169bfe1c1363127cde42cf62cd79caaf",
   "exporter_source_sha256": "910f99a26d296dfb9df9ad4425f645c4a5fb1a6520eb5bf17f8276291a5e91fd",
   "functional_source_sha256": "e97bd111c23037dda56bbcf37dd6125f56b9840b457ec39917d1be92078f7dfe",
   "group_counts": {
