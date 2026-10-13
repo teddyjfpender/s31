@@ -27,6 +27,7 @@ from scripts.s31_formal_lib.checks import (
 )
 from scripts.s31_formal_lib.protocol_order import check_protocol_order
 from scripts.s31_formal_lib.pcs_fri_order import check_pcs_fri_order
+from scripts.s31_formal_lib.pcs_fri_m31_query import check_pcs_fri_m31_query
 from scripts.s31_formal_lib.pcs_fri_projection import check_pcs_fri_projection
 from scripts.s31_formal_lib.pcs_fri_capture import check_pcs_fri_capture
 from scripts.s31_formal_lib.pcs_fri_fold import check_pcs_fri_fold
@@ -323,6 +324,7 @@ BINDINGS = [
     "deps/stwo-zig/src/core/fri/tests.zig",
     "deps/stwo-zig/src/core/queries.zig",
     "deps/stwo-zig/src/core/channel/blake2s.zig",
+    "deps/stwo-zig/src/core/vcs/blake2_hash.zig",
     "deps/stwo-zig/src/core/vcs_lifted/blake2_merkle.zig",
     "deps/stwo-zig/src/core/vcs_lifted/channel_profile.zig",
     "deps/stwo-zig/src/core/vcs_lifted/verifier.zig",
@@ -334,6 +336,8 @@ BINDINGS = [
     "deps/stwo-zig/src/prover/pcs/scheme_views.zig",
     "deps/stwo-zig/src/prover/fri.zig",
     "scripts/s31_formal_lib/pcs_fri_order.py",
+    "scripts/s31_formal_lib/pcs_fri_m31_query.py",
+    "scripts/tests/test_pcs_fri_m31_query.py",
     "scripts/s31_formal_lib/pcs_fri_projection.py",
     "scripts/s31_formal_lib/pcs_fri_capture.py",
     "scripts/s31_formal_lib/pcs_fri_fold.py",
@@ -793,6 +797,7 @@ def main() -> None:
         parser.error("--report requires --audit, --kernel-log, --parity and --controls; exclude --write")
     check_protocol_order(ROOT)
     check_pcs_fri_order(ROOT)
+    check_pcs_fri_m31_query(ROOT)
     check_pcs_fri_projection(ROOT)
     check_pcs_fri_capture(ROOT)
     check_pcs_fri_fold(ROOT)
@@ -800,6 +805,7 @@ def main() -> None:
     check_pcs_fri_layer(ROOT)
     print("S31 protocol order: main and interaction commitments precede their challenge draws")
     print("S31 PCS/FRI order: roots, challenges, PoW, raw queries and normalization bound")
+    print("S31 M31 raw query distribution: reduction and low-bit mask source bound")
     print("S31 lifted Merkle capture: range, siblings, shifts and root-before-publication bound")
     print("S31 FRI fold: native butterfly, coordinates, challenges and verifier calls bound")
     print("S31 lifted Merkle leaves: sorted M31 little-endian rows and Rust-oracle roots bound")
