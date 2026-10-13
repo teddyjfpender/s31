@@ -285,6 +285,7 @@ import S31.Gadgets.PcsFri.MerkleOpening
 import S31.Gadgets.PcsFri.MultiproofCapture
 import S31.Gadgets.PcsFri.MultiproofDecoder
 import S31.Gadgets.PcsFri.FoldAlgebra
+import S31.Gadgets.PcsFri.LayerAcceptance
 
 /-! Local constraint relations, with arbitrary-witness soundness and honest
 witness completeness. All range and representation premises are explicit. -/
