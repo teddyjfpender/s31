@@ -330,6 +330,58 @@ private theorem value_beq_eq (a b : S31.Value)
             S31.instBEqKind.beq] using h)
         simp [hw]
 
+/-- An accepted real `Program.evaluate` binds its public output assignment to
+the value selected from its actual final environment. This is independent of
+how that environment was proved to agree with a source or an AIR trace. -/
+theorem public_output_claim_of_environment {n : Nat}
+    (program : S31.Program) (assignment : S31.Assignment)
+    (finalEnv : S31.Env) (name : String) (claimed : Lanes n)
+    (words : List S31.M31)
+    (henv : program.environment assignment = .ok finalEnv)
+    (houtputs : program.outputs = [name])
+    (hlookup : S31.lookup finalEnv name = some (laneValue claimed))
+    (haccept : program.evaluate assignment = .ok words) :
+    S31.assigned assignment.publicOutputs name ⟨.m31, n⟩ =
+      .ok (laneValue claimed) := by
+  have hagree : program.outputsAgree assignment finalEnv = .ok () := by
+    unfold S31.Program.evaluate at haccept
+    rw [henv] at haccept
+    cases hclaimed : program.claimedWords assignment with
+    | error error => simp [hclaimed, Bind.bind, Except.bind] at haccept
+    | ok claim =>
+        cases hout : program.outputsAgree assignment finalEnv with
+        | error error =>
+            simp [hclaimed, hout, Bind.bind, Except.bind] at haccept
+        | ok witness =>
+            cases witness
+            rfl
+  unfold S31.Program.outputsAgree at hagree
+  rw [houtputs] at hagree
+  simp only [S31.outputsAgreeNames, hlookup] at hagree
+  have hshape : (laneValue claimed).shape = ⟨.m31, n⟩ := by
+    simp [laneValue, S31.Value.shape]
+  cases hassigned : S31.assigned assignment.publicOutputs
+      name (laneValue claimed).shape with
+  | error error =>
+      change (match S31.assigned assignment.publicOutputs
+        name (laneValue claimed).shape with
+        | Except.error err => Except.error err
+        | Except.ok expected => if laneValue claimed == expected then Except.ok ()
+          else Except.error .publicMismatch) = Except.ok () at hagree
+      simp [hassigned] at hagree
+  | ok expected =>
+      have heq : laneValue claimed = expected := by
+        have hbeq : (laneValue claimed == expected) = true := by
+          change (match S31.assigned assignment.publicOutputs
+            name (laneValue claimed).shape with
+            | Except.error err => Except.error err
+            | Except.ok expected => if laneValue claimed == expected then Except.ok ()
+              else Except.error .publicMismatch) = Except.ok () at hagree
+          simpa [hassigned] using hagree
+        exact value_beq_eq _ _ hbeq
+      rw [← heq] at hassigned
+      simpa [hshape] using hassigned
+
 /-- An accepted real `Program.evaluate` must agree with the selected
 constrained AIR value once its exact named environment has been derived.
 There is no direct interpreter-vs-source output comparison premise. -/
@@ -367,44 +419,9 @@ theorem program_evaluate_claim_of_air {n : Nat}
       initial final inputEnv hvalid hprivate hinputs hnodes hassertions
       hrows hcarries habent hdistinct
   have hlookup := hcarryFinal certificate.output claimed houtput
-  have hagree : program.outputsAgree assignment finalEnv = .ok () := by
-    unfold S31.Program.evaluate at haccept
-    rw [henv] at haccept
-    cases hclaimed : program.claimedWords assignment with
-    | error error => simp [hclaimed, Bind.bind, Except.bind] at haccept
-    | ok claim =>
-        cases hout : program.outputsAgree assignment finalEnv with
-        | error error =>
-            simp [hclaimed, hout, Bind.bind, Except.bind] at haccept
-        | ok witness =>
-            cases witness
-            rfl
-  unfold S31.Program.outputsAgree at hagree
-  rw [houtputs] at hagree
-  simp only [S31.outputsAgreeNames, hlookup] at hagree
-  have hshape : (laneValue claimed).shape = ⟨.m31, n⟩ := by
-    simp [laneValue, S31.Value.shape]
-  cases hassigned : S31.assigned assignment.publicOutputs
-      (nameAt names certificate.output) (laneValue claimed).shape with
-  | error error =>
-      change (match S31.assigned assignment.publicOutputs
-        (nameAt names certificate.output) (laneValue claimed).shape with
-        | Except.error err => Except.error err
-        | Except.ok expected => if laneValue claimed == expected then Except.ok ()
-          else Except.error .publicMismatch) = Except.ok () at hagree
-      simp [hassigned] at hagree
-  | ok expected =>
-      have heq : laneValue claimed = expected := by
-        have hbeq : (laneValue claimed == expected) = true := by
-          change (match S31.assigned assignment.publicOutputs
-            (nameAt names certificate.output) (laneValue claimed).shape with
-            | Except.error err => Except.error err
-            | Except.ok expected => if laneValue claimed == expected then Except.ok ()
-              else Except.error .publicMismatch) = Except.ok () at hagree
-          simpa [hassigned] using hagree
-        exact value_beq_eq _ _ hbeq
-      rw [← heq] at hassigned
-      simpa [hshape] using hassigned
+  exact public_output_claim_of_environment program assignment finalEnv
+    (nameAt names certificate.output) claimed words henv houtputs hlookup
+    haccept
 
 private theorem decoded_pure_output (ssa : GeneralLinearSSA.EmittedSSA)
     (certificate : GeneralLinearSSA.Certificate)

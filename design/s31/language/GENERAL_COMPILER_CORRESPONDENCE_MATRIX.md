@@ -76,8 +76,10 @@ accepted arithmetic AIR trace, exact named nodes, and a structurally
 resolved assertion list, successful `Program.evaluate` forces every
 assertion polynomial. It composes with the checked effectful SSA source model
 to show that accepted normalized programs preserve source assertion effects.
-The exact effectful source-byte/relation certificate, public output claim,
-native AIR row authentication, and PCS/FRI still require separate joins.
+The public-output theorem also proves that an accepted evaluator binds its
+declared M31 output to the checked effectful source value. The exact effectful
+source-byte/relation certificate, native AIR row authentication and public
+pins, and PCS/FRI still require separate joins.
 
 ### Narrow source-to-native row admission
 
