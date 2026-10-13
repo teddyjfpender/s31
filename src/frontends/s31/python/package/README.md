@@ -31,6 +31,37 @@ The `verify` CLI command reads a private checked copy of an unpinned
 package. The standalone native verifier does not read the Python
 correspondence certificate.
 
+`lean_effects_admission.py` provides a separate opt-in gate for bounded
+effectful text packages. `verify-effects-lean` requires externally supplied
+SHA-256 pins for the package source, text, key, prover, verifier, and the Lean
+checker executable. It snapshots these inputs, asks Lean to check exact
+source/certificate/relation/ABI bytes, then asks Lean to check the exact
+canonical assignment and public statement bytes. The same captured public
+statement is given to the installed native verifier. This command requires a
+`linear-ssa-m31-effects-v1` source relation certificate and rejects all other
+profiles. The supplied private assignment is checked against the source, but
+the native proof is bound only to the public statement; it may use a different
+private witness that yields the same public claim. The checker path must name
+a regular file through directories without symlinks. This opt-in audit gives
+the full private assignment to the verifier-side Lean checker, so callers
+must not use it where that witness has to remain hidden from the verifier.
+For example:
+
+```sh
+s31 verify-effects-lean PACKAGE PROOF ASSIGNMENT \
+  --statement PROOF.statement.json \
+  --lean-checker PATH/TO/s31-general-linear-effects-package-check \
+  --lean-checker-sha256 EXTERNALLY_TRUSTED_CHECKER_SHA256 \
+  --source-sha256 EXTERNAL_SOURCE_SHA256 \
+  --text-sha256 EXTERNAL_TEXT_SHA256 \
+  --key-sha256 EXTERNAL_KEY_SHA256 \
+  --prover-sha256 EXTERNAL_PROVER_SHA256 \
+  --verifier-sha256 EXTERNAL_VERIFIER_SHA256
+```
+
+The exact scope and remaining native proof obligations are in the
+[Lean gate note](../../../../../formal/s31/S31/Gadgets/Functional/Correspondence/GeneralLinearSSAEffectsPackageCheck.md).
+
 `trust.py` checks externally supplied SHA-256 pins for the normalized source,
 key, prover and verifier before full package validation; a text package also requires
 the exact `.s31` source pin. The `verify-pinned` CLI command uses this admission

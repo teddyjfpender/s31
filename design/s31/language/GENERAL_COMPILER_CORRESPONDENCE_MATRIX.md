@@ -92,6 +92,17 @@ For interpreter soundness alone, the checked certificate also constructs
 its deterministic honest arithmetic trace, so successful evaluation implies
 source assertion truth and the public output value without a supplied AIR
 trace premise. This does not authenticate a prover supplied native trace.
+The generic `GeneralLinearSSAEffectsPackageCheck.lean` gate derives arbitrary
+bounded effectful M31 inputs and the claim from canonical typed assignment
+bytes, checks canonical public statement JSON, and uses the same exact-byte
+theorem. The opt-in `verify-effects-lean` wrapper requires external pins for
+the package and Lean checker, snapshots the proof inputs, and passes the same
+statement bytes to both Lean and the native verifier. Native gate-row custody
+and verifier implementation correctness remain separate obligations. The
+supplied private assignment is a Lean-checked witness for the public claim;
+the native proof is not bound to those particular private witness bytes.
+The verifier-side Lean checker receives that full private assignment, so
+this opt-in audit does not preserve private-witness secrecy.
 
 ### Narrow source-to-native row admission
 

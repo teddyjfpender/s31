@@ -428,6 +428,7 @@ BINDINGS = [
     "formal/s31/fixtures/correspondence/source_relation_ssa_v1.json",
     "src/frontends/s31/tests/python/security/functional_release/test_subtraction.py",
     "src/frontends/s31/python/package/release_admission.py",
+    "src/frontends/s31/python/package/lean_effects_admission.py",
     "src/frontends/s31/tests/python/test_live_optimized_release_binding.py",
     "src/frontends/s31/tests/acceptance/compiler_correspondence/optimized_release.py",
     "src/frontends/s31/tests/python/test_optimized_functional_correspondence.py",
