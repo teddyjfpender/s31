@@ -114,6 +114,42 @@ from the repository root with:
 zig test -O ReleaseSafe --dep stwo_core -Mroot=formal/s31/tests/pcs_fri_decoder_native.zig -Mstwo_core=deps/stwo-zig/src/core/mod.zig
 ```
 
+## Packed FRI leaves bind the modeled layer oracle
+
+[`FriMerkleBinding.lean`](FriMerkleBinding.lean) identifies the exact leaf for
+an absolute FRI evaluation position `a`: leaf index `a / 2^leafLog` and slot
+`a % 2^leafLog`. It defines the leaf row by taking consecutive evaluations
+from a fixed putative oracle. For each queried subset slot, it assumes the
+native row and that committed-oracle row have accepted paths at the same root,
+height, and leaf index. The existing Merkle collision reduction then proves
+the rows equal unless those particular openings witness a leaf or parent hash
+collision. The row-slot equation gives the equality needed by
+`OperationalExtraction.oracleBoundLayer`. Induction supplies
+`oracleBoundSchedule` for any layer count and partial final fold; the
+conditional composition theorem joins this with raw DEEP answer custody and
+operational admission to derive modeled FRI acceptance.
+
+The native-success implication to these `authenticatedSlot` certificates is
+still an explicit premise. In particular, Lean has not extracted the Zig
+`merkle_queries.build` row materialization, `verifyWithPathCapture` control
+flow, or `buildFriLayerQueryCapture` suffix copy into the model. The committed
+tree must actually be built from the fixed oracle rows. BLAKE2s collision
+resistance, Fiat–Shamir sampling, and FRI proximity also remain unproved.
+The [source guard](../../../../../scripts/s31_formal_lib/pcs_fri_merkle_binding.py)
+pins the packed coordinate order, subset-to-leaf index, upper path suffix, and
+root check; seven mutations must fail. The [native regression](../../../tests/pcs_fri_merkle_binding_native.zig)
+rehashes every captured slot of an honest two-layer proof under the actual
+S31 Blake2sM31 transcript profile. Its first layer has packed width-four
+leaves and its partial inner fold uses unpacked leaves. Changed values,
+siblings, and group positions fail independent root replay. Run the focused
+checks with:
+
+```sh
+bash formal/s31/tests/run_pcs_fri_merkle_binding_native.sh
+python3 -B -m unittest scripts.tests.test_pcs_fri_merkle_binding -v
+cd formal/s31 && lake build S31.Gadgets.PcsFri.FriMerkleBinding
+```
+
 ## One FRI fold's field algebra
 
 [`FoldAlgebra.lean`](FoldAlgebra.lean) defines the inverse-butterfly pair
