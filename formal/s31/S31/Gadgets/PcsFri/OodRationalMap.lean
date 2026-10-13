@@ -116,6 +116,43 @@ noncomputable def rationalCircleEquiv [NeZero (2 : F)] :
     apply Subtype.ext
     exact Prod.ext hx hy
 
+/-- Restricting the rational-map equivalence by any condition on `y`
+preserves one-to-one correspondence. The native `y.c1 != 0` guard is such a
+condition after the concrete QM31 coefficient map is refined. -/
+def guardedSeedToCirclePoint [NeZero (2 : F)] (guard : F → Prop)
+    (seed : { t : F // regular t ∧ guard (y t) }) :
+    { point : F × F // point.1 ^ 2 + point.2 ^ 2 = 1 ∧
+      1 + point.1 ≠ 0 ∧ guard point.2 } :=
+  ⟨(x seed.1, y seed.1), on_circle seed.1 seed.2.1,
+    one_add_x_ne_zero seed.1 seed.2.1, seed.2.2⟩
+
+theorem guarded_map_bijective [NeZero (2 : F)] (guard : F → Prop) :
+    Function.Bijective (guardedSeedToCirclePoint guard) := by
+  constructor
+  · intro a b hab
+    apply Subtype.ext
+    have hx : x a.1 = x b.1 := congrArg (fun point => point.1.1) hab
+    have hy : y a.1 = y b.1 := congrArg (fun point => point.1.2) hab
+    exact injective_on_regular a.1 b.1 a.2.1 b.2.1 hx hy
+  · intro point
+    obtain ⟨t, ht, hx, hy⟩ :=
+      circle_point_has_preimage point.1.1 point.1.2 point.2.1 point.2.2.1
+    have hg : guard (y t) := by rw [hy]; exact point.2.2.2
+    refine ⟨⟨t, ht, hg⟩, ?_⟩
+    apply Subtype.ext
+    exact Prod.ext hx hy
+
+/-- Thus a uniform regular seed conditioned on a y-coordinate guard has
+one preimage per admitted circle point. This is a support statement; native
+Fiat–Shamir uniformity and the exact Zig guard are separate obligations. -/
+noncomputable def guardedRationalCircleEquiv [NeZero (2 : F)]
+    (guard : F → Prop) :
+    { t : F // regular t ∧ guard (y t) } ≃
+      { point : F × F // point.1 ^ 2 + point.2 ^ 2 = 1 ∧
+        1 + point.1 ≠ 0 ∧ guard point.2 } :=
+  Equiv.ofBijective (guardedSeedToCirclePoint guard)
+    (guarded_map_bijective guard)
+
 /-- The rational map preserves every embedded subfield. In particular, a
 seed from the quadratic subfield produces both circle coordinates there.
 This theorem does not say how often the native transcript draws such a seed. -/
