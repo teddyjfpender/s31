@@ -23,6 +23,19 @@ certificate. Passing native acceptance tests or increasing the query count
 does not change that status. See the [bound audit](../../design/s31/security/PCS_FRI_PUBLISHED_BOUND_AUDIT.md)
 for the precise missing interfaces.
 
+For the complete v0.1 profile roster, inspect the
+[machine-readable blocker matrix](../../design/s31/security/pcs-fri-v01-blockers.json)
+and its [independent review](../../design/s31/security/PCS_FRI_V01_BLOCKER_REVIEW_2026-10-13.md):
+
+```sh
+python3 -B scripts/release/pcs_fri_v01_blockers.py --check
+python3 -B scripts/release/pcs_fri_v01_blockers.py --check --require-admissible
+```
+
+The first command rejects a stale source/profile snapshot. The second also
+exits nonzero while any published-proof obligation remains open. This matrix
+does not upgrade scoped candidate gates into a proven-security release.
+
 ## Formal receipt
 
 Run the Lean source-binding check, full build, and kernel replay on a clean
