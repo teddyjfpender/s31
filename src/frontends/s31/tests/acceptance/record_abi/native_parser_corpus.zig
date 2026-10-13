@@ -16,6 +16,7 @@ const Case = struct {
     statement: []const u8,
     expected_words: ?[8]u32,
     assignment: ?[]const u8 = null,
+    expected_eval_error: ?[]const u8 = null,
 };
 
 const Corpus = struct {
@@ -76,13 +77,20 @@ pub fn main() !void {
                 std.debug.print("case {s} assignment public words differ\n", .{case.label});
                 return error.CorpusMismatch;
             }
-            const evaluated = s31.relation.evaluate(allocator, program.value, assignment.value) catch |err| {
-                std.debug.print("case {s} relation evaluation failed: {s}\n", .{ case.label, @errorName(err) });
-                return error.CorpusMismatch;
-            };
-            if (!std.mem.eql(u32, &expected, &evaluated)) {
-                std.debug.print("case {s} evaluated public words differ\n", .{case.label});
-                return error.CorpusMismatch;
+            if (s31.relation.evaluate(allocator, program.value, assignment.value)) |evaluated| {
+                if (case.expected_eval_error != null or !std.mem.eql(u32, &expected, &evaluated)) {
+                    std.debug.print("case {s} evaluated public words or error differ\n", .{case.label});
+                    return error.CorpusMismatch;
+                }
+            } else |err| {
+                const wanted = case.expected_eval_error orelse {
+                    std.debug.print("case {s} relation evaluation failed: {s}\n", .{ case.label, @errorName(err) });
+                    return error.CorpusMismatch;
+                };
+                if (!std.mem.eql(u8, @errorName(err), wanted)) {
+                    std.debug.print("case {s} expected {s}, got {s}\n", .{ case.label, wanted, @errorName(err) });
+                    return error.CorpusMismatch;
+                }
             }
         }
         accepted += 1;

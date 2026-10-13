@@ -1,5 +1,14 @@
 # Named record claim codec (public ABI v2)
 
+`SourceValueV2.lean` models the bounded width-one M31 record source fragment's
+execution. It checks each result field against a shared SSA program, proves
+every checked field equals its source expression for arbitrary inputs, and
+rejects swapped-field and split-alias certificates. The independent Python
+source/value checker and native Zig differential corpus are described in
+[`RECORD_SOURCE_RELATION_FRAGMENT_V2.md`](../../../../../../design/s31/language/RECORD_SOURCE_RELATION_FRAGMENT_V2.md).
+This theorem models the admitted fragment and does not parse production source
+bytes or authenticate proof openings.
+
 [`NamedCodecV2.lean`](NamedCodecV2.lean) joins the checked type-tree walk and
 the public statement word decoder for one already parsed root. The native
 implementation is `src/frontends/s31/language/record_abi.zig`, whose current

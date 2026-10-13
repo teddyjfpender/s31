@@ -1,6 +1,14 @@
 # Bounded independent record source-to-relation check
 
 Status: implemented bounded public record ABI v2 source check.
+The [record value refinement](../../src/frontends/s31/python/package/record_value_fragment.py)
+also computes this grammar's M31 results from independently parsed source and
+flat assignments. Its [46-case corpus](../../src/frontends/s31/tests/acceptance/record_abi/record_source_execution_fragment_v2.py)
+compares 23 honest and 23 changed-result cases with Zig `Program.evaluate`.
+The [Lean record value theorem](../../formal/s31/S31/Gadgets/Records/SourceValueV2.lean)
+composes the checked SSA interpreter across ordered result fields and rejects
+swapped or split-alias certificates. These are bounded semantic checks; they
+do not authenticate native trace openings or establish full compiler soundness.
 The production v2 record compiler, native descriptor parser, statement codec,
 and representative native proofs already exist. This increment checks an exact
 source fragment without calling the production lexer, parser, elaborator,

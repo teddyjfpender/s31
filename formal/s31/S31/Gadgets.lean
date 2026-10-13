@@ -278,6 +278,7 @@ import S31.Gadgets.Functional.RecordDescriptorWireRefinementV2
 import S31.Gadgets.Functional.GeneratedRecordStatementCorpusV2
 import S31.Gadgets.Functional.RecordPinnedPairAliasV2
 import S31.Gadgets.Records.NamedCodecV2
+import S31.Gadgets.Records.SourceValueV2
 import S31.Gadgets.Records.GeneratedMixedEightV2
 import S31.Gadgets.Functional.StaticRecurrence
 import S31.Gadgets.Functional.WorkedMix4
