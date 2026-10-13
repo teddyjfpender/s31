@@ -4,9 +4,9 @@
 `linear-ssa-m31-effects-v1` profile. It adds canonical `add_const` and
 `mul_const` operations and `assert_eq` to the pure arithmetic profile. The
 soundness and completeness theorems quantify over any finite number of inputs,
-steps, assertions, and lanes. The certificate byte gate is intentionally
-limited to the production source fragment represented by its strict JSON
-decoder.
+steps, assertions, and lanes. The byte gate checks the production certificate
+format but does not itself enforce the Python source fragment's input, lane,
+and statement-count limits.
 
 ## Worked source and witness
 
