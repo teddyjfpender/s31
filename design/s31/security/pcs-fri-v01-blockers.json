@@ -46,6 +46,7 @@
     "design/s31/security/PCS_FRI_GROUPED_FOLD_OBSTRUCTION_2026-10-13.md": "6d5279868c236ebda5c1275c931ed22c654f5f293f6c8bce31b4c98a85900c2e",
     "design/s31/security/PCS_FRI_PACKAGE_GEOMETRY.md": "2afb44501eda3fe0e1cf7d7653d2af9a73d486fe4f6cb50505ef10a370668f1d",
     "design/s31/security/PCS_FRI_PUBLISHED_BOUND_AUDIT.md": "361ad4957d9bdff886ee53a7babd1bd4e7a4940653213df9086e8e3c10354cae",
+    "design/s31/security/PCS_FRI_STWO_UDR_FEASIBILITY.md": "a48bbc790fc7799baf9f552a375e3357925ba8fd22dcc360cff0ee4bc42fb446",
     "formal/s31/S31/Gadgets/Air/GatePublicInteraction.lean": "c4be2f2e83f1e6302177d936c502c82f5f710f69f38e5b222298d26e90693224",
     "formal/s31/S31/Gadgets/PcsFri/BcsTranscriptEpoch.lean": "ec37a56242d0dc06a47e27cb120e66628260a5d836d25a6af94843ea9351a20b",
     "formal/s31/S31/Gadgets/PcsFri/DeepQuotientAlgebra.lean": "df6ca80de3582d9c10e37f1a632795ac571a212c981e46dd51d6fe41631442cd",
@@ -60,7 +61,8 @@
     "formal/s31/S31/Gadgets/PcsFri/MultiproofDecoder.lean": "084a9db05e81ad972be83afbd4c1c64b84424f063ff41d68ddb8f6d413044f44",
     "formal/s31/S31/Gadgets/PcsFri/MultiproofSortedFrontier.lean": "1ad38aba0660d29dd9c8796cf1ceee672eef1194aa0de551833f8efa5a5d5a84",
     "formal/s31/S31/Gadgets/PcsFri/QueryAndTranscript.lean": "e82190409053019d327e738a450c2a1b8676beecc92770f4a3e7563ad445cfa8",
-    "formal/s31/proof-inventory.json": "746f84bad574e8bec245dd4215f597332e4618b1fa556cf474d2c0c768c4a182",
+    "formal/s31/S31/Gadgets/PcsFri/StwoUDRFeasibility.lean": "eab44667b3b92e7ec32c898918e5055d2b35499f4b5566073ae1b7bc514b5995",
+    "formal/s31/proof-inventory.json": "85793c73ffdfd59116280b37cf9b1a25294cd56aebe60df11122316fc8efcfc2",
     "formal/s31/tests/pcs_fri_bcs_transcript.json": "b1814cfd5920cbf21f73713e99acbe5736bc78afa6b9dd8a599eb50e44f0160f",
     "formal/s31/tests/pcs_fri_bcs_transcript_native.zig": "536220985f8284a4c14bdafd22b3b235fb26104a09525621bdc2e2fd787392d4",
     "formal/s31/tests/pcs_fri_lifted_capture_native.zig": "52a5edc8e25f4ec941aa5d57ab3609da62834a04a9f3409b9645e7f9e0b35717",
@@ -70,6 +72,7 @@
     "scripts/release/pcs_fri_gate_interaction.py": "2c42caa33fd60a1db3767aafd7d87a50894c5c12b69318e4c0dd9e0d8b6438ac",
     "scripts/release/pcs_fri_package_geometry.py": "437f8fcf32f0fdd563f7c37650f569a0c4901e389d7b4335683a4f0ace8cb214",
     "scripts/release/pcs_fri_proven_preflight.py": "485573b3a14719e1d3d8b11e4a481c9e70965c3da9d6852d15eab14c8f5f79f9",
+    "scripts/release/pcs_fri_stwo_udr.py": "7602879787ea8dc49f204a2997950245f07f997251ac596b5c88a9433901f11b",
     "scripts/s31_formal_lib/pcs_fri_bcs_transcript.py": "84f2b5c984720c99be361b80e9edd7fd2e7e2d4306a9f06da78a9d707e2d78d1",
     "scripts/s31_formal_lib/pcs_fri_challenge_custody.py": "fca83b9d5f335add7f5dafeffd30c32922d14c94a441350940af319f3d070634",
     "scripts/s31_formal_lib/pcs_fri_fold.py": "f0a3bd42bfc7019818b5fdd1975a8ff1224587b92bde115eedd6fc7c1f8ad2eb",
@@ -226,12 +229,15 @@
     {
       "gap_kind": "uninstantiated_theorem_error_ledger",
       "id": "P09_COMPLETE_ERROR_LEDGER",
-      "missing_discharge": "instantiate every published per-round term with theorem-identified package parameters and explicit T, R, lambda, Merkle/collision and native-refinement bounds; the one-gate ledger keeps these terms null",
+      "missing_discharge": "the exact unique-decoding paper-scenario ledger has all quoted IOPP, FRI and BCS expressions, but instantiate them with theorem-identified native package parameters and prove the native protocol, T, R, Merkle/collision and ROM reductions; every native theorem term remains null",
       "partial_evidence": [
         "scripts/release/pcs_fri_proven_preflight.py",
         "scripts/release/pcs_fri_gate_error_ledger.py",
+        "scripts/release/pcs_fri_stwo_udr.py",
+        "formal/s31/S31/Gadgets/PcsFri/StwoUDRFeasibility.lean",
         "design/s31/security/PCS_FRI_PUBLISHED_BOUND_AUDIT.md",
-        "design/s31/security/PCS_FRI_GATE_ERROR_LEDGER.md"
+        "design/s31/security/PCS_FRI_GATE_ERROR_LEDGER.md",
+        "design/s31/security/PCS_FRI_STWO_UDR_FEASIBILITY.md"
       ],
       "published_anchor": "https://eprint.iacr.org/2024/278.pdf#appendix-B",
       "published_requirement": "Circle STARKs Theorems 6/7 and Stwo NIROP: sum every justified commitment, AIR, OODS, FRI, Merkle and Fiat-Shamir term before comparing with target bits",
