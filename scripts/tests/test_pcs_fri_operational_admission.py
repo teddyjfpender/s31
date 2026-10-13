@@ -38,7 +38,8 @@ class OperationalAdmissionSourceControls(unittest.TestCase):
         for before, after in (
             ("try fri_capture_admission.validate(", "// admission omitted("),
             ("pcs.fri_config.folding(),", "pcs.fri_config,"),
-            ("capture.deep_answers,", "capture.sampled_values,"),
+            ("capture.deep_answers,\n        capture.fri,",
+             "capture.sampled_values,\n        capture.fri,"),
         ):
             self.assertEqual(NATIVE.count(before), 4)
             start = 0

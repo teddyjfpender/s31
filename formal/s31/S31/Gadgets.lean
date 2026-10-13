@@ -295,6 +295,7 @@ import S31.Gadgets.PcsFri.FoldAlgebra
 import S31.Gadgets.PcsFri.LayerAcceptance
 import S31.Gadgets.PcsFri.RawLayerRefinement
 import S31.Gadgets.PcsFri.OperationalExtraction
+import S31.Gadgets.PcsFri.RawDeepCustody
 import S31.Gadgets.PcsFri.MaskedLayerBound
 
 /-! Local constraint relations, with arbitrary-witness soundness and honest
