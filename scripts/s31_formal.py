@@ -31,6 +31,7 @@ from scripts.s31_formal_lib.pcs_fri_challenge_custody import check_pcs_fri_chall
 from scripts.s31_formal_lib.pcs_fri_bcs_transcript import audit as audit_pcs_fri_bcs_transcript
 from scripts.s31_formal_lib.pcs_fri_m31_query import check_pcs_fri_m31_query
 from scripts.s31_formal_lib.pcs_fri_projection import check_pcs_fri_projection
+from scripts.s31_formal_lib.pcs_fri_prover_origin import check_pcs_fri_prover_origin
 from scripts.s31_formal_lib.pcs_fri_capture import check_pcs_fri_capture
 from scripts.s31_formal_lib.pcs_fri_merkle_binding import check_pcs_fri_merkle_binding
 from scripts.s31_formal_lib.pcs_fri_merkle_admission import check_pcs_fri_merkle_admission
@@ -352,7 +353,15 @@ BINDINGS = [
     "deps/stwo-zig/src/prover/vcs_lifted/columns.zig",
     "deps/stwo-zig/src/prover/vcs_lifted/leaves.zig",
     "deps/stwo-zig/src/prover/vcs_lifted/expand.zig",
+    "deps/stwo-zig/src/prover/vcs_lifted/layers.zig",
+    "deps/stwo-zig/src/prover/vcs_lifted/decommit.zig",
     "deps/stwo-zig/src/prover/vcs_lifted/prover.zig",
+    "deps/stwo-zig/src/prover/vcs_lifted/streaming_committer.zig",
+    "deps/stwo-zig/src/prover/pcs/revision_lifting.zig",
+    "deps/stwo-zig/src/prover/pcs/commitment_tree.zig",
+    "deps/stwo-zig/src/prover/pcs/tiled_commit.zig",
+    "deps/stwo-zig/src/prover/pcs/tree_builders.zig",
+    "deps/stwo-zig/src/backends/cpu_scalar/mod.zig",
     "deps/stwo-zig/src/frontends/circuit/witness/trace.zig",
     "deps/stwo-zig/src/prover/pcs/scheme_views.zig",
     "deps/stwo-zig/src/prover/fri.zig",
@@ -362,6 +371,7 @@ BINDINGS = [
     "scripts/s31_formal_lib/pcs_fri_m31_query.py",
     "scripts/tests/test_pcs_fri_m31_query.py",
     "scripts/s31_formal_lib/pcs_fri_projection.py",
+    "scripts/s31_formal_lib/pcs_fri_prover_origin.py",
     "scripts/release/pcs_fri_gate_lifted_projection.py",
     "scripts/s31_formal_lib/pcs_fri_capture.py",
     "scripts/s31_formal_lib/pcs_fri_merkle_binding.py",
@@ -376,6 +386,7 @@ BINDINGS = [
     "scripts/s31_formal_lib/pcs_fri_quotient_algebra.py",
     "scripts/release/pcs_fri_degree_correction.py",
     "scripts/tests/test_pcs_fri_projection.py",
+    "scripts/tests/test_pcs_fri_prover_column_origin.py",
     "scripts/tests/test_pcs_fri_gate_lifted_projection.py",
     "scripts/tests/test_pcs_fri_capture.py",
     "scripts/tests/test_pcs_fri_merkle_binding.py",
@@ -394,6 +405,8 @@ BINDINGS = [
     "formal/s31/tests/run_pcs_fri_layer_native.sh",
     "formal/s31/tests/pcs_fri_merkle_binding_native.zig",
     "formal/s31/tests/run_pcs_fri_merkle_binding_native.sh",
+    "formal/s31/tests/pcs_fri_prover_column_origin_native.zig",
+    "formal/s31/tests/run_pcs_fri_prover_column_origin_native.sh",
     "formal/s31/tests/pcs_fri_lifted_capture_native.zig",
     "formal/s31/tests/run_pcs_fri_lifted_capture_native.sh",
     "formal/s31/tests/pcs_fri_native_collision_reduction.zig",
@@ -873,6 +886,7 @@ def main() -> None:
     audit_pcs_fri_bcs_transcript(ROOT)
     check_pcs_fri_m31_query(ROOT)
     check_pcs_fri_projection(ROOT)
+    check_pcs_fri_prover_origin(ROOT)
     check_pcs_fri_capture(ROOT)
     check_pcs_fri_merkle_binding(ROOT)
     check_pcs_fri_merkle_admission(ROOT)
@@ -891,6 +905,7 @@ def main() -> None:
     print("S31 direct Gate BCS transcript: native bytes, PoW barriers and query epoch source-pinned")
     print("S31 SHA release capture: raw DEEP, FRI fold and Merkle replay paths bound")
     print("S31 M31 raw query distribution: reduction and low-bit mask source bound")
+    print("S31 lifted prover origin: column order, projection, lift and parent tree source bound")
     print("S31 lifted Merkle capture: range, siblings, shifts and root-before-publication bound")
     print("S31 FRI packed Merkle binding: leaf slots and upper path custody bound")
     print("S31 post-verification FRI Merkle admission: packed rows and paths bound")
