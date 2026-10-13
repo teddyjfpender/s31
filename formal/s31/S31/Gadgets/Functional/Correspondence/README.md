@@ -1,5 +1,10 @@
 # Bounded source to raw Gate AIR
 
+[The pure source-byte bridge](GeneralLinearSSASourceBytes.md) gives a
+handwritten `.s31` example, its positional SSA IDs, active packed-row
+equations, and a theorem binding supplied source bytes to modeled AIR
+acceptance.
+
 ## General linear M31 SSA kernel
 
 [The general linear SSA correspondence](GeneralLinearSSA.md) proves, for any

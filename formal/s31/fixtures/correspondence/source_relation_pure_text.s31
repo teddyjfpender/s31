@@ -1,0 +1,6 @@
+circuit three(public x: [m31; 3]) -> public [m31; 3] {
+  let a = x + x;
+  let b = a - x;
+  let c = a .* b;
+  c
+}
