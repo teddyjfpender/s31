@@ -37,6 +37,8 @@ class PcsFriV01BlockersTests(unittest.TestCase):
                              obligations if profile["fri_fold_step"] == 4 else
                              obligations - {"P10_GROUPED_FOLD_SCHEDULE"})
         self.assertFalse(report["whole_prover_cost"]["current_engine_matches_v8r1"])
+        self.assertEqual(report["query_epoch"]["counter_inputs"], list(range(9)))
+        self.assertFalse(report["query_epoch"]["full_transcript_counter_wrap_proven"])
         self.assertEqual(gate.encoded(report), gate.MATRIX.read_text())
         self.assertTrue(all(len(digest) == 64 for digest in report["evidence_sha256"].values()))
 

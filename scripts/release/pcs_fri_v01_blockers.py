@@ -20,6 +20,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 from scripts.release.release_candidate import AUDIT_CASES
 from scripts.release.s31_v01_audit import CASES
+from scripts.s31_formal_lib.pcs_fri_query_epoch import audit as audit_query_epoch
 
 
 MATRIX = ROOT / "design/s31/security/pcs-fri-v01-blockers.json"
@@ -88,8 +89,8 @@ OBLIGATIONS = (
         "gap_kind": "unproven_crypto_and_budget_reduction",
         "published_requirement": "Stwo NIROP/BCS theorem: bound adversary hash budget T, rounds R, hash collision term and exact native grinding and transcript schedule",
         "published_anchor": STWO,
-        "partial_evidence": ["formal/s31/S31/Gadgets/PcsFri/QueryAndTranscript.lean", "scripts/s31_formal_lib/pcs_fri_order.py"],
-        "missing_discharge": "ROM/BCS reduction for native Blake2s, nonce selection, PoW accounting, 32-bit draw-counter wrap bound and transcript domain separation",
+        "partial_evidence": ["formal/s31/S31/Gadgets/PcsFri/QueryAndTranscript.lean", "scripts/s31_formal_lib/pcs_fri_order.py", "scripts/s31_formal_lib/pcs_fri_query_epoch.py"],
+        "missing_discharge": "ROM/BCS reduction for native Blake2s, nonce selection, PoW accounting, pre-query 32-bit draw-counter wrap bound and transcript domain separation; only the post-nonce raw-query epoch is bounded",
     },
     {
         "id": "P08_QUERY_SET_AND_RAW_WORD_MODEL",
@@ -157,6 +158,9 @@ def matrix(root: Path = ROOT) -> dict[str, object]:
             raise ValueError(f"missing or unsafe partial evidence: {name}")
         evidence[name] = sha(path)
     current_engine = gitlink(root)
+    query_epoch = audit_query_epoch(root)
+    if query_epoch["engine_gitlink_commit"] != current_engine or query_epoch["hash_draws"] != 9:
+        raise ValueError("v0.1 query epoch source or engine binding changed")
     old_cost = json.loads((root / "design/s31/measurements/language/whole-prover-cost-v8r1.json").read_text())
     cost_engine = old_cost["engine_gitlink_commit"]
     return {
@@ -173,6 +177,7 @@ def matrix(root: Path = ROOT) -> dict[str, object]:
             "interpretation": "source-pinned nominal configuration; not a proven security level",
         },
         "proof_targets": [CIRCLE, STWO],
+        "query_epoch": query_epoch,
         "evidence_sha256": evidence,
         "obligations": [{**item, "status": "open"} for item in OBLIGATIONS],
         "profiles": {
