@@ -50,7 +50,14 @@ the same selected output through the actual `Program.evaluate` interpreter.
 Its assignment-to-initial-environment correspondence remains an explicit
 premise in the inner theorem. `GeneralLinearSSAInputState.lean` now discharges
 those premises with a finite checker over a typed assignment. The remaining
-join is from canonical assignment/ABI bytes to that exact typed assignment.
+join for that inner theorem is from canonical assignment/ABI bytes to that
+exact typed assignment.
+`GeneralLinearSSAByteRun.lean` now composes both independent byte checks on
+the same supplied canonical assignment JSON, runs the actual normalized
+interpreter, and proves the accepted pure public claim equals the bounded
+source-byte denotation for arbitrary checked M31 inputs. This byte-run gate
+still needs production compiler/parser equivalence and native verifier
+public-pin ownership to become end-to-end compiler correspondence.
 This does **not** authenticate native committed rows or verify the
 certificate's SHA-256 identities. A runtime Lean gate checks the actual
 five-lane production fixture and rejects malformed byte and graph mutations.
