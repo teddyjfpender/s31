@@ -44,8 +44,9 @@ the public claim, or changing the public result, yields `publicMismatch`.
 The theorem's `InputAlignment` premise explicitly states how canonical source
 input words were partitioned into public and private typed assignments, and
 that the resulting initial environments agree. The exact-source checker does
-not yet derive this premise for every admitted record shape. The theorem also
-stops at `Program.environment` and typed record result values; a general
-`Program.evaluate`/claimed-word theorem, with output deduplication and every
-public statement layout discharged, remains open. Native AIR, PCS, and FRI
+not derive this premise alone. The follow-on
+[`GeneralRecordV2EvaluateCorrespondence.md`](GeneralRecordV2EvaluateCorrespondence.md)
+checks it from source-ordered words and typed public/private assignments,
+then proves actual `Program.evaluate`/claimed-word agreement for every
+successful check, including output deduplication. Native AIR, PCS, and FRI
 correspondence remain separate obligations.
