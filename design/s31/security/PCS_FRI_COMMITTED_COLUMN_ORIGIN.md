@@ -153,12 +153,37 @@ short and large columns, source order ties, and natural versus lifted heights
 in the tested range. The source guard pins the native tile block-log,
 short-pair and parent expressions used by that correspondence.
 
+The same native suite now tests the **block values before leaf hashing**.
+For 16 generated mixed-column shapes it interpolates each original source
+column, constructs `coset_blocks.Tiles` directly, and compares every loaded
+block word to an independently barycentric-evaluated extension. It runs each
+shape with grouping disabled and with a budget that permits grouping, walks
+tiles in reverse across group boundaries, then reloads tile zero. The checks
+cover the full block index, every row's projected read, block length, tile
+count, and group cache invalidation. This tests the current native fold and
+sub-coset FFT over those shapes; it is not a proof of all valid inputs.
+
+Eight additional mixed shapes commit through both borrowed compact routes.
+After checking that retained coefficient and evaluation buffers are distinct
+from source buffers, the test frees the original source values and verifies
+unsorted duplicate openings against the independently evaluated columns.
+One log-20 case exercises the **pruned bottom four Merkle layers** in both
+routes after freeing the borrowed source. Its source values are the circle
+point's `x` coordinate, so the expected queried value is computed directly
+from the queried point without allocating a million-word oracle extension.
+Both pruned openings verify at their common root. This is a finite ownership
+and reconstruction check, not a complete independent root computation at
+log 20. The source guard pins the reviewed interpolation, block fold,
+group reload, and coefficient-opening stages and rejects representative
+mutations of their expressions.
+
 The remaining P06 bridge must prove that native interpolation, block
 evaluation, retained-column ownership and leaf hashing refine the Lean model
-for all valid inputs, including pruned-layer and cached-tree cases; connect
+for all valid inputs, including cached-tree and backend-specific cases; connect
 the reviewed source to the installed binary; and provide a quantitative
 binding/collision bound for the pinned plain BLAKE2s layout. The parametric
 theorem covers index arithmetic and the abstract parent recurrence, while
-the native tests cover finite direct uncached CPU cases.
+the native tests cover finite direct uncached CPU cases, including one
+pruned-layer shape.
 Until those obligations close, P06 is open and native proven security bits
 remain unset.
