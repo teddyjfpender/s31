@@ -22,6 +22,15 @@ projection changes the certificate. This is a Lean byte-language theorem. It
 does not compare the production Python parser or relation JSON, or
 authenticate native trace rows.
 
+The Lean byte parser now uses the independent record-source checker's
+128-byte identifier limit and its keyword, built-in, and reserved nominal-type
+inventories. `name_length_boundary` proves that 128 bytes are accepted and
+129 rejected; `reserved_names_rejected` checks a built-in circuit name,
+reserved record type, and `result` input root. The Python security test checks
+that these literal inventories match the independent checker and that the
+production compiler agrees at the length boundary. This is a finite grammar
+alignment check, not a proof that the two parsers agree on every byte string.
+
 ```sh
 cd formal/s31
 LEAN_NUM_THREADS=1 lake env lean S31/Gadgets/Records/SourceBytesV2.lean

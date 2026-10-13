@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import ast
 import copy
 import hashlib
 import json
+import re
 import sys
 import tempfile
 import unittest
@@ -16,7 +18,11 @@ sys.path.insert(0, str(S31 / "python"))
 from package.context import abi  # noqa: E402
 from package.record_source_fragment import (  # noqa: E402
     CAPABILITY, UnsupportedRecordSourceFragment, check_package_record_source_relation,
-    check_record_source_relation, expected_public_abi, parse_record_source_fragment,
+    RESERVED_RECORD_TYPES, check_record_source_relation, expected_public_abi,
+    parse_record_source_fragment,
+)
+from package.correspondence import (  # noqa: E402
+    MAX_RELATION_NAME_CHARS, PLAIN_BUILTIN_NAMES, SOURCE_KEYWORDS,
 )
 from text_frontend import compile_text  # noqa: E402
 
@@ -38,6 +44,37 @@ def digest(data: bytes) -> str:
 
 
 class RecordSourceFragmentTests(unittest.TestCase):
+    def test_lean_byte_parser_identifier_inventory_matches_checker(self) -> None:
+        lean = (S31.parents[2] / "formal/s31/S31/Gadgets/Records/SourceBytesV2.lean").read_text()
+
+        def inventory(definition: str) -> set[str]:
+            match = re.search(
+                rf"private def {definition} .*?\(\[(.*?)\]\.map token\) name",
+                lean, re.S,
+            )
+            self.assertIsNotNone(match, definition)
+            return set(ast.literal_eval("[" + match.group(1) + "]"))
+
+        self.assertEqual(inventory("reservedName"),
+                         SOURCE_KEYWORDS | PLAIN_BUILTIN_NAMES)
+        self.assertEqual(inventory("reservedRecordType"), RESERVED_RECORD_TYPES)
+        self.assertIn(f"name.length ≤ {MAX_RELATION_NAME_CHARS}", lean)
+
+        for length, accepted in ((128, True), (129, False)):
+            field = "a" * length
+            source = (f"struct Pair {{ {field}: [m31; 1] }} "
+                      f"circuit copy(public x: Pair) -> public Pair {{ "
+                      f"Pair {{ {field}: x.{field} }} }}")
+            with self.subTest(length=length):
+                if accepted:
+                    self.assertEqual(parse_record_source_fragment(source.encode()),
+                                     compile_text(source)[0])
+                else:
+                    with self.assertRaises(UnsupportedRecordSourceFragment):
+                        parse_record_source_fragment(source.encode())
+                    with self.assertRaises(Exception):
+                        compile_text(source)
+
     def test_honest_source_matches_compiler_and_abi(self) -> None:
         variants = [
             SOURCE,
