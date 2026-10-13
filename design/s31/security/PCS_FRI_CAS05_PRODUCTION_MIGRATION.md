@@ -5,9 +5,9 @@ or soundness certificate. S31 production still pins stwo-zig commit
 `59e1f115250b8af01712b9bf3d71616e53094964`, whose PCS feeds only a DEEP
 quotient word to FRI. The experimental [stwo-zig PR #249](https://github.com/teddyjfpender/stwo-zig/pull/249)
 has a separate original-plus-own-quotient path. This note reviews its commit
-`decc70d870b65818f5279ed29c647aaad953e340`. [S31 PR #170](https://github.com/teddyjfpender/s31/pull/170)
-rechecked the source pin after this revision added canonical in-memory value
-validation for the sampled point, claims, and line coordinates. A changed
+`234ac67b2819e6b102e8d43da93a38a4a902075e`, which includes canonical
+in-memory value checks and the bounded CAS05 sparse host path from
+[stwo-zig PR #264](https://github.com/teddyjfpender/stwo-zig/pull/264). A changed
 draft needs a new source review. Neither path currently supplies proven native
 security bits.
 
@@ -54,7 +54,9 @@ The draft already implements much of this in
 `src/core/pcs/paired_sparse_cascade_experimental.zig`,
 `src/core/pcs/transposed_paired_sparse.zig`, and
 `src/core/pcs/paired_sparse_cascade_wire.zig`. Its host prover still uses
-`transposed_cascade_experimental.zig` and the dense XDM03 source commitment.
+`transposed_cascade_experimental.zig` and its `commitSparse` constructor. It
+uses the XDM04 sparse profile, but still materializes the full Merkle tree;
+the legacy XDM03 constructor remains separately capped at `k≤16`.
 Production `src/prover/pcs/scheme.zig` and `src/core/pcs/verifier.zig` remain
 on the old quotient-only path. Copying a batch formula into either production
 file without changing the proof format, source authentication, fold schedule,
@@ -93,13 +95,20 @@ two-point discussion instead excludes the quadratic subfield circle,
 these counts separately. They do not prove a bad-set bound for the two-point
 quotient or an adaptive Fiat–Shamir sampling law.
 
-The XDM04 sparse verifier's visible caps admit this shape. The host prover
-does not: its XDM03 source commitment caps `k` at 16, and its full-fiber
-query cap is `s·2^H≤2¹⁶`. At `k=16,H=8,s=232`, the visible host caps pass,
-but the terminal has only 128 coefficients on 256 rows. A practical larger
-profile first needs a scalable host source commitment/prover and new cost
-measurements. The tool reports no native `R`, `T`, theorem admission, or
-security bits; `--require-proven` always exits nonzero.
+The XDM04 sparse verifier's visible caps admit this shape. CAS05's host now
+preflights the same sparse query shape, but limits the full Merkle tree plus
+logical borrowed source words to **192 MiB** before allocation. At
+`k=22,H=8,s=232` with one column per height, its estimate is **301,858,784
+bytes**, so the host rejects that example. The legacy XDM03 path still has
+the distinct `k≤16` and `s·2^H≤2¹⁶` caps. The native `k=17,H=2,B=2,s=3`
+CAS05 fixture passes the new host preflight at **9,175,008 bytes**, produces
+a **266,584-byte** proof and verifies through the canonical wire; the focused
+test process measured **38,453,248 bytes** peak RSS. The preflight excludes
+FRI working arrays and proof buffers, and this small fixture is not a
+scalability benchmark. A practical `k=22` profile still needs a scalable
+host source commitment/prover and new measurements. The tool reports no
+native `R`, `T`, theorem admission, or security bits; `--require-proven`
+always exits nonzero.
 
 The [field-capacity decision](PCS_FRI_CAS05_CONSERVATIVE_PROFILE_DECISION.md)
 adds another constraint: for its illustrative `N=2²⁰`, `T=2³²`, zero-grinding
@@ -119,8 +128,9 @@ two-point derivation before it can inform CAS05's bound.
    prover and verifier. Reject old/new mode confusion and malformed bytes
    before transcript replay. Ensure the paired verifier's external statement
    contains all roots and claims it uses.
-2. Replace the dense XDM03 host source path with a scalable construction of
-   the same authenticated transposed source root and XDM04 sparse openings.
+2. Replace the bounded full-tree CAS05 host source path with a scalable
+   construction of the same authenticated transposed source root and XDM04
+   sparse openings.
    Benchmark the actual target `k,H,s,columns`; do not infer proof speed from
    small fixtures. Keep the verifier's sparse memory bounds and full
    failure-atomic behavior.
