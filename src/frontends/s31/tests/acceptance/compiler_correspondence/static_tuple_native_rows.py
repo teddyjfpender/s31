@@ -87,7 +87,10 @@ def run(checker: Path) -> dict[str, object]:
             s31.write_json(assignment, {"public_inputs": {"x": [1, 2], "y": [3, 4]},
                                         "private_inputs": {},
                                         "public_outputs": {"out": [4, 6]}})
-            if evaluate_structural_assignment(structural, assignment.read_bytes())[
+            if evaluate_structural_assignment(
+                    source_bytes, (package / "source.s31.json").read_bytes(),
+                    (package / "public-abi.json").read_bytes(), "direct-gate",
+                    (package / STRUCTURAL_ARTIFACT).read_bytes(), assignment.read_bytes())[
                     "public_words"] != [1, 2, 3, 4, 4, 6, 0, 0]:
                 raise AssertionError("typed structural value differs from public ABI words")
             _checked_lean(checker, package, assignment)

@@ -85,7 +85,10 @@ def run() -> dict:
             source_bytes, (package / "source.s31.json").read_bytes(),
             (package / "public-abi.json").read_bytes(), "direct-gate",
             (package / STRUCTURAL_ARTIFACT).read_bytes())
-        if evaluate_structural_assignment(structural, canonical(ASSIGNMENT))[
+        if evaluate_structural_assignment(
+                source_bytes, (package / "source.s31.json").read_bytes(),
+                (package / "public-abi.json").read_bytes(), "direct-gate",
+                (package / STRUCTURAL_ARTIFACT).read_bytes(), canonical(ASSIGNMENT))[
                 "public_words"] != [2, 3, 17, 3, 0, 0, 0, 0]:
             raise AssertionError("typed record derivation differs from public words")
         assignment_path = work / "assignment.json"

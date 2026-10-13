@@ -379,10 +379,11 @@ def build_text(source_path: Path, output: Path, lowering: str = "gate", fri_fold
                 write_json(certificate_path, certificate)
                 manifest["artifacts"][certificate_path.name] = file_hash(certificate_path)
                 write_json(manifest_path, manifest)
-        if lowering == "direct-gate" and source_relation_certificate is not None:
-            from package.pure_native_rows import admitted_ssa, make_certificate as make_pure_native
+        if lowering == "direct-gate" and correspondence == "conservative":
+            from package.pure_native_rows import (admitted_source_package,
+                                                  make_certificate as make_pure_native)
 
-            if admitted_ssa(source_relation_certificate, text_data):
+            if admitted_source_package(package):
                 topology = json.loads(invoke(
                     str(package / "bin" / f"s31-{manifest['name']}-prover"),
                     "inspect-topology"))

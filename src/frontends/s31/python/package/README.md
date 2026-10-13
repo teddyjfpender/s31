@@ -270,5 +270,7 @@ artifact for admitted conservative v1 M31 or v2 record text packages. Its
 second typed evaluator uses one construct/project rule for tuple indices,
 helper arguments, and record fields, then derives the entire relation and
 public ABI. It also checks canonical values and output claims for a supplied
-flat assignment. This executable certificate does not widen the Lean byte
-grammar or native fixed-row custody of a combined helper/tuple source.
+flat assignment. Its public value API requires exact source, relation, ABI and
+certificate bytes before checking a supplied assignment. A combined
+helper/tuple source can additionally enter the bounded direct-Gate fixed-row
+checker, but remains outside the Lean effects byte grammar.

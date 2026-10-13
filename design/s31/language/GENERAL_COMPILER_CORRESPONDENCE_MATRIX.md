@@ -44,8 +44,9 @@ static tuples, helper parameter binding, and nominal record fields. It
 replays the tree independently to the complete relation and ABI, then checks
 canonical source values for a supplied assignment. The production compiler
 accepts a helper call after tuple projections; this executable certificate
-admits that combination, while the narrower Lean effects byte parser and
-native source-row certificate still exclude it. The bounded v2 record case
+admits that combination, and the reviewed all-public short-lane direct-Gate
+profile additionally receives source-bound native fixed-row checking. The
+narrower Lean effects byte parser still excludes it. The bounded v2 record case
 has executable source/relation/ABI/value checks but no v2 exact-byte Lean
 `Program.evaluate` theorem. See
 [`TYPED_STRUCTURAL_DERIVATION.md`](TYPED_STRUCTURAL_DERIVATION.md).
@@ -143,6 +144,11 @@ product parser and the separate Lean effects parser. Product construction and
 projection allocate no normalized node, so the same source-derived full Gate
 schedule applies. The source bytes are mandatory for product enrollment;
 passing only an effects-profile certificate cannot enroll it.
+For a static helper call after tuple projection, the separate version-2 native
+certificate instead replays the exact source-bound typed structural artifact
+and checks the same bounded graph and complete native schedule. This case has
+no Lean effects byte-run theorem, and the certificate states that executable
+boundary explicitly. It admits no private inputs, constants or assertions.
 The checker derives a
 complete gate schedule from that source graph, then independently compares
 every gate address, operation selector, multiplicity and fixed-column cell

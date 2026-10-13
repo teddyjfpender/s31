@@ -81,6 +81,9 @@ def checks(mode: str) -> tuple[Check, ...]:
               "static-enum-if-native", native=True),
         Check("v2-record-source-native", ACCEPT + "record_abi/record_source_fragment_v2.py", (),
               "record-source-native", native=True),
+        Check("combined-helper-tuple-native",
+              ACCEPT + "compiler_correspondence/combined_helper_tuple_native_rows.py", (),
+              "combined-helper-tuple-native", native=True),
     ]
     if mode == "smoke":
         native.extend((
@@ -318,6 +321,20 @@ def validate_output(check: Check, stdout: str, stderr: str,
                 report.get("native_verifier_accepted") is not True or
                 report.get("abi_valid_changed_claim_rejected_by_proof") is not True):
             raise ValueError("record source fragment report failed a control")
+    elif fmt == "combined-helper-tuple-native":
+        root = report.get("fixed_root")
+        if (report.get("schema") != "s31-combined-helper-tuple-native-rows-v1" or
+                report.get("source_rows") != [{"id": 2, "in0": 16, "in1": 20,
+                                               "op": "sub", "out": 21,
+                                               "trace_row": 493}] or
+                report.get("flat_air_equal") is not True or
+                report.get("native_proof_verified") is not True or
+                report.get("changed_fixed_root_rejected") is not True or
+                type(root) is not str or len(root) != 64 or
+                any(char not in "0123456789abcdef" for char in root) or
+                type(report.get("proof_bytes")) is not int or
+                report["proof_bytes"] <= 0):
+            raise ValueError("combined helper/tuple native report failed a control")
     elif fmt.startswith("record-u32-"):
         if (report.get("schema") != "s31-public-u32-record-v2" or
                 report.get("native") is not check.native or
