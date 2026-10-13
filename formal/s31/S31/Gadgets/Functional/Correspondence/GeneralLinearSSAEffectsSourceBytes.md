@@ -21,7 +21,7 @@ circuit affine_guard(public x: [m31; 3], private y: [m31; 3]) -> public [m31; 3]
 ```
 
 The parser assigns `x=0`, `y=1`, `shifted=2`, `scaled=3`, and `out=4`.
-It sees the assertion between `scaled` and `out`; both operands exist at
+It sees the assertion between `y` and `scaled`; both operands exist at
 that point. The full certificate must contain the same input visibility,
 names, ordered instructions, constants, assertion pair `(1,3)`, and output
 ID 4. A source edit that reverses the final subtraction or removes the

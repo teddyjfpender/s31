@@ -60,6 +60,14 @@ the example, `a=[3]`, `b=[3]`, and declared output `[6]` are accepted;
 `a=[3]`, `b=[4]` does not satisfy the source assertion, so completeness does
 not claim an accepted run.
 
+`effectful_interpreter_sound_from_certificate` strengthens the interpreter
+direction by constructing the certificate's deterministic honest arithmetic
+trace internally. Successful `Program.evaluate` then implies both that the
+source assertions hold and that the public output assignment equals the
+source value. It takes no externally supplied `AcceptsTrace` premise; the
+native verifier's authentication of prover supplied rows remains a separate
+proof obligation.
+
 The theorem still accepts explicit premises for the exact named node graph,
 typed initial assignment, distinct names, and modeled arithmetic AIR rows.
 It does not prove production compiler equivalence, native committed row
