@@ -328,6 +328,22 @@ def resultWires (source : Source) : List String :=
   source.fields.map fun field =>
     ((source.result.find? (·.name == field)).map (·.value.wire)).getD ""
 
+/-- Value-independent name admission for the bounded record source graph.
+Each operand must exist before its arithmetic node is introduced. -/
+def checkNodes : List Arithmetic → List String → Option (List String)
+  | [], names => some names
+  | node :: rest, names =>
+      if names.contains node.lhs.wire && names.contains node.rhs.wire then
+        checkNodes rest (node.name :: names)
+      else none
+
+/-- The exact-source package gate checks this after parsing and before
+constructing its typed `Static` admission certificate. -/
+def checkSourceTopology (source : Source) : Bool :=
+  match checkNodes source.nodes (inputWires source) with
+  | none => false
+  | some names => (resultWires source).all names.contains
+
 /-- Evaluate the exact source-fragment record in declaration field order.
 Aliases select one value twice, while the normalized relation lists each
 distinct public output wire once. -/
