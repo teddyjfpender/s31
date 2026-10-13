@@ -9,19 +9,31 @@ from scripts.s31_formal_lib.pcs_fri_order import ordered_once, region
 
 
 def check_sources(native: str, admission: str) -> None:
-    verify = region(native, "fn verifyProfile(", "fn logsFor(")
-    ordered_once(
-        verify, "S31 FRI capture admission before publication",
+    gate = (
         "try core.verifier.verifyBorrowedExWithProofCapture(",
         "defer capture.deinit(allocator);",
         "try fri_capture_admission.validate(",
+        "pcs.fri_config.folding(),",
         "capture.queries.raw,",
         "capture.deep_answers,",
         "capture.fri,",
         "capture.last_layer_coefficients,",
-        "if (converted_out) |out| {",
-        "out.* = try cpu.verifier_proof.fromVerifiedCapture(",
     )
+    regions = (
+        region(native, "fn verifyProfile(", "fn logsFor("),
+        region(native, "pub fn verifySparse(", "const SPARSE_WIDE_MAGIC ="),
+        region(native, "fn verifySparseWideInternal(", "const DIRECT_GATE_MAGIC ="),
+        region(native, "fn verifyDirectProfile(", "fn sparseLogs("),
+    )
+    if (native.count(gate[0]) != len(regions) or
+            native.count(gate[2]) != len(regions)):
+        raise ValueError("S31 core FRI capture or admission call count changed")
+    for index, verify in enumerate(regions):
+        ordered_once(verify, f"S31 FRI capture admission path {index}", *gate)
+    for index in (0, 2):
+        ordered_once(regions[index], f"S31 FRI capture publication path {index}",
+                     gate[2], "if (converted_out) |out| {",
+                     "out.* = try cpu.verifier_proof.fromVerifiedCapture(")
     replay = region(admission, "pub fn validate(", "fn foldLineAtSubset(")
     ordered_once(
         replay, "S31 FRI raw-slot replay",

@@ -16,8 +16,6 @@ class OperationalAdmissionSourceControls(unittest.TestCase):
 
     def test_bypasses_are_rejected(self) -> None:
         cases = (
-            ("native", "try fri_capture_admission.validate(", "// admission omitted("),
-            ("native", "capture.deep_answers,", "capture.sampled_values,"),
             ("admission", "raw.len != config.n_queries or", "false or"),
             ("admission", "if (!left.eql(right)) return error.InvalidFriCapture;",
              "if (false) return error.InvalidFriCapture;"),
@@ -35,6 +33,22 @@ class OperationalAdmissionSourceControls(unittest.TestCase):
                 changed = source.replace(before, after, 1)
                 with self.assertRaises(ValueError):
                     check_sources(changed, ADMISSION) if name == "native" else check_sources(NATIVE, changed)
+
+    def test_every_verifier_path_requires_admission(self) -> None:
+        for before, after in (
+            ("try fri_capture_admission.validate(", "// admission omitted("),
+            ("pcs.fri_config.folding(),", "pcs.fri_config,"),
+            ("capture.deep_answers,", "capture.sampled_values,"),
+        ):
+            self.assertEqual(NATIVE.count(before), 4)
+            start = 0
+            for path in range(4):
+                position = NATIVE.find(before, start)
+                changed = NATIVE[:position] + after + NATIVE[position + len(before):]
+                with self.subTest(path=path, before=before):
+                    with self.assertRaises(ValueError):
+                        check_sources(changed, ADMISSION)
+                start = position + len(before)
 
 
 if __name__ == "__main__":

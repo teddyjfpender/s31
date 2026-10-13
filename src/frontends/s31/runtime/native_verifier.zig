@@ -255,7 +255,7 @@ fn verifyProfile(
     try fri_capture_admission.validate(
         H,
         allocator,
-        pcs.fri_config,
+        pcs.fri_config.folding(),
         capture.queries.raw,
         capture.deep_answers,
         capture.fri,
@@ -462,6 +462,15 @@ pub fn verifySparse(
         &capture,
     );
     defer capture.deinit(allocator);
+    try fri_capture_admission.validate(
+        H,
+        allocator,
+        pcs.fri_config.folding(),
+        capture.queries.raw,
+        capture.deep_answers,
+        capture.fri,
+        capture.last_layer_coefficients,
+    );
 }
 
 const SPARSE_WIDE_MAGIC = "S31NAT5W";
@@ -599,6 +608,15 @@ fn verifySparseWideInternal(
     var capture: core.verifier.ProofCapture(H) = undefined;
     try core.verifier.verifyBorrowedExWithProofCapture(H, MC, allocator, &handles, &channel, &scheme, &stark, true, &capture);
     defer capture.deinit(allocator);
+    try fri_capture_admission.validate(
+        H,
+        allocator,
+        pcs.fri_config.folding(),
+        capture.queries.raw,
+        capture.deep_answers,
+        capture.fri,
+        capture.last_layer_coefficients,
+    );
     if (converted_out) |out| {
         const trace_log = std.math.sub(u32, pcs.trace_lifting_log_size, pcs.fri_config.log_blowup_factor) catch
             return error.InvalidProofConfig;
@@ -874,6 +892,15 @@ fn verifyDirectProfile(
         &capture,
     );
     defer capture.deinit(allocator);
+    try fri_capture_admission.validate(
+        H,
+        allocator,
+        pcs.fri_config.folding(),
+        capture.queries.raw,
+        capture.deep_answers,
+        capture.fri,
+        capture.last_layer_coefficients,
+    );
 }
 
 fn sparseLogs(
