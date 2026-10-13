@@ -20,6 +20,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 from scripts.release.release_candidate import AUDIT_CASES
 from scripts.release.s31_v01_audit import CASES
+from scripts.release.pcs_fri_degree_correction import audit as audit_degree_correction
 from scripts.s31_formal_lib.pcs_fri_query_epoch import audit as audit_query_epoch
 
 
@@ -73,8 +74,8 @@ OBLIGATIONS = (
         "gap_kind": "unproven_native_refinement",
         "published_requirement": "Circle STARKs Theorem 7 and Stwo batch-OOD theorem: sampled values, DEEP quotients and degree correction imply the claimed polynomial identity",
         "published_anchor": STWO,
-        "partial_evidence": ["scripts/s31_formal_lib/pcs_fri_order.py", "scripts/s31_formal_lib/pcs_fri_quotient_algebra.py", "formal/s31/S31/Gadgets/PcsFri/DeepQuotientAlgebra.lean", "deps/stwo-zig/src/core/pcs/verifier.zig", "deps/stwo-zig/src/core/pcs/quotients/row_evaluation.zig", "deps/stwo-zig/src/core/pcs/quotients/fri_answers.zig", "deps/stwo-zig/src/core/constraints.zig", "deps/stwo-zig/src/core/fields/mod.zig", "deps/stwo-zig/src/core/fields/cm31.zig", "src/frontends/s31/sha/verification/pcs_capture_admission.zig"],
-        "missing_discharge": "prove Zig row-quotient semantics, committed sampled/opened value ownership, native batch degree correction and OODS checks instantiate the published batch-evaluation relation; local field algebra alone does not discharge P05",
+        "partial_evidence": ["scripts/s31_formal_lib/pcs_fri_order.py", "scripts/s31_formal_lib/pcs_fri_quotient_algebra.py", "scripts/release/pcs_fri_degree_correction.py", "formal/s31/S31/Gadgets/PcsFri/DeepQuotientAlgebra.lean", "formal/s31/S31/Gadgets/PcsFri/DegreeCorrectionGap.lean", "design/s31/security/PCS_FRI_DEGREE_CORRECTION_GAP.md", "deps/stwo-zig/src/prover/pcs/scheme.zig", "deps/stwo-zig/src/core/pcs/verifier.zig", "deps/stwo-zig/src/core/pcs/quotients/row_evaluation.zig", "deps/stwo-zig/src/core/pcs/quotients/fri_answers.zig", "deps/stwo-zig/src/core/constraints.zig", "deps/stwo-zig/src/core/fields/mod.zig", "deps/stwo-zig/src/core/fields/cm31.zig", "src/frontends/s31/sha/verification/pcs_capture_admission.zig"],
+        "missing_discharge": "the source-pinned native path checks only one accumulated DEEP quotient with FRI, so the published degree-corrected theorem's nonquotient degree-test premise is absent. Implement and refine its full ensemble or prove an alternative quotient-only theorem with exact parameters; also prove Zig row-quotient semantics, committed sampled/opened value ownership and OODS checks",
     },
     {
         "id": "P06_MERKLE_BINDING_AND_DECODER",
@@ -159,10 +160,15 @@ def matrix(root: Path = ROOT) -> dict[str, object]:
         evidence[name] = sha(path)
     current_engine = gitlink(root)
     query_epoch = audit_query_epoch(root)
+    degree_correction = audit_degree_correction(root)
     if (query_epoch["engine_gitlink_commit"] != current_engine or
             query_epoch["hash_draws"] != 9 or
             not query_epoch["native_blake2s_counter_overflow_fail_closed"]):
         raise ValueError("v0.1 query epoch source or engine binding changed")
+    if (degree_correction["engine_gitlink_commit"] != current_engine or
+            degree_correction["p05_discharged"] is not False or
+            degree_correction["published_degree_corrected_nonquotient_premise_met"] is not False):
+        raise ValueError("v0.1 native degree-correction theorem status changed; review blocker matrix")
     old_cost = json.loads((root / "design/s31/measurements/language/whole-prover-cost-v8r1.json").read_text())
     cost_engine = old_cost["engine_gitlink_commit"]
     return {
@@ -180,6 +186,7 @@ def matrix(root: Path = ROOT) -> dict[str, object]:
         },
         "proof_targets": [CIRCLE, STWO],
         "query_epoch": query_epoch,
+        "degree_correction": degree_correction,
         "evidence_sha256": evidence,
         "obligations": [{**item, "status": "open"} for item in OBLIGATIONS],
         "profiles": {
