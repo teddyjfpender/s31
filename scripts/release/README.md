@@ -32,6 +32,23 @@ native AIR or PCS/FRI soundness. This package gate checks source, relation,
 tree, and public ABI bytes; it does not check a private assignment against a
 particular proof.
 
+## Bounded multi-field record row certificate
+
+[`record_v2_multifield_row_certificate.py`](record_v2_multifield_row_certificate.py)
+is an opt-in path for the nominal scalar record-v2 grammar, including public
+and private inputs and flat record-pattern aliases. It runs exact-byte Lean
+source-to-typed-`Program` admission, a source-derived audit of live native
+Gate rows and their exact use counts, full fixed-column recommitment to the
+pinned key, typed public statement checks, and native proof verification in
+one private snapshot. Supply the same five package pins and a separately
+pinned `s31-general-record-v2-program-admission-check` executable. The
+[worked two-field example](../../formal/s31/S31/Gadgets/Functional/Correspondence/GeneralRecordV2MultiFieldNativeRows.md)
+shows the exact source, field values, physical rows, and proof boundary.
+
+This certificate is not part of the v0.1.0 supported-profile release gate.
+It does not identify the native proof's private witness or prove the native
+PCS/FRI, Gate lookup, or verifier implementation sound.
+
 ## Proven PCS/FRI preflight
 
 The v0.1.0 policy requires a published, implementation-matched PCS/FRI

@@ -57,6 +57,9 @@ argument must reduce verifier acceptance to exact Gate balance at the chosen
 security profile, and Fiat–Shamir must justify the challenge distribution.
 The current theorem assumes those decoded-trace facts directly. It also
 requires the public partition checks to pass for the accepted source package.
-The pinned narrow record release invokes `checkStatic` through its Lean CLI,
-so it runs the topology check. This does not wire the broader native verifier
-or all record-v2 packages through that Lean admission path.
+The [multi-field native row certificate](GeneralRecordV2MultiFieldNativeRows.md)
+invokes `checkStatic` through its pinned Lean CLI and checks source-owned
+fixed Gate cells and native proof acceptance in one snapshot. It does not
+extract or cryptographically bind the native proof's private witness to a
+specific Lean assignment. The existential theorem continues to require the
+listed decoded-trace and PCS/FRI premises.
