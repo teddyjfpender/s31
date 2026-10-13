@@ -99,6 +99,9 @@ text .s31 ──parse/typecheck/specialize──▶ normalized relation JSON
 - [A static choice with an erased payload](worked-static-sum.md): an
    `enum` known at compile time, a total calculation removed after eager
    evaluation, the retained recurrence chip, and its proof claim.
+- [Dead-code pruning certificate](reference/PRUNING_CERTIFICATE.md): a
+   handwritten two-node example, the exact roots and dependencies checked
+   before AIR lowering, and why an unused inverse remains constrained.
 - [Nominal records](records.md): named struct fields, eager evaluation,
    static type checks, whole-record selection, exact fieldwise AIR cost,
    and handwritten calculations.
