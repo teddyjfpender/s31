@@ -198,6 +198,48 @@ module's divisor is quadratic in `F[X]`. Transferring the degree claim to
 the native circle basis still requires a proved point-removal and degree
 refinement; these theorems assign no native security bits.
 
+[`CircleVanishingLine.lean`](CircleVanishingLine.lean) analyzes that actual
+native line. Write the sampled QM31 point as
+`(x₀+u x₁, y₀+u y₁)`, where `u²=d` in the CM31 coefficient field. At a base
+circle row `(a,b)`, CAS05 divides by
+
+```text
+V(a,b) = (x₀-a)y₁ - (y₀-b)x₁.
+```
+
+The tower circle equation gives
+`x₀²+y₀²+d(x₁²+y₁²)=1` and `x₀x₁+y₀y₁=0`. Along the
+line `V=0`, every point is `(x₀+t x₁, y₀+t y₁)`, with
+`t=(b-y₀)/y₁` under the native `y₁≠0` guard. Substitution gives the exact
+identity
+
+```text
+(x₀+t x₁)² + (y₀+t y₁)² - 1 = (t²-d)(x₁²+y₁²).
+```
+
+The Lean proof shows `x₁²+y₁²≠0` from those equations and the guard. Thus
+the line meets the circle only when `t²=d`: over QM31 at the two conjugate
+sampled points, and at no CM31 base-circle point when `d` is nonsquare.
+For a hand calculation with rational coefficients, use `d=2`,
+`(x₀,y₀)=(-1/3,0)`, `(x₁,y₁)=(0,2/3)`. Then
+`V(a,b)=(-1/3-a)·2/3`; its circle intersections are
+`(-1/3,±2√2/3)`, with no rational intersection. This illustrates the
+native *line* geometry, rather than the ordinary `(X-a)(X-b)` divisor.
+
+Over a coefficient field containing `i²=-1`, the same line has Laurent
+circle-coordinate edge coefficients `(-y₁-i x₁)/2` and
+`(-y₁+i x₁)/2`; the formal proof shows both are nonzero. This is the
+nondegeneracy fact needed for a future `degree(V·q)=degree(q)+1` theorem in
+the **two-sided** Laurent circle filtration. The missing formal step is
+precise: native CAS05 has committed *evaluation rows*, but no coefficient
+representation of circle polynomials or formal map from those rows to a
+degree-bounded circle polynomial. We also lack a coordinate-ring theorem
+that vanishing at the two extension points makes `f-L` divisible by `V` and
+a proven equivalence between the paper's circle-degree filtration and the
+chosen Laurent support bound. These requirements cannot be discharged by
+the pointwise division used by the verifier or by the ordinary polynomial
+theorem above. No native PCS/FRI security bits follow from this geometry.
+
 [`BundleQueryBound.lean`](BundleQueryBound.lean) proves the elementary query
 event needed by the experimental full-fiber cascade: if a query checks every
 row in its selected bundle, the raw positions whose bundles touch a fixed
