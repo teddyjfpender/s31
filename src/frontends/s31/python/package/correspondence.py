@@ -1007,10 +1007,10 @@ def check_exported_root(topology: dict[str, Any], key: dict[str, Any]) -> bool:
     return True
 
 
-def check_gate_topology(syntax: dict[str, Any], topology: dict[str, Any],
-                        component: dict[str, Any], report: dict[str, Any],
-                        relation_sha256: str) -> list[dict[str, Any]]:
-    """Replay value-free gate rows independently of the native AIR emitter.
+def replay_direct_topology(topology: dict[str, Any], component: dict[str, Any],
+                           report: dict[str, Any], relation_sha256: str
+                           ) -> dict[str, list[dict[str, int]]]:
+    """Replay all exported fixed rows against gate lists and manifest digests.
 
     The column digests are checked against the native component manifest.
     This still assumes that the native PCS root commits to those columns.
@@ -1122,6 +1122,18 @@ def check_gate_topology(syntax: dict[str, Any], topology: dict[str, Any],
                 declared.get("values_sha256") != digest(b"".join(
                     struct.pack("<I", word) for word in expected))):
             raise ValueError("emitted direct-gate selector/address columns differ from gate replay")
+
+    return gate_lists
+
+
+def check_gate_topology(syntax: dict[str, Any], topology: dict[str, Any],
+                        component: dict[str, Any], report: dict[str, Any],
+                        relation_sha256: str) -> list[dict[str, Any]]:
+    """Check the bounded four-lane source against authenticated fixed rows."""
+    gate_lists = replay_direct_topology(topology, component, report, relation_sha256)
+    output = topology["output"]
+    n_vars = topology["n_vars"]
+    n_rows = topology["first_permutation_row"]
 
     # The compiler groups gates by kind. Input packing is first in `mul`
     # and `add`; source operations follow in their respective kind list.

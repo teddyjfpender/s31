@@ -326,6 +326,7 @@ def build_text(source_path: Path, output: Path, lowering: str = "gate", fri_fold
             manifest["correspondence_schema"] = OPTIMIZED_SCHEMA
         for name in ("source.s31", "source-map.json", "typed-interface.json"):
             manifest["artifacts"][name] = file_hash(package / name)
+        source_relation_certificate = None
         if correspondence == "conservative":
             from package.source_relation_fragment import (
                 UnsupportedSourceRelationFragment, make_source_relation_certificate,
@@ -364,6 +365,21 @@ def build_text(source_path: Path, output: Path, lowering: str = "gate", fri_fold
                 certificate_path = package / "correspondence-certificate.json"
                 write_json(certificate_path, certificate)
                 manifest["artifacts"][certificate_path.name] = file_hash(certificate_path)
+                write_json(manifest_path, manifest)
+        if lowering == "direct-gate" and source_relation_certificate is not None:
+            from package.pure_native_rows import admitted_ssa, make_certificate as make_pure_native
+
+            if admitted_ssa(source_relation_certificate):
+                topology = json.loads(invoke(
+                    str(package / "bin" / f"s31-{manifest['name']}-prover"),
+                    "inspect-topology"))
+                topology_path = package / "gate-topology.json"
+                write_json(topology_path, topology)
+                manifest["artifacts"][topology_path.name] = file_hash(topology_path)
+                write_json(manifest_path, manifest)
+                native_certificate_path = package / "pure-native-rows-certificate.json"
+                write_json(native_certificate_path, make_pure_native(package))
+                manifest["artifacts"][native_certificate_path.name] = file_hash(native_certificate_path)
                 write_json(manifest_path, manifest)
         # The JSON build is only an intermediate artifact at this point. Check
         # the complete text package and, for the direct-gate profile, ask the

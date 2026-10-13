@@ -51,6 +51,31 @@ The public-four-lane overlap with the older direct-Gate checker has an
 executable join requiring equal indexed graphs; its row theorem still assumes
 modeled authentication.
 
+### Narrow source-to-native row admission
+
+`pure-native-rows-certificate.json` joins the checked source-to-relation
+certificate to a fresh native direct-Gate topology for **one public**
+`[m31; N]` input and output, with `N` from 1 through 3 and 1–16 distinct,
+canonically ordered `add`, `sub`, or `mul` SSA nodes. The checker derives a
+complete gate schedule from that source graph, then independently compares
+every gate address, operation selector, multiplicity and fixed-column cell
+with the native topology and component-manifest digests. It also checks exact
+public word packing, unused-word zero copies, source address spans, source
+row positions and the exported fixed root against the verifier key. Package
+verification requires this artifact whenever a direct-Gate text package
+falls inside that fragment. The existing direct-Gate correspondence checker
+handles its separate four-lane fragment.
+
+This certificate's capability is
+`source-relation-to-native-fixed-rows-only`. It relies on the pinned native
+inspector, verifier and PCS for the claim that the exported root commits to
+the checked columns. It does not prove the witness satisfies the AIR, that
+the native verifier enforces the public input claim, or PCS/FRI soundness.
+Two source inputs cannot enter this checker yet: the native topology inspector
+currently accepts exactly one input. Private inputs, constants, assertions,
+noncanonical commutative node order, duplicate expressions that native CSE
+would merge, and all other operations are outside this row claim.
+
 At this revision, **20 of 147** checked-in `.s31` example files fit this
 source fragment; an independent comparison with the production compiler
 found **zero** relation mismatches among those 20. This file count is a
