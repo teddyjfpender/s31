@@ -979,11 +979,28 @@ fn inspect(allocator: std.mem.Allocator, source: relation.Program) !void {
     std.debug.print("{s}\n", .{encoded});
 }
 
+fn eligibleTwoPublicInputsTopology(allocator: std.mem.Allocator, source: relation.Program) !bool {
+    if (source.inputs.len != 2 or source.nodes.len == 0 or source.nodes.len > 16 or
+        source.assertions.len != 0 or source.public_outputs.len != 1) return false;
+    const left = source.inputs[0];
+    const right = source.inputs[1];
+    if (left.visibility != .public or right.visibility != .public or
+        left.kind != .m31 or right.kind != .m31 or
+        left.length != right.length or left.length < 1 or left.length > 2) return false;
+    for (source.nodes) |node| {
+        if (node.op != .add and node.op != .sub and node.op != .mul) return false;
+    }
+    const output = (try source.shapeOf(allocator, source.public_outputs[0])) orelse return false;
+    return output.kind == .m31 and output.length == left.length;
+}
+
 fn inspectDirectTopology(allocator: std.mem.Allocator, source: relation.Program) !void {
     // The command is deliberately bounded: package admission invokes it only
     // for the small, independently parsed source fragment.
-    if (source.version != 1 or source.inputs.len != 1 or source.nodes.len > 16 or
-        source.proof_mode != .transparent) return error.UnsupportedTopologyInspection;
+    if (source.version != 1 or source.nodes.len > 16 or
+        source.proof_mode != .transparent or
+        (source.inputs.len != 1 and !(try eligibleTwoPublicInputsTopology(allocator, source))))
+        return error.UnsupportedTopologyInspection;
     var ctx = try s31.relation_compiler.compileDirect(circuit.builder.NoValue, allocator, source, null, false);
     defer ctx.deinit();
     try padForProfile(circuit.builder.NoValue, &ctx);

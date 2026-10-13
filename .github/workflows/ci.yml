@@ -374,6 +374,11 @@ jobs:
           set -euo pipefail
           python3 src/frontends/s31/tests/acceptance/compiler_correspondence/pure_native_short_lanes.py |
             tee zig-out/s31/acceptance/pure-native-short-lanes.json
+      - name: Two-public-input source-bound native row controls
+        run: |
+          set -euo pipefail
+          python3 src/frontends/s31/tests/acceptance/compiler_correspondence/pure_native_two_inputs.py |
+            tee zig-out/s31/acceptance/pure-native-two-inputs.json
       - name: Cross-check canonical IR against the native builder
         run: |
           set -euo pipefail
