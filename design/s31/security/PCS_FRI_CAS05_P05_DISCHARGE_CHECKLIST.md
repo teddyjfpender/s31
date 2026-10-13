@@ -79,8 +79,13 @@ cardinality difference between that complement and the accepted seeds.
 The conditional uniform mass ratio
 is `q²/(q²−1)`. Its `twoPointSupport` definition is not itself a formal
 field-point counting theorem; the new count supplies that separate fact.
-The cardinality difference does not prove that the accepted image lies
-inside the complement. The ratio transfers a
+The [guarded image theorem](../../../formal/s31/S31/Gadgets/PcsFri/GuardedCircleImage.lean)
+now proves that the modeled rational-map image is exactly the QM31 circle
+points with nonzero upper `y` coefficient and lies inside the complement
+of the embedded CM31 circle. A separate coefficient refinement is still
+needed to identify the numeric `acceptedGuard` seed count with this field
+image; the transcript draw and installed binary are separate obligations.
+The ratio transfers a
 **fixed bad-set count only if** that count is first proved for the two-point
 universe. It does not establish adaptive Fiat–Shamir sampling.
 
