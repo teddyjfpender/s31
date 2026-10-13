@@ -77,21 +77,24 @@ SSA projection is:
 }
 ```
 
-This certificate records `lean_semantic_profile: null` and
-`unmodeled_features: ["assertions", "constant-arithmetic"]` because the
-current generic Lean SSA theorem does not cover those constructs. A program
-with only add/sub/mul nodes and no assertions gets profile
-`linear-ssa-m31-v1`. The profile reports the graph shape to which that theorem
-can apply; the SHA-256 digests alone do not prove parser correctness.
+This certificate records `lean_semantic_profile:
+"linear-ssa-m31-effects-v1"` and `unmodeled_features: []`. That profile
+includes `add_const`, `mul_const`, and equality assertions, so the source
+meaning is a partial relation: an accepted witness must satisfy every
+assertion. A program with only add/sub/mul nodes and no assertions keeps
+the pure `linear-ssa-m31-v1` profile. The profile marks which Lean semantic
+checker can apply; SHA-256 digests alone do not prove parser correctness.
 The [five-lane fixture](../../../formal/s31/fixtures/correspondence/source_relation_ssa_v1.json)
 has exact source and normalized-relation siblings. A test regenerates all
 three identities and the complete certificate; the Lean checker can parse
 the same serialized bytes. The Lean runtime gate requires the canonical JSON
-serialization and a handwritten source term for this fixture. The general
-Lean theorem checks the emitted indexed add/sub/mul graph against that supplied
-term and proves its packed AIR rows compute the term for every lane assignment
-and every accepted witness. The package's independent Python parser remains
-the trusted source-byte admission step.
+serialization and a handwritten source term for this fixture. The pure Lean
+theorem checks the emitted indexed add/sub/mul graph against that supplied
+term and proves its modeled packed AIR rows compute the term for every lane
+assignment and every accepted witness. The effects profile uses a separate
+Lean checker for constants and assertions; its accepted-witness statement
+requires the modeled row and assertion constraints. The package's independent
+Python parser remains the trusted source-byte admission step.
 
 The checker also accepts this bounded functional spelling:
 
