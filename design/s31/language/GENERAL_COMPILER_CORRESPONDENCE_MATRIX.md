@@ -76,6 +76,12 @@ currently accepts exactly one input. Private inputs, constants, assertions,
 noncanonical commutative node order, duplicate expressions that native CSE
 would merge, and all other operations are outside this row claim.
 
+The older four-package `native_source_cells.json` fixture is historical
+evidence: its recorded engine gitlink predates the current pinned engine, and
+no CI job rebuilds it. Do not use it as current native evidence until a fresh
+four-package regeneration is checked in. The ordered-subtraction native
+fixture has its own live CI rebuild and is refreshed with compiler changes.
+
 At this revision, **20 of 147** checked-in `.s31` example files fit this
 source fragment; an independent comparison with the production compiler
 found **zero** relation mismatches among those 20. This file count is a

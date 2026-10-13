@@ -24,6 +24,8 @@ from package.verify import verify_package  # noqa: E402
 
 SOURCE = ("circuit three(public x: [m31; 3]) -> public [m31; 3] { "
           "let a = x + x; let b = a - x; let c = a .* b; c }\n")
+ONE_SOURCE = ("circuit case1(public x: [m31; 1]) -> public [m31; 1] { "
+              "let a = x + x; a }\n")
 
 
 def encoded(value: object) -> bytes:
@@ -55,7 +57,8 @@ def must_reject(package: Path, contains: str) -> None:
         raise AssertionError("forged package passed ordinary verification")
 
 
-def run(work: Path, existing: Path | None) -> dict:
+def run(work: Path, existing: Path | None,
+        one_lane_existing: Path | None = None) -> dict:
     package = existing if existing is not None else work / "package"
     if existing is None:
         source = work / "short3.s31"
@@ -105,23 +108,43 @@ def run(work: Path, existing: Path | None) -> dict:
     else:
         raise AssertionError("re-sealed wrong certificate passed verification")
     shutil.rmtree(forged)
+
+    one_lane = one_lane_existing if one_lane_existing is not None else work / "one-lane"
+    if one_lane_existing is None:
+        one_source = work / "one.s31"
+        one_source.write_text(ONE_SOURCE)
+        build_text(one_source, one_lane, "direct-gate")
+    if (one_lane / "source.s31").read_text() != ONE_SOURCE:
+        raise AssertionError("one-lane package has unexpected source")
+    verify_package(one_lane)
+    forged = work / "forged-boolean-abi-length"
+    shutil.copytree(one_lane, forged)
+    abi = json.loads((forged / "public-abi.json").read_bytes())
+    abi["public_inputs"][0]["length"] = True  # Python True == 1 must not pass.
+    reseal(forged, "public-abi.json", abi)
+    must_reject(forged, "public ABI differs")
+    shutil.rmtree(forged)
     return {"schema": "s31-short-lane-native-controls-v1",
-            "source_rows": source_rows, "forgeries_rejected": 5,
-            "honest_package_verified": verified["schema"] == "s31-package-v1"}
+            "source_rows": source_rows, "forgeries_rejected": 6,
+            "honest_package_verified": verified["schema"] == "s31-package-v1",
+            "one_lane_verified": True}
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--work", type=Path)
     parser.add_argument("--package", type=Path)
+    parser.add_argument("--one-lane-package", type=Path)
     args = parser.parse_args()
     if args.work:
         work = args.work.resolve()
         work.mkdir(parents=True, exist_ok=True)
-        result = run(work, args.package.resolve() if args.package else None)
+        result = run(work, args.package.resolve() if args.package else None,
+                     args.one_lane_package.resolve() if args.one_lane_package else None)
     else:
         with tempfile.TemporaryDirectory(prefix="s31-pure-short-native-") as temporary:
-            result = run(Path(temporary), args.package.resolve() if args.package else None)
+            result = run(Path(temporary), args.package.resolve() if args.package else None,
+                         args.one_lane_package.resolve() if args.one_lane_package else None)
     print(json.dumps(result, sort_keys=True))
 
 

@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from package.correspondence import (check_exported_root, parse_canonical_json,
-                                    replay_direct_topology)
+                                    replay_direct_topology, same_json_shape)
 from package.context import AIR_BUNDLE_SHA256, PROJECTION_SHA256
 from package.direct_gate_schedule import exact_direct_gate_schedule
 from package.manifest_digest import direct_gate_v2_digest
@@ -82,7 +82,7 @@ def make_certificate(package: Path) -> dict[str, Any]:
     relation = _read(package, "source.s31.json")
     relation_sha256 = _hash(relation_bytes)
     if (manifest.get("lowering") != "direct-gate" or
-            manifest.get("fri_fold_step") != 1 or
+            not same_json_shape(manifest.get("fri_fold_step"), 1) or
             manifest.get("name") != relation["name"] or
             manifest.get("source_text_sha256") != _hash(source_bytes) or
             manifest.get("program_sha256") != relation_sha256 or
@@ -91,19 +91,19 @@ def make_certificate(package: Path) -> dict[str, Any]:
             key.get("chip") is not None or
             key.get("projection_sha256") != PROJECTION_SHA256 or
             key.get("air_bundle_sha256") != AIR_BUNDLE_SHA256 or
-            key.get("fri", {}).get("fold_step") != 1 or
+            not same_json_shape(key.get("fri", {}).get("fold_step"), 1) or
             key.get("program_sha256") != relation_sha256 or
             component.get("schema") != "s31-component-manifest-direct-gate-v2" or
             component.get("profile") != "direct-m31-v4" or
-            component.get("claimed_sums") != 1 or
+            not same_json_shape(component.get("claimed_sums"), 1) or
             key.get("manifest_precommitment_sha256") != direct_gate_v2_digest(component) or
             report.get("manifest_precommitment_sha256") != key.get("manifest_precommitment_sha256") or
-            component != key.get("component_manifest") or
-            component != report.get("component_manifest") or
-            any(report.get(field) != key.get(field) for field in (
+            not same_json_shape(component, key.get("component_manifest")) or
+            not same_json_shape(component, report.get("component_manifest")) or
+            any(not same_json_shape(report.get(field), key.get(field)) for field in (
                 "program_sha256", "canonical_ir_sha256", "profile", "chip",
                 "preprocessed_root", "circuit_hash", "padded", "trace_log_size", "fri")) or
-            any(component.get(field) != key.get(field) for field in (
+            any(not same_json_shape(component.get(field), key.get(field)) for field in (
                 "program_sha256", "canonical_ir_sha256", "preprocessed_root",
                 "circuit_hash", "air_bundle_sha256")) or
             topology.get("schema") != "s31-direct-gate-topology-v2" or
@@ -119,10 +119,11 @@ def make_certificate(package: Path) -> dict[str, Any]:
         "public_outputs": [{"name": relation["public_outputs"][0],
                             "kind": "m31", "length": lanes}],
     }
-    if _read(package, "public-abi.json") != expected_abi:
+    if not same_json_shape(_read(package, "public-abi.json"), expected_abi):
         raise ValueError("short-lane public ABI differs from source")
-    if report.get("input_packing") != [{"name": ssa["inputs"][0]["name"],
-                                        "lanes": lanes, "qm31_wires": 1}]:
+    if not same_json_shape(report.get("input_packing"), [{
+            "name": ssa["inputs"][0]["name"], "lanes": lanes,
+            "qm31_wires": 1}]):
         raise ValueError("short-lane input packing differs from source")
     packed_rows = 2 * (lanes - 1)
     expected_map = []
@@ -136,7 +137,7 @@ def make_certificate(package: Path) -> dict[str, Any]:
             row[f"{component_name}_start"] = 0
             row[f"{component_name}_end"] = 0
         expected_map.append(row)
-    if report.get("source_map") != expected_map:
+    if not same_json_shape(report.get("source_map"), expected_map):
         raise ValueError("short-lane native source spans differ from checked SSA")
     source_end = packed_rows + len(ssa["nodes"])
     binding_start = source_end + 2 * lanes - 1
@@ -154,15 +155,15 @@ def make_certificate(package: Path) -> dict[str, Any]:
             "binding_qm31_start": binding_start + start,
             "binding_qm31_end": binding_start + start + lanes,
         })
-    if report.get("public_binding") != expected_bindings:
+    if not same_json_shape(report.get("public_binding"), expected_bindings):
         raise ValueError("short-lane public word projection differs from source")
 
     expected_gates, n_vars, n_rows, source_gates = exact_direct_gate_schedule({
         "lane_count": lanes, "instructions": ssa["nodes"], "output": ssa["output"]})
     actual_gates = replay_direct_topology(topology, component, report, relation_sha256)
-    if (topology["n_vars"] != n_vars or
-            topology["first_permutation_row"] != n_rows or
-            any(actual_gates[kind] != expected_gates[kind]
+    if (not same_json_shape(topology["n_vars"], n_vars) or
+            not same_json_shape(topology["first_permutation_row"], n_rows) or
+            any(not same_json_shape(actual_gates[kind], expected_gates[kind])
                 for kind in ("add", "sub", "mul", "pointwise_mul"))):
         raise ValueError("short-lane native gates differ from source-derived full schedule")
     source_rows = []
@@ -211,6 +212,6 @@ def verify_artifact(package: Path, manifest: dict[str, Any]) -> bool:
             certificate_path.is_symlink() or topology_path.is_symlink()):
         raise ValueError("admitted short-lane source lacks native row artifacts")
     expected = make_certificate(package)
-    if _read(package, ARTIFACT) != expected:
+    if not same_json_shape(_read(package, ARTIFACT), expected):
         raise ValueError("short-lane native row certificate differs from replay")
     return True

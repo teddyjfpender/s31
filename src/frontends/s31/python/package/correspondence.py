@@ -135,6 +135,21 @@ def read_canonical_json(path: Path) -> Any:
     return parse_canonical_json(path.read_bytes(), path.name)
 
 
+def same_json_shape(actual: Any, expected: Any) -> bool:
+    """Compare decoded JSON without Python's bool/int equality alias."""
+    if type(actual) is not type(expected):
+        return False
+    if isinstance(expected, dict):
+        return (actual.keys() == expected.keys() and
+                all(same_json_shape(actual[key], value)
+                    for key, value in expected.items()))
+    if isinstance(expected, list):
+        return (len(actual) == len(expected) and
+                all(same_json_shape(item, value)
+                    for item, value in zip(actual, expected, strict=True)))
+    return actual == expected
+
+
 def _tokens(data: bytes) -> list[str]:
     if len(data) > MAX_SOURCE_BYTES:
         raise UnsupportedFragment("source exceeds bounded correspondence byte limit")
@@ -1067,8 +1082,8 @@ def replay_direct_topology(topology: dict[str, Any], component: dict[str, Any],
     if (type(topology["first_permutation_row"]) is not int or
             topology["first_permutation_row"] != first_permutation or
             n_rows < 16 or n_rows > 1024 or n_rows & (n_rows - 1) or
-            report.get("padded", {}).get("qm31_ops") != n_rows or
-            report.get("trace_log_size") != n_rows.bit_length() - 1):
+            not same_json_shape(report.get("padded", {}).get("qm31_ops"), n_rows) or
+            not same_json_shape(report.get("trace_log_size"), n_rows.bit_length() - 1)):
         raise ValueError("direct-gate row layout differs from native report")
     uses = [0] * n_vars
     producers: set[int] = set()
@@ -1116,9 +1131,9 @@ def replay_direct_topology(topology: dict[str, Any], component: dict[str, Any],
                 any(type(word) is not int or not 0 <= word < M31_MODULUS
                     for word in column["values"]) or
                 declared.get("id") != column["id"] or
-                declared.get("commitment_index") != index or
-                declared.get("rows") != n_rows or
-                declared.get("log_size") != n_rows.bit_length() - 1 or
+                not same_json_shape(declared.get("commitment_index"), index) or
+                not same_json_shape(declared.get("rows"), n_rows) or
+                not same_json_shape(declared.get("log_size"), n_rows.bit_length() - 1) or
                 declared.get("values_sha256") != digest(b"".join(
                     struct.pack("<I", word) for word in expected))):
             raise ValueError("emitted direct-gate selector/address columns differ from gate replay")
