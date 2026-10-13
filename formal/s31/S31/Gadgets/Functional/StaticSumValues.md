@@ -45,6 +45,13 @@ constraints.
 The total Lean core does not model partial library calls or the Python
 effect checker. A separate `Except` model proves that a failing constructor
 payload propagates its error and that a failure in the inactive arm is ignored.
+The `selectedEffect` model then composes a known static tag with the dynamic
+conditional effect theorem: if the selected arm and the other dynamic branch
+are total, the strict graph and selector accept exactly the lazy result,
+regardless of the unselected enum arm. Selecting an inverse-of-zero arm
+instead has no eager witness even when the dynamic bit chooses the other
+branch. These theorems justify the staging rule; they do not verify the
+production Python effect pass or native verifier.
 The frontend must still check both arm types, account for effects and reject
 witness-dependent sum tags when a static branch is needed.
 The theorem also does not establish that Python emits this graph, that Zig

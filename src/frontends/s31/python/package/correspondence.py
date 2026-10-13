@@ -1,15 +1,25 @@
 """Independent, fail-closed checker for a small direct-gate S31 fragment.
 
 The accepted grammar has one public [m31; 4] input and one public [m31; 4]
-output. Its body contains 1..16 fresh arithmetic lets (`+` or `.*`),
+output. Its body contains 1..16 fresh arithmetic gates (`+`, `-`, or `.*`),
 interleaved with zero-cost alias lets, followed by a returned wire name.
 Redundant parentheses around these expressions and names are admitted.
-Operands must resolve to the input or an earlier arithmetic let. The default
-v2 certificate requires canonical operand order and distinct expressions.
+Operands must resolve to the input or an earlier arithmetic let. Up to eight
+pure, monomorphic functions may contain straight-line arithmetic and calls to
+earlier functions. Their applications are expanded to ordinary gates with
+exact generated names. The default v2 certificate requires canonical operand
+order for commutative gates and distinct expressions. Subtraction retains its
+written operand order.
+Bounded expression-level `let name = bound in body` chains may appear as
+circuit let RHSs. They eagerly emit bound gates under anonymous names and
+resolve scoped aliases before the same canonical and native checks. A named
+unary function may pass through a monomorphic Fn parameter or a static alias;
+the value is erased before relation lowering. A bounded unary lambda may
+capture earlier wires and emit its body arithmetic gates per application.
 The explicit optimized v3 path independently sorts commutative operands and
 checks common-subexpression elimination with a source-to-canonical map. No
-imports, calls, constants, assertions, private inputs, or implicit coercions
-enter either certificate.
+imports, other calls, constants, assertions, private inputs, or implicit
+coercions enter either certificate.
 
 This checks source bytes against normalized relation and the published native
 row schedule. It does not derive the native circuit hash or prove Gate lookup,
@@ -22,20 +32,41 @@ import hashlib
 import json
 import re
 import struct
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from package.direct_gate_schedule import constant_and_padding, exact_direct_gate_schedule
 from package.manifest_digest import direct_gate_v2_digest
+from package.source_fragments.lexical_let import (Atom, Let, UnsupportedLexicalLet,
+                                                  parse_expression)
+from package.source_fragments.static_helper import (StaticExpr, UnsupportedStaticHelper,
+                                                    peel_static_helpers)
+from package.source_fragments.static_lambda import (LambdaBinary, LambdaExpr, LambdaLet,
+                                                    LambdaName, StaticLambda,
+                                                    UnsupportedStaticLambda, parse_static_lambda)
 
 
 class UnsupportedFragment(ValueError):
     """The source is outside the certificate grammar."""
 
 
+@dataclass(frozen=True)
+class NamedFunction:
+    """A source-only unary function value, erased at its static call site."""
+
+    name: str
+
+
+FunctionValue = NamedFunction | StaticLambda
+StaticValue = str | FunctionValue
+
+
 ASCII_SPACE = frozenset(" \t\n\v\f\r")
-TOKEN = re.compile(r"[ \t\n\v\f\r]+|//[^\n]*|->|\.\*|[()\[\];:{}=+]|[A-Za-z_][A-Za-z_0-9]*|[0-9]+")
+TOKEN = re.compile(r"[ \t\n\v\f\r]+|//[^\n]*|->|=>|\.\*|[(),\[\];:{}=+\-]|[A-Za-z_][A-Za-z_0-9]*|[0-9]+")
 NAME = re.compile(r"[A-Za-z_][A-Za-z_0-9]*\Z")
+INLINE_NAME = re.compile(r"_s31_i[0-9]+_[0-9]+\Z")
+AUTO_NAME = re.compile(r"_s31_[0-9]+\Z")
 SOURCE_KEYWORDS = frozenset({
     "use", "let", "in", "if", "then", "else", "match", "fun", "Fn", "fn", "struct", "enum",
     "circuit", "blinded", "public", "private", "assert_eq", "m31",
@@ -45,6 +76,7 @@ OPTIMIZED_SCHEMA = "s31-direct-gate-correspondence-v3"
 M31_MODULUS = 2**31 - 1
 MAX_SOURCE_BYTES = 16_384
 MAX_RELATION_NAME_CHARS = 128
+MAX_STATIC_CALLS = 64
 # Reviewed plain-name subset of language.builtins.BUILTINS. The production
 # parser reserves these as circuit names; keep this independent inventory in
 # sync with that namespace through the differential test.
@@ -127,7 +159,24 @@ def _tokens(data: bytes) -> list[str]:
 
 def parse_source(data: bytes, *, optimized: bool = False) -> tuple[dict[str, Any], dict[str, Any]]:
     """Reparse exact bytes without using the production lexer or compiler."""
-    tokens = _tokens(data)
+    try:
+        helpers, tokens = peel_static_helpers(
+            _tokens(data),
+            lambda name: (NAME.fullmatch(name) is not None and
+                          name not in SOURCE_KEYWORDS and name not in PLAIN_BUILTIN_NAMES and
+                          len(name) <= MAX_RELATION_NAME_CHARS and
+                          INLINE_NAME.fullmatch(name) is None and
+                          AUTO_NAME.fullmatch(name) is None),
+        )
+    except UnsupportedStaticHelper as exc:
+        raise UnsupportedFragment(str(exc)) from exc
+    # Production skips generated names that collide with source binders.
+    # Excluding both namespaces makes static call and anonymous-gate naming
+    # exact without trusting the production allocator.
+    if (helpers or "in" in tokens) and any(
+            INLINE_NAME.fullmatch(token) or AUTO_NAME.fullmatch(token)
+            for token in tokens):
+        raise UnsupportedFragment("circuit source occupies a generated wire namespace")
     cursor = 0
 
     def take(expected: str | None = None) -> str:
@@ -187,7 +236,7 @@ def parse_source(data: bytes, *, optimized: bool = False) -> tuple[dict[str, Any
             depth += (token == "(") - (token == ")")
             if depth < 0:
                 raise UnsupportedFragment("unbalanced source parentheses")
-            if depth == 0 and token in {"+", ".*"}:
+            if depth == 0 and token in {"+", "-", ".*"}:
                 operators.append(index)
         if depth != 0:
             raise UnsupportedFragment("unbalanced source parentheses")
@@ -199,14 +248,94 @@ def parse_source(data: bytes, *, optimized: bool = False) -> tuple[dict[str, Any
         return (reference(plain[:position]), plain[position],
                 reference(plain[position + 1:]))
 
+    def helper_call(expression: list[str],
+                    local: dict[str, StaticValue] | None = None) -> tuple[FunctionValue, list[list[list[str]]]] | None:
+        plain = strip_parens(expression)
+        if not plain:
+            return None
+        groups: list[list[list[str]]] = []
+        if plain[0] == "(":
+            # A parenthesized callee can itself be a static application.
+            # Retain its groups so evaluation still runs from left to right.
+            depth = 0
+            closing = -1
+            for index, token in enumerate(plain):
+                depth += (token == "(") - (token == ")")
+                if depth < 0:
+                    raise UnsupportedFragment("unbalanced static callee")
+                if depth == 0:
+                    closing = index
+                    break
+            if closing < 0:
+                raise UnsupportedFragment("unbalanced static callee")
+            if closing + 1 >= len(plain) or plain[closing + 1] != "(":
+                return None
+            head = strip_parens(plain[1:closing])
+            if len(head) == 1 and head[0] in helpers:
+                function: FunctionValue = NamedFunction(head[0])
+            elif len(head) == 1 and head[0] in function_aliases:
+                function = function_aliases[head[0]]
+            elif len(head) == 1 and local is not None and head[0] in local:
+                value = local[head[0]]
+                if not isinstance(value, (NamedFunction, StaticLambda)):
+                    raise UnsupportedFragment("array value is not a static function")
+                function = value
+            else:
+                inner = helper_call(head, local)
+                if inner is None:
+                    return None
+                function, groups = inner
+            position = closing + 1
+        else:
+            name = plain[0]
+            if local is not None and name in local:
+                value = local[name]
+                if not isinstance(value, (NamedFunction, StaticLambda)):
+                    if len(plain) >= 2 and plain[1] == "(":
+                        raise UnsupportedFragment("array value is not a static function")
+                    return None
+                function = value
+            elif name in function_aliases:
+                function = function_aliases[name]
+            elif name in helpers:
+                function = NamedFunction(name)
+            else:
+                return None
+            position = 1
+        if len(plain) < position + 2 or plain[position] != "(" or plain[-1] != ")":
+            raise UnsupportedFragment("static helper must be called as a whole expression")
+        while position < len(plain):
+            if plain[position] != "(":
+                raise UnsupportedFragment("static application has trailing tokens")
+            position += 1
+            parts: list[list[str]] = [[]] if plain[position:position + 1] != [")"] else []
+            depth = 0
+            while position < len(plain):
+                token = plain[position]
+                position += 1
+                if token == "(":
+                    depth += 1
+                elif token == ")":
+                    if depth == 0:
+                        break
+                    depth -= 1
+                if token == "," and depth == 0:
+                    parts.append([])
+                else:
+                    parts[-1].append(token)
+            else:
+                raise UnsupportedFragment("unbalanced helper call")
+            groups.append(parts)
+        return function, groups
+
     take("circuit")
     circuit = identifier()
-    if circuit in PLAIN_BUILTIN_NAMES:
+    if circuit in PLAIN_BUILTIN_NAMES or circuit in helpers:
         raise UnsupportedFragment("circuit name is reserved by the compiler")
     take("(")
     take("public")
     input_name = identifier()
-    if len(input_name) > MAX_RELATION_NAME_CHARS:
+    if len(input_name) > MAX_RELATION_NAME_CHARS or input_name in helpers:
         raise UnsupportedFragment("relation input name exceeds compiler limit")
     take(":")
     lane_type()
@@ -216,6 +345,7 @@ def parse_source(data: bytes, *, optimized: bool = False) -> tuple[dict[str, Any
     lane_type()
     take("{")
     wires = {input_name: 0}
+    function_aliases: dict[str, FunctionValue] = {}
     # Aliases share a positional wire. Only the producer name is present in
     # the normalized relation and native source map.
     producer_names = [input_name]
@@ -223,28 +353,32 @@ def parse_source(data: bytes, *, optimized: bool = False) -> tuple[dict[str, Any
     source_to_canonical = [0]
     nodes: list[dict[str, str]] = []
     ssa: list[dict[str, Any]] = []
-    while cursor < len(tokens) and tokens[cursor] == "let":
-        take("let")
-        name = identifier()
-        if name in wires:
+    used_helpers: set[str] = set()
+    helper_calls = 0
+    next_temp = 0
+
+    def gate_name(wanted: str | None) -> str:
+        nonlocal next_temp
+        if wanted is not None:
+            return wanted
+        while f"_s31_{next_temp}" in wires:
+            next_temp += 1
+        result = f"_s31_{next_temp}"
+        next_temp += 1
+        return result
+
+    def append_gate(name: str, left: str, op_token: str, right: str) -> None:
+        if name in wires or name in helpers:
             raise UnsupportedFragment("duplicate wire name")
-        take("=")
-        rhs: list[str] = []
-        while cursor < len(tokens) and tokens[cursor] != ";":
-            rhs.append(take())
-        take(";")
-        left, op_token, right = binding_rhs(rhs)
-        if left not in wires or (right is not None and right not in wires):
+        if left not in wires or right not in wires:
             raise UnsupportedFragment("forward or unbound operand")
-        if op_token == "alias":
-            wires[name] = wires[left]
-            continue
-        op = "add" if op_token == "+" else "mul"
-        assert right is not None
+        if op_token not in {"+", "-", ".*"}:
+            raise UnsupportedFragment("unsupported arithmetic gate")
+        op = {"+": "add", "-": "sub", ".*": "mul"}[op_token]
         lhs_raw, rhs_raw = wires[left], wires[right]
         lhs_id = source_to_canonical[lhs_raw]
         rhs_id = source_to_canonical[rhs_raw]
-        if lhs_id > rhs_id:
+        if op != "sub" and lhs_id > rhs_id:
             if not optimized:
                 raise UnsupportedFragment("commutative operands are not in canonical order")
             lhs_id, rhs_id = rhs_id, lhs_id
@@ -267,8 +401,323 @@ def parse_source(data: bytes, *, optimized: bool = False) -> tuple[dict[str, Any
         source_to_canonical.append(canonical_id)
         if len(nodes) > 16:
             raise UnsupportedFragment("more than 16 arithmetic operations")
+
+    def wire_value(value: StaticValue) -> str:
+        if not isinstance(value, str) or value not in wires:
+            raise UnsupportedFragment("static function expected an existing circuit wire")
+        return value
+
+    def function_parameters(function: FunctionValue) -> tuple[str, ...]:
+        if isinstance(function, StaticLambda):
+            return ("array",)
+        return tuple(param.kind for param in helpers[function.name].params)
+
+    def function_result_kind(function: FunctionValue) -> str:
+        return "array" if isinstance(function, StaticLambda) else helpers[function.name].result_kind
+
+    def expand_callable(function: FunctionValue, arguments: tuple[StaticValue, ...],
+                        wanted: str | None) -> StaticValue:
+        if isinstance(function, NamedFunction):
+            return expand_helper(function.name, arguments, wanted)
+        if len(arguments) != 1:
+            raise UnsupportedFragment("static lambda argument count differs")
+        argument = wire_value(arguments[0])
+        captured = dict(function.captures)
+        captured[function.parameter] = argument
+
+        def evaluate_body(expression: LambdaExpr, local: dict[str, str],
+                          target: str | None) -> str:
+            if isinstance(expression, LambdaName):
+                if expression.name not in local:
+                    raise UnsupportedFragment("unbound static lambda body name")
+                return wire_value(local[expression.name])
+            if isinstance(expression, LambdaLet):
+                bound = evaluate_body(expression.bound, local, None)
+                extended = local.copy()
+                extended[expression.name] = bound
+                return evaluate_body(expression.body, extended, target)
+            assert isinstance(expression, LambdaBinary)
+            left = evaluate_body(expression.left, local, None)
+            right = evaluate_body(expression.right, local, None)
+            result = gate_name(target)
+            append_gate(result, left, expression.operator, right)
+            return result
+
+        return evaluate_body(function.body, captured, wanted)
+
+    def evaluate_static(expression: StaticExpr, local: dict[str, StaticValue],
+                        wanted: str | None) -> StaticValue:
+        if expression.kind == "gate":
+            left, right = expression.operands
+            result = gate_name(wanted)
+            append_gate(result, wire_value(local[left]), expression.value,
+                        wire_value(local[right]))
+            return result
+        if expression.kind == "binary":
+            left, right = expression.arguments
+            # The production language evaluates the left subtree first.
+            # Unnamed subexpressions therefore consume `_s31_N` in that order.
+            lhs = wire_value(evaluate_static(left, local, None))
+            rhs = wire_value(evaluate_static(right, local, None))
+            result = gate_name(wanted)
+            append_gate(result, lhs, expression.value, rhs)
+            return result
+        if expression.kind == "call":
+            if expression.value in helpers:
+                function: FunctionValue = NamedFunction(expression.value)
+            else:
+                callee = local.get(expression.value)
+                if not isinstance(callee, (NamedFunction, StaticLambda)):
+                    raise UnsupportedFragment("static callee is not a function value")
+                function = callee
+            arguments = tuple(evaluate_static(argument, local, None)
+                              for argument in expression.arguments)
+            return expand_callable(function, arguments, wanted)
+        if expression.kind == "ref":
+            return local[expression.operands[0]]
+        if expression.kind == "named_function":
+            return NamedFunction(expression.value)
+        if expression.kind == "lambda":
+            template = expression.lambda_body
+            if template is None:
+                raise UnsupportedFragment("missing static lambda body")
+            captures = tuple((name, wire_value(local[name])) for name, _ in template.captures)
+            return StaticLambda(template.parameter, template.body, captures)
+        raise UnsupportedFragment("invalid static function expression")
+
+    def expand_helper(function: str, arguments: tuple[StaticValue, ...],
+                      wanted: str | None) -> StaticValue:
+        nonlocal helper_calls
+        helper = helpers[function]
+        if len(arguments) != len(helper.params):
+            raise UnsupportedFragment("static function argument count differs")
+        for param, argument in zip(helper.params, arguments):
+            if param.kind == "array":
+                wire_value(argument)
+            elif not isinstance(argument, (NamedFunction, StaticLambda)):
+                raise UnsupportedFragment("static function value has wrong type")
+            elif (isinstance(argument, NamedFunction) and
+                  (argument.name not in helpers or
+                   function_parameters(argument) != ("array",) or
+                   function_result_kind(argument) != "array")):
+                raise UnsupportedFragment("static function value has wrong type")
+        helper_calls += 1
+        if helper_calls > MAX_STATIC_CALLS:
+            raise UnsupportedFragment("static helper expansion exceeds 64 calls")
+        serial = helper_calls
+        used_helpers.add(function)
+        local = {param.name: argument for param, argument in zip(helper.params, arguments)}
+        for index, step in enumerate(helper.statements):
+            target = (wanted if wanted is not None and helper.result_kind == "array" and
+                      helper.body.kind == "ref" and
+                      helper.body.operands[0] == step.name else
+                      f"_s31_i{serial}_{index}")
+            local[step.name] = evaluate_static(step.expression, local, target)
+        result = evaluate_static(helper.body, local, wanted)
+        if helper.result_kind == "array":
+            wire_value(result)
+        elif not isinstance(result, (NamedFunction, StaticLambda)):
+            raise UnsupportedFragment("static function did not return a function value")
+        elif (isinstance(result, NamedFunction) and
+              (function_parameters(result) != ("array",) or
+               function_result_kind(result) != "array")):
+            raise UnsupportedFragment("returned function value has wrong type")
+        return result
+
+    def source_arguments(function: FunctionValue, parts: list[list[str]],
+                         resolve_array: Callable[[str], str],
+                         resolve_function: Callable[[str], FunctionValue]) -> tuple[StaticValue, ...]:
+        def nested_call(tokens: list[str]) -> tuple[FunctionValue, list[list[list[str]]]] | None:
+            plain = strip_parens(tokens)
+            return helper_call(tokens) if len(plain) > 1 and "(" in plain[:2] else None
+
+        if len(parts) != len(function_parameters(function)):
+            raise UnsupportedFragment("static helper argument count differs")
+        arguments: list[StaticValue] = []
+        for kind, part in zip(function_parameters(function), parts):
+            if kind == "array":
+                nested = nested_call(part)
+                value = (evaluate_calls(*nested, resolve_array, resolve_function, None)
+                         if nested is not None else resolve_array(reference(part)))
+                arguments.append(wire_value(value))
+            else:
+                try:
+                    inline = parse_static_lambda(
+                        strip_parens(part),
+                        lambda operand: (NAME.fullmatch(operand) is not None and
+                                         operand not in SOURCE_KEYWORDS and
+                                         operand not in PLAIN_BUILTIN_NAMES and
+                                         len(operand) <= MAX_RELATION_NAME_CHARS),
+                        resolve_array,
+                    )
+                except UnsupportedStaticLambda as exc:
+                    raise UnsupportedFragment(str(exc)) from exc
+                if inline is not None:
+                    arguments.append(inline)
+                    continue
+                nested = nested_call(part)
+                value = (evaluate_calls(*nested, resolve_array, resolve_function, None)
+                         if nested is not None else resolve_function(reference(part)))
+                if not isinstance(value, (NamedFunction, StaticLambda)):
+                    raise UnsupportedFragment("static function argument is not a function value")
+                arguments.append(value)
+        return tuple(arguments)
+
+    def evaluate_calls(function: FunctionValue, groups: list[list[list[str]]],
+                       resolve_array: Callable[[str], str],
+                       resolve_function: Callable[[str], FunctionValue],
+                       wanted: str | None) -> StaticValue:
+        result: StaticValue = function
+        for index, parts in enumerate(groups):
+            if not isinstance(result, (NamedFunction, StaticLambda)):
+                raise UnsupportedFragment("cannot apply an array as a function")
+            arguments = source_arguments(result, parts, resolve_array, resolve_function)
+            result = expand_callable(result, arguments,
+                                     wanted if index == len(groups) - 1 else None)
+        return result
+
+    def evaluate_lexical(expression: Atom | Let, local: dict[str, StaticValue],
+                         wanted: str | None) -> StaticValue:
+        if isinstance(expression, Let):
+            bound = evaluate_lexical(expression.bound, local, None)
+            extended = local.copy()
+            extended[expression.name] = bound
+            return evaluate_lexical(expression.body, extended, wanted)
+
+        def resolve(name: str) -> StaticValue:
+            if name in local:
+                return local[name]
+            if name in function_aliases:
+                return function_aliases[name]
+            if name in helpers:
+                return NamedFunction(name)
+            raise UnsupportedFragment("unbound lexical operand")
+
+        def resolve_array(name: str) -> str:
+            return wire_value(resolve(name))
+
+        def resolve_function(name: str) -> FunctionValue:
+            value = resolve(name)
+            if not isinstance(value, (NamedFunction, StaticLambda)):
+                raise UnsupportedFragment("lexical array shadows a function value")
+            return value
+
+        atom = list(expression.tokens)
+        plain_atom = strip_parens(atom)
+        if len(plain_atom) == 1 and (plain_atom[0] in helpers or
+                                     plain_atom[0] in function_aliases or
+                                     isinstance(local.get(plain_atom[0]),
+                                                (NamedFunction, StaticLambda))):
+            return resolve(plain_atom[0])
+        call = helper_call(atom, local)
+        if call is not None:
+            function, groups = call
+            return evaluate_calls(function, groups, resolve_array, resolve_function,
+                                  wanted)
+        left, operator, right = binding_rhs(atom)
+        if operator == "alias":
+            return resolve(left)
+        assert right is not None
+        result = gate_name(wanted)
+        append_gate(result, resolve_array(left), operator, resolve_array(right))
+        return result
+
+    while cursor < len(tokens) and tokens[cursor] == "let":
+        take("let")
+        name = identifier()
+        if name in wires or name in helpers or name in function_aliases:
+            raise UnsupportedFragment("duplicate wire name")
+        take("=")
+        rhs: list[str] = []
+        depth = 0
+        while cursor < len(tokens):
+            upcoming = tokens[cursor]
+            if upcoming == ";" and depth == 0:
+                break
+            if upcoming == "}" and depth == 0:
+                raise UnsupportedFragment("circuit let is missing a terminator")
+            token = take()
+            depth += (token in {"(", "[", "{"}) - (token in {")", "]", "}"})
+            if depth < 0:
+                raise UnsupportedFragment("unbalanced circuit let expression")
+            rhs.append(token)
+        if depth != 0:
+            raise UnsupportedFragment("unbalanced circuit let expression")
+        take(";")
+        bare = strip_parens(rhs)
+        if len(bare) == 1 and (bare[0] in helpers or bare[0] in function_aliases):
+            function_aliases[name] = (function_aliases[bare[0]] if bare[0] in function_aliases
+                                      else NamedFunction(bare[0]))
+            continue
+        def captured_wire(operand: str) -> str:
+            if operand not in wires:
+                raise UnsupportedFragment("static lambda captures an unbound wire")
+            return operand
+        try:
+            lambda_value = parse_static_lambda(
+                bare,
+                lambda operand: (NAME.fullmatch(operand) is not None and
+                                 operand not in SOURCE_KEYWORDS and
+                                 operand not in PLAIN_BUILTIN_NAMES and
+                                 len(operand) <= MAX_RELATION_NAME_CHARS),
+                captured_wire,
+            )
+        except UnsupportedStaticLambda as exc:
+            raise UnsupportedFragment(str(exc)) from exc
+        if lambda_value is not None:
+            function_aliases[name] = lambda_value
+            continue
+        if strip_parens(rhs)[:1] == ["let"]:
+            try:
+                expression = parse_expression(
+                    rhs,
+                    lambda binder: (NAME.fullmatch(binder) is not None and
+                                    binder not in SOURCE_KEYWORDS and
+                                    binder not in PLAIN_BUILTIN_NAMES and
+                                    binder not in helpers and
+                                    AUTO_NAME.fullmatch(binder) is None and
+                                    INLINE_NAME.fullmatch(binder) is None),
+                )
+            except UnsupportedLexicalLet as exc:
+                raise UnsupportedFragment(str(exc)) from exc
+            produced = evaluate_lexical(expression, {wire: wire for wire in wires}, name)
+            if isinstance(produced, (NamedFunction, StaticLambda)):
+                function_aliases[name] = produced
+            elif produced != name:
+                wires[name] = wires[produced]
+            continue
+        call = helper_call(rhs)
+        if call is not None:
+            function, groups = call
+            def resolve_wire(argument: str) -> str:
+                if argument not in wires:
+                    raise UnsupportedFragment("forward or unbound function argument")
+                return argument
+            def resolve_function(argument: str) -> FunctionValue:
+                if argument in function_aliases:
+                    return function_aliases[argument]
+                if argument in helpers:
+                    return NamedFunction(argument)
+                raise UnsupportedFragment("unbound static function value")
+            produced = evaluate_calls(function, groups, resolve_wire, resolve_function,
+                                      name)
+            if isinstance(produced, (NamedFunction, StaticLambda)):
+                function_aliases[name] = produced
+            elif produced != name:
+                wires[name] = wires[produced]
+            continue
+        left, op_token, right = binding_rhs(rhs)
+        if left not in wires or (right is not None and right not in wires):
+            raise UnsupportedFragment("forward or unbound operand")
+        if op_token == "alias":
+            wires[name] = wires[left]
+            continue
+        assert right is not None
+        append_gate(name, left, op_token, right)
     if not nodes:
         raise UnsupportedFragment("at least one arithmetic operation is required")
+    if helpers and set(helpers) != used_helpers:
+        raise UnsupportedFragment("unused static helper is outside certified fragment")
     output_tokens: list[str] = []
     while cursor < len(tokens) and tokens[cursor] != "}":
         output_tokens.append(take())
@@ -316,8 +765,9 @@ def public_abi(syntax: dict[str, Any]) -> dict[str, Any]:
 def canonical_ir_bytes(syntax: dict[str, Any]) -> bytes:
     """Reconstruct the exact Zig `canonical.build` legacy SSA encoding.
 
-    The checked syntax contains fresh, canonical add/mul nodes after optional
-    commutative sorting and CSE. `LegacyNode` serializes every optional field,
+    The checked syntax contains fresh, canonical add/sub/mul nodes after optional
+    commutative sorting and CSE. Subtraction retains operand order.
+    `LegacyNode` serializes every optional field,
     including its nulls, in declaration order. Source-only names and the
     circuit name are deliberately absent from this verifier identity.
     """
@@ -331,8 +781,10 @@ def canonical_ir_bytes(syntax: dict[str, Any]) -> bytes:
     nodes = [node(tag="input", kind="m31", length=4,
                   input_name=syntax["input"], visibility="public")]
     for expected_id, step in enumerate(syntax["instructions"], 1):
-        if (step["id"] != expected_id or step["op"] not in ("add", "mul") or
-                not 0 <= step["lhs"] <= step["rhs"] < expected_id):
+        if (step["id"] != expected_id or step["op"] not in ("add", "sub", "mul") or
+                not 0 <= step["lhs"] < expected_id or
+                not 0 <= step["rhs"] < expected_id or
+                (step["op"] != "sub" and step["lhs"] > step["rhs"])):
             raise ValueError("checked source is not canonical positional SSA")
         nodes.append(node(tag=step["op"], kind="m31", length=4,
                           lhs=step["lhs"], rhs=step["rhs"]))
@@ -487,16 +939,19 @@ def check_source_fixed_rows(syntax: dict[str, Any], topology: dict[str, Any],
     if any(len(column) != n_rows for column in values):
         raise ValueError("source fixed-row columns have different lengths")
     source_adds = sum(node["op"] == "add" for node in instructions)
-    source_products = len(instructions) - source_adds
+    source_subs = sum(node["op"] == "sub" for node in instructions)
+    source_products = sum(node["op"] == "mul" for node in instructions)
     add_rows = len(topology["add"])
     # Native padding is in the add partition. The source/public add rows
-    # occupy its prefix; the ordinary-mul and pointwise partitions begin
-    # after *all* constant and padding adds. This is the exact row equation
-    # consumed by Lean's modeled roster theorem for the 512-row profile.
-    if (n_rows != 512 or len(topology["sub"]) != 1 or
+    # occupy its prefix; source subtraction precedes the constant subtraction
+    # in the sub partition. Ordinary-mul and pointwise partitions begin after
+    # all constant and padding adds. Lean's modeled roster theorem currently
+    # covers the add/pointwise subset; subtraction is checked here and by the
+    # complete independent native gate replay.
+    if (n_rows != 512 or len(topology["sub"]) != source_subs + 1 or
             len(topology["mul"]) != 27 or
             len(topology["pointwise_mul"]) != source_products + 8 or
-            add_rows + 1 + 27 + source_products + 8 != n_rows or
+            add_rows + source_subs + 1 + 27 + source_products + 8 != n_rows or
             add_rows < 11 + source_adds or
             len(schedule) != len(instructions) + 1):
         raise ValueError("source fixed-row layout differs from bounded direct profile")
@@ -507,14 +962,15 @@ def check_source_fixed_rows(syntax: dict[str, Any], topology: dict[str, Any],
             if operand in source_uses:
                 source_uses[operand] += 1
 
-    prior_adds = prior_products = 0
+    prior_adds = prior_subs = prior_products = 0
     checked: list[dict[str, int | str]] = []
     for node, span in zip(instructions, schedule[1:], strict=True):
-        product = node["op"] == "mul"
-        trace_row = (add_rows + 28 + prior_products if product
-                     else 3 + prior_adds)
+        op = node["op"]
+        trace_row = ({"add": 3 + prior_adds,
+                      "sub": add_rows + prior_subs,
+                      "mul": add_rows + source_subs + 28 + prior_products}[op])
         circuit_row = 5 + node["id"]
-        expected = [int(not product), 0, 0, int(product),
+        expected = [int(op == "add"), int(op == "sub"), 0, int(op == "mul"),
                     22 + node["lhs"], 22 + node["rhs"],
                     22 + node["id"], source_uses[node["id"]]]
         if (trace_row >= n_rows or span["qm31_start"] != circuit_row or
@@ -524,8 +980,9 @@ def check_source_fixed_rows(syntax: dict[str, Any], topology: dict[str, Any],
                 "direct AIR selector, address, multiplicity or row position")
         checked.append({"id": node["id"], "op": node["op"],
                         "circuit_row": circuit_row, "trace_row": trace_row})
-        prior_products += product
-        prior_adds += not product
+        prior_adds += op == "add"
+        prior_subs += op == "sub"
+        prior_products += op == "mul"
     if len({row["trace_row"] for row in checked}) != len(checked):
         raise ValueError("source fixed-row trace positions overlap")
     return checked
@@ -668,12 +1125,14 @@ def check_gate_topology(syntax: dict[str, Any], topology: dict[str, Any],
 
     # The compiler groups gates by kind. Input packing is first in `mul`
     # and `add`; source operations follow in their respective kind list.
-    adds, muls, products = (gate_lists[name] for name in ("add", "mul", "pointwise_mul"))
+    adds, subs, muls, products = (gate_lists[name] for name in
+                                ("add", "sub", "mul", "pointwise_mul"))
     instructions = syntax["instructions"]
     add_count = sum(node["op"] == "add" for node in instructions)
-    product_count = len(instructions) - add_count
+    sub_count = sum(node["op"] == "sub" for node in instructions)
+    product_count = sum(node["op"] == "mul" for node in instructions)
     if (len(adds) < 3 + add_count + 8 or len(muls) < 6 or
-            len(products) != product_count + 8):
+            len(subs) < sub_count or len(products) != product_count + 8):
         raise ValueError("direct-gate packing or source gates are missing")
     copies = {}
     for gate in adds:
@@ -702,11 +1161,16 @@ def check_gate_topology(syntax: dict[str, Any], topology: dict[str, Any],
                 packed["in1"] != term["out"]):
             raise ValueError("public input pack gate topology differs from four-lane ABI")
     wire = {0: adds[2]["out"]}
-    add_cursor, product_cursor = 3, 0
+    add_cursor, sub_cursor, product_cursor = 3, 0, 0
     source_gates = []
     for node in instructions:
         kind = node["op"]
-        gate = adds[add_cursor] if kind == "add" else products[product_cursor]
+        if kind == "add":
+            gate = adds[add_cursor]
+        elif kind == "sub":
+            gate = subs[sub_cursor]
+        else:
+            gate = products[product_cursor]
         if gate["in0"] != wire[node["lhs"]] or gate["in1"] != wire[node["rhs"]]:
             raise ValueError("native source gate selector or operands differ from checked SSA")
         if gate["out"] < 11 or gate["out"] in wire.values():
@@ -714,8 +1178,10 @@ def check_gate_topology(syntax: dict[str, Any], topology: dict[str, Any],
         wire[node["id"]] = gate["out"]
         source_gates.append({"id": node["id"], "op": kind, **gate})
         add_cursor += kind == "add"
+        sub_cursor += kind == "sub"
         product_cursor += kind == "mul"
-    if add_cursor != 3 + add_count or product_cursor != product_count:
+    if (add_cursor != 3 + add_count or sub_cursor != sub_count or
+            product_cursor != product_count):
         raise ValueError("native source gate schedule is incomplete")
     if [gate["out"] for gate in adds[add_cursor:add_cursor + 8]] != list(range(3, 11)):
         raise ValueError("public ABI copy gates are not in canonical order")
@@ -745,11 +1211,11 @@ def check_gate_topology(syntax: dict[str, Any], topology: dict[str, Any],
                   {gate["out"] for gate in adds[:add_cursor]} |
                   {gate["out"] for gate in muls[:6]} |
                   {gate["out"] for gate in products[:product_count + 4]})
-    for gate in (*adds[add_cursor + 8:], *gate_lists["sub"], *muls[6:]):
+    for gate in (*adds[add_cursor + 8:], *subs[sub_cursor:], *muls[6:]):
         if {gate["in0"], gate["in1"], gate["out"]} & data_wires:
             raise ValueError("extra native gate depends on source or public data")
     _check_constant_island(
-        adds[add_cursor + 8:], gate_lists["sub"], muls[6:],
+        adds[add_cursor + 8:], subs[sub_cursor:], muls[6:],
         [products[product_count + lane]["in1"] for lane in range(4)],
         [muls[3 + lane]["in1"] for lane in range(3)],
     )
@@ -760,7 +1226,7 @@ def check_gate_topology(syntax: dict[str, Any], topology: dict[str, Any],
             f"{n_vars} variables/{n_rows} rows, expected "
             f"{expected_vars} variables/{expected_rows} rows")
     _require_gate_schedule("add", adds[add_cursor + 8:], expected_constant["add"])
-    _require_gate_schedule("sub", gate_lists["sub"], expected_constant["sub"])
+    _require_gate_schedule("sub", subs[sub_cursor:], expected_constant["sub"])
     _require_gate_schedule("mul", muls[6:], expected_constant["mul"])
     exact_gates, exact_vars, exact_rows, exact_source = exact_direct_gate_schedule(syntax)
     if (exact_vars != n_vars or exact_rows != n_rows or exact_source != source_gates):
@@ -939,7 +1405,7 @@ def make_certificate(package: Path) -> dict[str, Any]:
 
 
 def make_optimized_certificate(package: Path) -> dict[str, Any]:
-    """Explicit v3 opt-in; the normal package builder remains v2-only."""
+    """Create the explicit v3 certificate for checked gate reuse."""
     material, _ = _checked_material(package, optimized=True)
     return material
 
@@ -957,7 +1423,7 @@ def check_package(package: Path) -> dict[str, Any]:
 
 
 def check_optimized_package(package: Path) -> dict[str, Any]:
-    """Recheck a rooted v3 certificate without changing v2 admission."""
+    """Recheck a rooted v3 certificate for explicit optimized admission."""
     material, manifest = _checked_material(package, optimized=True)
     path = package / "correspondence-certificate.json"
     listed = manifest.get("artifacts", {}).get(path.name)

@@ -1,0 +1,90 @@
+{
+  "all_fixed_columns_sha256": "eb815a6b49b79b74b69515fea78dac6dac51ea6a23419b2b896e0fecfb33af5b",
+  "canonical_ir_sha256": "0bacd4183e1cfd02b43ba7b676d7658d400436b3779ded4ae6e8bd74795af830",
+  "compiler_sha256": "7caadef617d984789dcfa38db1d3a795a285c6cd0529f1dad86280cadd9179ca",
+  "engine_gitlink": "fde847ea374ade2ae07ef5b3a42ba07e15655b64",
+  "expected_source_rows": [
+    [
+      3,
+      1,
+      0,
+      0,
+      0,
+      22,
+      22,
+      23,
+      1
+    ],
+    [
+      474,
+      0,
+      1,
+      0,
+      0,
+      22,
+      23,
+      24,
+      1
+    ],
+    [
+      475,
+      0,
+      1,
+      0,
+      0,
+      24,
+      22,
+      25,
+      4
+    ]
+  ],
+  "exporter_binary_sha256": "af9f94d86fb48b4694efe2ec7e5c09eb6189607ac61d18b4a0ce1d4d97c5bc8e",
+  "exporter_source_sha256": "04081b1c7e1e5d4659158bbfb40ccc4a47e789fcc3d534aa78707470e3074e86",
+  "functional_source_sha256": "e97bd111c23037dda56bbcf37dd6125f56b9840b457ec39917d1be92078f7dfe",
+  "group_counts": {
+    "add": 474,
+    "mul": 27,
+    "pointwise_mul": 8,
+    "sub": 3
+  },
+  "lowering_source_sha256": "cf7b6fd3bdd76a158c893a0d5075052c4b2c135718d3f675f1b01971b391ec05",
+  "native_source_rows": [
+    [
+      3,
+      1,
+      0,
+      0,
+      0,
+      22,
+      22,
+      23,
+      1
+    ],
+    [
+      474,
+      0,
+      1,
+      0,
+      0,
+      22,
+      23,
+      24,
+      1
+    ],
+    [
+      475,
+      0,
+      1,
+      0,
+      0,
+      24,
+      22,
+      25,
+      4
+    ]
+  ],
+  "normalized_sha256": "ac6d9272c8d97869430a3cb87bf92d5dafbd88e66112e92aed316f5785295cd0",
+  "preprocessed_root": "ca3dad2dfaa22e18e5707334c182c1e242e219b7d806e65d047da9719834a6cf",
+  "schema": "s31-ordered-subtraction-native-rows-v1",
+  "source_sha256": "2ba948be3777a4dc22175619b23308203b7aa1dcaf51dd12656646341a30169f"
+}

@@ -267,6 +267,7 @@ pub fn compileRaw(comptime V: type, allocator: std.mem.Allocator, program: relat
             .bitcoin_genesis_hash_mainnet => try mainnetGenesisHash(V, &ctx),
             .cast_m31 => .{ .shape = .{ .kind = .m31, .length = length }, .lanes = lhs.?.lanes, .raw = lhs.?.raw },
             .add => .{ .shape = .{ .kind = .m31, .length = length }, .lanes = try circuit.builder.simd.add(V, &ctx, lhs.?.lanes, rhs.?.lanes) },
+            .sub => .{ .shape = .{ .kind = .m31, .length = length }, .lanes = try circuit.builder.simd.sub(V, &ctx, lhs.?.lanes, rhs.?.lanes) },
             .mul => .{ .shape = .{ .kind = .m31, .length = length }, .lanes = try circuit.builder.simd.mul(V, &ctx, lhs.?.lanes, rhs.?.lanes) },
             .inv => .{ .shape = .{ .kind = .m31, .length = length }, .lanes = try inverseLanes(V, &ctx, lhs.?.lanes) },
             .is_zero => try isZeroWord(V, &ctx, lhs.?),
@@ -718,6 +719,7 @@ fn compileWithSpansMode(comptime V: type, allocator: std.mem.Allocator, program:
             .array_concat => try arrayConcat(V, &ctx, entries[node.lhs.?], entries[node.rhs.?]),
             .cast_m31 => .{ .shape = .{ .kind = .m31, .length = node.length }, .lanes = entries[node.lhs.?].lanes, .raw = entries[node.lhs.?].raw, .boolean = entries[node.lhs.?].boolean },
             .add => .{ .shape = .{ .kind = .m31, .length = node.length }, .lanes = try circuit.builder.simd.add(V, &ctx, entries[node.lhs.?].lanes, entries[node.rhs.?].lanes) },
+            .sub => .{ .shape = .{ .kind = .m31, .length = node.length }, .lanes = try circuit.builder.simd.sub(V, &ctx, entries[node.lhs.?].lanes, entries[node.rhs.?].lanes) },
             .mul => .{ .shape = .{ .kind = .m31, .length = node.length }, .lanes = try circuit.builder.simd.mul(V, &ctx, entries[node.lhs.?].lanes, entries[node.rhs.?].lanes) },
             .inv => .{ .shape = .{ .kind = .m31, .length = node.length }, .lanes = try inverseLanes(V, &ctx, entries[node.lhs.?].lanes) },
             .is_zero => try isZeroWord(V, &ctx, entries[node.lhs.?]),
@@ -2847,43 +2849,50 @@ test "direct integer binary range carry and signed overflow use only arithmetic 
             \\{"version":1,"name":"u8_add","inputs":[{"name":"a","kind":"u16","length":1,"visibility":"private"},{"name":"b","kind":"u16","length":1,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":8},{"name":"bv","op":"int_view","lhs":"b","constant":8},{"name":"result","op":"int_add_checked","lhs":"av","rhs":"bv","constant":8}],"assertions":[],"public_outputs":["result"]}
             ,
             \\{"public_inputs":{},"private_inputs":{"a":[254],"b":[1]},"public_outputs":{"result":[255]}}
-            , true,
+            ,
+            true,
         },
         .{
             \\{"version":1,"name":"u8_add","inputs":[{"name":"a","kind":"u16","length":1,"visibility":"private"},{"name":"b","kind":"u16","length":1,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":8},{"name":"bv","op":"int_view","lhs":"b","constant":8},{"name":"result","op":"int_add_checked","lhs":"av","rhs":"bv","constant":8}],"assertions":[],"public_outputs":["result"]}
             ,
             \\{"public_inputs":{},"private_inputs":{"a":[255],"b":[1]},"public_outputs":{"result":[0]}}
-            , false,
+            ,
+            false,
         },
         .{
             \\{"version":1,"name":"u8_add","inputs":[{"name":"a","kind":"u16","length":1,"visibility":"private"},{"name":"b","kind":"u16","length":1,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":8},{"name":"bv","op":"int_view","lhs":"b","constant":8},{"name":"result","op":"int_add_checked","lhs":"av","rhs":"bv","constant":8}],"assertions":[],"public_outputs":["result"]}
             ,
             \\{"public_inputs":{},"private_inputs":{"a":[256],"b":[0]},"public_outputs":{"result":[0]}}
-            , false,
+            ,
+            false,
         },
         .{
             \\{"version":1,"name":"i8_sub","inputs":[{"name":"a","kind":"u16","length":1,"visibility":"private"},{"name":"b","kind":"u16","length":1,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":264},{"name":"bv","op":"int_view","lhs":"b","constant":264},{"name":"result","op":"int_sub_checked","lhs":"av","rhs":"bv","constant":264}],"assertions":[],"public_outputs":["result"]}
             ,
             \\{"public_inputs":{},"private_inputs":{"a":[129],"b":[1]},"public_outputs":{"result":[128]}}
-            , true,
+            ,
+            true,
         },
         .{
             \\{"version":1,"name":"i8_sub","inputs":[{"name":"a","kind":"u16","length":1,"visibility":"private"},{"name":"b","kind":"u16","length":1,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":264},{"name":"bv","op":"int_view","lhs":"b","constant":264},{"name":"result","op":"int_sub_checked","lhs":"av","rhs":"bv","constant":264}],"assertions":[],"public_outputs":["result"]}
             ,
             \\{"public_inputs":{},"private_inputs":{"a":[128],"b":[1]},"public_outputs":{"result":[127]}}
-            , false,
+            ,
+            false,
         },
         .{
             \\{"version":1,"name":"u32_add","inputs":[{"name":"a","kind":"u16","length":2,"visibility":"private"},{"name":"b","kind":"u16","length":2,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":32},{"name":"bv","op":"int_view","lhs":"b","constant":32},{"name":"result","op":"int_add_checked","lhs":"av","rhs":"bv","constant":32}],"assertions":[],"public_outputs":["result"]}
             ,
             \\{"public_inputs":{},"private_inputs":{"a":[65535,0],"b":[1,0]},"public_outputs":{"result":[0,1]}}
-            , true,
+            ,
+            true,
         },
         .{
             \\{"version":1,"name":"i8_le","inputs":[{"name":"a","kind":"u16","length":1,"visibility":"private"},{"name":"b","kind":"u16","length":1,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":264},{"name":"bv","op":"int_view","lhs":"b","constant":264},{"name":"result","op":"int_le","lhs":"av","rhs":"bv","constant":264}],"assertions":[],"public_outputs":["result"]}
             ,
             \\{"public_inputs":{},"private_inputs":{"a":[255],"b":[0]},"public_outputs":{"result":[1]}}
-            , true,
+            ,
+            true,
         },
     };
     inline for (cases) |case| {
@@ -2913,43 +2922,50 @@ test "direct multiplication binds nominal inputs and cached result bits" {
             \\{"version":1,"name":"u8_mul_chain","inputs":[{"name":"a","kind":"u16","length":1,"visibility":"private"},{"name":"b","kind":"u16","length":1,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":8},{"name":"bv","op":"int_view","lhs":"b","constant":8},{"name":"product","op":"int_mul_wrapping","lhs":"av","rhs":"bv","constant":8},{"name":"result","op":"int_add_checked","lhs":"product","rhs":"av","constant":8}],"assertions":[],"public_outputs":["result"]}
             ,
             \\{"public_inputs":{},"private_inputs":{"a":[3],"b":[4]},"public_outputs":{"result":[15]}}
-            , true,
+            ,
+            true,
         },
         .{
             \\{"version":1,"name":"u8_mul_chain","inputs":[{"name":"a","kind":"u16","length":1,"visibility":"private"},{"name":"b","kind":"u16","length":1,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":8},{"name":"bv","op":"int_view","lhs":"b","constant":8},{"name":"product","op":"int_mul_wrapping","lhs":"av","rhs":"bv","constant":8},{"name":"result","op":"int_add_checked","lhs":"product","rhs":"av","constant":8}],"assertions":[],"public_outputs":["result"]}
             ,
             \\{"public_inputs":{},"private_inputs":{"a":[256],"b":[4]},"public_outputs":{"result":[0]}}
-            , false,
+            ,
+            false,
         },
         .{
             \\{"version":1,"name":"u16_checked_mul","inputs":[{"name":"a","kind":"u16","length":1,"visibility":"private"},{"name":"b","kind":"u16","length":1,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":16},{"name":"bv","op":"int_view","lhs":"b","constant":16},{"name":"result","op":"int_mul_checked","lhs":"av","rhs":"bv","constant":16}],"assertions":[],"public_outputs":["result"]}
             ,
             \\{"public_inputs":{},"private_inputs":{"a":[255],"b":[258]},"public_outputs":{"result":[254]}}
-            , false,
+            ,
+            false,
         },
         .{
             \\{"version":1,"name":"u16_checked_mul","inputs":[{"name":"a","kind":"u16","length":1,"visibility":"private"},{"name":"b","kind":"u16","length":1,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":16},{"name":"bv","op":"int_view","lhs":"b","constant":16},{"name":"result","op":"int_mul_checked","lhs":"av","rhs":"bv","constant":16}],"assertions":[],"public_outputs":["result"]}
             ,
             \\{"public_inputs":{},"private_inputs":{"a":[256],"b":[256]},"public_outputs":{"result":[0]}}
-            , false,
+            ,
+            false,
         },
         .{
             \\{"version":1,"name":"u64_checked_mul","inputs":[{"name":"a","kind":"u16","length":4,"visibility":"private"},{"name":"b","kind":"u16","length":4,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":64},{"name":"bv","op":"int_view","lhs":"b","constant":64},{"name":"result","op":"int_mul_checked","lhs":"av","rhs":"bv","constant":64}],"assertions":[],"public_outputs":["result"]}
             ,
             \\{"public_inputs":{},"private_inputs":{"a":[0,0,0,32768],"b":[2,0,0,0]},"public_outputs":{"result":[0,0,0,0]}}
-            , false,
+            ,
+            false,
         },
         .{
             \\{"version":1,"name":"i8_checked_mul","inputs":[{"name":"a","kind":"u16","length":1,"visibility":"private"},{"name":"b","kind":"u16","length":1,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":264},{"name":"bv","op":"int_view","lhs":"b","constant":264},{"name":"result","op":"int_mul_checked","lhs":"av","rhs":"bv","constant":264}],"assertions":[],"public_outputs":["result"]}
             ,
             \\{"public_inputs":{},"private_inputs":{"a":[253],"b":[7]},"public_outputs":{"result":[235]}}
-            , true,
+            ,
+            true,
         },
         .{
             \\{"version":1,"name":"i8_checked_mul","inputs":[{"name":"a","kind":"u16","length":1,"visibility":"private"},{"name":"b","kind":"u16","length":1,"visibility":"private"}],"nodes":[{"name":"av","op":"int_view","lhs":"a","constant":264},{"name":"bv","op":"int_view","lhs":"b","constant":264},{"name":"result","op":"int_mul_checked","lhs":"av","rhs":"bv","constant":264}],"assertions":[],"public_outputs":["result"]}
             ,
             \\{"public_inputs":{},"private_inputs":{"a":[128],"b":[255]},"public_outputs":{"result":[128]}}
-            , false,
+            ,
+            false,
         },
     };
     inline for (cases) |case| {

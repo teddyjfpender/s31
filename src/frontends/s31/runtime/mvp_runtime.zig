@@ -324,6 +324,8 @@ pub fn main() !void {
         try inspectBoundedPhysicalRows(allocator, parsed.value, args[2], .main_root);
     } else if (std.mem.eql(u8, command, "inspect-fixed-root-from-columns") and args.len == 3 and direct_mode and !chip_mode) {
         try inspectFixedRootFromColumns(allocator, args[2]);
+    } else if (std.mem.eql(u8, command, "inspect-main-root-from-columns") and args.len == 3 and direct_mode and !chip_mode) {
+        try inspectMainRootFromColumns(allocator, parsed.value, args[2]);
     } else if (std.mem.eql(u8, command, "prove") and args.len == 4) {
         try prove(allocator, parsed.value, args[2], args[3], null, false, null, null, false, false);
     } else if (std.mem.eql(u8, command, "prove-for-external-verification") and args.len == 4 and
@@ -476,7 +478,7 @@ fn parseInspectStep(args: []const []const u8, base_len: usize) !u32 {
 }
 
 fn usage() error{InvalidArguments} {
-    std.debug.print("usage: s31-program check | inspect | inspect-topology (bounded direct-gate only) | inspect-physical-rows ASSIGNMENT.json | inspect-physical-root ASSIGNMENT.json (public bounded direct-gate only) | run ASSIGNMENT.json | prove ASSIGNMENT.json PROOF\n", .{});
+    std.debug.print("usage: s31-program check | inspect | inspect-topology (bounded direct-gate only) | inspect-physical-rows ASSIGNMENT.json | inspect-physical-root ASSIGNMENT.json | inspect-main-root-from-columns MAIN.json (public bounded direct-gate only) | run ASSIGNMENT.json | prove ASSIGNMENT.json PROOF\n", .{});
     std.debug.print("       inspect-fixed-root-from-columns FIXED.json (direct-gate diagnostic, explicit 8x512 canonical M31 columns)\n", .{});
     std.debug.print("       prove-for-external-verification ASSIGNMENT.json PROOF (record direct-gate v2 only; output is UNVERIFIED until separate native verifier accepts)\n", .{});
     std.debug.print("       recurse-check ASSIGNMENT.json CHILD-PROOF CHILD-KEY.json | recurse-prove ASSIGNMENT.json CHILD-PROOF OUTER-PROOF CHILD-KEY.json [--low-memory]\n", .{});
@@ -1041,6 +1043,51 @@ fn inspectFixedRootFromColumns(allocator: std.mem.Allocator, path: []const u8) !
     const root = try public_fixed_commitment.rootFromWords(allocator, parsed.value.fixed_columns);
     const root_hex = std.fmt.bytesToHex(root, .lower);
     std.debug.print("{{\"schema\":\"s31-direct-gate-recommitted-fixed-root-v1\",\"fixed_root\":\"{s}\"}}\n", .{&root_hex});
+}
+
+const MainRootInput = struct {
+    schema: []const u8,
+    main_columns: [circuit.witness.direct_arithmetic.main_width][]const u32,
+};
+
+fn inspectMainRootFromColumns(allocator: std.mem.Allocator, source: relation.Program, path: []const u8) !void {
+    // The caller supplies every main word. No private assignment or witness
+    // value is read; the source still has to be in the bounded public profile.
+    if (!try public_physical_guard.eligible(allocator, source))
+        return error.UnsupportedPhysicalRowInspection;
+    const bytes = try std.fs.cwd().readFileAlloc(allocator, path, 1 << 20);
+    defer allocator.free(bytes);
+    var parsed = try std.json.parseFromSlice(MainRootInput, allocator, bytes, .{
+        .ignore_unknown_fields = false,
+        .duplicate_field_behavior = .@"error",
+    });
+    defer parsed.deinit();
+    if (!std.mem.eql(u8, parsed.value.schema, "s31-direct-gate-main-columns-v1"))
+        return error.InvalidDirectMainColumnSchema;
+
+    var topology_ctx = try s31.relation_compiler.compileDirect(circuit.builder.NoValue, allocator, source, null, false);
+    defer topology_ctx.deinit();
+    try padForProfile(circuit.builder.NoValue, &topology_ctx);
+    var pp = try circuit.common.direct_arithmetic.Circuit.fromBuilderCircuit(allocator, &topology_ctx.circuit);
+    defer pp.deinit(allocator);
+    if (pp.columns[0].values.len != 512) return error.UnsupportedPhysicalRowInspection;
+    const pcs = try directPcsConfig(pp.traceLogSize(), null);
+    const root = try public_main_commitment.rootFromWords(allocator, &pp, parsed.value.main_columns, pcs);
+    const root_hex = std.fmt.bytesToHex(root, .lower);
+
+    var digest = std.crypto.hash.sha2.Sha256.init(.{});
+    for (parsed.value.main_columns) |column| for (column) |value| {
+        var word: [4]u8 = undefined;
+        std.mem.writeInt(u32, &word, value, .little);
+        digest.update(&word);
+    };
+    var main_digest: [32]u8 = undefined;
+    digest.final(&main_digest);
+    const digest_hex = std.fmt.bytesToHex(main_digest, .lower);
+    var source_digest: [32]u8 = undefined;
+    std.crypto.hash.sha2.Sha256.hash(embedded_source, &source_digest, .{});
+    const source_hex = std.fmt.bytesToHex(source_digest, .lower);
+    std.debug.print("{{\"schema\":\"s31-direct-gate-recommitted-main-root-v1\",\"program_sha256\":\"{s}\",\"main_root\":\"{s}\",\"main_columns_sha256\":\"{s}\"}}\n", .{ &source_hex, &root_hex, &digest_hex });
 }
 
 fn inspectBoundedPhysicalRows(allocator: std.mem.Allocator, source: relation.Program, assignment_path: []const u8, mode: PhysicalInspectionMode) !void {

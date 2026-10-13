@@ -12,6 +12,109 @@ call site and emits only the underlying relation operations.
 The [record guide](records.md) shows named fields with the same static-product
 erasure and a separate nominal type check.
 
+The [strict release example](../examples/functional/release_square4/README.md)
+shows three composed pure functions admitted by the independent v2 direct-gate
+certificate. Its handwritten form has the same two relation nodes and native
+AIR geometry; the functional package's proof passes `verify-release`. The
+strict certificate currently covers this bounded helper grammar, while the
+ordinary text frontend supports the broader function syntax below.
+The [lexical release example](../examples/functional/release_let4/README.md)
+also certifies a scoped `let squared = square(x) in squared + squared`: the
+binding disappears, and its two residual gates exactly match handwritten
+arithmetic in a native proof.
+The [named function value release example](../examples/functional/release_higher_order4/README.md)
+passes `twice_square` through a lexical `let` and a monomorphic `Fn` parameter.
+The independent certificate checks that the value adds no gate or AIR row;
+the native proof covers the same two gates as the handwritten source. The
+[captured lambda release example](../examples/functional/release_closure4/README.md)
+certifies a multi-gate lambda body and its lexical capture across a shadowed
+name, with the same four AIR gates as handwritten arithmetic. The ordinary
+frontend below supports broader lambdas and closures.
+The [inline lambda release example](../examples/functional/release_inline_lambda4/README.md)
+passes `fun(v: [m31; 4]) -> [m31; 4] => v .* v` directly to `apply_twice`.
+Its two applications produce only the handwritten `x²` and `x⁴` gates.
+The [curried release example](../examples/functional/release_curried4/README.md)
+checks `make(x)(x)`: `make` computes `x²`, returns a closure capturing that
+wire, and the second application emits `x + x²`. The closure value adds no
+witness or AIR row.
+The [nested application example](../examples/functional/release_nested4/README.md)
+checks `identity(make(x))(double(x))`: the function and array arguments are
+themselves static calls. Evaluation emits exactly `x²`, `2x`, and their sum;
+passing either intermediate value adds no AIR row.
+The strict checker also accepts parentheses around a returned callee, as in
+`(identity(make(x)))(double(x))`, with the same residual gates.
+The [composed helper example](../examples/functional/release_helper_composition4/README.md)
+places a nested array call and inline captured `fun` inside another helper's
+body. Those source expressions leave only the two additions computing `3x`.
+The [ordered subtraction example](../examples/functional/release_sub4/README.md)
+shows `x - 2x` and then subtracts `x` again. Its pure helper and handwritten
+form emit the same three native gates. The independent v2 checker preserves
+the left/right order of both subtraction operands; the linked hand calculation
+shows their M31 values and exact grouped AIR rows.
+
+The separate [optimized release example](../examples/functional/release_optimized4/README.md)
+uses `--correspondence optimized` with `direct-gate`. Its independent v3
+checker accepts reversed commutative operands and repeated gates: the five
+source lets `a = x + x`, `b = x .* x`, `c = a + b`, `d = b + a`,
+`e = c + d` become four native arithmetic gates. Both `c` and `d` feed the
+output. The native AIR geometry equals a handwritten four-gate program, and
+its proof passes the strict five-pin release verifier.
+This mode is opt-in and currently covers the same bounded public four-lane
+direct-gate fragment as the conservative checker.
+The [repeated pure-call example](../examples/functional/release_functional_cse4/README.md)
+defines `mix(a)` as the direct expression `double(a) + square(a)`, calls it
+twice, and uses both results. Seven source
+arithmetic nodes compact to four native gates, the same AIR geometry as a
+handwritten four-gate circuit. Twenty-four generated cases check
+helper calls, nested expression order, and function aliases against the production
+normalized relation and a handwritten canonical IR.
+The same subtraction example includes an opt-in v3 case where a repeated
+ordered subtraction is reused: four source operations become three native
+gates. Reversing the operands is a different gate and cannot use that result.
+
+## Auditing a named function all the way to packed rows
+
+This small program is also the five-lane subtraction acceptance fixture:
+
+```s31
+fn difference(x: [m31; 5], y: [m31; 5]) -> [m31; 5] { x - y }
+circuit subtract5(private a: [m31; 5], private b: [m31; 5]) -> public [m31; 5] {
+    let out = difference(a, b);
+    out
+}
+```
+
+The function call is resolved at compile time. Its parameters `x` and `y`
+refer to private circuit inputs `a` and `b`, so the normalized relation has
+one node, `out = sub(a,b)`. For each array position `i`, the prover supplies
+the result `out[i]`; the subtraction AIR constrains
+`out[i] - a[i] + b[i] = 0` modulo `p = 2³¹−1`. A **lane** here is one M31
+array position, not a separate proof. Four positions fit in one packed QM31
+row; the fifth occupies the first position of a second row. The other three
+positions of that row are padding and cannot change the fifth result.
+
+The [Lean byte checker](../../../../formal/s31/S31/Gadgets/Functional/Correspondence/SourceFunctionBytes.lean)
+parses the exact source bytes, resolves helper and call operand order, and
+encodes the complete normalized relation JSON. Its theorem says that any
+claim satisfying those packed arithmetic rows equals the function result
+on all five positions, for **any** private values and any inactive padding.
+The optional [audit command](../../../../formal/s31/S31/Audit/README.md#named-function-source-and-exact-relation-bytes)
+checks actual source and relation files byte for byte. Its 96 positive
+differential cases compare Lean against production compilation and an
+independent Python parser across lengths 1–8, three operators, and four
+operand orders. The native acceptance test separately proves this five-lane
+program, checks its generated verifier, and rejects changed public claims at
+both the first and fifth positions. The Lean model and these tests do not
+yet prove the Python/Zig compiler or the full STARK verifier correct.
+
+An optional third audit file holds the compact canonical IR that the native
+package hashes. [Its Lean encoder](../../../../formal/s31/S31/Gadgets/Functional/Correspondence/SourceFunctionCanonicalBytes.lean)
+numbers the private inputs `0` and `1` and the subtraction result `2`. It
+preserves operand order for subtraction and sorts add/multiply input IDs,
+which the Lean theorem proves has no effect on the result. A native regression
+compares hashes of two Lean-accepted IR byte strings with fresh package keys
+for subtraction and reversed addition.
+
 ## Static tuples: two results from one helper
 
 The [tuple example](../examples/arithmetic/tuple_square_sum.s31) returns a
@@ -399,8 +502,9 @@ one of those operations. An unknown `Fn` parameter carries an unresolved
 effect obligation; each static call is checked again with its actual closure.
 A total closure can therefore pass through a higher-order helper, while a
 partial closure is rejected if invoked in an `if` arm. The pass checks
-unused functions and lambdas too,
-and requires every builtin to have a reviewed effect classification.
+unused functions and lambdas too; source-only enum arms whose tag is not yet
+known carry deferred obligations until a concrete call selects one.
+Every builtin requires a reviewed effect classification.
 For example, `if b then std::math::inv(x) else x` is rejected because the
 inverse constraint would still have to hold when `b=0`. A partial operation
 in the condition itself remains an ordinary precondition of the whole
@@ -440,6 +544,25 @@ the same four-lane multiplication as `let result = x .* x; result`; no enum
 tag, match, or branch selector appears in the relation or AIR. The compiler
 still typechecks **both** arms and requires each variant exactly once.
 
+This static choice also matters inside a witness-dependent `if`. Suppose a
+helper takes `Choice` and its `Safe` arm doubles `x`, while its `Risky` arm
+inverts `x`. A circuit call with `Choice::Safe(x)` is allowed inside `if`:
+the source-only tag removes the `Risky` arm before the circuit is built. The
+relation is exactly the direct `if b then x + x else x` relation: one addition
+and one constrained selector. A call with `Choice::Risky(x)` is rejected,
+because its inverse would be present even when `b` selects the other branch.
+For a generic helper whose enum parameter has no tag yet, effect analysis
+defers arm effects until each static call supplies a constructor; unresolved
+static choices cannot cross the circuit boundary. Constructing the enum
+payload is eager, so an inverse used to build `Choice::Safe(...)` inside a
+dynamic branch is still rejected. The discarded arm may itself contain a
+witness-dependent `if`: its effect check is deferred with that static arm.
+Choosing that arm later triggers the ordinary inactive-branch check.
+The [runnable example](../examples/functional/static_enum_if/README.md)
+compares both source forms exactly and proves three inputs natively, including
+`x=0` when the dynamic bit chooses the other branch. Both forms use 280 raw
+QM31 operation rows under the direct-Gate profile.
+
 Constructor payloads are eager. For example,
 `match Choice::Square(x .* x) { Choice::Square(y) => x, Choice::Double(y) => y }`
 evaluates `x .* x` during specialization, then removes the unobserved total
@@ -452,7 +575,7 @@ a different relation representation. A function may accept or return an enum
 as long as every call specializes to a known constructor.
 
 The reviewed dead-code pass currently removes only unobserved `constant`,
-`add`, `mul`, `add_const`, and `mul_const` nodes in enum-bearing sources. It
+`add`, `sub`, `mul`, `add_const`, and `mul_const` nodes in enum-bearing sources. It
 keeps every other operation and all ancestors needed by outputs, assertions,
 public ABI fields, and retained nodes. The
 [design note](../../../../design/s31/language/STATIC_SUM_DCE.md) gives the

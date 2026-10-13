@@ -17,7 +17,9 @@ FINGERPRINT = "a" * 64
 def fake_report(check: gate.Check) -> tuple[str, str]:
     fmt = check.format
     if fmt == "unittest":
-        return "", ".....\n----------------------------------------------------------------------\nRan 5 tests in 0.001s\n\nOK\n"
+        count = 2 if check.id == "static-enum-effects-source" else 5
+        return "", (".\n----------------------------------------------------------------------\n"
+                    f"Ran {count} tests in 0.001s\n\nOK\n")
     if fmt.startswith("addition-"):
         native = check.native
         report = {"schema": "s31-int-addition-native-v1" if native else "s31-int-addition-source-v1",
@@ -50,6 +52,49 @@ def fake_report(check: gate.Check) -> tuple[str, str]:
         report = {"native_verifier_accepted": True,
                   "changed_public_statement_rejected": True,
                   "equal_native_air_geometry": True}
+    elif fmt == "static-enum-if-native":
+        report = {"schema": "s31-static-enum-if-acceptance-v1",
+                  "profile": "direct-m31-v4", "raw": {"qm31_ops": 280},
+                  "padded": {"qm31_ops": 512}, "preprocessed_cells": 4096,
+                  "equal_relation_and_air": True,
+                  "selected_and_eager_partial_arms_rejected": True,
+                  "proofs": [{"flag": flag, "x": x, "native_verified": True,
+                              "changed_claim_rejected": True,
+                              "oracle_passed": True,
+                              "proof_bytes": 1000}
+                             for flag, x in ((1, 7), (0, 7), (0, 0))]}
+    elif fmt == "power-native":
+        report = {"schema": "s31-power-chain-native-v1", "lanes": 8,
+                  "stages": 4, "exponent_per_stage": 65535,
+                  "saved_arithmetic_nodes": 44, "saved_raw_qm31_rows": 88,
+                  "halved_padded_rows": True,
+                  "cases": [{"kind": kind, "nodes": nodes,
+                             "raw_qm31_rows": raw, "padded_qm31_rows": padded,
+                             "preprocessed_cells": cells, "proof_bytes": 1000,
+                             "native_verified": True,
+                             "changed_claim_rejected": True,
+                             "independent_oracle_passed": True,
+                             "symbolic_exponent_checked": True}
+                            for kind, nodes, raw, padded, cells in
+                            (("addition-chain", 76, 471, 512, 4096),
+                             ("binary", 120, 559, 1024, 8192))]}
+    elif fmt == "factor-power-native":
+        report = {"schema": "s31-factor-power-native-v1", "lanes": 8,
+                  "stages": 4, "exponent_per_stage": 196605,
+                  "binary_source_sha256":
+                  "0d84aa30895d22dd5c105c7a0a384913d53ef0b0f45364dcbd4470cf93b952a3",
+                  "saved_arithmetic_nodes": 44, "saved_raw_qm31_rows": 88,
+                  "halved_padded_rows": True,
+                  "cases": [{"kind": kind, "nodes": nodes,
+                             "raw_qm31_rows": raw, "padded_qm31_rows": padded,
+                             "preprocessed_cells": cells, "proof_bytes": 1000,
+                             "native_verified": True,
+                             "changed_claim_rejected": True,
+                             "independent_oracle_passed": True,
+                             "symbolic_exponent_checked": True}
+                            for kind, nodes, raw, padded, cells in
+                            (("factor-chain", 84, 487, 512, 4096),
+                             ("binary", 128, 575, 1024, 8192))]}
     elif fmt == "record-source-native":
         report = {"schema": "s31-record-source-fragment-native-v2",
                   "capability": "source-to-relation-only",
@@ -78,9 +123,9 @@ class FeatureGateTests(unittest.TestCase):
         source = gate.checks("source")
         smoke = gate.checks("smoke")
         full = gate.checks("full")
-        self.assertEqual(len(source), 9)
-        self.assertEqual(len(smoke), 16)
-        self.assertEqual(len(full), 17)
+        self.assertEqual(len(source), 10)
+        self.assertEqual(len(smoke), 18)
+        self.assertEqual(len(full), 21)
         for inventory in (source, smoke, full):
             self.assertEqual(len({check.id for check in inventory}), len(inventory))
             for check in inventory:
@@ -127,6 +172,57 @@ class FeatureGateTests(unittest.TestCase):
         altered["compiler_sha256"] = "b" * 64
         with self.assertRaisesRegex(ValueError, "different compiler fingerprint"):
             gate.validate_output(add, json.dumps(altered), "", FINGERPRINT)
+
+    def test_static_enum_native_report_requires_all_three_proofs(self) -> None:
+        check = next(item for item in gate.checks("full")
+                     if item.id == "static-enum-if-native")
+        stdout, _ = fake_report(check)
+        self.assertEqual(gate.validate_output(check, stdout, "", FINGERPRINT)["cases"], 3)
+        for mutation in (lambda report: report["proofs"].pop(),
+                         lambda report: report["proofs"][2].update({"native_verified": False}),
+                         lambda report: report["proofs"][0].update({"changed_claim_rejected": False}),
+                         lambda report: report["raw"].update({"qm31_ops": 281}),
+                         lambda report: report.update({"selected_and_eager_partial_arms_rejected": False})):
+            report = json.loads(stdout)
+            mutation(report)
+            with self.assertRaisesRegex(ValueError, "static enum conditional"):
+                gate.validate_output(check, json.dumps(report), "", FINGERPRINT)
+
+    def test_static_enum_source_corpus_requires_both_checks(self) -> None:
+        check = next(item for item in gate.checks("source")
+                     if item.id == "static-enum-effects-source")
+        stdout, stderr = fake_report(check)
+        self.assertEqual(gate.validate_output(check, stdout, stderr)["tests"], 2)
+        with self.assertRaisesRegex(ValueError, "static enum source corpus"):
+            gate.validate_output(check, stdout, stderr.replace("Ran 2", "Ran 1"))
+
+    def test_power_chain_native_report_requires_both_proofs_and_costs(self) -> None:
+        check = next(item for item in gate.checks("full")
+                     if item.id == "pow65535-native")
+        stdout, _ = fake_report(check)
+        self.assertEqual(gate.validate_output(check, stdout, "")["cases"], 2)
+        for mutation in (lambda report: report["cases"].pop(),
+                         lambda report: report["cases"][0].update({"padded_qm31_rows": 1024}),
+                         lambda report: report["cases"][1].update({"symbolic_exponent_checked": False}),
+                         lambda report: report["cases"][0].update({"native_verified": False})):
+            report = json.loads(stdout)
+            mutation(report)
+            with self.assertRaisesRegex(ValueError, "power chain"):
+                gate.validate_output(check, json.dumps(report), "")
+
+    def test_factor_power_native_report_requires_both_proofs_and_costs(self) -> None:
+        check = next(item for item in gate.checks("full")
+                     if item.id == "pow-factor-native")
+        stdout, _ = fake_report(check)
+        self.assertEqual(gate.validate_output(check, stdout, "")["cases"], 2)
+        for mutation in (lambda report: report["cases"].pop(),
+                         lambda report: report.update({"binary_source_sha256": "0" * 64}),
+                         lambda report: report["cases"][0].update({"padded_qm31_rows": 1024}),
+                         lambda report: report["cases"][1].update({"native_verified": False})):
+            report = json.loads(stdout)
+            mutation(report)
+            with self.assertRaisesRegex(ValueError, "factor power"):
+                gate.validate_output(check, json.dumps(report), "")
 
     def test_compiler_drift_and_subprocess_failure_are_nonpassing(self) -> None:
         calls = iter((FINGERPRINT, FINGERPRINT, "b" * 64, "b" * 64))

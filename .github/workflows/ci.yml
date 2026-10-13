@@ -81,11 +81,26 @@ jobs:
           mkdir -p zig-out/s31/acceptance
           python3 src/frontends/s31/tests/acceptance/acceptance_functional_core.py |
             tee zig-out/s31/acceptance/functional-core.json
+      - name: Large static power chain and native AIR saving
+        run: |
+          set -euo pipefail
+          python3 src/frontends/s31/tests/acceptance/math/power_chain.py |
+            tee zig-out/s31/acceptance/power-chain.json
+      - name: Reused-factor static power and native AIR saving
+        run: |
+          set -euo pipefail
+          python3 src/frontends/s31/tests/acceptance/math/factor_power.py |
+            tee zig-out/s31/acceptance/factor-power.json
       - name: Field and byte conditional native proofs
         run: |
           set -euo pipefail
           python3 src/frontends/s31/tests/acceptance/acceptance_total_if.py |
             tee zig-out/s31/acceptance/total-if.json
+      - name: Static enum effect staging and selector native proofs
+        run: |
+          set -euo pipefail
+          python3 src/frontends/s31/tests/acceptance/functional/static_enum_if.py |
+            tee zig-out/s31/acceptance/static-enum-if.json
       - name: Nominal record zero-cost and native proof gate
         run: |
           set -euo pipefail
@@ -101,6 +116,76 @@ jobs:
           set -euo pipefail
           python3 src/frontends/s31/tests/acceptance/functional/pattern_parameters.py |
             tee zig-out/s31/acceptance/pattern-parameters.json
+      - name: Composed functional strict release proof and zero-cost gates
+        run: |
+          set -euo pipefail
+          python3 src/frontends/s31/tests/acceptance/compiler_correspondence/functional_release.py |
+            tee zig-out/s31/acceptance/functional-release.json
+      - name: Optimized direct-gate strict release proof and gate reuse
+        run: |
+          set -euo pipefail
+          python3 src/frontends/s31/tests/acceptance/compiler_correspondence/optimized_release.py |
+            tee zig-out/s31/acceptance/optimized-release.json
+      - name: Optimized pure-function strict release proof and gate reuse
+        run: |
+          set -euo pipefail
+          python3 src/frontends/s31/tests/acceptance/compiler_correspondence/functional_optimized_release.py |
+            tee zig-out/s31/acceptance/functional-optimized-release.json
+      - name: Ordered-subtraction helper strict release proof and zero-cost gates
+        run: |
+          set -euo pipefail
+          python3 src/frontends/s31/tests/acceptance/compiler_correspondence/subtraction_release.py |
+            tee zig-out/s31/acceptance/ordered-subtraction-release.json
+      - name: Ordered-subtraction reuse strict release proof
+        run: |
+          set -euo pipefail
+          python3 src/frontends/s31/tests/acceptance/compiler_correspondence/subtraction_optimized_release.py |
+            tee zig-out/s31/acceptance/ordered-subtraction-optimized-release.json
+      - name: Lexical let strict release proof and zero-cost gates
+        run: |
+          set -euo pipefail
+          python3 src/frontends/s31/tests/acceptance/compiler_correspondence/lexical_release.py |
+            tee zig-out/s31/acceptance/lexical-release.json
+      - name: Named Fn value strict release proof and zero-cost gates
+        run: |
+          set -euo pipefail
+          python3 src/frontends/s31/tests/acceptance/compiler_correspondence/higher_order_release.py |
+            tee zig-out/s31/acceptance/higher-order-release.json
+      - name: Captured lambda strict release proof and zero-cost gates
+        run: |
+          set -euo pipefail
+          python3 src/frontends/s31/tests/acceptance/compiler_correspondence/closure_release.py |
+            tee zig-out/s31/acceptance/closure-release.json
+      - name: Inline lambda strict release proof and zero-cost gates
+        run: |
+          set -euo pipefail
+          python3 src/frontends/s31/tests/acceptance/compiler_correspondence/inline_lambda_release.py |
+            tee zig-out/s31/acceptance/inline-lambda-release.json
+      - name: Returned closure strict release proof and zero-cost gates
+        run: |
+          set -euo pipefail
+          python3 src/frontends/s31/tests/acceptance/compiler_correspondence/curried_release.py |
+            tee zig-out/s31/acceptance/curried-release.json
+      - name: Nested static arguments strict release proof and zero-cost gates
+        run: |
+          set -euo pipefail
+          python3 src/frontends/s31/tests/acceptance/compiler_correspondence/nested_release.py |
+            tee zig-out/s31/acceptance/nested-release.json
+      - name: Composed helper body strict release proof and zero-cost gates
+        run: |
+          set -euo pipefail
+          python3 src/frontends/s31/tests/acceptance/compiler_correspondence/helper_composition_release.py |
+            tee zig-out/s31/acceptance/helper-composition-release.json
+      - name: Native M31 subtraction proof and raw-row comparison
+        run: |
+          set -euo pipefail
+          python3 src/frontends/s31/tests/acceptance/math/field_subtraction.py |
+            tee zig-out/s31/acceptance/field-subtraction.json
+      - name: Native M31 subtraction short-final-row proof
+        run: |
+          set -euo pipefail
+          python3 src/frontends/s31/tests/acceptance/math/field_subtraction_partial.py |
+            tee zig-out/s31/acceptance/field-subtraction-partial.json
       - name: Preserve native acceptance evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -404,6 +489,11 @@ jobs:
           set -euo pipefail
           python3 src/frontends/s31/tests/acceptance/mixed_boundary/arithmetic_chip_input.py |
             tee zig-out/s31/acceptance/mixed-general-arithmetic-input.json
+      - name: Subtraction-produced chip port proof controls
+        run: |
+          set -euo pipefail
+          python3 src/frontends/s31/tests/acceptance/mixed_boundary/field_sub_feeder.py |
+            tee zig-out/s31/acceptance/mixed-general-sub-feeder.json
       - name: Preserve general mixed boundary evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

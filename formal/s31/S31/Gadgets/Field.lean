@@ -37,6 +37,20 @@ theorem toZMod_add (a b : M31) : toZMod (a + b) = toZMod a + toZMod b := by
   change toZMod (RiscvRefinement.M31.reduce (a.val + b.val)) = _
   rw [toZMod_reduce, Nat.cast_add]; rfl
 
+theorem toZMod_sub (a b : M31) : toZMod (a - b) = toZMod a - toZMod b := by
+  change toZMod (RiscvRefinement.M31.reduce
+    (a.val + RiscvRefinement.M31.modulus - b.val)) = _
+  rw [toZMod_reduce]
+  have h : b.val ≤ a.val + RiscvRefinement.M31.modulus := by
+    have hb : b.val < RiscvRefinement.M31.modulus := b.isLt
+    omega
+  rw [Nat.cast_sub h, Nat.cast_add]
+  have hmod : ((RiscvRefinement.M31.modulus : Nat) : F) = 0 := by
+    simpa [RiscvRefinement.M31.modulus_eq] using
+      (ZMod.natCast_self 2147483647)
+  rw [hmod]
+  simp [toZMod]
+
 theorem toZMod_mul (a b : M31) : toZMod (a * b) = toZMod a * toZMod b := by
   change toZMod (RiscvRefinement.M31.reduce (a.val * b.val)) = _
   rw [toZMod_reduce, Nat.cast_mul]; rfl
@@ -76,11 +90,16 @@ namespace S31.Gadgets
 variable {F : Type} [Field F]
 
 def addConstraint (a b y : F) : Prop := y - a - b = 0
+def subConstraint (a b y : F) : Prop := y - a + b = 0
 def mulConstraint (a b y : F) : Prop := y - a * b = 0
 def zeroAnchor (anchor value : F) : Prop := anchor + value = anchor
 
 theorem add_sound_complete (a b y : F) : addConstraint a b y ↔ y = a + b := by
   unfold addConstraint
+  constructor <;> intro h <;> linear_combination h
+
+theorem sub_sound_complete (a b y : F) : subConstraint a b y ↔ y = a - b := by
+  unfold subConstraint
   constructor <;> intro h <;> linear_combination h
 
 theorem mul_sound_complete (a b y : F) : mulConstraint a b y ↔ y = a * b :=

@@ -72,3 +72,15 @@ enum source, checks its independent value, and rejects a changed public claim:
 ```sh
 python3 src/frontends/s31/tests/acceptance/functional/static_sum_dce.py
 ```
+
+`static_enum_if.py` checks the
+[worked static choice](../../../examples/functional/static_enum_if/README.md)
+inside a witness-dependent conditional. The selected safe arm and a
+handwritten selector have identical normalized relations and complete native
+AIR geometry at 280 raw and 512 padded QM31 rows. It proves both bit values
+and `x=0`, independently calculates each result, rejects changed public
+claims, and rejects a selected or eagerly constructed inverse arm:
+
+```sh
+python3 src/frontends/s31/tests/acceptance/functional/static_enum_if.py
+```

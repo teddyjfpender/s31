@@ -1,6 +1,6 @@
 """Independent exact gate schedule for the bounded four-lane direct profile.
 
-Only add/mul SSA nodes are admitted; source alias lets are erased before this
+Only add/sub/mul SSA nodes are admitted; source alias lets are erased before this
 schedule. They request no constants, so the
 builder's constant set is fixed: 0, 1, u, i, iu, and the inverses of i, u,
 and iu. This module computes the resulting base-256 derivation and padding
@@ -196,7 +196,7 @@ def exact_direct_gate_schedule(syntax: dict[str, Any]) -> tuple[
         result = next_address
         next_address += 1
         actual = gate(wires[node["lhs"]], wires[node["rhs"]], result)
-        gates["add" if operation == "add" else "pointwise_mul"].append(actual)
+        gates[{"add": "add", "sub": "sub", "mul": "pointwise_mul"}[operation]].append(actual)
         wires[node["id"]] = result
         source_gates.append({"id": node["id"], "op": operation, **actual})
 

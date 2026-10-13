@@ -2,8 +2,9 @@
 
 `stdlib.py` defines S31 source types, values and the checked relation builder.
 `math.py` supplies the field, array and fixed-width combinators that use that
-builder. `addition_chains.py` finds bounded static power schedules and falls
-back to binary powering when no shorter schedule is found. The combinators
+builder. `addition_chains.py` finds bounded static power schedules, reuses
+saved powers for large all-ones exponents and their power-of-two shifts, and
+falls back to binary powering when no shorter schedule is found. The combinators
 emit only normalized relation nodes; Zig validates the relation, chooses AIR,
 builds witnesses and generates the native verifier.
 

@@ -95,6 +95,27 @@ may reach the circuit boundary. A partial condition remains a precondition
 of the whole expression. The source `if` adds no relation node beyond the
 equivalent explicit selector.
 
+The same staging rule applies to source-only enum matches in generic helpers.
+When the enum tag is not yet known, the effect pass defers effects of the
+match arms; it preserves any effect from constructing the scrutinee. At each
+concrete call, the known constructor selects one arm, whose effects are then
+checked against any enclosing witness-dependent `if`. A safe constructor
+therefore erases an unselected partial arm without AIR cost. The selected
+partial arm and an eager partial constructor payload remain inadmissible in
+an inactive dynamic branch. A functional regression compares the safe case
+with direct `if` source byte for byte at the normalized relation boundary.
+The deferral also covers a nested dynamic `if` inside an unselected static
+arm; selecting that arm at a concrete call still rejects its partial effect.
+The [native static-enum acceptance](../../../src/frontends/s31/examples/functional/static_enum_if/README.md)
+compares the complete AIR cost tuple with a handwritten selector and verifies
+three public claims with changed-claim rejection, including `x=0` in the
+branch that would otherwise encounter an inverse-of-zero.
+The [generated source corpus](../../../src/frontends/s31/tests/python/generated/README.md)
+checks 112 static-enum programs across array lengths 1–7, two arithmetic
+operations, both conditional directions and four function routes against
+handwritten relations and independent M31 values. Sixteen selected or eager
+partial-arm mutations must fail compilation.
+
 The release gate still needs broader geometry equivalence checks and a
 formal correspondence from source conditionals through effect analysis to
 the generated AIR. Lean composes total source branches with the local
@@ -123,16 +144,102 @@ recurrence, and `sparse-wide-gate` uses a checked 256-bit sum. The
 gate checks native acceptance, independent output values and altered public
 claim rejection for all four cases.
 
+The [large static power example](../../../src/frontends/s31/examples/arithmetic/powers/README.md)
+shows a compiler-owned math-library improvement that crosses a native AIR
+padding boundary. Four eight-lane `pow<65535>` calls use 76 multiplication
+nodes rather than 120 explicit binary nodes; both forms have checked native
+proofs, and the padded QM31 trace is 512 rather than 1,024 rows. This is a
+structural cost result, not a general prover-time claim. A second four-call
+example uses bounded factor reuse for `pow<196605>`: 84 rather than 128
+multiplication nodes, 487 rather than 575 raw QM31 rows, and 512 rather than
+1,024 padded rows. A Lean certificate proves its 21-step per-call schedule
+reaches the claimed exponent; a source test compares the exact reference
+indices with the production graph, and both native proofs pass the release
+feature gate. This evidence does not establish general compiler-to-AIR
+correspondence.
+
 | Requirement | Evidence required | Current state |
 | --- | --- | --- |
 | Grammar and diagnostics | Versioned grammar, location-precise errors, malformed and fuzzed input corpus, bounded parse and specialization resources | The v1 grammar documents exact source forms, including postfix application of returned closures, parenthesized lambdas, named `fn` references as static values, and returned or local static recurrence steps. The parser bounds token count, numeric token length, recursive expression/type descent and final AST depth with located errors; static call and effect analysis have separate limits. Pinned generated corpora check 96 scalar, 64 four-lane array, nine packed-lane, 29 math/hash, 40 tuple and 160 higher-order function-route programs against independent values and exact first-order IR; malformed mutations have located diagnostics. The higher-order corpus also checks that partial effects survive ten function-value routes into inactive conditional arms. Record ABI leaves are capped before expansion; repeated immutable effect shapes share memory; assertion expansion is bounded and duplicate equalities are erased. Native validation caps aggregate input words, total relation items, JSON source bytes and early shape work; both compiler routes check actual unpadded gate and variable counts during lowering. Generic repeat expansion has its own aggregate lane-step budget. Wider grammar fuzzing remains. |
 | Type soundness | Separate typed elaboration of **all** declarations, no function values at circuit boundary, well-defined static/dynamic effects | Pure elaboration checks every function and lambda body, source types, lexical scopes and call-graph bounds before emission. An exhaustive conservative effect pass rejects potentially partial inactive `if` arms. Value-dependent checks still run during specialization; a machine-checked effect soundness proof remains missing. |
-| Semantic preservation | Proof or independently checked translation for typed source → normalized relation, including closure capture, shadowing, arrays and library calls | Lean proves source evaluation agrees with strict graph acceptance for every typed program in its total field/function core, including lexical capture, beta erasure, field outputs and source-level equality assertions. The core includes shape-indexed M31 arrays with pointwise arithmetic, splats, indexed reads and bounded `take`/`drop`/`concat` views; every array output lane is bound by an arbitrary-witness strict graph theorem. Total-branch field and array conditionals, including one shared selector and all array lanes in a strict graph, and a small conservative effect check are proved. Lean also proves the mathematical meaning and strict field-graph acceptance of nonempty static sum/dot and Horner polynomial combinators in the source core; their graph schedule is a model, not a proof of Python mathlib lowering. The worked four-lane quadratic proves closure erasure and all-output strict graph acceptance for a typed analogue of a checked-in `.s31` example. A curried two-application scalar analogue proves one-gate erasure and arbitrary-witness output binding. A named-function-value scalar analogue proves static binding and application erase to one multiply with strict-graph output binding. Array conditionals, pointwise M31 addition/multiplication and concat/get/slice views agree with concrete normalized nodes evaluated by `evaluateNode`. A static recurrence theorem proves the `square; add_const 7` body acts independently on every lane for any round count and binds all satisfying abstract repeat witnesses. A worked `mix4` theorem proves the three hand-calculated rounds and arbitrary-witness output binding for the coupled four-lane step. Theorems connect final pointwise arithmetic and Boolean array choice for arrays of any length to packed AIR rows, including short final rows; a separate masked pairwise reduction theorem covers normalized `sum_lanes`. Python text compilation, the full library, the full effect checker and production AIR correspondence remain unproved. |
-| Zero-cost abstractions | Canonical graph and AIR geometry equivalence across arithmetic, hashes, arrays and chip extraction, plus regression ceilings | Functional arithmetic and conditional gates compare canonical IR and direct-gate AIR geometry with explicit equivalents. Static tuples and nominal records now support whole-product selection and assertion by emitting exactly the fieldwise primitive relation. The typed nested-record fixture has native proof acceptance for both selector values and changed-claim rejection; it matches its handwritten fieldwise form at 299 raw and 512 padded QM31 rows, with all reported geometry fields equal. Nine packed-lane cases compare exact normalized IR across lengths 1–15; native geometry checks for lengths 3, 5 and 9 are gated in CI. Twenty math and nine Poseidon2 programs compare exact normalized IR with direct forms and independently checked values. A native CI gate pins equal complete geometry for a curried one-gate sum, named four-lane square, handwritten quadratic, static matrix product, returned `mix4` step, and three-hash Poseidon2 parent under `direct-gate`, with 275, 312, 318, 326, 344 and 11,840 raw QM31 rows. Named steps passed through `Fn` helpers and constant-capturing closure steps each match direct `iterate` in normalized IR, selected chip, AIR geometry and FRI settings under `direct-chip`; a functional checked `UInt256` sum matches its direct form under `sparse-wide-gate`. A captured closure over array views and a Poseidon2 hash matches a direct circuit. Wider native hash and array geometry remains. |
-| Build and native verification | Build, prove, verify, changed-statement rejection, independent oracle, reproducible source/key/IR identity | Functional arithmetic has native trials under generic `gate` and `direct-gate`; conditional, named and captured recurrence-chip, and sparse-wide native trials also pass, including both selector values and changed-claim rejection. Packed arrays of lengths 3, 5 and 9 each pass two native proofs, independent modular arithmetic, and changed-claim rejection; their raw QM31 row counts are 311, 319 and 328, while each padded trace has 512 rows and 4096 preprocessed cells. The curried sum, named four-lane square, handwritten quadratic, static matrix product, returned `mix4` step and Poseidon2 pair also have native proofs, independent expected results and false-claim rejection. The scoped twelve-profile candidate matrix passed at the tagged `v0.1.0-rc.1` compiler fingerprint; this is finite fixture evidence, not general source coverage. |
-| Public record ABI | A versioned, source-bound encoding for nominal public records, with checked visibility, paths, aliases, canonical words and native rejection controls | ABI v2 is implemented for direct-gate record inputs and outputs, with narrow public one-call direct-chip and mixed-general extensions. The direct-gate public `bit` leaf slice passed native acceptance and Lean compilation on the pinned engine. Private bit leaves, `u16` leaves and private record chip endpoints are not admitted. The Lean model does not yet refine the production parser and native verifier, and the current-head release matrix remains incomplete. |
+| Semantic preservation | Proof or independently checked translation for typed source → normalized relation, including closure capture, shadowing, arrays and library calls | Lean proves source evaluation agrees with strict graph acceptance for every typed program in its total field/function core, including lexical capture, beta erasure, field outputs and source-level equality assertions. The core includes shape-indexed M31 arrays with pointwise arithmetic, splats, indexed reads and bounded `take`/`drop`/`concat` views; every array output lane is bound by an arbitrary-witness strict graph theorem. Total-branch field and array conditionals, including one shared selector and all array lanes in a strict graph, and a small conservative effect check are proved. Lean also proves the mathematical meaning and strict field-graph acceptance of nonempty static sum/dot and Horner polynomial combinators in the source core; their graph schedule is a model, not a proof of Python mathlib lowering. The worked four-lane quadratic proves closure erasure and all-output strict graph acceptance for a typed analogue of a checked-in `.s31` example. A curried two-application scalar analogue proves one-gate erasure and arbitrary-witness output binding. A named-function-value scalar analogue proves static binding and application erase to one multiply with strict-graph output binding. Array conditionals, pointwise M31 addition/subtraction/multiplication and concat/get/slice views agree with concrete normalized nodes evaluated by `evaluateNode`. A static recurrence theorem proves the `square; add_const 7` body acts independently on every lane for any round count and binds all satisfying abstract repeat witnesses. A worked `mix4` theorem proves the three hand-calculated rounds and arbitrary-witness output binding for the coupled four-lane step. Theorems connect final pointwise arithmetic and Boolean array choice for arrays of any length to packed AIR rows, including short final rows; a separate masked pairwise reduction theorem covers normalized `sum_lanes`. Python text compilation, the full library, the full effect checker and production AIR correspondence remain unproved. |
+| Zero-cost abstractions | Canonical graph and AIR geometry equivalence across arithmetic, hashes, arrays and chip extraction, plus regression ceilings | Functional arithmetic and conditional gates compare canonical IR and direct-gate AIR geometry with explicit equivalents. Static tuples and nominal records now support whole-product selection and assertion by emitting exactly the fieldwise primitive relation. The typed nested-record fixture has native proof acceptance for both selector values and changed-claim rejection; it matches its handwritten fieldwise form at 299 raw and 512 padded QM31 rows, with all reported geometry fields equal. Nine packed-lane cases compare exact normalized IR across lengths 1–15; native geometry checks for lengths 3, 5 and 9 are gated in CI. A five-lane named subtraction helper now matches direct source in normalized IR and the full release-gated AIR cost tuple; its native proof accepts the honest result and rejects changed claims in the first and fifth lanes. Twenty math and nine Poseidon2 programs compare exact normalized IR with direct forms and independently checked values. A native CI gate pins equal complete geometry for a curried one-gate sum, named four-lane square, handwritten quadratic, static matrix product, returned `mix4` step, and three-hash Poseidon2 parent under `direct-gate`, with 275, 312, 318, 326, 344 and 11,840 raw QM31 rows. Named steps passed through `Fn` helpers and constant-capturing closure steps each match direct `iterate` in normalized IR, selected chip, AIR geometry and FRI settings under `direct-chip`; a functional checked `UInt256` sum matches its direct form under `sparse-wide-gate`. A captured closure over array views and a Poseidon2 hash matches a direct circuit. Wider native hash and array geometry remains. |
+| Build and native verification | Build, prove, verify, changed-statement rejection, independent oracle, reproducible source/key/IR identity | Functional arithmetic has native trials under generic `gate` and `direct-gate`; conditional, named and captured recurrence-chip, and sparse-wide native trials also pass, including both selector values and changed-claim rejection. Packed arrays of lengths 3, 5 and 9 each pass two native proofs, independent modular arithmetic, and changed-claim rejection; their raw QM31 row counts are 311, 319 and 328, while each padded trace has 512 rows and 4096 preprocessed cells. The curried sum, named four-lane square, handwritten quadratic, static matrix product, returned `mix4` step and Poseidon2 pair also have native proofs, independent expected results and false-claim rejection. The scoped twelve-profile candidate matrix passed for the `v0.1.0-rc.4` developer prerelease; this is finite fixture evidence, not general source coverage. |
+| Public record ABI | A versioned, source-bound encoding for nominal public records, with checked visibility, paths, aliases, canonical words and native rejection controls | ABI v2 is implemented for direct-gate record inputs and outputs, with narrow public one-call direct-chip and mixed-general extensions. Direct-gate admits public `bit`, scalar `u8`, `[u16; N]` for `1 ≤ N ≤ 8`, and scalar `u32` leaves with native range and claim controls. Private narrow leaves, derived narrow results, narrow leaves in chip or mixed profiles, and private record chip endpoints are not admitted. The Lean model does not yet refine the production parser and native verifier. |
 | Repository hygiene | Parser, AST, elaborator, specialization, library and CLI isolated by directory, module READMEs and pinned dependency versions | Syntax, parser, builtin typing, elaboration and specialization live under `python/language/`. Standard and math library implementations live under `python/library/`, with compatibility imports and an expanded source lock/fingerprint. Cost and semantic-equation reports live under `python/inspection/`. Source identity, package building and integrity checks live under `python/package/`. Native trials and fold audits live under `python/runtime/`. Argument parsing and command dispatch live under `python/cli/`; the root executable/API is 44 lines. All modules have READMEs and enter the source fingerprint. A smaller declarative command table remains desirable. |
-| Release artifact | Tagged source, lockfile, supported-profile matrix, signed or otherwise authenticated distribution process, changelog and exact test commands | The [v0.1.0-rc.1 developer prerelease](https://github.com/teddyjfpender/s31/releases/tag/v0.1.0-rc.1) tags the merged source and ships a hash-checked finite-evidence archive; recursive Git clone obtains the pinned engine. It does not satisfy the full v0.1.0 soundness and correspondence requirements in this table. The merged-main CI runs were queued when it was published. |
+| Release artifact | Tagged source, lockfile, supported-profile matrix, signed or otherwise authenticated distribution process, changelog and exact test commands | The [v0.1.0-rc.4 developer prerelease](https://github.com/teddyjfpender/s31/releases/tag/v0.1.0-rc.4) ships a hash-checked complete source bundle with its pinned engine and a finite-evidence archive. It does not satisfy the full v0.1.0 soundness and correspondence requirements in this table; trusted distribution and an independent native PCS/FRI soundness argument remain open. |
+
+The opt-in strict `verify-release` path now independently reparses exact
+source bytes for a bounded public four-lane direct-gate fragment. It covers
+up to eight acyclic pure functions, calls to earlier declarations, local
+arithmetic lets, expression-level lexical `let … in` inside circuit lets, and
+named unary `Fn([m31; 4]) -> [m31; 4]` values passed through static aliases
+and function parameters. It also admits unary lambdas with bounded pure
+arithmetic and lexical-let bodies over the argument and existing captured wires.
+The same bounded lambdas may be supplied inline as arguments to unary `Fn`
+parameters, including captures from the current lexical scope.
+Pure helpers may also return these `Fn` values, including a closure over an
+earlier helper gate, and direct postfix application specializes the result.
+Function and array arguments may themselves be nested static calls; the checker
+replays those calls in evaluation order before applying the enclosing helper.
+Pure helper bodies may also compose typed nested calls, arithmetic arguments,
+and inline captured lambdas; the same bounded gate and call budgets apply.
+The checker replays generated and anonymous wire names, requires exact
+normalized relation and canonical SSA equality, then checks the native gate
+topology and fixed-root key before native proof verification. The
+[composed-function](../../../src/frontends/s31/examples/functional/release_square4/README.md),
+[lexical-let](../../../src/frontends/s31/examples/functional/release_let4/README.md),
+and [named-function-value](../../../src/frontends/s31/examples/functional/release_higher_order4/README.md)
+fixtures each match their handwritten two-gate form at 322 raw and 512 padded
+QM31 rows, pass `verify-release`, and reject a changed public result. This is
+finite evidence for this fragment. The
+[captured-lambda fixture](../../../src/frontends/s31/examples/functional/release_closure4/README.md)
+matches its handwritten four-gate form at 324 raw and 512 padded QM31 rows
+and tests lexical capture across a shadowed name.
+The [inline-lambda fixture](../../../src/frontends/s31/examples/functional/release_inline_lambda4/README.md)
+passes one anonymous function to a helper that applies it twice and matches
+its handwritten two-gate form at 322 raw and 512 padded QM31 rows. The
+[curried fixture](../../../src/frontends/s31/examples/functional/release_curried4/README.md)
+returns a captured function and matches its handwritten two-gate form at 322
+raw and 512 padded QM31 rows. The
+[nested application fixture](../../../src/frontends/s31/examples/functional/release_nested4/README.md)
+passes a computed function and computed array argument, matching three
+handwritten gates at 323 raw and 512 padded QM31 rows. A typed Lean source
+model proves erasure to the direct graph and agreement with modeled packed
+rows for arbitrary satisfying witnesses. The
+[composed helper fixture](../../../src/frontends/s31/examples/functional/release_helper_composition4/README.md)
+checks an inline captured lambda and nested array call inside a helper body
+against two handwritten addition gates at 322 raw and 512 padded QM31 rows.
+A pinned 24-source differential corpus covers nested helper arguments across
+both arithmetic operators, with direct schedules and independent values. The
+explicit v3 optimized mode additionally checks commutative operand sorting
+and common-subexpression reuse within the same bounded public four-lane
+direct-gate profile. The
+[optimized fixture](../../../src/frontends/s31/examples/functional/release_optimized4/README.md)
+has five source lets but four native arithmetic gates; both repeated values
+feed its output. Its AIR geometry matches a handwritten four-gate program at
+324 raw and 512 padded QM31 rows.
+The generated package passes five-pin `verify-release` with an accepted native
+proof and rejects a changed claim and certificate downgrade. This is a
+checked finite example, not a general optimization theorem. The
+[repeated helper fixture](../../../src/frontends/s31/examples/functional/release_functional_cse4/README.md)
+checks two live calls to a pure `mix` helper: seven normalized operations
+share four native gates, with the same 324 raw and 512 padded QM31 rows as
+handwritten arithmetic. The helper writes `double(a) + square(a)` directly;
+a 24-case generated corpus checks nested source expressions and alias
+variants against the independent v3 parser. The
+certificate does not cover other lambda operations or closure types, general
+higher-order source, records, private inputs, other AIR profiles, or the native
+PCS/FRI proof system, and it does not replace the full compiler correspondence
+proof above.
+
+The independent bounded [source-to-relation checker](SOURCE_RELATION_FRAGMENT.md)
+now parses one pure named function over homogeneous `[m31; N]` arrays for
+`1 ≤ N ≤ 8`, including ordered subtraction, and checks its static call against
+the exact normalized relation without invoking the production compiler. The
+five-lane functional subtraction acceptance runs that check on the generated
+package and separately verifies its native proof. The checker's capability is
+`source-to-relation-only`; it does not certify the circuit, AIR, or proof.
 
 The typed product extension adds `(A, B)` and `(a, b)` with statically checked
 `.0`/`.1` projections. A tuple is evaluated eagerly and erased before relation

@@ -88,7 +88,7 @@ contract and worked polynomial are in [the library chapter](library.md).
 | `std::math::mix4(x)` | Inside `iterate`, add the sum of all four lanes to each lane; requires `[m31; 4]`. |
 | `std::math::inv(x)` | Checked lane-wise inverse; any zero lane makes the relation unsatisfiable. |
 | `std::math::div(x,y)` | Checked lane-wise division, lowered to a shared inverse and multiplication. |
-| `std::math::pow<K>(x)` | Static binary exponentiation, `0 <= K < p`; `x^0=1`, including `0^0`. |
+| `std::math::pow<K>(x)` | Static multiplication chain with binary cost ceiling, `0 <= K < p`; `x^0=1`, including `0^0`. |
 | `std::math::sum([a,...])` | Balanced sum across 1..64 statically grouped, equally shaped M31 arrays. |
 | `std::math::dot([a,...],[b,...])` | Pairwise products and balanced sum across equal static groups. |
 | `std::math::sum_lanes(x)` | Sum the positions of one `[m31; N]` into `[m31; 1]`. |
@@ -117,8 +117,10 @@ contract and worked polynomial are in [the library chapter](library.md).
 | `std::merkle::path_poseidon2`, `std::merkle::path_blake2s` | Fixed-depth path built from hashes and selects. |
 
 The older unqualified spellings (`select`, `poseidon2_leaf`, etc.) still work
-and lower identically. `std::math::sub` with a constant right operand becomes
-one `add_const` with `p-c`; `pow<5>` becomes three multiplication nodes. This
+and lower identically. Dynamic `std::math::sub` uses the native subtraction
+gate. With a constant right operand it becomes one `add_const` with
+`(-c) mod p`.
+`pow<5>` becomes three multiplication nodes. This
 is source-level convenience over the same proof gates. `pow<p-2>(x)` is not a
 checked inverse: at zero it returns zero, and no nonzero assertion is added.
 Use `std::math::inv` or `std::math::div` when nonzero is required. They

@@ -38,9 +38,11 @@ AUDIT_FIXTURES = {
 }
 FEATURE_CASES = frozenset({
     "v1-source-relation", "v2-record-source-relation", "static-sum-dce-source",
+    "static-enum-effects-source",
     "direct-add-source", "direct-sub-le-source", "direct-mul-source",
     "record-u8-source", "record-u16-source", "record-u32-source",
-    "static-sum-dce-native", "v2-record-source-native",
+    "static-sum-dce-native", "static-enum-if-native", "v2-record-source-native",
+    "pow65535-native", "pow-factor-native",
     "direct-add-all-native", "direct-sub-le-all-native", "direct-mul-all-native",
     "record-u8-native", "record-u16-native", "record-u32-native",
 })
@@ -50,6 +52,7 @@ FEATURE_COMMANDS = {
     "v1-source-relation": ("src/frontends/s31/tests/python/security/test_source_relation_fragment.py",),
     "v2-record-source-relation": ("src/frontends/s31/tests/python/security/test_record_source_fragment.py",),
     "static-sum-dce-source": ("src/frontends/s31/tests/python/functional/test_static_sum_dce.py",),
+    "static-enum-effects-source": ("src/frontends/s31/tests/python/generated/test_static_enum_effect_generated.py",),
     "direct-add-source": ("src/frontends/s31/tests/acceptance/math/addition.py", "--source-only"),
     "direct-sub-le-source": ("src/frontends/s31/tests/acceptance/math/direct_binary.py",),
     "direct-mul-source": ("src/frontends/s31/tests/acceptance/math/direct_multiplication.py",),
@@ -57,6 +60,9 @@ FEATURE_COMMANDS = {
     "record-u16-source": ("src/frontends/s31/tests/acceptance/record_abi/public_u16_direct_gate_v2.py",),
     "record-u32-source": ("src/frontends/s31/tests/acceptance/record_abi/public_u32_direct_gate_v2.py",),
     "static-sum-dce-native": ("src/frontends/s31/tests/acceptance/functional/static_sum_dce.py",),
+    "static-enum-if-native": ("src/frontends/s31/tests/acceptance/functional/static_enum_if.py",),
+    "pow65535-native": ("src/frontends/s31/tests/acceptance/math/power_chain.py",),
+    "pow-factor-native": ("src/frontends/s31/tests/acceptance/math/factor_power.py",),
     "v2-record-source-native": ("src/frontends/s31/tests/acceptance/record_abi/record_source_fragment_v2.py",),
     "direct-add-all-native": ("src/frontends/s31/tests/acceptance/math/addition.py", "--lowering", "direct-gate"),
     "direct-sub-le-all-native": ("src/frontends/s31/tests/acceptance/math/direct_binary.py", "--native"),
@@ -178,7 +184,8 @@ def validate_reports(audit: dict, feature: dict, formal: dict, *, compiler: str,
         require(feature.get(key) is True, f"feature control failed: {key}")
     require(feature.get("compiler_sha256_start") == compiler and
             feature.get("compiler_sha256_end") == compiler, "feature compiler pin mismatch")
-    require(feature.get("selected") == sorted(FEATURE_CASES), "feature selection is not all 17 checks")
+    require(feature.get("selected") == sorted(FEATURE_CASES),
+            f"feature selection is not all {len(FEATURE_CASES)} checks")
     checks = feature.get("cases")
     require(isinstance(checks, dict) and set(checks) == FEATURE_CASES,
             "feature matrix is incomplete or changed")
@@ -208,6 +215,13 @@ def validate_reports(audit: dict, feature: dict, formal: dict, *, compiler: str,
                 f"feature row {name}: script differs from current tree")
 
     require(formal.get("schema") == "s31-v01-formal-checks-v1", "wrong formal report schema")
+    require(formal.get("status") in (None, "passed") and formal.get("failure") is None,
+            "formal receipt reports failure")
+    if "receipt_script_sha256" in formal:
+        receipt_script = root / "scripts/release/formal_receipt.py"
+        require(receipt_script.is_file() and not receipt_script.is_symlink() and
+                formal["receipt_script_sha256"] == digest(receipt_script),
+                "formal receipt runner differs from current tree")
     require(formal.get("compiler_sha256") == compiler, "formal compiler pin mismatch")
     require(oid(formal.get("source_commit")), "formal source commit is missing")
     for key, name in FORMAL_FILES.items():
@@ -230,7 +244,8 @@ def validate_reports(audit: dict, feature: dict, formal: dict, *, compiler: str,
                 f"formal log digest mismatch: {name}")
     return {"source_commit": source_commit, "formal_commit": formal["source_commit"],
             "engine_commit": engine["commit"],
-            "compiler_sha256": compiler, "audit_profiles": 12, "feature_checks": 17,
+            "compiler_sha256": compiler, "audit_profiles": 12,
+            "feature_checks": len(FEATURE_CASES),
             "formal_commands": 3}
 
 

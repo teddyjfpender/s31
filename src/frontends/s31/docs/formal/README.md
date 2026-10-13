@@ -158,6 +158,38 @@ challenge distribution. The source compiler's general parser and specializer
 also need a proof beyond this regenerated concrete certificate. These are
 substantive obligations; [the formal package README](../../../../../formal/s31/README.md)
 tracks the other proved components and the full audit commands.
+The independent release checker now admits ordered subtraction and checks its
+native selector, operands, row position, and fixed root. The Lean exact-byte
+and physical-roster composition on this page still covers add and pointwise
+multiply source gates. A separate bounded byte checker now covers the three
+ordered subtraction example operations. Its native fixture now checks their
+three selected fixed cells against the sealed exporter, without proving the
+whole physical roster in Lean.
+The [ordered subtraction theorem](../../../../../formal/s31/S31/Gadgets/Functional/Correspondence/OrderedSubtractionRelease.lean)
+now proves the three-row `release_sub4` arithmetic relation for arbitrary
+intermediate witnesses and honest existence, using the installed packed-row
+model and executable normalized node semantics. The
+[source-byte checker](../../../../../formal/s31/S31/Gadgets/Functional/Correspondence/OrderedSubtractionBytes.lean)
+and [concrete release theorem](../../../../../formal/s31/S31/Gadgets/Functional/Correspondence/OrderedSubtractionConcrete.lean)
+connect the checked-in `manual.s31` bytes and production normalized JSON to
+those three rows. The [native row theorem](../../../../../formal/s31/S31/Gadgets/Functional/Correspondence/OrderedSubtractionNativeSoundness.lean)
+adds the exported selector and address cells and one coherent wire-value map.
+The [helper byte theorem](../../../../../formal/s31/S31/Gadgets/Functional/Correspondence/OrderedSubtractionHelperNative.lean)
+shows the checked-in pure function inlines to those same rows; a fresh native
+check confirms equal fixed columns and AIR geometry. Native main-row and Gate
+lookup authentication, and proof openings remain separate joins.
+The ordered-subtraction acceptance check also derives every one of the 6,144
+main M31 cells from the admitted source and public input, compares them with a
+fresh honest-prover export, and joins its reported main root to one strictly
+verified proof. This is concrete trace and commitment evidence for that proof;
+it does not establish the missing authentication theorem for arbitrary proof
+openings.
+The reusable [pinned public trace audit](../../tools/audit/README.md) runs
+that check for any source admitted by the bounded public direct-Gate release
+checker. It now recommits the source-derived main columns through the pinned
+native PCS and requires that root to equal the accepted proof's main root.
+CI exercises a square helper, ordered subtraction, and optimized subtraction
+through the same auditor.
 
 ## A complete modeled 512-row trace
 

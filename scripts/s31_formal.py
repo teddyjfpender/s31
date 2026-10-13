@@ -33,6 +33,8 @@ FORMAL = ROOT / "formal/s31"
 PINNED_CONSTANT_TOOL = ROOT / "src/frontends/s31/tools/formal/pinned_constant_values.py"
 PINNED_CONSTANT_FIXTURE = FORMAL / "fixtures/square4-native-physical.json"
 ALIAS8_NATIVE_FIXTURE_TOOL = ROOT / "src/frontends/s31/tools/formal/alias8_native_fixture.py"
+ORDERED_SUBTRACTION_FIXTURE_TOOL = ROOT / "src/frontends/s31/tools/formal/ordered_subtraction_fixture.py"
+ORDERED_SUBTRACTION_NATIVE_TOOL = ROOT / "src/frontends/s31/tools/formal/ordered_subtraction_native_fixture.py"
 RELATION = "src/frontends/s31/language/relation.zig"
 POSEIDON = "src/frontends/riscv/air/memory_commitment/poseidon2_constants.zig"
 SHA = "src/frontends/riscv/air/guest_precompile/sha256_compression.zig"
@@ -81,11 +83,38 @@ BINDINGS = [
     TEXT_CAPTURED_STEP_DIRECT,
     TEXT_RETURNED_MIX,
     TEXT_RETURNED_MIX_DIRECT,
+    "src/frontends/s31/examples/functional/release_square4/functional.s31",
+    "src/frontends/s31/examples/functional/release_square4/manual.s31",
+    "src/frontends/s31/examples/functional/release_sub4/functional.s31",
+    "src/frontends/s31/examples/functional/release_sub4/manual.s31",
+    "src/frontends/s31/examples/functional/release_sub4/optimized.s31",
+    "src/frontends/s31/examples/functional/release_sub4/optimized_manual.s31",
+    "src/frontends/s31/examples/functional/release_let4/functional.s31",
+    "src/frontends/s31/examples/functional/release_let4/manual.s31",
+    "src/frontends/s31/examples/functional/release_higher_order4/functional.s31",
+    "src/frontends/s31/examples/functional/release_higher_order4/manual.s31",
+    "src/frontends/s31/examples/functional/release_closure4/functional.s31",
+    "src/frontends/s31/examples/functional/release_closure4/manual.s31",
+    "src/frontends/s31/examples/functional/release_inline_lambda4/functional.s31",
+    "src/frontends/s31/examples/functional/release_inline_lambda4/manual.s31",
+    "src/frontends/s31/examples/functional/release_curried4/functional.s31",
+    "src/frontends/s31/examples/functional/release_curried4/manual.s31",
+    "src/frontends/s31/examples/functional/release_nested4/functional.s31",
+    "src/frontends/s31/examples/functional/release_nested4/manual.s31",
+    "src/frontends/s31/examples/functional/release_helper_composition4/functional.s31",
+    "src/frontends/s31/examples/functional/release_helper_composition4/manual.s31",
+    "src/frontends/s31/examples/functional/release_optimized4/functional.s31",
+    "src/frontends/s31/examples/functional/release_optimized4/manual.s31",
+    "src/frontends/s31/examples/functional/release_functional_cse4/functional.s31",
+    "src/frontends/s31/examples/functional/release_functional_cse4/manual.s31",
     "src/frontends/s31/build.zig",
     "src/frontends/s31/entry/export_square4_topology.zig",
     "src/frontends/s31/tools/formal/export_square4_topology.zig",
     "src/frontends/s31/tools/formal/pinned_constant_values.py",
     "src/frontends/s31/tools/formal/alias8_native_fixture.py",
+    "src/frontends/s31/tools/formal/ordered_subtraction_fixture.py",
+    "src/frontends/s31/tools/formal/ordered_subtraction_native_fixture.py",
+    "formal/s31/fixtures/correspondence/ordered_subtraction_native.json",
     "src/frontends/s31/language/canonical.zig",
     "src/frontends/s31/language/record_abi.zig",
     "src/frontends/s31/language/relation_compiler.zig",
@@ -163,6 +192,11 @@ BINDINGS = [
     "src/frontends/s31/tests/acceptance/record_abi/nested_alias_v2.py",
     "src/frontends/s31/benchmarks/pow_workers/phase_equivalence.py",
     "src/frontends/s31/tests/acceptance/compiler_correspondence/generated_native_subset.py",
+    "src/frontends/s31/python/package/direct_gate_main_correspondence.py",
+    "src/frontends/s31/tools/audit/public_trace.py",
+    "src/frontends/s31/tests/acceptance/compiler_correspondence/functional_release.py",
+    "src/frontends/s31/tests/acceptance/compiler_correspondence/subtraction_release.py",
+    "src/frontends/s31/tests/acceptance/compiler_correspondence/subtraction_optimized_release.py",
     "src/frontends/s31/tests/acceptance/compiler_correspondence/native_source_cells.py",
     "src/frontends/s31/tests/acceptance/compiler_correspondence/projected_row_adversarial.py",
     "src/frontends/s31/tests/acceptance/compiler_correspondence/native_fixed_root_binding.py",
@@ -303,9 +337,19 @@ BINDINGS = [
     "src/frontends/s31/python/cli/commands.py",
     "src/frontends/s31/python/package/__init__.py",
     "src/frontends/s31/python/package/context.py",
+    "src/frontends/s31/python/package/source_fragments/__init__.py",
+    "src/frontends/s31/python/package/source_fragments/lexical_let.py",
+    "src/frontends/s31/python/package/source_fragments/static_helper.py",
+    "src/frontends/s31/python/package/source_fragments/static_lambda.py",
     "src/frontends/s31/python/package/source_identity.py",
     "src/frontends/s31/python/package/build.py",
     "src/frontends/s31/python/package/correspondence.py",
+    "src/frontends/s31/tests/python/security/functional_release/test_subtraction.py",
+    "src/frontends/s31/python/package/release_admission.py",
+    "src/frontends/s31/tests/python/test_live_optimized_release_binding.py",
+    "src/frontends/s31/tests/acceptance/compiler_correspondence/optimized_release.py",
+    "src/frontends/s31/tests/python/test_optimized_functional_correspondence.py",
+    "src/frontends/s31/tests/acceptance/compiler_correspondence/functional_optimized_release.py",
     "src/frontends/s31/python/package/direct_gate_schedule.py",
     "src/frontends/s31/python/package/manifest_digest.py",
     "src/frontends/s31/python/package/bounded_manifest_v4.py",
@@ -608,6 +652,10 @@ def generated_native_square4_topology() -> str:
 def generated() -> dict[Path, str]:
     render_pinned_values = runpy.run_path(str(PINNED_CONSTANT_TOOL))["render"]
     render_alias8_native_fixture = runpy.run_path(str(ALIAS8_NATIVE_FIXTURE_TOOL))["render"]
+    ordered_subtraction_fixture = runpy.run_path(str(ORDERED_SUBTRACTION_FIXTURE_TOOL))
+    render_ordered_subtraction_fixture = ordered_subtraction_fixture["render"]
+    render_ordered_subtraction_helper = ordered_subtraction_fixture["render_helper"]
+    render_ordered_subtraction_native = runpy.run_path(str(ORDERED_SUBTRACTION_NATIVE_TOOL))["render"]
     check_native_qm31_relation_schedule()
     check_native_eq_relation_schedule()
     check_record_erasure()
@@ -666,6 +714,14 @@ def generated() -> dict[Path, str]:
             render_pinned_values(PINNED_CONSTANT_FIXTURE),
         FORMAL / "S31/Gadgets/Functional/Correspondence/GeneratedAlias8NativeFixture.lean":
             render_alias8_native_fixture(),
+        FORMAL / "S31/Gadgets/Functional/Correspondence/GeneratedOrderedSubtractionRelease.lean":
+            render_ordered_subtraction_fixture(
+                ROOT / "src/frontends/s31/examples/functional/release_sub4/manual.s31"),
+        FORMAL / "S31/Gadgets/Functional/Correspondence/GeneratedOrderedSubtractionHelper.lean":
+            render_ordered_subtraction_helper(
+                ROOT / "src/frontends/s31/examples/functional/release_sub4/functional.s31"),
+        FORMAL / "S31/Gadgets/Functional/Correspondence/GeneratedOrderedSubtractionNativeRows.lean":
+            render_ordered_subtraction_native(),
         FORMAL / "S31/Evidence/Coverage.lean": render_coverage(
             json.loads((FORMAL / "coverage.json").read_text())),
         FORMAL / "source-bindings.json": json.dumps(identity, indent=2) + "\n",

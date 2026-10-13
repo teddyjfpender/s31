@@ -11,7 +11,7 @@ valuable local constraint proofs, but it does not establish that theorem.
 
 [`CompilerCorrespondence.lean`](../../../formal/s31/S31/Gadgets/Functional/CompilerCorrespondence.lean)
 defines an intrinsically typed, four-lane M31 language of arbitrary nested
-`+` and `.*` expressions. For every expression and every four-lane input, it
+`+`, `-`, and `.*` expressions. For every expression and every four-lane input, it
 proves:
 
 1. Static lambda application specializes to the exact direct strict field
@@ -33,6 +33,29 @@ arithmetic rows; lookup balance, trace scheduling, public pins, and STARK
 verification are separate proof obligations. The existing `TextSquare4*`
 modules go deeper into those boundaries for one source-bound example.
 
+[`OrderedSubtractionRelease.lean`](../../../formal/s31/S31/Gadgets/Functional/Correspondence/OrderedSubtractionRelease.lean)
+checks the three add/sub packed rows of the `release_sub4` example. It proves
+that arbitrary satisfying intermediate values force `0 - (x+x)` in all four
+lanes, constructs an honest witness for every input, and equates those rows
+with executable normalized nodes. The independent v2/v3 package checker now
+handles ordered subtraction through its native fixed-row schedule and release
+proofs. [`OrderedSubtractionBytes.lean`](../../../formal/s31/S31/Gadgets/Functional/Correspondence/OrderedSubtractionBytes.lean)
+parses a bounded straight-line four-lane source grammar directly from bytes,
+checks its exact normalized JSON bytes, and proves that arbitrary coherent
+packed rows compute the parsed source. The generated release fixture pins the
+checked-in `manual.s31` and production JSON to a reviewed three-operation DAG;
+[`OrderedSubtractionConcrete.lean`](../../../formal/s31/S31/Gadgets/Functional/Correspondence/OrderedSubtractionConcrete.lean)
+connects those exact bytes to the three-row theorem. This covers the manual
+spelling. A second source-bound fixture captures the three selected fixed
+cells from the sealed native export and checks them against a Lean projection
+of the parsed DAG. The conditional native-row theorem then forces the same
+public result when one coherent address-to-value map satisfies their packed
+arithmetic rows. A separate Lean parser checks the exact `functional.s31`
+helper bytes, proves static inlining yields that same DAG, and composes the
+conditional native-row result. A fresh package check compares complete fixed
+columns and AIR geometry for both spellings. The actual committed main-row
+values, Gate lookup authentication, and proof openings remain separate joins.
+
 ## Remaining proof obligations
 
 | Boundary | Completion criterion |
@@ -48,6 +71,11 @@ The next boundary is connecting actual source bytes and Python's parser,
 elaborator, and serializer to these checked Lean models, then connecting the
 normalized `Program` to Zig's circuit/chip plan and generated component
 manifest. Source hashes trigger review but do not establish correspondence.
+The separate [bounded independent source/relation checker](SOURCE_RELATION_FRAGMENT.md)
+now checks one pure named `fn` call and ordered subtraction for arrays of one
+to eight lanes against the actual normalized JSON. Its capability is limited
+to source-to-relation checking; it does not refine the general Python parser
+or prove the native AIR/compiler path.
 
 ### Certificate-backed path to the production theorem
 

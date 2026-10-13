@@ -13,8 +13,8 @@ preserves the obligation of an unused checked inverse, division, overflow,
 range check, or assertion. The source effect pass still runs before graph
 construction and rejects a partial operation in an inactive dynamic `if` arm.
 
-The first reviewed erasable set is `constant`, `add`, `mul`, `add_const`, and
-`mul_const`: canonical M31 constants and field addition/multiplication are
+The first reviewed erasable set is `constant`, `add`, `sub`, `mul`, `add_const`, and
+`mul_const`: canonical M31 constants and field addition/subtraction/multiplication are
 total. Every other relation operation is retained by default. Extending the
 set requires a separate review of its native constraints and input-range
 semantics. The pass changes only source files containing an enum declaration;

@@ -271,12 +271,22 @@ def build_json(source_path: Path, output: Path, lowering: str = "gate",
         raise
 
 
-def build_text(source_path: Path, output: Path, lowering: str = "gate", fri_fold_step: int = 1) -> Path:
+def build_text(source_path: Path, output: Path, lowering: str = "gate", fri_fold_step: int = 1,
+               correspondence: str = "conservative") -> Path:
     from text_frontend import Parser
+    from package.correspondence import OPTIMIZED_SCHEMA, parse_source_optimized
+
+    if correspondence not in {"conservative", "optimized"}:
+        raise ValueError("unknown S31 correspondence mode")
+    if correspondence == "optimized" and lowering != "direct-gate":
+        raise ValueError("optimized correspondence requires direct-gate lowering")
 
     source_path = source_path.resolve()
     output = output.resolve()
     text_data = source_path.read_bytes()
+    if correspondence == "optimized":
+        # Explicit v3 admission fails before starting a native build.
+        parse_source_optimized(text_data)
     relation, normalized, source_map = lower_text(source_path)
     parser = Parser(text_data.decode(), str(source_path))
     _, circuit = parser.parse()
@@ -290,6 +300,8 @@ def build_text(source_path: Path, output: Path, lowering: str = "gate", fri_fold
             raise FileExistsError(f"package was built with different compiler inputs or lowering: {output}")
         if manifest.get("fri_fold_step", 1) != fri_fold_step:
             raise FileExistsError(f"package was built with a different FRI fold step: {output}")
+        if (manifest.get("correspondence_schema") == OPTIMIZED_SCHEMA) != (correspondence == "optimized"):
+            raise FileExistsError(f"package was built with a different correspondence mode: {output}")
         requested_key_schema = _key_schema(
             relation, lowering, proof_privacy.policy_for(relation, lowering, fri_fold_step))
         _check_cached_key_schema(output, requested_key_schema)
@@ -310,6 +322,8 @@ def build_text(source_path: Path, output: Path, lowering: str = "gate", fri_fold
         manifest = json.loads(manifest_path.read_text())
         manifest["source_text_sha256"] = sha256(text_data)
         manifest["text_frontend_version"] = 1
+        if correspondence == "optimized":
+            manifest["correspondence_schema"] = OPTIMIZED_SCHEMA
         for name in ("source.s31", "source-map.json", "typed-interface.json"):
             manifest["artifacts"][name] = file_hash(package / name)
         if source_path.read_bytes() != text_data or manifest["compiler_sha256"] != compiler_fingerprint():
@@ -317,12 +331,13 @@ def build_text(source_path: Path, output: Path, lowering: str = "gate", fri_fold
         write_json(manifest_path, manifest)
         if lowering == "direct-gate":
             from package.correspondence import (UnsupportedFragment, make_certificate,
-                                                parse_source)
+                                                make_optimized_certificate, parse_source)
 
             try:
-                parse_source(text_data)
+                (parse_source_optimized if correspondence == "optimized" else parse_source)(text_data)
             except UnsupportedFragment:
-                pass
+                if correspondence == "optimized":
+                    raise
             else:
                 topology = json.loads(invoke(
                     str(package / "bin" / f"s31-{manifest['name']}-prover"),
@@ -331,7 +346,8 @@ def build_text(source_path: Path, output: Path, lowering: str = "gate", fri_fold
                 write_json(topology_path, topology)
                 manifest["artifacts"][topology_path.name] = file_hash(topology_path)
                 write_json(manifest_path, manifest)
-                certificate = make_certificate(package)
+                certificate = (make_optimized_certificate(package) if correspondence == "optimized"
+                               else make_certificate(package))
                 certificate_path = package / "correspondence-certificate.json"
                 write_json(certificate_path, certificate)
                 manifest["artifacts"][certificate_path.name] = file_hash(certificate_path)
@@ -349,9 +365,12 @@ def build_text(source_path: Path, output: Path, lowering: str = "gate", fri_fold
     return output
 
 
-def build(source_path: Path, output: Path, lowering: str = "gate", fri_fold_step: int = 1) -> Path:
+def build(source_path: Path, output: Path, lowering: str = "gate", fri_fold_step: int = 1,
+          correspondence: str = "conservative") -> Path:
     if source_path.suffix == ".s31":
-        return build_text(source_path, output, lowering, fri_fold_step)
+        return build_text(source_path, output, lowering, fri_fold_step, correspondence)
+    if correspondence != "conservative":
+        raise ValueError("optimized correspondence requires a .s31 text source")
     return build_json(source_path, output, lowering, fri_fold_step=fri_fold_step)
 
 

@@ -1,0 +1,16 @@
+fn twice(a: [m31; 4]) -> [m31; 4] {
+    a + a
+}
+
+fn apply(f: Fn([m31; 4]) -> [m31; 4], a: [m31; 4]) -> [m31; 4] {
+    f(a)
+}
+
+fn composed(a: [m31; 4]) -> [m31; 4] {
+    apply(fun(v: [m31; 4]) -> [m31; 4] => a + v, twice(a))
+}
+
+circuit composition4(public x: [m31; 4]) -> public [m31; 4] {
+    let result = composed(x);
+    result
+}

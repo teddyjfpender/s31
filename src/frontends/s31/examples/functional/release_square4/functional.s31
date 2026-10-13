@@ -1,0 +1,10 @@
+fn square(v: [m31; 4]) -> [m31; 4] { v .* v }
+fn double(v: [m31; 4]) -> [m31; 4] { v + v }
+fn twice_square(v: [m31; 4]) -> [m31; 4] {
+    let squared = square(v);
+    double(squared)
+}
+circuit square4(public x: [m31; 4]) -> public [m31; 4] {
+    let result = twice_square(x);
+    result
+}

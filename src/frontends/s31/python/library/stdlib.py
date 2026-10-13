@@ -253,14 +253,21 @@ class Builder:
                span: dict[str, int] | None = None) -> Value:
         if lhs.typ != rhs.typ or lhs.typ.kind != "m31":
             raise TypeErrorS31("arithmetic requires equally shaped m31 arrays")
-        if op not in {"add", "mul"}:
+        if op not in {"add", "sub", "mul"}:
             raise TypeErrorS31(f"unsupported arithmetic operation {op}")
         if lhs.constant is not None and rhs.constant is not None:
-            result = (lhs.constant + rhs.constant) if op == "add" else (lhs.constant * rhs.constant)
+            result = {"add": lhs.constant + rhs.constant,
+                      "sub": lhs.constant - rhs.constant,
+                      "mul": lhs.constant * rhs.constant}[op]
             return self.splat(result % P, lhs.typ.length)
-        if lhs.constant is not None:
+        if op != "sub" and lhs.constant is not None:
             lhs, rhs = rhs, lhs
         if rhs.constant is not None:
+            # x - c is one add-by-constant gate; dynamic x - y is one
+            # native subtraction gate instead of a negation and addition.
+            if op == "sub":
+                return self.emit("add_const", lhs.typ, wanted=wanted, span=span,
+                                 lhs=self.realize(lhs).ref, constant=(-rhs.constant) % P)
             return self.emit(f"{op}_const", lhs.typ, wanted=wanted, span=span,
                              lhs=self.realize(lhs).ref, constant=rhs.constant)
         return self.emit(op, lhs.typ, wanted=wanted, span=span,
@@ -762,6 +769,8 @@ def reference_m31_binary(op: str, lhs: list[int], rhs: list[int]) -> list[int]:
         raise ValueError("arithmetic needs equally shaped canonical M31 arrays")
     if op == "add":
         return [(a + b) % P for a, b in zip(lhs, rhs)]
+    if op == "sub":
+        return [(a - b) % P for a, b in zip(lhs, rhs)]
     if op == "mul":
         return [(a * b) % P for a, b in zip(lhs, rhs)]
     raise ValueError("unknown M31 arithmetic operation")

@@ -1,5 +1,74 @@
 # Bounded direct-gate process cost exploration
 
+## The 512-to-1024-row boundary
+
+`threshold.py` compares two programs that compute `194 * x` in each of four
+M31 lanes. The short program uses seven calls to a pure `double` helper and
+two final additions:
+
+```s31
+fn double(a: [m31; 4]) -> [m31; 4] { a + a }
+
+circuit scale194(public x: [m31; 4]) -> public [m31; 4] {
+    let v2 = double(x);
+    let v4 = double(v2);
+    let v8 = double(v4);
+    let v16 = double(v8);
+    let v32 = double(v16);
+    let v64 = double(v32);
+    let v128 = double(v64);
+    let v192 = v64 + v128;
+    let out = v2 + v192;
+    out
+}
+```
+
+The helper inlines to exactly nine native addition gates. The independently
+checked source relation and gate schedule are identical to the flat source
+with each `double(v)` replaced by `v + v`. Its Gate AIR has 329 raw rows and
+512 padded rows. A deliberately linear recurrence starts with `v1 = x + x`
+and repeats `vN = v(N-1) + x` through `v193`. It computes the same `194 * x`
+with 193 gates: 513 raw rows and 1024 padded rows. This is an **algorithmic
+addition-chain improvement**; no automatic compiler optimization turns the
+linear source into the short one. The nine-gate functional source is inside
+the bounded source correspondence certificate. The 193-gate source is outside
+its 16-gate limit, though the ordinary native package can still be built and
+its proofs verified. Consequently, this benchmark does not establish full
+source-to-native correspondence for the linear package.
+
+Run the source and field-semantics check, then the native comparison:
+
+```sh
+python3 -m unittest src/frontends/s31/benchmarks/direct_gate_release_cost/test_threshold.py -q
+python3 src/frontends/s31/benchmarks/direct_gate_release_cost/threshold.py \
+  --out zig-out/s31-threshold-study --samples 12
+```
+
+The script runs the same twelve four-lane inputs for each program. Every
+trial must pass its independent value oracle and native verifier, and must
+reject a changed public claim. It records hashes of both packages, sources,
+proofs, and trial reports. It measures fresh prover and verifier processes,
+with native proof-of-work variability visible separately. The results apply
+to this host and these programs; they are not a predictor for other AIRs.
+
+The [2026-10-12 local report](threshold-observations-2026-10-12.json) contains
+12 accepted proofs and 12 rejected changed claims per case on arm64 macOS.
+Both packages use the same compiler fingerprint. Native package build time is
+excluded from the process measurements.
+
+| Program | Gates | Raw / padded rows | Fixed cells | Prove + verify median | After reported PoW median | Proof bytes median | Prover RSS median |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Addition chain | 9 | 329 / 512 | 4,096 | 67.33 ms | 35.50 ms | 55,004 | 9.13 MB |
+| Linear chain | 193 | 513 / 1,024 | 8,192 | 81.25 ms | 39.85 ms | 71,553 | 10.81 MB |
+
+The shorter program's local median paired wall time was 17% lower and its
+proof was 23% smaller. Twelve process samples are too few to establish a
+stable speedup, and PoW and host scheduling affect wall time. The clear
+structural result is that nine additions keep the AIR at 512 rows while 193
+additions push it to 1,024. The two programs have independently checked M31
+outputs for the benchmark assignments; only the shorter source has the
+bounded source correspondence certificate.
+
 Run from the repository root after compiler and package sources have settled:
 
 ```sh

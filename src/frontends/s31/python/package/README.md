@@ -49,6 +49,55 @@ Verification callers must use the yielded snapshot while its context is open.
 General direct-gate text packages remain buildable; programs outside the
 bounded certificate grammar fail this stricter admission. This gate still
 inherits the certificate's stated AIR/PCS and native implementation assumptions.
+For admitted public four-lane programs, the separate
+[pinned public trace audit](../../tools/audit/README.md) verifies one proof and
+compares every source-derived Gate base cell with its native public export and
+recommits those cells against the accepted main commitment. It is optional,
+so ordinary `verify-release` does not pay for rebuilding a public trace.
+The v2 grammar now includes up to eight pure static functions with zero to two
+parameters, of type `[m31; 4]` or unary
+`Fn([m31; 4]) -> [m31; 4]`, and either result type. It accepts bounded bodies of add,
+pointwise-multiply, and earlier-declared function calls. Their calls are
+independently expanded to existing circuit wires and fresh generated wires before the
+same positional SSA, topology, fixed-root, and key checks. The
+[release acceptance](../../tests/acceptance/compiler_correspondence/functional_release.py)
+compares the function with handwritten gates, proves the function package,
+passes `verify-release`, and rejects a changed public claim. The independent
+helper parser lives in [source_fragments](source_fragments/README.md) and is
+included in the compiler fingerprint.
+The same release grammar accepts a bounded lexical `let name = e in body`
+inside a circuit let. Its independent parser tracks shadowing and exact
+anonymous `_s31_N` wire allocation; the
+[lexical release acceptance](../../tests/acceptance/compiler_correspondence/lexical_release.py)
+compares the functional and direct AIR, proves the claim, and exercises
+`verify-release` and changed-claim rejection.
+Named unary functions can also be bound as source-only values and passed
+through `Fn` parameters. The
+[higher-order release acceptance](../../tests/acceptance/compiler_correspondence/higher_order_release.py)
+requires the function value to disappear completely: its package has the
+same normalized relation and native AIR geometry as two handwritten gates,
+passes `verify-release`, and rejects a changed public claim.
+The [captured-lambda release acceptance](../../tests/acceptance/compiler_correspondence/closure_release.py)
+additionally checks a unary lambda with a bounded arithmetic and lexical-let
+body. Its lexical capture is resolved at function creation, and passing the
+closure through a `Fn` parameter adds no relation or AIR node. A later lexical binding with the
+same name leaves the captured wire unchanged.
+An [inline-lambda release example](../../examples/functional/release_inline_lambda4/README.md)
+passes a lambda directly to a `Fn` parameter and invokes it twice. Its
+independent certificate checks the exact two-gate result and native AIR
+geometry against handwritten arithmetic.
+The [curried release example](../../examples/functional/release_curried4/README.md)
+returns a captured unary function from a named helper and applies it directly
+as `make(x)(x)`. The independent certificate requires only the two handwritten
+gates and the matching native AIR geometry.
+The [nested release example](../../examples/functional/release_nested4/README.md)
+passes both a computed `Fn` value and a computed array value as arguments.
+Nested calls are expanded in source evaluation order and require the same
+three gates and native AIR geometry as the direct program. Parenthesized
+returned callees have the same checked relation.
+The [composed helper example](../../examples/functional/release_helper_composition4/README.md)
+also certifies nested calls and captured lambdas inside a helper body. Its
+static function arguments leave only the two handwritten addition gates.
 
 `inspect-record-proof` also executes from a private copy of the package,
 proof, and statement. Its `unpinned_snapshot` check establishes internal
@@ -65,8 +114,9 @@ bytes during native execution.
 `correspondence.py` independently reparses the exact source bytes for a bounded
 public four-lane add/multiply fragment. It erases alias lets and redundant
 parentheses without allocating SSA nodes, then checks one to sixteen canonical
-arithmetic lets. Nested arithmetic, calls, and other functional forms remain
-outside this independent package certificate. For direct-gate text packages
+arithmetic lets. Calls to the bounded static functions are covered as above;
+nested arithmetic, other calls, and other functional forms remain outside
+this independent package certificate. For direct-gate text packages
 in that grammar, build attaches `correspondence-certificate.json` and verification
 requires it. The checker compares the complete normalized relation, canonical
 SSA, public ABI, native source-map gate schedule, value-free gate topology,
@@ -79,8 +129,11 @@ An explicit `parse_source_optimized` / `make_optimized_certificate` /
 first-match CSE. It maps every source producer to a compact canonical ID,
 checks that duplicate source names reuse the original native gate span, and
 replays the compact direct-gate topology and fixed columns. The default text
-package builder and `check_package` remain v2-only; they do not automatically
-admit optimized source. A focused native test checks the reused span for a
+package builder and `check_package` remain conservative v2. Building a text
+source with `--lowering direct-gate --correspondence optimized` records an
+explicit v3 marker, attaches the v3 certificate, and requires the independent
+v3 checker in package verification and five-pin `verify-release`. A focused
+native test checks the reused span for a
 four-operation source that lowers to three gates, and Python mutation tests
 reject a forged source map after its report digest is recomputed. The
 on-demand `tests/python/check_optimized_native_package.py` builds a temporary
@@ -89,8 +142,14 @@ reseals and rejects a malformed duplicate span. It also proves one source
 claim, verifies it natively, joins the complete fixed and public main exports
 to the first two proof commitments, and rejects changed roots and a changed
 public output. Use `--work PATH` to retain the exact package and proof. This
-is an opt-in regression, not v3 release admission; it requires a clean pinned
-Stwo dependency. The [worked source/AIR/root example](../../../../formal/s31/S31/Gadgets/Functional/Correspondence/OptimizedSourceAirRows.md)
+remains a separate opt-in trace regression; the checked-in
+[`optimized_release.py`](../../tests/acceptance/compiler_correspondence/optimized_release.py)
+exercises v3 release admission and both live outputs of the repeated gate.
+[`functional_optimized_release.py`](../../tests/acceptance/compiler_correspondence/functional_optimized_release.py)
+checks gate reuse across two live pure helper calls; seven normalized nodes
+occupy four native arithmetic gates with handwritten AIR geometry.
+Both require a clean pinned Stwo dependency. The
+[worked source/AIR/root example](../../../../formal/s31/S31/Gadgets/Functional/Correspondence/OptimizedSourceAirRows.md)
 gives the handwritten four-lane computation.
 It also checks each source instruction directly against the eight **exported
 fixed AIR columns**, using the same row formula as Lean's general
@@ -127,8 +186,10 @@ The public Python API remains in `../s31.py`; its functions import these
 modules. The dependency direction is `context -> verify -> build -> CLI`.
 
 `source_relation_fragment.py` is a separate development/audit checker for a
-bounded four-lane fragment with private inputs, canonical splat constants,
-and assertions. Its result is explicitly `source-to-relation-only`; it is not
+bounded one-to-eight-lane M31 fragment with private inputs, canonical splat
+constants, assertions, native subtraction, and one pure two-argument named
+function whose call is statically erased. Its result is explicitly
+`source-to-relation-only`; it is not
 used for package admission or native verification. It independently parses
 source bytes, compares the entire normalized relation, and optionally checks
 direct-gate public ABI and manifest identities. Its [scope and example](../../../../../design/s31/language/SOURCE_RELATION_FRAGMENT.md)

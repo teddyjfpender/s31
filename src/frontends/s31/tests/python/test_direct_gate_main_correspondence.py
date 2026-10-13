@@ -70,6 +70,24 @@ class DirectGateMainCorrespondenceTests(unittest.TestCase):
         self.assertTrue(all(len(column) == 512 for column in main))
         self.assertEqual(public, [0, 1, 2, 7, 0, 3, 8, 63])
 
+    def test_ordered_subtraction_reconstructs_complete_main_trace(self) -> None:
+        from package.correspondence import parse_source
+
+        example = S31 / "examples/functional/release_sub4"
+        _, direct = parse_source((example / "manual.s31").read_bytes())
+        _, helper = parse_source((example / "functional.s31").read_bytes())
+        self.assertEqual(direct, helper)
+        self.assertEqual([item["op"] for item in direct["instructions"]],
+                         ["add", "sub", "sub"])
+        words = (0, 1, 2, 7)
+        values, claimed = source_values(direct, words)
+        self.assertEqual(values[-1], claimed)
+        self.assertEqual(claimed, (0, P - 2, P - 4, P - 14))
+        main, public = expected_main_columns(direct, words)
+        self.assertEqual(len(main), 12)
+        self.assertTrue(all(len(column) == 512 for column in main))
+        self.assertEqual(public, [*words, *claimed])
+
 
 if __name__ == "__main__":
     unittest.main()

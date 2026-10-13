@@ -1,5 +1,43 @@
 # Math native acceptance
 
+`power_chain.py` compares four eight-lane `pow<65535>` calls with an explicit
+binary multiplication schedule. It derives each circuit's output exponent
+from its complete normalized multiplication graph, calculates eight expected
+field values independently, proves both native circuits, verifies their
+claims, and rejects changed public results. It pins 76 versus 120 source
+nodes, 471 versus 559 raw QM31 rows, and 512 versus 1,024 padded rows.
+The [worked source](../../../examples/arithmetic/powers/README.md) explains
+the saved-power identity and includes the two programs.
+
+`factor_power.py` compares four eight-lane `pow<196605>` calls against a
+binary circuit generated directly from the exponent's bits. It checks the
+entire normalized multiplication graph symbolically, eight independent
+modular outputs, native proof acceptance and changed-claim rejection. It
+pins 84 versus 128 multiplication nodes, 487 versus 575 raw QM31 rows, and
+512 versus 1,024 padded rows. Its factor schedule builds `x³` in two gates
+and then reuses the 19-step `65535` chain.
+
+`field_subtraction.py` checks that dynamic field subtraction emits one native
+subtraction relation node and fewer native QM31 rows than the prior
+negation-plus-add form. It compares two
+independently calculated four-lane assignments, proves both forms, verifies
+all four proofs with their generated native verifiers, and changes each public
+claim to require rejection. The fixture's padded trace remains 512 rows, so
+its gate reduction is a raw-gate saving rather than a claimed proving-time
+speedup.
+
+`field_subtraction_partial.py` compiles a five-lane subtraction both directly
+and through a named functional helper. It requires identical normalized IR,
+selected profile, raw and padded rows, preprocessing, public binding, and FRI
+settings. The fifth lane occupies the only active position in the second
+packed row. A separate bounded source parser independently checks the
+functional package's source bytes, normalized relation, public ABI, and
+manifest identities; this check has `source-to-relation-only` scope. The
+functional package's generated verifier must accept the honest
+proof and reject public mutations of both the first and fifth output lanes.
+The script reports AIR geometry and checks expected values with an independent
+modular calculation.
+
 `addition.py` generates a checked-addition source for each of the ten nominal
 integer types (`u8` through `u128` and `i8` through `i128`). It checks the
 signedness/width tag and three-node relation shape, uses an independent Python

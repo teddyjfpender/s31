@@ -69,12 +69,12 @@ def lexFuel : Nat → List Nat → Option (List Token)
       else if head == 45 then
         match tail with
         | 62 :: rest => do return [45, 62] :: (← lexFuel fuel rest)
-        | _ => none
+        | _ => do return [45] :: (← lexFuel fuel tail)
       else if head == 46 then
         match tail with
         | 42 :: rest => do return [46, 42] :: (← lexFuel fuel rest)
         | _ => none
-      else if List.contains [40, 41, 91, 93, 59, 58, 123, 125, 61, 43] head then
+      else if List.contains [40, 41, 44, 91, 93, 59, 58, 123, 125, 61, 43] head then
         do return [head] :: (← lexFuel fuel tail)
       else none
 

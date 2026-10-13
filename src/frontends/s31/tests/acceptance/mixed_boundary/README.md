@@ -1,5 +1,15 @@
 # Mixed boundary command acceptance
 
+`field_sub_feeder.py` proves a private four-lane subtraction whose result is
+the input to one authenticated repeat chip. It checks the generated three-slot
+component roster, an independently computed modular result, native proof
+acceptance, and changed-public-claim rejection. This specifically guards the
+source-to-chip endpoint path when a subtraction gate produces the endpoint.
+
+```sh
+python3 src/frontends/s31/tests/acceptance/mixed_boundary/field_sub_feeder.py
+```
+
 `record_general_v2.py` is the admitted public-record ABI v2 proof gate for
 the source-pinned N=1 and N=8 `direct-mixed-general` family. It compiles each
 source, checks the generated component manifest and registry digest, proves,

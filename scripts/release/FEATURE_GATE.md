@@ -16,16 +16,20 @@ python3 -B scripts/release/s31_feature_gate.py --mode full \
 ```
 
 `source` runs the independent bounded v1 and v2 source-to-relation tests,
-static-sum dead-code tests, all ten signed/unsigned widths for checked addition,
+static-sum dead-code tests, the 112-program static-enum effect corpus, all ten signed/unsigned widths for checked addition,
 subtraction, order, and checked/wrapping multiplication through source and
 independent value-oracle checks, and public u8/u16/u32 record ABI static checks.
 It builds no native proofs.
 
 `smoke` includes those source checks and selected native proofs: static-sum DCE
-on a dedicated chip, the bounded v2 record source fragment, u8 addition,
+on a dedicated chip, static enum effect staging with three direct-Gate proofs,
+the bounded v2 record source fragment, u8 addition,
 i8 subtraction/order, u8 checked/wrapping multiplication, and public u8/u32
-record ABI. `full` expands the direct integer native runs to all ten widths and
-adds the public u16 record ABI proof. The bounded v1 checker remains source-only;
+record ABI. `full` has 21 checks. It expands the direct integer native runs to
+all ten widths, adds the public u16 record ABI proof, and compares both
+`pow<65535>` and factored `pow<196605>` against explicit binary circuits. Each
+four-call comparison crosses a padded AIR boundary. The bounded
+v1 checker remains source-only;
 its tests include re-sealed relation mutations but establish only the
 `source-to-relation-only` capability. The v2 record source proof binds the
 checked record fixture to a native generated verifier; it does not prove a

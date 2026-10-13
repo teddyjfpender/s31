@@ -43,6 +43,8 @@ def expected(node: dict, args: list[tuple[str, list[int]]]) -> list[int]:
         return a.copy()
     if op == "add":
         return [(x + y) % P for x, y in zip(a, b)]
+    if op == "sub":
+        return [(x - y) % P for x, y in zip(a, b)]
     if op == "mul":
         return [(x * y) % P for x, y in zip(a, b)]
     if op == "add_const":
@@ -249,7 +251,7 @@ def corpus() -> list[Case]:
     u16 = lambda x: ("u16", x)
     cases = [operation_case("constant", [], constant=P - 1, length=8),
              operation_case("cast_m31", [u16([0, 1, 65535])])]
-    for op in ["add", "mul"]:
+    for op in ["add", "sub", "mul"]:
         cases.append(operation_case(op, [m31(a), m31(b)]))
     for op in ["add_const", "mul_const"]:
         cases.append(operation_case(op, [m31(a)], constant=P - 1))

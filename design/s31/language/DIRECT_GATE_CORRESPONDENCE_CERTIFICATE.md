@@ -9,18 +9,23 @@ native verifier's accepted proof language.
 The checker independently tokenizes the exact UTF-8 `.s31` bytes. Outside
 `//` comments, only ASCII whitespace and tokens are admitted. It accepts
 one public `[m31; 4]` input and one public `[m31; 4]` output, 1–16 fresh
-arithmetic `let` bindings of `earlier + earlier` or `earlier .* earlier`,
+arithmetic `let` bindings of `earlier + earlier`, `earlier - earlier`, or
+`earlier .* earlier`,
 interleaved with alias bindings `let alias = earlier;`, then a returned
 arithmetic wire or its alias. Redundant parentheses and an optional final
 semicolon are allowed and create no additional SSA node or gate. Comments
-and whitespace are allowed. Imports, functions, constants, private inputs,
-assertions, casts, and nested arithmetic are outside this version. Each use
-must reference the input or a previous binding.
+and whitespace are allowed. Up to eight acyclic pure named helpers, bounded
+unary lambdas, monomorphic function values, and expression-level lexical
+`let` are statically expanded under the same gate limit. Imports, constants,
+private inputs, assertions, casts, and witness-dependent control flow remain
+outside this certificate. Each emitted gate reads the input or an earlier wire.
 The exact source is limited to 16,384 UTF-8 bytes and 256 tokens.
-Commutative operands must appear in increasing positional-wire order, and
+Commutative `+` and `.*` operands must appear in increasing positional-wire
+order in v2; subtraction retains its written left/right order. In v2,
 no two bindings may repeat the same operation on the same operand pair. The
 production canonicalizer would reorder or merge those cases, so this
-certificate profile explicitly excludes them.
+certificate profile explicitly excludes them. Opt-in v3 independently checks
+commutative sorting and repeated gate reuse; it still never sorts subtraction.
 
 For example:
 
@@ -54,7 +59,7 @@ ABI. It requires one six-row direct input packing span followed by exactly
 one QM31 row per arithmetic node, in the same source-map order. It checks
 the value-free native `gate-topology.json` artifact: the first three ordinary
 multiply and add gates pack the four input lanes, each source add or
-pointwise multiply gate consumes the previously checked wire addresses,
+ordered subtraction or pointwise multiply gate consumes the previously checked wire addresses,
 and four masks plus three inverse-basis gates unpack the returned wire into
 the four public result addresses. The native builder reserves address 2 for
 its fixed extension constant, addresses 3–6 for input words, and addresses
@@ -74,13 +79,16 @@ selector or an operand changes the checked row plan. Separately,
 `check_source_fixed_rows` starts from the
 source SSA and reads the **exported eight fixed columns** at the modeled row
 for every instruction. It requires circuit row `5 + id`, source-add AIR row
-`3 + earlier_adds`, or source-pointwise AIR row
-`total_add_rows + 28 + earlier_pointwise_products`. It compares all four
+`3 + earlier_adds`, source-sub AIR row
+`total_add_rows + earlier_subs`, or source-pointwise AIR row
+`total_add_rows + source_subs + 28 + earlier_pointwise_products`. It compares all four
 selectors, three addresses, and the source-derived use count at that row.
-The fixed group has one subtraction and 27 ordinary multiplications, so the
-pointwise offset is the sum of the preceding three group lengths. This direct
-projection check corresponds to Lean's `expectedRows` and `expectedCells`
-constructors for any admitted 1–16 instruction program, while the existing
+The constant island has one subtraction and 27 ordinary multiplications,
+so the pointwise offset is the sum of the preceding three group lengths.
+For the add/pointwise subset, this direct projection check corresponds to
+Lean's `expectedRows` and `expectedCells` constructors. The native source
+subtraction case is checked executably but is not yet included in those
+Lean byte-to-row constructors. The existing
 full gate replay separately checks that the exported cells agree with the
 native gate list. The two checks are executable package admission, not a
 Lean proof of Zig emission or commitment binding. Native v2 topology

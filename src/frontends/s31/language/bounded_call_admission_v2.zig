@@ -87,7 +87,7 @@ pub fn extract(allocator: std.mem.Allocator, program: relation.Program) !Plan {
             source_repeat_names[source_repeat_count] = node.name;
             source_repeat_count += 1;
         },
-        .add, .mul, .add_const, .mul_const, .sum_lanes => {},
+        .add, .sub, .mul, .add_const, .mul_const, .sum_lanes => {},
         else => return error.UnsupportedManyCallNode,
     };
     if (source_repeat_count == 0) return error.NoChipCalls;

@@ -1,0 +1,9 @@
+fn make(a: [m31; 4]) -> Fn([m31; 4]) -> [m31; 4] {
+    let squared = a .* a;
+    fun(v: [m31; 4]) -> [m31; 4] => v + squared
+}
+
+circuit curried4(public x: [m31; 4]) -> public [m31; 4] {
+    let result = make(x)(x);
+    result
+}

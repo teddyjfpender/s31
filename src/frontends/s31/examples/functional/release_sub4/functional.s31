@@ -1,0 +1,10 @@
+fn affine(a: [m31; 4], b: [m31; 4]) -> [m31; 4] {
+    let doubled = a + a;
+    let difference = b - doubled;
+    difference - a
+}
+
+circuit release_sub4(public x: [m31; 4]) -> public [m31; 4] {
+    let result = affine(x, x);
+    result
+}

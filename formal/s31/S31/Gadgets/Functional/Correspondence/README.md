@@ -28,6 +28,12 @@ arbitrary coherent wire satisfying those modeled cells has the source result
 at the selected output address. Native emitter and proof authentication remain
 explicitly outside this theorem.
 
+[The live optimized release fixture](LiveOptimizedRelease.md) checks the exact
+source, normalized JSON and canonical IR bytes used by the native release
+acceptance. Both repeated additions feed the output: five source lets share
+four arithmetic producers at rows 3, 503, 4 and 5. The conditional modeled
+AIR theorem binds any locally accepted public claim to that exact source.
+
 ## Latest derived-roster join
 
 [The arbitrary-trace theorem](DerivedRosterArbitraryTrace.md) joins exact
@@ -122,8 +128,9 @@ that the Zig fixture's expected canonical bytes equal the Lean literal. The
 canonical digest for this fixture is
 `2088c1bad15f2ba5b52f0214e9d3d66744b9c84aa6218aa336d8b337157e7132`.
 These are focused executable checks across implementations, not a universal
-Lean theorem about the Zig serializer. In particular, the large pinned byte
-literals are not kernel-proved to satisfy `checkBytes`; the universal theorem
+Lean theorem about the Zig serializer. The older large pinned byte literals
+are not kernel-proved to satisfy `checkBytes`; the new live release fixture
+does kernel-check its exact production byte triple. The universal theorem
 applies whenever that checker accepts its three byte inputs.
 
 The **production canonical builder** accepts this reversed/CSE form. The
@@ -131,8 +138,9 @@ Python checker now has a separate `parse_source_optimized` and v3 certificate
 API. It derives a source-to-canonical ID map, checks reused native source-map
 spans and compact topology, and rejects altered maps even if a report digest
 is recomputed. The default v2 package build and verification path still
-rejects reversed/CSE; v3 admission is explicitly opt-in and has not been
-wired into the package builder. The new Lean grammar is an extension model.
+rejects reversed/CSE; explicit `build --correspondence optimized` now attaches
+the v3 certificate and strict `verify-release` recomputes it. The new Lean
+grammar is an extension model.
 The structural optimizer's audit-completeness theorem is now proved in
 `CanonicalDagCompleteness.lean`. Authentication of the resulting AIR and proof
 remains open.

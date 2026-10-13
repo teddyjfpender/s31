@@ -1,0 +1,10 @@
+fn square(v: [m31; 4]) -> [m31; 4] { v .* v }
+fn twice_square(v: [m31; 4]) -> [m31; 4] {
+    let squared = square(v);
+    squared + squared
+}
+fn apply(f: Fn([m31; 4]) -> [m31; 4], v: [m31; 4]) -> [m31; 4] { f(v) }
+circuit higher_order4(public x: [m31; 4]) -> public [m31; 4] {
+    let result = let f = twice_square in apply(f, x);
+    result
+}

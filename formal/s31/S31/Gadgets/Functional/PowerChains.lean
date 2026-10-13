@@ -90,4 +90,110 @@ theorem pow15Code_rejects_forged (x claim : M31)
     simpa using (pow15Code_accepts x [claim]).mp accepted
   exact falseClaim equal
 
+namespace AdditionChainCertificate
+
+/-!
+A source-independent certificate for multiplication schedules. Reference 0
+is the input `x`; each pair refers to two earlier powers and appends their
+product. The executable bound check rejects forward and missing references.
+`values_eq_powers` proves the algebraic meaning of *any* such schedule. The
+concrete 19-step certificate below is checked against the Python compiler's
+chain in the source test; Python emission and native AIR remain separate trust
+boundaries.
+-/
+
+abbrev F := S31.Field.F
+
+def exponentStep (powers : List Nat) (refs : Nat × Nat) : List Nat :=
+  powers ++ [powers.getD refs.1 0 + powers.getD refs.2 0]
+
+def valueStep (values : List F) (refs : Nat × Nat) : List F :=
+  values ++ [values.getD refs.1 1 * values.getD refs.2 1]
+
+def exponents (refs : List (Nat × Nat)) : List Nat :=
+  refs.foldl exponentStep [1]
+
+def values (x : F) (refs : List (Nat × Nat)) : List F :=
+  refs.foldl valueStep [x]
+
+def valid (refs : List (Nat × Nat)) : Bool :=
+  (refs.foldl (fun (state : Nat × Bool) pair =>
+    (state.1 + 1, state.2 && decide (pair.1 < state.1) &&
+                    decide (pair.2 < state.1))) (1, true)).2
+
+private theorem getD_map_pow (x : F) (powers : List Nat) (index : Nat) :
+    (powers.map (fun exponent => x ^ exponent)).getD index 1 =
+      x ^ powers.getD index 0 := by
+  cases h : powers[index]? with
+  | none => simp [List.getD_eq_getElem?_getD, h]
+  | some exponent => simp [List.getD_eq_getElem?_getD, h]
+
+private theorem step_agrees (x : F) (powers : List Nat)
+    (refs : Nat × Nat) :
+    valueStep (powers.map (fun exponent => x ^ exponent)) refs =
+      (exponentStep powers refs).map (fun exponent => x ^ exponent) := by
+  simp only [valueStep, exponentStep, List.map_append, List.map_cons,
+             List.map_nil]
+  rw [getD_map_pow x powers refs.1, getD_map_pow x powers refs.2,
+      pow_add]
+
+private theorem fold_agrees (x : F) (refs : List (Nat × Nat))
+    (powers : List Nat) :
+    refs.foldl valueStep (powers.map (fun exponent => x ^ exponent)) =
+      (refs.foldl exponentStep powers).map (fun exponent => x ^ exponent) := by
+  induction refs generalizing powers with
+  | nil => rfl
+  | cons pair rest ih =>
+      simp only [List.foldl_cons]
+      rw [step_agrees]
+      exact ih _
+
+theorem values_eq_powers (x : F) (refs : List (Nat × Nat)) :
+    values x refs = (exponents refs).map (fun exponent => x ^ exponent) := by
+  simpa [values, exponents] using fold_agrees x refs [1]
+
+/-- The actual star-chain wire indices for the compiler's large all-ones
+schedule. Each pair's first index is the previous wire. -/
+def pow65535Refs : List (Nat × Nat) := [
+  (0, 0), (1, 0), (2, 2), (3, 3), (4, 2),
+  (5, 5), (6, 6), (7, 7), (8, 8), (9, 5),
+  (10, 10), (11, 11), (12, 12), (13, 13), (14, 14),
+  (15, 15), (16, 16), (17, 17), (18, 10)
+]
+
+theorem pow65535Refs_valid : valid pow65535Refs = true := by decide
+theorem pow65535Refs_steps : pow65535Refs.length = 19 := by decide
+theorem pow65535Refs_target : (exponents pow65535Refs).getD 19 0 = 65535 := by decide
+
+theorem pow65535_value (x : F) :
+    (values x pow65535Refs).getD 19 1 = x ^ 65535 := by
+  rw [values_eq_powers]
+  rw [getD_map_pow, pow65535Refs_target]
+
+/-- Build `x³`, then reuse the `65535` schedule with its references shifted
+past the two prefix multiplications. Literal indices let the source test
+compare this certificate directly with the production circuit graph. -/
+def pow196605Refs : List (Nat × Nat) := [
+  (0, 0), (1, 0),
+  (2, 2), (3, 2), (4, 4), (5, 5), (6, 4),
+  (7, 7), (8, 8), (9, 9), (10, 10), (11, 7),
+  (12, 12), (13, 13), (14, 14), (15, 15), (16, 16),
+  (17, 17), (18, 18), (19, 19), (20, 12)
+]
+
+theorem pow196605Refs_valid : valid pow196605Refs = true := by decide
+theorem pow196605Refs_steps : pow196605Refs.length = 21 := by decide
+theorem pow196605Refs_factor :
+    pow196605Refs = [(0, 0), (1, 0)] ++
+      pow65535Refs.map (fun refs => (refs.1 + 2, refs.2 + 2)) := by decide
+theorem pow196605Refs_target :
+    (exponents pow196605Refs).getD 21 0 = 196605 := by decide
+
+theorem pow196605_value (x : F) :
+    (values x pow196605Refs).getD 21 1 = x ^ 196605 := by
+  rw [values_eq_powers]
+  rw [getD_map_pow, pow196605Refs_target]
+
+end AdditionChainCertificate
+
 end S31.Functional

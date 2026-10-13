@@ -16,6 +16,7 @@ from abi.binding_v2 import validate_binding
 ERASABLE_FIELDS = {
     "constant": frozenset({"name", "op", "constant", "length"}),
     "add": frozenset({"name", "op", "lhs", "rhs"}),
+    "sub": frozenset({"name", "op", "lhs", "rhs"}),
     "mul": frozenset({"name", "op", "lhs", "rhs"}),
     "add_const": frozenset({"name", "op", "lhs", "constant"}),
     "mul_const": frozenset({"name", "op", "lhs", "constant"}),

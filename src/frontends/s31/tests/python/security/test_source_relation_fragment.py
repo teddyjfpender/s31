@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import ast
 import copy
 import hashlib
 import json
+import re
 import sys
 import tempfile
 import unittest
@@ -28,6 +30,12 @@ SOURCE = """circuit checked(public x: [m31; 4], private y: [m31; 4]) -> public [
     result
 }
 """
+SUB5_FUNCTIONAL = """fn difference(x: [m31; 5], y: [m31; 5]) -> [m31; 5] { x - y }
+circuit subtract5(private a: [m31; 5], private b: [m31; 5]) -> public [m31; 5] {
+    let out = difference(a, b);
+    out
+}
+"""
 
 
 def encoded(value: object) -> bytes:
@@ -39,6 +47,119 @@ def digest(data: bytes) -> str:
 
 
 class SourceRelationFragmentTests(unittest.TestCase):
+    def test_lean_subtraction_fixture_matches_native_acceptance_source(self) -> None:
+        formal = S31.parents[2] / "formal/s31/S31/Gadgets/Functional/Correspondence/SourceFunctionBytes.lean"
+        source = formal.read_text()
+        definition = re.search(r"def subtract5Source : String :=\s*(.*?)\s*def subtract5Parsed",
+                               source, re.DOTALL)
+        self.assertIsNotNone(definition)
+        lean_literals = re.findall(r'"(?:[^"\\]|\\.)*"', definition.group(1))
+        self.assertEqual("".join(ast.literal_eval(value) for value in lean_literals), SUB5_FUNCTIONAL)
+        native = (S31 / "tests/acceptance/math/field_subtraction_partial.py").read_text()
+        acceptance_literal = re.search(r'FUNCTIONAL_SOURCE = (""".*?""")', native, re.DOTALL)
+        self.assertIsNotNone(acceptance_literal)
+        self.assertEqual(ast.literal_eval(acceptance_literal.group(1)), SUB5_FUNCTIONAL)
+
+    def test_independent_function_erasure_and_short_packed_subtraction(self) -> None:
+        for length in (1, 2, 3, 4, 5, 7, 8):
+            with self.subTest(length=length):
+                header = (f"circuit subtract(private a: [m31; {length}], "
+                          f"private b: [m31; {length}]) -> public [m31; {length}] {{")
+                direct = header + " let out = a - b; out }"
+                function = (f"fn difference(x: [m31; {length}], y: [m31; {length}]) "
+                            f"-> [m31; {length}] {{ x - y }}\n" +
+                            header + " let out = difference(a, b); out }")
+                for source in (direct, function):
+                    expected = parse_source_fragment(source.encode())
+                    actual, _ = compile_text(source)
+                    self.assertEqual(expected, actual)
+                    self.assertEqual(expected["nodes"],
+                                     [{"name": "out", "lhs": "a", "op": "sub", "rhs": "b"}])
+                    self.assertEqual(check_source_relation(source.encode(), encoded(actual))["capability"],
+                                     CAPABILITY)
+
+    def test_noncommutative_function_order_and_resealed_relation_forgery(self) -> None:
+        source = SUB5_FUNCTIONAL.replace("x - y", "y - x")
+        relation, _ = compile_text(source)
+        self.assertEqual(parse_source_fragment(source.encode()), relation)
+        self.assertEqual(relation["nodes"],
+                         [{"name": "out", "lhs": "b", "op": "sub", "rhs": "a"}])
+        forged = copy.deepcopy(relation)
+        forged["nodes"][0]["op"] = "add"
+        with self.assertRaisesRegex(ValueError, "relation differs"):
+            check_source_relation(source.encode(), encoded(forged))
+        with self.assertRaisesRegex(ValueError, "relation differs"):
+            check_source_relation(SUB5_FUNCTIONAL.encode(), encoded(relation))
+
+    def test_pure_helper_add_and_multiply_lower_to_one_node(self) -> None:
+        for token, operation in (("+", "add"), (".*", "mul")):
+            with self.subTest(operation=operation):
+                source = (
+                    f"fn combine(x: [m31; 3], y: [m31; 3]) -> [m31; 3] {{ x {token} y }}\n"
+                    "circuit calc(private a: [m31; 3], private b: [m31; 3]) "
+                    "-> public [m31; 3] { let out = combine(a, b); out }"
+                )
+                expected = parse_source_fragment(source.encode())
+                actual, _ = compile_text(source)
+                self.assertEqual(expected, actual)
+                self.assertEqual(expected["nodes"],
+                                 [{"name": "out", "lhs": "a", "op": operation, "rhs": "b"}])
+
+    def test_five_lane_functional_package_abi_reseal_rejected(self) -> None:
+        source_bytes = SUB5_FUNCTIONAL.encode()
+        relation_bytes = encoded(compile_text(SUB5_FUNCTIONAL)[0])
+        abi = {"schema": "s31-public-abi-v1",
+               "encoding": "eight canonical M31 words, encoded little-endian u32; unused words are zero",
+               "public_inputs": [],
+               "public_outputs": [{"name": "out", "kind": "m31", "length": 5}]}
+        with tempfile.TemporaryDirectory() as root:
+            package = Path(root)
+            (package / "source.s31").write_bytes(source_bytes)
+            (package / "source.s31.json").write_bytes(relation_bytes)
+
+            def reseal(output_abi: dict) -> None:
+                abi_bytes = encoded(output_abi)
+                (package / "public-abi.json").write_bytes(abi_bytes)
+                manifest = {
+                    "schema": "s31-package-v1", "name": "subtract5",
+                    "lowering": "direct-gate", "source_text_sha256": digest(source_bytes),
+                    "program_sha256": digest(relation_bytes),
+                    "artifacts": {
+                        "source.s31": digest(source_bytes),
+                        "source.s31.json": digest(relation_bytes),
+                        "public-abi.json": digest(abi_bytes),
+                    },
+                }
+                (package / "manifest.json").write_bytes(encoded(manifest))
+
+            reseal(abi)
+            self.assertEqual(check_package_source_relation(package)["capability"], CAPABILITY)
+            forged = copy.deepcopy(abi)
+            forged["public_outputs"][0]["length"] = 4
+            reseal(forged)
+            with self.assertRaisesRegex(ValueError, "public ABI differs"):
+                check_package_source_relation(package)
+
+    def test_subtraction_constant_and_function_fragment_rejections(self) -> None:
+        source = SUB5_FUNCTIONAL
+        bad_sources = [
+            source.replace("x - y", "x + y + x"),
+            source.replace("x - y", "splat<5>(1_m31) - y"),
+            source.replace("fn difference(x:", "fn difference(y:"),
+            source.replace("fn difference(x:", "fn difference(difference:"),
+            source.replace("fn difference(x:", "fn difference(x: [m31; 4], unused:"),
+            source.replace("let out = difference(a, b);", "let out = a - b;"),
+            source.replace("let out = difference(a, b);", "let difference = a; let out = difference(a, b);"),
+            source.replace("private b: [m31; 5]", "private b: [m31; 4]"),
+            source.replace("-> public [m31; 5]", "-> public [m31; 4]"),
+            source.replace("[m31; 5] { x - y }", "[m31; 6] { x - y }"),
+            source.replace("[m31; 5] { x - y }", "[m31; 05] { x - y }"),
+            source.replace("let out = difference(a, b);", "let out = splat<5>(7_m31) - b;"),
+        ]
+        for bad in bad_sources:
+            with self.subTest(source=bad[:100]), self.assertRaises(UnsupportedSourceRelationFragment):
+                parse_source_fragment(bad.encode())
+
     def test_honest_source_matches_production_relation(self) -> None:
         sources = [
             SOURCE,

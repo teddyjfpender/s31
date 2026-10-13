@@ -10,6 +10,7 @@ open Graph
 def fieldPrimitive (op : FieldOp) (args : List M31) (y : M31) : Prop :=
   match op with
   | .add => y - (args.getD 0 0 + args.getD 1 0) = 0
+  | .sub => y - (args.getD 0 0 - args.getD 1 0) = 0
   | .mul => y - (args.getD 0 0 * args.getD 1 0) = 0
 
 theorem field_primitive_sound_complete (op : FieldOp) (args : List M31) (y : M31) :

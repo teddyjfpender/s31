@@ -1,0 +1,9 @@
+fn apply_twice(f: Fn([m31; 4]) -> [m31; 4], v: [m31; 4]) -> [m31; 4] {
+    let once = f(v);
+    f(once)
+}
+
+circuit inline4(public x: [m31; 4]) -> public [m31; 4] {
+    let result = apply_twice(fun(v: [m31; 4]) -> [m31; 4] => v .* v, x);
+    result
+}

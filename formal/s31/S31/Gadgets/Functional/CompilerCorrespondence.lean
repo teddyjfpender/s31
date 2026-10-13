@@ -4,8 +4,8 @@ import S31.Gadgets.Air.Qm31Ops
 
 /-!
 Compositional correspondence for the total, four-lane arithmetic fragment.
-The source is typed and may contain arbitrarily nested additions and
-multiplications. Each normalized arithmetic step uses the executable S31
+The source is typed and may contain arbitrarily nested additions, subtractions,
+and multiplications. Each normalized arithmetic step uses the executable S31
 `evaluateNode`; each AIR step uses the packed QM31 operation constraints.
 Intermediate values in both relations are existential proof witnesses, not
 assumed to be the honest evaluation. This module does not model Python parser
@@ -21,6 +21,7 @@ open S31.Gadgets.Air.Qm31Ops
 inductive Arithmetic4 where
   | input
   | add (left right : Arithmetic4)
+  | sub (left right : Arithmetic4)
   | mul (left right : Arithmetic4)
 deriving Repr
 
@@ -28,17 +29,20 @@ def Arithmetic4.source {Γ : List Ty} (input : Expr Γ (.array 4)) :
     Arithmetic4 → Expr Γ (.array 4)
   | .input => input
   | .add left right => .arrayAdd (left.source input) (right.source input)
+  | .sub left right => .arraySub (left.source input) (right.source input)
   | .mul left right => .arrayMul (left.source input) (right.source input)
 
 def Arithmetic4.value (input : Fin 4 → M31) : Arithmetic4 → Fin 4 → M31
   | .input => input
   | .add left right => fun i => left.value input i + right.value input i
+  | .sub left right => fun i => left.value input i - right.value input i
   | .mul left right => fun i => left.value input i * right.value input i
 
 def Arithmetic4.poly {n : Nat} (input : Fin 4 → Poly n) :
     Arithmetic4 → Fin 4 → Poly n
   | .input => input
   | .add left right => fun i => .add (left.poly input i) (right.poly input i)
+  | .sub left right => fun i => .sub (left.poly input i) (right.poly input i)
   | .mul left right => fun i => .mul (left.poly input i) (right.poly input i)
 
 theorem Arithmetic4.source_specialize {Γ : List Ty} {n : Nat}
@@ -51,6 +55,9 @@ theorem Arithmetic4.source_specialize {Γ : List Ty} {n : Nat}
   | add left right ihLeft ihRight =>
       funext i
       exact congrArg₂ Poly.add (congrFun ihLeft i) (congrFun ihRight i)
+  | sub left right ihLeft ihRight =>
+      funext i
+      exact congrArg₂ Poly.sub (congrFun ihLeft i) (congrFun ihRight i)
   | mul left right ihLeft ihRight =>
       funext i
       exact congrArg₂ Poly.mul (congrFun ihLeft i) (congrFun ihRight i)
@@ -70,6 +77,9 @@ theorem source_value (expression : Arithmetic4) (input : Fin 4 → M31) :
   | add left right ihLeft ihRight =>
       funext i
       exact congrArg₂ (· + ·) (congrFun ihLeft i) (congrFun ihRight i)
+  | sub left right ihLeft ihRight =>
+      funext i
+      exact congrArg₂ (· - ·) (congrFun ihLeft i) (congrFun ihRight i)
   | mul left right ihLeft ihRight =>
       funext i
       exact congrArg₂ (· * ·) (congrFun ihLeft i) (congrFun ihRight i)
@@ -84,6 +94,9 @@ theorem bound_source_value (expression : Arithmetic4) (input : Fin 4 → M31) :
   | add left right ihLeft ihRight =>
       funext i
       exact congrArg₂ (· + ·) (congrFun ihLeft i) (congrFun ihRight i)
+  | sub left right ihLeft ihRight =>
+      funext i
+      exact congrArg₂ (· - ·) (congrFun ihLeft i) (congrFun ihRight i)
   | mul left right ihLeft ihRight =>
       funext i
       exact congrArg₂ (· * ·) (congrFun ihLeft i) (congrFun ihRight i)
@@ -114,6 +127,12 @@ inductive NormalizedAccepts (input : Fin 4 → M31) :
       evaluateNode (arithmeticEnv leftValue rightValue)
         (arithmeticNode false) = .ok ⟨.m31, List.ofFn output⟩ →
       NormalizedAccepts input (.add left right) output
+  | sub {left right : Arithmetic4} {leftValue rightValue output : Fin 4 → M31} :
+      NormalizedAccepts input left leftValue →
+      NormalizedAccepts input right rightValue →
+      evaluateNode (arithmeticEnv leftValue rightValue)
+        subtractionNode = .ok ⟨.m31, List.ofFn output⟩ →
+      NormalizedAccepts input (.sub left right) output
   | mul {left right : Arithmetic4} {leftValue rightValue output : Fin 4 → M31} :
       NormalizedAccepts input left leftValue →
       NormalizedAccepts input right rightValue →
@@ -133,6 +152,12 @@ inductive AirAccepts (input : Fin 4 → M31) :
       accepts (encode (s31Op false)) (packM31 leftValue)
         (packM31 rightValue) (packM31 output) →
       AirAccepts input (.add left right) output
+  | sub {left right : Arithmetic4} {leftValue rightValue output : Fin 4 → M31} :
+      AirAccepts input left leftValue →
+      AirAccepts input right rightValue →
+      accepts (encode .sub) (packM31 leftValue)
+        (packM31 rightValue) (packM31 output) →
+      AirAccepts input (.sub left right) output
   | mul {left right : Arithmetic4} {leftValue rightValue output : Fin 4 → M31} :
       AirAccepts input left leftValue →
       AirAccepts input right rightValue →
@@ -161,6 +186,18 @@ theorem normalized_iff_air (expression : Arithmetic4)
         | add hleft hright hrow =>
             exact .add ((ihLeft _).mpr hleft) ((ihRight _).mpr hright)
               ((row_iff_normalized_node false _ _ _).mp hrow)
+  | sub left right ihLeft ihRight =>
+      constructor
+      · intro h
+        cases h with
+        | sub hleft hright hnode =>
+            exact .sub ((ihLeft _).mp hleft) ((ihRight _).mp hright)
+              ((sub_row_iff_normalized_node _ _ _).mpr hnode)
+      · intro h
+        cases h with
+        | sub hleft hright hrow =>
+            exact .sub ((ihLeft _).mpr hleft) ((ihRight _).mpr hright)
+              ((sub_row_iff_normalized_node _ _ _).mp hrow)
   | mul left right ihLeft ihRight =>
       constructor
       · intro h
@@ -201,6 +238,23 @@ theorem normalized_iff_source (expression : Arithmetic4)
           ((ihLeft _).mpr rfl) ((ihRight _).mpr rfl)
         simpa [Arithmetic4.value] using
           (arithmeticNode_eval false (left.value input) (right.value input))
+  | sub left right ihLeft ihRight =>
+      constructor
+      · intro h
+        cases h with
+        | sub hleft hright hnode =>
+            have hl := (ihLeft _).mp hleft
+            have hr := (ihRight _).mp hright
+            rw [subtractionNode_eval] at hnode
+            have hout := List.ofFn_injective
+              (congrArg Value.words (Except.ok.inj hnode))
+            simpa [Arithmetic4.value, hl, hr] using hout.symm
+      · intro h
+        subst output
+        apply NormalizedAccepts.sub
+          ((ihLeft _).mpr rfl) ((ihRight _).mpr rfl)
+        simpa [Arithmetic4.value] using
+          (subtractionNode_eval (left.value input) (right.value input))
   | mul left right ihLeft ihRight =>
       constructor
       · intro h
@@ -271,6 +325,23 @@ theorem square_plus_cube_air (input claimed : Fin 4 → M31) :
     AirAccepts input squarePlusCube claimed ↔
       claimed = fun i => input i * input i +
         (input i * input i) * input i := by
+  rw [← normalized_iff_air, normalized_iff_source,
+    bound_source_value]
+  rfl
+
+/-- A named source function computes `x² - x`. Its static application adds no
+residual gates, and the subtraction is one selected packed AIR row after the
+square row, rather than a negation and addition expansion. -/
+def squareMinusInput : Arithmetic4 := .sub (.mul .input .input) .input
+
+theorem square_minus_input_static_zero_cost :
+    arrayCode (boundSource squareMinusInput) =
+      arrayCode (directSource squareMinusInput) :=
+  bound_source_same_graph squareMinusInput
+
+theorem square_minus_input_air (input claimed : Fin 4 → M31) :
+    AirAccepts input squareMinusInput claimed ↔
+      claimed = fun i => input i * input i - input i := by
   rw [← normalized_iff_air, normalized_iff_source,
     bound_source_value]
   rfl

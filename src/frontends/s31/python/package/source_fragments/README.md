@@ -1,0 +1,66 @@
+# Certified source fragments
+
+`static_helper.py` parses up to eight pure, monomorphic functions before the
+v2 direct-gate circuit grammar. Each accepts zero to two parameters of type
+`[m31; 4]` or unary `Fn([m31; 4]) -> [m31; 4]`, and returns either type.
+Statements may bind arithmetic, calls or source-only function values; the
+result may return a typed lambda that captures earlier array values. Calls to
+later functions and recursion are rejected. A `Fn` value may be an earlier
+named unary function, a bounded `static_lambda.py` value, or a returned
+closure. It can pass through function parameters and source-only aliases.
+Arithmetic gate operands can name a parameter or earlier local. The bounded
+helper body also accepts nested pure calls and parenthesized `+`/`.*`
+expressions, with multiplication precedence and left-to-right evaluation.
+For example, `double(a) + square(a)` emits the two call results under fresh
+`_s31_N` names before its final addition; the source syntax adds no circuit
+gate of its own. Pure call arguments may themselves contain nested calls, one
+arithmetic gate, or an inline captured lambda. There are at most sixteen
+gates across the entire circuit. The checker statically expands calls in
+evaluation order and independently derives the production specializer's
+generated wire names, so its complete normalized relation must match the
+package. Function values and
+applications have no separate AIR representation.
+Gate-free function factories still consume a separate 64-call expansion
+budget, so a short source cannot force unbounded static work.
+
+`lexical_let.py` independently parses bounded expression-level
+`let name = bound in body` inside a circuit let. The bound expression is
+evaluated eagerly, without a requested output name; a newly emitted gate
+therefore receives the next `_s31_N` wire. The body sees a lexical reference
+to that wire and receives the outer circuit let's requested name. Bindings
+may shadow earlier source names, and nested lets are limited to depth 16.
+The expression leaf is one existing wire, one `+` or `.*` gate, a call to
+one of the pure functions above, or a static function alias. The binder itself
+produces no relation node.
+The [worked native example](../../../examples/functional/release_let4/README.md)
+shows the complete two-gate lowering and exact AIR-cost comparison.
+
+The module is part of the independent package certificate parser, separate
+from production `language/` parsing and specialization. `package/context.py`
+includes it in the compiler fingerprint. The certificate continues to check
+the complete native gate topology, selectors, fixed root, and key under its
+documented assumptions.
+
+The [worked higher-order example](../../../examples/functional/release_higher_order4/README.md)
+shows a named function passed through a `Fn` parameter and erased to two
+ordinary gates. The [captured lambda example](../../../examples/functional/release_closure4/README.md)
+fixes an existing wire in a unary lambda's environment and demonstrates that a
+later lexical shadow does not change the capture. `static_lambda.py` parses a
+bounded pure body with parentheses, nested `+` and `.*`, and lexical `let … in`
+bindings. It captures free wire names at function creation, and the checker
+emits only the evaluated arithmetic gates.
+The same parser checks an inline lambda supplied to a monomorphic `Fn`
+parameter, capturing visible wires at that call site. The
+[inline native example](../../../examples/functional/release_inline_lambda4/README.md)
+applies one such value twice and matches two handwritten gates.
+The [curried native example](../../../examples/functional/release_curried4/README.md)
+returns a function that captures a gate result, then applies it with
+`make(x)(x)`. Its static closure and postfix application add no AIR rows.
+The [composed helper example](../../../examples/functional/release_helper_composition4/README.md)
+passes an inline captured lambda and a nested array call inside another helper;
+both disappear into the two handwritten addition gates.
+This fragment is intentionally exact: other lambda operations and closures,
+partial operations, subtraction, and hidden effects remain outside the
+bounded direct-Gate certificates. They remain usable
+through the ordinary S31 compiler and verifier; the stricter release gate admits them
+only when a corresponding independent certificate is available.

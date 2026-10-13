@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Iterator
 
 from package.context import invoke
-from package.correspondence import check_package
+from package.correspondence import OPTIMIZED_SCHEMA, check_optimized_package, check_package
 from package.trust import admitted_snapshot
 
 
@@ -30,8 +30,9 @@ def bounded_direct_gate_snapshot(
     """Yield a pinned, certified package snapshot and its checked certificate.
 
     The required external pins cover the relation, key, prover, verifier and
-    original text source. The package must use the v2 direct-gate manifest and
+    original text source. The package must use the v2 direct-gate key and
     rooted topology, and the native verifier must reconstruct its sealed key.
+    An explicit v3 source marker selects the optimized independent checker.
     Unsupported source syntax fails closed here without restricting the
     ordinary S31 builder or verifier APIs.
     """
@@ -48,7 +49,9 @@ def bounded_direct_gate_snapshot(
         key = json.loads((snapshot / "verification-key.json").read_text())
         if key.get("schema") != "s31-verification-key-direct-manifest-v2":
             raise ValueError("bounded release admission requires a v2 direct-gate key")
-        certificate = check_package(snapshot)
+        certificate = (check_optimized_package(snapshot)
+                       if manifest.get("correspondence_schema") == OPTIMIZED_SCHEMA
+                       else check_package(snapshot))
         status = certificate.get("status")
         if (not isinstance(status, dict) or
                 status.get("source_to_normalized") != "source-to-normalized-checked" or

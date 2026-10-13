@@ -1,6 +1,6 @@
 # S31 compiler correspondence certificate: audit and implementation brief
 
-Status: design audit with a [bounded independent package checker](DIRECT_GATE_CORRESPONDENCE_CERTIFICATE.md) and a separate [private/constant/assertion source-to-relation check](SOURCE_RELATION_FRAGMENT.md), 2026-10-12. **No end-to-end compiler correctness proof exists today.** Native proof verification establishes satisfaction of the circuit AIR selected by a sealed key, subject to the Stwo soundness assumptions. It does not by itself establish that the AIR computes the intended `.s31` source semantics.
+Status: design audit with a [bounded independent package checker](DIRECT_GATE_CORRESPONDENCE_CERTIFICATE.md) and a separate [private/constant/assertion/functional source-to-relation check](SOURCE_RELATION_FRAGMENT.md), 2026-10-12. **No end-to-end compiler correctness proof exists today.** Native proof verification establishes satisfaction of the circuit AIR selected by a sealed key, subject to the Stwo soundness assumptions. It does not by itself establish that the AIR computes the intended `.s31` source semantics.
 
 ## The claim to establish
 
@@ -26,7 +26,7 @@ Profile identity needs care. The `direct`, `sparse`, and `sparse-wide` paths inc
 
 ## Next fragment expansion target
 
-The package-admission fragment accepts one public `[m31; 4]` input, 1–16 simple add/multiply `let` bindings, and one public four-lane output. A separate independent Python checker now accepts a bounded private-input, constant, and assertion fragment, but returns **`source-to-relation-only`**, not a package-admission or AIR/circuit certificate:
+The package-admission fragment accepts one public `[m31; 4]` input, 1–16 simple add/multiply `let` bindings, and one public four-lane output. A separate independent Python checker now accepts a bounded private-input, constant, assertion, subtraction, and pure named-function fragment, but returns **`source-to-relation-only`**, not a package-admission or AIR/circuit certificate:
 
 ```s31
 circuit affine_square(private x: [m31; 4]) -> public [m31; 4] {
@@ -36,7 +36,7 @@ circuit affine_square(private x: [m31; 4]) -> public [m31; 4] {
 }
 ```
 
-The [bounded fragment contract](SOURCE_RELATION_FRAGMENT.md) specifies its grammar and negative cases. It allows one circuit, `[m31; 4]` inputs and result, canonical M31 literals, `splat<4>`, `let`, `+`, `.*`, and `assert_eq`, with at most eight public words. It rejects functions, imports and `std` helpers, loops, array indexing, bits, nominal types, hashes, chips, recursion, and JSON-only sources. It does not call the production text frontend, relation validator, or canonical optimizer to decide the text-to-relation comparison.
+The [bounded fragment contract](SOURCE_RELATION_FRAGMENT.md) specifies its grammar and negative cases. It allows one circuit, homogeneous `[m31; N]` inputs and result for `1 ≤ N ≤ 8`, canonical M31 literals, `splat<N>`, `let`, `+`, `-`, `.*`, `assert_eq`, and one used pure two-argument helper with a single binary body, with at most eight public words. It rejects other functions, imports and `std` helpers, loops, array indexing, bits, nominal types, hashes, chips, recursion, and JSON-only sources. It does not call the production text frontend, relation validator, or canonical optimizer to decide the text-to-relation comparison.
 
 The expanded fragment has a small denotational semantics over `F_p^4`: `splat(c)` is `(c,c,c,c)`, `+` and `.*` are pointwise field operations, each assertion requires vector equality, and the final vector is the public result. Private inputs range over canonical field elements. This is small enough to encode in Lean with a decidable checker. A production checker must execute that verified decision procedure, or have its own proved refinement to it; differential tests alone do not turn a separate Zig checker into a formal proof. A theorem for this fragment should quantify over *all* inputs, not sampled assignments.
 

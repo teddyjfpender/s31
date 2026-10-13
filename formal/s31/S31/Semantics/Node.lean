@@ -39,6 +39,7 @@ def evaluateNode (env : Env) (n : Node) : Result Value := do
       Integers.evaluate n.op (← need (n.constant.bind IntegerSpec.decode)) a.words []
     else pure a.words
   | .add => pure ((a.words.zip b.words).map (fun (x, y) => x + y))
+  | .sub => pure ((a.words.zip b.words).map (fun (x, y) => x - y))
   | .mul => pure ((a.words.zip b.words).map (fun (x, y) => x * y))
   | .inv => do
     require (a.words.all (fun x => x.val != 0)) .divisionByZero

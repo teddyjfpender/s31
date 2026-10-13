@@ -44,12 +44,13 @@ def source_values(syntax: dict, words: Any) -> tuple[list[Q], Q]:
         raise ValueError("expected 1..16 compact arithmetic instructions")
     for ident, item in enumerate(instructions, 1):
         if (type(item) is not dict or item.get("id") != ident or
-                item.get("op") not in ("add", "mul") or
+                item.get("op") not in ("add", "sub", "mul") or
                 type(item.get("lhs")) is not int or type(item.get("rhs")) is not int or
                 not 0 <= item["lhs"] < ident or not 0 <= item["rhs"] < ident):
             raise ValueError("invalid compact source instruction")
         left, right = values[item["lhs"]], values[item["rhs"]]
-        values.append(tuple((a + b if item["op"] == "add" else a * b) % P
+        op = item["op"]
+        values.append(tuple((a + b if op == "add" else a - b if op == "sub" else a * b) % P
                             for a, b in zip(left, right, strict=True)))
     output = syntax.get("output")
     if type(output) is not int or not 1 <= output < len(values):

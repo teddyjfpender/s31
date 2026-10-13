@@ -1,6 +1,6 @@
 # S31 normalized semantics and local constraint proofs
 
-This package gives executable Lean semantics for **all 56 operations in S31
+This package gives executable Lean semantics for **all 57 operations in S31
 relation IR v1** and proves the local constraint models sound and complete.
 It reuses `RiscvRefinement.Field.M31` and the existing
 `RiscvRefinement.Recursion.CompactPoseidon` S-box proofs through a local Lake
@@ -122,9 +122,15 @@ identity inventory now includes the Python
 syntax, parser, elaborator, specializer and libraries so changes there force a reviewed
 binding update; the source digests themselves do not prove compiler correspondence.
 `Functional/CompilerCorrespondence` proves, for arbitrarily nested four-lane
-M31 addition and multiplication trees, that typed source denotation, strict
+M31 addition, subtraction and multiplication trees, that typed source denotation, strict
 graph acceptance, executable normalized node evaluation, and packed AIR row
 constraints accept exactly the same result for arbitrary intermediate values.
+`Functional/NestedApplications` instantiates that theorem for the checked-in
+`identity(make(x))(double(x))` fixture. Its typed factory captures `x²`, the
+function and array arguments specialize statically, and the resulting strict
+graph accepts exactly `x²+2x` on all four lanes. This proves the modeled
+source-to-row relationship; production parsing and emission are checked by
+separate executable gates.
 `Functional/SSACertificate` adds static `let` sharing: an executable checker
 reconstructs the source term from fresh, backward-referencing positional SSA
 instructions. Every accepted certificate evaluates to the source result on
@@ -454,6 +460,67 @@ four M31 lanes using the proved M31-to-ZMod map.
 outputs of the executable normalized `add` and `mul` relation nodes for one
 full four-lane chunk. The proof models the production equations and the
 `simd.mul` opcode choice; source hashes pin the reviewed Zig files.
+
+The new normalized M31 `sub` node has a separate four-lane bridge:
+`Field.toZMod_sub` preserves subtraction across the canonical M31/ZMod map,
+`Functional.subtractionNode_eval` computes the executable node, and
+`Qm31Ops.sub_row_iff_normalized_node` proves that the packed subtraction AIR
+row accepts exactly those four results. `SimdChunks.subPackedRows_iff_normalized_node`
+extends this to exactly `ceil(n/4)` rows for arrays of any length, including a
+short final row with arbitrary inactive input lanes. The intrinsically typed
+functional core has first-class scalar and array subtraction; its residual
+graph emits a subtraction gate, and `FunctionalBridge.array_sub_graph_iff_packed_rows`
+equates strict source-graph acceptance with those packed AIR rows at any
+array length. `Functional/CompilerCorrespondence` composes subtraction with
+addition and multiplication for nested four-lane expression trees. Its
+`squareMinusInput` example has the same graph through a static function call
+as through direct source, while the AIR relation uses a square row followed
+by one subtraction row. Python parsing, SSA lowering, native column emission,
+and proof authentication remain separate obligations.
+
+`Functional/Correspondence/SourceFunctionBytes` adds an independent Lean byte
+parser for one pure named binary function over `[m31; N]`, `1 ≤ N ≤ 8`, called
+once by a circuit with two private inputs and one public result. It resolves
+parameter and call names rather than assuming positional subtraction order.
+`subtract5_actual_bytes` checks the literal five-lane subtraction example;
+`subtract5_reverse_changes_certificate` and
+`subtract5_mismatched_length_rejected` check changed operand order and width.
+For every accepted parsed program, `air_iff_value` proves that exactly its
+source result satisfies all active packed AIR lanes, including a short final
+row with arbitrary inactive limbs. `air_iff_normalized_node` connects the same
+row relation to the executable normalized add, sub, or mul node. The parser
+supports exactly this one-function grammar; correspondence to production
+Python parsing, native Zig row emission, and proof authentication is still
+outside these theorems.
+
+`SourceFunctionBytes.encodeNormalized` now constructs the exact canonical v1
+relation bytes for this grammar, including the two private input declarations,
+resolved operand names, operation, and public output. `checkRelation` accepts
+only when those bytes equal the actual normalized file; its
+`checked_relation_air_iff` theorem connects that source/relation pair to the
+packed AIR relation. A parsed program carries a proof that its input names
+are distinct; `Parsed.relationValue_eq_value` proves that looking up the two
+names written into JSON gives the same operands as the source function, even
+when its body or call reverses them. The optional
+`s31-source-function-check` audit executable
+reads real source and normalized files. Its differential test compares Lean
+admission against production parsing, independent Python source parsing, and
+canonical relation serialization across all 1–8 lengths, three operations,
+and both helper/call operand orders. It mutates source, relation, and byte
+formatting as rejection controls. This is a bounded compiler regression and
+does not prove Python/Zig compiler refinement or native proof authentication.
+
+`SourceFunctionCanonicalBytes` extends this audit to the exact compact
+`LegacyNode` encoding hashed by `canonical.build`. Its
+`canonicalValue_eq_relationValue` theorem proves that sorting add/mul operand
+IDs changes no M31 result, while subtraction keeps its input order.
+`checked_canonical_air_iff` ties a checked source, normalized relation, and
+compact IR byte triple to the same packed row semantics. The optional audit
+command accepts that IR as a third file. Its 96-case differential test checks
+the encoded bytes; a separate fresh-native gate checks SHA-256 of Lean-accepted
+IR bytes against the native cost report and verification key for subtraction
+and reversed addition. This checks those installed identities, not native
+SHA-256 or arbitrary compiler refinement as a theorem.
 
 `SimdChunks.partial_row_iff_normalized_node` extends the same result to final
 chunks with zero to four active lanes. `SimdChunks.packedRows_iff` covers

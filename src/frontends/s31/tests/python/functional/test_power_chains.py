@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+import re
 import sys
 import unittest
 from pathlib import Path
@@ -26,6 +28,19 @@ def graph(relation: dict) -> list[tuple[str, int, int]]:
     return result
 
 
+def lean_reference_pairs(name: str) -> list[tuple[int, int]]:
+    lean = (S31.parents[2] / "formal/s31/S31/Gadgets/Functional/PowerChains.lean").read_text()
+    match = re.search(rf"def {re.escape(name)} : List \(Nat × Nat\) := \[(.*?)\]", lean, re.S)
+    if match is None:
+        raise AssertionError(f"missing Lean certificate: {name}")
+    body = match.group(1)
+    pairs = [(int(lhs), int(rhs)) for lhs, rhs in
+             re.findall(r"\(\s*(\d+)\s*,\s*(\d+)\s*\)", body)]
+    if re.sub(r"\(\s*\d+\s*,\s*\d+\s*\)|[\s,]", "", body):
+        raise AssertionError(f"unexpected Lean certificate syntax: {name}")
+    return pairs
+
+
 class PowerChainTests(unittest.TestCase):
     def test_every_short_chain_has_valid_parents_and_no_cost_regression(self) -> None:
         for exponent in range(1, 256):
@@ -39,6 +54,73 @@ class PowerChainTests(unittest.TestCase):
         self.assertEqual({n: len(exponent_chain(n)) - 1 for n in (15, 31, 63, 255)},
                          {15: 5, 31: 7, 63: 8, 255: 10})
         self.assertEqual(exponent_chain(256), binary_chain(256))
+
+    def test_large_all_ones_chains_reuse_saved_powers(self) -> None:
+        cases = {
+            511: (12, 16),
+            1023: (13, 18),
+            65535: (19, 30),
+            (2**20 - 1) << 5: (29, 43),
+            2**30 - 1: (36, 58),
+        }
+        for exponent, (optimized_steps, binary_steps) in cases.items():
+            with self.subTest(exponent=exponent):
+                chain = exponent_chain(exponent)
+                self.assertEqual((chain[0], chain[-1]), (1, exponent))
+                self.assertEqual(len(chain) - 1, optimized_steps)
+                self.assertEqual(len(binary_chain(exponent)) - 1, binary_steps)
+                for index, next_power in enumerate(chain[1:], 1):
+                    self.assertGreater(next_power, chain[index - 1])
+                    self.assertIn(next_power - chain[index - 1], chain[:index])
+
+    def test_large_chain_matches_kernel_checked_reference_indices(self) -> None:
+        chain = exponent_chain(65535)
+        actual = [(index - 1, chain.index(chain[index] - chain[index - 1]))
+                  for index in range(1, len(chain))]
+        self.assertEqual(lean_reference_pairs("pow65535Refs"), actual)
+
+    def test_factor_reuse_preserves_the_compiler_chain_and_cost_ceiling(self) -> None:
+        cases = {
+            3 * 65535: (21, 32),
+            5 * 65535: (22, 33),
+            9 * 65535: (23, 34),
+            999_999_999: (44, 49),
+            P - 2: (45, 59),
+        }
+        for exponent, (optimized_steps, binary_steps) in cases.items():
+            with self.subTest(exponent=exponent):
+                chain = exponent_chain(exponent)
+                self.assertEqual((chain[0], chain[-1]), (1, exponent))
+                self.assertEqual(len(chain) - 1, optimized_steps)
+                self.assertEqual(len(binary_chain(exponent)) - 1, binary_steps)
+                for index, next_power in enumerate(chain[1:], 1):
+                    self.assertGreater(next_power, chain[index - 1])
+                    self.assertIn(next_power - chain[index - 1], chain[:index])
+
+        chain = exponent_chain(3 * 65535)
+        self.assertEqual(chain, (1, 2, 3, *(3 * power for power in exponent_chain(65535)[1:])))
+        relation, _ = compile_text(
+            "circuit p(private x: [m31; 1]) -> public [m31; 1] "
+            "{ std::math::pow<196605>(x) }")
+        parents = [(index - 1, chain.index(chain[index] - chain[index - 1]))
+                   for index in range(1, len(chain))]
+        self.assertEqual(lean_reference_pairs("pow196605Refs"), parents)
+        self.assertEqual(graph(relation), [("mul", lhs, rhs) for lhs, rhs in parents])
+
+    def test_functional_factor_power_erases_to_the_same_gate_graph(self) -> None:
+        examples = S31 / "examples/arithmetic/powers"
+        direct, _ = compile_text((examples / "pow196605_factor4.s31").read_text())
+        functional, _ = compile_text((examples / "pow196605_functional4.s31").read_text())
+        self.assertEqual(direct["inputs"], functional["inputs"])
+        self.assertEqual(direct["public_outputs"], functional["public_outputs"])
+        self.assertEqual(direct["assertions"], functional["assertions"])
+        self.assertEqual(len(graph(direct)), 84)
+        self.assertEqual(graph(direct), graph(functional))
+        assignment = json.loads(
+            (examples / "pow196605_factor4.valid.json").read_text())
+        for relation in (direct, functional):
+            self.assertEqual(evaluate_relation(relation, assignment),
+                             assignment["public_outputs"])
 
     def test_pow15_matches_handwritten_five_gate_graph(self) -> None:
         optimized = """circuit p(private x: [m31; 1]) -> public [m31; 1] {
@@ -70,7 +152,9 @@ class PowerChainTests(unittest.TestCase):
         self.assertTrue(all(node["op"] == "mul" for node in produced["nodes"]))
 
     def test_power_values_and_false_claims(self) -> None:
-        for exponent in (0, 1, 2, 3, 5, 7, 15, 31, 63, 127, 255, 256, P - 2):
+        for exponent in (0, 1, 2, 3, 5, 7, 15, 31, 63, 127, 255, 256,
+                         511, 1023, 65535, 196605, 327675,
+                         (2**20 - 1) << 5, 2**30 - 1, P - 2):
             with self.subTest(exponent=exponent):
                 relation, _ = compile_text(
                     f"circuit p(private x: [m31; 1]) -> public [m31; 1] "

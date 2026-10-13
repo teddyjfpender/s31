@@ -1,0 +1,18 @@
+fn double(a: [m31; 4]) -> [m31; 4] {
+    a + a
+}
+
+fn square(a: [m31; 4]) -> [m31; 4] {
+    a .* a
+}
+
+fn mix(a: [m31; 4]) -> [m31; 4] {
+    double(a) + square(a)
+}
+
+circuit repeat_mix(public x: [m31; 4]) -> public [m31; 4] {
+    let c = mix(x);
+    let d = mix(x);
+    let e = c + d;
+    e
+}

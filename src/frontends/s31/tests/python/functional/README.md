@@ -20,7 +20,18 @@ ordinary `mix4` calls remain outside the source language.
 exponent 255 for valid prior powers and no multiplication-count regression
 against the binary fallback. It compares `pow<15>` with a handwritten
 five-gate graph, then evaluates honest and false field claims across small,
-boundary, and large exponents.
+boundary, and large exponents. For large `2^k−1` powers and their shifted
+forms, it pins shorter saved-power chains and checks every multiplication's
+two previously computed parents. It also compares the 19 reference pairs
+with the [kernel-checked certificate](../../../../../../formal/s31/S31/Gadgets/Functional/PowerChains.lean).
+For large exponents with small odd factors, it pins shorter factored chains,
+checks every saved parent, and compares the emitted `pow<196605>` graph with
+the 21-step schedule certified in Lean. A nested functional version using
+`power` and `twice` helpers must emit the same 84-gate graph as
+four direct calls, with independently checked public outputs.
+The eight-lane
+[native comparison](../../acceptance/math/power_chain.py) verifies both the
+19-step and 30-step `pow<65535>` schedules across four calls.
 
 `test_product_control.py` checks whole-product `if` and `assert_eq` against
 explicit fieldwise source. It covers nested nominal records, a mixed bit/u16/M31
@@ -34,6 +45,13 @@ padded QM31 rows.
 one abstract effect shape, the 1,024-leaf record ABI budget is enforced before
 input expansion, and repeated product assertions are deduplicated and charged
 against a bounded expansion budget.
+
+`test_static_sums.py` checks static enum erasure, selected-arm evaluation,
+and effect resolution through a generic enum helper. Its safe constructor
+matches a direct conditional relation exactly; the risky constructor and an
+eagerly partial constructor payload are rejected inside dynamic branches.
+It also checks a nested dynamic `if` in an unselected static arm: only a
+concrete call choosing that arm makes the partial effect relevant.
 
 `test_pattern_parameters.py` checks tuple and nominal record binders in
 named functions and lambdas against direct first-order relations and

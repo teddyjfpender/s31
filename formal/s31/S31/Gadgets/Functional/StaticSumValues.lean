@@ -1,4 +1,5 @@
 import S31.Gadgets.Functional.CompilerCorrespondence
+import S31.Gadgets.Functional.Effects
 
 /-!
 Typed, source-stage sum values and exhaustive two-arm matching. `Ty.sum` is a
@@ -68,6 +69,34 @@ theorem inactive_right_failure_is_ignored {ε α β γ : Type}
     (payload : α) (onLeft : α → Except ε γ) (reason : ε) :
     checkedMatch (checkedLeft (β := β) (.ok payload)) onLeft
       (fun _ => .error reason) = onLeft payload := rfl
+
+/-- The enum tag is selected before a dynamic circuit conditional is built.
+Only the selected arm's totality obligation enters that conditional. This
+models deferred checking of a generic static match at its concrete call site;
+it is not a refinement proof for the Python effect checker. -/
+def selectedEffect {n : Nat} (safeTag : Bool)
+    (safe risky : EffectExpr n) : EffectExpr n :=
+  if safeTag then safe else risky
+
+theorem safe_static_arm_eager_graph_iff_lazy {n : Nat}
+    (choice : Bool) (safe risky fallback : EffectExpr n)
+    (inputs : List M31) (output : M31) (hinputs : inputs.length = n)
+    (hsafe : safe.isTotal = true) (hfallback : fallback.isTotal = true) :
+    EagerGraphAccepts choice (selectedEffect true safe risky) fallback
+      inputs output ↔
+    lazyIf choice safe fallback (fun i => inputs.getD i.val 0) = some output := by
+  simpa [selectedEffect] using
+    eager_graph_iff_lazy_if choice safe fallback inputs output hinputs hsafe hfallback
+
+/-- Selecting the partial static arm later is unsafe even when the dynamic
+condition would choose the other arm. The selected inverse would still need
+an eager witness. -/
+theorem risky_static_arm_cannot_hide_inverse
+    (safe : EffectExpr 0) (x : M31) :
+    ¬ EagerIfAccepts false
+      (selectedEffect false safe (.checkedInverse (.literal 0)))
+      (.literal x) (fun i : Fin 0 => i.elim0) x := by
+  simpa [selectedEffect] using (inactive_inverse_counterexample x).2
 
 /-- A static left tag carries a dynamic four-lane payload. Matching selects
 the square arm; the other arm's arithmetic is absent from the residual. -/

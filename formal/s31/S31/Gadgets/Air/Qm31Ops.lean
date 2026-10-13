@@ -132,6 +132,11 @@ theorem accepts_encoded (op : Op) (x y output : Quad) :
     simpa [this] using hout
   · intro h; exact ⟨op, rfl, h⟩
 
+/-- The native subtraction flag fixes all four packed output lanes. -/
+theorem sub_row_sound_complete (x y output : Quad) :
+    accepts (encode .sub) x y output ↔ output = subtract x y :=
+  accepts_encoded .sub x y output
+
 theorem honest_row (op : Op) (x y : Quad) :
     accepts (encode op) x y (evaluate op x y) :=
   (accepts_encoded op x y _).mpr rfl
@@ -165,6 +170,43 @@ def packM31 (lanes : Fin 4 → S31.M31) : Quad :=
 theorem coord_packM31 (lanes : Fin 4 → S31.M31) (i : Fin 4) :
     coord (packM31 lanes) i = S31.Field.toZMod (lanes i) := by
   fin_cases i <;> rfl
+
+theorem sub_coord (a b : Fin 4 → S31.M31) (i : Fin 4) :
+    coord (subtract (packM31 a) (packM31 b)) i =
+      S31.Field.toZMod (a i - b i) := by
+  fin_cases i <;>
+    simp [subtract, packM31, coord, S31.Field.toZMod_sub]
+
+/-- The packed subtraction row accepts exactly the executable normalized
+M31 subtraction result on each of its four lanes. -/
+theorem sub_row_iff_normalized_node (a b output : Fin 4 → S31.M31) :
+    accepts (encode .sub) (packM31 a) (packM31 b) (packM31 output) ↔
+    S31.evaluateNode (S31.Functional.arithmeticEnv a b)
+      S31.Functional.subtractionNode = .ok ⟨.m31, List.ofFn output⟩ := by
+  rw [sub_row_sound_complete, S31.Functional.subtractionNode_eval]
+  constructor
+  · intro h
+    have heq : (fun i : Fin 4 => a i - b i) = output := by
+      funext i
+      apply S31.Field.toZMod_injective
+      exact (by simpa [coord_packM31] using
+        ((congrArg (fun q => coord q i) h).trans (sub_coord a b i)).symm)
+    rw [heq]
+  · intro h
+    have hlist : List.ofFn (fun i : Fin 4 => a i - b i) =
+        List.ofFn output := by
+      injection h with hvalue
+      exact congrArg S31.Value.words hvalue
+    have heq := List.ofFn_injective hlist
+    have hcoord (i : Fin 4) :
+        coord (packM31 output) i =
+          coord (subtract (packM31 a) (packM31 b)) i := by
+      rw [coord_packM31, ← congrFun heq i, ← sub_coord]
+    apply Quad.ext
+    · simpa [coord] using hcoord ⟨0, by decide⟩
+    · simpa [coord] using hcoord ⟨1, by decide⟩
+    · simpa [coord] using hcoord ⟨2, by decide⟩
+    · simpa [coord] using hcoord ⟨3, by decide⟩
 
 /-- `simd.mul` selects the pointwise opcode; it never invokes QM31 extension
 multiplication for S31 array multiplication. -/

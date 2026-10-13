@@ -69,6 +69,10 @@ def Poly.emit {n : Nat} : Poly n → FieldBuild Nat
       let left ← lhs.emit
       let right ← rhs.emit
       Graph.binary .add left right
+  | .sub lhs rhs => do
+      let left ← lhs.emit
+      let right ← rhs.emit
+      Graph.binary .sub left right
   | .mul lhs rhs => do
       let left ← lhs.emit
       let right ← rhs.emit
@@ -113,6 +117,23 @@ theorem Poly.emit_valid {n : Nat} (poly : Poly n) (state : Builder M31 FieldOp)
                 rfl leftLive hr.2.2.1
               simp only [Poly.emit, stateBindRun, hleft, hright]
               cases hbinary : (Graph.binary .add left right).run afterRight with
+              | mk wire next =>
+                  simp only [hbinary] at hb ⊢
+                  exact ⟨hb.1, hb.2.1.trans hr.2.1, hb.2.2.2, by omega⟩
+  | sub lhs rhs ihl ihr =>
+      cases hleft : lhs.emit.run state with
+      | mk left afterLeft =>
+          have hl := ihl state hs hcount
+          simp only [hleft] at hl
+          cases hright : rhs.emit.run afterLeft with
+          | mk right afterRight =>
+              have hr := ihr afterLeft hl.1 hl.2.1
+              simp only [hright] at hr
+              have leftLive : left < afterRight.inputCount + afterRight.gates.size := by omega
+              have hb := Graph.binary_valid fieldArity .sub afterRight left right hr.1
+                rfl leftLive hr.2.2.1
+              simp only [Poly.emit, stateBindRun, hleft, hright]
+              cases hbinary : (Graph.binary .sub left right).run afterRight with
               | mk wire next =>
                   simp only [hbinary] at hb ⊢
                   exact ⟨hb.1, hb.2.1.trans hr.2.1, hb.2.2.2, by omega⟩
@@ -181,6 +202,21 @@ theorem Poly.emit_prefix {n : Nat} (poly : Poly n)
               refine ⟨first ++ second ++ [.apply .add [left, right]], ?_⟩
               simp [Array.toList_push, hsecond, hfirst,
                 List.append_assoc]
+  | sub lhs rhs ihl ihr =>
+      cases hleft : lhs.emit.run state with
+      | mk left afterLeft =>
+          have hl := ihl state
+          simp only [hleft] at hl
+          obtain ⟨first, hfirst⟩ := hl
+          cases hright : rhs.emit.run afterLeft with
+          | mk right afterRight =>
+              have hr := ihr afterLeft
+              simp only [hright] at hr
+              obtain ⟨second, hsecond⟩ := hr
+              simp only [Poly.emit, stateBindRun, hleft, hright]
+              refine ⟨first ++ second ++ [.apply .sub [left, right]], ?_⟩
+              simp [Array.toList_push, hsecond, hfirst,
+                List.append_assoc]
   | mul lhs rhs ihl ihr =>
       cases hleft : lhs.emit.run state with
       | mk left afterLeft =>
@@ -247,6 +283,44 @@ theorem Poly.emit_value {n : Nat} (poly : Poly n)
                   [.apply .add [left, right]]) inputs).getD
                     (inputs.length + afterRight.gates.toList.length) 0 =
                   (Graph.run fieldEval afterRight.gates.toList inputs).getD left 0 +
+                    (Graph.run fieldEval afterRight.gates.toList inputs).getD right 0 at hgate
+              rw [hleftRetained, hr] at hgate
+              simpa [Graph.binary, Graph.emit, Array.toList_push,
+                hinputs, hvalidRight.2.1, Array.length_toList] using hgate
+
+  | sub lhs rhs ihl ihr =>
+      cases hleft : lhs.emit.run state with
+      | mk left afterLeft =>
+          have hl := ihl state hs hcount
+          simp only [hleft] at hl
+          have hvalidLeft := lhs.emit_valid state hs hcount
+          simp only [hleft] at hvalidLeft
+          cases hright : rhs.emit.run afterLeft with
+          | mk right afterRight =>
+              have hr := ihr afterLeft hvalidLeft.1 hvalidLeft.2.1
+              simp only [hright] at hr
+              have hvalidRight := rhs.emit_valid afterLeft hvalidLeft.1 hvalidLeft.2.1
+              simp only [hright] at hvalidRight
+              have hp := rhs.emit_prefix afterLeft
+              simp only [hright] at hp
+              obtain ⟨suffix, hprefix⟩ := hp
+              have hleftBound :
+                  left < (Graph.run fieldEval afterLeft.gates.toList inputs).length := by
+                rw [Graph.run_length]
+                simpa [hinputs, Array.length_toList, hvalidLeft.2.1] using hvalidLeft.2.2.1
+              have hleftRetained :
+                  (Graph.run fieldEval afterRight.gates.toList inputs).getD left 0 =
+                    lhs.eval (fun i => inputs.getD i.val 0) := by
+                rw [hprefix, runPreservesPrefix _ _ _ _ hleftBound]
+                exact hl
+              simp only [Poly.emit, stateBindRun, hleft, hright, Poly.eval]
+              have hgate := runAppendedGate afterRight.gates.toList inputs
+                (.apply .sub [left, right])
+              change
+                (Graph.run fieldEval (afterRight.gates.toList ++
+                  [.apply .sub [left, right]]) inputs).getD
+                    (inputs.length + afterRight.gates.toList.length) 0 =
+                  (Graph.run fieldEval afterRight.gates.toList inputs).getD left 0 -
                     (Graph.run fieldEval afterRight.gates.toList inputs).getD right 0 at hgate
               rw [hleftRetained, hr] at hgate
               simpa [Graph.binary, Graph.emit, Array.toList_push,

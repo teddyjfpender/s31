@@ -53,24 +53,55 @@ refer to their producer's original name. The output ABI has one public input
 vector `x` followed by one public output vector `result`, each of four
 canonical M31 words. The private `y` is absent from the public ABI.
 
+The checker also accepts this bounded functional spelling:
+
+```s31
+fn difference(x: [m31; 5], y: [m31; 5]) -> [m31; 5] { x - y }
+circuit subtract5(private a: [m31; 5], private b: [m31; 5]) -> public [m31; 5] {
+    let out = difference(a, b);
+    out
+}
+```
+
+It independently resolves the helper's two parameters and emits exactly one
+`sub` relation node with `lhs = a` and `rhs = b`. Reversing the helper body to
+`y - x` reverses those operands. Both forms use two packed native subtraction
+rows for five active lanes; this checker establishes the text-to-relation
+mapping, while the separate Lean packed-row proof and native trial address
+the local AIR relation and one generated proof.
+
 ## Exact accepted syntax
 
-One circuit declaration with one to four `[m31; 4]` inputs, each marked
-`public` or `private`, a public `[m31; 4]` result, up to 32 `let` statements,
+One circuit declaration with one to four equal-length `[m31; N]` inputs for
+`1 ≤ N ≤ 8`, each marked `public` or `private`, a public `[m31; N]` result,
+up to 32 `let` statements,
 up to 16 arithmetic nodes, up to 16 `assert_eq(name, name);` statements, and
-one returned wire name. At most one input may be public, because the result
-uses four of the eight available public words. The body must contain at least
+one returned wire name. The sum of all public input and output words must be
+at most eight. The body must contain at least
 one arithmetic node. A let right hand side may be an earlier name,
-`splat<4>(N_m31)` with `0 ≤ N < 2³¹−1` and canonical decimal spelling, or one
-`+` / `.*` operation over two such atoms. Constants may occur on either side
-of an operation; both operands cannot be constants. Parentheses may wrap
+`splat<N>(C_m31)` with `0 ≤ C < 2³¹−1` and canonical decimal spelling, or one
+`+`, `-`, or `.*` operation over two such atoms. A dynamic value minus a
+constant becomes one `add_const` node with the canonical negated constant.
+Constant-left subtraction is outside this fragment. For addition and
+multiplication, constants may occur on either side; both operands cannot be
+constants. Parentheses may wrap
 atoms or whole let expressions; assertion operands and the returned wire are
 plain names. Whitespace and `//` to end-of-line comments are
 ignored. The lexer bounds input at 16,384 bytes and 512 tokens. Identifiers
 are ASCII and at most 128 characters.
 
-The checker rejects functions, imports, nested binary expressions, array
-indexing, other types, calls other than the exact `splat<4>` atom, undeclared
+An optional single preceding `fn` declaration may take exactly two distinct
+`[m31; N]` parameters and return `[m31; N]`. Its pure body must apply one
+`+`, `-`, or `.*` to its parameters. One or more lets may call it with two
+previously named wires; the checker substitutes those wires in the declared
+operand order and compares the exact residual relation. The helper must be
+used, and circuit/input/local names may not shadow it. Function values,
+captures, recursion, multiple helpers, and effects are outside this bounded
+grammar.
+
+The checker rejects imports, nested binary expressions, array
+indexing, other types, calls other than the exact `splat<N>` atom or declared
+bounded helper, undeclared
 names, duplicate local/input names, repeated assertions, noncanonical M31 literals, trailing
 source tokens, duplicate JSON keys, extra relation fields, JSON booleans or
 floating-point numbers in integer fields, and noncanonical JSON
@@ -83,7 +114,8 @@ feature cannot silently expand this capability.
 relation_bytes)` returns exact source/relation SHA-256 digests and the
 `source-to-relation-only` capability after a full structural comparison.
 `check_package_source_relation(package_path)` additionally compares the
-direct-gate public ABI and relevant package manifest identities and artifact
+direct-gate public ABI, including the exact `[m31; N]` word count, and relevant
+package manifest identities and artifact
 hashes, including source and relation bytes. It does **not** authenticate a
 publisher: a forger can recompute these hashes. The independent structural
 check is why a re-sealed wrong operation, constant, assertion, visibility, or

@@ -22,7 +22,7 @@ def Node.metadataValid (n : Node) : Bool :=
     n.fields true false false true true false false false
   | .int_add_checked | .int_add_wrapping | .int_sub_checked | .int_sub_wrapping | .int_le | .int_mul_wrapping | .int_mul_checked | .int_bit_and | .int_bit_or | .int_bit_xor | .int_div_rem =>
     n.fields true true false false true false false false
-  | .add | .mul | .array_concat | .u256_add | .u256_add_checked | .u256_le |
+  | .add | .sub | .mul | .array_concat | .u256_add | .u256_add_checked | .u256_le |
       .u256_sub | .u256_sub_checked | .u32_lt | .bool_and | .bool_or | .bool_xor |
       .hash_blake2s_pair | .hash_poseidon2_pair =>
     n.fields true true false false false false false false
@@ -69,7 +69,7 @@ def inferNode (shapes : Shapes) (node : Node) : Result Shape := do
   | .cast_m31 =>
     let a ← expectShape lhs .u16
     return ⟨.m31, a.length⟩
-  | .add | .mul =>
+  | .add | .sub | .mul =>
     let a ← expectShape lhs .m31
     let _ ← expectShape rhs .m31 a.length
     return a

@@ -88,7 +88,7 @@ result. Removing its unused node cannot make a previously invalid
 assignment valid. This does **not** license removal of an unused checked
 integer operation, inverse, division, hash, assertion, or future unknown
 operation. Some are partial or impose proof obligations even when their
-value is unused. The current erasable set is only `constant`, `add`, `mul`,
+value is unused. The current erasable set is only `constant`, `add`, `sub`, `mul`,
 `add_const`, and `mul_const` in sources that declare an enum. The compiler
 typechecks/effect-checks before the pass, retains every non-allowlisted
 node, keeps all ancestors of live outputs and assertions, and revalidates

@@ -11,3 +11,8 @@ check that ordinary, recursive, and fold verification execute the exact
 package copy admitted by Python even when the original package changes.
 The fold test also checks that reported checkpoint continuity comes from the
 same bounded proof and statement bytes passed to the native verifier.
+
+`test_primitive_roster.py` protects serialized canonical opcode identities.
+It checks that relation operations, canonical tags, the Lean source inventory,
+and the independent Python oracle agree, and that existing tag numbers retain
+their frozen append-only prefix.

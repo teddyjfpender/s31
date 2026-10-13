@@ -1,5 +1,139 @@
 # Generated source to native proof samples
 
+## Strict release of composed functions
+
+`functional_release.py` builds the checked-in
+[`release_square4`](../../../examples/functional/release_square4/README.md)
+function and handwritten form under `direct-gate`. Their normalized relation,
+canonical IR, raw and padded rows, preprocessing, public binding, finalization,
+and FRI settings must agree. The independently checked v2 certificate covers
+the function source and native gate topology. The functional package proves
+`2·x²` for four public lanes, its native verifier accepts, `verify-release`
+accepts from a pinned package snapshot, and a changed public claim fails.
+
+```sh
+python3 src/frontends/s31/tests/acceptance/compiler_correspondence/functional_release.py
+```
+
+This is a bounded acyclic-function certificate and native regression. It does not
+prove arbitrary functional source compilation or the underlying STARK
+cryptographic assumptions.
+
+`subtraction_release.py` checks the
+[`release_sub4`](../../../examples/functional/release_sub4/README.md)
+helper against a handwritten three-gate program. It preserves ordered
+subtraction through the independent source checker, compares the complete
+native AIR cost and fixed root, proves `-2*x` in four lanes, admits that proof
+through the five-pin release command, and rejects a changed public claim.
+
+```sh
+python3 src/frontends/s31/tests/acceptance/compiler_correspondence/subtraction_release.py
+```
+
+`subtraction_optimized_release.py` checks opt-in v3 reuse of the same ordered
+subtraction. Four source operations become three native gates; the resulting
+canonical IR and native AIR cost match a handwritten three-gate program. Its
+proof passes strict release verification and a changed public statement fails.
+
+```sh
+python3 src/frontends/s31/tests/acceptance/compiler_correspondence/subtraction_optimized_release.py
+```
+
+`optimized_release.py` builds the checked-in
+[`release_optimized4`](../../../examples/functional/release_optimized4/README.md)
+program in explicit v3 mode. Five source lets produce four native arithmetic
+gates through commutative sorting and reuse. Both repeated results feed the
+output; its canonical IR and full AIR geometry match a handwritten four-gate
+package. The test admits a native
+proof through five-pin `verify-release`, rejects a false result, and rejects
+certificate schema downgrade and unknown schema markers.
+
+```sh
+python3 src/frontends/s31/tests/acceptance/compiler_correspondence/optimized_release.py
+```
+
+`functional_optimized_release.py` applies the same package, cost, proof,
+five-pin release, false-claim and downgrade checks to three pure helpers.
+Two live calls of `mix(x)` expand to seven normalized arithmetic nodes but
+reuse four native gates. The helper body writes `double(a) + square(a)`
+directly; a 24-case pure differential corpus additionally checks nested
+expression order, helper repetition and function aliases against the
+production frontend and handwritten canonical IR.
+
+```sh
+python3 -m unittest src.frontends.s31.tests.python.test_optimized_functional_correspondence
+python3 src/frontends/s31/tests/acceptance/compiler_correspondence/functional_optimized_release.py
+```
+
+`lexical_release.py` repeats the package, cost, proof, release-verifier and
+changed-claim controls for the checked-in
+[`release_let4`](../../../examples/functional/release_let4/README.md)
+program. Its scoped source binder produces no relation node; the direct form
+names the same anonymous multiplication wire `_s31_0` explicitly.
+
+```sh
+python3 src/frontends/s31/tests/acceptance/compiler_correspondence/lexical_release.py
+```
+
+`higher_order_release.py` checks a named function value passed through a
+lexical binding and a monomorphic `Fn` parameter. It compares the complete
+normalized relation, canonical IR, and native AIR geometry with a handwritten
+two-gate program, then proves, runs `verify-release`, and rejects a changed
+public claim. The function value itself contributes no gate or AIR row.
+
+```sh
+python3 src/frontends/s31/tests/acceptance/compiler_correspondence/higher_order_release.py
+```
+
+`closure_release.py` checks an explicitly captured wire in a unary lambda,
+passes that lambda through `Fn`, and shadows the captured name in a later
+lexical `let`. The independently reconstructed four-gate relation, canonical
+IR, and native AIR geometry must equal the handwritten source. The native
+proof and strict release verifier accept the true result and reject a changed
+public result.
+
+```sh
+python3 src/frontends/s31/tests/acceptance/compiler_correspondence/closure_release.py
+```
+
+`inline_lambda_release.py` passes a lambda directly to a monomorphic `Fn`
+parameter and applies it twice. Its two-gate normalized relation, canonical
+IR, and native AIR geometry must equal the handwritten `x²; x⁴` program. The
+proof passes strict release verification, and a changed public result fails.
+
+```sh
+python3 src/frontends/s31/tests/acceptance/compiler_correspondence/inline_lambda_release.py
+```
+
+`curried_release.py` checks a helper that computes a gate, returns a closure
+capturing its result, and applies it with `make(x)(x)`. The independently
+reconstructed two-gate relation, canonical IR and native AIR geometry must
+match the handwritten program; a real strict release proof passes and a changed
+public result fails.
+
+```sh
+python3 src/frontends/s31/tests/acceptance/compiler_correspondence/curried_release.py
+```
+
+`nested_release.py` checks `identity(make(x))(double(x))`. The nested function
+and array arguments must leave exactly the three handwritten arithmetic gates
+in the same order. It compares complete normalized relation, canonical IR and
+native AIR geometry, accepts a strict release proof and rejects a changed
+public result.
+
+```sh
+python3 src/frontends/s31/tests/acceptance/compiler_correspondence/nested_release.py
+```
+
+`helper_composition_release.py` checks a helper whose body passes both an
+inline captured `fun` and a nested array call to another helper. The native
+package must contain only the two direct addition gates, pass strict release
+verification, and reject a changed public result.
+
+```sh
+python3 src/frontends/s31/tests/acceptance/compiler_correspondence/helper_composition_release.py
+```
+
 `generated_native_subset.py` selects four sources from the pinned 384-source
 mutation corpus: one gate; eight alias-spelled gates with an earlier return;
 fifteen gates with a final return; and sixteen comment-spelled gates with an
@@ -221,14 +355,14 @@ equal the exported rows, prove collision resistance, or cover private/mixed
 programs. The source compiler and PCS verifier remain separate proof
 obligations in the broader correspondence claim.
 
-## Source-derived full main trace for optimized v3
+## Source-derived full main trace for direct Gate
 
 `package.direct_gate_main_correspondence` reconstructs the full 12×512 main
 columns from the compact normalized source, four public input words, and the
-independent fixed schedule. It evaluates every compact add or pointwise
-multiply, including a returned earlier wire after later lets and v3
-common-subexpression sharing. The four public input scalars and the constant
-basis/inverse words anchor the fixed Gate graph. It solves every other address
+independent fixed schedule. It evaluates every compact add, ordered
+subtraction, or pointwise multiply, including a returned earlier wire after
+later lets and v3 common-subexpression sharing. The four public input scalars
+and the constant basis/inverse words anchor the fixed Gate graph. It solves every other address
 from the selected operation and checks the seed rows, packed input, every
 source SSA word, public output copies, and all 6,144 input/output cells.
 The model never reads native main words to derive its expected columns.
@@ -249,11 +383,23 @@ exact proof accepted by the generated native verifier. A changed main-root
 proof byte and a changed public claim are rejected by that verifier; changed
 export cells and swapped columns fail the independent trace comparison.
 
+The reusable [pinned public trace audit](../../../tools/audit/README.md) performs
+the same complete reconstruction for any source admitted by the strict public
+four-lane release checker. The `subtraction_release.py` and optimized v3
+acceptance cases run it on ordered subtraction. It compares every fixed and
+main cell from the native export with the independent source schedule, checks
+the public words and serialized main digest, and recommits the source-derived
+main columns through the native PCS. Both that root and the export's reported
+root must equal the exact proof's main commitment. A changed source-derived
+cell changes its root. Both trace inspection commands reject a nonempty
+private assignment before exporting any rows or roots.
+
 This is a finite, honest-prover source-to-main-commitment regression under the
 native exporter and PCS commitment implementation. It does not authenticate
 arbitrary query openings as these 6,144 cells, prove collision resistance or
 FRI/LogUp soundness, or cover private and mixed profiles. The v3 checker is
-still an explicit opt-in: normal package admission remains v2-only.
+still an explicit opt-in. The separate `optimized_release.py` fixture checks
+the generated v3 package through strict release admission.
 
 ## Resealed source-row adversarial controls
 

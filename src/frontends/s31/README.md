@@ -23,7 +23,7 @@ The root contains the package build files and [`mod.zig`](mod.zig), the Zig modu
 
 The matching [design dossier](../../../design/s31/README.md) keeps proposals and measurements separate from maintained source. Historical measurements remain pinned records; moved records retain their original contents.
 
-The [Lean package](../../../formal/s31/README.md) tracks 56 normalized
+The [Lean package](../../../formal/s31/README.md) tracks 57 normalized
 operation families and proves local semantic and constraint properties for
 reviewed fragments, reusing the repository's M31 and Poseidon S-box semantics.
 Its operation map, source bindings and CI audit keep the claim bounded:
@@ -51,6 +51,14 @@ python3 src/frontends/s31/python/s31.py build src/frontends/s31/examples/arithme
 python3 src/frontends/s31/python/s31.py explain zig-out/s31/text-arith4
 python3 src/frontends/s31/python/s31.py equations zig-out/s31/text-arith4
 ```
+
+For checked commutative gate reuse in the bounded public four-lane
+`direct-gate` profile, use `build --correspondence optimized`. The
+[worked v3 example](examples/functional/release_optimized4/README.md) has
+five source arithmetic lets, four native gates, and a strict release proof.
+The [functional gate-sharing example](examples/functional/release_functional_cse4/README.md)
+uses repeated pure helper calls: seven source arithmetic nodes specialize to
+the same four native gates as handwritten code.
 
 For a single source-to-proof audit, `trial` builds or reuses a package, proves an
 assignment, runs its native verifier, checks that a changed public word is

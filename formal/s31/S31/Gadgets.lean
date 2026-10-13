@@ -139,6 +139,7 @@ import S31.Gadgets.Functional.Arrays
 import S31.Gadgets.Functional.ArrayNodes
 import S31.Gadgets.Functional.ArithmeticNodes
 import S31.Gadgets.Functional.CompilerCorrespondence
+import S31.Gadgets.Functional.NestedApplications
 import S31.Gadgets.Functional.StaticSumValues
 import S31.Gadgets.Functional.SSACertificate
 import S31.Gadgets.Functional.SSAEmitterProof
@@ -153,6 +154,18 @@ import S31.Gadgets.Functional.SSAGeneralNamedTopology
 import S31.Gadgets.Functional.SSAGeneralNamedExecution
 import S31.Gadgets.Functional.SSALocalPipeline
 import S31.Gadgets.Functional.SSATextBytes
+import S31.Gadgets.Functional.Correspondence.SourceFunctionBytes
+import S31.Gadgets.Functional.Correspondence.OrderedSubtractionRelease
+import S31.Gadgets.Functional.Correspondence.OrderedSubtractionBytes
+import S31.Gadgets.Functional.Correspondence.OrderedSubtractionHelperBytes
+import S31.Gadgets.Functional.Correspondence.GeneratedOrderedSubtractionRelease
+import S31.Gadgets.Functional.Correspondence.GeneratedOrderedSubtractionHelper
+import S31.Gadgets.Functional.Correspondence.OrderedSubtractionConcrete
+import S31.Gadgets.Functional.Correspondence.OrderedSubtractionNativeRows
+import S31.Gadgets.Functional.Correspondence.GeneratedOrderedSubtractionNativeRows
+import S31.Gadgets.Functional.Correspondence.OrderedSubtractionNativeSoundness
+import S31.Gadgets.Functional.Correspondence.OrderedSubtractionHelperNative
+import S31.Gadgets.Functional.Correspondence.SourceFunctionCanonicalBytes
 import S31.Gadgets.Functional.SSANormalizedBytes
 import S31.Gadgets.Functional.SSACanonicalIrBytes
 import S31.Gadgets.Functional.SSAAirColumnCells
@@ -211,8 +224,10 @@ import S31.Gadgets.Functional.Correspondence.ConservativeDeadCode
 import S31.Gadgets.Functional.Correspondence.CanonicalDagCompleteness
 import S31.Gadgets.Functional.Correspondence.OptimizedTextBytes
 import S31.Gadgets.Functional.Correspondence.OptimizedSourceAirRows
+import S31.Gadgets.Functional.Correspondence.LiveOptimizedRelease
 import S31.Gadgets.Functional.Correspondence.OptimizedPhysicalRoster
 import S31.Gadgets.Functional.Correspondence.OptimizedDecodedTrace
+import S31.Gadgets.Functional.Correspondence.OptimizedDecodedTraceAudit
 import S31.Gadgets.Functional.Correspondence.ZeroPhysicalTraceWitness
 import S31.Gadgets.Functional.Correspondence.AliasProjectedExportBridge
 import S31.Gadgets.Functional.Correspondence.PinnedFullOutputRoster

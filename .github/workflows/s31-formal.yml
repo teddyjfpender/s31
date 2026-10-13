@@ -30,9 +30,10 @@ concurrency:
 jobs:
   semantics-and-gadgets:
     runs-on: ubuntu-latest
-    # The full build passed in about 21 minutes on hosted runners; kernel
-    # replay then hit the former 30-minute whole-job limit without a result.
-    timeout-minutes: 60
+    # This full proof tree reached 6,919/6,946 build tasks at the former
+    # 60-minute limit on a hosted runner, before kernel replay began. Leave
+    # enough time for both the build and the independent kernel check.
+    timeout-minutes: 150
     env:
       # leanchecker otherwise imports a Mathlib environment per concurrent
       # module. One worker preserves the same kernel checks with bounded RAM.
@@ -87,10 +88,18 @@ jobs:
           lake exe cache get Mathlib.Data.ZMod.Basic Mathlib.Tactic Mathlib.NumberTheory.LucasLehmer
       - name: Build every proof source and executable semantics
         working-directory: formal/s31
-        run: lake build S31 S31.Evidence.AxiomAudit s31-check s31-alias-relation-check
+        run: lake build S31 S31.Evidence.AxiomAudit s31-check s31-alias-relation-check s31-source-function-check
       - name: Exercise the proved source and normalized-relation checker
         working-directory: formal/s31
         run: python3 -m unittest discover -s tests -p 'test_alias_relation_check.py' -q
+      - name: Compare named-function source and exact relation bytes with Lean
+        working-directory: formal/s31
+        run: python3 -m unittest discover -s tests/audit -p 'test_source_function_check.py' -q
+      - name: Join checked functional canonical IR with fresh native identities
+        run: |
+          set -euo pipefail
+          python3 formal/s31/tests/audit/native_canonical_digest.py |
+            tee zig-out/s31/formal/source-function-native-digest.json
       - name: Check pinned record source and canonical ABI bytes
         working-directory: formal/s31
         run: python3 -m unittest discover -s tests -p 'test_record_pair_alias_check.py' -q
@@ -147,4 +156,35 @@ jobs:
         with:
           name: s31-fresh-native-square4-trace
           path: zig-out/s31/formal/fresh-square4/
+          if-no-files-found: warn
+
+  fresh-native-ordered-subtraction-rows:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          submodules: recursive
+      - name: Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.13'
+      - name: Zig for ordered subtraction native package
+        uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2
+        with:
+          version: 0.15.2
+          use-cache: false
+      - name: Rebuild and compare sealed ordered subtraction source rows
+        run: |
+          set -euo pipefail
+          mkdir -p zig-out/s31/formal/ordered-subtraction
+          python3 src/frontends/s31/tools/formal/ordered_subtraction_native_fixture.py \
+            --native 2>&1 | tee zig-out/s31/formal/ordered-subtraction/check.log
+      - name: Preserve ordered subtraction native evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: s31-fresh-native-ordered-subtraction-rows
+          path: zig-out/s31/formal/ordered-subtraction/
           if-no-files-found: warn

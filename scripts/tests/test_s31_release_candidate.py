@@ -125,7 +125,7 @@ class CandidateReports(unittest.TestCase):
                                 compiler=COMPILER, root=self.root)
 
     def test_valid_finite_packet(self) -> None:
-        self.assertEqual(self.check()["feature_checks"], 17)
+        self.assertEqual(self.check()["feature_checks"], 21)
 
     def test_missing_audit_profile_fails(self) -> None:
         del self.audit["cases"]["sha-fused"]
@@ -208,6 +208,17 @@ class CandidateReports(unittest.TestCase):
     def test_missing_formal_source_commit_fails(self) -> None:
         self.formal["source_commit"] = None
         with self.assertRaisesRegex(ValueError, "formal source commit"):
+            self.check()
+
+    def test_failed_executed_formal_receipt_cannot_pass(self) -> None:
+        self.formal.update(status="failed", failure="worktree drift after leanchecker")
+        with self.assertRaisesRegex(ValueError, "formal receipt reports failure"):
+            self.check()
+
+    def test_executed_formal_receipt_runner_is_pinned(self) -> None:
+        self.formal.update(status="passed", failure=None,
+                           receipt_script_sha256="0" * 64)
+        with self.assertRaisesRegex(ValueError, "formal receipt runner"):
             self.check()
 
     def test_failed_lean_command_fails(self) -> None:

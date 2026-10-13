@@ -42,6 +42,32 @@ pub fn root(
     return scheme.trees.items[1].commitment.root();
 }
 
+/// Recommit caller-supplied canonical main words under this program's sealed
+/// fixed Gate topology. The words need not come from the native witness
+/// writer, so a source-derived trace can be compared directly with a proof's
+/// main commitment. This still relies on the installed PCS implementation.
+pub fn rootFromWords(
+    allocator: std.mem.Allocator,
+    pp: *const circuit.common.direct_arithmetic.Circuit,
+    words: [circuit.witness.direct_arithmetic.main_width][]const u32,
+    pcs: core.pcs.config_v2.PcsConfigV2,
+) ![32]u8 {
+    var evaluations: [circuit.witness.direct_arithmetic.main_width]ColumnEvaluation = undefined;
+    var allocated: usize = 0;
+    defer for (evaluations[0..allocated]) |evaluation| allocator.free(evaluation.values);
+    for (words, &evaluations) |column, *evaluation| {
+        if (column.len != 512) return error.InvalidDirectTraceShape;
+        const values = try allocator.alloc(M31, 512);
+        evaluation.* = .{ .log_size = 9, .values = values };
+        allocated += 1;
+        for (column, values) |word, *value| {
+            if (word >= 2147483647) return error.NonCanonicalM31Word;
+            value.* = M31.fromCanonical(word);
+        }
+    }
+    return root(allocator, pp, &evaluations, pcs);
+}
+
 fn cloneColumns(allocator: std.mem.Allocator, source: []const ColumnEvaluation) ![]ColumnEvaluation {
     const owned = try allocator.alloc(ColumnEvaluation, source.len);
     var ready: usize = 0;

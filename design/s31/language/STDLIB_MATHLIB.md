@@ -19,7 +19,7 @@ general module loader or user-published package format yet.
 
 | Namespace | Implemented operations | Backend relation |
 | --- | --- | --- |
-| `std::math` | `neg`, `sub`, `square`, checked `inv`, `div`, static `pow<K>`, static-group `sum`, `dot`, `matvec`, `matmul`, `poly_eval`, fixed-array `sum_lanes`, `dot_lanes`, `add_u256`, `add_u256_checked`, `sum_u256`, `sum_u256_checked`, `sub_u256`, `sub_u256_checked`, `le_u256`, `lt_u256`, `gt_u256`, `ge_u256`, `eq_u256`, `ne_u256`, `min_u256`, `max_u256` | M31 arithmetic and constrained packed reduction; `matvec` and `matmul` expand to ordinary dot and add nodes; inversion uses a pointwise product and arithmetic zero assertion per four active lanes, and division reuses the inverse; wide operations use sixteen range-checked digits and Boolean carries/borrows. Fixed wide sums expand to balanced trees of ordinary checked or wrapping additions. Ordering helpers reuse `u256_le`, Boolean logic, and a range-preserving wide select. |
+| `std::math` | `neg`, `sub`, `square`, checked `inv`, `div`, static `pow<K>`, static-group `sum`, `dot`, `matvec`, `matmul`, `poly_eval`, fixed-array `sum_lanes`, `dot_lanes`, `add_u256`, `add_u256_checked`, `sum_u256`, `sum_u256_checked`, `sub_u256`, `sub_u256_checked`, `le_u256`, `lt_u256`, `gt_u256`, `ge_u256`, `eq_u256`, `ne_u256`, `min_u256`, `max_u256` | M31 arithmetic includes one packed native subtraction gate for dynamic `sub`; `matvec` and `matmul` expand to ordinary dot and add nodes; inversion uses a pointwise product and arithmetic zero assertion per four active lanes, and division reuses the inverse; wide operations use sixteen range-checked digits and Boolean carries/borrows. Fixed wide sums expand to balanced trees of ordinary checked or wrapping additions. Ordering helpers reuse `u256_le`, Boolean logic, and a range-preserving wide select. |
 | `std::array` | Static-reference and runtime-array `get<K>`, `concat`, `take<K>`, `drop<K>`, `reshape<R>`, `flatten` | Static forms erase to references. Runtime forms use `array_get`, `array_concat`, and `array_slice` relation nodes. Aligned packed source words alias existing wires; shifted views use constrained unpack/repack gates. |
 | `std::field` | `from_u16`, `is_zero`, `select` | Explicit conversion; direct input bits have `b²-b=0`, while computed zero bits use two algebraic constraints. Selection also accepts `UInt256` and keeps each chosen limb equal to a range-checked input limb. |
 | `std::bool` | `not`, `and`, `or`, `xor`, `select` | Scalar typed bits; input bitness is constrained, and every result follows from Boolean field identities. |
@@ -103,11 +103,17 @@ The compiler checks types and canonical field constants before relation emission
 `p = 2^31 - 1`, and defines `x^0 = 1` even for `x = 0`. For exponents through
 255, it searches a bounded deterministic star addition chain and adopts it
 only when it uses fewer multiplications than left-to-right binary powering.
-Search exhaustion and larger exponents use that binary schedule, giving the
-upper bound `floor(log2 K) + popcount(K) - 1` for nonconstant `x`, `K > 0`.
+For larger exponents of the form `(2^k−1)·2^s`, it reuses a saved all-ones
+power while squaring, and accepts the resulting chain only when it is shorter
+than binary powering. Other large exponents and exhausted searches use the
+binary schedule, giving the upper bound
+`floor(log2 K) + popcount(K) - 1` for nonconstant `x`, `K > 0`.
 This does not claim a globally optimal chain. Constant inputs fold at compile
 time. The [worked `pow<15>` circuit](../../../src/frontends/s31/docs/library.md#static-powers-become-multiplication-circuits)
 uses five gates against the prior binary schedule's six.
+The [four-call `pow<65535>` comparison](../../../src/frontends/s31/examples/arithmetic/powers/README.md)
+uses 76 instead of 120 multiplication nodes, reducing the native padded
+QM31 trace from 1,024 to 512 rows. Both forms have accepted native proofs.
 
 For example, [`math_polynomial4.s31`](../../../src/frontends/s31/examples/arithmetic/math_polynomial4.s31)
 computes `f(x) = x^5 + 3x - 7` in four independent lanes. The source expression

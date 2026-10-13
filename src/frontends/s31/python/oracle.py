@@ -31,7 +31,7 @@ _HASH_OPS = frozenset({
     "hash_blake2s", "hash_blake2s_leaf", "hash_blake2s_pair",
     "hash_poseidon2_leaf", "hash_poseidon2_pair",
 })
-_OPS = frozenset({"constant", "cast_m31", "array_get", "array_concat", "array_slice", "add", "mul", "inv", "is_zero", "bool_not", "bool_and", "bool_or", "bool_xor", "bool_select", "add_const",
+_OPS = frozenset({"constant", "cast_m31", "array_get", "array_concat", "array_slice", "add", "sub", "mul", "inv", "is_zero", "bool_not", "bool_and", "bool_or", "bool_xor", "bool_select", "add_const",
                   "mul_const", "sum_lanes", "select", "repeat",
                   "u256_add", "u256_le", "u256_add_checked", "u256_sub", "u256_sub_checked",
                   "int_view", "int_add_checked", "int_add_wrapping", "int_sub_checked", "int_sub_wrapping", "int_le", "int_mul_wrapping", "int_mul_checked", "int_cast_checked", "int_bit_and", "int_bit_or", "int_bit_xor", "int_bit_not",
@@ -193,7 +193,7 @@ def _validated_shapes(relation: Mapping[str, Any]) -> tuple[dict[str, tuple[str,
             if lhs[1] + rhs[1] > 4096:
                 raise OracleError(f"{name}: array_concat exceeds 4096 elements")
             shape = (lhs[0], lhs[1] + rhs[1])
-        elif op in ("add", "mul"):
+        elif op in ("add", "sub", "mul"):
             _absent(node, "constant", "length", "rounds", "body")
             if rhs is None:
                 raise OracleError(f"{name}: missing rhs")
@@ -399,6 +399,8 @@ def evaluate_relation(relation: Mapping[str, Any], assignment: Mapping[str, Any]
             result = lhs + rhs
         elif op == "add":
             result = [(a + b) % P for a, b in zip(lhs, rhs)]
+        elif op == "sub":
+            result = [(a - b) % P for a, b in zip(lhs, rhs)]
         elif op == "mul":
             result = [(a * b) % P for a, b in zip(lhs, rhs)]
         elif op == "inv":
