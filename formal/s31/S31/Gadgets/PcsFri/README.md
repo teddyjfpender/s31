@@ -27,8 +27,8 @@ set; conditioning a fixed bad event can inflate its mass by the exact factor
 regular-seed count `2Q−3` and accepted count `(Q−1)²` for a finite lower
 field of size `Q`, assuming a nonsquare tower parameter and a square root
 of `−1` in that lower field. The modeled CM31 pair has size `q²`, a square
-root of `−1`, and a nonsquare `2+i`; a Lean field instance and native
-Zig refinement are still needed to instantiate the generic count directly.
+root of `−1`, and a nonsquare `2+i`; the field instance below instantiates
+the generic count. Native Zig refinement is still needed.
 Native seed uniformity and adaptation to the published OOD theorem remain
 separate obligations. [`PairedDenominator.lean`](PairedDenominator.lean)
 proves the local nonvanishing step: if the QM31 point has circle coefficient
@@ -75,8 +75,9 @@ structure from the AIR formalization's quadratic algebra to the modeled CM31
 coefficient pair. It proves that transported addition, multiplication, and
 squaring equal the coefficient formulas used by the native-shaped model. In
 this field, `i²=-1` and `2+i` is nonsquare. The generic finite count therefore
-specializes without free field assumptions: with `q=2147483647²`, precisely
-`2q-3` regular seeds fail the upper-coordinate guard and `(q-1)²` pass. The
+specializes without free field assumptions: with `p=2147483647` and lower
+field size `Q=p²`, precisely `2Q-3` regular seeds fail the upper-coordinate
+guard and `(Q-1)²` pass. The
 modeled circle equation and `y.c1 ≠ 0` also imply a nonzero quotient
 denominator at every base-circle row. This does not prove the compiled Zig
 operations implement the modeled field, nor that Fiat–Shamir samples seeds
