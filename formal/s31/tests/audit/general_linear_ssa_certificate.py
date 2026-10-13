@@ -67,6 +67,7 @@ def main() -> None:
                 '  "lean_semantic_profile": "linear-ssa-m31-v1",',
                 '  "lean_semantic_profile": "linear-ssa-m31-v1",\n'
                 '  "capability": "source-to-relation-only",', 1),
+            "oversized": raw + " " * 65536,
         }
         for name, value in byte_mutations.items():
             candidate = Path(temporary) / f"{name}.json"
