@@ -82,9 +82,12 @@ field-point counting theorem; the new count supplies that separate fact.
 The [guarded image theorem](../../../formal/s31/S31/Gadgets/PcsFri/GuardedCircleImage.lean)
 now proves that the modeled rational-map image is exactly the QM31 circle
 points with nonzero upper `y` coefficient and lies inside the complement
-of the embedded CM31 circle. A separate coefficient refinement is still
-needed to identify the numeric `acceptedGuard` seed count with this field
-image; the transcript draw and installed binary are separate obligations.
+of the embedded CM31 circle. The
+[field-count bridge](../../../formal/s31/S31/Gadgets/PcsFri/OodGuardFieldCount.lean)
+proves that the counted `acceptedGuard` predicate is exactly the concrete
+QM31 field guard and that the modeled image has `(q²−1)²` points, leaving
+exactly `q²−1` points in the two-point universe outside that image. The
+transcript draw and installed binary are separate obligations.
 The ratio transfers a
 **fixed bad-set count only if** that count is first proved for the two-point
 universe. It does not establish adaptive Fiat–Shamir sampling.
