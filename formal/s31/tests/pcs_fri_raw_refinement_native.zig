@@ -5,6 +5,7 @@ const std = @import("std");
 const core = @import("stwo_core");
 const prover = @import("stwo_prover_engine");
 const CpuBackend = @import("stwo_cpu_backend").CpuBackend;
+const admission = @import("fri_capture_admission");
 
 const QM31 = core.fields.qm31.QM31;
 const M31 = core.fields.m31.M31;
@@ -253,6 +254,25 @@ fn runSchedule(allocator: std.mem.Allocator, log_size: u32, step: u32) !void {
     try verifier.decommitWithQueryCapture(allocator, answers, sampled.raw, &capture);
     defer capture.deinit(allocator);
     try audit(allocator, &verifier, capture, sampled.raw, sampled.unique, answers);
+    const raw_answers = try allocator.alloc(QM31, sampled.raw.len);
+    defer allocator.free(raw_answers);
+    for (raw_answers, sampled.raw) |*answer, position| answer.* = values[position];
+    try admission.validate(Hasher, allocator, config, sampled.raw, raw_answers,
+        capture, verifier.last_layer_poly.coefficients());
+
+    const saved_raw_answer = raw_answers[0];
+    raw_answers[0] = saved_raw_answer.add(QM31.one());
+    try std.testing.expectError(error.InvalidFriCapture,
+        admission.validate(Hasher, allocator, config, sampled.raw, raw_answers,
+            capture, verifier.last_layer_poly.coefficients()));
+    raw_answers[0] = saved_raw_answer;
+
+    const saved_width = capture.layers[0].fold_width;
+    capture.layers[0].fold_width += 1;
+    try std.testing.expectError(error.InvalidFriCapture,
+        admission.validate(Hasher, allocator, config, sampled.raw, raw_answers,
+            capture, verifier.last_layer_poly.coefficients()));
+    capture.layers[0].fold_width = saved_width;
 
     // These hostile edits leave the verifier's success result untouched.
     // The independent audit must reject the altered certificate.
@@ -261,6 +281,9 @@ fn runSchedule(allocator: std.mem.Allocator, log_size: u32, step: u32) !void {
     first.positions[0] ^= 1;
     try std.testing.expectError(error.BadRawPosition,
         audit(allocator, &verifier, capture, sampled.raw, sampled.unique, answers));
+    try std.testing.expectError(error.InvalidFriCapture,
+        admission.validate(Hasher, allocator, config, sampled.raw, raw_answers,
+            capture, verifier.last_layer_poly.coefficients()));
     first.positions[0] = saved_position;
 
     const saved_value = first.values[0];
@@ -268,12 +291,17 @@ fn runSchedule(allocator: std.mem.Allocator, log_size: u32, step: u32) !void {
     if (audit(allocator, &verifier, capture, sampled.raw, sampled.unique, answers)) |_| {
         return error.AcceptedChangedSubset;
     } else |_| {}
+    try std.testing.expectError(error.InvalidFriCapture,
+        admission.validate(Hasher, allocator, config, sampled.raw, raw_answers,
+            capture, verifier.last_layer_poly.coefficients()));
     first.values[0] = saved_value;
 
     const saved_alpha = first.folding_alpha;
     first.folding_alpha = saved_alpha.add(QM31.one());
     try std.testing.expectError(error.BadLayerShape,
         audit(allocator, &verifier, capture, sampled.raw, sampled.unique, answers));
+    // The admission checker deliberately has no independent transcript state.
+    // Challenge custody is supplied by the successful verifier capture.
     first.folding_alpha = saved_alpha;
 
     if (capture.layers.len > 1) {
@@ -283,6 +311,9 @@ fn runSchedule(allocator: std.mem.Allocator, log_size: u32, step: u32) !void {
         if (audit(allocator, &verifier, capture, sampled.raw, sampled.unique, answers)) |_| {
             return error.AcceptedChangedInnerSubset;
         } else |_| {}
+        try std.testing.expectError(error.InvalidFriCapture,
+            admission.validate(Hasher, allocator, config, sampled.raw, raw_answers,
+                capture, verifier.last_layer_poly.coefficients()));
         inner.values[0] = saved_inner_value;
     }
 
@@ -290,6 +321,9 @@ fn runSchedule(allocator: std.mem.Allocator, log_size: u32, step: u32) !void {
     verifier.last_layer_poly.coefficientsMut()[0] = saved_coefficient.add(QM31.one());
     try std.testing.expectError(error.BadTerminalValue,
         audit(allocator, &verifier, capture, sampled.raw, sampled.unique, answers));
+    try std.testing.expectError(error.InvalidFriCapture,
+        admission.validate(Hasher, allocator, config, sampled.raw, raw_answers,
+            capture, verifier.last_layer_poly.coefficients()));
     verifier.last_layer_poly.coefficientsMut()[0] = saved_coefficient;
 }
 
