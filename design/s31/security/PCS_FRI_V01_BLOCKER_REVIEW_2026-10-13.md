@@ -55,6 +55,14 @@ collision term. A source-level resemblance to that protocol is insufficient:
 the native verifier needs a complete relation-preserving refinement and
 every concrete parameter needs to satisfy the theorem's premises.
 
+The [unique-decoding S-two feasibility ledger](PCS_FRI_STWO_UDR_FEASIBILITY.md)
+now evaluates every quoted flat-AIR IOPP, multi-domain FRI and BCS round
+expression as an exact rational for explicit hypothetical paper inputs. It
+keeps all native theorem terms null. With no proved grinding credit, QM31's
+published OOD/BCS expression cannot certify an absolute 96-bit target for
+`T≥2^28`, independently of query count or domain choice. This is a limit of
+the cited theorem expression, not a lower bound on actual attack success.
+
 The [sealed-package geometry diagnostic](PCS_FRI_PACKAGE_GEOMETRY.md) now
 checks a reviewed key schema and the current engine gitlink, then reports the
 key's candidate maximum trace size, configured lifting size, and any complete

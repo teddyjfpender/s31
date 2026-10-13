@@ -106,8 +106,8 @@ OBLIGATIONS = (
         "gap_kind": "uninstantiated_theorem_error_ledger",
         "published_requirement": "Circle STARKs Theorems 6/7 and Stwo NIROP: sum every justified commitment, AIR, OODS, FRI, Merkle and Fiat-Shamir term before comparing with target bits",
         "published_anchor": CIRCLE + "#appendix-B",
-        "partial_evidence": ["scripts/release/pcs_fri_proven_preflight.py", "scripts/release/pcs_fri_gate_error_ledger.py", "design/s31/security/PCS_FRI_PUBLISHED_BOUND_AUDIT.md", "design/s31/security/PCS_FRI_GATE_ERROR_LEDGER.md"],
-        "missing_discharge": "instantiate every published per-round term with theorem-identified package parameters and explicit T, R, lambda, Merkle/collision and native-refinement bounds; the one-gate ledger keeps these terms null",
+        "partial_evidence": ["scripts/release/pcs_fri_proven_preflight.py", "scripts/release/pcs_fri_gate_error_ledger.py", "scripts/release/pcs_fri_stwo_udr.py", "formal/s31/S31/Gadgets/PcsFri/StwoUDRFeasibility.lean", "design/s31/security/PCS_FRI_PUBLISHED_BOUND_AUDIT.md", "design/s31/security/PCS_FRI_GATE_ERROR_LEDGER.md", "design/s31/security/PCS_FRI_STWO_UDR_FEASIBILITY.md"],
+        "missing_discharge": "the exact unique-decoding paper-scenario ledger has all quoted IOPP, FRI and BCS expressions, but instantiate them with theorem-identified native package parameters and prove the native protocol, T, R, Merkle/collision and ROM reductions; every native theorem term remains null",
     },
     {
         "id": "P10_GROUPED_FOLD_SCHEDULE",
