@@ -20,6 +20,11 @@ proof under the bounded direct-Gate correspondence certificate.
 | [`release_functional_cse4`](release_functional_cse4/README.md) | Two live pure helper calls share the same four-gate circuit. |
 | [`pattern_parameters`](pattern_parameters/README.md) | Product destructuring in function parameters. |
 
+[`reshape_flatten_zero_cost`](reshape_flatten_zero_cost/README.md) measures a
+runtime three-row reshape and flatten against a direct selection and an
+expanded slice/concat circuit. The first two have exactly matching native AIR
+geometry; the expanded form records 41 additional raw QM31 rows.
+
 The v2 correspondence checker is conservative about operand order and
 repeated gates. The last two optimized examples explicitly select v3; both
 are restricted to a public four-lane direct-Gate circuit. The certificate

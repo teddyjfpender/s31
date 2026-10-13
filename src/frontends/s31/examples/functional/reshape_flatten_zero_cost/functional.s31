@@ -1,0 +1,10 @@
+use std@1;
+
+// Three two-lane rows cross a packed QM31 boundary. The complete ordered
+// flatten is exactly x, so the compiler emits only the final selection.
+circuit reshape_flatten6(private x: [m31; 6]) -> public [m31; 1] {
+    let rows = std::array::reshape<3>(x);
+    let flat = std::array::flatten(rows);
+    let result = std::array::get<3>(flat);
+    result
+}

@@ -207,6 +207,12 @@ def main() -> None:
             if baseline is not None:
                 reference_cost = baseline["cases"][name]
                 for field in cost:
+                    if name == "array_matrix_runtime" and field == "slice_gate_rows":
+                        # The v1 baseline records two zero-gate eager slices.
+                        # Complete reshape/flatten now erases both relation
+                        # nodes; retain the historical raw AIR comparison.
+                        assert cost[field] == [], "runtime matrix view was not erased"
+                        continue
                     assert cost[field] == reference_cost[field], f"{name}: {field} cost regression"
                 assert largest_proof <= reference_cost["proof_bytes_ceiling"], f"{name}: proof-size regression"
             reports.append({"name": name, "profile": profile,
