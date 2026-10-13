@@ -1,7 +1,9 @@
 # P01 package geometry extractor
 
-Run the read-only diagnostic on a sealed **leaf** package with the engine
-submodule checked out at the S31 gitlink:
+Run the diagnostic on a sealed **leaf** package with the engine submodule
+checked out at the S31 gitlink. It does not modify package artifacts, but it
+executes the package's own native verifier for `check-key` when supported; use
+only a locally trusted package binary:
 
 ```sh
 python3 -B scripts/release/pcs_fri_package_geometry.py /path/to/package
@@ -18,7 +20,9 @@ lack it; the report records that limit instead of claiming native custody.
 The diagnostic checks the current S31 and engine source shapes that select the
 FRI tuple and configure lifting, then records their hashes and gitlink. These
 source checks are not a proof that an installed binary was compiled from those
-exact files.
+exact files. Manifest artifact hashes check internal consistency and do not
+authenticate the executable's provenance; a self-authenticating manifest is
+not an external trust anchor.
 
 `candidate_N_trace_rows` is `2^key.trace_log_size`. It is a candidate maximum
 trace size, not an identified parameter of Circle STARKs Theorem 7.

@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
-"""Read-only, source-bound gate-profile composition and FRI-domain diagnostic.
+"""Gate-profile composition and FRI-domain diagnostic for locally trusted packages.
 
 This describes the configured domain of a *successful* pinned native verifier.
-It is not a PCS/FRI soundness certificate and --require-complete stays closed.
+It does not modify package artifacts, but executes the package's own native
+verifier for check-key. Manifest hashes check internal consistency, not binary
+provenance. Run only with a locally trusted package executable. This is not a
+PCS/FRI soundness certificate and --require-complete stays closed.
 """
 
 from __future__ import annotations
