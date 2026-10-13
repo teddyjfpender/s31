@@ -72,6 +72,21 @@ worse. A term of an upper-bound expression exceeding the target does not
 prove an attack; it means that expression cannot certify the target without
 additional justified reductions.
 
+The [Lean arithmetic theorem](../../../formal/s31/S31/Gadgets/PcsFri/ConservativeEnvelope.lean)
+strengthens this candidate conclusion. For **every** `B >= 2`, `m >= 3`,
+`L >= 1`, and `N >= 256`, the same Remark 26 leading expression exceeds
+`2^-96` over the native `QM31` challenge field. Substitute `D=N*B` and
+`rho_minus=1/B`: the expression contains `B^3*sqrt(B)*N^2` times positive
+monotone factors in `m` and `L`. Replacing `sqrt(B)` by the lower floor `1`
+already gives more than `2^-96` at the favorable corner
+`(N,B,m,L)=(256,2,3,1)`. The exact diagnostic checks that `N=128` does not
+cross this *floor* while `N=256` does. Query count and PoW do not alter this
+particular commitment/folding expression. This is a **conditional limit of
+the published proof envelope**, assuming the paper's parameter mapping; it
+is neither a native soundness result nor an attack lower bound. A different
+published bound, a wider challenge field or a different protocol could change
+the conclusion.
+
 ## Query-only design space
 
 The table holds `N=2^20` fixed, uses the whitepaper's circle-domain capacity

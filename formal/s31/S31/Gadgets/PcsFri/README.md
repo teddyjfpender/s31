@@ -4,6 +4,15 @@ The Lean files in this directory establish small parts of the native PCS/FRI
 argument. They are imported by `S31.Gadgets`, so normal builds and axiom
 audits include their theorems.
 
+[`ConservativeEnvelope.lean`](ConservativeEnvelope.lean) proves an arithmetic
+limit of one **published upper-bound expression**: in Circle STARKs Remark 26,
+its leading commitment/folding term exceeds `2^-96` whenever the candidate
+degree parameter has at least 256 rows, blowup is at least 2, Johnson
+multiplicity is at least 3, and batch width is at least 1. The proof uses a
+lower floor for `sqrt(blowup)` and exact arithmetic. It does not prove that
+the native protocol matches the paper or that an adversary can succeed with
+that probability.
+
 ## One lifted Merkle opening by hand
 
 Suppose a two-level tree authenticates an opened row `R` at leaf index `1`.

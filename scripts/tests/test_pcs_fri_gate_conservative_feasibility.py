@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import copy
 import unittest
+from fractions import Fraction
 from unittest.mock import patch
 
 from scripts.release.pcs_fri_gate_conservative_feasibility import (
     feasibility_from_gate, main, minimum_johnson_draws,
 )
 from scripts.tests.test_pcs_fri_gate_error_ledger import reviewed_shape
+from scripts.release.pcs_fri_proven_preflight import Candidate, remark26_leading_interval
 
 
 class ConservativeFeasibilityTests(unittest.TestCase):
@@ -34,6 +36,9 @@ class ConservativeFeasibilityTests(unittest.TestCase):
         self.assertEqual(circle["m3_candidate_query_term_integer_bits"], 19)
         self.assertEqual(circle["largest_m_candidate_query_term_integer_bits"], 34)
         self.assertTrue(circle["favorable_remark26_leading_upper_envelope_alone_exceeds_target"])
+        self.assertTrue(circle["every_such_remark26_upper_envelope_exceeds_target"])
+        self.assertEqual(circle["remark26_leading_envelope_lower_floor_for_all_B_ge_2_m_ge_3_L_ge_1"],
+                         circle["favorable_remark26_leading_upper_envelope_L1_m3_lower_endpoint"])
         self.assertIsNone(result["native_proven_security_bits"])
         self.assertFalse(result["proven_release_admissible"])
 
@@ -51,6 +56,12 @@ class ConservativeFeasibilityTests(unittest.TestCase):
         smaller = feasibility_from_gate(reviewed_shape(), 60)
         self.assertEqual(smaller["status"], "query_necessity_not_excluded_but_native_mapping_open")
         self.assertFalse(smaller["proven_release_admissible"])
+
+    def test_universal_remark26_floor_crosses_96_bits_at_256_rows(self) -> None:
+        target = Fraction(1, 1 << 96)
+        for rows, expected in ((128, False), (256, True), (512, True), (1 << 20, True)):
+            floor, _ = remark26_leading_interval(Candidate(rows, 2, 70, 3, 1))
+            self.assertEqual(floor > target, expected)
 
     def test_bad_geometry_or_target_rejected(self) -> None:
         baseline = reviewed_shape()
