@@ -16,6 +16,13 @@ y = 2t / (1 + t²)
 
 `pointFromOodsSeed` rejects the two roots of `1+t²` through the checked
 inverse. It does not explicitly exclude a seed in `M31` or `CM31`. The
+Lean [`rationalCircleEquiv`](../../../formal/s31/S31/Gadgets/PcsFri/OodRationalMap.lean)
+proves that regular seeds correspond one-to-one with circle points satisfying
+`1+x ≠ 0`, with inverse seed `t=y/(1+x)`. Thus the image omits exactly the
+point `(-1,0)` from the full circle. **Conditional on a uniform regular
+seed**, the mapped point is uniform on that image. This does not establish
+that the native Fiat–Shamir seed is uniform, or that acceptance samples
+uniformly outside the base-field circle. The
 native row quotient denominator uses only the `CM31`-extension coefficients
 `x.c1` and `y.c1`:
 

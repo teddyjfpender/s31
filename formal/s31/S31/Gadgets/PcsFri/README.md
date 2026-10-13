@@ -7,9 +7,12 @@ audits include their theorems.
 [`OodRationalMap.lean`](OodRationalMap.lean) proves the algebra of the native
 seed-to-circle formulas over any field of characteristic other than two:
 for a regular seed `t`, the output lies on the circle and `t` is recovered
-from its coordinates by `y/(1+x)`. Therefore two regular seeds cannot map to
-the same point. A field embedding also preserves both coordinates, so a seed
-in an embedded subfield stays in that subfield. The
+from its coordinates by `y/(1+x)`. Conversely, every circle point with
+`1+x ≠ 0` has exactly one regular preimage. `rationalCircleEquiv` packages
+this exact image as an equivalence of types; in a finite field, a uniform
+regular seed therefore gives a uniform point on this image. A field
+embedding also preserves both coordinates, so a seed in an embedded
+subfield stays in that subfield. The
 [pinned OOD geometry audit](../../../../../design/s31/security/PCS_FRI_OOD_SEED_GEOMETRY.md)
 counts the exceptional and subfield seeds for the current native field sizes.
 These results do not prove how the native transcript distributes seeds, a
