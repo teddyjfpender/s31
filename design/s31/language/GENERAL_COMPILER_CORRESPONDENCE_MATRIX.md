@@ -70,9 +70,14 @@ and canonical M31 constant nodes. It proves every accepted modeled arithmetic
 row evaluates to the same value in the actual normalized environment, for an
 arbitrary number of steps and lanes, under explicit initial-name alignment
 and freshness premises. A single named assertion check is equivalent to its
-zero-polynomial constraint once its operands are aligned. The full effects
-source-byte, assertion-loop, public-claim, and native-row composition is
-still outstanding.
+zero-polynomial constraint once its operands are aligned. The follow-on
+theorem handles the entire ordered normalized assertion loop: given an
+accepted arithmetic AIR trace, exact named nodes, and a structurally
+resolved assertion list, successful `Program.evaluate` forces every
+assertion polynomial. It composes with the checked effectful SSA source model
+to show that accepted normalized programs preserve source assertion effects.
+The exact effectful source-byte/relation certificate, public output claim,
+native AIR row authentication, and PCS/FRI still require separate joins.
 
 ### Narrow source-to-native row admission
 
