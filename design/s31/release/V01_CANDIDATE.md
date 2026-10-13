@@ -20,7 +20,7 @@ value oracle, changed public claim rejection, altered key rejection, and
 damaged proof rejection. This is **one fixture per profile**, not a claim over
 all source programs.
 
-The twenty-one-check feature matrix covers typed source arithmetic for
+The twenty-four-check feature matrix covers typed source arithmetic for
 `u8`–`u128` and `i8`–`i128`, checked and wrapping multiplication, bounded
 record source rules, public `u8`/`u16`/`u32` record ABI examples, and native
 controls for the supported direct arithmetic and public record cases. It also
@@ -77,7 +77,7 @@ The JSON has this shape (actual hashes and paths are required):
   "bindings_sha256": "<SHA-256 of formal/s31/source-bindings.json>",
   "checks": {
     "bindings": {"command": ["python3", "-B", "scripts/s31_formal.py"], "returncode": 0, "log": "<path>", "log_sha256": "<SHA-256>"},
-    "lake_build": {"command": ["lake", "build", "S31"], "returncode": 0, "log": "<path>", "log_sha256": "<SHA-256>"},
+  "lake_build": {"command": ["lake", "build", "S31", "s31-general-linear-structural-check"], "returncode": 0, "log": "<path>", "log_sha256": "<SHA-256>", "structural_checker_sha256": "<SHA-256>"},
     "leanchecker": {"command": ["lake", "env", "leanchecker", "S31"], "returncode": 0, "log": "<path>", "log_sha256": "<SHA-256>"}
   },
   "lean_threads": 1
@@ -110,3 +110,10 @@ dirty worktree, engine drift, or a candidate commit absent from the remote branc
 status is `scoped-candidate-gates-passed`. The release operator must still
 review the source, evidence provenance and disclosed limitations before a tag
 or distribution. The checker does not publish anything.
+
+The complete source bundler reruns this candidate check from the same three
+receipt paths and compares the checked-out engine with the S31 commit's Gitlink.
+Its `v0.1.0-rc.N` archives are scoped developer candidates. It refuses the
+stable `v0.1.0` tag until a reviewed native PCS/FRI certificate and a general
+compiler correspondence release checker are implemented. See the
+[bundle command](../../../scripts/release/README.md#complete-source-bundle).

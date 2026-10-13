@@ -128,10 +128,17 @@ checker passes on a clean commit, make an offline-buildable archive containing
 the **complete tracked source trees** at the candidate and pinned engine
 commits. Every archive member must stay under the single tag-named root;
 long Git paths are covered by a PAX regression test, and symlinks may not
-escape that root:
+escape that root. The bundler rechecks the same three candidate receipts,
+remote branch tip, and exact S31 Gitlink before writing an archive:
 
 ```sh
-python3 -B scripts/release/source_bundle.py --tag v0.1.0-rc.N \
+python3 -B scripts/release/source_bundle.py \
+  --tag v0.1.0-rc.N \
+  --audit zig-out/s31/release-audit-candidate.json \
+  --features zig-out/s31/feature-gate-full-final.json \
+  --formal zig-out/s31/formal-checks-final.json \
+  --compiler-sha256 '<PINNED_COMPILER_SHA256>' \
+  --branch '<RELEASE_BRANCH>' \
   --out zig-out/s31/s31-v0.1.0-rc.N-source-with-stwo-zig.tar.gz
 ```
 
@@ -139,7 +146,16 @@ Extract into a directory outside another Git checkout and run the bundled
 `SOURCE-BUNDLE.md` instructions. The bundle has no `.git` directories. Its
 `SOURCE-BUNDLE.json` pins both commits, both Git tree IDs, a SHA-256 over the
 engine code and build assets used by S31, and the compiler fingerprint. The
-compiler validates the engine digest and fingerprint before building a package.
+manifest also pins SHA-256 hashes of the three candidate receipts. The final
+`v0.1.0` tag fails closed: the current native PCS/FRI blocker matrix has no
+proven security bits, and no whole-compiler correspondence release checker
+exists. A stale blocker snapshot also rejects; refresh it only after reviewing
+the changed source and proof obligations. Only `v0.1.0-rc.N` developer candidate
+bundles can be made until both proof obligations have source-bound release
+certificates. Candidate receipts check finite profiles; they do not certify
+general soundness.
+
+The compiler validates the engine digest and fingerprint before building a package.
 Publish and independently check the archive's SHA-256 alongside the asset.
 The bundle is complete rather than a selected set of engine files; its size is
 dominated by tracked stwo-zig test vectors and research reports.

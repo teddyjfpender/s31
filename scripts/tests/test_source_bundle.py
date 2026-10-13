@@ -3,13 +3,20 @@
 from __future__ import annotations
 
 import io
+import hashlib
 import subprocess
+import sys
 import tarfile
 import tempfile
+import types
 import unittest
 from pathlib import Path
+from unittest import mock
 
-from scripts.release.source_bundle import add_archive
+from scripts.release.source_bundle import (
+    add_archive, bundle, checked_checkout, load_receipt,
+    require_stable_v01_certificate,
+)
 
 
 def git(repository: Path, *args: str) -> str:
@@ -78,6 +85,134 @@ class SourceBundleArchiveTests(unittest.TestCase):
             with tarfile.open(fileobj=io.BytesIO(), mode="w", format=tarfile.PAX_FORMAT) as target:
                 with self.assertRaisesRegex(RuntimeError, "symlink escapes source bundle"):
                     add_archive(target, repository, commit, "s31-test/")
+
+    def test_checkout_rejects_engine_outside_pinned_gitlink(self) -> None:
+        from scripts.release import source_bundle
+
+        def fake_git(repository: Path, *args: str) -> str:
+            if args == ("status", "--porcelain", "--untracked-files=normal"):
+                return ""
+            if args == ("rev-parse", "--show-toplevel"):
+                return str(source_bundle.ENGINE)
+            if args == ("rev-parse", "HEAD"):
+                return "b" * 40 if repository == source_bundle.ENGINE else "a" * 40
+            if args == ("rev-parse", "HEAD:deps/stwo-zig"):
+                return "c" * 40
+            raise AssertionError((repository, args))
+
+        with mock.patch.object(source_bundle, "git", side_effect=fake_git):
+            with self.assertRaisesRegex(RuntimeError, "pinned Gitlink"):
+                checked_checkout()
+
+    def test_candidate_bundle_rechecks_evidence_and_pins_receipt_hashes(self) -> None:
+        from scripts.release import source_bundle
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            receipts = [root / name for name in ("audit.json", "features.json", "formal.json")]
+            for path in receipts:
+                path.write_text(path.name)
+            out = root / "candidate.tar.gz"
+            source = "a" * 40
+            engine = "b" * 40
+            candidate = {"status": "scoped-candidate-gates-passed",
+                         "candidate_commit": source, "engine_commit": engine,
+                         "receipt_sha256": {
+                             "audit": source_bundle.file_sha256(receipts[0]),
+                             "features": source_bundle.file_sha256(receipts[1]),
+                             "formal": source_bundle.file_sha256(receipts[2]),
+                         }}
+            with (mock.patch.object(source_bundle, "checked_checkout", return_value=(source, engine)),
+                  mock.patch.object(source_bundle, "checked_candidate_evidence",
+                                    return_value=candidate) as evidence,
+                  mock.patch.object(source_bundle, "git", return_value="c" * 40),
+                  mock.patch.object(source_bundle, "engine_source_digest", return_value="d" * 64),
+                  mock.patch.object(source_bundle, "compiler_fingerprint", return_value="e" * 64),
+                  mock.patch.object(source_bundle, "add_archive", return_value=0)):
+                result = bundle("v0.1.0-rc.5", out, audit=receipts[0],
+                                features=receipts[1], formal=receipts[2],
+                                compiler_sha256="e" * 64, branch="release-rc5")
+            evidence.assert_called_once()
+            self.assertEqual(result["candidate_gate"]["status"],
+                             "scoped-candidate-gates-passed")
+            self.assertEqual(result["candidate_gate"]["audit_sha256"],
+                             source_bundle.file_sha256(receipts[0]))
+            with tarfile.open(out, "r:gz") as archive:
+                self.assertEqual(archive.getmember("s31-v0.1.0-rc.5/SOURCE-BUNDLE.json").name,
+                                 "s31-v0.1.0-rc.5/SOURCE-BUNDLE.json")
+
+    def test_receipt_hash_covers_exact_parsed_bytes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "receipt.json"
+            path.write_bytes(b'{"status":"passed"}\n')
+            report, digest = load_receipt(path)
+            self.assertEqual(report, {"status": "passed"})
+            self.assertEqual(digest, hashlib.sha256(path.read_bytes()).hexdigest())
+            link = path.with_name("receipt-link.json")
+            link.symlink_to(path.name)
+            with self.assertRaisesRegex(ValueError, "may not be a symlink"):
+                load_receipt(link)
+
+    def test_candidate_identity_mismatch_does_not_create_archive(self) -> None:
+        from scripts.release import source_bundle
+
+        with tempfile.TemporaryDirectory() as temporary:
+            out = Path(temporary) / "candidate.tar.gz"
+            with (mock.patch.object(source_bundle, "checked_checkout", return_value=("a" * 40, "b" * 40)),
+                  mock.patch.object(source_bundle, "checked_candidate_evidence", return_value={
+                      "candidate_commit": "c" * 40, "engine_commit": "b" * 40,
+                  })):
+                with self.assertRaisesRegex(RuntimeError, "does not identify"):
+                    bundle("v0.1.0-rc.5", out, audit=out, features=out,
+                           formal=out, compiler_sha256="e" * 64, branch="release-rc5")
+            self.assertFalse(out.exists())
+
+    def test_stable_bundle_cannot_be_written_with_candidate_only_evidence(self) -> None:
+        from scripts.release import source_bundle
+
+        with tempfile.TemporaryDirectory() as temporary:
+            out = Path(temporary) / "stable.tar.gz"
+            with (mock.patch.object(source_bundle, "checked_checkout", return_value=("a" * 40, "b" * 40)),
+                  mock.patch.object(source_bundle, "checked_candidate_evidence", return_value={
+                      "candidate_commit": "a" * 40, "engine_commit": "b" * 40,
+                  }),
+                  mock.patch.object(source_bundle, "require_stable_v01_certificate",
+                                    side_effect=RuntimeError("native PCS/FRI open")) as security):
+                with self.assertRaisesRegex(RuntimeError, "native PCS/FRI open"):
+                    bundle("v0.1.0", out, audit=out, features=out,
+                           formal=out, compiler_sha256="e" * 64, branch="release")
+            security.assert_called_once()
+            self.assertFalse(out.exists())
+
+    def test_unreviewed_release_tag_is_rejected_before_checkout(self) -> None:
+        from scripts.release import source_bundle
+
+        with mock.patch.object(source_bundle, "checked_checkout") as checkout:
+            with self.assertRaisesRegex(ValueError, "source bundle tag"):
+                bundle("v0.1.0-rc.test", Path("unused.tar.gz"), audit=Path("unused"),
+                       features=Path("unused"), formal=Path("unused"),
+                       compiler_sha256="e" * 64, branch="release")
+        checkout.assert_not_called()
+
+    def test_stable_tag_requires_proven_native_and_general_compiler_certificates(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            matrix_path = Path(temporary) / "matrix.json"
+            report = {"proven_release_admissible": False}
+            matrix_path.write_text("matrix")
+            fake = types.ModuleType("scripts.release.pcs_fri_v01_blockers")
+            fake.MATRIX = matrix_path
+            fake.encoded = lambda value: "matrix"
+            fake.matrix = lambda root: report
+            with mock.patch.dict(sys.modules, {fake.__name__: fake}):
+                fake.encoded = lambda value: "changed evidence"
+                with self.assertRaisesRegex(RuntimeError, "current reviewed PCS/FRI matrix"):
+                    require_stable_v01_certificate()
+                fake.encoded = lambda value: "matrix"
+                with self.assertRaisesRegex(RuntimeError, "proven native PCS/FRI"):
+                    require_stable_v01_certificate()
+                report["proven_release_admissible"] = True
+                with self.assertRaisesRegex(RuntimeError, "general compiler correspondence"):
+                    require_stable_v01_certificate()
 
 
 if __name__ == "__main__":
