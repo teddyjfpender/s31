@@ -38,8 +38,16 @@ proves `5` is nonsquare in M31, so no CM31 coordinate pair can square to
 coefficient equations from the Zig point type, matching the actual CM31 pair
 arithmetic, and showing the channel enforces the guard are still refinement
 steps.
-The full
-[CAS05 theorem ledger](../../../../../design/s31/security/PCS_FRI_CAS05_THEOREM_BRIDGE.md)
+
+[`PairedTowerCircle.lean`](PairedTowerCircle.lean) models the two coefficients
+of a QM31 point over CM31. Its square operation is
+`(x₀ + u x₁)² = (x₀² + d x₁²) + u(2x₀x₁)`, with `u²=d=2+i` in the native
+tower. The model derives both circle coefficient equations from a single
+pair-valued circle equation and composes them with the previous theorem.
+Thus an accepted *modeled* circle point with nonzero `y.c1` has a nonzero
+quotient denominator at every base-circle row. A general Zig-to-Lean field
+arithmetic refinement and the guarded sampler correspondence are still open.
+The full [CAS05 theorem ledger](../../../../../design/s31/security/PCS_FRI_CAS05_THEOREM_BRIDGE.md)
 lists the remaining theorem joins.
 
 [`ShortTerminalGeometry.lean`](ShortTerminalGeometry.lean) checks the exact
