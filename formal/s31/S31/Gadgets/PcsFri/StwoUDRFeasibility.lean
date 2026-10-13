@@ -19,6 +19,10 @@ theorem qm31_order_below_two_pow_124 :
     ((q : ℚ) ^ 4) < (2 : ℚ) ^ 124 := by
   norm_num [q]
 
+theorem qm31_inverse_order_below_two_pow_neg_96 :
+    (1 : ℚ) / (q : ℚ) ^ 4 < (1 : ℚ) / 2 ^ 96 := by
+  norm_num [q]
+
 theorem bcs_ood_floor_exceeds_96_of_T_at_least_two_pow_28
     {T : ℕ} (hT : 2 ^ 28 ≤ T) :
     (1 : ℚ) / 2 ^ 96 < (T : ℚ) / (q : ℚ) ^ 4 := by
