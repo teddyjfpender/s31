@@ -104,6 +104,10 @@ def main() -> None:
 
 def dispatch(args: argparse.Namespace) -> None:
 
+    if args.command == "doctor":
+        from cli.doctor import execute
+        raise SystemExit(execute(args))
+
     if args.command == "source-layout":
         if args.source.suffix != ".s31":
             raise ValueError("source-layout expects a .s31 text file")

@@ -1,0 +1,11 @@
+{
+  "public_inputs": {},
+  "private_inputs": {
+    "quantity_a": [3, 0, 0, 0],
+    "price_a": [125, 0, 0, 0],
+    "quantity_b": [2, 0, 0, 0],
+    "price_b": [450, 0, 0, 0],
+    "delivery_fee": [25, 0, 0, 0]
+  },
+  "public_outputs": {"total": [1300, 0, 0, 0]}
+}

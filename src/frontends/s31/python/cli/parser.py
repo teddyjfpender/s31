@@ -9,6 +9,8 @@ from pathlib import Path
 def make_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="s31", description="S31 circuit relation compiler")
     commands = parser.add_subparsers(dest="command", required=True)
+    from cli.doctor import add_arguments
+    add_arguments(commands.add_parser("doctor", help="diagnose toolchain and optionally verify a native smoke proof"))
     for command in ("check", "inspect", "explain", "equations", "run"):
         help_text = {
             "explain": "show canonical nodes, source positions, and builder gate counts",

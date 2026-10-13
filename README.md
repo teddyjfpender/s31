@@ -19,10 +19,16 @@ Clone the pinned engine submodule and use Zig 0.15.2:
 ```sh
 git clone --recurse-submodules https://github.com/teddyjfpender/s31.git
 cd s31
+python3 -B src/frontends/s31/python/s31.py doctor
 cd src/frontends/s31 && zig build test -Doptimize=ReleaseSafe -j2 && cd ../../..
 python3 -m unittest discover -s src/frontends/s31/tests/python -p 'test_*.py' -q
 python3 src/frontends/s31/docs/check.py
 ```
+
+`doctor` checks source/engine identity, Zig selection, SDK discovery, and a
+frontend/oracle smoke calculation. Use `doctor --native` to build a small
+direct-gate package, prove and verify it, and reject a changed public claim.
+See the [doctor options](src/frontends/s31/python/cli/README.md#environment-diagnostics).
 
 To build and check a proof with the generated native verifier:
 
