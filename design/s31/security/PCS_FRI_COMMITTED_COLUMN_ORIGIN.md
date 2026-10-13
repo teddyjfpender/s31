@@ -124,10 +124,41 @@ polynomial. This is why an opening from a compact coefficient buffer must
 reconstruct exactly that extended value; merely comparing two compact
 committers would not establish source-column origin.
 
-The remaining P06 bridge must prove the relevant Zig paths refine the Lean
-tree for all valid inputs, including tile boundary, pruned-layer, and cached
-tree cases; connect the reviewed source to the installed binary; and provide
-a quantitative binding/collision bound for the pinned plain BLAKE2s layout.
-The fixture covers one finite shape and only the direct uncached CPU route.
+[`MultiproofCompactTiles.lean`](../../../formal/s31/S31/Gadgets/PcsFri/MultiproofCompactTiles.lean)
+proves the tiled index identity **for arbitrary natural heights, tile
+numbers, offsets, valid column sizes, and abstract leaf/parent hashes**.
+For a large column, the source index of a tile leaf is its block base plus
+the local lifted index. For a short column, the same index is the tile's
+two-value pair plus the leaf's low bit. The file proves that both equal
+`project(height,columnLog,tile·2^tileLog+offset)`, lifts equality from each
+column to the full sorted leaf row, then inducts over the parent recurrence
+to show equality of every abstract tree layer and root. The theorem assumes
+that the values in each block are the corresponding source extension values;
+it does not prove the Zig FFT or memory writes realize that assumption.
+
+For example, take tree height `5`, tile log `3`, tile `1`, offset `5`, so the
+global leaf is `13`. A column of log `4` has block log `2` and reads
+`1·2² + project(3,2,5) = 4+3 = 7`. The full read is
+`project(5,4,13) = 7`. For a short log-`2` column, tile log `2`, tile `5`,
+offset `1`, the global leaf is `21`: the pair branch reads
+`2·floor(5/4)+1 = 3`, equal to `project(5,2,21)`.
+
+The native fixture also exhausts all valid tile/column indices through tree
+log height `10` and generates 16 mixed-column shapes. For each shape it
+uses barycentric source evaluations and compares every node of the selected
+compact path with an independently projected tree: 12 shapes use tiled and
+streaming paths, while four deliberately put every column below the compact
+threshold and exercise the streaming fallback. This covers tile boundaries,
+short and large columns, source order ties, and natural versus lifted heights
+in the tested range. The source guard pins the native tile block-log,
+short-pair and parent expressions used by that correspondence.
+
+The remaining P06 bridge must prove that native interpolation, block
+evaluation, retained-column ownership and leaf hashing refine the Lean model
+for all valid inputs, including pruned-layer and cached-tree cases; connect
+the reviewed source to the installed binary; and provide a quantitative
+binding/collision bound for the pinned plain BLAKE2s layout. The parametric
+theorem covers index arithmetic and the abstract parent recurrence, while
+the native tests cover finite direct uncached CPU cases.
 Until those obligations close, P06 is open and native proven security bits
 remain unset.

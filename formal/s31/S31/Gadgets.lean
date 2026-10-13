@@ -305,6 +305,7 @@ import S31.Gadgets.PcsFri.MultiproofSortedFrontier
 import S31.Gadgets.PcsFri.MultiproofCallerOrder
 import S31.Gadgets.PcsFri.MultiproofRawQueries
 import S31.Gadgets.PcsFri.MultiproofCommittedColumns
+import S31.Gadgets.PcsFri.MultiproofCompactTiles
 import S31.Gadgets.PcsFri.FoldAlgebra
 import S31.Gadgets.PcsFri.FriCascadeNormalization
 import S31.Gadgets.PcsFri.GroupedFoldSchedule

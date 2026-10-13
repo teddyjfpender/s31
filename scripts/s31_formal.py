@@ -361,6 +361,7 @@ BINDINGS = [
     "deps/stwo-zig/src/prover/pcs/commitment_tree.zig",
     "deps/stwo-zig/src/prover/pcs/commit_ops.zig",
     "deps/stwo-zig/src/prover/pcs/tiled_commit.zig",
+    "deps/stwo-zig/src/prover/poly/circle/coset_blocks.zig",
     "deps/stwo-zig/src/prover/pcs/tree_builders.zig",
     "deps/stwo-zig/src/backends/cpu_scalar/mod.zig",
     "deps/stwo-zig/src/frontends/circuit/witness/trace.zig",
