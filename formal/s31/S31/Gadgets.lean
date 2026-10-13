@@ -274,6 +274,9 @@ import S31.Gadgets.Functional.ArrayConditional
 import S31.Gadgets.Functional.Effects
 import S31.Gadgets.U16Selection
 import S31.Gadgets.Packed
+import S31.Gadgets.PcsFri.QueryAndTranscript
+import S31.Gadgets.PcsFri.QuerySampling
+import S31.Gadgets.PcsFri.MerkleOpening
 
 /-! Local constraint relations, with arbitrary-witness soundness and honest
 witness completeness. All range and representation premises are explicit. -/
