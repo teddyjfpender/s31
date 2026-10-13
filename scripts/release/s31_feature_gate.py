@@ -329,6 +329,11 @@ def validate_output(check: Check, stdout: str, stderr: str,
                                                "trace_row": 493}] or
                 report.get("flat_air_equal") is not True or
                 report.get("native_proof_verified") is not True or
+                report.get("structural_lean_release_verified") is not True or
+                report.get("structural_release_script_sha256") != digest(
+                    (ROOT / "scripts/release/structural_lean_release.py").read_bytes()) or
+                report.get("wrong_checker_pin_rejected") is not True or
+                report.get("missing_structural_tree_rejected") is not True or
                 report.get("changed_fixed_root_rejected") is not True or
                 type(root) is not str or len(root) != 64 or
                 any(char not in "0123456789abcdef" for char in root) or
@@ -354,7 +359,12 @@ def validate_output(check: Check, stdout: str, stderr: str,
     else:
         raise ValueError(f"unknown report format: {fmt}")
     counted = report.get("proofs", []) if fmt == "static-enum-if-native" else report.get("cases", [])
-    return {"schema": report.get("schema"), "cases": len(counted)}
+    controls = {"schema": report.get("schema"), "cases": len(counted)}
+    if fmt == "combined-helper-tuple-native":
+        controls.update({field: report[field] for field in (
+            "structural_lean_release_verified", "structural_release_script_sha256",
+            "wrong_checker_pin_rejected", "missing_structural_tree_rejected")})
+    return controls
 
 
 def execute(check: Check) -> subprocess.CompletedProcess[bytes]:

@@ -39,8 +39,9 @@ lowering label; `checked_package_graph` carries the same graph theorem through
 that exact package entry point. The decoder requires every field, rejects unknown fields,
 canonicalizes JSON spelling, and excludes the record-v2 arm. It bounds source,
 tree, certificate, relation, expression depth, lanes, helpers, steps, and SSA
-nodes. The executable is a standalone opt-in audit. It is not called by
-`verify-release`, `verify-effects-lean`, or the ordinary package verifier.
+nodes. The executable can be run as a standalone audit and is mandatory in
+the strict bounded-M31 structural release entry point. It is not called by
+`s31 verify-release`, `verify-effects-lean`, or the ordinary package verifier.
 To apply it to an untrusted package, the caller must independently pin the
 package and checker bytes and pass the same captured source, tree,
 certificate, relation, and ABI files to this executable.
@@ -54,8 +55,11 @@ compares production, Python, and Lean on several source families and rejects
 re-sealed wrong projections, helper bodies, malformed fields, and unsupported
 fragments. These controls are evidence of tested parser overlap, not a
 universal Python/Lean parser equivalence theorem.
-Because production and release admission do not consume this check, they
-continue to rely on Python's structural erasure implementation.
+The strict bounded-M31 release entry point
+[`structural_lean_release.py`](../../../../../../scripts/release/structural_lean_release.py)
+now requires this checker before native verification on its own release class.
+The ordinary package verifier and `s31 verify-release` still do not invoke it.
+Those paths continue to rely on Python's structural erasure implementation.
 
 Run from `formal/s31`:
 

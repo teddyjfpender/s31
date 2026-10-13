@@ -1,5 +1,35 @@
 # S31 v0.1 supported-profile audit
 
+## Bounded M31 structural release verification
+
+For a direct-Gate package in the Lean `m31-v1` structural grammar, use
+[`structural_lean_release.py`](structural_lean_release.py) to verify a proof.
+This strict release class requires every structural, source-relation, and ABI
+artifact and a separately pinned Lean executable. It checks a captured package
+with Lean before the native verifier receives the same captured proof and
+public statement. Missing artifacts, an absent checker, a wrong checker pin,
+and unsupported source grammar fail closed. Supply all six SHA-256 pins from
+an authenticated channel outside the package:
+
+```sh
+python3 -B scripts/release/structural_lean_release.py PACKAGE PROOF \
+  --statement PROOF.statement.json \
+  --source-sha256 SOURCE_JSON_SHA256 --text-sha256 SOURCE_TEXT_SHA256 \
+  --key-sha256 KEY_SHA256 --prover-sha256 PROVER_SHA256 \
+  --verifier-sha256 VERIFIER_SHA256 \
+  --lean-checker formal/s31/.lake/build/bin/s31-general-linear-structural-check \
+  --lean-checker-sha256 CHECKER_SHA256
+```
+
+The full release-candidate feature gate requires a real two-lane helper and
+tuple package to pass this command's admission function and native proof
+verification. It also requires wrong-checker-pin and missing-tree rejection.
+`release_candidate.py` rejects a full feature receipt that omits those
+controls. The formal receipt builds the Lean structural executable before this
+feature runs. The older `s31 verify-release` command covers a separate direct-Gate
+certificate class and does not invoke this Lean checker. Neither path proves
+native AIR or PCS/FRI soundness.
+
 ## Proven PCS/FRI preflight
 
 The v0.1.0 policy requires a published, implementation-matched PCS/FRI
