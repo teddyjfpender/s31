@@ -321,6 +321,12 @@ raw rows, the number is at most `b^s`. The Lean theorem states that missing
 agreement hypothesis explicitly; it does not derive it from the committed
 polynomials, Merkle roots, or the native transcript.
 
+More precisely, if `Dᵢ` is the set of raw positions whose opened pair meets
+`Bᵢ`, then Lean proves `G = {0,…,2^k−1} \ ⋃ᵢ Dᵢ`. Thus the exact ideal count is
+`(2^k − |⋃ᵢ Dᵢ|)^s`. This union automatically accounts for overlap between
+heights, from identical events to disjoint events; no height-independence
+assumption is hidden in the formula.
+
 The counterexample is small enough to check by hand. On eight raw rows
 `0..7`, mark source rows `{0,2}` bad at height zero and `{0}` bad at height
 one. The native pair formula opens these rows:

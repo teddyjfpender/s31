@@ -43,6 +43,34 @@ theorem mem_jointGood (k H : Nat) (bad : BadRows k H)
   classical
   simp [jointGood]
 
+/-- The raw positions at which one height's opened pair meets its fixed bad
+rows. -/
+noncomputable def detectedAt (k H : Nat) (bad : BadRows k H)
+    (i : Fin H) : Finset (Fin (2 ^ k)) := by
+  classical
+  exact Finset.univ \ goodSparsePair k i.val (bad i)
+
+/-- Union, rather than product, is the correct way to combine the detectable
+positions of heights reached by the same raw query. -/
+noncomputable def detectedUnion (k H : Nat) (bad : BadRows k H) :
+    Finset (Fin (2 ^ k)) := by
+  classical
+  exact Finset.univ.biUnion (detectedAt k H bad)
+
+theorem jointGood_eq_complement_detectedUnion (k H : Nat)
+    (bad : BadRows k H) :
+    jointGood k H bad = Finset.univ \ detectedUnion k H bad := by
+  classical
+  ext raw
+  simp [mem_jointGood, detectedUnion, detectedAt]
+
+/-- Exact single-query count including every overlap among heights. -/
+theorem jointGood_card_eq_union_complement (k H : Nat)
+    (bad : BadRows k H) :
+    (jointGood k H bad).card = 2 ^ k - (detectedUnion k H bad).card := by
+  rw [jointGood_eq_complement_detectedUnion]
+  simp [Finset.card_sdiff]
+
 /-- All-height consistency implies consistency at any specified height.
 This is the correct direction for a conservative sparse-query soundness
 bound. -/
@@ -58,6 +86,12 @@ theorem joint_good_sequences_card (k H draws : Nat) (bad : BadRows k H) :
     (goodSequences draws (jointGood k H bad)).card =
       (jointGood k H bad).card ^ draws :=
   good_sequences_card draws (jointGood k H bad)
+
+theorem joint_good_sequences_card_from_union (k H draws : Nat)
+    (bad : BadRows k H) :
+    (goodSequences draws (jointGood k H bad)).card =
+      (2 ^ k - (detectedUnion k H bad).card) ^ draws := by
+  rw [joint_good_sequences_card, jointGood_card_eq_union_complement]
 
 /-- If a future global correlated-agreement theorem supplies one height with
 at most `budget` safe raw positions, then the fixed-oracle ideal query miss
