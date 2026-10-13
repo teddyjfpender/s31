@@ -77,7 +77,8 @@ def _tokens(data: bytes) -> list[str]:
     return result
 
 
-def parse_record_source_fragment(data: bytes) -> dict[str, Any]:
+def parse_record_source_fragment(data: bytes, *,
+                                 _derivation: list[dict[str, Any]] | None = None) -> dict[str, Any]:
     """Reconstruct an exact v2 relation without calling the S31 compiler."""
     tokens = _tokens(data)
     cursor = 0
@@ -137,6 +138,7 @@ def parse_record_source_fragment(data: bytes) -> dict[str, Any]:
     take("(")
     inputs: list[dict[str, Any]] = []
     roots: dict[str, dict[str, str]] = {}
+    structural_inputs: list[dict[str, Any]] = []
     relation_inputs: list[dict[str, Any]] = []
     public_input_words = 0
     while True:
@@ -158,6 +160,10 @@ def parse_record_source_fragment(data: bytes) -> dict[str, Any]:
             leaves.append({"path": [{"root": root_name}, {"field": field}],
                            "kind": "m31", "length": 1, "wire": wire})
         roots[root_name] = root_wires
+        if _derivation is not None:
+            structural_inputs.append({"name": root_name, "visibility": visibility,
+                                      "fields": [{"name": field, "wire": root_wires[field]}
+                                                 for field in fields]})
         inputs.append({"name": root_name, "type": tree, "visibility": visibility,
                        "leaves": leaves})
         if visibility == "public":
@@ -177,33 +183,40 @@ def parse_record_source_fragment(data: bytes) -> dict[str, Any]:
 
     lets: dict[str, str] = {}
 
-    def operand() -> str:
+    def operand() -> tuple[str, dict[str, Any]]:
         name = identifier()
         if peek() == ".":
             take(".")
             field = identifier()
             if name not in roots or field not in roots[name]:
                 raise UnsupportedRecordSourceFragment("unknown input field")
-            return roots[name][field]
+            return roots[name][field], {"kind": "project",
+                                       "source": {"kind": "name", "name": name},
+                                       "field": field}
         if name not in lets:
             raise UnsupportedRecordSourceFragment("unknown or future local wire")
-        return lets[name]
+        return lets[name], {"kind": "name", "name": name}
 
     nodes: list[dict[str, str]] = []
+    structural_steps: list[dict[str, Any]] = []
     while peek() == "let":
         take("let")
         name = identifier()
         if name in lets or name in roots or name in {record_name, circuit_name, "result"}:
             raise UnsupportedRecordSourceFragment("duplicate or shadowing local")
         take("=")
-        lhs = operand()
+        lhs, lhs_expr = operand()
         op = take()
         if op not in {"+", ".*"}:
             raise UnsupportedRecordSourceFragment("unsupported let operator")
-        rhs = operand()
+        rhs, rhs_expr = operand()
         take(";")
         nodes.append({"name": name, "op": "add" if op == "+" else "mul",
                       "lhs": lhs, "rhs": rhs})
+        if _derivation is not None:
+            structural_steps.append({"kind": "let", "name": name,
+                                     "expr": {"kind": "binary", "op": op,
+                                              "lhs": lhs_expr, "rhs": rhs_expr}})
         lets[name] = name
         if len(nodes) > MAX_LETS:
             raise UnsupportedRecordSourceFragment("too many arithmetic lets")
@@ -211,12 +224,13 @@ def parse_record_source_fragment(data: bytes) -> dict[str, Any]:
     take(record_name)
     take("{")
     result_fields: dict[str, str] = {}
+    structural_result_fields: dict[str, dict[str, Any]] = {}
     while True:
         field = identifier()
         if field not in fields or field in result_fields:
             raise UnsupportedRecordSourceFragment("unknown or duplicate constructor field")
         take(":")
-        result_fields[field] = operand()
+        result_fields[field], structural_result_fields[field] = operand()
         if peek() != ",":
             break
         take(",")
@@ -235,6 +249,15 @@ def parse_record_source_fragment(data: bytes) -> dict[str, Any]:
     public_outputs = list(dict.fromkeys(item["wire"] for item in outputs))
     if public_input_words + len(public_outputs) > 8:
         raise UnsupportedRecordSourceFragment("public word ABI exceeds eight words")
+    if _derivation is not None:
+        _derivation.append({"fragment": "record-v2", "name": circuit_name,
+                            "record": record_name, "fields": fields,
+                            "inputs": structural_inputs, "steps": structural_steps,
+                            "result": {"kind": "construct", "type": "record",
+                                       "name": record_name,
+                                       "fields": [{"label": field,
+                                                   "value": structural_result_fields[field]}
+                                                  for field in structural_result_fields]}})
     return {
         "version": 2, "name": circuit_name, "inputs": relation_inputs,
         "nodes": nodes, "assertions": [], "public_outputs": public_outputs,

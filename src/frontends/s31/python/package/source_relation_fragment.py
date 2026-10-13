@@ -115,7 +115,9 @@ def _literal(token: str) -> int:
     return value
 
 
-def parse_source_fragment(data: bytes, *, _static_products: list[bool] | None = None) -> dict[str, Any]:
+def parse_source_fragment(data: bytes, *, _static_products: list[bool] | None = None,
+                          _derivation: list[dict[str, Any]] | None = None,
+                          _allow_helper_products: bool = False) -> dict[str, Any]:
     """Derive exact version-1 relation JSON without calling the S31 compiler."""
     tokens = _tokens(data)
     cursor = 0
@@ -159,6 +161,7 @@ def parse_source_fragment(data: bytes, *, _static_products: list[bool] | None = 
     # Each pure monomorphic helper is an independently checked static rewrite.
     # Its body can only select two parameters and apply one field operation.
     helpers: dict[str, _PureBinaryHelper] = {}
+    helper_derivations: list[dict[str, Any]] = []
     while peek() == "fn":
         take("fn")
         helper_name = identifier()
@@ -199,6 +202,53 @@ def parse_source_fragment(data: bytes, *, _static_products: list[bool] | None = 
             left_index=params.index(body[0]),
             right_index=params.index(body[2]),
             length=first_length, arity=len(params))
+        helper_derivations.append({"name": helper_name, "params": params,
+                                   "body": {"kind": "binary", "op": body[1],
+                                            "lhs": {"kind": "name", "name": body[0]},
+                                            "rhs": {"kind": "name", "name": body[2]}}})
+
+    def structural_atom(parts: list[str]) -> dict[str, Any]:
+        parts = _unwrapped(parts)
+        if len(parts) == 1:
+            return {"kind": "name", "name": parts[0]}
+        if len(parts) == 3 and parts[1] == ".":
+            return {"kind": "project", "source": {"kind": "name", "name": parts[0]},
+                    "field": parts[2]}
+        if len(parts) == 7 and parts[:4] == ["splat", "<", str(lane_length), ">"]:
+            return {"kind": "literal", "length": lane_length,
+                    "value": _literal(parts[5])}
+        raise UnsupportedSourceRelationFragment("unsupported structural atom")
+
+    def structural_expr(raw_parts: list[str]) -> dict[str, Any]:
+        parts = _unwrapped(raw_parts)
+        if (len(parts) in {4, 6} and parts[0] in helpers and parts[1] == "(" and
+                parts[-1] == ")"):
+            arguments = [parts[2]] if len(parts) == 4 else [parts[2], parts[4]]
+            return {"kind": "apply", "helper": parts[0],
+                    "args": [{"kind": "name", "name": name} for name in arguments]}
+        if len(raw_parts) >= 5 and raw_parts[0] == "(" and raw_parts[-1] == ")":
+            inside = raw_parts[1:-1]
+            if "," in inside:
+                fields = []
+                current: list[str] = []
+                for part in inside:
+                    if part == ",":
+                        fields.append(current)
+                        current = []
+                    else:
+                        current.append(part)
+                fields.append(current)
+                return {"kind": "construct", "type": "tuple",
+                        "fields": [{"label": str(index), "value": structural_atom(field)}
+                                   for index, field in enumerate(fields)]}
+        depth = 0
+        for index, part in enumerate(parts):
+            depth += (part == "(") - (part == ")")
+            if depth == 0 and part in {"+", "-", ".*"}:
+                return {"kind": "binary", "op": part,
+                        "lhs": structural_atom(parts[:index]),
+                        "rhs": structural_atom(parts[index + 1:])}
+        return structural_atom(parts)
 
     # A product is a compile-time tuple of already typed M31 lane arrays.
     # It has no normalized node or witness cell; projection selects a wire.
@@ -336,6 +386,7 @@ def parse_source_fragment(data: bytes, *, _static_products: list[bool] | None = 
     assertions: list[dict[str, str]] = []
     seen_assertions: set[tuple[str, str]] = set()
     let_count = 0
+    structural_steps: list[dict[str, Any]] = []
     helpers_used: set[str] = set()
     while peek() in {"let", "assert_eq"}:
         if peek() == "let":
@@ -365,6 +416,9 @@ def parse_source_fragment(data: bytes, *, _static_products: list[bool] | None = 
             let_count += 1
             if let_count > MAX_LETS:
                 raise UnsupportedSourceRelationFragment("too many lets")
+            if _derivation is not None:
+                structural_steps.append({"kind": "let", "name": name,
+                                         "expr": structural_expr(raw_parts)})
             if op is None:
                 env[name] = lhs
                 continue
@@ -413,6 +467,9 @@ def parse_source_fragment(data: bytes, *, _static_products: list[bool] | None = 
             raise UnsupportedSourceRelationFragment("repeated assertion is outside fragment")
         seen_assertions.add(pair)
         assertions.append({"lhs": lhs, "rhs": rhs})
+        if _derivation is not None:
+            structural_steps.append({"kind": "assert", "lhs": structural_atom(lhs_parts),
+                                     "rhs": structural_atom(rhs_parts)})
         if len(assertions) > MAX_ASSERTIONS:
             raise UnsupportedSourceRelationFragment("too many assertions")
     result_parts: list[str] = []
@@ -430,12 +487,17 @@ def parse_source_fragment(data: bytes, *, _static_products: list[bool] | None = 
         raise UnsupportedSourceRelationFragment("at least one arithmetic node required")
     if set(helpers) != helpers_used:
         raise UnsupportedSourceRelationFragment("unused function is outside fragment")
-    if static_product_used and helpers:
+    if static_product_used and helpers and not _allow_helper_products:
         raise UnsupportedSourceRelationFragment("product and static helper combination is outside Lean byte grammar")
     relation = {"version": 1, "name": circuit, "inputs": inputs, "nodes": nodes,
             "assertions": assertions, "public_outputs": [result]}
     if _static_products is not None:
         _static_products.append(static_product_used)
+    if _derivation is not None:
+        _derivation.append({"fragment": "m31-v1", "name": circuit,
+                            "inputs": inputs, "helpers": helper_derivations,
+                            "steps": structural_steps,
+                            "result": structural_atom(result_parts)})
     return relation
 
 

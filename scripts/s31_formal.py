@@ -136,6 +136,8 @@ BINDINGS = [
     "src/frontends/s31/language/record_abi.zig",
     "src/frontends/s31/python/package/record_source_fragment.py",
     "src/frontends/s31/python/package/record_value_fragment.py",
+    "src/frontends/s31/python/package/structural_derivation.py",
+    "src/frontends/s31/tests/python/security/test_structural_derivation.py",
     "src/frontends/s31/tests/acceptance/record_abi/native_parser_corpus.zig",
     "src/frontends/s31/tests/acceptance/record_abi/record_source_execution_fragment_v2.py",
     "src/frontends/s31/language/relation_compiler.zig",

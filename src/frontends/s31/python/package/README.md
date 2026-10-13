@@ -263,3 +263,12 @@ also `source-to-relation-only`; ordinary package verification and native proof
 checking do not treat it as a full compiler or AIR certificate. See the
 [bounded record plan](../../../../../design/s31/language/RECORD_SOURCE_RELATION_FRAGMENT_V2.md)
 and [native package gate](../../tests/acceptance/record_abi/record_source_fragment_v2.py).
+
+`structural_derivation.py` emits and checks the
+[`typed-structural-derivation.json`](../../../../../design/s31/language/TYPED_STRUCTURAL_DERIVATION.md)
+artifact for admitted conservative v1 M31 or v2 record text packages. Its
+second typed evaluator uses one construct/project rule for tuple indices,
+helper arguments, and record fields, then derives the entire relation and
+public ABI. It also checks canonical values and output claims for a supplied
+flat assignment. This executable certificate does not widen the Lean byte
+grammar or native fixed-row custody of a combined helper/tuple source.

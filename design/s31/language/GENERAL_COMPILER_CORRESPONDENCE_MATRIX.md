@@ -38,6 +38,18 @@ the artifact lists each unsupported feature and sets the Lean profile to
 null. This is an executable trusted checker boundary until the source-byte
 parser itself is modeled or verified in Lean.
 
+The separate `typed-structural-derivation.json` artifact now records a typed
+source tree and checks one generic construct/project erasure rule across
+static tuples, helper parameter binding, and nominal record fields. It
+replays the tree independently to the complete relation and ABI, then checks
+canonical source values for a supplied assignment. The production compiler
+accepts a helper call after tuple projections; this executable certificate
+admits that combination, while the narrower Lean effects byte parser and
+native source-row certificate still exclude it. The bounded v2 record case
+has executable source/relation/ABI/value checks but no v2 exact-byte Lean
+`Program.evaluate` theorem. See
+[`TYPED_STRUCTURAL_DERIVATION.md`](TYPED_STRUCTURAL_DERIVATION.md).
+
 For the pure profile, `formal/s31/S31/Gadgets/Functional/Correspondence/GeneralLinearSSABytes.lean`
 independently decodes the complete certificate bytes and enforces canonical
 JSON spelling before checking the indexed graph. The bounded independent

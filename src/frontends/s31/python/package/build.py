@@ -340,6 +340,19 @@ def build_text(source_path: Path, output: Path, lowering: str = "gate", fri_fold
                 source_relation_path = package / "source-relation-certificate.json"
                 write_json(source_relation_path, source_relation_certificate)
                 manifest["artifacts"][source_relation_path.name] = file_hash(source_relation_path)
+            from package.structural_derivation import (
+                ARTIFACT as STRUCTURAL_ARTIFACT, UnsupportedStructuralDerivation,
+                make_certificate as make_structural_certificate,
+            )
+            try:
+                structural_certificate = make_structural_certificate(
+                    text_data, normalized, (package / "public-abi.json").read_bytes(), lowering)
+            except UnsupportedStructuralDerivation:
+                pass
+            else:
+                structural_path = package / STRUCTURAL_ARTIFACT
+                write_json(structural_path, structural_certificate)
+                manifest["artifacts"][structural_path.name] = file_hash(structural_path)
         if source_path.read_bytes() != text_data or manifest["compiler_sha256"] != compiler_fingerprint():
             raise RuntimeError("S31 text source or compiler inputs changed during package build")
         write_json(manifest_path, manifest)
