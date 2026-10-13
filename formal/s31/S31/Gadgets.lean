@@ -332,6 +332,7 @@ import S31.Gadgets.PcsFri.DeepQuotientAlgebra
 import S31.Gadgets.PcsFri.OodRationalMap
 import S31.Gadgets.PcsFri.ConcreteCircleCount
 import S31.Gadgets.PcsFri.GuardedCircleImage
+import S31.Gadgets.PcsFri.OodGuardFieldCount
 import S31.Gadgets.PcsFri.OodAcceptedSupport
 import S31.Gadgets.PcsFri.PairedDenominator
 import S31.Gadgets.PcsFri.PairedTowerCircle
