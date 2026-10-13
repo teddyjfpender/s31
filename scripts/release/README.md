@@ -13,6 +13,10 @@ python3 -B scripts/release/pcs_fri_proven_preflight.py
 python3 -B scripts/release/pcs_fri_proven_preflight.py --require-proven
 ```
 
+The preflight also bounds the tiny bias introduced when the native M31
+channel reduces BLAKE2s words before masking query indices. This is
+conditional ideal-oracle arithmetic, not a native Fiat–Shamir proof.
+
 `--require-proven` exits nonzero until native protocol refinement, all
 published error terms, and cryptographic assumptions have a checked release
 certificate. Passing native acceptance tests or increasing the query count

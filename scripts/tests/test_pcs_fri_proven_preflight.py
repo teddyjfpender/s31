@@ -11,7 +11,9 @@ from fractions import Fraction
 from pathlib import Path
 
 from scripts.release.pcs_fri_proven_preflight import (
-    Candidate, assess, minimum_queries, query_meets, remark26_leading_interval,
+    Candidate, alpha_squared, assess, ideal_m31_masked_query_upper,
+    masked_m31_max_set_bias, minimum_ideal_m31_masked_queries,
+    minimum_queries, query_meets, remark26_leading_interval, sqrt_upper,
 )
 
 
@@ -38,6 +40,30 @@ class ProvenPreflightTests(unittest.TestCase):
         self.assertLess(minimum_queries(four), minimum_queries(self.current))
         self.assertLess(minimum_queries(large_m), minimum_queries(self.current))
         self.assertFalse(assess(replace(four, raw_queries=512))["proven_release_admissible"])
+
+    def test_native_m31_masked_query_bias_and_outward_interval(self) -> None:
+        # Exact toy-field enumeration tests the same Mersenne reduction and
+        # power-of-two mask, with every raw word visited rather than sampled.
+        bits = 3
+        modulus = (1 << bits) - 1
+        for k in range(bits + 1):
+            size = 1 << k
+            counts = [0] * size
+            for word in range(1 << (bits + 1)):
+                counts[(word % modulus) & (size - 1)] += 1
+            uniform = (1 << (bits + 1)) // size
+            positive_excess = sum(max(0, count - uniform) for count in counts)
+            self.assertEqual(masked_m31_max_set_bias(k) * (1 << 32),
+                             positive_excess)
+        a2 = alpha_squared(self.current)
+        upper = sqrt_upper(a2)
+        self.assertGreaterEqual(upper * upper, a2)
+        self.assertLess((upper - Fraction(1, 1 << 192)) ** 2, a2)
+        adjusted = ideal_m31_masked_query_upper(self.current)
+        self.assertEqual(adjusted, upper + Fraction(1, 1 << 31))
+        self.assertGreaterEqual(minimum_ideal_m31_masked_queries(self.current),
+                                minimum_queries(self.current))
+        self.assertIsNone(assess(self.current)["native_proven_security_bits"])
 
     def test_remark26_outward_interval_and_target(self) -> None:
         lower, upper = remark26_leading_interval(self.current)
