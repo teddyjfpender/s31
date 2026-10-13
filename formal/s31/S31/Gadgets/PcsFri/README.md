@@ -28,6 +28,20 @@ blocks would give a uniform QM31 seed on successful draw. This Lean file
 does not prove that ideal-random-oracle premise, the Zig refinement, or the
 adaptive BCS reduction.
 
+[`FriCascadeNormalization.lean`](FriCascadeNormalization.lean) relates the
+experimental native multi-height insertion butterfly to the normalized
+butterfly in the published multi-domain FRI protocol. If the carried native
+layer has accumulated a factor `2^i`, its next insertion equals `2^(i+1)`
+times the normalized insertion **only after** the newly inserted height-`i`
+batch is scaled by `2^-i`. For example, with zero carried pair, inserted pair
+`(1,0)`, coordinate `1`, and challenge `1`, the native output is `2`;
+the unscaled normalized output is `1`, so multiplying it by the expected
+second-layer factor `4` would give the wrong value. Scaling that inserted
+pair by `1/2` gives the correct normalized output `1/2`. The Lean module
+proves the identity over any field where `2` is nonzero and includes the
+counterexample. It does not prove the paper's FRI soundness theorem applies
+to the native oracle and query schedule.
+
 [`ConservativeEnvelope.lean`](ConservativeEnvelope.lean) proves an arithmetic
 limit of one **published upper-bound expression**: in Circle STARKs Remark 26,
 its leading commitment/folding term exceeds `2^-96` whenever the candidate
