@@ -62,12 +62,12 @@ theorem for the Zig verifier.
 | Field and domains: M31 circle codes, QM31 challenges, canonical cosets, `B=2^β`, `N B²≤2³⁰`, `deg(A)≤B+1` | Extract each actual component domain, degree, and key parameter from one installed binary; identify `D₀`, each `Sⱼ`, code rate, and terminal space | Candidate source profile only; no installed binary/key witness |
 | Flat-AIR relation: every component constraint and exact `uses=yields` multiplicity, including public messages | Compiler, native committed rows, interaction columns, multiplicity bounds `<q`, and AIR composition must realize Protocol 1 | General correspondence and committed-row custody still open |
 | OOD algebraic identity: composition quotient and all claimed values at one sampled point | Match native quotient denominator/numerator and ownership of source columns to the paper's OOD identity | Local quotient formulas/test vectors exist; whole accepted-proof implication open |
-| Degree-corrected batch evaluation, Theorem 5 | At **each** native height, authenticate and FRI-test both original `f` and its own one-point quotient `(f-v)/v_Q`, with the paper's claimed degree spaces and cross-domain relation | CAS05 constructs both at opened rows; no all-oracle degree/refinement theorem |
-| Small-table condition | For every nonempty table, `1−θ > (1/B)(1+2/Nₜ)` in the same code spaces and rates | Hypothetical scenario script checks it; native roster not extracted |
+| Degree-corrected batch evaluation, Theorem 5 and Section 4.5 | At **each** native height, authenticate and FRI-test both original `f` and its own quotient. Theorem 5 formally uses the single-point `(f−v)/v_Q`; CAS05 uses a **conjugate two-point** quotient whose divisor is a line in the circle algebra. Prove the latter's exact circle-basis filtration and cross-domain relation rather than identifying the two formulas | CAS05 constructs original and native quotient batches at opened rows; no all-oracle degree/refinement theorem |
+| Small-table condition | The published single-point `1−θ > (1/B)(1+2/Nₜ)` is only a numeric comparator for CAS05. Derive Eq. 80's uniqueness threshold in the native circle filtration for the two-point line and the actual source roster; an ordinary-polynomial degree-two analogy does not determine this threshold | Hypothetical script checks the single-point inequality; native two-point threshold and roster remain open |
 | Multi-domain batching | Same precommitted oracles and one challenge, correct weighted ensemble and cross-domain correlated agreement | Source spelling checks weighted original/quotient pairs; finite multi-height query bound and counterexample rule out multiplying height miss fractions; global agreement theorem join open |
 | Every published FRI fold, Theorem 4 | Exact circle-to-line and line-to-line twiddles, source insertions, domain projections, challenge timing and degree transitions | Local normalization identity is Lean-checked; full operational and theorem correspondence open |
 | Query phase | Each sampled position authenticates **all** source/line values read by the fold, with exact projection, duplicates, and terminal check | Draft XDM04/CAS05 code and small tests; no all-input native-to-ideal theorem |
-| OOD distribution | Uniform point in the paper's `C(QM31) \ C(M31)` or a new proof for the guarded rational-map support | Different accepted support; exact correction below is only a conditional calculation |
+| OOD distribution | Protocol 4's single-point set is `C(QM31) \ C(M31)`; Section 4.5's two-point discussion excludes `C(CM31)`. Prove a native bad-set and adaptive sampling reduction for CAS05's guarded subset | Different accepted support; the counts below are conditional arithmetic only |
 | Native query distribution | Independent paper query draws, or a theorem for native `drawU32s` M31 reduction and bit mask under adaptive Fiat–Shamir | Exact one-word preimage arithmetic is Lean-checked; adaptive independence open |
 | Merkle/BCS transform, Theorem 6 | Exact leaf/inserted-node encoding, binding/collision reduction, domain-separated transcript, abort/retry semantics, PoW validation, justified `T`, `R`, and 256-bit oracle model | Local authentication tests only; quantitative native reduction open |
 | Proof and key custody | Canonical CAS05 wire, source/line roots and OOD claims matched to an external statement, no verifier state publication on failure, production dispatch | Draft statement-bound verifier; production remains on different PCS |
@@ -88,8 +88,11 @@ multi-domain cascade, sends `g_r` in plain, and accepts only when
 `g_r∈L_{n−1−r}` and every sampled fold identity holds. **Theorem 4** is a
 round-by-round soundness theorem for that Protocol 3; Appendix A.3,
 **Remark 9** supplies its unique-decoding version. **Theorem 5** transfers
-those bounds to the degree-corrected original-plus-quotient ensemble under
-its small-table condition. The earlier
+those bounds to the **single-point** degree-corrected original-plus-quotient
+ensemble under its small-table condition. Section 4.5 sketches a conjugate
+two-point extension but omits the details needed to transfer Eq. 80's
+uniqueness threshold and substitute CAS05's derived batch for a committed
+oracle. The earlier
 [Circle STARKs Protocols 1–2 and Theorem 6](https://eprint.iacr.org/2024/278.pdf)
 also parameterize the number of folds and check the larger final Reed–Solomon
 codeword in full, but they are single-domain and do not replace Theorem 4.
@@ -163,8 +166,12 @@ still reports no native security bits and exits 2 under `--require-proven`.
 
 ## The guarded OOD support, exactly
 
-Put `q=2³¹−1` and `F=QM31`, so `|F|=q⁴`. The paper's affine OOD set has
-`|C(F) \ C(M31)|=q⁴−q−2` points. The rational map
+Put `q=2³¹−1` and `F=QM31`, so `|F|=q⁴`. **Protocol 4's formal
+single-point** OOD set is `C(F) \ C(M31)`, with `q⁴−q−2` points. The
+**Section 4.5 conjugate two-point** discussion instead excludes the entire
+quadratic-subfield circle `C(CM31)`: its candidate set is
+`C(F) \ C(CM31)`, with `q⁴−q²` points. These are different theorem
+universes. The rational map
 
 ```text
 x(t) = (1−t²)/(1+t²),     y(t) = 2t/(1+t²)
@@ -179,17 +186,21 @@ with `y.c1=0`; two more seeds make `1+t²=0`. Consequently the **early-guard
 passing** seed set has
 
 ```text
-A = q⁴ − 2 − (2q²−3) = (q²−1)².
-P = q⁴ − q − 2.             [paper OOD point set]
-P − A = 2q² − q − 3 > 0.
-P/A < 1 + 2⁻⁶⁰.
+A  = q⁴ − 2 − (2q²−3) = (q²−1)².  [native guard, ideal seed]
+P₁ = q⁴ − q − 2.                   [formal single-point Protocol 4]
+P₂ = q⁴ − q².                      [Section 4.5 two-point candidate]
+P₂ − A = q² − 1 > 0.
+P₂/A = q²/(q²−1).
 ```
 
 The [Lean support module](../../../formal/s31/S31/Gadgets/PcsFri/OodAcceptedSupport.lean)
-checks these exact cardinality identities and the last inequality at the
-real M31 modulus. It proves a generic **conditional** mass step: if a bad
-event has at most `b` points in the paper support and at most `a≤b` in the
-guarded support, then `a/A ≤ (b/P)(P/A)`. The
+checks `A`, `P₁`, `P₂`, the exact `P₂−A` and `P₂/A` arithmetic, and a
+conditional fixed-bad-set transfer for `P₂`; it does **not** prove a Section
+4.5 bad-set numerator or native adaptive-sampler refinement. The counts are
+also reproduced by the
+[source/profile diagnostic](../../../scripts/release/pcs_fri_cas05_source_profile.py).
+Either conditional-mass step applies only after a matching bad-set theorem
+for its own universe. The
 [finite-field theorem](../../../formal/s31/S31/Gadgets/PcsFri/OodGuardFiniteCount.lean)
 now proves the exact `2Q−3` rejected-regular and `(Q−1)²` accepted counts
 for a lower field of size `Q`, subject to explicit nonsquare and imaginary
@@ -204,17 +215,22 @@ channel's adaptive independent-uniform-seed premise is also unproved. The
 proves all-row nonvanishing from a modeled circle equation and `y.c1 ≠ 0`;
 connecting that premise to every native accepted point remains open.
 
-It would be unsound to replace `P` by `A` in the published OOD round formula
-and call the result a theorem. One must prove that its bad-set numerator
-continues to apply to the guarded support and that abort on rejected seeds
-fits the adaptive transcript/BCS game. The exact ratio is useful for sizing
-the needed lemma, not for bypassing it.
+It would be unsound to replace either `P₁` or `P₂` by `A` in a published OOD
+round formula and call the result a theorem. Section 4.5 omits the full
+two-point bad-set proof, so the correct `P₂` numerator must first be derived;
+then its restriction to `A` and abort on rejected seeds must fit the adaptive
+transcript/BCS game. These exact counts size the needed lemmas, not bypass
+them. The existing paired-OOD sensitivity script substitutes `A` into the
+**single-point** Protocol-4 expression and must remain a labeled hypothetical
+calculation, not CAS05 theorem arithmetic.
 
 ## Quantitative feasibility without a native claim
 
 The [conservative-profile capacity decision](PCS_FRI_CAS05_CONSERVATIVE_PROFILE_DECISION.md)
 separately checks the published absolute-error and paper work-factor targets
 for the short eight-fold shape across hypothetical even extension degrees.
+It reuses the **single-point** published OOD numerator and support; its
+figures cannot be assigned to CAS05's unproved two-point reduction.
 For its explicitly tiny one-table fixture and `T=2³²`, QM31 cannot meet
 absolute 96 bits through the quoted ungrinded theorem expression regardless
 of query count; degree six is the first even-degree field whose nonquery
@@ -236,8 +252,8 @@ starts with the **same explicitly idealized** scenario, re-evaluates only the
 OOD term against `A`, recomputes the maximum-round BCS expression, and prints
 the short-cascade mismatch for an explicitly supplied height count. Its
 `--require-proven` mode always exits 2. This is a numerical diagnostic only.
-With `T≥2²⁸`, the quoted ungrinded QM31 OOD term alone prevents an
-**absolute** 96-bit certificate from this theorem envelope even if every
+With `T≥2²⁸`, the quoted ungrinded **single-point** QM31 OOD term alone
+prevents an **absolute** 96-bit certificate from this theorem envelope even if every
 other term vanished; increasing query count alone cannot fix that limit.
 
 ## Reproduce the narrow checks

@@ -10,6 +10,12 @@ credit. A hypothetical degree-six extension is the first *even-degree*
 field size that clears the nonquery terms for this illustrative geometry;
 it has no native implementation or theorem correspondence.
 
+This diagnostic reuses Protocol 4's **single-point** OOD numerator and
+support. CAS05 implements a conjugate two-point quotient; Section 4.5's
+candidate support excludes `C(CM31)`, and its Eq. 80 uniqueness and bad-set
+bounds still need rederivation. None of the numerical rows below is a bound
+for CAS05 itself.
+
 The [official theorem map](https://github.com/starkware-libs/stwo/blob/dev/.agents/papers/llm/Stwo_Whitepaper.llm.md)
 specifies `F ⊇ 𝔽_(q²)`, the unique-decoding fold and query expressions,
 and the BCS/ROM formula. Here `q=2³¹−1` and an even degree `d` gives

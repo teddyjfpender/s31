@@ -101,6 +101,15 @@ even-degree challenge fields and distinguishes absolute error from the
 paper's work-factor convention. Its `--require-proven` option always fails;
 the calculation neither admits CAS05 nor assigns native security bits.
 
+For the reviewed draft PR #249 revision, the
+[P05 source/profile diagnostic](pcs_fri_cas05_source_profile.py) checks the
+exact draft Git commit and seven source hashes before calculating sparse
+verifier, dense host, terminal, and candidate small-table geometry. It does
+not change the production blocker matrix. See the
+[production migration map](../../design/s31/security/PCS_FRI_CAS05_PRODUCTION_MIGRATION.md)
+for proof-format, dispatch, pinning, testing, and theorem steps. The draft
+source is separate from S31's pinned engine; `--require-proven` remains closed.
+
 ## Formal receipt
 
 Run the Lean source-binding check, full build, and kernel replay on a clean

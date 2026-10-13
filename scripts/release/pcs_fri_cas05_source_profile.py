@@ -1,0 +1,263 @@
+#!/usr/bin/env python3
+"""Source-pinned profile geometry for the experimental CAS05 paired PCS.
+
+This checks an exact Git commit and reviewed source bytes. It does not verify
+an installed binary, establish the published theorem's protocol premises, or
+assign native security bits. Production S31 remains on its separate engine
+gitlink and quotient-only PCS.
+"""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import subprocess
+import sys
+from fractions import Fraction
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+PRODUCTION_GITLINK = "59e1f115250b8af01712b9bf3d71616e53094964"
+DRAFT_COMMIT = "0b494c95d5e1ef79f8f1f8388cd1b6c061748c51"
+DRAFT_REF = "origin/codex/paired-degree-protocol-20261013"
+Q = 2**31 - 1
+SOURCE_SHA256 = {
+    "src/core/pcs/paired_sparse_cascade_experimental.zig": "04fdaffe629a5731f4f10a8dde634595d4f3494295bdfa3bca7f11028abc201d",
+    "src/core/pcs/paired_sparse_cascade_wire.zig": "22fecbb35c2a075a7f26786b0b44cfc3523c109ec31d3928a442cfc6c16b8542",
+    "src/core/pcs/transposed_merkle_sparse.zig": "6fbb6bd496a9d2916cdaa141c0c44f05fc26ed45ba74e27fedb017b20ee661a9",
+    "src/core/pcs/transposed_merkle_cascade.zig": "7bc0793234e902ae37080e2c8b90d4df87120fd3a87c441d669c928fcb85bb92",
+    "src/core/pcs/transposed_paired_sparse.zig": "56bd8cf46b8897044b4dc9f70d4dd22c8bd10d01b584165daa21625f4e3dffca",
+    "src/prover/pcs/paired_sparse_cascade_experimental.zig": "091b61057bbb25402b69d2865c0d5ad1047ebaf897579a8b8c367f95d1a36727",
+    "src/prover/pcs/transposed_cascade_experimental.zig": "89e8235797d8b6484747e34a0f2020d1c7bb7488fd2fc76ba4a4aa00807b54c5",
+}
+
+
+def _contains(source: str, markers: tuple[str, ...], label: str) -> None:
+    for marker in markers:
+        if marker not in source:
+            raise ValueError(f"reviewed {label} shape changed: {marker}")
+
+
+def verify_hashes(sources: dict[str, bytes], expected: dict[str, str]) -> dict[str, str]:
+    if set(sources) != set(expected):
+        raise ValueError("CAS05 source roster changed")
+    observed = {name: hashlib.sha256(data).hexdigest() for name, data in sources.items()}
+    if observed != expected:
+        changed = sorted(name for name in expected if observed[name] != expected[name])
+        raise ValueError(f"CAS05 source changed; review required: {', '.join(changed)}")
+    return observed
+
+
+def classify_sources(sources: dict[str, bytes]) -> dict:
+    """Classify only the exact draft source bytes reviewed at `DRAFT_COMMIT`."""
+    observed = verify_hashes(sources, SOURCE_SHA256)
+    decoded = {name: data.decode("utf-8") for name, data in sources.items()}
+    _contains(decoded["src/core/pcs/transposed_merkle_sparse.zig"], (
+        "pub const MAX_LOG_SIZE: u32 = 22;",
+        "self.query_count == 0 or self.query_count > (1 << 14)",
+        "self.height_count < 2 or self.height_count > tree.MAX_HEIGHTS",
+        "if (fixed_bytes > MAX_WIRE_BYTES - 128)",
+    ), "sparse verifier profile")
+    _contains(decoded["src/core/pcs/transposed_merkle_cascade.zig"], (
+        "pub const MAX_HEIGHTS: usize = 8;",
+        "pub const MAX_COLUMNS: usize = 64;",
+        "pub const MAX_LOG_SIZE: u32 = 16;",
+        "pub const MAX_WIRE_BYTES: usize = 64 * 1024 * 1024;",
+        "self.query_count * (@as(usize, 1) << @intCast(self.height_count)) > (1 << 16)",
+    ), "dense host source profile")
+    _contains(decoded["src/core/pcs/paired_sparse_cascade_experimental.zig"], (
+        "pub const OUTER_VERSION: u16 = 6;",
+        "pub fn terminalLength(self: Profile) usize",
+        "self.source.largest_log_size - @as(u32, @intCast(self.source.height_count)) - self.log_blowup",
+        "var opened = try xdm.verifyAndCollect(",
+        "var answers = try paired.fromVerifiedOpenings(",
+        "try verifyFolds(allocator, proof, raw, answers.values, alphas);",
+    ), "CAS05 verifier")
+    _contains(decoded["src/core/pcs/paired_sparse_cascade_wire.zig"], (
+        'pub const MAGIC = "S31CAS05";',
+        "pub const VERSION: u16 = cascade.OUTER_VERSION;",
+        "pub fn verifyAgainstStatement(",
+    ), "CAS05 versioned wire")
+    _contains(decoded["src/core/pcs/transposed_paired_sparse.zig"], (
+        "pair[0] = power;",
+        "pair[1] = power;",
+        "const original = opened.at(height, query, j, col);",
+        "const quotient = numerator.mulCM31(inverse);",
+        "answer = answer.add(pair[0].mul(QM31.fromBase(original)))",
+        ".add(pair[1].mul(quotient));",
+    ), "authenticated original and own-quotient batch")
+    _contains(decoded["src/prover/pcs/paired_sparse_cascade_experimental.zig"], (
+        "var source = try source_prover.Commitment.commit(a, input.source_columns);",
+        "try old.validateSourceDegree(a, domains[i], columns, log_size - input.log_blowup);",
+        "batches[i] = try old.pairedHeight(a, domains[i], columns, claims[i], point, challenges);",
+        "return error.TerminalDegreeExceeded;",
+    ), "CAS05 host prover")
+    _contains(decoded["src/prover/pcs/transposed_cascade_experimental.zig"], (
+        "const profile = xdm.Profile{",
+        "try profile.validate();",
+    ), "dense host commitment")
+    return {"draft_commit": DRAFT_COMMIT, "source_sha256": observed,
+            "source_classification": "versioned_experimental_original_plus_own_quotient_cascade"}
+
+
+def profile_geometry(k: int, heights: int, beta: int, queries: int,
+                     columns: tuple[int, ...], theta: Fraction) -> dict:
+    """Exact native-cap and candidate paper-shape arithmetic, no theorem join."""
+    if any(type(x) is not int for x in (k, heights, beta, queries, *columns)):
+        raise ValueError("profile integers must be integers")
+    if type(theta) is not Fraction:
+        raise ValueError("theta must be an exact Fraction")
+    if (len(columns) != heights or not 2 <= heights <= 8 or not 1 <= beta or
+            not heights + 2 <= k <= 22 or not 1 <= queries <= 1 << 14 or
+            any(not 1 <= count <= 64 for count in columns) or
+            not Fraction(0) < theta < Fraction(1)):
+        raise ValueError("profile outside reviewed CAS05 sparse shape")
+    if k < heights + beta:
+        raise ValueError("CAS05 terminal exponent would be negative")
+    # XDM04's fixed query bytes are an admitted upper budget, not its final
+    # witness length. The actual variable hash witness is checked at decode.
+    sparse_fixed = queries * (4 + sum(8 * count for count in columns))
+    sparse_admitted = sparse_fixed <= 64 * 1024 * 1024 - 128
+    dense_fixed = queries * (4 + sum(
+        (1 << (heights - i)) * count * 4 for i, count in enumerate(columns)))
+    dense_admitted = (k <= 16 and queries * (1 << heights) <= 1 << 16 and
+                      dense_fixed <= 64 * 1024 * 1024 - 128)
+    blowup = 1 << beta
+    domains = [1 << (k - i) for i in range(heights)]
+    code_dimensions = [rows // blowup for rows in domains]
+    if any(size < 1 for size in code_dimensions):
+        raise ValueError("empty source code dimension")
+    # This is the *published single-point* Protocol-4 inequality. CAS05 uses
+    # a conjugate two-point zeroifier, represented by a circle-algebra line.
+    # Its exact circle-basis filtration and Eq. 80 uniqueness threshold need
+    # a separate proof; passing these numbers never discharges P05.
+    single_point_margins = [1 - theta - Fraction(1, blowup) *
+                            (1 + Fraction(2, size)) for size in code_dimensions]
+    single_point_condition = [margin > 0 for margin in single_point_margins]
+    terminal_rows = 1 << (k - heights)
+    terminal_words = 1 << (k - beta - heights)
+    return {
+        "profile": {"largest_log_size": k, "height_count": heights,
+                    "log_blowup": beta, "queries": queries, "columns": columns,
+                    "theta": str(theta)},
+        "native_sparse_verifier_visible_caps_pass": sparse_admitted,
+        "native_dense_host_visible_caps_pass": dense_admitted,
+        "sparse_fixed_source_wire_bytes_before_witness": sparse_fixed,
+        "dense_fixed_source_wire_bytes_before_witness": dense_fixed,
+        "source_domain_rows_by_height": domains,
+        "candidate_code_dimensions_by_height": code_dimensions,
+        "published_single_point_small_table_margins_by_height":
+            [str(value) for value in single_point_margins],
+        "published_single_point_small_table_numeric_by_height": single_point_condition,
+        "published_single_point_small_table_numeric_all_pass": all(single_point_condition),
+        "cas05_two_point_uniqueness_threshold_derived": False,
+        "derived_batch_oracle_substitution_proved": False,
+        "candidate_theta_in_strict_unique_decoding_interval":
+            theta < (1 - Fraction(1, blowup)) / 2,
+        "candidate_N_if_D0_equals_N_times_B_squared":
+            (1 << (k - 2 * beta)) if k >= 2 * beta else None,
+        "terminal_domain_rows": terminal_rows,
+        "terminal_qm31_coefficient_words": terminal_words,
+        "paper_protocol3_indices_if_refined": {"n": k - beta, "r": heights - 1},
+        "minimum_idealized_BCS_round_count": heights + 5,
+        "native_BCS_round_count_R": None,
+        "native_adversary_hash_query_budget_T": None,
+        "full_single_fold_count": k - beta,
+        "short_fold_count": heights,
+        "native_profile_or_theorem_admitted": False,
+        "qualification": ("Visible source caps and exact candidate geometry only. "
+                          "The source code dimensions are not an authenticated "
+                          "S31 AIR table roster. The paper's single-point "
+                          "small-table inequality is only a numeric comparator; "
+                          "CAS05's two-point zeroifier and derived batch need "
+                          "new uniqueness/oracle arguments. No native-to-paper, OOD, FRI, "
+                          "Merkle, or BCS theorem is established."),
+    }
+
+
+def conditional_ood_support() -> dict:
+    """Cardinality comparison only, not a native OOD bad-set reduction."""
+    paper_single = Q**4 - Q - 2
+    two_point = Q**4 - Q**2
+    native_guard = (Q**2 - 1) ** 2
+    if two_point - native_guard != Q**2 - 1:
+        raise ValueError("two-point support arithmetic changed")
+    return {
+        "published_protocol4_single_point_support": paper_single,
+        "section_4_5_two_point_candidate_support": two_point,
+        "native_guarded_seed_image_if_uniform": native_guard,
+        "two_point_minus_guarded": two_point - native_guard,
+        "two_point_to_guarded_ratio": str(Fraction(two_point, native_guard)),
+        "two_point_bad_set_bound_or_adaptive_sampler_proved": False,
+        "qualification": ("Section 4.5 sketches, but does not prove, the "
+                          "native conjugate two-point reduction. The single-point "
+                          "Protocol-4 OOD denominator must not be substituted "
+                          "for the two-point support or guarded seed image."),
+    }
+
+
+def audit(engine_repo: Path, k: int, heights: int, beta: int, queries: int,
+          columns: tuple[int, ...], theta: Fraction, head_ref: str | None = None) -> dict:
+    def git(*args: str) -> bytes:
+        return subprocess.check_output(["git", "-C", str(engine_repo), *args])
+    if git("cat-file", "-t", DRAFT_COMMIT).strip() != b"commit":
+        raise ValueError("reviewed CAS05 commit unavailable")
+    if head_ref is not None and git("rev-parse", head_ref).decode().strip() != DRAFT_COMMIT:
+        raise ValueError("CAS05 draft ref advanced; source review required")
+    sources = {name: git("show", f"{DRAFT_COMMIT}:{name}") for name in SOURCE_SHA256}
+    source = classify_sources(sources)
+    geometry = profile_geometry(k, heights, beta, queries, columns, theta)
+    production = subprocess.check_output(
+        ["git", "-C", str(ROOT), "rev-parse", "HEAD:deps/stwo-zig"], text=True
+    ).strip()
+    if production != PRODUCTION_GITLINK:
+        raise ValueError("production engine gitlink changed; P05 source review required")
+    return {
+        "schema": "s31-cas05-p05-source-profile-v1",
+        "status": "experimental_draft_geometry_only",
+        "draft_source": source,
+        "draft_ref_checked": head_ref,
+        "production_engine_gitlink": production,
+        "draft_is_production_engine": production == DRAFT_COMMIT,
+        "installed_binary_correspondence_checked": False,
+        "geometry": geometry,
+        "conditional_ood_support_arithmetic": conditional_ood_support(),
+        "native_proven_security_bits": None,
+        "proven_release_admissible": False,
+        "remaining_p05": [
+            "migrate a versioned original-plus-own-quotient PCS prover/verifier into production dispatch and pin the new engine",
+            "prove all committed source and quotient words meet the published degree-corrected multi-domain relation",
+            "derive the conjugate two-point line's circle-basis filtration and small-domain uniqueness threshold, then justify derived-batch oracle substitution",
+            "instantiate the paper's exact table heights, query/round errors, guarded OOD and BCS/ROM hypotheses for an installed binary",
+        ],
+    }
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("engine_repo", type=Path, help="local stwo-zig Git repository containing the reviewed draft commit")
+    parser.add_argument("--head-ref", default=DRAFT_REF, help="ref whose tip must equal the reviewed draft commit")
+    parser.add_argument("--largest-log-size", type=int, required=True)
+    parser.add_argument("--height-count", type=int, required=True)
+    parser.add_argument("--log-blowup", type=int, required=True)
+    parser.add_argument("--queries", type=int, required=True)
+    parser.add_argument("--columns", required=True, help="comma-separated positive column counts, one per height")
+    parser.add_argument("--theta", required=True, help="candidate paper proximity fraction, e.g. 16383/65536")
+    parser.add_argument("--require-proven", action="store_true", help="fail closed until native theorem correspondence exists")
+    args = parser.parse_args(argv)
+    try:
+        columns = tuple(int(word) for word in args.columns.split(","))
+        report = audit(args.engine_repo, args.largest_log_size,
+                       args.height_count, args.log_blowup, args.queries,
+                       columns, Fraction(args.theta), args.head_ref)
+    except (OSError, subprocess.CalledProcessError, UnicodeDecodeError,
+            ValueError, ZeroDivisionError) as exc:
+        print(f"CAS05 P05 source/profile audit rejected: {exc}", file=sys.stderr)
+        return 2
+    print(json.dumps(report, indent=2, sort_keys=True))
+    return 2 if args.require_proven else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

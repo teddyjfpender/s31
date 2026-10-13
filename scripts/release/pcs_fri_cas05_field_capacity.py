@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """Exact paper-only capacity check for a short CAS05-shaped FRI cascade.
 
-This compares *upper-bound expressions* from the S-two unique-decoding
-theorem. It does not establish that CAS05 implements the paper's protocol or
-that an extension field, BCS transcript, or OOD sampler exists in native code.
-No security bits are assigned to the native verifier.
+This compares *single-point Protocol-4 upper-bound expressions* from the
+S-two unique-decoding theorem. CAS05 instead uses a conjugate two-point
+quotient; its Section-4.5 bad-set and Eq.-80 uniqueness arguments must be
+derived before these expressions can inform a native bound. This tool does
+not establish that CAS05 implements the paper's protocol or that an extension
+field, BCS transcript, or OOD sampler exists in native code. No security bits
+are assigned to the native verifier.
 """
 
 from __future__ import annotations
