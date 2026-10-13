@@ -274,8 +274,10 @@ flat assignment. Its public value API requires exact source, relation, ABI and
 certificate bytes before checking a supplied assignment. A combined
 helper/tuple source can additionally enter the bounded direct-Gate fixed-row
 checker. The Lean effects byte grammar now independently parses one binary
-M31 helper called after tuple projection, and a separate audit passes matching
-certificate, relation, ABI, assignment, and statement bytes through the Lean
-`Program.evaluate` gate. Ordinary packages still use the structural native
-certificate for this combination; the builder does not yet enroll them in
-the automatic Lean effects source-relation certificate route.
+M31 helper called after tuple projection. For the strict one-helper,
+two-parameter token grammar, the builder now emits a source-relation effects
+certificate, and ordinary package verification independently replays it from
+source and relation bytes. The optional pinned Lean checker can use this
+artifact with ABI, assignment, and statement bytes to reach
+`Program.evaluate`. Combined packages continue to use the structural native
+fixed-row certificate; the effects certificate does not replace its row check.

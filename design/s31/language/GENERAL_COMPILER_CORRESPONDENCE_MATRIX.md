@@ -53,11 +53,13 @@ relation, ABI, assignment, and public statement bytes to `Program.evaluate`.
 theorem; its runtime audit checks that the literal two-lane source and the
 independent relation parser agree on one ordered subtraction. The kernel
 theorem proving that literal parse result remains open. The ordinary builder
-still omits the source-relation certificate for this combination, so automatic
-Lean package enrollment remains open. The bounded v2 record case has
-executable source/relation/ABI/value checks and an exact-byte Lean source-value
-theorem. A separate theorem reaches actual `Program.evaluate` when its source
-graph, typed input state, public outputs, and accepted trace are aligned;
+now emits and verifies an effects source-relation certificate for the strict
+one-helper, two-parameter grammar with source-only tuple lets, projections,
+aliases, and helper calls. Wider Python helper/product syntax stays on the
+typed structural route. The bounded v2 record case has executable
+source/relation/ABI/value checks and an exact-byte Lean source-value theorem.
+A separate theorem reaches actual `Program.evaluate` when its source graph,
+typed input state, public outputs, and accepted trace are aligned;
 source/parser/relation JSON equivalence and native authentication remain open. See
 [`TYPED_STRUCTURAL_DERIVATION.md`](TYPED_STRUCTURAL_DERIVATION.md).
 
@@ -158,7 +160,10 @@ For a static helper call after tuple projection, the separate version-2 native
 certificate instead replays the exact source-bound typed structural artifact
 and checks the same bounded graph and complete native schedule. A bounded
 Lean effects byte-run theorem now covers one binary helper after tuple
-projection when a matching effects certificate is supplied. This does not
+projection when a matching effects certificate is supplied. The ordinary
+package builder now supplies that certificate for the strict subset, while
+the native row checker continues to use the structural version-2 certificate
+for this combined case. This does not
 upgrade the native certificate's fixed-row-only capability or prove the
 Python and Lean parsers equivalent. Native enrollment admits no private
 inputs, constants or assertions.

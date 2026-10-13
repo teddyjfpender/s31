@@ -501,8 +501,155 @@ def parse_source_fragment(data: bytes, *, _static_products: list[bool] | None = 
     return relation
 
 
+def _lean_helper_product_shape(data: bytes) -> None:
+    """Recognize a deliberately small token grammar shared with the Lean gate.
+
+    The independent relation parser below still resolves every name and type.
+    This pass excludes grouped expressions, extra helpers, and other Python
+    syntax that the bounded Lean byte parser cannot yet interpret.
+    """
+    if any(byte >= 128 for byte in data):
+        raise UnsupportedSourceRelationFragment("Lean helper/product source must be ASCII")
+    tokens = _tokens(data)
+    cursor = 0
+
+    def take(expected: str | None = None) -> str:
+        nonlocal cursor
+        if cursor == len(tokens):
+            raise UnsupportedSourceRelationFragment("incomplete Lean helper/product form")
+        found = tokens[cursor]
+        cursor += 1
+        if expected is not None and found != expected:
+            raise UnsupportedSourceRelationFragment("outside Lean helper/product token grammar")
+        return found
+
+    def peek() -> str | None:
+        return tokens[cursor] if cursor < len(tokens) else None
+
+    def ident() -> str:
+        name = take()
+        if (NAME.fullmatch(name) is None or name in SOURCE_KEYWORDS or
+                name in PLAIN_BUILTIN_NAMES or len(name) > MAX_RELATION_NAME_CHARS):
+            raise UnsupportedSourceRelationFragment("invalid Lean helper/product identifier")
+        return name
+
+    def lane_type(expected: int | None = None) -> int:
+        for item in ("[", "m31", ";"):
+            take(item)
+        count = take()
+        if count not in {str(n) for n in range(1, 9)}:
+            raise UnsupportedSourceRelationFragment("invalid Lean M31 array length")
+        take("]")
+        length = int(count)
+        if expected is not None and length != expected:
+            raise UnsupportedSourceRelationFragment("helper/circuit array lengths differ")
+        return length
+
+    if peek() == "use":
+        for item in ("use", "std", "@", "1", ";"):
+            take(item)
+    take("fn")
+    helper = ident()
+    take("(")
+    first = ident()
+    take(":")
+    length = lane_type()
+    take(",")
+    second = ident()
+    take(":")
+    lane_type(length)
+    take(")")
+    take("->")
+    lane_type(length)
+    take("{")
+    ident()
+    if take() not in {"+", "-", ".*"}:
+        raise UnsupportedSourceRelationFragment("helper body is not one binary operation")
+    ident()
+    take("}")
+    take("circuit")
+    ident()
+    take("(")
+    input_count = 0
+    public_count = 0
+    while True:
+        visibility = take()
+        if visibility not in {"public", "private"}:
+            raise UnsupportedSourceRelationFragment("invalid input visibility")
+        public_count += visibility == "public"
+        ident()
+        take(":")
+        lane_type(length)
+        input_count += 1
+        if input_count > MAX_INPUTS:
+            raise UnsupportedSourceRelationFragment("too many Lean inputs")
+        if peek() != ",":
+            break
+        take(",")
+    take(")")
+    take("->")
+    take("public")
+    lane_type(length)
+    if length * (public_count + 1) > 8:
+        raise UnsupportedSourceRelationFragment("public ABI exceeds eight words")
+    take("{")
+    product = projection = call = False
+    let_count = 0
+    while peek() == "let":
+        take("let")
+        ident()
+        take("=")
+        if peek() == "(":
+            take("(")
+            ident()
+            count = 1
+            while peek() == ",":
+                take(",")
+                ident()
+                count += 1
+            if not 2 <= count <= 4:
+                raise UnsupportedSourceRelationFragment("tuple field count outside Lean grammar")
+            take(")")
+            product = True
+        else:
+            name = ident()
+            if name == helper and peek() == "(":
+                take("(")
+                ident()
+                take(",")
+                ident()
+                take(")")
+                call = True
+            elif peek() == ".":
+                take(".")
+                if take() not in {"0", "1", "2", "3"}:
+                    raise UnsupportedSourceRelationFragment("projection outside Lean tuple bound")
+                projection = True
+        take(";")
+        let_count += 1
+        if let_count > MAX_LETS:
+            raise UnsupportedSourceRelationFragment("too many Lean lets")
+    ident()
+    if peek() == ";":
+        take(";")
+    take("}")
+    if cursor != len(tokens) or not (product and projection and call):
+        raise UnsupportedSourceRelationFragment("outside combined Lean helper/product grammar")
+
+
+def parse_enrolled_source_fragment(data: bytes, *,
+                                   _static_products: list[bool] | None = None) -> dict[str, Any]:
+    """Default bounded relation, plus the separately restricted combined form."""
+    try:
+        return parse_source_fragment(data, _static_products=_static_products)
+    except UnsupportedSourceRelationFragment:
+        _lean_helper_product_shape(data)
+        return parse_source_fragment(data, _static_products=_static_products,
+                                     _allow_helper_products=True)
+
+
 def check_source_relation(source_bytes: bytes, relation_bytes: bytes) -> dict[str, str]:
-    expected = parse_source_fragment(source_bytes)
+    expected = parse_enrolled_source_fragment(source_bytes)
     if len(relation_bytes) > MAX_RELATION_BYTES:
         raise ValueError("normalized relation exceeds bounded fragment byte limit")
     actual = parse_canonical_json(relation_bytes, "source.s31.json")
@@ -562,8 +709,8 @@ def make_source_relation_certificate(source_bytes: bytes,
     """
     identity = check_source_relation(source_bytes, relation_bytes)
     static_products: list[bool] = []
-    ssa, effects = _indexed_ssa(parse_source_fragment(source_bytes,
-                                                      _static_products=static_products))
+    ssa, effects = _indexed_ssa(parse_enrolled_source_fragment(
+        source_bytes, _static_products=static_products))
     if static_products == [True]:
         # The pure Lean source byte parser does not accept tuple syntax.
         # Select the effects parser, whose exact byte grammar includes the
@@ -600,7 +747,7 @@ def verify_source_relation_artifact(package: Path, manifest: dict[str, Any]) -> 
         return
     source_bytes = (package / "source.s31").read_bytes()
     try:
-        parse_source_fragment(source_bytes)
+        parse_enrolled_source_fragment(source_bytes)
     except UnsupportedSourceRelationFragment:
         if listed or present:
             raise ValueError("unsupported source carries a source relation certificate")
@@ -623,7 +770,7 @@ def check_package_source_relation(package: Path) -> dict[str, str]:
     source_bytes = (package / "source.s31").read_bytes()
     relation_bytes = (package / "source.s31.json").read_bytes()
     result = check_source_relation(source_bytes, relation_bytes)
-    relation = parse_source_fragment(source_bytes)
+    relation = parse_enrolled_source_fragment(source_bytes)
     abi_bytes = (package / "public-abi.json").read_bytes()
     abi = parse_canonical_json(abi_bytes, "public-abi.json")
     expected_abi = {

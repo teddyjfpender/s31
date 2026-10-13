@@ -24,6 +24,7 @@ from package.source_relation_fragment import (CAPABILITY, CERTIFICATE_SCHEMA,
                                               check_source_relation_certificate,
                                               check_source_relation,
                                               make_source_relation_certificate,
+                                              parse_enrolled_source_fragment,
                                               parse_source_fragment,
                                               verify_source_relation_artifact)
 from text_frontend import compile_text
@@ -54,6 +55,53 @@ def digest(data: bytes) -> str:
 
 
 class SourceRelationFragmentTests(unittest.TestCase):
+    def test_combined_helper_tuple_effects_certificate_is_narrow_and_replayed(self) -> None:
+        source = ("fn subtract(a: [m31; 2], b: [m31; 2]) -> [m31; 2] { a - b }\n"
+                  "circuit combined_native(public x: [m31; 2], public y: [m31; 2]) "
+                  "-> public [m31; 2] {\n"
+                  "    let pair = (x, y);\n    let left = pair.0;\n"
+                  "    let right = pair.1;\n    let out = subtract(left, right);\n"
+                  "    out\n}\n").encode()
+        relation, _ = compile_text(source.decode())
+        relation_bytes = encoded(relation)
+        with self.assertRaises(UnsupportedSourceRelationFragment):
+            parse_source_fragment(source)
+        self.assertEqual(parse_enrolled_source_fragment(source), relation)
+        certificate = make_source_relation_certificate(source, relation_bytes)
+        self.assertEqual(certificate["lean_semantic_profile"], LEAN_EFFECTS_PROFILE)
+        self.assertEqual(certificate["ssa"]["nodes"], [
+            {"id": 2, "name": "out", "op": "sub", "lhs": 0, "rhs": 1}])
+        self.assertEqual(check_source_relation_certificate(
+            source, relation_bytes, encoded(certificate)), certificate)
+
+        for changed in (source.replace(b"left = pair.0", b"left = pair.1")
+                        .replace(b"right = pair.1", b"right = pair.0"),
+                        source.replace(b"{ a - b }", b"{ b - a }")):
+            with self.subTest(changed=changed[:70]), self.assertRaises(ValueError):
+                check_source_relation_certificate(changed, relation_bytes,
+                                                  encoded(certificate))
+            forged_relation = parse_enrolled_source_fragment(changed)
+            forged_bytes = encoded(forged_relation)
+            forged_certificate = make_source_relation_certificate(changed, forged_bytes)
+            # Re-seal every proposed graph/digest, but compare it to the
+            # original source. The independent replay rejects the mismatch.
+            with self.assertRaises(ValueError):
+                check_source_relation_certificate(source, forged_bytes,
+                                                  encoded(forged_certificate))
+
+        unsupported = (
+            source.replace(b"{ a - b }", b"{ (a - b) }"),
+            source.replace(b"let pair = (x, y);", b"let pair = ((x, y));"),
+            source.replace(b"let left = pair.0;", b"let left = (pair.0);"),
+            source.replace(b"fn subtract", b"fn subtract2")
+            .replace(b"circuit combined_native", b"fn subtract(a: [m31; 2], b: [m31; 2]) -> [m31; 2] { a - b }\ncircuit combined_native"),
+            source.replace(b"    out\n}", b"    out\n} // \xc3\xa9"),
+        )
+        for changed in unsupported:
+            with self.subTest(unsupported=changed[:80]), self.assertRaises(
+                    UnsupportedSourceRelationFragment):
+                parse_enrolled_source_fragment(changed)
+
     def test_formal_fixture_is_exact_source_derived_certificate(self) -> None:
         fixture = S31.parents[2] / "formal/s31/fixtures/correspondence"
         source = (fixture / "source_relation_ssa_v1.s31").read_bytes()

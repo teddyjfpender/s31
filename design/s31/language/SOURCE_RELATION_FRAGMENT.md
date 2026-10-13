@@ -149,12 +149,15 @@ product of 2–4 earlier M31 wires, `let q = p;` aliases it, and `p.0` selects
 the first wire. Such projections may be used as arithmetic operands,
 assertion operands, or the returned wire. Product-valued arithmetic/results,
 out-of-range or noncanonical indices, and nested/grouped products are
-rejected. The ordinary source-relation certificate still rejects a tuple
-combined with a named helper. The separate typed structural checker and the
-Lean effects byte parser admit a bounded combination: one binary M31 helper
-called on previously bound wires after static projections. The Lean theorem
-checks source semantics through `Program.evaluate` when a matching canonical
-effects certificate is supplied; automatic package enrollment remains open.
+rejected. The ordinary source-relation certificate now admits a strict
+combined subset: one used binary M31 helper with two parameters, source-only
+tuple construction, constant-index projections, wire aliases and calls with
+named wire arguments. Its token gate excludes grouped expressions, extra
+helpers, non-ASCII bytes and other forms beyond the bounded Lean parser.
+The package verifier independently replays the source-derived relation and
+certificate. The optional pinned Lean effects gate then checks the actual
+source bytes through `Program.evaluate`; the broader Python helper/product
+grammar remains outside this certificate profile.
 
 Up to eight preceding `fn` declarations may each take one or two distinct
 `[m31; N]` parameters and return `[m31; N]`. Each pure body must apply one
