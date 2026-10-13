@@ -311,6 +311,38 @@ full-fiber `BundleQueryBound` theorem does not apply directly to this sparse
 verifier. Neither module proves native transcript independence or the FRI
 proximity theorem.
 
+[`SparseMultiHeightAgreement.lean`](SparseMultiHeightAgreement.lean) handles
+the fact that **one raw query opens a pair at every height**. For fixed bad
+source-row sets `Bᵢ`, let `G` be the raw rows whose opened pairs avoid `Bᵢ`
+at every height. With `s` independent ideal raw draws made *with replacement*,
+the exact number of all-good query vectors is `|G|^s`. If a global
+correlated-agreement theorem can show that some height has at most `b` safe
+raw rows, the number is at most `b^s`. The Lean theorem states that missing
+agreement hypothesis explicitly; it does not derive it from the committed
+polynomials, Merkle roots, or the native transcript.
+
+The counterexample is small enough to check by hand. On eight raw rows
+`0..7`, mark source rows `{0,2}` bad at height zero and `{0}` bad at height
+one. The native pair formula opens these rows:
+
+| Raw rows | Height 0 pair | Height 1 pair | Both heights safe? |
+| --- | --- | --- | --- |
+| `0,1` | `(0,1)` | `(0,1)` | No |
+| `2,3` | `(2,3)` | `(0,1)` | No |
+| `4,5` | `(4,5)` | `(2,3)` | Yes |
+| `6,7` | `(6,7)` | `(2,3)` | Yes |
+
+Each height alone is safe on four of eight raw rows, and the **same** four
+rows are safe at both heights. One-query joint miss is therefore `1/2`,
+while the invalid product of the two height miss fractions would be `1/4`.
+For `s` fresh ideal raw queries, the joint miss fraction is `(1/2)^s`.
+The paired native row formula is `pairBase(raw,height) =
+(raw >> (height+1)) << 1` in the experimental XDM04
+[`transposed_merkle_sparse.zig`](https://github.com/teddyjfpender/stwo-zig/blob/bafa2b4669c6da74a6b8f7341ffb172e5479f95f/src/core/pcs/transposed_merkle_sparse.zig).
+This is a source-revision pin for the model, not a proof that every later
+CAS05 binary implements the same schedule. Native binding, adaptive
+commitments, and Fiat–Shamir sampling remain separate obligations.
+
 For example, take a 32-row domain (`k=5`), source height `i=2`, and raw
 row `r=23`. The pair base is `2·⌊23/8⌋=4`, so the verifier opens rows `4`
 and `5`. The projected circle row is `5` because `23` is odd. Folding that
