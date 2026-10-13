@@ -194,4 +194,62 @@ theorem accepted_rows_refine_protocol3
   intro q hq i hi
   rw [haccepted q hq i hi, nativeForward_eq_scaled_protocol3 i _ htwo]
 
+/-- One sampled CAS05 slot after source and line authentication has provided
+row words. Each list member is that column's `(original, own quotient)` pair.
+The scalar row values are already field elements; no commitment or degree
+claim is hidden in this structure. -/
+structure AcceptedSlot (F : Type*) where
+  evenColumns : List (F × F)
+  oddColumns : List (F × F)
+  previousLeft : F
+  previousRight : F
+  lineCoord : F
+  circleCoord : F
+  challenge : F
+  batchChallenge : F
+  forwarded : F
+
+def nativeRoundOf (slot : AcceptedSlot F) : Round F :=
+  { previousLeft := slot.previousLeft
+    previousRight := slot.previousRight
+    insertedLeft := batchLoop slot.batchChallenge 1 slot.evenColumns
+    insertedRight := batchLoop slot.batchChallenge 1 slot.oddColumns
+    lineCoord := slot.lineCoord
+    circleCoord := slot.circleCoord
+    challenge := slot.challenge }
+
+def paperRoundOf (slot : AcceptedSlot F) : Round F :=
+  { previousLeft := slot.previousLeft
+    previousRight := slot.previousRight
+    insertedLeft := batchPowers slot.batchChallenge 0 slot.evenColumns
+    insertedRight := batchPowers slot.batchChallenge 0 slot.oddColumns
+    lineCoord := slot.lineCoord
+    circleCoord := slot.circleCoord
+    challenge := slot.challenge }
+
+/-- The exact original-plus-own-quotient batch and normalized fold join. A
+native accepted-slot equation implies the published sampled-row equation,
+after the explicit height-dependent scale. -/
+theorem accepted_slot_refines_protocol3 (height : Nat) (slot : AcceptedSlot F)
+    (htwo : (2 : F) ≠ 0)
+    (haccepted : slot.forwarded = nativeForward height (nativeRoundOf slot)) :
+    slot.forwarded = (2 : F) ^ (height + 1) *
+      protocol3Forward height (paperRoundOf slot) := by
+  have hround : nativeRoundOf slot = paperRoundOf slot := by
+    cases slot
+    simp [nativeRoundOf, paperRoundOf, native_batch_eq_protocol3]
+  rw [haccepted, hround, nativeForward_eq_scaled_protocol3 height _ htwo]
+
+theorem accepted_slots_refine_protocol3
+    (queries : List Nat) (heightCount : Nat)
+    (slotAt : Nat → Nat → AcceptedSlot F) (htwo : (2 : F) ≠ 0)
+    (haccepted : ∀ q ∈ queries, ∀ i < heightCount,
+      (slotAt q i).forwarded = nativeForward i (nativeRoundOf (slotAt q i))) :
+    ∀ q ∈ queries, ∀ i < heightCount,
+      (slotAt q i).forwarded = (2 : F) ^ (i + 1) *
+        protocol3Forward i (paperRoundOf (slotAt q i)) := by
+  intro q hq i hi
+  exact accepted_slot_refines_protocol3 i (slotAt q i) htwo
+    (haccepted q hq i hi)
+
 end S31.Gadgets.PcsFri.PairedProtocolRecurrence
