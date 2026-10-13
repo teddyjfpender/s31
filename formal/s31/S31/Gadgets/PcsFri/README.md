@@ -4,6 +4,22 @@ The Lean files in this directory establish small parts of the native PCS/FRI
 argument. They are imported by `S31.Gadgets`, so normal builds and axiom
 audits include their theorems.
 
+[`NativeM31Arithmetic.lean`](NativeM31Arithmetic.lean) proves the integer
+arithmetic in the engine's scalar M31 and four-lane AArch64 paths. For every
+`u64` input, two 31-bit folds and the wrapping unsigned minimum return the
+canonical residue modulo `p=2³¹−1`; for a product of canonical operands, one
+fold suffices. Scalar add/sub and AArch64 vector add/sub/mul lanes agree with
+the same M31 result. The proof also bounds the precast values below `2³²`,
+the scalar add/sub intermediates below `2³²`, and the doubled product below
+`2⁶³`, excluding signed `SQDMULH` saturation for canonical operands. The
+[source pin](../../../../../scripts/s31_formal_lib/pcs_fri_native_m31_arithmetic.py)
+checks thirteen reviewed Zig function bodies and has twelve hostile mutation
+controls. The correspondence depends on Zig's specified wrapping, vector
+lane, and AArch64 instruction semantics. `fromU32Unchecked` can create a
+noncanonical value; all add/sub/mul theorems require canonical operands, so
+native callers still need a checked boundary. This proof does not establish
+the PCS/FRI soundness bound or validate the Fiat–Shamir transcript.
+
 [`OodRationalMap.lean`](OodRationalMap.lean) proves the algebra of the native
 seed-to-circle formulas over any field of characteristic other than two:
 for a regular seed `t`, the output lies on the circle and `t` is recovered
