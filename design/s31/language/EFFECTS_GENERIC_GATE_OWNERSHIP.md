@@ -36,7 +36,9 @@ For each of the four coordinates, the source requires `shifted = x + 7`,
 packs each four-coordinate vector into one QM31 wire. The inspector exports
 the packed address for each source node. The checker finds exactly one Gate
 producer for each arithmetic node, checks its operation kind and ordered
-operands, and matches the one Eq row's addresses to `y` and `scaled`. The
+operands, independently evaluates every interned constant through its Gate
+derivation from the reserved `0`, `1` and `u` roots, and matches the one Eq
+row's addresses to `y` and `scaled`. The
 selected `out` wire is unpacked through four basis projections, converted to
 four public M31 words, then copied to four fixed public output pins. The
 public `x` pins are traced backwards through the packing tree to its four

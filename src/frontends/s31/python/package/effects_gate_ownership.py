@@ -119,6 +119,59 @@ def _gate_by_output(gates: list[dict[str, int]], wire: int) -> dict[str, int]:
     return found[0]
 
 
+def _cm_mul(x: tuple[int, int], y: tuple[int, int]) -> tuple[int, int]:
+    return ((x[0] * y[0] - x[1] * y[1]) % M31,
+            (x[0] * y[1] + x[1] * y[0]) % M31)
+
+
+def _qm_mul(x: tuple[int, ...], y: tuple[int, ...]) -> tuple[int, ...]:
+    a, b = x[:2], x[2:]
+    c, d = y[:2], y[2:]
+    ac, bd = _cm_mul(a, c), _cm_mul(b, d)
+    ad, bc = _cm_mul(a, d), _cm_mul(b, c)
+    # u² = 2 + i and i² = -1.
+    return ((ac[0] + 2 * bd[0] - bd[1]) % M31,
+            (ac[1] + bd[0] + 2 * bd[1]) % M31,
+            (ad[0] + bc[0]) % M31, (ad[1] + bc[1]) % M31)
+
+
+def _check_constant_derivations(topology: dict[str, Any]) -> None:
+    """Derive every interned constant from 0, 1 and u through fixed Gate rows."""
+    producers: dict[int, list[tuple[str, dict[str, int]]]] = {}
+    for kind in ("add", "sub", "mul", "pointwise_mul"):
+        for gate in topology[kind]:
+            producers.setdefault(gate["out"], []).append((kind, gate))
+    known: dict[int, tuple[int, ...]] = {
+        0: (0, 0, 0, 0), 1: (1, 0, 0, 0), 2: (0, 0, 1, 0),
+    }
+    active: set[int] = set()
+
+    def value(wire: int) -> tuple[int, ...]:
+        if wire in known:
+            return known[wire]
+        rows = producers.get(wire, [])
+        _require(len(rows) == 1 and wire not in active,
+                 "interned constant has no acyclic unique Gate derivation")
+        active.add(wire)
+        kind, gate = rows[0]
+        lhs, rhs = value(gate["in0"]), value(gate["in1"])
+        if kind == "add":
+            result = tuple((a + b) % M31 for a, b in zip(lhs, rhs, strict=True))
+        elif kind == "sub":
+            result = tuple((a - b) % M31 for a, b in zip(lhs, rhs, strict=True))
+        elif kind == "mul":
+            result = _qm_mul(lhs, rhs)
+        else:
+            result = tuple((a * b) % M31 for a, b in zip(lhs, rhs, strict=True))
+        active.remove(wire)
+        known[wire] = result
+        return result
+
+    for item in topology["constants"]:
+        _require(value(item["wire"]) == tuple(item["limbs"]),
+                 "interned constant value differs from Gate derivation")
+
+
 def _check_columns(topology: dict[str, Any], roster: dict[str, Any]) -> None:
     columns = topology["columns"]
     _require(type(columns) is list and len(columns) == len(EXPECTED_DYNAMIC_IDS) and
@@ -229,17 +282,37 @@ def check_gate_ownership(package: Path, manifest: dict[str, Any]) -> dict[str, A
                  for index, item in enumerate(wires)),
              "generic Gate source packed wires differ from SSA")
     node_wire = [item["wires"][0] for item in wires]
+    _require(len(set(node_wire)) == len(node_wire) and
+             all(wire > 10 for wire in node_wire),
+             "source inputs or arithmetic nodes alias a reserved or prior wire")
     constants = topology["constants"]
     _require(all(set(item) == {"wire", "limbs"} and type(item["wire"]) is int and
                  0 <= item["wire"] < n_vars and type(item["limbs"]) is list and
                  len(item["limbs"]) == 4 and
                  all(type(limb) is int and 0 <= limb < M31 for limb in item["limbs"])
                  for item in constants), "invalid generic Gate constants")
+    _check_constant_derivations(topology)
 
     def constant(limbs: tuple[int, int, int, int]) -> int:
         found = [item["wire"] for item in constants if item["limbs"] == list(limbs)]
         _require(len(found) == 1, f"constant {limbs} has no unique native wire")
         return found[0]
+
+    constant_wires = {item["wire"] for item in constants}
+    _require(not constant_wires.intersection(node_wire),
+             "source node aliases an interned constant wire")
+
+    # A private four-lane input is one unconstrained packed guess whose
+    # finalization producer is the canonical self-yield.  Reject aliases to
+    # public nodes or arithmetic outputs even if later rows would agree.
+    for item in ssa["inputs"]:
+        if item["visibility"] != "private":
+            continue
+        wire = node_wire[item["id"]]
+        producers = [(kind, gate) for kind in ("add", "sub", "mul", "pointwise_mul")
+                     for gate in topology[kind] if gate["out"] == wire]
+        _require(producers == [("add", {"in0": wire, "in1": 0, "out": wire})],
+                 "private input lacks its unique packed guess yield")
 
     # Every source node has one newly produced packed wire and exactly the
     # corresponding operation, with ordered operands for subtraction.
