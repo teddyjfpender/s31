@@ -130,6 +130,15 @@ def parseSource (bytes : List Nat) : Option EmittedSSA := do
       assertions := [], output := output }
   return ssa
 
+/-- Return the circuit identifier from the same complete bounded source
+grammar used for the SSA projection. The certificate itself omits this name. -/
+def parseSourceName (bytes : List Nat) : Option String := do
+  let _ ← parseSource bytes
+  let tokens ← lex bytes
+  let rest ← expect (token "circuit") tokens
+  let (name, _) ← takeIdent rest
+  return nameString name
+
 /-- The meaning of source bytes is the term obtained by independently
 parsing every pure statement and resolving its positional references. -/
 def sourceTerm (ssa : EmittedSSA) : Option Term := do

@@ -7,7 +7,8 @@ and output name from the decoded certificate. For the bounded pure/effects
 text grammar, independent Lean parsers derive the typed term and SSA from the
 exact `.s31` bytes. The ABI checker also parses and validates the
 exact canonical normalized relation JSON. It requires the relation's ordered
-input names, visibilities, M31 shapes, selected output name, ordered arithmetic
+input names, visibilities, M31 shapes, selected output name, circuit name from
+the exact `.s31` bytes, ordered arithmetic
 nodes, operand order, constants, and assertion pairs to agree with the
 certificate; the proof mode must be transparent. The supplied `public-abi.json`
 must be canonical, byte exact, and equal to that derived layout. A separate
@@ -70,16 +71,17 @@ AIR row witnesses. All theorems use no `sorry` or custom axioms.
 `effects_source_bytes_public_abi_sound` remove the separately supplied typed
 term for the bounded text grammar. They combine the source-byte certificate,
 ABI, relation graph, and modeled AIR premises to conclude source denotation
-and exact public statement bytes. Other S31 syntax is outside this parser.
+and exact public statement bytes. They additionally prove that the relation's
+circuit name equals the name parsed from those source bytes. Other S31 syntax
+is outside this parser.
 
 The inner theorems above are conditional on a separately supplied typed source term.
 The exact graph checker rejects a relation that changes `sum = x + y` to
 `sum = x - y`, changes an operand or constant, adds an assertion, or changes
-the proof mode. It does not compare the relation's circuit name: the bounded
-Lean source parsers syntax-check that name but discard it from their SSA
-projection. The audit deliberately accepts a relation with a different
-circuit name to expose this gap. The theorems also do not recompute the certificate's
-source/relation hashes, prove that native
+the proof mode. The source-byte join also rejects a relation-only circuit-name
+edit. It accepts a source and relation renamed together: the certificate's
+source/relation SHA-256 fields are not recomputed by this Lean checker. The
+theorems do not prove that native
 Zig gates own these public pins, or prove that native PCS/FRI verification
 authenticates the modeled AIR rows. The production source-fragment checker
 does derive the certificate and ABI from source, but its Python implementation

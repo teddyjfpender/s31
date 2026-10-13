@@ -234,6 +234,48 @@ def checkEffectsRelationSSA (bytes : String)
           else .error "normalized relation arithmetic, assertions, or proof mode differ from effects SSA"
       | _, _ => .error "effects SSA graph or assertion has bad reference"
 
+/-- Bind the relation's circuit name to the exact validated source bytes. -/
+def checkRelationName (sourceName : Option String)
+    (relation : Parse S31.Program) : Parse S31.Program :=
+  match sourceName with
+  | none => .error "source circuit name missing"
+  | some expected =>
+      match relation with
+      | .error error => .error error
+      | .ok program =>
+          if program.name = expected then .ok program
+          else .error "normalized relation circuit name differs from source"
+
+def checkPureSourceRelationSSA (sourceBytes : List Nat)
+    (relationBytes : String) (ssa : GeneralLinearSSA.EmittedSSA) :
+    Parse S31.Program :=
+  checkRelationName (GeneralLinearSSASourceBytes.parseSourceName sourceBytes)
+    (checkPureRelationSSA relationBytes ssa)
+
+def checkEffectsSourceRelationSSA (sourceBytes : List Nat)
+    (relationBytes : String) (ssa : GeneralLinearSSAEffects.EmittedSSA) :
+    Parse S31.Program :=
+  checkRelationName (GeneralLinearSSAEffectsSourceBytes.parseSourceName sourceBytes)
+    (checkEffectsRelationSSA relationBytes ssa)
+
+theorem checked_relation_name (sourceName : Option String)
+    (relation : Parse S31.Program) (program : S31.Program)
+    (hcheck : checkRelationName sourceName relation = .ok program) :
+    sourceName = some program.name ∧ relation = .ok program := by
+  unfold checkRelationName at hcheck
+  cases hname : sourceName with
+  | none => simp [hname] at hcheck
+  | some expected =>
+      cases hrelation : relation with
+      | error error => simp [hname, hrelation] at hcheck
+      | ok parsed =>
+          by_cases hmatch : parsed.name = expected
+          · have heq : parsed = program := by
+              simpa [hname, hrelation, hmatch] using hcheck
+            subst program
+            exact ⟨by simp [hmatch], rfl⟩
+          · simp [hname, hrelation, hmatch] at hcheck
+
 theorem checked_pure_relation_graph (bytes : String)
     (ssa : GeneralLinearSSA.EmittedSSA) (program : S31.Program)
     (hcheck : checkPureRelationSSA bytes ssa = .ok program) :
@@ -700,12 +742,15 @@ theorem pure_source_bytes_public_abi_sound
     (hname : ssa.names[ssa.output]? = some outputName)
     (hboundary : checkBoundary abiBytes assignmentBytes rawPublicBytes
       ssa.lane_count ssa.inputs outputName values claimed = .ok ())
-    (hrelation : checkPureRelationSSA relationBytes ssa = .ok program)
+    (hrelation : checkPureSourceRelationSSA sourceBytes relationBytes ssa =
+      .ok program)
     (hrows : GeneralLinearSSA.AcceptsTrace
       (GeneralLinearSSA.initialValues certificate.inputs values)
       certificate.instructions final)
     (houtput : final[certificate.output]? = some claimed) :
     GeneralLinearSSASourceBytes.denotation sourceBytes values = some claimed ∧
+    GeneralLinearSSASourceBytes.parseSourceName sourceBytes =
+      some program.name ∧
     parseRelation relationBytes = .ok program ∧
     RelationMatches program ssa.lane_count ssa.inputs outputName ∧
     expectedPureNodes ssa = some program.nodes ∧
@@ -720,15 +765,19 @@ theorem pure_source_bytes_public_abi_sound
   obtain ⟨_, habi, _, _, hwords⟩ := checked_boundary_parts
     abiBytes assignmentBytes rawPublicBytes ssa.lane_count ssa.inputs
     outputName values claimed hboundary
+  obtain ⟨hsourceName, hstrict⟩ := checked_relation_name
+    (GeneralLinearSSASourceBytes.parseSourceName sourceBytes)
+    (checkPureRelationSSA relationBytes ssa) program hrelation
   obtain ⟨hbase, hnodes, hassertions, hmode⟩ :=
-    checked_pure_relation_graph relationBytes ssa program hrelation
+    checked_pure_relation_graph relationBytes ssa program hstrict
   obtain ⟨relationOutput, hrelationName, hparsed, hmatch⟩ :=
     checked_relation_ssa relationBytes ssa.lane_count ssa.inputs
       ssa.names ssa.output program hbase
   have heq : relationOutput = outputName :=
     Option.some.inj (hrelationName.symm.trans hname)
   subst relationOutput
-  exact ⟨hdenotation, hparsed, hmatch, hnodes, hassertions, hmode,
+  exact ⟨hdenotation, hsourceName, hparsed, hmatch, hnodes,
+    hassertions, hmode,
     checked_descriptor abiBytes ssa.lane_count ssa.inputs outputName habi,
     hwords⟩
 
@@ -750,7 +799,8 @@ theorem effects_source_bytes_public_abi_sound
     (hname : ssa.names[ssa.output]? = some outputName)
     (hboundary : checkBoundary abiBytes assignmentBytes rawPublicBytes
       ssa.lane_count ssa.inputs outputName values claimed = .ok ())
-    (hrelation : checkEffectsRelationSSA relationBytes ssa = .ok program)
+    (hrelation : checkEffectsSourceRelationSSA sourceBytes relationBytes ssa =
+      .ok program)
     (hrows : GeneralLinearSSAEffects.AcceptsTrace
       (GeneralLinearSSAEffects.initialValues certificate.inputs values)
       certificate.steps final)
@@ -758,6 +808,8 @@ theorem effects_source_bytes_public_abi_sound
     (hassert : GeneralLinearSSAEffects.assertionsAir final
       certificate.assertions) :
     GeneralLinearSSAEffectsSourceBytes.denotation sourceBytes values claimed ∧
+    GeneralLinearSSAEffectsSourceBytes.parseSourceName sourceBytes =
+      some program.name ∧
     parseRelation relationBytes = .ok program ∧
     RelationMatches program ssa.lane_count ssa.inputs outputName ∧
     expectedEffectsNodes ssa = some program.nodes ∧
@@ -774,15 +826,19 @@ theorem effects_source_bytes_public_abi_sound
   obtain ⟨_, habi, _, _, hwords⟩ := checked_boundary_parts
     abiBytes assignmentBytes rawPublicBytes ssa.lane_count ssa.inputs
     outputName values claimed hboundary
+  obtain ⟨hsourceName, hstrict⟩ := checked_relation_name
+    (GeneralLinearSSAEffectsSourceBytes.parseSourceName sourceBytes)
+    (checkEffectsRelationSSA relationBytes ssa) program hrelation
   obtain ⟨hbase, hnodes, hassertions, hmode⟩ :=
-    checked_effects_relation_graph relationBytes ssa program hrelation
+    checked_effects_relation_graph relationBytes ssa program hstrict
   obtain ⟨relationOutput, hrelationName, hparsed, hmatch⟩ :=
     checked_relation_ssa relationBytes ssa.lane_count ssa.inputs
       ssa.names ssa.output program hbase
   have heq : relationOutput = outputName :=
     Option.some.inj (hrelationName.symm.trans hname)
   subst relationOutput
-  exact ⟨hdenotation, hparsed, hmatch, hnodes, hassertions, hmode,
+  exact ⟨hdenotation, hsourceName, hparsed, hmatch, hnodes,
+    hassertions, hmode,
     checked_descriptor abiBytes ssa.lane_count ssa.inputs outputName habi,
     hwords⟩
 

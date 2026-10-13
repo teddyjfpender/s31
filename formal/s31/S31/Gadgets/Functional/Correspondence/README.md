@@ -34,7 +34,9 @@ obligations.
 M31 input/output layout from either checked certificate profile, checks exact
 source bytes for the bounded pure/effects grammar, canonical ABI and named
 assignment JSON, and matches all eight little-endian public words byte for
-byte. The theorem joins this gate to modeled AIR
+byte. It also matches the relation circuit name to the source bytes, while
+the certificate SHA-256 fields remain unchecked in Lean. The theorem joins
+this gate to modeled AIR
 soundness; native public-pin ownership remains open.
 
 ## Optimized source row capacity
