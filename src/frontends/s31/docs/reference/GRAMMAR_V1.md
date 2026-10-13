@@ -83,10 +83,11 @@ block         = "{", {statement}, expression, [";"], "}"
 statement     = "let", binding_pattern, "=", expression, ";"
               | "assert_eq", "(", expression, ",", expression, ")", ";"
 binding_pattern = identifier
-              | type_identifier, "{", identifier, {",", identifier}, [","], "}"
+              | type_identifier, "{", pattern_field, {",", pattern_field}, [","], "}"
               | "(", binding_pattern, ")"
               | "(", binding_pattern, ",", binding_pattern,
                 {",", binding_pattern}, ")"
+pattern_field = identifier, [":", binding_pattern]
 expression    = prefix, {postfix_call | postfix_projection | binary_operator, prefix}
 postfix_call  = "(", [expression, {",", expression}], ")"
 postfix_projection = ".", (natural | identifier)
@@ -156,12 +157,15 @@ Repeated or reversed equalities over the same wires share one relation assertion
 gives the same relation as writing those selectors or assertions field by field.
 
 `let Powers { square, doubled } = powers(x);` binds named fields without
-creating a relation node. A record pattern may list a subset of fields but
-must list at least one. It requires the exact nominal type, rejects repeated
-or unknown names, and can nest inside a tuple pattern. Like tuple patterns,
-it evaluates the source expression once and works in both block statements
-and `let … in` expressions. Unbound fields still retain their computations
-and partial effects.
+creating a relation node. An explicit field pattern can rename or destructure
+a nested product: `let Outer { inner: Inner { value: x }, pair: (y, z) } =
+source;`. Each nested record pattern checks its own nominal type. A record
+pattern may list a subset of fields but must list at least one. Repeated or
+unknown field names and duplicate bound names anywhere in the pattern are
+rejected. Like tuple patterns, it evaluates the source expression once and
+works in helper/lambda parameters, block statements, and `let … in`
+expressions. Unbound fields still retain their computations and partial
+effects. The generated projections add no relation node or AIR row.
 
 `enum Choice { Square: [m31; 4], Double: [m31; 4] }` declares a nominal
 source-only sum. `Choice::Square(x)` evaluates its one payload immediately;

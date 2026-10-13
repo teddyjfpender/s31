@@ -41,6 +41,11 @@ contains a character source identifiers cannot contain, so user code cannot
 capture it. The lowering preserves one evaluation of the pair expression,
 eager component effects and zero tuple-specific AIR work. Nested patterns
 and expression-level `let … in` use the same lowering.
+Record binders can rename a field or destructure nested record and tuple
+fields, as in `Outer { inner: Inner { value: x }, pair: (y, z) }`. Every
+record projection checks its nominal type, and all nested bound names must be
+unique. This is the same one-binding projection lowering; omitted fields keep
+their eager effects.
 Named function and lambda parameter patterns use the same projection rule.
 The entire argument is passed once; the parser inserts projections at the
 start of a named body or inside a lambda body. The declared parameter type

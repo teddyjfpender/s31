@@ -1,0 +1,26 @@
+struct Terms {
+    base: [m31; 1],
+    boost: [m31; 1],
+}
+
+struct Inputs {
+    terms: Terms,
+    pair: ([m31; 1], [m31; 1]),
+}
+
+fn compute(Inputs {
+    terms: Terms { base: a, boost },
+    pair: (b, c),
+}: Inputs) -> [m31; 1] {
+    let (product, saved) = (a .* b, boost + c);
+    product + saved
+}
+
+circuit nested_pattern(public x: [m31; 1], public y: [m31; 1])
+    -> public [m31; 1] {
+    let result = compute(Inputs {
+        pair: (x, y),
+        terms: Terms { boost: x, base: y },
+    });
+    result
+}
