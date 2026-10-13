@@ -34,6 +34,7 @@ from scripts.s31_formal_lib.pcs_fri_projection import check_pcs_fri_projection
 from scripts.s31_formal_lib.pcs_fri_capture import check_pcs_fri_capture
 from scripts.s31_formal_lib.pcs_fri_merkle_binding import check_pcs_fri_merkle_binding
 from scripts.s31_formal_lib.pcs_fri_merkle_admission import check_pcs_fri_merkle_admission
+from scripts.s31_formal_lib.pcs_fri_lifted_capture import check_pcs_fri_lifted_capture
 from scripts.s31_formal_lib.pcs_fri_fold import check_pcs_fri_fold
 from scripts.s31_formal_lib.pcs_fri_leaf_encoding import check_pcs_fri_leaf_encoding
 from scripts.s31_formal_lib.pcs_fri_layer import check_pcs_fri_layer
@@ -357,6 +358,7 @@ BINDINGS = [
     "scripts/s31_formal_lib/pcs_fri_capture.py",
     "scripts/s31_formal_lib/pcs_fri_merkle_binding.py",
     "scripts/s31_formal_lib/pcs_fri_merkle_admission.py",
+    "scripts/s31_formal_lib/pcs_fri_lifted_capture.py",
     "scripts/s31_formal_lib/pcs_fri_fold.py",
     "scripts/s31_formal_lib/pcs_fri_leaf_encoding.py",
     "scripts/s31_formal_lib/pcs_fri_layer.py",
@@ -369,6 +371,7 @@ BINDINGS = [
     "scripts/tests/test_pcs_fri_capture.py",
     "scripts/tests/test_pcs_fri_merkle_binding.py",
     "scripts/tests/test_pcs_fri_merkle_admission.py",
+    "scripts/tests/test_pcs_fri_lifted_capture.py",
     "scripts/tests/test_pcs_fri_fold.py",
     "scripts/tests/test_pcs_fri_leaf_encoding.py",
     "scripts/tests/test_pcs_fri_layer.py",
@@ -381,7 +384,10 @@ BINDINGS = [
     "formal/s31/tests/run_pcs_fri_layer_native.sh",
     "formal/s31/tests/pcs_fri_merkle_binding_native.zig",
     "formal/s31/tests/run_pcs_fri_merkle_binding_native.sh",
+    "formal/s31/tests/pcs_fri_lifted_capture_native.zig",
+    "formal/s31/tests/run_pcs_fri_lifted_capture_native.sh",
     "src/frontends/s31/runtime/fri_merkle_admission.zig",
+    "src/frontends/s31/runtime/pcs_lifted_capture_admission.zig",
     "formal/s31/tests/pcs_fri_raw_refinement_native.zig",
     "formal/s31/tests/run_pcs_fri_raw_refinement_native.sh",
     "formal/s31/tests/pcs_fri_deep_custody_native.zig",
@@ -855,6 +861,7 @@ def main() -> None:
     check_pcs_fri_capture(ROOT)
     check_pcs_fri_merkle_binding(ROOT)
     check_pcs_fri_merkle_admission(ROOT)
+    check_pcs_fri_lifted_capture(ROOT)
     check_pcs_fri_fold(ROOT)
     check_pcs_fri_leaf_encoding(ROOT)
     check_pcs_fri_layer(ROOT)
