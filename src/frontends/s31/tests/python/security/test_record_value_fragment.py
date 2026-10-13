@@ -47,6 +47,20 @@ class RecordValueFragmentTests(unittest.TestCase):
             SOURCE, encoded(self.assignment(P - 1, P - 1, P - 1)))
         self.assertEqual(wrapped["proof_words"][:4], [P - 1, P - 1, 0, P - 1])
 
+    def test_flat_pattern_value_matches_explicit_field_projection(self) -> None:
+        source = SOURCE.replace(
+            b"    let p = x.left .* y.right;",
+            b"    let Pair { right: saved, left } = x;\n"
+            b"    let Pair { right: secret } = y;\n"
+            b"    let p = left .* secret;",
+        ).replace(b"p + x.right", b"p + saved").replace(
+            b"Pair { right: x.right, left: q }", b"Pair { right: saved, left: q }")
+        for left, right, secret in ((2, 3, 7), (P - 1, P - 1, P - 1)):
+            with self.subTest(left=left, right=right, secret=secret):
+                assignment = encoded(self.assignment(left, right, secret))
+                self.assertEqual(evaluate_record_source_assignment(source, assignment),
+                                 evaluate_record_source_assignment(SOURCE, assignment))
+
     def test_result_and_private_input_changes(self) -> None:
         honest = self.assignment()
         changed = self.assignment(secret=8)
