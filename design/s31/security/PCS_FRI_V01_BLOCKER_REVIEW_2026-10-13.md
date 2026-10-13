@@ -80,11 +80,14 @@ absorbs the verified PoW nonce with `mixU64`, which resets `n_draws` through
 `mixU32s` and `updateDigest`; it then samples 70 raw queries with one
 `drawU32s` per eight output words. The nine hash inputs use distinct
 little-endian counters 0 through 8, so this epoch cannot wrap a u32 counter.
-Mutation tests guard the reset, query forwarding and draw loop. Earlier
-`drawSecureFelt` calls can repeat their draw after rejection, so this result
-does **not** bound every pre-query counter epoch. It also does not establish
-independent random-oracle words, BLAKE2s security, grinding soundness or a
-Fiat–Shamir reduction. P07 remains open.
+Mutation tests guard the reset, query forwarding and draw loop. The newer
+pinned engine also uses a checked u32 increment in `drawU32s` and traps before
+overflow, including inside the unbounded `drawSecureFelt` rejection loop.
+This prevents that channel from returning a block after its counter would
+wrap; it does **not** bound the running time of a rejection loop or formally
+link every selected native verifier path to the checked channel. It also does
+not establish independent random-oracle words, BLAKE2s security, grinding
+soundness or a Fiat–Shamir reduction. P07 remains open.
 
 The `N=512`, blowup-2, `m=3`, `s=70` example in the preflight is illustrative.
 Its Johnson query term alone fails a 96-bit target, and the preflight finds

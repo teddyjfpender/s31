@@ -32,6 +32,7 @@ class QueryEpochTests(unittest.TestCase):
         self.assertEqual(report["hash_draws"], 9)
         self.assertEqual(report["counter_inputs"], list(range(9)))
         self.assertFalse(report["counter_wrap_in_this_epoch"])
+        self.assertTrue(report["native_blake2s_counter_overflow_fail_closed"])
         self.assertFalse(report["full_transcript_counter_wrap_proven"])
         self.assertFalse(report["random_oracle_independence_proven"])
         bound = audit(ROOT)
@@ -44,6 +45,22 @@ class QueryEpochTests(unittest.TestCase):
         self.assertIn("self.n_draws = 0;", channel)
         changed = channel.replace("self.n_draws = 0;", "self.n_draws = self.n_draws;", 1)
         with self.assertRaisesRegex(ValueError, "counter reset"):
+            audit_sources(pcs, fri, queries, changed, config, revision, profiles)
+
+    def test_wrapping_increment_rejected(self) -> None:
+        pcs, fri, queries, channel, config, revision, profiles = sources()
+        checked = "self.n_draws = nextDrawCounter(self.n_draws) catch @panic(\"BLAKE2s draw counter exhausted\");"
+        self.assertIn(checked, channel)
+        changed = channel.replace(checked, "self.n_draws +%= 1;", 1)
+        with self.assertRaisesRegex(ValueError, "u32 query block counter"):
+            audit_sources(pcs, fri, queries, changed, config, revision, profiles)
+
+    def test_checked_counter_helper_mutation_rejected(self) -> None:
+        pcs, fri, queries, channel, config, revision, profiles = sources()
+        checked = "std.math.add(u32, current, 1) catch error.DrawCounterExhausted"
+        self.assertIn(checked, channel)
+        changed = channel.replace(checked, "current +% 1", 1)
+        with self.assertRaisesRegex(ValueError, "checked counter increment"):
             audit_sources(pcs, fri, queries, changed, config, revision, profiles)
 
     def test_extra_query_draw_rejected(self) -> None:

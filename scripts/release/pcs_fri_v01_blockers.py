@@ -90,7 +90,7 @@ OBLIGATIONS = (
         "published_requirement": "Stwo NIROP/BCS theorem: bound adversary hash budget T, rounds R, hash collision term and exact native grinding and transcript schedule",
         "published_anchor": STWO,
         "partial_evidence": ["formal/s31/S31/Gadgets/PcsFri/QueryAndTranscript.lean", "scripts/s31_formal_lib/pcs_fri_order.py", "scripts/s31_formal_lib/pcs_fri_query_epoch.py"],
-        "missing_discharge": "ROM/BCS reduction for native Blake2s, nonce selection, PoW accounting, pre-query 32-bit draw-counter wrap bound and transcript domain separation; only the post-nonce raw-query epoch is bounded",
+        "missing_discharge": "ROM/BCS reduction for native Blake2s, nonce selection, PoW accounting, transcript domain separation and a full selected-channel control-flow proof; the pinned channel now fails closed before u32 counter reuse",
     },
     {
         "id": "P08_QUERY_SET_AND_RAW_WORD_MODEL",
@@ -159,7 +159,9 @@ def matrix(root: Path = ROOT) -> dict[str, object]:
         evidence[name] = sha(path)
     current_engine = gitlink(root)
     query_epoch = audit_query_epoch(root)
-    if query_epoch["engine_gitlink_commit"] != current_engine or query_epoch["hash_draws"] != 9:
+    if (query_epoch["engine_gitlink_commit"] != current_engine or
+            query_epoch["hash_draws"] != 9 or
+            not query_epoch["native_blake2s_counter_overflow_fail_closed"]):
         raise ValueError("v0.1 query epoch source or engine binding changed")
     old_cost = json.loads((root / "design/s31/measurements/language/whole-prover-cost-v8r1.json").read_text())
     cost_engine = old_cost["engine_gitlink_commit"]
