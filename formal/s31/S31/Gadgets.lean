@@ -167,6 +167,7 @@ import S31.Gadgets.Functional.Correspondence.GeneralLinearSSAProgramEvaluate
 import S31.Gadgets.Functional.Correspondence.GeneralRecordV2ValueCorrespondence
 import S31.Gadgets.Functional.Correspondence.GeneralRecordV2EvaluateCorrespondence
 import S31.Gadgets.Functional.Correspondence.GeneralRecordV2PhysicalSourceRows
+import S31.Gadgets.Functional.Correspondence.GeneralRecordV2PrivateExistence
 import S31.Gadgets.Functional.Correspondence.GeneralLinearSSAInputState
 import S31.Gadgets.Functional.Correspondence.GeneralLinearSSAEffectsEvaluator
 import S31.Gadgets.Functional.Correspondence.GeneralLinearSSAByteRun
