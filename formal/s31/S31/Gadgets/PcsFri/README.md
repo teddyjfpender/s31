@@ -600,6 +600,45 @@ or the published OODS/DEEP soundness theorem. P05 remains open.
 
 ## One FRI fold's field algebra
 
+[`PairedSparseRound.lean`](PairedSparseRound.lean) specializes this algebra to
+the **experimental CAS05 paired sparse verifier**. At an interior height its
+exact check is
+
+```text
+fold(previous_even, previous_odd, x, α)
+  + α² · fold(source_even, source_odd, y, α) = selected_next_line_word
+fold(a,b,z,α) = (a+b) + α(a-b)/z
+```
+
+If the previous pair is `p₀ ± x p₁` and the source pair is `q₀ ± y q₁`,
+with nonzero `x,y`, the left side is exactly
+`2p₀ + 2αp₁ + 2α²q₀ + 2α³q₁`. Lean proves both the evaluation identity and
+degree at most three. It also proves that a native raw row `r` selects one of
+the two opened circle rows according to `r mod 2`, that the line output row is
+`floor(r / 2^(step+1))`, and that this row belongs to the next authenticated
+line pair. In the circle-point model, conjugation changes `(x,y)` to `(x,-y)`
+and doubling preserves that conjugation relation. The point-pair property of
+the concrete canonical coset is still a premise in the theorem; the current
+Lean proof does not refine Zig's `bitReverseIndex`, `CanonicCoset.at`, or the
+Merkle openings into that premise.
+
+For a hand check over ordinary rational arithmetic, set
+`(p₀,p₁,q₀,q₁)=(1,2,3,4)`, `(x,y)=(2,3)`, and `α=5`. The previous pair is
+`(5,-3)` and source pair is `(15,-9)`. The native calculation is
+`fold(5,-3,2,5)=22` and `fold(15,-9,3,5)=46`, hence
+`22 + 5²·46 = 1172`. The polynomial gives the same answer:
+`2 + 4·5 + 6·5² + 8·5³ = 1172`. Over QM31, these calculations are read
+modulo its field characteristic; the example uses small values to expose the
+signs, factor two, and `α²` insertion weight.
+
+**Do not turn the degree-three polynomial into a three-roots soundness bound.**
+The next line commitment is mixed *after* this round's challenge, so its
+values can depend on `α`. A proximity theorem must cover this adaptive round,
+the degree-corrected original and quotient ensemble at every source height,
+the multi-domain correlated-agreement hypotheses, the native sparse queries,
+and the BCS/ROM commitment game. This module proves a local evaluation
+refinement only and grants no native security bits.
+
 [`FoldAlgebra.lean`](FoldAlgebra.lean) defines the inverse-butterfly pair
 operation `(left + right) + α (left - right) / x`. For affine evaluations at
 `x` and `-x`, `pairFold_affine` proves that this equals `2(c₀ + α c₁)` when
