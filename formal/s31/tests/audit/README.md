@@ -47,6 +47,40 @@ lake build s31-general-linear-public-abi-check
 python3 tests/audit/general_linear_public_abi.py
 ```
 
+## General structural M31 to native witness check
+
+`scripts/general_structural_native_witness.py` checks **one supplied program
+and assignment** through the exact-byte Lean structural statement gate, then
+replays its accepted SSA in Python and compares every declared M31 input and
+arithmetic node against the value-carrying Zig direct-Gate compiler. It checks
+an independently calculated source-to-canonical ID map through CSE, identity
+erasure, and constant folding against the compiler's source-name map,
+gate opcode/operand addresses, witness values, and eight public output words.
+It snapshots all seven artifacts before either checker runs and recomputes
+the source/relation/ABI digests, which the Lean parser checks only for shape.
+
+```sh
+python3 scripts/general_structural_native_witness.py \
+  program.s31 typed-structural-derivation.json \
+  source-relation-certificate.json relation.json public-abi.json \
+  assignment.json public-statement.json
+python3 tests/audit/general_structural_native_witness.py
+```
+
+The admitted subset is the existing Lean structural **effects** profile with
+one to four M31 lanes and at most eight public words. Its indexed SSA admits
+add, subtraction, pointwise multiplication, add/multiply constants,
+assertions, static tuples, and bounded helpers. The source, tree, certificate,
+relation, ABI, assignment, and statement must all pass the general Lean gate.
+Only declared lanes are compared; remaining packed QM31 lanes have no
+source-level meaning. The native comparison is assignment-specific. It does
+not prove that Python and Zig agree for every accepted text, authenticate the
+externally supplied private assignment in a proof, establish committed AIR row
+correspondence,
+or prove PCS/FRI soundness. The Lean `checked_statement_sound` theorem covers
+source/evaluator semantics conditional on the Lean gate; the native address
+and value checks are executable evidence at the remaining compiler seam.
+
 `general_linear_ssa_effects_certificate.py` runs the strict Lean effects
 certificate gate on the production affine/assertion fixture and rejects
 arithmetic, assertion, JSON-canonicalization, and size mutations. Build and
