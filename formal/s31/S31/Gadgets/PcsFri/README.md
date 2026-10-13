@@ -209,6 +209,23 @@ The theorem assumes the source row and claim metadata were fixed before
 `λ`; it does not establish source Merkle binding, global oracle degree, or
 adaptive Fiat–Shamir independence.
 
+[`PairedBatchNativeRefinement.lean`](PairedBatchNativeRefinement.lean) gives
+the concrete modeled M31/CM31/QM31 row join for the experimental CAS05 draft.
+It proves that the coordinate implementations of `QM31.mulM31` and
+`QM31.mulCM31` equal extension-field multiplication, and that embedding a
+CM31 inverse into QM31 agrees with inversion there. For a QM31 circle point,
+a base-circle row, and the native `point.y.c1 != 0` guard, the row determinant
+`(point.x.c0−row.x)·point.y.c1−(point.y.c0−row.y)·point.x.c1` is nonzero.
+The resulting accepted-row theorem checks each original word's own quotient
+and equates the full native-shaped `f₀+λq₀+λ²f₁+λ³q₁+⋯` batch with the
+fixed-source polynomial evaluation, for any number of columns. The source
+contract is the exact hashed
+[`transposed_paired_sparse.zig`](https://github.com/teddyjfpender/stwo-zig/blob/234ac67b2819e6b102e8d43da93a38a4a902075e/src/core/pcs/transposed_paired_sparse.zig)
+draft checked by [`pcs_fri_cas05_source_profile.py`](../../../../../scripts/release/pcs_fri_cas05_source_profile.py).
+This remains algebra plus a source pin: the Lean theorem does not execute
+Zig, prove authenticated source openings, fix OOD claims before `λ`, bound
+the global derived oracle degree, or provide native security bits.
+
 [`TwoPointDegreeCorrection.lean`](TwoPointDegreeCorrection.lean) proves the
 ordinary-polynomial degree step under exact reconstruction. For distinct
 points `a,b`, values `vₐ,vᵦ` determine an affine line `L`. If polynomial `f`
