@@ -14,8 +14,10 @@ fold. This is the order in `paired_cascade_experimental.zig`; the older
 The polynomial theorem below uses finite coefficient tuples, not an oracle
 degree assumption. The row theorem assumes the opened values are evaluations
 at conjugate coordinate pairs and that the verifier's next-row equality
-passed. Authentication and the hypotheses needed to derive those evaluation
-facts from committed low-degree oracles remain separate obligations.
+passed. For any single pair with nonzero coordinate in odd characteristic,
+such local affine coefficients can always be interpolated. This theorem does
+not establish a globally low-degree committed oracle or correlated agreement.
+Authentication and the global-oracle relation remain separate obligations.
 -/
 
 namespace S31.Gadgets.PcsFri.PairedSparseRound
@@ -94,9 +96,9 @@ theorem double_conjugate (p : CirclePoint F) :
       simp only [double, conjugate]
       congr 1 <;> ring
 
-/-- A two-coefficient circle evaluation at one point. This is the local
-even/odd decomposition at a fixed doubled coordinate, not a claim that an
-arbitrary committed oracle globally has degree one. -/
+/-- A two-coefficient circle evaluation at one point. Every two opened words
+can be interpolated locally when the coordinate and `2` are invertible, so
+this definition does not assert global degree one for the committed oracle. -/
 def circlePairEval (q₀ q₁ : F) (p : CirclePoint F) : F :=
   q₀ + p.y * q₁
 
