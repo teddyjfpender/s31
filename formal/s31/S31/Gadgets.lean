@@ -281,6 +281,7 @@ import S31.Gadgets.Functional.RecordPinnedPairAliasV2
 import S31.Gadgets.Records.NamedCodecV2
 import S31.Gadgets.Records.SourceValueV2
 import S31.Gadgets.Records.SourceBytesV2
+import S31.Gadgets.Records.ProgramEvaluateV2
 import S31.Gadgets.Records.GeneratedMixedEightV2
 import S31.Gadgets.Functional.StaticRecurrence
 import S31.Gadgets.Functional.WorkedMix4
