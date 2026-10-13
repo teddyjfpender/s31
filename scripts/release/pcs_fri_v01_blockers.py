@@ -73,8 +73,8 @@ OBLIGATIONS = (
         "gap_kind": "unproven_native_refinement",
         "published_requirement": "Circle STARKs Theorem 7 and Stwo batch-OOD theorem: sampled values, DEEP quotients and degree correction imply the claimed polynomial identity",
         "published_anchor": STWO,
-        "partial_evidence": ["scripts/s31_formal_lib/pcs_fri_order.py", "deps/stwo-zig/src/core/pcs/verifier.zig", "src/frontends/s31/sha/verification/pcs_capture_admission.zig"],
-        "missing_discharge": "prove the native quotient construction and OODS verifier checks instantiate the published batch-evaluation relation",
+        "partial_evidence": ["scripts/s31_formal_lib/pcs_fri_order.py", "scripts/s31_formal_lib/pcs_fri_quotient_algebra.py", "formal/s31/S31/Gadgets/PcsFri/DeepQuotientAlgebra.lean", "deps/stwo-zig/src/core/pcs/verifier.zig", "deps/stwo-zig/src/core/pcs/quotients/row_evaluation.zig", "deps/stwo-zig/src/core/pcs/quotients/fri_answers.zig", "deps/stwo-zig/src/core/constraints.zig", "deps/stwo-zig/src/core/fields/mod.zig", "deps/stwo-zig/src/core/fields/cm31.zig", "src/frontends/s31/sha/verification/pcs_capture_admission.zig"],
+        "missing_discharge": "prove Zig row-quotient semantics, committed sampled/opened value ownership, native batch degree correction and OODS checks instantiate the published batch-evaluation relation; local field algebra alone does not discharge P05",
     },
     {
         "id": "P06_MERKLE_BINDING_AND_DECODER",

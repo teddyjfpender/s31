@@ -39,6 +39,7 @@ from scripts.s31_formal_lib.pcs_fri_layer import check_pcs_fri_layer
 from scripts.s31_formal_lib.pcs_fri_raw_refinement import check_pcs_fri_raw_refinement
 from scripts.s31_formal_lib.pcs_fri_operational_admission import check_pcs_fri_operational_admission
 from scripts.s31_formal_lib.pcs_fri_deep_custody import check_pcs_fri_deep_custody
+from scripts.s31_formal_lib.pcs_fri_quotient_algebra import check_pcs_fri_quotient_algebra
 from scripts.s31_formal_lib.sha_release_capture import check_sha_release_capture
 from scripts.riscv_refinement import _skip_lean_string, _strip_lean_comments
 from scripts.riscv_refinement_lib.model import RefinementError
@@ -357,6 +358,7 @@ BINDINGS = [
     "scripts/s31_formal_lib/pcs_fri_raw_refinement.py",
     "scripts/s31_formal_lib/pcs_fri_operational_admission.py",
     "scripts/s31_formal_lib/pcs_fri_deep_custody.py",
+    "scripts/s31_formal_lib/pcs_fri_quotient_algebra.py",
     "scripts/tests/test_pcs_fri_projection.py",
     "scripts/tests/test_pcs_fri_capture.py",
     "scripts/tests/test_pcs_fri_merkle_binding.py",
@@ -367,6 +369,7 @@ BINDINGS = [
     "scripts/tests/test_pcs_fri_raw_refinement.py",
     "scripts/tests/test_pcs_fri_operational_admission.py",
     "scripts/tests/test_pcs_fri_deep_custody.py",
+    "scripts/tests/test_pcs_fri_quotient_algebra.py",
     "formal/s31/tests/pcs_fri_fold_native.zig",
     "formal/s31/tests/pcs_fri_layer_native.zig",
     "formal/s31/tests/run_pcs_fri_layer_native.sh",
@@ -378,6 +381,10 @@ BINDINGS = [
     "formal/s31/tests/pcs_fri_deep_custody_native.zig",
     "formal/s31/tests/run_pcs_fri_deep_custody_native.sh",
     "deps/stwo-zig/src/core/pcs/quotients/fri_answers.zig",
+    "deps/stwo-zig/src/core/pcs/quotients/row_evaluation.zig",
+    "deps/stwo-zig/src/core/constraints.zig",
+    "deps/stwo-zig/src/core/fields/mod.zig",
+    "deps/stwo-zig/src/core/fields/cm31.zig",
     "deps/stwo-zig/src/core/pcs/quotients/samples.zig",
     "deps/stwo-zig/src/core/tests/borrowed_pcs_capture_success_test.zig",
     "src/frontends/circuit/stark_verifier/verify.zig",
@@ -847,6 +854,7 @@ def main() -> None:
     check_pcs_fri_raw_refinement(ROOT)
     check_pcs_fri_operational_admission(ROOT)
     check_pcs_fri_deep_custody(ROOT)
+    check_pcs_fri_quotient_algebra(ROOT)
     check_sha_release_capture(ROOT)
     print("S31 protocol order: main and interaction commitments precede their challenge draws")
     print("S31 PCS/FRI order: roots, challenges, PoW, raw queries and normalization bound")
@@ -862,6 +870,7 @@ def main() -> None:
     print("S31 FRI raw slots: capture projection and differential audit stages bound")
     print("S31 FRI capture admission: raw transitions and terminal check bound")
     print("S31 raw DEEP custody: captured-row recomputation before FRI replay bound")
+    print("S31 DEEP quotient algebra: weighted line, denominator and row sum source bound")
     failures = []
     for path, expected in generated().items():
         if args.write:
