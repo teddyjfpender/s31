@@ -29,6 +29,11 @@ this exact image as an equivalence of types; in a finite field, a uniform
 regular seed therefore gives a uniform point on this image. A field
 embedding also preserves both coordinates, so a seed in an embedded
 subfield stays in that subfield. The
+`guardedRationalCircleEquiv` theorem further shows that any guard depending
+only on the output y-coordinate preserves this one-to-one map: each accepted
+circle point has exactly one accepted seed. Applying it to CAS05's concrete
+`y.c1 != 0` check still requires the QM31 coordinate and inverse refinement.
+The
 [pinned OOD geometry audit](../../../../../design/s31/security/PCS_FRI_OOD_SEED_GEOMETRY.md)
 counts the exceptional and subfield seeds for the current native field sizes.
 These results do not prove how the native transcript distributes seeds, a
