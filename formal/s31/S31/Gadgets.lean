@@ -280,6 +280,7 @@ import S31.Gadgets.Packed
 import S31.Gadgets.PcsFri.QueryAndTranscript
 import S31.Gadgets.PcsFri.QuerySampling
 import S31.Gadgets.PcsFri.MerkleOpening
+import S31.Gadgets.PcsFri.MultiproofCapture
 
 /-! Local constraint relations, with arbitrary-witness soundness and honest
 witness completeness. All range and representation premises are explicit. -/

@@ -50,12 +50,54 @@ changing the row, sibling or queried index under that same root. The native
 projection test in `deps/stwo-zig/src/core/pcs/utils.zig` checks the
 smaller- and larger-domain mappings against canonical circle-group indices.
 
+## From compressed proof to full paths
+
+The native verifier sorts and deduplicates query indices, then processes each
+layer in ascending index order. A chunk is either two adjacent siblings from
+the current frontier, or one node plus a supplied witness hash. It records
+the opposite child as each queried node's next captured sibling. The
+[`MultiproofCapture.lean`](MultiproofCapture.lean) model represents these as
+`paired` and `witnessed` chunks and computes the same per-query edge walk.
+
+Here is the two-query example checked as executable Lean examples. Let the
+four leaf hashes be `L₀,L₁,L₂,L₃`; query positions `1` and `3`.
+
+```text
+Layer 0 frontier: (1,L₁), (3,L₃)
+  (1,L₁) consumes witness L₀  → (0,P₀₁), captures sibling L₀
+  (3,L₃) consumes witness L₂  → (1,P₂₃), captures sibling L₂
+  where P₀₁=H(L₀,L₁), P₂₃=H(L₂,L₃)
+
+Layer 1 frontier: (0,P₀₁), (1,P₂₃)
+  paired siblings              → (0,root), root=H(P₀₁,P₂₃)
+  query 1 captures P₂₃; query 3 captures P₀₁
+
+Captured path for query 1: [L₀,P₂₃]
+Captured path for query 3: [L₂,P₀₁]
+```
+
+`follow_replays` proves for any successful modeled chunk sequence that its
+captured path recomputes the final hash, has exactly one sibling per layer,
+and ends at index `floor(q/2^height)`. The native range guard introduced in
+stwo-zig PR #244 rejects `q ≥ 2^height`, so the modeled final index is zero.
+`successful_capture_is_accepted` feeds that full path into the previous
+Merkle-opening predicate; `successful_capture_refines_projected_row` then
+applies the witnessed-collision theorem to identify the opened row.
+
+The [pinned source control](../../../../../scripts/s31_formal_lib/pcs_fri_capture.py)
+checks the decoder's range guard, pair/witness branches, sibling assignment,
+right shift, root check and capture publication order. Four mutation controls
+alter those stages and require rejection. This source control and the native
+tests make the implementation relationship reviewable; the proof does not
+yet derive the chunk sequence from Zig execution.
+
 ## What remains to join
 
-The Lean model starts with a full path and a committed projected row. It does
-not establish that the Zig multiproof decoder returns precisely that path or
-that the tree was built from precisely those columns in that order. It does
-not prove BLAKE2s collision resistance, Fiat–Shamir sampling, FRI fold
+The Lean decoder model starts with native-style chunk events and a committed
+projected row. A machine-checked refinement of Zig's sorting, deduplication,
+witness cursor and capture copy loops to those events remains open, as does a
+proof that the tree was built from precisely those columns in that order. It
+does not prove BLAKE2s collision resistance, Fiat–Shamir sampling, FRI fold
 correctness, low-degree proximity, or a whole-proof security bound. See the
 [published-bound audit](../../../../../design/s31/security/PCS_FRI_PUBLISHED_BOUND_AUDIT.md)
 for the parameter and reduction gaps.

@@ -28,6 +28,7 @@ from scripts.s31_formal_lib.checks import (
 from scripts.s31_formal_lib.protocol_order import check_protocol_order
 from scripts.s31_formal_lib.pcs_fri_order import check_pcs_fri_order
 from scripts.s31_formal_lib.pcs_fri_projection import check_pcs_fri_projection
+from scripts.s31_formal_lib.pcs_fri_capture import check_pcs_fri_capture
 from scripts.riscv_refinement import _skip_lean_string, _strip_lean_comments
 from scripts.riscv_refinement_lib.model import RefinementError
 
@@ -324,7 +325,9 @@ BINDINGS = [
     "deps/stwo-zig/src/prover/pcs/scheme_views.zig",
     "scripts/s31_formal_lib/pcs_fri_order.py",
     "scripts/s31_formal_lib/pcs_fri_projection.py",
+    "scripts/s31_formal_lib/pcs_fri_capture.py",
     "scripts/tests/test_pcs_fri_projection.py",
+    "scripts/tests/test_pcs_fri_capture.py",
     "deps/stwo-zig/src/core/pcs/quotients/fri_answers.zig",
     "deps/stwo-zig/src/core/pcs/quotients/samples.zig",
     "deps/stwo-zig/src/core/tests/borrowed_pcs_capture_success_test.zig",
@@ -772,8 +775,10 @@ def main() -> None:
     check_protocol_order(ROOT)
     check_pcs_fri_order(ROOT)
     check_pcs_fri_projection(ROOT)
+    check_pcs_fri_capture(ROOT)
     print("S31 protocol order: main and interaction commitments precede their challenge draws")
     print("S31 PCS/FRI order: roots, challenges, PoW, raw queries and normalization bound")
+    print("S31 lifted Merkle capture: range, siblings, shifts and root-before-publication bound")
     failures = []
     for path, expected in generated().items():
         if args.write:

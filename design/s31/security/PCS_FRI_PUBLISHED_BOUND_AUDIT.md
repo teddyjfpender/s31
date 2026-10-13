@@ -66,6 +66,26 @@ reconstructs the model's full paths, that its leaf encoding matches the
 modeled row order, that the committed tree has the modeled columns, or a
 quantitative BLAKE2s collision bound.
 
+The next engine pin from PR #244 rejects lifted-Merkle query indices outside
+`[0,2^height)` before decoding. This prevents a query index `q + 2^height`
+from replaying `q`'s low-bit path under the same root; its native test mutates
+an accepted two-level query from `1` to `5` and requires rejection with no
+published capture. The
+[Lean compressed-capture model](../../../formal/s31/S31/Gadgets/PcsFri/MultiproofCapture.lean)
+now represents each paired-sibling or witness-consuming native layer chunk.
+It proves that every successful modeled edge walk yields a full path that
+reconstructs the checked root, has the declared depth, and reaches root index
+zero under the native range condition. Composing this with the prior
+witnessed-collision reduction identifies an opened row with the projected
+committed-column row, conditional on the tree's committed-column origin and
+absence of the *local* collision event. The
+[pinned decoder source control](../../../scripts/s31_formal_lib/pcs_fri_capture.py)
+and native tests check the implementation's branch, sibling, shift and
+publication structure. A machine-checked semantics of Zig's sorting,
+deduplication, witness cursor and capture-copy loops into the modeled chunk
+events is **still missing**. No quantitative cryptographic or FRI bound
+follows from this model alone.
+
 ## Cross-domain query geometry
 
 The [S-two whitepaper, §5.3](https://eprint.iacr.org/2026/532.pdf) says its
