@@ -10,6 +10,7 @@ const cpu = @import("stwo_circuit_cpu_integration");
 const cairo = @import("stwo_cairo_frontend");
 const postcard = @import("interop_postcard");
 const shared = @import("../config/sha_fused_circuit_profile.zig");
+const pcs_capture_admission = @import("pcs_capture_admission.zig");
 const direct = @import("../config/sha_fused_private_join_profile.zig");
 const caller = @import("../air/sha_caller_stream_air.zig");
 const caller_bus = @import("../air/sha_caller_stream_bus.zig");
@@ -212,4 +213,5 @@ pub fn verifyBytes(allocator: std.mem.Allocator, admission: Admission, bytes: []
     var capture: core.verifier.ProofCapture(H) = undefined;
     try core.verifier.verifyBorrowedExWithProofCapture(H, shared.MC, allocator, &handles, &channel, &verifier, &proof, true, &capture);
     defer capture.deinit(allocator);
+    try pcs_capture_admission.validate(H, allocator, key.pcs, capture);
 }
