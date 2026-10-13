@@ -4,6 +4,17 @@ The Lean files in this directory establish small parts of the native PCS/FRI
 argument. They are imported by `S31.Gadgets`, so normal builds and axiom
 audits include their theorems.
 
+[`OodRationalMap.lean`](OodRationalMap.lean) proves the algebra of the native
+seed-to-circle formulas over any field of characteristic other than two:
+for a regular seed `t`, the output lies on the circle and `t` is recovered
+from its coordinates by `y/(1+x)`. Therefore two regular seeds cannot map to
+the same point. A field embedding also preserves both coordinates, so a seed
+in an embedded subfield stays in that subfield. The
+[pinned OOD geometry audit](../../../../../design/s31/security/PCS_FRI_OOD_SEED_GEOMETRY.md)
+counts the exceptional and subfield seeds for the current native field sizes.
+These results do not prove how the native transcript distributes seeds, a
+Zig-to-Lean refinement, or the PCS soundness bound.
+
 [`ConservativeEnvelope.lean`](ConservativeEnvelope.lean) proves an arithmetic
 limit of one **published upper-bound expression**: in Circle STARKs Remark 26,
 its leading commitment/folding term exceeds `2^-96` whenever the candidate
