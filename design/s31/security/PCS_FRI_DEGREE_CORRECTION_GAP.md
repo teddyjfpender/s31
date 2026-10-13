@@ -73,3 +73,7 @@ protocol with its own list/agreement and error bounds. Both routes additionally
 need committed-column ownership, OOD sample custody, exact Zig-to-model and
 installed-binary correspondence, and all parameter hypotheses. This audit
 supplies none of those positive proofs.
+
+The separate [OOD seed geometry audit](PCS_FRI_OOD_SEED_GEOMETRY.md) pins the
+native rational circle map and identifies exceptional and quadratic-subfield
+seeds that must be handled in the exact sampling/distribution argument.
