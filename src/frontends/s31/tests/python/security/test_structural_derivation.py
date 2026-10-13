@@ -42,6 +42,12 @@ circuit paired(public x: Pair, private y: Pair) -> public Pair {
     Pair { right: x.right, left: z }
 }
 """
+EFFECTFUL = """circuit constrained(public x: [m31; 2], private y: [m31; 2]) -> public [m31; 2] {
+    let z = x + splat<2>(7_m31);
+    assert_eq(z, y);
+    z
+}
+"""
 
 
 def encoded(value: object) -> bytes:
@@ -95,6 +101,21 @@ class StructuralDerivationTests(unittest.TestCase):
         changed["public_outputs"]["z"] = [15]
         with self.assertRaisesRegex(ValueError, "claimed public result"):
             evaluate_assignment(certificate, encoded(changed))
+
+    def test_effectful_constant_and_assertion_replay(self) -> None:
+        certificate, _, relation_bytes, _ = fixture(EFFECTFUL)
+        relation = json.loads(relation_bytes)
+        self.assertEqual(relation["nodes"], [{"name": "z", "lhs": "x",
+                                              "op": "add_const", "constant": 7}])
+        self.assertEqual(relation["assertions"], [{"lhs": "z", "rhs": "y"}])
+        assignment = {"public_inputs": {"x": [1, 2]},
+                      "private_inputs": {"y": [8, 9]},
+                      "public_outputs": {"z": [8, 9]}}
+        self.assertEqual(evaluate_assignment(certificate, encoded(assignment))["public_words"],
+                         [1, 2, 8, 9, 0, 0, 0, 0])
+        assignment["private_inputs"]["y"] = [8, 10]
+        with self.assertRaisesRegex(ValueError, "source assertion is false"):
+            evaluate_assignment(certificate, encoded(assignment))
 
     def test_resealed_wrong_tuple_projection_rejected(self) -> None:
         certificate, source, _, _ = fixture(TUPLE)
