@@ -119,6 +119,11 @@ jobs:
       - name: Lean generic effectful package and statement controls
         working-directory: formal/s31
         run: python3 tests/audit/general_linear_effects_package.py
+      - name: Static tuple source to native direct-Gate fixed rows and proof root
+        run: |
+          set -euo pipefail
+          python3 -B src/frontends/s31/tests/acceptance/compiler_correspondence/static_tuple_native_rows.py |
+            tee zig-out/s31/formal/static-tuple-native-rows.json
       - name: Exercise the proved source and normalized-relation checker
         working-directory: formal/s31
         run: python3 -m unittest discover -s tests -p 'test_alias_relation_check.py' -q
