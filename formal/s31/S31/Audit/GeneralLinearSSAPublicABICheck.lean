@@ -44,9 +44,6 @@ def orderedClaimed : Lanes 2 :=
   fun i => (([4, 6] : List Nat).map
     RiscvRefinement.M31.reduce)[i.val]?.getD 0
 
-def orderedSource : S31.Functional.Correspondence.GeneralLinearSSA.Term :=
-  .binary .add (.input 0) (.input 1)
-
 def expectedOrderedSSA :
     S31.Functional.Correspondence.GeneralLinearSSA.EmittedSSA :=
   { lane_count := 2,
@@ -56,12 +53,6 @@ def expectedOrderedSSA :
       { id := 2, name := "salt", visibility := "private" }],
     nodes := [{ id := 3, name := "sum", op := "add", lhs := 0, rhs := 1 }],
     assertions := [], output := 3 }
-
-def effectsSource :
-    S31.Functional.Correspondence.GeneralLinearSSAEffects.Source :=
-  { output := .binary .sub (.input 1) (.input 0),
-    assertions := [(.input 1,
-      .constant true (.constant false (.input 0) 7) 9)] }
 
 def expectedEffectsSSA :
     S31.Functional.Correspondence.GeneralLinearSSAEffects.EmittedSSA :=
@@ -80,7 +71,10 @@ def expectedEffectsSSA :
 
 def run (args : List String) : IO UInt32 := do
   match args with
-  | [mode, certificatePath, relationPath, abiPath, assignmentPath, publicPath] =>
+  | [mode, sourcePath, certificatePath, relationPath, abiPath,
+      assignmentPath, publicPath] =>
+      let source ← IO.FS.readBinFile sourcePath
+      let sourceBytes := source.toList.map UInt8.toNat
       let certificate ← IO.FS.readFile certificatePath
       let relation ← IO.FS.readFile relationPath
       let abi ← IO.FS.readFile abiPath
@@ -88,56 +82,74 @@ def run (args : List String) : IO UInt32 := do
       let raw ← IO.FS.readBinFile publicPath
       let words := raw.toList.map UInt8.toNat
       if mode == "pure" then
-        match checkPure certificate abi assignment words
-            S31.Functional.Correspondence.GeneralLinearSSA.subtractionThenDoubleSource
-            pureValues pureClaimed with
+        match S31.Functional.Correspondence.GeneralLinearSSASourceBytes.checkSourceCertificate
+            sourceBytes certificate with
         | .error message =>
             IO.eprintln s!"rejected: {message}"
             return 1
-        | .ok (ssa, _) =>
-            if ssa = S31.Functional.Correspondence.GeneralLinearSSA.subtractionThenDoubleEmitted &&
-                (checkRelationSSA relation ssa.lane_count ssa.inputs
-                  ssa.names ssa.output).isOk then
-              IO.println "accepted: pure source-derived M31 public ABI"
-              return 0
-            else
-              IO.eprintln "rejected: pure fixture roster differs"
-              return 1
+        | .ok (sourceSSA, meaning, _) =>
+            match checkPure certificate abi assignment words meaning
+                pureValues pureClaimed with
+            | .error message =>
+                IO.eprintln s!"rejected: {message}"
+                return 1
+            | .ok (ssa, _) =>
+                if ssa = sourceSSA &&
+                    ssa = S31.Functional.Correspondence.GeneralLinearSSA.subtractionThenDoubleEmitted &&
+                    (checkRelationSSA relation ssa.lane_count ssa.inputs
+                      ssa.names ssa.output).isOk then
+                  IO.println "accepted: pure source-derived M31 public ABI"
+                  return 0
+                else
+                  IO.eprintln "rejected: pure fixture roster differs"
+                  return 1
       else if mode == "effects" then
-        match checkEffects certificate abi assignment words effectsSource
-            effectsValues effectsClaimed with
+        match S31.Functional.Correspondence.GeneralLinearSSAEffectsSourceBytes.checkSourceCertificate
+            sourceBytes certificate with
         | .error message =>
             IO.eprintln s!"rejected: {message}"
             return 1
-        | .ok (ssa, _) =>
-            if ssa = expectedEffectsSSA &&
-                (checkRelationSSA relation ssa.lane_count ssa.inputs
-                  ssa.names ssa.output).isOk then
-              IO.println "accepted: effects source-derived M31 public ABI"
-              return 0
-            else
-              IO.eprintln "rejected: effects fixture roster differs"
-              return 1
+        | .ok (sourceSSA, meaning, _) =>
+            match checkEffects certificate abi assignment words meaning
+                effectsValues effectsClaimed with
+            | .error message =>
+                IO.eprintln s!"rejected: {message}"
+                return 1
+            | .ok (ssa, _) =>
+                if ssa = sourceSSA && ssa = expectedEffectsSSA &&
+                    (checkRelationSSA relation ssa.lane_count ssa.inputs
+                      ssa.names ssa.output).isOk then
+                  IO.println "accepted: effects source-derived M31 public ABI"
+                  return 0
+                else
+                  IO.eprintln "rejected: effects fixture roster differs"
+                  return 1
       else if mode == "ordered" then
-        match checkPure certificate abi assignment words orderedSource
-            orderedValues orderedClaimed with
+        match S31.Functional.Correspondence.GeneralLinearSSASourceBytes.checkSourceCertificate
+            sourceBytes certificate with
         | .error message =>
             IO.eprintln s!"rejected: {message}"
             return 1
-        | .ok (ssa, _) =>
-            if ssa = expectedOrderedSSA &&
-                (checkRelationSSA relation ssa.lane_count ssa.inputs
-                  ssa.names ssa.output).isOk then
-              IO.println "accepted: ordered two-public-input M31 ABI"
-              return 0
-            else
-              IO.eprintln "rejected: ordered fixture roster differs"
-              return 1
+        | .ok (sourceSSA, meaning, _) =>
+            match checkPure certificate abi assignment words meaning
+                orderedValues orderedClaimed with
+            | .error message =>
+                IO.eprintln s!"rejected: {message}"
+                return 1
+            | .ok (ssa, _) =>
+                if ssa = sourceSSA && ssa = expectedOrderedSSA &&
+                    (checkRelationSSA relation ssa.lane_count ssa.inputs
+                      ssa.names ssa.output).isOk then
+                  IO.println "accepted: ordered two-public-input M31 ABI"
+                  return 0
+                else
+                  IO.eprintln "rejected: ordered fixture roster differs"
+                  return 1
       else
-        IO.eprintln "usage: MODE pure|effects|ordered CERT RELATION ABI ASSIGNMENT PUBLIC_WORDS"
+        IO.eprintln "usage: MODE pure|effects|ordered SOURCE CERT RELATION ABI ASSIGNMENT PUBLIC_WORDS"
         return 2
   | _ =>
-      IO.eprintln "usage: MODE pure|effects|ordered CERT RELATION ABI ASSIGNMENT PUBLIC_WORDS"
+      IO.eprintln "usage: MODE pure|effects|ordered SOURCE CERT RELATION ABI ASSIGNMENT PUBLIC_WORDS"
       return 2
 
 end S31.Audit.GeneralLinearSSAPublicABICheck

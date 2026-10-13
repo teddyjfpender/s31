@@ -17,7 +17,7 @@ def canonical(value: object) -> bytes:
 def run(executable: Path, mode: str, paths: dict[str, Path], accepted: bool) -> None:
     result = subprocess.run(
         [str(executable), mode, *(str(paths[name]) for name in
-            ("certificate", "relation", "abi", "assignment", "public_words"))],
+            ("source", "certificate", "relation", "abi", "assignment", "public_words"))],
         capture_output=True, text=True, check=False, timeout=30,
     )
     if (result.returncode == 0) != accepted:
@@ -32,17 +32,23 @@ def main() -> None:
     fixture = formal / "fixtures/correspondence/public_abi"
     executable = formal / ".lake/build/bin/s31-general-linear-public-abi-check"
     sources = {
-        "pure": formal / "fixtures/correspondence/source_relation_ssa_v1.json",
+        "pure": fixture / "pure.certificate.json",
         "effects": formal / "fixtures/correspondence/effects/affine_guard.certificate.json",
         "ordered": fixture / "ordered.certificate.json",
     }
     relations = {
-        "pure": formal / "fixtures/correspondence/source_relation_ssa_v1.relation.json",
+        "pure": fixture / "pure.relation.json",
         "effects": formal / "fixtures/correspondence/effects/affine_guard.relation.json",
         "ordered": fixture / "ordered.relation.json",
     }
+    source_texts = {
+        "pure": fixture / "pure.s31",
+        "effects": formal / "fixtures/correspondence/effects/affine_guard.s31",
+        "ordered": fixture / "ordered.s31",
+    }
     for mode in sources:
         paths = {
+            "source": source_texts[mode],
             "certificate": sources[mode],
             "relation": relations[mode],
             "abi": fixture / f"{mode}.abi.json",
@@ -52,6 +58,7 @@ def main() -> None:
         run(executable, mode, paths, True)
 
     baseline = {
+        "source": source_texts["ordered"],
         "certificate": sources["ordered"],
         "relation": relations["ordered"],
         "abi": fixture / "ordered.abi.json",
@@ -122,6 +129,13 @@ def main() -> None:
         ("noncanonical-abi-spacing", "abi", abi_raw.replace(
             b'  "schema":', b' "schema":', 1)),
         ("oversized-abi", "abi", abi_raw + b" " * 65536),
+    ]
+    source_raw = baseline["source"].read_bytes()
+    mutants += [
+        ("source-public-visibility", "source", source_raw.replace(
+            b"public x", b"private x", 1)),
+        ("source-input-order", "source", source_raw.replace(
+            b"x + y", b"y + x", 1)),
     ]
     with tempfile.TemporaryDirectory(prefix="s31-lean-public-abi-") as temp:
         for label, target, contents in mutants:

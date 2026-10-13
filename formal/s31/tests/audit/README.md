@@ -1,9 +1,9 @@
 # Executable source audit tests
 
-`general_linear_public_abi.py` checks three production-derived certificate
-fixtures against handwritten Lean source meanings and exact ABI, assignment,
-and 32-byte public word files. It includes two public inputs, a private input,
-zero padding, and 21 rejection controls. Build the runtime gate first:
+`general_linear_public_abi.py` checks three source-derived certificate
+fixtures against exact `.s31` bytes, ABI, assignment, and 32-byte public word
+files. It includes two public inputs, a private input, zero padding, and 27
+rejection controls. Build the runtime gate first:
 
 ```sh
 lake build s31-general-linear-public-abi-check

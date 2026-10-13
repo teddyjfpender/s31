@@ -3,7 +3,9 @@
 [`GeneralLinearSSAPublicABI.lean`](GeneralLinearSSAPublicABI.lean) checks the
 public statement for both `linear-ssa-m31-v1` and
 `linear-ssa-m31-effects-v1`. It derives field names, visibility, array width,
-and output name from the decoded certificate. It also parses and validates the
+and output name from the decoded certificate. For the bounded pure/effects
+text grammar, independent Lean parsers derive the typed term and SSA from the
+exact `.s31` bytes. The ABI checker also parses and validates the
 exact canonical normalized relation JSON, requiring the relation's ordered
 input names, visibilities, M31 shapes, and selected output name to agree with
 the certificate. The supplied `public-abi.json`
@@ -43,7 +45,9 @@ gate. The certificate's `salt` visibility is private; the assignment must
 still supply it, while the public word file omits it.
 
 The [pure fixture], [effects fixture], and [ordered fixture] exercise private
-only, mixed, and two-public-input layouts. The effects certificate additionally
+only, mixed, and two-public-input layouts. The runtime gate checks each exact
+source file against its certificate before checking ABI and statement bytes.
+The effects certificate additionally
 contains an assertion involving its private input. Each comes with canonical
 ABI and assignment JSON and an exact 32-byte public-word file.
 
@@ -61,11 +65,17 @@ theorems without normalized relation bytes. They start from the
 executable certificate/ABI/assignment/word gate and arbitrary modeled packed
 AIR row witnesses. All theorems use no `sorry` or custom axioms.
 
-These theorems are conditional on a separately supplied typed source term.
+`pure_source_bytes_public_abi_sound` and
+`effects_source_bytes_public_abi_sound` remove the separately supplied typed
+term for the bounded text grammar. They combine the source-byte certificate,
+ABI, relation-layout, and modeled AIR premises to conclude source denotation
+and exact public statement bytes. Other S31 syntax is outside this parser.
+
+The inner theorems above are conditional on a separately supplied typed source term.
 The normalized relation check binds its public layout, but it does not compare
 every relation arithmetic node or assertion with the certificate. They do not
-independently derive the typed term or circuit name from `.s31` source bytes,
-recompute the certificate's source/relation hashes, prove that native
+independently derive the circuit name, recompute the certificate's
+source/relation hashes, prove that native
 Zig gates own these public pins, or prove that native PCS/FRI verification
 authenticates the modeled AIR rows. The production source-fragment checker
 does derive the certificate and ABI from source, but its Python implementation

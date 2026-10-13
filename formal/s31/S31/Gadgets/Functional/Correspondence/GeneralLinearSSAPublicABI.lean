@@ -1,4 +1,6 @@
 import S31.Gadgets.Functional.Correspondence.GeneralLinearSSAEffectsBytes
+import S31.Gadgets.Functional.Correspondence.GeneralLinearSSASourceBytes
+import S31.Gadgets.Functional.Correspondence.GeneralLinearSSAEffectsSourceBytes
 import S31.Semantics.Json
 
 /-!
@@ -543,5 +545,103 @@ theorem pure_relation_public_abi_sound
     Option.some.inj (hrelationName.symm.trans habiName)
   subst relationOutput
   exact ⟨hsource, abiOutput, hparsed, hmatch, habi, hwords⟩
+
+/-- For the bounded pure text grammar, the source term is constructed by the
+independent Lean source-byte parser. The public ABI and normalized relation
+layout are checked against the same decoded certificate roster. -/
+theorem pure_source_bytes_public_abi_sound
+    (sourceBytes : List Nat)
+    (certificateBytes relationBytes abiBytes assignmentBytes : String)
+    (rawPublicBytes : List Nat)
+    (ssa : GeneralLinearSSA.EmittedSSA)
+    (meaning : GeneralLinearSSA.Term)
+    (certificate : GeneralLinearSSA.Certificate)
+    (values : Nat → Lanes ssa.lane_count)
+    (claimed : Lanes ssa.lane_count)
+    (program : S31.Program) (final : List (Lanes ssa.lane_count))
+    (outputName : String)
+    (hsource : GeneralLinearSSASourceBytes.checkSourceCertificate
+      sourceBytes certificateBytes = .ok (ssa, meaning, certificate))
+    (hname : ssa.names[ssa.output]? = some outputName)
+    (hboundary : checkBoundary abiBytes assignmentBytes rawPublicBytes
+      ssa.lane_count ssa.inputs outputName values claimed = .ok ())
+    (hrelation : checkRelationSSA relationBytes ssa.lane_count ssa.inputs
+      ssa.names ssa.output = .ok program)
+    (hrows : GeneralLinearSSA.AcceptsTrace
+      (GeneralLinearSSA.initialValues certificate.inputs values)
+      certificate.instructions final)
+    (houtput : final[certificate.output]? = some claimed) :
+    GeneralLinearSSASourceBytes.denotation sourceBytes values = some claimed ∧
+    parseRelation relationBytes = .ok program ∧
+    RelationMatches program ssa.lane_count ssa.inputs outputName ∧
+    parseDescriptor abiBytes =
+      .ok (expectedDescriptor ssa.lane_count ssa.inputs outputName) ∧
+    rawPublicBytes = publicWordBytes
+      (orderedPublicWords ssa.inputs values claimed) := by
+  have hdenotation := GeneralLinearSSASourceBytes.checked_source_air_sound
+    sourceBytes certificateBytes ssa meaning certificate values claimed final
+    hsource hrows houtput
+  obtain ⟨_, habi, _, _, hwords⟩ := checked_boundary_parts
+    abiBytes assignmentBytes rawPublicBytes ssa.lane_count ssa.inputs
+    outputName values claimed hboundary
+  obtain ⟨relationOutput, hrelationName, hparsed, hmatch⟩ :=
+    checked_relation_ssa relationBytes ssa.lane_count ssa.inputs
+      ssa.names ssa.output program hrelation
+  have heq : relationOutput = outputName :=
+    Option.some.inj (hrelationName.symm.trans hname)
+  subst relationOutput
+  exact ⟨hdenotation, hparsed, hmatch,
+    checked_descriptor abiBytes ssa.lane_count ssa.inputs outputName habi,
+    hwords⟩
+
+/-- The effectful source-byte bridge has a partial denotation: an accepted
+claim also requires every source assertion to hold on the modeled AIR rows. -/
+theorem effects_source_bytes_public_abi_sound
+    (sourceBytes : List Nat)
+    (certificateBytes relationBytes abiBytes assignmentBytes : String)
+    (rawPublicBytes : List Nat)
+    (ssa : GeneralLinearSSAEffects.EmittedSSA)
+    (meaning : GeneralLinearSSAEffects.Source)
+    (certificate : GeneralLinearSSAEffects.Certificate)
+    (values : Nat → Lanes ssa.lane_count)
+    (claimed : Lanes ssa.lane_count)
+    (program : S31.Program) (final : List (Lanes ssa.lane_count))
+    (outputName : String)
+    (hsource : GeneralLinearSSAEffectsSourceBytes.checkSourceCertificate
+      sourceBytes certificateBytes = .ok (ssa, meaning, certificate))
+    (hname : ssa.names[ssa.output]? = some outputName)
+    (hboundary : checkBoundary abiBytes assignmentBytes rawPublicBytes
+      ssa.lane_count ssa.inputs outputName values claimed = .ok ())
+    (hrelation : checkRelationSSA relationBytes ssa.lane_count ssa.inputs
+      ssa.names ssa.output = .ok program)
+    (hrows : GeneralLinearSSAEffects.AcceptsTrace
+      (GeneralLinearSSAEffects.initialValues certificate.inputs values)
+      certificate.steps final)
+    (houtput : final[certificate.output]? = some claimed)
+    (hassert : GeneralLinearSSAEffects.assertionsAir final
+      certificate.assertions) :
+    GeneralLinearSSAEffectsSourceBytes.denotation sourceBytes values claimed ∧
+    parseRelation relationBytes = .ok program ∧
+    RelationMatches program ssa.lane_count ssa.inputs outputName ∧
+    parseDescriptor abiBytes =
+      .ok (expectedDescriptor ssa.lane_count ssa.inputs outputName) ∧
+    rawPublicBytes = publicWordBytes
+      (orderedPublicWords ssa.inputs values claimed) := by
+  have hdenotation :=
+    GeneralLinearSSAEffectsSourceBytes.checked_source_air_sound
+      sourceBytes certificateBytes ssa meaning certificate values claimed
+      final hsource hrows houtput hassert
+  obtain ⟨_, habi, _, _, hwords⟩ := checked_boundary_parts
+    abiBytes assignmentBytes rawPublicBytes ssa.lane_count ssa.inputs
+    outputName values claimed hboundary
+  obtain ⟨relationOutput, hrelationName, hparsed, hmatch⟩ :=
+    checked_relation_ssa relationBytes ssa.lane_count ssa.inputs
+      ssa.names ssa.output program hrelation
+  have heq : relationOutput = outputName :=
+    Option.some.inj (hrelationName.symm.trans hname)
+  subst relationOutput
+  exact ⟨hdenotation, hparsed, hmatch,
+    checked_descriptor abiBytes ssa.lane_count ssa.inputs outputName habi,
+    hwords⟩
 
 end S31.Functional.Correspondence.GeneralLinearSSAPublicABI

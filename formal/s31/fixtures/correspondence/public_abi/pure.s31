@@ -1,0 +1,5 @@
+circuit calc(private a: [m31; 5], private b: [m31; 5]) -> public [m31; 5] {
+    let delta = a - b;
+    let doubled = delta + delta;
+    doubled
+}
