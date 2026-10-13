@@ -38,6 +38,12 @@ class PcsFriCaptureTest(unittest.TestCase):
             check_capture_source(change_once(
                 ".idx = first.idx >> 1,", ".idx = first.idx >> 2,"))
 
+    def test_original_order_path_copy_changed(self) -> None:
+        with self.assertRaisesRegex(ValueError, "lifted Merkle"):
+            check_capture_source(change_once(
+                "const source_start = unique_index * path_depth;",
+                "const source_start = original_index * path_depth;"))
+
     def test_publish_before_root_check_rejected(self) -> None:
         publication = "destination.* = capture;"
         root_check = "if (!vcs_hash.eql(prev_layer.items[0].hash, self.root))"

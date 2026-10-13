@@ -29,11 +29,15 @@ def check_capture_source(source: str) -> None:
         "siblings[p] = witness;",
         ".idx = first.idx >> 1,",
         ".hash = H.hashChildren(.{ .left = left_hash, .right = right_hash }),",
+        "const ancestor = position >> @intCast(layer);",
         "paths[unique_index * path_depth + layer] = siblings[node_index];",
         "if (witness_idx != decommitment.hash_witness.len)",
         "if (prev_layer.items.len != 1) return MerkleVerificationError.RootMismatch;",
         "if (!vcs_hash.eql(prev_layer.items[0].hash, self.root))",
+        "const source_start = unique_index * path_depth;",
+        "const destination_start = original_index * path_depth;",
         "@memcpy(\n                        capture.siblings[destination_start..][0..path_depth],",
+        "unique_path_siblings.?[source_start..][0..path_depth],",
         "destination.* = capture;",
     )
 

@@ -86,7 +86,7 @@ applies the witnessed-collision theorem to identify the opened row.
 
 The [pinned source control](../../../../../scripts/s31_formal_lib/pcs_fri_capture.py)
 checks the decoder's range guard, pair/witness branches, sibling assignment,
-right shift, root check and capture publication order. Four mutation controls
+right shift, root check and capture publication order. Five mutation controls
 alter those stages and require rejection. This source control and the native
 tests make the implementation relationship reviewable; the proof does not
 yet derive the chunk sequence from Zig execution.
