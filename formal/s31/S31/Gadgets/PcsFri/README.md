@@ -48,9 +48,12 @@ row in its selected bundle, the raw positions whose bundles touch a fixed
 bad-row set include all the bad rows themselves. Thus `s` independent uniform
 raw draws miss bad bundles no more often than they miss the bad rows, even
 when bundle positions overlap or raw queries repeat. This is a finite
-counting theorem. It still requires a proof that the native verifier checks
-each required bundled row and that the Fiat–Shamir sampler realizes the
-assumed draw distribution.
+counting theorem. Its `masked_bundle_miss_fraction_le` corollary also uses
+the exact M31-reduce-and-mask word count: for `2 ≤ k ≤ 31`, an ideal
+independent 32-bit word stream misses all bad bundles with fraction at most
+`((2^k - |bad|)/2^k + 2/2^32)^s`. It still requires a proof that the native
+verifier checks each required bundled row and that the Fiat–Shamir transcript
+realizes the assumed independent word stream.
 
 [`ConservativeEnvelope.lean`](ConservativeEnvelope.lean) proves an arithmetic
 limit of one **published upper-bound expression**: in Circle STARKs Remark 26,
