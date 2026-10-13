@@ -106,6 +106,11 @@ def main() -> None:
         ("relation-lane-count", lambda value: value["inputs"][0].update(length=3)),
         ("relation-output-name", lambda value: value.update(public_outputs=["x"])),
         ("relation-invalid-node", lambda value: value["nodes"][0].update(rhs="missing")),
+        ("relation-arithmetic-op", lambda value: value["nodes"][0].update(op="sub")),
+        ("relation-arithmetic-operand", lambda value: value["nodes"][0].update(rhs="x")),
+        ("relation-extra-assertion", lambda value: value.update(
+            assertions=[{"lhs": "x", "rhs": "y"}])),
+        ("relation-proof-mode", lambda value: value.update(proof_mode="blinded")),
     ):
         value = copy.deepcopy(relation)
         change(value)
@@ -138,13 +143,38 @@ def main() -> None:
             b"x + y", b"y + x", 1)),
     ]
     with tempfile.TemporaryDirectory(prefix="s31-lean-public-abi-") as temp:
+        renamed = copy.deepcopy(relation)
+        renamed["name"] = "other_circuit"
+        renamed_path = Path(temp) / "relation-circuit-name.data"
+        renamed_path.write_bytes(canonical(renamed))
+        run(executable, "ordered", {**baseline, "relation": renamed_path}, True)
         for label, target, contents in mutants:
             path = Path(temp) / f"{label}.data"
             path.write_bytes(contents)
             candidate = dict(baseline)
             candidate[target] = path
             run(executable, "ordered", candidate, False)
-    print(f"Lean public ABI controls: 3 accepted, {len(mutants)} rejected")
+        effect_relation = json.loads(relations["effects"].read_bytes())
+        effects = {
+            "source": source_texts["effects"],
+            "certificate": sources["effects"],
+            "relation": relations["effects"],
+            "abi": fixture / "effects.abi.json",
+            "assignment": fixture / "effects.assignment.json",
+            "public_words": fixture / "effects.public_words.bin",
+        }
+        for label, change in (
+            ("effects-constant", lambda value: value["nodes"][0].update(constant=8)),
+            ("effects-op", lambda value: value["nodes"][1].update(op="add_const")),
+            ("effects-assertion", lambda value: value["assertions"][0].update(rhs="shifted")),
+        ):
+            value = copy.deepcopy(effect_relation)
+            change(value)
+            path = Path(temp) / f"{label}.relation.json"
+            path.write_bytes(canonical(value))
+            run(executable, "effects", {**effects, "relation": path}, False)
+    print(f"Lean public ABI controls: 3 matching + 1 name-mismatch accepted, "
+          f"{len(mutants) + 3} rejected")
 
 
 if __name__ == "__main__":

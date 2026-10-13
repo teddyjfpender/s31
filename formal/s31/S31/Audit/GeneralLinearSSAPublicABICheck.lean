@@ -96,8 +96,7 @@ def run (args : List String) : IO UInt32 := do
             | .ok (ssa, _) =>
                 if ssa = sourceSSA &&
                     ssa = S31.Functional.Correspondence.GeneralLinearSSA.subtractionThenDoubleEmitted &&
-                    (checkRelationSSA relation ssa.lane_count ssa.inputs
-                      ssa.names ssa.output).isOk then
+                    (checkPureRelationSSA relation ssa).isOk then
                   IO.println "accepted: pure source-derived M31 public ABI"
                   return 0
                 else
@@ -117,8 +116,7 @@ def run (args : List String) : IO UInt32 := do
                 return 1
             | .ok (ssa, _) =>
                 if ssa = sourceSSA && ssa = expectedEffectsSSA &&
-                    (checkRelationSSA relation ssa.lane_count ssa.inputs
-                      ssa.names ssa.output).isOk then
+                    (checkEffectsRelationSSA relation ssa).isOk then
                   IO.println "accepted: effects source-derived M31 public ABI"
                   return 0
                 else
@@ -138,8 +136,7 @@ def run (args : List String) : IO UInt32 := do
                 return 1
             | .ok (ssa, _) =>
                 if ssa = sourceSSA && ssa = expectedOrderedSSA &&
-                    (checkRelationSSA relation ssa.lane_count ssa.inputs
-                      ssa.names ssa.output).isOk then
+                    (checkPureRelationSSA relation ssa).isOk then
                   IO.println "accepted: ordered two-public-input M31 ABI"
                   return 0
                 else

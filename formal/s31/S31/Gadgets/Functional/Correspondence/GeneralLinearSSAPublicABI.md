@@ -6,9 +6,10 @@ public statement for both `linear-ssa-m31-v1` and
 and output name from the decoded certificate. For the bounded pure/effects
 text grammar, independent Lean parsers derive the typed term and SSA from the
 exact `.s31` bytes. The ABI checker also parses and validates the
-exact canonical normalized relation JSON, requiring the relation's ordered
-input names, visibilities, M31 shapes, and selected output name to agree with
-the certificate. The supplied `public-abi.json`
+exact canonical normalized relation JSON. It requires the relation's ordered
+input names, visibilities, M31 shapes, selected output name, ordered arithmetic
+nodes, operand order, constants, and assertion pairs to agree with the
+certificate; the proof mode must be transparent. The supplied `public-abi.json`
 must be canonical, byte exact, and equal to that derived layout. A separate
 canonical assignment JSON must contain every named public and private input,
 each with exactly the declared number of canonical M31 values, and one named
@@ -52,7 +53,7 @@ contains an assertion involving its private input. Each comes with canonical
 ABI and assignment JSON and an exact 32-byte public-word file.
 
 `pure_relation_public_abi_sound` and `effects_relation_public_abi_sound`
-compose the relation-layout check with the ABI byte gate and arbitrary
+compose the exact bounded relation graph check with the ABI byte gate and arbitrary
 modeled packed AIR rows. They prove that accepted public word bytes encode
 the ordered public inputs and the independently checked source term's output.
 The effects theorem retains every assertion polynomial. The proofs also
@@ -68,13 +69,16 @@ AIR row witnesses. All theorems use no `sorry` or custom axioms.
 `pure_source_bytes_public_abi_sound` and
 `effects_source_bytes_public_abi_sound` remove the separately supplied typed
 term for the bounded text grammar. They combine the source-byte certificate,
-ABI, relation-layout, and modeled AIR premises to conclude source denotation
+ABI, relation graph, and modeled AIR premises to conclude source denotation
 and exact public statement bytes. Other S31 syntax is outside this parser.
 
 The inner theorems above are conditional on a separately supplied typed source term.
-The normalized relation check binds its public layout, but it does not compare
-every relation arithmetic node or assertion with the certificate. They do not
-independently derive the circuit name, recompute the certificate's
+The exact graph checker rejects a relation that changes `sum = x + y` to
+`sum = x - y`, changes an operand or constant, adds an assertion, or changes
+the proof mode. It does not compare the relation's circuit name: the bounded
+Lean source parsers syntax-check that name but discard it from their SSA
+projection. The audit deliberately accepts a relation with a different
+circuit name to expose this gap. The theorems also do not recompute the certificate's
 source/relation hashes, prove that native
 Zig gates own these public pins, or prove that native PCS/FRI verification
 authenticates the modeled AIR rows. The production source-fragment checker
