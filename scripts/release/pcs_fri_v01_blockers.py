@@ -41,8 +41,8 @@ OBLIGATIONS = (
         "gap_kind": "uninstantiated_theorem_premise",
         "published_requirement": "Circle STARKs Theorems 6/7: bind each N, D, C, d, L, m, rate, list bound and every component domain to the verified oracle",
         "published_anchor": CIRCLE + "#appendix-B",
-        "partial_evidence": ["scripts/release/pcs_fri_proven_preflight.py", "formal/s31/proof-inventory.json"],
-        "missing_discharge": "derive theorem parameters from every sealed native package and check all finite-domain, degree and small-table preconditions",
+        "partial_evidence": ["scripts/release/pcs_fri_proven_preflight.py", "scripts/release/pcs_fri_package_geometry.py", "design/s31/security/PCS_FRI_PACKAGE_GEOMETRY.md", "formal/s31/proof-inventory.json"],
+        "missing_discharge": "derive final FRI D, C, d, L, m, rate and list bound from every sealed native package; complete missing component rosters and check all finite-domain, degree and small-table preconditions",
     },
     {
         "id": "P02_AIR_AND_INTERACTION_REFINEMENT",

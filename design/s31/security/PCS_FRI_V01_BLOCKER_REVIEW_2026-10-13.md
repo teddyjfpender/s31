@@ -55,6 +55,18 @@ collision term. A source-level resemblance to that protocol is insufficient:
 the native verifier needs a complete relation-preserving refinement and
 every concrete parameter needs to satisfy the theorem's premises.
 
+The [sealed-package geometry diagnostic](PCS_FRI_PACKAGE_GEOMETRY.md) now
+checks a reviewed key schema and the current engine gitlink, then reports the
+key's candidate maximum trace size, configured lifting size, and any complete
+component and fixed-column height roster. An independently rerun sealed gate
+package reported `N=2^20`, lifting `2^21`, 11 components and 45 fixed
+columns; its native `check-key` accepted. A sealed SHA joint package reported
+`N=2^18` and lifting `2^19`, but exposed only four unnamed circuit logs and
+no standalone key check. The diagnostic leaves final FRI `D`, composition
+degrees and all published theorem parameters unset; `--require-complete`
+exits 2. Its local source hashes do not prove that a package binary was
+built from those exact sources. P01 therefore remains open.
+
 The source-visible nominal v0.1 tuple is `pow_bits=26`,
 `log_last_layer_degree_bound=0`, `log_blowup_factor=1`, and `raw_queries=70`.
 The S31 runtime chooses fold step 1 or 4; the three SHA package runtimes use
@@ -129,7 +141,8 @@ mismatch; a reviewed roster-only post-freeze bridge then produced passing
 local gates. The result explicitly keeps automatic lowering disabled.
 
 That evidence pins engine `7d544c6839497ca19b6c7ef9b982e464f10cfeed`;
-the current v0.1 matrix pins `039dacb59980e1e871571958b396b2e29f93c0e5`.
+the current v0.1 matrix pins a newer engine gitlink and records its exact
+commit in the generated JSON snapshot.
 No current-stack transfer, cross-host accuracy, tail latency, or automatic
 lowering result follows from the frozen study. The [mixed stage cost
 protocol](../measurements/MIXED_STAGE_COST_MODEL_V1.md) further exposes
