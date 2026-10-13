@@ -350,7 +350,8 @@ theorem checked_normalized_complete {n : Nat} (certificate : Certificate)
   exact ⟨final, (air_iff_normalized_trace _ _ _).mp hrows, houtput⟩
 
 /-- Typed mirror of the emitted certificate's `ssa.inputs` entries. The
-outer JSON parser and its exact-byte hash checks remain outside Lean. -/
+complete JSON-byte decoder is in `GeneralLinearSSABytes`; SHA-256 digest
+recomputation against source/relation files remains outside Lean. -/
 structure EmittedInput where
   id : Nat
   name : String

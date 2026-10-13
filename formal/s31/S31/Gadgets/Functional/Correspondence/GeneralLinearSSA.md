@@ -53,7 +53,10 @@ the checker, not by `decide` in the Lean kernel.
 The byte decoder compares the entire input to the canonical, sorted,
 two-space-indented JSON encoding used by the production package checker.
 It rejects duplicate keys, extra fields, alternate whitespace, and alternate
-key order. Runtime mutation controls exercise each case. The renderer uses
+key order. Runtime mutation controls exercise each case. The runner also
+rejects one changed visibility against its handwritten fixture roster; the
+generic arithmetic checker accepts either valid visibility spelling. The
+renderer uses
 Lean's JSON string escaping, so this byte gate currently targets the source
 fragment's ASCII identifier grammar.
 

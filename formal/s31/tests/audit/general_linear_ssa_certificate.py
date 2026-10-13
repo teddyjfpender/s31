@@ -38,7 +38,6 @@ def main() -> None:
         "forward-reference": ("ssa", "nodes", 0, "lhs", 3),
         "output": ("ssa", "output", 2),
         "assertion": ("ssa", "assertions", [[0, 1]]),
-        "visibility": ("ssa", "inputs", 0, "visibility", "public"),
         "profile": ("lean_semantic_profile", "other-profile"),
         "digest-syntax": ("source_sha256", "not-a-sha256"),
         "unknown-field": ("unexpected", 1),
@@ -73,8 +72,17 @@ def main() -> None:
             candidate = Path(temporary) / f"{name}.json"
             candidate.write_text(value)
             run(executable, candidate, False)
+        # The generic graph checker allows either visibility. This control
+        # checks only that the reviewed fixture runner pins its exact roster.
+        visibility = copy.deepcopy(document)
+        visibility["ssa"]["inputs"][0]["visibility"] = "public"
+        candidate = Path(temporary) / "fixture-visibility-roster.json"
+        candidate.write_text(json.dumps(visibility, indent=2,
+                                        sort_keys=True) + "\n")
+        run(executable, candidate, False)
     print(f"Lean certificate runtime controls: 1 accepted, "
-          f"{len(mutations) + len(byte_mutations)} rejected")
+          f"{len(mutations) + len(byte_mutations)} invalid rejected, "
+          "1 reviewed-fixture roster mismatch rejected")
 
 
 if __name__ == "__main__":
