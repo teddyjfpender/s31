@@ -159,6 +159,10 @@ normalized Eq. 68 recurrence after the explicit `2^i` rescaling. The
 stronger `accepted_slots_refine_protocol3` composes those results in one
 statement, starting with each sampled row's list of `(original, own quotient)`
 pairs and ending at its normalized forwarded value. The
+`scaled_height_batch` theorem also shows that dividing an inserted batch by
+`2^i` is the same as scaling every original and its own quotient by that
+factor before batching; `conjugateInterpolant_scale` proves the corresponding
+claimed-value interpolation scales linearly. The
 experimental native [source guard](https://github.com/teddyjfpender/stwo-zig/blob/codex/paired-degree-protocol-20261013/scripts/check_cas05_relation_extractor.py)
 pins the corresponding batch-power and fold call order. These are algebra
 and source-shape checks; they do not prove that Zig executes the model, that
