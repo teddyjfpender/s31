@@ -20,7 +20,7 @@ abbrev Parse := Except String
 layout on the certificate's ASCII-only pure profile. Comparing the complete
 input against this rendering also rejects duplicate keys discarded by
 `Lean.Json.parse`, unusual number spellings, and insignificant whitespace. -/
-private partial def pythonCanonical (depth : Nat) : Json → String
+partial def pythonCanonical (depth : Nat) : Json → String
   | .obj object =>
       let entries := object.toList.mergeSort (fun left right => left.1 ≤ right.1)
       if entries.isEmpty then "{}" else
@@ -36,29 +36,29 @@ private partial def pythonCanonical (depth : Nat) : Json → String
         "\n" ++ String.ofList (List.replicate (2 * depth) ' ') ++ "]"
   | other => other.compress
 
-private def fields (json : Json) (allowed : List String) : Parse Unit := do
+def fields (json : Json) (allowed : List String) : Parse Unit := do
   let object ← json.getObj?
   for (name, _) in object.toList do
     if !allowed.contains name then throw s!"unknown field: {name}"
 
-private def field (json : Json) (name : String) : Parse Json :=
+def field (json : Json) (name : String) : Parse Json :=
   json.getObjVal? name
 
-private def string (json : Json) : Parse String := json.getStr?
-private def nat (json : Json) : Parse Nat := json.getNat?
+def string (json : Json) : Parse String := json.getStr?
+def nat (json : Json) : Parse Nat := json.getNat?
 
-private def array (decode : Json → Parse α) (json : Json) : Parse (List α) := do
+def array (decode : Json → Parse α) (json : Json) : Parse (List α) := do
   (← json.getArr?).toList.mapM decode
 
 private def lowerHexChar (char : Char) : Bool :=
   ('0' ≤ char && char ≤ '9') || ('a' ≤ char && char ≤ 'f')
 
-private def digest (json : Json) : Parse Unit := do
+def digest (json : Json) : Parse Unit := do
   let value ← string json
   if value.toList.length != 64 || !value.toList.all lowerHexChar then
     throw "SHA-256 digest must be 64 lowercase hex digits"
 
-private def exactString (json : Json) (expected : String) : Parse Unit := do
+def exactString (json : Json) (expected : String) : Parse Unit := do
   let actual ← string json
   if actual != expected then throw s!"expected {expected}"
 
@@ -97,6 +97,8 @@ private def ssa (json : Json) : Parse EmittedSSA := do
 version/capability/profile discriminants and digest *syntax*. Unknown decoded
 fields, missing fields and unmodeled operation tags fail closed. -/
 def decodeCertificate (bytes : String) : Parse EmittedSSA := do
+  if bytes.utf8ByteSize > 65536 then
+    throw "certificate JSON exceeds 65536 bytes"
   let json ← Json.parse bytes
   if pythonCanonical 0 json ++ "\n" != bytes then
     throw "noncanonical certificate JSON bytes"

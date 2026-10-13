@@ -1,0 +1,53 @@
+{
+  "capability": "source-to-relation-only",
+  "lean_semantic_profile": "linear-ssa-m31-effects-v1",
+  "relation_sha256": "9b5acf0b6aa6b9ff6493cbde3918e8917680af173e3ce5dec645e404ab214835",
+  "schema": "s31-source-relation-certificate-v1",
+  "source_sha256": "ede035c34b0462822c044126ac52daa1ae3cf2a2b726a5c4e1f676b79127dd7c",
+  "ssa": {
+    "assertions": [
+      [
+        1,
+        3
+      ]
+    ],
+    "inputs": [
+      {
+        "id": 0,
+        "name": "x",
+        "visibility": "public"
+      },
+      {
+        "id": 1,
+        "name": "y",
+        "visibility": "private"
+      }
+    ],
+    "lane_count": 3,
+    "nodes": [
+      {
+        "constant": 7,
+        "id": 2,
+        "lhs": 0,
+        "name": "shifted",
+        "op": "add_const"
+      },
+      {
+        "constant": 9,
+        "id": 3,
+        "lhs": 2,
+        "name": "scaled",
+        "op": "mul_const"
+      },
+      {
+        "id": 4,
+        "lhs": 1,
+        "name": "out",
+        "op": "sub",
+        "rhs": 0
+      }
+    ],
+    "output": 4
+  },
+  "unmodeled_features": []
+}
