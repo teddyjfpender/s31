@@ -23,7 +23,7 @@ that every syntactically valid program is admissible or total.
 | Assertions | At most 16 equality assertions between named wires | Arbitrary expressions, result-independent effects, native assertion enforcement |
 | Static functions | Up to 8 used pure one- or two-argument helpers, each one arithmetic expression; calls receive named wires | General function bodies, higher-order values, closures, recursive-call rejection, specialization fuel |
 | `use std@1` | Exact import spelling is accepted when no standard-library call is used; package lock checked separately | Independently specified standard-library calls and pinned source semantics |
-| Natural/field literals, arrays, tuples, records | Field literal inside canonical `splat`; flat 2–4 element tuples of existing equal-length M31 wire arrays, static `.0`–`.3` projection and aliases are source-byte checked and erased before SSA. A separate bounded v2 record checker covers input field projection and output construction. A Lean exact-byte parser proves the bounded record value step for arbitrary M31 inputs. | Nested products, array shape changes, general record specialization, Python/relation JSON equivalence for the Lean record parser, v2 record-to-`Program.evaluate` theorem, and a shared typed certificate across all structural forms |
+| Natural/field literals, arrays, tuples, records | Field literal inside canonical `splat`; flat 2–4 element tuples of existing equal-length M31 wire arrays, static `.0`–`.3` projection and aliases are source-byte checked and erased before SSA. A separate bounded v2 record checker covers input field projection and output construction. A Lean exact-byte parser proves the bounded record value step for arbitrary M31 inputs; a follow-on theorem joins checked result fields to actual `Program.evaluate` under explicit graph, assignment, output-roster, and trace alignment premises. | Nested products, array shape changes, general record specialization, Python/relation JSON equivalence for the Lean record parser, discharge of the v2 evaluator alignment premises from relation bytes, and a shared typed certificate across all structural forms |
 | Sums, pattern matching, `if` | Excluded | Static constructor semantics, exhaustive branches, dynamic bit selection |
 | Lambdas, `Fn`, application | Excluded | Closure capture, polymorphic function values, inlining and name allocation |
 | Blinded mode and dynamic builtins | Excluded | Privacy policy, relation op witnesses, circuit/chip boundary proofs |
@@ -56,8 +56,9 @@ theorem proving that literal parse result remains open. The ordinary builder
 still omits the source-relation certificate for this combination, so automatic
 Lean package enrollment remains open. The bounded v2 record case has
 executable source/relation/ABI/value checks and an exact-byte Lean source-value
-theorem, but no source/parser/relation JSON equivalence or v2 record-to-
-`Program.evaluate` theorem. See
+theorem. A separate theorem reaches actual `Program.evaluate` when its source
+graph, typed input state, public outputs, and accepted trace are aligned;
+source/parser/relation JSON equivalence and native authentication remain open. See
 [`TYPED_STRUCTURAL_DERIVATION.md`](TYPED_STRUCTURAL_DERIVATION.md).
 
 For the pure profile, `formal/s31/S31/Gadgets/Functional/Correspondence/GeneralLinearSSABytes.lean`

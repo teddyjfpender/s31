@@ -19,12 +19,29 @@ all accepted byte programs compute the parsed field expressions for every
 M31 input assignment. The exact `Pair` text is checked against the existing
 two-node record model; an unknown field is rejected, and changing a field
 projection changes the certificate. This is a Lean byte-language theorem. It
-does not yet compare the production Python parser or relation JSON, join v2
-record outputs to `Program.evaluate`, or authenticate native trace rows.
+does not compare the production Python parser or relation JSON, or
+authenticate native trace rows.
 
 ```sh
 cd formal/s31
 LEAN_NUM_THREADS=1 lake env lean S31/Gadgets/Records/SourceBytesV2.lean
+```
+
+[`ProgramEvaluateV2.lean`](ProgramEvaluateV2.lean) composes the checked
+record field certificates with an arbitrary complete modeled AIR trace and
+the actual normalized `Program.environment`. Given explicit input, node,
+fresh-name, and output-roster alignment premises, successful
+`Program.evaluate` forces every named public record field to equal its parsed
+source expression, including two fields that alias one wire. The module also
+defines the two-node `Pair` graph and typed assignment by hand. Lean checks
+that the graph matches the source model, that the real evaluator returns
+`[2, 3, 17, 3, 0, 0, 0, 0]`, and that changing the result claim to `18` fails.
+The alignment premises are not yet discharged from production relation JSON;
+the trace premise is not an authenticated native opening.
+
+```sh
+cd formal/s31
+LEAN_NUM_THREADS=1 lake env lean S31/Gadgets/Records/ProgramEvaluateV2.lean
 ```
 
 [`NamedCodecV2.lean`](NamedCodecV2.lean) joins the checked type-tree walk and

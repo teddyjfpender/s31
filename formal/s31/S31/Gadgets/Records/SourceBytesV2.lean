@@ -261,7 +261,7 @@ theorem parsed_value_correspondence {n : Nat} (bytes : List Nat)
   rw [checked_fields parsed.program parsed.sourceFields inputs parsed.checked]
   simp [denotation, hparse]
 
-private def pairSource : List Nat := token
+def pairSource : List Nat := token
   "struct Pair { left: [m31; 1], right: [m31; 1] }\n\
    circuit mix(public x: Pair, private y: Pair) -> public Pair {\n\
      let p = x.left .* y.right;\n\
