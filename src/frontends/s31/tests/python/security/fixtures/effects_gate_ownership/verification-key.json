@@ -1,0 +1,29 @@
+{
+  "air_bundle_sha256": "7b8022b09d84db371cc433aa0fcf132f7687f2720e05e4dc9a7650c575dc02c2",
+  "canonical_ir_sha256": "75e46550155baf12f1118674bca36d777ba9905b908dac3bb66d0a1b43f7455d",
+  "chip": null,
+  "circuit_hash": "df3acf74d93c8d106ef186f849648ff7b453a842d54b2a5aa07c2469b8a22aba",
+  "fri": {
+    "fold_step": 1,
+    "last_layer_degree_bound": 1,
+    "log_blowup_factor": 1,
+    "pow_bits": 26,
+    "queries": 70
+  },
+  "gate_component_roster_sha256": "c162345c8a49c55024b3fbe549b9b2060e628b60001290840798c682dc3ca176",
+  "name": "affine_guard",
+  "padded": {
+    "blake_g": 16,
+    "eq": 16,
+    "m31_to_u32": 16,
+    "qm31_ops": 512,
+    "triple_xor": 16
+  },
+  "preprocessed_root": "62fafef753207ca5fbd113411261ed73d8f270da7b5af345f658e40673b1a892",
+  "profile": "circuit-v1",
+  "program_sha256": "84fb0f08e3b1c558c01daa122db72141d939c03104bc3a633dc818e0523a796c",
+  "projection_sha256": "ceea3c293a4fcd3ca8a20ba62f4845732f8725bdf610fe6367c83adcb8be7e09",
+  "schema": "s31-verification-key-gate-roster-v1",
+  "stdlib_lock_sha256": "4ea10495b156401491647adf3b64b438ce3ee07ec9e3bf54b6b8c329f15b6e7f",
+  "trace_log_size": 20
+}

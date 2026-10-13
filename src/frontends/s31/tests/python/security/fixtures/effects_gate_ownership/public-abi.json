@@ -1,0 +1,18 @@
+{
+  "encoding": "eight little-endian u32 words; unused words are zero",
+  "public_inputs": [
+    {
+      "kind": "m31",
+      "length": 4,
+      "name": "x"
+    }
+  ],
+  "public_outputs": [
+    {
+      "kind": "m31",
+      "length": 4,
+      "name": "out"
+    }
+  ],
+  "schema": "s31-public-abi-v1"
+}
