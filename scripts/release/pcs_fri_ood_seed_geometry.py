@@ -31,6 +31,10 @@ SOURCE_SHA256 = {
         "4b7a14c91fba7c467f92e924ce90c7230a22d08329591e3d5b8874d862b31288",
     "deps/stwo-zig/src/core/fields/qm31.zig":
         "a60c2a5a6f10bf91b1bfab41a526e41b589d0d1d83275e0516cf68b7228be931",
+    "deps/stwo-zig/src/core/fields/m31.zig":
+        "a5d47cc1a8c57a858b943c25e63eb1561b9f994fdff36ea38517bc166ea66d73",
+    "deps/stwo-zig/src/core/channel/blake2s.zig":
+        "fe0598dd15f70cc84b7098684b6a6f2e0ec319c4f7b5390c3ccd5f781ca32fc1",
 }
 
 
@@ -55,6 +59,8 @@ def classify(sources: dict[str, bytes], gitlink: str) -> dict[str, object]:
     quotient = sources["deps/stwo-zig/src/core/pcs/quotients/row_evaluation.zig"].decode()
     cm31 = sources["deps/stwo-zig/src/core/fields/cm31.zig"].decode()
     qm31 = sources["deps/stwo-zig/src/core/fields/qm31.zig"].decode()
+    m31 = sources["deps/stwo-zig/src/core/fields/m31.zig"].decode()
+    channel = sources["deps/stwo-zig/src/core/channel/blake2s.zig"].decode()
     required = (
         (circle, "pub fn secureFieldPointFromRandomSeedChecked(t: QM31)"),
         (circle, "const one_plus_t_square_inv = try t_square.add(QM31.one()).inv();"),
@@ -71,6 +77,15 @@ def classify(sources: dict[str, bytes], gitlink: str) -> dict[str, object]:
         (cm31, "a + bi"),
         (qm31, "u^2 = 2 + i"),
         (qm31, "pub const R: CM31 = CM31.fromU32Unchecked(2, 1);"),
+        (m31, "pub inline fn fromU64(x: u64) M31"),
+        (m31, "return .{ .v = reduce64(x) };"),
+        (channel, "pub fn drawSecureFelt(self: *Self) QM31"),
+        (channel, "const felts = self.drawBaseFelts();"),
+        (channel, "return QM31.fromM31Array(.{ felts[0], felts[1], felts[2], felts[3] });"),
+        (channel, "self.n_draws = nextDrawCounter(self.n_draws)"),
+        (channel, "const two_p = 2 * m31.Modulus;"),
+        (channel, "if (x >= two_p)"),
+        (channel, "felts[i] = M31.fromU64(x);"),
     )
     for source, marker in required:
         if marker not in source:
@@ -85,13 +100,21 @@ def classify(sources: dict[str, bytes], gitlink: str) -> dict[str, object]:
     # count, not a native rejection or security probability.
     if Q % 4 != 3 or Q % 5 != 2 or pow(5, (Q - 1) // 2, Q) != Q - 1:
         raise ValueError("reviewed QM31 quadratic-tower assumptions changed")
+    # Under an ideal random oracle, each fresh 32-byte block is uniform.
+    # Accepting all eight u32 words below 2q leaves exactly two representatives
+    # per M31 residue in each word: r and r+q. Thus the first four accepted
+    # residues form an exactly uniform QM31 seed. This conditional statement
+    # says nothing about the security of concrete BLAKE2s or adaptive BCS.
+    if 2 * Q != 2**32 - 2:
+        raise ValueError("reviewed M31 channel acceptance geometry changed")
+    accepted_word_fraction = Fraction(2 * Q, 2**32)
     # The rational parametrization has two exceptional roots of t²+1 in
     # CM31 and none in M31 (q ≡ 3 mod 4). For every other CM31 seed both
     # output coordinates have zero c1, so the reviewed denominator is zero
     # at every M31 domain row. These counts assume an ideal uniform QM31
     # seed; the native channel's distribution is not proved here.
     return {
-        "schema": "s31-pcs-fri-ood-seed-geometry-v2",
+        "schema": "s31-pcs-fri-ood-seed-geometry-v3",
         "status": "reviewed_source_and_conditional_field_count_only",
         "engine_gitlink_commit": gitlink,
         "source_sha256": observed,
@@ -104,6 +127,11 @@ def classify(sources: dict[str, bytes], gitlink: str) -> dict[str, object]:
         "quadratic_subfield_nonexceptional_fraction_if_uniform": ratio(Q**2 - 2, Q**4),
         "y_c1_zero_regular_seed_count": 2 * Q**2 - 3,
         "y_c1_zero_regular_fraction_if_uniform": ratio(2 * Q**2 - 3, Q**4),
+        "rom_u32_preimages_per_m31_residue": 2,
+        "rom_eight_word_block_acceptance_fraction": ratio(
+            accepted_word_fraction.numerator**8, accepted_word_fraction.denominator**8),
+        "rom_uniform_qm31_seed_conditional_on_success": True,
+        "native_blake2s_rom_and_adaptive_bcs_reduction_proven": False,
         "reviewed_point_wrapper_explicitly_excludes_quadratic_subfield": False,
         "reviewed_row_quotient_denominator_zero_for_quadratic_subfield_point": True,
         "published_ood_distribution_instantiated": False,

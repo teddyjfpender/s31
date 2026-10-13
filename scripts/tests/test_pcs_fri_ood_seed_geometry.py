@@ -13,7 +13,7 @@ from scripts.release.pcs_fri_ood_seed_geometry import (
 class OodSeedGeometryTests(unittest.TestCase):
     def test_pinned_source_and_exact_counts(self) -> None:
         report = audit()
-        self.assertEqual(report["schema"], "s31-pcs-fri-ood-seed-geometry-v2")
+        self.assertEqual(report["schema"], "s31-pcs-fri-ood-seed-geometry-v3")
         self.assertEqual(report["quadratic_subfield_nonexceptional_seed_count"], Q**2 - 2)
         self.assertEqual(Fraction(report["quadratic_subfield_nonexceptional_fraction_if_uniform"]),
                          Fraction(Q**2 - 2, Q**4))
@@ -22,6 +22,11 @@ class OodSeedGeometryTests(unittest.TestCase):
         self.assertEqual(report["y_c1_zero_regular_seed_count"], 2 * Q**2 - 3)
         self.assertEqual(Fraction(report["y_c1_zero_regular_fraction_if_uniform"]),
                          Fraction(2 * Q**2 - 3, Q**4))
+        self.assertEqual(report["rom_u32_preimages_per_m31_residue"], 2)
+        self.assertEqual(Fraction(report["rom_eight_word_block_acceptance_fraction"]),
+                         Fraction(2 * Q, 2**32)**8)
+        self.assertTrue(report["rom_uniform_qm31_seed_conditional_on_success"])
+        self.assertFalse(report["native_blake2s_rom_and_adaptive_bcs_reduction_proven"])
         self.assertFalse(report["published_ood_distribution_instantiated"])
         self.assertIsNone(report["native_proven_security_bits"])
 
@@ -89,6 +94,22 @@ class OodSeedGeometryTests(unittest.TestCase):
                         actual_y_imag_zero += y[1] == zero
                 self.assertEqual(exceptional, 2)
                 self.assertEqual(actual_y_imag_zero, 2 * q**2 - 3)
+
+    def test_small_rejection_sampler_has_equal_output_preimages(self) -> None:
+        # Exhaustive two-word analogue of the eight-word native block.
+        # Every accepted output pair has the same number of input pairs;
+        # rejecting a whole block and retrying independent blocks preserves it.
+        q, word_space = 7, 16
+        counts = {(a, b): 0 for a in range(q) for b in range(q)}
+        rejected = 0
+        for x in range(word_space):
+            for y in range(word_space):
+                if x >= 2 * q or y >= 2 * q:
+                    rejected += 1
+                    continue
+                counts[(x % q, y % q)] += 1
+        self.assertEqual(set(counts.values()), {4})
+        self.assertEqual(rejected + sum(counts.values()), word_space**2)
 
 
 if __name__ == "__main__":
