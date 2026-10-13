@@ -16,14 +16,18 @@ from typing import Any
 
 from package.correspondence import (MAX_RELATION_NAME_CHARS, MAX_SOURCE_BYTES,
                                     M31_MODULUS, PLAIN_BUILTIN_NAMES,
-                                    SOURCE_KEYWORDS, parse_canonical_json)
+                                    OPTIMIZED_SCHEMA, SOURCE_KEYWORDS,
+                                    parse_canonical_json)
 
 CAPABILITY = "source-to-relation-only"
-TOKEN = re.compile(r"[ \t\n\v\f\r]+|//[^\n]*|->|\.\*|[()\[\];:{}=+,<>-]|[A-Za-z_][A-Za-z_0-9]*|[0-9]+_m31|[0-9]+")
+CERTIFICATE_SCHEMA = "s31-source-relation-certificate-v1"
+LEAN_SEMANTIC_PROFILE = "linear-ssa-m31-v1"
+TOKEN = re.compile(r"[ \t\n\v\f\r]+|//[^\n]*|->|\.\*|[()\[\];:{}=+,<>@-]|[A-Za-z_][A-Za-z_0-9]*|[0-9]+_m31|[0-9]+")
 NAME = re.compile(r"[A-Za-z_][A-Za-z_0-9]*\Z")
 LITERAL = re.compile(r"(0|[1-9][0-9]*)_m31\Z")
 MAX_TOKENS = 512
 MAX_INPUTS = 4
+MAX_HELPERS = 8
 MAX_LANES = 8
 MAX_LETS = 32
 MAX_NODES = 16
@@ -37,13 +41,14 @@ class UnsupportedSourceRelationFragment(ValueError):
 
 @dataclass(frozen=True)
 class _PureBinaryHelper:
-    """Checked static operation and parameter order from one source function."""
+    """Checked static binary operation over one or two function parameters."""
 
     name: str
     operator: str
     left_index: int
     right_index: int
     length: int
+    arity: int
 
 
 def _same_json_shape(actual: Any, expected: Any) -> bool:
@@ -143,24 +148,36 @@ def parse_source_fragment(data: bytes) -> dict[str, Any]:
         take("]")
         return int(count)
 
-    # One pure monomorphic helper is an independently checked static rewrite.
+    # A version-pinned import is source metadata for this fragment: none of
+    # its accepted expressions can invoke a standard-library function.
+    if peek() == "use":
+        for expected in ("use", "std", "@", "1", ";"):
+            take(expected)
+
+    # Each pure monomorphic helper is an independently checked static rewrite.
     # Its body can only select two parameters and apply one field operation.
-    helper: _PureBinaryHelper | None = None
-    if peek() == "fn":
+    helpers: dict[str, _PureBinaryHelper] = {}
+    while peek() == "fn":
         take("fn")
         helper_name = identifier()
+        if helper_name in helpers or len(helpers) >= MAX_HELPERS:
+            raise UnsupportedSourceRelationFragment("duplicate or excessive helper declarations")
         take("(")
         first = identifier()
         take(":")
         first_length = lane_type()
-        take(",")
-        second = identifier()
-        if first == second:
-            raise UnsupportedSourceRelationFragment("duplicate function parameter")
-        if helper_name in {first, second}:
+        params = [first]
+        second_length = first_length
+        if peek() == ",":
+            take(",")
+            second = identifier()
+            if first == second:
+                raise UnsupportedSourceRelationFragment("duplicate function parameter")
+            params.append(second)
+            take(":")
+            second_length = lane_type()
+        if helper_name in params:
             raise UnsupportedSourceRelationFragment("function parameter shadows function name")
-        take(":")
-        second_length = lane_type()
         take(")")
         take("->")
         result_length = lane_type()
@@ -172,14 +189,14 @@ def parse_source_fragment(data: bytes) -> dict[str, Any]:
             body.append(take())
         take("}")
         body = _unwrapped(body)
-        if (len(body) != 3 or body[0] not in {first, second} or
-                body[2] not in {first, second} or body[1] not in {"+", "-", ".*"}):
+        if (len(body) != 3 or body[0] not in params or
+                body[2] not in params or body[1] not in {"+", "-", ".*"}):
             raise UnsupportedSourceRelationFragment("function body must be one binary parameter operation")
-        helper = _PureBinaryHelper(
+        helpers[helper_name] = _PureBinaryHelper(
             name=helper_name, operator=body[1],
-            left_index=0 if body[0] == first else 1,
-            right_index=0 if body[2] == first else 1,
-            length=first_length)
+            left_index=params.index(body[0]),
+            right_index=params.index(body[2]),
+            length=first_length, arity=len(params))
 
     # Env values are a producer name or a static canonical M31 integer.
     env: dict[str, str | int] = {}
@@ -219,7 +236,7 @@ def parse_source_fragment(data: bytes) -> dict[str, Any]:
 
     take("circuit")
     circuit = identifier()
-    if helper is not None and circuit == helper.name:
+    if circuit in helpers:
         raise UnsupportedSourceRelationFragment("function and circuit names must differ")
     take("(")
     inputs: list[dict[str, Any]] = []
@@ -239,7 +256,7 @@ def parse_source_fragment(data: bytes) -> dict[str, Any]:
             lane_length = input_length
         elif input_length != lane_length:
             raise UnsupportedSourceRelationFragment("input array shapes differ")
-        if helper is not None and name == helper.name:
+        if name in helpers:
             raise UnsupportedSourceRelationFragment("input shadows function name")
         env[name] = name
         inputs.append({"name": name, "kind": "m31", "length": input_length,
@@ -257,33 +274,36 @@ def parse_source_fragment(data: bytes) -> dict[str, Any]:
         raise UnsupportedSourceRelationFragment("result array shape differs")
     if result_length * (1 + sum(item["visibility"] == "public" for item in inputs)) > 8:
         raise UnsupportedSourceRelationFragment("public word ABI exceeds eight words")
-    if helper is not None and helper.length != result_length:
+    if any(helper.length != result_length for helper in helpers.values()):
         raise UnsupportedSourceRelationFragment("function and circuit array shapes differ")
     take("{")
     nodes: list[dict[str, Any]] = []
     assertions: list[dict[str, str]] = []
     seen_assertions: set[tuple[str, str]] = set()
     let_count = 0
-    helper_used = False
+    helpers_used: set[str] = set()
     while peek() in {"let", "assert_eq"}:
         if peek() == "let":
             take("let")
             name = identifier()
             if name in env:
                 raise UnsupportedSourceRelationFragment("duplicate local name")
-            if helper is not None and name == helper.name:
+            if name in helpers:
                 raise UnsupportedSourceRelationFragment("local name shadows function")
             take("=")
             parts = _unwrapped(before_semicolon())
-            if (helper is not None and len(parts) == 6 and
-                    parts[0] == helper.name and parts[1] == "(" and
-                    parts[3] == "," and parts[5] == ")"):
-                arguments = (atom([parts[2]]), atom([parts[4]]))
+            if (len(parts) in {4, 6} and parts[0] in helpers and parts[1] == "(" and
+                    parts[-1] == ")" and
+                    (len(parts) == 4 or parts[3] == ",") and
+                    helpers[parts[0]].arity == (1 if len(parts) == 4 else 2)):
+                helper = helpers[parts[0]]
+                arguments = tuple(atom([parts[index]]) for index in
+                                  ((2,) if helper.arity == 1 else (2, 4)))
                 if any(not isinstance(argument, str) for argument in arguments):
                     raise UnsupportedSourceRelationFragment("function arguments must be named wires")
                 lhs, rhs = arguments[helper.left_index], arguments[helper.right_index]
                 op = helper.operator
-                helper_used = True
+                helpers_used.add(helper.name)
             else:
                 lhs, op, rhs = expression(parts)
             let_count += 1
@@ -341,7 +361,7 @@ def parse_source_fragment(data: bytes) -> dict[str, Any]:
         raise UnsupportedSourceRelationFragment("trailing source tokens")
     if not nodes:
         raise UnsupportedSourceRelationFragment("at least one arithmetic node required")
-    if helper is not None and not helper_used:
+    if set(helpers) != helpers_used:
         raise UnsupportedSourceRelationFragment("unused function is outside fragment")
     return {"version": 1, "name": circuit, "inputs": inputs, "nodes": nodes,
             "assertions": assertions, "public_outputs": [result]}
@@ -357,6 +377,97 @@ def check_source_relation(source_bytes: bytes, relation_bytes: bytes) -> dict[st
     return {"capability": CAPABILITY,
             "source_sha256": hashlib.sha256(source_bytes).hexdigest(),
             "relation_sha256": hashlib.sha256(relation_bytes).hexdigest()}
+
+
+def _indexed_ssa(relation: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
+    """Project a checked relation into a stable, source-derived SSA roster.
+
+    This projection is deliberately complete for this parser's grammar. In
+    particular, constants and assertions remain visible even though the
+    current Lean graph theorem does not model them.
+    """
+    names: dict[str, int] = {}
+    inputs: list[dict[str, Any]] = []
+    for item in relation["inputs"]:
+        identifier = len(names)
+        names[item["name"]] = identifier
+        inputs.append({"id": identifier, "name": item["name"],
+                       "visibility": item["visibility"]})
+    nodes: list[dict[str, Any]] = []
+    unmodeled: set[str] = set()
+    for item in relation["nodes"]:
+        identifier = len(names)
+        op = item["op"]
+        node = {"id": identifier, "name": item["name"], "op": op,
+                "lhs": names[item["lhs"]]}
+        if op in {"add", "sub", "mul"}:
+            node["rhs"] = names[item["rhs"]]
+        elif op in {"add_const", "mul_const"}:
+            node["constant"] = item["constant"]
+            unmodeled.add("constant-arithmetic")
+        else:
+            raise ValueError(f"unreviewed source relation operation: {op}")
+        names[item["name"]] = identifier
+        nodes.append(node)
+    assertions = [[names[item["lhs"]], names[item["rhs"]]]
+                  for item in relation["assertions"]]
+    if assertions:
+        unmodeled.add("assertions")
+    return ({"lane_count": relation["inputs"][0]["length"],
+             "inputs": inputs, "nodes": nodes, "assertions": assertions,
+             "output": names[relation["public_outputs"][0]]}, sorted(unmodeled))
+
+
+def make_source_relation_certificate(source_bytes: bytes,
+                                     relation_bytes: bytes) -> dict[str, Any]:
+    """Reparse exact source bytes and bind the complete normalized relation.
+
+    A digest is an identity check, not a proof that the production compiler
+    implements this parser or that its native AIR faithfully executes the
+    relation. Those remain separate trust obligations.
+    """
+    identity = check_source_relation(source_bytes, relation_bytes)
+    ssa, unmodeled = _indexed_ssa(parse_source_fragment(source_bytes))
+    return {"schema": CERTIFICATE_SCHEMA, **identity, "ssa": ssa,
+            "lean_semantic_profile": LEAN_SEMANTIC_PROFILE if not unmodeled else None,
+            "unmodeled_features": unmodeled}
+
+
+def check_source_relation_certificate(source_bytes: bytes, relation_bytes: bytes,
+                                      certificate_bytes: bytes) -> dict[str, Any]:
+    """Reject any certificate that differs from a fresh independent replay."""
+    actual = parse_canonical_json(certificate_bytes, "source-relation-certificate.json")
+    expected = make_source_relation_certificate(source_bytes, relation_bytes)
+    if not _same_json_shape(actual, expected):
+        raise ValueError("source relation certificate differs from source-derived SSA")
+    return expected
+
+
+def verify_source_relation_artifact(package: Path, manifest: dict[str, Any]) -> None:
+    """Enforce exactly when a conservatively compiled text package carries this claim."""
+    path = package / "source-relation-certificate.json"
+    artifacts = manifest["artifacts"]
+    listed = path.name in artifacts
+    present = path.exists() or path.is_symlink()
+    eligible = ("source_text_sha256" in manifest and
+                manifest.get("correspondence_schema") != OPTIMIZED_SCHEMA)
+    if not eligible:
+        if listed or present:
+            raise ValueError("source relation certificate requires conservative text source")
+        return
+    source_bytes = (package / "source.s31").read_bytes()
+    try:
+        parse_source_fragment(source_bytes)
+    except UnsupportedSourceRelationFragment:
+        if listed or present:
+            raise ValueError("unsupported source carries a source relation certificate")
+        return
+    if not listed or not present or path.is_symlink():
+        raise ValueError("checked source requires a source relation certificate")
+    data = path.read_bytes()
+    if artifacts[path.name] != hashlib.sha256(data).hexdigest():
+        raise ValueError("source relation certificate artifact hash differs")
+    check_source_relation_certificate(source_bytes, (package / "source.s31.json").read_bytes(), data)
 
 
 def check_package_source_relation(package: Path) -> dict[str, str]:

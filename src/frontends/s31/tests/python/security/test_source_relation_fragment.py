@@ -15,10 +15,15 @@ from pathlib import Path
 S31 = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(S31 / "python"))
 
-from package.source_relation_fragment import (CAPABILITY, UnsupportedSourceRelationFragment,
+from package.source_relation_fragment import (CAPABILITY, CERTIFICATE_SCHEMA,
+                                              LEAN_SEMANTIC_PROFILE,
+                                              UnsupportedSourceRelationFragment,
                                               check_package_source_relation,
+                                              check_source_relation_certificate,
                                               check_source_relation,
-                                              parse_source_fragment)
+                                              make_source_relation_certificate,
+                                              parse_source_fragment,
+                                              verify_source_relation_artifact)
 from text_frontend import compile_text
 
 SOURCE = """circuit checked(public x: [m31; 4], private y: [m31; 4]) -> public [m31; 4] {
@@ -47,6 +52,150 @@ def digest(data: bytes) -> str:
 
 
 class SourceRelationFragmentTests(unittest.TestCase):
+    def test_formal_fixture_is_exact_source_derived_certificate(self) -> None:
+        fixture = S31.parents[2] / "formal/s31/fixtures/correspondence"
+        source = (fixture / "source_relation_ssa_v1.s31").read_bytes()
+        relation = (fixture / "source_relation_ssa_v1.relation.json").read_bytes()
+        certificate = (fixture / "source_relation_ssa_v1.json").read_bytes()
+        self.assertEqual(encoded(compile_text(source.decode())[0]), relation)
+        self.assertEqual(encoded(make_source_relation_certificate(source, relation)),
+                         certificate)
+        self.assertEqual(check_source_relation_certificate(source, relation, certificate)
+                         ["lean_semantic_profile"], LEAN_SEMANTIC_PROFILE)
+
+    def test_multiple_pure_helpers_compose_without_trusting_specializer(self) -> None:
+        source = ("fn delta(x: [m31; 3], y: [m31; 3]) -> [m31; 3] { x - y }\n"
+                  "fn square(x: [m31; 3], y: [m31; 3]) -> [m31; 3] { x .* y }\n"
+                  "circuit calc(public a: [m31; 3], private b: [m31; 3]) "
+                  "-> public [m31; 3] { let d = delta(a, b); "
+                  "let out = square(d, d); out }")
+        produced, _ = compile_text(source)
+        checked = parse_source_fragment(source.encode())
+        self.assertEqual(checked, produced)
+        self.assertEqual([node["op"] for node in checked["nodes"]], ["sub", "mul"])
+        certificate = make_source_relation_certificate(source.encode(), encoded(produced))
+        self.assertEqual(certificate["lean_semantic_profile"], LEAN_SEMANTIC_PROFILE)
+        self.assertEqual(certificate["ssa"]["nodes"][1]["lhs"], 2)
+        self.assertEqual(certificate["ssa"]["nodes"][1]["rhs"], 2)
+        imported = "use std@1;\n" + source
+        self.assertEqual(parse_source_fragment(imported.encode()),
+                         compile_text(imported)[0])
+        for changed in (source.replace("fn square", "fn delta"),
+                        source.replace("let out = square", "let out = unknown"),
+                        source.replace("let out = square(d, d);", "let out = d + d;")):
+            with self.subTest(changed=changed[:80]), self.assertRaises(
+                    UnsupportedSourceRelationFragment):
+                parse_source_fragment(changed.encode())
+
+    def test_unary_pure_helper_replays_duplicate_operand(self) -> None:
+        source = ("use std@1;\n"
+                  "fn square(v: [m31; 4]) -> [m31; 4] { v .* v }\n"
+                  "circuit calc(public x: [m31; 4]) -> public [m31; 4] "
+                  "{ let out = square(x); out }")
+        relation, _ = compile_text(source)
+        self.assertEqual(parse_source_fragment(source.encode()), relation)
+        certificate = make_source_relation_certificate(source.encode(), encoded(relation))
+        self.assertEqual(certificate["ssa"]["nodes"],
+                         [{"id": 1, "name": "out", "op": "mul", "lhs": 0, "rhs": 0}])
+
+
+    def test_package_artifact_admission_rejects_missing_and_resealed_claims(self) -> None:
+        source = ("circuit bound(public x: [m31; 2]) -> public [m31; 2] "
+                  "{ let squared = x .* x; squared }")
+        source_bytes = source.encode()
+        relation_bytes = encoded(compile_text(source)[0])
+        certificate = make_source_relation_certificate(source_bytes, relation_bytes)
+        with tempfile.TemporaryDirectory() as root:
+            package = Path(root)
+            (package / "source.s31").write_bytes(source_bytes)
+            (package / "source.s31.json").write_bytes(relation_bytes)
+            artifact = package / "source-relation-certificate.json"
+            manifest = {"lowering": "direct-gate", "source_text_sha256": digest(source_bytes),
+                        "artifacts": {}}
+            with self.assertRaisesRegex(ValueError, "requires a source relation certificate"):
+                verify_source_relation_artifact(package, manifest)
+            artifact.write_bytes(encoded(certificate))
+            manifest["artifacts"][artifact.name] = digest(artifact.read_bytes())
+            verify_source_relation_artifact(package, manifest)
+            manifest["lowering"] = "gate"
+            verify_source_relation_artifact(package, manifest)
+            manifest["lowering"] = "direct-gate"
+            manifest["correspondence_schema"] = "s31-direct-gate-correspondence-v3"
+            with self.assertRaisesRegex(ValueError, "requires conservative text source"):
+                verify_source_relation_artifact(package, manifest)
+            del manifest["correspondence_schema"]
+
+            forged = copy.deepcopy(certificate)
+            forged["ssa"]["nodes"][0]["rhs"] = 1
+            artifact.write_bytes(encoded(forged))
+            manifest["artifacts"][artifact.name] = digest(artifact.read_bytes())
+            with self.assertRaisesRegex(ValueError, "certificate differs"):
+                verify_source_relation_artifact(package, manifest)
+            artifact.write_bytes(encoded(certificate))
+            manifest["artifacts"][artifact.name] = "0" * 64
+            with self.assertRaisesRegex(ValueError, "artifact hash differs"):
+                verify_source_relation_artifact(package, manifest)
+
+            # An unrecognized source cannot claim the checked fragment even
+            # when its package manifest lists a self-consistent certificate.
+            (package / "source.s31").write_bytes(b"use std; " + source_bytes)
+            manifest["artifacts"][artifact.name] = digest(artifact.read_bytes())
+            with self.assertRaisesRegex(ValueError, "unsupported source carries"):
+                verify_source_relation_artifact(package, manifest)
+            artifact.unlink()
+            del manifest["artifacts"][artifact.name]
+            verify_source_relation_artifact(package, manifest)
+
+    def test_emitted_indexed_ssa_is_source_bound_and_honest_about_scope(self) -> None:
+        pure = ("fn difference(x: [m31; 5], y: [m31; 5]) -> [m31; 5] { x - y }\n"
+                "circuit calc(private a: [m31; 5], private b: [m31; 5]) "
+                "-> public [m31; 5] { let delta = difference(a, b); "
+                "let doubled = delta + delta; doubled }")
+        relation, _ = compile_text(pure)
+        source_bytes, relation_bytes = pure.encode(), encoded(relation)
+        certificate = make_source_relation_certificate(source_bytes, relation_bytes)
+        self.assertEqual(certificate["schema"], CERTIFICATE_SCHEMA)
+        self.assertEqual(certificate["lean_semantic_profile"], LEAN_SEMANTIC_PROFILE)
+        self.assertEqual(certificate["unmodeled_features"], [])
+        self.assertEqual(certificate["ssa"], {
+            "lane_count": 5,
+            "inputs": [{"id": 0, "name": "a", "visibility": "private"},
+                       {"id": 1, "name": "b", "visibility": "private"}],
+            "nodes": [{"id": 2, "name": "delta", "op": "sub", "lhs": 0, "rhs": 1},
+                      {"id": 3, "name": "doubled", "op": "add", "lhs": 2, "rhs": 2}],
+            "assertions": [], "output": 3,
+        })
+        self.assertEqual(check_source_relation_certificate(
+            source_bytes, relation_bytes, encoded(certificate)), certificate)
+
+        # A matching digest and valid JSON shape do not rescue changed SSA.
+        forged = copy.deepcopy(certificate)
+        forged["ssa"]["nodes"][0]["op"] = "add"
+        with self.assertRaisesRegex(ValueError, "certificate differs"):
+            check_source_relation_certificate(source_bytes, relation_bytes, encoded(forged))
+        forged = copy.deepcopy(certificate)
+        forged["lean_semantic_profile"] = None
+        with self.assertRaisesRegex(ValueError, "certificate differs"):
+            check_source_relation_certificate(source_bytes, relation_bytes, encoded(forged))
+        for field, changed in (("lane_count", 4), ("output", 2)):
+            with self.subTest(field=field):
+                forged = copy.deepcopy(certificate)
+                forged["ssa"][field] = changed
+                with self.assertRaisesRegex(ValueError, "certificate differs"):
+                    check_source_relation_certificate(source_bytes, relation_bytes,
+                                                      encoded(forged))
+        with self.assertRaisesRegex(ValueError, "relation differs"):
+            check_source_relation_certificate(source_bytes, encoded({**relation, "nodes": []}),
+                                              encoded(certificate))
+
+        richer_relation, _ = compile_text(SOURCE)
+        richer = make_source_relation_certificate(SOURCE.encode(), encoded(richer_relation))
+        self.assertIsNone(richer["lean_semantic_profile"])
+        self.assertEqual(richer["unmodeled_features"],
+                         ["assertions", "constant-arithmetic"])
+        self.assertEqual(len(richer["ssa"]["assertions"]), 1)
+        self.assertEqual(richer["ssa"]["nodes"][2]["constant"], 7)
+
     def test_lean_subtraction_fixture_matches_native_acceptance_source(self) -> None:
         formal = S31.parents[2] / "formal/s31/S31/Gadgets/Functional/Correspondence/SourceFunctionBytes.lean"
         source = formal.read_text()

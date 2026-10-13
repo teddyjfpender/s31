@@ -355,6 +355,8 @@ def verify_package(package: Path) -> dict:
         OPTIMIZED_SCHEMA, SCHEMA, UnsupportedFragment, check_optimized_package,
         check_package, parse_source, parse_source_optimized,
     )
+    from package.source_relation_fragment import verify_source_relation_artifact
+    verify_source_relation_artifact(package, manifest)
 
     certificate_path = package / "correspondence-certificate.json"
     certificate_listed = certificate_path.name in manifest["artifacts"]

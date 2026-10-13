@@ -1,0 +1,6 @@
+fn difference(x: [m31; 5], y: [m31; 5]) -> [m31; 5] { x - y }
+circuit calc(private a: [m31; 5], private b: [m31; 5]) -> public [m31; 5] {
+    let delta = difference(a, b);
+    let doubled = delta + delta;
+    doubled
+}
