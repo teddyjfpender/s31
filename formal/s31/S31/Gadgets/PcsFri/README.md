@@ -23,10 +23,33 @@ arithmetic for the experimental paired verifier's `y.c1 != 0` early guard.
 Its passing support is `(q²−1)²`, smaller than the paper's `q⁴−q−2` OOD
 set; conditioning a fixed bad event can inflate its mass by the exact factor
 `(q⁴−q−2)/(q²−1)² < 1+2⁻⁶⁰`. The field-theoretic count of rejected seeds,
-native seed uniformity, denominator nonvanishing, and adaptation to the
-published OOD theorem remain separate obligations. The full
+native seed uniformity, and adaptation to the published OOD theorem remain
+separate obligations. [`PairedDenominator.lean`](PairedDenominator.lean)
+proves the local nonvanishing step: if the QM31 point has circle coefficient
+equations over CM31, its quadratic-extension parameter is nonsquare, and its
+`y.c1` component is nonzero, then the exact determinant used by CAS05's
+own-quotient formula is nonzero at **every** base-circle row. The theorem is
+uniform in the row, including rows the prover did not open. A rational
+counterexample shows why nonsquareness is essential; a base-field point
+shows why the native `y.c1` guard matters. Proving the native tower parameter
+is nonsquare is reduced to an explicit pair calculation: quadratic reciprocity
+proves `5` is nonsquare in M31, so no CM31 coordinate pair can square to
+`2+i` under the stated `i²=-1` multiplication. Deriving the circle
+coefficient equations from the Zig point type, matching the actual CM31 pair
+arithmetic, and showing the channel enforces the guard are still refinement
+steps.
+The full
 [CAS05 theorem ledger](../../../../../design/s31/security/PCS_FRI_CAS05_THEOREM_BRIDGE.md)
-lists them alongside the short-cascade FRI gap.
+lists the remaining theorem joins.
+
+[`ShortTerminalGeometry.lean`](ShortTerminalGeometry.lean) checks the exact
+shape of the experimental cascade against S-two's variable-round Protocol 3.
+With largest domain `2^k`, blowup `2^β`, and `H` folds, the published indices
+are `n=k−β` and `r=H−1`. The plain terminal has `2^(k−H−β)` coefficients on
+`2^(k−H)` points. Thus the 8-fold, `k=22`, `B=2` example has 8192
+coefficients on 16384 points and satisfies the published terminal shape.
+The published theorem still needs a proof that CAS05's authenticated values,
+challenge timing, and fold operations implement its Protocol 3 relation.
 
 [`M31RejectionSampler.lean`](M31RejectionSampler.lean) proves the exact
 two-preimage arithmetic of the pinned BLAKE2s channel's 32-bit word filter:
