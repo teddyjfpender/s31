@@ -51,6 +51,15 @@ evaluator's own public output check. For the example above, a successful
 evaluation with `a=[3]` and `b=[3]` forces the assigned public output to be
 `[6]`; assigning `[7]` cannot satisfy `Program.evaluate`.
 
+`effectful_source_interpreter_complete` proves the converse for honest
+inputs: if the source assertions hold, the checked source certificate has
+honest arithmetic AIR rows and assertion zero polynomials. With the same
+named graph and typed inputs, a matching public output assignment and a
+successful eight-word ABI encoding force `Program.evaluate` to accept. In
+the example, `a=[3]`, `b=[3]`, and declared output `[6]` are accepted;
+`a=[3]`, `b=[4]` does not satisfy the source assertion, so completeness does
+not claim an accepted run.
+
 The theorem still accepts explicit premises for the exact named node graph,
 typed initial assignment, distinct names, and modeled arithmetic AIR rows.
 It does not prove production compiler equivalence, native committed row

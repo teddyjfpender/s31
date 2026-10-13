@@ -752,4 +752,60 @@ theorem effectful_interpreter_public_output_claim {n : Nat}
             (hcarryFinal certificate.output
               (source.output.eval inputs) houtput) haccept
 
+/-- Honest completeness for the same effectful fragment: if the checked
+source assertions hold, its arithmetic trace has honest AIR witnesses. An
+aligned normalized program then accepts the actual typed assignment and
+returns the successful public ABI encoding. No final evaluator acceptance or
+assertion-polynomial premise is assumed. -/
+theorem effectful_source_interpreter_complete {n : Nat}
+    (program : S31.Program) (assignment : S31.Assignment)
+    (names : List String) (certificate : GeneralLinearSSAEffects.Certificate)
+    (source : GeneralLinearSSAEffects.Source)
+    (inputs : Nat → Lanes n) (inputEnv : S31.Env)
+    (words : List S31.M31)
+    (hcertificate : GeneralLinearSSAEffects.check certificate source =
+      some ())
+    (hsource : source.accepts inputs (source.output.eval inputs))
+    (hvalid : ∃ shapes, program.validate = .ok shapes)
+    (hprivate : S31.exactFields assignment.privateInputs
+      ((program.inputs.filter (fun i => i.visibility == .private)).map
+        (·.name)) = true)
+    (hinputs : program.inputs.mapM (fun (i : S31.Input) => do
+      let raw := if i.visibility == S31.Visibility.«public» then
+        assignment.publicInputs else assignment.privateInputs
+      return (i.name, ← S31.assigned raw i.name i.shape)) = .ok inputEnv)
+    (hnodes : program.nodes =
+      certificate.steps.map (namedEffectNode names))
+    (hassertions : program.assertions =
+      namedAssertions names certificate.assertions)
+    (houtputs : program.outputs = [nameAt names certificate.output])
+    (hcarries : Carries names inputEnv
+      (GeneralLinearSSAEffects.initialValues certificate.inputs inputs))
+    (habent : Absent names inputEnv
+      (GeneralLinearSSAEffects.initialValues certificate.inputs inputs).length
+      ((GeneralLinearSSAEffects.initialValues certificate.inputs inputs).length +
+        certificate.steps.length))
+    (hdistinct : Distinct names
+      ((GeneralLinearSSAEffects.initialValues certificate.inputs inputs).length +
+        certificate.steps.length))
+    (hassigned : S31.assigned assignment.publicOutputs
+      (nameAt names certificate.output) ⟨.m31, n⟩ =
+        .ok (laneValue (source.output.eval inputs)))
+    (hwords : program.claimedWords assignment = .ok words) :
+    program.evaluate assignment = .ok words := by
+  obtain ⟨final, hrows, houtput, hassert⟩ :=
+    GeneralLinearSSAEffects.checked_air_complete certificate source inputs
+      hcertificate hsource
+  obtain ⟨finalEnv, henv, hcarryFinal⟩ :=
+    effect_program_environment_follows_air program assignment names
+      certificate
+      (GeneralLinearSSAEffects.initialValues certificate.inputs inputs)
+      final inputEnv hvalid hprivate hinputs hnodes hassertions
+      hrows hassert hcarries habent hdistinct
+  exact program_evaluate_of_environment_and_public_claim program assignment
+    finalEnv (nameAt names certificate.output)
+    (source.output.eval inputs) words henv houtputs
+    (hcarryFinal certificate.output (source.output.eval inputs) houtput)
+    hassigned hwords
+
 end S31.Functional.Correspondence.GeneralLinearSSAEffectsEvaluator
