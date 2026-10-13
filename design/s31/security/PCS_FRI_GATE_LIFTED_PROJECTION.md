@@ -69,6 +69,51 @@ source-to-binary correspondence, native-success extraction, a committed
 oracle ownership premise, collision reduction, and a cross-domain IOP and
 proximity theorem. P03 remains open.
 
+## Accepted capture replay and sampled lifted-column consistency
+
+The production S31 verifier now runs
+`pcs_lifted_capture_admission.validate` after native verification on each of
+its four proof profiles. It checks the proof's four roots against the captured
+roots, uses the exact configured height for each tree, and demands that each
+raw query's captured path position equals the lifted tree projection. It
+materializes each Merkle leaf in ascending `(extended column log, original
+column index)` order from the flattened captured values, hashes the row and
+full path with the selected plain Blake2s hasher, and compares the result to
+that tree's proof root. Shape, range, log-size, and trailing-value checks fail
+closed. This is a second executable check of the **opened rows**. It still
+does not observe unopened committed leaves or prove that the root commits to
+a low-degree polynomial.
+
+One relation matters especially for lifted columns. If two opened leaves
+project to the same column index, they must show the same value:
+
+```text
+H = 3, c = 2
+q = 1 -> P(3,2,1) = 1
+q = 3 -> P(3,2,3) = 1
+required: opened_column_value(q=1) = opened_column_value(q=3)
+```
+
+The raw queries may differ even though the smaller column's queried cell is
+the same. The admission checks this for every sampled projected index and
+every column with a reused hash table, so its expected comparison work is
+linear in the number of captured column values.
+The native regression constructs four complete trees, including a
+height-2 preprocessed tree and height-3 trace trees, with mixed column logs
+and duplicate raw queries. It also constructs a complete malicious tree whose
+Merkle paths authenticate but whose two sampled leaves disagree at one
+projected column index; the new consistency check rejects it. That closes a
+sampled local gap left by root replay alone. It is not a claim that all
+unopened leaves of an arbitrary tree are a valid lift.
+
+The explicit remaining premises are a trusted source-to-binary relation,
+semantic extraction of native success to the replayed capture, a fixed
+committed-oracle construction (or an independent theorem replacing it), a
+quantified collision reduction for this plain Blake2s tree shape, and the
+cross-domain PCS/FRI proximity theorem. The v0.1 proven-security gate remains
+closed.
+
 ```sh
 python3 -B -m unittest scripts.tests.test_pcs_fri_gate_lifted_projection scripts.tests.test_pcs_fri_projection -q
+formal/s31/tests/run_pcs_fri_lifted_capture_native.sh
 ```
