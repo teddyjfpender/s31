@@ -319,6 +319,7 @@ import S31.Gadgets.PcsFri.CircleVanishingLine
 import S31.Gadgets.PcsFri.CircleLaurentDegree
 import S31.Gadgets.PcsFri.CircleLaurentQuotient
 import S31.Gadgets.PcsFri.NativeCircleQuotientRows
+import S31.Gadgets.PcsFri.CanonicalCircleLaurentRows
 import S31.Gadgets.PcsFri.FriCascadeNormalization
 import S31.Gadgets.PcsFri.GroupedFoldSchedule
 import S31.Gadgets.PcsFri.LayerAcceptance
