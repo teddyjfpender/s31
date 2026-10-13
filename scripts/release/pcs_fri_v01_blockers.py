@@ -65,7 +65,7 @@ OBLIGATIONS = (
         "gap_kind": "unproven_native_refinement",
         "published_requirement": "Circle STARKs Theorem 6: committed round words, independent challenge order, every fold equation and terminal degree check match Protocol 2",
         "published_anchor": CIRCLE + "#appendix-B",
-        "partial_evidence": ["formal/s31/S31/Gadgets/PcsFri/FoldAlgebra.lean", "formal/s31/S31/Gadgets/PcsFri/LayerAcceptance.lean"],
+        "partial_evidence": ["formal/s31/S31/Gadgets/PcsFri/FoldAlgebra.lean", "formal/s31/S31/Gadgets/PcsFri/LayerAcceptance.lean", "src/frontends/s31/sha/verification/pcs_capture_admission.zig"],
         "missing_discharge": "compose local fold and acceptance models with the complete native commitment, opening and terminal control flow",
     },
     {
@@ -73,7 +73,7 @@ OBLIGATIONS = (
         "gap_kind": "unproven_native_refinement",
         "published_requirement": "Circle STARKs Theorem 7 and Stwo batch-OOD theorem: sampled values, DEEP quotients and degree correction imply the claimed polynomial identity",
         "published_anchor": STWO,
-        "partial_evidence": ["scripts/s31_formal_lib/pcs_fri_order.py", "deps/stwo-zig/src/core/pcs/verifier.zig"],
+        "partial_evidence": ["scripts/s31_formal_lib/pcs_fri_order.py", "deps/stwo-zig/src/core/pcs/verifier.zig", "src/frontends/s31/sha/verification/pcs_capture_admission.zig"],
         "missing_discharge": "prove the native quotient construction and OODS verifier checks instantiate the published batch-evaluation relation",
     },
     {
@@ -81,7 +81,7 @@ OBLIGATIONS = (
         "gap_kind": "unproven_crypto_and_native_refinement",
         "published_requirement": "BCS oracle commitments authenticate precisely the queried rows at the committed roots with a quantitative collision bound",
         "published_anchor": STWO,
-        "partial_evidence": ["formal/s31/S31/Gadgets/PcsFri/MerkleOpening.lean", "formal/s31/S31/Gadgets/PcsFri/MultiproofDecoder.lean", "scripts/s31_formal_lib/pcs_fri_leaf_encoding.py"],
+        "partial_evidence": ["formal/s31/S31/Gadgets/PcsFri/MerkleOpening.lean", "formal/s31/S31/Gadgets/PcsFri/MultiproofDecoder.lean", "scripts/s31_formal_lib/pcs_fri_leaf_encoding.py", "scripts/s31_formal_lib/sha_release_capture.py"],
         "missing_discharge": "native decoder-to-model semantics, committed-column origin and a cryptographic collision/binding reduction for the exact Blake2s layout",
     },
     {

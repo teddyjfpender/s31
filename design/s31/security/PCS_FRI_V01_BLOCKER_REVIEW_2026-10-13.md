@@ -74,6 +74,14 @@ interfaces are P01–P09 in the matrix. P10 additionally blocks the two
 four-fold profiles because one challenge is reused across a grouped fold
 round; the single-fold paper theorem does not cover that schedule as-is.
 
+The three v0.1 SHA package verifier paths also run the raw DEEP, operational
+FRI fold, and FRI Merkle capture replay gates after native core verification.
+The [SHA release capture admission note](SHA_RELEASE_CAPTURE_ADMISSION_2026-10-13.md)
+lists the exact package dispatches and the limits of those checks. They do
+not close P04, P05 or P06: native-to-Lean semantics, fixed-oracle ownership,
+Merkle collision bounds, and the theorem's global proximity relation remain
+open.
+
 The [raw-query epoch audit](../../../scripts/s31_formal_lib/pcs_fri_query_epoch.py)
 closes one bounded-counter subcase of P07 for the pinned engine. The verifier
 absorbs the verified PoW nonce with `mixU64`, which resets `n_draws` through

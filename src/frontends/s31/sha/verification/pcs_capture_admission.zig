@@ -2,11 +2,12 @@
 //!
 //! These replay the recorded DEEP answers and every raw FRI fold before a
 //! SHA package verifier reports success. They are consistency checks on the
-//! verified capture; they do not prove Merkle binding or proximity soundness.
+//! verified capture; they do not prove collision resistance or proximity.
 const std = @import("std");
 const core = @import("stwo_core");
 const deep = @import("../../runtime/deep_capture_admission.zig");
 const fri = @import("../../runtime/fri_capture_admission.zig");
+const fri_merkle = @import("../../runtime/fri_merkle_admission.zig");
 
 pub fn validate(
     comptime H: type,
@@ -21,4 +22,5 @@ pub fn validate(
     try fri.validate(H, allocator, pcs.fri_config.folding(),
         capture.queries.raw, capture.deep_answers, capture.fri,
         capture.last_layer_coefficients);
+    try fri_merkle.validate(allocator, capture.queries.raw, capture.fri);
 }
