@@ -394,6 +394,17 @@ def parseSourceName (bytes : List Nat) : Option String := do
   let (name, _) ← takeIdent rest
   return nameString name
 
+/-- Preserve the textual declaration order of the used static helpers. This
+is intentionally separate from indexed SSA, where helper declarations erase. -/
+def parseSourceHelperNames (bytes : List Nat) : Option (List String) := do
+  let _ ← parseSource bytes
+  let tokens ← lexFuel (bytes.length + 1) bytes
+  let tokens ← if tokens.head? == some (token "use") then
+    expectMany [token "use", token "std", token "@", token "1", token ";"] tokens
+    else some tokens
+  let (helpers, _) ← parseHelpers 8 [] tokens
+  return helpers.map (nameString ∘ Helper.name)
+
 def sourceMeaning (ssa : EmittedSSA) : Option Source := do
   let certificate ← ssa.decode
   let terms ← certificate.steps.foldlM checkStep

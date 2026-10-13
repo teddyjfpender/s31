@@ -185,9 +185,7 @@ def dispatch(args: argparse.Namespace) -> None:
             package, args.proof, args.assignment, args.statement,
             _external_pins(args), args.lean_checker,
             args.lean_checker_sha256,
-            require_gate_ownership=args.command == "verify-effects-gate-lean",
-            structural_checker_path=args.structural_lean_checker,
-            structural_checker_sha256=args.structural_lean_checker_sha256), end="")
+            require_gate_ownership=args.command == "verify-effects-gate-lean"), end="")
         return
     if args.command in {"verify-pinned", "verify-release"}:
         pins = _external_pins(args)

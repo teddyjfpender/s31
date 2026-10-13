@@ -337,7 +337,11 @@ def checkRelation (sourceBytes : List Nat) (treeBytes certificateBytes
           | .error error => .error error
           | .ok checked =>
               if structuralSSA = checked.ssa then
-                if tree.name = checked.program.name then .ok ⟨tree, checked⟩
+                if tree.name = checked.program.name then
+                  if GeneralLinearSSAEffectsSourceBytes.parseSourceHelperNames
+                      sourceBytes = some (tree.helpers.map (·.name)) then
+                    .ok ⟨tree, checked⟩
+                  else .error "typed structural helper order differs from source"
                 else .error "typed structural circuit name differs from normalized relation"
               else .error "typed structural erasure differs from exact source SSA"
 
@@ -353,7 +357,9 @@ theorem checked_relation_parts (sourceBytes : List Nat)
     decodeTree treeBytes = .ok tree ∧
     deriveSSA tree = some checked.ssa ∧
     checkSourceRelationBytes sourceBytes certificateBytes relationBytes =
-      .ok checked := by
+      .ok checked ∧
+    GeneralLinearSSAEffectsSourceBytes.parseSourceHelperNames sourceBytes =
+      some (tree.helpers.map (·.name)) := by
   unfold checkRelation at h
   cases htree : decodeTree treeBytes with
   | error error => simp [htree] at h
@@ -367,14 +373,18 @@ theorem checked_relation_parts (sourceBytes : List Nat)
           | ok parsedSource =>
               by_cases hssa : structuralSSA = parsedSource.ssa
               · by_cases hname : parsedTree.name = parsedSource.program.name
-                · have heq : (⟨parsedTree, parsedSource⟩ : Checked) =
-                    ⟨tree, checked⟩ := by
-                    simpa [htree, hderive, hsource, hssa, hname] using h
-                  have htreeEq : parsedTree = tree := congrArg Checked.tree heq
-                  have hsourceEq : parsedSource = checked := congrArg Checked.source heq
-                  subst tree
-                  subst checked
-                  simp [hderive, hssa]
+                · by_cases hhelper :
+                    GeneralLinearSSAEffectsSourceBytes.parseSourceHelperNames
+                      sourceBytes = some (parsedTree.helpers.map (·.name))
+                  · have heq : (⟨parsedTree, parsedSource⟩ : Checked) =
+                      ⟨tree, checked⟩ := by
+                      simpa [htree, hderive, hsource, hssa, hname, hhelper] using h
+                    have htreeEq : parsedTree = tree := congrArg Checked.tree heq
+                    have hsourceEq : parsedSource = checked := congrArg Checked.source heq
+                    subst tree
+                    subst checked
+                    simp [hderive, hssa, hhelper]
+                  · simp [htree, hderive, hsource, hssa, hname, hhelper] at h
                 · simp [htree, hderive, hsource, hssa, hname] at h
               · simp [htree, hderive, hsource, hssa] at h
 
@@ -390,13 +400,15 @@ theorem checked_relation_graph (sourceBytes : List Nat)
     GeneralLinearSSAPublicABI.expectedEffectsNodes checked.ssa =
       some checked.program.nodes ∧
     GeneralLinearSSAPublicABI.expectedEffectsAssertions checked.ssa =
-      some checked.program.assertions := by
-  obtain ⟨_, herasure, hsource⟩ := checked_relation_parts
+      some checked.program.assertions ∧
+    GeneralLinearSSAEffectsSourceBytes.parseSourceHelperNames sourceBytes =
+      some (tree.helpers.map (·.name)) := by
+  obtain ⟨_, herasure, hsource, horder⟩ := checked_relation_parts
     sourceBytes treeBytes certificateBytes relationBytes tree checked h
   obtain ⟨_, hrelation, hparse, hnodes, hassertions, _, _, _⟩ :=
     checked_source_relation_graph sourceBytes certificateBytes relationBytes
       checked hsource
-  exact ⟨herasure, hparse, hrelation, hnodes, hassertions⟩
+  exact ⟨herasure, hparse, hrelation, hnodes, hassertions, horder⟩
 
 structure CheckedPackage where
   joined : Checked

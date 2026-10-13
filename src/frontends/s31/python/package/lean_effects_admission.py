@@ -13,7 +13,7 @@ import os
 import stat
 import subprocess
 import tempfile
-from contextlib import contextmanager, nullcontext
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Iterator
 
@@ -47,24 +47,6 @@ def _run_checker(checker: Path, mode: str, *paths: Path) -> None:
         raise ValueError(f"Lean effects {mode} gate rejected: {detail}")
 
 
-def _run_structural_checker(checker: Path, source: Path, tree: Path,
-                            certificate: Path, relation: Path, abi: Path) -> None:
-    paths = (source, tree, certificate, relation, abi)
-    if tree.stat().st_size > 131072 or any(
-            path.stat().st_size > MAX_LEAN_INPUT_BYTES for path in
-            (source, certificate, relation, abi)):
-        raise ValueError("Lean structural gate input exceeds its byte bound")
-    try:
-        result = subprocess.run([str(checker), *(str(path) for path in paths)],
-                                capture_output=True, text=True,
-                                timeout=CHECKER_TIMEOUT_SECONDS, check=False)
-    except (OSError, subprocess.TimeoutExpired) as exc:
-        raise ValueError("pinned Lean structural checker could not complete") from exc
-    if result.returncode:
-        detail = (result.stderr + result.stdout).strip()[:512]
-        raise ValueError(f"Lean structural gate rejected: {detail}")
-
-
 @contextmanager
 def _pinned_checker(checker_path: Path, checker_sha256: str) -> Iterator[Path]:
     if not isinstance(checker_sha256, str) or not PIN_RE.fullmatch(checker_sha256):
@@ -84,8 +66,6 @@ def _pinned_checker(checker_path: Path, checker_sha256: str) -> Iterator[Path]:
 def bounded_effects_snapshot(
     package: Path, pins: dict[str, str], checker_path: Path,
     checker_sha256: str,
-    structural_checker_path: Path | None = None,
-    structural_checker_sha256: str | None = None,
 ) -> Iterator[tuple[Path, dict, Path]]:
     """Yield a pinned package only after exact Lean effectful static admission.
 
@@ -93,46 +73,30 @@ def bounded_effects_snapshot(
     needs a trusted checker digest and an effectful source certificate. It
     never treats package-provided hashes as external authentication.
     """
-    if (structural_checker_path is None) != (structural_checker_sha256 is None):
-        raise ValueError("Lean structural checker path and SHA-256 pin must both be set")
-    structural_context = (_pinned_checker(structural_checker_path,
-                                          structural_checker_sha256)
-                          if structural_checker_path is not None and
-                          structural_checker_sha256 is not None else nullcontext(None))
     with _pinned_checker(checker_path, checker_sha256) as checker:
-        with structural_context as structural_checker:
-            with admitted_snapshot(package, pins) as (snapshot, manifest):
-                if "source_text_sha256" not in manifest:
-                    raise ValueError("Lean effects admission requires a text package")
-                artifacts = manifest["artifacts"]
-                if "source-relation-certificate.json" not in artifacts:
-                    raise ValueError("Lean effects admission requires a source relation certificate")
-                source = snapshot / "source.s31"
-                certificate = snapshot / "source-relation-certificate.json"
-                relation = snapshot / "source.s31.json"
-                abi = snapshot / "public-abi.json"
-                checked = check_source_relation_certificate(
-                    source.read_bytes(), relation.read_bytes(), certificate.read_bytes())
-                if (checked.get("lean_semantic_profile") != LEAN_EFFECTS_PROFILE or
-                        checked.get("unmodeled_features") != []):
-                    raise ValueError("package is outside bounded Lean effects profile")
-                _run_checker(checker, "static", source, certificate, relation, abi)
-                if structural_checker is not None:
-                    if "typed-structural-derivation.json" not in artifacts:
-                        raise ValueError("Lean structural admission requires a typed tree artifact")
-                    _run_structural_checker(
-                        structural_checker, source,
-                        snapshot / "typed-structural-derivation.json",
-                        certificate, relation, abi)
-                yield snapshot, manifest, checker
+        with admitted_snapshot(package, pins) as (snapshot, manifest):
+            if "source_text_sha256" not in manifest:
+                raise ValueError("Lean effects admission requires a text package")
+            artifacts = manifest["artifacts"]
+            if "source-relation-certificate.json" not in artifacts:
+                raise ValueError("Lean effects admission requires a source relation certificate")
+            source = snapshot / "source.s31"
+            certificate = snapshot / "source-relation-certificate.json"
+            relation = snapshot / "source.s31.json"
+            abi = snapshot / "public-abi.json"
+            checked = check_source_relation_certificate(
+                source.read_bytes(), relation.read_bytes(), certificate.read_bytes())
+            if (checked.get("lean_semantic_profile") != LEAN_EFFECTS_PROFILE or
+                    checked.get("unmodeled_features") != []):
+                raise ValueError("package is outside bounded Lean effects profile")
+            _run_checker(checker, "static", source, certificate, relation, abi)
+            yield snapshot, manifest, checker
 
 
 def verify_effectful_proof(
     package: Path, proof: Path, assignment: Path, statement: Path | None,
     pins: dict[str, str], checker_path: Path, checker_sha256: str,
     require_gate_ownership: bool = False,
-    structural_checker_path: Path | None = None,
-    structural_checker_sha256: str | None = None,
 ) -> str:
     """Admit exact source and statement bytes, then invoke native verification.
 
@@ -148,10 +112,8 @@ def verify_effectful_proof(
             captured_assignment = Path(temporary) / "assignment.json"
             assignment_digest = _copy_bounded(
                 assignment, captured_assignment, MAX_LEAN_INPUT_BYTES)
-            with bounded_effects_snapshot(
-                    package, pins, checker_path, checker_sha256,
-                    structural_checker_path, structural_checker_sha256,
-            ) as (snapshot, manifest, checker):
+            with bounded_effects_snapshot(package, pins, checker_path,
+                                          checker_sha256) as (snapshot, manifest, checker):
                 if require_gate_ownership:
                     from package.effects_gate_ownership import check_gate_ownership
                     verifier = snapshot / "bin" / f"s31-{manifest['name']}-native-verifier"

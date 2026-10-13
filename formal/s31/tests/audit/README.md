@@ -3,7 +3,7 @@
 `structural_derivation_lean.py` runs the generic M31 typed-tree erasure gate
 over generated tuple, helper, constant, assertion, and private-input programs.
 It checks compiler/Python/Lean agreement, re-sealed wrong erasures, exact
-field shape, unsupported fragments, and opt-in package dispatch:
+field shape, and unsupported fragments:
 
 ```sh
 lake build s31-general-linear-structural-check

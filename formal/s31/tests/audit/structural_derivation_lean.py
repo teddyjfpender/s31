@@ -13,16 +13,13 @@ import json
 import subprocess
 import sys
 import tempfile
-from contextlib import contextmanager
 from pathlib import Path
-from unittest.mock import patch
 
 FORMAL = Path(__file__).resolve().parents[2]
 ROOT = FORMAL.parents[1]
 sys.path.insert(0, str(ROOT / "src/frontends/s31/python"))
 
 from package.context import abi  # noqa: E402
-from package import lean_effects_admission as admission  # noqa: E402
 from package.source_relation_fragment import (  # noqa: E402
     make_source_relation_certificate, parse_enrolled_source_fragment,
 )
@@ -130,6 +127,27 @@ def main() -> None:
                     body["lhs"], body["rhs"] = body["rhs"], body["lhs"]
                     check(work, reseal(changed, honest), False)
                     rejected += 1
+                changed = copy.deepcopy(tree)
+                changed["program"]["inputs"].reverse()
+                check(work, {**honest, "tree": canonical(changed)}, False)
+                rejected += 1
+                if kind == "helpers":
+                    changed = copy.deepcopy(tree)
+                    changed["program"]["helpers"].reverse()
+                    # Helper order erases from SSA, so this specifically
+                    # tests the independently parsed source declaration order.
+                    check(work, {**honest, "tree": canonical(changed)}, False)
+                    rejected += 1
+                if kind in ("tuple", "helper_tuple"):
+                    changed = copy.deepcopy(tree)
+                    steps = changed["program"]["steps"]
+                    steps[0], steps[1] = steps[1], steps[0]
+                    check(work, {**honest, "tree": canonical(changed)}, False)
+                    rejected += 1
+                    changed = copy.deepcopy(tree)
+                    del changed["program"]["steps"][1]["expr"]
+                    check(work, {**honest, "tree": canonical(changed)}, False)
+                    rejected += 1
                 for malformed in (
                     {**tree, "unexpected": 1},
                     {key: value for key, value in tree.items() if key != "program"},
@@ -141,60 +159,8 @@ def main() -> None:
                                                        b" \"capability\"", 1)
                 check(work, {**honest, "tree": noncanonical}, False)
                 rejected += 1
-        # The opt-in production wrapper must consume the exact artifact in
-        # the admitted snapshot before it yields to the native verifier.
-        sample = artifacts(source("helper_tuple", 2))
-        package = work / "package"
-        package.mkdir()
-        names = {"source": "source.s31", "tree": "typed-structural-derivation.json",
-                 "certificate": "source-relation-certificate.json",
-                 "relation": "source.s31.json", "abi": "public-abi.json"}
-        for key, name in names.items():
-            (package / name).write_bytes(sample[key])
-        manifest = {"source_text_sha256": "externally pinned in real admission",
-                    "artifacts": {name: "snapshot hash" for name in names.values()}}
-        calls: list[str] = []
-
-        @contextmanager
-        def fake_pinned(path: Path, digest: str):
-            calls.append(f"pin:{path.name}:{digest}")
-            yield path
-
-        @contextmanager
-        def fake_snapshot(_package: Path, _pins: dict[str, str]):
-            yield package, manifest
-
-        def fake_effects(_checker: Path, mode: str, *_paths: Path) -> None:
-            calls.append(f"effects:{mode}")
-
-        def fake_structural(_checker: Path, _source: Path, tree: Path,
-                            *_paths: Path) -> None:
-            if tree != package / names["tree"]:
-                raise AssertionError("structural checker saw a different artifact")
-            calls.append("structural")
-
-        with patch.object(admission, "_pinned_checker", fake_pinned), \
-             patch.object(admission, "admitted_snapshot", fake_snapshot), \
-             patch.object(admission, "_run_checker", fake_effects), \
-             patch.object(admission, "_run_structural_checker", fake_structural):
-            with admission.bounded_effects_snapshot(
-                package, {}, Path("effects"), "e" * 64,
-                Path("structural"), "s" * 64,
-            ):
-                calls.append("yield")
-            if calls != ["pin:effects:" + "e" * 64,
-                         "pin:structural:" + "s" * 64,
-                         "effects:static", "structural", "yield"]:
-                raise AssertionError(f"production structural gate order: {calls}")
-            try:
-                with admission.bounded_effects_snapshot(
-                    package, {}, Path("effects"), "e" * 64,
-                    Path("structural"), None):
-                    raise AssertionError("incomplete structural pin accepted")
-            except ValueError:
-                pass
         print(f"structural Lean gate: {accepted} generated compiler/Python/Lean cases, "
-          f"{rejected} mutations rejected; opt-in package dispatch checked")
+          f"{rejected} mutations rejected")
 
 
 if __name__ == "__main__":
