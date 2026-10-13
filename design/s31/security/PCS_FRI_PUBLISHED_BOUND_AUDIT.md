@@ -118,21 +118,6 @@ Merkle capture publishes a valid empty-tree result only after rejecting
 nonempty query and witness data. These are native custody and shape checks;
 they do not establish the Fiat–Shamir or PCS soundness reduction.
 
-The [independent leaf encoding check](../../../scripts/s31_formal_lib/pcs_fri_leaf_encoding.py)
-now reconstructs 12 openings and three lifted roots at heights 3, 4, and 6
-from upstream Rust oracle values. It sorts columns by ascending log size with
-original order for ties, projects every column row using the conjugate low
-bit, serializes canonical M31 words as little-endian u32, and hashes the row
-with **plain BLAKE2s-256**. The S31 `Blake2sM31MerkleChannel` has an M31
-Fiat–Shamir channel, but its Merkle hasher is plain and unreduced: no `leaf`
-or `node` domain prefix is present in this profile. The check rebuilds every
-parent from left and right child hashes and independently replays a full path
-for each queried row. Production source anchors and mutation controls cover
-the relevant prover and verifier order, projection, serialization and hash
-branches. This closes a concrete finite leaf-byte mismatch risk and binds
-the model's row order to the pinned sources; it is not a Zig execution proof,
-a general committed-column-origin proof, or a collision-resistance bound.
-
 ## Cross-domain query geometry
 
 The [S-two whitepaper, §5.3](https://eprint.iacr.org/2026/532.pdf) says its
