@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-"""Extract only source-bound PCS/FRI geometry from one sealed S31 leaf package.
+"""Extract source-bound PCS/FRI geometry from one locally trusted leaf package.
 
 This is a P01 diagnostic, never a soundness certificate. Package verification
-checks artifact hashes and package structure; a native check-key is recorded
-when the installed verifier supports it. Missing theorem parameters remain
-null and --require-complete always fails while they are open.
+checks internal artifact consistency; it does not authenticate executable
+provenance. The tool executes the package's native verifier for check-key when
+supported, so use only a locally trusted package binary. It does not modify
+package artifacts. Missing theorem parameters remain null and
+--require-complete always fails while they are open.
 """
 
 from __future__ import annotations
