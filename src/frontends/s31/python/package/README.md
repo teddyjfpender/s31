@@ -42,7 +42,10 @@ statement is given to the installed native verifier. This command requires a
 profiles. The supplied private assignment is checked against the source, but
 the native proof is bound only to the public statement; it may use a different
 private witness that yields the same public claim. The checker path must name
-a regular file through directories without symlinks. For example:
+a regular file through directories without symlinks. This opt-in audit gives
+the full private assignment to the verifier-side Lean checker, so callers
+must not use it where that witness has to remain hidden from the verifier.
+For example:
 
 ```sh
 s31 verify-effects-lean PACKAGE PROOF ASSIGNMENT \

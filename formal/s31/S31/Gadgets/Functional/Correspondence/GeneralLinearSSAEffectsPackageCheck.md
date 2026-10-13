@@ -20,6 +20,10 @@ theorem-backed [`checkEffectsByteRun`](GeneralLinearSSAEffectsByteRun.lean).
 including all assertions, exact ordered public words, and actual normalized
 interpreter acceptance. The caller cannot supply a different interpretation
 of its private input lanes.
+`checked_statement_projects` and `checked_statement_sound` lift this result
+to the deployed `statement` entry point, while `checked_statement_fields`
+proves that the canonical public statement's named input and output arrays
+match the interpreter's typed assignment.
 
 For production version-1 public statements, `checkRunStatement` parses the
 exact canonical JSON bytes given to the native verifier, requires exactly
@@ -55,6 +59,9 @@ The private assignment is an independently checked witness for the same
 public claim. Native verification sees the public statement, not those
 private assignment bytes, so this gate does **not** prove the native proof
 used that particular private witness.
+The verifier-side Lean checker receives the entire private assignment. This
+opt-in semantic audit therefore exposes that witness to whoever runs the
+checker; it is not a hidden-witness verification protocol.
 
 ## Recheck
 

@@ -101,6 +101,8 @@ statement bytes to both Lean and the native verifier. Native gate-row custody
 and verifier implementation correctness remain separate obligations. The
 supplied private assignment is a Lean-checked witness for the public claim;
 the native proof is not bound to those particular private witness bytes.
+The verifier-side Lean checker receives that full private assignment, so
+this opt-in audit does not preserve private-witness secrecy.
 
 ### Narrow source-to-native row admission
 
