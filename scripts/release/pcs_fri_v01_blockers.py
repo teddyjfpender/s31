@@ -41,8 +41,8 @@ OBLIGATIONS = (
         "gap_kind": "uninstantiated_theorem_premise",
         "published_requirement": "Circle STARKs Theorems 6/7: bind each N, D, C, d, L, m, rate, list bound and every component domain to the verified oracle",
         "published_anchor": CIRCLE + "#appendix-B",
-        "partial_evidence": ["scripts/release/pcs_fri_proven_preflight.py", "scripts/release/pcs_fri_package_geometry.py", "design/s31/security/PCS_FRI_PACKAGE_GEOMETRY.md", "formal/s31/proof-inventory.json"],
-        "missing_discharge": "derive final FRI D, C, d, L, m, rate and list bound from every sealed native package; complete missing component rosters and check all finite-domain, degree and small-table preconditions",
+        "partial_evidence": ["scripts/release/pcs_fri_proven_preflight.py", "scripts/release/pcs_fri_package_geometry.py", "scripts/release/pcs_fri_gate_final_domain.py", "design/s31/security/PCS_FRI_PACKAGE_GEOMETRY.md", "design/s31/security/PCS_FRI_GATE_FINAL_DOMAIN.md", "formal/s31/proof-inventory.json"],
+        "missing_discharge": "conditionally derived final FRI D for one sealed fold-step-1 gate package still needs verifier-success and binary provenance; identify theorem N/D, C, d, L, m, rate and list bound, complete other package geometry and check all finite-domain, degree and small-table preconditions",
     },
     {
         "id": "P02_AIR_AND_INTERACTION_REFINEMENT",
@@ -89,7 +89,7 @@ OBLIGATIONS = (
         "gap_kind": "unproven_crypto_and_budget_reduction",
         "published_requirement": "Stwo NIROP/BCS theorem: bound adversary hash budget T, rounds R, hash collision term and exact native grinding and transcript schedule",
         "published_anchor": STWO,
-        "partial_evidence": ["formal/s31/S31/Gadgets/PcsFri/QueryAndTranscript.lean", "scripts/s31_formal_lib/pcs_fri_order.py", "scripts/s31_formal_lib/pcs_fri_challenge_custody.py", "scripts/s31_formal_lib/pcs_fri_query_epoch.py"],
+        "partial_evidence": ["formal/s31/S31/Gadgets/PcsFri/QueryAndTranscript.lean", "scripts/s31_formal_lib/pcs_fri_order.py", "scripts/s31_formal_lib/pcs_fri_challenge_custody.py", "scripts/s31_formal_lib/pcs_fri_query_epoch.py", "scripts/release/pcs_fri_gate_error_ledger.py", "design/s31/security/PCS_FRI_GATE_ERROR_LEDGER.md"],
         "missing_discharge": "ROM/BCS reduction for native Blake2s, nonce selection, PoW accounting, transcript domain separation and a full selected-channel control-flow proof; pinned source checks bind captured DEEP/FRI challenges and verified nonce to selected uses, and the channel fails closed before u32 counter reuse",
     },
     {
@@ -105,8 +105,8 @@ OBLIGATIONS = (
         "gap_kind": "uninstantiated_theorem_error_ledger",
         "published_requirement": "Circle STARKs Theorems 6/7 and Stwo NIROP: sum every justified commitment, AIR, OODS, FRI, Merkle and Fiat-Shamir term before comparing with target bits",
         "published_anchor": CIRCLE + "#appendix-B",
-        "partial_evidence": ["scripts/release/pcs_fri_proven_preflight.py", "design/s31/security/PCS_FRI_PUBLISHED_BOUND_AUDIT.md"],
-        "missing_discharge": "evaluate all theorem terms with actual package parameters and an explicit adversary budget; the current preflight computes only necessary illustrative terms",
+        "partial_evidence": ["scripts/release/pcs_fri_proven_preflight.py", "scripts/release/pcs_fri_gate_error_ledger.py", "design/s31/security/PCS_FRI_PUBLISHED_BOUND_AUDIT.md", "design/s31/security/PCS_FRI_GATE_ERROR_LEDGER.md"],
+        "missing_discharge": "instantiate every published per-round term with theorem-identified package parameters and explicit T, R, lambda, Merkle/collision and native-refinement bounds; the one-gate ledger keeps these terms null",
     },
     {
         "id": "P10_GROUPED_FOLD_SCHEDULE",

@@ -17,6 +17,13 @@ The preflight also bounds the tiny bias introduced when the native M31
 channel reduces BLAKE2s words before masking query indices. This is
 conditional ideal-oracle arithmetic, not a native Fiat–Shamir proof.
 
+For one sealed fold-step-1 gate package with a `2^20` maximum trace and
+conditional `2^21` FRI input domain, the
+[fail-closed error ledger](pcs_fri_gate_error_ledger.py) records the actual
+source-bound observations beside the still-unassigned theorem parameters,
+per-round errors, adversary budget, ROM and Merkle collision terms. See its
+[scope and formulas](../../design/s31/security/PCS_FRI_GATE_ERROR_LEDGER.md).
+
 `--require-proven` exits nonzero until native protocol refinement, all
 published error terms, and cryptographic assumptions have a checked release
 certificate. Passing native acceptance tests or increasing the query count

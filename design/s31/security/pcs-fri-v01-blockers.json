@@ -11,8 +11,10 @@
     "deps/stwo-zig/src/core/pcs/quotients/row_evaluation.zig": "30e9e8768b083ca3d218b9d4903d7e3805b4219971e7d92847303d9de5778442",
     "deps/stwo-zig/src/core/pcs/verifier.zig": "e119335172e17db5fd1345f476c7f6ad7fdf67e394a5b18d5c2085e892ffe3d5",
     "design/s31/security/MIXED_N1_N8_CONDITIONAL_ERROR_LEDGER_2026-10-12.md": "1f55450e5750b8c7cd9d88714c0213c9f1f894a8457e5c4c7379757b181925f9",
+    "design/s31/security/PCS_FRI_GATE_ERROR_LEDGER.md": "af201b0e7330bf7263748b3d84aa389ab652b33035c31f24b8a1520243cd0068",
+    "design/s31/security/PCS_FRI_GATE_FINAL_DOMAIN.md": "8398e385723dc045e82e85506103bcbc939ce5a8a3731d13e229f826424968b5",
     "design/s31/security/PCS_FRI_GROUPED_FOLD_OBSTRUCTION_2026-10-13.md": "6d5279868c236ebda5c1275c931ed22c654f5f293f6c8bce31b4c98a85900c2e",
-    "design/s31/security/PCS_FRI_PACKAGE_GEOMETRY.md": "63822b495fb9c7b8778775c1affb336fe54038d8258573f08e702b45bf6b8c92",
+    "design/s31/security/PCS_FRI_PACKAGE_GEOMETRY.md": "2afb44501eda3fe0e1cf7d7653d2af9a73d486fe4f6cb50505ef10a370668f1d",
     "design/s31/security/PCS_FRI_PUBLISHED_BOUND_AUDIT.md": "361ad4957d9bdff886ee53a7babd1bd4e7a4940653213df9086e8e3c10354cae",
     "formal/s31/S31/Gadgets/PcsFri/DeepQuotientAlgebra.lean": "df6ca80de3582d9c10e37f1a632795ac571a212c981e46dd51d6fe41631442cd",
     "formal/s31/S31/Gadgets/PcsFri/FoldAlgebra.lean": "def1114388ff78f5f9423bc0aada485ec3dda8c433576a087ef94df299dc9da3",
@@ -24,7 +26,9 @@
     "formal/s31/S31/Gadgets/PcsFri/MultiproofDecoder.lean": "084a9db05e81ad972be83afbd4c1c64b84424f063ff41d68ddb8f6d413044f44",
     "formal/s31/S31/Gadgets/PcsFri/QueryAndTranscript.lean": "e82190409053019d327e738a450c2a1b8676beecc92770f4a3e7563ad445cfa8",
     "formal/s31/proof-inventory.json": "bf428c12866eea4891f843ee5a6063a98831643e43c2bb081d9aff01d1558f9a",
-    "scripts/release/pcs_fri_package_geometry.py": "a6a01bfe581bee1d0f833767c3bb643867f7c65033e14e2554bac84bc0968b17",
+    "scripts/release/pcs_fri_gate_error_ledger.py": "6878d696ab9b9cabcb69b779634e56c544303e8a85c9afa28c914f5eef7daab0",
+    "scripts/release/pcs_fri_gate_final_domain.py": "52faf71eaf361684797c929df855ee8ae20ca91d43e86f6050a4b13b0268e23d",
+    "scripts/release/pcs_fri_package_geometry.py": "437f8fcf32f0fdd563f7c37650f569a0c4901e389d7b4335683a4f0ace8cb214",
     "scripts/release/pcs_fri_proven_preflight.py": "485573b3a14719e1d3d8b11e4a481c9e70965c3da9d6852d15eab14c8f5f79f9",
     "scripts/s31_formal_lib/pcs_fri_challenge_custody.py": "fca83b9d5f335add7f5dafeffd30c32922d14c94a441350940af319f3d070634",
     "scripts/s31_formal_lib/pcs_fri_fold.py": "f0a3bd42bfc7019818b5fdd1975a8ff1224587b92bde115eedd6fc7c1f8ad2eb",
@@ -45,11 +49,13 @@
     {
       "gap_kind": "uninstantiated_theorem_premise",
       "id": "P01_ACTUAL_GEOMETRY",
-      "missing_discharge": "derive final FRI D, C, d, L, m, rate and list bound from every sealed native package; complete missing component rosters and check all finite-domain, degree and small-table preconditions",
+      "missing_discharge": "conditionally derived final FRI D for one sealed fold-step-1 gate package still needs verifier-success and binary provenance; identify theorem N/D, C, d, L, m, rate and list bound, complete other package geometry and check all finite-domain, degree and small-table preconditions",
       "partial_evidence": [
         "scripts/release/pcs_fri_proven_preflight.py",
         "scripts/release/pcs_fri_package_geometry.py",
+        "scripts/release/pcs_fri_gate_final_domain.py",
         "design/s31/security/PCS_FRI_PACKAGE_GEOMETRY.md",
+        "design/s31/security/PCS_FRI_GATE_FINAL_DOMAIN.md",
         "formal/s31/proof-inventory.json"
       ],
       "published_anchor": "https://eprint.iacr.org/2024/278.pdf#appendix-B",
@@ -135,7 +141,9 @@
         "formal/s31/S31/Gadgets/PcsFri/QueryAndTranscript.lean",
         "scripts/s31_formal_lib/pcs_fri_order.py",
         "scripts/s31_formal_lib/pcs_fri_challenge_custody.py",
-        "scripts/s31_formal_lib/pcs_fri_query_epoch.py"
+        "scripts/s31_formal_lib/pcs_fri_query_epoch.py",
+        "scripts/release/pcs_fri_gate_error_ledger.py",
+        "design/s31/security/PCS_FRI_GATE_ERROR_LEDGER.md"
       ],
       "published_anchor": "https://eprint.iacr.org/2026/532.pdf",
       "published_requirement": "Stwo NIROP/BCS theorem: bound adversary hash budget T, rounds R, hash collision term and exact native grinding and transcript schedule",
@@ -156,10 +164,12 @@
     {
       "gap_kind": "uninstantiated_theorem_error_ledger",
       "id": "P09_COMPLETE_ERROR_LEDGER",
-      "missing_discharge": "evaluate all theorem terms with actual package parameters and an explicit adversary budget; the current preflight computes only necessary illustrative terms",
+      "missing_discharge": "instantiate every published per-round term with theorem-identified package parameters and explicit T, R, lambda, Merkle/collision and native-refinement bounds; the one-gate ledger keeps these terms null",
       "partial_evidence": [
         "scripts/release/pcs_fri_proven_preflight.py",
-        "design/s31/security/PCS_FRI_PUBLISHED_BOUND_AUDIT.md"
+        "scripts/release/pcs_fri_gate_error_ledger.py",
+        "design/s31/security/PCS_FRI_PUBLISHED_BOUND_AUDIT.md",
+        "design/s31/security/PCS_FRI_GATE_ERROR_LEDGER.md"
       ],
       "published_anchor": "https://eprint.iacr.org/2024/278.pdf#appendix-B",
       "published_requirement": "Circle STARKs Theorems 6/7 and Stwo NIROP: sum every justified commitment, AIR, OODS, FRI, Merkle and Fiat-Shamir term before comparing with target bits",
