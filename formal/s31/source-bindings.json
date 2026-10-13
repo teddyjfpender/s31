@@ -328,6 +328,8 @@
     "deps/stwo-zig/src/prover/pcs/scheme_views.zig": "30abc4e9d516cbb4f4b1a34cc0d9238ec43b3e184c5be7a16f6b325f2a3794bf",
     "deps/stwo-zig/src/prover/fri.zig": "22acc5c7af16cc06fa646e5eedfe9a9a5bee95a273b53dbac83a599576f3e609",
     "scripts/s31_formal_lib/pcs_fri_order.py": "2e0168a0d1d21b5c58854823f9d92a9740b6a5c775e427d35d90f5f3d43cf4be",
+    "scripts/s31_formal_lib/pcs_fri_challenge_custody.py": "fca83b9d5f335add7f5dafeffd30c32922d14c94a441350940af319f3d070634",
+    "scripts/tests/test_pcs_fri_challenge_custody.py": "501deb02384a4e54ea0e18a0ba6e7ddaf24822f1ac553e99e57a9a1779c2a5d8",
     "scripts/s31_formal_lib/pcs_fri_m31_query.py": "fdc3b5784d7048dcc2dd777c8f65d06e702938ef2174e8878d9624e87f75af86",
     "scripts/tests/test_pcs_fri_m31_query.py": "809f741ea496a237a902d992360169da20d90d831447a3d06210eb44eedd8c34",
     "scripts/s31_formal_lib/pcs_fri_projection.py": "4300221fe2bea69a229d037c37d80b5829ab7ed9edcbe88f011530ff51ed2187",

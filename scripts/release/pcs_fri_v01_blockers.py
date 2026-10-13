@@ -89,8 +89,8 @@ OBLIGATIONS = (
         "gap_kind": "unproven_crypto_and_budget_reduction",
         "published_requirement": "Stwo NIROP/BCS theorem: bound adversary hash budget T, rounds R, hash collision term and exact native grinding and transcript schedule",
         "published_anchor": STWO,
-        "partial_evidence": ["formal/s31/S31/Gadgets/PcsFri/QueryAndTranscript.lean", "scripts/s31_formal_lib/pcs_fri_order.py", "scripts/s31_formal_lib/pcs_fri_query_epoch.py"],
-        "missing_discharge": "ROM/BCS reduction for native Blake2s, nonce selection, PoW accounting, transcript domain separation and a full selected-channel control-flow proof; the pinned channel now fails closed before u32 counter reuse",
+        "partial_evidence": ["formal/s31/S31/Gadgets/PcsFri/QueryAndTranscript.lean", "scripts/s31_formal_lib/pcs_fri_order.py", "scripts/s31_formal_lib/pcs_fri_challenge_custody.py", "scripts/s31_formal_lib/pcs_fri_query_epoch.py"],
+        "missing_discharge": "ROM/BCS reduction for native Blake2s, nonce selection, PoW accounting, transcript domain separation and a full selected-channel control-flow proof; pinned source checks bind captured DEEP/FRI challenges and verified nonce to selected uses, and the channel fails closed before u32 counter reuse",
     },
     {
         "id": "P08_QUERY_SET_AND_RAW_WORD_MODEL",
