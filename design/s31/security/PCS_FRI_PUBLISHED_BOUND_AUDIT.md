@@ -42,8 +42,13 @@ uniform: it reduces each 32-bit BLAKE2s output word modulo
 uniform, the last index has two fewer, and the others have exactly the
 uniform count. Thus any fixed set's one-draw probability exceeds its
 uniform density by at most `2/2^32 = 2^-31`; at `k=1` the bound is
-`2^-32`. Independent ideal hashes would give a conservative query
-term `(alpha + 2^-31)^s` for the usual domains. This does not establish
+`2^-32`. The [exact finite distribution proof](../../../formal/s31/S31/Gadgets/PcsFri/M31MaskedQuery.lean)
+derives every index preimage count, identifies the raw-word event with the
+sum of its preimages, proves both bounds are attained, and bounds independent
+ideal-word repetitions by `(alpha + 2^-31)^s` for `k>=2` or
+`(alpha + 2^-32)^s` for `k=1`. Its
+[source contract](../../../scripts/s31_formal_lib/pcs_fri_m31_query.py) guards
+the native M31 reduction and query mask. This does not establish
 independence for Fiat–Shamir draws or turn the native verifier into the
 paper's interactive protocol.
 
