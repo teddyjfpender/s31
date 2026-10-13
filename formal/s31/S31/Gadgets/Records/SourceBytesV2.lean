@@ -16,12 +16,30 @@ open S31.Functional.SSATextBytes
 open S31.Functional.Correspondence.GeneralLinearSSA
 open S31.Gadgets.Records.SourceValueV2
 
+/- The admitted byte grammar uses the same identifier exclusions and length
+bound as the independent Python record-source checker. Keep this inventory
+explicit so a grammar change has a visible proof and differential-test cost. -/
+private def reservedName (name : Token) : Bool :=
+  List.contains
+    (["use", "let", "in", "if", "then", "else", "match", "fun", "Fn",
+      "fn", "struct", "enum", "circuit", "blinded", "public", "private",
+      "assert_eq", "m31", "accumulate_chainwork", "blake2s_leaf",
+      "blake2s_pair", "block_work", "chainwork_from_work", "chainwork_u256",
+      "genesis_hash_mainnet", "header_bits", "header_time", "is_zero",
+      "iterate", "lt_u32", "m31_from_u16", "merkle_path_blake2s",
+      "merkle_path_poseidon2", "poseidon2_leaf", "poseidon2_pair",
+      "pow_valid", "prev_hash", "select", "sha256d_header", "splat",
+      "target_mainnet", "target_u256", "work_u256"].map token) name
+
+private def reservedRecordType (name : Token) : Bool :=
+  List.contains
+    (["UInt256", "Bytes32", "BlockHash", "Target", "Work", "ChainWork",
+      "Bytes80", "Digest", "Poseidon2", "Blake2sReduced"].map token) name
+
 private def ident (name : Token) : Bool :=
-  isName name && name.length ≤ 96 &&
-    !(List.contains
-      (["struct", "private", "public", "result", "m31", "let",
-        "circuit", "fn", "enum", "match", "bit", "u8", "u16", "u32"].map token)
-      name) && !(name.take 15 == (token "_s31_abi_input_").take 15)
+  isName name && name.length ≤ 128 &&
+    !reservedName name &&
+    !(name.take 15 == (token "_s31_abi_input_").take 15)
 
 private def takeIdent : List Token → Option (Token × List Token)
   | name :: rest => if ident name then some (name, rest) else none
@@ -94,7 +112,7 @@ private def parseInput (recordName circuitName : Token) (fields : List Token)
   let visibility :: rest := remaining | none
   if visibility != token "public" && visibility != token "private" then none else
   let (name, rest) ← takeIdent rest
-  if name == recordName || name == circuitName ||
+  if name == token "result" || name == recordName || name == circuitName ||
       (rootNamed name roots).isSome then none else
   let rest ← expectMany [token ":", recordName] rest
   let base := inputNames.length
@@ -139,7 +157,7 @@ private structure State where
 private def parseLet (state : State) : Option State := do
   let rest ← expect (token "let") state.remaining
   let (name, rest) ← takeIdent rest
-  if name == state.recordName || name == state.circuitName ||
+  if name == token "result" || name == state.recordName || name == state.circuitName ||
       (rootNamed name state.roots).isSome || (lookup name state.locals).isSome then none else
   let rest ← expect (token "=") rest
   let (lhs, rest) ← parseOperand state.roots state.locals rest
@@ -213,7 +231,9 @@ def parseBytes (bytes : List Nat) : Option Parsed := do
   if tokens.length > 512 then none else
   let rest ← expect (token "struct") tokens
   let (recordName, rest) ← takeIdent rest
-  if !isLetter recordName.head! || !decide (65 ≤ recordName.head! ∧ recordName.head! ≤ 90) then none else
+  if !isLetter recordName.head! ||
+      !decide (65 ≤ recordName.head! ∧ recordName.head! ≤ 90) ||
+      reservedRecordType recordName then none else
   let rest ← expect (token "{") rest
   let (fields, rest) ← parseFields 4 [] rest
   let rest ← expect (token "circuit") rest
@@ -303,5 +323,47 @@ program. It cannot be silently identified with the honest byte source. -/
 theorem changed_field_changes_certificate :
     (parseBytes swappedProjectionSource).map (fun parsed =>
       parsed.program.instructions) ≠ some pairProgram.instructions := by decide
+
+private def reservedBuiltinSource : List Nat := token
+  "struct Pair { left: [m31; 1] }\n\
+   circuit poseidon2_pair(public x: Pair) -> public Pair {\n\
+     Pair { left: x.left }\n\
+   }"
+
+private def reservedTypeSource : List Nat := token
+  "struct UInt256 { left: [m31; 1] }\n\
+   circuit copy(public x: UInt256) -> public UInt256 {\n\
+     UInt256 { left: x.left }\n\
+   }"
+
+private def reservedRootSource : List Nat := token
+  "struct Pair { left: [m31; 1] }\n\
+   circuit copy(public result: Pair) -> public Pair {\n\
+     Pair { left: result.left }\n\
+   }"
+
+/-- These are semantic parser exclusions, not merely rejected examples in a
+separate Python test. A built-in name, a standard nominal type and the result
+root cannot acquire a misleading certificate through this byte parser. -/
+theorem reserved_names_rejected :
+    (parseBytes reservedBuiltinSource).isNone = true ∧
+    (parseBytes reservedTypeSource).isNone = true ∧
+    (parseBytes reservedRootSource).isNone = true := by decide
+
+private def fieldNameAt (length : Nat) : String :=
+  String.join (List.replicate length "a")
+
+private def nameBoundSource (length : Nat) : List Nat :=
+  let field := fieldNameAt length
+  token ("struct Pair { " ++ field ++ ": [m31; 1] } " ++
+    "circuit copy(public x: Pair) -> public Pair { Pair { " ++
+    field ++ ": x." ++ field ++ " } }")
+
+set_option maxHeartbeats 2000000 in
+/-- The identifier bound is inclusive at 128 bytes, matching the independent
+record-source checker; the next byte must be rejected. -/
+theorem name_length_boundary :
+    (parseBytes (nameBoundSource 128)).isSome = true ∧
+    (parseBytes (nameBoundSource 129)).isNone = true := by decide
 
 end S31.Gadgets.Records.SourceBytesV2
