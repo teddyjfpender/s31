@@ -27,14 +27,16 @@ For example:
 ```s31
 struct Box { value: [m31; 1] }
 circuit double(public x: Box) -> public Box {
-    let y = x.value + x.value;
+    let Box { value: v } = x;
+    let y = v + v;
     Box { value: y }
 }
 ```
 
 The source-derived normalized input is `_s31_abi_input_0`, the node is
 `y = add(_s31_abi_input_0, _s31_abi_input_0)`, and the unique public output is
-`y`. For `x.value = 7`, the canonical record statement claims `result.value =
+`y`. The pattern binds `v` to the existing input wire and inserts no Gate
+row. For `x.value = 7`, the canonical record statement claims `result.value =
 14`; the Lean executable constructs its assignment from those two public
 leaves and runs both the independent scalar source evaluator and the actual
 typed `Program.evaluate`, yielding

@@ -121,7 +121,7 @@
     "src/frontends/s31/python/package/structural_derivation.py": "ce3779dadfa6386539c0d47e1f7a8286c480b10e2bf5ae4fd35cf791d5209abf",
     "src/frontends/s31/python/package/pure_native_rows.py": "3fcbe2b7f483a5239e7f9f33369f02812834a5e8ec52a7f273ca2dbd64f5eb7f",
     "src/frontends/s31/tests/python/security/test_structural_derivation.py": "d9fb94f08ab8915eae389e6ce13d005364f67cb96b1d8c92c1726cc7b785fade",
-    "formal/s31/scripts/check_record_v2_source_correspondence.py": "783f5a9565ccf38ec70d09d3f404cb280c0d53e8b25b91d8a30adacc0a552a80",
+    "formal/s31/scripts/check_record_v2_source_correspondence.py": "97a6a02a4110ecabc4fc52b8198f97734e9da661a149c84919c8a7740cf9a675",
     "formal/s31/scripts/check_record_v2_program_admission.py": "173a269c20f2ae0024f7942fff3db343b10c687ba333d0530386d2d844a66a50",
     "scripts/release/record_v2_lean_release.py": "f7f69172d92369bf8eb136c5de6714e593d3e1b7ea2891305e16f20acdb19869",
     "src/frontends/s31/tests/acceptance/compiler_correspondence/combined_helper_tuple_native_rows.py": "523e09516db2087674736e84d70555485af91215f2ed8c0e9f94e3ec9b5341b2",

@@ -137,7 +137,8 @@ private def nameExpr (name : String) : Json :=
   obj [("kind", str "name"), ("name", str name)]
 
 private def parseOperand (fields : List String) (roots : List Root)
-    (locals : List String) (remaining : List Token) : Option (Operand × List Token) := do
+    (locals : List (String × String)) (remaining : List Token) :
+    Option (Operand × List Token) := do
   let (name, rest) ← takeIdent remaining
   if rest.head? == some (token ".") then
     let rootIndex ← (roots.map (·.name)).idxOf? name
@@ -147,9 +148,9 @@ private def parseOperand (fields : List String) (roots : List Root)
     let wire := s!"_s31_abi_input_{rootIndex * fields.length + fieldIndex}"
     return (⟨wire, obj [("kind", str "project"), ("source", nameExpr name),
       ("field", str field)]⟩, rest)
-  else if locals.contains name then
-    return (⟨name, nameExpr name⟩, rest)
-  else none
+  else match locals.find? (·.1 == name) with
+    | some (_, wire) => return (⟨wire, nameExpr name⟩, rest)
+    | none => none
 
 structure Arithmetic where
   name : String
@@ -157,32 +158,95 @@ structure Arithmetic where
   rhs : Operand
   op : String
 
-private def parseLets : Nat → String → String → List String → List Root → List Arithmetic →
-    List Token → Option (List Arithmetic × List Token)
-  | 0, _, _, _, _, _, _ => none
-  | fuel + 1, record, circuit, fields, roots, nodes, remaining => do
-      if remaining.head? != some (token "let") then return (nodes, remaining)
-      if nodes.length >= 8 then none else
-      let rest ← expect (token "let") remaining
-      let (name, rest) ← takeIdent rest
-      if nodes.any (·.name == name) || roots.any (·.name == name) ||
-          name == "result" || name == record || name == circuit then none else
-      let rest ← expect (token "=") rest
-      let locals := nodes.map (·.name)
-      let (lhs, rest) ← parseOperand fields roots locals rest
-      let op :: rest := rest | none
-      let operation := nameText op
-      if operation != "+" && operation != ".*" then none else
-      let (rhs, rest) ← parseOperand fields roots locals rest
-      let rest ← expect (token ";") rest
-      parseLets fuel record circuit fields roots
-        (nodes ++ [⟨name, lhs, rhs, operation⟩]) rest
+private def arithmeticStep (node : Arithmetic) : Json :=
+  obj [("kind", str "let"), ("name", str node.name),
+    ("expr", obj [("kind", str "binary"), ("op", str node.op),
+      ("lhs", node.lhs.expr), ("rhs", node.rhs.expr)])]
+
+private def patternStep (root field binder : String) : Json :=
+  obj [("kind", str "let"), ("name", str binder),
+    ("expr", obj [("kind", str "project"),
+      ("source", nameExpr root), ("field", str field)])]
+
+private def parsePatternFields : Nat → List String → List (String × String) →
+    List Token → Option (List (String × String) × List Token)
+  | 0, _, _, _ => none
+  | fuel + 1, fields, found, remaining => do
+      let (field, rest) ← takeIdent remaining
+      if !fields.contains field || found.any (·.1 == field) then none else
+      let (binder, rest) ← if rest.head? == some (token ":") then do
+          takeIdent (← expect (token ":") rest)
+        else some (field, rest)
+      if found.any (·.2 == binder) then none else
+      let found := found ++ [(field, binder)]
+      if rest.head? == some (token ",") then
+        parsePatternFields fuel fields found (← expect (token ",") rest)
+      else return (found, ← expect (token "}") rest)
+
+private structure LetState where
+  nodes : List Arithmetic := []
+  steps : List Json := []
+  locals : List (String × String) := []
+  aliases : Nat := 0
+  remaining : List Token
+
+private def parseLets : Nat → String → String → List String → List Root →
+    LetState → Option LetState
+  | 0, _, _, _, _, state =>
+      if state.remaining.head? == some (token "let") then none else some state
+  | fuel + 1, record, circuit, fields, roots, state => do
+      if state.remaining.head? != some (token "let") then return state
+      let rest ← expect (token "let") state.remaining
+      if rest.head? == some (token record) then do
+        let rest ← expect (token "{") (← expect (token record) rest)
+        let (members, rest) ← parsePatternFields 4 fields [] rest
+        if state.aliases + members.length > 16 ||
+            members.any (fun member =>
+              let name := member.2
+              name == "result" || name == record || name == circuit ||
+                roots.any (·.name == name) || state.locals.any (·.1 == name)) then
+          none
+        else
+          let rest ← expect (token "=") rest
+          let (root, rest) ← takeIdent rest
+          let rootIndex ← (roots.map (·.name)).idxOf? root
+          let rest ← expect (token ";") rest
+          let additions ← members.mapM fun (field, binder) => do
+            let fieldIndex ← fields.idxOf? field
+            let wire := s!"_s31_abi_input_{rootIndex * fields.length + fieldIndex}"
+            return (binder, wire)
+          let steps := members.map fun (field, binder) =>
+            patternStep root field binder
+          let next : LetState := { state with remaining := rest }
+          let next : LetState := { next with locals := state.locals ++ additions }
+          let next : LetState := { next with aliases := state.aliases + members.length }
+          let next : LetState := { next with steps := state.steps ++ steps }
+          parseLets fuel record circuit fields roots next
+      else do
+        if state.nodes.length >= 8 then none else
+        let (name, rest) ← takeIdent rest
+        if state.locals.any (·.1 == name) || roots.any (·.name == name) ||
+            name == "result" || name == record || name == circuit then none else
+        let rest ← expect (token "=") rest
+        let (lhs, rest) ← parseOperand fields roots state.locals rest
+        let op :: rest := rest | none
+        let operation := nameText op
+        if operation != "+" && operation != ".*" then none else
+        let (rhs, rest) ← parseOperand fields roots state.locals rest
+        let rest ← expect (token ";") rest
+        let node : Arithmetic := ⟨name, lhs, rhs, operation⟩
+        let next : LetState := { state with remaining := rest }
+        let next : LetState := { next with nodes := state.nodes ++ [node] }
+        let next : LetState := { next with steps := state.steps ++ [arithmeticStep node] }
+        let next : LetState := { next with locals := state.locals ++ [(name, name)] }
+        parseLets fuel record circuit fields roots next
 
 structure ResultField where
   name : String
   value : Operand
 
-private def parseMoreResults : Nat → List String → List Root → List String →
+private def parseMoreResults : Nat → List String → List Root →
+    List (String × String) →
     List ResultField → List Token → Option (List ResultField × List Token)
   | 0, _, _, _, _, _ => none
   | fuel + 1, fields, roots, locals, found, remaining => do
@@ -202,6 +266,7 @@ structure Source where
   roots : List Root
   nodes : List Arithmetic
   result : List ResultField
+  steps : List Json := []
 
 def parseSource (bytes : List Nat) : Option Source := do
   if bytes.length > 16384 || !bytes.all (· < 128) then none else
@@ -224,15 +289,16 @@ def parseSource (bytes : List Nat) : Option Source := do
   let (roots, rest) ← parseMoreRoots record circuit [firstRoot] rest
   if !roots.any (·.visibility == "public") then none else
   let rest ← expectMany [token "->", token "public", token record, token "{"] rest
-  let (nodes, rest) ← parseLets 9 record circuit fields roots [] rest
-  if nodes.isEmpty then none else
-  let rest ← expect (token record) rest
+  let state ← parseLets 25 record circuit fields roots
+    { remaining := rest }
+  if state.nodes.isEmpty then none else
+  let rest ← expect (token record) state.remaining
   let rest ← expect (token "{") rest
   let (firstResult, rest) ← takeIdent rest
   if !fields.contains firstResult then none else
   let rest ← expect (token ":") rest
-  let (firstValue, rest) ← parseOperand fields roots (nodes.map (·.name)) rest
-  let (result, rest) ← parseMoreResults 4 fields roots (nodes.map (·.name))
+  let (firstValue, rest) ← parseOperand fields roots state.locals rest
+  let (result, rest) ← parseMoreResults 4 fields roots state.locals
     [⟨firstResult, firstValue⟩] rest
   if result.length != fields.length then none else
   let rest := if rest.head? == some (token ";") then rest.tail else rest
@@ -243,7 +309,7 @@ def parseSource (bytes : List Nat) : Option Source := do
   let distinct := outputs.eraseDups
   let publicCount := (roots.filter (·.visibility == "public")).length * fields.length
   if publicCount + distinct.length > 8 then none else
-  return ⟨record, fields, circuit, roots, nodes, result⟩
+  return ⟨record, fields, circuit, roots, state.nodes, result, state.steps⟩
 
 private def recordType (source : Source) : Json :=
   obj [("record", str source.record),
@@ -277,10 +343,7 @@ private def structuralProgram (source : Source) : Json :=
       ("fields", arr ((source.fields.zipIdx).map fun (field, fieldIndex) =>
         obj [("name", str field),
           ("wire", str (wire source rootIndex fieldIndex))]))]
-  let steps := source.nodes.map fun node =>
-    obj [("kind", str "let"), ("name", str node.name),
-      ("expr", obj [("kind", str "binary"), ("op", str node.op),
-        ("lhs", node.lhs.expr), ("rhs", node.rhs.expr)])]
+  let steps := source.steps
   let result := obj [("kind", str "construct"), ("type", str "record"),
     ("name", str source.record),
     ("fields", arr (source.result.map fun entry =>
@@ -541,5 +604,17 @@ theorem checked_expected_graph (sourceBytes : List Nat)
             actualRelation hrelation
           exact (congrArg Checked.relation heq).symm ▸
             (congrArg Checked.source heq).symm ▸ erasure
+
+/-! A pattern binding is a pure alias: after parsing a syntactically valid
+binder, its source name remains in the structural expression while its
+arithmetic operand uses exactly the preexisting input wire. This lemma is
+independent of the field or root chosen by the bounded pattern parser. -/
+
+theorem flat_pattern_alias_operand (fields : List String) (roots : List Root)
+    (binder wire : String)
+    (valid : takeIdent [token binder] = some (binder, [])) :
+    parseOperand fields roots [(binder, wire)] [token binder] =
+      some (⟨wire, nameExpr binder⟩, []) := by
+  simp [parseOperand, valid]
 
 end S31.Functional.Correspondence.GeneralRecordV2SourceCorrespondence
