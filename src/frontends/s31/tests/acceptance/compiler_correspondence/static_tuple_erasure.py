@@ -45,7 +45,7 @@ def run(checker: Path) -> dict[str, object]:
 
     def bounded_invoke(*args: str) -> str:
         if args[:2] == ("zig", "build"):
-            args = (*args[:2], "-j12", *args[2:])
+            args = (*args[:2], "-j8", *args[2:])
         return old_invoke(*args)
 
     package_build.invoke = bounded_invoke
@@ -57,6 +57,8 @@ def run(checker: Path) -> dict[str, object]:
             scalar_source.write_text(SCALAR)
             product = s31.build(product_source, work / "product-package", "direct-gate")
             scalar = s31.build(scalar_source, work / "scalar-package", "direct-gate")
+            if (product / "pure-native-rows-certificate.json").exists():
+                raise AssertionError("private tuple incorrectly received all-public native rows")
             relation = (product / "source.s31.json").read_bytes()
             if relation != (scalar / "source.s31.json").read_bytes():
                 raise AssertionError("product changed normalized relation")

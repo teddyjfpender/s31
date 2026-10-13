@@ -4,7 +4,9 @@ Status: bounded compiler correspondence. The exact source bytes, complete
 normalized relation, canonical certificate, public ABI, and the normalized
 `Program.evaluate` semantics are checked for the grammar below. Native Gate
 cost equality is tested against an equivalent scalar program. The native AIR
-row/authentication and PCS/FRI theorems are separate open obligations.
+row/authentication and PCS/FRI theorems are separate open obligations. An
+all-public short-lane specialization also has an executable source-to-native
+fixed-row and accepted-proof-root check below.
 
 ## Handwritten program
 
@@ -76,6 +78,41 @@ cd formal/s31 && lake build s31-general-linear-effects-package-check && cd ../..
 python3 -B src/frontends/s31/tests/acceptance/compiler_correspondence/static_tuple_erasure.py
 ```
 
+## All-public direct-Gate fixed rows and proof commitment
+
+The source-bound native-row checker additionally admits a tuple whose inputs
+are all public and whose erased arithmetic graph fits its reviewed one- or
+two-input, 1–2-lane profile. For example:
+
+```s31
+circuit tuple_native(public x: [m31; 2], public y: [m31; 2]) -> public [m31; 2] {
+    let pair = (x, y);
+    let out = pair.0 + pair.1;
+    out
+}
+```
+
+Here `pair` allocates no witness wire and no Gate row. The one source
+arithmetic node is `out := add x y`. The checker derives the full 512-row
+direct-Gate schedule from this graph, including input packing, output
+conversion, public bindings, padding, all eight fixed columns, and the
+source row's physical address. It compares every exported native fixed cell
+with that schedule and its component manifest and verification key.
+
+The acceptance check then has the native prover recommit all eight exported
+fixed columns. After the generated verifier accepts the exact proof and
+statement, it compares the proof's serialized fixed commitment with the
+recommitted root and key. Altering that proof commitment must fail native
+verification. The independent Lean effects checker admits the same exact
+source, relation, ABI, certificate, and public assignment bytes. This is an
+executable identity and tamper check for one honest proof. General native
+opening authentication and the PCS/FRI theorem remain separate work.
+
+```sh
+cd formal/s31 && lake build s31-general-linear-effects-package-check && cd ../..
+python3 -B src/frontends/s31/tests/acceptance/compiler_correspondence/static_tuple_native_rows.py
+```
+
 ## Exact admitted grammar and gaps
 
 The independently checked product consists of 2–4 existing equal-length M31
@@ -92,5 +129,7 @@ expressions, and static helpers combined with products are rejected by this
 profile. Records have a separate bounded v2 source checker and do not inherit
 this tuple-to-interpreter theorem. The source-byte parsers are independent
 implementations, but a full proof that the production parser agrees on every
-accepted or rejected program is still open. The native row comparison is a
-live differential test, not a universal native AIR refinement theorem.
+accepted or rejected program is still open. The native fixed-row replay
+covers only the all-public short-lane subset; the earlier private-input
+example is outside that native row certificate. The native row comparison
+is an executable check, not a universal native AIR refinement theorem.

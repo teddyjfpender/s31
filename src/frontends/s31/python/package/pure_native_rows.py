@@ -1,10 +1,11 @@
-"""Source-bound native rows for one short public M31 input or two up to 2 lanes.
+"""Source-bound native rows for short all-public M31 arithmetic graphs.
 
 The four-lane case already has a separate direct-gate certificate. This
 checker reuses its full exported-column/manifest replay, then compares every
 native gate against an independent, shape-indexed schedule. The fixed-root
 comparison relies on the pinned native inspector and verifier; this is not a
-PCS/FRI soundness theorem.
+PCS/FRI soundness theorem. Static tuple construction and projection are
+admitted only when exact source bytes independently erase to that graph.
 """
 
 from __future__ import annotations
@@ -19,6 +20,9 @@ from package.context import AIR_BUNDLE_SHA256, PROJECTION_SHA256
 from package.direct_gate_schedule import exact_direct_gate_schedule
 from package.manifest_digest import direct_gate_v2_digest
 from package.source_relation_fragment import check_source_relation_certificate
+from package.source_relation_fragment import (LEAN_EFFECTS_PROFILE,
+                                              LEAN_SEMANTIC_PROFILE,
+                                              parse_source_fragment)
 
 SCHEMA = "s31-pure-linear-native-rows-v1"
 ARTIFACT = "pure-native-rows-certificate.json"
@@ -33,10 +37,28 @@ def _hash(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def admitted_ssa(certificate: dict[str, Any]) -> bool:
-    """Exclude CSE and commutative reordering that change native node IDs."""
-    if (certificate.get("lean_semantic_profile") != "linear-ssa-m31-v1" or
-            certificate.get("unmodeled_features") != []):
+def admitted_ssa(certificate: dict[str, Any], source_bytes: bytes | None = None) -> bool:
+    """Admit pure arithmetic or a checked static product erased to that graph.
+
+    Effectful-profile certificates are eligible only when exact source bytes
+    independently parse as a static product. The graph restrictions below
+    then exclude constants, assertions, private inputs, and unsupported AIR
+    layouts. Omitting source bytes never admits that wider profile.
+    """
+    profile = certificate.get("lean_semantic_profile")
+    if certificate.get("unmodeled_features") != []:
+        return False
+    if profile == LEAN_EFFECTS_PROFILE:
+        if source_bytes is None:
+            return False
+        products: list[bool] = []
+        try:
+            parse_source_fragment(source_bytes, _static_products=products)
+        except ValueError:
+            return False
+        if products != [True]:
+            return False
+    elif profile != LEAN_SEMANTIC_PROFILE:
         return False
     ssa = certificate["ssa"]
     inputs, nodes, lanes = ssa["inputs"], ssa["nodes"], ssa["lane_count"]
@@ -77,7 +99,7 @@ def make_certificate(package: Path) -> dict[str, Any]:
     source_certificate_bytes = (package / "source-relation-certificate.json").read_bytes()
     source_certificate = check_source_relation_certificate(
         source_bytes, relation_bytes, source_certificate_bytes)
-    if not admitted_ssa(source_certificate):
+    if not admitted_ssa(source_certificate, source_bytes):
         raise UnsupportedPureNativeRows("outside reviewed one/two public input pure graph")
     ssa = source_certificate["ssa"]
     lanes = ssa["lane_count"]
@@ -218,7 +240,7 @@ def verify_artifact(package: Path, manifest: dict[str, Any]) -> bool:
     source_cert = check_source_relation_certificate(
         (package / "source.s31").read_bytes(),
         (package / "source.s31.json").read_bytes(), source_path.read_bytes())
-    if not admitted_ssa(source_cert):
+    if not admitted_ssa(source_cert, (package / "source.s31").read_bytes()):
         if listed or present:
             raise ValueError("unsupported source carries short-lane native artifact")
         return False
