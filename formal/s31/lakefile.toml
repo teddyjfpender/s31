@@ -46,3 +46,7 @@ root = "S31.Audit.GeneralLinearSSAEffectsSourceCheck"
 [[lean_exe]]
 name = "s31-general-linear-public-abi-check"
 root = "S31.Audit.GeneralLinearSSAPublicABICheck"
+
+[[lean_exe]]
+name = "s31-general-linear-byte-run-check"
+root = "S31.Audit.GeneralLinearSSAByteRunCheck"
