@@ -15,6 +15,10 @@ pub fn validate(
     pcs: core.pcs.config_v2.PcsConfigV2,
     capture: core.verifier.ProofCapture(H),
 ) !void {
+    comptime {
+        if (H != core.vcs_lifted.blake2_merkle.Blake2sPlainMerkleHasher)
+            @compileError("SHA release capture admission requires the pinned plain BLAKE2s Merkle profile");
+    }
     try deep.validate(allocator, pcs.trace_lifting_log_size,
         capture.queries.raw, capture.column_log_sizes, capture.sampled_points,
         capture.sampled_values, capture.queried_values, capture.deep_answers,
