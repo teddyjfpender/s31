@@ -46,7 +46,15 @@ canonical source values for a supplied assignment. The production compiler
 accepts a helper call after tuple projections; this executable certificate
 admits that combination, and the reviewed all-public short-lane direct-Gate
 profile additionally receives source-bound native fixed-row checking. The
-narrower Lean effects byte parser still excludes it. The bounded v2 record case
+Lean effects byte parser now resolves one binary M31 helper after tuple
+projection, and its exact-byte theorem connects matching source, certificate,
+relation, ABI, assignment, and public statement bytes to `Program.evaluate`.
+`CombinedHelperTupleErasure.lean` gives the conditional exact-byte interpreter
+theorem; its runtime audit checks that the literal two-lane source and the
+independent relation parser agree on one ordered subtraction. The kernel
+theorem proving that literal parse result remains open. The ordinary builder still omits the
+source-relation certificate for this combination, so automatic Lean package
+enrollment remains open. The bounded v2 record case
 has executable source/relation/ABI/value checks but no v2 exact-byte Lean
 `Program.evaluate` theorem. See
 [`TYPED_STRUCTURAL_DERIVATION.md`](TYPED_STRUCTURAL_DERIVATION.md).
@@ -146,9 +154,12 @@ schedule applies. The source bytes are mandatory for product enrollment;
 passing only an effects-profile certificate cannot enroll it.
 For a static helper call after tuple projection, the separate version-2 native
 certificate instead replays the exact source-bound typed structural artifact
-and checks the same bounded graph and complete native schedule. This case has
-no Lean effects byte-run theorem, and the certificate states that executable
-boundary explicitly. It admits no private inputs, constants or assertions.
+and checks the same bounded graph and complete native schedule. A bounded
+Lean effects byte-run theorem now covers one binary helper after tuple
+projection when a matching effects certificate is supplied. This does not
+upgrade the native certificate's fixed-row-only capability or prove the
+Python and Lean parsers equivalent. Native enrollment admits no private
+inputs, constants or assertions.
 The checker derives a
 complete gate schedule from that source graph, then independently compares
 every gate address, operation selector, multiplicity and fixed-column cell

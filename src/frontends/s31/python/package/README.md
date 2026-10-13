@@ -273,4 +273,9 @@ public ABI. It also checks canonical values and output claims for a supplied
 flat assignment. Its public value API requires exact source, relation, ABI and
 certificate bytes before checking a supplied assignment. A combined
 helper/tuple source can additionally enter the bounded direct-Gate fixed-row
-checker, but remains outside the Lean effects byte grammar.
+checker. The Lean effects byte grammar now independently parses one binary
+M31 helper called after tuple projection, and a separate audit passes matching
+certificate, relation, ABI, assignment, and statement bytes through the Lean
+`Program.evaluate` gate. Ordinary packages still use the structural native
+certificate for this combination; the builder does not yet enroll them in
+the automatic Lean effects source-relation certificate route.

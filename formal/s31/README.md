@@ -76,6 +76,19 @@ comparison are separate executable evidence.
 `nestedTupleSum_zero_cost` and `nestedTupleSum_accepts` repeat the argument
 for a nested product and chained projections, modeling the compiler's tuple
 pattern desugaring without claiming a proof of the Python parser.
+`Correspondence/CombinedHelperTupleErasure.lean` specializes the literal
+source bytes for a named binary `[m31; 2]` subtraction helper applied to two
+static tuple projections. The runtime audit checks that the parser derives
+exactly one ordered SSA subtraction; no tuple or call node is emitted. Its
+conditional exact-byte theorem reuses the
+effectful package gate to connect a matching canonical certificate, relation,
+ABI, assignment, and statement to the actual `Program.evaluate` result for
+arbitrary checked inputs. The explicit subtraction corollary assumes the
+concrete parser result; that kernel parse proof remains open. The runtime
+audit checks an honest result and rejects changed helper order, projection,
+relation, and claim. The ordinary
+builder still omits an effects source-relation certificate for this combined
+form, and Python-parser equivalence and native PCS soundness remain open.
 
 The hand-written `capturedSquare` term models
 `let saved = x in let f = fun(y : m31) -> m31 => y * y + saved in f(saved)`.

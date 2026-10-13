@@ -99,7 +99,14 @@ duplicate assignment keys fail closed.
 
 The existing v1 Lean exact-byte source and normalized interpreter checker
 remains the formal `Program.evaluate` link for its admitted pure/effectful
-grammar. It does **not** yet admit helper and tuple use in one program. The v2
+grammar. Its effects byte parser now admits one binary M31 helper called after
+tuple projections; `CombinedHelperTupleErasure.lean` specializes the
+checked-run interpreter theorem to literal two-lane source bytes. Its runtime
+audit checks that the source parses to one ordered subtraction, while the
+kernel theorem for that concrete parse result remains open. The ordinary
+package builder does not yet emit an
+effects source-relation certificate for this combination, so the Lean runtime
+audit constructs one from the independent relation parser. The v2
 record checker and the common product theorem provide an executable relation,
 ABI, and value check, but no v2 exact-byte `Program.evaluate` theorem. Native
 fixed-row custody applies only when the separate direct-Gate row checker
@@ -114,8 +121,9 @@ in the padded 512-row direct-Gate layout. Its fixed columns, fixed commitment,
 and whole-prover cost report equal the flat `let z = x - y` spelling. An
 accepted native proof carries that commitment; changing it makes the native
 verifier reject. This is fixed-row correspondence conditional on the pinned
-native inspector/verifier and PCS, not a Lean theorem about the combined
-source bytes or proof soundness.
+native inspector/verifier and PCS. The Lean theorem covers source semantics
+through `Program.evaluate`, while native proof soundness and the cross-tool
+parser equivalence remain separate.
 
 ```sh
 PYTHONPATH=src/frontends/s31/python python3 -m unittest \
