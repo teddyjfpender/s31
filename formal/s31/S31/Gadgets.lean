@@ -306,6 +306,7 @@ import S31.Gadgets.PcsFri.FriMerkleBinding
 import S31.Gadgets.PcsFri.FriLeafEncoding
 import S31.Gadgets.PcsFri.MaskedLayerBound
 import S31.Gadgets.PcsFri.ConservativeEnvelope
+import S31.Gadgets.PcsFri.StwoMultidomainEnvelope
 
 /-! Local constraint relations, with arbitrary-witness soundness and honest
 witness completeness. All range and representation premises are explicit. -/
