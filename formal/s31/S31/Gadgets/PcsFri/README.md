@@ -180,6 +180,24 @@ and source-shape checks; they do not prove that Zig executes the model, that
 the derived source batch is a degree-bounded committed oracle, or that
 Protocol 3's proximity theorem applies to the native query/transcript game.
 
+[`PairedBatchSourceBinding.lean`](PairedBatchSourceBinding.lean) starts one step
+earlier: for a fixed row, it derives each own quotient from that column's
+original word and fixed conjugate-line claim metadata. It packages the ordered
+pair sequence into a formal challenge polynomial
+`f₀ + λq₀ + λ²f₁ + λ³q₁ + ⋯`, then proves that evaluating it equals the
+native batch loop and Protocol 3's row batch. Its even coefficients recover
+the original source columns, so two different fixed-width source rows cannot
+have the same batch polynomial. Over any finite candidate challenge set,
+their batches can agree at at most `2n` challenges for `n` columns; this is a
+conservative polynomial-degree bound. A one-column example over `ZMod 7`
+shows a real collision at `λ=6`, so one cannot treat a sampled batch as an
+unconditionally injective encoding. The acceptance-facing theorem requires
+`CheckedRecipes`, an explicit nonzero denominator at every column; the
+native OOD guard and tower/circle refinement must discharge that premise.
+The theorem assumes the source row and claim metadata were fixed before
+`λ`; it does not establish source Merkle binding, global oracle degree, or
+adaptive Fiat–Shamir independence.
+
 [`TwoPointDegreeCorrection.lean`](TwoPointDegreeCorrection.lean) proves the
 ordinary-polynomial degree step under exact reconstruction. For distinct
 points `a,b`, values `vₐ,vᵦ` determine an affine line `L`. If polynomial `f`
