@@ -55,6 +55,24 @@ independent 32-bit word stream misses all bad bundles with fraction at most
 verifier checks each required bundled row and that the Fiat–Shamir transcript
 realizes the assumed independent word stream.
 
+[`SparseCascadeQueries.lean`](SparseCascadeQueries.lean) handles the distinct
+sparse path proposed for the adjacent-height paired cascade. A raw row `r`
+opens just the pair starting at `2·⌊r/2^(i+1)⌋` at source height `i`.
+The projected circle row is that even row plus `r mod 2`, and the folded
+line row lies in the next opened pair. An explicit finite equivalence proves
+that each source row at height `i` has exactly `2^i` raw preimages, so this
+projection preserves uniformity if the raw row is uniform. The old
+full-fiber `BundleQueryBound` theorem does not apply directly to this sparse
+verifier. Neither module proves native transcript independence or the FRI
+proximity theorem.
+
+For example, take a 32-row domain (`k=5`), source height `i=2`, and raw
+row `r=23`. The pair base is `2·⌊23/8⌋=4`, so the verifier opens rows `4`
+and `5`. The projected circle row is `5` because `23` is odd. Folding that
+pair produces line row `2`, which lies in the next opened pair `2,3`.
+Exactly four raw rows project to source row `5`: `17,19,21,23`. This is the
+`2^i` preimage count proved for every valid height and row.
+
 [`ConservativeEnvelope.lean`](ConservativeEnvelope.lean) proves an arithmetic
 limit of one **published upper-bound expression**: in Circle STARKs Remark 26,
 its leading commitment/folding term exceeds `2^-96` whenever the candidate
