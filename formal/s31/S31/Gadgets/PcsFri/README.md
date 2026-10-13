@@ -67,9 +67,20 @@ field arithmetic and do not constitute a Zig operational-semantics proof.
 [`ConcreteCM31Tower.lean`](ConcreteCM31Tower.lean) gives the modeled M31
 coefficient pair exactly `p²` elements, checks that its imaginary unit
 squares to `-1`, and specializes the prior nonresidue result to show that
-no modeled pair squares to `2+i`. The pair has not yet been installed as a
-Lean field or identified with the compiled Zig representation, so the
-guard-count theorem still carries those concrete refinement premises.
+no modeled pair squares to `2+i`. This coefficient model is not identified
+with the compiled Zig representation.
+
+[`CM31FieldInstance.lean`](CM31FieldInstance.lean) now transports the field
+structure from the AIR formalization's quadratic algebra to the modeled CM31
+coefficient pair. It proves that transported addition, multiplication, and
+squaring equal the coefficient formulas used by the native-shaped model. In
+this field, `i²=-1` and `2+i` is nonsquare. The generic finite count therefore
+specializes without free field assumptions: with `q=2147483647²`, precisely
+`2q-3` regular seeds fail the upper-coordinate guard and `(q-1)²` pass. The
+modeled circle equation and `y.c1 ≠ 0` also imply a nonzero quotient
+denominator at every base-circle row. This does not prove the compiled Zig
+operations implement the modeled field, nor that Fiat–Shamir samples seeds
+uniformly from it.
 
 [`ShortTerminalGeometry.lean`](ShortTerminalGeometry.lean) checks the exact
 shape of the experimental cascade against S-two's variable-round Protocol 3.

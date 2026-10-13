@@ -321,6 +321,7 @@ import S31.Gadgets.PcsFri.PairedDenominator
 import S31.Gadgets.PcsFri.PairedTowerCircle
 import S31.Gadgets.PcsFri.NativeTowerFormulas
 import S31.Gadgets.PcsFri.ConcreteCM31Tower
+import S31.Gadgets.PcsFri.CM31FieldInstance
 import S31.Gadgets.PcsFri.ShortTerminalGeometry
 import S31.Gadgets.PcsFri.M31RejectionSampler
 import S31.Gadgets.PcsFri.DegreeCorrectionGap
