@@ -4,6 +4,7 @@ const std = @import("std");
 const core = @import("stwo_core");
 const prover = @import("stwo_prover_engine");
 const CpuBackend = @import("stwo_cpu_backend").CpuBackend;
+const admission = @import("fri_merkle_admission");
 
 const QM31 = core.fields.qm31.QM31;
 const M31 = core.fields.m31.M31;
@@ -66,11 +67,10 @@ fn replay(
     return position == 0 and std.mem.eql(u8, hash[0..], layer.commitment[0..]);
 }
 
-test "FRI Merkle binding: captured packed and unpacked rows replay and mutations fail" {
+fn runAdmissionCase(column_log_size: u32, fold_step: u32, n_queries: usize) !void {
     const allocator = std.testing.allocator;
-    var config = try core.fri.FriConfig.init(0, 1, 3);
-    config.fold_step = 2;
-    const column_log_size: u32 = 4;
+    var config = try core.fri.FriConfig.init(0, 1, n_queries);
+    config.fold_step = fold_step;
     const domain = core.poly.circle.canonic.CanonicCoset.new(column_log_size).circleDomain();
 
     const values = try allocator.alloc(QM31, domain.size());
@@ -95,6 +95,7 @@ test "FRI Merkle binding: captured packed and unpacked rows replay and mutations
     defer verifier.deinit(allocator);
     var sampled = try verifier.sampleQueryPositionsWithRaw(allocator, &verifier_channel);
     defer sampled.deinit(allocator);
+    try std.testing.expect(sampled.raw.len > sampled.unique.len);
     try std.testing.expectEqualSlices(usize, decommitment.query_positions, sampled.unique);
 
     const answers = try allocator.alloc(QM31, sampled.unique.len);
@@ -103,8 +104,9 @@ test "FRI Merkle binding: captured packed and unpacked rows replay and mutations
     var capture: core.fri.FriQueryCapture(Hasher) = undefined;
     try verifier.decommitWithQueryCapture(allocator, answers, sampled.raw, &capture);
     defer capture.deinit(allocator);
+    try admission.validate(allocator, sampled.raw, capture);
     try std.testing.expectEqual(@as(usize, 2), capture.layers.len);
-    try std.testing.expectEqual(@as(u32, 2), capture.layers[0].fold_step);
+    try std.testing.expectEqual(fold_step, capture.layers[0].fold_step);
     try std.testing.expectEqual(@as(u32, 1), capture.layers[1].fold_step);
     for (capture.layers, 0..) |layer, layer_index| {
         const leaf_log: u32 = if (layer_index == 0) 2 else 0;
@@ -116,15 +118,41 @@ test "FRI Merkle binding: captured packed and unpacked rows replay and mutations
     const original_value = capture.layers[0].values[0];
     capture.layers[0].values[0] = original_value.add(QM31.one());
     try std.testing.expect(!(try replay(allocator, capture.layers[0], 0, 2)));
+    try std.testing.expectError(error.InvalidFriMerkleCapture,
+        admission.validate(allocator, sampled.raw, capture));
     capture.layers[0].values[0] = original_value;
 
     const original_sibling = capture.layers[0].siblings[0];
     capture.layers[0].siblings[0] = [_]u8{0} ** 32;
     try std.testing.expect(!(try replay(allocator, capture.layers[0], 0, 2)));
+    try std.testing.expectError(error.InvalidFriMerkleCapture,
+        admission.validate(allocator, sampled.raw, capture));
     capture.layers[0].siblings[0] = original_sibling;
 
     const original_position = capture.layers[0].positions[0];
     capture.layers[0].positions[0] = original_position ^ (@as(usize, 1) << @intCast(capture.layers[0].fold_step));
     try std.testing.expect(!(try replay(allocator, capture.layers[0], 0, 2)));
+    try std.testing.expectError(error.InvalidFriMerkleCapture,
+        admission.validate(allocator, sampled.raw, capture));
     capture.layers[0].positions[0] = original_position;
+
+    const original_commitment = capture.layers[1].commitment;
+    capture.layers[1].commitment = [_]u8{0} ** 32;
+    try std.testing.expectError(error.InvalidFriMerkleCapture,
+        admission.validate(allocator, sampled.raw, capture));
+    capture.layers[1].commitment = original_commitment;
+
+    const original_siblings = capture.layers[1].siblings;
+    capture.layers[1].siblings = original_siblings[0 .. original_siblings.len - 1];
+    try std.testing.expectError(error.InvalidFriMerkleCapture,
+        admission.validate(allocator, sampled.raw, capture));
+    capture.layers[1].siblings = original_siblings;
+}
+
+test "FRI Merkle binding: fold step 2 packed and partial unpacked capture" {
+    try runAdmissionCase(4, 2, 16);
+}
+
+test "FRI Merkle binding: fold step 4 packed and partial unpacked capture" {
+    try runAdmissionCase(6, 4, 70);
 }
