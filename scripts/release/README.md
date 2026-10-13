@@ -36,6 +36,17 @@ The first command rejects a stale source/profile snapshot. The second also
 exits nonzero while any published-proof obligation remains open. This matrix
 does not upgrade scoped candidate gates into a proven-security release.
 
+The [query epoch source audit](../s31_formal_lib/pcs_fri_query_epoch.py) checks
+one bounded part of P07:
+
+```sh
+python3 -B -m scripts.s31_formal_lib.pcs_fri_query_epoch
+```
+
+For the pinned v0.1 path, the post-PoW raw-query epoch uses counters 0–8.
+The report explicitly leaves full transcript wrap and random-oracle
+independence unproved.
+
 ## Formal receipt
 
 Run the Lean source-binding check, full build, and kernel replay on a clean
