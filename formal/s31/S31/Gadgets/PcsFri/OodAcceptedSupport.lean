@@ -1,10 +1,12 @@
 import Mathlib.Tactic
+import S31.Gadgets.PcsFri.OodGuardFiniteCount
 
 /-!
 Exact cardinality arithmetic for the experimental paired verifier's early
-`y.c1 != 0` OOD guard.  The count of excluded regular seeds, `2*q^2-3`,
-comes from the separate quadratic-tower field argument in the source audit;
-this file proves the subsequent support and conditioning arithmetic.  It
+`y.c1 != 0` OOD guard. `OodGuardFiniteCount` proves the excluded regular
+seed count `2*q^2-3` over a qualifying quadratic tower. This file
+specializes that count to a lower field of size `q²`, then proves the
+support and conditioning arithmetic. It
 does not prove that a native transcript seed is uniform, or instantiate a
 published OOD soundness theorem.
 -/
@@ -22,6 +24,30 @@ def acceptedSupport (p : ℕ) : ℕ := p ^ 4 - (2 * p ^ 2 - 3) - 2
 theorem accepted_support_square :
     acceptedSupport q = (q ^ 2 - 1) ^ 2 := by
   norm_num [acceptedSupport, q]
+
+section FieldCount
+
+variable {K : Type*} [Field K] [Fintype K] [DecidableEq K]
+    [NeZero (2 : K)]
+
+/-- The support arithmetic is the exact cardinality of the modeled native
+guard when the lower field has M31-squared size, `R` is nonsquare, and the
+lower field contains a square root of `-1`. The concrete CM31 refinement
+and transcript distribution are independent obligations. -/
+theorem accepted_support_from_field (R i : K)
+    (hR : ∀ v : K, v ^ 2 ≠ R) (hi : i ^ 2 = -1)
+    (hcard : Fintype.card K = q ^ 2) :
+    (OodGuardFiniteCount.acceptedGuard R).card = acceptedSupport q := by
+  rw [OodGuardFiniteCount.accepted_guard_card R i hR hi,
+    hcard, accepted_support_square]
+
+theorem excluded_regular_from_field (R i : K)
+    (hR : ∀ v : K, v ^ 2 ≠ R) (hi : i ^ 2 = -1)
+    (hcard : Fintype.card K = q ^ 2) :
+    (OodGuardFiniteCount.excludedRegular R).card = 2 * q ^ 2 - 3 := by
+  rw [OodGuardFiniteCount.excluded_regular_card R i hR hi, hcard]
+
+end FieldCount
 
 theorem paper_support_minus_accepted :
     paperSupport q - acceptedSupport q = 2 * q ^ 2 - q - 3 := by
