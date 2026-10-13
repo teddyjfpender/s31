@@ -30,6 +30,12 @@ source-byte bridge also derives its meaning directly from bounded `.s31`
 syntax. Native rows, public ABI, and proof authentication remain separate
 obligations.
 
+[The public ABI byte gate](GeneralLinearSSAPublicABI.md) derives the ordered
+M31 input/output layout from either checked certificate profile, checks exact
+canonical ABI and named assignment JSON, and matches all eight little-endian
+public words byte for byte. The theorem joins this gate to modeled AIR
+soundness; native public-pin ownership remains open.
+
 ## Optimized source row capacity
 
 [The optimized decoded-trace theorem](OptimizedDecodedTrace.md) connects an

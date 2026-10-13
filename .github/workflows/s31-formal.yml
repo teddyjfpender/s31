@@ -88,7 +88,7 @@ jobs:
           lake exe cache get Mathlib.Data.ZMod.Basic Mathlib.Tactic Mathlib.NumberTheory.LucasLehmer
       - name: Build every proof source and executable semantics
         working-directory: formal/s31
-        run: lake build S31 S31.Evidence.AxiomAudit s31-check s31-alias-relation-check s31-source-function-check s31-general-linear-certificate-check s31-general-linear-effects-certificate-check s31-general-linear-source-check s31-general-linear-effects-source-check
+        run: lake build S31 S31.Evidence.AxiomAudit s31-check s31-alias-relation-check s31-source-function-check s31-general-linear-certificate-check s31-general-linear-effects-certificate-check s31-general-linear-source-check s31-general-linear-effects-source-check s31-general-linear-public-abi-check
       - name: Lean linear SSA certificate byte controls
         working-directory: formal/s31
         run: python3 tests/audit/general_linear_ssa_certificate.py
@@ -101,6 +101,9 @@ jobs:
       - name: Lean effectful source-text to SSA byte controls
         working-directory: formal/s31
         run: python3 tests/audit/general_linear_effects_source_check.py
+      - name: Lean source certificate public ABI and word controls
+        working-directory: formal/s31
+        run: python3 tests/audit/general_linear_public_abi.py
       - name: Exercise the proved source and normalized-relation checker
         working-directory: formal/s31
         run: python3 -m unittest discover -s tests -p 'test_alias_relation_check.py' -q

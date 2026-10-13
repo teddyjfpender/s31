@@ -1,0 +1,137 @@
+#!/usr/bin/env python3
+"""Exercise the Lean ABI/assignment/public-word byte gate on three profiles."""
+
+from __future__ import annotations
+
+import copy
+import json
+import subprocess
+import tempfile
+from pathlib import Path
+
+
+def canonical(value: object) -> bytes:
+    return (json.dumps(value, indent=2, sort_keys=True) + "\n").encode()
+
+
+def run(executable: Path, mode: str, paths: dict[str, Path], accepted: bool) -> None:
+    result = subprocess.run(
+        [str(executable), mode, *(str(paths[name]) for name in
+            ("certificate", "relation", "abi", "assignment", "public_words"))],
+        capture_output=True, text=True, check=False, timeout=30,
+    )
+    if (result.returncode == 0) != accepted:
+        raise AssertionError(
+            f"{mode} {paths}: accepted={result.returncode == 0}, expected={accepted}; "
+            f"{result.stdout} {result.stderr}"
+        )
+
+
+def main() -> None:
+    formal = Path(__file__).resolve().parents[2]
+    fixture = formal / "fixtures/correspondence/public_abi"
+    executable = formal / ".lake/build/bin/s31-general-linear-public-abi-check"
+    sources = {
+        "pure": formal / "fixtures/correspondence/source_relation_ssa_v1.json",
+        "effects": formal / "fixtures/correspondence/effects/affine_guard.certificate.json",
+        "ordered": fixture / "ordered.certificate.json",
+    }
+    relations = {
+        "pure": formal / "fixtures/correspondence/source_relation_ssa_v1.relation.json",
+        "effects": formal / "fixtures/correspondence/effects/affine_guard.relation.json",
+        "ordered": fixture / "ordered.relation.json",
+    }
+    for mode in sources:
+        paths = {
+            "certificate": sources[mode],
+            "relation": relations[mode],
+            "abi": fixture / f"{mode}.abi.json",
+            "assignment": fixture / f"{mode}.assignment.json",
+            "public_words": fixture / f"{mode}.public_words.bin",
+        }
+        run(executable, mode, paths, True)
+
+    baseline = {
+        "certificate": sources["ordered"],
+        "relation": relations["ordered"],
+        "abi": fixture / "ordered.abi.json",
+        "assignment": fixture / "ordered.assignment.json",
+        "public_words": fixture / "ordered.public_words.bin",
+    }
+    descriptor = json.loads(baseline["abi"].read_bytes())
+    assignment = json.loads(baseline["assignment"].read_bytes())
+    certificate = json.loads(baseline["certificate"].read_bytes())
+    mutants: list[tuple[str, str, bytes]] = []
+
+    for label, change in (
+        ("public-input-order", lambda value: value["public_inputs"].reverse()),
+        ("wrong-input-width", lambda value: value["public_inputs"][1].update(length=3)),
+        ("wrong-output-name", lambda value: value["public_outputs"][0].update(name="x")),
+        ("wrong-encoding", lambda value: value.update(encoding="raw u32")),
+        ("extra-abi-field", lambda value: value.update(extra=True)),
+    ):
+        value = copy.deepcopy(descriptor)
+        change(value)
+        mutants.append((label, "abi", canonical(value)))
+
+    for label, change in (
+        ("public-input-value", lambda value: value["public_inputs"]["x"].__setitem__(0, 9)),
+        ("private-input-value", lambda value: value["private_inputs"]["salt"].__setitem__(0, 98)),
+        ("noncanonical-word", lambda value: value["private_inputs"]["salt"].__setitem__(0, 2147483647)),
+        ("wrong-output", lambda value: value["public_outputs"]["sum"].__setitem__(1, 7)),
+        ("missing-private", lambda value: value["private_inputs"].clear()),
+        ("extra-public", lambda value: value["public_inputs"].update(extra=[0, 0])),
+    ):
+        value = copy.deepcopy(assignment)
+        change(value)
+        mutants.append((label, "assignment", canonical(value)))
+
+    changed = copy.deepcopy(certificate)
+    changed["ssa"]["inputs"][0]["visibility"] = "private"
+    mutants.append(("certificate-visibility", "certificate", canonical(changed)))
+    changed = copy.deepcopy(certificate)
+    changed["ssa"]["lane_count"] = 3
+    mutants.append(("certificate-lane-count", "certificate", canonical(changed)))
+
+    relation = json.loads(baseline["relation"].read_bytes())
+    for label, change in (
+        ("relation-visibility", lambda value: value["inputs"][0].update(visibility="private")),
+        ("relation-lane-count", lambda value: value["inputs"][0].update(length=3)),
+        ("relation-output-name", lambda value: value.update(public_outputs=["x"])),
+        ("relation-invalid-node", lambda value: value["nodes"][0].update(rhs="missing")),
+    ):
+        value = copy.deepcopy(relation)
+        change(value)
+        mutants.append((label, "relation", canonical(value)))
+
+    raw = baseline["public_words"].read_bytes()
+    for label, value in (
+        ("swapped-public-words", raw[8:16] + raw[:8] + raw[16:]),
+        ("wrong-output-word", raw[:16] + bytes([5]) + raw[17:]),
+        ("nonzero-padding", raw[:-1] + bytes([1])),
+        ("short-public-statement", raw[:-1]),
+        ("noncanonical-u32", raw[:4] + bytes([255, 255, 255, 127]) + raw[8:]),
+    ):
+        mutants.append((label, "public_words", value))
+
+    abi_raw = baseline["abi"].read_bytes()
+    mutants += [
+        ("duplicate-abi-key", "abi", abi_raw.replace(
+            b'  "encoding": "eight canonical M31 words, encoded little-endian u32; unused words are zero",',
+            b'  "encoding": "bad",\n  "encoding": "eight canonical M31 words, encoded little-endian u32; unused words are zero",', 1)),
+        ("noncanonical-abi-spacing", "abi", abi_raw.replace(
+            b'  "schema":', b' "schema":', 1)),
+        ("oversized-abi", "abi", abi_raw + b" " * 65536),
+    ]
+    with tempfile.TemporaryDirectory(prefix="s31-lean-public-abi-") as temp:
+        for label, target, contents in mutants:
+            path = Path(temp) / f"{label}.data"
+            path.write_bytes(contents)
+            candidate = dict(baseline)
+            candidate[target] = path
+            run(executable, "ordered", candidate, False)
+    print(f"Lean public ABI controls: 3 accepted, {len(mutants)} rejected")
+
+
+if __name__ == "__main__":
+    main()

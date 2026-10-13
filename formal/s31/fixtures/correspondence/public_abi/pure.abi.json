@@ -1,0 +1,12 @@
+{
+  "encoding": "eight canonical M31 words, encoded little-endian u32; unused words are zero",
+  "public_inputs": [],
+  "public_outputs": [
+    {
+      "kind": "m31",
+      "length": 5,
+      "name": "doubled"
+    }
+  ],
+  "schema": "s31-public-abi-v1"
+}

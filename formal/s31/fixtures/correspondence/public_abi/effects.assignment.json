@@ -1,0 +1,23 @@
+{
+  "private_inputs": {
+    "y": [
+      72,
+      81,
+      90
+    ]
+  },
+  "public_inputs": {
+    "x": [
+      1,
+      2,
+      3
+    ]
+  },
+  "public_outputs": {
+    "out": [
+      71,
+      79,
+      87
+    ]
+  }
+}
