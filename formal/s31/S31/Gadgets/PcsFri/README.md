@@ -228,17 +228,33 @@ native *line* geometry, rather than the ordinary `(X-a)(X-b)` divisor.
 
 Over a coefficient field containing `i²=-1`, the same line has Laurent
 circle-coordinate edge coefficients `(-y₁-i x₁)/2` and
-`(-y₁+i x₁)/2`; the formal proof shows both are nonzero. This is the
-nondegeneracy fact needed for a future `degree(V·q)=degree(q)+1` theorem in
-the **two-sided** Laurent circle filtration. The missing formal step is
-precise: native CAS05 has committed *evaluation rows*, but no coefficient
-representation of circle polynomials or formal map from those rows to a
-degree-bounded circle polynomial. We also lack a coordinate-ring theorem
-that vanishing at the two extension points makes `f-L` divisible by `V` and
-a proven equivalence between the paper's circle-degree filtration and the
-chosen Laurent support bound. These requirements cannot be discharged by
-the pointwise division used by the verifier or by the ordinary polynomial
-theorem above. No native PCS/FRI security bits follow from this geometry.
+`(-y₁+i x₁)/2`; the formal proof shows both are nonzero.
+[`CircleLaurentDegree.lean`](CircleLaurentDegree.lean) now represents a circle
+polynomial concretely as a finite Laurent coefficient map `ℤ →₀ F`, with
+filtration `L_n={f : support(f)⊆[-n,n]}`. It proves that the native line is
+the three-term Laurent polynomial `V=aT+b+cT⁻¹`, evaluates to the exact
+native denominator under `T=x+i y`, and has `a,c≠0` under the modeled OOD
+circle equation and `y.c1` guard. The coefficient identity gives
+`q∈L_{n-1} ⇒ Vq∈L_n`. Therefore an **assumed exact polynomial relation**
+`f=ℓ+Vq`, with interpolation `ℓ∈L_1`, proves `f∈L_n` for `n≥1`. At a row
+where `V≠0`, that same identity evaluates to the native quotient value
+`q(row)=(f(row)-ℓ(row))/V(row)`. If `q` has nonzero coefficients at both
+ends of `L_m`, the product has nonzero coefficients at `m+1` and `-(m+1)`;
+the `+1` bound is sharp.
+
+For example, let `q=uT+vT⁻¹` and `V=aT+b+cT⁻¹`, with `a,c,u,v≠0`. Then
+`Vq=auT²+buT+(av+cu)+bvT⁻¹+cvT⁻²`. The new extreme coefficients `au` and
+`cv` cannot cancel with lower terms. Adding an interpolation line with
+support in `[-1,1]` still leaves the original in `L_2`.
+
+The exact relation `f=ℓ+Vq` is an **assumption**, not yet a theorem from two
+extension-point claims or native opened rows. CAS05 commits evaluation rows;
+no formal map currently refines those rows into this Laurent coefficient
+object, and no theorem identifies this `L_n` with the paper's `L_n'` circle
+basis. We also still need a coordinate-ring divisibility theorem saying that
+vanishing at the two extension points supplies such a `q`. Pointwise native
+division cannot establish any of these polynomial or degree claims. No native
+PCS/FRI security bits follow from this model alone.
 
 [`BundleQueryBound.lean`](BundleQueryBound.lean) proves the elementary query
 event needed by the experimental full-fiber cascade: if a query checks every
