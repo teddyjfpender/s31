@@ -110,7 +110,6 @@ def build_json(source_path: Path, output: Path, lowering: str = "gate",
         key = {
             "schema": requested_key_schema,
             "profile": inspection["profile"],
-            "pcs_mode": LEGACY_PCS_MODE,
             "chip": inspection["chip"],
             "name": name,
             "program_sha256": inspection["program_sha256"],
@@ -123,6 +122,10 @@ def build_json(source_path: Path, output: Path, lowering: str = "gate",
             "air_bundle_sha256": AIR_BUNDLE_SHA256,
             "fri": inspection["fri"],
         }
+        # SHA packages have separate strict native key parsers. This slice
+        # binds the generic MVP verifier only; keep SHA key bytes unchanged.
+        if lowering not in {"sha-joint", "sha-shift", "sha-fused"}:
+            key["pcs_mode"] = LEGACY_PCS_MODE
         if source["version"] == 2:
             expected_abi = abi(source, lowering)["boundary_sha256"]
             if inspection.get("public_abi_sha256") != expected_abi:
