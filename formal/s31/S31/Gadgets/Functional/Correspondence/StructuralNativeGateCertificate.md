@@ -72,11 +72,17 @@ The independent replay checks every exported arithmetic gate equation,
 including full QM31 extension multiplication used by input packing; all
 equality gates; canonical M31 values; each source expression's concrete gate
 or a justified fold, identity erasure, or CSE alias; assertion spans; and the
-ordered public output words. It rejects a witness-only extra gate through
-the witness-free graph comparison and an unaccounted extra gate in the exported
-artifact through the recorded span end. A gate added coherently to both
-compiler modes and to the finalization span remains possible: independent
-enumeration of the native constant-derivation/finalization roster is open.
+ordered public output words. The finalization audit independently reconstructs
+the default radix-256 constant pass: the plus-one chain, base decomposition,
+QM31 basis, broadcast constants, and remaining QM31 constants. It checks the
+exact appended gate order, variable addresses, and the final public M31 and
+private packed guess yields. It also checks that every variable has exactly
+one producing gate. A satisfiable gate added coherently to both compiler modes
+and the finalization span is therefore rejected by the independent replay.
+The audit is restricted to the admitted structural M31 direct-Gate fragment;
+other compiler modes and constant-base choices need their own replay. The
+replay pins the engine builder, constant pass, and S31 radix-selection source
+bytes so changes to their algorithms require another review.
 These concrete checks
 correspond to the address/value, gate, port, and assertion premises of
 `checked_native_trace_sound` for **one supplied assignment**. The artifact is
@@ -109,10 +115,12 @@ This closes the exported gate-to-preprocessed **QM31/Eq cell projection**
 for one bounded assignment. It does not yet show that the package commits to
 these exact preprocessed columns, that the native verifier authenticates the
 corresponding value/lookup rows, or that the artifact decodes to a Lean
-`NativeTrace` proof term. The independent finalization-roster gap above also
-remains.
+`NativeTrace` proof term. The independent finalization-roster replay above
+checks the unpadded graph before this padded-row projection.
 
 The theorem and artifact do **not** authenticate committed AIR rows or a
 private witness inside a proof. The next join binds the checked QM31/Eq
 preprocessed cells and committed witness openings to the native verifier,
-including lookup columns and the preprocessed commitment root.
+including lookup columns and the preprocessed commitment root. The Python
+finalization replay is differential evidence against the source-pinned Zig
+builder; it is not a Lean operational refinement of that builder.

@@ -23,6 +23,10 @@ from scripts.native_graph_certificate import check_graph  # noqa: E402
 P = 2**31 - 1
 
 CASES = (
+    ("one_lane_private_first", b"circuit one(private x: [m31; 1], public y: [m31; 1]) "
+     b"-> public [m31; 1] { let z = y - x; assert_eq(z,z); z }",
+     {"public_inputs": {"y": [12]}, "private_inputs": {"x": [5]},
+      "public_outputs": {"z": [7]}}),
     ("three_inputs", b"circuit mixed(public a: [m31; 2], private b: [m31; 2], "
      b"private c: [m31; 2]) -> public [m31; 2] { let t = a + b; "
      b"let u = t .* c; let z = u - b; assert_eq(z,z); z }",
@@ -35,6 +39,12 @@ CASES = (
      {"public_inputs": {"x": [P - 1, 0, 1, 7]},
       "private_inputs": {"y": [18, 21, 24, 42]},
       "public_outputs": {"z": [18, 21, 24, 42]}}),
+    ("three_lanes_mixed_order", b"circuit three(private a: [m31; 3], "
+     b"public b: [m31; 3], private c: [m31; 3]) -> public [m31; 3] { "
+     b"let t = a + b; let z = t - c; assert_eq(z,z); z }",
+     {"public_inputs": {"b": [4, 5, 6]},
+      "private_inputs": {"a": [10, 20, 30], "c": [1, 2, 3]},
+      "public_outputs": {"z": [13, 23, 33]}}),
     ("commutative_cse", b"circuit repeat(public x: [m31; 2], "
      b"private y: [m31; 2]) -> public [m31; 2] { let a = x + y; "
      b"let b = y + x; let z = a .* b; assert_eq(z,z); z }",
@@ -120,7 +130,8 @@ def main() -> None:
                 if stat.S_IMODE(saved_graph.stat().st_mode) != 0o600:
                     raise AssertionError("private graph artifact is not mode 0600")
 
-        raw = case_bytes(CASES[0][1], CASES[0][2])
+        _, source_bytes, assignment = next(case for case in CASES if case[0] == "three_inputs")
+        raw = case_bytes(source_bytes, assignment)
         changed_source = {**raw, "source": raw["source"].replace(b"t .* c", b"t + c")}
         rejected(work, reseal(changed_source), "Lean structural statement gate")
         changed_relation = json.loads(raw["relation"])
@@ -152,6 +163,8 @@ def main() -> None:
             ("eq_air_address", lambda g: g["padded"]["eq_rows"][0].__setitem__(0, 0)),
             ("padding_gate", lambda g: g["padded"]["add"][len(exported["add"])].__setitem__("in0", 0)),
             ("padding_value", lambda g: g["padded"]["values"][exported["n_vars"]].__setitem__(0, 3)),
+            ("finalization_gate_order", lambda g: g["add"].__setitem__(
+                slice(-2, None), list(reversed(g["add"][-2:])))),
         )
         for label, mutate in graph_mutations:
             changed = copy.deepcopy(exported)
@@ -162,6 +175,22 @@ def main() -> None:
                 pass
             else:
                 raise AssertionError(f"independent graph checker accepted {label}")
+        # Keep the graph equation and its finalization span coherent while
+        # adding a satisfiable gate. Equation-only and phase checks accept
+        # this shape; exact constant/guess enumeration must reject it.
+        changed = copy.deepcopy(exported)
+        new_address = changed["n_vars"]
+        changed["n_vars"] += 1
+        changed["values"].append([0, 0, 0, 0])
+        changed["add"].append({"in0": 0, "in1": 0, "out": new_address})
+        changed["finalization"]["qm31_end"] += 1
+        try:
+            check_graph(changed, raw, inputs, nodes)
+        except ValueError as exc:
+            if "finalization row count differs" not in str(exc):
+                raise AssertionError(f"wrong coherent extra-gate rejection: {exc}") from exc
+        else:
+            raise AssertionError("coherent extra finalization gate was accepted")
         wrong_op = copy.deepcopy(nodes)
         wrong_op[0]["op"] = "sub"
         try:
@@ -197,8 +226,8 @@ def main() -> None:
                     raise AssertionError(f"wrong gate graph rejection: {exc}") from exc
             else:
                 raise AssertionError(f"native {field} accepted")
-    print("generic structural/native audit: seven source families accepted; "
-          "four Lean, five native, and thirteen exported-graph/AIR mutations rejected")
+    print("generic structural/native audit: nine source families accepted; "
+          "four Lean, five native, and fifteen exported-graph/AIR mutations rejected")
 
 
 if __name__ == "__main__":
