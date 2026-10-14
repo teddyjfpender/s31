@@ -87,6 +87,28 @@ pins both channel and hasher sources and checks a small exhaustive analogue.
 Uniform-field fractions above remain hypothetical seed-set fractions, not
 native failure probabilities.
 
+The [four-word Lean model](../../../formal/s31/S31/Gadgets/PcsFri/BiasedOodSeed.lean)
+counts every raw `u32` preimage of one OOD seed. For an arbitrary set `E` of
+four-residue seeds, under independent uniform raw words at one fixed digest
+input, its exact probability is a weighted sum over `E` divided by `2¹²⁸`.
+Every seed has at most `3⁴=81` raw preimages, giving
+
+```text
+Pr[E] ≤ 81·|E| / 2¹²⁸
+Pr[E] / Pr_uniform_M31⁴[E] ≤ (3q / 2³²)⁴ ≈ 5.0625
+```
+
+The [circle bridge](../../../formal/s31/S31/Gadgets/PcsFri/BiasedOodSeedCircle.lean)
+places those four residues in modeled QM31 `c0.a/c0.b/c1.a/c1.b` order and
+proves the coordinate map injective. It then uses the rational-map inverse to
+transport the bound to any circle bad set, for an explicitly supplied set of
+regular admitted seeds. This bounds the **joint unconditioned event** that a
+seed is admitted and maps into the bad set; a conditional probability after
+admission also needs a lower bound on admission mass. Matching that set to
+the selected native acceptance predicate and proving the adaptive BLAKE2s
+transcript law remain open. The factor applies to a fixed-prefix random-word
+model, not to the v0.1 work-factor claim.
+
 The [source-bound diagnostic](../../../scripts/release/pcs_fri_ood_seed_geometry.py)
 pins the native gitlink and nine exact file hashes, checks the reviewed
 sampling and denominator code, and reports these fractions as exact rational
