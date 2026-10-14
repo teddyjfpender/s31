@@ -75,10 +75,11 @@ exact address aliases. No native row is charged for either step; the input
 wire remains subject to the ordinary port check and any surrounding AIR
 gates still have to satisfy their residuals.
 
-The test sets `y = [2, 3]` as well, then changes only `a`'s source-map
-address from `wx` to `wy`. The older value-only trace accepts because the
-stored values are equal. This checker rejects because `wx ≠ wy`; choosing
-different input values would expose the incorrect source computation.
+The test sets `y = [2, 3]` as well, then changes `a`'s or `z`'s source-map
+address from `wx` to `wy`, one at a time. The older value-only trace accepts
+both mutants because the stored values are equal. This checker rejects
+both because `wx ≠ wy`; choosing different input values would expose the
+incorrect source computation.
 
 ## Boundary
 

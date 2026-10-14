@@ -144,8 +144,15 @@ def main() -> None:
         lean_check(VALUE, paths, True)
         reason = lean_check(OWNER, paths, False)
         if "lacks a direct native owner or exact identity alias" not in reason:
-            raise AssertionError(f"forged same-value alias failed elsewhere: {reason}")
-        print("Zig identities accepted; same-value wrong-wire alias fails exact ownership")
+            raise AssertionError(f"forged add-zero alias failed elsewhere: {reason}")
+        source_map[2]["id"] = source_map[0]["id"]
+        source_map[3]["id"] = source_map[1]["id"]
+        paths[2].write_text(json.dumps(identity_graph, separators=(",", ":")))
+        lean_check(VALUE, paths, True)
+        reason = lean_check(OWNER, paths, False)
+        if "lacks a direct native owner or exact identity alias" not in reason:
+            raise AssertionError(f"forged multiply-one alias failed elsewhere: {reason}")
+        print("Zig identities accepted; both same-value wrong-wire aliases fail exact ownership")
 
         # A multiply-by-zero fold does not satisfy the identity rule. It
         # needs fixed-constant cell provenance before this checker can admit
