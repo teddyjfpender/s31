@@ -18,7 +18,8 @@ pub fn eligible(allocator: std.mem.Allocator, source: relation.Program) !bool {
     }
     var selected_is_node = false;
     for (source.nodes) |node| {
-        if (node.op != .add and node.op != .sub and node.op != .mul) return false;
+        if (node.op != .add and node.op != .sub and node.op != .mul and
+            node.op != .add_const and node.op != .mul_const) return false;
         if (std.mem.eql(u8, node.name, source.public_outputs[0])) selected_is_node = true;
     }
     if (!selected_is_node) return false;
@@ -110,6 +111,15 @@ test "public physical export guard rejects wrong source profiles" {
     try std.testing.expect(!try eligible(allocator, program));
     nodes[0].op = .sub;
     try std.testing.expect(try eligible(allocator, program));
+    nodes[0].op = .add_const;
+    nodes[0].rhs = null;
+    nodes[0].constant = 7;
+    try program.validate(allocator);
+    try std.testing.expect(try eligible(allocator, program));
+    nodes[0].op = .mul_const;
+    try std.testing.expect(try eligible(allocator, program));
+    nodes[0].rhs = "x";
+    nodes[0].constant = null;
     input[0].visibility = .private;
     try std.testing.expect(!try eligible(allocator, program));
     input[0].visibility = .public;

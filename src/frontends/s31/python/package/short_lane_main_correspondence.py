@@ -40,13 +40,20 @@ def source_values(ssa: dict, public_inputs: dict[str, Any]) -> tuple[list[Q], li
     raw = [_words(public_inputs[item["name"]], lanes) for item in inputs]
     values: list[Q] = [tuple(words + [0] * (4 - lanes)) for words in raw]  # type: ignore[list-item]
     for ident, node in enumerate(nodes, len(inputs)):
-        if (node["id"] != ident or node["op"] not in ("add", "sub", "mul") or
-                type(node["lhs"]) is not int or type(node["rhs"]) is not int or
-                not 0 <= node["lhs"] < ident or not 0 <= node["rhs"] < ident):
+        op = node["op"]
+        constant_op = op in ("add_const", "mul_const")
+        rhs = node.get("constant") if constant_op else node.get("rhs")
+        if (node["id"] != ident or
+                op not in ("add", "sub", "mul", "add_const", "mul_const") or
+                type(node["lhs"]) is not int or type(rhs) is not int or
+                not 0 <= node["lhs"] < ident or
+                (constant_op and not 2 <= rhs < P) or
+                (not constant_op and not 0 <= rhs < ident)):
             raise ValueError("invalid checked SSA node")
-        left, right = values[node["lhs"]], values[node["rhs"]]
-        values.append(tuple((a + b if node["op"] == "add" else
-                             a - b if node["op"] == "sub" else a * b) % P
+        left = values[node["lhs"]]
+        right = (rhs,) * 4 if constant_op else values[rhs]
+        values.append(tuple((a + b if op in ("add", "add_const") else
+                             a - b if op == "sub" else a * b) % P
                             for a, b in zip(left, right, strict=True)))  # type: ignore[arg-type]
     output = ssa["output"]
     if type(output) is not int or not len(inputs) <= output < len(values):
@@ -77,7 +84,9 @@ def expected_columns(ssa: dict, public_inputs: dict[str, Any]) -> tuple[list[lis
         raise ValueError("source schedule does not own every address once")
     fixed = [[row[column] for row in fixed_rows] for column in range(8)]
     extra = (input_count - 1) * (3 * lanes - 2)
-    first_output = 11 + 3 * lanes + extra + n_nodes
+    distinct_constants = {node["constant"] for node in ssa["nodes"]
+                          if node["op"] in ("add_const", "mul_const")}
+    first_output = 11 + 3 * lanes + extra + n_nodes + len(distinct_constants)
     anchors: dict[int, Q] = {0: ZERO, 1: ONE, 2: U,
                              11 + lanes: I, 12 + lanes: IU}
     for lane, inverse in enumerate((INV_I, INV_U, INV_IU)[:lanes - 1], 1):
