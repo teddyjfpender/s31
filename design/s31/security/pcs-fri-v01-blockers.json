@@ -55,6 +55,7 @@
     "design/s31/security/PCS_FRI_PUBLISHED_BOUND_AUDIT.md": "361ad4957d9bdff886ee53a7babd1bd4e7a4940653213df9086e8e3c10354cae",
     "design/s31/security/PCS_FRI_STWO_UDR_FEASIBILITY.md": "935116826a698efa26445cd26a9b2f464e17e66ea581ab06fb4dbe266dfd6b15",
     "formal/s31/S31/Gadgets/Air/GatePublicInteraction.lean": "c4be2f2e83f1e6302177d936c502c82f5f710f69f38e5b222298d26e90693224",
+    "formal/s31/S31/Gadgets/Functional/Correspondence/PrivateMainLdeOpenings.md": "2e3f2f2c89ec061dacd9cb1fdff0a366b903d1599989d214e13160409c1c6ee8",
     "formal/s31/S31/Gadgets/PcsFri/BcsTranscriptEpoch.lean": "ec37a56242d0dc06a47e27cb120e66628260a5d836d25a6af94843ea9351a20b",
     "formal/s31/S31/Gadgets/PcsFri/DeepQuotientAlgebra.lean": "df6ca80de3582d9c10e37f1a632795ac571a212c981e46dd51d6fe41631442cd",
     "formal/s31/S31/Gadgets/PcsFri/DegreeCorrectionGap.lean": "a3430d680b836333d277b1f0a62b1e41dc9629a50e2e00f278b144f24bd5d120",
@@ -77,6 +78,7 @@
     "formal/s31/S31/Gadgets/PcsFri/QueryAndTranscript.lean": "e82190409053019d327e738a450c2a1b8676beecc92770f4a3e7563ad445cfa8",
     "formal/s31/S31/Gadgets/PcsFri/StwoUDRFeasibility.lean": "800b21db063cd399ce6a8ffa888b00cdd989a1676cc569ebf9e36d4b4d3736ae",
     "formal/s31/proof-inventory.json": "78d52d0c94858c25a50b84a1c0e5094c9829b4bd4d2b83db496d16f7a729f1ef",
+    "formal/s31/tests/audit/private_main_lde_openings.py": "875be81a5aa9ec79ef0aab4146e18f60deb01f65bfdf0bf9d85dba76f428dfd9",
     "formal/s31/tests/lib/pcs_merkle_collision_reduction.zig": "5c55608feb286cdd26737c698f0249fa7adc5888fe2719666735580675e70d84",
     "formal/s31/tests/lib/pcs_xdm04_mixed_certificate.zig": "be8ebf65be1ee2a50abb99662c4e696a1a2dce6e6ef5115597f5d4121f3a91eb",
     "formal/s31/tests/pcs_fri_bcs_transcript.json": "b1814cfd5920cbf21f73713e99acbe5736bc78afa6b9dd8a599eb50e44f0160f",
@@ -223,7 +225,7 @@
     {
       "gap_kind": "unproven_crypto_and_native_refinement",
       "id": "P06_MERKLE_BINDING_AND_DECODER",
-      "missing_discharge": "the Lean audit-loop success theorem yields exact captured steps and path recurrence, but its success has no Zig operational-semantics refinement or installed CAS05 verifier call. General Zig-to-Lean sort/dedup/row-assembly/byte-hash semantics, all-input native interpolation/block evaluation and retained-column ownership (including cached and backend-specific cases), installed-binary correspondence, and a quantitative collision/binding bound for the exact plain BLAKE2s layout remain open; the parametric Lean tile projection/parent theorem and finite native prover/oracle differentials, now including grouped block reloads, post-release openings and one log-20 pruned shape, cover only their stated abstract and sampled boundaries",
+      "missing_discharge": "the Lean audit-loop success theorem yields exact captured steps and path recurrence, but its success has no Zig operational-semantics refinement or installed CAS05 verifier call. General Zig-to-Lean sort/dedup/row-assembly/byte-hash semantics, all-input native interpolation/block evaluation and retained-column ownership (including cached and backend-specific cases), installed-binary correspondence, and a quantitative collision/binding bound for the exact plain BLAKE2s layout remain open; the parametric Lean tile projection/parent theorem and finite native prover/oracle differentials, now including one private Gate proof's 66\u00d712 main-tree LDE openings, grouped block reloads, post-release openings and one log-20 pruned shape, cover only their stated abstract and sampled boundaries",
       "partial_evidence": [
         "formal/s31/S31/Gadgets/PcsFri/MerkleOpening.lean",
         "formal/s31/S31/Gadgets/PcsFri/MultiproofDecoder.lean",
@@ -250,6 +252,8 @@
         "formal/s31/tests/run_pcs_fri_prover_column_origin_native.sh",
         "formal/s31/tests/pcs_fri_compact_column_origin_native.zig",
         "formal/s31/tests/run_pcs_fri_compact_column_origin_native.sh",
+        "formal/s31/tests/audit/private_main_lde_openings.py",
+        "formal/s31/S31/Gadgets/Functional/Correspondence/PrivateMainLdeOpenings.md",
         "design/s31/security/PCS_FRI_MULTIPROOF_DECODER_REFINEMENT.md",
         "design/s31/security/PCS_FRI_COMMITTED_COLUMN_ORIGIN.md",
         "design/s31/security/PCS_FRI_NATIVE_MERKLE_COLLISION_REDUCTION.md"
