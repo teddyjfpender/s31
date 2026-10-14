@@ -199,7 +199,7 @@ def scenario_arithmetic(scenario: dict, target_bits: int = 96) -> dict:
     # every native query domain size. The independent fixed-good-set model
     # is an additional hypothesis, not a substitution into the paper theorem.
     masked_bias = Fraction(2, 1 << 32)
-    masked_alpha = alpha + masked_bias
+    masked_alpha = min(Fraction(1), alpha + masked_bias)
     masked_query = masked_alpha**s
     masked_errors = dict(errors)
     masked_errors["fri_query"] = masked_query

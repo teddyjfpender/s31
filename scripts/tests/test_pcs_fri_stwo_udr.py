@@ -92,6 +92,13 @@ class StwoUDRTests(unittest.TestCase):
         self.assertTrue(scenario_arithmetic(one_table_scenario(t=1 << 64), 96)[
             "conditional_ideal_m31_masked_query_adaptation"][
                 "work_factor_meets_target_if_other_rounds_apply"])
+        near_one = one_table_scenario()
+        near_one["theta_numerator"] = 1
+        near_one["theta_denominator"] = 1 << 32
+        clamped = scenario_arithmetic(near_one, 96)[
+            "conditional_ideal_m31_masked_query_adaptation"]
+        self.assertEqual(clamped["one_draw_good_set_mass_upper"], "1/1")
+        self.assertIsNone(clamped["minimum_queries_for_work_factor_if_other_rounds_fit"])
 
         two_tables = one_table_scenario()
         two_tables["tables"].append({"rows": n // 2, "air_constraints": 1,
