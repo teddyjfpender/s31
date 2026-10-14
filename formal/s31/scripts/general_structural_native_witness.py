@@ -19,6 +19,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+from scripts.native_graph_certificate import check_graph
+
 FORMAL = Path(__file__).resolve().parents[1]
 ROOT = FORMAL.parents[1]
 S31 = ROOT / "src/frontends/s31"
@@ -153,7 +155,8 @@ def checked_words(raw: dict[str, bytes]) -> tuple[list[dict], list[dict]]:
 
 def native_check(raw: dict[str, bytes], inputs: list[dict], nodes: list[dict],
                  work: Path, *, tamper_extra_gate_for_test: bool = False,
-                 tamper_changed_gate_for_test: bool = False) -> None:
+                 tamper_changed_gate_for_test: bool = False,
+                 export_graph: bool = False) -> dict | None:
     corpus = {"schema": "s31-structural-m31-native-witness-corpus-v1",
               "cases": [{"label": "source-derived-generic", "relation": raw["relation"].decode(),
                          "assignment": raw["assignment"].decode(),
@@ -163,6 +166,8 @@ def native_check(raw: dict[str, bytes], inputs: list[dict], nodes: list[dict],
                          "expected_public_match": True,
                          "tamper_extra_gate_for_test": tamper_extra_gate_for_test,
                          "tamper_changed_gate_for_test": tamper_changed_gate_for_test}]}
+    if export_graph:
+        corpus["export_graph_path"] = str(work / "native-graph.json")
     path = work / "native-corpus.json"
     path.write_text(json.dumps(corpus, sort_keys=True, separators=(",", ":")) + "\n")
     result = subprocess.run([
@@ -172,9 +177,15 @@ def native_check(raw: dict[str, bytes], inputs: list[dict], nodes: list[dict],
     if result.returncode or json.loads(result.stdout) != {"checked": 1}:
         raise ValueError("native source-node/witness check rejected: " +
                          result.stderr.strip()[-2000:])
+    if export_graph:
+        path = work / "native-graph.json"
+        if path.stat().st_size > 8 << 20:
+            raise ValueError("native graph artifact exceeds bounded byte limit")
+        return json.loads(path.read_bytes())
+    return None
 
 
-def check(paths: list[Path]) -> dict[str, int | str]:
+def check(paths: list[Path], graph_out: Path | None = None) -> dict[str, int | str]:
     raw = read_snapshots(paths)
     pin_hashes(raw)
     with tempfile.TemporaryDirectory(prefix="s31-general-native-structural-") as temp:
@@ -186,18 +197,26 @@ def check(paths: list[Path]) -> dict[str, int | str]:
             captured[name] = path
         lean_check(captured)
         inputs, nodes = checked_words(raw)
-        native_check(raw, inputs, nodes, work)
+        graph = native_check(raw, inputs, nodes, work, export_graph=True)
+        summary = check_graph(graph, raw, inputs, nodes)
+        graph_bytes = (work / "native-graph.json").read_bytes()
+        if graph_out is not None:
+            graph_out.write_bytes(graph_bytes)
     return {"status": "accepted", "inputs": len(inputs), "nodes": len(nodes),
-            "source_sha256": hashlib.sha256(raw["source"]).hexdigest()}
+            "source_sha256": hashlib.sha256(raw["source"]).hexdigest(),
+            "graph_sha256": hashlib.sha256(graph_bytes).hexdigest(), **summary}
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     for name in MAXIMUM:
         parser.add_argument(name, type=Path)
+    parser.add_argument("--graph-out", type=Path,
+                        help="write the verified exact native graph JSON")
     args = parser.parse_args()
     try:
-        print(json.dumps(check([getattr(args, name) for name in MAXIMUM]), sort_keys=True))
+        print(json.dumps(check([getattr(args, name) for name in MAXIMUM], args.graph_out),
+                         sort_keys=True))
     except (ValueError, KeyError, IndexError, TypeError, OSError,
             subprocess.TimeoutExpired) as exc:
         print(f"rejected: {exc}", file=sys.stderr)

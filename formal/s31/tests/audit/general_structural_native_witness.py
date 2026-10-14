@@ -17,6 +17,7 @@ from structural_derivation_lean import artifacts, canonical, source  # noqa: E40
 from scripts.general_structural_native_witness import (  # noqa: E402
     MAXIMUM, check, checked_words, native_check,
 )
+from scripts.native_graph_certificate import check_graph  # noqa: E402
 
 P = 2**31 - 1
 
@@ -128,6 +129,25 @@ def main() -> None:
         rejected(work, {**raw, "statement": canonical(forged_statement)},
                  "Lean structural statement gate")
         inputs, nodes = checked_words(raw)
+        exported = native_check(raw, inputs, nodes, work, export_graph=True)
+        check_graph(exported, raw, inputs, nodes)
+        graph_mutations = (
+            ("add_operand", lambda g: g["add"][0].__setitem__("in0", 0)),
+            ("wire_value", lambda g: g["values"][g["node_wires"][3]["wires"][0]].__setitem__(0, 99)),
+            ("source_map", lambda g: g["source_map"][3].__setitem__("id", 0)),
+            ("public_port", lambda g: g["output"].__setitem__(1, 0)),
+            ("constant_key", lambda g: g["constant_keys"].__setitem__(0, 123)),
+            ("assertion_roster", lambda g: g["assertion_spans"].clear()),
+        )
+        for label, mutate in graph_mutations:
+            changed = copy.deepcopy(exported)
+            mutate(changed)
+            try:
+                check_graph(changed, raw, inputs, nodes)
+            except ValueError:
+                pass
+            else:
+                raise AssertionError(f"independent graph checker accepted {label}")
         wrong_op = copy.deepcopy(nodes)
         wrong_op[0]["op"] = "sub"
         try:
@@ -164,7 +184,7 @@ def main() -> None:
             else:
                 raise AssertionError(f"native {field} accepted")
     print("generic structural/native audit: seven source families accepted; "
-          "four Lean and five native resealed mutations rejected")
+          "four Lean, five native, and six exported-graph mutations rejected")
 
 
 if __name__ == "__main__":
