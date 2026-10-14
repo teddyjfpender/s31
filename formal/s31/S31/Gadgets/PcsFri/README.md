@@ -426,6 +426,43 @@ raw rows, the number is at most `b^s`. The Lean theorem states that missing
 agreement hypothesis explicitly; it does not derive it from the committed
 polynomials, Merkle roots, or the native transcript.
 
+[`PairedSparseBatchAgreement.lean`](PairedSparseBatchAgreement.lean) adds the
+fixed-oracle paired-batch step before raw queries. Fix the original and
+candidate source tables, the OOD-derived quotient recipes, and a finite set
+`Λ` of batch challenges **before drawing one shared `λ`**. If height `i` has
+`mᵢ` source rows where any of its `cᵢ` original columns differs, a bad `λ`
+can hide a mismatch at one row at no more than `2cᵢ` field values. Across
+every height, the union of exceptional challenges `E` satisfies
+
+```text
+|E| ≤ Σᵢ 2 cᵢ mᵢ.
+```
+
+For `λ∈Λ\E`, batched original/own-quotient values disagree at **exactly**
+the rows where the fixed original source tables disagree. The quotient for
+each column is derived from that same original value; a separately chosen
+quotient could invalidate the polynomial injection step. A specialized Lean
+corollary applies the collision count to the modeled native QM31
+`nativeBatch` formula through the existing row-algebra refinement.
+
+Choose one height `i<k`, set `Dᵢ=2^(k−i)`, and make `s` independent uniform
+raw queries from the `2^k` largest-domain positions, with replacement. The
+number of all-query misses for a nonexceptional `λ` is at most
+`[(Dᵢ−mᵢ)·2^i]^s`. Counting challenge/query pairs gives the explicit bound
+
+```text
+|E|·(2^k)^s + (|Λ|−|E|)·[(Dᵢ−mᵢ)·2^i]^s.
+```
+
+For example, with `k=3`, height `i=1`, and one mismatched source row,
+`Dᵢ=4` and each projected row has two raw preimages. The bound permits six
+of eight raw positions to miss per draw. The adjacent-pair check may detect
+more, but the proof uses only the guaranteed selected-row projection.
+This theorem **does not produce `mᵢ` from false acceptance or FRI proximity**.
+In particular, the candidate source table must be fixed before `λ`; a
+candidate chosen after seeing `λ` is outside the theorem. Native Merkle/BCS
+binding and the shared transcript's adaptive sampling law also remain open.
+
 More precisely, if `Dᵢ` is the set of raw positions whose opened pair meets
 `Bᵢ`, then Lean proves `G = {0,…,2^k−1} \ ⋃ᵢ Dᵢ`. Thus the exact ideal count is
 `(2^k − |⋃ᵢ Dᵢ|)^s`. This union automatically accounts for overlap between
