@@ -77,14 +77,20 @@ degree of every committed oracle. Engine CAS09 tests both degrees for a
 synthetic one-root multi-height proof, but needs this multi-epoch source and
 query protocol revision before it can serve Gate.
 
-The [official S-two theorem map](https://github.com/starkware-libs/stwo/blob/dev/.agents/papers/llm/Stwo_Whitepaper.llm.md)
-states the cross-domain batching error using the maximum batch width `M` of
-the **weighted extended ensemble**. It does not identify `M` for this sparse
-native Gate roster. The executable plan deliberately leaves
-`theorem_batch_width_M = null`: 319 physical columns, 319 original tracks,
-and the OOD-claim-dependent quotient track count cannot be substituted for
-the paper's `M` without deriving its per-height ensemble definition and
-weighting. The paper's theorem also proves a single-point quotient; the
+The [S-two whitepaper](https://eprint.iacr.org/2026/532.pdf), Protocol 3,
+defines a batch of `M_i` functions for each domain `D_i`, zero-pads it to the
+common width `M = max_i M_i`, and forms a challenge-weighted batch at that
+domain. Its Lemma 3 uses this same maximum `M` in the batching error. The
+[official theorem map](https://github.com/starkware-libs/stwo/blob/dev/.agents/papers/llm/Stwo_Whitepaper.llm.md)
+summarizes the resulting term as proportional to `(M−1)|D₀|/|F|` times list
+factors. The CAS07 source pilot's largest native height bucket has 193
+columns. **If** those source columns map without compression to one of the
+paper's domain batches, this gives the conditional lower bound `M ≥ 193`;
+separate own-quotient functions could make it larger. The executable plan
+deliberately leaves `theorem_batch_width_M = null`: 319 physical columns, 319
+original tracks, and the OOD-claim-dependent quotient track count cannot be
+substituted for the paper's `M` without deriving its exact native-to-paper
+ensemble and weighting. The paper's theorem also proves a single-point quotient; the
 native conjugate two-point quotient needs its own filtration and agreement
 reduction. The [theorem bridge](PCS_FRI_CAS05_THEOREM_BRIDGE.md) tracks those
 obligations, and the [v0.1 blocker matrix](pcs-fri-v01-blockers.json) remains
