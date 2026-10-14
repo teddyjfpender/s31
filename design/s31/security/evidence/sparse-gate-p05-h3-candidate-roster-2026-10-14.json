@@ -18,7 +18,7 @@
     "direct_common_padded_M_if_premise": 60,
     "full_paper_error_bound": null,
     "native_to_paper_batch_width_M": null,
-    "premise": "one paper-domain function per listed candidate track, no compression or extra functions"
+    "premise": "paper domain batches equal these native height buckets in order, one function per candidate track, with no weighting, compression, or extra functions"
   },
   "heights": [
     {

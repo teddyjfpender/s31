@@ -131,7 +131,7 @@ def derive(evidence: dict[str, object]) -> dict[str, object]:
         "total_legacy_periodicity_relation_words": sum(
             len(bucket["legacy_periodicity_source_refs"]) for bucket in heights),
         "conditional_paper_mapping": {
-            "premise": "one paper-domain function per listed candidate track, no compression or extra functions",
+            "premise": "paper domain batches equal these native height buckets in order, one function per candidate track, with no weighting, compression, or extra functions",
             "direct_batch_sizes_if_premise": direct_sizes,
             "direct_common_padded_M_if_premise": max(direct_sizes),
             "batch_sizes_if_periodicity_is_separate": with_periodicity,
