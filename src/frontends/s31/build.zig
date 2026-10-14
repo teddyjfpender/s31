@@ -135,7 +135,21 @@ pub fn build(b: *std.Build) void {
     });
     structural_witness_root.addImport("stwo_core", core);
     structural_witness_root.addImport("stwo_circuit_frontend", circuit);
+    structural_witness_root.addImport("stwo_circuit_cpu_integration", cpu);
+    structural_witness_root.addImport("stwo_prover_engine", cpu.import_table.get("stwo_prover_engine") orelse @panic("missing prover engine"));
+    structural_witness_root.addImport("interop_postcard", sha_postcard);
     structural_witness_root.addImport("stwo_s31_prototype", frontend);
+    const audit_fixed = b.createModule(.{ .root_source_file = b.path("runtime/public_fixed_commitment.zig"), .target = target, .optimize = optimize });
+    audit_fixed.addImport("stwo_core", core);
+    audit_fixed.addImport("stwo_prover_engine", cpu.import_table.get("stwo_prover_engine") orelse @panic("missing prover engine"));
+    audit_fixed.addImport("stwo_circuit_frontend", circuit);
+    structural_witness_root.addImport("s31_audit_fixed_commitment", audit_fixed);
+    const audit_main = b.createModule(.{ .root_source_file = b.path("runtime/public_main_commitment.zig"), .target = target, .optimize = optimize });
+    audit_main.addImport("stwo_core", core);
+    audit_main.addImport("stwo_prover_engine", cpu.import_table.get("stwo_prover_engine") orelse @panic("missing prover engine"));
+    audit_main.addImport("stwo_circuit_frontend", circuit);
+    audit_main.addImport("stwo_circuit_cpu_integration", cpu);
+    structural_witness_root.addImport("s31_audit_main_commitment", audit_main);
     const structural_witness = b.addRunArtifact(b.addExecutable(.{
         .name = "s31-structural-native-witness-corpus",
         .root_module = structural_witness_root,

@@ -42,8 +42,12 @@ preprocessed column cells. The [Lean structural trace decoder](StructuralNativeT
 constructs a `NativeTrace` from its bounded JSON projection. The
 [committed AIR join](StructuralCommittedAirJoin.md) compares all direct-Gate
 fixed and base cells for one all-public source and joins their native
-recommitments to an accepted proof's roots. General authenticated committed
-rows and a native AIR/PCS soundness theorem remain open.
+recommitments to an accepted proof's roots. The
+[private-input committed join](StructuralPrivateCommittedAirJoin.md) checks
+the same cell and root boundary for one transparent private-input arithmetic
+source using a noninstalled test executable, while production inspection
+remains public-only. General authenticated committed rows and a native AIR/PCS
+soundness theorem remain open.
 
 [The public ABI byte gate](GeneralLinearSSAPublicABI.md) derives the ordered
 M31 input/output layout from either checked certificate profile, checks exact

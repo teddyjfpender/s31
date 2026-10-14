@@ -37,8 +37,10 @@ def columns_bytes(columns: object, width: int) -> bytes:
 def expected_columns(graph: dict) -> tuple[list[list[int]], list[list[int]]]:
     """Project every direct-Gate fixed and base cell from checked graph data.
 
-    This currently admits only the 512-row, all-public, permutation-free
-    arithmetic fragment. Other profiles and trace heights fail closed.
+    This admits the 512-row transparent, permutation-free Gate-only
+    arithmetic fragment. The all-public caller may export actual columns;
+    private callers must compare them inside a noninstalled audit executable.
+    Other profiles and trace heights fail closed.
     """
     padded = graph["padded"]
     require(not padded["permutation_inputs"] and
