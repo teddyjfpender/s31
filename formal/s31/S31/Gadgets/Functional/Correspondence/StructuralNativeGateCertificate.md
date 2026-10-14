@@ -83,6 +83,11 @@ The audit is restricted to the admitted structural M31 direct-Gate fragment;
 other compiler modes and constant-base choices need their own replay. The
 replay pins the engine builder, constant pass, and S31 radix-selection source
 bytes so changes to their algorithms require another review.
+The input and public-binding spans are not yet independently enumerated gate
+by gate. A satisfiable extra gate added coherently to an input span and the
+padded AIR rows can still pass this assignment-specific checker. The
+one-producer check establishes complete address coverage, not exact ownership
+of every non-finalization gate.
 These concrete checks
 correspond to the address/value, gate, port, and assertion premises of
 `checked_native_trace_sound` for **one supplied assignment**. The artifact is
