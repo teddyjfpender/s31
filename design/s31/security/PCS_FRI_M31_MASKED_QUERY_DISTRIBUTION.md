@@ -26,6 +26,29 @@ this reducer equality with the low-bit mask. The separate big-endian scalar
 fallback and the correctness of the BLAKE2s digest implementation are not
 covered by this arithmetic theorem.
 
+## How raw words become a query batch
+
+The [batch schedule proof](../../../formal/s31/S31/Gadgets/PcsFri/NativeQueryBatch.lean)
+indexes an arbitrary stream of eight-word blocks. Raw query slot `j` reads
+block `⌊j/8⌋`, lane `j mod 8`; its output is precisely
+`(word mod p) & (2^k−1)`. This equality holds for every 32-bit word and
+every requested slot, including a final partial block. `drawQueries` accepts
+`k=0..31`; at `k=0` every position is zero. At 70 positions, nine blocks are
+drawn; the last used word is block 8 lane 5, and lanes 6–7 are discarded.
+The `rawWord_blocksOfRaw` theorem also shows that every ordered raw-word
+tuple can be embedded in this layout by filling unused lanes with zero.
+The position list still contains repeats in draw order. Sorting and deduplication
+occur later in `Queries.init`.
+
+The [native differential](../../../formal/s31/tests/pcs_fri_native_query_batch.zig)
+checks actual Zig `drawQueries` and `reduceToM31` at mask widths 0–31, batch
+boundaries, repeated words, and M31 boundary values. It also compares the
+selected `Blake2sM31MerkleChannel` at 70 positions to direct nine-block
+drawing. The [source guard](../../../scripts/s31_formal_lib/pcs_fri_m31_query.py)
+pins the eight-lane loop, reducer, selected S31 profile, and native verifier
+selection. These are finite execution checks and source pins, not a proof of
+Zig operational semantics for all inputs.
+
 ## Counting by hand
 
 Since `2^32 = 2p + 2`, every residue in `0 .. p-1` has two raw preimages,
