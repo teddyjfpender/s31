@@ -227,9 +227,13 @@ The public-only short-lane diagnostic now independently reconstructs the
 complete 12×512 uncommitted main trace from the source-certified indexed SSA,
 fixed Gate schedule, and one canonical public assignment. Fresh native exports
 for one input of one or three lanes and two inputs of two lanes are compared
-cell by cell, including all public and unused ABI words. This strengthens the
-honest trace correspondence check; it does not derive those main cells from
-an arbitrary accepted proof or authenticate PCS openings.
+cell by cell, including all public and unused ABI words. The acceptance test
+also recommits those source-derived cells through the installed native PCS,
+verifies one honest proof for each shape, and checks that its main commitment
+matches the recommitted root. The one-lane sample selects an earlier output
+node while retaining a dead suffix. This strengthens the honest proof
+correspondence check; it does not derive those main cells from an arbitrary
+accepted proof or authenticate PCS openings.
 Two public inputs fit within the eight-word ABI only at these lengths:
 `2N` input words plus `N` result words must be at most eight. Returning an
 input directly, private inputs, constants, assertions,

@@ -340,16 +340,23 @@ The Zig guard tests require rejection of a private input, a nonempty private
 assignment, wrong input and output shape, assertions, constant/repeat nodes,
 and a 17-node source.
 
-`pure_native_short_lanes.py` builds three admitted public programs: one lane,
-three lanes with ordered subtraction, and two two-lane inputs. The independent
+`pure_native_short_lanes.py` builds three admitted public programs: one lane
+with an earlier return and a dead suffix, three lanes with ordered subtraction,
+and two two-lane inputs. The independent
 source certificate and complete fixed-column replay must pass before the
 diagnostic is read. `package.short_lane_main_correspondence` then evaluates
 the checked SSA for a chosen assignment, solves all 512 Gate addresses from
 public inputs and fixed constants, and compares every one of the 6,144 native
 main cells, eight public words, and the serialized main-column digest. For
 each package, changing a fixed cell, main cell, public word, or digest fails.
-The comparison is an honest-trace diagnostic and does not establish
-arbitrary-proof row authentication or PCS/FRI soundness.
+The test then asks the native prover to recommit the **source-derived** main
+columns, verifies an honest proof against the same public statement, and
+requires the recommitted root, native `writeBase` root, and that accepted
+proof's main commitment to agree. A changed source-derived cell changes its
+recomputed digest and root. This is an honest-proof diagnostic conditional on
+the installed prover, verifier, proof-root decoder, and commitment code. It
+does not establish arbitrary-proof row authentication, a native verifier
+refinement theorem, or PCS/FRI soundness.
 
 ```sh
 python3 src/frontends/s31/tests/acceptance/compiler_correspondence/pure_native_short_lanes.py
