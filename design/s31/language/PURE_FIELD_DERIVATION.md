@@ -10,7 +10,7 @@ The verifier also replays the certificate's typed steps as a separate pass,
 without reading source tokens, and reconstructs the normalized relation from
 that rule list. Both passes must agree on every node and output.
 
-The checker reuses the existing independent `source_relation_fragment` lexer
+The Python checker reuses the existing independent `source_relation_fragment` lexer
 and the strict JSON shape comparator from `package.correspondence`; those
 shared Python helpers are part of the executable checker boundary. It does
 not call the production `compile_text` parser or normalizer.
@@ -76,9 +76,33 @@ lowering. Source aliases are resolved by the executable checker before this
 Lean sequence is formed.
 `lower_output` carries that result to the selected public output.
 
-This theorem composes semantic rules. The Python parser and its JSON decoder
-are still trusted executable checks; Lean does not parse this new certificate's
-source bytes. The certificate does not prove the production optimizer preserves
+[`PureFieldDerivationBytes.lean`](../../../formal/s31/S31/Gadgets/Functional/Correspondence/PureFieldDerivationBytes.lean)
+now lexes the exact `.s31` bytes independently in Lean. It constructs every
+typed rule and the complete normalized relation, separately replays all rules
+from the certificate JSON, and compares both with the canonical relation JSON.
+`checked_bytes_lower_output` connects those checked bytes to `lower_output`
+for every initial field state. The associated CLI rejects malformed source,
+typed rules, noncanonical or duplicate-key JSON, and wrong relation nodes.
+
+The Lean byte lexer deliberately accepts a **conservative ASCII subset** of
+the Python source lexer: ASCII code, six ASCII whitespace bytes, and `//`
+comments containing ASCII only. This is fail-closed for non-ASCII comments,
+even if Python admits them. The Lean checker bounds source to 16,384 bytes,
+512 tokens, 8 inputs, 64 lets/nodes, certificate JSON to 131,072 bytes, and
+relation JSON to 65,536 bytes. The package verifier owns SHA-256 byte binding;
+Lean checks digest spelling but does not compute the digests. The ordinary
+package verifier currently runs its Python derivation checker, while the Lean
+CLI is a separate auditable gate.
+
+The currently opt-in native optimizer correspondence receipt has **no
+single-program overlap** with this derivation profile: this profile requires
+an `inv`, `is_zero`, or `select` control, while the optimizer receipt's v1
+operation roster excludes all three. Both checks are scoped to their own
+admitted programs and do not yet compose into one source-to-optimized-IR
+proof for a controlled field program.
+
+This theorem composes semantic rules and independently admitted bytes. It does
+not prove the production optimizer preserves
 the normalized relation, that native AIR rows implement every node, or that
 the proof verifier authenticates those rows through PCS/FRI. The separate
 scalar [`is_zero` row certificate](SCALAR_ZERO_TEST_CORRESPONDENCE.md) supplies
@@ -91,4 +115,5 @@ Run the focused checks:
 PYTHONPATH=src/frontends/s31/python python3 -B -m unittest \
   src.frontends.s31.tests.python.security.test_pure_field_derivation -q
 cd formal/s31 && lake build S31.Gadgets.Functional.Correspondence.PureFieldDerivation
+cd ../.. && python3 scripts/formal/check_pure_field_lean_bytes.py
 ```
