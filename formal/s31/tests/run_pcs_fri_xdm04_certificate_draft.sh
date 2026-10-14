@@ -11,6 +11,7 @@ if [[ "$actual" != "$expected" ]]; then
 fi
 
 cd "$repo_root"
+python3 -B scripts/release/pcs_fri_xdm04_audit_loop.py
 zig test -O ReleaseSafe -j2 \
   --dep stwo_core --dep stwo_prover_engine --dep pcs_xdm04_mixed_certificate \
   -Mroot=formal/s31/tests/pcs_fri_xdm04_certificate_draft.zig \

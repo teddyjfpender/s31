@@ -333,9 +333,26 @@ the valid native index, and the recorded root make the *exact framed*
 `checkFramedOpening` Boolean accept. Off-path nodes are unconstrained. The
 valid native index also implies the transposed parent walk terminates at
 root index zero; this is proved instead of assumed in the audit theorem. The
-Zig `Capture.auditAt` loop performs corresponding checks on its sparse map,
-but translating that loop's successful return into these Lean premises is
-still a separate Zig-to-model semantics obligation.
+Zig `Capture.auditAt` loop performs corresponding checks on its sparse map.
+[`PairedBatchXdm04AuditLoop.lean`](PairedBatchXdm04AuditLoop.lean) gives an
+executable recursive model of that audit. At each level it checks the current
+node, the selected sibling and optional inserted row, computes the ordered
+parent, and requires the next node-map entry to match. `auditEdges_sound`
+proves for every level and index that success fixes the complete step list
+and implies `pathNodeRecurrences`; `auditedNativeOpening_checks` proves the
+*captured* step list passes the framed opening checker under explicit root
+and in-range index premises. The tagged-start equation follows from the
+audit. `auditModeledOpening_sound` packages the root and index checks into
+one Boolean and proves its successful return suffices for the framed checker.
+This is a local verifier-success theorem for the Lean audit model.
+The [source-pin check](../../../../../scripts/release/pcs_fri_xdm04_audit_loop.py)
+locks the reviewed Zig audit code and verifies the capture, loop and
+all-row handoff order; hostile controls remove the root/parent check, switch
+child orientation, or skip rows. The exact draft test runner enforces this
+pin before executing Zig. Establishing that a successful Zig execution
+refines the Lean Boolean checker remains a separate semantic obligation;
+neither bare `verifyAndCollect` nor the production CAS05 verifier calls the
+audit-only checker.
 
 The independent [Python framing audit](../../../../../scripts/release/pcs_fri_xdm04_framing.py)
 uses `hashlib.blake2s`, its own preimage builders, and its own transposed
