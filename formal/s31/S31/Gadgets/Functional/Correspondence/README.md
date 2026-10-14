@@ -17,7 +17,11 @@ those words to the locally proved result pins.
 [The conditional global Gate join](ControlGadgetGlobalGateJoin.md) derives
 those event-to-wire equalities and matched Gate AIR rows from a good rational
 lookup closure, exact event balance, and unique positive producer ownership.
-Authentication of those global premises remains open.
+[The claim-to-trace join](ControlGadgetClaimTrace.md) connects one accepted
+control proof's eleven component claims and all Gate-producing trace
+components to the committed base and interaction roots. Its conditional Lean
+theorem derives the global closure equation from cell-derived claims.
+Authentication of arbitrary accepted proof traces remains open.
 
 [The pure source-byte bridge](GeneralLinearSSASourceBytes.md) gives a
 handwritten `.s31` example, its positional SSA IDs, active packed-row
