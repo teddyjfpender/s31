@@ -1,0 +1,3687 @@
+{
+  "accepted_key_sha256": "7d4cdaab4e446aaa2c357e28f077e469412f45a17c660e8d4434cca216dccfc7",
+  "accepted_ood_claim_map_sha256": "d0dfd3b36e3abc181e90ee0456ca2760602636fc5c2c378572d84b99e26ed5f5",
+  "accepted_point_partition": {
+    "base_claim_indices": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      34,
+      36,
+      38,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      50,
+      52,
+      54,
+      56,
+      58,
+      60,
+      62,
+      64,
+      65,
+      66,
+      67,
+      68,
+      69,
+      70,
+      71,
+      72
+    ],
+    "base_point_x_limbs": [
+      2083843127,
+      1653782313,
+      1513710029,
+      743042316
+    ],
+    "base_point_y_limbs": [
+      944408642,
+      962976616,
+      1604300235,
+      1050785851
+    ],
+    "shifted_claim_indices": [
+      33,
+      35,
+      37,
+      39,
+      49,
+      51,
+      53,
+      55,
+      57,
+      59,
+      61,
+      63
+    ],
+    "shifted_point_x_limbs": [
+      1720477104,
+      1628715618,
+      1676490995,
+      791680055
+    ],
+    "shifted_point_y_limbs": [
+      1517122051,
+      1221150412,
+      186212545,
+      1933488693
+    ]
+  },
+  "accepted_proof_sha256": "04eaca23d8a6c7fc977b24a3d925aaabcbb727fa4fa30f30c81864e24a158e39",
+  "additional_native_periodicity_relation_words_by_height": [
+    4,
+    4,
+    4
+  ],
+  "conditional_ensembles": {
+    "base_single_Q": {
+      "conditional_common_padded_M": 56,
+      "domains": [
+        {
+          "conditional_M_i": 28,
+          "native_extended_log_size": 17,
+          "words": [
+            {
+              "paired_claim_index": 11,
+              "role": "original",
+              "source_ref": [
+                0,
+                11
+              ]
+            },
+            {
+              "claim_index": 11,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                0,
+                11
+              ]
+            },
+            {
+              "paired_claim_index": 28,
+              "role": "original",
+              "source_ref": [
+                1,
+                16
+              ]
+            },
+            {
+              "claim_index": 28,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                1,
+                16
+              ]
+            },
+            {
+              "paired_claim_index": 58,
+              "role": "original",
+              "source_ref": [
+                2,
+                20
+              ]
+            },
+            {
+              "claim_index": 58,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                20
+              ]
+            },
+            {
+              "paired_claim_index": 60,
+              "role": "original",
+              "source_ref": [
+                2,
+                21
+              ]
+            },
+            {
+              "claim_index": 60,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                21
+              ]
+            },
+            {
+              "paired_claim_index": 62,
+              "role": "original",
+              "source_ref": [
+                2,
+                22
+              ]
+            },
+            {
+              "claim_index": 62,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                22
+              ]
+            },
+            {
+              "paired_claim_index": 64,
+              "role": "original",
+              "source_ref": [
+                2,
+                23
+              ]
+            },
+            {
+              "claim_index": 64,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                23
+              ]
+            },
+            {
+              "paired_claim_index": 65,
+              "role": "original",
+              "source_ref": [
+                3,
+                0
+              ]
+            },
+            {
+              "claim_index": 65,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                3,
+                0
+              ]
+            },
+            {
+              "paired_claim_index": 66,
+              "role": "original",
+              "source_ref": [
+                3,
+                1
+              ]
+            },
+            {
+              "claim_index": 66,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                3,
+                1
+              ]
+            },
+            {
+              "paired_claim_index": 67,
+              "role": "original",
+              "source_ref": [
+                3,
+                2
+              ]
+            },
+            {
+              "claim_index": 67,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                3,
+                2
+              ]
+            },
+            {
+              "paired_claim_index": 68,
+              "role": "original",
+              "source_ref": [
+                3,
+                3
+              ]
+            },
+            {
+              "claim_index": 68,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                3,
+                3
+              ]
+            },
+            {
+              "paired_claim_index": 69,
+              "role": "original",
+              "source_ref": [
+                3,
+                4
+              ]
+            },
+            {
+              "claim_index": 69,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                3,
+                4
+              ]
+            },
+            {
+              "paired_claim_index": 70,
+              "role": "original",
+              "source_ref": [
+                3,
+                5
+              ]
+            },
+            {
+              "claim_index": 70,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                3,
+                5
+              ]
+            },
+            {
+              "paired_claim_index": 71,
+              "role": "original",
+              "source_ref": [
+                3,
+                6
+              ]
+            },
+            {
+              "claim_index": 71,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                3,
+                6
+              ]
+            },
+            {
+              "paired_claim_index": 72,
+              "role": "original",
+              "source_ref": [
+                3,
+                7
+              ]
+            },
+            {
+              "claim_index": 72,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                3,
+                7
+              ]
+            }
+          ]
+        },
+        {
+          "conditional_M_i": 56,
+          "native_extended_log_size": 11,
+          "words": [
+            {
+              "paired_claim_index": 3,
+              "role": "original",
+              "source_ref": [
+                0,
+                3
+              ]
+            },
+            {
+              "claim_index": 3,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                0,
+                3
+              ]
+            },
+            {
+              "paired_claim_index": 4,
+              "role": "original",
+              "source_ref": [
+                0,
+                4
+              ]
+            },
+            {
+              "claim_index": 4,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                0,
+                4
+              ]
+            },
+            {
+              "paired_claim_index": 5,
+              "role": "original",
+              "source_ref": [
+                0,
+                5
+              ]
+            },
+            {
+              "claim_index": 5,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                0,
+                5
+              ]
+            },
+            {
+              "paired_claim_index": 6,
+              "role": "original",
+              "source_ref": [
+                0,
+                6
+              ]
+            },
+            {
+              "claim_index": 6,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                0,
+                6
+              ]
+            },
+            {
+              "paired_claim_index": 7,
+              "role": "original",
+              "source_ref": [
+                0,
+                7
+              ]
+            },
+            {
+              "claim_index": 7,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                0,
+                7
+              ]
+            },
+            {
+              "paired_claim_index": 8,
+              "role": "original",
+              "source_ref": [
+                0,
+                8
+              ]
+            },
+            {
+              "claim_index": 8,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                0,
+                8
+              ]
+            },
+            {
+              "paired_claim_index": 9,
+              "role": "original",
+              "source_ref": [
+                0,
+                9
+              ]
+            },
+            {
+              "claim_index": 9,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                0,
+                9
+              ]
+            },
+            {
+              "paired_claim_index": 10,
+              "role": "original",
+              "source_ref": [
+                0,
+                10
+              ]
+            },
+            {
+              "claim_index": 10,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                0,
+                10
+              ]
+            },
+            {
+              "paired_claim_index": 12,
+              "role": "original",
+              "source_ref": [
+                1,
+                0
+              ]
+            },
+            {
+              "claim_index": 12,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                1,
+                0
+              ]
+            },
+            {
+              "paired_claim_index": 13,
+              "role": "original",
+              "source_ref": [
+                1,
+                1
+              ]
+            },
+            {
+              "claim_index": 13,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                1,
+                1
+              ]
+            },
+            {
+              "paired_claim_index": 14,
+              "role": "original",
+              "source_ref": [
+                1,
+                2
+              ]
+            },
+            {
+              "claim_index": 14,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                1,
+                2
+              ]
+            },
+            {
+              "paired_claim_index": 15,
+              "role": "original",
+              "source_ref": [
+                1,
+                3
+              ]
+            },
+            {
+              "claim_index": 15,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                1,
+                3
+              ]
+            },
+            {
+              "paired_claim_index": 16,
+              "role": "original",
+              "source_ref": [
+                1,
+                4
+              ]
+            },
+            {
+              "claim_index": 16,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                1,
+                4
+              ]
+            },
+            {
+              "paired_claim_index": 17,
+              "role": "original",
+              "source_ref": [
+                1,
+                5
+              ]
+            },
+            {
+              "claim_index": 17,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                1,
+                5
+              ]
+            },
+            {
+              "paired_claim_index": 18,
+              "role": "original",
+              "source_ref": [
+                1,
+                6
+              ]
+            },
+            {
+              "claim_index": 18,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                1,
+                6
+              ]
+            },
+            {
+              "paired_claim_index": 19,
+              "role": "original",
+              "source_ref": [
+                1,
+                7
+              ]
+            },
+            {
+              "claim_index": 19,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                1,
+                7
+              ]
+            },
+            {
+              "paired_claim_index": 20,
+              "role": "original",
+              "source_ref": [
+                1,
+                8
+              ]
+            },
+            {
+              "claim_index": 20,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                1,
+                8
+              ]
+            },
+            {
+              "paired_claim_index": 21,
+              "role": "original",
+              "source_ref": [
+                1,
+                9
+              ]
+            },
+            {
+              "claim_index": 21,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                1,
+                9
+              ]
+            },
+            {
+              "paired_claim_index": 22,
+              "role": "original",
+              "source_ref": [
+                1,
+                10
+              ]
+            },
+            {
+              "claim_index": 22,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                1,
+                10
+              ]
+            },
+            {
+              "paired_claim_index": 23,
+              "role": "original",
+              "source_ref": [
+                1,
+                11
+              ]
+            },
+            {
+              "claim_index": 23,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                1,
+                11
+              ]
+            },
+            {
+              "paired_claim_index": 29,
+              "role": "original",
+              "source_ref": [
+                2,
+                0
+              ]
+            },
+            {
+              "claim_index": 29,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                0
+              ]
+            },
+            {
+              "paired_claim_index": 30,
+              "role": "original",
+              "source_ref": [
+                2,
+                1
+              ]
+            },
+            {
+              "claim_index": 30,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                1
+              ]
+            },
+            {
+              "paired_claim_index": 31,
+              "role": "original",
+              "source_ref": [
+                2,
+                2
+              ]
+            },
+            {
+              "claim_index": 31,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                2
+              ]
+            },
+            {
+              "paired_claim_index": 32,
+              "role": "original",
+              "source_ref": [
+                2,
+                3
+              ]
+            },
+            {
+              "claim_index": 32,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                3
+              ]
+            },
+            {
+              "paired_claim_index": 34,
+              "role": "original",
+              "source_ref": [
+                2,
+                4
+              ]
+            },
+            {
+              "claim_index": 34,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                4
+              ]
+            },
+            {
+              "paired_claim_index": 36,
+              "role": "original",
+              "source_ref": [
+                2,
+                5
+              ]
+            },
+            {
+              "claim_index": 36,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                5
+              ]
+            },
+            {
+              "paired_claim_index": 38,
+              "role": "original",
+              "source_ref": [
+                2,
+                6
+              ]
+            },
+            {
+              "claim_index": 38,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                6
+              ]
+            },
+            {
+              "paired_claim_index": 40,
+              "role": "original",
+              "source_ref": [
+                2,
+                7
+              ]
+            },
+            {
+              "claim_index": 40,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                7
+              ]
+            }
+          ]
+        },
+        {
+          "conditional_M_i": 38,
+          "native_extended_log_size": 5,
+          "words": [
+            {
+              "paired_claim_index": 0,
+              "role": "original",
+              "source_ref": [
+                0,
+                0
+              ]
+            },
+            {
+              "claim_index": 0,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                0,
+                0
+              ]
+            },
+            {
+              "paired_claim_index": 1,
+              "role": "original",
+              "source_ref": [
+                0,
+                1
+              ]
+            },
+            {
+              "claim_index": 1,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                0,
+                1
+              ]
+            },
+            {
+              "paired_claim_index": 2,
+              "role": "original",
+              "source_ref": [
+                0,
+                2
+              ]
+            },
+            {
+              "claim_index": 2,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                0,
+                2
+              ]
+            },
+            {
+              "paired_claim_index": 24,
+              "role": "original",
+              "source_ref": [
+                1,
+                12
+              ]
+            },
+            {
+              "claim_index": 24,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                1,
+                12
+              ]
+            },
+            {
+              "paired_claim_index": 25,
+              "role": "original",
+              "source_ref": [
+                1,
+                13
+              ]
+            },
+            {
+              "claim_index": 25,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                1,
+                13
+              ]
+            },
+            {
+              "paired_claim_index": 26,
+              "role": "original",
+              "source_ref": [
+                1,
+                14
+              ]
+            },
+            {
+              "claim_index": 26,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                1,
+                14
+              ]
+            },
+            {
+              "paired_claim_index": 27,
+              "role": "original",
+              "source_ref": [
+                1,
+                15
+              ]
+            },
+            {
+              "claim_index": 27,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                1,
+                15
+              ]
+            },
+            {
+              "paired_claim_index": 41,
+              "role": "original",
+              "source_ref": [
+                2,
+                8
+              ]
+            },
+            {
+              "claim_index": 41,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                8
+              ]
+            },
+            {
+              "paired_claim_index": 42,
+              "role": "original",
+              "source_ref": [
+                2,
+                9
+              ]
+            },
+            {
+              "claim_index": 42,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                9
+              ]
+            },
+            {
+              "paired_claim_index": 43,
+              "role": "original",
+              "source_ref": [
+                2,
+                10
+              ]
+            },
+            {
+              "claim_index": 43,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                10
+              ]
+            },
+            {
+              "paired_claim_index": 44,
+              "role": "original",
+              "source_ref": [
+                2,
+                11
+              ]
+            },
+            {
+              "claim_index": 44,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                11
+              ]
+            },
+            {
+              "paired_claim_index": 45,
+              "role": "original",
+              "source_ref": [
+                2,
+                12
+              ]
+            },
+            {
+              "claim_index": 45,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                12
+              ]
+            },
+            {
+              "paired_claim_index": 46,
+              "role": "original",
+              "source_ref": [
+                2,
+                13
+              ]
+            },
+            {
+              "claim_index": 46,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                13
+              ]
+            },
+            {
+              "paired_claim_index": 47,
+              "role": "original",
+              "source_ref": [
+                2,
+                14
+              ]
+            },
+            {
+              "claim_index": 47,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                14
+              ]
+            },
+            {
+              "paired_claim_index": 48,
+              "role": "original",
+              "source_ref": [
+                2,
+                15
+              ]
+            },
+            {
+              "claim_index": 48,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                15
+              ]
+            },
+            {
+              "paired_claim_index": 50,
+              "role": "original",
+              "source_ref": [
+                2,
+                16
+              ]
+            },
+            {
+              "claim_index": 50,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                16
+              ]
+            },
+            {
+              "paired_claim_index": 52,
+              "role": "original",
+              "source_ref": [
+                2,
+                17
+              ]
+            },
+            {
+              "claim_index": 52,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                17
+              ]
+            },
+            {
+              "paired_claim_index": 54,
+              "role": "original",
+              "source_ref": [
+                2,
+                18
+              ]
+            },
+            {
+              "claim_index": 54,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                18
+              ]
+            },
+            {
+              "paired_claim_index": 56,
+              "role": "original",
+              "source_ref": [
+                2,
+                19
+              ]
+            },
+            {
+              "claim_index": 56,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                19
+              ]
+            }
+          ]
+        }
+      ],
+      "mapping_status": "conditional_occupancy_not_native_to_paper_refinement"
+    },
+    "joint_multi_Q_deduplicated_original": {
+      "conditional_common_padded_M": 60,
+      "domains": [
+        {
+          "conditional_M_i": 32,
+          "native_extended_log_size": 17,
+          "words": [
+            {
+              "paired_claim_index": 11,
+              "role": "original",
+              "source_ref": [
+                0,
+                11
+              ]
+            },
+            {
+              "claim_index": 11,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                0,
+                11
+              ]
+            },
+            {
+              "paired_claim_index": 28,
+              "role": "original",
+              "source_ref": [
+                1,
+                16
+              ]
+            },
+            {
+              "claim_index": 28,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                1,
+                16
+              ]
+            },
+            {
+              "paired_claim_index": 58,
+              "role": "original",
+              "source_ref": [
+                2,
+                20
+              ]
+            },
+            {
+              "claim_index": 57,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                20
+              ]
+            },
+            {
+              "claim_index": 58,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                20
+              ]
+            },
+            {
+              "paired_claim_index": 60,
+              "role": "original",
+              "source_ref": [
+                2,
+                21
+              ]
+            },
+            {
+              "claim_index": 59,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                21
+              ]
+            },
+            {
+              "claim_index": 60,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                21
+              ]
+            },
+            {
+              "paired_claim_index": 62,
+              "role": "original",
+              "source_ref": [
+                2,
+                22
+              ]
+            },
+            {
+              "claim_index": 61,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                22
+              ]
+            },
+            {
+              "claim_index": 62,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                22
+              ]
+            },
+            {
+              "paired_claim_index": 64,
+              "role": "original",
+              "source_ref": [
+                2,
+                23
+              ]
+            },
+            {
+              "claim_index": 63,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                23
+              ]
+            },
+            {
+              "claim_index": 64,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                23
+              ]
+            },
+            {
+              "paired_claim_index": 65,
+              "role": "original",
+              "source_ref": [
+                3,
+                0
+              ]
+            },
+            {
+              "claim_index": 65,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                3,
+                0
+              ]
+            },
+            {
+              "paired_claim_index": 66,
+              "role": "original",
+              "source_ref": [
+                3,
+                1
+              ]
+            },
+            {
+              "claim_index": 66,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                3,
+                1
+              ]
+            },
+            {
+              "paired_claim_index": 67,
+              "role": "original",
+              "source_ref": [
+                3,
+                2
+              ]
+            },
+            {
+              "claim_index": 67,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                3,
+                2
+              ]
+            },
+            {
+              "paired_claim_index": 68,
+              "role": "original",
+              "source_ref": [
+                3,
+                3
+              ]
+            },
+            {
+              "claim_index": 68,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                3,
+                3
+              ]
+            },
+            {
+              "paired_claim_index": 69,
+              "role": "original",
+              "source_ref": [
+                3,
+                4
+              ]
+            },
+            {
+              "claim_index": 69,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                3,
+                4
+              ]
+            },
+            {
+              "paired_claim_index": 70,
+              "role": "original",
+              "source_ref": [
+                3,
+                5
+              ]
+            },
+            {
+              "claim_index": 70,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                3,
+                5
+              ]
+            },
+            {
+              "paired_claim_index": 71,
+              "role": "original",
+              "source_ref": [
+                3,
+                6
+              ]
+            },
+            {
+              "claim_index": 71,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                3,
+                6
+              ]
+            },
+            {
+              "paired_claim_index": 72,
+              "role": "original",
+              "source_ref": [
+                3,
+                7
+              ]
+            },
+            {
+              "claim_index": 72,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                3,
+                7
+              ]
+            }
+          ]
+        },
+        {
+          "conditional_M_i": 60,
+          "native_extended_log_size": 11,
+          "words": [
+            {
+              "paired_claim_index": 3,
+              "role": "original",
+              "source_ref": [
+                0,
+                3
+              ]
+            },
+            {
+              "claim_index": 3,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                0,
+                3
+              ]
+            },
+            {
+              "paired_claim_index": 4,
+              "role": "original",
+              "source_ref": [
+                0,
+                4
+              ]
+            },
+            {
+              "claim_index": 4,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                0,
+                4
+              ]
+            },
+            {
+              "paired_claim_index": 5,
+              "role": "original",
+              "source_ref": [
+                0,
+                5
+              ]
+            },
+            {
+              "claim_index": 5,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                0,
+                5
+              ]
+            },
+            {
+              "paired_claim_index": 6,
+              "role": "original",
+              "source_ref": [
+                0,
+                6
+              ]
+            },
+            {
+              "claim_index": 6,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                0,
+                6
+              ]
+            },
+            {
+              "paired_claim_index": 7,
+              "role": "original",
+              "source_ref": [
+                0,
+                7
+              ]
+            },
+            {
+              "claim_index": 7,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                0,
+                7
+              ]
+            },
+            {
+              "paired_claim_index": 8,
+              "role": "original",
+              "source_ref": [
+                0,
+                8
+              ]
+            },
+            {
+              "claim_index": 8,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                0,
+                8
+              ]
+            },
+            {
+              "paired_claim_index": 9,
+              "role": "original",
+              "source_ref": [
+                0,
+                9
+              ]
+            },
+            {
+              "claim_index": 9,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                0,
+                9
+              ]
+            },
+            {
+              "paired_claim_index": 10,
+              "role": "original",
+              "source_ref": [
+                0,
+                10
+              ]
+            },
+            {
+              "claim_index": 10,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                0,
+                10
+              ]
+            },
+            {
+              "paired_claim_index": 12,
+              "role": "original",
+              "source_ref": [
+                1,
+                0
+              ]
+            },
+            {
+              "claim_index": 12,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                1,
+                0
+              ]
+            },
+            {
+              "paired_claim_index": 13,
+              "role": "original",
+              "source_ref": [
+                1,
+                1
+              ]
+            },
+            {
+              "claim_index": 13,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                1,
+                1
+              ]
+            },
+            {
+              "paired_claim_index": 14,
+              "role": "original",
+              "source_ref": [
+                1,
+                2
+              ]
+            },
+            {
+              "claim_index": 14,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                1,
+                2
+              ]
+            },
+            {
+              "paired_claim_index": 15,
+              "role": "original",
+              "source_ref": [
+                1,
+                3
+              ]
+            },
+            {
+              "claim_index": 15,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                1,
+                3
+              ]
+            },
+            {
+              "paired_claim_index": 16,
+              "role": "original",
+              "source_ref": [
+                1,
+                4
+              ]
+            },
+            {
+              "claim_index": 16,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                1,
+                4
+              ]
+            },
+            {
+              "paired_claim_index": 17,
+              "role": "original",
+              "source_ref": [
+                1,
+                5
+              ]
+            },
+            {
+              "claim_index": 17,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                1,
+                5
+              ]
+            },
+            {
+              "paired_claim_index": 18,
+              "role": "original",
+              "source_ref": [
+                1,
+                6
+              ]
+            },
+            {
+              "claim_index": 18,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                1,
+                6
+              ]
+            },
+            {
+              "paired_claim_index": 19,
+              "role": "original",
+              "source_ref": [
+                1,
+                7
+              ]
+            },
+            {
+              "claim_index": 19,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                1,
+                7
+              ]
+            },
+            {
+              "paired_claim_index": 20,
+              "role": "original",
+              "source_ref": [
+                1,
+                8
+              ]
+            },
+            {
+              "claim_index": 20,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                1,
+                8
+              ]
+            },
+            {
+              "paired_claim_index": 21,
+              "role": "original",
+              "source_ref": [
+                1,
+                9
+              ]
+            },
+            {
+              "claim_index": 21,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                1,
+                9
+              ]
+            },
+            {
+              "paired_claim_index": 22,
+              "role": "original",
+              "source_ref": [
+                1,
+                10
+              ]
+            },
+            {
+              "claim_index": 22,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                1,
+                10
+              ]
+            },
+            {
+              "paired_claim_index": 23,
+              "role": "original",
+              "source_ref": [
+                1,
+                11
+              ]
+            },
+            {
+              "claim_index": 23,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                1,
+                11
+              ]
+            },
+            {
+              "paired_claim_index": 29,
+              "role": "original",
+              "source_ref": [
+                2,
+                0
+              ]
+            },
+            {
+              "claim_index": 29,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                0
+              ]
+            },
+            {
+              "paired_claim_index": 30,
+              "role": "original",
+              "source_ref": [
+                2,
+                1
+              ]
+            },
+            {
+              "claim_index": 30,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                1
+              ]
+            },
+            {
+              "paired_claim_index": 31,
+              "role": "original",
+              "source_ref": [
+                2,
+                2
+              ]
+            },
+            {
+              "claim_index": 31,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                2
+              ]
+            },
+            {
+              "paired_claim_index": 32,
+              "role": "original",
+              "source_ref": [
+                2,
+                3
+              ]
+            },
+            {
+              "claim_index": 32,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                3
+              ]
+            },
+            {
+              "paired_claim_index": 34,
+              "role": "original",
+              "source_ref": [
+                2,
+                4
+              ]
+            },
+            {
+              "claim_index": 33,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                4
+              ]
+            },
+            {
+              "claim_index": 34,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                4
+              ]
+            },
+            {
+              "paired_claim_index": 36,
+              "role": "original",
+              "source_ref": [
+                2,
+                5
+              ]
+            },
+            {
+              "claim_index": 35,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                5
+              ]
+            },
+            {
+              "claim_index": 36,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                5
+              ]
+            },
+            {
+              "paired_claim_index": 38,
+              "role": "original",
+              "source_ref": [
+                2,
+                6
+              ]
+            },
+            {
+              "claim_index": 37,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                6
+              ]
+            },
+            {
+              "claim_index": 38,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                6
+              ]
+            },
+            {
+              "paired_claim_index": 40,
+              "role": "original",
+              "source_ref": [
+                2,
+                7
+              ]
+            },
+            {
+              "claim_index": 39,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                7
+              ]
+            },
+            {
+              "claim_index": 40,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                7
+              ]
+            }
+          ]
+        },
+        {
+          "conditional_M_i": 42,
+          "native_extended_log_size": 5,
+          "words": [
+            {
+              "paired_claim_index": 0,
+              "role": "original",
+              "source_ref": [
+                0,
+                0
+              ]
+            },
+            {
+              "claim_index": 0,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                0,
+                0
+              ]
+            },
+            {
+              "paired_claim_index": 1,
+              "role": "original",
+              "source_ref": [
+                0,
+                1
+              ]
+            },
+            {
+              "claim_index": 1,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                0,
+                1
+              ]
+            },
+            {
+              "paired_claim_index": 2,
+              "role": "original",
+              "source_ref": [
+                0,
+                2
+              ]
+            },
+            {
+              "claim_index": 2,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                0,
+                2
+              ]
+            },
+            {
+              "paired_claim_index": 24,
+              "role": "original",
+              "source_ref": [
+                1,
+                12
+              ]
+            },
+            {
+              "claim_index": 24,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                1,
+                12
+              ]
+            },
+            {
+              "paired_claim_index": 25,
+              "role": "original",
+              "source_ref": [
+                1,
+                13
+              ]
+            },
+            {
+              "claim_index": 25,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                1,
+                13
+              ]
+            },
+            {
+              "paired_claim_index": 26,
+              "role": "original",
+              "source_ref": [
+                1,
+                14
+              ]
+            },
+            {
+              "claim_index": 26,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                1,
+                14
+              ]
+            },
+            {
+              "paired_claim_index": 27,
+              "role": "original",
+              "source_ref": [
+                1,
+                15
+              ]
+            },
+            {
+              "claim_index": 27,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                1,
+                15
+              ]
+            },
+            {
+              "paired_claim_index": 41,
+              "role": "original",
+              "source_ref": [
+                2,
+                8
+              ]
+            },
+            {
+              "claim_index": 41,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                8
+              ]
+            },
+            {
+              "paired_claim_index": 42,
+              "role": "original",
+              "source_ref": [
+                2,
+                9
+              ]
+            },
+            {
+              "claim_index": 42,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                9
+              ]
+            },
+            {
+              "paired_claim_index": 43,
+              "role": "original",
+              "source_ref": [
+                2,
+                10
+              ]
+            },
+            {
+              "claim_index": 43,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                10
+              ]
+            },
+            {
+              "paired_claim_index": 44,
+              "role": "original",
+              "source_ref": [
+                2,
+                11
+              ]
+            },
+            {
+              "claim_index": 44,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                11
+              ]
+            },
+            {
+              "paired_claim_index": 45,
+              "role": "original",
+              "source_ref": [
+                2,
+                12
+              ]
+            },
+            {
+              "claim_index": 45,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                12
+              ]
+            },
+            {
+              "paired_claim_index": 46,
+              "role": "original",
+              "source_ref": [
+                2,
+                13
+              ]
+            },
+            {
+              "claim_index": 46,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                13
+              ]
+            },
+            {
+              "paired_claim_index": 47,
+              "role": "original",
+              "source_ref": [
+                2,
+                14
+              ]
+            },
+            {
+              "claim_index": 47,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                14
+              ]
+            },
+            {
+              "paired_claim_index": 48,
+              "role": "original",
+              "source_ref": [
+                2,
+                15
+              ]
+            },
+            {
+              "claim_index": 48,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                15
+              ]
+            },
+            {
+              "paired_claim_index": 50,
+              "role": "original",
+              "source_ref": [
+                2,
+                16
+              ]
+            },
+            {
+              "claim_index": 49,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                16
+              ]
+            },
+            {
+              "claim_index": 50,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                16
+              ]
+            },
+            {
+              "paired_claim_index": 52,
+              "role": "original",
+              "source_ref": [
+                2,
+                17
+              ]
+            },
+            {
+              "claim_index": 51,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                17
+              ]
+            },
+            {
+              "claim_index": 52,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                17
+              ]
+            },
+            {
+              "paired_claim_index": 54,
+              "role": "original",
+              "source_ref": [
+                2,
+                18
+              ]
+            },
+            {
+              "claim_index": 53,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                18
+              ]
+            },
+            {
+              "claim_index": 54,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                18
+              ]
+            },
+            {
+              "paired_claim_index": 56,
+              "role": "original",
+              "source_ref": [
+                2,
+                19
+              ]
+            },
+            {
+              "claim_index": 55,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                19
+              ]
+            },
+            {
+              "claim_index": 56,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                19
+              ]
+            }
+          ]
+        }
+      ],
+      "mapping_status": "conditional_occupancy_not_native_to_paper_refinement"
+    },
+    "joint_multi_Q_repeated_original": {
+      "conditional_common_padded_M": 64,
+      "domains": [
+        {
+          "conditional_M_i": 36,
+          "native_extended_log_size": 17,
+          "words": [
+            {
+              "paired_claim_index": 11,
+              "role": "original",
+              "source_ref": [
+                0,
+                11
+              ]
+            },
+            {
+              "claim_index": 11,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                0,
+                11
+              ]
+            },
+            {
+              "paired_claim_index": 28,
+              "role": "original",
+              "source_ref": [
+                1,
+                16
+              ]
+            },
+            {
+              "claim_index": 28,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                1,
+                16
+              ]
+            },
+            {
+              "paired_claim_index": 57,
+              "role": "original",
+              "source_ref": [
+                2,
+                20
+              ]
+            },
+            {
+              "claim_index": 57,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                20
+              ]
+            },
+            {
+              "paired_claim_index": 58,
+              "role": "original",
+              "source_ref": [
+                2,
+                20
+              ]
+            },
+            {
+              "claim_index": 58,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                20
+              ]
+            },
+            {
+              "paired_claim_index": 59,
+              "role": "original",
+              "source_ref": [
+                2,
+                21
+              ]
+            },
+            {
+              "claim_index": 59,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                21
+              ]
+            },
+            {
+              "paired_claim_index": 60,
+              "role": "original",
+              "source_ref": [
+                2,
+                21
+              ]
+            },
+            {
+              "claim_index": 60,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                21
+              ]
+            },
+            {
+              "paired_claim_index": 61,
+              "role": "original",
+              "source_ref": [
+                2,
+                22
+              ]
+            },
+            {
+              "claim_index": 61,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                22
+              ]
+            },
+            {
+              "paired_claim_index": 62,
+              "role": "original",
+              "source_ref": [
+                2,
+                22
+              ]
+            },
+            {
+              "claim_index": 62,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                22
+              ]
+            },
+            {
+              "paired_claim_index": 63,
+              "role": "original",
+              "source_ref": [
+                2,
+                23
+              ]
+            },
+            {
+              "claim_index": 63,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                23
+              ]
+            },
+            {
+              "paired_claim_index": 64,
+              "role": "original",
+              "source_ref": [
+                2,
+                23
+              ]
+            },
+            {
+              "claim_index": 64,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                23
+              ]
+            },
+            {
+              "paired_claim_index": 65,
+              "role": "original",
+              "source_ref": [
+                3,
+                0
+              ]
+            },
+            {
+              "claim_index": 65,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                3,
+                0
+              ]
+            },
+            {
+              "paired_claim_index": 66,
+              "role": "original",
+              "source_ref": [
+                3,
+                1
+              ]
+            },
+            {
+              "claim_index": 66,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                3,
+                1
+              ]
+            },
+            {
+              "paired_claim_index": 67,
+              "role": "original",
+              "source_ref": [
+                3,
+                2
+              ]
+            },
+            {
+              "claim_index": 67,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                3,
+                2
+              ]
+            },
+            {
+              "paired_claim_index": 68,
+              "role": "original",
+              "source_ref": [
+                3,
+                3
+              ]
+            },
+            {
+              "claim_index": 68,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                3,
+                3
+              ]
+            },
+            {
+              "paired_claim_index": 69,
+              "role": "original",
+              "source_ref": [
+                3,
+                4
+              ]
+            },
+            {
+              "claim_index": 69,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                3,
+                4
+              ]
+            },
+            {
+              "paired_claim_index": 70,
+              "role": "original",
+              "source_ref": [
+                3,
+                5
+              ]
+            },
+            {
+              "claim_index": 70,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                3,
+                5
+              ]
+            },
+            {
+              "paired_claim_index": 71,
+              "role": "original",
+              "source_ref": [
+                3,
+                6
+              ]
+            },
+            {
+              "claim_index": 71,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                3,
+                6
+              ]
+            },
+            {
+              "paired_claim_index": 72,
+              "role": "original",
+              "source_ref": [
+                3,
+                7
+              ]
+            },
+            {
+              "claim_index": 72,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                3,
+                7
+              ]
+            }
+          ]
+        },
+        {
+          "conditional_M_i": 64,
+          "native_extended_log_size": 11,
+          "words": [
+            {
+              "paired_claim_index": 3,
+              "role": "original",
+              "source_ref": [
+                0,
+                3
+              ]
+            },
+            {
+              "claim_index": 3,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                0,
+                3
+              ]
+            },
+            {
+              "paired_claim_index": 4,
+              "role": "original",
+              "source_ref": [
+                0,
+                4
+              ]
+            },
+            {
+              "claim_index": 4,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                0,
+                4
+              ]
+            },
+            {
+              "paired_claim_index": 5,
+              "role": "original",
+              "source_ref": [
+                0,
+                5
+              ]
+            },
+            {
+              "claim_index": 5,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                0,
+                5
+              ]
+            },
+            {
+              "paired_claim_index": 6,
+              "role": "original",
+              "source_ref": [
+                0,
+                6
+              ]
+            },
+            {
+              "claim_index": 6,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                0,
+                6
+              ]
+            },
+            {
+              "paired_claim_index": 7,
+              "role": "original",
+              "source_ref": [
+                0,
+                7
+              ]
+            },
+            {
+              "claim_index": 7,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                0,
+                7
+              ]
+            },
+            {
+              "paired_claim_index": 8,
+              "role": "original",
+              "source_ref": [
+                0,
+                8
+              ]
+            },
+            {
+              "claim_index": 8,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                0,
+                8
+              ]
+            },
+            {
+              "paired_claim_index": 9,
+              "role": "original",
+              "source_ref": [
+                0,
+                9
+              ]
+            },
+            {
+              "claim_index": 9,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                0,
+                9
+              ]
+            },
+            {
+              "paired_claim_index": 10,
+              "role": "original",
+              "source_ref": [
+                0,
+                10
+              ]
+            },
+            {
+              "claim_index": 10,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                0,
+                10
+              ]
+            },
+            {
+              "paired_claim_index": 12,
+              "role": "original",
+              "source_ref": [
+                1,
+                0
+              ]
+            },
+            {
+              "claim_index": 12,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                1,
+                0
+              ]
+            },
+            {
+              "paired_claim_index": 13,
+              "role": "original",
+              "source_ref": [
+                1,
+                1
+              ]
+            },
+            {
+              "claim_index": 13,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                1,
+                1
+              ]
+            },
+            {
+              "paired_claim_index": 14,
+              "role": "original",
+              "source_ref": [
+                1,
+                2
+              ]
+            },
+            {
+              "claim_index": 14,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                1,
+                2
+              ]
+            },
+            {
+              "paired_claim_index": 15,
+              "role": "original",
+              "source_ref": [
+                1,
+                3
+              ]
+            },
+            {
+              "claim_index": 15,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                1,
+                3
+              ]
+            },
+            {
+              "paired_claim_index": 16,
+              "role": "original",
+              "source_ref": [
+                1,
+                4
+              ]
+            },
+            {
+              "claim_index": 16,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                1,
+                4
+              ]
+            },
+            {
+              "paired_claim_index": 17,
+              "role": "original",
+              "source_ref": [
+                1,
+                5
+              ]
+            },
+            {
+              "claim_index": 17,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                1,
+                5
+              ]
+            },
+            {
+              "paired_claim_index": 18,
+              "role": "original",
+              "source_ref": [
+                1,
+                6
+              ]
+            },
+            {
+              "claim_index": 18,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                1,
+                6
+              ]
+            },
+            {
+              "paired_claim_index": 19,
+              "role": "original",
+              "source_ref": [
+                1,
+                7
+              ]
+            },
+            {
+              "claim_index": 19,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                1,
+                7
+              ]
+            },
+            {
+              "paired_claim_index": 20,
+              "role": "original",
+              "source_ref": [
+                1,
+                8
+              ]
+            },
+            {
+              "claim_index": 20,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                1,
+                8
+              ]
+            },
+            {
+              "paired_claim_index": 21,
+              "role": "original",
+              "source_ref": [
+                1,
+                9
+              ]
+            },
+            {
+              "claim_index": 21,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                1,
+                9
+              ]
+            },
+            {
+              "paired_claim_index": 22,
+              "role": "original",
+              "source_ref": [
+                1,
+                10
+              ]
+            },
+            {
+              "claim_index": 22,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                1,
+                10
+              ]
+            },
+            {
+              "paired_claim_index": 23,
+              "role": "original",
+              "source_ref": [
+                1,
+                11
+              ]
+            },
+            {
+              "claim_index": 23,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                1,
+                11
+              ]
+            },
+            {
+              "paired_claim_index": 29,
+              "role": "original",
+              "source_ref": [
+                2,
+                0
+              ]
+            },
+            {
+              "claim_index": 29,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                0
+              ]
+            },
+            {
+              "paired_claim_index": 30,
+              "role": "original",
+              "source_ref": [
+                2,
+                1
+              ]
+            },
+            {
+              "claim_index": 30,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                1
+              ]
+            },
+            {
+              "paired_claim_index": 31,
+              "role": "original",
+              "source_ref": [
+                2,
+                2
+              ]
+            },
+            {
+              "claim_index": 31,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                2
+              ]
+            },
+            {
+              "paired_claim_index": 32,
+              "role": "original",
+              "source_ref": [
+                2,
+                3
+              ]
+            },
+            {
+              "claim_index": 32,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                3
+              ]
+            },
+            {
+              "paired_claim_index": 33,
+              "role": "original",
+              "source_ref": [
+                2,
+                4
+              ]
+            },
+            {
+              "claim_index": 33,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                4
+              ]
+            },
+            {
+              "paired_claim_index": 34,
+              "role": "original",
+              "source_ref": [
+                2,
+                4
+              ]
+            },
+            {
+              "claim_index": 34,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                4
+              ]
+            },
+            {
+              "paired_claim_index": 35,
+              "role": "original",
+              "source_ref": [
+                2,
+                5
+              ]
+            },
+            {
+              "claim_index": 35,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                5
+              ]
+            },
+            {
+              "paired_claim_index": 36,
+              "role": "original",
+              "source_ref": [
+                2,
+                5
+              ]
+            },
+            {
+              "claim_index": 36,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                5
+              ]
+            },
+            {
+              "paired_claim_index": 37,
+              "role": "original",
+              "source_ref": [
+                2,
+                6
+              ]
+            },
+            {
+              "claim_index": 37,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                6
+              ]
+            },
+            {
+              "paired_claim_index": 38,
+              "role": "original",
+              "source_ref": [
+                2,
+                6
+              ]
+            },
+            {
+              "claim_index": 38,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                6
+              ]
+            },
+            {
+              "paired_claim_index": 39,
+              "role": "original",
+              "source_ref": [
+                2,
+                7
+              ]
+            },
+            {
+              "claim_index": 39,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                7
+              ]
+            },
+            {
+              "paired_claim_index": 40,
+              "role": "original",
+              "source_ref": [
+                2,
+                7
+              ]
+            },
+            {
+              "claim_index": 40,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                7
+              ]
+            }
+          ]
+        },
+        {
+          "conditional_M_i": 46,
+          "native_extended_log_size": 5,
+          "words": [
+            {
+              "paired_claim_index": 0,
+              "role": "original",
+              "source_ref": [
+                0,
+                0
+              ]
+            },
+            {
+              "claim_index": 0,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                0,
+                0
+              ]
+            },
+            {
+              "paired_claim_index": 1,
+              "role": "original",
+              "source_ref": [
+                0,
+                1
+              ]
+            },
+            {
+              "claim_index": 1,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                0,
+                1
+              ]
+            },
+            {
+              "paired_claim_index": 2,
+              "role": "original",
+              "source_ref": [
+                0,
+                2
+              ]
+            },
+            {
+              "claim_index": 2,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                0,
+                2
+              ]
+            },
+            {
+              "paired_claim_index": 24,
+              "role": "original",
+              "source_ref": [
+                1,
+                12
+              ]
+            },
+            {
+              "claim_index": 24,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                1,
+                12
+              ]
+            },
+            {
+              "paired_claim_index": 25,
+              "role": "original",
+              "source_ref": [
+                1,
+                13
+              ]
+            },
+            {
+              "claim_index": 25,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                1,
+                13
+              ]
+            },
+            {
+              "paired_claim_index": 26,
+              "role": "original",
+              "source_ref": [
+                1,
+                14
+              ]
+            },
+            {
+              "claim_index": 26,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                1,
+                14
+              ]
+            },
+            {
+              "paired_claim_index": 27,
+              "role": "original",
+              "source_ref": [
+                1,
+                15
+              ]
+            },
+            {
+              "claim_index": 27,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                1,
+                15
+              ]
+            },
+            {
+              "paired_claim_index": 41,
+              "role": "original",
+              "source_ref": [
+                2,
+                8
+              ]
+            },
+            {
+              "claim_index": 41,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                8
+              ]
+            },
+            {
+              "paired_claim_index": 42,
+              "role": "original",
+              "source_ref": [
+                2,
+                9
+              ]
+            },
+            {
+              "claim_index": 42,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                9
+              ]
+            },
+            {
+              "paired_claim_index": 43,
+              "role": "original",
+              "source_ref": [
+                2,
+                10
+              ]
+            },
+            {
+              "claim_index": 43,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                10
+              ]
+            },
+            {
+              "paired_claim_index": 44,
+              "role": "original",
+              "source_ref": [
+                2,
+                11
+              ]
+            },
+            {
+              "claim_index": 44,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                11
+              ]
+            },
+            {
+              "paired_claim_index": 45,
+              "role": "original",
+              "source_ref": [
+                2,
+                12
+              ]
+            },
+            {
+              "claim_index": 45,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                12
+              ]
+            },
+            {
+              "paired_claim_index": 46,
+              "role": "original",
+              "source_ref": [
+                2,
+                13
+              ]
+            },
+            {
+              "claim_index": 46,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                13
+              ]
+            },
+            {
+              "paired_claim_index": 47,
+              "role": "original",
+              "source_ref": [
+                2,
+                14
+              ]
+            },
+            {
+              "claim_index": 47,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                14
+              ]
+            },
+            {
+              "paired_claim_index": 48,
+              "role": "original",
+              "source_ref": [
+                2,
+                15
+              ]
+            },
+            {
+              "claim_index": 48,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                15
+              ]
+            },
+            {
+              "paired_claim_index": 49,
+              "role": "original",
+              "source_ref": [
+                2,
+                16
+              ]
+            },
+            {
+              "claim_index": 49,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                16
+              ]
+            },
+            {
+              "paired_claim_index": 50,
+              "role": "original",
+              "source_ref": [
+                2,
+                16
+              ]
+            },
+            {
+              "claim_index": 50,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                16
+              ]
+            },
+            {
+              "paired_claim_index": 51,
+              "role": "original",
+              "source_ref": [
+                2,
+                17
+              ]
+            },
+            {
+              "claim_index": 51,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                17
+              ]
+            },
+            {
+              "paired_claim_index": 52,
+              "role": "original",
+              "source_ref": [
+                2,
+                17
+              ]
+            },
+            {
+              "claim_index": 52,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                17
+              ]
+            },
+            {
+              "paired_claim_index": 53,
+              "role": "original",
+              "source_ref": [
+                2,
+                18
+              ]
+            },
+            {
+              "claim_index": 53,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                18
+              ]
+            },
+            {
+              "paired_claim_index": 54,
+              "role": "original",
+              "source_ref": [
+                2,
+                18
+              ]
+            },
+            {
+              "claim_index": 54,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                18
+              ]
+            },
+            {
+              "paired_claim_index": 55,
+              "role": "original",
+              "source_ref": [
+                2,
+                19
+              ]
+            },
+            {
+              "claim_index": 55,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                19
+              ]
+            },
+            {
+              "paired_claim_index": 56,
+              "role": "original",
+              "source_ref": [
+                2,
+                19
+              ]
+            },
+            {
+              "claim_index": 56,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                19
+              ]
+            }
+          ]
+        }
+      ],
+      "mapping_status": "conditional_occupancy_not_native_to_paper_refinement"
+    },
+    "shifted_single_Q": {
+      "conditional_common_padded_M": 8,
+      "domains": [
+        {
+          "conditional_M_i": 8,
+          "native_extended_log_size": 17,
+          "words": [
+            {
+              "paired_claim_index": 57,
+              "role": "original",
+              "source_ref": [
+                2,
+                20
+              ]
+            },
+            {
+              "claim_index": 57,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                20
+              ]
+            },
+            {
+              "paired_claim_index": 59,
+              "role": "original",
+              "source_ref": [
+                2,
+                21
+              ]
+            },
+            {
+              "claim_index": 59,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                21
+              ]
+            },
+            {
+              "paired_claim_index": 61,
+              "role": "original",
+              "source_ref": [
+                2,
+                22
+              ]
+            },
+            {
+              "claim_index": 61,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                22
+              ]
+            },
+            {
+              "paired_claim_index": 63,
+              "role": "original",
+              "source_ref": [
+                2,
+                23
+              ]
+            },
+            {
+              "claim_index": 63,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                23
+              ]
+            }
+          ]
+        },
+        {
+          "conditional_M_i": 8,
+          "native_extended_log_size": 11,
+          "words": [
+            {
+              "paired_claim_index": 33,
+              "role": "original",
+              "source_ref": [
+                2,
+                4
+              ]
+            },
+            {
+              "claim_index": 33,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                4
+              ]
+            },
+            {
+              "paired_claim_index": 35,
+              "role": "original",
+              "source_ref": [
+                2,
+                5
+              ]
+            },
+            {
+              "claim_index": 35,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                5
+              ]
+            },
+            {
+              "paired_claim_index": 37,
+              "role": "original",
+              "source_ref": [
+                2,
+                6
+              ]
+            },
+            {
+              "claim_index": 37,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                6
+              ]
+            },
+            {
+              "paired_claim_index": 39,
+              "role": "original",
+              "source_ref": [
+                2,
+                7
+              ]
+            },
+            {
+              "claim_index": 39,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                7
+              ]
+            }
+          ]
+        },
+        {
+          "conditional_M_i": 8,
+          "native_extended_log_size": 5,
+          "words": [
+            {
+              "paired_claim_index": 49,
+              "role": "original",
+              "source_ref": [
+                2,
+                16
+              ]
+            },
+            {
+              "claim_index": 49,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                16
+              ]
+            },
+            {
+              "paired_claim_index": 51,
+              "role": "original",
+              "source_ref": [
+                2,
+                17
+              ]
+            },
+            {
+              "claim_index": 51,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                17
+              ]
+            },
+            {
+              "paired_claim_index": 53,
+              "role": "original",
+              "source_ref": [
+                2,
+                18
+              ]
+            },
+            {
+              "claim_index": 53,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                18
+              ]
+            },
+            {
+              "paired_claim_index": 55,
+              "role": "original",
+              "source_ref": [
+                2,
+                19
+              ]
+            },
+            {
+              "claim_index": 55,
+              "role": "native_own_quotient_candidate",
+              "source_ref": [
+                2,
+                19
+              ]
+            }
+          ]
+        }
+      ],
+      "mapping_status": "conditional_occupancy_not_native_to_paper_refinement"
+    }
+  },
+  "conditional_joint_width_if_periodicity_independent": {
+    "deduplicated_original": [
+      36,
+      64,
+      46
+    ],
+    "repeated_original": [
+      40,
+      68,
+      50
+    ]
+  },
+  "conditional_paper_D0_size_N_times_B_squared": 262144,
+  "legacy_native_quotient_contributions": {
+    "coefficient_compression_theorem_proven": false,
+    "explicit_ood": 73,
+    "height_local_periodicity_duplicates_sample1_at_all_heights": 12,
+    "independently_degree_tested": false,
+    "lifted_log17_periodicity_duplicates_sample1_at_height17": 4,
+    "periodicity": 12,
+    "total_accumulated": 85
+  },
+  "native_largest_extended_source_domain_size": 131072,
+  "native_proven_security_bits": null,
+  "native_source_point_projection": {
+    "by_native_extended_log_size": [
+      {
+        "doublings": 0,
+        "height": 17
+      },
+      {
+        "doublings": 6,
+        "height": 11
+      },
+      {
+        "doublings": 12,
+        "height": 5
+      }
+    ],
+    "captured_lifted_log_size": 17,
+    "paper_common_Q_equivalence_proven": false,
+    "rule": "for each captured top OOD point P, source-height point P_h = repeatedDouble(P, 17-h)"
+  },
+  "native_to_paper_batch_width_M": null,
+  "paper_definition": {
+    "conjugate_note": "Section 4.5 p. 37: Q and Frobenius conjugate quotient; details omitted, soundness said to carry over; Q excluded from C(CM31)",
+    "paper_url": "https://eprint.iacr.org/2026/532.pdf",
+    "protocol_3": "Section 4.2 Eq. (66): per-domain M_i functions; pad to M=max_i M_i",
+    "protocol_4": "Section 4.4 pp. 34-36 Eq. (77): at one common Q, pair every f with (f-v)/v_Q; multiple-Q generalization left to reader"
+  },
+  "proven_release_admissible": false,
+  "reviewed_native_source_sha256": {
+    "deps/stwo-zig/src/core/pcs/quotients/fri_answers.zig": "5280b74c1762860fad733066a40d96dada813908532e3b8854e0a3f02f182181",
+    "deps/stwo-zig/src/core/pcs/quotients/samples.zig": "18848c2e180236b0d6807a4d2863f127a8830366ac1df038f5042359e9401e2e",
+    "deps/stwo-zig/src/prover/pcs/sampled_coefficient_plans.zig": "0e284e6e4938e7937150b940cd4d33dfd1cc14be64198b45573c72a1a69d5d02",
+    "deps/stwo-zig/src/prover/pcs/sampled_values.zig": "6dbc8f01c08e26965efca413bb06feddfcffcee2a738cced0fc146da75c0b1f2",
+    "src/frontends/s31/runtime/native_verifier.zig": "e41b5577fc144b9a065036ccdc8c3b701e38b09404282be216605894c08f38a4"
+  },
+  "schema": "s31-p05-sparse-paper-ensemble-conditional-v1",
+  "status": "accepted_source_bound_occupancy_only_no_paper_refinement",
+  "unproved_mapping": [
+    "Protocol 4's one common Q does not jointly cover the two accepted OOD points",
+    "native conjugate two-point quotient needs the omitted Section 4.5 construction and degree/domain refinement, even though the paper says soundness carries over",
+    "native LDE heights 17/11/5 and paper's D0=N*B^2 need a degree/domain map",
+    "four source commitment epochs and candidate quotient oracles need whole-oracle custody",
+    "two separate single-Q proofs need a joint soundness/BCS composition and shared-source binding",
+    "periodicity relation words may require additional independent function tracks"
+  ]
+}
