@@ -55,8 +55,10 @@ fold widths two and one. It independently replays the actual M31-channel
 transcript: absorb first root, draw its QM31 challenge, absorb each inner root
 and draw its challenge, then absorb the bounded terminal coefficients. The
 test checks each stored challenge, the circle/line domain sizes, each stored
-fold width, the terminal coefficient copy, and the final 32-byte digest.
-Changing a root or a terminal coefficient changes that digest. A source guard
+fold width, the terminal coefficient copy, and the final 32-byte digest. A
+four-coefficient terminal against the two-coefficient bound is rejected before
+the terminal coefficients are absorbed. Changing a root or an allowed terminal
+coefficient changes the digest. A source guard
 also pins the native final-query path: the query index is bit-reversed in the
 last line domain, `LinePoly.evalAtPoint` evaluates the terminal polynomial at
 that point, and a mismatch returns `LastLayerEvaluationsInvalid`. Mutation

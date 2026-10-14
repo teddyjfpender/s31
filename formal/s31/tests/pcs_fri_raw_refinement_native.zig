@@ -76,6 +76,19 @@ test "FRI raw-slot refinement: native round roots, alphas and terminal have one 
         try std.testing.expect(source.eql(copied));
     }
     const before_terminal_channel = expected_channel;
+    var oversized_poly = core.poly.line.LinePoly.initOwned(try allocator.dupe(QM31, &.{
+        QM31.one(), QM31.one(), QM31.one(), QM31.one(),
+    }));
+    defer oversized_poly.deinit(allocator);
+    var oversized_proof = proof;
+    oversized_proof.last_layer_poly = oversized_poly;
+    var rejected_channel = Channel{};
+    try std.testing.expectError(
+        core.fri.FriVerificationError.LastLayerDegreeInvalid,
+        Verifier.commit(allocator, &rejected_channel, config, oversized_proof,
+            core.fri.CirclePolyDegreeBound.init(6)),
+    );
+    try std.testing.expectEqualDeep(before_terminal_channel.digestBytes(), rejected_channel.digestBytes());
     expected_channel.mixFelts(proof.last_layer_poly.coefficients());
     try std.testing.expectEqualDeep(expected_channel.digestBytes(), native_channel.digestBytes());
     try std.testing.expectEqual(expected_channel.n_draws, native_channel.n_draws);
