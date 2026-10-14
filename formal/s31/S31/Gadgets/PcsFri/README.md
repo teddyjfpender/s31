@@ -31,6 +31,15 @@ norm, a radius-one own quotient with zero degree edge, and reconstruction at
 every base circle row. The map is algebraic: authentication of the compiled
 source columns and a complete FRI reduction remain separate obligations.
 
+[`CanonicalCircleFoldIndex.lean`](CanonicalCircleFoldIndex.lean) proves the
+index geometry for two canonical one-bit FRI folds. Adjacent bit-reversed
+circle rows are opposite-sign members of one half-coset pair, so the first
+circle-to-line fold uses one line row without doubling its group index. The
+next adjacent line rows double to the same index in the next canonical line
+domain. These are group-index identities over the modeled circle; the native
+point arithmetic, row openings, challenge order and full FRI theorem remain
+separate obligations.
+
 [`NativeQueryBatch.lean`](NativeQueryBatch.lean) models the selected M31
 channel's eight-word output batches. For any number of requested raw queries
 and any array of 32-bit batch words, query slot `j` takes block `j / 8`, lane

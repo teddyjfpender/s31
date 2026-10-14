@@ -67,7 +67,7 @@ OBLIGATIONS = (
         "gap_kind": "unproven_native_refinement",
         "published_requirement": "Circle STARKs Theorem 6: committed round words, independent challenge order, every fold equation and terminal degree check match Protocol 2",
         "published_anchor": CIRCLE + "#appendix-B",
-        "partial_evidence": ["formal/s31/S31/Gadgets/PcsFri/FoldAlgebra.lean", "formal/s31/S31/Gadgets/PcsFri/LayerAcceptance.lean", "formal/s31/S31/Gadgets/PcsFri/TerminalBasisRefinement.lean", "formal/s31/tests/pcs_fri_raw_refinement_native.zig", "design/s31/security/PCS_FRI_OPERATIONAL_TERMINAL_REFINEMENT.md", "src/frontends/s31/sha/verification/pcs_capture_admission.zig"],
+        "partial_evidence": ["formal/s31/S31/Gadgets/PcsFri/FoldAlgebra.lean", "formal/s31/S31/Gadgets/PcsFri/LayerAcceptance.lean", "formal/s31/S31/Gadgets/PcsFri/TerminalBasisRefinement.lean", "formal/s31/S31/Gadgets/PcsFri/CanonicalCircleFoldIndex.lean", "formal/s31/tests/pcs_fri_raw_refinement_native.zig", "design/s31/security/PCS_FRI_OPERATIONAL_TERMINAL_REFINEMENT.md", "src/frontends/s31/sha/verification/pcs_capture_admission.zig"],
         "missing_discharge": "compose local fold and acceptance models with the complete native commitment, opening and terminal control flow",
     },
     {
