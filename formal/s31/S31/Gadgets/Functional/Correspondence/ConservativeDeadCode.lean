@@ -20,6 +20,7 @@ inductive Node where
   | input (index : Nat)
   | constant (value : M31)
   | add (lhs rhs : Nat)
+  | sub (lhs rhs : Nat)
   | mul (lhs rhs : Nat)
   | addConst (lhs : Nat) (value : M31)
   | mulConst (lhs : Nat) (value : M31)
@@ -28,20 +29,21 @@ inductive Node where
 
 def Node.references : Node → List Nat
   | .input _ | .constant _ => []
-  | .add lhs rhs | .mul lhs rhs | .assertEq lhs rhs => [lhs, rhs]
+  | .add lhs rhs | .sub lhs rhs | .mul lhs rhs | .assertEq lhs rhs => [lhs, rhs]
   | .addConst lhs _ | .mulConst lhs _ => [lhs]
   | .effect dependencies _ => dependencies
 
 /-- This is deliberately the Python pass's narrow allowlist. In particular,
 `assertEq` and `effect` remain observable even when their result is unused. -/
 def Node.erasable : Node → Bool
-  | .constant _ | .add _ _ | .mul _ _ | .addConst _ _ | .mulConst _ _ => true
+  | .constant _ | .add _ _ | .sub _ _ | .mul _ _ | .addConst _ _ | .mulConst _ _ => true
   | _ => false
 
 def Node.apply (inputs : Nat → M31) : Node → List M31 → Option M31
   | .input index, _ => some (inputs index)
   | .constant value, _ => some value
   | .add _ _, [lhs, rhs] => some (lhs + rhs)
+  | .sub _ _, [lhs, rhs] => some (lhs - rhs)
   | .mul _ _, [lhs, rhs] => some (lhs * rhs)
   | .addConst _ value, [lhs] => some (lhs + value)
   | .mulConst _ value, [lhs] => some (lhs * value)

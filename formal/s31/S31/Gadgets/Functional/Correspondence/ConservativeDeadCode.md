@@ -2,9 +2,10 @@
 
 [`ConservativeDeadCode.lean`](ConservativeDeadCode.lean) models the source
 optimizer's liveness decision over positional SSA nodes. It deliberately has
-one narrow erasable class: M31 constants, addition, multiplication, and their
-constant-operand forms. Inputs, assertions, and arbitrary partial or effectful
-operations remain roots. A retained node keeps every wire it reads.
+one narrow erasable class: M31 constants, addition, subtraction,
+multiplication, and their constant-operand forms. Inputs, assertions, and
+arbitrary partial or effectful operations remain roots. A retained node keeps
+every wire it reads.
 
 Consider this hand-written graph, with `x` as the public input:
 
@@ -22,6 +23,10 @@ and 0; ID 1 never becomes live. The retained mask is
 `x = 2`, the output value is `6`, but the assertion fails (`4 ≠ 2`) in **both**
 graphs. Erasing the assertion would make the pruned graph accept a computation
 the source rejects.
+
+An unused `x - x` is also erased: subtraction is total over M31, and its
+result has no live reader. If the result feeds an assertion or public output,
+the backward scan retains it and its input instead.
 
 `Needed` is the least logical closure of public outputs, ABI leaves, assertion
 IDs, all other non-erasable nodes, and references of live nodes.

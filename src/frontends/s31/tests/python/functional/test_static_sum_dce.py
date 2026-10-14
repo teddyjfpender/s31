@@ -39,6 +39,27 @@ circuit p(private x: [m31; 1]) -> public [m31; 1] {
                       "public_outputs": {"out": [14]}}
         self.assertEqual(evaluate_relation(relation, assignment), {"out": [14]})
 
+    def test_ignored_subtraction_payload_matches_direct_graph(self) -> None:
+        wrapped = """enum Choice { Left: [m31; 1], Right: [m31; 1] }
+circuit p(private x: [m31; 1]) -> public [m31; 1] {
+    let ignored = Choice::Left(x - x);
+    let out = x + x;
+    out
+}"""
+        direct = """circuit p(private x: [m31; 1]) -> public [m31; 1] {
+    let out = x + x;
+    out
+}"""
+        relation, _ = compile_text(wrapped)
+        direct_relation, _ = compile_text(direct)
+        self.assertEqual(relation, direct_relation)
+        self.assertEqual([node["op"] for node in relation["nodes"]], ["add"])
+        for value in (0, 1, 2**31 - 2):
+            expected = (2 * value) % (2**31 - 1)
+            assignment = {"public_inputs": {}, "private_inputs": {"x": [value]},
+                          "public_outputs": {"out": [expected]}}
+            self.assertEqual(evaluate_relation(relation, assignment), {"out": [expected]})
+
     def test_ignored_partial_payload_still_fails_at_zero(self) -> None:
         source = """enum Choice { Left: [m31; 1], Right: [m31; 1] }
 circuit p(private x: [m31; 1]) -> public [m31; 1] {
