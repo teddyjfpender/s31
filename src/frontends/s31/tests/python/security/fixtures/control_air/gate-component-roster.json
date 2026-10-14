@@ -1,0 +1,507 @@
+{
+  "air_bundle_sha256": "7b8022b09d84db371cc433aa0fcf132f7687f2720e05e4dc9a7650c575dc02c2",
+  "canonical_ir_sha256": "8042f899f4c98ec0068a7000d5b2b44fa90ee9ab359275419d7bb14a1571604a",
+  "circuit_hash": "339e822ddf4a701ccdb7cc31d7a84e46826f8fc572a4983cf22725f50cbab43a",
+  "claimed_sums": 11,
+  "components": [
+    {
+      "base_trace_columns": 4,
+      "claimed_sum_index": 0,
+      "interaction_trace_columns": 4,
+      "log_size_source": "eq_in0_address",
+      "lookup_uses_per_row": [
+        {
+          "relation_id": "Gate",
+          "uses": 2
+        }
+      ],
+      "name": "eq",
+      "proof_index": 0,
+      "source_index": 0,
+      "trace_log_size": 4
+    },
+    {
+      "base_trace_columns": 12,
+      "claimed_sum_index": 1,
+      "interaction_trace_columns": 8,
+      "log_size_source": "qm31_ops_in0_address",
+      "lookup_uses_per_row": [
+        {
+          "relation_id": "Gate",
+          "uses": 2
+        }
+      ],
+      "name": "qm31_ops",
+      "proof_index": 1,
+      "source_index": 1,
+      "trace_log_size": 9
+    },
+    {
+      "base_trace_columns": 20,
+      "claimed_sum_index": 2,
+      "interaction_trace_columns": 24,
+      "log_size_source": "triple_xor_input_addr_0",
+      "lookup_uses_per_row": [
+        {
+          "relation_id": "Gate",
+          "uses": 3
+        },
+        {
+          "relation_id": "VerifyBitwiseXor_8",
+          "uses": 8
+        }
+      ],
+      "name": "triple_xor",
+      "proof_index": 2,
+      "source_index": 2,
+      "trace_log_size": 4
+    },
+    {
+      "base_trace_columns": 4,
+      "claimed_sum_index": 3,
+      "interaction_trace_columns": 12,
+      "log_size_source": "m31_to_u32_input_addr",
+      "lookup_uses_per_row": [
+        {
+          "relation_id": "Gate",
+          "uses": 1
+        },
+        {
+          "relation_id": "RangeCheck_16",
+          "uses": 3
+        }
+      ],
+      "name": "m_31_to_u_32",
+      "proof_index": 3,
+      "source_index": 3,
+      "trace_log_size": 4
+    },
+    {
+      "base_trace_columns": 52,
+      "claimed_sum_index": 4,
+      "interaction_trace_columns": 52,
+      "log_size_source": "blake_g_gate_input_addr_a",
+      "lookup_uses_per_row": [
+        {
+          "relation_id": "Gate",
+          "uses": 6
+        },
+        {
+          "relation_id": "VerifyBitwiseXor_12",
+          "uses": 2
+        },
+        {
+          "relation_id": "VerifyBitwiseXor_4",
+          "uses": 2
+        },
+        {
+          "relation_id": "VerifyBitwiseXor_7",
+          "uses": 2
+        },
+        {
+          "relation_id": "VerifyBitwiseXor_8",
+          "uses": 6
+        },
+        {
+          "relation_id": "VerifyBitwiseXor_8_B",
+          "uses": 2
+        },
+        {
+          "relation_id": "VerifyBitwiseXor_9",
+          "uses": 2
+        }
+      ],
+      "name": "blake_g_gate",
+      "proof_index": 4,
+      "source_index": 4,
+      "trace_log_size": 4
+    },
+    {
+      "base_trace_columns": 2,
+      "claimed_sum_index": 5,
+      "interaction_trace_columns": 4,
+      "log_size_source": "fixed",
+      "lookup_uses_per_row": [],
+      "name": "verify_bitwise_xor_8",
+      "proof_index": 5,
+      "source_index": 5,
+      "trace_log_size": 16
+    },
+    {
+      "base_trace_columns": 16,
+      "claimed_sum_index": 6,
+      "interaction_trace_columns": 32,
+      "log_size_source": "fixed",
+      "lookup_uses_per_row": [],
+      "name": "verify_bitwise_xor_12",
+      "proof_index": 6,
+      "source_index": 6,
+      "trace_log_size": 20
+    },
+    {
+      "base_trace_columns": 1,
+      "claimed_sum_index": 7,
+      "interaction_trace_columns": 4,
+      "log_size_source": "fixed",
+      "lookup_uses_per_row": [],
+      "name": "verify_bitwise_xor_4",
+      "proof_index": 7,
+      "source_index": 7,
+      "trace_log_size": 8
+    },
+    {
+      "base_trace_columns": 1,
+      "claimed_sum_index": 8,
+      "interaction_trace_columns": 4,
+      "log_size_source": "fixed",
+      "lookup_uses_per_row": [],
+      "name": "verify_bitwise_xor_7",
+      "proof_index": 8,
+      "source_index": 8,
+      "trace_log_size": 14
+    },
+    {
+      "base_trace_columns": 1,
+      "claimed_sum_index": 9,
+      "interaction_trace_columns": 4,
+      "log_size_source": "fixed",
+      "lookup_uses_per_row": [],
+      "name": "verify_bitwise_xor_9",
+      "proof_index": 9,
+      "source_index": 9,
+      "trace_log_size": 18
+    },
+    {
+      "base_trace_columns": 1,
+      "claimed_sum_index": 10,
+      "interaction_trace_columns": 4,
+      "log_size_source": "fixed",
+      "lookup_uses_per_row": [],
+      "name": "range_check_16",
+      "proof_index": 10,
+      "source_index": 10,
+      "trace_log_size": 16
+    }
+  ],
+  "preprocessed_columns": [
+    {
+      "commitment_index": 0,
+      "id": "eq_in0_address",
+      "log_size": 4,
+      "rows": 16,
+      "values_sha256": "f5a5fd42d16a20302798ef6ed309979b43003d2320d9f0e8ea9831a92759fb4b"
+    },
+    {
+      "commitment_index": 1,
+      "id": "eq_in1_address",
+      "log_size": 4,
+      "rows": 16,
+      "values_sha256": "f5a5fd42d16a20302798ef6ed309979b43003d2320d9f0e8ea9831a92759fb4b"
+    },
+    {
+      "commitment_index": 2,
+      "id": "triple_xor_input_addr_0",
+      "log_size": 4,
+      "rows": 16,
+      "values_sha256": "f5a5fd42d16a20302798ef6ed309979b43003d2320d9f0e8ea9831a92759fb4b"
+    },
+    {
+      "commitment_index": 3,
+      "id": "triple_xor_input_addr_1",
+      "log_size": 4,
+      "rows": 16,
+      "values_sha256": "f5a5fd42d16a20302798ef6ed309979b43003d2320d9f0e8ea9831a92759fb4b"
+    },
+    {
+      "commitment_index": 4,
+      "id": "triple_xor_input_addr_2",
+      "log_size": 4,
+      "rows": 16,
+      "values_sha256": "f5a5fd42d16a20302798ef6ed309979b43003d2320d9f0e8ea9831a92759fb4b"
+    },
+    {
+      "commitment_index": 5,
+      "id": "triple_xor_output_addr",
+      "log_size": 4,
+      "rows": 16,
+      "values_sha256": "075489f69367e8f56c77ccd839b09af2d07c1b66775f9d54f7631305f642e3b2"
+    },
+    {
+      "commitment_index": 6,
+      "id": "triple_xor_multiplicity",
+      "log_size": 4,
+      "rows": 16,
+      "values_sha256": "f5a5fd42d16a20302798ef6ed309979b43003d2320d9f0e8ea9831a92759fb4b"
+    },
+    {
+      "commitment_index": 7,
+      "id": "m31_to_u32_input_addr",
+      "log_size": 4,
+      "rows": 16,
+      "values_sha256": "4893b1dd653a8e5c8d867d238b2862e15accb13537ad01783cb4b308d2d01ec1"
+    },
+    {
+      "commitment_index": 8,
+      "id": "m31_to_u32_output_addr",
+      "log_size": 4,
+      "rows": 16,
+      "values_sha256": "99072724cbf9b99aad3dfd4ae7e2ca461f9c7a71f6d516feccfde333a6652bda"
+    },
+    {
+      "commitment_index": 9,
+      "id": "m31_to_u32_multiplicity",
+      "log_size": 4,
+      "rows": 16,
+      "values_sha256": "0ec6ceaa27c58558a2525927a5adcc749ab724b308d37db40b8a3d4c138ffabb"
+    },
+    {
+      "commitment_index": 10,
+      "id": "blake_g_gate_input_addr_a",
+      "log_size": 4,
+      "rows": 16,
+      "values_sha256": "f5a5fd42d16a20302798ef6ed309979b43003d2320d9f0e8ea9831a92759fb4b"
+    },
+    {
+      "commitment_index": 11,
+      "id": "blake_g_gate_input_addr_b",
+      "log_size": 4,
+      "rows": 16,
+      "values_sha256": "f5a5fd42d16a20302798ef6ed309979b43003d2320d9f0e8ea9831a92759fb4b"
+    },
+    {
+      "commitment_index": 12,
+      "id": "blake_g_gate_input_addr_c",
+      "log_size": 4,
+      "rows": 16,
+      "values_sha256": "f5a5fd42d16a20302798ef6ed309979b43003d2320d9f0e8ea9831a92759fb4b"
+    },
+    {
+      "commitment_index": 13,
+      "id": "blake_g_gate_input_addr_d",
+      "log_size": 4,
+      "rows": 16,
+      "values_sha256": "f5a5fd42d16a20302798ef6ed309979b43003d2320d9f0e8ea9831a92759fb4b"
+    },
+    {
+      "commitment_index": 14,
+      "id": "blake_g_gate_input_addr_f0",
+      "log_size": 4,
+      "rows": 16,
+      "values_sha256": "f5a5fd42d16a20302798ef6ed309979b43003d2320d9f0e8ea9831a92759fb4b"
+    },
+    {
+      "commitment_index": 15,
+      "id": "blake_g_gate_input_addr_f1",
+      "log_size": 4,
+      "rows": 16,
+      "values_sha256": "f5a5fd42d16a20302798ef6ed309979b43003d2320d9f0e8ea9831a92759fb4b"
+    },
+    {
+      "commitment_index": 16,
+      "id": "blake_g_gate_output_addr_a",
+      "log_size": 4,
+      "rows": 16,
+      "values_sha256": "f495f52e4fd4979e9403209c9053afc1e58ad096c585fa906140e69bcea2b0f6"
+    },
+    {
+      "commitment_index": 17,
+      "id": "blake_g_gate_output_addr_b",
+      "log_size": 4,
+      "rows": 16,
+      "values_sha256": "12d21979196def6094d9f1f9ea93ad4882e7ea5d9373637741c24f2da6e71eb2"
+    },
+    {
+      "commitment_index": 18,
+      "id": "blake_g_gate_output_addr_c",
+      "log_size": 4,
+      "rows": 16,
+      "values_sha256": "3599d830d5da01d6ba347c88dbe23455b6cd1097fc8b4624259e994f43902be3"
+    },
+    {
+      "commitment_index": 19,
+      "id": "blake_g_gate_output_addr_d",
+      "log_size": 4,
+      "rows": 16,
+      "values_sha256": "c58115990bc507538946ad1d2a290471967c9b36d05a6e30a6fa5316ec19d8af"
+    },
+    {
+      "commitment_index": 20,
+      "id": "blake_g_gate_multiplicity",
+      "log_size": 4,
+      "rows": 16,
+      "values_sha256": "f5a5fd42d16a20302798ef6ed309979b43003d2320d9f0e8ea9831a92759fb4b"
+    },
+    {
+      "commitment_index": 21,
+      "id": "bitwise_xor_4_0",
+      "log_size": 8,
+      "rows": 256,
+      "values_sha256": "62acaa8c030c9b7abbecaaf3d3ae28baeefff56bba9eea04ced8a049830fa1ec"
+    },
+    {
+      "commitment_index": 22,
+      "id": "bitwise_xor_4_1",
+      "log_size": 8,
+      "rows": 256,
+      "values_sha256": "2aca55a142c7c2b506b35a76b3d535c52d67057f6dcb75c3408fd15121b0d260"
+    },
+    {
+      "commitment_index": 23,
+      "id": "bitwise_xor_4_2",
+      "log_size": 8,
+      "rows": 256,
+      "values_sha256": "c45c2dbd455c14d5d7de876caf7ad4d5e9e4fca9ccafe92d339dcc4b3dfdd82a"
+    },
+    {
+      "commitment_index": 24,
+      "id": "qm31_ops_add_flag",
+      "log_size": 9,
+      "rows": 512,
+      "values_sha256": "896c23053496590ca9b42d57275bb9d9414a67fa4be9b79f1845f36f1102295e"
+    },
+    {
+      "commitment_index": 25,
+      "id": "qm31_ops_sub_flag",
+      "log_size": 9,
+      "rows": 512,
+      "values_sha256": "722ce55cfc8a7274a927395aef1f87434a1bcf08135e8bd0185c57f8e69c3576"
+    },
+    {
+      "commitment_index": 26,
+      "id": "qm31_ops_mul_flag",
+      "log_size": 9,
+      "rows": 512,
+      "values_sha256": "7d603e331cdb7e753831eca4ad092aebc427acb3c0c11ef86fc6165b1e08582a"
+    },
+    {
+      "commitment_index": 27,
+      "id": "qm31_ops_pointwise_mul_flag",
+      "log_size": 9,
+      "rows": 512,
+      "values_sha256": "f58984a766279afbae36913ef117ffce60b3b161edc26a0c70d056bba4e13e4c"
+    },
+    {
+      "commitment_index": 28,
+      "id": "qm31_ops_in0_address",
+      "log_size": 9,
+      "rows": 512,
+      "values_sha256": "118675e4651ecc22552183d11c66bb59739b4471c3fb768153f6913af60ac5f7"
+    },
+    {
+      "commitment_index": 29,
+      "id": "qm31_ops_in1_address",
+      "log_size": 9,
+      "rows": 512,
+      "values_sha256": "c6e2a13034081fe7034f50d977889148c649df90b1418a81420460bde4c649f1"
+    },
+    {
+      "commitment_index": 30,
+      "id": "qm31_ops_out_address",
+      "log_size": 9,
+      "rows": 512,
+      "values_sha256": "50a7685cffb3ff14ba95249389b968161c1d246c1aa754f181743f9e56ee1293"
+    },
+    {
+      "commitment_index": 31,
+      "id": "qm31_ops_mults",
+      "log_size": 9,
+      "rows": 512,
+      "values_sha256": "bb347934c74dccff9953e9139b2e1c82a94a1180fd5f23be7d3d6c6d7dfcfa2e"
+    },
+    {
+      "commitment_index": 32,
+      "id": "bitwise_xor_7_0",
+      "log_size": 14,
+      "rows": 16384,
+      "values_sha256": "95747efaf5337de58bc8bf753a99dc0b67cc7e0445554cc43f0edbff5e7d3475"
+    },
+    {
+      "commitment_index": 33,
+      "id": "bitwise_xor_7_1",
+      "log_size": 14,
+      "rows": 16384,
+      "values_sha256": "5e4d273931d2083601519e807b75a41328c9b4c5f4b8db2200f3f9f69ff9e2b2"
+    },
+    {
+      "commitment_index": 34,
+      "id": "bitwise_xor_7_2",
+      "log_size": 14,
+      "rows": 16384,
+      "values_sha256": "941f24ebfa96ceef60e3579657f5964f7efe628b869513fc62b0d8c10627145c"
+    },
+    {
+      "commitment_index": 35,
+      "id": "seq_16",
+      "log_size": 16,
+      "rows": 65536,
+      "values_sha256": "4a35a59aabf394adb1d83cda6d3c2e799553e35ba7e4ee55537c8add209532a7"
+    },
+    {
+      "commitment_index": 36,
+      "id": "bitwise_xor_8_0",
+      "log_size": 16,
+      "rows": 65536,
+      "values_sha256": "3d9887a04bab16aff7e12f22be22682cfd69ff29680c01225f20858145396f41"
+    },
+    {
+      "commitment_index": 37,
+      "id": "bitwise_xor_8_1",
+      "log_size": 16,
+      "rows": 65536,
+      "values_sha256": "0c6d985b52521d4757960925b9556823f50ab20b107b5f22c94af1f22bd9d652"
+    },
+    {
+      "commitment_index": 38,
+      "id": "bitwise_xor_8_2",
+      "log_size": 16,
+      "rows": 65536,
+      "values_sha256": "98ea9204da3a2e3b25a92f5277a94102cf961b88bd016669f8b1a7793dd597e0"
+    },
+    {
+      "commitment_index": 39,
+      "id": "bitwise_xor_9_0",
+      "log_size": 18,
+      "rows": 262144,
+      "values_sha256": "ca338a2199f1704913b678132b0ee32d6e0b048bdb2fe3985c96422a98998f41"
+    },
+    {
+      "commitment_index": 40,
+      "id": "bitwise_xor_9_1",
+      "log_size": 18,
+      "rows": 262144,
+      "values_sha256": "649f1fdbfa1fede84f64d13cbad033b837681c256a5d649f52c0d2c1701f79aa"
+    },
+    {
+      "commitment_index": 41,
+      "id": "bitwise_xor_9_2",
+      "log_size": 18,
+      "rows": 262144,
+      "values_sha256": "aa5f63f390000603b972ebe723f1022b1bf6da9c64b5c12748b5f13b16096604"
+    },
+    {
+      "commitment_index": 42,
+      "id": "bitwise_xor_10_0",
+      "log_size": 20,
+      "rows": 1048576,
+      "values_sha256": "baea96e8a3548ce8e64e3ea67e8559735890cf2ed2432f6550ab1cff42a24169"
+    },
+    {
+      "commitment_index": 43,
+      "id": "bitwise_xor_10_1",
+      "log_size": 20,
+      "rows": 1048576,
+      "values_sha256": "ab86e430782bc5637fdf8e1c0b84f2cd6366f8e7cd9f7fd4872dfe8eef928c43"
+    },
+    {
+      "commitment_index": 44,
+      "id": "bitwise_xor_10_2",
+      "log_size": 20,
+      "rows": 1048576,
+      "values_sha256": "bd86f027b7a9889e4202237de3c9adf38183a7a922250e5b6c89ea13e22184fb"
+    }
+  ],
+  "preprocessed_root": "1d33081d1ae08b1e5aaa2535cd9936370893877ac88219852f76b91e73e3bf27",
+  "profile": "circuit-v1",
+  "program_sha256": "39a73182151ffeba35d930590b3b8360ba3fcb45e9e7f5435a94f064d03a1cf8",
+  "schema": "s31-component-roster-gate-v1"
+}

@@ -1,0 +1,30 @@
+{
+  "air_bundle_sha256": "7b8022b09d84db371cc433aa0fcf132f7687f2720e05e4dc9a7650c575dc02c2",
+  "canonical_ir_sha256": "8042f899f4c98ec0068a7000d5b2b44fa90ee9ab359275419d7bb14a1571604a",
+  "chip": null,
+  "circuit_hash": "339e822ddf4a701ccdb7cc31d7a84e46826f8fc572a4983cf22725f50cbab43a",
+  "fri": {
+    "fold_step": 1,
+    "last_layer_degree_bound": 1,
+    "log_blowup_factor": 1,
+    "pow_bits": 26,
+    "queries": 70
+  },
+  "gate_component_roster_sha256": "2e77e4025a6c4b61d30648f9443fe720db14c6d5a3ddbd5eaf210e00df5451ae",
+  "name": "control_air",
+  "padded": {
+    "blake_g": 16,
+    "eq": 16,
+    "m31_to_u32": 16,
+    "qm31_ops": 512,
+    "triple_xor": 16
+  },
+  "pcs_mode": "legacy_postcard",
+  "preprocessed_root": "1d33081d1ae08b1e5aaa2535cd9936370893877ac88219852f76b91e73e3bf27",
+  "profile": "circuit-v1",
+  "program_sha256": "39a73182151ffeba35d930590b3b8360ba3fcb45e9e7f5435a94f064d03a1cf8",
+  "projection_sha256": "ceea3c293a4fcd3ca8a20ba62f4845732f8725bdf610fe6367c83adcb8be7e09",
+  "schema": "s31-verification-key-gate-roster-v1",
+  "stdlib_lock_sha256": "071792bc882f7a538fccd133707275c7143761e44d78c5bd8c4e59e0a2905651",
+  "trace_log_size": 20
+}

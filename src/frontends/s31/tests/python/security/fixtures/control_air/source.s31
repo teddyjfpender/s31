@@ -1,0 +1,7 @@
+use std@1;
+circuit control_air(public x: [m31; 1], private a: [m31; 4], private b: [m31; 4]) -> public [m31; 4] {
+    let z = std::field::is_zero(x);
+    let picked = std::field::select(z, a, b);
+    let result = std::math::inv(picked);
+    result
+}

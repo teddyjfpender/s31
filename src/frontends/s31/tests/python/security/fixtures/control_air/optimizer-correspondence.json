@@ -1,0 +1,8 @@
+{
+  "aliases": 0,
+  "canonical_ir_sha256": "8042f899f4c98ec0068a7000d5b2b44fa90ee9ab359275419d7bb14a1571604a",
+  "canonical_nodes": 6,
+  "program_sha256": "39a73182151ffeba35d930590b3b8360ba3fcb45e9e7f5435a94f064d03a1cf8",
+  "schema": "s31-optimizer-correspondence-pure-field-v2",
+  "source_nodes": 3
+}

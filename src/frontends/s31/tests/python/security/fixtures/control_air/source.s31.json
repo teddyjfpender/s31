@@ -1,0 +1,47 @@
+{
+  "assertions": [],
+  "inputs": [
+    {
+      "kind": "m31",
+      "length": 1,
+      "name": "x",
+      "visibility": "public"
+    },
+    {
+      "kind": "m31",
+      "length": 4,
+      "name": "a",
+      "visibility": "private"
+    },
+    {
+      "kind": "m31",
+      "length": 4,
+      "name": "b",
+      "visibility": "private"
+    }
+  ],
+  "name": "control_air",
+  "nodes": [
+    {
+      "lhs": "x",
+      "name": "z",
+      "op": "is_zero"
+    },
+    {
+      "lhs": "a",
+      "name": "picked",
+      "op": "select",
+      "rhs": "b",
+      "selector": "z"
+    },
+    {
+      "lhs": "picked",
+      "name": "result",
+      "op": "inv"
+    }
+  ],
+  "public_outputs": [
+    "result"
+  ],
+  "version": 1
+}
