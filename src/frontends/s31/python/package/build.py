@@ -9,6 +9,7 @@ import tempfile
 from pathlib import Path
 
 import proof_privacy
+from package.pcs_mode import LEGACY as LEGACY_PCS_MODE
 from package.context import (
     AIR_BUNDLE_SHA256, BUILD_FILE, PROJECTION_SHA256, ROOT, abi,
     compiler_fingerprint, file_hash, invoke, load_source, lower_text, sha256,
@@ -109,6 +110,7 @@ def build_json(source_path: Path, output: Path, lowering: str = "gate",
         key = {
             "schema": requested_key_schema,
             "profile": inspection["profile"],
+            "pcs_mode": LEGACY_PCS_MODE,
             "chip": inspection["chip"],
             "name": name,
             "program_sha256": inspection["program_sha256"],

@@ -37,6 +37,16 @@ def main() -> None:
         s31.write_json(variant, source_b)
         package_a = s31.build(SOURCE, work / "source-a", "gate")
         package_b = s31.build(variant, work / "source-b", "gate")
+        installed_key = json.loads((package_a / "verification-key.json").read_text())
+        if installed_key.get("pcs_mode") != "legacy_postcard":
+            raise AssertionError("new S31 packages must pin the production PCS mode")
+        relabeled_key = {**installed_key, "pcs_mode": "cas05_sparse_v6"}
+        relabeled_path = work / "relabeled-verification-key.json"
+        s31.write_json(relabeled_path, relabeled_key)
+        rejection = run(str(package_a / "bin/s31-affine4_v1-native-verifier"),
+                        "check-key", str(relabeled_path), accepted=False)
+        if "InvalidVerificationKey" not in rejection:
+            raise AssertionError(f"proof-selected key relabeling failed for the wrong reason:\n{rejection}")
 
         assignment_b = copy.deepcopy(json.loads(ASSIGNMENT.read_text()))
         assignment_b["public_outputs"]["y"] = [20, 29, 38, 589826]

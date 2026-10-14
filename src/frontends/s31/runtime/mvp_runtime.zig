@@ -14,6 +14,7 @@ const public_physical_guard = @import("public_physical_guard.zig");
 const public_main_commitment = @import("public_main_commitment.zig");
 const public_fixed_commitment = @import("public_fixed_commitment.zig");
 const proof_execution = @import("proof_execution.zig");
+const pcs_mode_binding = @import("pcs_mode_binding.zig");
 const recursion_gate = @import("../recursion/recursion_gate.zig");
 const fixed_fold = @import("../recursion/fixed_fold.zig");
 const state_fold = @import("../recursion/state_fold.zig");
@@ -54,6 +55,8 @@ const ChipKey = struct {
 const Key = struct {
     schema: []const u8,
     profile: []const u8 = "circuit-v1",
+    /// Absent in previously sealed keys; those keys select legacy postcard.
+    pcs_mode: pcs_mode_binding.Mode = .legacy_postcard,
     proof_privacy: ?privacy.Policy = null,
     chip: ?ChipKey = null,
     private_boundary: ?circuit.common.direct_arithmetic.PrivateBoundary = null,
@@ -3985,9 +3988,9 @@ fn verify(allocator: std.mem.Allocator, path: []const u8, statement_path: []cons
     var hash: [32]u8 = undefined;
     _ = try std.fmt.hexToBytes(&root, key.preprocessed_root);
     _ = try std.fmt.hexToBytes(&hash, key.circuit_hash);
-    const encoded = try std.fs.cwd().readFileAlloc(allocator, path, 16 << 20);
-    defer allocator.free(encoded);
-    const public_words = if (parsed.value.version == 2) blk: {
+    const proof_bytes = try std.fs.cwd().readFileAlloc(allocator, path, 16 << 20);
+    defer allocator.free(proof_bytes);
+    const statement_words = if (parsed.value.version == 2) blk: {
         const statement_bytes = try std.fs.cwd().readFileAlloc(allocator, statement_path, 1 << 20);
         defer allocator.free(statement_bytes);
         break :blk try record_abi.claimedWords(allocator, parsed.value, statement_bytes);
@@ -3997,6 +4000,9 @@ fn verify(allocator: std.mem.Allocator, path: []const u8, statement_path: []cons
         if (statement.value.private_inputs != null) return error.InvalidPublicStatement;
         break :blk try relation.claimedWords(allocator, parsed.value, statement.value);
     };
+    const admitted = try pcs_mode_binding.bind(key.pcs_mode, statement_words, proof_bytes);
+    const public_words = admitted.public_words;
+    const encoded = admitted.proof_bytes;
     var bundle = try parseAirBundle(allocator);
     defer bundle.deinit();
     if (direct_mode) {
@@ -4144,6 +4150,7 @@ fn verify(allocator: std.mem.Allocator, path: []const u8, statement_path: []cons
 }
 
 fn validateKey(allocator: std.mem.Allocator, source: relation.Program, key: Key) !void {
+    try pcs_mode_binding.requireProduction(key.pcs_mode);
     if (source.version == 2) {
         const actual = key.public_abi_sha256 orelse return error.InvalidVerificationKey;
         const expected = try record_abi.digest(allocator, source);
