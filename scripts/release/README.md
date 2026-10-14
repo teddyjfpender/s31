@@ -163,6 +163,14 @@ aligns the two FRI degree tracks with the four Gate source roots and costs the
 extra Merkle hashing. The model has no native selector or soundness theorem;
 `--require-native-soundness` fails closed.
 
+The candidate [line-tree descriptor model](pcs_fri_line_descriptor_v2.py)
+pins the versioned tree geometry, ordered column roster and named root event
+inside the initial statement digest. Its
+[byte and custody brief](../../design/s31/security/line-tree-descriptor-v2.md)
+lists the selected-verifier obligations, including consistent query
+projection through every Circle FRI fold. It does not change release
+admission.
+
 ## Formal receipt
 
 Run the Lean source-binding check, full build, and kernel replay on a clean
