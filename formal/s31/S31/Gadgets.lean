@@ -337,6 +337,7 @@ import S31.Gadgets.PcsFri.ConcreteCircleMinpoly
 import S31.Gadgets.PcsFri.CanonicalCircleLaurentRows
 import S31.Gadgets.PcsFri.GateFourBlockOwnQuotient
 import S31.Gadgets.PcsFri.GateQuotientOnlyGap
+import S31.Gadgets.PcsFri.GateFourSlotNativeMap
 import S31.Gadgets.PcsFri.Gate16FourierRows
 import S31.Gadgets.PcsFri.FriCascadeNormalization
 import S31.Gadgets.PcsFri.GroupedFoldSchedule

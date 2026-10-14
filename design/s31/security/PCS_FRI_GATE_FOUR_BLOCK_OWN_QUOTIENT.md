@@ -50,6 +50,15 @@ minimal polynomial has no CM31 root, so `D(t)≠0` at every CM31 Fourier
 unit. The `-2·u·y1` factor is the exact conjugate-line numerator scale; it
 must be retained when comparing a native row with the own quotient.
 
+The [all-input four-slot map](../../../formal/s31/S31/Gadgets/PcsFri/GateFourSlotNativeMap.lean)
+now gives explicit coefficients for `f=c0+c1·y+c2·x+c3·x·y` at every guarded
+two-point sample. With `s=x1²+y1²`, its own quotient has the form
+`q=A+B·x+C·y`, where `B=c3·x1/s` and `C=-c3·y1/s`; hence
+`y1·B+x1·C=0`. The theorem also proves the exact claimed limbs and row
+reconstruction. It does not establish that native committed columns equal
+those four-slot polynomials or that the full FRI verifier enforces their
+degree bound.
+
 ## A finite native check and a sharpness counterexample
 
 The [focused Zig regression](../../../formal/s31/tests/pcs_fri_gate_four_block_own_quotient_native.zig)
