@@ -109,6 +109,11 @@ proves that the counted `acceptedGuard` predicate is exactly the concrete
 QM31 field guard and that the modeled image has `(q²−1)²` points, leaving
 exactly `q²−1` points in the two-point universe outside that image. The
 transcript draw and installed binary are separate obligations.
+For mixed-height quotients, the raw guard is insufficient by itself:
+the [projected OOD control](PCS_FRI_PROJECTED_OOD_GUARD.md) exhibits a
+raw-admissible seed whose height-11 and height-5 samples have degenerate
+two-point lines. The accepted quotient path rejects these samples, and the
+P05 abort-probability argument must condition on every projected point.
 The ratio transfers a
 **fixed bad-set count only if** that count is first proved for the two-point
 universe. It does not establish adaptive Fiat–Shamir sampling.

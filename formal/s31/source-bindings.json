@@ -445,6 +445,8 @@
     "formal/s31/tests/run_pcs_fri_p05_sparse_accepted_geometry.sh": "19a80ef2f243e2ebbd4486b4218e6d6fb746ddc1c07bbf3c1b4d65e54adfa115",
     "formal/s31/tests/pcs_fri_p05_sparse_h3_accepted_rows_native.zig": "8c060a66a691e4bf7aeb57180dfef3cb37f3ae50f23418a6d044eb6fca9b0bc0",
     "formal/s31/tests/run_pcs_fri_p05_sparse_h3_accepted_rows_native.sh": "d365b4bfc4d2dc15d9f112f75de7044053aa56e5ee234f04b99d885798aeb657",
+    "formal/s31/tests/pcs_fri_projected_ood_guard_native.zig": "bb18e0eae019e76c8ec570b89c816313bd8a51e622d58de7e4e58600f2bb5ffd",
+    "formal/s31/tests/run_pcs_fri_projected_ood_guard_native.sh": "18b890538c97b06f37335e1ef07922bbd2b4dae1a3f0a784e06146ec9d2e65f2",
     "scripts/release/pcs_fri_xdm04_audit_loop.py": "a2cfe20a689aafda18004b34f3536a6171ecf993c7af6527c4f5af841359d322",
     "scripts/tests/test_pcs_fri_xdm04_audit_loop.py": "623aaecfd6c3260613f25373b899d72d96e7e011f962213582e89c114fb60c36",
     "src/frontends/s31/runtime/fri_merkle_admission.zig": "843b0cfc69007aff852a58cdbf9ef9a106e4dd1ea414e6b8ca085ba4d679198d",

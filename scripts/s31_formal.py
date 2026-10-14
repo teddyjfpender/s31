@@ -470,6 +470,8 @@ BINDINGS = [
     "formal/s31/tests/run_pcs_fri_p05_sparse_accepted_geometry.sh",
     "formal/s31/tests/pcs_fri_p05_sparse_h3_accepted_rows_native.zig",
     "formal/s31/tests/run_pcs_fri_p05_sparse_h3_accepted_rows_native.sh",
+    "formal/s31/tests/pcs_fri_projected_ood_guard_native.zig",
+    "formal/s31/tests/run_pcs_fri_projected_ood_guard_native.sh",
     "scripts/release/pcs_fri_xdm04_audit_loop.py",
     "scripts/tests/test_pcs_fri_xdm04_audit_loop.py",
     "src/frontends/s31/runtime/fri_merkle_admission.zig",
