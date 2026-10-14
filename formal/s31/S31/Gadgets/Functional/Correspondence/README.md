@@ -40,6 +40,12 @@ premises for one accepted assignment, with folds and erasures explicit.
 The replay also checks the prover-side padded graph against the actual QM31/Eq
 preprocessed column cells. The [Lean structural trace decoder](StructuralNativeTraceDecoder.md)
 constructs a `NativeTrace` from its bounded JSON projection. The
+[direct Gate ownership theorem](StructuralNativeGateOwnership.md) additionally
+requires an actual native gate for every admitted binary SSA step, including
+commutative CSE reuse, and derives each source result from that gate's AIR
+residuals. A missing-owner mutation passes the value-only decoder but fails
+this new check. Constant steps and erased operations are outside its current
+profile. The
 [committed AIR join](StructuralCommittedAirJoin.md) compares all direct-Gate
 fixed and base cells for one all-public source and joins their native
 recommitments to an accepted proof's roots. The
