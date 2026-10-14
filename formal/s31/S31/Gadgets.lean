@@ -306,6 +306,7 @@ import S31.Gadgets.PcsFri.QuerySampling
 import S31.Gadgets.PcsFri.BundleQueryBound
 import S31.Gadgets.PcsFri.SparseCascadeQueries
 import S31.Gadgets.PcsFri.M31MaskedQuery
+import S31.Gadgets.PcsFri.RawMaskedQuery
 import S31.Gadgets.PcsFri.NativeQueryBatch
 import S31.Gadgets.PcsFri.PowM31Predicate
 import S31.Gadgets.PcsFri.BiasedLookupPair

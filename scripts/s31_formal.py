@@ -30,6 +30,7 @@ from scripts.s31_formal_lib.pcs_fri_order import check_pcs_fri_order
 from scripts.s31_formal_lib.pcs_fri_challenge_custody import check_pcs_fri_challenge_custody
 from scripts.s31_formal_lib.pcs_fri_bcs_transcript import audit as audit_pcs_fri_bcs_transcript
 from scripts.s31_formal_lib.pcs_fri_m31_query import check_pcs_fri_m31_query
+from scripts.s31_formal_lib.pcs_fri_raw_query import check_pcs_fri_raw_query
 from scripts.s31_formal_lib.pcs_fri_pow_m31_predicate import check_pcs_fri_pow_m31_predicate
 from scripts.s31_formal_lib.pcs_fri_projection import check_pcs_fri_projection
 from scripts.s31_formal_lib.pcs_fri_prover_origin import check_pcs_fri_prover_origin
@@ -383,6 +384,8 @@ BINDINGS = [
     "scripts/tests/test_pcs_fri_challenge_custody.py",
     "scripts/s31_formal_lib/pcs_fri_m31_query.py",
     "scripts/tests/test_pcs_fri_m31_query.py",
+    "scripts/s31_formal_lib/pcs_fri_raw_query.py",
+    "scripts/tests/test_pcs_fri_raw_query.py",
     "scripts/s31_formal_lib/pcs_fri_pow_m31_predicate.py",
     "scripts/tests/test_pcs_fri_pow_m31_predicate.py",
     "scripts/s31_formal_lib/pcs_fri_projection.py",
@@ -926,6 +929,7 @@ def main() -> None:
     check_pcs_fri_challenge_custody(ROOT)
     audit_pcs_fri_bcs_transcript(ROOT)
     check_pcs_fri_m31_query(ROOT)
+    check_pcs_fri_raw_query(ROOT)
     check_pcs_fri_pow_m31_predicate(ROOT)
     check_pcs_fri_projection(ROOT)
     check_pcs_fri_prover_origin(ROOT)
@@ -950,6 +954,7 @@ def main() -> None:
     print("S31 direct Gate BCS transcript: native bytes, PoW barriers and query epoch source-pinned")
     print("S31 SHA release capture: raw DEEP, FRI fold and Merkle replay paths bound")
     print("S31 M31 raw query distribution: reduction and low-bit mask source bound")
+    print("S31 raw Gate query distribution: unreduced words and low-bit mask source bound")
     print("S31 lifted prover origin: column order, projection, lift and parent tree source bound")
     print("S31 lifted Merkle capture: range, siblings, shifts and root-before-publication bound")
     print("S31 FRI packed Merkle binding: leaf slots and upper path custody bound")
