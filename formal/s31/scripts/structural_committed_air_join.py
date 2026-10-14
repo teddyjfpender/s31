@@ -93,6 +93,52 @@ def expected_columns(graph: dict) -> tuple[list[list[int]], list[list[int]]]:
     return fixed, main
 
 
+def check_source_physical_rows(graph: dict, fixed: list[list[int]],
+                               main: list[list[int]]) -> dict[str, int]:
+    """Check each native source-gate row using only its physical AIR cells.
+
+    The graph-to-column comparison binds these cells to the checked source
+    graph. This second check reads selectors, addresses, and operands from the
+    physical columns themselves, giving the concrete premise modeled by
+    ``StructuralPhysicalAirBridge.lean`` for add/sub/pointwise-mul gates.
+    It does not authenticate arbitrary committed proof openings.
+    """
+    require(len(fixed) == 8 and all(len(column) == ROWS for column in fixed) and
+            len(main) == 12 and all(len(column) == ROWS for column in main),
+            "physical row column shape differs")
+    offsets = {kind: sum(len(graph["padded"][previous]) for previous in
+                         ("add", "sub", "mul", "pointwise_mul")[:index])
+               for index, kind in enumerate(("add", "sub", "mul", "pointwise_mul"))}
+    accepted = {"add": 0, "sub": 0, "pointwise_mul": 0}
+    for kind, selector in (("add", 0), ("sub", 1), ("pointwise_mul", 3)):
+        gates = graph[kind]
+        require(len(gates) <= len(graph["padded"][kind]),
+                "source gate roster exceeds padded row group")
+        for index, gate in enumerate(gates):
+            row = offsets[kind] + index
+            require(row < ROWS, "source gate row exceeds direct Gate height")
+            require([fixed[column][row] for column in range(4)] ==
+                    [int(column == selector) for column in range(4)] and
+                    [fixed[column][row] for column in (4, 5, 6)] ==
+                    [gate["in0"], gate["in1"], gate["out"]],
+                    "source gate physical selector or address differs")
+            left = [main[column][row] for column in range(4)]
+            right = [main[column][row] for column in range(4, 8)]
+            result = [main[column][row] for column in range(8, 12)]
+            require(all(type(word) is int and 0 <= word < P for word in
+                        (*left, *right, *result)),
+                    "source gate physical operand is noncanonical")
+            if kind == "add":
+                expected = [(a + b) % P for a, b in zip(left, right, strict=True)]
+            elif kind == "sub":
+                expected = [(a - b) % P for a, b in zip(left, right, strict=True)]
+            else:
+                expected = [(a * b) % P for a, b in zip(left, right, strict=True)]
+            require(result == expected, "source gate physical AIR equation fails")
+            accepted[kind] += 1
+    return accepted
+
+
 def check_columns(graph: dict, physical: dict, root_report: dict,
                   program_sha256: str, public_words: list[int]) -> dict:
     """Compare native ``writeBase`` export to all checked graph-derived cells."""
