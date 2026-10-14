@@ -510,6 +510,16 @@ This removes a field-algebra premise when applying the Laurent quotient
 theorem to the modeled CAS05 point; authenticating that point and all
 source rows is still separate.
 
+[`ConcretePairedOwnQuotient.lean`](ConcretePairedOwnQuotient.lean) applies that
+result to a concrete four-block CM31/QM31 row. Given a circle point with
+`y.c1 != 0` and an OOD claim equal to the row's evaluation, it constructs a
+radius-one own quotient `q` satisfying `f = interpolation(claim) + V*q`.
+The field-tower split and degree-two minimal polynomial are proved from the
+concrete point, so neither is a caller-supplied theorem premise. The claim
+equality is still a hypothesis about an honest polynomial. The result does
+not authenticate Merkle openings, enforce a FRI degree test, or make a
+native proof acceptable.
+
 Here is the arithmetic over `F₅` by hand. Take `i=2` (`i²=−1`), `d=2`
 (a nonsquare), and `(x₀,y₀,x₁,y₁)=(0,0,2,2)`. The modeled tower circle
 equations hold: `2·(2²+2²)=1 mod 5`, and `y₁=2≠0`. The Fourier coordinate
