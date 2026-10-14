@@ -46,8 +46,9 @@ Python validator checks the path order and its connection to the canonical
 changed source constant, changed final broadcast address, missing producer,
 or wrong chain input is rejected by the focused controls.
 
-**Proof boundary.** The Lean theorem assumes local AIR residuals, the public
-`u` cell, and the Gate lookup address/value join. This finite reconstruction
+**Proof boundary.** The Lean theorem assumes the path gate roster, local AIR
+residuals, the public `u` cell, the active source input/output lane mapping,
+and the Gate lookup address/value join. This finite reconstruction
 does not prove that an arbitrary accepted proof has all claimed committed
 cells or that every LogUp equality is sound; those depend on the outstanding
 PCS/FRI and claim-to-cell arguments. The certificate is an audit witness, not
