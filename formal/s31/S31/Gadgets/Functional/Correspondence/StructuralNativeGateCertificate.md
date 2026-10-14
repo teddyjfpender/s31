@@ -116,9 +116,12 @@ must be handled as sensitive data.
 
 These concrete checks provide address/value, gate, and port evidence for
 **one supplied assignment**, plus equality of each asserted source value.
-The artifact is an executable certificate, not a Lean proof term: a
-machine-checked decoder from its JSON into `NativeTrace` is still needed to
-instantiate `checked_native_trace_sound` inside Lean. The checker does not yet
+The artifact is an executable certificate, not a Lean proof term.
+[`StructuralNativeTraceDecoder.lean`](StructuralNativeTraceDecoder.md) now
+parses its direct-Gate projection and constructs `NativeTrace` from supplied
+concrete values and an accepted SSA certificate. A proof that the projection
+and the checked input/binding conversion replay are the installed compiler's
+actual bytes and authenticated AIR witness is still needed. The checker does not yet
 independently replay the precise native gate operands and masking sequence for
 each source assertion; matching source values and an Eq row count alone do not
 establish that the proof enforces the assertion on its intended wires.
