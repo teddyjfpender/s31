@@ -30,6 +30,35 @@ index `31·2^26 = -2^26 mod 2^31`; its point is the conjugate
 The Fourier coordinate `t=x+i y` in CM31 is the ordered pair `(x,y)`; these
 two rows have different `t` despite sharing `x`.
 
+## Four coefficients from four rows
+
+The first native circle-basis block evaluates as
+`f(x,y)=(c0+c1*y)+x*(c2+c3*y)`. Stored rows 0 and 1 have the same
+`xA=1179735656` and opposite `y=±1241207368`. Rows 3 and 2 have
+`xB=967747991` and the same two `y` values, in reverse storage order. Both
+`y` and `xA-xB` are nonzero modulo `p`; `2` is invertible. For each `x`, adding
+the two row values determines `c0+c2*x`, and subtracting them determines
+`c1+c3*x`. The two distinct `x` values then determine all four coefficients.
+
+`Gate16FourierRows.expected_four_row_block_injective` proves this over the
+concrete M31 field for **every** coefficient tuple. Its generic predecessor
+`four_block_injective_of_two_conjugate_pairs` exposes the only algebraic
+preconditions. The independent native regression runs the pinned Stwo
+`CircleCoefficients.evaluate` and `interpolateFromEvaluation` at log size 4
+for zero, all four one-hot basis vectors, and two mixed tuples. It compares
+all 16 FFT rows with the hand formula above, recovers exactly the four
+coefficient words and zero high slots, then changes one row and checks that
+interpolation exposes a nonzero high slot:
+
+```sh
+bash formal/s31/tests/run_pcs_fri_gate16_four_slot_fft_native.sh
+```
+
+The Lean theorem is an all-input inverse statement for this finite four-slot
+model. The native test checks selected inputs and the actual FFT path; it is
+not a formal operational proof of Stwo's FFT or a theorem about arbitrary
+committed source rows.
+
 The [Lean module](../../../formal/s31/S31/Gadgets/PcsFri/Gate16FourierRows.lean)
 contains all 16 expected point pairs and proves both the point table and its
 CM31 pair representation injective. Its `nativePoint_injective` and
