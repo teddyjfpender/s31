@@ -29,9 +29,14 @@ every raw tuple can be embedded in the block layout with unused lanes filled
 with zero.
 At 70 queries the native loop consumes nine blocks and uses only lanes 0–5 of
 the final block. The [native differential](../../../tests/pcs_fri_native_query_batch.zig)
-checks this schedule against `drawQueries` and the native reducer, while the
+checks this schedule against `drawQueries` and the native reducer. It also
+replays selected 37-byte channel preimages through an independent standard
+library BLAKE2s and scalar modulo/mask oracle over several batch lengths,
+including the 70-query partial block. A small exhaustive two-block analogue
+checks every four-bit raw-word stream and prefix. The
 [source guard](../../../../../scripts/s31_formal_lib/pcs_fri_m31_query.py)
-pins the eight-lane loop and S31's channel profile. The bridge is deterministic:
+pins the eight-lane loop, S31's channel profile, and the PCS verifier's FRI
+caller with separate raw and sorted unique custody. The bridge is deterministic:
 it does not prove BLAKE2s output independence, a fixed good set, or a P08
 security bound.
 

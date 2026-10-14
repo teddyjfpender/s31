@@ -42,12 +42,19 @@ occur later in `Queries.init`.
 
 The [native differential](../../../formal/s31/tests/pcs_fri_native_query_batch.zig)
 checks actual Zig `drawQueries` and `reduceToM31` at mask widths 0–31, batch
-boundaries, repeated words, and M31 boundary values. It also compares the
-selected `Blake2sM31MerkleChannel` at 70 positions to direct nine-block
-drawing. The [source guard](../../../scripts/s31_formal_lib/pcs_fri_m31_query.py)
-pins the eight-lane loop, reducer, selected S31 profile, and native verifier
-selection. These are finite execution checks and source pins, not a proof of
-Zig operational semantics for all inputs.
+boundaries, repeated words, and M31 boundary values. For selected channel
+states, it also reconstructs each 37-byte `digest || LE(counter) || 0x00`
+preimage, hashes it with the independent Zig standard-library BLAKE2s,
+reduces each little-endian raw word by scalar `% p`, and checks the exact
+ordered positions for lengths including 0, 70, and 71 and mask widths up to
+31. The [source guard](../../../scripts/s31_formal_lib/pcs_fri_m31_query.py)
+pins the eight-lane loop, reducer, selected S31 profile, and PCS verifier's
+call through `sampleQueryPositionsWithRaw` to `drawQueries`. It also checks
+that raw draw order is retained separately from the sorted unique set.
+An exhaustive `q=7`, four-bit, two-block analogue checks every raw stream,
+prefix length, and valid mask. These are deterministic arithmetic/source
+joins and finite execution checks, not a proof of Zig operational semantics
+for all inputs.
 
 ## Counting by hand
 
