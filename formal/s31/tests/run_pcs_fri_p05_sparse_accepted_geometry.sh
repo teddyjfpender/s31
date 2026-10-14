@@ -28,6 +28,17 @@ assert shape["root_columns"] == [12, 17, 24, 8]
 assert shape["root_ood_claims"] == [12, 17, 36, 8]
 assert [(h["extended_log_size"], h["source_columns"], h["ood_claims"])
         for h in shape["heights"]] == [(17, 14, 18), (11, 28, 32), (5, 19, 23)]
+assert len(shape["claims"]) == 73
+assert len(result["accepted_ood_claim_map_sha256"]) == 64
+base = (tuple(shape["oods_point_x_limbs"]), tuple(shape["oods_point_y_limbs"]))
+shifted = set()
+for height, base_count in [(17, 14), (11, 28), (5, 19)]:
+    points = [(tuple(c["point_x_limbs"]), tuple(c["point_y_limbs"]))
+              for c in shape["claims"] if c["extended_log_size"] == height]
+    assert points.count(base) == base_count
+    assert len(set(points)) == 2
+    shifted.update(set(points) - {base})
+assert len(shifted) == 1
 assert result["candidate_paper_parameters"]["largest_integer_M_passing_isolated_batch_factor"] == 1024
 assert result["native_to_paper_batch_width_M"] is None
 assert result["native_proven_security_bits"] is None

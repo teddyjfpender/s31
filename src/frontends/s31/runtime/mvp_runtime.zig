@@ -501,8 +501,12 @@ pub fn verifierMain(embedded_key: []const u8, embedded_recursive_key: []const u8
             .root_ood_claims = shape.root_ood_claims,
             .composition_log_degree_bound = shape.composition_log_degree_bound,
             .composition_log_split = shape.composition_log_split,
+            .oods_seed_limbs = shape.oods_seed_limbs,
+            .oods_point_x_limbs = shape.oods_point_x_limbs,
+            .oods_point_y_limbs = shape.oods_point_y_limbs,
             .heights = shape.heights[0..shape.height_count],
             .columns = shape.columns[0..shape.column_count],
+            .claims = shape.claims[0..shape.claim_count],
         };
         const encoded = try std.json.Stringify.valueAlloc(allocator, report, .{});
         defer allocator.free(encoded);
