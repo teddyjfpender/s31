@@ -5,42 +5,42 @@
     "native_gate_epoch_trace": [
       {
         "event": "legacy_wire",
-        "line": 858,
+        "line": 958,
         "source": "src/frontends/s31/runtime/native_verifier.zig"
       },
       {
         "event": "fixed_root",
-        "line": 913,
+        "line": 1013,
         "source": "src/frontends/s31/runtime/native_verifier.zig"
       },
       {
         "event": "public_statement",
-        "line": 915,
+        "line": 1015,
         "source": "src/frontends/s31/runtime/native_verifier.zig"
       },
       {
         "event": "main_root",
-        "line": 916,
+        "line": 1016,
         "source": "src/frontends/s31/runtime/native_verifier.zig"
       },
       {
         "event": "lookup_challenge",
-        "line": 920,
+        "line": 1020,
         "source": "src/frontends/s31/runtime/native_verifier.zig"
       },
       {
         "event": "interaction_claim",
-        "line": 932,
+        "line": 1032,
         "source": "src/frontends/s31/runtime/native_verifier.zig"
       },
       {
         "event": "interaction_root",
-        "line": 933,
+        "line": 1033,
         "source": "src/frontends/s31/runtime/native_verifier.zig"
       },
       {
         "event": "stark_verification",
-        "line": 936,
+        "line": 1036,
         "source": "src/frontends/s31/runtime/native_verifier.zig"
       },
       {
@@ -155,7 +155,7 @@
       "deps/stwo-zig/src/prover/pcs/quotient_ops.zig": "f4684c25d35e15fc57a6d6283df241402004253c6719a1237f3f8e01ebba2115",
       "deps/stwo-zig/src/prover/pcs/quotients/lazy_provider.zig": "7d8c02ad443bba0941f10a8d22ecb1ef81e77b9837c3e1f561445fe31d0e728e",
       "deps/stwo-zig/src/prover/pcs/scheme.zig": "88ab21970d32dda383a191ce5f12c329ce127f2829712a99068dd369d147e93f",
-      "src/frontends/s31/runtime/native_verifier.zig": "26e4d22c8f26ed01e880772fef9508284dce94070d7b523c47b68939e0d5c178"
+      "src/frontends/s31/runtime/native_verifier.zig": "cc245859102337461af85313e14ac3269b297f4cc912e8f78e1057ff2557aabb"
     },
     "status": "published_degree_corrected_theorem_not_applicable"
   },
@@ -203,9 +203,11 @@
     "design/s31/security/PCS_FRI_POW_M31_PREDICATE.md": "e16a4fe8345b82afaaa486863db5528df5abadc916c4c6e0bd2fcc6b18303c1b",
     "design/s31/security/PCS_FRI_PUBLISHED_BOUND_AUDIT.md": "361ad4957d9bdff886ee53a7babd1bd4e7a4940653213df9086e8e3c10354cae",
     "design/s31/security/PCS_FRI_RAW_GATE_BCS_AUDIT.md": "0a3666b3f220a9b7b30bb9d7bac46b6484a01268814b42629459bd3fcf3701b4",
+    "design/s31/security/PCS_FRI_SPARSE_GATE_PAIRED_FEASIBILITY.md": "9d4d3e6906e85a527f4e192d14502ff3cfe0f88ff40a99225e7305c9ff99d2cd",
     "design/s31/security/PCS_FRI_STWO_UDR_FEASIBILITY.md": "7c7939732abebd052a5712afc24f3d8fd2ed9e1d9a94ba63dfb7b16749870074",
     "design/s31/security/evidence/gate-native-fridomain-accepted-proof-2026-10-14.json": "4db7f96366696702b751d667263c52dd31a0af0288996e27cb5662d1aac580fa",
     "design/s31/security/evidence/gate-small-program-paper-batch-boundary-2026-10-14.json": "96f51e69872ba76f9a097646c105079bef341d6778a6c68146ddd54f3fda880e",
+    "design/s31/security/evidence/sparse-gate-p05-accepted-geometry-2026-10-14.json": "1020bea7c18296d1e348b9acd9577e39eb8cf4e9c88d1eaec5e3db127ce39a19",
     "formal/s31/S31/Gadgets/Air/GatePublicInteraction.lean": "c4be2f2e83f1e6302177d936c502c82f5f710f69f38e5b222298d26e90693224",
     "formal/s31/S31/Gadgets/Air/NativeGateFinalizerBridge.lean": "bf98f2097447a4463aa2411a4b825ecec7993d8b6695a0c968c0e167f1caf8d0",
     "formal/s31/S31/Gadgets/Functional/Correspondence/PrivateMainLdeOpenings.md": "2e3f2f2c89ec061dacd9cb1fdff0a366b903d1599989d214e13160409c1c6ee8",
@@ -242,7 +244,7 @@
     "formal/s31/S31/Gadgets/PcsFri/RawGateBcsRoleOverlap.lean": "60770208b0741addb964a475cd13535f510d734ab01e2121c3fb2bd4093daca7",
     "formal/s31/S31/Gadgets/PcsFri/StwoUDRFeasibility.lean": "0887145e13d6391a8c807cc99ed658305b238cc61017ff714ebc8c8f3f2f5eec",
     "formal/s31/S31/Gadgets/PcsFri/TerminalBasisRefinement.lean": "77d304450e19f7c8d6b61dfd846cc3935e9cb38c01cd4cbf9beb6a8fc5b24057",
-    "formal/s31/proof-inventory.json": "ea2002149115975517a9776675a425dacc8b2712603fd3c4cbc00a63845693ee",
+    "formal/s31/proof-inventory.json": "fc7c82656b23812d4b1ca5b0b9608adb881206d7c8e617ac0cb5504b9623c7d5",
     "formal/s31/tests/audit/private_main_lde_openings.py": "875be81a5aa9ec79ef0aab4146e18f60deb01f65bfdf0bf9d85dba76f428dfd9",
     "formal/s31/tests/lib/p05_claim_roster.zig": "d22d9d5a15ee27ac2cddb82cd49d70f2172e75045284da861c6405cf90260a4d",
     "formal/s31/tests/lib/p05_gate_multi_epoch_plan.zig": "dd0f61c217678aa010758ac8a38cabc37abc4de7ba6896beac899eca900c3ed2",
@@ -276,12 +278,13 @@
     "formal/s31/tests/run_pcs_fri_merkle_byte_preimage_native.sh": "6d3a312953dede0f50a14110a891872b5810205828382e5773f9d26b93a3d34f",
     "formal/s31/tests/run_pcs_fri_native_collision_reduction.sh": "4ff755d5db2bf401b528453cc78fcbc7a6a4c6c50f567815aaba81041e16f0ed",
     "formal/s31/tests/run_pcs_fri_native_query_batch.sh": "07bf41495a8fb2e49a1b056f4e3e51b38c5d4f825d6fbe5bca944116860ddd78",
+    "formal/s31/tests/run_pcs_fri_p05_sparse_accepted_geometry.sh": "4c2b6d6b31bb08c89415d2d7d0c595fade655bd9474c9c8c42b0f7bee3926671",
     "formal/s31/tests/run_pcs_fri_p05_verifier_roster_native.sh": "c75e5e8fb72a87998816abad3bcd335ed714aa0929742ebfe903b926e02c5c99",
     "formal/s31/tests/run_pcs_fri_pow_m31_predicate_native.sh": "2151bbdb6171eb8394632592ccad3d2dbf2ac755c0ee27cca15f6a55ae4f21fb",
     "formal/s31/tests/run_pcs_fri_prover_column_origin_native.sh": "123a742bdec7ad14069c0f2326e1fe24283623b383bf41bbc6c00176f2ec3403",
     "formal/s31/tests/run_pcs_fri_quotient_degree_gap_native.sh": "6aa40522e63c53ac13165a0fa0d86eb1492aaa8906aa748bf82138724ed90bc5",
     "scripts/release/pcs_fri_cas05_source_profile.py": "6662b2ddd285b7a3fe137e79faeba53d4799a0b97233772aef2c6030f9f2f316",
-    "scripts/release/pcs_fri_degree_correction.py": "01e553a145431da5f604cbdf736480d2281f6c67fad4ff99e55079491b9464b4",
+    "scripts/release/pcs_fri_degree_correction.py": "f5170cdc5ec7c04144085b844e2dd414d144fb5dfc9f267cf40feace4b5e391b",
     "scripts/release/pcs_fri_gate_batch_partition.py": "28990173bf6c872bf7aa06e3747ad8775f6978bf4d18e98224c3bf5a29aae6e9",
     "scripts/release/pcs_fri_gate_binary_rebuild.py": "c37d7fde1d76348f224b54af32a729addcd4e540aaa403c79776ca71cfbe45ca",
     "scripts/release/pcs_fri_gate_error_ledger.py": "cc96d757cb4c6c9df187cac06acf719878a9f947afa59c4519f849902badedab",
@@ -292,6 +295,7 @@
     "scripts/release/pcs_fri_package_geometry.py": "437f8fcf32f0fdd563f7c37650f569a0c4901e389d7b4335683a4f0ace8cb214",
     "scripts/release/pcs_fri_proven_preflight.py": "485573b3a14719e1d3d8b11e4a481c9e70965c3da9d6852d15eab14c8f5f79f9",
     "scripts/release/pcs_fri_raw_gate_bcs.py": "a76ccc0f21a84d1e7caa17c2e2ca6a592a8a974609f76de630f0fcf0a7c68b29",
+    "scripts/release/pcs_fri_sparse_p05_accepted_geometry.py": "93202ee0719d27dd69503d0bc28ecfb56f9ae909aabada480a70d589a45d0a44",
     "scripts/release/pcs_fri_stwo_udr.py": "2c00af4895f343e938145f30fbe726d0a1c8ef06d6350730a64257b92c1f72df",
     "scripts/release/pcs_fri_xdm04_audit_loop.py": "a2cfe20a689aafda18004b34f3536a6171ecf993c7af6527c4f5af841359d322",
     "scripts/s31_formal_lib/pcs_fri_bcs_transcript.py": "cda64731cc347d8540dd497628b45a0633e275bdf5515a40dfa96a290b8be9a8",
@@ -319,7 +323,8 @@
     "scripts/tests/test_pcs_fri_raw_gate_bcs.py": "74100bc7094fdf1e4d8a4184b9ac3de676a6f842e139adb60ba7a9541c6f3d82",
     "src/frontends/s31/python/package/gate_component_roster.py": "c1aaf8db81d5fedb814083e2b60a74683f10f841762ab72d4493e4f9e7782352",
     "src/frontends/s31/runtime/fri_merkle_admission.zig": "843b0cfc69007aff852a58cdbf9ef9a106e4dd1ea414e6b8ca085ba4d679198d",
-    "src/frontends/s31/runtime/mvp_runtime.zig": "5603c36f14fd87e442727a1b548640a89d15a33147763c00affb774e73c74111",
+    "src/frontends/s31/runtime/mvp_runtime.zig": "49bf54d048e3c2cdbba6e4031226b9460545350ae5ceecfbf0f62b439b46ca34",
+    "src/frontends/s31/runtime/native_verifier.zig": "cc245859102337461af85313e14ac3269b297f4cc912e8f78e1057ff2557aabb",
     "src/frontends/s31/runtime/pcs_lifted_capture_admission.zig": "e6f787e5dbcc6fdb92f529e24ea892bf3da82d60db5665a26e828a71768bb3b3",
     "src/frontends/s31/sha/package/sha_fused_package_runtime.zig": "eac17fd037560a25488d32501252a3bad9cc18b162fda6c041cbe688d8404776",
     "src/frontends/s31/sha/package/sha_package_runtime.zig": "b83d39902d41f13d5d8fb5882a054f216e22a49426a99844f32110f575ba8f8d",
@@ -401,7 +406,7 @@
     {
       "gap_kind": "unproven_native_refinement",
       "id": "P05_OODS_DEEP_DEGREE_CORRECTION",
-      "missing_discharge": "production still checks only one accumulated DEEP quotient with FRI, so the published degree-corrected theorem's original-word degree-test premise is absent. Experimental CAS05 pairs original and own-quotient words; the four-epoch Gate source plan enumerates all verifier-owned OOD claims and proposed independent tracks, but its control is synthetic and it does not implement the multi-epoch whole-oracle degree test. A conditional exact Gate batch-width floor shows the source-log-4 193-column bucket cannot fit the selected target as one uncompressed QM31 batch, while a sound and affordable partition composition remains unproved. An accepted small-program ordinary Gate key still has N=2^20 because VerifyBitwiseXor_12 is fixed at log 20; lowering N requires a new authenticated AIR/key profile and roster. Production dispatch and the exact two-point circle-basis, derived-oracle, query, OOD and BCS theorem join remain absent. Implement and refine the full production ensemble or prove an alternative quotient-only theorem with exact parameters; also prove Zig row-quotient semantics, committed sampled/opened value ownership and OODS checks",
+      "missing_discharge": "production still checks only one accumulated DEEP quotient with FRI, so the published degree-corrected theorem's original-word degree-test premise is absent. Experimental CAS05 pairs original and own-quotient words; the four-epoch Gate source plan enumerates all verifier-owned OOD claims and proposed independent tracks, but its control is synthetic and it does not implement the multi-epoch whole-oracle degree test. A conditional exact Gate batch-width floor shows the source-log-4 193-column bucket cannot fit the selected target as one uncompressed QM31 batch, while a sound and affordable partition composition remains unproved. An accepted small-program ordinary Gate key still has N=2^20 because VerifyBitwiseXor_12 is fixed at log 20; lowering N requires a new authenticated AIR/key profile and roster. An accepted sparse-v3 Gate proof has N=2^16 and a captured 61-column, 73-OOD-claim, three-height candidate paired roster; those proposed tracks are not independently degree-tested, and its native-to-paper M remains null. Production dispatch and the exact two-point circle-basis, derived-oracle, query, OOD and BCS theorem join remain absent. Implement and refine the full production ensemble or prove an alternative quotient-only theorem with exact parameters; also prove Zig row-quotient semantics, committed sampled/opened value ownership and OODS checks",
       "partial_evidence": [
         "scripts/s31_formal_lib/pcs_fri_order.py",
         "scripts/s31_formal_lib/pcs_fri_quotient_algebra.py",
@@ -441,6 +446,12 @@
         "design/s31/security/PCS_FRI_GATE_BATCH_PARTITION_PLAN.md",
         "design/s31/security/PCS_FRI_GATE_SMALL_KEY_FLOOR.md",
         "design/s31/security/evidence/gate-small-program-paper-batch-boundary-2026-10-14.json",
+        "scripts/release/pcs_fri_sparse_p05_accepted_geometry.py",
+        "formal/s31/tests/run_pcs_fri_p05_sparse_accepted_geometry.sh",
+        "design/s31/security/PCS_FRI_SPARSE_GATE_PAIRED_FEASIBILITY.md",
+        "design/s31/security/evidence/sparse-gate-p05-accepted-geometry-2026-10-14.json",
+        "src/frontends/s31/runtime/native_verifier.zig",
+        "src/frontends/s31/runtime/mvp_runtime.zig",
         "deps/stwo-zig/src/prover/pcs/scheme.zig",
         "deps/stwo-zig/src/core/pcs/verifier.zig",
         "deps/stwo-zig/src/core/pcs/quotients/row_evaluation.zig",
@@ -829,7 +840,7 @@
       "deps/stwo-zig/src/core/pcs/verifier.zig": "e119335172e17db5fd1345f476c7f6ad7fdf67e394a5b18d5c2085e892ffe3d5",
       "deps/stwo-zig/src/core/protocol_revision.zig": "4ea494db74b6d6bcac28fe782468378c7d9beedccd4dd1813444dc55093124c5",
       "deps/stwo-zig/src/core/queries.zig": "68e13fbb48c0cd684b94198c5452e003984237a2fe2000dd332ac57234328bce",
-      "src/frontends/s31/runtime/mvp_runtime.zig": "5603c36f14fd87e442727a1b548640a89d15a33147763c00affb774e73c74111",
+      "src/frontends/s31/runtime/mvp_runtime.zig": "49bf54d048e3c2cdbba6e4031226b9460545350ae5ceecfbf0f62b439b46ca34",
       "src/frontends/s31/sha/package/sha_fused_package_runtime.zig": "eac17fd037560a25488d32501252a3bad9cc18b162fda6c041cbe688d8404776",
       "src/frontends/s31/sha/package/sha_package_runtime.zig": "b83d39902d41f13d5d8fb5882a054f216e22a49426a99844f32110f575ba8f8d",
       "src/frontends/s31/sha/package/sha_shift_package_runtime.zig": "0b1f83a47cc6c8712f03d110a8d987a4dc525dfd9a787bf69e27ced653435ab2"
