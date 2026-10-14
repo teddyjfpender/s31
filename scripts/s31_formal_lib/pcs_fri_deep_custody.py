@@ -12,9 +12,9 @@ def check_sources(native: str, admission: str, pcs: str) -> None:
     gate = (
         "try core.verifier.verifyBorrowedExWithProofCapture(",
         "defer capture.deinit(allocator);",
-        "try deep_capture_admission.validate(allocator, pcs.trace_lifting_log_size,\n"
-        "        capture.queries.raw, capture.column_log_sizes, capture.sampled_points,",
-        "capture.sampled_values, capture.queried_values, capture.deep_answers,",
+        "try deep_capture_admission.validate(allocator, pcs.trace_lifting_log_size, "
+        "capture.queries.raw, capture.column_log_sizes, capture.sampled_points, "
+        "capture.sampled_values, capture.queried_values, capture.deep_answers, "
         "capture.deep_randomness);",
         "try fri_capture_admission.validate(",
     )

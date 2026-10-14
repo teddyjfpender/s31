@@ -2492,7 +2492,7 @@
   "package_checks": {
     "key_sha256": "7d4cdaab4e446aaa2c357e28f077e469412f45a17c660e8d4434cca216dccfc7",
     "manifest_artifacts": "verified",
-    "manifest_sha256": "e8737003d211962061c7d48679b46a337edc60056df84f43ba9e2e54635d1424",
+    "manifest_sha256": "247e48cb7914c41fba0ae88e442ac817561a1713e8f3da6ae466f5a68beaa3f8",
     "native_check_key": "accepted",
     "native_proof": "accepted_before_geometry_inspection",
     "proof_sha256": "04eaca23d8a6c7fc977b24a3d925aaabcbb727fa4fa30f30c81864e24a158e39",

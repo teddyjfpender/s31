@@ -18,8 +18,20 @@ python3 src/frontends/s31/python/s31.py build "$source_path" --lowering sparse-g
 "$verifier" "$proof" "$statement_path" "$package/verification-key.json"
 python3 -B scripts/release/pcs_fri_sparse_p05_accepted_geometry.py \
     "$package" "$proof" "$statement_path" > "$temp_dir/geometry.json"
-cmp "$temp_dir/geometry.json" \
-    design/s31/security/evidence/sparse-gate-p05-accepted-geometry-2026-10-14.json
+python3 - "$temp_dir/geometry.json" \
+    design/s31/security/evidence/sparse-gate-p05-accepted-geometry-2026-10-14.json <<'PY'
+import json
+import sys
+
+live, pinned = (json.load(open(path, encoding="utf-8")) for path in sys.argv[1:])
+# Compiler output artifacts are checked against each *local* manifest by the
+# reporter, but a fresh build directory changes its manifest file digest.
+# Compare every accepted proof/claim/query/source field exactly.
+for report in (live, pinned):
+    manifest_sha = report["package_checks"].pop("manifest_sha256")
+    assert isinstance(manifest_sha, str) and len(manifest_sha) == 64
+assert live == pinned, "accepted sparse proof, claim, or row evidence changed"
+PY
 python3 -B scripts/release/pcs_fri_sparse_p05_h3_roster.py \
     --evidence "$temp_dir/geometry.json" --check
 python3 - "$temp_dir/geometry.json" <<'PY'

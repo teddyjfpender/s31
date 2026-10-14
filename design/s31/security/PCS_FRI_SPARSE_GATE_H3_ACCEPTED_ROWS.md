@@ -14,8 +14,10 @@ admission. Its opt-in report now includes the first raw lifted query position
 and the 61 source-column values authenticated at that query. The report also
 contains the previously captured 73 exact QM31 OOD points and claims. The
 [accepted geometry file](evidence/sparse-gate-p05-accepted-geometry-2026-10-14.json)
-is reproduced byte-for-byte by the honest proof fixture; a wrong key emits no
-report. Its accepted key and proof SHA-256 values are respectively
+is reproduced by the honest proof fixture for every accepted claim, query,
+and source-row field; the local package manifest hash can vary between build
+directories. A wrong key emits no report. Its accepted key and proof SHA-256
+values are respectively
 `7d4cdaab4e446aaa2c357e28f077e469412f45a17c660e8d4434cca216dccfc7`
 and `04eaca23d8a6c7fc977b24a3d925aaabcbb727fa4fa30f30c81864e24a158e39`.
 The native fixture separately pins SHA-256
