@@ -73,6 +73,15 @@ proof, and rejects a changed public statement:
 python3 src/frontends/s31/tests/acceptance/functional/static_map.py
 ```
 
+`static_fold.py` checks the captured Horner left fold against handwritten
+first-order arithmetic. It requires the same canonical IR hash and complete
+`direct-gate` AIR cost tuple, computes all four M31 outputs independently,
+accepts a native proof, and rejects a changed public statement:
+
+```sh
+python3 src/frontends/s31/tests/acceptance/functional/static_fold.py
+```
+
 `static_sum_dce.py` compares a static enum with an ignored, total arithmetic
 payload against a handwritten recurrence under `direct-chip`. It requires
 identical one-node relations and complete native AIR geometry, then proves the

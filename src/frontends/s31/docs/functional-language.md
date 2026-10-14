@@ -20,6 +20,16 @@ body retains all partial effects, so a witness-dependent `if` cannot hide an
 inactive checked inverse inside the map. Runtime arrays still need explicit
 views; this is bounded static specialization, with at most 64 elements.
 
+`std::array::fold(step, seed, [a, b, c])` is a source-only left fold. Its
+typed `(A, X) -> A` step may be a named function or a captured closure.
+All terms evaluate once, then the compiler specializes the calls in order:
+`step(step(step(seed, a), b), c)`. The [worked Horner fold](../examples/functional/static_fold/README.md)
+shows every emitted arithmetic node and AIR residual and compares its
+canonical IR and native geometry to handwritten first-order arithmetic.
+The fold emits no node of its own. It is bounded to 1–64 static first-order
+elements; partial effects in any element or step remain visible to dynamic
+conditional checking.
+
 The [strict release example](../examples/functional/release_square4/README.md)
 shows three composed pure functions admitted by the independent v2 direct-gate
 certificate. Its handwritten form has the same two relation nodes and native

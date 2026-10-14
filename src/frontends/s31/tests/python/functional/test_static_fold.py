@@ -21,21 +21,20 @@ STEP = """fn horner_step(x: [m31; 4]) -> Fn([m31; 4], [m31; 4]) -> [m31; 4] {
 FRAME = """circuit horner(private x: [m31; 4], private a: [m31; 4],
     private b: [m31; 4], private c: [m31; 4]) -> public [m31; 4] {
     let step = horner_step(x);
-    let zero = splat<4>(0_m31);
     let out = BODY;
     out
-}"
+}"""
 
 
 class StaticFoldTests(unittest.TestCase):
     def test_captured_fold_has_exact_explicit_relation_and_values(self) -> None:
         folded, _ = compile_text(STEP + FRAME.replace(
-            "BODY", "std::array::fold(step, zero, [a, b, c])"))
+            "BODY", "std::array::fold(step, a, [b, c])"))
         explicit, _ = compile_text(STEP + FRAME.replace(
-            "BODY", "step(step(step(zero, a), b), c)"))
+            "BODY", "step(step(a, b), c)"))
         self.assertEqual(folded, explicit)
         self.assertEqual([node["op"] for node in folded["nodes"]],
-                         ["mul", "add", "mul", "add", "mul", "add"])
+                         ["mul", "add", "mul", "add"])
         assignment = {
             "public_inputs": {},
             "private_inputs": {
@@ -77,16 +76,40 @@ class StaticFoldTests(unittest.TestCase):
                 self.assertEqual(evaluate_relation(folded, assignment),
                                  assignment["public_outputs"])
 
+    def test_accumulator_and_element_shapes_may_differ(self) -> None:
+        header = """fn add_pair(acc: [m31; 1], pair: [m31; 2]) -> [m31; 1] {
+    acc + std::math::sum_lanes(pair)
+}
+"""
+        frame = """circuit p(private seed: [m31; 1], private x: [m31; 2],
+    private y: [m31; 2]) -> public [m31; 1] { let out = BODY; out }"""
+        folded, _ = compile_text(header + frame.replace(
+            "BODY", "std::array::fold(add_pair, seed, [x, y])"))
+        explicit, _ = compile_text(header + frame.replace(
+            "BODY", "add_pair(add_pair(seed, x), y)"))
+        self.assertEqual(folded, explicit)
+        assignment = {"public_inputs": {}, "private_inputs": {
+            "seed": [3], "x": [5, 7], "y": [11, 13]},
+            "public_outputs": {"out": [39]}}
+        self.assertEqual(evaluate_relation(folded, assignment), assignment["public_outputs"])
+
     def test_fold_checks_static_shape_and_function_type(self) -> None:
-        step = "fn add(acc: [m31; 1], item: [m31; 1]) -> [m31; 1] { acc + item }\n"
+        step = """fn add(acc: [m31; 1], item: [m31; 1]) -> [m31; 1] { acc + item }
+fn unary(v: [m31; 1]) -> [m31; 1] { v }
+fn wrong(acc: [m31; 1], item: [m31; 1]) -> [m31; 2] {
+    std::array::concat(acc, item)
+}
+"""
         frame = "circuit p(private x: [m31; 1]) -> public [m31; 1] { let ignored = BODY; x }"
         for expression, error in (
             ("std::array::fold(add, x, x)", "requires a static array"),
             ("std::array::fold(add, x, [x, splat<2>(1_m31)])", "matching its function"),
             ("std::array::fold<2>(add, x, [x])", "does not accept a static parameter"),
             ("std::array::fold(add, x, [" + ", ".join(["x"] * 65) + "])", "1..64 terms"),
-            ("std::array::fold(add, x, [])", "1..64 terms"),
+            ("std::array::fold(add, x, [])", "static array elements must be"),
             ("std::array::fold(add, [x], [x])", "expected a circuit value"),
+            ("std::array::fold(unary, x, [x])", "requires a \\(accumulator, element\\)"),
+            ("std::array::fold(wrong, x, [x])", "requires a \\(accumulator, element\\)"),
         ):
             with self.subTest(expression=expression), self.assertRaisesRegex(SourceError, error):
                 compile_text(step + frame.replace("BODY", expression))
