@@ -9,7 +9,8 @@ from pathlib import Path
 PYTHON_ROOT = Path(__file__).resolve().parents[3] / "python"
 sys.path.insert(0, str(PYTHON_ROOT))
 
-from package.optimizer_receipt import ARTIFACT, SCHEMA, eligible, validate, verify_artifact
+from package.optimizer_receipt import (ARTIFACT, SCHEMA, LEGACY_SCHEMA,
+                                       eligible, validate, verify_artifact)
 
 
 class OptimizerReceiptTests(unittest.TestCase):
@@ -41,8 +42,21 @@ class OptimizerReceiptTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     validate(changed, self.source, self.program, self.ir)
         self.assertFalse(eligible({**self.source, "version": 2}))
-        self.assertFalse(eligible({**self.source, "nodes": [
+        self.assertTrue(eligible({**self.source, "nodes": [
             {"name": "y", "op": "inv", "lhs": "x"}]}))
+        self.assertTrue(eligible({**self.source, "nodes": [
+            {"name": "y", "op": "is_zero", "lhs": "x"}]}))
+        self.assertTrue(eligible({**self.source, "nodes": [
+            {"name": "y", "op": "select", "lhs": "x", "rhs": "x",
+             "selector": "x"}]}))
+        self.assertFalse(eligible({**self.source, "nodes": [
+            {"name": "y", "op": "hash_blake2s", "lhs": "x"}]}))
+        validate({**self.receipt, "schema": LEGACY_SCHEMA}, self.source,
+                 self.program, self.ir)
+        with self.assertRaises(ValueError):
+            validate({**self.receipt, "schema": LEGACY_SCHEMA},
+                     {**self.source, "nodes": [{"name": "y", "op": "inv", "lhs": "x"}]},
+                     self.program, self.ir)
 
     def test_manifest_requires_declared_artifact_and_key_binding(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -62,6 +76,10 @@ class OptimizerReceiptTests(unittest.TestCase):
                 verify_artifact(root, manifest, {"canonical_ir_sha256": "c" * 64}, self.source)
             with self.assertRaises(ValueError):
                 verify_artifact(root, {**manifest, "lowering": "sha-joint"}, key, self.source)
+            with self.assertRaises(ValueError):
+                verify_artifact(root, {**manifest,
+                                       "optimizer_correspondence_schema": LEGACY_SCHEMA},
+                                key, self.source)
 
 
 if __name__ == "__main__":

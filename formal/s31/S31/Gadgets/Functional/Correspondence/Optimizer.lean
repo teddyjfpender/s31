@@ -1,4 +1,5 @@
 import S31.Semantics.Field
+import S31.Gadgets.Functional.Correspondence.PureFieldDerivation
 
 /-!
 Semantic rules for the versioned pure-field normalized-to-canonical audit.
@@ -107,5 +108,37 @@ theorem mapped_output_eq {inputs lanes : Nat}
     (values : Fin inputs → Fin lanes → F) :
     original.eval values = compact.eval values :=
   (sound sourceId canonicalId original compact hmap hsource hcompact).eval_eq values
+
+/-! The control extension uses the same partial normalized-operation
+denotation as `PureFieldDerivation`. This is a local semantic model; the
+native checker separately decides whether real canonical nodes share IDs. -/
+open S31.Functional.Correspondence.PureFieldDerivation
+
+inductive ControlExpr where
+  | input (id : Nat)
+  | constant (length : Nat) (value : Word)
+  | apply (rule : NormalizedRule) (args : List ControlExpr)
+
+def ControlExpr.eval (inputs : Nat → Option (List Word)) :
+    ControlExpr → Option (List Word)
+  | .input id => inputs id
+  | .constant length value => some (List.replicate length value)
+  | .apply rule args => do
+      let values ← args.mapM (ControlExpr.eval inputs)
+      rule.eval values
+
+/-- Every control operation calls the normalized-operation denotation proved
+from source rules by `lower_rule_eval`. The native checker binds real IR IDs. -/
+theorem control_apply_eval (inputs : Nat → Option (List Word))
+    (rule : NormalizedRule) (args : List ControlExpr) :
+    (ControlExpr.apply rule args).eval inputs =
+      (args.mapM (ControlExpr.eval inputs)).bind rule.eval := by
+  simp [ControlExpr.eval, bind]
+
+/-- Native constant folding of scalar `is_zero` preserves the canonical bit. -/
+theorem fold_scalar_is_zero (inputs : Nat → Option (List Word)) (value : Word) :
+    (ControlExpr.apply .isZero [.constant 1 value]).eval inputs =
+      (ControlExpr.constant 1 (if value == 0 then 1 else 0)).eval inputs := by
+  simp [ControlExpr.eval, normalized_scalar_zero_test]
 
 end S31.Functional.Correspondence.Optimizer

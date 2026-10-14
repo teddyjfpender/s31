@@ -74,6 +74,10 @@ def NormalizedRule.eval : NormalizedRule → List Value → Option Value
   | .isZero => zeroTest
   | .select => choice
 
+theorem normalized_scalar_zero_test (input : Word) :
+    NormalizedRule.isZero.eval [[input]] =
+      some [if input == 0 then 1 else 0] := rfl
+
 theorem lower_rule_eval (rule : SourceRule) (args : List Value) :
     (lowerRule rule).eval args = rule.eval args := by
   cases rule <;> rfl

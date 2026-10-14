@@ -7,6 +7,7 @@ that binary is absent; the explicit formal command builds it before this test.
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -67,8 +68,9 @@ circuit parenthesized(public x:[m31;1], private a:[m31;4],
 class PureFieldLeanBytesTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.checker = (ROOT / "formal/s31/.lake/build/bin/"
-                       "s31-pure-field-derivation-bytes-check")
+        cls.checker = Path(os.environ.get(
+            "S31_PURE_FIELD_LEAN_CHECKER",
+            ROOT / "formal/s31/.lake/build/bin/s31-pure-field-derivation-bytes-check"))
         if not cls.checker.is_file():
             raise unittest.SkipTest("build s31-pure-field-derivation-bytes-check first")
 
@@ -147,10 +149,10 @@ class PureFieldLeanBytesTests(unittest.TestCase):
         result = self.checked(source, canonical(changed), relation)
         self.assertEqual(result.returncode, 0, result.stderr)
 
-    def test_current_optimizer_receipt_has_no_overlap(self) -> None:
+    def test_optimizer_receipt_admits_same_control_sources(self) -> None:
         for source in (SCALAR, MIXED, EIGHT, PARENTHESIZED):
             relation, _ = compile_text(source.decode())
-            self.assertFalse(optimizer_receipt_eligible(relation))
+            self.assertTrue(optimizer_receipt_eligible(relation))
 
 
 if __name__ == "__main__":

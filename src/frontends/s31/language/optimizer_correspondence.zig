@@ -7,7 +7,7 @@ const relation = @import("relation.zig");
 const canonical = @import("canonical.zig");
 const M31 = core.fields.m31.M31;
 
-pub const schema = "s31-optimizer-correspondence-pure-field-v1";
+pub const schema = "s31-optimizer-correspondence-pure-field-v2";
 pub const Receipt = struct {
     schema: []const u8 = schema,
     program_sha256: [64]u8,
@@ -22,6 +22,7 @@ const Key = struct {
     length: u32,
     lhs: ?u32 = null,
     rhs: ?u32 = null,
+    selector: ?u32 = null,
     constant: ?u32 = null,
 };
 
@@ -40,12 +41,26 @@ const EncodedNode = struct {
     input_name: ?[]const u8 = null,
     visibility: ?relation.Visibility = null,
 };
+const EncodedSelectorNode = struct {
+    tag: canonical.Tag,
+    kind: relation.Kind,
+    length: u32,
+    lhs: ?u32 = null,
+    rhs: ?u32 = null,
+    selector: ?u32 = null,
+    constant: ?u32 = null,
+    rounds: ?u32 = null,
+    body: ?[]const relation.Step = null,
+    input_name: ?[]const u8 = null,
+    visibility: ?relation.Visibility = null,
+};
 
 fn supported(program: relation.Program) bool {
     if (program.version != 1 or program.proof_mode != .transparent) return false;
     for (program.inputs) |input| if (input.kind != .m31) return false;
     for (program.nodes) |node| switch (node.op) {
-        .constant, .cast_m31, .add, .sub, .mul, .add_const, .mul_const => {},
+        .constant, .cast_m31, .add, .sub, .mul, .add_const, .mul_const,
+        .inv, .is_zero, .select => {},
         else => return false,
     };
     return true;
@@ -53,7 +68,7 @@ fn supported(program: relation.Program) bool {
 
 fn key(node: canonical.Node) Key {
     return .{ .tag = node.tag, .length = node.length, .lhs = node.lhs,
-        .rhs = node.rhs, .constant = node.constant };
+        .rhs = node.rhs, .selector = node.selector, .constant = node.constant };
 }
 
 fn constant(length: u32, value: u32) canonical.Node {
@@ -61,8 +76,8 @@ fn constant(length: u32, value: u32) canonical.Node {
 }
 
 fn sameNode(expected: canonical.Node, actual: canonical.Node) bool {
-    // The fragment has no selector, indexed array, repeat body or input
-    // metadata on arithmetic nodes. Check every field, including nulls.
+    // The fragment has no indexed array or repeat body. Check every field,
+    // including the selector and all otherwise-null metadata.
     return std.meta.eql(expected, actual);
 }
 
@@ -111,7 +126,8 @@ fn checkProgram(allocator: std.mem.Allocator, program: relation.Program, ir: *co
     for (program.nodes, 0..) |raw, node_index| {
         const lhs: ?u32 = if (raw.lhs) |name| names.get(name) orelse return error.OptimizerCorrespondenceMismatch else null;
         const rhs: ?u32 = if (raw.rhs) |name| names.get(name) orelse return error.OptimizerCorrespondenceMismatch else null;
-        const length: u32 = if (raw.op == .constant) raw.length.? else expected.items[lhs.?].length;
+        const selector: ?u32 = if (raw.selector) |name| names.get(name) orelse return error.OptimizerCorrespondenceMismatch else null;
+        const length: u32 = if (raw.op == .constant) raw.length.? else if (raw.op == .is_zero) 1 else expected.items[lhs.?].length;
         const tag: canonical.Tag = switch (raw.op) {
             .constant => .constant,
             .cast_m31 => .cast_m31,
@@ -120,11 +136,14 @@ fn checkProgram(allocator: std.mem.Allocator, program: relation.Program, ir: *co
             .mul => .mul,
             .add_const => .add_const,
             .mul_const => .mul_const,
+            .inv => .inv,
+            .is_zero => .is_zero,
+            .select => .select,
             else => unreachable,
         };
         var candidate: canonical.Node = .{ .tag = tag,
             .kind = .m31, .length = length, .lhs = lhs, .rhs = rhs,
-            .constant = raw.constant };
+            .selector = selector, .constant = raw.constant };
         if ((raw.op == .add or raw.op == .mul) and candidate.lhs.? > candidate.rhs.?)
             std.mem.swap(u32, &candidate.lhs.?, &candidate.rhs.?);
         const left = if (lhs) |id| expected.items[id] else null;
@@ -152,6 +171,11 @@ fn checkProgram(allocator: std.mem.Allocator, program: relation.Program, ir: *co
                 else if (left.?.tag == .constant)
                     candidate = constant(length, field(left.?.constant.?).mul(field(raw.constant.?)).toU32());
             },
+            .is_zero => {
+                if (left.?.tag == .constant)
+                    candidate = constant(1, @intFromBool(left.?.constant.? == 0));
+            },
+            .inv, .select => {},
             .constant => {},
             else => unreachable,
         }
@@ -184,24 +208,37 @@ fn checkProgram(allocator: std.mem.Allocator, program: relation.Program, ir: *co
         try require(std.mem.eql(u8, actual.name, name) and
             actual.id == (names.get(name) orelse return error.OptimizerCorrespondenceMismatch));
     }
-    const encoded_nodes = try allocator.alloc(EncodedNode, expected.items.len);
-    defer allocator.free(encoded_nodes);
-    for (expected.items, encoded_nodes) |node, *encoded| encoded.* = .{
-        .tag = node.tag,
-        .kind = node.kind,
-        .length = node.length,
-        .lhs = node.lhs,
-        .rhs = node.rhs,
-        .constant = node.constant,
-        .input_name = node.input_name,
-        .visibility = node.visibility,
+    var uses_selector = false;
+    for (expected.items) |node| if (node.tag == .select) {
+        uses_selector = true;
+        break;
     };
-    const canonical_bytes = try std.json.Stringify.valueAlloc(allocator, .{
-        .version = @as(u32, 1),
-        .nodes = encoded_nodes,
-        .assertions = ir.assertions,
-        .public_outputs = ir.public_outputs,
-    }, .{});
+    const canonical_bytes = if (uses_selector) blk: {
+        const nodes = try allocator.alloc(EncodedSelectorNode, expected.items.len);
+        defer allocator.free(nodes);
+        for (expected.items, nodes) |node, *encoded| encoded.* = .{
+            .tag = node.tag, .kind = node.kind, .length = node.length,
+            .lhs = node.lhs, .rhs = node.rhs, .selector = node.selector,
+            .constant = node.constant, .input_name = node.input_name,
+            .visibility = node.visibility,
+        };
+        break :blk try std.json.Stringify.valueAlloc(allocator, .{
+            .version = @as(u32, 1), .nodes = nodes,
+            .assertions = ir.assertions, .public_outputs = ir.public_outputs,
+        }, .{});
+    } else blk: {
+        const nodes = try allocator.alloc(EncodedNode, expected.items.len);
+        defer allocator.free(nodes);
+        for (expected.items, nodes) |node, *encoded| encoded.* = .{
+            .tag = node.tag, .kind = node.kind, .length = node.length,
+            .lhs = node.lhs, .rhs = node.rhs, .constant = node.constant,
+            .input_name = node.input_name, .visibility = node.visibility,
+        };
+        break :blk try std.json.Stringify.valueAlloc(allocator, .{
+            .version = @as(u32, 1), .nodes = nodes,
+            .assertions = ir.assertions, .public_outputs = ir.public_outputs,
+        }, .{});
+    };
     defer allocator.free(canonical_bytes);
     var canonical_digest: [32]u8 = undefined;
     std.crypto.hash.sha2.Sha256.hash(canonical_bytes, &canonical_digest, .{});
@@ -248,6 +285,38 @@ test "production canonical graph passes with folds CSE aliases and ordered subtr
     ir.nodes[5].lhs = original_lhs;
     ir.nodes[5].rhs = original_rhs;
 
+    ir.sha256[0] ^= 1;
+    try std.testing.expectError(error.OptimizerCorrespondenceMismatch,
+        check(std.testing.allocator, source, &ir));
+}
+
+test "control graph checks scalar zero test, select selector, inverse and CSE" {
+    const source =
+        \\{"version":1,"name":"optimizer_control","inputs":[{"name":"x","kind":"m31","length":1,"visibility":"public"},{"name":"a","kind":"m31","length":4,"visibility":"private"},{"name":"b","kind":"m31","length":4,"visibility":"private"}],"nodes":[{"name":"z","op":"is_zero","lhs":"x"},{"name":"z_copy","op":"is_zero","lhs":"x"},{"name":"picked","op":"select","lhs":"a","rhs":"b","selector":"z"},{"name":"picked_copy","op":"select","lhs":"a","rhs":"b","selector":"z_copy"},{"name":"inverse","op":"inv","lhs":"picked"},{"name":"c0","op":"constant","constant":0,"length":1},{"name":"one","op":"is_zero","lhs":"c0"}],"assertions":[{"lhs":"picked","rhs":"picked_copy"}],"public_outputs":["inverse","one"]}
+    ;
+    var parsed = try relation.parseProgram(std.testing.allocator, source);
+    defer parsed.deinit();
+    var ir = try canonical.build(std.testing.allocator, parsed.value);
+    defer ir.deinit();
+    const receipt = (try check(std.testing.allocator, source, &ir)).?;
+    try std.testing.expectEqualStrings(schema, receipt.schema);
+    try std.testing.expectEqual(@as(usize, 7), receipt.source_nodes);
+    try std.testing.expectEqual(@as(usize, 2), receipt.aliases);
+    try std.testing.expectEqual(@as(?u32, 3), ir.nodes[4].selector);
+    try std.testing.expectEqual(@as(u32, 1), ir.nodes[7].constant.?);
+
+    ir.nodes[4].selector = 0;
+    try std.testing.expectError(error.OptimizerCorrespondenceMismatch,
+        check(std.testing.allocator, source, &ir));
+    ir.nodes[4].selector = 3;
+    ir.nodes[7].constant = 0;
+    try std.testing.expectError(error.OptimizerCorrespondenceMismatch,
+        check(std.testing.allocator, source, &ir));
+    ir.nodes[7].constant = 1;
+    ir.source_map[6].id = 5;
+    try std.testing.expectError(error.OptimizerCorrespondenceMismatch,
+        check(std.testing.allocator, source, &ir));
+    ir.source_map[6].id = 4;
     ir.sha256[0] ^= 1;
     try std.testing.expectError(error.OptimizerCorrespondenceMismatch,
         check(std.testing.allocator, source, &ir));
