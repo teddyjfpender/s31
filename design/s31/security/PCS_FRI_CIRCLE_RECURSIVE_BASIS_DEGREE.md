@@ -15,6 +15,11 @@ the [M31 embedding proof](PCS_FRI_CIRCLE_BASIS_DOT.md) makes this cast and
 its QM31 base-value image explicit. It still does not prove Zig's M31 array
 conversion or sampled-value implementation.
 
+The follow-on [circle FFT-space proof](PCS_FRI_CIRCLE_FFT_POLYNOMIAL_SPACE.md)
+establishes the stronger two-component degree condition from the whitepaper's
+`L′ₖ` definition for this same recursive word. A Laurent radius bound by
+itself admits one extra top direction.
+
 ## The native factor order
 
 [`fillEvalFactors`](../../../deps/stwo-zig/src/prover/poly/circle/point_evaluation.zig)

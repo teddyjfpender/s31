@@ -27,6 +27,9 @@ and probabilistic premises.
 The [recursive circle-basis proof](PCS_FRI_CIRCLE_RECURSIVE_BASIS_DEGREE.md)
 derives the Laurent radius for every coefficient slot in the native-shaped
 half-split evaluator.
+The [circle FFT-space proof](PCS_FRI_CIRCLE_FFT_POLYNOMIAL_SPACE.md) additionally
+derives the paper's strict `P(x)+yQ(x)` component-degree bounds for that
+recursive model and matches its evaluations to the Laurent word.
 The [height-five native basis slice](PCS_FRI_H5_NATIVE_BASIS_REFINEMENT.md)
 unrolls the 16-cell subset-product kernel, proves its mathematical four-group
 sum and checks the optimized Zig path against an independent field reference.
