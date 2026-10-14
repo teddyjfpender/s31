@@ -52,6 +52,14 @@ const ChipKey = struct {
     relation_id: u32,
 };
 
+const FriMetadata = struct {
+    pow_bits: u32,
+    log_blowup_factor: u32,
+    last_layer_degree_bound: u32,
+    queries: u32,
+    fold_step: u32,
+};
+
 const Key = struct {
     schema: []const u8,
     profile: []const u8 = "circuit-v1",
@@ -75,13 +83,7 @@ const Key = struct {
     projection_sha256: []const u8,
     air_bundle_sha256: []const u8,
     stdlib_lock_sha256: ?[]const u8 = null,
-    fri: struct {
-        pow_bits: u32,
-        log_blowup_factor: u32,
-        last_layer_degree_bound: u32,
-        queries: u32,
-        fold_step: u32,
-    },
+    fri: FriMetadata,
 };
 
 const RecursiveStatement = struct {
@@ -249,7 +251,7 @@ const Report = struct {
     assertion_map: []const s31.relation_compiler.AssertionSpan,
     public_binding: []const s31.relation_compiler.BindingSpan,
     finalization: s31.relation_compiler.FinalizationSpan,
-    fri: struct { pow_bits: u32, log_blowup_factor: u32, last_layer_degree_bound: u32, queries: u32, fold_step: u32 },
+    fri: FriMetadata,
 };
 
 /// Value-free builder gates and the exact direct AIR preprocessed columns.
@@ -568,6 +570,16 @@ fn printWords(words: [8]u32) void {
 const fri_fold_step: u32 = @import("s31_options").fri_fold_step;
 const recursive_fri_fold_step: u32 = if (wide_mode) 4 else fri_fold_step;
 
+fn friMetadata(config: FriConfigV2) FriMetadata {
+    return .{
+        .pow_bits = config.pow_bits,
+        .log_blowup_factor = config.log_blowup_factor,
+        .last_layer_degree_bound = @as(u32, 1) << @intCast(config.log_last_layer_degree_bound),
+        .queries = config.n_queries,
+        .fold_step = config.fold_step,
+    };
+}
+
 fn validRecursiveKeyProfile(key: RecursiveKey) bool {
     return if (wide_mode)
         std.mem.eql(u8, key.schema, "s31-recursive-verification-key-v3") and
@@ -585,7 +597,12 @@ fn showcasePcsConfig(trace_log_size: u32) !PcsConfigV2 {
 }
 
 fn recursivePcsConfig(trace_log_size: u32) !PcsConfigV2 {
-    return PcsConfigV2.fromFriAndTraceSize(try FriConfigV2.init(26, 0, 1, 70, recursive_fri_fold_step), trace_log_size);
+    const base = (try showcasePcsConfig(trace_log_size)).fri_config;
+    return PcsConfigV2.fromFriAndTraceSize(
+        try FriConfigV2.init(base.pow_bits, base.log_last_layer_degree_bound,
+            base.log_blowup_factor, base.n_queries, recursive_fri_fold_step),
+        trace_log_size,
+    );
 }
 
 fn directPcsConfig(circuit_log_size: u32, chip_rounds: ?u32) !PcsConfigV2 {
@@ -1006,7 +1023,7 @@ fn inspect(allocator: std.mem.Allocator, source: relation.Program) !void {
         .assertion_map = maps.assertions.items,
         .public_binding = maps.bindings.items,
         .finalization = maps.finalization.?,
-        .fri = .{ .pow_bits = 26, .log_blowup_factor = 1, .last_layer_degree_bound = 1, .queries = 70, .fold_step = fri_fold_step },
+        .fri = friMetadata((try showcasePcsConfig(trace_log)).fri_config),
     };
     const encoded = try std.json.Stringify.valueAlloc(allocator, report, .{});
     defer allocator.free(encoded);
@@ -4189,12 +4206,11 @@ fn validateKey(allocator: std.mem.Allocator, source: relation.Program, key: Key)
     var ir = try s31.canonical.build(allocator, source);
     defer ir.deinit();
     if (!std.mem.eql(u8, key.canonical_ir_sha256, &std.fmt.bytesToHex(ir.sha256, .lower))) return error.InvalidVerificationKey;
+    const expected_fri = friMetadata((try showcasePcsConfig(key.trace_log_size)).fri_config);
     if (key.preprocessed_root.len != 64 or key.circuit_hash.len != 64 or
         !std.mem.eql(u8, key.projection_sha256, projection_sha256) or
         !std.mem.eql(u8, key.air_bundle_sha256, cpu.air.bundle_sha256) or
-        key.fri.pow_bits != 26 or key.fri.log_blowup_factor != 1 or
-        key.fri.last_layer_degree_bound != 1 or key.fri.queries != 70 or
-        key.fri.fold_step != fri_fold_step) return error.InvalidVerificationKey;
+        !std.meta.eql(key.fri, expected_fri)) return error.InvalidVerificationKey;
     try validateCompiledKey(allocator, source, key, program_digest, ir.sha256);
 }
 
