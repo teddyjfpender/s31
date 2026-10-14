@@ -49,6 +49,7 @@ class RawGateBcsTests(unittest.TestCase):
                         ["collision_work_factor_below_2_pow_minus_126"])
         self.assertFalse(value["hypothetical_paper_BCS_lambda_256_only"]["applies_to_native_verifier"])
         self.assertFalse(value["adaptive_BCS_reduction_proved"])
+        self.assertTrue(value["draw_counter_fails_before_wrap"])
         self.assertFalse(value["release_gate_admissible"])
         self.assertIsNone(value["native_proven_security_bits"])
 

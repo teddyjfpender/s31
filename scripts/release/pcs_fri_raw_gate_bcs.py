@@ -307,7 +307,7 @@ def report(root: Path = ROOT) -> dict:
             "applies_to_native_verifier": False,
         },
         "unbounded_rejection_before_query_epoch": True,
-        "draw_counter_panics_before_wrap": True,
+        "draw_counter_fails_before_wrap": True,
         "adaptive_BCS_reduction_proved": False,
         "native_proven_security_bits": None,
         "release_gate_admissible": False,
