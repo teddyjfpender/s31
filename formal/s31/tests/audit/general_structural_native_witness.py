@@ -303,7 +303,7 @@ def main() -> None:
         rejected(work, {**raw, "statement": canonical(forged_statement)},
                  "Lean structural statement gate")
         inputs, nodes = checked_words(raw)
-        exported = native_check(raw, inputs, nodes, work, export_graph=True)
+        exported, _ = native_check(raw, inputs, nodes, work, export_graph=True)
         check_graph(exported, raw, inputs, nodes)
         graph_mutations = (
             ("extra_gate", lambda g: g["add"].append({"in0": 0, "in1": 0, "out": 0})),
@@ -383,7 +383,7 @@ def main() -> None:
             case for case in CASES if case[0] == "two_public")
         assertion_raw = case_bytes(assertion_source, assertion_assignment)
         assertion_inputs, assertion_nodes = checked_words(assertion_raw)
-        assertion_exported = native_check(
+        assertion_exported, _ = native_check(
             assertion_raw, assertion_inputs, assertion_nodes, work, export_graph=True)
         changed = copy.deepcopy(assertion_exported)
         changed["eq"][0] = {"in0": 0, "in1": 0}
