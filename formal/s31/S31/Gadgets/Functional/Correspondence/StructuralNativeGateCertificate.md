@@ -67,8 +67,12 @@ The independent replay checks every exported arithmetic gate equation,
 including full QM31 extension multiplication used by input packing; all
 equality gates; canonical M31 values; each source expression's concrete gate
 or a justified fold, identity erasure, or CSE alias; assertion spans; and the
-ordered public output words. It rejects extra native gates and changed
-operands through the witness-free graph comparison. These concrete checks
+ordered public output words. It rejects a witness-only extra gate through
+the witness-free graph comparison and an unaccounted extra gate in the exported
+artifact through the recorded span end. A gate added coherently to both
+compiler modes and to the finalization span remains possible: independent
+enumeration of the native constant-derivation/finalization roster is open.
+These concrete checks
 correspond to the address/value, gate, port, and assertion premises of
 `checked_native_trace_sound` for **one supplied assignment**. The artifact is
 an executable certificate, not a Lean proof term: a machine-checked decoder

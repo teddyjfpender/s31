@@ -196,11 +196,24 @@ def check_graph(graph: dict, raw: dict[str, bytes], inputs: list[dict],
         previous_arithmetic, previous_eq = span["qm31_end"], span["eq_end"]
         tag = canonical[id_]["tag"]
         if tag in ("add", "sub", "mul", "add_const", "mul_const"):
-            require(span["qm31_end"] - span["qm31_start"] <= 1 and
+            node = canonical[id_]
+            zero_add = (tag == "add" and any(
+                canonical[operand]["tag"] == "constant" and
+                canonical[operand]["constant"] == 0
+                for operand in (node["lhs"], node["rhs"])))
+            require(span["qm31_end"] - span["qm31_start"] == (0 if zero_add else 1) and
                     span["eq_start"] == span["eq_end"],
-                    "arithmetic node has extra gates")
+                    "arithmetic node has extra or missing gates")
+            if zero_add:
+                other = node["rhs"] if canonical[node["lhs"]]["constant"] == 0 else node["lhs"]
+                require(wires[id_]["wires"] == wires[other]["wires"],
+                        "zero-add peephole did not alias the other operand")
         else:
             require(tag in ("input", "constant"), "canonical operation outside profile")
+            if tag == "constant":
+                require(span["qm31_start"] == span["qm31_end"] and
+                        span["eq_start"] == span["eq_end"],
+                        "constant node emitted unexpected gate")
 
     # Public ports are fixed by the native output roster and compiler binding
     # spans, not by a caller-provided address list. Each reserved output wire

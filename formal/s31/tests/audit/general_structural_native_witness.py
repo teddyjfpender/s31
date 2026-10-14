@@ -132,6 +132,7 @@ def main() -> None:
         exported = native_check(raw, inputs, nodes, work, export_graph=True)
         check_graph(exported, raw, inputs, nodes)
         graph_mutations = (
+            ("extra_gate", lambda g: g["add"].append({"in0": 0, "in1": 0, "out": 0})),
             ("add_operand", lambda g: g["add"][0].__setitem__("in0", 0)),
             ("wire_value", lambda g: g["values"][g["node_wires"][3]["wires"][0]].__setitem__(0, 99)),
             ("source_map", lambda g: g["source_map"][3].__setitem__("id", 0)),
@@ -184,7 +185,7 @@ def main() -> None:
             else:
                 raise AssertionError(f"native {field} accepted")
     print("generic structural/native audit: seven source families accepted; "
-          "four Lean, five native, and six exported-graph mutations rejected")
+          "four Lean, five native, and seven exported-graph mutations rejected")
 
 
 if __name__ == "__main__":
