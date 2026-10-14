@@ -350,6 +350,7 @@ import S31.Gadgets.PcsFri.CircleLaurentUniqueness
 import S31.Gadgets.PcsFri.NativeCircleQuotientRows
 import S31.Gadgets.PcsFri.ConcreteCircleMinpoly
 import S31.Gadgets.PcsFri.CanonicalCircleLaurentRows
+import S31.Gadgets.PcsFri.ConcretePairedOwnQuotient
 import S31.Gadgets.PcsFri.GateFourBlockOwnQuotient
 import S31.Gadgets.PcsFri.GateQuotientOnlyGap
 import S31.Gadgets.PcsFri.GateFourSlotNativeMap
