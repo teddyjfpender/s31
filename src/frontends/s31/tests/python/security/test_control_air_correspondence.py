@@ -22,6 +22,9 @@ class ControlAirCorrespondenceTests(unittest.TestCase):
     def test_native_capture_and_sealed_roster(self) -> None:
         receipt = check_control_air(FIXTURE, TOPOLOGY)
         self.assertEqual(receipt["checked_arithmetic_rows"], 14)
+        self.assertEqual(receipt["checked_public_binding_gate_rows"], 15)
+        self.assertEqual(receipt["checked_conversion_rows"], 5)
+        self.assertEqual(receipt["public_output_pin_addresses"], [4, 5, 6, 7])
         self.assertEqual(receipt["active_inverse_lanes"], 4)
         self.assertEqual(receipt["control_nodes"], ["z", "picked", "result"])
 
@@ -71,6 +74,39 @@ class ControlAirCorrespondenceTests(unittest.TestCase):
         changed["preprocessed_root"] = "0" * 64
         with self.assertRaisesRegex(ValueError, "not bound to the sealed source"):
             check_control_air(FIXTURE, changed)
+
+    def test_output_lane_extraction_rewire_is_rejected(self) -> None:
+        changed = copy.deepcopy(TOPOLOGY)
+        next(gate for gate in changed["pointwise_mul"]
+             if gate["out"] == 40)["in1"] = 1
+        with patch("package.control_air_correspondence._check_columns"):
+            with self.assertRaisesRegex(ValueError, "uniquely owned pointwise_mul"):
+                check_control_air(FIXTURE, changed)
+
+    def test_public_conversion_input_rewire_is_rejected(self) -> None:
+        changed = copy.deepcopy(TOPOLOGY)
+        changed["m31_to_u32"][3]["input"] = 38
+        with patch("package.control_air_correspondence._check_columns"):
+            with self.assertRaisesRegex(ValueError, "wrong unique conversion"):
+                check_control_air(FIXTURE, changed)
+
+    def test_public_pin_producer_rewire_is_rejected(self) -> None:
+        changed = copy.deepcopy(TOPOLOGY)
+        next(gate for gate in changed["add"] if gate["out"] == 6)["in0"] = 39
+        with patch("package.control_air_correspondence._check_columns"):
+            with self.assertRaisesRegex(ValueError, "wrong unique add producer"):
+                check_control_air(FIXTURE, changed)
+
+    def test_public_output_order_and_padding_are_rejected(self) -> None:
+        changed = copy.deepcopy(TOPOLOGY)
+        changed["output"][2], changed["output"][3] = changed["output"][3], changed["output"][2]
+        with self.assertRaisesRegex(ValueError, "public output ABI"):
+            check_control_air(FIXTURE, changed)
+        changed = copy.deepcopy(TOPOLOGY)
+        next(gate for gate in changed["add"] if gate["out"] == 9)["in1"] = 1
+        with patch("package.control_air_correspondence._check_columns"):
+            with self.assertRaisesRegex(ValueError, "wrong unique add producer"):
+                check_control_air(FIXTURE, changed)
 
 
 if __name__ == "__main__":
