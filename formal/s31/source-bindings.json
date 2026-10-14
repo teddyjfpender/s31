@@ -405,7 +405,7 @@
     "formal/s31/tests/run_pcs_fri_layer_native.sh": "646d1b96665e920f241fdc2b4458ce95e160a9f163fcc8575bad5b6b0bfb4dc8",
     "formal/s31/tests/pcs_fri_merkle_binding_native.zig": "99dc5ed7c8ddb59779f58fb8c5fcf0458ed16c36b0f9b1bf3f790d4d3f0abcd6",
     "formal/s31/tests/run_pcs_fri_merkle_binding_native.sh": "a385bc23a81a88e33435e0ec7eda41c1e50cadd090a40e30263b01ced87a6f92",
-    "formal/s31/tests/pcs_fri_merkle_byte_preimage_native.zig": "6072e1aef6a648a749a54ff67524dd93cb5e532e937bd98b4c62706db13a27a9",
+    "formal/s31/tests/pcs_fri_merkle_byte_preimage_native.zig": "51f4ba29a5e1ecece0618d90a5daefbbee156359de2d2c0eae1480f0ff2bf005",
     "formal/s31/tests/run_pcs_fri_merkle_byte_preimage_native.sh": "6d3a312953dede0f50a14110a891872b5810205828382e5773f9d26b93a3d34f",
     "formal/s31/tests/pcs_fri_prover_column_origin_native.zig": "2df6e7b74b922951df5d844f298e7d27a5c7fd21e332f98677aa1d5206a235ff",
     "formal/s31/tests/run_pcs_fri_prover_column_origin_native.sh": "123a742bdec7ad14069c0f2326e1fe24283623b383bf41bbc6c00176f2ec3403",

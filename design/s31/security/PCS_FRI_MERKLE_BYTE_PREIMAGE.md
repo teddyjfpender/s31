@@ -46,3 +46,27 @@ has no all-input operational-semantics refinement to Lean, prover column
 origin is not universally proven, the installed verifier is not joined to
 this theorem, and no quantitative BLAKE2s collision bound or full BCS work
 budget has been established.
+
+## QM31 FRI row bridge
+
+[`FriQm31BytePreimage.lean`](../../../formal/s31/S31/Gadgets/PcsFri/FriQm31BytePreimage.lean)
+models one QM31 evaluation as four canonical M31 coordinates in the pinned
+`[c0.a, c0.b, c1.a, c1.b]` order. It proves that flattening an arbitrary
+list of such evaluations into an M31 row is injective, including when the two
+lists have different lengths. Thus, given **two accepted full paths** for
+different QM31 rows at the **same** root, height, and leaf index, the existing
+plain-byte lemma produces two distinct byte messages with the same digest.
+The theorem requires canonical coordinates and fixed 32-byte sibling/digest
+types. It covers the one-evaluation unpacked row and four-evaluation packed
+row used by the selected FRI verifier; it does not infer either accepted path
+from a Zig proof.
+
+The pinned [`fri_merkle_admission.zig`](../../../src/frontends/s31/runtime/fri_merkle_admission.zig)
+flattens each captured evaluation with `toM31Array()` and writes coordinate
+`j` at `offset * 4 + j`. The existing source guard checks both operations and
+the admission call in all four S31 verifier paths. The focused native byte
+test now independently encodes one- and four-evaluation rows and compares
+the production leaf hasher to BLAKE2s on those exact bytes. This joins the
+formal message representation to the reviewed finite native path; universal
+Zig-to-Lean decoder semantics and quantitative collision security remain
+open.
