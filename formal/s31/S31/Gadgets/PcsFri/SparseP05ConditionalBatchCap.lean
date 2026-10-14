@@ -4,7 +4,8 @@ import Mathlib.Tactic
 An exact arithmetic boundary for the *isolated* batching term in the
 published multi-domain S-two expression. The parameters are the candidate
 sparse Gate values `N = 2^16`, `B = 2`, `D₀ = N B² = 2^18`, `T = 2^64`, and the
-most favorable BCS round count `R = 1`. This theorem does not identify a
+most favorable BCS round count `R = 1`, and zero certified batch grinding
+credit. This theorem does not identify a
 native batch with the paper's padded width `M`, prove `D₀ = N B²` for the
 selected protocol, account for the other positive error terms, or certify
 native PCS/FRI soundness.
