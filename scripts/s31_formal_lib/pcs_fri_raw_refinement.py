@@ -10,6 +10,16 @@ from scripts.s31_formal_lib.pcs_fri_order import ordered_once, region
 
 
 def check_sources(fri: str, native_audit: str) -> None:
+    terminal = region(fri, "fn decommitLastLayer(", "fn cloneLayerProof(")
+    ordered_once(
+        terminal, "FRI terminal query coordinate and polynomial check",
+        "if (queries.positions.len != query_evals.len)",
+        "for (queries.positions, query_evals) |query, query_eval|",
+        "const x = self.last_layer_domain.at(core_utils.bitReverseIndex(",
+        "self.last_layer_domain.logSize(),",
+        "const expected = try self.last_layer_poly.evalAtPoint(allocator, QM31.fromBase(x));",
+        "if (!query_eval.eql(expected)) {\n                    return FriVerificationError.LastLayerEvaluationsInvalid;",
+    )
     verify = region(fri, "fn decommitImpl(", "fn decommitLastLayer(")
     ordered_once(
         verify, "FRI raw-slot publication after complete verification",
