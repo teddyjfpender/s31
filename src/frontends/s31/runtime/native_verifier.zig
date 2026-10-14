@@ -284,10 +284,7 @@ fn verifyProfile(
         &capture,
     );
     defer capture.deinit(allocator);
-    try deep_capture_admission.validate(allocator, pcs.trace_lifting_log_size,
-        capture.queries.raw, capture.column_log_sizes, capture.sampled_points,
-        capture.sampled_values, capture.queried_values, capture.deep_answers,
-        capture.deep_randomness);
+    try deep_capture_admission.validate(allocator, pcs.trace_lifting_log_size, capture.queries.raw, capture.column_log_sizes, capture.sampled_points, capture.sampled_values, capture.queried_values, capture.deep_answers, capture.deep_randomness);
     try fri_capture_admission.validate(
         H,
         allocator,
@@ -328,6 +325,42 @@ fn logsFor(
 const SPARSE_GATE_MAGIC = "S31NAT3G";
 const SPARSE_CHIP_MAGIC = "S31NAT3C";
 
+/// Experimental P05 geometry recorded only after the complete sparse native
+/// verification and its capture admission checks succeed. The paired track
+/// counts are requirements for a future original/own-quotient protocol, not
+/// tracks tested by this production verifier. These physical counts are not
+/// the S-two paper's padded batch width M.
+pub const SparseP05Shape = struct {
+    pub const Height = struct {
+        extended_log_size: u32,
+        committed_input_log_size: u32,
+        source_columns: usize,
+        required_original_tracks_if_paired: usize,
+        required_own_quotient_tracks_if_paired: usize,
+        ood_claims: usize,
+        composition_columns: usize,
+        root_columns: [4]usize,
+        root_ood_claims: [4]usize,
+    };
+    pub const Column = struct {
+        root_index: usize,
+        column_index: usize,
+        extended_log_size: u32,
+        ood_claims: usize,
+        proposed_original_slot_at_height: usize,
+        proposed_first_own_quotient_slot_at_height: usize,
+    };
+
+    root_columns: [4]usize = .{ 0, 0, 0, 0 },
+    root_ood_claims: [4]usize = .{ 0, 0, 0, 0 },
+    composition_log_degree_bound: u32 = 0,
+    composition_log_split: u32 = 0,
+    height_count: usize = 0,
+    heights: [32]Height = undefined,
+    column_count: usize = 0,
+    columns: [128]Column = undefined,
+};
+
 pub fn serializeSparse(allocator: std.mem.Allocator, proof: *const cpu.Internal.CircuitProof, has_chip: bool) ![]u8 {
     if ((proof.chip_claimed_sum != null) != has_chip) return error.WrongProofProfile;
     var bytes: std.ArrayList(u8) = .empty;
@@ -363,6 +396,7 @@ pub fn verifySparse(
     raw: []const u8,
     source_digest: [32]u8,
     chip_spec: ?HybridSpec,
+    p05_shape_out: ?*SparseP05Shape,
 ) !void {
     const has_chip = chip_spec != null;
     const magic = if (has_chip) SPARSE_CHIP_MAGIC else SPARSE_GATE_MAGIC;
@@ -501,10 +535,7 @@ pub fn verifySparse(
         &capture,
     );
     defer capture.deinit(allocator);
-    try deep_capture_admission.validate(allocator, pcs.trace_lifting_log_size,
-        capture.queries.raw, capture.column_log_sizes, capture.sampled_points,
-        capture.sampled_values, capture.queried_values, capture.deep_answers,
-        capture.deep_randomness);
+    try deep_capture_admission.validate(allocator, pcs.trace_lifting_log_size, capture.queries.raw, capture.column_log_sizes, capture.sampled_points, capture.sampled_values, capture.queried_values, capture.deep_answers, capture.deep_randomness);
     try fri_capture_admission.validate(
         H,
         allocator,
@@ -516,6 +547,69 @@ pub fn verifySparse(
     );
     try fri_merkle_admission.validate(allocator, capture.queries.raw, capture.fri);
     try pcs_lifted_capture_admission.validate(allocator, pcs, roots, &capture);
+    if (p05_shape_out) |out| {
+        const components = core.air.components.Components{
+            .components = handles[0..component_count],
+            .n_preprocessed_columns = pp_logs.len,
+        };
+        out.* = .{
+            .composition_log_degree_bound = components.compositionLogDegreeBound(),
+            .composition_log_split = try components.compositionLogSplit(),
+        };
+        if (capture.column_log_sizes.len != 4 or capture.sampled_points.len != 4)
+            return error.InvalidP05SparseShape;
+        for (capture.column_log_sizes, capture.sampled_points, 0..) |logs_by_tree, points_by_tree, tree| {
+            if (logs_by_tree.len != points_by_tree.len) return error.InvalidP05SparseShape;
+            out.root_columns[tree] = logs_by_tree.len;
+            for (logs_by_tree, points_by_tree, 0..) |log_size, points, column| {
+                if (log_size >= out.heights.len or points.len == 0)
+                    return error.InvalidP05SparseShape;
+                const input_log = std.math.sub(u32, log_size, pcs.fri_config.log_blowup_factor) catch
+                    return error.InvalidP05SparseShape;
+                var at: usize = 0;
+                while (at < out.height_count and out.heights[at].extended_log_size != log_size) : (at += 1) {}
+                if (at == out.height_count) {
+                    out.heights[at] = .{
+                        .extended_log_size = log_size,
+                        .committed_input_log_size = input_log,
+                        .source_columns = 0,
+                        .required_original_tracks_if_paired = 0,
+                        .required_own_quotient_tracks_if_paired = 0,
+                        .ood_claims = 0,
+                        .composition_columns = 0,
+                        .root_columns = .{ 0, 0, 0, 0 },
+                        .root_ood_claims = .{ 0, 0, 0, 0 },
+                    };
+                    out.height_count += 1;
+                }
+                const height = &out.heights[at];
+                if (height.committed_input_log_size != input_log) return error.InvalidP05SparseShape;
+                if (out.column_count == out.columns.len) return error.InvalidP05SparseShape;
+                out.columns[out.column_count] = .{
+                    .root_index = tree,
+                    .column_index = column,
+                    .extended_log_size = log_size,
+                    .ood_claims = points.len,
+                    .proposed_original_slot_at_height = height.required_original_tracks_if_paired,
+                    .proposed_first_own_quotient_slot_at_height = height.required_own_quotient_tracks_if_paired,
+                };
+                out.column_count += 1;
+                height.source_columns += 1;
+                height.required_original_tracks_if_paired += 1;
+                height.required_own_quotient_tracks_if_paired += points.len;
+                height.ood_claims += points.len;
+                if (tree == 3) height.composition_columns += 1;
+                height.root_columns[tree] += 1;
+                height.root_ood_claims[tree] += points.len;
+                out.root_ood_claims[tree] += points.len;
+            }
+        }
+        std.sort.heap(SparseP05Shape.Height, out.heights[0..out.height_count], {}, struct {
+            fn less(_: void, a: SparseP05Shape.Height, b: SparseP05Shape.Height) bool {
+                return a.extended_log_size > b.extended_log_size;
+            }
+        }.less);
+    }
 }
 
 const SPARSE_WIDE_MAGIC = "S31NAT5W";
@@ -654,10 +748,7 @@ fn verifySparseWideInternal(
     var capture: core.verifier.ProofCapture(H) = undefined;
     try core.verifier.verifyBorrowedExWithProofCapture(H, MC, allocator, &handles, &channel, &scheme, &stark, true, &capture);
     defer capture.deinit(allocator);
-    try deep_capture_admission.validate(allocator, pcs.trace_lifting_log_size,
-        capture.queries.raw, capture.column_log_sizes, capture.sampled_points,
-        capture.sampled_values, capture.queried_values, capture.deep_answers,
-        capture.deep_randomness);
+    try deep_capture_admission.validate(allocator, pcs.trace_lifting_log_size, capture.queries.raw, capture.column_log_sizes, capture.sampled_points, capture.sampled_values, capture.queried_values, capture.deep_answers, capture.deep_randomness);
     try fri_capture_admission.validate(
         H,
         allocator,
@@ -945,10 +1036,7 @@ fn verifyDirectProfile(
         &capture,
     );
     defer capture.deinit(allocator);
-    try deep_capture_admission.validate(allocator, pcs.trace_lifting_log_size,
-        capture.queries.raw, capture.column_log_sizes, capture.sampled_points,
-        capture.sampled_values, capture.queried_values, capture.deep_answers,
-        capture.deep_randomness);
+    try deep_capture_admission.validate(allocator, pcs.trace_lifting_log_size, capture.queries.raw, capture.column_log_sizes, capture.sampled_points, capture.sampled_values, capture.queried_values, capture.deep_answers, capture.deep_randomness);
     try fri_capture_admission.validate(
         H,
         allocator,

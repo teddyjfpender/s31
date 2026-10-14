@@ -489,6 +489,26 @@ pub fn verifierMain(embedded_key: []const u8, embedded_recursive_key: []const u8
         return error.UnsupportedBlindingCommand;
     if (args.len == 3 and std.mem.eql(u8, args[1], "check-key"))
         return checkSealedVerifierKey(allocator, args[2], embedded_key);
+    if (args.len == 5 and std.mem.eql(u8, args[1], "inspect-p05") and sparse_mode and !chip_mode) {
+        var shape: native.SparseP05Shape = undefined;
+        try verify(allocator, args[2], args[3], args[4], embedded_key, &shape);
+        const report = .{
+            .schema = "s31-sparse-p05-accepted-capture-shape-v1",
+            .status = "accepted_native_proof_experimental_geometry_only",
+            .native_to_paper_batch_width_M = @as(?usize, null),
+            .native_security_bits = @as(?u32, null),
+            .root_columns = shape.root_columns,
+            .root_ood_claims = shape.root_ood_claims,
+            .composition_log_degree_bound = shape.composition_log_degree_bound,
+            .composition_log_split = shape.composition_log_split,
+            .heights = shape.heights[0..shape.height_count],
+            .columns = shape.columns[0..shape.column_count],
+        };
+        const encoded = try std.json.Stringify.valueAlloc(allocator, report, .{});
+        defer allocator.free(encoded);
+        std.debug.print("{s}\n", .{encoded});
+        return;
+    }
     if (args.len == 4 and std.mem.eql(u8, args[1], "recurse-verify"))
         return verifyOuter(allocator, args[2], args[3], embedded_key, embedded_recursive_key);
     if (args.len == 4 and std.mem.eql(u8, args[1], "recurse-verify-next"))
@@ -501,7 +521,7 @@ pub fn verifierMain(embedded_key: []const u8, embedded_recursive_key: []const u8
         std.debug.print("usage: s31-PROGRAM-native-verifier PROOF PUBLIC-STATEMENT.json VERIFICATION-KEY.json\n       check-key VERIFICATION-KEY.json\n       recurse-verify PROOF STATEMENT.json | recurse-verify-next PROOF CHAIN.json\n       fold-verify|state-fold-verify PROOF STATEMENT.json [--max-step N]\n", .{});
         return error.InvalidArguments;
     }
-    try verify(allocator, args[1], args[2], args[3], embedded_key);
+    try verify(allocator, args[1], args[2], args[3], embedded_key, null);
 }
 
 /// Run the same source-to-key reconstruction as proof verification without
@@ -630,8 +650,7 @@ fn showcasePcsConfig(trace_log_size: u32) !PcsConfigV2 {
 fn recursivePcsConfig(trace_log_size: u32) !PcsConfigV2 {
     const base = (try showcasePcsConfig(trace_log_size)).fri_config;
     return PcsConfigV2.fromFriAndTraceSize(
-        try FriConfigV2.init(base.pow_bits, base.log_last_layer_degree_bound,
-            base.log_blowup_factor, base.n_queries, recursive_fri_fold_step),
+        try FriConfigV2.init(base.pow_bits, base.log_last_layer_degree_bound, base.log_blowup_factor, base.n_queries, recursive_fri_fold_step),
         trace_log_size,
     );
 }
@@ -1615,6 +1634,7 @@ fn prove(allocator: std.mem.Allocator, source: relation.Program, assignment_path
                 .rounds = item.rounds,
                 .constant = item.constant,
             } else null,
+            null,
         );
     } else {
         var pp = try preprocessed.PreprocessedCircuit.fromBuilderCircuit(allocator, &topology_ctx.circuit);
@@ -4027,7 +4047,7 @@ fn auditSparseWide(allocator: std.mem.Allocator, source: relation.Program, proof
     std.debug.print("S31 sparse-wide recursive audit: vars={d} valid=true rejected={d}\n", .{ verifier.circuit.n_vars, std.meta.tags(recursion_sparse_wide.Mutation).len });
 }
 
-fn verify(allocator: std.mem.Allocator, path: []const u8, statement_path: []const u8, key_path: []const u8, embedded_key: []const u8) !void {
+fn verify(allocator: std.mem.Allocator, path: []const u8, statement_path: []const u8, key_path: []const u8, embedded_key: []const u8, p05_shape_out: ?*native.SparseP05Shape) !void {
     var parsed = try parsedProgram(allocator);
     defer parsed.deinit();
     // The direct-gate manifest adds eight column digests to the sealed key.
@@ -4165,6 +4185,7 @@ fn verify(allocator: std.mem.Allocator, path: []const u8, statement_path: []cons
             encoded,
             source_digest,
             spec,
+            p05_shape_out,
         );
     } else if (chip_mode) {
         const layout = try preprocessed.ColumnLayout.fromComponentSizes(.{
@@ -4203,7 +4224,8 @@ fn verify(allocator: std.mem.Allocator, path: []const u8, statement_path: []cons
         else
             try native.verify(allocator, &layout, &bundle, try showcasePcsConfig(key.trace_log_size), root, hash, public_words, encoded);
     }
-    std.debug.print("S31 {s}: native verification accepted {s}\n", .{ parsed.value.name, path });
+    if (p05_shape_out == null)
+        std.debug.print("S31 {s}: native verification accepted {s}\n", .{ parsed.value.name, path });
 }
 
 fn validateKey(allocator: std.mem.Allocator, source: relation.Program, key: Key) !void {

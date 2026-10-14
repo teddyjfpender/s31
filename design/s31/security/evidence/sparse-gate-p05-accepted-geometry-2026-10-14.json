@@ -1,0 +1,609 @@
+{
+  "accepted_capture": {
+    "columns": [
+      {
+        "column_index": 0,
+        "extended_log_size": 5,
+        "ood_claims": 1,
+        "proposed_first_own_quotient_slot_at_height": 0,
+        "proposed_original_slot_at_height": 0,
+        "root_index": 0
+      },
+      {
+        "column_index": 1,
+        "extended_log_size": 5,
+        "ood_claims": 1,
+        "proposed_first_own_quotient_slot_at_height": 1,
+        "proposed_original_slot_at_height": 1,
+        "root_index": 0
+      },
+      {
+        "column_index": 2,
+        "extended_log_size": 5,
+        "ood_claims": 1,
+        "proposed_first_own_quotient_slot_at_height": 2,
+        "proposed_original_slot_at_height": 2,
+        "root_index": 0
+      },
+      {
+        "column_index": 3,
+        "extended_log_size": 11,
+        "ood_claims": 1,
+        "proposed_first_own_quotient_slot_at_height": 0,
+        "proposed_original_slot_at_height": 0,
+        "root_index": 0
+      },
+      {
+        "column_index": 4,
+        "extended_log_size": 11,
+        "ood_claims": 1,
+        "proposed_first_own_quotient_slot_at_height": 1,
+        "proposed_original_slot_at_height": 1,
+        "root_index": 0
+      },
+      {
+        "column_index": 5,
+        "extended_log_size": 11,
+        "ood_claims": 1,
+        "proposed_first_own_quotient_slot_at_height": 2,
+        "proposed_original_slot_at_height": 2,
+        "root_index": 0
+      },
+      {
+        "column_index": 6,
+        "extended_log_size": 11,
+        "ood_claims": 1,
+        "proposed_first_own_quotient_slot_at_height": 3,
+        "proposed_original_slot_at_height": 3,
+        "root_index": 0
+      },
+      {
+        "column_index": 7,
+        "extended_log_size": 11,
+        "ood_claims": 1,
+        "proposed_first_own_quotient_slot_at_height": 4,
+        "proposed_original_slot_at_height": 4,
+        "root_index": 0
+      },
+      {
+        "column_index": 8,
+        "extended_log_size": 11,
+        "ood_claims": 1,
+        "proposed_first_own_quotient_slot_at_height": 5,
+        "proposed_original_slot_at_height": 5,
+        "root_index": 0
+      },
+      {
+        "column_index": 9,
+        "extended_log_size": 11,
+        "ood_claims": 1,
+        "proposed_first_own_quotient_slot_at_height": 6,
+        "proposed_original_slot_at_height": 6,
+        "root_index": 0
+      },
+      {
+        "column_index": 10,
+        "extended_log_size": 11,
+        "ood_claims": 1,
+        "proposed_first_own_quotient_slot_at_height": 7,
+        "proposed_original_slot_at_height": 7,
+        "root_index": 0
+      },
+      {
+        "column_index": 11,
+        "extended_log_size": 17,
+        "ood_claims": 1,
+        "proposed_first_own_quotient_slot_at_height": 0,
+        "proposed_original_slot_at_height": 0,
+        "root_index": 0
+      },
+      {
+        "column_index": 0,
+        "extended_log_size": 11,
+        "ood_claims": 1,
+        "proposed_first_own_quotient_slot_at_height": 8,
+        "proposed_original_slot_at_height": 8,
+        "root_index": 1
+      },
+      {
+        "column_index": 1,
+        "extended_log_size": 11,
+        "ood_claims": 1,
+        "proposed_first_own_quotient_slot_at_height": 9,
+        "proposed_original_slot_at_height": 9,
+        "root_index": 1
+      },
+      {
+        "column_index": 2,
+        "extended_log_size": 11,
+        "ood_claims": 1,
+        "proposed_first_own_quotient_slot_at_height": 10,
+        "proposed_original_slot_at_height": 10,
+        "root_index": 1
+      },
+      {
+        "column_index": 3,
+        "extended_log_size": 11,
+        "ood_claims": 1,
+        "proposed_first_own_quotient_slot_at_height": 11,
+        "proposed_original_slot_at_height": 11,
+        "root_index": 1
+      },
+      {
+        "column_index": 4,
+        "extended_log_size": 11,
+        "ood_claims": 1,
+        "proposed_first_own_quotient_slot_at_height": 12,
+        "proposed_original_slot_at_height": 12,
+        "root_index": 1
+      },
+      {
+        "column_index": 5,
+        "extended_log_size": 11,
+        "ood_claims": 1,
+        "proposed_first_own_quotient_slot_at_height": 13,
+        "proposed_original_slot_at_height": 13,
+        "root_index": 1
+      },
+      {
+        "column_index": 6,
+        "extended_log_size": 11,
+        "ood_claims": 1,
+        "proposed_first_own_quotient_slot_at_height": 14,
+        "proposed_original_slot_at_height": 14,
+        "root_index": 1
+      },
+      {
+        "column_index": 7,
+        "extended_log_size": 11,
+        "ood_claims": 1,
+        "proposed_first_own_quotient_slot_at_height": 15,
+        "proposed_original_slot_at_height": 15,
+        "root_index": 1
+      },
+      {
+        "column_index": 8,
+        "extended_log_size": 11,
+        "ood_claims": 1,
+        "proposed_first_own_quotient_slot_at_height": 16,
+        "proposed_original_slot_at_height": 16,
+        "root_index": 1
+      },
+      {
+        "column_index": 9,
+        "extended_log_size": 11,
+        "ood_claims": 1,
+        "proposed_first_own_quotient_slot_at_height": 17,
+        "proposed_original_slot_at_height": 17,
+        "root_index": 1
+      },
+      {
+        "column_index": 10,
+        "extended_log_size": 11,
+        "ood_claims": 1,
+        "proposed_first_own_quotient_slot_at_height": 18,
+        "proposed_original_slot_at_height": 18,
+        "root_index": 1
+      },
+      {
+        "column_index": 11,
+        "extended_log_size": 11,
+        "ood_claims": 1,
+        "proposed_first_own_quotient_slot_at_height": 19,
+        "proposed_original_slot_at_height": 19,
+        "root_index": 1
+      },
+      {
+        "column_index": 12,
+        "extended_log_size": 5,
+        "ood_claims": 1,
+        "proposed_first_own_quotient_slot_at_height": 3,
+        "proposed_original_slot_at_height": 3,
+        "root_index": 1
+      },
+      {
+        "column_index": 13,
+        "extended_log_size": 5,
+        "ood_claims": 1,
+        "proposed_first_own_quotient_slot_at_height": 4,
+        "proposed_original_slot_at_height": 4,
+        "root_index": 1
+      },
+      {
+        "column_index": 14,
+        "extended_log_size": 5,
+        "ood_claims": 1,
+        "proposed_first_own_quotient_slot_at_height": 5,
+        "proposed_original_slot_at_height": 5,
+        "root_index": 1
+      },
+      {
+        "column_index": 15,
+        "extended_log_size": 5,
+        "ood_claims": 1,
+        "proposed_first_own_quotient_slot_at_height": 6,
+        "proposed_original_slot_at_height": 6,
+        "root_index": 1
+      },
+      {
+        "column_index": 16,
+        "extended_log_size": 17,
+        "ood_claims": 1,
+        "proposed_first_own_quotient_slot_at_height": 1,
+        "proposed_original_slot_at_height": 1,
+        "root_index": 1
+      },
+      {
+        "column_index": 0,
+        "extended_log_size": 11,
+        "ood_claims": 1,
+        "proposed_first_own_quotient_slot_at_height": 20,
+        "proposed_original_slot_at_height": 20,
+        "root_index": 2
+      },
+      {
+        "column_index": 1,
+        "extended_log_size": 11,
+        "ood_claims": 1,
+        "proposed_first_own_quotient_slot_at_height": 21,
+        "proposed_original_slot_at_height": 21,
+        "root_index": 2
+      },
+      {
+        "column_index": 2,
+        "extended_log_size": 11,
+        "ood_claims": 1,
+        "proposed_first_own_quotient_slot_at_height": 22,
+        "proposed_original_slot_at_height": 22,
+        "root_index": 2
+      },
+      {
+        "column_index": 3,
+        "extended_log_size": 11,
+        "ood_claims": 1,
+        "proposed_first_own_quotient_slot_at_height": 23,
+        "proposed_original_slot_at_height": 23,
+        "root_index": 2
+      },
+      {
+        "column_index": 4,
+        "extended_log_size": 11,
+        "ood_claims": 2,
+        "proposed_first_own_quotient_slot_at_height": 24,
+        "proposed_original_slot_at_height": 24,
+        "root_index": 2
+      },
+      {
+        "column_index": 5,
+        "extended_log_size": 11,
+        "ood_claims": 2,
+        "proposed_first_own_quotient_slot_at_height": 26,
+        "proposed_original_slot_at_height": 25,
+        "root_index": 2
+      },
+      {
+        "column_index": 6,
+        "extended_log_size": 11,
+        "ood_claims": 2,
+        "proposed_first_own_quotient_slot_at_height": 28,
+        "proposed_original_slot_at_height": 26,
+        "root_index": 2
+      },
+      {
+        "column_index": 7,
+        "extended_log_size": 11,
+        "ood_claims": 2,
+        "proposed_first_own_quotient_slot_at_height": 30,
+        "proposed_original_slot_at_height": 27,
+        "root_index": 2
+      },
+      {
+        "column_index": 8,
+        "extended_log_size": 5,
+        "ood_claims": 1,
+        "proposed_first_own_quotient_slot_at_height": 7,
+        "proposed_original_slot_at_height": 7,
+        "root_index": 2
+      },
+      {
+        "column_index": 9,
+        "extended_log_size": 5,
+        "ood_claims": 1,
+        "proposed_first_own_quotient_slot_at_height": 8,
+        "proposed_original_slot_at_height": 8,
+        "root_index": 2
+      },
+      {
+        "column_index": 10,
+        "extended_log_size": 5,
+        "ood_claims": 1,
+        "proposed_first_own_quotient_slot_at_height": 9,
+        "proposed_original_slot_at_height": 9,
+        "root_index": 2
+      },
+      {
+        "column_index": 11,
+        "extended_log_size": 5,
+        "ood_claims": 1,
+        "proposed_first_own_quotient_slot_at_height": 10,
+        "proposed_original_slot_at_height": 10,
+        "root_index": 2
+      },
+      {
+        "column_index": 12,
+        "extended_log_size": 5,
+        "ood_claims": 1,
+        "proposed_first_own_quotient_slot_at_height": 11,
+        "proposed_original_slot_at_height": 11,
+        "root_index": 2
+      },
+      {
+        "column_index": 13,
+        "extended_log_size": 5,
+        "ood_claims": 1,
+        "proposed_first_own_quotient_slot_at_height": 12,
+        "proposed_original_slot_at_height": 12,
+        "root_index": 2
+      },
+      {
+        "column_index": 14,
+        "extended_log_size": 5,
+        "ood_claims": 1,
+        "proposed_first_own_quotient_slot_at_height": 13,
+        "proposed_original_slot_at_height": 13,
+        "root_index": 2
+      },
+      {
+        "column_index": 15,
+        "extended_log_size": 5,
+        "ood_claims": 1,
+        "proposed_first_own_quotient_slot_at_height": 14,
+        "proposed_original_slot_at_height": 14,
+        "root_index": 2
+      },
+      {
+        "column_index": 16,
+        "extended_log_size": 5,
+        "ood_claims": 2,
+        "proposed_first_own_quotient_slot_at_height": 15,
+        "proposed_original_slot_at_height": 15,
+        "root_index": 2
+      },
+      {
+        "column_index": 17,
+        "extended_log_size": 5,
+        "ood_claims": 2,
+        "proposed_first_own_quotient_slot_at_height": 17,
+        "proposed_original_slot_at_height": 16,
+        "root_index": 2
+      },
+      {
+        "column_index": 18,
+        "extended_log_size": 5,
+        "ood_claims": 2,
+        "proposed_first_own_quotient_slot_at_height": 19,
+        "proposed_original_slot_at_height": 17,
+        "root_index": 2
+      },
+      {
+        "column_index": 19,
+        "extended_log_size": 5,
+        "ood_claims": 2,
+        "proposed_first_own_quotient_slot_at_height": 21,
+        "proposed_original_slot_at_height": 18,
+        "root_index": 2
+      },
+      {
+        "column_index": 20,
+        "extended_log_size": 17,
+        "ood_claims": 2,
+        "proposed_first_own_quotient_slot_at_height": 2,
+        "proposed_original_slot_at_height": 2,
+        "root_index": 2
+      },
+      {
+        "column_index": 21,
+        "extended_log_size": 17,
+        "ood_claims": 2,
+        "proposed_first_own_quotient_slot_at_height": 4,
+        "proposed_original_slot_at_height": 3,
+        "root_index": 2
+      },
+      {
+        "column_index": 22,
+        "extended_log_size": 17,
+        "ood_claims": 2,
+        "proposed_first_own_quotient_slot_at_height": 6,
+        "proposed_original_slot_at_height": 4,
+        "root_index": 2
+      },
+      {
+        "column_index": 23,
+        "extended_log_size": 17,
+        "ood_claims": 2,
+        "proposed_first_own_quotient_slot_at_height": 8,
+        "proposed_original_slot_at_height": 5,
+        "root_index": 2
+      },
+      {
+        "column_index": 0,
+        "extended_log_size": 17,
+        "ood_claims": 1,
+        "proposed_first_own_quotient_slot_at_height": 10,
+        "proposed_original_slot_at_height": 6,
+        "root_index": 3
+      },
+      {
+        "column_index": 1,
+        "extended_log_size": 17,
+        "ood_claims": 1,
+        "proposed_first_own_quotient_slot_at_height": 11,
+        "proposed_original_slot_at_height": 7,
+        "root_index": 3
+      },
+      {
+        "column_index": 2,
+        "extended_log_size": 17,
+        "ood_claims": 1,
+        "proposed_first_own_quotient_slot_at_height": 12,
+        "proposed_original_slot_at_height": 8,
+        "root_index": 3
+      },
+      {
+        "column_index": 3,
+        "extended_log_size": 17,
+        "ood_claims": 1,
+        "proposed_first_own_quotient_slot_at_height": 13,
+        "proposed_original_slot_at_height": 9,
+        "root_index": 3
+      },
+      {
+        "column_index": 4,
+        "extended_log_size": 17,
+        "ood_claims": 1,
+        "proposed_first_own_quotient_slot_at_height": 14,
+        "proposed_original_slot_at_height": 10,
+        "root_index": 3
+      },
+      {
+        "column_index": 5,
+        "extended_log_size": 17,
+        "ood_claims": 1,
+        "proposed_first_own_quotient_slot_at_height": 15,
+        "proposed_original_slot_at_height": 11,
+        "root_index": 3
+      },
+      {
+        "column_index": 6,
+        "extended_log_size": 17,
+        "ood_claims": 1,
+        "proposed_first_own_quotient_slot_at_height": 16,
+        "proposed_original_slot_at_height": 12,
+        "root_index": 3
+      },
+      {
+        "column_index": 7,
+        "extended_log_size": 17,
+        "ood_claims": 1,
+        "proposed_first_own_quotient_slot_at_height": 17,
+        "proposed_original_slot_at_height": 13,
+        "root_index": 3
+      }
+    ],
+    "composition_log_degree_bound": 17,
+    "composition_log_split": 1,
+    "heights": [
+      {
+        "committed_input_log_size": 16,
+        "composition_columns": 8,
+        "extended_log_size": 17,
+        "ood_claims": 18,
+        "required_original_tracks_if_paired": 14,
+        "required_own_quotient_tracks_if_paired": 18,
+        "root_columns": [
+          1,
+          1,
+          4,
+          8
+        ],
+        "root_ood_claims": [
+          1,
+          1,
+          8,
+          8
+        ],
+        "source_columns": 14
+      },
+      {
+        "committed_input_log_size": 10,
+        "composition_columns": 0,
+        "extended_log_size": 11,
+        "ood_claims": 32,
+        "required_original_tracks_if_paired": 28,
+        "required_own_quotient_tracks_if_paired": 32,
+        "root_columns": [
+          8,
+          12,
+          8,
+          0
+        ],
+        "root_ood_claims": [
+          8,
+          12,
+          12,
+          0
+        ],
+        "source_columns": 28
+      },
+      {
+        "committed_input_log_size": 4,
+        "composition_columns": 0,
+        "extended_log_size": 5,
+        "ood_claims": 23,
+        "required_original_tracks_if_paired": 19,
+        "required_own_quotient_tracks_if_paired": 23,
+        "root_columns": [
+          3,
+          4,
+          12,
+          0
+        ],
+        "root_ood_claims": [
+          3,
+          4,
+          16,
+          0
+        ],
+        "source_columns": 19
+      }
+    ],
+    "native_security_bits": null,
+    "native_to_paper_batch_width_M": null,
+    "root_columns": [
+      12,
+      17,
+      24,
+      8
+    ],
+    "root_ood_claims": [
+      12,
+      17,
+      36,
+      8
+    ],
+    "schema": "s31-sparse-p05-accepted-capture-shape-v1",
+    "status": "accepted_native_proof_experimental_geometry_only"
+  },
+  "candidate_paper_parameters": {
+    "B_from_sealed_fri_blowup": 2,
+    "D0_conditionally_N_times_B_squared": 262144,
+    "N_from_sealed_max_trace_log": 65536,
+    "T_hash_queries": 18446744073709551616,
+    "epsilon_over_T_target_bits": 96,
+    "largest_integer_M_passing_isolated_batch_factor": 1024,
+    "minimum_BCS_rounds_R": 1
+  },
+  "missing": [
+    "a selected four-epoch original-plus-own-quotient whole-oracle protocol",
+    "theorem mapping of native domain batches to padded M and D0",
+    "full list/AIR/FRI/BCS/collision/PoW error composition",
+    "a selected line-tree commitment and descriptor binding profile"
+  ],
+  "native_proven_security_bits": null,
+  "native_to_paper_batch_width_M": null,
+  "package_checks": {
+    "key_sha256": "7d4cdaab4e446aaa2c357e28f077e469412f45a17c660e8d4434cca216dccfc7",
+    "manifest_artifacts": "verified",
+    "manifest_sha256": "5634ee858dc2e64b1dd8d6bc281f18fa16bf34ac22eb56ec98bd451d45f3042c",
+    "native_check_key": "accepted",
+    "native_proof": "accepted_before_geometry_inspection",
+    "proof_sha256": "04eaca23d8a6c7fc977b24a3d925aaabcbb727fa4fa30f30c81864e24a158e39",
+    "roster_artifact_sha256": "4fbba54f04638ffda74fe24bf6954af2f7c9db69def5ce93f515b2e23c31c200",
+    "source_sha256": "427f523329a26901a8abe7125def9ce185c96d1358db71c59024c623bb1e2441",
+    "statement_sha256": "1c7c3b002846d8cae7d4f22a1b2b5a1b66483974ef7e8fea00fa045d8c35c9d7"
+  },
+  "proof_profile": "legacy_postcard_sparse_v3",
+  "proven_release_admissible": false,
+  "schema": "s31-p05-sparse-gate-accepted-geometry-v1",
+  "status": "accepted_native_proof_experimental_geometry_only"
+}
