@@ -12,6 +12,7 @@ from pathlib import Path
 
 
 KEY_SCHEMA = "s31-verification-key-gate-roster-v1"
+RAW_KEY_SCHEMA = "s31-verification-key-gate-raw-v1"
 ROSTER_SCHEMA = "s31-component-roster-gate-v1"
 NAMES = (
     "eq", "qm31_ops", "triple_xor", "m_31_to_u_32", "blake_g_gate",
@@ -83,9 +84,9 @@ def validate(package: Path, lowering: str, artifacts: dict,
     schema = key.get("schema")
     present = ARTIFACT in artifacts or (package / ARTIFACT).exists()
     if lowering == "gate" and schema not in (
-            KEY_SCHEMA, "s31-verification-key-v1", "s31-verification-key-blinded-v1"):
+            KEY_SCHEMA, RAW_KEY_SCHEMA, "s31-verification-key-v1", "s31-verification-key-blinded-v1"):
         raise ValueError("unsupported gate verification key schema")
-    if lowering != "gate" or schema != KEY_SCHEMA:
+    if lowering != "gate" or schema not in (KEY_SCHEMA, RAW_KEY_SCHEMA):
         if (present or key.get("gate_component_roster_sha256") is not None or
                 report.get("gate_component_roster") is not None or
                 report.get("gate_component_roster_sha256") is not None):
@@ -94,7 +95,7 @@ def validate(package: Path, lowering: str, artifacts: dict,
     roster = report.get("gate_component_roster")
     if (ARTIFACT not in artifacts or not (package / ARTIFACT).is_file() or
             not isinstance(roster, dict) or roster.get("schema") != ROSTER_SCHEMA or
-            roster.get("profile") != "circuit-v1" or
+            roster.get("profile") != ("circuit-raw-v1" if schema == RAW_KEY_SCHEMA else "circuit-v1") or
             roster.get("claimed_sums") != len(NAMES) or
             set(roster) != TOP_FIELDS):
         raise ValueError("gate component roster does not match sealed key")

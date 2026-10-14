@@ -191,6 +191,8 @@ def matrix(root: Path = ROOT) -> dict[str, object]:
             not query_epoch["native_blake2s_counter_overflow_fail_closed"]):
         raise ValueError("v0.1 query epoch source or engine binding changed")
     if (degree_correction["engine_gitlink_commit"] != current_engine or
+            degree_correction["native_gate_epoch_trace_scope"] != "legacy_direct_profile_only" or
+            degree_correction["raw_gate_epoch_trace_evidenced"] is not False or
             degree_correction["p05_discharged"] is not False or
             degree_correction["published_degree_corrected_nonquotient_premise_met"] is not False or
             degree_correction["proposed_degree_corrected_profile"]["selector_installed"] is not False or

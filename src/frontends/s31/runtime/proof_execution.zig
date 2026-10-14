@@ -18,11 +18,15 @@ pub fn verifyCommitted(
     public_words: [8]u32,
     encoded: []const u8,
     hybrid: ?native.HybridSpec,
+    raw_gate_channel: bool,
 ) !void {
     const layout = pp.layout();
     const logs = try circuit.common.component_list.circuitComponentLogSizes(&layout);
     const hash = try circuit.common.circuit_hash.hostCircuitHash(logs, pcs.fri_config.log_blowup_factor, root);
-    if (hybrid) |spec|
+    if (raw_gate_channel) {
+        if (hybrid != null) return error.WrongProofProfile;
+        try native.verifyRawGate(allocator, &layout, bundle, pcs, root, hash, public_words, encoded);
+    } else if (hybrid) |spec|
         try native.verifyHybrid(allocator, &layout, bundle, pcs, root, hash, public_words, encoded, spec)
     else
         try native.verify(allocator, &layout, bundle, pcs, root, hash, public_words, encoded);

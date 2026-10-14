@@ -44,6 +44,14 @@ It reads no private assignment. It is a **native STARK verifier** that calls
 the core Stwo verifier on the program's circuit/AIR components; it does not
 execute an in-circuit recursive verifier on the host.
 
+For an ordinary transparent `gate` program, `build --channel-profile
+raw-blake2s-rejection-v1` selects a separate native proof transcript with
+uniform M31 draws under an ideal raw-hash premise. It creates a distinct key
+and proof format and no recursive or fold keys. The default remains `legacy`.
+The [channel design and security boundary](../../../../design/s31/security/PCS_FRI_RAW_GATE_CHANNEL_PROFILE.md)
+explains its rejection sampler and the remaining adaptive-transcript proof
+obligation.
+
 For a fixed-key recursive proof, the
 [claim inspector](../tools/inspect/inspect_recursive_claim.py) invokes that package's
 native top verifier and prints the leaf words, intermediate public digests,
@@ -58,7 +66,7 @@ native verifier still decides proof acceptance.
 | `bin/s31-NAME-prover` | Program-specific witness construction and proving. |
 | `bin/s31-NAME-native-verifier` | Program-specific native proof checker. |
 | `verification-key.json` | Profile and PCS mode, program/canonical-IR hashes, circuit hash, preprocessed root, padded geometry, pinned AIR asset hashes, FRI parameters, optional chip parameters and blinding policy. |
-| `recursive-verification-key.json` | For `gate` and `sparse-wide-gate` packages: sealed outer verifier layout, root, hash, child-key digest and pinned AIR asset hashes. Sparse-wide key v3 also binds outer FRI fold step 4; its leaf defaults to step 1 and can be built with step 4. The native verifier embeds this key. |
+| `recursive-verification-key.json` | For legacy `gate` and `sparse-wide-gate` packages: sealed outer verifier layout, root, hash, child-key digest and pinned AIR asset hashes. Sparse-wide key v3 also binds outer FRI fold step 4; its leaf defaults to step 1 and can be built with step 4. The native verifier embeds this key. Raw Gate packages omit it. |
 | `recursive-verification-key-level2.json` | Sealed second wrapper layout and child-key digest for both recursive profiles. |
 | `fixed-fold-verification-key.json` | Sealed repeatable fold AIR and root. Gate v3 and sparse-wide v4 use the constrained `u32` counter; the wide key binds the second wrapper key and fourfold FRI schedule. The [worked fold](recursion-wide-fold.md) explains its claim and limits. |
 | `public-abi.json` | Named public inputs/outputs, kinds, lengths, eight-slot encoding. |

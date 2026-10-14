@@ -36,7 +36,7 @@ The inspected S31 engine gitlink is
    nonquotient words with their own degree bounds.
 
 The [source-bound audit](../../../scripts/release/pcs_fri_degree_correction.py)
-locks this classification to the exact reviewed gitlink and seven source file
+locks this classification to the exact reviewed gitlink and nine source-file
 hashes. Source changes cause rejection and a fresh review. It emits
 `published_degree_corrected_nonquotient_premise_met: false`; `--require-p05`
 exits 2. The [v0.1 blocker matrix](../../../scripts/release/pcs_fri_v01_blockers.py)
@@ -81,7 +81,7 @@ seeds that must be handled in the exact sampling/distribution argument.
 ## Versioned Gate PCS bridge, with admission closed
 
 The audit now emits `native_gate_epoch_trace`: 21 exact source locations from
-the Gate verifier through the core STARK verifier and PCS capture path. It
+the legacy direct-profile verifier through the core STARK verifier and PCS capture path. It
 checks one ordered occurrence of every event in each function and pins all
 nine reviewed files by SHA-256. This is a machine-checkable **source-shape**
 boundary, not binary semantics. The trace establishes this current order:
@@ -189,3 +189,12 @@ uses the pinned verifier's **lifted** row point and labels the source height;
 the theorem still needs a proof that the native-height paired codewords and
 lifted rows have the required relation. It has no whole-oracle degree test,
 multi-domain FRI, or admission selector.
+
+The opt-in raw Gate channel adds a separate transcript and proof/key format.
+Its native verifier still calls the same core verifier and quotient-only PCS
+path; changing the hash-to-field sampler does not supply the missing
+nonquotient FRI degree test. The refreshed source pin covers the new
+compile-time profile dispatch while the 21 checked legacy direct-profile
+transcript events and the P05 negative conclusion remain unchanged. The
+report marks `raw_gate_epoch_trace_evidenced: false`: it does not promote the
+legacy event trace to the raw profile or claim an adaptive BCS theorem.

@@ -29,7 +29,7 @@ SOURCE_SHA256 = {
     "deps/stwo-zig/src/core/fri.zig": "5f84501d1ffbaf5d33d6f7063bea7e6fd88a4cb65140ff360b75cb11f812121f",
     "deps/stwo-zig/src/prover/fri.zig": "22acc5c7af16cc06fa646e5eedfe9a9a5bee95a273b53dbac83a599576f3e609",
     "deps/stwo-zig/src/core/verifier.zig": "85e70cea004f82060d94363b3552e0f2d9cd4203cee69fff0fb47b5345056381",
-    "src/frontends/s31/runtime/native_verifier.zig": "42c33c4823679ac9ea5ffd2d4968a3344457d67783188153a02fcbac115b4ffc",
+    "src/frontends/s31/runtime/native_verifier.zig": "26e4d22c8f26ed01e880772fef9508284dce94070d7b523c47b68939e0d5c178",
 }
 
 PROVER = "deps/stwo-zig/src/prover/pcs/scheme.zig"
@@ -174,6 +174,8 @@ def classify(sources: dict[str, bytes], gitlink: str) -> dict[str, object]:
         "engine_gitlink_commit": gitlink,
         "source_sha256": observed,
         "native_gate_epoch_trace": epoch_trace,
+        "native_gate_epoch_trace_scope": "legacy_direct_profile_only",
+        "raw_gate_epoch_trace_evidenced": False,
         "proposed_degree_corrected_profile": proposed_profile,
         "native_batch_fri_input": "one_accumulated_deep_quotient_word",
         "native_nonquotient_degree_test_identified": False,

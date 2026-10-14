@@ -16,6 +16,11 @@ pub fn build(b: *std.Build) void {
     const program_name = b.option([]const u8, "s31-name", "Build artifact name for the selected program") orelse "affine4";
     const source_version = b.option(u32, "s31-version", "Normalized source version (0, 1, or record ABI v2 for direct-gate/direct-mixed-general)") orelse 0;
     const lowering = b.option([]const u8, "s31-lowering", "gate, chip, sparse-gate, sparse-chip, sparse-wide-gate, direct-gate, direct-chip, experimental direct-pair/direct-many/direct-mixed/direct-mixed4/direct-mixed-general, sha-joint, sha-shift, or sha-fused proof lowering") orelse "gate";
+    const channel_profile = b.option([]const u8, "s31-channel-profile", "legacy or raw-blake2s-rejection-v1 (ordinary gate only)") orelse "legacy";
+    const raw_gate_channel = std.mem.eql(u8, channel_profile, "raw-blake2s-rejection-v1");
+    if (!std.mem.eql(u8, channel_profile, "legacy") and
+        (!raw_gate_channel or !std.mem.eql(u8, lowering, "gate")))
+        @panic("raw BLAKE2s rejection channel requires ordinary gate lowering");
     const gate_manifest_version = b.option(u32, "s31-direct-gate-manifest-version", "Direct-gate manifest/proof envelope version (1 or 2)") orelse 1;
     if ((gate_manifest_version != 1 and gate_manifest_version != 2) or
         (gate_manifest_version == 2 and !std.mem.eql(u8, lowering, "direct-gate")))
@@ -34,6 +39,8 @@ pub fn build(b: *std.Build) void {
     if ((fri_fold_step != 1 and fri_fold_step != 4) or
         (fri_fold_step != 1 and !std.mem.eql(u8, lowering, "gate") and !std.mem.eql(u8, lowering, "sparse-wide-gate")))
         @panic("FRI fold step 4 requires gate or sparse-wide-gate lowering; supported steps are 1 and 4");
+    if (raw_gate_channel and fri_fold_step != 1)
+        @panic("raw BLAKE2s Gate channel v1 supports FRI fold step 1 only");
     const mixed_lowering = std.mem.eql(u8, lowering, "direct-mixed") or std.mem.eql(u8, lowering, "direct-mixed4") or
         std.mem.eql(u8, lowering, "direct-mixed-general");
     const record_gate_lowering = source_version == 2 and std.mem.eql(u8, lowering, "direct-gate");
@@ -63,6 +70,7 @@ pub fn build(b: *std.Build) void {
     s31_options.addOption(bool, "wide_mode", std.mem.eql(u8, lowering, "sparse-wide-gate"));
     s31_options.addOption(bool, "direct_mode", std.mem.startsWith(u8, lowering, "direct-"));
     s31_options.addOption(bool, "gate_manifest_v2", gate_manifest_version == 2);
+    s31_options.addOption(bool, "raw_gate_channel", raw_gate_channel);
     s31_options.addOption(bool, "sha_joint_mode", std.mem.eql(u8, lowering, "sha-joint"));
     s31_options.addOption(bool, "sha_shift_mode", std.mem.eql(u8, lowering, "sha-shift"));
     s31_options.addOption(bool, "sha_fused_mode", std.mem.eql(u8, lowering, "sha-fused"));

@@ -49,6 +49,19 @@ def verify_package(package: Path) -> dict:
                       manifest["text_frontend_version"] != 1)):
         raise ValueError("S31 text package requires frontend version 1")
     source = parse_source_json((package / "source.s31.json").read_bytes())
+    channel_profile = manifest.get("channel_profile", "legacy")
+    if channel_profile not in {"legacy", "raw-blake2s-rejection-v1"}:
+        raise ValueError("unknown S31 package channel profile")
+    raw_gate = channel_profile == "raw-blake2s-rejection-v1"
+    if raw_gate:
+        if (manifest.get("lowering") != "gate" or source.get("version") != 1 or
+                source.get("proof_mode", "transparent") != "transparent" or
+                manifest.get("fri_fold_step", 1) != 1 or
+                manifest.get("recursive_fri_fold_step") is not None or capabilities or
+                any(name in artifacts or (package / name).exists() for name in (
+                    "recursive-verification-key.json", "recursive-verification-key-level2.json",
+                    "fixed-fold-verification-key.json", "state-fold-verification-key.json"))):
+            raise ValueError("raw channel package must be ordinary nonrecursive gate")
     if type(source.get("version")) is not int or source["version"] not in (1, 2):
         raise ValueError("unsupported S31 relation version")
     if source["version"] == 2 and manifest.get("lowering") not in {"direct-gate", "direct-chip"}:
@@ -58,7 +71,7 @@ def verify_package(package: Path) -> dict:
     if (type(fri_fold_step) is not int or fri_fold_step not in (1, 4) or
             (fri_fold_step == 4 and manifest.get("lowering") not in {"gate", "sparse-wide-gate"})):
         raise ValueError("invalid S31 package FRI fold step")
-    if privacy is None and manifest.get("lowering") in {"gate", "sparse-wide-gate"}:
+    if privacy is None and manifest.get("lowering") in {"gate", "sparse-wide-gate"} and not raw_gate:
         if not {"recursive-verification-key.json", "recursive-verification-key-level2.json"}.issubset(artifacts):
             raise ValueError("recursive package is missing its verification keys")
         recursive_key = json.loads((package / "recursive-verification-key.json").read_text())
@@ -98,7 +111,7 @@ def verify_package(package: Path) -> dict:
                     fold_key.get("projection_sha256") != PROJECTION_SHA256 or
                     fold_key.get("air_bundle_sha256") != AIR_BUNDLE_SHA256):
                 raise ValueError("S31 wide fixed-fold key does not match its base key and pinned AIR")
-    if privacy is None and manifest.get("lowering") == "gate":
+    if privacy is None and manifest.get("lowering") == "gate" and not raw_gate:
         if not {"recursive-verification-key.json", "recursive-verification-key-level2.json", "fixed-fold-verification-key.json"}.issubset(artifacts):
             raise ValueError("gate package is missing its recursive verification keys")
         fold_key = json.loads((package / "fixed-fold-verification-key.json").read_text())
@@ -147,6 +160,13 @@ def verify_package(package: Path) -> dict:
     if json.loads((package / "public-abi.json").read_text()) != abi(source, manifest["lowering"]):
         raise ValueError("S31 public ABI does not match the sealed relation")
     key = json.loads((package / "verification-key.json").read_text())
+    if raw_gate:
+        if (key.get("channel_profile") != channel_profile or
+                key.get("schema") != "s31-verification-key-gate-raw-v1" or
+                key.get("profile") != "circuit-raw-v1"):
+            raise ValueError("raw channel key does not match package profile")
+    elif key.get("channel_profile") is not None:
+        raise ValueError("legacy package has a raw channel key")
     require_production_pcs_mode(key)
     fri_config = key.get("fri")
     if (not isinstance(fri_config, dict) or

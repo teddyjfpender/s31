@@ -41,6 +41,7 @@ const sparse_mode = @import("s31_options").sparse_mode;
 const wide_mode = @import("s31_options").wide_mode;
 const direct_mode = @import("s31_options").direct_mode;
 const gate_manifest_v2 = @import("s31_options").gate_manifest_v2;
+const raw_gate_channel = @import("s31_options").raw_gate_channel;
 const sha_joint_mode = @import("s31_options").sha_joint_mode;
 const sha_shift_mode = @import("s31_options").sha_shift_mode;
 const sha_fused_mode = @import("s31_options").sha_fused_mode;
@@ -63,6 +64,7 @@ const FriMetadata = struct {
 const Key = struct {
     schema: []const u8,
     profile: []const u8 = "circuit-v1",
+    channel_profile: ?[]const u8 = null,
     /// Absent in previously sealed keys; those keys select legacy postcard.
     pcs_mode: pcs_mode_binding.Mode = .legacy_postcard,
     proof_privacy: ?privacy.Policy = null,
@@ -321,6 +323,12 @@ pub fn main() !void {
     const command = args[1];
     var parsed = try parsedProgram(allocator);
     defer parsed.deinit();
+    if (raw_gate_channel and (parsed.value.proof_mode != .transparent or
+        std.mem.startsWith(u8, command, "recurse-") or
+        std.mem.startsWith(u8, command, "fold-") or
+        std.mem.startsWith(u8, command, "state-fold-") or
+        std.mem.startsWith(u8, command, "wide-fold-")))
+        return error.UnsupportedRawChannelCommand;
     if (parsed.value.proof_mode == .blinded and
         !std.mem.eql(u8, command, "check") and !std.mem.eql(u8, command, "run") and
         !std.mem.eql(u8, command, "inspect") and !std.mem.eql(u8, command, "prove"))
@@ -452,6 +460,12 @@ pub fn verifierMain(embedded_key: []const u8, embedded_recursive_key: []const u8
     const allocator = gpa_state.allocator();
     const args = try std.process.argsAlloc(allocator);
     defer std.process.argsFree(allocator, args);
+    if (raw_gate_channel and (source_guard.value.proof_mode != .transparent or
+        (args.len > 1 and (std.mem.startsWith(u8, args[1], "recurse-") or
+            std.mem.startsWith(u8, args[1], "fold-") or
+            std.mem.startsWith(u8, args[1], "state-fold-") or
+            std.mem.startsWith(u8, args[1], "wide-fold-")))))
+        return error.UnsupportedRawChannelCommand;
     if (source_guard.value.proof_mode == .blinded and args.len > 1 and
         (std.mem.startsWith(u8, args[1], "recurse-") or
             std.mem.eql(u8, args[1], "fold-verify") or std.mem.eql(u8, args[1], "state-fold-verify")))
@@ -928,6 +942,7 @@ fn inspect(allocator: std.mem.Allocator, source: relation.Program) !void {
             generated_gate_roster = try gate_component_roster.generate(
                 allocator,
                 &pp,
+                if (raw_gate_channel) "circuit-raw-v1" else "circuit-v1",
                 source_digest,
                 ir.sha256,
                 root,
@@ -980,7 +995,7 @@ fn inspect(allocator: std.mem.Allocator, source: relation.Program) !void {
     };
     const report: Report = .{
         .name = source.name,
-        .profile = if (source.proof_mode == .blinded) "circuit-blinded-v1" else if (privateChip(source)) "direct-m31-private-v5" else if (direct_mode) "direct-m31-v4" else if (wide_mode) "sparse-wide-v5" else if (sparse_mode) "sparse-v3" else if (chip_mode) "hybrid-step-v2" else "circuit-v1",
+        .profile = if (raw_gate_channel) "circuit-raw-v1" else if (source.proof_mode == .blinded) "circuit-blinded-v1" else if (privateChip(source)) "direct-m31-private-v5" else if (direct_mode) "direct-m31-v4" else if (wide_mode) "sparse-wide-v5" else if (sparse_mode) "sparse-v3" else if (chip_mode) "hybrid-step-v2" else "circuit-v1",
         .proof_privacy = try proofPrivacy(source),
         .chip = if (chip_mode) blk: {
             const spec = sourceChipSpec(source).?;
@@ -1593,20 +1608,22 @@ fn prove(allocator: std.mem.Allocator, source: relation.Program, assignment_path
         setup_ns = total_timer.read() - witness_ns;
         var timer = try std.time.Timer.start();
         var observer = try proof_execution.PhaseObserver.init();
-        var proof = try cpu.Internal.prove(allocator, value_ctx.values(), &pp, &bundle, pcs, .{
+        var proof = try (if (raw_gate_channel) cpu.Root else cpu.Internal).prove(allocator, value_ctx.values(), &pp, &bundle, pcs, .{
             .preprocessed_commitment = &committed,
             .chip = chip_request,
         }, &observer);
         defer proof.deinit();
         prove_ns = timer.read();
         observer.print();
-        encoded = if (chip_mode)
+        encoded = if (raw_gate_channel)
+            try native.serializeRawGate(allocator, &proof)
+        else if (chip_mode)
             try native.serializeHybrid(allocator, &proof)
         else
             try native.serialize(allocator, &proof);
         var captured_child: ?cpu.verifier_proof.VerifierProof = null;
         defer if (captured_child) |*captured| captured.deinit();
-        if (recurse_check and outer_path != null) {
+        if (!raw_gate_channel and recurse_check and outer_path != null) {
             // The production one-shot wrapper consumes openings captured by
             // the native verifier from the serialized child proof, exactly
             // like recurse-wrap. This is one verification, not a separate
@@ -1635,8 +1652,8 @@ fn prove(allocator: std.mem.Allocator, source: relation.Program, assignment_path
             .source_digest = item.source_digest,
             .rounds = item.rounds,
             .constant = item.constant,
-        } else null);
-        if (recurse_check) {
+        } else null, raw_gate_channel);
+        if (!raw_gate_channel and recurse_check) {
             const layout = pp.layout();
             const root = committed.root();
             const child_key_digest = try checkedChildKeyDigest(allocator, source, child_key_path.?);
@@ -4164,13 +4181,22 @@ fn verify(allocator: std.mem.Allocator, path: []const u8, statement_path: []cons
             .blake_g_gate = key.padded.blake_g,
         });
         if (layout.traceLogSize() != key.trace_log_size) return error.InvalidVerificationKey;
-        try native.verify(allocator, &layout, &bundle, try showcasePcsConfig(key.trace_log_size), root, hash, public_words, encoded);
+        if (raw_gate_channel)
+            try native.verifyRawGate(allocator, &layout, &bundle, try showcasePcsConfig(key.trace_log_size), root, hash, public_words, encoded)
+        else
+            try native.verify(allocator, &layout, &bundle, try showcasePcsConfig(key.trace_log_size), root, hash, public_words, encoded);
     }
     std.debug.print("S31 {s}: native verification accepted {s}\n", .{ parsed.value.name, path });
 }
 
 fn validateKey(allocator: std.mem.Allocator, source: relation.Program, key: Key) !void {
     try pcs_mode_binding.requireProduction(key.pcs_mode);
+    if (raw_gate_channel) {
+        if (source.proof_mode != .transparent or direct_mode or sparse_mode or wide_mode or chip_mode)
+            return error.UnsupportedRawChannelRelation;
+        if (key.channel_profile == null or !std.mem.eql(u8, key.channel_profile.?, "raw-blake2s-rejection-v1"))
+            return error.InvalidVerificationKey;
+    } else if (key.channel_profile != null) return error.InvalidVerificationKey;
     if (source.version == 2) {
         const actual = key.public_abi_sha256 orelse return error.InvalidVerificationKey;
         const expected = try record_abi.digest(allocator, source);
@@ -4185,8 +4211,8 @@ fn validateKey(allocator: std.mem.Allocator, source: relation.Program, key: Key)
         const pinned_stdlib = key.stdlib_lock_sha256 orelse return error.InvalidVerificationKey;
         if (!std.mem.eql(u8, pinned_stdlib, expected_stdlib)) return error.InvalidVerificationKey;
     }
-    if (!std.mem.eql(u8, key.schema, if (gate_manifest_v2) "s31-verification-key-direct-manifest-v2" else if (source.version == 2 and chip_mode) "s31-verification-key-direct-record-chip-v2" else if (source.version == 2) "s31-verification-key-direct-record-v2" else if (source.proof_mode == .blinded) "s31-verification-key-blinded-v1" else if (direct_mode and chip_mode) "s31-verification-key-direct-chip-manifest-v2" else if (direct_mode) "s31-verification-key-direct-manifest-v1" else if (wide_mode) "s31-verification-key-v5" else if (sparse_mode and !chip_mode) "s31-verification-key-sparse-roster-v1" else if (sparse_mode) "s31-verification-key-v3" else if (chip_mode) "s31-verification-key-v2" else "s31-verification-key-gate-roster-v1") or
-        !std.mem.eql(u8, key.profile, if (source.proof_mode == .blinded) "circuit-blinded-v1" else if (privateChip(source)) "direct-m31-private-v5" else if (direct_mode) "direct-m31-v4" else if (wide_mode) "sparse-wide-v5" else if (sparse_mode) "sparse-v3" else if (chip_mode) "hybrid-step-v2" else "circuit-v1") or
+    if (!std.mem.eql(u8, key.schema, if (raw_gate_channel) "s31-verification-key-gate-raw-v1" else if (gate_manifest_v2) "s31-verification-key-direct-manifest-v2" else if (source.version == 2 and chip_mode) "s31-verification-key-direct-record-chip-v2" else if (source.version == 2) "s31-verification-key-direct-record-v2" else if (source.proof_mode == .blinded) "s31-verification-key-blinded-v1" else if (direct_mode and chip_mode) "s31-verification-key-direct-chip-manifest-v2" else if (direct_mode) "s31-verification-key-direct-manifest-v1" else if (wide_mode) "s31-verification-key-v5" else if (sparse_mode and !chip_mode) "s31-verification-key-sparse-roster-v1" else if (sparse_mode) "s31-verification-key-v3" else if (chip_mode) "s31-verification-key-v2" else "s31-verification-key-gate-roster-v1") or
+        !std.mem.eql(u8, key.profile, if (raw_gate_channel) "circuit-raw-v1" else if (source.proof_mode == .blinded) "circuit-blinded-v1" else if (privateChip(source)) "direct-m31-private-v5" else if (direct_mode) "direct-m31-v4" else if (wide_mode) "sparse-wide-v5" else if (sparse_mode) "sparse-v3" else if (chip_mode) "hybrid-step-v2" else "circuit-v1") or
         !std.mem.eql(u8, key.name, source.name))
         return error.InvalidVerificationKey;
     if (chip_mode) {
@@ -4370,6 +4396,7 @@ fn validateCompiledKey(allocator: std.mem.Allocator, source: relation.Program, k
             var generated = try gate_component_roster.generate(
                 allocator,
                 &pp,
+                if (raw_gate_channel) "circuit-raw-v1" else "circuit-v1",
                 source_digest,
                 ir_digest,
                 expected_root,
