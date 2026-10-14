@@ -1,6 +1,6 @@
 import S31.Gadgets.Functional.Correspondence.StructuralNativeGateOwnership
 
-/-! Concrete runtime control for direct gate ownership on supplied graph data. -/
+/-! Concrete runtime control for direct gate ownership and identity aliases. -/
 
 namespace S31.Audit.StructuralNativeGateOwnershipCheck
 
@@ -52,7 +52,7 @@ private def checkN (n : Nat) (hn : n ≤ 4) (sourceBytes : List Nat)
               (nativeInitial hn graph.wire graph.addresses certificate.inputs)
               certificate.steps with
           | none =>
-              IO.eprintln "rejected: source step lacks a direct owning native gate"
+              IO.eprintln "rejected: source step lacks a direct native owner or exact identity alias"
               return 1
           | some final =>
               if !checkOutputPort hn graph.wire graph.addresses final
@@ -63,7 +63,7 @@ private def checkN (n : Nat) (hn : n ≤ 4) (sourceBytes : List Nat)
               if !checkGates graph.wire graph.gates then
                 IO.eprintln "rejected: supplied concrete native gate equations differ"
                 return 1
-              IO.println s!"accepted: {ssa.inputs.length} inputs, {ssa.nodes.length} directly owned steps, {n} lanes"
+              IO.println s!"accepted: {ssa.inputs.length} inputs, {ssa.nodes.length} owned or identity steps, {n} lanes"
               return 0
 
 def run (args : List String) : IO UInt32 := do

@@ -13,7 +13,7 @@ FORMAL = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(FORMAL / "tests/audit"))
 sys.path.insert(0, str(FORMAL))
 
-from general_structural_native_witness import CASES, case_bytes  # noqa: E402
+from general_structural_native_witness import CASES, P, case_bytes  # noqa: E402
 from scripts.general_structural_native_witness import checked_words, native_check  # noqa: E402
 from scripts.native_graph_certificate import check_graph  # noqa: E402
 
@@ -72,7 +72,7 @@ def main() -> None:
         paths[2].write_text(json.dumps(graph, separators=(",", ":")))
         lean_check(VALUE, paths, True)
         reason = lean_check(OWNER, paths, False)
-        if "lacks a direct owning native gate" not in reason:
+        if "lacks a direct native owner or exact identity alias" not in reason:
             raise AssertionError(f"missing-owner mutation failed elsewhere: {reason}")
         print("Zig CSE graph accepted; missing owner passes value check and fails AIR ownership")
 
@@ -108,9 +108,65 @@ def main() -> None:
         paths[2].write_text(json.dumps(sub_graph, separators=(",", ":")))
         lean_check(VALUE, paths, True)
         reason = lean_check(OWNER, paths, False)
-        if "lacks a direct owning native gate" not in reason:
+        if "lacks a direct native owner or exact identity alias" not in reason:
             raise AssertionError(f"reversed Sub failed elsewhere: {reason}")
         print("Zig Sub graph accepted; reversed zero-input gate fails ordered ownership")
+
+        # The exporter removes add-zero and multiply-one entirely. Both source
+        # results must reuse the exact physical input wire. Give x and y equal
+        # concrete values so a forged source-map alias to y passes the older
+        # value-only trace, yet has no valid ownership for arbitrary inputs.
+        _, identity_source, _ = next(c for c in CASES if c[0] == "erased_identities")
+        identity_assignment = {
+            "public_inputs": {"x": [2, 3]},
+            "private_inputs": {"y": [2, 3]},
+            "public_outputs": {"z": [2, 3]},
+        }
+        identity_raw = case_bytes(identity_source, identity_assignment)
+        identity_inputs, identity_nodes = checked_words(identity_raw)
+        identity_graph, identity_bytes = native_check(
+            identity_raw, identity_inputs, identity_nodes, work, export_graph=True)
+        check_graph(identity_graph, identity_raw, identity_inputs, identity_nodes)
+        for path, content in zip(paths, (identity_source, identity_raw["certificate"],
+                                         identity_bytes,
+                                         json.dumps({"inputs": [[2, 3], [2, 3]],
+                                                     "claimed": [2, 3]}).encode()), strict=True):
+            path.write_bytes(content)
+        lean_check(VALUE, paths, True)
+        lean_check(OWNER, paths, True)
+        source_map = identity_graph["source_map"]
+        if source_map[0]["id"] == source_map[1]["id"] or \
+                source_map[2]["id"] != source_map[0]["id"] or \
+                source_map[3]["id"] != source_map[0]["id"]:
+            raise AssertionError("expected exact x-address identity erasures")
+        source_map[2]["id"] = source_map[1]["id"]
+        paths[2].write_text(json.dumps(identity_graph, separators=(",", ":")))
+        lean_check(VALUE, paths, True)
+        reason = lean_check(OWNER, paths, False)
+        if "lacks a direct native owner or exact identity alias" not in reason:
+            raise AssertionError(f"forged same-value alias failed elsewhere: {reason}")
+        print("Zig identities accepted; same-value wrong-wire alias fails exact ownership")
+
+        # A multiply-by-zero fold does not satisfy the identity rule. It
+        # needs fixed-constant cell provenance before this checker can admit
+        # it, even though the older concrete-value checker accepts the trace.
+        _, folded_source, folded_assignment = next(
+            c for c in CASES if c[0] == "folded_constants")
+        folded_raw = case_bytes(folded_source, folded_assignment)
+        folded_inputs, folded_nodes = checked_words(folded_raw)
+        folded_graph, folded_bytes = native_check(
+            folded_raw, folded_inputs, folded_nodes, work, export_graph=True)
+        check_graph(folded_graph, folded_raw, folded_inputs, folded_nodes)
+        for path, content in zip(paths, (folded_source, folded_raw["certificate"],
+                                         folded_bytes,
+                                         json.dumps({"inputs": [[P - 1, 3], [7, 7]],
+                                                     "claimed": [7, 7]}).encode()), strict=True):
+            path.write_bytes(content)
+        lean_check(VALUE, paths, True)
+        reason = lean_check(OWNER, paths, False)
+        if "lacks a direct native owner or exact identity alias" not in reason:
+            raise AssertionError(f"nonidentity fold failed elsewhere: {reason}")
+        print("Zig nonidentity fold remains rejected pending fixed-cell ownership")
 
 
 if __name__ == "__main__":
