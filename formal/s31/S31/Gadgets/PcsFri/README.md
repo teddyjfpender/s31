@@ -4,6 +4,17 @@ The Lean files in this directory establish small parts of the native PCS/FRI
 argument. They are imported by `S31.Gadgets`, so normal builds and axiom
 audits include their theorems.
 
+[`BiasedLookupPair.lean`](BiasedLookupPair.lean) proves the selected M31-reduced
+lookup pair's exact raw-word inverse images: canonical residues 0 and 1 have
+three 32-bit preimages; every other residue has two. The eight-word inverse
+image has the product cardinality. For **one fixed draw input with independent
+uniform raw words**, every event in the two-QM31 output space has at most
+`(3(2³¹−1)/2³²)⁸ ≈ 25.6289061545` times its uniform-QM31² probability.
+The all-zero pair attains the factor. The [P07 conditional budget](../../../../../design/s31/security/PCS_FRI_LOOKUP_PAIR_BIAS.md)
+applies it to the existing mixed lookup polynomial estimate. The module does
+not prove independence after nonce selection, adaptive BCS, or native
+whole-prover soundness.
+
 [`PowM31Predicate.lean`](PowM31Predicate.lean) proves that, for every raw
 32-bit first hash word, the selected M31 PoW low-bit check is the zero fiber
 of the reduced query map. Under a uniform raw-word premise, the exact
