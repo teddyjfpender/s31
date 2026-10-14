@@ -379,6 +379,11 @@ jobs:
           set -euo pipefail
           python3 src/frontends/s31/tests/acceptance/compiler_correspondence/constant_native_rows.py |
             tee zig-out/s31/acceptance/constant-native-rows.json
+      - name: Source-bound scalar zero-test Gate row controls
+        run: |
+          set -euo pipefail
+          python3 src/frontends/s31/tests/acceptance/compiler_correspondence/zero_test_native_rows.py |
+            tee zig-out/s31/acceptance/zero-test-native-rows.json
       - name: Two-public-input source-bound native row controls
         run: |
           set -euo pipefail

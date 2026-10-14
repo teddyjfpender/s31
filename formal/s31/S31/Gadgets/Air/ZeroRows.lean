@@ -134,6 +134,77 @@ theorem acceptsZeroTest_iff (input indicator : Quad) :
   ⟨acceptsZeroTest_sound input indicator,
    acceptsZeroTest_complete input indicator⟩
 
+/-- The checked indicator is a bit for every satisfying inverse hint, including
+the zero input where that hint is deliberately unconstrained. -/
+theorem acceptsZeroTest_indicator_boolean (input indicator : Quad)
+    (h : acceptsZeroTest input indicator) :
+    indicator = base 0 ∨ indicator = base 1 := by
+  rw [(acceptsZeroTest_sound input indicator h)]
+  by_cases hx : input = base 0 <;> simp [hx]
+
+/-- Both directions of the zero predicate follow from the two enforced
+equations. No witness-generator value is assumed. -/
+theorem acceptsZeroTest_indicator_one_iff (input indicator : Quad)
+    (h : acceptsZeroTest input indicator) :
+    indicator = base 1 ↔ input = base 0 := by
+  rw [(acceptsZeroTest_sound input indicator h)]
+  by_cases hx : input = base 0
+  · simp [hx]
+  · simpa [hx] using (by decide : (base 0 : Quad) ≠ base 1)
+
+theorem acceptsZeroTest_indicator_zero_iff (input indicator : Quad)
+    (h : acceptsZeroTest input indicator) :
+    indicator = base 0 ↔ input ≠ base 0 := by
+  rw [(acceptsZeroTest_sound input indicator h)]
+  by_cases hx : input = base 0
+  · simpa [hx] using (by decide : (base 1 : Quad) ≠ base 0)
+  · simp [hx]
+
+/-- An honest pair of indicator and inverse-hint witnesses exists for every
+input. The theorem above proves uniqueness of the indicator for *all* pairs. -/
+theorem acceptsZeroTest_exists (input : Quad) :
+    ∃ indicator : Quad, acceptsZeroTest input indicator := by
+  refine ⟨if input = base 0 then base 1 else base 0, ?_⟩
+  exact acceptsZeroTest_complete input _ rfl
+
+/-- The reviewed one-lane direct-Gate source schedule uses these exact wire
+addresses. Its two self-loops are the concrete Gate rows at add positions 0
+and 1; the public copies occupy add positions 2 and 3. The fixed-row checker
+checks those selectors and addresses against every native exported column. -/
+structure NativeScalarZeroRoleRows (wire : Nat → Quad) : Prop where
+  zero : wire 0 = base 0
+  one : wire 1 = base 1
+  inputCopy : accepts (encode .add) (wire 11) (wire 0) (wire 3)
+  publicCopy : accepts (encode .add) (wire 14) (wire 0) (wire 4)
+  inverseProduct : accepts (encode .mul) (wire 11) (wire 15) (wire 16)
+  complement : accepts (encode .sub) (wire 1) (wire 14) (wire 17)
+  difference : accepts (encode .sub) (wire 16) (wire 17) (wire 18)
+  inverseZeroAnchor : accepts (encode .add) (wire 19) (wire 18) (wire 19)
+  indicatorProduct : accepts (encode .mul) (wire 11) (wire 14) (wire 20)
+  indicatorZeroAnchor : accepts (encode .add) (wire 21) (wire 20) (wire 21)
+
+/-- Any address-consistent witness satisfying the actual scalar zero-test
+Gate row roles has the correct public indicator. This is independent of the
+inverse hint, the two anchor values, and the native witness generator. -/
+theorem native_scalar_zero_roles_sound (wire : Nat → Quad)
+    (h : NativeScalarZeroRoleRows wire) :
+    wire 4 = if wire 3 = base 0 then base 1 else base 0 := by
+  have htest : acceptsZeroTest (wire 11) (wire 14) :=
+    ⟨wire 15, wire 16, wire 17, wire 18, wire 20,
+     h.inverseProduct, by simpa [h.one] using h.complement,
+     h.difference, ⟨wire 19, h.inverseZeroAnchor⟩,
+     h.indicatorProduct, ⟨wire 21, h.indicatorZeroAnchor⟩⟩
+  have hinput : wire 3 = wire 11 := by
+    have hrow := (accepts_encoded .add (wire 11) (wire 0) (wire 3)).mp
+      h.inputCopy
+    simpa [h.zero, evaluate, Packed.add, base] using hrow
+  have houtput : wire 4 = wire 14 := by
+    have hrow := (accepts_encoded .add (wire 14) (wire 0) (wire 4)).mp
+      h.publicCopy
+    simpa [h.zero, evaluate, Packed.add, base] using hrow
+  rw [houtput, hinput]
+  exact acceptsZeroTest_sound (wire 11) (wire 14) htest
+
 /-- The source-visible M31 zero test is the restriction of the universal
 QM31 row theorem to canonical scalar input/output bindings. -/
 theorem base_zero_test_iff (value claimed : S31.M31) :

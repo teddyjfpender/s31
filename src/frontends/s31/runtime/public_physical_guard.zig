@@ -16,6 +16,15 @@ pub fn eligible(allocator: std.mem.Allocator, source: relation.Program) !bool {
         if (input.visibility != .public or input.kind != .m31 or input.length != lanes)
             return false;
     }
+    // The zero-test diagnostic is restricted to the reviewed scalar
+    // source-to-fixed-row profile. Its two self-loop assertions are emitted
+    // inside the compiler, not as source-level relation assertions.
+    if (source.nodes.len == 1 and source.nodes[0].op == .is_zero) {
+        const node = source.nodes[0];
+        return source.inputs.len == 1 and lanes == 1 and node.lhs != null and
+            std.mem.eql(u8, node.lhs.?, source.inputs[0].name) and
+            std.mem.eql(u8, node.name, source.public_outputs[0]);
+    }
     var selected_is_node = false;
     for (source.nodes) |node| {
         if (node.op != .add and node.op != .sub and node.op != .mul and
@@ -120,6 +129,15 @@ test "public physical export guard rejects wrong source profiles" {
     try std.testing.expect(try eligible(allocator, program));
     nodes[0].rhs = "x";
     nodes[0].constant = null;
+    nodes[0].op = .is_zero;
+    nodes[0].rhs = null;
+    input[0].length = 1;
+    try program.validate(allocator);
+    try std.testing.expect(try eligible(allocator, program));
+    input[0].length = 2;
+    try std.testing.expect(!try eligible(allocator, program));
+    input[0].length = 4;
+    nodes[0].rhs = "x";
     input[0].visibility = .private;
     try std.testing.expect(!try eligible(allocator, program));
     input[0].visibility = .public;
