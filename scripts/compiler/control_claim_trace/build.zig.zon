@@ -1,0 +1,9 @@
+.{
+    .fingerprint = 0xd8036d7d85411e5b,
+    .name = .s31_control_claim_trace,
+    .version = "0.1.0",
+    .paths = .{"."},
+    .dependencies = .{
+        .stwo_circuit_cpu_integration = .{ .path = "../../../deps/stwo-zig/src/integrations/circuit_cpu" },
+    },
+}
