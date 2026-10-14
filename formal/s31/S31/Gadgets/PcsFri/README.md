@@ -285,6 +285,33 @@ XDM04 wire, checks that wrong orientation, and corrupts a compressed witness.
 The [source audit](../../../../../scripts/release/pcs_fri_cas05_source_profile.py)
 now pins the native topology file as well as the verifier and prover files.
 
+[`PairedBatchXdm04Certificate.lean`](PairedBatchXdm04Certificate.lean) makes two
+path premises checkable without fixing a profile size. First, a checked
+opening certificate records the tagged starting row, native index, converted
+binary path position, sibling and inserted-row steps, and root. Its theorem
+turns a successful check into `acceptedMixedOpening` and proves that native
+transposed replay reaches the same root. Second, an all-node tree recurrence
+implies that the path derived from any recorded node reaches the committed
+root. This supplies a modeled committed opening once the starting tagged node
+and terminal root index are identified.
+
+The [audit-only Zig checker](../../../tests/lib/pcs_xdm04_mixed_certificate.zig)
+applies these conditions to the experimental XDM04 draft: it calls
+`verifyAndCollect`, independently parses the accepted wire and query rows,
+rebuilds the sparse opening tree, checks every returned row and its full mixed
+path, and checks every node of a committed prover tree against its source
+columns. The [focused test](../../../tests/pcs_fri_xdm04_certificate_draft.zig)
+exercises three profile shapes, duplicate queries, inserted and upper edges,
+and mutations of accepted rows, path siblings, source columns, and tree nodes.
+Run it with `formal/s31/tests/run_pcs_fri_xdm04_certificate_draft.sh
+<path-to-exact-draft-checkout>` from the repository root. The audit shares
+native hash and topology helpers. Its borrowed source-column check is a
+point-in-time check; later mutation requires a new audit. It does not
+independently establish hash framing, nor is it installed in the production
+CAS05 verifier. A formal
+Zig-to-Lean semantic relation for the audit and concrete BLAKE2s assumptions
+remain prerequisites for replacing the explicit native opening premises.
+
 [`TwoPointDegreeCorrection.lean`](TwoPointDegreeCorrection.lean) proves the
 ordinary-polynomial degree step under exact reconstruction. For distinct
 points `a,b`, values `vₐ,vᵦ` determine an affine line `L`. If polynomial `f`

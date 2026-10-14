@@ -320,6 +320,7 @@ import S31.Gadgets.PcsFri.PairedSparseBatchAgreement
 import S31.Gadgets.PcsFri.PairedBatchNativeRefinement
 import S31.Gadgets.PcsFri.PairedBatchSourceCustody
 import S31.Gadgets.PcsFri.PairedBatchXdm04Topology
+import S31.Gadgets.PcsFri.PairedBatchXdm04Certificate
 import S31.Gadgets.PcsFri.TwoPointDegreeCorrection
 import S31.Gadgets.PcsFri.CircleVanishingLine
 import S31.Gadgets.PcsFri.CircleLaurentDegree
