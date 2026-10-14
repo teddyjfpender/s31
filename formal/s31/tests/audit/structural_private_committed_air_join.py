@@ -24,7 +24,9 @@ sys.path.insert(0, str(S31 / "python"))
 
 from scripts.general_structural_native_witness import check as check_graph_source  # noqa: E402
 from scripts.general_structural_native_witness import checked_words  # noqa: E402
-from scripts.structural_committed_air_join import expected_columns  # noqa: E402
+from scripts.structural_committed_air_join import (  # noqa: E402
+    expected_columns, check_source_physical_rows,
+)
 from structural_derivation_lean import artifacts, canonical  # noqa: E402
 from package.fixed_root_join import proof_roots  # noqa: E402
 import s31  # noqa: E402
@@ -84,6 +86,7 @@ def run(work: Path) -> dict:
         raise AssertionError("Lean/source graph gate rejected private fixture")
     graph = json.loads(graph_path.read_bytes())
     fixed, main = expected_columns(graph)
+    source_air_rows = check_source_physical_rows(graph, fixed, main)
     inputs, nodes = checked_words(raw)
     source_mul = graph["node_wires"][graph["source_map"][3]["id"]]["wires"][0]
     source_gates = [(i, gate) for i, gate in enumerate(graph["pointwise_mul"])
@@ -94,6 +97,14 @@ def run(work: Path) -> dict:
     if ([main[col][row] for col in range(8, 12)] != ASSIGNMENT["public_outputs"]["z"] or
             [main[col][row] for col in range(4)] != [4, 5, 8, 13]):
         raise AssertionError("selected private multiplication row differs")
+    changed_main = copy.deepcopy(main)
+    changed_main[8][row] ^= 1
+    try:
+        check_source_physical_rows(graph, fixed, changed_main)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("changed private physical AIR result was accepted")
 
     package = s31.build(source, work / "package", "direct-gate")
     manifest = s31.verify_package(package)
@@ -178,6 +189,7 @@ def run(work: Path) -> dict:
             "source_sha256": hashlib.sha256(SOURCE).hexdigest(),
             "private_input_count": 1,
             "source_mul_row": row,
+            "source_physical_air_rows": source_air_rows,
             "fixed_cells": 4096, "main_cells": 6144,
             "native_verifier_accepted": True,
             "mutations_rejected": mutations,

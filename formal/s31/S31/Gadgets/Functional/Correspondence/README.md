@@ -44,8 +44,11 @@ constructs a `NativeTrace` from its bounded JSON projection. The
 requires an actual native gate for every admitted binary SSA step, including
 commutative CSE reuse, and derives each source result from that gate's AIR
 residuals. A missing-owner mutation passes the value-only decoder but fails
-this new check. Constant steps and erased operations are outside its current
-profile. The
+this new check. [The physical AIR bridge](StructuralPhysicalAirBridge.md)
+discharges that abstract source-gate AIR premise from exact physical selector,
+address, and base cells plus their nine local residuals. Exact zero/one erasures
+and the AIR zero anchor are admitted; nonzero folded literals need their
+separate fixed-constant certificate. The
 [committed AIR join](StructuralCommittedAirJoin.md) compares all direct-Gate
 fixed and base cells for one all-public source and joins their native
 recommitments to an accepted proof's roots. The

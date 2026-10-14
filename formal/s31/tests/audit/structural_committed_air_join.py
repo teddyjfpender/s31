@@ -24,7 +24,9 @@ sys.path.insert(0, str(FORMAL))
 sys.path.insert(0, str(S31 / "python"))
 
 from scripts.general_structural_native_witness import check as check_graph_source  # noqa: E402
-from scripts.structural_committed_air_join import check_columns  # noqa: E402
+from scripts.structural_committed_air_join import (  # noqa: E402
+    check_columns, check_source_physical_rows,
+)
 from structural_derivation_lean import artifacts, canonical  # noqa: E402
 from package.fixed_root_join import proof_roots  # noqa: E402
 import s31  # noqa: E402
@@ -91,6 +93,8 @@ def run(work: Path) -> dict:
     (work / "physical-root.json").write_bytes(canonical(root_report))
     joined = check_columns(graph, physical, root_report,
                            manifest["program_sha256"], public_words)
+    source_air_rows = check_source_physical_rows(
+        graph, physical["fixed_columns"], physical["main_columns"])
     source_wire = graph["node_wires"][graph["source_map"][1]["id"]]["wires"][0]
     source_gates = [(index, gate) for index, gate in enumerate(graph["pointwise_mul"])
                     if gate["out"] == source_wire]
@@ -123,6 +127,17 @@ def run(work: Path) -> dict:
 
     mutations = 0
     for column_set, column, row in (("fixed_columns", 3, source_row),
+                                    ("main_columns", 8, source_row)):
+        changed = copy.deepcopy(physical)
+        changed[column_set][column][row] ^= 1
+        try:
+            check_source_physical_rows(
+                graph, changed["fixed_columns"], changed["main_columns"])
+        except ValueError:
+            mutations += 1
+        else:
+            raise AssertionError(f"changed physical AIR {column_set} cell was accepted")
+    for column_set, column, row in (("fixed_columns", 3, source_row),
                                     ("main_columns", 0, source_row),
                                     ("main_columns", 8, source_row)):
         changed = copy.deepcopy(physical)
@@ -146,6 +161,7 @@ def run(work: Path) -> dict:
             "native_arithmetic_gates": source_audit["arithmetic_gates"],
             "source_mul_row": source_row,
             "source_mul_output_address": source_wire,
+            "source_physical_air_rows": source_air_rows,
             "fixed_cells": joined["fixed_cells"],
             "main_cells": joined["main_cells"],
             "fixed_root": fixed_root.hex(), "main_root": main_root.hex(),

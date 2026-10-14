@@ -162,6 +162,7 @@ import S31.Gadgets.Functional.Correspondence.GeneralLinearSSABytes
 import S31.Gadgets.Functional.Correspondence.GeneralLinearSSAEffects
 import S31.Gadgets.Functional.Correspondence.StructuralNativeGateCertificate
 import S31.Gadgets.Functional.Correspondence.StructuralNativeTraceDecoder
+import S31.Gadgets.Functional.Correspondence.StructuralPhysicalAirBridge
 import S31.Gadgets.Functional.Correspondence.GeneralLinearSSAEffectsBytes
 import S31.Gadgets.Functional.Correspondence.GeneralLinearSSASourceBytes
 import S31.Gadgets.Functional.Correspondence.GeneralLinearSSAEffectsSourceBytes
