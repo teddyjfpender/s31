@@ -101,6 +101,35 @@ theorem encoded_projection_bad_le {U K : Type*}
         (fun t _ => encoded_projection_fiber_le encode henc project n hn hpower t)
     _ = n * bad.card := by simp [mul_comm]
 
+/-- A fixed injective circle translation after projection does not enlarge
+the bad-set bound. This covers the periodicity form of the modeled quotient
+samples without assuming that the native code implements the model. -/
+theorem encoded_shifted_projection_bad_le {U K : Type*}
+    [Fintype U] [DecidableEq U] [Field K] [Fintype K] [DecidableEq K]
+    (encode : U → K) (henc : Function.Injective encode)
+    (project : U → U) (n : ℕ) (hn : 0 < n)
+    (hpower : ∀ u, encode (project u) = (encode u) ^ n)
+    (shift : U → U) (hshift : Function.Injective shift)
+    (bad : Finset U) :
+    ((Finset.univ : Finset U).filter
+      (fun u => shift (project u) ∈ bad)).card ≤ n * bad.card := by
+  let pulled := (Finset.univ : Finset U).filter (fun t => shift t ∈ bad)
+  have hpulled : pulled.card ≤ bad.card := by
+    have himage : pulled.image shift ⊆ bad := by
+      intro t ht
+      obtain ⟨u, hu, rfl⟩ := Finset.mem_image.mp ht
+      exact (Finset.mem_filter.mp hu).2
+    calc
+      pulled.card = (pulled.image shift).card :=
+        (Finset.card_image_of_injective pulled hshift).symm
+      _ ≤ bad.card := Finset.card_le_card himage
+  have hbound := encoded_projection_bad_le
+    encode henc project n hn hpower pulled
+  have hsubset : n * pulled.card ≤ n * bad.card :=
+    Nat.mul_le_mul_left n hpulled
+  simpa only [pulled, Finset.mem_filter, Finset.mem_univ,
+    true_and] using (hbound.trans hsubset)
+
 noncomputable def qm31BadPreimage (k : ℕ)
     (bad : Finset (Circle ConcreteCircleCount.QM31)) :
     Finset (Circle ConcreteCircleCount.QM31) := by
@@ -124,6 +153,31 @@ theorem qm31_doubling_bad_le (k : ℕ)
     ((CirclePowerEncoding.double (K := ConcreteCircleCount.QM31))^[k])
     (2 ^ k) (by positivity)
     (fun p => CirclePowerEncoding.qm31_encode_iterated_double p k) bad
+
+noncomputable def qm31ShiftedBadPreimage (k : ℕ)
+    (shift : Circle ConcreteCircleCount.QM31)
+    (bad : Finset (Circle ConcreteCircleCount.QM31)) :
+    Finset (Circle ConcreteCircleCount.QM31) := by
+  classical
+  exact (Finset.univ : Finset (Circle ConcreteCircleCount.QM31)).filter
+    (fun p => CirclePowerEncoding.translate shift
+      (((CirclePowerEncoding.double
+        (K := ConcreteCircleCount.QM31))^[k]) p) ∈ bad)
+
+theorem qm31_shifted_doubling_bad_le (k : ℕ)
+    (shift : Circle ConcreteCircleCount.QM31)
+    (bad : Finset (Circle ConcreteCircleCount.QM31)) :
+    (qm31ShiftedBadPreimage k shift bad).card ≤ 2 ^ k * bad.card := by
+  classical
+  unfold qm31ShiftedBadPreimage
+  exact encoded_shifted_projection_bad_le
+    (CirclePowerEncoding.encode CirclePowerEncoding.qm31Imaginary)
+    CirclePowerEncoding.qm31_encode_injective
+    ((CirclePowerEncoding.double (K := ConcreteCircleCount.QM31))^[k])
+    (2 ^ k) (by positivity)
+    (fun p => CirclePowerEncoding.qm31_encode_iterated_double p k)
+    (CirclePowerEncoding.translate shift)
+    (CirclePowerEncoding.qm31_translate_injective shift) bad
 
 theorem raw_guard_complement_card_arithmetic :
     (q ^ 4 - 1) - rawSupport = zeroUpperYTargets := by

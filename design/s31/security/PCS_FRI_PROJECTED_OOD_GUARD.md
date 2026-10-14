@@ -52,12 +52,18 @@ by `2¹²·2(Q−1)`. Their union leaves at least
 
 raw-admissible points; Lean proves this quantity is positive. The broader
 [union-bound interface](../../../formal/s31/S31/Gadgets/PcsFri/ProjectedOodSupportBound.lean)
-handles four shifted h17 claims, 32 h11 claims, and 23 h5 claims if each
-shifted projection is shown to have its stated fiber cap. Under those
-premises, the extra conditioning multiplier after the raw guard for an
-ideal uniform circle draw is below `1+2⁻⁴⁰`. The actual shifted
-point map, selected native evaluator, and Fiat–Shamir seed law still need
-their own refinement and probability argument.
+handles four shifted h17 claims, 32 h11 claims, and 23 h5 claims given
+their stated fiber caps. The extra conditioning multiplier after the raw
+guard for an ideal uniform circle draw is below `1+2⁻⁴⁰`. The actual
+shifted point map, selected native evaluator, and Fiat–Shamir seed law
+still need their own refinement and probability argument.
+
+The [modeled translation theorem](../../../formal/s31/S31/Gadgets/PcsFri/ProjectedOodTargetCount.lean)
+now discharges those caps for **any fixed circle shifts**: circle addition
+multiplies the injective `x+i·y` encoding by a nonzero field element, so it
+cannot increase a doubling fiber. It proves a positive survivor count for
+all 4+32+23 shifted-claim slots at once. Matching each slot and its shift to
+the selected native sample construction remains a separate proof obligation.
 
 Run the native control with
 `bash formal/s31/tests/run_pcs_fri_projected_ood_guard_native.sh`.
