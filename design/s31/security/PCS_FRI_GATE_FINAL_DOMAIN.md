@@ -110,10 +110,60 @@ paper's table relation, including all multiplicities and committed columns.
 The report therefore leaves `identified_as_published_k_t=false` and the
 release gate closed.
 
+## Native trace and fold inventory
+
+`gate_trace_and_fri_schedule` adds a checked inventory for this **Gate-only**
+path. It reads the package's 11 native-reconstructed component entries and 45
+fixed columns, compares their names, indices and heights to the already
+checked package report, and records each component's main and interaction
+trace widths. It also records the four PCS commitment trees in source order:
+
+```sh
+python3 -B src/frontends/s31/python/s31.py build \
+  src/frontends/s31/examples/arithmetic/arith4_m31.s31 \
+  --lowering gate --out /tmp/s31-p01-arith4-gate
+python3 -B scripts/release/pcs_fri_gate_final_domain.py \
+  /tmp/s31-p01-arith4-gate
+```
+
+| Tree | Columns for a fresh local `arith4_m31` Gate key | Lifted Merkle height |
+| --- | ---: | ---: |
+| Preprocessed | 45 | `2^21` positions |
+| Main | 114 | `2^21` positions |
+| Interaction | 152 | `2^21` positions |
+| Composition | `2^1 · 4 = 8` | `2^21` positions |
+
+The composition columns themselves have log size 20; all four trees are
+*lifted* to log height 21. The 11 component heights are not all 20. For
+example, `qm31_ops` has 1,024 trace rows and widths 12 main plus 8
+interaction columns, while `verify_bitwise_xor_12` has `2^20` trace rows and
+widths 16 main plus 32 interaction columns. For this key the report computes
+17,266,176 main trace column cells, 35,203,520 interaction trace column
+cells, and 4,252,752 preprocessed column cells before lifting. These are
+geometry counts, not proof size or prover time.
+
+The source-pinned FRI configuration has log blowup 1, fold step 1, terminal
+degree log 0, and 70 raw query draws. Its verifier requires one first circle
+commitment at domain log 21 and degree log 20. That commitment is followed by
+one circle-to-line fold. It then requires 19 inner line commitments, each
+followed by one fold. The inner commitment domains descend from log 20 to log
+2; the final line domain has log 1 and at most one polynomial coefficient.
+There are 20 folding challenges in this conditional schedule. The 70 raw
+draws may collapse to fewer unique Merkle positions; the unique count is
+proof-dependent and remains `null` in a key-only report.
+
+The diagnostic guards the native source expressions for tree commitment
+order, composition column count, layer count, fold-step clamp, terminal
+degree check and query sampling. These guards are change detectors, not a
+Zig control-flow proof. The report does not identify the native degree
+bound or oracle with the published theorem's `N`, `D`, `C`, `d`, `L`, `m`,
+rate or list bound. In particular, these counts cannot certify the selected
+`epsilon(T)/T <= 2^-96` target at `T=2^64`; native security bits remain null.
+
 Focused tests create a bundle envelope, mutate its header/body, mutate the
 sealed component order and degree offset, reject a missing native key check,
-and compare the real pinned bundle offsets and source guards when the engine
-submodule is checked out:
+compare the real pinned bundle offsets and source guards, and reject altered
+trace widths, heights, fixed-column rows, fold step and FRI degree:
 
 ```sh
 python3 -B -m unittest scripts.tests.test_pcs_fri_gate_final_domain -v

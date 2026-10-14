@@ -20,7 +20,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from scripts.release.pcs_fri_package_geometry import ROOT, extract_package
+from scripts.release.pcs_fri_package_geometry import ROOT, extract_package, uint
 
 BUNDLE = "deps/stwo-zig/vectors/circuit/official/circuit_air.air_programs_v1.bin"
 SOURCE_TOKENS = {
@@ -34,6 +34,9 @@ SOURCE_TOKENS = {
     ),
     "src/frontends/s31/runtime/native_verifier.zig": (
         "const MC = cpu.prove.profiles.Blake2sM31MerkleChannel;",
+        "try scheme.commit(allocator, roots[0], &pp_logs, &channel);",
+        "try scheme.commit(allocator, roots[1], main_logs, &channel);",
+        "try scheme.commit(allocator, roots[2], interaction_logs, &channel);",
         "var bound = try cpu.air.bind(allocator, template, component_logs, layout);",
         "runtime.* = .init(allocator, source, &pp_logs, lifting_bound, lookup.z, lookup.alpha, claimed);",
         "handle.* = runtime.asVerifierComponent();",
@@ -64,6 +67,8 @@ SOURCE_TOKENS = {
     ),
     "deps/stwo-zig/src/core/verifier_types.zig": (
         "pub const COMPOSITION_LOG_SPLIT: u32 = 1;",
+        "return @as(usize, 1) << @intCast(split_depth);",
+        "return std.math.mul(usize, chunks, extension_degree) catch null;",
         "return composition_log_size - split_depth;",
     ),
     "deps/stwo-zig/src/core/verifier.zig": (
@@ -72,7 +77,12 @@ SOURCE_TOKENS = {
         "const max_log_degree_bound = if (comptime @import(\"protocol_revision.zig\").Revision.of(MC) == .proving_5a7c5ed) blk: {",
         "break :blk @max(component_mask_log, lifted_mask_log);",
         "@memset(\n        composition_commitment_log_sizes,\n        max_log_degree_bound,\n    );",
+        "const composition_column_count = verifier_types.compositionColumnCount(",
+        "qm31.SECURE_EXTENSION_DEGREE,",
         "try commitment_scheme.commit(\n        allocator,\n        composition_commitment,",
+    ),
+    "deps/stwo-zig/src/core/fields/qm31.zig": (
+        "pub const SECURE_EXTENSION_DEGREE: usize = 4;",
     ),
     "deps/stwo-zig/src/core/pcs/config_v2.zig": (
         "return fromFriAndLiftingSize(config, trace_log_size + config.log_blowup_factor);",
@@ -84,10 +94,28 @@ SOURCE_TOKENS = {
         "try verifier_revision.treeHeight(self.revision_config, self.trees.items.len, extended_log_sizes)",
         "break :blk self.trees.items[self.trees.items.len - 1].height;",
         "const bound = fri.CirclePolyDegreeBound.init(lifting_log_size - self.config.fri_config.log_blowup_factor);",
+        "var fri_verifier = try FriVerifier.commit(",
+        "if (!channel.verifyPowNonce(self.config.pow_bits, proof.proof_of_work)) {",
+        "channel.mixU64(proof.proof_of_work);",
+        "var query_capture = try fri_verifier.sampleQueryPositionsWithRaw(",
     ),
     "deps/stwo-zig/src/core/fri.zig": (
+        "proof_in.inner_layers.len != config_mod.nFoldSteps(",
+        "const first_line_log = column_bound.logDegreeBound() - config.fold_step;",
+        "const column_commitment_domain = canonic.CanonicCoset",
+        "var layer_bound = column_bound.foldToLineWithStep(config.fold_step);",
+        "const remaining = layer_bound.logDegreeBound() - config.log_last_layer_degree_bound;",
+        "const this_fold_step: u32 = config_mod.foldStepAt(config.fold_step, remaining);",
+        "layer_bound = layer_bound.fold(this_fold_step)",
+        "layer_domain = layer_domain.double();",
+        "channel.mixFelts(last_layer_poly.coefficients());",
+        "self.config.n_queries,",
         ".new(column_bound.logDegreeBound() + config.log_blowup_factor)",
         ".circleDomain();",
+    ),
+    "deps/stwo-zig/src/core/fri/config.zig": (
+        "return @min(fold_step, remaining);",
+        "return std.math.divCeil(u32, degree_log_ratio, fold_step) catch unreachable;",
     ),
     "deps/stwo-zig/src/core/poly/circle/canonic.zig": (
         "return domain.CircleDomain.new(self.halfCoset());",
@@ -113,6 +141,22 @@ def check_source_texts(sources: dict[str, str]) -> str:
         source = sources[name]
         if any(token not in source for token in tokens):
             raise ValueError(f"gate final-domain source changed: {name}")
+    for name, ordered in (
+        ("src/frontends/s31/runtime/native_verifier.zig", (
+            "try scheme.commit(allocator, roots[0], &pp_logs, &channel);",
+            "try scheme.commit(allocator, roots[1], main_logs, &channel);",
+            "try scheme.commit(allocator, roots[2], interaction_logs, &channel);",
+        )),
+        ("deps/stwo-zig/src/core/pcs/verifier.zig", (
+            "var fri_verifier = try FriVerifier.commit(",
+            "if (!channel.verifyPowNonce(self.config.pow_bits, proof.proof_of_work)) {",
+            "channel.mixU64(proof.proof_of_work);",
+            "var query_capture = try fri_verifier.sampleQueryPositionsWithRaw(",
+        )),
+    ):
+        positions = [sources[name].index(token) for token in ordered]
+        if positions != sorted(positions):
+            raise ValueError(f"gate final-domain source order changed: {name}")
     text = sources["deps/stwo-zig/src/integrations/circuit_cpu/air.zig"]
     matches = re.findall(r'pub const bundle_sha256 = "([0-9a-f]{64})";', text)
     if len(matches) != 1:
@@ -292,6 +336,138 @@ def derive_gate(report: dict, offsets: list[tuple[str, int]]) -> dict:
     return report
 
 
+def derive_gate_trace_and_fri_schedule(report: dict, roster: dict) -> dict:
+    """Inventory the checked Gate roster and native fold-step-1 schedule.
+
+    The production caller first verifies the package and runs its native
+    check-key. This arithmetic function still validates its inputs so a test
+    or future caller cannot turn a malformed report into a plausible schedule.
+    It never estimates a security level or identifies a published theorem rate.
+    """
+    if (report.get("lowering"), report.get("key_schema"), report.get("profile")) != (
+            "gate", "s31-verification-key-gate-roster-v1", "circuit-v1"):
+        raise ValueError("only the sealed gate profile is reviewed")
+    if report.get("package_checks", {}).get("native_check_key") != "accepted":
+        raise ValueError("gate schedule needs a native check-key acceptance")
+    final = report.get("gate_final_domain", {})
+    fri = report.get("fri", {})
+    fold_step = uint(fri.get("fold_step"), "gate fold step", minimum=1)
+    last_degree_bound = uint(fri.get("last_layer_degree_bound"), "terminal degree bound", minimum=1)
+    queries = uint(fri.get("raw_queries"), "raw query count", maximum=100000, minimum=1)
+    blowup_log = uint(fri.get("log_blowup_factor"), "FRI blowup log", minimum=1)
+    pow_bits = uint(fri.get("pow_bits"), "FRI PoW bits", maximum=31)
+    if (final.get("status") != "conditional_source_bound_geometry" or
+            (fold_step, last_degree_bound, queries, blowup_log, pow_bits) !=
+            (1, 1, 70, 1, 26)):
+        raise ValueError("unreviewed gate FRI schedule")
+    components = report.get("components")
+    raw_components = roster.get("components")
+    fixed_columns = report.get("preprocessed_columns")
+    raw_fixed = roster.get("preprocessed_columns")
+    if (not isinstance(components, list) or len(components) != 11 or
+            not isinstance(raw_components, list) or len(raw_components) != 11 or
+            not isinstance(fixed_columns, list) or len(fixed_columns) != 45 or
+            not isinstance(raw_fixed, list) or len(raw_fixed) != 45):
+        raise ValueError("incomplete sealed gate component or fixed-column roster")
+    tables = []
+    for index, (row, raw) in enumerate(zip(components, raw_components, strict=True)):
+        main_width = uint(raw.get("base_trace_columns"), "main trace width", maximum=100000, minimum=1)
+        interaction_width = uint(raw.get("interaction_trace_columns"), "interaction trace width", maximum=100000, minimum=1)
+        trace_log = uint(row.get("trace_log_size"), "reported table trace log")
+        raw_trace_log = uint(raw.get("trace_log_size"), "sealed table trace log")
+        trace_rows = uint(row.get("trace_rows"), "table trace rows", maximum=1 << 30, minimum=1)
+        extended_log = uint(row.get("configured_extended_log_size"), "table extended log", maximum=31)
+        extended_rows = uint(row.get("configured_extended_rows"), "table extended rows", maximum=1 << 31, minimum=1)
+        if (raw.get("name") != row.get("name") or
+                uint(raw.get("proof_index"), "sealed table proof index", maximum=100000) != index or
+                uint(raw.get("source_index"), "sealed table source index", maximum=100000) != index or
+                uint(raw.get("claimed_sum_index"), "sealed table claimed sum index", maximum=100000) != index or
+                raw_trace_log != trace_log or trace_rows != 1 << trace_log or
+                extended_log != trace_log + blowup_log or extended_rows != 1 << extended_log):
+            raise ValueError("sealed gate trace width or height differs from checked roster")
+        tables.append({
+            "name": row["name"], "proof_index": index,
+            "trace_log_size": row["trace_log_size"],
+            "trace_rows": row["trace_rows"],
+            "main_trace_columns": main_width,
+            "interaction_trace_columns": interaction_width,
+            "configured_extended_log_size": row["configured_extended_log_size"],
+            "configured_extended_rows": row["configured_extended_rows"],
+        })
+    for index, (row, raw) in enumerate(zip(fixed_columns, raw_fixed, strict=True)):
+        log = uint(row.get("log_size"), "reported fixed-column log")
+        raw_log = uint(raw.get("log_size"), "sealed fixed-column log")
+        rows = uint(row.get("rows"), "reported fixed-column rows", maximum=1 << 30, minimum=1)
+        raw_rows = uint(raw.get("rows"), "sealed fixed-column rows", maximum=1 << 30, minimum=1)
+        if (raw.get("id") != row.get("id") or
+                uint(raw.get("commitment_index"), "fixed-column commitment index", maximum=100000) != index or
+                raw_log != log or rows != 1 << log or raw_rows != rows):
+            raise ValueError("sealed gate fixed-column height differs from checked roster")
+
+    domain_log = uint(final.get("fri_input_domain_log"), "FRI input domain log")
+    degree_log = uint(final.get("fri_input_degree_bound_log"), "FRI input degree log")
+    split_depth = uint(final.get("composition_split_depth"), "composition split depth", minimum=1)
+    composition_log = uint(final.get("committed_composition_column_log_size"), "composition column log")
+    max_trace_log = uint(report.get("max_trace_log_size"), "maximum trace log")
+    lifting_log = uint(report.get("configured_trace_lifting_log_size"), "trace lifting log", maximum=31)
+    domain_rows = uint(final.get("fri_input_domain_rows"), "FRI input domain rows", maximum=1 << 30, minimum=1)
+    if (split_depth != 1 or
+            domain_log != degree_log + blowup_log or
+            domain_log != lifting_log or domain_log != max_trace_log + blowup_log or
+            domain_rows != 1 << domain_log or composition_log != degree_log or
+            not 1 <= domain_log <= 30 or degree_log < 1):
+        raise ValueError("gate input degree or domain differs from checked FRI geometry")
+    last_degree_log = 0  # key value 1 denotes at most one terminal coefficient
+    rounds = []
+    while degree_log > last_degree_log:
+        index = len(rounds)
+        rounds.append({
+            "commitment_index": index,
+            "kind": "circle_first" if index == 0 else "line_inner",
+            "commitment_domain_log_size": domain_log,
+            "degree_log_bound_before_fold": degree_log,
+            "fold_step": 1,
+            "degree_log_bound_after_fold": degree_log - 1,
+            "next_domain_log_size": domain_log - 1,
+        })
+        degree_log -= 1
+        domain_log -= 1
+    if domain_log != blowup_log or len(rounds) < 2:
+        raise ValueError("gate terminal FRI domain or layer count differs")
+    report["gate_trace_and_fri_schedule"] = {
+        "status": "conditional_source_bound_geometry",
+        "tables": tables,
+        "preprocessed_columns": fixed_columns,
+        "main_trace_column_count": sum(row["main_trace_columns"] for row in tables),
+        "interaction_trace_column_count": sum(row["interaction_trace_columns"] for row in tables),
+        "main_trace_column_cells": sum(row["main_trace_columns"] * row["trace_rows"] for row in tables),
+        "interaction_trace_column_cells": sum(row["interaction_trace_columns"] * row["trace_rows"] for row in tables),
+        "preprocessed_column_cells": sum(row["rows"] for row in fixed_columns),
+        "pcs_commitment_trees": [
+            {"tree_index": 0, "kind": "preprocessed", "column_count": len(fixed_columns),
+             "lifted_height_log_size": final["fri_input_domain_log"]},
+            {"tree_index": 1, "kind": "main", "column_count": sum(row["main_trace_columns"] for row in tables),
+             "lifted_height_log_size": final["fri_input_domain_log"]},
+            {"tree_index": 2, "kind": "interaction", "column_count": sum(row["interaction_trace_columns"] for row in tables),
+             "lifted_height_log_size": final["fri_input_domain_log"]},
+            {"tree_index": 3, "kind": "composition", "column_count": (1 << split_depth) * 4,
+             "column_log_size": composition_log,
+             "lifted_height_log_size": final["fri_input_domain_log"]},
+        ],
+        "fri_commitment_and_fold_rounds": rounds,
+        "fri_first_circle_commitments": 1,
+        "fri_inner_line_commitments": len(rounds) - 1,
+        "fri_folding_challenges": len(rounds),
+        "terminal_line_domain_log_size": domain_log,
+        "terminal_line_domain_rows": 1 << domain_log,
+        "terminal_polynomial_max_coefficients": last_degree_bound,
+        "raw_query_draws": queries,
+        "unique_query_count": None,
+        "published_theorem_parameter_mapping": None,
+    }
+    return report
+
+
 def extract_gate(package: Path, root: Path = ROOT) -> dict:
     report = extract_package(package, root)
     sources = {name: (root / name).read_text() for name in SOURCE_TOKENS}
@@ -304,6 +480,8 @@ def extract_gate(package: Path, root: Path = ROOT) -> dict:
     components = bundle_components(data)
     report = derive_gate(report, [(item.label, item.evaluation_delta) for item in components])
     report = derive_gate_constraint_roster(report, components)
+    roster = json.loads((package / "gate-component-roster.json").read_text())
+    report = derive_gate_trace_and_fri_schedule(report, roster)
     report["gate_final_domain"]["air_bundle_sha256"] = digest
     report["gate_final_domain"]["source_sha256"] = {
         name: hashlib.sha256(text.encode()).hexdigest() for name, text in sources.items()}

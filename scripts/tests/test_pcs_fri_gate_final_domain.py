@@ -2,6 +2,7 @@
 
 import copy
 import hashlib
+import json
 import struct
 import unittest
 from pathlib import Path
@@ -9,10 +10,12 @@ from pathlib import Path
 from scripts.release.pcs_fri_gate_final_domain import (
     BUNDLE, SOURCE_TOKENS, BundleComponent, bundle_components, bundle_offsets,
     check_source_texts, derive_gate, derive_gate_constraint_roster,
+    derive_gate_trace_and_fri_schedule,
 )
 from scripts.release.pcs_fri_package_geometry import extract_fields
 
 ROOT = Path(__file__).resolve().parents[2]
+GATE_FIXTURE = ROOT / "src/frontends/s31/tests/python/security/fixtures/effects_gate_ownership"
 NAMES = ("eq", "qm31_ops", "triple_xor", "m_31_to_u_32", "blake_g_gate",
          "verify_bitwise_xor_8", "verify_bitwise_xor_12", "verify_bitwise_xor_4",
          "verify_bitwise_xor_7", "verify_bitwise_xor_9", "range_check_16")
@@ -47,6 +50,81 @@ def gate_report(logs):
 
 
 class GateFinalDomainTests(unittest.TestCase):
+    def test_sealed_gate_trace_widths_and_native_fold_schedule(self):
+        key = json.loads((GATE_FIXTURE / "verification-key.json").read_text())
+        roster = json.loads((GATE_FIXTURE / "gate-component-roster.json").read_text())
+        manifest = {"schema": "s31-package-v1", "lowering": "gate", "fri_fold_step": 1}
+        report = extract_fields(manifest, key, roster)
+        report["package_checks"] = {"native_check_key": "accepted"}
+        report = derive_gate(report, [(name, 1) for name in NAMES])
+        derive_gate_trace_and_fri_schedule(report, roster)
+        native = report["gate_trace_and_fri_schedule"]
+        self.assertEqual(len(native["tables"]), 11)
+        self.assertEqual(len(native["preprocessed_columns"]), 45)
+        self.assertEqual(native["main_trace_column_count"], 114)
+        self.assertEqual(native["interaction_trace_column_count"], 152)
+        self.assertEqual(native["tables"][6]["trace_rows"], 1 << 20)
+        self.assertEqual(native["tables"][6]["main_trace_columns"], 16)
+        self.assertEqual([(tree["kind"], tree["column_count"], tree["lifted_height_log_size"])
+                          for tree in native["pcs_commitment_trees"]],
+                         [("preprocessed", 45, 21), ("main", 114, 21),
+                          ("interaction", 152, 21), ("composition", 8, 21)])
+        self.assertEqual(native["pcs_commitment_trees"][3]["column_log_size"], 20)
+        self.assertEqual(native["fri_first_circle_commitments"], 1)
+        self.assertEqual(native["fri_inner_line_commitments"], 19)
+        self.assertEqual(native["fri_folding_challenges"], 20)
+        self.assertEqual(native["fri_commitment_and_fold_rounds"][0], {
+            "commitment_index": 0, "kind": "circle_first",
+            "commitment_domain_log_size": 21, "degree_log_bound_before_fold": 20,
+            "fold_step": 1, "degree_log_bound_after_fold": 19,
+            "next_domain_log_size": 20,
+        })
+        self.assertEqual(native["fri_commitment_and_fold_rounds"][-1]["commitment_domain_log_size"], 2)
+        self.assertEqual(native["terminal_line_domain_rows"], 2)
+        self.assertEqual(native["terminal_polynomial_max_coefficients"], 1)
+        self.assertEqual(native["raw_query_draws"], 70)
+        self.assertIsNone(native["unique_query_count"])
+        self.assertIsNone(native["published_theorem_parameter_mapping"])
+        self.assertIsNone(report["native_proven_security_bits"])
+        self.assertFalse(report["proven_release_admissible"])
+
+        changed = copy.deepcopy(roster)
+        changed["components"][0]["base_trace_columns"] = 0
+        with self.assertRaisesRegex(ValueError, "invalid main trace width"):
+            derive_gate_trace_and_fri_schedule(copy.deepcopy(report), changed)
+        changed = copy.deepcopy(roster)
+        changed["components"][0]["trace_log_size"] += 1
+        with self.assertRaisesRegex(ValueError, "width or height"):
+            derive_gate_trace_and_fri_schedule(copy.deepcopy(report), changed)
+        changed = copy.deepcopy(roster)
+        changed["preprocessed_columns"][0]["rows"] += 1
+        with self.assertRaisesRegex(ValueError, "fixed-column height"):
+            derive_gate_trace_and_fri_schedule(copy.deepcopy(report), changed)
+        changed = copy.deepcopy(report)
+        changed["fri"]["fold_step"] = 4
+        with self.assertRaisesRegex(ValueError, "unreviewed gate FRI schedule"):
+            derive_gate_trace_and_fri_schedule(changed, roster)
+        changed = copy.deepcopy(report)
+        changed["fri"]["fold_step"] = True
+        with self.assertRaisesRegex(ValueError, "invalid gate fold step"):
+            derive_gate_trace_and_fri_schedule(changed, roster)
+        changed = copy.deepcopy(report)
+        changed["fri"]["last_layer_degree_bound"] = True
+        with self.assertRaisesRegex(ValueError, "invalid terminal degree bound"):
+            derive_gate_trace_and_fri_schedule(changed, roster)
+        changed = copy.deepcopy(roster)
+        changed["components"][1]["proof_index"] = True
+        with self.assertRaisesRegex(ValueError, "invalid sealed table proof index"):
+            derive_gate_trace_and_fri_schedule(copy.deepcopy(report), changed)
+        changed = copy.deepcopy(roster)
+        changed["preprocessed_columns"][1]["log_size"] = True
+        with self.assertRaisesRegex(ValueError, "invalid sealed fixed-column log"):
+            derive_gate_trace_and_fri_schedule(copy.deepcopy(report), changed)
+        changed = copy.deepcopy(report)
+        changed["gate_final_domain"]["fri_input_degree_bound_log"] -= 1
+        with self.assertRaisesRegex(ValueError, "input degree or domain"):
+            derive_gate_trace_and_fri_schedule(changed, roster)
+
     def test_metadata_parser_and_mutations(self):
         data = synthetic_bundle([("eq", 4, 5), ("qm31_ops", 7, 8)])
         self.assertEqual(bundle_offsets(data), [("eq", 1), ("qm31_ops", 1)])
@@ -145,6 +223,21 @@ class GateFinalDomainTests(unittest.TestCase):
         changed[name] = changed[name].replace(
             "break :blk self.trees.items[self.trees.items.len - 1].height;",
             "break :blk 0;", 1)
+        with self.assertRaisesRegex(ValueError, "source changed"):
+            check_source_texts(changed)
+        changed = dict(sources)
+        name = "src/frontends/s31/runtime/native_verifier.zig"
+        first = "try scheme.commit(allocator, roots[0], &pp_logs, &channel);"
+        second = "try scheme.commit(allocator, roots[1], main_logs, &channel);"
+        changed[name] = changed[name].replace(first, "TEMPORARY_GATE_COMMIT", 1).replace(
+            second, first, 1).replace("TEMPORARY_GATE_COMMIT", second, 1)
+        with self.assertRaisesRegex(ValueError, "source order changed"):
+            check_source_texts(changed)
+        changed = dict(sources)
+        name = "deps/stwo-zig/src/core/fri.zig"
+        changed[name] = changed[name].replace(
+            "const this_fold_step: u32 = config_mod.foldStepAt(config.fold_step, remaining);",
+            "const this_fold_step: u32 = remaining;", 1)
         with self.assertRaisesRegex(ValueError, "source changed"):
             check_source_texts(changed)
 
