@@ -13,10 +13,30 @@ import json
 from typing import Any
 
 CLASSES = ("add", "sub", "mul", "pointwise_mul")
+P = 2147483647
 
 
 def _integer(value: Any) -> bool:
     return type(value) is int and value >= 0
+
+
+def _qm31(op: str, left: tuple[int, ...], right: tuple[int, ...]) -> tuple[int, ...]:
+    if op == "add":
+        return tuple((a + b) % P for a, b in zip(left, right, strict=True))
+    if op == "sub":
+        return tuple((a - b) % P for a, b in zip(left, right, strict=True))
+    if op != "mul":
+        raise ValueError("Gate physical certificate: unknown finalization operation")
+    def cmul(a: tuple[int, int], b: tuple[int, int]) -> tuple[int, int]:
+        return ((a[0] * b[0] - a[1] * b[1]) % P,
+                (a[0] * b[1] + a[1] * b[0]) % P)
+    ac = cmul(left[:2], right[:2])
+    bd = cmul(left[2:], right[2:])
+    cross = cmul(left[:2], right[2:])
+    other = cmul(left[2:], right[:2])
+    shifted = cmul(bd, (2, 1))
+    return ((ac[0] + shifted[0]) % P, (ac[1] + shifted[1]) % P,
+            (cross[0] + other[0]) % P, (cross[1] + other[1]) % P)
 
 
 def validate(certificate: Any, source: dict, manifest: dict, key: dict,
@@ -25,9 +45,9 @@ def validate(certificate: Any, source: dict, manifest: dict, key: dict,
             "schema", "program_sha256", "canonical_ir_sha256",
             "preprocessed_root", "n_vars", "canonical_node_count", "qm31_binary_rows",
             "source_qm31_rows", "primitive_nodes_checked", "add_const_compositions",
-            "seven_finalizations",
+            "seven_finalizations", "constant_finalizations",
             "source_map"} or
-            certificate["schema"] != "s31-gate-source-physical-v3" or
+            certificate["schema"] != "s31-gate-source-physical-v4" or
             certificate["program_sha256"] != manifest["program_sha256"] or
             certificate["canonical_ir_sha256"] != key["canonical_ir_sha256"] or
             certificate["preprocessed_root"] != key["preprocessed_root"]):
@@ -174,6 +194,58 @@ def validate(certificate: Any, source: dict, manifest: dict, key: dict,
                 raise ValueError("Gate physical certificate: seven finalization path differs")
         if len({gate["row"] for gate in gates}) != len(gates):
             raise ValueError("Gate physical certificate: seven finalization rows repeat")
+    general = certificate["constant_finalizations"]
+    if type(general) is not list or len(general) != len(compositions):
+        raise ValueError("Gate physical certificate: general finalization count differs")
+    by_owner = {entry["canonical_id"]: entry for entry in compositions}
+    seen_general: set[int] = set()
+    for path in general:
+        if (type(path) is not dict or set(path) != {
+                "canonical_id", "constant", "constant_address", "anchors", "steps"} or
+                not _integer(path["canonical_id"]) or
+                path["canonical_id"] not in by_owner or
+                path["canonical_id"] in seen_general or
+                path["constant"] != by_owner[path["canonical_id"]]["constant"] or
+                path["constant_address"] !=
+                by_owner[path["canonical_id"]]["constant_address"] or
+                type(path["anchors"]) is not list or len(path["anchors"]) != 3 or
+                type(path["steps"]) is not list or len(path["steps"]) > n_vars):
+            raise ValueError("Gate physical certificate: general finalization owner differs")
+        seen_general.add(path["canonical_id"])
+        all_gates = path["anchors"] + path["steps"]
+        for gate in all_gates:
+            if (type(gate) is not dict or set(gate) != {
+                    "kind", "row", "in0", "in1", "out"} or
+                    gate["kind"] not in CLASSES[:3] or
+                    any(not _integer(gate[key]) for key in ("row", "in0", "in1", "out")) or
+                    gate["row"] >= binary_rows or
+                    any(gate[key] >= n_vars for key in ("in0", "in1", "out"))):
+                raise ValueError("Gate physical certificate: malformed general finalization gate")
+        if len({gate["row"] for gate in all_gates}) != len(all_gates):
+            raise ValueError("Gate physical certificate: general finalization row repeats")
+        anchors = path["anchors"]
+        if ([(gate["kind"], gate["in0"], gate["in1"], gate["out"])
+             for gate in anchors] !=
+                [("add", 0, 0, 0), ("add", 1, 0, 1), ("mul", 2, 1, 2)]):
+            raise ValueError("Gate physical certificate: general finalization anchor differs")
+        known: dict[int, tuple[int, ...]] = {
+            0: (0, 0, 0, 0), 1: (1, 0, 0, 0), 2: (0, 0, 1, 0)}
+        for gate in path["steps"]:
+            left, right, output = gate["in0"], gate["in1"], gate["out"]
+            if left not in known or right not in known or output in known:
+                raise ValueError("Gate physical certificate: general finalization DAG order differs")
+            known[output] = _qm31(gate["kind"], known[left], known[right])
+        target = path["constant_address"]
+        if known.get(target) != (path["constant"],) * 4:
+            raise ValueError("Gate physical certificate: general finalization value differs")
+        live = {target}
+        for gate in reversed(path["steps"]):
+            if gate["out"] not in live:
+                raise ValueError("Gate physical certificate: unused general finalization edge")
+            live.remove(gate["out"])
+            live.update((gate["in0"], gate["in1"]))
+        if not live <= {0, 1, 2}:
+            raise ValueError("Gate physical certificate: general finalization root differs")
     total = 0
     previous_class_end = 0
     for kind in CLASSES:
@@ -193,8 +265,9 @@ def validate(certificate: Any, source: dict, manifest: dict, key: dict,
     # binds these exact emitted bytes to that check; a second in-range address
     # substituted into the JSON has no independently valid physical meaning.
     # The same receipt binds the native-checked fixed selectors, addresses,
-    # active Gate yields, and reconstructed committed base cells of the seven
-    # finalization path. The Python path check above is structural only.
+    # active Gate yields, and reconstructed committed base cells of the
+    # finalization paths. Python independently evaluates the general DAG,
+    # but still trusts native extraction of the physical rows and cells.
     if (type(certificate_bytes) is not bytes or
             json.loads(certificate_bytes) != certificate or
             receipt.get("physical_certificate_sha256") !=

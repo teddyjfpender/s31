@@ -82,6 +82,10 @@ worked example and a theorem for any active lane count.
 the interned broadcast value from 15 native finalization rows, including
 the public `u` anchor and active Gate producer tuples. Arbitrary-proof cell
 authentication remains explicit.
+[The generic constant DAG](GateConstantDAG.md) derives any canonical nonzero
+`add_const` broadcast through its source-derived native finalization gates;
+it covers shared subexpressions and radix decomposition while retaining
+explicit AIR, Gate lookup, and proof-cell authentication premises.
 
 `SimdChunks.partial_row_iff` covers the short final chunk of an array. For
 any `n ≤ 4`, arbitrary M31 values may fill the unused input lanes. An accepted

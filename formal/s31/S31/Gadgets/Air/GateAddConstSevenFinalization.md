@@ -37,7 +37,8 @@ lane receives seven. For the five-lane fixture, packed row 0 covers lanes
 0–3, while packed row 1 contributes only lane 4. Lean proves the result for
 any active lane count, including an incomplete last packed word.
 
-The native v3 certificate records all 15 exact row selectors, physical
+The native v4 certificate retains the original 15-row literal-seven path and
+also records its general finalization DAG. It records exact row selectors, physical
 addresses, and active Gate producer tuples. It checks the row operands and
 outputs against the reconstructed committed base cells, then checks the
 reconstructed base and interaction roots against the accepted proof. The
@@ -52,8 +53,9 @@ and the Gate lookup address/value join. This finite reconstruction
 does not prove that an arbitrary accepted proof has all claimed committed
 cells or that every LogUp equality is sound; those depend on the outstanding
 PCS/FRI and claim-to-cell arguments. The certificate is an audit witness, not
-a replacement verifier or a general compiler theorem. Constants other than
-seven still need a corresponding finalization proof.
+a replacement verifier or a general compiler theorem. The
+[generic constant DAG](GateConstantDAG.md) now covers other canonical
+nonzero `add_const` literals through their actual native finalization paths.
 
 Focused checks:
 
