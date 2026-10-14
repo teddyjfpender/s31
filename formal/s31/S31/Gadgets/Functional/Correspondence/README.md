@@ -37,8 +37,9 @@ and equality assertions. Its theorem transports any certified native trace
 through the effectful SSA soundness proof for arbitrary admitted step counts.
 An exact Zig graph export and independent bounded replay now check those
 premises for one accepted assignment, with folds and erasures explicit.
-Decoding that executable artifact into a Lean `NativeTrace` and binding it to
-committed AIR rows remain open.
+The replay also checks the prover-side padded graph against the actual QM31/Eq
+preprocessed column cells. Decoding the artifact into a Lean `NativeTrace`
+and authenticating committed AIR/witness rows remain open.
 
 [The public ABI byte gate](GeneralLinearSSAPublicABI.md) derives the ordered
 M31 input/output layout from either checked certificate profile, checks exact

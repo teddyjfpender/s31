@@ -234,13 +234,50 @@ fn exportGraph(
     witness: *const circuit.builder.Context(QM31),
     maps: *const s31.relation_compiler.Maps,
     ir: *const s31.canonical.IR,
+    program: s31.relation.Program,
+    assignment: s31.relation.Assignment,
 ) !void {
     const values = try allocator.alloc([4]u32, witness.values().len);
     defer allocator.free(values);
     for (witness.values(), values) |value, *out| out.* = laneWords(value);
     const graph = witness.circuit;
+
+    // Build the exact proof-side post-finalization topology independently in
+    // both compiler modes. Padding appends real gates; the AIR preprocessor
+    // commits their rows, not the unpadded compiler graph above.
+    var padded_topology = try s31.relation_compiler.compileDirectWithSpans(circuit.builder.NoValue, allocator, program, null, null, false);
+    defer padded_topology.deinit();
+    var padded_witness = try s31.relation_compiler.compileDirectWithSpans(QM31, allocator, program, assignment, null, false);
+    defer padded_witness.deinit();
+    try circuit.common.finalize.padContext(circuit.builder.NoValue, &padded_topology);
+    try circuit.common.finalize.padContext(QM31, &padded_witness);
+    if (!sameCircuitGraph(&padded_witness.circuit, &padded_topology.circuit) or
+        !std.mem.eql(u128, padded_witness.constants.keys(), padded_topology.constants.keys()) or
+        !equalItems(circuit.builder.Var, padded_witness.constantVars(), padded_topology.constantVars()) or
+        !(try padded_witness.isCircuitValid()))
+        return error.PaddedWitnessTopologyMismatch;
+    const padded = padded_witness.circuit;
+    const padded_values = try allocator.alloc([4]u32, padded_witness.values().len);
+    defer allocator.free(padded_values);
+    for (padded_witness.values(), padded_values) |value, *out| out.* = laneWords(value);
+    var preprocessed = try circuit.common.preprocessed.PreprocessedCircuit.fromBuilderCircuit(allocator, &padded);
+    defer preprocessed.deinit(allocator);
+    const qm31_rows = try allocator.alloc([8]u32, padded.nQm31OpsRows());
+    defer allocator.free(qm31_rows);
+    const eq_rows = try allocator.alloc([2]u32, padded.eq.items.len);
+    defer allocator.free(eq_rows);
+    inline for (circuit.common.preprocessed.QM31_OPS_COLUMN_IDS, 0..) |id, col| {
+        const column = preprocessed.columnValues(id) orelse return error.MissingPreprocessedColumn;
+        if (column.len != qm31_rows.len) return error.PreprocessedLengthMismatch;
+        for (column, qm31_rows) |value, *row| row[col] = value.toU32();
+    }
+    inline for (circuit.common.preprocessed.EQ_COLUMN_IDS, 0..) |id, col| {
+        const column = preprocessed.columnValues(id) orelse return error.MissingPreprocessedColumn;
+        if (column.len != eq_rows.len) return error.PreprocessedLengthMismatch;
+        for (column, eq_rows) |value, *row| row[col] = value.toU32();
+    }
     const artifact = .{
-        .schema = "s31-structural-m31-exact-native-graph-v1",
+        .schema = "s31-structural-m31-exact-native-graph-v2",
         .n_vars = graph.n_vars,
         .values = values,
         .add = graph.add.items,
@@ -264,6 +301,24 @@ fn exportGraph(
         .assertion_spans = maps.assertions.items,
         .bindings = maps.bindings.items,
         .finalization = maps.finalization,
+        .padded = .{
+            .n_vars = padded.n_vars,
+            .values = padded_values,
+            .add = padded.add.items,
+            .sub = padded.sub.items,
+            .mul = padded.mul.items,
+            .pointwise_mul = padded.pointwise_mul.items,
+            .eq = padded.eq.items,
+            .triple_xor = padded.triple_xor.items,
+            .m31_to_u32 = padded.m31_to_u32.items,
+            .blake_g_gate = padded.blake_g_gate.items,
+            .permutation_ends = padded.permutation.ends.items,
+            .permutation_inputs = padded.permutation.inputs.items,
+            .permutation_outputs = padded.permutation.outputs.items,
+            .output = padded.output.items,
+            .qm31_rows = qm31_rows,
+            .eq_rows = eq_rows,
+        },
     };
     const bytes = try std.json.Stringify.valueAlloc(allocator, artifact, .{});
     defer allocator.free(bytes);
@@ -367,7 +422,7 @@ fn checkCase(allocator: std.mem.Allocator, item: Case, export_path: ?[]const u8)
         if (!item.expected_valid or !item.expected_circuit_valid or !item.expected_public_match or
             item.tamper_extra_gate_for_test or item.tamper_changed_gate_for_test)
             return fail(item.label, "graph export requires an honest accepted case");
-        try exportGraph(allocator, path, &witness, &maps, &ir);
+        try exportGraph(allocator, path, &witness, &maps, &ir, program.value, assignment.value);
     }
 }
 

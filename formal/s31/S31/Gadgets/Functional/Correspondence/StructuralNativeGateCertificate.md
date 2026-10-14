@@ -59,7 +59,8 @@ gate; the seven paths are snapshots of the same bytes that gate reads. The
 `--graph-out` file contains the actual Zig compiler's complete arithmetic and
 equality gate arrays, all four M31 coordinates of every variable, interned
 constant addresses, source-to-canonical IDs, canonical-to-wire addresses,
-node/assertion spans, and named public bindings. It is written only after the
+node/assertion spans, named public bindings, and a separate **padded** graph
+with the actual QM31 and Eq preprocessed column rows. It is written only after the
 Lean byte gate, Zig topology/witness parity audit, and independent bounded
 Python replay all accept. The CLI reports its SHA-256 digest.
 
@@ -83,8 +84,35 @@ an executable certificate, not a Lean proof term: a machine-checked decoder
 from its JSON into `NativeTrace` is still needed to instantiate the theorem
 inside Lean.
 
+## From native gates to preprocessed AIR rows
+
+The prover pads each component to a power-of-two row count before building
+the preprocessed circuit. The exporter repeats that exact `padContext` pass
+in both value and topology modes, checks their complete padded gate rosters
+match, and extracts the QM31 operation and Eq columns from
+`PreprocessedCircuit.fromBuilderCircuit`. The independent checker confirms
+that padding only appends the specified trivial gates, keeps all prior values
+and gates in place, and fills every exported row from the padded graph.
+
+The QM31 rows are ordered by operation: all additions, then subtractions,
+full QM31 multiplications, and pointwise M31 multiplications. Each row has
+four one-hot selector flags, input addresses, an output address, and the
+number of times that output is used by the **whole padded circuit**. For
+example, an addition gate `Add(in0=20, in1=21, out=22)` whose result has two
+uses yields `[1, 0, 0, 0, 20, 21, 22, 2]`. An equality gate `Eq(24, 0)`
+yields the separate two-cell Eq row `[24, 0]`. The checker recomputes those
+addresses and use counts independently, then compares every cell against
+the Zig preprocessor's output. For the three-input test, 293 arithmetic
+gates pad to 512 QM31 rows and one equality pads to 16 Eq rows.
+
+This closes the exported gate-to-preprocessed **QM31/Eq cell projection**
+for one bounded assignment. It does not yet show that the package commits to
+these exact preprocessed columns, that the native verifier authenticates the
+corresponding value/lookup rows, or that the artifact decodes to a Lean
+`NativeTrace` proof term. The independent finalization-roster gap above also
+remains.
+
 The theorem and artifact do **not** authenticate committed AIR rows or a
-private witness inside a proof. The next join is the proof that the exported
-gate roster produces the exact preprocessed QM31 operation, equality, and
-lookup columns used by the prover, followed by binding those columns and
-committed witness openings to the native verifier.
+private witness inside a proof. The next join binds the checked QM31/Eq
+preprocessed cells and committed witness openings to the native verifier,
+including lookup columns and the preprocessed commitment root.

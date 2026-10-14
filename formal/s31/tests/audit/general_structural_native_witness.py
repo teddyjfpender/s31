@@ -146,6 +146,12 @@ def main() -> None:
             ("public_port", lambda g: g["output"].__setitem__(1, 0)),
             ("constant_key", lambda g: g["constant_keys"].__setitem__(0, 123)),
             ("assertion_roster", lambda g: g["assertion_spans"].clear()),
+            ("air_selector", lambda g: g["padded"]["qm31_rows"][0].__setitem__(0, 0)),
+            ("air_address", lambda g: g["padded"]["qm31_rows"][0].__setitem__(4, 0)),
+            ("air_multiplicity", lambda g: g["padded"]["qm31_rows"][0].__setitem__(7, 9)),
+            ("eq_air_address", lambda g: g["padded"]["eq_rows"][0].__setitem__(0, 0)),
+            ("padding_gate", lambda g: g["padded"]["add"][len(exported["add"])].__setitem__("in0", 0)),
+            ("padding_value", lambda g: g["padded"]["values"][exported["n_vars"]].__setitem__(0, 3)),
         )
         for label, mutate in graph_mutations:
             changed = copy.deepcopy(exported)
@@ -192,7 +198,7 @@ def main() -> None:
             else:
                 raise AssertionError(f"native {field} accepted")
     print("generic structural/native audit: seven source families accepted; "
-          "four Lean, five native, and seven exported-graph mutations rejected")
+          "four Lean, five native, and thirteen exported-graph/AIR mutations rejected")
 
 
 if __name__ == "__main__":
