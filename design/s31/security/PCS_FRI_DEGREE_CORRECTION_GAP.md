@@ -137,3 +137,22 @@ words through new multi-domain FRI batching and fold checks. Merely adding an
 original term to the current single lifted `[]QM31` first-layer answer would
 not establish separate native-height degree bounds or the paper's correlated
 multi-domain relation.
+
+An [experimental original-word adapter](../../../formal/s31/tests/lib/p05_multi_root_original_batch.zig)
+now implements the first sampled-row step on the *existing* proof-capture
+interface. It invokes the independent four-root path and projection check,
+then groups authenticated original values by native column log size. Within
+each height it combines columns in tree/column order with successive powers
+of the captured post-OOD DEEP challenge; it retains every raw query slot,
+including duplicates, and the projected position. It reads no transcript
+channel and does not change any commitment epoch. Restarting powers at one
+for each height is an executable **candidate schedule**, not a proven match
+to the paper's cross-domain batching coefficients. The
+[small native control](../../../formal/s31/tests/pcs_fri_p05_multi_root_original_native.zig)
+constructs four separate two-level Merkle roots, two column heights, one
+projected query and one repeated raw query. It checks exact batch values and
+rejects a changed row, composition-tree path, projected position, or root.
+This establishes local **sampled original-row
+reconstruction only**. The own quotients, a paired multi-domain FRI, whole
+oracle degree bounds, and the theorem reduction remain absent; the v2 selector
+and P05 admission stay false.
