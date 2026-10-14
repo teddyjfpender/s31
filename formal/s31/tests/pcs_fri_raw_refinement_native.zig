@@ -391,3 +391,45 @@ test "FRI raw-slot refinement independently evaluates terminal polynomial basis"
         }
     }
 }
+
+test "FRI raw-slot refinement every terminal basis coefficient uses the indexed doubling factors" {
+    const allocator = std.testing.allocator;
+    const selected = QM31.fromU32Unchecked(1, 2, 3, 4);
+    const points = [_]M31{
+        M31.zero(),
+        M31.fromCanonical(5),
+        M31.fromCanonical(core.fields.m31.Modulus - 1),
+    };
+    // A one-hot coefficient has a product basis value determined by the bits
+    // of its native recursive index. This oracle neither calls the verifier's
+    // pending-stack fold nor S31's adjacent-pair reduction.
+    for (0..9) |log_size| {
+        const count = @as(usize, 1) << @intCast(log_size);
+        const coefficients = try allocator.alloc(QM31, count);
+        defer allocator.free(coefficients);
+        for (0..count) |basis_index| {
+            @memset(coefficients, QM31.zero());
+            coefficients[basis_index] = selected;
+            var native = core.poly.line.LinePoly.initOwned(
+                try allocator.dupe(QM31, coefficients),
+            );
+            defer native.deinit(allocator);
+            for (points) |x| {
+                var expected = selected;
+                var doubled = QM31.fromBase(x);
+                for (0..log_size) |level| {
+                    const index_bit = log_size - 1 - level;
+                    if (((basis_index >> @intCast(index_bit)) & 1) == 1)
+                        expected = expected.mul(doubled);
+                    doubled = core.circle.CirclePoint(QM31).doubleX(doubled);
+                }
+                const verifier_value = try native.evalAtPoint(allocator, QM31.fromBase(x));
+                const capture_value = try admission.evaluateTerminalPolynomial(
+                    allocator, coefficients, x,
+                );
+                try std.testing.expect(verifier_value.eql(expected));
+                try std.testing.expect(capture_value.eql(expected));
+            }
+        }
+    }
+}

@@ -26,6 +26,18 @@ the focused differential test for eight deterministic M31 point samples at
 each coefficient count `1, 2, 4, 8, 16, 32, 64`; a hand-calculated four-term
 case additionally pins factor order.
 
+[`TerminalBasisRefinement.lean`](../../../formal/s31/S31/Gadgets/PcsFri/TerminalBasisRefinement.lean)
+now proves the coefficient-basis identity for *every* full binary tree of
+height `k`, hence every `2^k` coefficient count: reducing adjacent pairs with
+the last factor equals the recursive outer-half evaluation with the first
+factor. The theorem includes the exact native-order flattening length and a
+four-coefficient calculation that detects reversed factor order. A separate
+native regression exercises every one-hot coefficient in counts `1` through
+`256` at `x = 0`, `x = 5`, and `x = p-1`. It compares both evaluators against
+the independently computed product of the selected doubling factors, so an
+omitted coefficient or incorrect factor index is visible even if both
+evaluators happen to agree with each other.
+
 The existing capture gate independently replays every raw FRI query through
 each captured circle or line subset. At every round it checks the raw position,
 the current value in the subset, and the next value computed from the captured
@@ -46,8 +58,10 @@ bash formal/s31/tests/run_pcs_fri_raw_refinement_native.sh
 
 P04 remains open. The native verifier and capture gate are Zig programs, and
 Lean has no machine-checked theorem that their successful execution implies
-`OperationalExtraction.operationalAccepts`. The native evaluator also relies
-on the shared QM31 arithmetic and line-domain point implementation. A
+`OperationalExtraction.operationalAccepts`. The coefficient-tree theorem does
+not compile the native pending-stack loop or capture-gate loop into Lean, and
+the native evaluator also relies on shared QM31 arithmetic and line-domain
+point implementation. A
 separate authenticated-oracle reduction must bind captured subsets to fixed
 committed FRI columns; source checks and finite tests do not prove that
 binding. The full FRI proximity theorem and cryptographic failure terms are

@@ -1010,6 +1010,16 @@ queried evaluation check, and an oversized terminal polynomial fails the
 degree check during commitment replay. The first layer uses two folds; the
 inner layer uses the remaining one fold.
 
+[`TerminalBasisRefinement.lean`](TerminalBasisRefinement.lean) proves, for any
+power-of-two coefficient count, that the capture gate's adjacent-pair
+reduction equals the terminal polynomial's recursive coefficient-basis
+evaluation. The factor list is ordered from root to leaves, so the deepest
+pairs consume its last factor. The native one-hot regression tests every
+coefficient index through 256 terms against an independent product-basis
+formula at three line coordinates. This settles the field-algebra order of
+the terminal basis; extraction of the Zig loops and final-domain coordinate
+schedule into Lean remains open.
+
 The [layer source guard](../../../../../scripts/s31_formal_lib/pcs_fri_layer.py)
 binds query/witness reconstruction, Merkle verification, current-to-next
 query and value updates, layer schedule, and the terminal degree and
