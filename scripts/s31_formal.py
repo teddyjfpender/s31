@@ -380,6 +380,8 @@ BINDINGS = [
     "deps/stwo-zig/src/frontends/circuit/witness/trace.zig",
     "scripts/s31_formal_lib/control_conversion_air.py",
     "scripts/tests/test_control_conversion_air.py",
+    "scripts/compiler/control_public_statement_audit.py",
+    "scripts/tests/test_control_public_statement_audit.py",
     "deps/stwo-zig/src/prover/pcs/scheme_views.zig",
     "deps/stwo-zig/src/prover/fri.zig",
     "scripts/s31_formal_lib/pcs_fri_order.py",
