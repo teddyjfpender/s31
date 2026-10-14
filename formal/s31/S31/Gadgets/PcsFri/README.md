@@ -1004,6 +1004,21 @@ tests, and source mutations cover the evaluator. The gate reuses its scratch
 buffer across raw queries. The Zig-success-to-Lean operational extraction
 premise remains open.
 
+## CAS07 one-height candidate
+
+[`Cas07H1Terminal.lean`](Cas07H1Terminal.lean) models the experimental
+CAS07 route with one source height. Its first circle-to-line fold uses a
+different inverse `y` coordinate at each row, and its result is checked
+directly against the terminal line polynomial without an intermediate line
+commitment. The existing abstract `LayerAcceptance.Layer.fold` omits the row
+argument, so the new theorem gives this candidate an indexed local relation.
+With authenticated source pairs as an explicit premise, every successful raw
+query has the oracle fold equal to the terminal value; duplicate raw slots
+cannot assign conflicting folds to the same row. The ordered line evaluator
+has proved one-, two-, and four-coefficient examples. The
+[worked calculation and obligation list](../../../../../design/s31/security/PCS_FRI_CAS07_H1_TERMINAL.md)
+make clear why this is a local lemma and does not admit CAS07 into production.
+
 ## What remains to join
 
 The Lean decoder model starts with a strictly sorted frontier and a committed
