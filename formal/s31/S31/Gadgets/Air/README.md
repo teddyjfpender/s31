@@ -65,6 +65,11 @@ yields must be covered by the other-component producer roster.
 `active_rows_addresses_eq` connects the arbitrary row model's filtered
 outputs to an address/multiplicity pair list, so source-extracted fixed
 columns can discharge the structural address condition.
+[The general Gate claim bridge](GateClaimTraceJoin.md) derives exact Gate
+balance and public event-to-wire values from arbitrary finite event lists,
+cell-derived claims, and good challenges. Its finite native audit checks
+three distinct v1 programs, including a hash circuit with all four active
+Gate producer classes. Arbitrary-proof claim authentication remains a premise.
 
 `SimdChunks.partial_row_iff` covers the short final chunk of an array. For
 any `n ≤ 4`, arbitrary M31 values may fill the unused input lanes. An accepted

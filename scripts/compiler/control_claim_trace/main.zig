@@ -1,5 +1,5 @@
-//! Test-only reconstruction of one transparent control proof's Gate-producing
-//! trace. The executable prints counts and commitment matches, never cells.
+//! Test-only reconstruction of a transparent Gate proof's producing trace.
+//! The executable prints counts and commitment matches, never cells.
 const std = @import("std");
 const core = @import("stwo_core");
 const circuit = @import("stwo_circuit_frontend");
@@ -7,6 +7,7 @@ const cpu = @import("stwo_circuit_cpu_integration");
 const prover = @import("stwo_prover_engine");
 const postcard = @import("interop_postcard");
 const s31 = @import("stwo_s31_prototype");
+const canonical = s31.canonical;
 
 const M31 = core.fields.m31.M31;
 const QM31 = core.fields.qm31.QM31;
@@ -51,6 +52,50 @@ fn sameTopology(a: *const circuit.builder.Circuit, b: *const circuit.builder.Cir
     return std.mem.eql(u32, a.permutation.ends.items, b.permutation.ends.items) and
         std.mem.eql(u32, a.permutation.inputs.items, b.permutation.inputs.items) and
         std.mem.eql(u32, a.permutation.outputs.items, b.permutation.outputs.items);
+}
+
+fn checkedSourceSpans(program: s31.relation.Program, ir: *const canonical.IR, maps: *const s31.relation_compiler.Maps, circuit_data: *const circuit.builder.Circuit) !void {
+    if (ir.source_map.len != program.inputs.len + program.nodes.len or maps.nodes.items.len != ir.nodes.len)
+        return fail("source-to-canonical node roster changed");
+    for (ir.source_map, 0..) |source, index| {
+        const name = if (index < program.inputs.len) program.inputs[index].name else program.nodes[index - program.inputs.len].name;
+        if (!std.mem.eql(u8, source.name, name) or source.id >= maps.nodes.items.len)
+            return fail("source node lacks a physical compiler span");
+        if (maps.nodes.items[source.id].id != source.id)
+            return fail("source node points to a different physical span");
+    }
+    for (maps.nodes.items, 0..) |span, index| {
+        if (span.id != index or span.var_start > span.var_end or span.var_end > circuit_data.n_vars or
+            span.qm31_start > span.qm31_end or span.qm31_end > circuit_data.nQm31OpsRows() or
+            span.eq_start > span.eq_end or span.eq_end > circuit_data.eq.items.len or
+            span.triple_xor_start > span.triple_xor_end or span.triple_xor_end > circuit_data.triple_xor.items.len or
+            span.m31_to_u32_start > span.m31_to_u32_end or span.m31_to_u32_end > circuit_data.m31_to_u32.items.len or
+            span.blake_g_start > span.blake_g_end or span.blake_g_end > circuit_data.blake_g_gate.items.len)
+            return fail("canonical node span is outside emitted circuit");
+        if (index > 0) {
+            const previous = maps.nodes.items[index - 1];
+            if (previous.var_end != span.var_start or previous.qm31_end != span.qm31_start or
+                previous.eq_end != span.eq_start or previous.triple_xor_end != span.triple_xor_start or
+                previous.m31_to_u32_end != span.m31_to_u32_start or previous.blake_g_end != span.blake_g_start)
+                return fail("canonical node spans leave an unowned physical row gap");
+        }
+    }
+}
+
+fn sameSourceSpans(a: *const s31.relation_compiler.Maps, b: *const s31.relation_compiler.Maps) bool {
+    if (a.nodes.items.len != b.nodes.items.len or a.assertions.items.len != b.assertions.items.len or
+        a.bindings.items.len != b.bindings.items.len) return false;
+    for (a.nodes.items, b.nodes.items) |x, y| if (!std.meta.eql(x, y)) return false;
+    for (a.assertions.items, b.assertions.items) |x, y| if (!std.meta.eql(x, y)) return false;
+    for (a.bindings.items, b.bindings.items) |x, y| {
+        if (!std.mem.eql(u8, x.name, y.name) or x.word_start != y.word_start or x.word_count != y.word_count or
+            x.conversion_var_start != y.conversion_var_start or x.conversion_var_end != y.conversion_var_end or
+            x.conversion_qm31_start != y.conversion_qm31_start or x.conversion_qm31_end != y.conversion_qm31_end or
+            x.conversion_m31_to_u32_start != y.conversion_m31_to_u32_start or
+            x.conversion_m31_to_u32_end != y.conversion_m31_to_u32_end or
+            x.binding_qm31_start != y.binding_qm31_start or x.binding_qm31_end != y.binding_qm31_end) return false;
+    }
+    return true;
 }
 
 fn gateYield(lookup: component.Lookup, address: M31, multiplicity: M31, expected: []const M31) bool {
@@ -165,10 +210,21 @@ pub fn main() !void {
     const words = try s31.relation.claimedWords(allocator, program.value, statement.value);
     const witness_words = try s31.relation.claimedWords(allocator, program.value, assignment.value);
     if (!std.meta.eql(words, witness_words)) return fail("assignment and public statement differ");
-    var value_ctx = try s31.relation_compiler.compile(QM31, allocator, program.value, assignment.value);
+    const evaluated_words = try s31.relation.evaluate(allocator, program.value, assignment.value);
+    if (!std.meta.eql(words, evaluated_words)) return fail("source evaluator and public statement differ");
+    var ir = try canonical.build(allocator, program.value);
+    defer ir.deinit();
+    var value_maps: s31.relation_compiler.Maps = .{};
+    defer value_maps.deinit(allocator);
+    var topology_maps: s31.relation_compiler.Maps = .{};
+    defer topology_maps.deinit(allocator);
+    var value_ctx = try s31.relation_compiler.compileWithSpans(QM31, allocator, program.value, assignment.value, &value_maps);
     defer value_ctx.deinit();
-    var topology_ctx = try s31.relation_compiler.compile(circuit.builder.NoValue, allocator, program.value, null);
+    var topology_ctx = try s31.relation_compiler.compileWithSpans(circuit.builder.NoValue, allocator, program.value, null, &topology_maps);
     defer topology_ctx.deinit();
+    if (!sameSourceSpans(&value_maps, &topology_maps))
+        return fail("witness changes source-to-circuit physical spans");
+    try checkedSourceSpans(program.value, &ir, &topology_maps, &topology_ctx.circuit);
     if (!sameTopology(&value_ctx.circuit, &topology_ctx.circuit)) return fail("value-dependent compiler topology");
     try circuit.common.finalize.padContext(QM31, &value_ctx);
     try circuit.common.finalize.padContext(circuit.builder.NoValue, &topology_ctx);
@@ -178,7 +234,7 @@ pub fn main() !void {
     defer pp.deinit(allocator);
     var base = try trace.writeTrace(allocator, value_ctx.values(), &pp);
     defer base.deinit();
-    if (base.output_values.len != 8) return fail("public output count changed");
+    if (base.output_values.len != words.len) return fail("public word count differs from trace");
     for (words, base.output_values) |word, output| {
         if (!output.eql(QM31.fromU32Unchecked(word & 0xffff, word >> 16, 0, 0)))
             return fail("public claim differs from base output cells");
@@ -242,5 +298,5 @@ pub fn main() !void {
     try Engine.flushPendingCommit(&scheme, allocator, &channel);
     if (!std.meta.eql(scheme.trees.items[2].commitment.root(), roots[2]))
         return fail("reconstructed interaction cells differ from committed interaction root");
-    std.debug.print("{{\"schema\":\"s31-control-claim-trace-v1\",\"base_root_match\":true,\"interaction_root_match\":true,\"all_component_claims_match\":true,\"producer_counts\":[{d},{d},{d},{d}]}}\n", .{ counts[0], counts[1], counts[2], counts[3] });
+    std.debug.print("{{\"schema\":\"s31-control-claim-trace-v1\",\"source_semantics_match\":true,\"source_nodes_mapped\":{d},\"base_root_match\":true,\"interaction_root_match\":true,\"all_component_claims_match\":true,\"producer_counts\":[{d},{d},{d},{d}]}}\n", .{ ir.source_map.len, counts[0], counts[1], counts[2], counts[3] });
 }

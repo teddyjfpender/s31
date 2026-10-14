@@ -22,6 +22,9 @@ control proof's eleven component claims and all Gate-producing trace
 components to the committed base and interaction roots. Its conditional Lean
 theorem derives the global closure equation from cell-derived claims.
 Authentication of arbitrary accepted proof traces remains open.
+[The general event-list continuation](../../Air/GateClaimTraceJoin.md) removes
+the fixed control output shape and accounts for external producer
+multiplicities, while retaining explicit claim and AIR authentication premises.
 
 [The pure source-byte bridge](GeneralLinearSSASourceBytes.md) gives a
 handwritten `.s31` example, its positional SSA IDs, active packed-row
