@@ -1,5 +1,11 @@
 # Bounded source to raw Gate AIR
 
+[The scalar control-gadget AIR audit](ControlGadgetAir.md) covers one
+`is_zero → select → inv` program against 14 emitted Gate rows. Its companion
+Lean completeness theorem proves that the local equations have a witness
+exactly when every selected inverse lane is nonzero. Public output and
+committed-row custody remain separate edges.
+
 [The scalar control gadget AIR bridge](ControlGadgetAir.md) checks one
 source-bound `is_zero` → `select` → `inv` program against its emitted generic
 Gate rows. It includes a handwritten row derivation, an independent Lean
