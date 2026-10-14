@@ -20,6 +20,7 @@ that every syntactically valid program is admissible or total.
 | Circuit declaration, public/private `[m31; N]` inputs, public result | 1–4 inputs, equal `N` in 1–8; public words at most 8 | Other input types and shapes, public ABI v2 records, privacy-to-native binding |
 | Names, statement `let`, aliases | Straight-line named wires, at most 32 lets and 16 arithmetic nodes | General lexical scope, shadowing, generated names, nested expression lets |
 | Arithmetic | One `+`, `-`, or `.*` per let, with wire operands or canonical `splat<N>(C_m31)` | Nested operator precedence, all other field operations and result shapes |
+| Composed pure-field controls | A separate v1 derivation checks up to 64 named lets over M31 arrays, aliases, add/sub/mul, per-lane `inv`, scalar `is_zero`, and selection by a bit produced by `is_zero`. It reconstructs the complete normalized relation from exact source bytes. | Lean decoding of this certificate's bytes; general optimizer correspondence; native row refinement for arbitrary composed programs |
 | Assertions | At most 16 equality assertions between named wires | Arbitrary expressions, result-independent effects, native assertion enforcement |
 | Static functions | Up to 8 used pure one- or two-argument helpers, each one arithmetic expression; calls receive named wires | General function bodies, higher-order values, closures, recursive-call rejection, specialization fuel |
 | `use std@1` | Exact import spelling is accepted when no standard-library call is used; package lock checked separately | Independently specified standard-library calls and pinned source semantics |
@@ -37,6 +38,16 @@ the add/sub/mul graph with no assertions or constant arithmetic; otherwise
 the artifact lists each unsupported feature and sets the Lean profile to
 null. This is an executable trusted checker boundary until the source-byte
 parser itself is modeled or verified in Lean.
+
+The separate [`pure-field-derivation.json`](PURE_FIELD_DERIVATION.md) profile
+adds a compositional source-to-relation check for straight-line field controls.
+Its parser is independent of production lowering but shares the existing
+independent fragment lexer and strict JSON comparator. Its typed rule replay
+compares every normalized node,
+input, and output; aliases emit no nodes. A Lean theorem proves that lowering
+any length of its local field rules preserves partial evaluation, including
+inverse-zero failure and Boolean selection. That theorem does not decode the
+new certificate's source bytes or connect its nodes to native Gate rows.
 
 The separate `typed-structural-derivation.json` artifact now records a typed
 source tree and checks one generic construct/project erasure rule across

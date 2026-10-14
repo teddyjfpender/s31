@@ -45,7 +45,8 @@ class ProverLogTests(unittest.TestCase):
                          "direct_gate_main_correspondence.py",
                          "source_relation_fragment.py", "record_source_fragment.py",
                          "record_value_fragment.py", "lean_effects_admission.py",
-                         "structural_derivation.py", "pure_native_rows.py",
+                         "structural_derivation.py", "pure_field_derivation.py",
+                         "pure_native_rows.py",
                          "zero_test_native_rows.py",
                          "short_lane_main_correspondence.py",
                          "effects_gate_ownership.py", "pcs_mode.py"})
