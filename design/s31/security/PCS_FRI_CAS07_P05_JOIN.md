@@ -48,6 +48,14 @@ The candidate Gate roster has top log size `k=20`, occupied heights `0,2,4,6,11,
 
 The [four-block own-quotient audit](PCS_FRI_GATE_FOUR_BLOCK_OWN_QUOTIENT.md) now proves that a correct two-point claim for those four coefficients yields a radius-one quotient, with exact unscaled and native-scaled equations on every base Fourier row. A finite native witness shows that this radius-one space cannot simply be replaced by the first two circle-basis slots `{1,y}`. The source-row commitment and paper-filtration joins therefore remain open.
 
+The [quotient-only edge audit](PCS_FRI_GATE_QUOTIENT_ONLY_GAP.md) proves the
+sharp converse condition for an affine quotient `a+b*x+c*y`: reconstructing
+through the native line returns to the four-slot source space exactly when
+`y1*b+x1*c=0`. A correct M31 `x²` source on the exact 16-row native domain
+has a radius-one own quotient but violates this equation and occupies native
+coefficient slot 4. The condition is not an admitted verifier check; this is
+an algebraic obstruction to inferring source degree from quotient radius.
+
 The distinction between separate and common agreement is concrete. Let original-good rows be `0..8` and quotient-good rows be `7..15`. Each has nine of the 16 rows, a strict majority, but their intersection is only `{7,8}`. Its size two is below the required five. `gate_separate_majorities_insufficient` checks this counterexample in Lean. Even if individual proximity estimates gave those two majorities, the algebraic uniqueness lemma would not fire; the missing cross-domain correlated-agreement reduction must supply a stronger common-set statement. The paper's own small-height condition must also be rederived for the native two-point circle filtration before using any numerical soundness profile.
 
 ### Source-path audit of the draft

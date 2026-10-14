@@ -105,6 +105,9 @@ test "Gate four-slot correct two-point claim has radius-one own quotient on all 
     for (quotient, expected_quotient) |actual, expected| {
         try std.testing.expect(actual.eql(expected));
     }
+    // An honest four-slot source cancels the potential fifth x² slot.
+    try std.testing.expect(sample.y.c1.mul(quotient[1])
+        .add(sample.x.c1.mul(quotient[2])).isZero());
     // A+B*x+C*y spans the Laurent support [-1,1].
     for (points, own_rows) |p, actual| {
         try std.testing.expect(actual.eql(affineAt(quotient, p)));

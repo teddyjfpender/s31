@@ -1032,6 +1032,17 @@ show why this radius-one bound cannot be silently tightened to the first two
 circle slots. Committed-column provenance and the paper's two-point
 circle-code filtration remain separate proof obligations.
 
+[`GateQuotientOnlyGap.lean`](GateQuotientOnlyGap.lean) proves a sharp
+Gate-sized converse boundary. If an affine own quotient is `a+b*x+c*y`,
+reconstruction through the native two-point line has a potential fifth
+source coordinate `-(y1*b+x1*c)*x²`. It lies in the first four native
+slots exactly when `y1*b+x1*c=0`. The model also proves that M31 `x²`
+cannot occupy those four slots, while a correct guarded OOD claim still
+gives it a radius-one own quotient. The [worked algebra and native 16-row
+check](../../../../../design/s31/security/PCS_FRI_GATE_QUOTIENT_ONLY_GAP.md)
+pin both sides of the edge condition. No native verifier admission or
+paper-level soundness reduction follows from this local result.
+
 [`Cas07H1Terminal.lean`](Cas07H1Terminal.lean) models the experimental
 CAS07 route with one source height. Its first circle-to-line fold uses a
 different inverse `y` coordinate at each row, and its result is checked
