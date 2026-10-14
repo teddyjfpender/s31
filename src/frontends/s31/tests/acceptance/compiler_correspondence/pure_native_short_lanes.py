@@ -52,7 +52,8 @@ def check_main(package: Path, inputs: dict[str, list[int]], expected: list[int])
     physical = json.loads(s31.invoke(str(prover), "inspect-physical-rows", str(assignment)))
     root = json.loads(s31.invoke(str(prover), "inspect-physical-root", str(assignment)))
     check_export(ssa, inputs, physical, root)
-    for label in ("fixed", "main", "claim", "padding", "digest"):
+    for label in ("fixed", "main", "claim", "padding", "padding-bool",
+                  "root-padding-bool", "digest"):
         altered = copy.deepcopy(physical)
         changed_root = copy.deepcopy(root)
         if label == "fixed":
@@ -64,6 +65,10 @@ def check_main(package: Path, inputs: dict[str, list[int]], expected: list[int])
             altered["public_words"][output_index] ^= 1
         elif label == "padding":
             altered["public_words"][-1] ^= 1
+        elif label == "padding-bool":
+            altered["public_words"][-1] = False
+        elif label == "root-padding-bool":
+            changed_root["public_words"][-1] = False
         else:
             changed_root["main_columns_sha256"] = "00" * 32
         try:
@@ -72,7 +77,7 @@ def check_main(package: Path, inputs: dict[str, list[int]], expected: list[int])
             pass
         else:
             raise AssertionError(f"source-derived main check accepted {label} mutation")
-    return 5
+    return 7
 
 
 def encoded(value: object) -> bytes:

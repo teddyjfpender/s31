@@ -69,6 +69,7 @@ test "public physical export guard rejects wrong source profiles" {
     try std.testing.expect(!try eligible(allocator, program));
     program.nodes = &nodes;
     var two_inputs = [_]relation.Input{ input[0], input[0] };
+    two_inputs[1].name = "y";
     program.inputs = &two_inputs;
     try std.testing.expect(!try eligible(allocator, program));
     two_inputs[0].length = 2;

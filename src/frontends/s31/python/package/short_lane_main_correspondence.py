@@ -15,6 +15,7 @@ from package.direct_gate_main_correspondence import (
     I, IU, INV_I, INV_IU, INV_U, ONE, P, U, ZERO, _operate,
     canonical_column_bytes,
 )
+from package.correspondence import same_json_shape
 from package.direct_gate_schedule import exact_direct_gate_schedule
 
 Q = tuple[int, int, int, int]
@@ -136,7 +137,8 @@ def check_export(ssa: dict, public_inputs: dict[str, Any], physical: dict,
         raise ValueError("native fixed columns differ from checked source")
     if canonical_column_bytes(physical.get("main_columns"), 12) != canonical_column_bytes(main, 12):
         raise ValueError("native main columns differ from checked source")
-    if physical.get("public_words") != public or root_report.get("public_words") != public:
+    if (not same_json_shape(physical.get("public_words"), public) or
+            not same_json_shape(root_report.get("public_words"), public)):
         raise ValueError("native public words differ from checked source")
     digest = hashlib.sha256(canonical_column_bytes(main, 12)).hexdigest()
     if root_report.get("main_columns_sha256") != digest:
