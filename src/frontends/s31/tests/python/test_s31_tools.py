@@ -55,7 +55,8 @@ class ProverLogTests(unittest.TestCase):
         self.assertTrue(runtime_files.issubset(s31.TEXT_FRONTEND_SOURCES))
         cli_files = set((S31_SOURCE_ROOT / "python/cli").glob("*.py"))
         self.assertEqual({path.name for path in cli_files},
-                         {"__init__.py", "parser.py", "commands.py"})
+                         {"__init__.py", "parser.py", "commands.py",
+                          "source_check.py"})
         self.assertTrue(cli_files.issubset(s31.TEXT_FRONTEND_SOURCES))
 
     def test_pins_the_runtime_stage_format(self) -> None:
