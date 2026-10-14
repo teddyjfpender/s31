@@ -163,6 +163,11 @@ selects a preimage, so projecting its result back recovers the original
 query. The [independent integer-index check](../../../scripts/s31_formal_lib/pcs_fri_projection.py)
 enumerates 20,460 cases across both tree-height directions and checks the
 pinned prover/verifier source mapping, including conjugate-bit preservation.
+The [general Lean index theorem](../../../formal/s31/S31/Gadgets/PcsFri/CanonicalCircleFoldIndex.lean)
+proves the smaller-domain equation for all `0≤k-l<k≤30` in the modeled
+canonical circle group, without relying on that finite enumeration. Native
+index-to-point arithmetic and authenticated opening semantics are still
+separate refinement obligations.
 
 FRI's circle-to-line step instead discards the conjugate bit: its query set
 folds by right-shifting the raw index while its sparse evaluation reverses
