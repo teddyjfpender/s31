@@ -43,6 +43,12 @@ the corresponding absorption and draw. The native verifier authenticates
 and checks openings after query sampling; those checks are separate P04/P06
 obligations.
 
+The [M31 PoW predicate audit](PCS_FRI_POW_M31_PREDICATE.md) proves the exact
+first-word raw preimage counts at both selected barriers: 4,097 favorable
+32-bit words at 20 bits and 65 at 26 bits. The corresponding ideal direct
+zero-bit counts are 4,096 and 64. This is a conditional one-try count and
+gives no independent-grinding or soundness credit.
+
 ## A hand-sized transcript example
 
 The [fixture](../../../formal/s31/tests/pcs_fri_bcs_transcript.json) uses an

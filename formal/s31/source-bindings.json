@@ -360,6 +360,8 @@
     "scripts/tests/test_pcs_fri_challenge_custody.py": "501deb02384a4e54ea0e18a0ba6e7ddaf24822f1ac553e99e57a9a1779c2a5d8",
     "scripts/s31_formal_lib/pcs_fri_m31_query.py": "d70060585b49a7c99009fa9c47502675b7b9bacc8b1245fdeb27e57fa8b101d7",
     "scripts/tests/test_pcs_fri_m31_query.py": "b52c7fb4708f39b9a931dc8bb6106aacfebb3489c1b604e49a7081972e148442",
+    "scripts/s31_formal_lib/pcs_fri_pow_m31_predicate.py": "47f2d99d6693ce0a45243436874169cddf2fd7128790534cbc4977f5c128be00",
+    "scripts/tests/test_pcs_fri_pow_m31_predicate.py": "e2dda93d28e38ea8b3fbbfb94c180531658e4d31befc73452b07f791eeef402e",
     "scripts/s31_formal_lib/pcs_fri_projection.py": "e10f8085c9d68feddf1c8efcdd54c6ea43460578e57de3b6d9670b767ee613ff",
     "scripts/s31_formal_lib/pcs_fri_prover_origin.py": "57ea0ed588bdcba5884a3c859e64cc4d4b4ea33d2f16e82539d7eb12185641bd",
     "scripts/release/pcs_fri_gate_lifted_projection.py": "76f09bd3f41854378d669b632c71287456756b9202b61aa33ea7c2c196f504db",

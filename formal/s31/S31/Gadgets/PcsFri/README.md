@@ -4,6 +4,15 @@ The Lean files in this directory establish small parts of the native PCS/FRI
 argument. They are imported by `S31.Gadgets`, so normal builds and axiom
 audits include their theorems.
 
+[`PowM31Predicate.lean`](PowM31Predicate.lean) proves that, for every raw
+32-bit first hash word, the selected M31 PoW low-bit check is the zero fiber
+of the reduced query map. Under a uniform raw-word premise, the exact
+one-attempt favorable counts are 4,097 at the Gate interaction's 20 bits and
+65 at FRI's 26 bits, each one above an unreduced ideal-word count. The
+[P07 audit](../../../../../design/s31/security/PCS_FRI_POW_M31_PREDICATE.md)
+explains the two native barriers and what remains before this becomes a BCS
+security bound.
+
 [`NativeQueryBatch.lean`](NativeQueryBatch.lean) models the selected M31
 channel's eight-word output batches. For any number of requested raw queries
 and any array of 32-bit batch words, query slot `j` takes block `j / 8`, lane
