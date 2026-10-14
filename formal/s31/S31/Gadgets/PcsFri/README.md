@@ -359,6 +359,25 @@ f(u)=ℓ(u)=1+u,       f(−u)=ℓ(−u)=1−u.
 Thus `f∈L₂` and the constructed quotient is in `L₁`; multiplying by the
 line recovers the polynomial identity, not just values at opened rows.
 
+[`CircleLaurentUniqueness.lean`](CircleLaurentUniqueness.lean) proves the
+finite-domain degree-correction boundary. If `f∈L_n`, then `Tⁿf` is an
+ordinary polynomial of degree at most `2n`. A nonzero `f` can therefore
+vanish at no more than `2n` distinct nonzero Fourier coordinates, and two
+`L_n` polynomials agreeing at `2n+1` such coordinates are identical. For
+`n=2`, five distinct coordinates suffice: shifting the five coefficient
+slots `T⁻²,T⁻¹,1,T,T²` by `T²` gives an ordinary degree-at-most-four
+polynomial, which cannot have five roots unless it is zero.
+
+The theorem also starts from an **arbitrary table of original values**. If a
+bounded own quotient `q∈L_{n−1}` satisfies the CAS05 row equation at every
+table coordinate where the native line `V` is nonzero, then
+`f=ℓ+Vq∈L_n` evaluates to exactly that entire table. This is the exact
+all-row degree-correction statement. CAS05 opens only sparse sampled rows;
+the theorem does not turn those samples into an all-row equation or prove
+correlated agreement. The separate full-row uniqueness lemma says that when
+an already bounded `f` and `q` obey this equation at more than `2n`
+distinct coordinates, the polynomial identity `f=ℓ+Vq` follows.
+
 CAS05 commits evaluation rows, and no formal map currently refines those
 rows into this Laurent coefficient object. The native OOD Fourier coordinate
 also needs a refinement to the modeled degree-two root and line-root
