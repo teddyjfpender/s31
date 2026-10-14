@@ -147,10 +147,10 @@ class PureFieldLeanBytesTests(unittest.TestCase):
         result = self.checked(source, canonical(changed), relation)
         self.assertEqual(result.returncode, 0, result.stderr)
 
-    def test_current_optimizer_receipt_has_no_overlap(self) -> None:
+    def test_optimizer_receipt_admits_same_control_sources(self) -> None:
         for source in (SCALAR, MIXED, EIGHT, PARENTHESIZED):
             relation, _ = compile_text(source.decode())
-            self.assertFalse(optimizer_receipt_eligible(relation))
+            self.assertTrue(optimizer_receipt_eligible(relation))
 
 
 if __name__ == "__main__":
