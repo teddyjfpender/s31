@@ -501,6 +501,7 @@ BINDINGS = [
     "src/frontends/s31/python/cli/__init__.py",
     "src/frontends/s31/python/cli/parser.py",
     "src/frontends/s31/python/cli/commands.py",
+    "src/frontends/s31/python/cli/source_check.py",
     "src/frontends/s31/python/package/__init__.py",
     "src/frontends/s31/python/package/context.py",
     "src/frontends/s31/python/package/source_fragments/__init__.py",

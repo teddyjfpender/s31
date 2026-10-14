@@ -395,7 +395,7 @@ python3 src/frontends/s31/tests/acceptance/acceptance_functional_core.py
 The trial checks the independent oracle, creates a native proof, runs the
 generated verifier, and confirms that a changed public result is rejected.
 
-The [worked quadratic](worked-functional-polynomial.md) shows a higher-order
+The [worked quadratic](examples/worked-functional-polynomial.md) shows a higher-order
 `poly_eval` program with its full four-lane arithmetic table, normalized
 relation and AIR equations. Its direct source has exactly the same relation.
 The [functional library native gate](../tests/acceptance/functional/library.py)
@@ -607,7 +607,7 @@ algorithm, schema boundary, and remaining proof obligations. A native
 `direct-chip` trial confirms that an ignored total payload adds no AIR rows
 to a 16-round recurrence; the native verifier accepts the proof and rejects
 a changed public claim.
-The [hand-worked static choice](worked-static-sum.md) traces that source
+The [hand-worked static choice](examples/worked-static-sum.md) traces that source
 through its retained relation node, recurrence AIR, and proof claim.
 
 ## Evaluation and staging

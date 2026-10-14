@@ -9,6 +9,9 @@ from pathlib import Path
 def make_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="s31", description="S31 circuit relation compiler")
     commands = parser.add_subparsers(dest="command", required=True)
+    sub = commands.add_parser("check-source", help="parse, typecheck and lower .s31 text without building a native package")
+    sub.add_argument("source", type=Path)
+    sub.add_argument("--json", action="store_true", help="emit one machine-readable result, including source diagnostics")
     for command in ("check", "inspect", "explain", "equations", "run"):
         help_text = {
             "explain": "show canonical nodes, source positions, and builder gate counts",

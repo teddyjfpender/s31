@@ -13,6 +13,7 @@ from abi.binding_v2 import (decode_typed_public_statement,
                             flat_assignment_from_typed, parse_assignment_json,
                             statement_from_assignment)
 from cli.parser import make_parser
+from cli.source_check import check_source, render_source_check
 from inspection.reports import equations as report_equations, explain as report_explain
 from inspection.source_layout import source_layout
 from package.build import build, package_for
@@ -104,6 +105,13 @@ def main() -> None:
 
 def dispatch(args: argparse.Namespace) -> None:
 
+    if args.command == "check-source":
+        result = check_source(args.source)
+        print(json.dumps(result, indent=2, sort_keys=True) if args.json
+              else render_source_check(result))
+        if result["status"] != "valid":
+            raise SystemExit(1)
+        return
     if args.command == "source-layout":
         if args.source.suffix != ".s31":
             raise ValueError("source-layout expects a .s31 text file")
