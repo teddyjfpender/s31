@@ -81,8 +81,13 @@ inverse rows. Padding and unrelated Gate rows are outside that count.
 This is local compiler-to-AIR correspondence for one no-alias fragment. The
 native inspector supplies graph bytes; the Lean proof assumes the corresponding
 AIR rows are satisfied. The theorem proves soundness and zero-inverse
-rejection for arbitrary satisfying rows; it does not construct a satisfying
-witness for every nonzero selected lane. Public output pinning, circuit lookup/permutation
+rejection for arbitrary satisfying rows. `ControlGadgetCompleteness.lean`
+proves that the local zero-test, selection and inverse equations have some
+witness exactly when every selected lane is nonzero. Its forward direction
+quantifies over all possible hints; its reverse direction constructs concrete
+hints. It does not construct a full
+physical trace or prove native witness-builder behavior. Public output pinning,
+circuit lookup/permutation
 closure, committed witness authentication, native verifier refinement, and
 PCS/FRI soundness are separate obligations. The package is not a v0.1
 soundness certificate.
