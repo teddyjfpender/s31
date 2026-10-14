@@ -16,11 +16,17 @@ pub fn requireProduction(mode: Mode) !void {
     if (mode != .legacy_postcard) return error.Cas05NotProduction;
 }
 
+/// S31 wraps the serialized STARK proof in a profile-specific native header.
+/// Check this reserved marker at the inner postcard decoder boundary as well.
+pub fn requireLegacyPostcard(payload: []const u8) !void {
+    if (std.mem.startsWith(u8, payload, "S31CAS05")) return error.WrongProofFormat;
+}
+
 /// Only the sealed key can choose `mode`. `public_words` must already have
 /// been reconstructed from the independently supplied public statement.
 pub fn bind(mode: Mode, public_words: [8]u32, proof_bytes: []const u8) !BoundLegacyProof {
     try requireProduction(mode);
-    if (std.mem.startsWith(u8, proof_bytes, "S31CAS05")) return error.WrongProofFormat;
+    try requireLegacyPostcard(proof_bytes);
     return .{ .public_words = public_words, .proof_bytes = proof_bytes };
 }
 
@@ -38,4 +44,6 @@ test "CAS05 key and proof-format confusion fail closed" {
     try std.testing.expectError(error.Cas05NotProduction, bind(.cas05_sparse_v6, words, "S31NAT1\x00"));
     try std.testing.expectError(error.Cas05NotProduction, bind(.cas05_sparse_v6, words, "S31CAS05\x06"));
     try std.testing.expectError(error.WrongProofFormat, bind(.legacy_postcard, words, "S31CAS05\x06"));
+    try std.testing.expectError(error.WrongProofFormat, requireLegacyPostcard("S31CAS05\x06"));
+    try requireLegacyPostcard("\x00\x01legacy postcard");
 }

@@ -63,6 +63,17 @@ def main() -> None:
         run(str(package_b / "bin/s31-affine4_v1-native-verifier"),
             str(proof), str(statement_path),
             str(package_b / "verification-key.json"), accepted=True)
+        proof_bytes = proof.read_bytes()
+        postcard_offset = len(b"S31NAT1\0") + 8 + 11 * 16
+        if not proof_bytes.startswith(b"S31NAT1\0") or len(proof_bytes) <= postcard_offset + 8:
+            raise AssertionError("gate proof has an unexpected native envelope")
+        candidate = work / "cas05-inside-legacy.proof"
+        candidate.write_bytes(proof_bytes[:postcard_offset] + b"S31CAS05" + proof_bytes[postcard_offset + 8:])
+        rejection = run(str(package_b / "bin/s31-affine4_v1-native-verifier"),
+                        str(candidate), str(statement_path),
+                        str(package_b / "verification-key.json"), accepted=False)
+        if "WrongProofFormat" not in rejection:
+            raise AssertionError(f"inner CAS05 marker reached the postcard decoder:\n{rejection}")
 
         # Keep source A's name, source digest, and canonical IR digest, but
         # substitute source B's committed circuit and geometry. The old

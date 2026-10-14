@@ -78,6 +78,8 @@ statement, then admits the proof under the key-selected mode. An injected
 CAS05 field in a key or a CAS05 proof cannot switch the legacy verifier;
 `cas05_sparse_v6` remains unavailable in production. The separate SHA package
 verifiers keep their existing strict key schema and implicit legacy path.
+Each generic native proof decoder also rejects the reserved CAS05 marker at
+its inner postcard boundary before allocating its bounded decode buffer.
 This S31 binary proof format is separate from the Native CPU JSON
 proof-exchange artifact.
 

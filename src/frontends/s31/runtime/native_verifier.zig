@@ -12,6 +12,7 @@ const deep_capture_admission = @import("deep_capture_admission.zig");
 const fri_capture_admission = @import("fri_capture_admission.zig");
 const fri_merkle_admission = @import("fri_merkle_admission.zig");
 const pcs_lifted_capture_admission = @import("pcs_lifted_capture_admission.zig");
+const pcs_mode_binding = @import("pcs_mode_binding.zig");
 
 const QM31 = core.fields.qm31.QM31;
 const H = core.vcs_lifted.blake2_merkle.Blake2sPlainMerkleHasher;
@@ -152,6 +153,7 @@ fn verifyProfile(
     // Decode with a hard allocation ceiling. Length prefixes in an external
     // postcard proof cannot request arbitrary amounts of host memory.
     const proof_bytes = raw[header_len..];
+    try pcs_mode_binding.requireLegacyPostcard(proof_bytes);
     const decode_memory = try allocator.alloc(u8, 64 << 20);
     defer allocator.free(decode_memory);
     var bounded = std.heap.FixedBufferAllocator.init(decode_memory);
@@ -352,6 +354,7 @@ pub fn verifySparse(
         }
         sum.* = QM31.fromU32Unchecked(limbs[0], limbs[1], limbs[2], limbs[3]);
     }
+    try pcs_mode_binding.requireLegacyPostcard(raw[header_len..]);
     const decode_memory = try allocator.alloc(u8, 64 << 20);
     defer allocator.free(decode_memory);
     var bounded = std.heap.FixedBufferAllocator.init(decode_memory);
@@ -563,6 +566,7 @@ fn verifySparseWideInternal(
         }
         sum.* = QM31.fromU32Unchecked(limbs[0], limbs[1], limbs[2], limbs[3]);
     }
+    try pcs_mode_binding.requireLegacyPostcard(raw[header_len..]);
     const decode_memory = try allocator.alloc(u8, 64 << 20);
     defer allocator.free(decode_memory);
     var bounded = std.heap.FixedBufferAllocator.init(decode_memory);
@@ -824,6 +828,7 @@ fn verifyDirectProfile(
         }
         sum.* = QM31.fromU32Unchecked(limbs[0], limbs[1], limbs[2], limbs[3]);
     }
+    try pcs_mode_binding.requireLegacyPostcard(raw[header_len..]);
     const decode_memory = try allocator.alloc(u8, 64 << 20);
     defer allocator.free(decode_memory);
     var bounded = std.heap.FixedBufferAllocator.init(decode_memory);
