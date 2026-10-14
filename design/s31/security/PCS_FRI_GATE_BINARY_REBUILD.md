@@ -14,6 +14,43 @@ timestamp and cache key, and ad hoc signature. Code, constants, load commands,
 dynamic-linking data, and indirect symbols remain under comparison. A supplied
 proof and statement are checked with the freshly built verifier.
 
+When both are supplied and accepted, the report now includes
+`accepted_proof_gate_geometry`. This joins that particular proof and public
+statement to the source-derived **native** FRI input domain using their
+SHA-256 digests, the key and package digests, the pinned engine commit, and
+the rebuilt verifier image digest. For the reviewed `affine_guard` geometry,
+the native FRI domain is `2²¹` rows; the conditional S-two Protocol 4
+original-plus-quotient domain would be `N B² = 2²²` rows. The report keeps
+both values separate. Without an accepted proof, the joined field is null.
+The [2026-10-14 local result](evidence/gate-native-fridomain-accepted-proof-2026-10-14.json)
+uses the checked-in `arith4_m31.s31` source and its valid assignment. The
+normal trial accepted a 438,157-byte proof and rejected a changed public
+statement. The separate rebuild used four Zig jobs, matched the packaged
+verifier's execution image after the documented Mach-O normalization, and
+accepted that proof with the rebuilt verifier. The report binds the accepted
+proof, statement, key, package manifest, engine gitlink, and rebuilt image by
+digest. Its native FRI domain is `2²¹`; the candidate paper Protocol 4
+`NB²` domain is `2²²`. The generated package and proof remain local; the
+checked-in report records one observation, not an independently reproducible
+proof transcript or a published-theorem reduction. The focused unit test
+uses a mocked verifier to test the join's rejection conditions. P01 still
+needs a native-to-paper oracle and degree mapping for every released program.
+
+Equivalent reproduction commands are below. The local trial used a temporary
+`zig` PATH wrapper that appended `-j4` to its build invocation to respect the
+machine's concurrency limit; the second command has its own `--jobs 4` cap.
+
+```sh
+python3 -B src/frontends/s31/python/s31.py trial \
+  src/frontends/s31/examples/arithmetic/arith4_m31.s31 \
+  src/frontends/s31/examples/arithmetic/arith4.valid.json \
+  --lowering gate --out /tmp/s31-gate-accepted-geometry-live
+python3 -B scripts/release/pcs_fri_gate_binary_rebuild.py \
+  /tmp/s31-gate-accepted-geometry-live/package --jobs 4 \
+  --proof /tmp/s31-gate-accepted-geometry-live/proof.bin \
+  --statement /tmp/s31-gate-accepted-geometry-live/statement.json
+```
+
 ```sh
 python3 -B scripts/release/pcs_fri_gate_binary_rebuild.py /path/to/package \
   --proof /path/to/proof --statement /path/to/statement.json

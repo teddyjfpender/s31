@@ -12,7 +12,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 from scripts.release.pcs_fri_gate_binary_rebuild import (
-    BUILD_FILE, build_command, rebuild_verifier, same_executable_image,
+    BUILD_FILE, accepted_gate_geometry, build_command, rebuild_verifier,
+    same_executable_image,
 )
 
 
@@ -116,6 +117,75 @@ class GateVerifierRebuildTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "differs from package executable"):
                 rebuild_verifier(self.package, jobs=1)
             gate.assert_not_called()
+
+    def test_accepted_proof_joins_only_native_fri_domain(self) -> None:
+        geometry = {
+            "status": "incomplete", "proven_release_admissible": False,
+            "package_checks": {"native_check_key": "accepted",
+                               "verification_key_sha256": "a" * 64,
+                               "package_manifest_sha256": "b" * 64},
+            "source_binding": {"engine_gitlink": "c" * 40},
+            "theorem_inputs": {"D_final_fri_domain": 1 << 21},
+            "gate_final_domain": {
+                "status": "conditional_source_bound_geometry",
+                "fri_input_domain_log": 21,
+                "fri_input_domain_rows": 1 << 21,
+                "fri_input_degree_bound_log": 20,
+                "candidate_paper_protocol4_D0_if_N_is_trace_rows": 1 << 22,
+                "native_fri_domain_equals_candidate_paper_protocol4_D0": False,
+            },
+        }
+        proof_control = {"proof_sha256": "d" * 64, "statement_sha256": "e" * 64}
+        joined = accepted_gate_geometry(geometry, proof_control, "f" * 64)
+        self.assertEqual(joined["native_fri_input_domain_rows"], 1 << 21)
+        self.assertEqual(joined["candidate_paper_protocol4_D0_if_N_is_trace_rows"], 1 << 22)
+        self.assertFalse(joined["native_fri_domain_equals_candidate_paper_protocol4_D0"])
+        self.assertIsNone(joined["native_proven_security_bits"])
+        self.assertFalse(joined["proven_release_admissible"])
+        with self.assertRaisesRegex(ValueError, "do not join"):
+            accepted_gate_geometry(geometry, {}, "f" * 64)
+        geometry["theorem_inputs"]["D_final_fri_domain"] = 1 << 22
+        with self.assertRaisesRegex(ValueError, "do not join"):
+            accepted_gate_geometry(geometry, proof_control, "f" * 64)
+
+        binary = self.package / "bin" / "s31-guard-native-verifier"
+        binary.parent.mkdir()
+        binary.write_bytes(b"matched verifier")
+        proof = self.package / "proof.bin"
+        statement = self.package / "statement.json"
+        proof.write_bytes(b"proof")
+        statement.write_text("{}")
+        manifest = self.manifest | {"compiler_sha256": "a" * 64,
+                                    "zig_version": "0.15.2"}
+
+        @contextmanager
+        def checked_copy(_package):
+            yield self.package, manifest
+
+        def run(command, **_kwargs):
+            if command[:2] == ["zig", "version"]:
+                return subprocess.CompletedProcess(command, 0, "0.15.2\n", "")
+            if command[0] == "zig":
+                output = Path(command[command.index("--prefix") + 1]) / "bin"
+                output.mkdir()
+                (output / binary.name).write_bytes(binary.read_bytes())
+            return subprocess.CompletedProcess(command, 0, "", "")
+
+        geometry["theorem_inputs"]["D_final_fri_domain"] = 1 << 21
+        with patch("scripts.release.pcs_fri_gate_binary_rebuild.unpinned_snapshot", checked_copy), \
+             patch("scripts.release.pcs_fri_gate_binary_rebuild.compiler_fingerprint",
+                   return_value="a" * 64), \
+             patch("scripts.release.pcs_fri_gate_binary_rebuild.subprocess.run", side_effect=run), \
+             patch("scripts.release.pcs_fri_gate_binary_rebuild.extract_gate",
+                   return_value=geometry):
+            without_proof = rebuild_verifier(self.package, jobs=1)
+            self.assertIsNone(without_proof["accepted_proof_gate_geometry"])
+            with_proof = rebuild_verifier(self.package, jobs=1, proof=proof,
+                                          statement=statement)
+            self.assertEqual(with_proof["accepted_proof_gate_geometry"][
+                "native_fri_input_domain_rows"], 1 << 21)
+            self.assertEqual(with_proof["accepted_proof_gate_geometry"][
+                "proof_sha256"], with_proof["supplied_proof"]["proof_sha256"])
 
 
 if __name__ == "__main__":

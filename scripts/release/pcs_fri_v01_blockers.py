@@ -43,8 +43,8 @@ OBLIGATIONS = (
         "gap_kind": "uninstantiated_theorem_premise",
         "published_requirement": "Circle STARKs Theorems 6/7: bind each N, D, C, d, L, m, rate, list bound and every component domain to the verified oracle",
         "published_anchor": CIRCLE + "#appendix-B",
-        "partial_evidence": ["scripts/release/pcs_fri_proven_preflight.py", "scripts/release/pcs_fri_package_geometry.py", "scripts/release/pcs_fri_gate_final_domain.py", "design/s31/security/PCS_FRI_PACKAGE_GEOMETRY.md", "design/s31/security/PCS_FRI_GATE_FINAL_DOMAIN.md", "formal/s31/proof-inventory.json"],
-        "missing_discharge": "conditionally derived final FRI D for one sealed fold-step-1 gate package still needs verifier-success and binary provenance; identify theorem N/D, C, d, L, m, rate and list bound, complete other package geometry and check all finite-domain, degree and small-table preconditions",
+        "partial_evidence": ["scripts/release/pcs_fri_proven_preflight.py", "scripts/release/pcs_fri_package_geometry.py", "scripts/release/pcs_fri_gate_final_domain.py", "scripts/release/pcs_fri_gate_binary_rebuild.py", "design/s31/security/PCS_FRI_PACKAGE_GEOMETRY.md", "design/s31/security/PCS_FRI_GATE_FINAL_DOMAIN.md", "design/s31/security/PCS_FRI_GATE_BINARY_REBUILD.md", "design/s31/security/evidence/gate-native-fridomain-accepted-proof-2026-10-14.json", "formal/s31/proof-inventory.json"],
+        "missing_discharge": "one fold-step-1 Gate diagnostic can join an accepted proof, reproducibly rebuilt verifier image and conditional native FRI D, but this is not a Zig semantics proof or the paper's full original-plus-quotient domain; identify theorem N/D, C, d, L, m, rate and list bound, complete other package geometry and check all finite-domain, degree and small-table preconditions",
     },
     {
         "id": "P02_AIR_AND_INTERACTION_REFINEMENT",

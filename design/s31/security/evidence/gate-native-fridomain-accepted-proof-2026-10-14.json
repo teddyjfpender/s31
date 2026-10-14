@@ -1,0 +1,39 @@
+{
+  "accepted_proof_gate_geometry": {
+    "candidate_paper_protocol4_D0_if_N_is_trace_rows": 4194304,
+    "engine_gitlink": "59e1f115250b8af01712b9bf3d71616e53094964",
+    "native_fri_domain_equals_candidate_paper_protocol4_D0": false,
+    "native_fri_input_degree_bound_log": 20,
+    "native_fri_input_domain_rows": 2097152,
+    "native_proven_security_bits": null,
+    "package_manifest_sha256": "ceed921309e3de1af0d4a362277575743ec19d8059589844169f768c181251a3",
+    "proof_sha256": "c654ef1656ca0f983d779c609459cbe62f4195fd6a9dcd3cbd1d309095d2cb59",
+    "proven_release_admissible": false,
+    "rebuilt_verifier_sha256": "486df45fb7129533123b7bd178dfd50d5b46cc396e5188d4a37dd42c28a66cba",
+    "statement_sha256": "1c7c3b002846d8cae7d4f22a1b2b5a1b66483974ef7e8fea00fa045d8c35c9d7",
+    "status": "accepted_native_proof_with_conditional_source_geometry",
+    "verification_key_sha256": "c5f30ec9ce4fa68bfe4e75fcc7dd8c7f31792b566aa20235eddcdff2823fd30f"
+  },
+  "compiler_sha256": "d2e5078d1f794e0dab9828fa05514a6ee2597da321111732cfced322b0707217",
+  "engine_gitlink": "59e1f115250b8af01712b9bf3d71616e53094964",
+  "native_check_key": "accepted",
+  "native_proven_security_bits": null,
+  "package_verifier_byte_identical": false,
+  "package_verifier_execution_image_identical": true,
+  "package_verifier_sha256": "9a9acf6910e07f4dcfc309be4cf500b1ad6f10a950e957fe392b2063592c2fd9",
+  "proven_release_admissible": false,
+  "rebuild_jobs": 4,
+  "remaining_premises": [
+    "checkout and Zig toolchain authenticity; reproducibility is not compiler correctness",
+    "whole native verifier, AIR and PCS/FRI correspondence with a published theorem",
+    "complete theorem parameters, round errors and cryptographic reductions"
+  ],
+  "schema": "s31-gate-verifier-rebuild-v1",
+  "status": "conditional_binary_reproducibility_observed",
+  "supplied_proof": {
+    "proof_sha256": "c654ef1656ca0f983d779c609459cbe62f4195fd6a9dcd3cbd1d309095d2cb59",
+    "statement_sha256": "1c7c3b002846d8cae7d4f22a1b2b5a1b66483974ef7e8fea00fa045d8c35c9d7"
+  },
+  "verifier_sha256": "486df45fb7129533123b7bd178dfd50d5b46cc396e5188d4a37dd42c28a66cba",
+  "zig_version": "0.15.2"
+}
