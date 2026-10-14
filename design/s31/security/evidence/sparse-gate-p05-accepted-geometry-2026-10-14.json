@@ -1762,7 +1762,8 @@
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 0,
         "proposed_original_slot_at_height": 0,
-        "root_index": 0
+        "root_index": 0,
+        "source_value_at_first_raw_query": 781150648
       },
       {
         "column_index": 1,
@@ -1771,7 +1772,8 @@
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 1,
         "proposed_original_slot_at_height": 1,
-        "root_index": 0
+        "root_index": 0,
+        "source_value_at_first_raw_query": 1074358422
       },
       {
         "column_index": 2,
@@ -1780,7 +1782,8 @@
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 2,
         "proposed_original_slot_at_height": 2,
-        "root_index": 0
+        "root_index": 0,
+        "source_value_at_first_raw_query": 2035362477
       },
       {
         "column_index": 3,
@@ -1789,7 +1792,8 @@
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 0,
         "proposed_original_slot_at_height": 0,
-        "root_index": 0
+        "root_index": 0,
+        "source_value_at_first_raw_query": 2125536761
       },
       {
         "column_index": 4,
@@ -1798,7 +1802,8 @@
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 1,
         "proposed_original_slot_at_height": 1,
-        "root_index": 0
+        "root_index": 0,
+        "source_value_at_first_raw_query": 1248913617
       },
       {
         "column_index": 5,
@@ -1807,7 +1812,8 @@
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 2,
         "proposed_original_slot_at_height": 2,
-        "root_index": 0
+        "root_index": 0,
+        "source_value_at_first_raw_query": 896990389
       },
       {
         "column_index": 6,
@@ -1816,7 +1822,8 @@
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 3,
         "proposed_original_slot_at_height": 3,
-        "root_index": 0
+        "root_index": 0,
+        "source_value_at_first_raw_query": 23526528
       },
       {
         "column_index": 7,
@@ -1825,7 +1832,8 @@
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 4,
         "proposed_original_slot_at_height": 4,
-        "root_index": 0
+        "root_index": 0,
+        "source_value_at_first_raw_query": 981061740
       },
       {
         "column_index": 8,
@@ -1834,7 +1842,8 @@
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 5,
         "proposed_original_slot_at_height": 5,
-        "root_index": 0
+        "root_index": 0,
+        "source_value_at_first_raw_query": 530273018
       },
       {
         "column_index": 9,
@@ -1843,7 +1852,8 @@
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 6,
         "proposed_original_slot_at_height": 6,
-        "root_index": 0
+        "root_index": 0,
+        "source_value_at_first_raw_query": 1528079162
       },
       {
         "column_index": 10,
@@ -1852,7 +1862,8 @@
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 7,
         "proposed_original_slot_at_height": 7,
-        "root_index": 0
+        "root_index": 0,
+        "source_value_at_first_raw_query": 138863117
       },
       {
         "column_index": 11,
@@ -1861,7 +1872,8 @@
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 0,
         "proposed_original_slot_at_height": 0,
-        "root_index": 0
+        "root_index": 0,
+        "source_value_at_first_raw_query": 1751365534
       },
       {
         "column_index": 0,
@@ -1870,7 +1882,8 @@
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 8,
         "proposed_original_slot_at_height": 8,
-        "root_index": 1
+        "root_index": 1,
+        "source_value_at_first_raw_query": 2140581811
       },
       {
         "column_index": 1,
@@ -1879,7 +1892,8 @@
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 9,
         "proposed_original_slot_at_height": 9,
-        "root_index": 1
+        "root_index": 1,
+        "source_value_at_first_raw_query": 455846892
       },
       {
         "column_index": 2,
@@ -1888,7 +1902,8 @@
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 10,
         "proposed_original_slot_at_height": 10,
-        "root_index": 1
+        "root_index": 1,
+        "source_value_at_first_raw_query": 1819423517
       },
       {
         "column_index": 3,
@@ -1897,7 +1912,8 @@
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 11,
         "proposed_original_slot_at_height": 11,
-        "root_index": 1
+        "root_index": 1,
+        "source_value_at_first_raw_query": 787880927
       },
       {
         "column_index": 4,
@@ -1906,7 +1922,8 @@
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 12,
         "proposed_original_slot_at_height": 12,
-        "root_index": 1
+        "root_index": 1,
+        "source_value_at_first_raw_query": 1991030372
       },
       {
         "column_index": 5,
@@ -1915,7 +1932,8 @@
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 13,
         "proposed_original_slot_at_height": 13,
-        "root_index": 1
+        "root_index": 1,
+        "source_value_at_first_raw_query": 915165060
       },
       {
         "column_index": 6,
@@ -1924,7 +1942,8 @@
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 14,
         "proposed_original_slot_at_height": 14,
-        "root_index": 1
+        "root_index": 1,
+        "source_value_at_first_raw_query": 2090484898
       },
       {
         "column_index": 7,
@@ -1933,7 +1952,8 @@
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 15,
         "proposed_original_slot_at_height": 15,
-        "root_index": 1
+        "root_index": 1,
+        "source_value_at_first_raw_query": 164738678
       },
       {
         "column_index": 8,
@@ -1942,7 +1962,8 @@
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 16,
         "proposed_original_slot_at_height": 16,
-        "root_index": 1
+        "root_index": 1,
+        "source_value_at_first_raw_query": 1494789294
       },
       {
         "column_index": 9,
@@ -1951,7 +1972,8 @@
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 17,
         "proposed_original_slot_at_height": 17,
-        "root_index": 1
+        "root_index": 1,
+        "source_value_at_first_raw_query": 981508352
       },
       {
         "column_index": 10,
@@ -1960,7 +1982,8 @@
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 18,
         "proposed_original_slot_at_height": 18,
-        "root_index": 1
+        "root_index": 1,
+        "source_value_at_first_raw_query": 1783271947
       },
       {
         "column_index": 11,
@@ -1969,7 +1992,8 @@
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 19,
         "proposed_original_slot_at_height": 19,
-        "root_index": 1
+        "root_index": 1,
+        "source_value_at_first_raw_query": 1444880987
       },
       {
         "column_index": 12,
@@ -1978,7 +2002,8 @@
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 3,
         "proposed_original_slot_at_height": 3,
-        "root_index": 1
+        "root_index": 1,
+        "source_value_at_first_raw_query": 986067163
       },
       {
         "column_index": 13,
@@ -1987,7 +2012,8 @@
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 4,
         "proposed_original_slot_at_height": 4,
-        "root_index": 1
+        "root_index": 1,
+        "source_value_at_first_raw_query": 602274981
       },
       {
         "column_index": 14,
@@ -1996,7 +2022,8 @@
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 5,
         "proposed_original_slot_at_height": 5,
-        "root_index": 1
+        "root_index": 1,
+        "source_value_at_first_raw_query": 437982944
       },
       {
         "column_index": 15,
@@ -2005,7 +2032,8 @@
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 6,
         "proposed_original_slot_at_height": 6,
-        "root_index": 1
+        "root_index": 1,
+        "source_value_at_first_raw_query": 1499005092
       },
       {
         "column_index": 16,
@@ -2014,7 +2042,8 @@
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 1,
         "proposed_original_slot_at_height": 1,
-        "root_index": 1
+        "root_index": 1,
+        "source_value_at_first_raw_query": 742227737
       },
       {
         "column_index": 0,
@@ -2023,7 +2052,8 @@
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 20,
         "proposed_original_slot_at_height": 20,
-        "root_index": 2
+        "root_index": 2,
+        "source_value_at_first_raw_query": 1507599575
       },
       {
         "column_index": 1,
@@ -2032,7 +2062,8 @@
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 21,
         "proposed_original_slot_at_height": 21,
-        "root_index": 2
+        "root_index": 2,
+        "source_value_at_first_raw_query": 885998794
       },
       {
         "column_index": 2,
@@ -2041,7 +2072,8 @@
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 22,
         "proposed_original_slot_at_height": 22,
-        "root_index": 2
+        "root_index": 2,
+        "source_value_at_first_raw_query": 1234103273
       },
       {
         "column_index": 3,
@@ -2050,7 +2082,8 @@
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 23,
         "proposed_original_slot_at_height": 23,
-        "root_index": 2
+        "root_index": 2,
+        "source_value_at_first_raw_query": 311264362
       },
       {
         "column_index": 4,
@@ -2059,7 +2092,8 @@
         "ood_claims": 2,
         "proposed_first_own_quotient_slot_at_height": 24,
         "proposed_original_slot_at_height": 24,
-        "root_index": 2
+        "root_index": 2,
+        "source_value_at_first_raw_query": 72308635
       },
       {
         "column_index": 5,
@@ -2068,7 +2102,8 @@
         "ood_claims": 2,
         "proposed_first_own_quotient_slot_at_height": 26,
         "proposed_original_slot_at_height": 25,
-        "root_index": 2
+        "root_index": 2,
+        "source_value_at_first_raw_query": 2069510202
       },
       {
         "column_index": 6,
@@ -2077,7 +2112,8 @@
         "ood_claims": 2,
         "proposed_first_own_quotient_slot_at_height": 28,
         "proposed_original_slot_at_height": 26,
-        "root_index": 2
+        "root_index": 2,
+        "source_value_at_first_raw_query": 592545089
       },
       {
         "column_index": 7,
@@ -2086,7 +2122,8 @@
         "ood_claims": 2,
         "proposed_first_own_quotient_slot_at_height": 30,
         "proposed_original_slot_at_height": 27,
-        "root_index": 2
+        "root_index": 2,
+        "source_value_at_first_raw_query": 1150604316
       },
       {
         "column_index": 8,
@@ -2095,7 +2132,8 @@
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 7,
         "proposed_original_slot_at_height": 7,
-        "root_index": 2
+        "root_index": 2,
+        "source_value_at_first_raw_query": 792772300
       },
       {
         "column_index": 9,
@@ -2104,7 +2142,8 @@
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 8,
         "proposed_original_slot_at_height": 8,
-        "root_index": 2
+        "root_index": 2,
+        "source_value_at_first_raw_query": 1162171222
       },
       {
         "column_index": 10,
@@ -2113,7 +2152,8 @@
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 9,
         "proposed_original_slot_at_height": 9,
-        "root_index": 2
+        "root_index": 2,
+        "source_value_at_first_raw_query": 579867758
       },
       {
         "column_index": 11,
@@ -2122,7 +2162,8 @@
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 10,
         "proposed_original_slot_at_height": 10,
-        "root_index": 2
+        "root_index": 2,
+        "source_value_at_first_raw_query": 1914944522
       },
       {
         "column_index": 12,
@@ -2131,7 +2172,8 @@
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 11,
         "proposed_original_slot_at_height": 11,
-        "root_index": 2
+        "root_index": 2,
+        "source_value_at_first_raw_query": 1576094561
       },
       {
         "column_index": 13,
@@ -2140,7 +2182,8 @@
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 12,
         "proposed_original_slot_at_height": 12,
-        "root_index": 2
+        "root_index": 2,
+        "source_value_at_first_raw_query": 871323147
       },
       {
         "column_index": 14,
@@ -2149,7 +2192,8 @@
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 13,
         "proposed_original_slot_at_height": 13,
-        "root_index": 2
+        "root_index": 2,
+        "source_value_at_first_raw_query": 2047114445
       },
       {
         "column_index": 15,
@@ -2158,7 +2202,8 @@
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 14,
         "proposed_original_slot_at_height": 14,
-        "root_index": 2
+        "root_index": 2,
+        "source_value_at_first_raw_query": 907222222
       },
       {
         "column_index": 16,
@@ -2167,7 +2212,8 @@
         "ood_claims": 2,
         "proposed_first_own_quotient_slot_at_height": 15,
         "proposed_original_slot_at_height": 15,
-        "root_index": 2
+        "root_index": 2,
+        "source_value_at_first_raw_query": 1382640276
       },
       {
         "column_index": 17,
@@ -2176,7 +2222,8 @@
         "ood_claims": 2,
         "proposed_first_own_quotient_slot_at_height": 17,
         "proposed_original_slot_at_height": 16,
-        "root_index": 2
+        "root_index": 2,
+        "source_value_at_first_raw_query": 17879865
       },
       {
         "column_index": 18,
@@ -2185,7 +2232,8 @@
         "ood_claims": 2,
         "proposed_first_own_quotient_slot_at_height": 19,
         "proposed_original_slot_at_height": 17,
-        "root_index": 2
+        "root_index": 2,
+        "source_value_at_first_raw_query": 4810063
       },
       {
         "column_index": 19,
@@ -2194,7 +2242,8 @@
         "ood_claims": 2,
         "proposed_first_own_quotient_slot_at_height": 21,
         "proposed_original_slot_at_height": 18,
-        "root_index": 2
+        "root_index": 2,
+        "source_value_at_first_raw_query": 1026581178
       },
       {
         "column_index": 20,
@@ -2203,7 +2252,8 @@
         "ood_claims": 2,
         "proposed_first_own_quotient_slot_at_height": 2,
         "proposed_original_slot_at_height": 2,
-        "root_index": 2
+        "root_index": 2,
+        "source_value_at_first_raw_query": 449376028
       },
       {
         "column_index": 21,
@@ -2212,7 +2262,8 @@
         "ood_claims": 2,
         "proposed_first_own_quotient_slot_at_height": 4,
         "proposed_original_slot_at_height": 3,
-        "root_index": 2
+        "root_index": 2,
+        "source_value_at_first_raw_query": 1723736245
       },
       {
         "column_index": 22,
@@ -2221,7 +2272,8 @@
         "ood_claims": 2,
         "proposed_first_own_quotient_slot_at_height": 6,
         "proposed_original_slot_at_height": 4,
-        "root_index": 2
+        "root_index": 2,
+        "source_value_at_first_raw_query": 546450378
       },
       {
         "column_index": 23,
@@ -2230,7 +2282,8 @@
         "ood_claims": 2,
         "proposed_first_own_quotient_slot_at_height": 8,
         "proposed_original_slot_at_height": 5,
-        "root_index": 2
+        "root_index": 2,
+        "source_value_at_first_raw_query": 1273577826
       },
       {
         "column_index": 0,
@@ -2239,7 +2292,8 @@
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 10,
         "proposed_original_slot_at_height": 6,
-        "root_index": 3
+        "root_index": 3,
+        "source_value_at_first_raw_query": 1816166898
       },
       {
         "column_index": 1,
@@ -2248,7 +2302,8 @@
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 11,
         "proposed_original_slot_at_height": 7,
-        "root_index": 3
+        "root_index": 3,
+        "source_value_at_first_raw_query": 646576075
       },
       {
         "column_index": 2,
@@ -2257,7 +2312,8 @@
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 12,
         "proposed_original_slot_at_height": 8,
-        "root_index": 3
+        "root_index": 3,
+        "source_value_at_first_raw_query": 978396556
       },
       {
         "column_index": 3,
@@ -2266,7 +2322,8 @@
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 13,
         "proposed_original_slot_at_height": 9,
-        "root_index": 3
+        "root_index": 3,
+        "source_value_at_first_raw_query": 1814702786
       },
       {
         "column_index": 4,
@@ -2275,7 +2332,8 @@
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 14,
         "proposed_original_slot_at_height": 10,
-        "root_index": 3
+        "root_index": 3,
+        "source_value_at_first_raw_query": 754595627
       },
       {
         "column_index": 5,
@@ -2284,7 +2342,8 @@
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 15,
         "proposed_original_slot_at_height": 11,
-        "root_index": 3
+        "root_index": 3,
+        "source_value_at_first_raw_query": 1032374198
       },
       {
         "column_index": 6,
@@ -2293,7 +2352,8 @@
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 16,
         "proposed_original_slot_at_height": 12,
-        "root_index": 3
+        "root_index": 3,
+        "source_value_at_first_raw_query": 1033308911
       },
       {
         "column_index": 7,
@@ -2302,11 +2362,13 @@
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 17,
         "proposed_original_slot_at_height": 13,
-        "root_index": 3
+        "root_index": 3,
+        "source_value_at_first_raw_query": 734342977
       }
     ],
     "composition_log_degree_bound": 17,
     "composition_log_split": 1,
+    "first_raw_lifted_query_position": 90528,
     "heights": [
       {
         "committed_input_log_size": 16,
@@ -2405,7 +2467,8 @@
       8
     ],
     "schema": "s31-sparse-p05-accepted-capture-shape-v1",
-    "status": "accepted_native_proof_experimental_geometry_only"
+    "status": "accepted_native_proof_experimental_geometry_only",
+    "trace_lifting_log_size": 17
   },
   "accepted_ood_claim_map_sha256": "d0dfd3b36e3abc181e90ee0456ca2760602636fc5c2c378572d84b99e26ed5f5",
   "candidate_paper_parameters": {
@@ -2429,7 +2492,7 @@
   "package_checks": {
     "key_sha256": "7d4cdaab4e446aaa2c357e28f077e469412f45a17c660e8d4434cca216dccfc7",
     "manifest_artifacts": "verified",
-    "manifest_sha256": "7ab56a8e92fe6fd7a52f95871c835e5bdcc86efbb5fcde27a7e29c474e481263",
+    "manifest_sha256": "247e48cb7914c41fba0ae88e442ac817561a1713e8f3da6ae466f5a68beaa3f8",
     "native_check_key": "accepted",
     "native_proof": "accepted_before_geometry_inspection",
     "proof_sha256": "04eaca23d8a6c7fc977b24a3d925aaabcbb727fa4fa30f30c81864e24a158e39",

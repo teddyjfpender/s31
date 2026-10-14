@@ -58,6 +58,11 @@ def derive(evidence: dict[str, object]) -> dict[str, object]:
            for name, value in expected_parameters.items()):
         raise ValueError("accepted key's conditional paper parameters changed")
     shape = evidence["accepted_capture"]
+    lifting_log = shape.get("trace_lifting_log_size")
+    first_raw = shape.get("first_raw_lifted_query_position")
+    if (type(lifting_log) is not int or lifting_log != 17 or
+            type(first_raw) is not int or not 0 <= first_raw < (1 << lifting_log)):
+        raise ValueError("accepted H3 row coordinate changed")
     claims = shape["claims"]
     claim_digest = hashlib.sha256(json.dumps(
         claims, sort_keys=True, separators=(",", ":")
@@ -79,6 +84,9 @@ def derive(evidence: dict[str, object]) -> dict[str, object]:
     } for height in HEIGHTS}
     next_column = [0] * 4
     for column, owned in ordered_claim_slices(shape):
+        source_value = column.get("source_value_at_first_raw_query")
+        if type(source_value) is not int or not 0 <= source_value < (1 << 31) - 1:
+            raise ValueError("accepted H3 source row value is not canonical")
         root = column["root_index"]
         index = column["column_index"]
         height = column["extended_log_size"]
@@ -167,6 +175,10 @@ def lean_data(evidence: dict[str, object]) -> str:
         f"{c['first_claim_index']}, {c['ood_claims']}⟩"
         for c in shape["columns"]
     ]
+    y_imag = [
+        f"  ({claim['point_y_limbs'][2]}, {claim['point_y_limbs'][3]})"
+        for claim in shape["claims"]
+    ]
     return "\n".join([
         "import Mathlib.Data.List.Basic",
         "",
@@ -188,6 +200,11 @@ def lean_data(evidence: dict[str, object]) -> str:
         "",
         "def columns : List Column := [",
         ",\n".join(rows),
+        "]",
+        "",
+        "/-- The two M31 limbs of each accepted point's CM31 imaginary y part. -/",
+        "def claimYImag : List (Nat × Nat) := [",
+        ",\n".join(y_imag),
         "]",
         "",
         "end S31.PcsFri.SparseP05AcceptedH3Data",

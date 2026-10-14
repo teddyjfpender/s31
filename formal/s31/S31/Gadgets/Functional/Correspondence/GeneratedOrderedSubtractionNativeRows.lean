@@ -15,7 +15,7 @@ open S31.Functional.Correspondence.GeneratedOrderedSubtractionRelease
 
 -- Native preprocessed root: ca3dad2dfaa22e18e5707334c182c1e242e219b7d806e65d047da9719834a6cf
 -- Full fixed-column SHA-256: eb815a6b49b79b74b69515fea78dac6dac51ea6a23419b2b896e0fecfb33af5b
--- Native exporter binary SHA-256: 4c9a2c75eeac9bee8c66bfd179d3fa2aff13fb3649daa4330e3d7218ae402cf5
+-- Native exporter binary SHA-256: b828b45a303fc5bfb0559dafb253a15fa90f3c0c6be62302aaf838e254601afd
 
 def nativeCells : List ColumnCell := [
   { traceRow := 3, addFlag := 1, subFlag := 0, mulFlag := 0, pointwiseMulFlag := 0, in0 := 22, in1 := 22, out := 23, mults := 1 },

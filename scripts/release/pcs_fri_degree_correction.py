@@ -29,9 +29,10 @@ SOURCE_SHA256 = {
     "deps/stwo-zig/src/core/fri.zig": "5f84501d1ffbaf5d33d6f7063bea7e6fd88a4cb65140ff360b75cb11f812121f",
     "deps/stwo-zig/src/prover/fri.zig": "22acc5c7af16cc06fa646e5eedfe9a9a5bee95a273b53dbac83a599576f3e609",
     "deps/stwo-zig/src/core/verifier.zig": "85e70cea004f82060d94363b3552e0f2d9cd4203cee69fff0fb47b5345056381",
-    # Sparse-only post-admission P05 geometry inspection was reviewed; the
-    # traced direct Gate event region and legacy degree test are unchanged.
-    "src/frontends/s31/runtime/native_verifier.zig": "017355b2481dd62f06c1668773172a414e38d98bfcc6ece1ac78970c7abc5146",
+    # Sparse-only post-admission H3 inspection now exports the first
+    # authenticated query/source row. The traced direct Gate event region,
+    # accepted proof path, and legacy degree test are unchanged.
+    "src/frontends/s31/runtime/native_verifier.zig": "e41b5577fc144b9a065036ccdc8c3b701e38b09404282be216605894c08f38a4",
 }
 
 PROVER = "deps/stwo-zig/src/prover/pcs/scheme.zig"

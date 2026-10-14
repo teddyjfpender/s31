@@ -18,6 +18,37 @@ python3 src/frontends/s31/python/s31.py build "$source_path" --lowering sparse-g
 "$verifier" "$proof" "$statement_path" "$package/verification-key.json"
 python3 -B scripts/release/pcs_fri_sparse_p05_accepted_geometry.py \
     "$package" "$proof" "$statement_path" > "$temp_dir/geometry.json"
+cat > "$temp_dir/compare-geometry.py" <<'PY'
+import json
+import sys
+
+live, pinned = (json.load(open(path, encoding="utf-8")) for path in sys.argv[1:])
+# Compiler output artifacts are checked against each *local* manifest by the
+# reporter, but a fresh build directory changes its manifest file digest.
+# Compare every accepted proof/claim/query/source field exactly.
+for report in (live, pinned):
+    manifest_sha = report["package_checks"].pop("manifest_sha256", None)
+    if not isinstance(manifest_sha, str) or len(manifest_sha) != 64:
+        raise SystemExit("missing or malformed package manifest digest")
+if live != pinned:
+    raise SystemExit("accepted sparse proof, claim, or row evidence changed")
+PY
+pinned_geometry=design/s31/security/evidence/sparse-gate-p05-accepted-geometry-2026-10-14.json
+python3 -O "$temp_dir/compare-geometry.py" "$temp_dir/geometry.json" "$pinned_geometry"
+python3 - "$temp_dir/geometry.json" "$temp_dir/tampered-geometry.json" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as source:
+    report = json.load(source)
+report["accepted_capture"]["columns"][0]["source_value_at_first_raw_query"] += 1
+with open(sys.argv[2], "w", encoding="utf-8") as output:
+    json.dump(report, output)
+PY
+if python3 -O "$temp_dir/compare-geometry.py" "$temp_dir/tampered-geometry.json" "$pinned_geometry" > "$temp_dir/compare-rejected.out" 2>&1; then
+    echo "optimized geometry comparison accepted a modified source row" >&2
+    exit 1
+fi
 python3 -B scripts/release/pcs_fri_sparse_p05_h3_roster.py \
     --evidence "$temp_dir/geometry.json" --check
 python3 - "$temp_dir/geometry.json" <<'PY'

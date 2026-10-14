@@ -388,6 +388,7 @@ import S31.Gadgets.PcsFri.StwoMultidomainEnvelope
 import S31.Gadgets.PcsFri.StwoUDRFeasibility
 import S31.Gadgets.PcsFri.SparseP05ConditionalBatchCap
 import S31.Gadgets.PcsFri.SparseP05AcceptedH3Roster
+import S31.Gadgets.PcsFri.SparseP05AcceptedH3Rows
 
 /-! Local constraint relations, with arbitrary-witness soundness and honest
 witness completeness. All range and representation premises are explicit. -/

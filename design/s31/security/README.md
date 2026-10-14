@@ -15,3 +15,6 @@ and limitations; keep live release policy and machine-readable gates here.
 
 The `evidence/` directory contains pinned diagnostic artifacts. Its files
 are inputs to specific audits, not independently trusted statements.
+The [accepted sparse Gate H3 row example](PCS_FRI_SPARSE_GATE_H3_ACCEPTED_ROWS.md)
+shows one authenticated circle row, its two OOD quotient calculations, and
+the boundary between a checked row equation and a whole-oracle degree test.
