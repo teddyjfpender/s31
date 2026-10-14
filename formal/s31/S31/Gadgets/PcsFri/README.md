@@ -325,6 +325,18 @@ turns a successful framed certificate check into the mixed-opening predicate
 and native-index replay equation. It does not claim a formal BLAKE2s or Zig
 implementation equivalence.
 
+The model now also has a path-local version of the verifier-side implication:
+`pathNodeRecurrences` requires only the parent equations on one authenticated
+opening path, including inserted rows at intermediate source heights.
+`auditedOpening_checks` proves that those equations, the tagged starting node,
+the valid native index, and the recorded root make the *exact framed*
+`checkFramedOpening` Boolean accept. Off-path nodes are unconstrained. The
+valid native index also implies the transposed parent walk terminates at
+root index zero; this is proved instead of assumed in the audit theorem. The
+Zig `Capture.auditAt` loop performs corresponding checks on its sparse map,
+but translating that loop's successful return into these Lean premises is
+still a separate Zig-to-model semantics obligation.
+
 The independent [Python framing audit](../../../../../scripts/release/pcs_fri_xdm04_framing.py)
 uses `hashlib.blake2s`, its own preimage builders, and its own transposed
 parent/sibling/children formulas. It rehashes every node from native-generated

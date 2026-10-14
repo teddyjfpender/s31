@@ -79,6 +79,62 @@ hash. `checkOpening` also checks transposed-index path conversion. -/
 def checkFramedOpening (d : Digest32) (cert : OpeningCertificate Bytes) : Bool :=
   checkOpening (framedLeaf d) (framedInserted d) (framedUpper d) cert
 
+/-- Exact native `topology.sibling`: bit zero at level one, bit one above it. -/
+def nativeSibling (level index : Nat) : Nat :=
+  Nat.xor index (if level = 1 then 1 else 2)
+
+/-- A modeled view of the fields emitted by `Capture.openingAt`. The sparse
+node map is totalized only for the queried path; `pathNodeRecurrences` below
+requires parent equations along that path and says nothing about off-path
+entries. -/
+def auditedOpening (nodes : Nat → Nat → Bytes)
+    (rows : Nat → Nat → List Base) (k heightCount level index : Nat)
+    (input : NodeInput Bytes) (root : Bytes) : OpeningCertificate Bytes :=
+  { level := level
+    nativeIndex := index
+    binaryPosition := pathPosition level index
+    input := input
+    steps := committedSteps nodes nativeSibling rows k heightCount level index
+    root := root }
+
+/-- Path-local node equations, a tagged starting row, and the checked root
+are sufficient for the exact framed certificate Bool to accept. This is the
+model-side implication required after relating the native `auditAt` loop to
+these premises. It does not infer them from bare Zig `verifyAndCollect` success. -/
+theorem auditedOpening_checks (d : Digest32)
+    (nodes : Nat → Nat → Bytes) (rows : Nat → Nat → List Base)
+    (k heightCount level index : Nat) (input : NodeInput Bytes) (root : Bytes)
+    (hindex : index < 2 ^ level)
+    (hstart : taggedNodeHash (framedLeaf d) (framedInserted d) input =
+      nodes level index)
+    (hroot : nodes 0 0 = root)
+    (hpath : pathNodeRecurrences (framedUpper d) (framedInserted d)
+      nodes nativeSibling rows k heightCount level index) :
+    checkFramedOpening d
+      (auditedOpening nodes rows k heightCount level index input root) = true := by
+  let steps := committedSteps nodes nativeSibling rows k heightCount level index
+  have hend := terminalIndex_zero_of_in_bounds level index hindex
+  have hlen : steps.length = level :=
+    committedSteps_length nodes nativeSibling rows k heightCount level index
+  have hnative := path_replay_eq_terminal (framedUpper d) (framedInserted d)
+    nodes nativeSibling rows k heightCount level index hpath
+  have hconvert := nativeMixedRoot_eq_mixedPathRoot (framedUpper d)
+    (framedInserted d) index (nodes level index) steps
+  rw [hlen] at hconvert
+  have hchecked : mixedPathRoot (framedUpper d) (framedInserted d)
+      (taggedNodeHash (framedLeaf d) (framedInserted d) input)
+      (pathPosition level index) steps = root := by
+    calc
+      _ = mixedPathRoot (framedUpper d) (framedInserted d)
+            (nodes level index) (pathPosition level index) steps := by rw [hstart]
+      _ = nativeMixedRoot (framedUpper d) (framedInserted d) level index
+            (nodes level index) steps := hconvert.symm
+      _ = nodes 0 (terminalIndex level index) := hnative
+      _ = root := by rw [hend, hroot]
+  unfold checkFramedOpening checkOpening auditedOpening
+  apply decide_eq_true
+  exact ⟨hlen, hindex, rfl, hchecked⟩
+
 theorem checkFramedOpening_sound (d : Digest32)
     (cert : OpeningCertificate Bytes)
     (accepted : checkFramedOpening d cert = true) :

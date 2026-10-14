@@ -103,6 +103,35 @@ def terminalIndex : Nat → Nat → Nat
   | 0, index => index
   | level + 1, index => terminalIndex level (nativeParent (level + 1) index)
 
+theorem nativeParent_in_bounds (level index : Nat) (hlevel : 0 < level)
+    (hindex : index < 2 ^ level) :
+    nativeParent level index < 2 ^ (level - 1) := by
+  rcases level with _ | n
+  · omega
+  rcases n with _ | m
+  · simp [nativeParent]
+  have hpow : 2 ^ (m + 2) = 4 * 2 ^ m := by
+    rw [pow_add]
+    ring
+  have hbound : index < 4 * 2 ^ m := by simpa [hpow] using hindex
+  have hmod : index % 2 < 2 := Nat.mod_lt _ (by decide)
+  have hdiv : index / 4 < 2 ^ m := by omega
+  simp only [nativeParent, show m + 2 ≠ 1 by omega, ite_false]
+  change index % 2 + 2 * (index / 4) < 2 ^ (m + 1)
+  rw [pow_succ]
+  omega
+
+theorem terminalIndex_zero_of_in_bounds (level index : Nat)
+    (hindex : index < 2 ^ level) : terminalIndex level index = 0 := by
+  induction level generalizing index with
+  | zero =>
+      have : index = 0 := by simpa using hindex
+      simp [terminalIndex, this]
+  | succ level ih =>
+      have parentBound := nativeParent_in_bounds (level + 1) index (by omega) hindex
+      simpa [terminalIndex] using ih (nativeParent (level + 1) index)
+        (by simpa using parentBound)
+
 theorem committedSteps_length (nodes : Nat → Nat → H)
     (siblingIndex : Nat → Nat → Nat) (rows : Nat → Nat → List Base)
     (k heightCount level index : Nat) :
@@ -132,6 +161,42 @@ theorem committed_replay_eq_terminal (upperHash : H × H → H)
   | succ level ih =>
       have edge := edges (level + 1) index (by omega) (by omega)
       have tail := ih (nativeParent (level + 1) index) (by omega)
+      simp only [nativeMixedRoot, committedSteps, terminalIndex]
+      rw [← edge]
+      exact tail
+
+/-- The recurrence obligations along one sparse opening only. Unlike an
+all-node committed-tree audit, verifier witnesses need not provide off-path
+nodes. `Capture.auditAt` checks these parent equations for each returned row,
+but a formal Zig-to-Lean relation for that loop is still required. -/
+def pathNodeRecurrences (upperHash : H × H → H)
+    (insertedHash : H × H → List Base → H)
+    (nodes : Nat → Nat → H) (siblingIndex : Nat → Nat → Nat)
+    (rows : Nat → Nat → List Base) (k heightCount : Nat) : Nat → Nat → Prop
+  | 0, _ => True
+  | level + 1, index =>
+      nodes level (nativeParent (level + 1) index) =
+        mixedHash upperHash insertedHash
+          (nativeChildren (level + 1) index (nodes (level + 1) index)
+            (nodes (level + 1) (siblingIndex (level + 1) index)),
+            edgeRow rows k heightCount (level + 1) index) ∧
+      pathNodeRecurrences upperHash insertedHash nodes siblingIndex rows
+        k heightCount level (nativeParent (level + 1) index)
+
+theorem path_replay_eq_terminal (upperHash : H × H → H)
+    (insertedHash : H × H → List Base → H)
+    (nodes : Nat → Nat → H) (siblingIndex : Nat → Nat → Nat)
+    (rows : Nat → Nat → List Base) (k heightCount level index : Nat)
+    (hpath : pathNodeRecurrences upperHash insertedHash nodes siblingIndex
+      rows k heightCount level index) :
+    nativeMixedRoot upperHash insertedHash level index (nodes level index)
+      (committedSteps nodes siblingIndex rows k heightCount level index) =
+        nodes 0 (terminalIndex level index) := by
+  induction level generalizing index with
+  | zero => simp [nativeMixedRoot, committedSteps, terminalIndex]
+  | succ level ih =>
+      have edge := hpath.1
+      have tail := ih (nativeParent (level + 1) index) hpath.2
       simp only [nativeMixedRoot, committedSteps, terminalIndex]
       rw [← edge]
       exact tail
