@@ -126,6 +126,9 @@ text .s31 ──parse/typecheck/specialize──▶ normalized relation JSON
    one-level path.
 - [Packages, verification, and audit](proofs.md): build/prove/verify commands,
    what the key binds, artifact names, cost report fields, and current limits.
+- [CAS05 candidate admission](cas05-candidate-admission.md): versioned key,
+   independent public statement and draft v6 wire checks, with the exact
+   commitment and transcript work still required before production.
 - [Generated component manifest](../../../../design/s31/language/COMPONENT_MANIFEST.md):
    the direct-gate and one-call direct-chip rosters, native rederivation,
    and the bounded multi-call plan that still lacks proof admission.

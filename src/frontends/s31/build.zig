@@ -97,6 +97,14 @@ pub fn build(b: *std.Build) void {
     const tests = b.addRunArtifact(b.addTest(.{ .root_module = frontend }));
     const test_step = b.step("test", "Test the S31 prototype parser, evaluator and circuit compiler");
     test_step.dependOn(&tests.step);
+    const cas05_candidate_root = b.createModule(.{
+        .root_source_file = b.path("runtime/pcs/cas05_candidate_v6.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const cas05_candidate_tests = b.addRunArtifact(b.addTest(.{ .root_module = cas05_candidate_root }));
+    b.step("test-cas05-candidate-admission", "Audit versioned CAS05 key, statement and wire admission without production verification")
+        .dependOn(&cas05_candidate_tests.step);
     const public_physical_guard_root = b.createModule(.{
         .root_source_file = b.path("runtime/public_physical_guard.zig"),
         .target = target,
