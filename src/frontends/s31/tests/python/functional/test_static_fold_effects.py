@@ -74,6 +74,31 @@ circuit p(public flag: bit, private x: [m31; 1]) -> public [m31; 1] {
         direct, _ = compile_text(prelude + body.replace("BODY", "add(x, x)"))
         self.assertEqual(folded, direct)
 
+    def test_static_enum_selects_only_its_concrete_fold_step(self) -> None:
+        prelude = """enum Choice { Safe: [m31; 1], Risky: [m31; 1] }
+fn add(acc: [m31; 1], term: [m31; 1]) -> [m31; 1] { acc + term }
+fn risky(acc: [m31; 1], term: [m31; 1]) -> [m31; 1] {
+    acc + std::math::inv(term)
+}
+fn choose(choice: Choice, x: [m31; 1]) -> [m31; 1] {
+    match choice {
+        Choice::Safe(v) => std::array::fold(add, x, [v]),
+        Choice::Risky(v) => std::array::fold(risky, x, [v])
+    }
+}
+"""
+        circuit = """circuit p(public flag: bit, private x: [m31; 1])
+    -> public [m31; 1] {
+    let out = if flag then choose(Choice::KIND(x), x) else x;
+    out
+}"""
+        safe, _ = compile_text(prelude + circuit.replace("KIND", "Safe"))
+        direct, _ = compile_text("""circuit p(public flag: bit, private x: [m31; 1])
+    -> public [m31; 1] { let out = if flag then x + x else x; out }""")
+        self.assertEqual(safe, direct)
+        with self.assertRaisesRegex(SourceError, "if branch may fail when inactive: std::math::inv"):
+            compile_text(prelude + circuit.replace("KIND", "Risky"))
+
 
 if __name__ == "__main__":
     unittest.main()
