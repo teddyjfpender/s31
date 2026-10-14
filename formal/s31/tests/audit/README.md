@@ -122,6 +122,25 @@ two compiler modes could still share a source-independent error in the
 source-pinned replay or export. This remains short of a universal native
 compiler correctness theorem.
 
+## Private Gate cells and sampled extension values
+
+The follow-on finite private fixture checks every source-derived fixed and
+main base cell against the direct-Gate writer, rejoins both roots to one
+native-verifier-accepted proof, and confirms production private-row inspection
+is denied. The sampled-opening audit then independently interpolates all 12
+main columns from their 512 base values and compares all 792 values opened at
+the verifier's 66 unique sampled positions. See the [hand-worked conjugate
+pair derivation](../../S31/Gadgets/Functional/Correspondence/PrivateMainLdeOpenings.md).
+
+```sh
+python3 -B tests/audit/structural_private_committed_air_join.py
+python3 -B tests/audit/private_main_lde_openings.py
+```
+
+These commands provide one transparent honest-proof differential and hostile
+mutations. They do not establish a general compiler or PCS/FRI soundness
+theorem, and `private` does not promise zero knowledge in this profile.
+
 `general_linear_ssa_effects_certificate.py` runs the strict Lean effects
 certificate gate on the production affine/assertion fixture and rejects
 arithmetic, assertion, JSON-canonicalization, and size mutations. Build and
