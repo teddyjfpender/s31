@@ -35,7 +35,7 @@ alone is only a shape and canonical-field check.
 
 ## 2. Prove the two-point theorem join
 
-The [S-two whitepaper, Protocol 4 and Theorem 5](https://www.researchgate.net/publication/407022099_S-two_Whitepaper)
+The [S-two whitepaper, Protocol 4 and Theorem 5](https://eprint.iacr.org/2026/532.pdf)
 prove degree-corrected evaluation using both an original and a **single-point**
 quotient. Section 4.5 says the analysis carries over to conjugate two-point
 quotients, while omitting its details. That mathematical extension is still

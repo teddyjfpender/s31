@@ -67,6 +67,8 @@ jobs:
           bash formal/s31/tests/run_pcs_fri_layer_native.sh
       - name: Gate canonical 16-row Fourier certificate
         run: bash formal/s31/tests/run_pcs_fri_gate16_fourier_rows_native.sh
+      - name: Gate four-slot two-point quotient certificate
+        run: bash formal/s31/tests/run_pcs_fri_gate_four_block_own_quotient_native.sh
       - name: Lifted Merkle decoder finite refinement controls
         run: formal/s31/tests/run_pcs_fri_decoder_refinement_native.sh
       - name: Check pinned square4 native base rows and mutation controls

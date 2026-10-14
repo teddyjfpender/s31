@@ -1021,6 +1021,17 @@ spell out the raw-query projection and all remaining native-to-paper joins.
 These results do not extract a common agreement set from FRI acceptance,
 prove its probability, or assign native security bits.
 
+[`GateFourBlockOwnQuotient.lean`](GateFourBlockOwnQuotient.lean) specializes
+the two-point quotient construction to Gate's first four ordered circle
+coefficients. Under a correct OOD claim and explicit modeled field/coordinate
+premises, the own quotient has Laurent radius one. Its unscaled and exact
+native-scaled values equal that polynomial on every base Fourier row; the
+quadratic OOD minimal polynomial proves no base-row denominator vanishes.
+The [four-block calculation and finite native countercheck](../../../../../design/s31/security/PCS_FRI_GATE_FOUR_BLOCK_OWN_QUOTIENT.md)
+show why this radius-one bound cannot be silently tightened to the first two
+circle slots. Committed-column provenance and the paper's two-point
+circle-code filtration remain separate proof obligations.
+
 [`Cas07H1Terminal.lean`](Cas07H1Terminal.lean) models the experimental
 CAS07 route with one source height. Its first circle-to-line fold uses a
 different inverse `y` coordinate at each row, and its result is checked
