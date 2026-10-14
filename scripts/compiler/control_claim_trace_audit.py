@@ -23,7 +23,8 @@ COUNTS = [329, 0, 5, 0]
 
 
 def run_native(source: Path, assignment: Path, proof: Path, statement: Path,
-               *, root: Path = ROOT) -> dict[str, object]:
+               *, root: Path = ROOT,
+               expected_counts: list[int] | None = COUNTS) -> dict[str, object]:
     command = ["zig", "build", "--build-file", "scripts/compiler/control_claim_trace/build.zig",
                "audit", "-Doptimize=ReleaseSafe", "-j4", "--",
                str(source), str(assignment), str(proof), str(statement)]
@@ -36,10 +37,21 @@ def run_native(source: Path, assignment: Path, proof: Path, statement: Path,
         receipt = json.loads(result.stderr.strip().splitlines()[-1])
     except (IndexError, json.JSONDecodeError) as exc:
         raise ValueError("control claim trace audit: native receipt missing") from exc
-    if receipt != {"schema": SCHEMA, "base_root_match": True,
-                   "interaction_root_match": True,
-                   "all_component_claims_match": True,
-                   "producer_counts": COUNTS}:
+    parsed_source = json.loads(source.read_text())
+    source_nodes = len(parsed_source["inputs"]) + len(parsed_source["nodes"])
+    if (type(receipt) is not dict or receipt.get("schema") != SCHEMA or
+            receipt.get("source_semantics_match") is not True or
+            type(receipt.get("source_nodes_mapped")) is not int or
+            receipt["source_nodes_mapped"] != source_nodes or
+            receipt.get("base_root_match") is not True or
+            receipt.get("interaction_root_match") is not True or
+            receipt.get("all_component_claims_match") is not True or
+            type(receipt.get("producer_counts")) is not list or
+            len(receipt["producer_counts"]) != 4 or
+            any(type(count) is not int or count < 0
+                for count in receipt["producer_counts"]) or
+            (expected_counts is not None and
+             receipt["producer_counts"] != expected_counts)):
         raise ValueError("control claim trace audit: native receipt changed")
     return receipt
 

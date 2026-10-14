@@ -386,6 +386,8 @@ BINDINGS = [
     "scripts/tests/test_control_gate_pin_roster_audit.py",
     "scripts/compiler/control_claim_trace_audit.py",
     "scripts/compiler/control_claim_trace_controls.py",
+    "scripts/compiler/gate_claim_trace_audit.py",
+    "scripts/compiler/gate_claim_trace_controls.py",
     "scripts/compiler/control_claim_trace/main.zig",
     "scripts/compiler/control_claim_trace/build.zig",
     "scripts/compiler/control_claim_trace/build.zig.zon",
