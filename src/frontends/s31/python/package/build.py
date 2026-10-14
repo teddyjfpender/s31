@@ -382,6 +382,18 @@ def build_text(source_path: Path, output: Path, lowering: str = "gate", fri_fold
                 structural_path = package / STRUCTURAL_ARTIFACT
                 write_json(structural_path, structural_certificate)
                 manifest["artifacts"][structural_path.name] = file_hash(structural_path)
+            from package.pure_field_derivation import (
+                ARTIFACT as PURE_FIELD_ARTIFACT, UnsupportedPureField,
+                make_certificate as make_pure_field_certificate,
+            )
+            try:
+                pure_field_certificate = make_pure_field_certificate(text_data, normalized)
+            except UnsupportedPureField:
+                pass
+            else:
+                pure_field_path = package / PURE_FIELD_ARTIFACT
+                write_json(pure_field_path, pure_field_certificate)
+                manifest["artifacts"][PURE_FIELD_ARTIFACT] = file_hash(pure_field_path)
         if source_path.read_bytes() != text_data or manifest["compiler_sha256"] != compiler_fingerprint():
             raise RuntimeError("S31 text source or compiler inputs changed during package build")
         write_json(manifest_path, manifest)

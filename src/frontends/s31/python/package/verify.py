@@ -381,6 +381,8 @@ def verify_package(package: Path) -> dict:
     verify_source_relation_artifact(package, manifest)
     from package.structural_derivation import verify_artifact as verify_structural_artifact
     verify_structural_artifact(package, manifest)
+    from package.pure_field_derivation import verify_artifact as verify_pure_field_artifact
+    verify_pure_field_artifact(package, manifest)
     from package.pure_native_rows import verify_artifact as verify_pure_native_artifact
     pure_native_admitted = verify_pure_native_artifact(package, manifest)
     from package.zero_test_native_rows import verify_artifact as verify_zero_test_artifact

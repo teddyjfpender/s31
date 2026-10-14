@@ -158,6 +158,7 @@ import S31.Gadgets.Functional.SSALocalPipeline
 import S31.Gadgets.Functional.SSATextBytes
 import S31.Gadgets.Functional.Correspondence.SourceFunctionBytes
 import S31.Gadgets.Functional.Correspondence.GeneralLinearSSA
+import S31.Gadgets.Functional.Correspondence.PureFieldDerivation
 import S31.Gadgets.Functional.Correspondence.GeneralLinearSSABytes
 import S31.Gadgets.Functional.Correspondence.GeneralLinearSSAEffects
 import S31.Gadgets.Functional.Correspondence.StructuralNativeGateCertificate
