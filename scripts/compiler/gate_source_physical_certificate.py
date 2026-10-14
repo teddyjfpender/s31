@@ -25,8 +25,9 @@ def validate(certificate: Any, source: dict, manifest: dict, key: dict,
             "schema", "program_sha256", "canonical_ir_sha256",
             "preprocessed_root", "n_vars", "canonical_node_count", "qm31_binary_rows",
             "source_qm31_rows", "primitive_nodes_checked", "add_const_compositions",
+            "seven_finalizations",
             "source_map"} or
-            certificate["schema"] != "s31-gate-source-physical-v2" or
+            certificate["schema"] != "s31-gate-source-physical-v3" or
             certificate["program_sha256"] != manifest["program_sha256"] or
             certificate["canonical_ir_sha256"] != key["canonical_ir_sha256"] or
             certificate["preprocessed_root"] != key["preprocessed_root"]):
@@ -127,6 +128,52 @@ def validate(certificate: Any, source: dict, manifest: dict, key: dict,
     if composed != {index for index in range(count)
                     if by_id[index]["canonical_tag"] == "add_const"}:
         raise ValueError("Gate physical certificate: add_const canonical node omitted")
+    finalized = certificate["seven_finalizations"]
+    if type(finalized) is not list:
+        raise ValueError("Gate physical certificate: seven finalization list missing")
+    seven = {entry["canonical_id"]: entry for entry in compositions
+             if entry["constant"] == 7}
+    if len(finalized) != len(seven):
+        raise ValueError("Gate physical certificate: seven finalization count differs")
+    seen_seven: set[int] = set()
+    for path in finalized:
+        if (type(path) is not dict or set(path) != {
+                "canonical_id", "constant_address", "gates"} or
+                not _integer(path["canonical_id"]) or
+                path["canonical_id"] not in seven or
+                path["canonical_id"] in seen_seven or
+                path["constant_address"] !=
+                seven[path["canonical_id"]]["constant_address"] or
+                type(path["gates"]) is not list or len(path["gates"]) != 15):
+            raise ValueError("Gate physical certificate: seven finalization owner differs")
+        seen_seven.add(path["canonical_id"])
+        gates = path["gates"]
+        for gate in gates:
+            if (type(gate) is not dict or set(gate) != {
+                    "kind", "row", "in0", "in1", "out"} or
+                    gate["kind"] not in CLASSES[:3] or
+                    any(not _integer(gate[key]) for key in ("row", "in0", "in1", "out")) or
+                    gate["row"] >= binary_rows or
+                    any(gate[key] >= n_vars for key in ("in0", "in1", "out"))):
+                raise ValueError("Gate physical certificate: malformed seven finalization gate")
+        expected = [
+            ("add", 0, 0, 0), ("add", 1, 0, 1), ("mul", 2, 1, 2),
+            ("add", 1, 1, None),
+            *(("add", gates[index - 1]["out"], 1, None)
+              for index in range(4, 9)),
+            ("mul", 2, 2, None),
+            ("sub", gates[9]["out"], gates[3]["out"], None),
+            ("add", gates[10]["out"], 1, None),
+            ("mul", gates[11]["out"], 2, None),
+            ("add", gates[11]["out"], gates[12]["out"], None),
+            ("mul", gates[8]["out"], gates[13]["out"], path["constant_address"]),
+        ]
+        for gate, (kind, left, right, output) in zip(gates, expected, strict=True):
+            if (gate["kind"], gate["in0"], gate["in1"]) != (kind, left, right) or \
+                    (output is not None and gate["out"] != output):
+                raise ValueError("Gate physical certificate: seven finalization path differs")
+        if len({gate["row"] for gate in gates}) != len(gates):
+            raise ValueError("Gate physical certificate: seven finalization rows repeat")
     total = 0
     previous_class_end = 0
     for kind in CLASSES:
@@ -145,6 +192,9 @@ def validate(certificate: Any, source: dict, manifest: dict, key: dict,
     # against the actual builder gate and installed fixed cell. The receipt
     # binds these exact emitted bytes to that check; a second in-range address
     # substituted into the JSON has no independently valid physical meaning.
+    # The same receipt binds the native-checked fixed selectors, addresses,
+    # active Gate yields, and reconstructed committed base cells of the seven
+    # finalization path. The Python path check above is structural only.
     if (type(certificate_bytes) is not bytes or
             json.loads(certificate_bytes) != certificate or
             receipt.get("physical_certificate_sha256") !=

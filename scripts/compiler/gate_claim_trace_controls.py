@@ -77,6 +77,15 @@ def controls(package: Path, proof: Path, statement: Path, assignment: Path) -> d
                 ("wrong_add_const_row_count", lambda c: c["add_const_compositions"][0][
                     "add"].__setitem__("end", c["add_const_compositions"][0]["add"]["end"] + 1)),
             ))
+        if certificate["seven_finalizations"]:
+            certificate_mutations.extend((
+                ("seven_wrong_broadcast_input", lambda c: c["seven_finalizations"][0][
+                    "gates"][14].__setitem__("in0", c["seven_finalizations"][0]["gates"][7]["out"])),
+                ("seven_wrong_final_address", lambda c: c["seven_finalizations"][0][
+                    "gates"][14].__setitem__("out", c["seven_finalizations"][0]["gates"][13]["out"])),
+                ("seven_missing_producer", lambda c: c["seven_finalizations"][0][
+                    "gates"].pop()),
+            ))
         for label, change in certificate_mutations:
             altered = copy.deepcopy(certificate)
             change(altered)
@@ -89,6 +98,7 @@ def controls(package: Path, proof: Path, statement: Path, assignment: Path) -> d
                         "add_const physical ports differ" not in str(exc)):
                     raise AssertionError("in-range constant edit rejected for the wrong reason") from exc
                 if (label == "in_range_add_const_address_and_in1" and
+                        "seven finalization owner differs" not in str(exc) and
                         "bytes differ from native checked receipt" not in str(exc)):
                     raise AssertionError("joint in-range constant edit rejected for the wrong reason") from exc
             else:
@@ -132,6 +142,7 @@ def controls(package: Path, proof: Path, statement: Path, assignment: Path) -> d
             "in_range_add_const_address_rejected": bool(certificate["add_const_compositions"]),
             "joint_in_range_address_edit_rejected": bool(certificate["add_const_compositions"]),
             "changed_add_const_source_rejected": add_const_source_rejected,
+            "seven_finalization_mutants_rejected": bool(certificate["seven_finalizations"]),
             "unknown_operand_rejected": True,
             "valid_unused_node_rejected": True}
 

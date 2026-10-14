@@ -77,8 +77,11 @@ operation from the exact native nine-residual AIR tree. It handles canonical
 aliases and keeps proof-cell authentication explicit.
 [The `add_const` composition](GateAddConstComposition.md) extends that row
 certificate to one nonprimitive source operation, including a five-lane
-worked example and a theorem for any active lane count. Its constant-value
-and trace-cell authentication assumptions remain explicit.
+worked example and a theorem for any active lane count.
+[The literal-seven finalization join](GateAddConstSevenFinalization.md) derives
+the interned broadcast value from 15 native finalization rows, including
+the public `u` anchor and active Gate producer tuples. Arbitrary-proof cell
+authentication remains explicit.
 
 `SimdChunks.partial_row_iff` covers the short final chunk of an array. For
 any `n ≤ 4`, arbitrary M31 values may fill the unused input lanes. An accepted

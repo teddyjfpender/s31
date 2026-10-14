@@ -8,7 +8,7 @@ names into one node. The public result is `[8,9,10,11,12]`.
 The compiler interns one QM31 broadcast constant `(7,7,7,7)` and emits one
 add gate for each packed word. The first gate processes lanes 0–3. The second
 processes lane 4; its other three lanes are padding and do not become source
-results. The v2 physical certificate names the canonical node, its source
+results. The v3 physical certificate names the canonical node, its source
 operand node, the source constant, the interned constant wire address, both
 lists of packed input/output addresses, the first physical gate's `in1`
 address, and the exact physical add interval.
@@ -41,20 +41,21 @@ selector, the local AIR residuals, each active source input/output lane's
 trace-cell mapping, and the broadcast constant trace value. It concludes
 `output[j] = input[j] + c` in S31 M31 arithmetic for every active `j`.
 
-The native checker verifies the source-derived **address** of the interned
-broadcast constant, but the theorem still requires its trace **value** and
-the row operand/output cells to be authenticated. Those depend on constant
-finalization, Gate lookup, and PCS/FRI proof-cell authentication. The audit
-reconstructs one accepted proof from a supplied witness; it does not prove
-that every accepted proof has those same cells. This is one source operation,
-not general compiler correspondence.
+For literal `7`, [the finalization join](GateAddConstSevenFinalization.md)
+derives the broadcast cell's **value** from 15 native finalization rows and
+the public `u` anchor. Its Lean theorem replaces this module's constant-value
+assumption with the finalization AIR premises. The row operand/output cells,
+Gate lookup join, and PCS/FRI proof-cell authentication still have explicit
+premises. The audit reconstructs one accepted proof from a supplied witness;
+it does not prove that every accepted proof has those same cells.
 
 The controls change the certificate's constant, constant address (including
 an in-range 13→12 edit), input address, and row count; all are rejected.
 Python checks that the reported physical `in1` equals the interned constant
 address, so the single-field 13→12 edit fails structurally. A joint edit of
-both addresses fails the native receipt's SHA-256 binding to the exact emitted
-certificate bytes. The native diagnostic is the authority for these physical
+both addresses disagrees with the finalization path or the native receipt's
+SHA-256 binding to the exact emitted certificate bytes. The native diagnostic
+is the authority for these physical
 values: it compares every gate's `in1` with the interned constant and the
 installed fixed input column. Python does not independently reconstruct the
 physical Gate trace or prove its semantics. The controls also change the
