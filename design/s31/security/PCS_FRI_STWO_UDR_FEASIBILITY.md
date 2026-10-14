@@ -112,6 +112,19 @@ from size `2²¹` to `2`, and `R=26`. Choose `θ=16383/65536`, just inside
 example, with 232 raw queries and an idealized protocol. It is neither the
 native 70-query Gate nor a released 96-bit proof.
 
+The native query path reduces each ideal 32-bit hash word modulo M31 and then
+masks it to a power-of-two position. For a fixed good set, its positive
+probability bias over a uniform position is at most `2/2³²` on every native
+query domain ([exact finite count and Lean proof](PCS_FRI_M31_MASKED_QUERY_DISTRIBUTION.md)).
+`scenario_arithmetic` now reports a **separate conditional adaptation** that
+replaces the uniform query term `α^s` by `(α+2/2³²)^s`. It assumes independent
+uniform raw words and a good set fixed before each draw. For the illustrative
+`T=2³²` scenario above, the full expression divided by `T`, in units of
+`2⁻⁹⁶`, moves from about `0.822512610179` to `0.822512728655`; 232 queries
+still pass this arithmetic and 231 fail. The adaptation is a finite sampling
+bound, not a published S-two protocol theorem or a Fiat–Shamir proof for
+BLAKE2s. Its result remains outside release admission.
+
 At the same geometry, `T=1` and `s=243` make the hypothetical expression
 about `0.938161 × 2⁻⁹⁶`; `s=242` fails. `T=1` is not a useful deployment
 adversary budget. Both examples are executable in the focused test file
