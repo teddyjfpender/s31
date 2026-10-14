@@ -42,6 +42,13 @@ strictly stronger **absolute-error** claim would require
 never infers one from the other without the factor `T`. Neither conditional
 paper calculation is a native security certificate.
 
+For v0.1, the selected target is **96 bits in the paper's work-factor
+measure**, `ε(T)/T ≤ 2⁻⁹⁶`. The deployment adversary hash-query budget `T`
+has not been selected or justified. The `T=2³²` example below is an
+illustration only. The [release blocker matrix](pcs-fri-v01-blockers.json)
+records the metric and leaves `T` null; it remains closed until the actual
+verifier has a complete theorem-instantiated bound for a stated `T`.
+
 The OOD denominator is explicit: since `q≡3 (mod 4)` and `q⁴≡1 (mod 4)`,
 the affine circles have `|C(𝔽_q)|=q+1` and `|C(F)|=q⁴−1`, hence
 `|C(F) \ C(𝔽_q)|=q⁴−q−2`. The formulas are quoted **upper bounds**. A

@@ -52,7 +52,7 @@
     "design/s31/security/PCS_FRI_NATIVE_MERKLE_COLLISION_REDUCTION.md": "8feac8de4d30597ce68496a3bc09bde804b0ce60ddd9ec5a61cd25d5ba214fbd",
     "design/s31/security/PCS_FRI_PACKAGE_GEOMETRY.md": "2afb44501eda3fe0e1cf7d7653d2af9a73d486fe4f6cb50505ef10a370668f1d",
     "design/s31/security/PCS_FRI_PUBLISHED_BOUND_AUDIT.md": "361ad4957d9bdff886ee53a7babd1bd4e7a4940653213df9086e8e3c10354cae",
-    "design/s31/security/PCS_FRI_STWO_UDR_FEASIBILITY.md": "5e024bb813ad219fd863c5b3c86ebb649445d1e10ae47ee050bec6064da0c6ca",
+    "design/s31/security/PCS_FRI_STWO_UDR_FEASIBILITY.md": "935116826a698efa26445cd26a9b2f464e17e66ea581ab06fb4dbe266dfd6b15",
     "formal/s31/S31/Gadgets/Air/GatePublicInteraction.lean": "c4be2f2e83f1e6302177d936c502c82f5f710f69f38e5b222298d26e90693224",
     "formal/s31/S31/Gadgets/PcsFri/BcsTranscriptEpoch.lean": "ec37a56242d0dc06a47e27cb120e66628260a5d836d25a6af94843ea9351a20b",
     "formal/s31/S31/Gadgets/PcsFri/DeepQuotientAlgebra.lean": "df6ca80de3582d9c10e37f1a632795ac571a212c981e46dd51d6fe41631442cd",
@@ -555,6 +555,13 @@
   },
   "release": "v0.1.0",
   "schema": "s31-pcs-fri-v01-blockers-v1",
+  "security_target": {
+    "adversary_hash_query_budget_T": null,
+    "metric": "paper_work_factor_epsilon_over_T",
+    "paper_arithmetic": "scripts/release/pcs_fri_stwo_udr.py",
+    "status": "target_metric_selected; deployment_T_and_native_bound_open",
+    "target_bits": 96
+  },
   "source_visible_nominal_fri": {
     "fold_step_by_profile": {
       "chip": 1,
