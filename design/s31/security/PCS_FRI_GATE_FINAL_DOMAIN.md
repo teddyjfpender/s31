@@ -54,7 +54,9 @@ For the local sealed `affine_guard` package used in the diagnostic, all
 11 official bundle offsets are 1, the maximum roster trace log is 20, and
 the FRI blowup log is 1. Hence `U=21`, `S=M=20`, `H=21`, and the conditional
 domain size is `D=2^21=2,097,152` rows. These numbers belong to that sealed
-package, not to every possible gate package.
+package, not to every possible gate package. The same official bundle reports
+57 native constraints across those 11 components. That count is a concrete
+AIR-program inventory, not a theorem `k_t` substitution.
 
 ## Preconditions and limits
 
@@ -75,6 +77,17 @@ proximity soundness, or Fiat–Shamir reduction for the native verifier.
 `status=incomplete` and `proven_release_admissible=false` remain mandatory.
 Other lowerings are rejected by this diagnostic and retain their prior P01
 geometry gaps.
+
+The report also lists each bound component's `native_constraint_count` and
+`native_program_parts` from the official AIR bundle envelope, and their total.
+The native bundle parser checks that each program's own constraint count sums
+to the recorded component count; this diagnostic checks the envelope count,
+component order, and total independently. These counts describe the installed
+AIR program. They are **not yet identified with** the paper's `k_t`: that
+requires proving the native AIR component and interaction relation match the
+paper's table relation, including all multiplicities and committed columns.
+The report therefore leaves `identified_as_published_k_t=false` and the
+release gate closed.
 
 Focused tests create a bundle envelope, mutate its header/body, mutate the
 sealed component order and degree offset, reject a missing native key check,
