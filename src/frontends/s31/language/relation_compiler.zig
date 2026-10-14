@@ -391,6 +391,8 @@ pub const BindingSpan = struct {
     name: []const u8,
     word_start: usize,
     word_count: usize,
+    conversion_var_start: u32,
+    conversion_var_end: u32,
     conversion_qm31_start: usize,
     conversion_qm31_end: usize,
     conversion_m31_to_u32_start: usize,
@@ -964,6 +966,7 @@ fn compileWithSpansMode(comptime V: type, allocator: std.mem.Allocator, program:
     for (ir.nodes, entries) |node, entry| {
         if (node.tag != .input or node.visibility.? != .public) continue;
         const word_start = at;
+        const conversion_var_start = ctx.circuit.n_vars;
         const conversion_qm31_start = ctx.circuit.nQm31OpsRows();
         const conversion_m31_start = ctx.circuit.m31_to_u32.items.len;
         for (0..entry.shape.length) |i| {
@@ -974,6 +977,8 @@ fn compileWithSpansMode(comptime V: type, allocator: std.mem.Allocator, program:
             .name = node.input_name.?,
             .word_start = word_start,
             .word_count = at - word_start,
+            .conversion_var_start = conversion_var_start,
+            .conversion_var_end = ctx.circuit.n_vars,
             .conversion_qm31_start = conversion_qm31_start,
             .conversion_qm31_end = ctx.circuit.nQm31OpsRows(),
             .conversion_m31_to_u32_start = conversion_m31_start,
@@ -983,6 +988,7 @@ fn compileWithSpansMode(comptime V: type, allocator: std.mem.Allocator, program:
     for (ir.public_outputs) |output| {
         const entry = entries[output.id];
         const word_start = at;
+        const conversion_var_start = ctx.circuit.n_vars;
         const conversion_qm31_start = ctx.circuit.nQm31OpsRows();
         const conversion_m31_start = ctx.circuit.m31_to_u32.items.len;
         for (0..entry.shape.length) |i| {
@@ -993,6 +999,8 @@ fn compileWithSpansMode(comptime V: type, allocator: std.mem.Allocator, program:
             .name = output.name,
             .word_start = word_start,
             .word_count = at - word_start,
+            .conversion_var_start = conversion_var_start,
+            .conversion_var_end = ctx.circuit.n_vars,
             .conversion_qm31_start = conversion_qm31_start,
             .conversion_qm31_end = ctx.circuit.nQm31OpsRows(),
             .conversion_m31_to_u32_start = conversion_m31_start,

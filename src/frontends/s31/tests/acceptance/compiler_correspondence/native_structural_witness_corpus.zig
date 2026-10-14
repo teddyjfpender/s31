@@ -46,6 +46,8 @@ fn sameMaps(a: *const s31.relation_compiler.Maps, b: *const s31.relation_compile
     for (a.bindings.items, b.bindings.items) |left, right| {
         if (!std.mem.eql(u8, left.name, right.name) or
             left.word_start != right.word_start or left.word_count != right.word_count or
+            left.conversion_var_start != right.conversion_var_start or
+            left.conversion_var_end != right.conversion_var_end or
             left.conversion_qm31_start != right.conversion_qm31_start or
             left.conversion_qm31_end != right.conversion_qm31_end or
             left.conversion_m31_to_u32_start != right.conversion_m31_to_u32_start or
