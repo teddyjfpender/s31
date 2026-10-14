@@ -105,6 +105,13 @@ draws, while lower-height projections can overlap. The
 proves a fixed-oracle joint event and shows why multiplying per-height miss
 probabilities is unsound. It assumes ideal independent raw draws and a
 correlated-agreement witness that CAS05 has not supplied.
+The [fixed-oracle paired sparse batch theorem](../../../formal/s31/S31/Gadgets/PcsFri/PairedSparseBatchAgreement.lean)
+now bounds the shared-`λ` collision exception by
+`Σᵢ 2·columnsᵢ·mismatchedRowsᵢ` and combines its complement with the exact
+adjacent-pair raw-query schedule, counting repeated ideal draws separately.
+It requires a candidate original oracle fixed before `λ` and a lower bound
+on source disagreements at some height; it does not derive either from a
+false accepted CAS05 proof or from native FRI proximity.
 
 **Discharge test:** prove XDM04 and line Merkle binding to fixed committed
 oracles, exact circle/coset projection, the two-point OOD bad-set numerator
