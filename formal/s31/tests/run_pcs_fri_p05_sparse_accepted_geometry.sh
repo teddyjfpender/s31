@@ -18,6 +18,8 @@ python3 src/frontends/s31/python/s31.py build "$source_path" --lowering sparse-g
 "$verifier" "$proof" "$statement_path" "$package/verification-key.json"
 python3 -B scripts/release/pcs_fri_sparse_p05_accepted_geometry.py \
     "$package" "$proof" "$statement_path" > "$temp_dir/geometry.json"
+cmp "$temp_dir/geometry.json" \
+    design/s31/security/evidence/sparse-gate-p05-accepted-geometry-2026-10-14.json
 python3 -B scripts/release/pcs_fri_sparse_p05_h3_roster.py \
     --evidence "$temp_dir/geometry.json" --check
 python3 - "$temp_dir/geometry.json" <<'PY'

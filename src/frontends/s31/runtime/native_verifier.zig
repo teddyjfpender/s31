@@ -353,6 +353,9 @@ pub const SparseP05Shape = struct {
         first_claim_index: usize,
         proposed_original_slot_at_height: usize,
         proposed_first_own_quotient_slot_at_height: usize,
+        /// Value authenticated for the first raw lifted query, in the same
+        /// tree/column order as `capture.queried_values`.
+        source_value_at_first_raw_query: u32,
     };
     pub const Claim = struct {
         root_index: usize,
@@ -375,6 +378,8 @@ pub const SparseP05Shape = struct {
     claim_count: usize = 0,
     claims: [256]Claim = undefined,
     oods_seed_limbs: [4]u32 = undefined,
+    trace_lifting_log_size: u32 = 0,
+    first_raw_lifted_query_position: usize = 0,
     oods_point_x_limbs: [4]u32 = undefined,
     oods_point_y_limbs: [4]u32 = undefined,
 };
@@ -574,6 +579,7 @@ pub fn verifySparse(
     try fri_merkle_admission.validate(allocator, capture.queries.raw, capture.fri);
     try pcs_lifted_capture_admission.validate(allocator, pcs, roots, &capture);
     if (p05_shape_out) |out| {
+        if (capture.queries.raw.len == 0) return error.InvalidP05SparseShape;
         const components = core.air.components.Components{
             .components = handles[0..component_count],
             .n_preprocessed_columns = pp_logs.len,
@@ -601,6 +607,8 @@ pub fn verifySparse(
             .composition_log_degree_bound = composition_log,
             .composition_log_split = split,
             .oods_seed_limbs = p05Limbs(capture.oods_seed),
+            .trace_lifting_log_size = pcs.trace_lifting_log_size,
+            .first_raw_lifted_query_position = capture.queries.raw[0],
             .oods_point_x_limbs = p05Limbs(oods_point.x),
             .oods_point_y_limbs = p05Limbs(oods_point.y),
         };
@@ -608,6 +616,7 @@ pub fn verifySparse(
         if (capture.column_log_sizes.len != 4 or capture.sampled_points.len != 4 or
             accepted_values.len != 4)
             return error.InvalidP05SparseShape;
+        var queried_column_at: usize = 0;
         for (capture.column_log_sizes, capture.sampled_points, accepted_values, 0..) |logs_by_tree, points_by_tree, values_by_tree, tree| {
             if (logs_by_tree.len != points_by_tree.len or
                 logs_by_tree.len != values_by_tree.len or
@@ -615,6 +624,11 @@ pub fn verifySparse(
                 return error.InvalidP05SparseShape;
             out.root_columns[tree] = logs_by_tree.len;
             for (logs_by_tree, points_by_tree, values_by_tree, 0..) |log_size, points, values, column| {
+                const queried_value_offset = std.math.mul(usize, queried_column_at, capture.queries.raw.len) catch
+                    return error.InvalidP05SparseShape;
+                if (queried_value_offset >= capture.queried_values.len) return error.InvalidP05SparseShape;
+                const source_value = capture.queried_values[queried_value_offset];
+                queried_column_at += 1;
                 if (log_size >= out.heights.len or points.len == 0 or
                     points.len != values.len)
                     return error.InvalidP05SparseShape;
@@ -668,6 +682,7 @@ pub fn verifySparse(
                     .first_claim_index = out.claim_count - points.len,
                     .proposed_original_slot_at_height = height.required_original_tracks_if_paired,
                     .proposed_first_own_quotient_slot_at_height = height.required_own_quotient_tracks_if_paired,
+                    .source_value_at_first_raw_query = source_value.v,
                 };
                 out.column_count += 1;
                 height.source_columns += 1;
@@ -682,6 +697,9 @@ pub fn verifySparse(
         }
         if (out.claim_count != capture.sampled_values.len)
             return error.InvalidP05SparseShape;
+        const expected_queried_values = std.math.mul(usize, queried_column_at, capture.queries.raw.len) catch
+            return error.InvalidP05SparseShape;
+        if (expected_queried_values != capture.queried_values.len) return error.InvalidP05SparseShape;
         std.sort.heap(SparseP05Shape.Height, out.heights[0..out.height_count], {}, struct {
             fn less(_: void, a: SparseP05Shape.Height, b: SparseP05Shape.Height) bool {
                 return a.extended_log_size > b.extended_log_size;

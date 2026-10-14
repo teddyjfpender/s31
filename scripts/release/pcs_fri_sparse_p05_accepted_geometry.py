@@ -72,12 +72,21 @@ def report(package: Path, proof: Path, statement: Path) -> dict[str, object]:
     if sum(shape["root_ood_claims"]) != len(claims):
         raise ValueError("missing accepted OOD coordinates")
     prime = (1 << 31) - 1
+    lifting_log = shape["trace_lifting_log_size"]
+    raw_first = shape["first_raw_lifted_query_position"]
+    expected_lifting_log = key["trace_log_size"] + key["fri"]["log_blowup_factor"]
+    if (type(lifting_log) is not int or lifting_log != expected_lifting_log or
+            type(raw_first) is not int or not 0 <= raw_first < (1 << lifting_log)):
+        raise ValueError("invalid accepted lifted row coordinate")
     base_point = (shape["oods_point_x_limbs"], shape["oods_point_y_limbs"])
     for field in (*base_point, shape["oods_seed_limbs"]):
         if len(field) != 4 or any(type(word) is not int or not 0 <= word < prime
                                   for word in field):
             raise ValueError("noncanonical OOD seed or base point")
     for column, owned in ordered_claim_slices(shape):
+        source_value = column["source_value_at_first_raw_query"]
+        if type(source_value) is not int or not 0 <= source_value < prime:
+            raise ValueError("noncanonical authenticated source row value")
         for sample, claim in enumerate(owned):
             if (claim["root_index"] != column["root_index"] or
                     claim["column_index"] != column["column_index"] or

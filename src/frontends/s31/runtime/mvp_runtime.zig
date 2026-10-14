@@ -502,6 +502,8 @@ pub fn verifierMain(embedded_key: []const u8, embedded_recursive_key: []const u8
             .composition_log_degree_bound = shape.composition_log_degree_bound,
             .composition_log_split = shape.composition_log_split,
             .oods_seed_limbs = shape.oods_seed_limbs,
+            .trace_lifting_log_size = shape.trace_lifting_log_size,
+            .first_raw_lifted_query_position = shape.first_raw_lifted_query_position,
             .oods_point_x_limbs = shape.oods_point_x_limbs,
             .oods_point_y_limbs = shape.oods_point_y_limbs,
             .heights = shape.heights[0..shape.height_count],
