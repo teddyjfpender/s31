@@ -1,12 +1,15 @@
 import S31.Gadgets.Functional.Correspondence.StructuralNativeTraceDecoder
 
 /-!
-An AIR-derived source trace for the direct binary M31 fragment. Unlike the
+An AIR-derived source trace for the direct binary M31 fragment and exact
+zero/one identity erasures. Unlike the
 value-level graph decoder, this checker does not test each source result
 equation. It requires an actual native add/sub/pointwise-mul gate for every
 source step; commutative gates may swap operands and CSE may reuse a gate.
-The theorem derives each source equation from the native AIR residuals of
-that gate. Constant steps and gate-erased identities are outside this profile.
+The theorem derives each binary source equation from the native AIR residuals
+of that gate. An erased add-zero or multiply-one step instead must map to the
+exact same physical wire as its input; field identities then prove its result.
+Other constant steps remain outside this profile.
 -/
 
 namespace S31.Functional.Correspondence.StructuralNativeGateOwnership
@@ -70,8 +73,9 @@ theorem direct_owner_air_sound {n : Nat} (hn : n ≤ 4)
     have hi := congrFun hgate i
     simpa [sourceGate, gateOp_source, source_swap op hne] using hi
 
-/-- One directly owned source step. No value equality for its output is
-checked here; that follows only when the owning AIR row premise is supplied. -/
+/-- A binary step needs its exact native gate owner. An add-zero or
+multiply-one step instead needs the exact physical source/output wire alias.
+The checker never compares a step's sampled output to its arithmetic result. -/
 def checkOwnedStep {n : Nat} (hn : n ≤ 4)
     (wire : Nat → Quad) (gates : List Gate) (addresses : List Nat)
     (values : List (Lanes n)) (step : EffectStep) : Option (Lanes n) :=
@@ -86,7 +90,16 @@ def checkOwnedStep {n : Nat} (hn : n ≤ 4)
             some (active hn (wire outAddr))
           else none
       | _, _, _ => none
-  | .constant .. => none
+  | .constant id lhs value multiply =>
+      match addresses[lhs]?, addresses[id]? with
+      | some left, some outAddr =>
+          if value < S31.modulus ∧ id = values.length ∧
+              values[lhs]? = some (active hn (wire left)) ∧
+              outAddr = left ∧
+              (if multiply then value = 1 else value = 0) then
+            some (active hn (wire outAddr))
+          else none
+      | _, _ => none
 
 theorem checkOwnedStep_air_sound {n : Nat} (hn : n ≤ 4)
     (wire : Nat → Quad) (gates : List Gate) (addresses : List Nat)
@@ -95,7 +108,34 @@ theorem checkOwnedStep_air_sound {n : Nat} (hn : n ≤ 4)
     (hstep : checkOwnedStep hn wire gates addresses values step = some output) :
     StepEvidence hn wire gates addresses values step output := by
   cases step with
-  | constant id lhs value multiply => simp [checkOwnedStep] at hstep
+  | constant id lhs value multiply =>
+      unfold checkOwnedStep at hstep
+      cases hleft : addresses[lhs]? with
+      | none => simp [hleft] at hstep
+      | some left =>
+          cases hout : addresses[id]? with
+          | none => simp [hleft, hout] at hstep
+          | some outAddr =>
+              simp only [hleft, hout] at hstep
+              by_cases hvalid : value < S31.modulus ∧ id = values.length ∧
+                  values[lhs]? = some (active hn (wire left)) ∧
+                  outAddr = left ∧ (if multiply then value = 1 else value = 0)
+              · simp [hvalid] at hstep
+                rcases hvalid with ⟨hcanonical, hid, hleftValue, halias, hidentity⟩
+                subst outAddr
+                subst output
+                refine .constantValue values id lhs value multiply left left
+                  hcanonical hleft hout hleftValue ?_ hid
+                cases multiply with
+                | false =>
+                    simp at hidentity
+                    subst value
+                    simp
+                | true =>
+                    simp at hidentity
+                    subst value
+                    simp
+              · simp [hvalid] at hstep
   | binary id lhs rhs op =>
       unfold checkOwnedStep at hstep
       cases hleft : addresses[lhs]? with
@@ -118,7 +158,8 @@ theorem checkOwnedStep_air_sound {n : Nat} (hn : n ≤ 4)
                       (direct_owner_air_sound hn wire gates op left right
                         outAddr howner hair) hid
 
-/-- All admitted source steps must have a direct owning native gate. -/
+/-- Binary steps have a direct owning native gate. Identity erasures have the
+same source and destination wire address, with no native gate required. -/
 def checkOwnedSteps {n : Nat} (hn : n ≤ 4)
     (wire : Nat → Quad) (gates : List Gate) (addresses : List Nat) :
     List (Lanes n) → List EffectStep → Option (List (Lanes n))
@@ -150,10 +191,10 @@ theorem checkOwnedSteps_air_sound {n : Nat} (hn : n ≤ 4)
             (ih (initial ++ [output]) hsteps)
 
 /-- Source bytes and canonical SSA certificate are joined to the decoded
-native graph and its owning binary gates. Each source equation follows from
-the corresponding native AIR residuals. The graph bytes and AIR rows remain
-supplied premises until exporter provenance and committed-cell authentication
-are proved. -/
+native graph. Binary source equations follow from owning native AIR residuals;
+zero/one identities follow from exact address aliases and M31 field laws.
+The graph bytes and AIR rows remain supplied premises until exporter
+provenance and committed-cell authentication are proved. -/
 theorem checked_direct_owned_source_air_sound {n : Nat} (hn : n ≤ 4)
     (sourceBytes : List Nat) (certificateBytes graphBytes : String)
     (ssa : EmittedSSA) (meaning : Source) (certificate : Certificate)
