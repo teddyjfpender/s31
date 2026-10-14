@@ -5,6 +5,7 @@ const std = @import("std");
 const core = @import("stwo_core");
 
 const M31 = core.fields.m31.M31;
+const QM31 = core.fields.qm31.QM31;
 const H = core.vcs_lifted.blake2_merkle.Blake2sPlainMerkleHasher;
 const Blake2s = std.crypto.hash.blake2.Blake2s256;
 
@@ -72,4 +73,45 @@ test "plain lifted parent hashes exactly left then right with no tag" {
     @memcpy(reversed[0..32], &right);
     @memcpy(reversed[32..64], &left);
     try std.testing.expect(!std.mem.eql(u8, &expected, &digest(&reversed)));
+}
+
+test "FRI QM31 rows hash four ordered canonical coordinates per evaluation" {
+    const values = [_]QM31{
+        QM31.fromM31Array(.{
+            M31.fromCanonical(0), M31.fromCanonical(1),
+            M31.fromCanonical(256), M31.fromCanonical(0x7ffffffe),
+        }),
+        QM31.fromM31Array(.{
+            M31.fromCanonical(255), M31.fromCanonical(65536),
+            M31.fromCanonical(2), M31.fromCanonical(3),
+        }),
+        QM31.fromM31Array(.{
+            M31.fromCanonical(4), M31.fromCanonical(5),
+            M31.fromCanonical(6), M31.fromCanonical(7),
+        }),
+        QM31.fromM31Array(.{
+            M31.fromCanonical(8), M31.fromCanonical(9),
+            M31.fromCanonical(10), M31.fromCanonical(11),
+        }),
+    };
+    inline for (.{ 1, 4 }) |count| {
+        var flat: [count * 4]M31 = undefined;
+        for (values[0..count], 0..) |value, offset| {
+            const coords = value.toM31Array();
+            for (coords, 0..) |coordinate, index| {
+                flat[offset * 4 + index] = coordinate;
+            }
+        }
+        var bytes: [count * 16]u8 = undefined;
+        encode(&flat, &bytes);
+        var hasher = H.defaultWithInitialState();
+        hasher.updateLeaf(&flat);
+        try std.testing.expectEqualSlices(u8, &digest(&bytes), &hasher.finalize());
+
+        var changed = flat;
+        changed[1] = M31.fromCanonical(2);
+        var changed_bytes: [count * 16]u8 = undefined;
+        encode(&changed, &changed_bytes);
+        try std.testing.expect(!std.mem.eql(u8, &bytes, &changed_bytes));
+    }
 }

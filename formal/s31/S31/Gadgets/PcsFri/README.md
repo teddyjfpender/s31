@@ -838,6 +838,16 @@ collision. The row-slot equation gives the equality needed by
 conditional composition theorem joins this with raw DEEP answer custody and
 operational admission to derive modeled FRI acceptance.
 
+[`FriQm31BytePreimage.lean`](FriQm31BytePreimage.lean) supplies the missing
+row-type step for that conditional argument: it expands each QM31 evaluation
+to four canonical M31 coordinates, proves fixed-width row flattening is
+injective, and reduces two conflicting accepted QM31 openings to distinct
+plain BLAKE2s byte messages with the same digest. Its exact premises include
+the same root, height and leaf index, canonical coordinates, fixed 32-byte
+digest and sibling values, and both accepted full paths. The source guard for
+FRI Merkle admission pins the reviewed coordinate order and packed-row write;
+the native byte differential checks one- and four-evaluation leaves.
+
 The native-success implication to these `authenticatedSlot` certificates is
 still an explicit premise. In particular, Lean has not extracted the Zig
 `merkle_queries.build` row materialization, `verifyWithPathCapture` control
