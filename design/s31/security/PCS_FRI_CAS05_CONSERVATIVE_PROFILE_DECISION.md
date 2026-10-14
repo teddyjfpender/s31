@@ -38,6 +38,13 @@ evaluation points. The paper's variable-round Protocol 3 allows this
 terminal shape. Neither that shape nor the one-table fixture describes a
 source-bound installed CAS05 key.
 
+The separate [v0.1 target fixture](../../../scripts/release/fixtures/cas05_one_table_paper_t64.json)
+changes only the adversary budget to the selected `T=2⁶⁴`. For the same
+**idealized single-point paper protocol**, exact arithmetic still needs 232
+queries for the 96-bit work-factor expression: 232 passes and 231 fails.
+That fixture does not certify the conjugate two-point CAS05 draft, the
+70-query production verifier, or an absolute-error target.
+
 The `k=22,H=8` geometry is within the experimental XDM04 verifier's visible
 cap, but its current full-tree CAS05 host estimates 301,858,784 bytes of
 source/tree storage and rejects it under a 192 MiB preallocation budget.

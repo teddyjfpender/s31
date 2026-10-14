@@ -22,7 +22,9 @@ class PcsFriV01BlockersTests(unittest.TestCase):
         self.assertEqual(report["security_target"]["metric"],
                          "paper_work_factor_epsilon_over_T")
         self.assertEqual(report["security_target"]["target_bits"], 96)
-        self.assertIsNone(report["security_target"]["adversary_hash_query_budget_T"])
+        self.assertEqual(report["security_target"]["adversary_hash_query_budget_T"], 1 << 64)
+        self.assertEqual(report["security_target"]["status"],
+                         "target_metric_and_T_selected; native_bound_open")
         necessary = report["security_target"]["single_fold_ungrinded_query_necessity"]
         self.assertEqual(necessary["excluded_alpha_boundary"], "3/4")
         self.assertEqual(necessary["necessary_raw_queries_at_boundary_for_target"], 232)

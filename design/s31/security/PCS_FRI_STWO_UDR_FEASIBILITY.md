@@ -43,11 +43,12 @@ never infers one from the other without the factor `T`. Neither conditional
 paper calculation is a native security certificate.
 
 For v0.1, the selected target is **96 bits in the paper's work-factor
-measure**, `ε(T)/T ≤ 2⁻⁹⁶`. The deployment adversary hash-query budget `T`
-has not been selected or justified. The `T=2³²` example below is an
-illustration only. The [release blocker matrix](pcs-fri-v01-blockers.json)
-records the metric and leaves `T` null; it remains closed until the actual
-verifier has a complete theorem-instantiated bound for a stated `T`.
+measure**, `ε(T)/T ≤ 2⁻⁹⁶`, at an adversary BLAKE2s query budget
+`T=2⁶⁴`. This is a selected target, not a derived native bound. The
+`T=2³²` example below remains an illustration. The
+[release blocker matrix](pcs-fri-v01-blockers.json) records the metric and
+`T=2⁶⁴`; it remains closed until the actual verifier has a complete
+theorem-instantiated bound at that budget.
 
 There is already a **T-independent necessary failure** for the current
 single-fold native tuple under this *ungrinded published expression*.

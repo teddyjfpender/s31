@@ -20,6 +20,25 @@ class Cas05FieldCapacityTests(unittest.TestCase):
         fixture = Path(__file__).resolve().parents[1] / "release/fixtures/cas05_one_table_paper.json"
         self.assertEqual(json.loads(fixture.read_text()), one_table_scenario())
 
+    def test_selected_t64_work_factor_target_is_paper_only(self) -> None:
+        fixture = Path(__file__).resolve().parents[1] / "release/fixtures/cas05_one_table_paper_t64.json"
+        scenario = json.loads(fixture.read_text())
+        self.assertEqual(scenario, one_table_scenario(t=1 << 64))
+        report = field_rows(scenario, 8, 96, 13)
+        qm31 = next(row for row in report["field_rows"]
+                    if row["extension_degree_over_M31"] == 4)
+        self.assertEqual(qm31["minimum_queries_for_paper_work_factor_target_if_nonquery_fits"], 232)
+        self.assertTrue(qm31["given_scenario_fits_paper_work_factor_target"])
+        self.assertFalse(qm31["given_scenario_fits_absolute_target"])
+        self.assertIsNone(report["native_proven_security_bits"])
+        self.assertFalse(report["proven_release_admissible"])
+        just_below = copy.deepcopy(scenario)
+        just_below["queries"] = 231
+        below_report = field_rows(just_below, 8, 96, 13)
+        below_qm31 = next(row for row in below_report["field_rows"]
+                          if row["extension_degree_over_M31"] == 4)
+        self.assertFalse(below_qm31["given_scenario_fits_paper_work_factor_target"])
+
     def test_absolute_vs_work_factor_and_field_degree(self) -> None:
         result = field_rows(one_table_scenario(), 8, 96, 13)
         rows = {row["extension_degree_over_M31"]: row

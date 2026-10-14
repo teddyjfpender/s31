@@ -1,0 +1,31 @@
+{
+  "paper_protocol_variant": "idealized_protocols_1_3_4_degree_corrected",
+  "grinding_bits": 0,
+  "N": 1048576,
+  "B": 2,
+  "theta_numerator": 16383,
+  "theta_denominator": 65536,
+  "queries": 232,
+  "T": 18446744073709551616,
+  "R": 26,
+  "lambda_bits": 256,
+  "air_degree": 3,
+  "max_message_dimension": 1,
+  "public_input_messages": 0,
+  "public_output_messages": 0,
+  "fri_batch_max_width": 2,
+  "tables": [
+    {
+      "rows": 1048576,
+      "air_constraints": 1,
+      "uses": 1,
+      "yields": 1,
+      "max_use_multiplicity": 1
+    }
+  ],
+  "fri_fold_domain_sizes": [
+    2097152, 1048576, 524288, 262144, 131072, 65536, 32768,
+    16384, 8192, 4096, 2048, 1024, 512, 256, 128, 64,
+    32, 16, 8, 4, 2
+  ]
+}
