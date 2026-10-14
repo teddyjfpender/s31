@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
 import unittest
 from fractions import Fraction
@@ -50,6 +51,11 @@ class RawGateBcsTests(unittest.TestCase):
         self.assertFalse(value["hypothetical_paper_BCS_lambda_256_only"]["applies_to_native_verifier"])
         self.assertFalse(value["adaptive_BCS_reduction_proved"])
         self.assertTrue(value["draw_counter_fails_before_wrap"])
+        self.assertTrue(value["unframed_hash_input_role_overlap"]
+                        ["root_absorb_equals_plain_merkle_parent_at_same_digest_and_root"])
+        self.assertFalse(value["unframed_hash_input_role_overlap"]
+                         ["domain_separated_BCS_encoding_proved"])
+        self.assertIsNone(value["hypothetical_paper_collision_threshold"]["native_lambda_bits"])
         self.assertFalse(value["release_gate_admissible"])
         self.assertIsNone(value["native_proven_security_bits"])
 
@@ -65,6 +71,30 @@ class RawGateBcsTests(unittest.TestCase):
         paper = Fraction(3 * (T * T + 1), (1 << 256) * T)
         self.assertLess(paper, Fraction(1, 1 << 126))
         self.assertLess(paper, TARGET)
+        threshold = value["hypothetical_paper_collision_threshold"]
+        self.assertEqual(threshold["collision_term_only_minimum_lambda_bits"], 162)
+        self.assertGreater(Fraction(threshold["work_factor_at_lambda_161_exact"]), TARGET)
+        self.assertLess(Fraction(threshold["work_factor_at_lambda_162_exact"]), TARGET)
+        self.assertEqual(Fraction(threshold["other_round_error_budget_at_lambda_162_exact"]),
+                         TARGET - Fraction(threshold["work_factor_at_lambda_162_exact"]))
+
+    def test_unframed_hash_inputs_overlap_without_hash_collision(self) -> None:
+        # This checks byte encodings only. The bytes are not an accepted proof
+        # or a claim that any such Merkle root is reachable by a prover.
+        digest = bytes(range(32))
+        root = bytes(range(32, 64))
+        c = RawChannel(digest)
+        c.mix_root(root)
+        self.assertEqual(c.digest, hashlib.blake2s(digest + root, digest_size=32).digest())
+
+        limbs = (0, 1, (1 << 31) - 2, 17, 32, 257, 65536, (1 << 31) - 2)
+        canonical_root = b"".join(x.to_bytes(4, "little") for x in limbs)
+        by_root = RawChannel(digest)
+        by_felts = RawChannel(digest)
+        by_root.mix_root(canonical_root)
+        by_felts.mix_felts((limbs[:4], limbs[4:]))
+        self.assertEqual(by_root.digest, by_felts.digest)
+        self.assertEqual(by_root.counter, by_felts.counter)
 
     def test_fixture_matches_pinned_native_channel_replay(self) -> None:
         expected = json.loads(SAVED.read_text())
@@ -110,6 +140,15 @@ class RawGateBcsTests(unittest.TestCase):
         self.reject_engine("deps/stwo-zig/src/core/channel/blake2s.zig",
                            "return std.math.add(u32, current, 1) catch error.DrawCounterExhausted;",
                            "return current +% 1;")
+        self.reject_engine("deps/stwo-zig/src/core/vcs_lifted/blake2_merkle.zig",
+                           "blake2_hash.Blake2sHasherGeneric(is_m31_output).concatAndHash(digest, root)",
+                           "blake2_hash.Blake2sHasherGeneric(is_m31_output).concatAndHash(root, digest)")
+        self.reject_engine("deps/stwo-zig/src/core/vcs_lifted/blake2_merkle.zig",
+                           "return InnerHasher.concatAndHashWithMode(mode, children.left, children.right);",
+                           "return InnerHasher.concatAndHashWithMode(mode, children.right, children.left);")
+        self.reject_engine("deps/stwo-zig/src/core/vcs_lifted/channel_profile.zig",
+                           "pub const MerkleHasher = blake2_merkle.Blake2sPlainMerkleHasher;",
+                           "pub const MerkleHasher = blake2_merkle.Blake2sMerkleHasher;")
 
 
 if __name__ == "__main__":

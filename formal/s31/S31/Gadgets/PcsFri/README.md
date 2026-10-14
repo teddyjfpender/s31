@@ -696,6 +696,17 @@ nine independently reconstructed query hash preimages. These results leave
 earlier draw-input collisions, hash security, and the cryptographic
 Fiat–Shamir/BCS reduction open.
 
+[`RawGateBcsRoleOverlap.lean`](RawGateBcsRoleOverlap.lean) gives exact
+byte-input equalities for the selected raw Gate channel: root absorption is
+the same untagged BLAKE2s input shape as a plain Merkle parent; a canonical
+32-byte root also has the same channel payload as two QM31 values. A 16-word
+plain leaf has the parent input shape. The two rational-number lemmas put the
+paper-only BCS collision threshold at 162 bits for `T=2^64` and the 96-bit
+work-factor target. These are source-conditional encoding and paper-arithmetic
+facts, not a native ROM reduction or an accepted-proof attack. The
+[raw Gate review](../../../../../design/s31/security/PCS_FRI_RAW_GATE_BCS_AUDIT.md)
+spells out the remaining obligation.
+
 ## One lifted Merkle opening by hand
 
 Suppose a two-level tree authenticates an opened row `R` at leaf index `1`.
