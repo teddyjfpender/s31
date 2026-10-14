@@ -7,8 +7,25 @@ const std = @import("std");
 const core = @import("stwo_core");
 const circuit = @import("stwo_circuit_frontend");
 const s31 = @import("stwo_s31_prototype");
+const public_fixed_commitment = @import("s31_audit_fixed_commitment");
+const public_main_commitment = @import("s31_audit_main_commitment");
+const postcard = @import("interop_postcard");
 
 const QM31 = core.fields.qm31.QM31;
+const FriConfigV2 = core.pcs.config_v2.FriConfigV2;
+const PcsConfigV2 = core.pcs.config_v2.PcsConfigV2;
+const H = core.vcs_lifted.blake2_merkle.Blake2sPlainMerkleHasher;
+
+/// Accepted-proof roots and source-derived cells are supplied only to this
+/// test executable. No production package gains a private-row export command.
+const PhysicalAudit = struct {
+    fixed_columns: [8][]u32,
+    main_columns: [12][]u32,
+    accepted_fixed_root: []const u8,
+    accepted_main_root: []const u8,
+    accepted_proof_path: ?[]const u8 = null,
+    mutated_opening_path: ?[]const u8 = null,
+};
 
 fn equalItems(comptime T: type, left: []const T, right: []const T) bool {
     if (left.len != right.len) return false;
@@ -80,6 +97,7 @@ const Case = struct {
     expected_public_match: bool,
     tamper_extra_gate_for_test: bool = false,
     tamper_changed_gate_for_test: bool = false,
+    physical_audit: ?PhysicalAudit = null,
 };
 const Corpus = struct {
     schema: []const u8,
@@ -328,6 +346,127 @@ fn exportGraph(
     try std.fs.cwd().writeFile(.{ .sub_path = path, .data = bytes });
 }
 
+fn checkPhysicalAudit(
+    allocator: std.mem.Allocator,
+    label: []const u8,
+    program: s31.relation.Program,
+    assignment: s31.relation.Assignment,
+    audit: PhysicalAudit,
+) !void {
+    // Rebuild the installed direct-Gate profile, not the full multi-component
+    // graph pad used by the structural graph exporter. This runs only in the
+    // noninstalled corpus executable and emits no private witness cells.
+    var witness = try s31.relation_compiler.compileDirect(QM31, allocator, program, assignment, false);
+    defer witness.deinit();
+    var topology = try s31.relation_compiler.compileDirect(circuit.builder.NoValue, allocator, program, null, false);
+    defer topology.deinit();
+    if (!sameCircuitGraph(&witness.circuit, &topology.circuit))
+        return fail(label, "physical audit topology differs before padding");
+    const raw = circuit.common.finalize.rawComponentSizes(circuit.common.preprocessed.CircuitView.fromBuilder(&topology.circuit));
+    if (raw.eq != 0 or raw.triple_xor != 0 or raw.m31_to_u32 != 0 or
+        raw.blake_g_gate != 0 or witness.circuit.permutation.ends.items.len != 0)
+        return fail(label, "physical audit is outside direct Gate-only profile");
+    const target = circuit.common.finalize.paddedSize(raw.qm31_ops);
+    try circuit.common.finalize.padToTargets(QM31, &witness, .{
+        .eq = 0, .qm31_ops = target, .m31_to_u32 = 0,
+        .triple_xor = 0, .blake_g_gate = 0,
+    });
+    try circuit.common.finalize.padToTargets(circuit.builder.NoValue, &topology, .{
+        .eq = 0, .qm31_ops = target, .m31_to_u32 = 0,
+        .triple_xor = 0, .blake_g_gate = 0,
+    });
+    if (!sameCircuitGraph(&witness.circuit, &topology.circuit) or
+        !(try witness.isCircuitValid()))
+        return fail(label, "physical audit topology or witness differs after padding");
+    var pp = try circuit.common.direct_arithmetic.Circuit.fromBuilderCircuit(allocator, &topology.circuit);
+    defer pp.deinit(allocator);
+    if (pp.columns[0].values.len != 512) return fail(label, "physical audit row count differs");
+    var base = try circuit.witness.direct_arithmetic.writeBase(allocator, witness.values(), &pp);
+    defer base.deinit();
+    if (base.columns.len != 12) return fail(label, "physical audit base width differs");
+
+    var fixed_words: [8][]const u32 = undefined;
+    for (audit.fixed_columns, &fixed_words, 0..) |expected, *slot, col| {
+        if (expected.len != 512 or pp.columns[col].values.len != 512)
+            return fail(label, "physical audit fixed shape differs");
+        slot.* = expected;
+        for (expected, pp.columns[col].values) |word, actual|
+            if (word >= 2147483647 or actual.toU32() != word)
+                return fail(label, "private physical fixed cell differs");
+    }
+    var main_words: [12][]const u32 = undefined;
+    for (audit.main_columns, &main_words, 0..) |expected, *slot, col| {
+        if (expected.len != 512 or base.columns[col].values.len != 512)
+            return fail(label, "physical audit main shape differs");
+        slot.* = expected;
+        for (expected, base.columns[col].values) |word, actual|
+            if (word >= 2147483647 or actual.toU32() != word)
+                return fail(label, "private physical main cell differs");
+    }
+    const fixed = try public_fixed_commitment.rootFromWords(allocator, fixed_words);
+    const fixed_hex = std.fmt.bytesToHex(fixed, .lower);
+    if (!std.mem.eql(u8, &fixed_hex, audit.accepted_fixed_root))
+        return fail(label, "source-derived fixed root differs from accepted proof");
+    var pcs = PcsConfigV2.fromFriAndTraceSize(try FriConfigV2.init(26, 0, 1, 70, 1), 9);
+    pcs.preprocessed_lifting_log_size = 9 + pcs.fri_config.log_blowup_factor;
+    const expected_main = try public_main_commitment.rootFromWords(allocator, &pp, main_words, pcs);
+    const main_hex = std.fmt.bytesToHex(expected_main, .lower);
+    if (!std.mem.eql(u8, &main_hex, audit.accepted_main_root))
+        return fail(label, "source-derived private main root differs from accepted proof");
+    const writer_main = try public_main_commitment.root(allocator, &pp, base.columns, pcs);
+    if (!std.meta.eql(writer_main, expected_main))
+        return fail(label, "private writeBase root differs from source-derived cells");
+    if ((audit.accepted_proof_path == null) != (audit.mutated_opening_path == null))
+        return fail(label, "opening mutation paths must appear together");
+    if (audit.accepted_proof_path) |proof_path|
+        try mutateOpenedMainValue(allocator, label, audit, proof_path, audit.mutated_opening_path.?);
+}
+
+fn mutateOpenedMainValue(
+    allocator: std.mem.Allocator,
+    label: []const u8,
+    audit: PhysicalAudit,
+    proof_path: []const u8,
+    changed_path: []const u8,
+) !void {
+    const raw = try std.fs.cwd().readFileAlloc(allocator, proof_path, 64 << 20);
+    defer allocator.free(raw);
+    const envelope_len = "S31NAT7G".len + 8 + 16;
+    if (raw.len <= envelope_len or !std.mem.eql(u8, raw[0..8], "S31NAT7G"))
+        return fail(label, "accepted proof envelope differs");
+    var stream = std.io.fixedBufferStream(raw[envelope_len..]);
+    var stark = try postcard.deserializeProof(H, allocator, stream.reader());
+    defer stark.deinit(allocator);
+    if (stream.pos != raw.len - envelope_len or
+        stark.commitment_scheme_proof.commitments.items.len != 4 or
+        stark.commitment_scheme_proof.queried_values.items.len != 4 or
+        stark.commitment_scheme_proof.queried_values.items[1].len != 12)
+        return fail(label, "accepted proof opening roster differs");
+    const fixed_hex = std.fmt.bytesToHex(stark.commitment_scheme_proof.commitments.items[0], .lower);
+    const main_hex = std.fmt.bytesToHex(stark.commitment_scheme_proof.commitments.items[1], .lower);
+    if (!std.mem.eql(u8, &fixed_hex, audit.accepted_fixed_root) or
+        !std.mem.eql(u8, &main_hex, audit.accepted_main_root))
+        return fail(label, "opened proof roots differ from physical audit roots");
+    var roundtrip: std.ArrayList(u8) = .empty;
+    defer roundtrip.deinit(allocator);
+    try roundtrip.appendSlice(allocator, raw[0..envelope_len]);
+    try postcard.serializeProof(H, roundtrip.writer(allocator), stark);
+    if (!std.mem.eql(u8, roundtrip.items, raw))
+        return fail(label, "accepted proof decode and encode differ");
+    const main_opening = stark.commitment_scheme_proof.queried_values.items[1][8];
+    if (main_opening.len == 0) return fail(label, "selected main column lacks an opening");
+    main_opening[0] = main_opening[0].add(core.fields.m31.M31.one());
+    var changed: std.ArrayList(u8) = .empty;
+    defer changed.deinit(allocator);
+    try changed.appendSlice(allocator, raw[0..envelope_len]);
+    try postcard.serializeProof(H, changed.writer(allocator), stark);
+    if (changed.items.len != raw.len or std.mem.eql(u8, changed.items, raw))
+        return fail(label, "opened proof mutation did not change one canonical proof");
+    var file = try std.fs.cwd().createFile(changed_path, .{ .exclusive = true, .mode = 0o600 });
+    defer file.close();
+    try file.writeAll(changed.items);
+}
+
 fn checkCase(allocator: std.mem.Allocator, item: Case, export_path: ?[]const u8) !void {
     var program = try s31.relation.parseProgram(allocator, item.relation);
     defer program.deinit();
@@ -425,6 +564,12 @@ fn checkCase(allocator: std.mem.Allocator, item: Case, export_path: ?[]const u8)
             item.tamper_extra_gate_for_test or item.tamper_changed_gate_for_test)
             return fail(item.label, "graph export requires an honest accepted case");
         try exportGraph(allocator, path, &witness, &maps, &ir, program.value, assignment.value);
+    }
+    if (item.physical_audit) |audit| {
+        if (!item.expected_valid or !item.expected_circuit_valid or !item.expected_public_match or
+            item.tamper_extra_gate_for_test or item.tamper_changed_gate_for_test)
+            return fail(item.label, "physical audit requires an honest accepted case");
+        try checkPhysicalAudit(allocator, item.label, program.value, assignment.value, audit);
     }
 }
 
