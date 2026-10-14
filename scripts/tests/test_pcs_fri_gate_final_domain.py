@@ -7,7 +7,8 @@ import unittest
 from pathlib import Path
 
 from scripts.release.pcs_fri_gate_final_domain import (
-    BUNDLE, SOURCE_TOKENS, bundle_offsets, check_source_texts, derive_gate,
+    BUNDLE, SOURCE_TOKENS, BundleComponent, bundle_components, bundle_offsets,
+    check_source_texts, derive_gate, derive_gate_constraint_roster,
 )
 from scripts.release.pcs_fri_package_geometry import extract_fields
 
@@ -49,6 +50,8 @@ class GateFinalDomainTests(unittest.TestCase):
     def test_metadata_parser_and_mutations(self):
         data = synthetic_bundle([("eq", 4, 5), ("qm31_ops", 7, 8)])
         self.assertEqual(bundle_offsets(data), [("eq", 1), ("qm31_ops", 1)])
+        self.assertEqual(bundle_components(data), [
+            BundleComponent("eq", 1, 1, 1), BundleComponent("qm31_ops", 1, 1, 1)])
         mutations = (data[:-1], data + b"\0", b"wrong!!!" + data[8:],
                      data[:28] + struct.pack("<I", 3) + data[32:])
         for altered in mutations:
@@ -67,6 +70,24 @@ class GateFinalDomainTests(unittest.TestCase):
         self.assertEqual(report["theorem_inputs"]["D_final_fri_domain"], 256)
         self.assertFalse(report["proven_release_admissible"])
         self.assertEqual(report["status"], "incomplete")
+
+    def test_air_constraint_counts_are_conditional_metadata(self):
+        logs = (4, 7, 5, 4, 7, 4, 5, 4, 4, 4, 4)
+        report = derive_gate(gate_report(logs), [(name, 1) for name in NAMES])
+        components = [BundleComponent(name, 1, index + 1, 1)
+                      for index, name in enumerate(NAMES)]
+        derive_gate_constraint_roster(report, components)
+        roster = report["gate_air_constraint_roster"]
+        self.assertEqual(roster["native_total_constraints"], 66)
+        self.assertEqual(roster["components"][1], {
+            "name": "qm31_ops", "native_constraint_count": 2,
+            "native_program_parts": 1})
+        self.assertFalse(roster["identified_as_published_k_t"])
+        self.assertFalse(report["proven_release_admissible"])
+        with self.assertRaisesRegex(ValueError, "order differ"):
+            derive_gate_constraint_roster(report, list(reversed(components)))
+        with self.assertRaisesRegex(ValueError, "invalid AIR constraint"):
+            derive_gate_constraint_roster(report, [BundleComponent(NAMES[0], 1, 1, 2)] + components[1:])
 
     def test_adversarial_roster_and_degree_controls(self):
         logs = (4, 7, 5, 4, 7, 4, 5, 4, 4, 4, 4)
@@ -96,6 +117,9 @@ class GateFinalDomainTests(unittest.TestCase):
         data = (ROOT / BUNDLE).read_bytes()
         self.assertEqual(hashlib.sha256(data).hexdigest(), digest)
         self.assertEqual(bundle_offsets(data), [(name, 1) for name in NAMES])
+        components = bundle_components(data)
+        self.assertEqual(sum(item.constraints for item in components), 57)
+        self.assertEqual(components[1].constraints, 11)
         changed = dict(sources)
         name = "deps/stwo-zig/src/core/pcs/verifier.zig"
         changed[name] = changed[name].replace(

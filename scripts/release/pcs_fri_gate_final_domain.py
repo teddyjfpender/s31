@@ -16,6 +16,7 @@ import json
 import re
 import struct
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
@@ -123,7 +124,15 @@ def check_source_texts(sources: dict[str, str]) -> str:
     return matches[0]
 
 
-def bundle_offsets(data: bytes) -> list[tuple[str, int]]:
+@dataclass(frozen=True)
+class BundleComponent:
+    label: str
+    evaluation_delta: int
+    constraints: int
+    parts: int
+
+
+def bundle_components(data: bytes) -> list[BundleComponent]:
     """Read only the checked bundle envelope and component geometry metadata.
 
     This is intentionally not a second AIR semantic parser. The native parser
@@ -153,7 +162,7 @@ def bundle_offsets(data: bytes) -> list[tuple[str, int]]:
     if not (0 < max_instructions <= 1_000_000 and 0 < total_constraints and
             0 < max_eval <= 31 and 0 < count <= 4096 and plan_hash):
         raise ValueError("invalid AIR bundle header")
-    offsets: list[tuple[str, int]] = []
+    components: list[BundleComponent] = []
     next_constraint = 0
     found_max_eval = 0
     for _ in range(count):
@@ -179,12 +188,39 @@ def bundle_offsets(data: bytes) -> list[tuple[str, int]]:
             if not 0 < program_len <= 256 * 1024 * 1024:
                 raise ValueError("invalid AIR program length")
             skip(program_len)
-        offsets.append((label, evaluation - trace))
+        components.append(BundleComponent(label, evaluation - trace, constraints, parts))
         next_constraint += constraints
         found_max_eval = max(found_max_eval, evaluation)
     if cursor != len(data) or next_constraint != total_constraints or found_max_eval != max_eval:
         raise ValueError("invalid AIR bundle end or header totals")
-    return offsets
+    return components
+
+
+def bundle_offsets(data: bytes) -> list[tuple[str, int]]:
+    """Preserve the original degree-only interface for existing diagnostics."""
+    return [(item.label, item.evaluation_delta) for item in bundle_components(data)]
+
+
+def derive_gate_constraint_roster(report: dict, components: list[BundleComponent]) -> dict:
+    """Expose the AIR bundle's native count fields without treating them as paper k_t."""
+    roster = report["components"]
+    if len(roster) != len(components) or any(
+            row["name"] != item.label for row, item in zip(roster, components, strict=True)):
+        raise ValueError("AIR constraint counts and sealed gate roster order differ")
+    if any(item.constraints <= 0 or item.parts <= 0 or item.parts > item.constraints
+           for item in components):
+        raise ValueError("invalid AIR constraint count or part count")
+    report["gate_air_constraint_roster"] = {
+        "status": "conditional_bundle_metadata",
+        "components": [
+            {"name": item.label, "native_constraint_count": item.constraints,
+             "native_program_parts": item.parts}
+            for item in components
+        ],
+        "native_total_constraints": sum(item.constraints for item in components),
+        "identified_as_published_k_t": False,
+    }
+    return report
 
 
 def derive_gate(report: dict, offsets: list[tuple[str, int]]) -> dict:
@@ -248,7 +284,9 @@ def extract_gate(package: Path, root: Path = ROOT) -> dict:
     actual = hashlib.sha256(data).hexdigest()
     if actual != digest or key.get("air_bundle_sha256") != digest:
         raise ValueError("AIR bundle, source digest, and sealed gate key differ")
-    report = derive_gate(report, bundle_offsets(data))
+    components = bundle_components(data)
+    report = derive_gate(report, [(item.label, item.evaluation_delta) for item in components])
+    report = derive_gate_constraint_roster(report, components)
     report["gate_final_domain"]["air_bundle_sha256"] = digest
     report["gate_final_domain"]["source_sha256"] = {
         name: hashlib.sha256(text.encode()).hexdigest() for name, text in sources.items()}
