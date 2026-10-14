@@ -126,48 +126,7 @@ def reseal(raw: dict[str, bytes]) -> dict[str, bytes]:
     return result
 
 
-def coherent_extra_input_gate(exported: dict) -> dict:
-    """Insert a real fresh 0+0 gate before the first source input.
-
-    Shift all subsequently allocated addresses, phase cursors, and padded AIR
-    rows. This was accepted before independent input-span replay: uniqueness of
-    producers and honest finalization alone do not exclude the extra gate.
-    """
-    graph = copy.deepcopy(exported)
-    first_input = 11  # zero, one, u, and eight reserved public outputs
-
-    def shift(address: int) -> int:
-        return address + 1 if address >= first_input else address
-
-    for name in ("add", "sub", "mul", "pointwise_mul"):
-        for gate in graph[name]:
-            for field in ("in0", "in1", "out"):
-                gate[field] = shift(gate[field])
-    for gate in graph["eq"]:
-        for field in ("in0", "in1"):
-            gate[field] = shift(gate[field])
-    for var in graph["constant_vars"]:
-        var["idx"] = shift(var["idx"])
-    for node in graph["node_wires"]:
-        node["wires"] = [shift(at) for at in node["wires"]]
-    graph["output"] = [shift(at) for at in graph["output"]]
-    graph["values"].insert(first_input, [0] * 4)
-    graph["n_vars"] += 1
-    graph["add"].insert(0, {"in0": 0, "in1": 0, "out": first_input})
-    for span in graph["node_spans"]:
-        if span["id"] != 0:
-            span["qm31_start"] += 1
-        span["qm31_end"] += 1
-    for span in graph["assertion_spans"]:
-        span["qm31_start"] += 1
-        span["qm31_end"] += 1
-    for binding in graph["bindings"]:
-        for field in ("conversion_qm31_start", "conversion_qm31_end",
-                      "binding_qm31_start", "binding_qm31_end"):
-            binding[field] += 1
-    graph["finalization"]["qm31_start"] += 1
-    graph["finalization"]["qm31_end"] += 1
-
+def rebuild_padded(graph: dict) -> None:
     padded = {name: copy.deepcopy(graph[name]) for name in
               ("add", "sub", "mul", "pointwise_mul", "eq", "triple_xor",
                "m31_to_u32", "blake_g_gate", "permutation_ends",
@@ -222,6 +181,88 @@ def coherent_extra_input_gate(exported: dict) -> dict:
     ]
     padded["eq_rows"] = [[gate["in0"], gate["in1"]] for gate in padded["eq"]]
     graph["padded"] = padded
+
+
+def shift_allocated_addresses(graph: dict, first: int) -> None:
+    """Move an allocation boundary while preserving every gate equation."""
+    def shift(address: int) -> int:
+        return address + 1 if address >= first else address
+
+    for name in ("add", "sub", "mul", "pointwise_mul"):
+        for gate in graph[name]:
+            for field in ("in0", "in1", "out"):
+                gate[field] = shift(gate[field])
+    for gate in graph["eq"]:
+        for field in ("in0", "in1"):
+            gate[field] = shift(gate[field])
+    for var in graph["constant_vars"]:
+        var["idx"] = shift(var["idx"])
+    for node in graph["node_wires"]:
+        node["wires"] = [shift(at) for at in node["wires"]]
+    graph["output"] = [shift(at) for at in graph["output"]]
+    graph["values"].insert(first, [0] * 4)
+    graph["n_vars"] += 1
+
+
+def coherent_extra_input_gate(exported: dict) -> dict:
+    """Insert an extra 0+0 before input allocation and rebuild padded rows."""
+    graph = copy.deepcopy(exported)
+    first_input = 11  # zero, one, u, and eight reserved public outputs
+    shift_allocated_addresses(graph, first_input)
+    graph["add"].insert(0, {"in0": 0, "in1": 0, "out": first_input})
+    for span in graph["node_spans"]:
+        if span["id"] != 0:
+            span["qm31_start"] += 1
+        span["qm31_end"] += 1
+    for span in graph["assertion_spans"]:
+        span["qm31_start"] += 1
+        span["qm31_end"] += 1
+    for binding in graph["bindings"]:
+        for field in ("conversion_qm31_start", "conversion_qm31_end",
+                      "binding_qm31_start", "binding_qm31_end"):
+            binding[field] += 1
+        binding["conversion_var_start"] += 1
+        binding["conversion_var_end"] += 1
+    graph["finalization"]["qm31_start"] += 1
+    graph["finalization"]["qm31_end"] += 1
+    rebuild_padded(graph)
+    return graph
+
+
+def coherent_extra_conversion_gate(exported: dict) -> dict:
+    """Insert an extra satisfying 0+0 into output conversion allocation.
+
+    All later addresses, public-copy phase cursors, finalization, and padded
+    rows remain coherent. The old checker accepted this extra gate because it
+    checked the spans and equations but did not enumerate outputWord itself.
+    """
+    graph = copy.deepcopy(exported)
+    require_bindings = graph["bindings"]
+    assert len(require_bindings) == 2  # three_inputs: public a and result z
+    first = require_bindings[-1]["conversion_var_start"]
+    shift_allocated_addresses(graph, first)
+    first_copy = next(index for index, gate in enumerate(graph["add"])
+                      if 3 <= gate["out"] <= 10)
+    graph["add"].insert(first_copy, {"in0": 0, "in1": 0, "out": first})
+    last_binding = require_bindings[-1]
+    last_binding["conversion_var_end"] += 1
+    last_binding["conversion_qm31_end"] += 1
+    for binding in require_bindings:
+        binding["binding_qm31_start"] += 1
+        binding["binding_qm31_end"] += 1
+    graph["finalization"]["qm31_start"] += 1
+    graph["finalization"]["qm31_end"] += 1
+    rebuild_padded(graph)
+    return graph
+
+
+def coherent_wrong_output_copy(exported: dict) -> dict:
+    """Replace a zero-padding copy with a satisfiable self-copy gate."""
+    graph = copy.deepcopy(exported)
+    copy_gate = next(gate for gate in graph["add"] if gate["out"] == 7)
+    assert copy_gate == {"in0": 0, "in1": 0, "out": 7}
+    copy_gate["in0"] = 7
+    rebuild_padded(graph)
     return graph
 
 
@@ -320,6 +361,19 @@ def main() -> None:
                 raise AssertionError(f"wrong extra-input-equality rejection: {exc}") from exc
         else:
             raise AssertionError("coherent extra input equality was accepted")
+        for label, changed in (("extra conversion", coherent_extra_conversion_gate(exported)),
+                               ("wrong public copy", coherent_wrong_output_copy(exported))):
+            # Before exact binding replay, the phase cursors, all equations,
+            # every producer, and the padded AIR rows still accepted this.
+            with patch("scripts.native_graph_certificate.check_bindings", lambda *_: None):
+                check_graph(changed, raw, inputs, nodes)
+            try:
+                check_graph(changed, raw, inputs, nodes)
+            except ValueError as exc:
+                if "native public binding:" not in str(exc):
+                    raise AssertionError(f"wrong {label} rejection: {exc}") from exc
+            else:
+                raise AssertionError(f"coherent {label} mutation was accepted")
         # Keep the graph equation and its finalization span coherent while
         # adding a satisfiable gate. Equation-only and phase checks accept
         # this shape; exact constant/guess enumeration must reject it.

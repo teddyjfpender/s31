@@ -62,6 +62,12 @@ and witness-free compilation. Each canonical packed arithmetic node must own
 exactly one gate in its compiler span, except literal-zero addition, which
 must alias the other operand and emit no gate. Rejection controls inject a
 redundant satisfying gate and alter a gate operand.
+Independent source-pinned replays enumerate the input packing, public
+`outputWord` conversions, eight reserved output copies, and constant
+finalization. The binding replay checks the first-use inverse-unit constants
+and exact fresh addresses for lanes one through three. A coherent extra
+conversion gate and a satisfying wrong output copy are rejected even when all
+gate equations and padded AIR cells are valid.
 It snapshots all seven artifacts before either checker runs and recomputes
 the source/relation/ABI digests, which the Lean parser checks only for shape.
 
@@ -86,9 +92,11 @@ correspondence,
 or prove PCS/FRI soundness. The Lean `checked_statement_sound` theorem covers
 source/evaluator semantics conditional on the Lean gate; the native address
 and value checks are executable evidence at the remaining compiler seam. The
-two compiler modes could still share a source-independent error in input,
-assertion, binding, or finalization graph construction. This remains short of
-a universal native compiler correctness theorem.
+two compiler modes could still share a source-independent error in assertion
+lowering or another source-pinned replay. In particular, the audit does not
+yet independently bind each source assertion to its exact native masked
+equality gate operands. This remains short of a universal native compiler
+correctness theorem.
 
 `general_linear_ssa_effects_certificate.py` runs the strict Lean effects
 certificate gate on the production affine/assertion fixture and rejects

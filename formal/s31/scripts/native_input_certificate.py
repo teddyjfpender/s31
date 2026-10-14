@@ -15,7 +15,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 PINNED_SOURCES = {
     "src/frontends/s31/language/relation_compiler.zig":
-        "105d023fa4566c81bf8e3b2468b5a9d1e8260c2903e2ae1a04b0facc9adcc8f7",
+        "bd7c58706a3e5d8fc9ba89b1ede9528c63ff6d985f4e2520c6cac6e2ef1bd9d5",
     "deps/stwo-zig/src/frontends/circuit/builder/simd.zig":
         "4a0f480064056a7c7a87110666fce4d93a3d147d72dd7e6be8de184b75d78220",
     "deps/stwo-zig/src/frontends/circuit/builder/wrappers.zig":

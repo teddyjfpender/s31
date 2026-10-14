@@ -98,15 +98,30 @@ per-operation gate prefixes, and every inactive coordinate. A coherent
 padded rows shifted consistently, now fails the input replay. The compiler,
 SIMD packer, wrapper, context, and reserved-output source bytes are pinned.
 
-Public binding-conversion spans are not yet independently enumerated gate by
-gate. The one-producer check gives complete address coverage, but it does not
-alone establish exact ownership of every binding-conversion gate.
-These concrete checks
-correspond to the address/value, gate, port, and assertion premises of
-`checked_native_trace_sound` for **one supplied assignment**. The artifact is
-an executable certificate, not a Lean proof term: a machine-checked decoder
-from its JSON into `NativeTrace` is still needed to instantiate the theorem
-inside Lean.
+The public binding replay now enumerates each `outputWord` conversion and all
+eight `setOutputs` copies. Each binding exports its variable allocation span.
+For a public input, `outputWord` uses its original scalar guess address and
+allocates no conversion gate. For a computed packed output, lane `j` first
+multiplies the packed wire pointwise by the `1`, `i`, `u`, or `iu` basis vector.
+Lane zero uses that result directly; lanes one through three multiply by the
+corresponding inverse unit. The checker reconstructs the first-use constant
+addresses, every fresh variable, the exact gate operands and operation order,
+and the eight reserved output copy sources. It requires the last conversion
+address to meet the start of the independently checked finalization pass.
+The source-pinned SIMD unpacker and compiler determine this replay. A coherent
+extra `Add(0, 0, fresh)` inside the conversion span, with all later addresses,
+phase cursors, and padded rows shifted, is rejected; so is a satisfying but
+incorrect zero-padding copy source. The graph's private value table still
+must be handled as sensitive data.
+
+These concrete checks provide address/value, gate, and port evidence for
+**one supplied assignment**, plus equality of each asserted source value.
+The artifact is an executable certificate, not a Lean proof term: a
+machine-checked decoder from its JSON into `NativeTrace` is still needed to
+instantiate `checked_native_trace_sound` inside Lean. The checker does not yet
+independently replay the precise native gate operands and masking sequence for
+each source assertion; matching source values and an Eq row count alone do not
+establish that the proof enforces the assertion on its intended wires.
 
 ## From native gates to preprocessed AIR rows
 
