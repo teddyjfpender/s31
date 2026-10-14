@@ -241,6 +241,33 @@ def audit_source_shapes(frontend: str, runtime: str, engine: dict[str, str]) -> 
         raise ValueError("absorption no longer resets counter")
     if "return trailingZeroBits(out[0..16]) >= n_bits;" not in channel:
         raise ValueError("PoW predicate changed")
+    if "pub const POW_PREFIX: u32 = 0x12345678;" not in channel:
+        raise ValueError("PoW prefix role constant changed")
+    ordered_once(region(channel, "pub fn verifyPowNonce(", "/// Compute the constant prefix hash"),
+                 "PoW check uses the reviewed two-hash chain",
+                 "const prefix = self.computePowPrefix(n_bits);",
+                 "return verifyNonceWithPrefix(prefix, nonce, n_bits);")
+    ordered_once(region(channel, "pub fn computePowPrefix(", "/// Check a single nonce"),
+                 "52-byte PoW prefix input",
+                 "const prefix_bytes = u32ToBytesLe(POW_PREFIX);",
+                 "const bits_bytes = u32ToBytesLe(n_bits);",
+                 "prefixed_hasher.update(prefix_bytes[0..]);",
+                 "prefixed_hasher.update(&[_]u8{0} ** 12);",
+                 "prefixed_hasher.update(self.digest[0..]);",
+                 "prefixed_hasher.update(bits_bytes[0..]);",
+                 "return prefixed_hasher.finalize();")
+    ordered_once(region(channel, "fn verifyNonceWithPrefix(", "/// PoW predicate for eight candidates"),
+                 "40-byte PoW nonce input",
+                 "var input: [40]u8 = undefined;",
+                 "@memcpy(input[0..32], prefix[0..]);",
+                 "const nonce_bytes = u64ToBytesLe(nonce);",
+                 "@memcpy(input[32..40], nonce_bytes[0..]);",
+                 "const out = Hasher.hashFixedSingleBlock(40, &input);",
+                 "return trailingZeroBits(out[0..16]) >= n_bits;")
+    ordered_once(region(channel, "pub fn mixU64(", "pub fn drawU32s("),
+                 "40-byte accepted nonce absorption",
+                 "self.mixU32s(&[_]u32{", "@truncate(value),",
+                 "@truncate(value >> 32),")
     if "if (is_m31_output) out = reduceToM31(out);" not in engine["deps/stwo-zig/src/core/vcs/blake2_hash.zig"]:
         raise ValueError("raw hash selector changed")
     merkle = engine["deps/stwo-zig/src/core/vcs_lifted/blake2_merkle.zig"]
@@ -297,6 +324,15 @@ def report(root: Path = ROOT) -> dict:
         raise AssertionError("selected paper-only collision threshold changed")
     if not collision_work_factor < Fraction(1, 1 << 126):
         raise AssertionError("hypothetical 256-bit paper collision term changed")
+    p20, p26 = Fraction(1, 1 << 20), Fraction(1, 1 << 26)
+    two_first_one_second = (1 - (1 - p20) ** 2) * p26
+    if not two_first_one_second > p20 * p26:
+        raise AssertionError("two-stage grinding arithmetic changed")
+    # These intentionally small separate nonce caps fit T even after two
+    # prefix calls and leave ample room for other transcript hash work.
+    first_nonce_cap, second_nonce_cap = 1 << 21, 1 << 27
+    if first_nonce_cap + second_nonce_cap + 2 >= T:
+        raise AssertionError("illustrative nonce caps exceed T")
     transcript = fixture()
     if len(transcript["queries"]) != 70 or transcript["epochs"][-1]["counter"] != 9:
         raise AssertionError("raw Gate fixture query schedule changed")
@@ -324,6 +360,18 @@ def report(root: Path = ROOT) -> dict:
             "query_draw_counter_values": list(range(9)),
             "query_epoch_counter_overflow": False,
         },
+        "conditional_two_stage_fresh_oracle_only": {
+            "one_nonce_each_exact": exact(p20 * p26),
+            "two_interaction_one_fri_exact": exact(two_first_one_second),
+            "illustrative_first_nonce_cap": first_nonce_cap,
+            "illustrative_second_nonce_cap": second_nonce_cap,
+            "two_prefix_calls_plus_nonce_caps_below_T": True,
+            "first_union_envelope_at_cap_exact": exact(min(1, first_nonce_cap * p20)),
+            "second_conditional_union_envelope_at_cap_exact":
+                exact(min(1, second_nonce_cap * p26)),
+            "requires_fresh_distinct_cross_role_oracle_inputs": True,
+            "applies_to_native_verifier": False,
+        },
         "hypothetical_paper_BCS_lambda_256_only": {
             "collision_work_factor_exact": exact(collision_work_factor),
             "collision_work_factor_below_2_pow_minus_126": True,
@@ -344,6 +392,7 @@ def report(root: Path = ROOT) -> dict:
             "canonical_32_byte_roots_count": P ** 8,
             "canonical_32_byte_roots_fraction_exact": exact(Fraction(P ** 8, 1 << 256)),
             "sixteen_m31_word_leaf_has_parent_message_length": True,
+            "pow_nonce_input_can_equal_nonce_absorption_input": True,
             "domain_separated_BCS_encoding_proved": False,
             "accepted_proof_attack_demonstrated": False,
         },
