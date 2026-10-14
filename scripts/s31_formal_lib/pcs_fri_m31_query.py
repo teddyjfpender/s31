@@ -11,7 +11,7 @@ from scripts.s31_formal_lib.pcs_fri_order import ordered_once, region
 
 
 def check_sources(queries: str, channel: str, hasher: str, m31: str,
-                  profile: str, verifier: str) -> None:
+                  profile: str, verifier: str, fri: str, pcs_verifier: str) -> None:
     draw = region(queries, "pub fn drawQueries(", "pub fn sortedUniquePositions(")
     ordered_once(
         draw, "M31 masked raw queries",
@@ -81,6 +81,36 @@ def check_sources(queries: str, channel: str, hasher: str, m31: str,
         raise ValueError("M31 modulus changed")
     if "const MC = cpu.prove.profiles.Blake2sM31MerkleChannel;" not in verifier:
         raise ValueError("S31 native verifier channel profile changed")
+    sample = region(fri, "pub fn sampleQueryPositionsWithRaw(", "pub fn decommit(")
+    ordered_once(
+        sample, "FRI query raw and unique custody",
+        "const first_layer_log_size = self.first_layer.column_commitment_domain.logSize();",
+        "const raw = try queries_mod.drawQueries(\n"
+        "                channel,\n"
+        "                allocator,\n"
+        "                first_layer_log_size,\n"
+        "                self.config.n_queries,",
+        "var new_queries = try queries_mod.Queries.init(\n"
+        "                allocator,\n"
+        "                raw,\n"
+        "                first_layer_log_size,",
+        "const unique = try allocator.dupe(usize, new_queries.positions);",
+        "const retained_raw = try allocator.dupe(usize, raw);",
+        "self.queries = new_queries;",
+        "self.sampled_raw_queries = retained_raw;",
+        "return .{",
+        ".raw = raw,",
+        ".unique = unique,",
+    )
+    pcs_sample = region(pcs_verifier, "channel.mixU64(proof.proof_of_work);",
+                        "var query_capture_owned = true;")
+    ordered_once(
+        pcs_sample, "accepted PCS verifier query call",
+        "channel.mixU64(proof.proof_of_work);",
+        "var query_capture = try fri_verifier.sampleQueryPositionsWithRaw(\n"
+        "                allocator,\n"
+        "                channel,",
+    )
     if "pub const Channel = channel_blake2s.Blake2sChannelGeneric(spec.m31_channel);" not in profile:
         raise ValueError("channel profile constructor changed")
     selected_profile = profile[profile.index(
@@ -109,4 +139,6 @@ def check_pcs_fri_m31_query(root: Path) -> None:
         (core / "fields/m31.zig").read_text(),
         (core / "vcs_lifted/channel_profile.zig").read_text(),
         (root / "src/frontends/s31/runtime/native_verifier.zig").read_text(),
+        (core / "fri.zig").read_text(),
+        (core / "pcs/verifier.zig").read_text(),
     )

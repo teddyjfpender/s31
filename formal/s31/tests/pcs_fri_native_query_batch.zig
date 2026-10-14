@@ -60,3 +60,41 @@ test "selected S31 M31 channel consumes nine blocks for seventy ordered queries"
     }
     try std.testing.expectEqual(@as(u32, 9), manual_channel.n_draws);
 }
+
+test "selected query positions match independent raw Blake2s preimages" {
+    // This oracle bypasses the selected channel's drawU32s and reducer. It
+    // hashes the 37-byte preimage with Zig stdlib BLAKE2s, then uses scalar
+    // integer modulo and masking. It tests deterministic correspondence only.
+    const Profile = core.vcs_lifted.channel_profile.proving_5a7c5ed.Blake2sM31MerkleChannel;
+    for ([_]u64{ 0, 42, 0xfeed_cafe_1234_5678 }) |seed| {
+        for ([_]usize{ 0, 1, 7, 8, 9, 69, 70, 71 }) |n| {
+            for ([_]u32{ 0, 1, 2, 21, 31 }) |k| {
+                var channel = Profile.Channel{};
+                channel.mixU64(seed);
+                const starting_digest = channel.digest;
+                const actual = try core.queries.drawQueries(&channel, std.testing.allocator, k, n);
+                defer std.testing.allocator.free(actual);
+                try std.testing.expectEqual((n + 7) / 8, @as(usize, channel.n_draws));
+                try std.testing.expectEqualSlices(u8, &starting_digest, &channel.digest);
+
+                const mask: u32 = (@as(u32, 1) << @intCast(k)) - 1;
+                for (0..(n + 7) / 8) |block| {
+                    var preimage: [37]u8 = undefined;
+                    @memcpy(preimage[0..32], starting_digest[0..]);
+                    std.mem.writeInt(u32, preimage[32..36], @intCast(block), .little);
+                    preimage[36] = 0;
+                    var raw_digest: [32]u8 = undefined;
+                    std.crypto.hash.blake2.Blake2s256.hash(&preimage, &raw_digest, .{});
+                    for (0..8) |lane| {
+                        const slot = block * 8 + lane;
+                        if (slot >= n) break;
+                        const base = lane * 4;
+                        const raw = std.mem.readInt(u32, raw_digest[base..][0..4], .little);
+                        const expected: usize = @intCast((@as(u64, raw) % p) & mask);
+                        try std.testing.expectEqual(expected, actual[slot]);
+                    }
+                }
+            }
+        }
+    }
+}
