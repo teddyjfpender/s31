@@ -321,6 +321,7 @@ import S31.Gadgets.PcsFri.TwoPointDegreeCorrection
 import S31.Gadgets.PcsFri.CircleVanishingLine
 import S31.Gadgets.PcsFri.CircleLaurentDegree
 import S31.Gadgets.PcsFri.CircleLaurentQuotient
+import S31.Gadgets.PcsFri.CircleLaurentUniqueness
 import S31.Gadgets.PcsFri.NativeCircleQuotientRows
 import S31.Gadgets.PcsFri.ConcreteCircleMinpoly
 import S31.Gadgets.PcsFri.CanonicalCircleLaurentRows

@@ -50,6 +50,12 @@ states its own limitation. The
 constructs a radius-`n−1` own quotient for a bounded **honest** source
 polynomial under explicit field and OOD premises; it does not recover such a
 polynomial from arbitrary accepted committed rows.
+The [finite-domain Laurent uniqueness theorem](../../../formal/s31/S31/Gadgets/PcsFri/CircleLaurentUniqueness.lean)
+now proves that an exact all-row own-quotient equation reconstructs a bounded
+source word, and that more than `2n` distinct Fourier evaluations determine
+an `L_n` polynomial. This supplies the coefficient model's exact uniqueness
+step, but CAS05 authenticates sparse samples and still needs the correlated
+agreement and query reduction.
 
 **Discharge test:** prove the exact native circle-basis filtration, two-point
 claim interpolation and row quotient identity, approximate joint agreement
