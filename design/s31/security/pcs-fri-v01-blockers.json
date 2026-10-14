@@ -60,7 +60,7 @@
     "design/s31/security/PCS_FRI_PACKAGE_GEOMETRY.md": "2afb44501eda3fe0e1cf7d7653d2af9a73d486fe4f6cb50505ef10a370668f1d",
     "design/s31/security/PCS_FRI_POW_M31_PREDICATE.md": "e16a4fe8345b82afaaa486863db5528df5abadc916c4c6e0bd2fcc6b18303c1b",
     "design/s31/security/PCS_FRI_PUBLISHED_BOUND_AUDIT.md": "361ad4957d9bdff886ee53a7babd1bd4e7a4940653213df9086e8e3c10354cae",
-    "design/s31/security/PCS_FRI_STWO_UDR_FEASIBILITY.md": "0ae4e42e3004037bf9f0efc8c20b046c1db69d3d5e65908aecef60029498326c",
+    "design/s31/security/PCS_FRI_STWO_UDR_FEASIBILITY.md": "61c08eeb048f121c81598457c8c3293dddcd1e1c2bdb141680404cedf2098673",
     "design/s31/security/evidence/gate-native-fridomain-accepted-proof-2026-10-14.json": "4db7f96366696702b751d667263c52dd31a0af0288996e27cb5662d1aac580fa",
     "formal/s31/S31/Gadgets/Air/GatePublicInteraction.lean": "c4be2f2e83f1e6302177d936c502c82f5f710f69f38e5b222298d26e90693224",
     "formal/s31/S31/Gadgets/Air/NativeGateFinalizerBridge.lean": "bf98f2097447a4463aa2411a4b825ecec7993d8b6695a0c968c0e167f1caf8d0",
@@ -634,7 +634,7 @@
   "release": "v0.1.0",
   "schema": "s31-pcs-fri-v01-blockers-v1",
   "security_target": {
-    "adversary_hash_query_budget_T": null,
+    "adversary_hash_query_budget_T": 18446744073709551616,
     "metric": "paper_work_factor_epsilon_over_T",
     "paper_arithmetic": "scripts/release/pcs_fri_stwo_udr.py",
     "single_fold_ungrinded_query_necessity": {
@@ -646,7 +646,7 @@
       "raw_queries": 70,
       "scope": "hypothetical single-fold S-two unique-decoding theorem; zero proved grinding credit"
     },
-    "status": "target_metric_selected; deployment_T_and_native_bound_open",
+    "status": "target_metric_and_T_selected; native_bound_open",
     "target_bits": 96
   },
   "source_visible_nominal_fri": {

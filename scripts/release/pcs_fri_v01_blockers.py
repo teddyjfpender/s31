@@ -205,8 +205,8 @@ def matrix(root: Path = ROOT) -> dict[str, object]:
         "security_target": {
             "metric": "paper_work_factor_epsilon_over_T",
             "target_bits": 96,
-            "adversary_hash_query_budget_T": None,
-            "status": "target_metric_selected; deployment_T_and_native_bound_open",
+            "adversary_hash_query_budget_T": 1 << 64,
+            "status": "target_metric_and_T_selected; native_bound_open",
             "paper_arithmetic": "scripts/release/pcs_fri_stwo_udr.py",
             "single_fold_ungrinded_query_necessity": ungrinded_udr_query_necessity(
                 NOMINAL_FRI["log_blowup_factor"], NOMINAL_FRI["raw_queries"], 96),
