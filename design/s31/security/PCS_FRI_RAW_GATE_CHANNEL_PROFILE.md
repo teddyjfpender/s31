@@ -8,10 +8,21 @@ The legacy Gate profile continues to use `Blake2sM31MerkleChannel` and its
 existing proof and key formats. Raw Gate does not generate recursive or fold
 keys and rejects recursive or fold commands.
 
+**Security status:** ideal raw BLAKE2s draws remove the legacy modulo-bias
+factor for this version's fixed-prefix challenge sample. The native profile
+still uses 70 FRI queries, below the **232-query necessary arithmetic** for
+the selected `T=2⁶⁴`, 96-bit paper work-factor target in the illustrative
+single-point calculation. The P05 degree-correction, multi-domain FRI, and
+adaptive BCS joins remain open. This profile has **no proven release-security
+bit count**; 232 queries alone would not close those joins. See the
+[conservative-profile decision](PCS_FRI_CAS05_CONSERVATIVE_PROFILE_DECISION.md)
+and [query-scale probe](PCS_FRI_GATE_QUERY_SCALE_PROBE_2026-10-14.md).
+
 ## One fixed-prefix draw
 
-For a fixed transcript input, assume the raw 32-byte BLAKE2s output is eight
-independent uniform `u32` words. The channel rejects the **whole** block if
+For a fixed transcript prefix, assume each distinct draw-counter input yields
+an independent uniform raw 32-byte BLAKE2s block, containing eight independent
+uniform `u32` words. The channel rejects the **whole** block if
 any word is at least `2p`, where `p=2³¹−1`, increments its draw counter, and
 tries again. A retained word is uniform on `[0,2p)`. Every M31 residue has
 exactly two retained preimages (`r` and `r+p`), so the eight output residues,
@@ -38,6 +49,9 @@ transcripts. An attacker can select commitments and valid PoW continuations,
 and the number of tests and hash queries must be charged in a full theorem.
 The native PCS/FRI P07 and P09 blockers stay open; no native proven security
 bits follow from this profile alone.
+The current source-bound P02 Gate interaction diagnostic admits the legacy
+profile only; its source pin is refreshed, but it is not a raw-profile
+soundness certificate.
 
 ## Build and migration
 
@@ -56,3 +70,8 @@ Source anchors: `src/frontends/s31/build.zig`,
 `src/frontends/s31/runtime/native_verifier.zig`,
 `src/frontends/s31/runtime/mvp_runtime.zig`, and the pinned engine's
 `src/core/channel/blake2s.zig` and `src/core/vcs_lifted/channel_profile.zig`.
+In the pinned engine, `Blake2sChannelGeneric(false)` supplies the raw channel;
+`drawU32s` hashes with `Blake2sHasherGeneric(false)`, and `drawBaseFelts`
+checks **all eight** raw words against `2p` before calling `M31.fromU64`.
+`Blake2sMerkleChannelProfile` selects this channel when `m31_channel=false`
+while both profiles name the same `Blake2sPlainMerkleHasher`.

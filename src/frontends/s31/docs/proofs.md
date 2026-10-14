@@ -66,7 +66,7 @@ native verifier still decides proof acceptance.
 | `bin/s31-NAME-prover` | Program-specific witness construction and proving. |
 | `bin/s31-NAME-native-verifier` | Program-specific native proof checker. |
 | `verification-key.json` | Profile and PCS mode, program/canonical-IR hashes, circuit hash, preprocessed root, padded geometry, pinned AIR asset hashes, FRI parameters, optional chip parameters and blinding policy. |
-| `recursive-verification-key.json` | For `gate` and `sparse-wide-gate` packages: sealed outer verifier layout, root, hash, child-key digest and pinned AIR asset hashes. Sparse-wide key v3 also binds outer FRI fold step 4; its leaf defaults to step 1 and can be built with step 4. The native verifier embeds this key. |
+| `recursive-verification-key.json` | For legacy `gate` and `sparse-wide-gate` packages: sealed outer verifier layout, root, hash, child-key digest and pinned AIR asset hashes. Sparse-wide key v3 also binds outer FRI fold step 4; its leaf defaults to step 1 and can be built with step 4. The native verifier embeds this key. Raw Gate packages omit it. |
 | `recursive-verification-key-level2.json` | Sealed second wrapper layout and child-key digest for both recursive profiles. |
 | `fixed-fold-verification-key.json` | Sealed repeatable fold AIR and root. Gate v3 and sparse-wide v4 use the constrained `u32` counter; the wide key binds the second wrapper key and fourfold FRI schedule. The [worked fold](recursion-wide-fold.md) explains its claim and limits. |
 | `public-abi.json` | Named public inputs/outputs, kinds, lengths, eight-slot encoding. |

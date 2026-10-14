@@ -66,12 +66,16 @@ def run(raw: Path, legacy: Path, work: Path) -> None:
     raw_manifest = s31.verify_package(raw)
     legacy_manifest = s31.verify_package(legacy)
     raw_key = json.loads((raw / "verification-key.json").read_text())
+    legacy_key = json.loads((legacy / "verification-key.json").read_text())
     if (raw_manifest.get("channel_profile") != RAW or
             raw_key.get("channel_profile") != RAW or
             raw_key.get("schema") != "s31-verification-key-gate-raw-v1" or
             raw_key.get("profile") != "circuit-raw-v1" or
             legacy_manifest.get("channel_profile") is not None or
-            any("recursive" in name or "fold" in name for name in raw_manifest["artifacts"])):
+            any("recursive" in name or "fold" in name for name in raw_manifest["artifacts"]) or
+            raw_key["preprocessed_root"] != legacy_key["preprocessed_root"] or
+            raw_key["circuit_hash"] != legacy_key["circuit_hash"] or
+            raw_key["gate_component_roster_sha256"] == legacy_key["gate_component_roster_sha256"]):
         raise AssertionError("raw and legacy packages are not separately sealed")
     try:
         s31.build(SOURCE, work / "invalid-raw-step4", "gate", fri_fold_step=4,

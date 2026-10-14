@@ -21,6 +21,8 @@ class DegreeCorrectionTests(unittest.TestCase):
         self.assertFalse(report["native_nonquotient_degree_test_identified"])
         self.assertFalse(report["published_degree_corrected_nonquotient_premise_met"])
         self.assertFalse(report["p05_discharged"])
+        self.assertEqual(report["native_gate_epoch_trace_scope"], "legacy_direct_profile_only")
+        self.assertFalse(report["raw_gate_epoch_trace_evidenced"])
         self.assertEqual(
             [event["event"] for event in report["native_gate_epoch_trace"]],
             [name for name, _ in p05.GATE_EVENTS + p05.STARK_EVENTS + p05.PCS_EVENTS],
@@ -74,6 +76,11 @@ class DegreeCorrectionTests(unittest.TestCase):
             p05.native_gate_epoch_trace(changed)
 
     def test_release_matrix_rejects_unreviewed_positive_claim(self) -> None:
+        forged = p05.audit()
+        forged["raw_gate_epoch_trace_evidenced"] = True
+        with patch.object(blockers, "audit_degree_correction", return_value=forged):
+            with self.assertRaisesRegex(ValueError, "theorem status changed"):
+                blockers.matrix()
         forged = p05.audit()
         forged["p05_discharged"] = True
         with patch.object(blockers, "audit_degree_correction", return_value=forged):
