@@ -384,7 +384,15 @@ pub const Span = struct {
     blake_g_end: usize,
 };
 
-pub const AssertionSpan = struct { index: usize, qm31_start: usize, qm31_end: usize, eq_start: usize, eq_end: usize };
+pub const AssertionSpan = struct {
+    index: usize,
+    var_start: u32,
+    var_end: u32,
+    qm31_start: usize,
+    qm31_end: usize,
+    eq_start: usize,
+    eq_end: usize,
+};
 /// Packed wire addresses retained solely for bounded topology admission.
 pub const NodeWires = struct { id: u32, wires: []const u32 };
 pub const BindingSpan = struct {
@@ -949,12 +957,15 @@ fn compileWithSpansMode(comptime V: type, allocator: std.mem.Allocator, program:
     }
 
     for (ir.assertions, 0..) |assertion, index| {
+        const var_start = ctx.circuit.n_vars;
         const qm31_start = ctx.circuit.nQm31OpsRows();
         const eq_start = ctx.circuit.eq.items.len;
         try circuit.builder.simd.eq(V, &ctx, entries[assertion.lhs].lanes, entries[assertion.rhs].lanes);
         try checkCircuitBudget(V, &ctx, false);
         if (maps) |out| try out.assertions.append(allocator, .{
             .index = index,
+            .var_start = var_start,
+            .var_end = ctx.circuit.n_vars,
             .qm31_start = qm31_start,
             .qm31_end = ctx.circuit.nQm31OpsRows(),
             .eq_start = eq_start,
