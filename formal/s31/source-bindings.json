@@ -423,7 +423,7 @@
     "scripts/tests/test_pcs_fri_xdm04_audit_loop.py": "623aaecfd6c3260613f25373b899d72d96e7e011f962213582e89c114fb60c36",
     "src/frontends/s31/runtime/fri_merkle_admission.zig": "843b0cfc69007aff852a58cdbf9ef9a106e4dd1ea414e6b8ca085ba4d679198d",
     "src/frontends/s31/runtime/pcs_lifted_capture_admission.zig": "e6f787e5dbcc6fdb92f529e24ea892bf3da82d60db5665a26e828a71768bb3b3",
-    "formal/s31/tests/pcs_fri_raw_refinement_native.zig": "6bb8dd9bd12c4a1c6d8f74fe9408d5f9b66875970673ca03d2fae29b13bf1df5",
+    "formal/s31/tests/pcs_fri_raw_refinement_native.zig": "c71712f8ff57aeeb1f373a9c32e2589cc9fbf0f8ff518245f657649034f463ab",
     "formal/s31/tests/run_pcs_fri_raw_refinement_native.sh": "7b16b0e970ea4cdc3e3ac5b14c23f21980d25a52afc27bf85f754a1cbc12c3b6",
     "formal/s31/tests/pcs_fri_deep_custody_native.zig": "432419bfebc17c91aed7973179fa877b098612fdbeb01e49ec4d372d59989d93",
     "formal/s31/tests/run_pcs_fri_deep_custody_native.sh": "d08515f38ae6bf3d2b1247ee34838c025690dfa8c52087c39ea921115e04e108",
