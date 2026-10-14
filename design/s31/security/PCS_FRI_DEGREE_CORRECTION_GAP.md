@@ -150,7 +150,8 @@ for each height is an executable **candidate schedule**, not a proven match
 to the paper's cross-domain batching coefficients. The
 [small native control](../../../formal/s31/tests/pcs_fri_p05_multi_root_original_native.zig)
 constructs four separate two-level Merkle roots, two column heights, one
-projected query and one repeated raw query. It checks exact batch values and
+projection between heights, complete native source pairs, and one repeated raw
+query. It checks exact batch values and
 rejects a changed row, composition-tree path, projected position, or root.
 This establishes local **sampled original-row
 reconstruction only**. The own quotients, a paired multi-domain FRI, whole
@@ -198,3 +199,50 @@ compile-time profile dispatch while the 21 checked legacy direct-profile
 transcript events and the P05 negative conclusion remain unchanged. The
 report marks `raw_gate_epoch_trace_evidenced: false`: it does not promote the
 legacy event trace to the raw profile or claim an adaptive BCS theorem.
+
+The [experimental native-height first fold](../../../formal/s31/tests/lib/p05_native_height_pair_fold.zig)
+consumes that four-root capture and the same externally supplied claim roster.
+For each source column and each of its explicit or periodicity samples, it
+deduplicates authenticated projected positions, requires both members of every
+native source pair, recomputes the own quotient at the **source-height**
+circle point, and calls the pinned native `foldCircleIntoLineWithWorkspace`
+on the original pair and the quotient pair separately. For a pair of values
+`v₀,v₁`, native first-fold challenge `α`, and first point's circle coordinate
+`y`, the hand calculation is
+
+```text
+fold(v₀,v₁) = (v₀ + v₁) + α · (v₀ − v₁)/y.
+```
+
+The native source OOD point is `2^(L−h)·P` in circle-group notation, where
+`L` is the lifted PCS log size, `h` the source-column log size, and `P` the
+captured lifted OOD point. This matches the pinned prover's
+`sampled_coefficient_plans.zig:evaluateBarycentricSharedPoints`: shorter
+columns are actually sampled at the repeatedly doubled point. Using raw `P`
+for their source-height own quotient would pair a claim with the wrong point.
+The native control checks that the two alternatives produce different values
+for a short column and that the adapter uses the normalized one. It also checks
+that a low-height periodicity shift normalizes to the same source OOD point;
+the periodicity word nevertheless retains its separate transcript identity.
+
+For example, a source-height-2 column with bit-reversed values
+`[10,11,12,13]` has two native pairs: `(10,11)` and `(12,13)`. Their original
+folds are `21 − α/y₀` and `25 − α/y₂`, where `y₀` and `y₂` belong to the
+respective first points in the circle domain. Each owned quotient is evaluated
+at those same native-height points and folded by the same formula. A diagnostic
+`fold(original) + β·fold(own_quotient)` is exposed per sample. It is **not** a
+defined transcript schedule or a legal cross-sample accumulator: the original
+fold repeats for a multi-sample column and must be counted only once in any
+future theorem-mapped batch.
+
+The [native control](../../../formal/s31/tests/pcs_fri_p05_multi_root_original_native.zig)
+compares every sparse verifier fold to a full dense prover fold at both source
+heights, including all three composition sample words, and checks the above
+equation independently. A locally mutated constant codeword changes its zero
+own quotient into a nonzero first fold; this is a degree **diagnostic**, not a
+proof-acceptance test. A capture missing one authenticated pair member fails
+closed. The four source commitment epochs are untouched. A production profile
+still needs authenticated companion openings for ordinary sparse random
+queries, a transcript-bound coefficient schedule, prover commitments to the
+paired multi-domain folds, and the theorem joining original/quotient degree
+tests and native lifted-row agreement. P05 admission remains false.

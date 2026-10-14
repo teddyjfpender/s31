@@ -34,6 +34,10 @@ pub const OwnQuotientWord = struct {
     source_log_size: u32,
     sample_index: usize,
     kind: SampleKind,
+    /// OOD pair owned by this exact source-column sample. Periodicity uses
+    /// the shifted second point with the same claimed value.
+    point: CirclePointQM31,
+    claim: QM31,
     /// Exact projected source position for every raw lifted query.
     projected_positions: []usize,
     /// Authenticated source value and its own two-point quotient at the
@@ -129,6 +133,8 @@ fn appendWord(
         .source_log_size = log,
         .sample_index = sample,
         .kind = kind,
+        .point = point,
+        .claim = claim,
         .projected_positions = positions,
         .original_values = originals,
         .quotient_values = quotients,
