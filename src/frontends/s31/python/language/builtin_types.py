@@ -139,6 +139,19 @@ def infer_builtin(name: str, generic: int | None, args: tuple[SourceType, ...],
         require(all(isinstance(term, Type) and term == function.params[0] for term in terms),
                 "std::array::map requires equally typed circuit values matching its function")
         return StaticArray(tuple(function.result for _ in terms))
+    if name == "std::array::fold":
+        static_parameter(name, generic)
+        arity(name, args, 3)
+        function, initial, array = args
+        accumulator = circuit(initial)
+        terms = group(array, name)
+        require(isinstance(function, FunctionType) and len(function.params) == 2 and
+                function.params[0] == accumulator and function.result == accumulator and
+                isinstance(function.params[1], Type),
+                "std::array::fold requires a (accumulator, element) -> accumulator function")
+        require(all(isinstance(term, Type) and term == function.params[1] for term in terms),
+                "std::array::fold requires equally typed circuit elements matching its function")
+        return accumulator
     if name in {"std::array::get", "std::array::take", "std::array::drop", "std::array::reshape"}:
         count = static_parameter(name, generic, required=True)
         arity(name, args, 1)

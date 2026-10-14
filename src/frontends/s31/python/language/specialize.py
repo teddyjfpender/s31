@@ -366,6 +366,24 @@ class Compiler:
                         raise TypeErrorS31("std::array::map function must return a circuit value")
                     result.append(mapped)
                 return StaticGroup(tuple(result))
+            if name == "std::array::fold":
+                if expr.generic is not None or len(expr.args) != 3:
+                    raise TypeErrorS31("std::array::fold(function, initial, static_array) expected")
+                function, accumulator, source = (self.eval_expr(arg, env) for arg in expr.args)
+                if (not isinstance(function, (StaticClosure, StaticNamedFunction)) or
+                        not isinstance(accumulator, Value) or not isinstance(source, StaticGroup) or
+                        not 1 <= len(source.elements) <= 64):
+                    raise TypeErrorS31("std::array::fold requires a circuit accumulator and 1..64 static array terms")
+                for index, item in enumerate(source.elements):
+                    if not isinstance(item, Value):
+                        raise TypeErrorS31("std::array::fold requires first-order circuit elements")
+                    result_name = wanted if index == len(source.elements) - 1 else None
+                    accumulator = (self.call_function(function.name, (accumulator, item), result_name, expr)
+                                   if isinstance(function, StaticNamedFunction) else
+                                   self.call_closure(function, (accumulator, item), result_name, expr))
+                    if not isinstance(accumulator, Value):
+                        raise TypeErrorS31("std::array::fold function must return a circuit value")
+                return accumulator
             if name == "std::array::concat":
                 if expr.generic is not None or len(expr.args) != 2:
                     raise TypeErrorS31("std::array::concat(a,b) expected")

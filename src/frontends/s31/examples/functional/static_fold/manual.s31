@@ -1,0 +1,8 @@
+use std@1;
+
+circuit horner(private x: [m31; 4], private a: [m31; 4],
+    private b: [m31; 4], private c: [m31; 4]) -> public [m31; 4] {
+    let first = a .* x + b;
+    let out = first .* x + c;
+    out
+}

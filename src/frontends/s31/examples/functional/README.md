@@ -19,6 +19,11 @@ proof under the bounded direct-Gate correspondence certificate.
 | [`release_optimized4`](release_optimized4/README.md) | Checked commutative gate sharing with both results used. |
 | [`release_functional_cse4`](release_functional_cse4/README.md) | Two live pure helper calls share the same four-gate circuit. |
 | [`pattern_parameters`](pattern_parameters/README.md) | Product destructuring in function parameters. |
+| [`static_fold`](static_fold/README.md) | Captured Horner left fold with exactly the handwritten canonical IR and native AIR geometry. |
+
+The static fold uses the ordinary text frontend and native proof acceptance;
+the bounded independent direct-Gate release certificate does not yet cover
+this combinator.
 
 [`reshape_flatten_zero_cost`](reshape_flatten_zero_cost/README.md) measures a
 runtime three-row reshape and flatten against a direct selection and an

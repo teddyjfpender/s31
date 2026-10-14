@@ -203,6 +203,7 @@ zero-row view for byte and integer operations.
 | `std::math::lt_u32(a,b)` | `u32_lt` | Strict unsigned comparison of two little-endian `[u16; 2]` values; Boolean M31 result. |
 | `std::array::get<K>(array)` | Static reference selection, or `array_get` for a runtime array | Literal `K` lies inside the array; runtime element type is m31 or u16. |
 | `std::array::map(function, static_array)` | Source-only specialization of one unary call per element; no map relation node | 1–64 equally typed first-order values; the function returns a first-order value. Partial effects remain eager and visible to conditional checking. |
+| `std::array::fold(step, initial, static_array)` | Source-only left fold; no fold relation node | `step` has type `(A, X) -> A`, `initial: A`, and 1–64 equally typed first-order `X` values. Function, seed, and elements evaluate once before step calls; partial step and element effects remain visible to conditional checking. |
 | `std::array::concat(a,b)` | Static reference concatenation, or `array_concat` for runtime arrays | Both arguments are static groups or both are arrays with the same m31/u16 element type; runtime result length at most 4096. |
 | `std::array::take<K>(array)` | Static reference prefix, or runtime `array_slice` with offset 0 and length `K` | Leaves 1..N elements; a full runtime prefix aliases the input. |
 | `std::array::drop<K>(array)` | Static reference suffix, or runtime `array_slice` with offset `K` and length `N-K` | Leaves 1..N elements; dropping zero aliases the input. |
