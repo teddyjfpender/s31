@@ -25,7 +25,7 @@ COUNTS = [329, 0, 5, 0]
 def run_native(source: Path, assignment: Path, proof: Path, statement: Path,
                *, root: Path = ROOT) -> dict[str, object]:
     command = ["zig", "build", "--build-file", "scripts/compiler/control_claim_trace/build.zig",
-               "audit", "-Doptimize=ReleaseFast", "-j4", "--",
+               "audit", "-Doptimize=ReleaseSafe", "-j4", "--",
                str(source), str(assignment), str(proof), str(statement)]
     result = subprocess.run(command, cwd=root, capture_output=True, text=True,
                             check=False, timeout=240)

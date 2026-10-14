@@ -359,7 +359,7 @@
     "scripts/tests/test_control_public_statement_audit.py": "d65c66193409d30c66ab1ab795429bb70b4a6ce1a0ff7c0ae8ec912be891dc40",
     "scripts/compiler/control_gate_pin_roster_audit.py": "e3604c95c051d3f7e2fa32c6efd970881ab6ccd65afd2803039accf16d4dc8a0",
     "scripts/tests/test_control_gate_pin_roster_audit.py": "5361db465052eb5722064b888d359a1dbd5ef412e232a9c020591ba7ad1f55b0",
-    "scripts/compiler/control_claim_trace_audit.py": "3bbf1bf3009a9c3eab3a35b35fa00730642be1a49b105ffee3393a6b2b9c5155",
+    "scripts/compiler/control_claim_trace_audit.py": "cf84f027c362a549dd33c94b130579b17cc76630cd3ad2a739718facd2413887",
     "scripts/compiler/control_claim_trace_controls.py": "8179d3c2772c0427917c1a386579d15c9e2acf15351f21bc1a85e7a240ebee67",
     "scripts/compiler/control_claim_trace/main.zig": "09140cac274692a9b999cfe5c7fbcdc04b090d12fefb33e29a7ba33d0741073e",
     "scripts/compiler/control_claim_trace/build.zig": "56184871dcca8ff7c2f948352abebce1f8d3bb3aa622ddfa2b22870fb9e57530",
