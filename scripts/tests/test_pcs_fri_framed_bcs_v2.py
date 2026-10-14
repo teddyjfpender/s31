@@ -6,13 +6,85 @@ import hashlib
 import unittest
 
 from scripts.release.pcs_fri_framed_bcs_v2 import (
-    DOMAIN, HEADER_BYTES, M31_MODULUS, Role, absorb_field, absorb_nonce,
+    CHALLENGE_BLOCK_CAP, DOMAIN, HEADER_BYTES, M31_MODULUS, Role, StatementBinding,
+    absorb_field, absorb_nonce,
     absorb_root, candidate_paired_gate_plan, frame, hash_frame, merkle_leaf, merkle_parent, parse_frame,
+    canonical_m31_block, draw_challenge_m31_limbs, initial_digest,
     pow_trial, raw_words, report, tree_context,
 )
 
 
 class FramedBcsV2Tests(unittest.TestCase):
+    def test_statement_binding_exact_bytes_and_first_digest(self) -> None:
+        zero = bytes(32)
+        statement = StatementBinding(zero, zero, zero, (zero, zero, zero, zero), zero)
+        payload = statement.encode()
+        self.assertEqual(payload, b"S31NAT9F" + bytes(256))
+        self.assertEqual(len(payload), 264)
+        self.assertEqual(initial_digest(statement).hex(),
+                         "667b272f99f769be23d49cd20b59b07c31cbaa64cdb21243be1a3ba533117f7b")
+        root = bytes(range(32))
+        self.assertEqual(absorb_root(initial_digest(statement), 1, root).hex(),
+                         "ded398cba3dcfbc1d7bc7f3665095df4592783b9b959f178e7c83c90e6a0bf22")
+        with self.assertRaises(ValueError):
+            StatementBinding(zero, zero, zero, (zero, zero, zero), zero).encode()  # type: ignore[arg-type]
+        with self.assertRaises(ValueError):
+            StatementBinding(zero, zero, zero, (zero, zero, zero, b"x"), zero).encode()
+
+    def test_challenge_rejection_consumes_exact_counter_blocks(self) -> None:
+        bad = (2 * M31_MODULUS, 0, 0, 0, 0, 0, 0, 0)
+        good = (0, M31_MODULUS, 1, M31_MODULUS + 1,
+                2, M31_MODULUS + 2, 3, M31_MODULUS + 3)
+        self.assertIsNone(canonical_m31_block(bad))
+        self.assertEqual(canonical_m31_block(good), (0, 0, 1, 1, 2, 2, 3, 3))
+        seen: list[int] = []
+
+        def rejected_once(_digest: bytes, _event: int, counter: int) -> tuple[int, ...]:
+            seen.append(counter)
+            return bad if counter == 0 else good
+
+        limbs, next_counter = draw_challenge_m31_limbs(bytes(32), 17, oracle=rejected_once)
+        self.assertEqual(limbs, (0, 0, 1, 1, 2, 2, 3, 3))
+        self.assertEqual((next_counter, seen), (2, [0, 1]))
+        self.assertEqual(CHALLENGE_BLOCK_CAP, 8)
+        with self.assertRaisesRegex(ValueError, "cap exhausted"):
+            draw_challenge_m31_limbs(bytes(32), 17,
+                                     oracle=lambda _d, _e, _c: bad)
+
+    def test_full_candidate_event_plan_has_native_golden_digest(self) -> None:
+        zero = bytes(32)
+        digest = initial_digest(StatementBinding(zero, zero, zero,
+                                                 (zero, zero, zero, zero), zero))
+        expected_challenges = {
+            8: 1822750541, 11: 640893609, 13: 1454020928,
+            15: 590385924, 16: 1174171810, 19: 452219042,
+        }
+        prefix_event: int | None = None
+        for step in candidate_paired_gate_plan((17, 16))[1:]:
+            event = step.event
+            if step.role is Role.ROOT_ABSORB:
+                digest = absorb_root(digest, event, bytes([event]) * 32)
+            elif step.role is Role.FIELD_ABSORB:
+                digest = absorb_field(digest, event, (0, 1, 2, 3))
+            elif step.role is Role.POW_PREFIX:
+                prefix_event = event
+            elif step.role is Role.POW_TRIAL:
+                if prefix_event is None:
+                    self.fail("PoW trial lacks a prefix event")
+                self.assertEqual(event, prefix_event + 1)
+                self.assertEqual(len(pow_trial(digest, prefix_event, event, 0, 0)), 32)
+            elif step.role is Role.NONCE_ABSORB:
+                digest = absorb_nonce(digest, event, 0)
+            elif step.role is Role.RAW_WORD_DRAW:
+                if step.name == "raw_queries":
+                    self.assertEqual(raw_words(digest, event, 0)[0], 1533884970)
+                else:
+                    limbs, next_counter = draw_challenge_m31_limbs(digest, event)
+                    self.assertEqual((limbs[0], next_counter),
+                                     (expected_challenges[event], 1))
+        self.assertEqual(digest.hex(),
+                         "84bbf452bd2097fe94c0310fe2030f5ff985fb52fa1d9dc8cbeedc2af9ed464f")
+
     def test_exact_frame_bytes_and_canonical_parser(self) -> None:
         expected = (b"S31BCS2\x02" + b"\x02" + bytes(7) +
                     b"\x03" + bytes(7) + b"\xaa\xbb")
