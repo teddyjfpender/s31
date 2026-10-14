@@ -28,6 +28,7 @@ ENGINE_SHA256 = {
     "deps/stwo-zig/src/core/channel/blake2s.zig": "fe0598dd15f70cc84b7098684b6a6f2e0ec319c4f7b5390c3ccd5f781ca32fc1",
     "deps/stwo-zig/src/core/vcs/blake2_hash.zig": "5600b1d1af9730403bb759b0dd4d7463efa5772cc2d95c567bd26c9d5315b1f0",
     "deps/stwo-zig/src/core/vcs_lifted/channel_profile.zig": "93d77873303bdb149114d7222f60b84065b0fcb41bda556ce1b0c0a78dea0a0f",
+    "deps/stwo-zig/src/core/vcs_lifted/blake2_merkle.zig": "5c5da473db0ab9539ff12db3d1f244cab615741f2f96f66af3a5caaf3388e102",
     "deps/stwo-zig/src/core/queries.zig": "68e13fbb48c0cd684b94198c5452e003984237a2fe2000dd332ac57234328bce",
     "deps/stwo-zig/src/core/pcs/verifier.zig": "e119335172e17db5fd1345f476c7f6ad7fdf67e394a5b18d5c2085e892ffe3d5",
     "deps/stwo-zig/src/core/fri.zig": "5f84501d1ffbaf5d33d6f7063bea7e6fd88a4cb65140ff360b75cb11f812121f",
@@ -242,6 +243,21 @@ def audit_source_shapes(frontend: str, runtime: str, engine: dict[str, str]) -> 
         raise ValueError("PoW predicate changed")
     if "if (is_m31_output) out = reduceToM31(out);" not in engine["deps/stwo-zig/src/core/vcs/blake2_hash.zig"]:
         raise ValueError("raw hash selector changed")
+    merkle = engine["deps/stwo-zig/src/core/vcs_lifted/blake2_merkle.zig"]
+    if "pub const MerkleHasher = blake2_merkle.Blake2sPlainMerkleHasher;" not in engine[
+            "deps/stwo-zig/src/core/vcs_lifted/channel_profile.zig"]:
+        raise ValueError("raw plain Merkle profile changed")
+    root_mix = region(merkle, "pub fn mixRoot(", "pub const Blake2sMerkleChannel =")
+    ordered_once(root_mix, "unframed root absorption",
+                 "const digest = channel.digestBytes();",
+                 "blake2_hash.Blake2sHasherGeneric(is_m31_output).concatAndHash(digest, root)")
+    parent = region(merkle, "pub fn hashChildrenWithMode(", "pub fn domainPrefixBytes(")
+    if "return InnerHasher.concatAndHashWithMode(mode, children.left, children.right);" not in parent:
+        raise ValueError("plain Merkle parent hash changed")
+    leaf = region(merkle, "pub fn updateLeaf(self:", "pub fn finalize(self:")
+    ordered_once(leaf, "unframed canonical M31 leaf",
+                 "self.inner.update(std.mem.sliceAsBytes(column_values));",
+                 "const value_bytes = column_values[at + i].toBytesLe();")
     if "QM31.fromU32Unchecked(self.pow_bits, self.log_blowup_factor, self.n_queries, self.log_last_layer_degree_bound)" not in engine["deps/stwo-zig/src/core/pcs/config_v2.zig"]:
         raise ValueError("FRI config absorption changed")
 
@@ -272,6 +288,13 @@ def report(root: Path = ROOT) -> dict:
     # drawBaseFelts; drawQueries consumes unreduced words with no rejection.
     block_accept = Fraction(2 * P, 1 << 32) ** 8
     collision_work_factor = Fraction(3 * (T * T + 1), (1 << 256) * T)
+    def paper_collision_work_factor(bits: int) -> Fraction:
+        return Fraction(3 * (T * T + 1), (1 << bits) * T)
+
+    minimum_collision_bits = next(bits for bits in range(1, 257)
+                                  if paper_collision_work_factor(bits) <= TARGET)
+    if minimum_collision_bits != 162:
+        raise AssertionError("selected paper-only collision threshold changed")
     if not collision_work_factor < Fraction(1, 1 << 126):
         raise AssertionError("hypothetical 256-bit paper collision term changed")
     transcript = fixture()
@@ -305,6 +328,24 @@ def report(root: Path = ROOT) -> dict:
             "collision_work_factor_exact": exact(collision_work_factor),
             "collision_work_factor_below_2_pow_minus_126": True,
             "applies_to_native_verifier": False,
+        },
+        "hypothetical_paper_collision_threshold": {
+            "collision_term_only_minimum_lambda_bits": minimum_collision_bits,
+            "work_factor_at_lambda_161_exact": exact(paper_collision_work_factor(161)),
+            "work_factor_at_lambda_162_exact": exact(paper_collision_work_factor(162)),
+            "other_round_error_budget_at_lambda_162_exact":
+                exact(TARGET - paper_collision_work_factor(162)),
+            "native_lambda_bits": None,
+            "applies_to_native_verifier": False,
+        },
+        "unframed_hash_input_role_overlap": {
+            "root_absorb_equals_plain_merkle_parent_at_same_digest_and_root": True,
+            "root_absorb_equals_two_qm31_absorb_for_canonical_root_limbs": True,
+            "canonical_32_byte_roots_count": P ** 8,
+            "canonical_32_byte_roots_fraction_exact": exact(Fraction(P ** 8, 1 << 256)),
+            "sixteen_m31_word_leaf_has_parent_message_length": True,
+            "domain_separated_BCS_encoding_proved": False,
+            "accepted_proof_attack_demonstrated": False,
         },
         "unbounded_rejection_before_query_epoch": True,
         "draw_counter_fails_before_wrap": True,

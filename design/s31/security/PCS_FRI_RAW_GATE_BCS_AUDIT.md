@@ -16,7 +16,7 @@ bash formal/s31/tests/run_pcs_fri_raw_gate_bcs_transcript_native.sh
 ```
 
 The second command exits 2. The diagnostic requires the exact pinned engine
-gitlink and ten reviewed engine-file SHA-256 values. It checks the S31
+gitlink and eleven reviewed engine-file SHA-256 values. It checks the S31
 prover/verifier profile dispatch and source event order, then reports hashes
 of the two S31 runtime files actually inspected. A changed reviewed engine
 file or removed/reordered source stage rejects. These are source checks; they
@@ -128,6 +128,42 @@ still account for untagged root/field absorption inputs, reused hash roles,
 adaptive commitments, both nonce searches, rejected blocks, Merkle hashing,
 and the total adversarial budget. The bound is therefore marked
 `applies_to_native_verifier=false` in the report.
+
+At `T=2^64`, the paper collision term **alone** meets the chosen work-factor
+target exactly when the hypothetical uniform hash-output width is at least
+162 bits: at 161 bits it is above `2^-96`, and at 162 bits it is strictly
+below. The diagnostic checks both comparisons using exact fractions and
+reports the remaining round-error budget at 162 bits. This does not assign
+`lambda=162` or `lambda=256` to the native verifier. In particular, the
+separate M31-reduced channel has at most `p^8` output states and a nonuniform
+output distribution; its security cannot be read from the raw digest size.
+
+## A concrete byte-encoding obstruction
+
+The selected raw channel and plain Merkle hasher reuse BLAKE2s without role
+tags. For any 32-byte `d` and `r`, the source computes both a channel root
+absorption and a Merkle parent from the same input bytes:
+
+```text
+channel.mixRoot at digest d, root r:  BLAKE2s(d || r)
+Merkle parent with children d, r:    BLAKE2s(d || r)
+```
+
+Likewise, if each of the eight little-endian `u32` limbs of `r` is below
+`p=2^31-1`, `mixRoot(r)` and `mixFelts(two QM31 values encoded by r)`
+send identical bytes to BLAKE2s at the same digest. There are exactly `p^8`
+such 32-byte strings among `2^256` possible strings. A plain Merkle leaf of
+16 M31 words is also 64 bytes, the parent input length. The
+[Lean input equalities](../../../formal/s31/S31/Gadgets/PcsFri/RawGateBcsRoleOverlap.lean)
+and focused byte tests establish only these encoding overlaps. They do not
+construct two accepted Merkle paths or a forged STARK proof.
+
+This is an explicit counterexample to treating the existing hash-call roles
+as automatically domain separated. A native BCS proof must work with these
+shared input bytes, establish reachable-stage separation, or move to a
+separately versioned domain-separated transcript and Merkle profile. The
+published `3(T^2+1)/2^lambda` expression cannot simply be assigned
+`lambda=256` on the basis of the BLAKE2s output width.
 
 P07 and P09 remain open for five concrete reasons:
 

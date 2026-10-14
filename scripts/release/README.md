@@ -150,6 +150,9 @@ barriers, whole-block rejection and nine raw query hash blocks. Its
 [security review](../../design/s31/security/PCS_FRI_RAW_GATE_BCS_AUDIT.md)
 separates exact fixed-prefix counts and hypothetical 256-bit paper collision
 arithmetic from the still-open native adaptive BCS and P09 bound.
+It also source-pins the raw channel/plain Merkle hash-input role overlap and
+the exact paper-only 162-bit collision-term threshold at `T=2^64`. Neither
+assigns a native collision width or establishes the adaptive reduction.
 `--require-adaptive-bcs` fails closed.
 
 ## Formal receipt
