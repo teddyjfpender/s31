@@ -99,8 +99,8 @@ OBLIGATIONS = (
         "gap_kind": "unproven_native_and_random_oracle_refinement",
         "published_requirement": "Circle STARKs Theorem 6 query term assumes a fixed good set and independent uniform positions; native M31 masking must be accounted for",
         "published_anchor": CIRCLE + "#appendix-B",
-        "partial_evidence": ["formal/s31/S31/Gadgets/PcsFri/M31MaskedQuery.lean", "formal/s31/S31/Gadgets/PcsFri/M31WordReduction.lean", "formal/s31/S31/Gadgets/PcsFri/NativeQueryBatch.lean", "formal/s31/tests/pcs_fri_native_query_batch.zig", "formal/s31/tests/run_pcs_fri_native_query_batch.sh", "scripts/s31_formal_lib/pcs_fri_m31_query.py", "scripts/tests/test_pcs_fri_m31_query.py", "design/s31/security/PCS_FRI_M31_MASKED_QUERY_DISTRIBUTION.md"],
-        "missing_discharge": "prove all-input compiled Zig-to-Lean sampler refinement, derive a fixed good set from the native committed oracle before each draw, and connect ideal raw-word independence to the native channel",
+        "partial_evidence": ["formal/s31/S31/Gadgets/PcsFri/M31MaskedQuery.lean", "formal/s31/S31/Gadgets/PcsFri/M31WordReduction.lean", "formal/s31/S31/Gadgets/PcsFri/NativeQueryBatch.lean", "formal/s31/S31/Gadgets/PcsFri/FramedExactWord.lean", "formal/s31/tests/pcs_fri_native_query_batch.zig", "formal/s31/tests/run_pcs_fri_native_query_batch.sh", "scripts/s31_formal_lib/pcs_fri_m31_query.py", "scripts/tests/test_pcs_fri_m31_query.py", "design/s31/security/PCS_FRI_M31_MASKED_QUERY_DISTRIBUTION.md", "design/s31/security/PCS_FRI_FRAMED_EXACT_WORD.md"],
+        "missing_discharge": "prove all-input compiled Zig-to-Lean sampler refinement for both selected legacy and unselected framed modes, derive a fixed good set from the native committed oracle before each draw, and connect ideal raw-word independence to the native channel; the framed exact-preimage theorem is finite arithmetic only",
     },
     {
         "id": "P09_COMPLETE_ERROR_LEDGER",
