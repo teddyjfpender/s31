@@ -60,11 +60,9 @@ class SparsePaperEnsembleTests(unittest.TestCase):
         })
         repeated_height_17 = result["conditional_ensembles"][
             "joint_multi_Q_repeated_original"]["domains"][0]["words"]
-        column_20 = [w for w in repeated_height_17 if w["source_ref"] == [2, 20]]
-        self.assertEqual([w["role"] for w in column_20],
-                         ["original", "native_own_quotient_candidate"] * 2)
-        self.assertEqual([w.get("paired_claim_index", w.get("claim_index"))
-                          for w in column_20], [57, 57, 58, 58])
+        column_20 = [w for w in repeated_height_17 if w.split("/")[1:3] == ["2", "20"]]
+        self.assertEqual(column_20,
+                         ["f/2/20/57", "q/2/20/57", "f/2/20/58", "q/2/20/58"])
         self.assertIsNone(result["native_to_paper_batch_width_M"])
         self.assertIsNone(result["native_proven_security_bits"])
         self.assertFalse(result["proven_release_admissible"])

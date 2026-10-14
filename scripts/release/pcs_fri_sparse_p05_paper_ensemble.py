@@ -33,17 +33,15 @@ def point(claim: dict[str, object]) -> tuple[tuple[int, ...], tuple[int, ...]]:
     return tuple(claim["point_x_limbs"]), tuple(claim["point_y_limbs"])
 
 
-def original(root: int, column: int, claim_index: int) -> dict[str, object]:
-    return {"role": "original", "source_ref": [root, column],
-            "paired_claim_index": claim_index}
+def original(root: int, column: int, claim_index: int) -> str:
+    return f"f/{root}/{column}/{claim_index}"
 
 
-def quotient(root: int, column: int, claim_index: int) -> dict[str, object]:
-    return {"role": "native_own_quotient_candidate", "source_ref": [root, column],
-            "claim_index": claim_index}
+def quotient(root: int, column: int, claim_index: int) -> str:
+    return f"q/{root}/{column}/{claim_index}"
 
 
-def ensemble(words: dict[int, list[dict[str, object]]]) -> dict[str, object]:
+def ensemble(words: dict[int, list[str]]) -> dict[str, object]:
     domains = [{"native_extended_log_size": height, "words": words[height],
                 "conditional_M_i": len(words[height])} for height in HEIGHTS]
     return {"mapping_status": "conditional_occupancy_not_native_to_paper_refinement",
@@ -131,6 +129,7 @@ def derive(evidence: dict[str, object]) -> dict[str, object]:
             "conjugate_note": "Section 4.5 p. 37: Q and Frobenius conjugate quotient; details omitted, soundness said to carry over; Q excluded from C(CM31)",
             "paper_url": "https://eprint.iacr.org/2026/532.pdf",
         },
+        "word_ref_encoding": "f/root/column/paired_claim_index or q/root/column/claim_index; q is a candidate native own quotient, not Eq. (77) admission",
         "accepted_point_partition": {
             "base_point_x_limbs": list(base[0]),
             "base_point_y_limbs": list(base[1]),
