@@ -50,8 +50,9 @@ bounds input bytes to 8 MiB, variables to 262144, and projected gates to
 262144. It does **not** validate the deeper content of other fields, including
 full QM31 multiplication, Eq, input conversion, finalization, or padded AIR
 rows. The separate Python topology/witness audit handles those fields for
-bounded assignments, including source-pinned allocation/packing and public
-`outputWord` conversion replay. Lean JSON parsing does not establish that the exporter
+bounded assignments, including source-pinned input packing, source-node,
+assertion, public conversion, and constant-finalization replay. Lean JSON
+parsing does not establish that the exporter
 emitted these particular bytes or rule out alternate JSON spellings with the
 same parsed object.
 
@@ -61,8 +62,9 @@ Theorems in this module establish a semantic statement about supplied bytes
 and values. A production correspondence result still needs to show that:
 
 1. the installed Zig compiler and its source-map export produced the bytes
-   checked here, with the same checked SSA source and the exact input/binding
-   conversion spans independently replayed by the bounded Python audit;
+   checked here, with the same checked SSA source and exact input, source-node,
+   assertion, public binding, and finalization spans independently replayed
+   by the bounded Python audit;
 2. each projected wire value and fixed gate cell is authenticated against the
    committed AIR trace, including the source-to-gate ownership of compiler
    aliases and folds; and

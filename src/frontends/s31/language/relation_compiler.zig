@@ -372,6 +372,8 @@ pub fn compileRaw(comptime V: type, allocator: std.mem.Allocator, program: relat
 
 pub const Span = struct {
     id: u32,
+    var_start: u32,
+    var_end: u32,
     qm31_start: usize,
     qm31_end: usize,
     eq_start: usize,
@@ -661,6 +663,7 @@ fn compileWithSpansMode(comptime V: type, allocator: std.mem.Allocator, program:
         }
     }
     for (ir.nodes, entries, 0..) |node, *entry, id| {
+        const var_start = ctx.circuit.n_vars;
         const qm31_start = ctx.circuit.nQm31OpsRows();
         const eq_start = ctx.circuit.eq.items.len;
         const xor_start = ctx.circuit.triple_xor.items.len;
@@ -935,6 +938,8 @@ fn compileWithSpansMode(comptime V: type, allocator: std.mem.Allocator, program:
         }
         if (maps) |out| try out.nodes.append(allocator, .{
             .id = @intCast(id),
+            .var_start = var_start,
+            .var_end = ctx.circuit.n_vars,
             .qm31_start = qm31_start,
             .qm31_end = ctx.circuit.nQm31OpsRows(),
             .eq_start = eq_start,

@@ -15,7 +15,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 PINNED_SOURCES = {
     "src/frontends/s31/language/relation_compiler.zig":
-        "2d69107c2039a57d41cb5486a4a891788190b124df8438c72b5f436119bd2591",
+        "9004eb71f4060fcf2391e721c0e5afd7ad519a43007e951ae29c59e276588d4d",
     "deps/stwo-zig/src/frontends/circuit/builder/simd.zig":
         "4a0f480064056a7c7a87110666fce4d93a3d147d72dd7e6be8de184b75d78220",
     "deps/stwo-zig/src/frontends/circuit/builder/wrappers.zig":
@@ -73,6 +73,7 @@ def check_input_packing(graph: dict, raw: dict[str, bytes], inputs: list[dict]) 
         require(canonical_id == id_ and canonical_id < len(spans),
                 "input canonical order differs")
         span = spans[canonical_id]
+        var_start = cursor
         require(span["qm31_start"] == arithmetic_cursor and
                 span["eq_start"] == span["eq_end"] == 0,
                 "input span starts at wrong gate cursor")
@@ -115,6 +116,8 @@ def check_input_packing(graph: dict, raw: dict[str, bytes], inputs: list[dict]) 
                     "public packed input address differs")
             arithmetic_cursor += 2 * (len(words) - 1)
 
+        require(span["var_start"] == var_start and span["var_end"] == cursor,
+                "input variable allocation span differs")
         require(span["qm31_end"] == arithmetic_cursor,
                 "input span contains extra or missing gates")
 
