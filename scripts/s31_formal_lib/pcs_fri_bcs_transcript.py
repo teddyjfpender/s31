@@ -168,7 +168,7 @@ def fixture() -> dict[str, object]:
 def audit_sources(frontend: str, verifier: str, pcs: str, fri: str,
                   channel: str, merkle: str, lookup: str, config: str,
                   queries: str, profile: str, profile_alias: str,
-                  hash_source: str) -> None:
+                  hash_source: str, m31_source: str, qm31_source: str) -> None:
     direct = region(frontend, "fn verifyDirectProfile(", "fn sparseLogs(")
     ordered_once(direct, "direct Gate transcript",
                  "var channel = MC.Channel{};",
@@ -261,6 +261,31 @@ def audit_sources(frontend: str, verifier: str, pcs: str, fri: str,
           "return prefixed_hasher.finalize();")),
     ):
         ordered_once(region(channel, start, end), label, *stages)
+    draw = region(channel, "pub fn drawU32s(", "pub fn drawSecureFelt(")
+    if "pub const Digest32 = [32]u8;" not in channel:
+        raise ValueError("channel digest width changed")
+    if channel.count("var hash_input: [37]u8 = undefined;") != 1:
+        raise ValueError("query preimage buffer count changed")
+    ordered_once(draw, "exact 37-byte query preimage",
+                 "var hash_input: [37]u8 = undefined;",
+                 "@memcpy(hash_input[0..32], self.digest[0..]);",
+                 "@memcpy(hash_input[32..36], counter[0..]);",
+                 "hash_input[36] = 0;",
+                 "const hash = hashBytes(hash_input[0..]);")
+    # Each absorption payload is a whole number of 32-bit words. This is
+    # needed for the Lean 37-byte draw-vs-absorption separation lemma.
+    if "pub const M31 = struct {\n    v: u32," not in m31_source:
+        raise ValueError("M31 word representation changed")
+    if "@sizeOf(QM31) == qm31.SECURE_EXTENSION_DEGREE * @sizeOf(M31)" not in channel or \
+       "pub const SECURE_EXTENSION_DEGREE: usize = 4;" not in qm31_source:
+        raise ValueError("QM31 absorption word width changed")
+    for begin, end, count in (
+        ("pub fn mixFelts(", "pub fn mixU32s(", 3),
+        ("pub fn mixU32s(", "pub fn mixU64(", 3),
+        ("pub fn computePowPrefix(", "fn verifyNonceWithPrefix(", 4),
+    ):
+        if region(channel, begin, end).count("hasher.update(") != count:
+            raise ValueError("aligned transcript preimage update count changed")
     if "self.n_draws = 0;" not in region(channel, "pub inline fn updateDigest(", "pub fn mixFelts("):
         raise ValueError("absorption no longer resets draw epoch")
     if "return std.math.add(u32, current, 1) catch error.DrawCounterExhausted;" not in channel or \
@@ -319,6 +344,8 @@ def audit(root: Path = ROOT) -> dict[str, object]:
         "deps/stwo-zig/src/integrations/circuit_cpu/direct_arithmetic.zig",
         "deps/stwo-zig/src/integrations/circuit_cpu/prove.zig",
         "deps/stwo-zig/src/core/vcs/blake2_hash.zig",
+        "deps/stwo-zig/src/core/fields/m31.zig",
+        "deps/stwo-zig/src/core/fields/qm31.zig",
     )
     audit_sources(*((root / name).read_text() for name in names))
     saved_fixture = json.loads((root / "formal/s31/tests/pcs_fri_bcs_transcript.json").read_text())

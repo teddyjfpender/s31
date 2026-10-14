@@ -86,8 +86,28 @@ test "P07 BCS transcript native channel matches independent byte-level model" {
     try std.testing.expect(c.verifyPowNonce(8, expected.fri_nonce));
     c.mixU64(expected.fri_nonce);
     try mark(c, expected.epochs[4], "after_fri_pow");
+    const query_digest = c.digestBytes();
     const raw = try core.queries.drawQueries(&c, allocator, 21, 70);
     defer allocator.free(raw);
     try std.testing.expectEqualSlices(usize, expected.queries, raw);
     try mark(c, expected.epochs[5], "after_queries");
+
+    // Independently assemble each exact 37-byte preimage consumed by the
+    // selected channel. This ties the nine modeled query blocks to the
+    // native hasher, including the six-word final block and its two unused
+    // lanes. It does not model a random oracle.
+    for (0..9) |block| {
+        var input: [37]u8 = undefined;
+        @memcpy(input[0..32], query_digest[0..]);
+        std.mem.writeInt(u32, input[32..36], @intCast(block), .little);
+        input[36] = 0;
+        const hash = core.vcs.blake2_hash.Blake2sM31Hasher.hash(&input);
+        const words = core.vcs.blake2_hash.digestToU32s(hash);
+        for (words, 0..) |word, lane| {
+            const slot = 8 * block + lane;
+            if (slot < raw.len) try std.testing.expectEqual(
+                @as(usize, word & 0x1fffff), raw[slot],
+            );
+        }
+    }
 }

@@ -671,10 +671,14 @@ that probability.
 The [BCS transcript epoch model](BcsTranscriptEpoch.lean) proves that a
 modeled verified nonce starts a fresh query-input epoch with nine distinct
 pre-hash messages for the sealed 70-query schedule. The nine concrete
-little-endian u32 counter encodings are checked in Lean. The
+little-endian u32 counter encodings are checked in Lean. It also proves that
+the 37-byte query inputs cannot equal channel word absorption inputs or the
+40- and 52-byte PoW inputs, regardless of byte contents. The
 [native and independent-model replay](../../../../../design/s31/security/PCS_FRI_BCS_TRANSCRIPT_REFINEMENT.md)
-checks the direct Gate's actual Blake2s-M31 bytes and challenge order. These
-results leave the cryptographic Fiat–Shamir/BCS reduction open.
+checks the direct Gate's actual Blake2s-M31 bytes, challenge order, and all
+nine independently reconstructed query hash preimages. These results leave
+earlier draw-input collisions, hash security, and the cryptographic
+Fiat–Shamir/BCS reduction open.
 
 ## One lifted Merkle opening by hand
 

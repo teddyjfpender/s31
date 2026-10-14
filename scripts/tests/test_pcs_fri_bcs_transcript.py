@@ -22,6 +22,8 @@ NAMES = (
     "deps/stwo-zig/src/integrations/circuit_cpu/direct_arithmetic.zig",
     "deps/stwo-zig/src/integrations/circuit_cpu/prove.zig",
     "deps/stwo-zig/src/core/vcs/blake2_hash.zig",
+    "deps/stwo-zig/src/core/fields/m31.zig",
+    "deps/stwo-zig/src/core/fields/qm31.zig",
 )
 
 
@@ -147,6 +149,22 @@ class BcsTranscriptTest(unittest.TestCase):
         self.reject(8, "const words = channel.drawU32s();",
                     "_ = channel.drawU32s();\n        const words = channel.drawU32s();")
         self.reject(3, "self.config.n_queries,", "70,")
+
+    def test_query_preimage_width_and_field_alignment_changed(self) -> None:
+        self.reject(4, "pub const Digest32 = [32]u8;",
+                    "pub const Digest32 = [31]u8;")
+        self.reject(4, "var hash_input: [37]u8 = undefined;",
+                    "var hash_input: [40]u8 = undefined;")
+        self.reject(4, "@memcpy(hash_input[0..32], self.digest[0..]);",
+                    "@memcpy(hash_input[0..32], other_digest[0..]);")
+        self.reject(12, "pub const M31 = struct {\n    v: u32,",
+                    "pub const M31 = struct {\n    v: u64,")
+        self.reject(13, "pub const SECURE_EXTENSION_DEGREE: usize = 4;",
+                    "pub const SECURE_EXTENSION_DEGREE: usize = 8;")
+        self.reject(4, "prefixed_hasher.update(bits_bytes[0..]);",
+                    "prefixed_hasher.update(bits_bytes[0..]);\n            prefixed_hasher.update(&.{1});")
+        self.reject(4, "if (data.len > 0) hasher.update(std.mem.sliceAsBytes(data));",
+                    "if (data.len > 0) hasher.update(std.mem.sliceAsBytes(data));\n                hasher.update(&.{1});")
 
 
 if __name__ == "__main__":
