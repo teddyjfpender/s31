@@ -732,6 +732,16 @@ facts, not a native ROM reduction or an accepted-proof attack. The
 [raw Gate review](../../../../../design/s31/security/PCS_FRI_RAW_GATE_BCS_AUDIT.md)
 spells out the remaining obligation.
 
+[`RawGateTwoStageGrinding.lean`](RawGateTwoStageGrinding.lean) proves a
+conditional adaptive-search envelope: if every distinct nonce trial remains
+fresh and has conditional pass probability at most `p`, at most `n` attempts
+hit with probability at most `min(1,n p)`. A weighted-branch lemma covers
+different second-stage prefixes selected by the first accepted nonce. It also
+shows that two first-stage attempts already exceed the one-pair `2^-46`
+probability in the ideal-fresh model, while both PoW-only budget envelopes
+are vacuous at `T=2^64`. The raw input encodings do not establish the required
+freshness, and these results supply no PCS/FRI or native BCS soundness claim.
+
 [`FramedBcsV2Encoding.lean`](FramedBcsV2Encoding.lean) models a proposed
 versioned BCS frame with seven fixed domain bytes, a role byte, little-endian
 payload length and event number. It proves role separation for arbitrary

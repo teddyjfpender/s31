@@ -95,6 +95,54 @@ give exactly 4096 favorable words for 20 bits and 64 for 26 bits. Thus a
 combined grinding credit. It does not count an adversary's search or the
 relationship between nonce choice, later challenges, and committed oracles.
 
+### Two-stage adaptive search ledger
+
+The source order matters: the interaction nonce is checked before absorption,
+then its accepted value changes the lookup draws, interaction commitment,
+composition challenge and root, OOD draws, and FRI commitments. Only after
+those events does the verifier check the FRI nonce. The nonce predicate first
+hashes a 52-byte prefix message `LE32(0x12345678) || 12 zero bytes || digest
+|| LE32(bits)`, then a 40-byte message `prefixDigest || LE64(nonce)`. The
+accepted nonce absorption separately hashes `channelDigest || LE64(nonce)`.
+The prefix digest can be cached for distinct nonces at the same stage state.
+
+Here is the strongest **conditional** search accounting established in
+[`RawGateTwoStageGrinding.lean`](../../../formal/s31/S31/Gadgets/PcsFri/RawGateTwoStageGrinding.lean).
+Assume every fresh, distinct nonce-trial input has uniform independent raw
+output even conditioned on all prior oracle traffic, and that any earlier
+query of the same bytes is charged and cannot be treated as fresh. For a stage
+with at most `n` trials of conditional pass probability at most `p`, its hit
+probability is at most `min(1,n p)`. The exact all-fresh fixed-stage value is
+`1-(1-p)^n`. If each possible first success selects a different FRI prefix,
+the weighted second-stage branch lemma still bounds the linked two-stage hit
+by the first-stage mass times a uniform conditional second-stage bound.
+
+| Barrier | Native bits | One fresh nonce | At most `n` fresh trials |
+| --- | ---: | ---: | ---: |
+| Interaction | 20 | `2^-20` | `min(1,n/2^20)` |
+| FRI, conditional on any first-stage history | 26 | `2^-26` | `min(1,n/2^26)` |
+
+Even under these stronger hypothetical freshness assumptions, an adversary
+with `T=2^64` BLAKE2s queries has PoW-only envelopes of `1` for either
+stage. The resulting `1/T=2^-64` trivial work-factor upper bound is larger
+than the chosen `2^-96` target, so **PoW alone cannot certify that target**.
+For just one nonce at each fixed barrier the fresh-oracle joint chance would
+be `2^-46`; allowing only one extra interaction trial already makes the
+two-stage chance strictly larger. Adding 20 and 26 as unconditional
+"security bits" is therefore invalid. These are probabilities of finding
+valid PoW nonces, not probabilities of accepting a false STARK statement.
+
+The raw profile does not satisfy the byte-domain premise by syntax. The
+40-byte PoW nonce input and the 40-byte accepted-nonce absorption input are
+equal whenever `prefixDigest = channelDigest`; a ROM proof would have to
+bound or rule out that coincidence in reachable transcripts. Root absorption
+also exactly overlaps plain Merkle parent hashing and sometimes field
+absorption, as shown below. The Lean branch bound is therefore **not applied
+to the selected native channel**. A complete reduction would have to count
+all prior, repeated, cross-role and adaptive queries, model both accepted
+nonce barriers jointly with the later STARK checks, and identify a valid
+multi-round IOP theorem. The release gate and proven-bit value remain closed.
+
 After an accepted FRI nonce is absorbed, the draw counter resets to zero.
 The FRI query path calls `drawU32s` directly, with **no field rejection**:
 70 words use exactly nine 32-byte hash blocks at counters `0..8`. Each block

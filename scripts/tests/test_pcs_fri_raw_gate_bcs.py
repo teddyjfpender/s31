@@ -58,6 +58,12 @@ class RawGateBcsTests(unittest.TestCase):
         self.assertIsNone(value["hypothetical_paper_collision_threshold"]["native_lambda_bits"])
         self.assertFalse(value["release_gate_admissible"])
         self.assertIsNone(value["native_proven_security_bits"])
+        two_stage = value["conditional_two_stage_fresh_oracle_only"]
+        self.assertFalse(two_stage["applies_to_native_verifier"])
+        self.assertEqual(two_stage["first_union_envelope_at_cap_exact"], "1/1")
+        self.assertEqual(two_stage["second_conditional_union_envelope_at_cap_exact"], "1/1")
+        self.assertLess(two_stage["illustrative_first_nonce_cap"] +
+                        two_stage["illustrative_second_nonce_cap"] + 2, T)
 
     def test_exact_ideal_arithmetic(self) -> None:
         value = report(ROOT)
@@ -68,6 +74,11 @@ class RawGateBcsTests(unittest.TestCase):
                          f"{acceptance.numerator}/{acceptance.denominator}")
         self.assertEqual(facts["pow_20_one_try_exact"], "1/1048576")
         self.assertEqual(facts["pow_26_one_try_exact"], "1/67108864")
+        two_stage = value["conditional_two_stage_fresh_oracle_only"]
+        self.assertEqual(Fraction(two_stage["one_nonce_each_exact"]), Fraction(1, 1 << 46))
+        self.assertGreater(Fraction(two_stage["two_interaction_one_fri_exact"]),
+                           Fraction(two_stage["one_nonce_each_exact"]))
+        self.assertFalse(two_stage["applies_to_native_verifier"])
         paper = Fraction(3 * (T * T + 1), (1 << 256) * T)
         self.assertLess(paper, Fraction(1, 1 << 126))
         self.assertLess(paper, TARGET)
@@ -127,6 +138,17 @@ class RawGateBcsTests(unittest.TestCase):
             audit_source_shapes(self.frontend, changed_runtime, self.engine)
 
     def test_raw_hash_rejection_nonce_and_query_draw_guards(self) -> None:
+        self.reject_engine("deps/stwo-zig/src/core/channel/blake2s.zig",
+                           "return verifyNonceWithPrefix(prefix, nonce, n_bits);",
+                           "return true;")
+        self.reject_engine("deps/stwo-zig/src/core/channel/blake2s.zig",
+                           "prefixed_hasher.update(&[_]u8{0} ** 12);",
+                           "prefixed_hasher.update(&[_]u8{1} ** 12);")
+        self.reject_engine("deps/stwo-zig/src/core/channel/blake2s.zig",
+                           "@memcpy(input[32..40], nonce_bytes[0..]);",
+                           "@memcpy(input[32..40], prefix[0..8]);")
+        self.reject_engine("deps/stwo-zig/src/core/channel/blake2s.zig",
+                           "@truncate(value >> 32),", "@truncate(value >> 31),")
         self.reject_engine("deps/stwo-zig/src/core/channel/blake2s.zig",
                            "if (x >= two_p)", "if (x >= m31.Modulus)")
         self.reject_engine("deps/stwo-zig/src/core/channel/blake2s.zig",
