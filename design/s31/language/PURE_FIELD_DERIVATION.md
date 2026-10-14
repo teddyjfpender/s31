@@ -1,11 +1,19 @@
 # Compositional pure-field source derivation
 
 `pure-field-derivation.json` is a versioned, replayed source-to-normalized-
-relation certificate. Its claim is narrow: an independent parser reads the
-exact `.s31` bytes, types every named let in order, resolves aliases, and
+relation certificate. Its claim is narrow: a parser independent of production
+lowering reads the exact `.s31` bytes, types every named let in order, resolves aliases, and
 reconstructs the **entire** normalized relation. The package verifier reruns
 the derivation and compares every certificate field. It is available on
 conservative text packages when the source fits this fragment.
+The verifier also replays the certificate's typed steps as a separate pass,
+without reading source tokens, and reconstructs the normalized relation from
+that rule list. Both passes must agree on every node and output.
+
+The checker reuses the existing independent `source_relation_fragment` lexer
+and the strict JSON shape comparator from `package.correspondence`; those
+shared Python helpers are part of the executable checker boundary. It does
+not call the production `compile_text` parser or normalizer.
 
 ## The admitted source language
 

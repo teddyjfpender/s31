@@ -41,7 +41,9 @@ parser itself is modeled or verified in Lean.
 
 The separate [`pure-field-derivation.json`](PURE_FIELD_DERIVATION.md) profile
 adds a compositional source-to-relation check for straight-line field controls.
-Its independent parser and typed rule replay compare every normalized node,
+Its parser is independent of production lowering but shares the existing
+independent fragment lexer and strict JSON comparator. Its typed rule replay
+compares every normalized node,
 input, and output; aliases emit no nodes. A Lean theorem proves that lowering
 any length of its local field rules preserves partial evaluation, including
 inverse-zero failure and Boolean selection. That theorem does not decode the

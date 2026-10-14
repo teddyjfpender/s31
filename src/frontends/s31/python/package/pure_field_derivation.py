@@ -14,8 +14,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from package.correspondence import (MAX_RELATION_NAME_CHARS, parse_canonical_json,
-                                    same_json_shape)
+from package.correspondence import (MAX_RELATION_NAME_CHARS, PLAIN_BUILTIN_NAMES,
+                                    parse_canonical_json, same_json_shape)
 from package.source_relation_fragment import NAME, SOURCE_KEYWORDS, _tokens
 
 SCHEMA = "s31-pure-field-derivation-v1"
@@ -42,7 +42,9 @@ def _hash(data: bytes) -> str:
 
 
 def _name(token: str) -> str:
-    if (NAME.fullmatch(token) is None or token in SOURCE_KEYWORDS or
+    if (type(token) is not str or NAME.fullmatch(token) is None or
+            token in SOURCE_KEYWORDS or
+            token in PLAIN_BUILTIN_NAMES or
             len(token) > MAX_RELATION_NAME_CHARS):
         raise UnsupportedPureField("expected bounded unreserved identifier")
     return token
@@ -243,8 +245,119 @@ def admitted(source_bytes: bytes, relation_bytes: bytes) -> bool:
         return False
 
 
+def replay_derivation(program: dict[str, Any]) -> dict[str, Any]:
+    """Check certificate rules without reading source tokens or compiler IR.
+
+    This second pass checks all operand resolutions, types, node indices, and
+    the selected output before reconstructing the relation from the rule list.
+    """
+    if type(program) is not dict or set(program) != {"name", "inputs", "steps", "output"}:
+        raise ValueError("invalid pure-field derivation shape")
+    circuit = _name(program["name"])
+    inputs, steps = program["inputs"], program["steps"]
+    if (type(inputs) is not list or not 1 <= len(inputs) <= 8 or
+            type(steps) is not list or not 1 <= len(steps) <= MAX_STEPS):
+        raise ValueError("pure-field derivation exceeds input or step bound")
+    env: dict[str, Value] = {}
+    normalized_inputs: list[dict[str, Any]] = []
+    for item in inputs:
+        if type(item) is not dict or set(item) != {"name", "kind", "length", "visibility"}:
+            raise ValueError("invalid pure-field input rule")
+        name = _name(item["name"])
+        length = item["length"]
+        if (name in env or name == circuit or item["kind"] != "m31" or
+                type(length) is not int or not 1 <= length <= 8 or
+                type(item["visibility"]) is not str or
+                item["visibility"] not in {"public", "private"}):
+            raise ValueError("invalid pure-field input type")
+        env[name] = Value(name, "m31", length)
+        normalized_inputs.append(dict(item))
+    nodes: list[dict[str, Any]] = []
+    inverse_sources: set[str] = set()
+    controls = 0
+    for step in steps:
+        if (type(step) is not dict or set(step) !=
+                {"name", "rule", "source_operands", "resolved_operands",
+                 "result", "node_index"}):
+            raise ValueError("invalid pure-field step rule")
+        name = _name(step["name"])
+        op = step["rule"]
+        operands = step["source_operands"]
+        if (name in env or name == circuit or type(op) is not str or
+                type(operands) is not list or
+                any(type(ref) is not str or ref not in env for ref in operands)):
+            raise ValueError("shadowed or future pure-field rule operand")
+        arity = {"alias": 1, "add": 2, "sub": 2, "mul": 2,
+                 "inv": 1, "is_zero": 1, "select": 3}.get(op)
+        if arity is None or len(operands) != arity:
+            raise ValueError("invalid pure-field rule arity")
+        args = [env[ref] for ref in operands]
+        if not same_json_shape(step["resolved_operands"], [arg.wire for arg in args]):
+            raise ValueError("pure-field operand resolution differs")
+        node: dict[str, Any] | None = None
+        if op == "alias":
+            result = args[0]
+        elif op in {"add", "sub", "mul"}:
+            if (args[0].kind != "m31" or args[1].kind != "m31" or
+                    args[0].length != args[1].length):
+                raise ValueError("binary pure-field rule shape differs")
+            result = Value(name, "m31", args[0].length)
+            node = {"name": name, "op": op, "lhs": args[0].wire,
+                    "rhs": args[1].wire}
+        elif op == "inv":
+            if args[0].kind != "m31" or args[0].wire in inverse_sources:
+                raise ValueError("inverse rule source differs")
+            inverse_sources.add(args[0].wire)
+            result = Value(name, "m31", args[0].length)
+            node = {"name": name, "op": op, "lhs": args[0].wire}
+            controls += 1
+        elif op == "is_zero":
+            if args[0].kind != "m31" or args[0].length != 1:
+                raise ValueError("zero-test rule shape differs")
+            result = Value(name, "bit", 1)
+            node = {"name": name, "op": op, "lhs": args[0].wire}
+            controls += 1
+        else:
+            if (args[0].kind != "bit" or args[1].kind != "m31" or
+                    args[2].kind != "m31" or args[1].length != args[2].length):
+                raise ValueError("select rule shape differs")
+            result = Value(name, "m31", args[1].length)
+            node = {"name": name, "op": op, "lhs": args[1].wire,
+                    "rhs": args[2].wire, "selector": args[0].wire}
+            controls += 1
+        if node is not None:
+            nodes.append(node)
+        if (len(nodes) > MAX_NODES or
+                not same_json_shape(step["node_index"],
+                                    len(nodes) - 1 if node is not None else None) or
+                not same_json_shape(step["result"],
+                                    {"wire": result.wire, "kind": result.kind,
+                                     "length": result.length})):
+            raise ValueError("pure-field emitted node or result differs")
+        env[name] = result
+    output = program["output"]
+    if type(output) is not dict or set(output) != {"source_name", "wire", "kind", "length"}:
+        raise ValueError("invalid pure-field output rule")
+    output_name = output["source_name"]
+    if type(output_name) is not str or output_name not in env:
+        raise ValueError("pure-field output names no source value")
+    selected = env[output_name]
+    if (controls == 0 or selected.kind != "m31" or
+            not same_json_shape(output, {"source_name": output_name,
+                                         "wire": selected.wire,
+                                         "kind": selected.kind,
+                                         "length": selected.length}) or
+            selected.length + sum(item["length"] for item in normalized_inputs
+                                  if item["visibility"] == "public") > 8):
+        raise ValueError("pure-field result or public ABI differs")
+    return {"version": 1, "name": circuit, "inputs": normalized_inputs,
+            "nodes": nodes, "assertions": [], "public_outputs": [selected.wire]}
+
+
 def make_certificate(source_bytes: bytes, relation_bytes: bytes) -> dict[str, Any]:
     relation, derivation = derive(source_bytes)
+    if not same_json_shape(replay_derivation(derivation), relation):
+        raise ValueError("pure-field typed rule replay differs from source derivation")
     if not same_json_shape(parse_canonical_json(relation_bytes, "source.s31.json"), relation):
         raise ValueError("pure-field normalized relation differs from exact source")
     return {"schema": SCHEMA, "capability": CAPABILITY,
@@ -278,5 +391,8 @@ def verify_artifact(package: Path, manifest: dict[str, Any]) -> None:
     if artifacts[ARTIFACT] != _hash(raw):
         raise ValueError("pure-field artifact hash differs")
     actual = parse_canonical_json(raw, ARTIFACT)
+    if not same_json_shape(replay_derivation(actual.get("derivation")),
+                           parse_canonical_json(relation, "source.s31.json")):
+        raise ValueError("pure-field certificate rules differ from normalized relation")
     if not same_json_shape(actual, make_certificate(source, relation)):
         raise ValueError("pure-field derivation differs from exact source replay")

@@ -9,7 +9,7 @@ from pathlib import Path
 
 from package.pure_field_derivation import (ARTIFACT, UnsupportedPureField,
                                            admitted, derive, make_certificate,
-                                           verify_artifact)
+                                           replay_derivation, verify_artifact)
 from oracle import OracleError, evaluate_relation
 from text_frontend import compile_text
 
@@ -46,6 +46,7 @@ class PureFieldDerivationTests(unittest.TestCase):
                             (MIXED, ["mul", "is_zero", "select", "inv"])):
             with self.subTest(source=source[:35]):
                 independent, rules = derive(source)
+                self.assertEqual(replay_derivation(rules), independent)
                 production, _ = compile_text(source.decode())
                 self.assertEqual(independent, production)
                 self.assertEqual([node["op"] for node in independent["nodes"]], ops)
@@ -69,7 +70,7 @@ class PureFieldDerivationTests(unittest.TestCase):
                     raw = encoded(changed)
                     (package / ARTIFACT).write_bytes(raw)
                     manifest["artifacts"][ARTIFACT] = hashlib.sha256(raw).hexdigest()
-                    with self.assertRaisesRegex(ValueError, "differs from exact source"):
+                    with self.assertRaisesRegex(ValueError, "operand resolution differs"):
                         verify_artifact(package, manifest)
 
     def test_selector_order_matches_production_value_semantics(self) -> None:
