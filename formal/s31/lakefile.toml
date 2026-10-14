@@ -64,6 +64,10 @@ name = "s31-general-linear-structural-check"
 root = "S31.Audit.GeneralLinearSSAStructuralDerivationCheck"
 
 [[lean_exe]]
+name = "s31-structural-native-trace-check"
+root = "S31.Audit.StructuralNativeTraceDecoderCheck"
+
+[[lean_exe]]
 name = "s31-general-record-v2-source-check"
 root = "S31.Audit.GeneralRecordV2SourceCheck"
 
