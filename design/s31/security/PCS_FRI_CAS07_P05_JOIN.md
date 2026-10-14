@@ -40,7 +40,7 @@ p = interpolation + native_line * q.
 
 If the native line vanishes at the claimed out-of-domain point, evaluating this identity there gives `p(Q) = interpolation(Q)`, the claimed value. This is the exact algebraic conclusion needed from a common agreement set. The theorem takes the common set, both bounded polynomials, and the row law as explicit premises. The finite-set overlap lemma says a sufficient numerical condition for separately supplied good-row sets `A_f` and `A_q` inside domain `D` is `|A_f| + |A_q| > |D| + 2n`; it does not manufacture those sets from a FRI proof.
 
-The published [S-two whitepaper](https://www.researchgate.net/publication/407022099_S-two_Whitepaper), Protocol 4 and Theorem 5, uses originals and own **single-point** quotients. Its Section 4.5 discusses the conjugate two-point variant but does not supply the full extension proof. The Laurent lemma supplies a conditional uniqueness step for the native two-point line. It does not establish that the native coefficient radius is the paper's circle-code degree, nor derive the paper's small-height threshold for this variant.
+The published [S-two whitepaper](https://eprint.iacr.org/2026/532.pdf), Protocol 4 and Theorem 5, uses originals and own **single-point** quotients. Its Section 4.5 discusses the conjugate two-point variant but does not supply the full extension proof. The Laurent lemma supplies a conditional uniqueness step for the native two-point line. It does not establish that the native coefficient radius is the paper's circle-code degree, nor derive the paper's small-height threshold for this variant.
 
 ### Gate's smallest occupied height
 
