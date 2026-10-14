@@ -18,7 +18,7 @@ a fresh source comparison before this parser can be reused.
 
 | Input | Custody | Fields this gate checks |
 | --- | --- | --- |
-| Installed key | Exact bytes embedded in a trusted verifier binary; a supplied key must match byte for byte | Distinct s31-verification-key-cas05-candidate-v1 schema, cas05_sparse_v6 mode, S31CAS06 transcript tag, S31XDM04 source-wire tag, source/program digest, public ABI digest when present, circuit hash, AIR-bundle digest, and bounded profile |
+| Installed key | Exact bytes embedded in a trusted verifier binary; a supplied key must match byte for byte | Distinct s31-verification-key-cas05-candidate-v1 schema, cas05_sparse_v6 mode, S31CAS06 transcript tag, S31XDM04 source-wire tag, source/program digest, public ABI digest when present, circuit hash, AIR-bundle digest, compiler-owned source/AIR roster digest, and bounded profile |
 | Public statement | Supplied independently of the proof; the installed verifier reconstructs its eight words from the source ABI | Distinct s31-public-statement-cas05-candidate-v1 schema, installed-key SHA-256, eight public words, one source root, and ordered canonical QM31 claims at every profile height and column |
 | Proof bytes | Untrusted prover | Exact S31CAS05 outer magic/version 6, reserved fields, declared length, profile/columns, source root and claims matching the key and statement; nested S31XDM04 header/profile/root; bounded line and terminal shapes and canonical field words |
 
@@ -37,6 +37,7 @@ For example, a key can select two heights with one source column each:
   "pcs_mode": "cas05_sparse_v6",
   "transcript_version": "S31CAS06",
   "source_wire_version": "S31XDM04",
+  "source_air_roster_sha256": "4444444444444444444444444444444444444444444444444444444444444444",
   "profile": {
     "largest_log_size": 6,
     "height_count": 2,
@@ -48,7 +49,9 @@ For example, a key can select two heights with one source column each:
 ~~~
 
 The actual key also carries exact source, public ABI, circuit, and AIR-bundle
-digests. The corresponding statement has public_words, a 64-character
+digests. The source/AIR roster digest must be reconstructed from the compiler's
+selected AIR geometry; a prover-supplied hash cannot supply this authority.
+The corresponding statement has public_words, a 64-character
 lowercase source_root, and claims shaped as two arrays of one four-limb
 QM31 value. Its verification_key_sha256 must hash the *whole installed key
 file*, including the profile and all digests. A claim such as [1,0,0,0]
@@ -67,8 +70,11 @@ does not execute that schedule.
 Production S31 additionally needs a reviewed channel prelude that binds the
 installed program/circuit identity and reconstructed public words **before**
 CAS05's first challenge. Both prover and verifier must use the same prelude.
-The prelude and the source-to-AIR column/claim mapping are not yet specified
-or implemented. A proof of the experimental CAS05 relation alone would not
+The experimental prelude's byte order is specified in stwo-zig draft #268.
+The [candidate AIR roster](cas05-air-roster.md) specifies a provisional
+column/claim order for Gate manifests and rejects unsupported geometry. It
+does not produce source vectors or prove their correspondence to the AIR.
+A proof of the experimental CAS05 relation alone would not
 prove that its committed source columns are the S31 program's AIR columns.
 
 Activation requires the reviewed production CAS05 prover/verifier and

@@ -129,6 +129,8 @@ text .s31 ──parse/typecheck/specialize──▶ normalized relation JSON
 - [CAS05 candidate admission](cas05-candidate-admission.md): versioned key,
    independent public statement and draft v6 wire checks, with the exact
    commitment and transcript work still required before production.
+- [CAS05 candidate AIR roster](cas05-air-roster.md): compiler-owned column and
+   OOD-claim slots, supported geometry, and current AIR incompatibility.
 - [Generated component manifest](../../../../design/s31/language/COMPONENT_MANIFEST.md):
    the direct-gate and one-call direct-chip rosters, native rederivation,
    and the bounded multi-call plan that still lacks proof admission.

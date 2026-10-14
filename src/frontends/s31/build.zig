@@ -105,6 +105,15 @@ pub fn build(b: *std.Build) void {
     const cas05_candidate_tests = b.addRunArtifact(b.addTest(.{ .root_module = cas05_candidate_root }));
     b.step("test-cas05-candidate-admission", "Audit versioned CAS05 key, statement and wire admission without production verification")
         .dependOn(&cas05_candidate_tests.step);
+    const cas05_air_roster_root = b.createModule(.{
+        .root_source_file = b.path("cas05_air_roster_test_root.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    cas05_air_roster_root.addImport("stwo_circuit_frontend", circuit);
+    const cas05_air_roster_tests = b.addRunArtifact(b.addTest(.{ .root_module = cas05_air_roster_root }));
+    b.step("test-cas05-air-roster", "Check compiler-owned Gate AIR geometry and CAS05 candidate column/claim order")
+        .dependOn(&cas05_air_roster_tests.step);
     const public_physical_guard_root = b.createModule(.{
         .root_source_file = b.path("runtime/public_physical_guard.zig"),
         .target = target,
