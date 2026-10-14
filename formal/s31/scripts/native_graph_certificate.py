@@ -8,13 +8,15 @@ the parametric Lean NativeTrace proof; those are separate correspondence gaps.
 
 from __future__ import annotations
 
+from scripts.native_air_projection import check_padded_rows
+
 P = 2**31 - 1
-SCHEMA = "s31-structural-m31-exact-native-graph-v1"
+SCHEMA = "s31-structural-m31-exact-native-graph-v2"
 FIELDS = {"schema", "n_vars", "values", "add", "sub", "mul", "pointwise_mul",
           "eq", "triple_xor", "m31_to_u32", "blake_g_gate", "permutation_ends",
           "permutation_inputs", "permutation_outputs", "output", "constant_keys",
           "constant_vars", "source_map", "canonical_nodes", "node_wires",
-          "node_spans", "assertion_spans", "bindings", "finalization"}
+          "node_spans", "assertion_spans", "bindings", "finalization", "padded"}
 
 
 def require(condition: bool, reason: str) -> None:
@@ -280,5 +282,6 @@ def check_graph(graph: dict, raw: dict[str, bytes], inputs: list[dict],
             graph["finalization"]["qm31_start"] == conversion_cursor + 8 and
             graph["finalization"]["qm31_end"] == gate_total,
             "node/assertion/public/finalization phases are not contiguous")
+    padded_summary = check_padded_rows(graph, graph["padded"])
     return {"variables": n, "arithmetic_gates": gate_total,
-            "equality_gates": len(graph["eq"])}
+            "equality_gates": len(graph["eq"]), **padded_summary}
