@@ -111,7 +111,7 @@ feeders. This closes the caller-supplied multiplicity gap in the modeled
 roster. The theorem assumes decoded fixed cells agree with the roster,
 installed arithmetic and Gate runtime facts, and ideal exact balance.
 Authentication of committed cells and native verifier refinement remain
-separate obligations. See the [independent theorem review](../../../../../../design/s31/security/INDEPENDENT_REVIEW_DERIVED_ROSTER_ARBITRARY_TRACE_2026-10-12.md)
+separate obligations. See the [independent theorem review](../../../../../../design/s31/security/reviews/compiler/INDEPENDENT_REVIEW_DERIVED_ROSTER_ARBITRARY_TRACE_2026-10-12.md)
 and [formal live evidence](../../../../../../design/s31/security/FORMAL_LIVE_EVIDENCE_2026-10-12.md).
 
 ## Canonical add/mul DAG optimization

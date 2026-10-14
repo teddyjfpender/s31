@@ -17,7 +17,7 @@ At `z = compress(alpha, output tuple)`, both sides are zero whatever the
 interaction difference is. The equation loses its power at that challenge.
 The native prover refuses to divide by zero, but the soundness argument must
 also account for a malicious committed trace. The independent
-[pole review](../../../../../design/s31/security/INDEPENDENT_REVIEW_MIXED_POLE_CLOSURE_2026-10-11.md)
+[pole review](../../../../../design/s31/security/reviews/mixed/INDEPENDENT_REVIEW_MIXED_POLE_CLOSURE_2026-10-11.md)
 and native regression isolate this case.
 
 `SourceMixedPoleClosure.lean` puts three sorts of challenge pair into one

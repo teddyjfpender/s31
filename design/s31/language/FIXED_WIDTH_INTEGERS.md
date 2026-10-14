@@ -67,7 +67,7 @@ neither the generic equality gate nor the 16-bit range lookup table. An
 unsupported adjacent operation may still require the generic gates, in which
 case the complete `direct-gate` circuit is rejected by profile admission.
 
-The [independent source review](../security/REVIEW_DIRECT_FIXED_INTEGER_BINARY_2026-10-12.md)
+The [independent source review](../security/reviews/types/REVIEW_DIRECT_FIXED_INTEGER_BINARY_2026-10-12.md)
 checks these equations and exhaustively enumerates the 8-bit host algebra.
 The [native addition gate](../../../src/frontends/s31/tests/acceptance/math/addition.py)
 checks all ten widths against an independent value oracle, honest generated
