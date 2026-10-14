@@ -110,8 +110,8 @@ theorem mapped_output_eq {inputs lanes : Nat}
   (sound sourceId canonicalId original compact hmap hsource hcompact).eval_eq values
 
 /-! The control extension uses the same partial normalized-operation
-denotation as `PureFieldDerivation`. Inverse failure at zero and rejection of
-non-Boolean selectors survive an optimizer alias or CSE. -/
+denotation as `PureFieldDerivation`. This is a local semantic model; the
+native checker separately decides whether real canonical nodes share IDs. -/
 open S31.Functional.Correspondence.PureFieldDerivation
 
 inductive ControlExpr where
@@ -140,28 +140,5 @@ theorem fold_scalar_is_zero (inputs : Nat → Option (List Word)) (value : Word)
     (ControlExpr.apply .isZero [.constant 1 value]).eval inputs =
       (ControlExpr.constant 1 (if value == 0 then 1 else 0)).eval inputs := by
   simp [ControlExpr.eval, normalized_scalar_zero_test]
-
-/-- Reusing a node retains both values and failures, including inverse at zero. -/
-theorem control_cse (inputs : Nat → Option (List Word)) (term : ControlExpr) :
-    term.eval inputs = term.eval inputs := rfl
-
-def ControlSourceMapSound (source optimized : List ControlExpr)
-    (sourceToCanonical : List Nat) : Prop :=
-  ∀ (sourceId canonicalId : Nat) (original compact : ControlExpr),
-    sourceToCanonical[sourceId]? = some canonicalId →
-    source[sourceId]? = some original →
-    optimized[canonicalId]? = some compact →
-    ∀ inputs, original.eval inputs = compact.eval inputs
-
-theorem mapped_control_output_eq
-    {source optimized : List ControlExpr} {sourceToCanonical : List Nat}
-    (sound : ControlSourceMapSound source optimized sourceToCanonical)
-    (sourceId canonicalId : Nat) (original compact : ControlExpr)
-    (hmap : sourceToCanonical[sourceId]? = some canonicalId)
-    (hsource : source[sourceId]? = some original)
-    (hcompact : optimized[canonicalId]? = some compact)
-    (inputs : Nat → Option (List Word)) :
-    original.eval inputs = compact.eval inputs :=
-  sound sourceId canonicalId original compact hmap hsource hcompact inputs
 
 end S31.Functional.Correspondence.Optimizer

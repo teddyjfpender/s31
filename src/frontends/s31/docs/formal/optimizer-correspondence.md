@@ -70,9 +70,9 @@ The independent byte derivation checks exact source bytes against the
 normalized nodes `mul(a,a)`, `is_zero(x)`, `select(z,square,b)`, and
 `inv(picked)`. The native optimizer checker independently rebuilds their
 canonical IDs, including `picked`'s selector ID, then recomputes the
-selector-aware IR digest. The Lean optimizer model calls the same partial
-normalized operation semantics as the byte-derivation theorem: inverse at
-zero and a non-Boolean selector do not acquire an output through CSE. The
+selector-aware IR digest. The Lean control model calls the same partial
+normalized operation semantics as the byte-derivation theorem, including
+inverse failure at zero and rejection of non-Boolean selectors. The
 package test sends the *same sealed source and normalized relation* through
 both checks. It also changes the receipt IR digest while updating its
 manifest artifact hash; package admission rejects the mismatch.
@@ -81,8 +81,8 @@ The Lean module `Correspondence/Optimizer.lean` proves the listed arithmetic
 rewrite rules preserve field values for **any** number of input names and
 lanes, and that a checked source-name mapping preserves each mapped output.
 Its control model shares `PureFieldDerivation`'s partial normalized operation
-semantics, proves scalar zero-test folding, and retains partial failures
-through aliases and CSE.
+semantics and proves scalar zero-test folding. Lean does not prove the native
+optimizer's complete DAG rewrite or source-map implementation.
 The existing `CanonicalDagOptimization` theorem covers bounded add/mul CSE.
 The Zig checker ties those semantic rules to actual native optimizer nodes.
 It does not establish that native circuit gates, AIR columns, or PCS/FRI
