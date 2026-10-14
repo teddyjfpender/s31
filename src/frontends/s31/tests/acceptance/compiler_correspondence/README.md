@@ -327,7 +327,7 @@ reports both proof roots and the main-row digest per case.
 The physical-row command admits transparent, public-only one-input M31 programs
 with one to four lanes, or two-input programs with one or two lanes, when both
 inputs and the result have the same shape. It requires 1–16 add/sub/multiply
-nodes and no assertions. It exports
+or canonical constant-arithmetic nodes and no assertions. It exports
 uncommitted fixed and main evaluations from `writeBase`. Even if a native
 proof verifies, this export does not authenticate PCS openings, prove LogUp
 soundness, or establish a verifier-to-trace correspondence theorem. The proof
@@ -337,7 +337,8 @@ the commitment root in those separately accepted honest proofs. It does not
 establish that arbitrary prover-supplied openings equal the exported rows,
 prove collision resistance, or supply a general verifier-to-trace theorem.
 The Zig guard tests require rejection of a private input, a nonempty private
-assignment, wrong input and output shape, assertions, constant/repeat nodes,
+assignment, wrong input and output shape, assertions, stand-alone constant or
+repeat nodes,
 and a 17-node source.
 
 `pure_native_short_lanes.py` builds three admitted public programs: one lane
@@ -360,6 +361,26 @@ refinement theorem, or PCS/FRI soundness.
 
 ```sh
 python3 src/frontends/s31/tests/acceptance/compiler_correspondence/pure_native_short_lanes.py
+```
+
+`constant_native_rows.py` checks a two-lane `x + 7; .* 7; + 9; - 7` chain. The
+source-level `let seven = splat<2>(7_m31)` aliases a constant and adds no
+normalized node; the resulting complete AIR geometry equals an independently
+built direct relation (294 raw, 512 padded QM31 rows). The `+7` and `.*7`
+nodes reuse one native constant address; later distinct constants have their
+own addresses in source order. The test replays all
+512 fixed Gate rows including the interned constant derivation, compares all
+6,144 public main cells, verifies an honest proof against the source-derived
+main commitment, and rejects changed cells and a re-sealed wrong constant.
+With `--lean-checker`, it also checks the exact source, relation, certificate,
+ABI, assignment and statement bytes through the existing Lean effects gate.
+The constant operations themselves require Gate rows and a constant island;
+the source alias is the zero-cost part.
+
+```sh
+python3 src/frontends/s31/tests/acceptance/compiler_correspondence/constant_native_rows.py
+python3 src/frontends/s31/tests/acceptance/compiler_correspondence/constant_native_rows.py \
+  --lean-checker formal/s31/.lake/build/bin/s31-general-linear-effects-package-check
 ```
 
 ## Public main commitment from serialized rows

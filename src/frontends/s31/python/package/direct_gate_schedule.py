@@ -1,10 +1,9 @@
 """Independent exact gate schedule for bounded one/two-input direct profiles.
 
-Only add/sub/mul SSA nodes are admitted; source alias lets are erased before this
-schedule. They request no constants, so the
-builder's constant set is fixed: 0, 1, u, i, iu, and the inverses of i, u,
-and iu. This module computes the resulting base-256 derivation and padding
-without invoking the Zig compiler or reading its exported gate lists.
+Source aliases erase before this schedule. The bounded constant arithmetic
+path interns each distinct broadcast M31 literal on first use. This module
+computes the resulting base-256 derivation and padding without invoking the
+Zig compiler or reading its exported gate lists.
 """
 
 from __future__ import annotations
@@ -100,7 +99,7 @@ class _Constants:
             self.qm31[combined] = combined_var
         return combined_var
 
-    def derive(self) -> None:
+    def derive(self, broadcast: list[tuple[int, int]]) -> None:
         self.adds.extend((gate(0, 0, 0), gate(1, 0, 1)))
         self.muls.append(gate(2, 1, 2))
         self.qm31[U] = self.qm_var(U)
@@ -131,6 +130,25 @@ class _Constants:
         self.qm31[ones] = ones_var
         self.adds.append(gate(i_plus_one_var, u_plus_iu_var, ones_var))
 
+        # Basis extraction uses swap-remove. The subsequent broadcast pass
+        # visits that resulting order and retains other constants in order.
+        requested = {value: address for value, address in broadcast}
+        remaining: list[tuple[Q, int]] = []
+        seen: set[int] = set()
+        for value, address in self.pending:
+            scalar = value[0]
+            if value == (scalar, scalar, scalar, scalar) and scalar in requested:
+                if requested[scalar] != address or scalar in seen:
+                    raise ValueError("broadcast constant was not interned in source order")
+                self.muls.append(gate(self.m31_var(scalar), ones_var, address))
+                self.qm31[value] = address
+                seen.add(scalar)
+            else:
+                remaining.append((value, address))
+        if seen != requested.keys():
+            raise ValueError("missing source broadcast constant")
+        self.pending = remaining
+
         while self.pending:
             value = self.pending[0][0]
             a, b, c, d = value
@@ -150,22 +168,29 @@ class _Constants:
                 self.qm31[value] = result_var
 
 
-def constant_and_padding(n_nodes: int, lanes: int = 4, input_count: int = 1
+def constant_and_padding(n_nodes: int, lanes: int = 4, input_count: int = 1,
+                         broadcast: list[tuple[int, int]] | None = None
                          ) -> tuple[dict[str, list[dict[str, int]]], int, int]:
     """Return exact constant gates, padding, final variable count and rows."""
     if (not 1 <= n_nodes <= 16 or not 1 <= lanes <= 4 or
             input_count not in (1, 2) or (input_count == 2 and lanes > 2)):
         raise ValueError("outside bounded direct-gate schedule")
+    broadcast = [] if broadcast is None else broadcast
+    if any(type(value) is not int or not 2 <= value < P or
+           type(address) is not int for value, address in broadcast):
+        raise ValueError("outside bounded nontrivial broadcast constants")
     extra_input_addresses = (input_count - 1) * (3 * lanes - 2)
-    first_output = 11 + 3 * lanes + extra_input_addresses + n_nodes
+    first_output = 11 + 3 * lanes + extra_input_addresses + n_nodes + len(broadcast)
     inverse_values = (INV_I, INV_U, INV_IU)
     model = _Constants(
-        next_address=9 + 6 * lanes + extra_input_addresses + n_nodes,
+        next_address=9 + 6 * lanes + extra_input_addresses + n_nodes + len(broadcast),
         pending=[(U, 2), (I, 11 + lanes), (IU, 12 + lanes),
+                 *(((value, value, value, value), address)
+                   for value, address in broadcast),
                  *((inverse_values[lane - 1], first_output + 3 * lane - 1)
                    for lane in range(1, lanes))],
     )
-    model.derive()
+    model.derive(broadcast)
     constant_rows = len(model.adds) + len(model.subs) + len(model.muls)
     # Each extra input adds 2*(lanes-1) packing gates and `lanes`
     # guessed-M31 self-products. The eight ABI copies remain fixed.
@@ -212,12 +237,26 @@ def exact_direct_gate_schedule(syntax: dict[str, Any]) -> tuple[
     if next_address != 11 + 3 * lanes + (input_count - 1) * (3 * lanes - 2):
         raise AssertionError("invalid bounded input allocation model")
     source_gates: list[dict[str, int | str]] = []
+    broadcast: dict[int, int] = {}
     for node in instructions:
         operation = node["op"]
+        if operation in ("add_const", "mul_const"):
+            scalar = node["constant"]
+            if type(scalar) is not int or not 2 <= scalar < P:
+                raise ValueError("constant operation requires a nontrivial canonical M31 literal")
+            if scalar not in broadcast:
+                broadcast[scalar] = next_address
+                next_address += 1
+            right = broadcast[scalar]
+        elif operation in ("add", "sub", "mul"):
+            right = wires[node["rhs"]]
+        else:
+            raise ValueError("outside bounded direct-Gate arithmetic")
         result = next_address
         next_address += 1
-        actual = gate(wires[node["lhs"]], wires[node["rhs"]], result)
-        gates[{"add": "add", "sub": "sub", "mul": "pointwise_mul"}[operation]].append(actual)
+        actual = gate(wires[node["lhs"]], right, result)
+        gates[{"add": "add", "sub": "sub", "mul": "pointwise_mul",
+               "add_const": "add", "mul_const": "pointwise_mul"}[operation]].append(actual)
         wires[node["id"]] = result
         source_gates.append({"id": node["id"], "op": operation, **actual})
 
@@ -235,14 +274,16 @@ def exact_direct_gate_schedule(syntax: dict[str, Any]) -> tuple[
             gates["mul"].append(gate(masked, inverse, result))
         public_result.append(result)
     if next_address != (9 + 6 * lanes +
-                        (input_count - 1) * (3 * lanes - 2) + len(instructions)):
+                        (input_count - 1) * (3 * lanes - 2) + len(instructions) +
+                        len(broadcast)):
         raise AssertionError("invalid bounded-lane allocation model")
 
     public_words = [word for raw in raw_inputs for word in raw] + public_result
     for index, source in enumerate([*public_words,
                                     *([0] * (8 - len(public_words)))], 3):
         gates["add"].append(gate(source, 0, index))
-    constants, n_vars, rows = constant_and_padding(len(instructions), lanes, input_count)
+    constants, n_vars, rows = constant_and_padding(
+        len(instructions), lanes, input_count, list(broadcast.items()))
     for kind, rows_for_kind in constants.items():
         gates[kind].extend(rows_for_kind)
     for address in (word for raw in raw_inputs for word in raw):

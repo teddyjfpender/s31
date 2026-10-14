@@ -182,7 +182,12 @@ certificate to a fresh native direct-Gate topology for either one public
 `[m31; N]` input with `N` from 1 through 3, or two public equal-length
 `[m31; N]` inputs with `N` equal to 1 or 2. The result is one public array
 of the same length, and the graph has 1–16 distinct, canonically ordered
-`add`, `sub`, or `mul` SSA nodes; the public result selects one of those nodes.
+`add`, `sub`, `mul`, `add_const`, or `mul_const` SSA nodes; the public result
+selects one of those nodes. Constant arithmetic requires a canonical
+`splat<N>(k_m31)` with `2 ≤ k < 2147483647` after source normalization.
+`0` and `1` are outside this row profile because native peepholes may elide
+their source gate. Every distinct constant is interned once in first-use
+order and is independently derived in the complete fixed Gate schedule.
 The source may also contain a flat static tuple of already typed M31 arrays
 and constant-index projection. That case must pass the independent exact-byte
 product parser and the separate Lean effects parser. Product construction and
@@ -199,7 +204,7 @@ the native row checker continues to use the structural version-2 certificate
 for this combined case. This does not
 upgrade the native certificate's fixed-row-only capability or prove the
 Python and Lean parsers equivalent. Native enrollment admits no private
-inputs, constants or assertions.
+inputs, assertions, or stand-alone constant-output nodes.
 The checker derives a
 complete gate schedule from that source graph, then independently compares
 every gate address, operation selector, multiplicity and fixed-column cell
@@ -234,9 +239,21 @@ matches the recommitted root. The one-lane sample selects an earlier output
 node while retaining a dead suffix. This strengthens the honest proof
 correspondence check; it does not derive those main cells from an arbitrary
 accepted proof or authenticate PCS openings.
+The constant-arithmetic case now performs the same 12×512 check for a
+two-lane `x + 7; .* 7; + 9; - 7` chain. The `let seven = splat<2>(7_m31)` binding
+has no node or AIR row of its own: both the text compiler and an equivalent
+direct relation produce 294 raw and 512 padded QM31 rows. The `+7` and
+`.*7` nodes share one interned native constant; distinct constants are
+interned afterward in source order. Exact source, certificate,
+normalized relation, ABI, assignment, and statement bytes also pass the
+existing Lean effects checker; a changed source literal fails. This is a
+bounded honest-trace join and a zero-cost source-alias check, not a general
+constant optimization or arbitrary-proof theorem. See
+[`constant_native_rows.py`](../../../src/frontends/s31/tests/acceptance/compiler_correspondence/constant_native_rows.py).
 Two public inputs fit within the eight-word ABI only at these lengths:
 `2N` input words plus `N` result words must be at most eight. Returning an
-input directly, private inputs, constants, assertions,
+input directly, private inputs, trivial constant operands (`0` or `1`),
+stand-alone constant outputs, assertions,
 noncanonical commutative node order, duplicate expressions that native CSE
 would merge, and all other operations are outside this row claim.
 

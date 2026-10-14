@@ -4,9 +4,9 @@ The four-lane case already has a separate direct-gate certificate. This
 checker reuses its full exported-column/manifest replay, then compares every
 native gate against an independent, shape-indexed schedule. The fixed-root
 comparison relies on the pinned native inspector and verifier; this is not a
-PCS/FRI soundness theorem. Static tuples and the bounded helper-after-tuple
-form are admitted only when exact source bytes independently erase to that
-graph. The latter has no Lean byte-run theorem.
+PCS/FRI soundness theorem. Static tuples and bounded constant arithmetic
+are admitted only when exact source bytes independently erase to that graph.
+The combined helper-after-tuple form uses a separate typed certificate.
 """
 
 from __future__ import annotations
@@ -48,9 +48,10 @@ def admitted_ssa(certificate: dict[str, Any], source_bytes: bytes | None = None)
     """Admit pure arithmetic or a checked static product erased to that graph.
 
     Effectful-profile certificates are eligible only when exact source bytes
-    independently parse as a static product. The graph restrictions below
-    then exclude constants, assertions, private inputs, and unsupported AIR
-    layouts. Omitting source bytes never admits that wider profile.
+    independently parse to the checked graph. The graph restrictions below
+    admit nontrivial constant arithmetic or erased static products, but exclude
+    assertions, private inputs, and unsupported AIR layouts. Omitting source
+    bytes never admits the wider profile.
     """
     profile = certificate.get("lean_semantic_profile")
     if certificate.get("unmodeled_features") != []:
@@ -63,7 +64,9 @@ def admitted_ssa(certificate: dict[str, Any], source_bytes: bytes | None = None)
             parse_source_fragment(source_bytes, _static_products=products)
         except ValueError:
             return False
-        if products != [True]:
+        if products != [True] and not any(
+                node["op"] in {"add_const", "mul_const"}
+                for node in certificate["ssa"]["nodes"]):
             return False
     elif profile != LEAN_SEMANTIC_PROFILE:
         return False
@@ -83,11 +86,16 @@ def _admitted_graph(ssa: dict[str, Any]) -> bool:
         return False
     seen: set[tuple[str, int, int]] = set()
     for index, node in enumerate(nodes, input_count):
-        op, lhs, rhs = node["op"], node["lhs"], node["rhs"]
-        if (node["id"] != index or op not in {"add", "sub", "mul"} or
+        op, lhs = node["op"], node["lhs"]
+        constant_op = op in {"add_const", "mul_const"}
+        rhs = node.get("constant") if constant_op else node.get("rhs")
+        if (node["id"] != index or
+                op not in {"add", "sub", "mul", "add_const", "mul_const"} or
                 type(lhs) is not int or type(rhs) is not int or
-                not 0 <= lhs < index or not 0 <= rhs < index or
-                (op != "sub" and lhs > rhs)):
+                not 0 <= lhs < index or
+                (constant_op and not 2 <= rhs < 2**31 - 1) or
+                (not constant_op and (not 0 <= rhs < index or
+                                      (op != "sub" and lhs > rhs)))):
             return False
         key = (op, lhs, rhs)
         if key in seen:
@@ -95,8 +103,18 @@ def _admitted_graph(ssa: dict[str, Any]) -> bool:
         seen.add(key)
     # Selecting a raw public input skips the native unpack conversion rows.
     # The reviewed schedule applies only when the selected value is a node.
-    return (type(ssa["output"]) is int and
-            input_count <= ssa["output"] < input_count + len(nodes))
+    if (type(ssa["output"]) is not int or
+            not input_count <= ssa["output"] < input_count + len(nodes)):
+        return False
+    try:
+        _, n_vars, n_rows, _ = exact_direct_gate_schedule({
+            "lane_count": lanes, "input_count": input_count,
+            "instructions": nodes, "output": ssa["output"]})
+    except (KeyError, ValueError):
+        return False
+    # The public main diagnostic and fixed-row certificate are reviewed only
+    # for the 512-row layout. Many large literals can cross a padding boundary.
+    return n_vars == n_rows == 512
 
 
 def admitted_structural(certificate: dict[str, Any], source_bytes: bytes) -> bool:
@@ -245,7 +263,10 @@ def make_certificate(package: Path) -> dict[str, Any]:
     # input reserves three addresses per lane (the second input reuses the
     # first input's two basis addresses), then each source node reserves one.
     # Output unpacking allocates 3N-2 further addresses for N scalar words.
-    source_var_end = 11 + 3 * lanes + (input_count - 1) * (3 * lanes - 2) + len(ssa["nodes"])
+    source_var_end = (11 + 3 * lanes + (input_count - 1) * (3 * lanes - 2) +
+                      len(ssa["nodes"]) +
+                      len({node["constant"] for node in ssa["nodes"]
+                           if node["op"] in {"add_const", "mul_const"}}))
     expected_bindings = []
     for index, name in enumerate((*(item["name"] for item in inputs),
                                   relation["public_outputs"][0])):
@@ -278,10 +299,13 @@ def make_certificate(package: Path) -> dict[str, Any]:
     source_rows = []
     kinds = ("add", "sub", "mul", "pointwise_mul")
     for node, gate in zip(ssa["nodes"], source_gates, strict=True):
-        kind = "pointwise_mul" if node["op"] == "mul" else node["op"]
+        kind = ("pointwise_mul" if node["op"] in {"mul", "mul_const"} else
+                "add" if node["op"] == "add_const" else node["op"])
         position = expected_gates[kind].index({field: gate[field] for field in ("in0", "in1", "out")})
         trace_row = sum(len(expected_gates[prior]) for prior in kinds[:kinds.index(kind)]) + position
         source_rows.append({"id": node["id"], "op": node["op"],
+                            **({"constant": node["constant"]} if
+                               node["op"] in {"add_const", "mul_const"} else {}),
                             "trace_row": trace_row, "in0": gate["in0"],
                             "in1": gate["in1"], "out": gate["out"]})
     structural = binding_key == "typed_structural_derivation_sha256"
