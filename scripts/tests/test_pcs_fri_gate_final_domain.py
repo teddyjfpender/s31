@@ -67,6 +67,11 @@ class GateFinalDomainTests(unittest.TestCase):
         self.assertEqual(derived["committed_composition_column_log_size"], 7)
         self.assertEqual(derived["fri_input_degree_bound_log"], 7)
         self.assertEqual(derived["fri_input_domain_rows"], 256)
+        self.assertEqual(derived["candidate_paper_protocol4_D0_if_N_is_trace_rows"], 512)
+        self.assertEqual(derived["candidate_paper_domain_cap_rows"], 1 << 30)
+        self.assertFalse(derived["native_fri_domain_equals_candidate_paper_protocol4_D0"])
+        self.assertEqual(derived["candidate_smallest_component_rows"], 16)
+        self.assertTrue(derived["conditional_small_table_ood_for_every_udr_theta_if_components_are_tables"])
         self.assertEqual(report["theorem_inputs"]["D_final_fri_domain"], 256)
         self.assertFalse(report["proven_release_admissible"])
         self.assertEqual(report["status"], "incomplete")
@@ -109,6 +114,21 @@ class GateFinalDomainTests(unittest.TestCase):
         rejected["configured_trace_lifting_log_size"] = 31
         with self.assertRaisesRegex(ValueError, "exceeds circle"):
             derive_gate(rejected, [(name, 1) for name in NAMES])
+        # N*B fits the native circle, while the paper's full N*B^2
+        # ensemble exceeds its 2^30 domain cap.
+        logs = (29,) * len(NAMES)
+        rejected = gate_report(logs)
+        with self.assertRaisesRegex(ValueError, "N\\*B\\^2 exceeds"):
+            derive_gate(rejected, [(name, 1) for name in NAMES])
+        accepted = gate_report((28,) * len(NAMES))
+        boundary = derive_gate(accepted, [(name, 1) for name in NAMES])
+        self.assertEqual(boundary["gate_final_domain"]["candidate_paper_protocol4_D0_if_N_is_trace_rows"],
+                         1 << 30)
+        # A two-row component does not satisfy the uniform theta premise.
+        tiny = gate_report((1,) + (4,) * (len(NAMES) - 1))
+        small_table = derive_gate(tiny, [(name, 1) for name in NAMES])
+        self.assertFalse(small_table["gate_final_domain"][
+            "conditional_small_table_ood_for_every_udr_theta_if_components_are_tables"])
 
     @unittest.skipUnless((ROOT / BUNDLE).is_file(), "pinned engine submodule not checked out")
     def test_real_bundle_offsets_and_source_mutation(self):
