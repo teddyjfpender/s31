@@ -214,6 +214,9 @@ test "P05 accepted sparse H3 two-point own quotient rows match native PCS" {
                 .x = QM31.fromBase(shift.x),
                 .y = QM31.fromBase(shift.y),
             });
+            // At the largest lifted height the period shift is identity;
+            // lower heights retain a distinct lifted periodic sample.
+            try std.testing.expectEqual(column.extended_log_size == shape.trace_lifting_log_size, periodic.eql(column_points[1]));
             const periodic_quotient = try own.ownQuotientAt(periodic, column_values[1], source, row);
             const native = try nativeAnswer(alloc, shape.trace_lifting_log_size, column.extended_log_size, shape.first_raw_lifted_query_position, source, column_points[0..2], column_values[0..2], alpha);
             const expected = periodic_quotient.add(direct[0].mul(alpha))
@@ -225,7 +228,10 @@ test "P05 accepted sparse H3 two-point own quotient rows match native PCS" {
                 .x = QM31.fromBase(source_shift.x),
                 .y = QM31.fromBase(source_shift.y),
             });
+            // At each source height the period generator has order 2^h.
+            try std.testing.expect(source_periodic.eql(normalized_points[1]));
             const normalized_periodic_quotient = try own.ownQuotientAt(source_periodic, column_values[1], source, source_row);
+            try std.testing.expect(normalized_periodic_quotient.eql(normalized_direct[1]));
             const native_source = try nativeAnswer(alloc, column.extended_log_size, column.extended_log_size, projected[0], source, normalized_points[0..2], column_values[0..2], alpha);
             const expected_source = normalized_periodic_quotient
                 .add(normalized_direct[0].mul(alpha))

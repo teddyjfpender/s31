@@ -18,3 +18,6 @@ are inputs to specific audits, not independently trusted statements.
 The [accepted sparse Gate H3 row example](PCS_FRI_SPARSE_GATE_H3_ACCEPTED_ROWS.md)
 shows one authenticated circle row, its two OOD quotient calculations, and
 the boundary between a checked row equation and a whole-oracle degree test.
+The [three-height paper ensemble map](PCS_FRI_SPARSE_GATE_PAPER_ENSEMBLE.md)
+itemizes conditional Protocol 3/4 function widths for the accepted two-point
+claim roster and explains why the selected verifier's batch width remains unknown.

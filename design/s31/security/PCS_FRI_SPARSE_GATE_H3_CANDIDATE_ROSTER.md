@@ -25,6 +25,11 @@ needed, but it is not duplicated as an original function.
 
 The `73` quotients refer to **actual accepted QM31 points and values**, in
 the [claim map](evidence/sparse-gate-p05-accepted-geometry-2026-10-14.json).
+The [theorem-facing occupancy map](PCS_FRI_SPARSE_GATE_PAPER_ENSEMBLE.md)
+distinguishes this shared-original `61+73` list from a literal pair per
+accepted claim (`73+73`, widths `36/64/46`). The latter has the same numeric
+maximum `64` as the periodicity-added row below for a different reason; the
+lists of functions are not interchangeable.
 The twelve extra periodicity words are separate from those 73 explicit
 claims. The existing native sampled-row adapter constructs one such word
 before the two explicit samples for each two-sample interaction column: it
