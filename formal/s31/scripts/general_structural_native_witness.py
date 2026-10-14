@@ -152,14 +152,17 @@ def checked_words(raw: dict[str, bytes]) -> tuple[list[dict], list[dict]]:
 
 
 def native_check(raw: dict[str, bytes], inputs: list[dict], nodes: list[dict],
-                 work: Path) -> None:
+                 work: Path, *, tamper_extra_gate_for_test: bool = False,
+                 tamper_changed_gate_for_test: bool = False) -> None:
     corpus = {"schema": "s31-structural-m31-native-witness-corpus-v1",
               "cases": [{"label": "source-derived-generic", "relation": raw["relation"].decode(),
                          "assignment": raw["assignment"].decode(),
                          "expected_inputs": inputs, "expected_nodes": nodes,
                          "expected_output_source_id": json.loads(raw["certificate"])["ssa"]["output"],
                          "expected_valid": True, "expected_circuit_valid": True,
-                         "expected_public_match": True}]}
+                         "expected_public_match": True,
+                         "tamper_extra_gate_for_test": tamper_extra_gate_for_test,
+                         "tamper_changed_gate_for_test": tamper_changed_gate_for_test}]}
     path = work / "native-corpus.json"
     path.write_text(json.dumps(corpus, sort_keys=True, separators=(",", ":")) + "\n")
     result = subprocess.run([

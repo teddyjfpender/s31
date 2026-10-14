@@ -56,6 +56,12 @@ arithmetic node against the value-carrying Zig direct-Gate compiler. It checks
 an independently calculated source-to-canonical ID map through CSE, identity
 erasure, and constant folding against the compiler's source-name map,
 gate opcode/operand addresses, witness values, and eight public output words.
+The native runner also compares every primitive gate list, permutation roster,
+output address, constant allocation, and compiler map between value-carrying
+and witness-free compilation. Each canonical packed arithmetic node must own
+exactly one gate in its compiler span, except literal-zero addition, which
+must alias the other operand and emit no gate. Rejection controls inject a
+redundant satisfying gate and alter a gate operand.
 It snapshots all seven artifacts before either checker runs and recomputes
 the source/relation/ABI digests, which the Lean parser checks only for shape.
 
@@ -79,7 +85,10 @@ externally supplied private assignment in a proof, establish committed AIR row
 correspondence,
 or prove PCS/FRI soundness. The Lean `checked_statement_sound` theorem covers
 source/evaluator semantics conditional on the Lean gate; the native address
-and value checks are executable evidence at the remaining compiler seam.
+and value checks are executable evidence at the remaining compiler seam. The
+two compiler modes could still share a source-independent error in input,
+assertion, binding, or finalization graph construction. This remains short of
+a universal native compiler correctness theorem.
 
 `general_linear_ssa_effects_certificate.py` runs the strict Lean effects
 certificate gate on the production affine/assertion fixture and rejects
