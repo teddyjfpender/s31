@@ -231,13 +231,18 @@ theorem accepted_height17_split_equals_recursiveValue
 
 /-- A source word whose two projected sampled values equal the full
 subset-product dot products has an own quotient at each point. This theorem
-bridges the mathematical fast-path operation to the two-Q degree theorem;
+bridges the mathematical fast-path operation to the two-Q degree theorem,
+with explicit source-height and imaginary-unit equalities for both claims;
 the native materialization and packed dot-product loops still need refinement. -/
 theorem accepted_basis_dot_two_q_own_quotients
     [NeZero (2 : F)]
     (h : Nat) (hh : h ∈ SparseP05TwoQDegree.acceptedHeights)
     (i : F) (hi : i ^ 2 = -1) (coefficients : List F)
     (c₀ c₁ : SparseP05TwoQDegree.ProjectedConjugateClaim F E)
+    (hheight₀ : c₀.sourceHeight = h)
+    (hheight₁ : c₁.sourceHeight = h)
+    (himag₀ : c₀.i = i)
+    (himag₁ : c₁.i = i)
     (hdistinct : c₀.z ≠ c₁.z)
     (hvalue₀ : basisDot
       (CircleRecursiveBasisDegree.nativeFactorValue
@@ -267,7 +272,7 @@ theorem accepted_basis_dot_two_q_own_quotients
           CircleLaurentDegree.nativeLineLaurent
             c₁.i c₁.x₀ c₁.y₀ c₁.x₁ c₁.y₁ * q₁ := by
   apply CircleRecursiveBasisDegree.accepted_recursive_word_two_q_own_quotients
-    h hh i hi coefficients c₀ c₁ hdistinct
+    h hh i hi coefficients c₀ c₁ hheight₀ hheight₁ himag₀ himag₁ hdistinct
   · rw [recursiveValue_eq_basisDot]
     exact hvalue₀
   · rw [recursiveValue_eq_basisDot]

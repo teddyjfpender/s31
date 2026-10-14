@@ -86,7 +86,9 @@ one fully populated recursive source word and two correct evaluations at the
 projected OOD points. It constructs an **own quotient for each point** with
 radius one below that source's bound and proves both exact polynomial
 identities. Its value premises say that the sampled claims equal this
-recursive word's evaluations. Those premises still need to be derived from
+recursive word's evaluations. Both claim certificates must have the stated
+source height and the same imaginary unit as the source word. The value
+premises still need to be derived from
 the selected native evaluator and accepted proof; the theorem does not infer
 them from the 73 captured claim values.
 

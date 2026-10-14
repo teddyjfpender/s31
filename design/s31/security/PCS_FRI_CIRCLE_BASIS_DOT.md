@@ -30,7 +30,9 @@ point evaluates the bounded circle polynomial built from the same
 coefficients. The composed theorem
 `accepted_basis_dot_two_q_own_quotients` then yields separate base and
 shifted own quotients at the exact accepted height radius **if both
-projected sampled claims equal these dot products**.
+projected sampled claims equal these dot products**. Both claim certificates
+must also name that source height and the same imaginary unit `i` used to
+build the coefficient word.
 
 The Laurent theorem needs an element `i` with `i² = −1`, which native M31
 does not contain. [`CircleBasisM31Embedding.lean`](../../../formal/s31/S31/Gadgets/PcsFri/CircleBasisM31Embedding.lean)

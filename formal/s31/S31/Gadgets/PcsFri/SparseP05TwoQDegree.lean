@@ -208,7 +208,8 @@ theorem two_distinct_q_own_quotients_exist
   exact ⟨q₀, q₁, hq₀, hq₁, hrel₀, hrel₁, hrel₀.symm.trans hrel₁⟩
 
 /-- Apply the two-Q construction at exactly one of the three accepted source
-heights. The quotient bound is `32767`, `511`, or `7`, respectively. The
+heights, requiring both claim certificates to name that source height. The
+quotient bound is `32767`, `511`, or `7`, respectively. The
 source `InCircleBand` premise still needs full native coefficient refinement. -/
 theorem accepted_height_two_q_own_quotients_exist
     [NeZero (2 : F)]
@@ -216,6 +217,8 @@ theorem accepted_height_two_q_own_quotients_exist
     (h : Nat) (hh : h ∈ acceptedHeights)
     (f : CirclePoly F) (hf : InCircleBand (sourceRadius h) f)
     (c₀ c₁ : ProjectedConjugateClaim F E)
+    (_hheight₀ : c₀.sourceHeight = h)
+    (_hheight₁ : c₁.sourceHeight = h)
     (hdistinct : c₀.z ≠ c₁.z)
     (hclaim₀ : eval₂ (algebraMap F E) c₀.z f =
       eval₂ (algebraMap F E) c₀.z c₀.interpolation)

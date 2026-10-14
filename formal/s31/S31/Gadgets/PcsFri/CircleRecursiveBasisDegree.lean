@@ -257,8 +257,9 @@ theorem coefficientWord_eval_algebra
 /-- A fully populated recursive source word plus two correct *projected*
 recursive evaluations gives its two own quotient polynomials at the exact
 accepted height bound. This composes all-coefficient source degree with the
-two-Q quotient construction. The value equalities are deliberately about
-the source-transcribed recursive evaluator; proving they equal the captured
+two-Q quotient construction. Both claim certificates must name the source
+height and imaginary unit used by that evaluator. The value equalities are
+deliberately about the source-transcribed recursive evaluator; proving they equal the captured
 native sampled values is the remaining selected-implementation refinement. -/
 theorem accepted_recursive_word_two_q_own_quotients
     [NeZero (2 : F)]
@@ -266,6 +267,10 @@ theorem accepted_recursive_word_two_q_own_quotients
     (h : Nat) (hh : h ∈ SparseP05TwoQDegree.acceptedHeights)
     (i : F) (hi : i ^ 2 = -1) (coefficients : List F)
     (c₀ c₁ : SparseP05TwoQDegree.ProjectedConjugateClaim F E)
+    (hheight₀ : c₀.sourceHeight = h)
+    (hheight₁ : c₁.sourceHeight = h)
+    (_himag₀ : c₀.i = i)
+    (_himag₁ : c₁.i = i)
     (hdistinct : c₀.z ≠ c₁.z)
     (hvalue₀ : recursiveValue
       (fourierX c₀.z.val c₀.z⁻¹.val)
@@ -300,6 +305,6 @@ theorem accepted_recursive_word_two_q_own_quotients
     exact hvalue₁
   exact SparseP05TwoQDegree.accepted_height_two_q_own_quotients_exist
     h hh (coefficientWord i (h - 1) coefficients) hf c₀ c₁
-    hdistinct hclaim₀ hclaim₁
+    hheight₀ hheight₁ hdistinct hclaim₀ hclaim₁
 
 end S31.Gadgets.PcsFri.CircleRecursiveBasisDegree
