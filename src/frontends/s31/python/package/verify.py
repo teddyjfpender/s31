@@ -160,6 +160,8 @@ def verify_package(package: Path) -> dict:
     if json.loads((package / "public-abi.json").read_text()) != abi(source, manifest["lowering"]):
         raise ValueError("S31 public ABI does not match the sealed relation")
     key = json.loads((package / "verification-key.json").read_text())
+    from package.optimizer_receipt import verify_artifact as verify_optimizer_artifact
+    verify_optimizer_artifact(package, manifest, key, source)
     if raw_gate:
         if (key.get("channel_profile") != channel_profile or
                 key.get("schema") != "s31-verification-key-gate-raw-v1" or

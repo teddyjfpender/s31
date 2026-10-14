@@ -3,7 +3,8 @@
 The native `inspect-optimizer` command checks a versioned slice of the
 normalized S31 relation against the **actual canonical graph** that the
 compiler uses. It accepts M31 inputs and straight-line `constant`,
-`cast_m31`, `add`, `sub`, `mul`, `add_const`, and `mul_const` nodes. Other
+`cast_m31`, `add`, `sub`, `mul`, `add_const`, and `mul_const` nodes in a
+transparent version 1 relation. Other
 operations return `UnsupportedOptimizerCorrespondenceFragment`; no receipt
 is issued for them.
 
@@ -57,5 +58,11 @@ The Zig checker ties those semantic rules to actual native optimizer nodes.
 It does not establish that native circuit gates, AIR columns, or PCS/FRI
 verification implement the canonical graph; those are separate obligations.
 
-The command is used at package construction or in an audit. It does not run
-on each proof generation or native proof verification.
+For admitted new packages, the build runs this command once and stores
+`optimizer-correspondence.json`. The receipt contains the exact normalized
+source SHA-256 and a SHA-256 recomputed by the checker from its verified
+legacy canonical IR serialization. Package admission compares those values
+with the source artifact, manifest and verification key. Existing packages
+without this opt-in receipt remain readable; absence of the receipt is not a
+claim that the optimizer was audited. The checker does not run on each proof
+generation or native proof verification.

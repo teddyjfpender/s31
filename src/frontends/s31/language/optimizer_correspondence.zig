@@ -25,7 +25,24 @@ const Key = struct {
     constant: ?u32 = null,
 };
 
+// The legacy v1 IR encoding has neither selector nor index fields. Keep an
+// independent encoder here so the certificate checks the digest as well as
+// the graph supplied by canonical.build.
+const EncodedNode = struct {
+    tag: canonical.Tag,
+    kind: relation.Kind,
+    length: u32,
+    lhs: ?u32 = null,
+    rhs: ?u32 = null,
+    constant: ?u32 = null,
+    rounds: ?u32 = null,
+    body: ?[]const relation.Step = null,
+    input_name: ?[]const u8 = null,
+    visibility: ?relation.Visibility = null,
+};
+
 fn supported(program: relation.Program) bool {
+    if (program.version != 1 or program.proof_mode != .transparent) return false;
     for (program.inputs) |input| if (input.kind != .m31) return false;
     for (program.nodes) |node| switch (node.op) {
         .constant, .cast_m31, .add, .sub, .mul, .add_const, .mul_const => {},
@@ -167,10 +184,32 @@ fn checkProgram(allocator: std.mem.Allocator, program: relation.Program, ir: *co
         try require(std.mem.eql(u8, actual.name, name) and
             actual.id == (names.get(name) orelse return error.OptimizerCorrespondenceMismatch));
     }
+    const encoded_nodes = try allocator.alloc(EncodedNode, expected.items.len);
+    defer allocator.free(encoded_nodes);
+    for (expected.items, encoded_nodes) |node, *encoded| encoded.* = .{
+        .tag = node.tag,
+        .kind = node.kind,
+        .length = node.length,
+        .lhs = node.lhs,
+        .rhs = node.rhs,
+        .constant = node.constant,
+        .input_name = node.input_name,
+        .visibility = node.visibility,
+    };
+    const canonical_bytes = try std.json.Stringify.valueAlloc(allocator, .{
+        .version = @as(u32, 1),
+        .nodes = encoded_nodes,
+        .assertions = ir.assertions,
+        .public_outputs = ir.public_outputs,
+    }, .{});
+    defer allocator.free(canonical_bytes);
+    var canonical_digest: [32]u8 = undefined;
+    std.crypto.hash.sha2.Sha256.hash(canonical_bytes, &canonical_digest, .{});
+    try require(std.mem.eql(u8, &canonical_digest, &ir.sha256));
     var source_digest: [32]u8 = undefined;
     std.crypto.hash.sha2.Sha256.hash(source_bytes, &source_digest, .{});
     return .{ .program_sha256 = std.fmt.bytesToHex(source_digest, .lower),
-        .canonical_ir_sha256 = std.fmt.bytesToHex(ir.sha256, .lower),
+        .canonical_ir_sha256 = std.fmt.bytesToHex(canonical_digest, .lower),
         .source_nodes = program.nodes.len, .canonical_nodes = ir.nodes.len,
         .aliases = aliases };
 }
@@ -204,6 +243,12 @@ test "production canonical graph passes with folds CSE aliases and ordered subtr
     const original_rhs = ir.nodes[5].rhs;
     ir.nodes[5].lhs = original_rhs;
     ir.nodes[5].rhs = original_lhs;
+    try std.testing.expectError(error.OptimizerCorrespondenceMismatch,
+        check(std.testing.allocator, source, &ir));
+    ir.nodes[5].lhs = original_lhs;
+    ir.nodes[5].rhs = original_rhs;
+
+    ir.sha256[0] ^= 1;
     try std.testing.expectError(error.OptimizerCorrespondenceMismatch,
         check(std.testing.allocator, source, &ir));
 }

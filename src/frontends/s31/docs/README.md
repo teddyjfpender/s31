@@ -49,6 +49,9 @@ text .s31 ──parse/typecheck/specialize──▶ normalized relation JSON
 - [One program's Lean proof ladder](formal/README.md): the real functional
    `x⁴` source, generated wire IDs, local AIR rows, Gate address joins,
    LogUp closure, an explicit forged-witness bound, and remaining premises.
+- [Pure-field optimizer correspondence](formal/optimizer-correspondence.md):
+   a hand-calculated constant/CSE example, its canonical node IDs, the
+   one-time native audit receipt, and the exact semantic boundary it checks.
 - [A private choice worked by hand](worked-choice.md): a Boolean selector
    chooses between two public square-plus-seven results. See the filled
    circuit wires, gate equations, two-row polynomial factorization, and the
