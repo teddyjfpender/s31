@@ -4,6 +4,21 @@ The Lean files in this directory establish small parts of the native PCS/FRI
 argument. They are imported by `S31.Gadgets`, so normal builds and axiom
 audits include their theorems.
 
+[`NativeQueryBatch.lean`](NativeQueryBatch.lean) models the selected M31
+channel's eight-word output batches. For any number of requested raw queries
+and any array of 32-bit batch words, query slot `j` takes block `j / 8`, lane
+`j % 8`, reduces it modulo `2³¹−1`, then keeps the low `k` bits. The theorem
+also identifies the ordered all-good event with the existing raw tuple model;
+every raw tuple can be embedded in the block layout with unused lanes filled
+with zero.
+At 70 queries the native loop consumes nine blocks and uses only lanes 0–5 of
+the final block. The [native differential](../../../tests/pcs_fri_native_query_batch.zig)
+checks this schedule against `drawQueries` and the native reducer, while the
+[source guard](../../../../../scripts/s31_formal_lib/pcs_fri_m31_query.py)
+pins the eight-lane loop and S31's channel profile. The bridge is deterministic:
+it does not prove BLAKE2s output independence, a fixed good set, or a P08
+security bound.
+
 [`NativeM31Arithmetic.lean`](NativeM31Arithmetic.lean) proves the integer
 arithmetic in the engine's scalar M31 and four-lane AArch64 paths. For every
 `u64` input, two 31-bit folds and the wrapping unsigned minimum return the
