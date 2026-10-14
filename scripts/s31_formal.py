@@ -451,6 +451,7 @@ BINDINGS = [
     "src/frontends/s31/runtime/pcs_lifted_capture_admission.zig",
     "formal/s31/tests/lib/p05_multi_root_original_batch.zig",
     "formal/s31/tests/lib/p05_claim_roster.zig",
+    "formal/s31/tests/lib/p05_gate_multi_epoch_plan.zig",
     "formal/s31/tests/lib/p05_own_quotient_rows.zig",
     "formal/s31/tests/lib/p05_native_height_pair_fold.zig",
     "formal/s31/tests/pcs_fri_raw_refinement_native.zig",

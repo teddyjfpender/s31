@@ -3,6 +3,7 @@ const std = @import("std");
 const core = @import("stwo_core");
 const roster = @import("s31_p05_roster");
 const paired = @import("s31_pair_fold");
+const gate_plan = @import("s31_gate_plan");
 
 const M31 = core.fields.m31.M31;
 const QM31 = core.fields.qm31.QM31;
@@ -193,6 +194,25 @@ test "P05 verifier-owned AIR and proof roster feeds native pair fold" {
     try std.testing.expectEqual(@as(usize, 12), claims.len);
     try std.testing.expectEqual(@as(usize, 3), claims[4].tree_index);
     try std.testing.expectEqual(@as(usize, 7), claims[11].column_index);
+    var plan = try gate_plan.derive(alloc, pcs, scheme, &handles, accepted_values, &capture);
+    defer plan.deinit(alloc);
+    try std.testing.expectEqual(@as(usize, 11), plan.columns.len);
+    try std.testing.expectEqual(@as(usize, 12), plan.claims.len);
+    try std.testing.expectEqual(@as(usize, 8), plan.epochs[3].column_count);
+    try std.testing.expectEqual(gate_plan.RootEpoch.composition, plan.columns[10].epoch);
+    try std.testing.expectEqual(@as(usize, 2), plan.heights.len);
+    try std.testing.expectEqual(@as(u32, 2), plan.heights[0].source_log_size);
+    try std.testing.expectEqual(@as(usize, 9), plan.heights[0].source_columns);
+    try std.testing.expectEqual(@as(usize, 9), plan.heights[0].original_tracks);
+    try std.testing.expectEqual(@as(usize, 9), plan.heights[0].own_quotient_tracks);
+    try std.testing.expectEqual(@as(usize, 3), plan.heights[1].own_quotient_tracks);
+    try std.testing.expectEqual(@as(usize, 0), plan.columns[1].original_slot);
+    try std.testing.expectEqual(@as(usize, 0), plan.columns[1].first_own_quotient_slot);
+    try std.testing.expectEqual(@as(usize, 1), plan.columns[2].original_slot);
+    try std.testing.expectEqual(@as(usize, 1), plan.columns[2].first_own_quotient_slot);
+    try std.testing.expectEqual(@as(usize, 8), plan.heights[0].composition_columns);
+    try std.testing.expect(plan.theorem_batch_width_M == null);
+    try std.testing.expectError(error.RequiresMultiEpochProtocol, plan.requireSinglePreOodRoot());
     const fold_alpha = QM31.fromU32Unchecked(29, 0, 0, 0);
     const pair_beta = QM31.fromU32Unchecked(31, 0, 0, 0);
     var folds = try paired.reconstruct(
@@ -213,6 +233,7 @@ test "P05 verifier-owned AIR and proof roster feeds native pair fold" {
 
     capture.sampled_values = flat_claims[0 .. flat_claims.len - 1];
     try std.testing.expectError(error.InvalidP05VerifierRoster, roster.derive(H, alloc, pcs, scheme, &handles, accepted_values, &capture, true));
+    try std.testing.expectError(error.InvalidP05VerifierRoster, gate_plan.derive(alloc, pcs, scheme, &handles, accepted_values, &capture));
     try std.testing.expectError(error.InvalidP05VerifierRoster, paired.reconstruct(
         alloc,
         pcs,
