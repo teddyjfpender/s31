@@ -51,6 +51,7 @@ pub const CandidateKey = struct {
     public_abi_sha256: ?[]const u8 = null,
     circuit_hash: []const u8,
     air_bundle_sha256: []const u8,
+    source_air_roster_sha256: []const u8,
     profile: Profile,
 };
 
@@ -70,6 +71,8 @@ pub const Trusted = struct {
     public_abi_digest: ?[32]u8,
     circuit_hash: [32]u8,
     air_bundle_digest: [32]u8,
+    /// Must be reconstructed from the compiler-owned source/AIR roster.
+    source_air_roster_digest: [32]u8,
     public_words: [8]u32,
 };
 
@@ -106,7 +109,8 @@ pub fn inspect(
     try key.profile.validate();
     if (!sameDigest(key.program_sha256, trusted.program_digest) or
         !sameDigest(key.circuit_hash, trusted.circuit_hash) or
-        !sameDigest(key.air_bundle_sha256, trusted.air_bundle_digest))
+        !sameDigest(key.air_bundle_sha256, trusted.air_bundle_digest) or
+        !sameDigest(key.source_air_roster_sha256, trusted.source_air_roster_digest))
         return error.InvalidInstalledKey;
     if (trusted.public_abi_digest) |digest| {
         if (!sameDigest(key.public_abi_sha256 orelse return error.InvalidInstalledKey, digest))
@@ -303,10 +307,12 @@ test "candidate key, public statement and exact v6 wire header bind, then fail c
     const program_digest = [_]u8{0x11} ** 32;
     const circuit_hash = [_]u8{0x22} ** 32;
     const air_digest = [_]u8{0x33} ** 32;
+    const roster_digest = [_]u8{0x44} ** 32;
     const source_root = [_]u8{0x55} ** 32;
     const program_hex = std.fmt.bytesToHex(program_digest, .lower);
     const circuit_hex = std.fmt.bytesToHex(circuit_hash, .lower);
     const air_hex = std.fmt.bytesToHex(air_digest, .lower);
+    const roster_hex = std.fmt.bytesToHex(roster_digest, .lower);
     const root_hex = std.fmt.bytesToHex(source_root, .lower);
     const profile = Profile{
         .largest_log_size = 6,
@@ -323,6 +329,7 @@ test "candidate key, public statement and exact v6 wire header bind, then fail c
         .program_sha256 = &program_hex,
         .circuit_hash = &circuit_hex,
         .air_bundle_sha256 = &air_hex,
+        .source_air_roster_sha256 = &roster_hex,
         .profile = profile,
     };
     const key_bytes = try std.json.Stringify.valueAlloc(allocator, key, .{});
@@ -351,6 +358,7 @@ test "candidate key, public statement and exact v6 wire header bind, then fail c
         .public_abi_digest = null,
         .circuit_hash = circuit_hash,
         .air_bundle_digest = air_digest,
+        .source_air_roster_digest = roster_digest,
         .public_words = words,
     };
     try std.testing.expectError(error.Cas05NotProduction, inspect(
@@ -372,6 +380,15 @@ test "candidate key, public statement and exact v6 wire header bind, then fail c
     try std.testing.expectError(error.InvalidInstalledKey, inspect(
         allocator,
         wrong_program,
+        key_bytes,
+        statement_bytes,
+        wire,
+    ));
+    var wrong_roster = trusted;
+    wrong_roster.source_air_roster_digest[0] ^= 1;
+    try std.testing.expectError(error.InvalidInstalledKey, inspect(
+        allocator,
+        wrong_roster,
         key_bytes,
         statement_bytes,
         wire,
