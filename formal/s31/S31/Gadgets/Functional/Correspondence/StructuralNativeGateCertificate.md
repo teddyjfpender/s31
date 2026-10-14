@@ -83,11 +83,24 @@ The audit is restricted to the admitted structural M31 direct-Gate fragment;
 other compiler modes and constant-base choices need their own replay. The
 replay pins the engine builder, constant pass, and S31 radix-selection source
 bytes so changes to their algorithms require another review.
-The input and public-binding spans are not yet independently enumerated gate
-by gate. A satisfiable extra gate added coherently to an input span and the
-padded AIR rows can still pass this assignment-specific checker. The
-one-producer check establishes complete address coverage, not exact ownership
-of every non-finalization gate.
+The input replay independently enumerates the allocation and packing phase.
+Addresses `0, 1, 2` are the reserved `0, 1, u`; addresses `3..10` are the
+eight reserved public output words. A private input gets one packed guess at
+the next address. A public input gets one scalar guess per lane, then `i` and
+`iu` are interned on first use, then `simd.pack` emits one QM31 multiply and
+one add for each lane after the first. For example, the first public two-lane
+input gets scalar addresses `11, 12`, basis addresses `i=13, iu=14`, and the
+two gates `Mul(13, 12, 15)` and `Add(11, 15, 16)`. The packed source wire is
+`16`; the scalar self-product yields at finalization must use `11, 12` in
+that order. The checker fixes these addresses, the input span counts, the
+per-operation gate prefixes, and every inactive coordinate. A coherent
+`Add(0, 0, fresh)` inserted before that input, with all later addresses and
+padded rows shifted consistently, now fails the input replay. The compiler,
+SIMD packer, wrapper, context, and reserved-output source bytes are pinned.
+
+Public binding-conversion spans are not yet independently enumerated gate by
+gate. The one-producer check gives complete address coverage, but it does not
+alone establish exact ownership of every binding-conversion gate.
 These concrete checks
 correspond to the address/value, gate, port, and assertion premises of
 `checked_native_trace_sound` for **one supplied assignment**. The artifact is
