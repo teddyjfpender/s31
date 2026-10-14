@@ -1,5 +1,6 @@
 import S31.Gadgets.Functional.Correspondence.StructuralNativeGateCertificate
 import S31.Gadgets.Functional.Correspondence.GeneralLinearSSABytes
+import S31.Gadgets.Functional.Correspondence.GeneralLinearSSAEffectsSourceBytes
 
 /-!
 An executable, value-level decoder for a supplied structural native Gate
@@ -194,6 +195,7 @@ address chain. Full QM31 multiplication, Eq, input conversion, finalization,
 and padded rows remain the independent graph audit's responsibility. -/
 structure ExportedGraph where
   values : List Quad
+  sourceNames : List String
   addresses : List Nat
   gates : List Gate
 
@@ -222,10 +224,11 @@ private def parseGate (op : GateOp) (count : Nat) (json : Json) : Parse Gate := 
     throw "native source gate address is out of range"
   return { op, in0, in1, out }
 
-private def parseSourceMap (json : Json) : Parse Nat := do
+private def parseSourceMap (json : Json) : Parse (String × Nat) := do
   fields json ["name", "id"]
-  let _ ← string (← field json "name")
-  nat (← field json "id")
+  let name ← string (← field json "name")
+  let id ← nat (← field json "id")
+  return (name, id)
 
 private def parseCanonicalWire (index count : Nat) (json : Json) : Parse Nat := do
   fields json ["id", "wires"]
@@ -255,11 +258,12 @@ def decodeExportedGraph (bytes : String) : Parse ExportedGraph := do
     throw "native variable count exceeds bounded profile"
   let values ← array parseQuad (← field json "values")
   if values.length != count then throw "native value count differs"
-  let sourceIds ← array parseSourceMap (← field json "source_map")
+  let sourceMap ← array parseSourceMap (← field json "source_map")
+  let sourceNames := sourceMap.map Prod.fst
   let rawWires ← array (fun item => pure item) (← field json "node_wires")
   let canonicalWires ← rawWires.zipIdx.mapM fun (item, index) =>
     parseCanonicalWire index count item
-  let addresses ← sourceIds.mapM fun id =>
+  let addresses ← sourceMap.mapM fun (_, id) =>
     match canonicalWires[id]? with
     | some addr => .ok addr
     | none => .error "source node lacks canonical packed wire"
@@ -269,7 +273,7 @@ def decodeExportedGraph (bytes : String) : Parse ExportedGraph := do
     (← field json "pointwise_mul")
   if add.length + sub.length + pointwise.length > 262144 then
     throw "native source gate roster exceeds bounded profile"
-  return { values, addresses, gates := add ++ sub ++ pointwise }
+  return { values, sourceNames, addresses, gates := add ++ sub ++ pointwise }
 
 /-- One computable admission gate from the exported JSON bytes to the checked
 source trace, input ports, public result, and assertions. It returns the parsed
@@ -383,8 +387,103 @@ theorem checked_exported_graph_sound {n : Nat} (hn : n ≤ 4)
     claimed final graph.wire graph.gates graph.addresses hcheck hlanes
     hports htrace houtput hassert
 
+/-- The complete checked result retains the independently parsed source SSA,
+its semantic meaning, and the graph whose source-map names are owned by that
+SSA. The bytes themselves remain supplied data, not authenticated proof cells. -/
+structure CheckedSourceGraph (n : Nat) where
+  ssa : EmittedSSA
+  meaning : Source
+  certificate : Certificate
+  graph : ExportedGraph
+  final : List (Lanes n)
+
+/-- One executable join for source text, canonical SSA certificate bytes, and
+the supplied native graph projection. The source-map names must occur in the
+same order as the independently parsed source's input and node names. -/
+def checkSourceNativeGraph {n : Nat} (hn : n ≤ 4)
+    (sourceBytes : List Nat) (certificateBytes graphBytes : String)
+    (inputs : Nat → Lanes n) (claimed : Lanes n) :
+    Parse (CheckedSourceGraph n) :=
+  match GeneralLinearSSAEffectsSourceBytes.checkSourceCertificate
+      sourceBytes certificateBytes with
+  | .error error => .error error
+  | .ok (ssa, meaning, certificate) =>
+      if n = 0 then .error "native source graph requires at least one lane"
+      else if ssa.lane_count = n then
+        match checkExportedGraph hn graphBytes certificate inputs claimed with
+        | .error error => .error error
+        | .ok (graph, final) =>
+            if graph.sourceNames = ssa.names then
+              .ok { ssa, meaning, certificate, graph, final }
+            else .error "native source-map names differ from parsed source SSA"
+      else .error "native graph lane count differs from parsed source SSA"
+
+/-- Decomposition is universal in the admitted source step list and 1–4 lane
+count. In particular, source-map name ownership is an executable checker
+premise rather than an informal assumption. -/
+theorem checked_source_native_graph_components {n : Nat} (hn : n ≤ 4)
+    (sourceBytes : List Nat) (certificateBytes graphBytes : String)
+    (inputs : Nat → Lanes n) (claimed : Lanes n)
+    (checked : CheckedSourceGraph n)
+    (h : checkSourceNativeGraph hn sourceBytes certificateBytes graphBytes
+      inputs claimed = .ok checked) :
+    GeneralLinearSSAEffectsSourceBytes.checkSourceCertificate
+      sourceBytes certificateBytes =
+        .ok (checked.ssa, checked.meaning, checked.certificate) ∧
+    0 < n ∧ checked.ssa.lane_count = n ∧
+    checkExportedGraph hn graphBytes checked.certificate inputs claimed =
+      .ok (checked.graph, checked.final) ∧
+    checked.graph.sourceNames = checked.ssa.names := by
+  unfold checkSourceNativeGraph at h
+  cases hsource : GeneralLinearSSAEffectsSourceBytes.checkSourceCertificate
+      sourceBytes certificateBytes with
+  | error error => simp [hsource] at h
+  | ok parts =>
+      obtain ⟨ssa, meaning, certificate⟩ := parts
+      by_cases hpositive : n = 0
+      · simp [hsource, hpositive] at h
+      · by_cases hlanes : ssa.lane_count = n
+        · cases hgraph : checkExportedGraph hn graphBytes certificate inputs
+              claimed with
+          | error error => simp [hsource, hpositive, hlanes, hgraph] at h
+          | ok result =>
+              obtain ⟨graph, final⟩ := result
+              by_cases hnames : graph.sourceNames = ssa.names
+              · have heq :
+                    ({ ssa, meaning, certificate, graph, final } :
+                      CheckedSourceGraph n) = checked := by
+                    simpa [hsource, hpositive, hlanes, hgraph, hnames] using h
+                subst checked
+                exact ⟨rfl, Nat.pos_of_ne_zero hpositive, hlanes,
+                  hgraph, hnames⟩
+              · simp [hsource, hpositive, hlanes, hgraph, hnames] at h
+        · simp [hsource, hpositive, hlanes] at h
+
+/-- Successful checking of all three supplied byte strings proves the
+denotation of the parsed S31 source for every admitted step list and 1–4
+lanes. This theorem does not assert that Zig emitted `graphBytes`, or that
+its wire cells are bound to a proof commitment. -/
+theorem checked_source_native_graph_sound {n : Nat} (hn : n ≤ 4)
+    (sourceBytes : List Nat) (certificateBytes graphBytes : String)
+    (inputs : Nat → Lanes n) (claimed : Lanes n)
+    (checked : CheckedSourceGraph n)
+    (h : checkSourceNativeGraph hn sourceBytes certificateBytes graphBytes
+      inputs claimed = .ok checked) :
+    GeneralLinearSSAEffectsSourceBytes.denotation sourceBytes inputs claimed := by
+  obtain ⟨hsource, _, hlanes, hgraph, _⟩ :=
+    checked_source_native_graph_components hn sourceBytes certificateBytes
+      graphBytes inputs claimed checked h
+  obtain ⟨hparse, _, hmeaning, hssa⟩ :=
+    GeneralLinearSSAEffectsSourceBytes.checked_source_parts sourceBytes
+      certificateBytes checked.ssa checked.meaning checked.certificate hsource
+  refine ⟨checked.ssa, checked.meaning, hparse, hmeaning, ?_⟩
+  exact checked_exported_graph_sound hn graphBytes checked.graph checked.ssa
+    checked.meaning checked.certificate inputs claimed checked.final hssa
+    hlanes hgraph
+
 private def toyGraph : ExportedGraph :=
   { values := [fun _ => 1, fun _ => 0, fun _ => 1]
+    sourceNames := ["x", "y", "z"]
     addresses := [0, 1, 2]
     gates := [{ op := .sub, in0 := 0, in1 := 1, out := 2 }] }
 
