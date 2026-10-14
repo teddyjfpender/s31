@@ -158,6 +158,27 @@ pub fn build(b: *std.Build) void {
     audit_main.addImport("stwo_circuit_frontend", circuit);
     audit_main.addImport("stwo_circuit_cpu_integration", cpu);
     structural_witness_root.addImport("s31_audit_main_commitment", audit_main);
+    const control_claim_trace_root = b.createModule(.{
+        .root_source_file = b.path("tests/acceptance/compiler_correspondence/native_control_claim_trace.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    control_claim_trace_root.addImport("stwo_core", core);
+    control_claim_trace_root.addImport("stwo_circuit_frontend", circuit);
+    control_claim_trace_root.addImport("stwo_circuit_cpu_integration", cpu);
+    control_claim_trace_root.addImport("stwo_prover_engine", cpu.import_table.get("stwo_prover_engine") orelse @panic("missing prover engine"));
+    control_claim_trace_root.addImport("interop_postcard", sha_postcard);
+    control_claim_trace_root.addImport("stwo_s31_prototype", frontend);
+    const control_claim_trace = b.addExecutable(.{
+        .name = "s31-control-claim-trace",
+        .root_module = control_claim_trace_root,
+    });
+    b.step("control-claim-trace-build", "Build the noninstalled control proof trace audit")
+        .dependOn(&control_claim_trace.step);
+    const run_control_claim_trace = b.addRunArtifact(control_claim_trace);
+    if (b.args) |args| run_control_claim_trace.addArgs(args);
+    b.step("control-claim-trace", "Reconstruct one transparent control proof's committed trace")
+        .dependOn(&run_control_claim_trace.step);
     const structural_witness = b.addRunArtifact(b.addExecutable(.{
         .name = "s31-structural-native-witness-corpus",
         .root_module = structural_witness_root,
