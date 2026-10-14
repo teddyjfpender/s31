@@ -2,13 +2,144 @@
   "degree_correction": {
     "engine_gitlink_commit": "59e1f115250b8af01712b9bf3d71616e53094964",
     "native_batch_fri_input": "one_accumulated_deep_quotient_word",
+    "native_gate_epoch_trace": [
+      {
+        "event": "legacy_wire",
+        "line": 831,
+        "source": "src/frontends/s31/runtime/native_verifier.zig"
+      },
+      {
+        "event": "fixed_root",
+        "line": 886,
+        "source": "src/frontends/s31/runtime/native_verifier.zig"
+      },
+      {
+        "event": "public_statement",
+        "line": 888,
+        "source": "src/frontends/s31/runtime/native_verifier.zig"
+      },
+      {
+        "event": "main_root",
+        "line": 889,
+        "source": "src/frontends/s31/runtime/native_verifier.zig"
+      },
+      {
+        "event": "lookup_challenge",
+        "line": 893,
+        "source": "src/frontends/s31/runtime/native_verifier.zig"
+      },
+      {
+        "event": "interaction_claim",
+        "line": 905,
+        "source": "src/frontends/s31/runtime/native_verifier.zig"
+      },
+      {
+        "event": "interaction_root",
+        "line": 906,
+        "source": "src/frontends/s31/runtime/native_verifier.zig"
+      },
+      {
+        "event": "stark_verification",
+        "line": 909,
+        "source": "src/frontends/s31/runtime/native_verifier.zig"
+      },
+      {
+        "event": "composition_challenge",
+        "line": 212,
+        "source": "deps/stwo-zig/src/core/verifier.zig"
+      },
+      {
+        "event": "composition_root",
+        "line": 236,
+        "source": "deps/stwo-zig/src/core/verifier.zig"
+      },
+      {
+        "event": "oods_seed",
+        "line": 243,
+        "source": "deps/stwo-zig/src/core/verifier.zig"
+      },
+      {
+        "event": "oods_mask",
+        "line": 246,
+        "source": "deps/stwo-zig/src/core/verifier.zig"
+      },
+      {
+        "event": "composition_oods_identity",
+        "line": 269,
+        "source": "deps/stwo-zig/src/core/verifier.zig"
+      },
+      {
+        "event": "pcs_opening",
+        "line": 286,
+        "source": "deps/stwo-zig/src/core/verifier.zig"
+      },
+      {
+        "event": "sampled_values_mixed",
+        "line": 275,
+        "source": "deps/stwo-zig/src/core/pcs/verifier.zig"
+      },
+      {
+        "event": "deep_challenge",
+        "line": 276,
+        "source": "deps/stwo-zig/src/core/pcs/verifier.zig"
+      },
+      {
+        "event": "fri_commit",
+        "line": 293,
+        "source": "deps/stwo-zig/src/core/pcs/verifier.zig"
+      },
+      {
+        "event": "query_draw",
+        "line": 307,
+        "source": "deps/stwo-zig/src/core/pcs/verifier.zig"
+      },
+      {
+        "event": "original_row_authentication",
+        "line": 371,
+        "source": "deps/stwo-zig/src/core/pcs/verifier.zig"
+      },
+      {
+        "event": "quotient_answer",
+        "line": 400,
+        "source": "deps/stwo-zig/src/core/pcs/verifier.zig"
+      },
+      {
+        "event": "fri_quotient_check",
+        "line": 416,
+        "source": "deps/stwo-zig/src/core/pcs/verifier.zig"
+      }
+    ],
     "native_nonquotient_degree_test_identified": false,
     "native_proven_security_bits": null,
     "p05_discharged": false,
+    "proposed_degree_corrected_profile": {
+      "proof_admissible": false,
+      "required_batch_ensemble": "each_original_word_and_its_own_two_point_quotient_at_its_native_height",
+      "required_commitment_order": [
+        "fixed",
+        "main",
+        "interaction",
+        "composition"
+      ],
+      "requirements": {
+        "authenticated_original_oracle_ownership": "not_evidenced",
+        "composition_columns_in_ensemble": "not_evidenced",
+        "cross_domain_correlated_agreement_and_small_height_bound": "not_evidenced",
+        "four_existing_root_epochs_preserved": "source_order_observed_only",
+        "original_word_degree_test": "absent_from_native_fri_input",
+        "own_quotient_degree_test_per_source_word": "absent_from_native_fri_input",
+        "prover_verifier_installed_binary_refinement": "not_evidenced",
+        "query_and_adaptive_bcs_error_join": "not_evidenced",
+        "two_point_oods_claim_and_divisor_refinement": "not_evidenced"
+      },
+      "schema": "s31-gate-degree-corrected-pcs-v2-spec",
+      "selector_installed": false
+    },
     "published_degree_corrected_nonquotient_premise_met": false,
     "reason": "The reviewed prover commits one lazy quotient provider to FRI; the reviewed verifier supplies one accumulated friAnswers quotient word to its one FRI verifier. Merkle authentication of original query rows is not a low-degree test of their polynomials.",
     "remaining_discharge": [
-      "implement and prove the paper's quotient plus nonquotient degree-corrected ensemble, including exact bounds and multi-domain ownership; or prove a sound alternative theorem for this quotient-only protocol",
+      "introduce a versioned PCS selector whose prover and verifier pair each authenticated original with its own two-point OOD quotient at native source height, including composition columns, while preserving four existing root epochs; or prove a sound alternative theorem for this quotient-only protocol",
+      "prove original and own-quotient degree bounds, the exact two-point OOD identity, correlated cross-domain agreement, and the small-height condition for every source column",
       "prove native Zig control-flow and installed-binary correspondence to the reviewed source",
       "bind original and sampled columns to committed oracles and instantiate all OODS/FRI parameters and error terms"
     ],
@@ -17,10 +148,12 @@
       "deps/stwo-zig/src/core/fri.zig": "5f84501d1ffbaf5d33d6f7063bea7e6fd88a4cb65140ff360b75cb11f812121f",
       "deps/stwo-zig/src/core/pcs/quotients/fri_answers.zig": "5280b74c1762860fad733066a40d96dada813908532e3b8854e0a3f02f182181",
       "deps/stwo-zig/src/core/pcs/verifier.zig": "e119335172e17db5fd1345f476c7f6ad7fdf67e394a5b18d5c2085e892ffe3d5",
+      "deps/stwo-zig/src/core/verifier.zig": "85e70cea004f82060d94363b3552e0f2d9cd4203cee69fff0fb47b5345056381",
       "deps/stwo-zig/src/prover/fri.zig": "22acc5c7af16cc06fa646e5eedfe9a9a5bee95a273b53dbac83a599576f3e609",
       "deps/stwo-zig/src/prover/pcs/quotient_ops.zig": "f4684c25d35e15fc57a6d6283df241402004253c6719a1237f3f8e01ebba2115",
       "deps/stwo-zig/src/prover/pcs/quotients/lazy_provider.zig": "7d8c02ad443bba0941f10a8d22ecb1ef81e77b9837c3e1f561445fe31d0e728e",
-      "deps/stwo-zig/src/prover/pcs/scheme.zig": "88ab21970d32dda383a191ce5f12c329ce127f2829712a99068dd369d147e93f"
+      "deps/stwo-zig/src/prover/pcs/scheme.zig": "88ab21970d32dda383a191ce5f12c329ce127f2829712a99068dd369d147e93f",
+      "src/frontends/s31/runtime/native_verifier.zig": "42c33c4823679ac9ea5ffd2d4968a3344457d67783188153a02fcbac115b4ffc"
     },
     "status": "published_degree_corrected_theorem_not_applicable"
   },
@@ -41,7 +174,7 @@
     "design/s31/security/PCS_FRI_CAS05_P05_DISCHARGE_CHECKLIST.md": "401d13dcd5134de30eebf00dab7cd451473491781c1e58a8a14eabe669900dc0",
     "design/s31/security/PCS_FRI_CAS05_PRODUCTION_MIGRATION.md": "aa685f4bd86bd273b4c61be8ce86fef3b1aeb61131589c4f0a08f3e8a548dded",
     "design/s31/security/PCS_FRI_COMMITTED_COLUMN_ORIGIN.md": "f1a917e35716b0eef6644ff6a5d3c86ba137d6468f6d430adeeadccdcfd25941",
-    "design/s31/security/PCS_FRI_DEGREE_CORRECTION_GAP.md": "0ba2f07bb05e7cd3ec7bcef14cd12a04847ecb97253a3e5d8c57f26efc511ab4",
+    "design/s31/security/PCS_FRI_DEGREE_CORRECTION_GAP.md": "dbac5608e5a89c5e3fa626f76fc5122def90551c8f7e25215f9851bd8526f3a5",
     "design/s31/security/PCS_FRI_GATE16_FOURIER_ROWS.md": "e8eaa5392fa4f060eb88bca79eccaeaa5c1f31a091e457d0e4f2deb727fb9691",
     "design/s31/security/PCS_FRI_GATE_BINARY_REBUILD.md": "0d15a78316a6e24cc3f89ebc2a93e1286ea16f9587b89c429e0e5578610e40f0",
     "design/s31/security/PCS_FRI_GATE_ERROR_LEDGER.md": "af201b0e7330bf7263748b3d84aa389ab652b33035c31f24b8a1520243cd0068",
@@ -132,7 +265,7 @@
     "formal/s31/tests/run_pcs_fri_prover_column_origin_native.sh": "123a742bdec7ad14069c0f2326e1fe24283623b383bf41bbc6c00176f2ec3403",
     "formal/s31/tests/run_pcs_fri_quotient_degree_gap_native.sh": "6aa40522e63c53ac13165a0fa0d86eb1492aaa8906aa748bf82138724ed90bc5",
     "scripts/release/pcs_fri_cas05_source_profile.py": "6662b2ddd285b7a3fe137e79faeba53d4799a0b97233772aef2c6030f9f2f316",
-    "scripts/release/pcs_fri_degree_correction.py": "5233380eb2ff1989fbfaf0a71884eb9f73e21034b15624e900a033d6f397b3f7",
+    "scripts/release/pcs_fri_degree_correction.py": "6fb383bd7c10eb5e8372617d5408c4fa8f0d7cbce33a9381c63c5b2fce5bbba9",
     "scripts/release/pcs_fri_gate_binary_rebuild.py": "c37d7fde1d76348f224b54af32a729addcd4e540aaa403c79776ca71cfbe45ca",
     "scripts/release/pcs_fri_gate_error_ledger.py": "6878d696ab9b9cabcb69b779634e56c544303e8a85c9afa28c914f5eef7daab0",
     "scripts/release/pcs_fri_gate_final_domain.py": "34f61b433849e50fb31a732ba7d21d7f8a588beb3601e3a5e042dc1678184f0d",

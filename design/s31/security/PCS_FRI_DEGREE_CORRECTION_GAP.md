@@ -77,3 +77,63 @@ supplies none of those positive proofs.
 The separate [OOD seed geometry audit](PCS_FRI_OOD_SEED_GEOMETRY.md) pins the
 native rational circle map and identifies exceptional and quadratic-subfield
 seeds that must be handled in the exact sampling/distribution argument.
+
+## Versioned Gate PCS bridge, with admission closed
+
+The audit now emits `native_gate_epoch_trace`: 21 exact source locations from
+the Gate verifier through the core STARK verifier and PCS capture path. It
+checks one ordered occurrence of every event in each function and pins all
+nine reviewed files by SHA-256. This is a machine-checkable **source-shape**
+boundary, not binary semantics. The trace establishes this current order:
+
+```text
+legacy wire → fixed root → public values → main root
+→ lookup challenge and interaction claim → interaction root
+→ composition challenge → composition root → OOD seed and AIR identity
+→ sampled values and DEEP challenge → FRI commitment and queries
+→ original Merkle row authentication → accumulated quotient answer → FRI check
+```
+
+The proposed selector `s31-gate-degree-corrected-pcs-v2-spec` is deliberately
+**uninstalled** and `proof_admissible: false`. The minimum implementation path
+preserves the first four root epochs and changes the PCS opening protocol
+*after* the OOD claims:
+
+| Boundary | Concrete change needed |
+| --- | --- |
+| Source roster | Construct one ordered roster of every committed fixed, main, interaction, **and composition** column, with its actual height, root epoch, OOD point, claimed value, and degree bound. The CAS07 311-column pilot excludes eight composition columns, so it cannot be admitted as this roster. |
+| Prover FRI input | Replace the single `LazyQuotientProvider` input with an original-and-own-quotient ensemble for each roster word at its native height. The original word must undergo a degree test independently of its quotient. |
+| Verifier FRI input | Replace the one `friAnswers` quotient word with an authenticated per-height pair. At every queried point, derive the original from its already authenticated tree opening and check its *own* two-point quotient against the same OOD claim and divisor. Verify both degree bounds in the multi-domain FRI relation. |
+| Theorem join | Prove original/quotient whole-oracle ownership, two-point circle identity, lifted correlated agreement, every small-height condition, and exact native query and adaptive BCS error. The whitepaper's written theorem is for single-point quotients; its two-point extension still needs a proof or a sound published specialization. |
+| Admission | Bind a distinct proof selector and native prover/verifier implementation to this profile; reject legacy postcard proofs as evidence for it. Instantiate the full error bound at `T=2^64` and require paper work factor at most `2^-96`. |
+
+The [source-bound Gate/CAS07 roster audit](PCS_FRI_CAS07_GATE_ROSTER_AUDIT.md)
+already records the four epochs and the missing composition columns. The P05
+audit adds the exact core-verifier and PCS opening order and enumerates the
+unsatisfied theorem premises in `proposed_degree_corrected_profile`. The
+release blocker matrix rejects a forged positive selector or admission flag.
+
+The narrowest plausible native adapter keeps the existing four Merkle roots.
+`core/verifier.zig:verifyImpl` can continue to draw the OOD seed after the
+composition root. `pcs/verifier.zig:verifyValuesImpl` already draws the DEEP
+coefficient after mixing claimed OOD values, commits FRI layers, then samples
+queries. A new paired provider could use that same post-OOD coefficient as its
+batch scalar, so the **event order and number of draws can remain**. Its FRI
+commitments and therefore later query values will differ, which requires the
+new versioned selector; legacy proof bytes do not retain their meaning.
+
+The required interfaces are precise. On the prover side,
+`pcs/scheme.zig:proveValuesFromSamplesWithRecorderAndPhase` currently hands
+`LazyQuotientProvider` to `FriProver.commitLazyWithWorkRecorderAndRootMixCapture`;
+the latter accepts one lifted-domain quotient provider. The replacement must
+expose original and own-quotient words by source height to a multi-domain FRI
+commit. On the verifier side, `pcs/utils.zig:prepareTreeQueryPositions` maps
+lifted queries to each existing tree, and `pcs/verifier.zig:verifyValuesImpl`
+authenticates those projected rows before `friAnswers` computes one scalar
+quotient. A multi-root source-opening adapter must retain tree/column/height
+ownership, reconstruct **both** values for each paired FRI query from the
+authenticated original row and its OOD claim, and pass the resulting per-height
+words through new multi-domain FRI batching and fold checks. Merely adding an
+original term to the current single lifted `[]QM31` first-layer answer would
+not establish separate native-height degree bounds or the paper's correlated
+multi-domain relation.
