@@ -124,6 +124,32 @@ per-level BLAKE2s prefix state could amortize a fixed first block, but that
 requires an explicitly frozen byte encoding and differential proof; the
 current 120-byte prototype does not claim that optimization.
 
+**One-block parent candidate.** Zig's BLAKE2s implementation accepts an
+eight-byte personalization (`.context`) that changes the initial chaining
+state without adding message bytes. A new, separately versioned Merkle profile
+could use `BLAKE2s-256(context="S31P2PAR", left[32] || right[32])` for an
+internal node, and a different fixed personalization such as `S31P2LEF` for
+leaves. The parent then has one 64-byte message block. No tree descriptor is
+truncated into the eight-byte parameter: the *full* descriptor, height and
+column roster must be checked against the key, absorbed in the initial
+statement, and bound to each root at its verifier-derived event. A Merkle
+binding proof must account for that root-level context instead of assuming
+independent per-tree hash oracles. In particular, personalization is a
+different oracle interface from the 24-byte framed input modeled above; the
+Lean frame-separation lemmas do not establish separation across parameter
+values or its random-oracle theorem. The source and line tree hash profiles,
+and any rederived fixed root/key, must be selected in one new proof version.
+The 120-byte framed parent remains the executable candidate until this
+alternative has exact native/Python byte parity and a soundness argument.
+
+For a limited throughput check on this host, CPython `hashlib.blake2s` took
+0.254–0.266 seconds for one million personalized 64-byte hashes and 0.288
+seconds for one million unpersonalized 120-byte framed hashes (two runs each,
+single process, fixed inputs). This includes Python call overhead and is not
+a Zig prover benchmark; the compression count is the more portable cost
+signal. Benchmark the native tree builder and verifier before freezing either
+profile.
+
 The implementation sequence is:
 
 1. Freeze the paired wire, tree descriptor and event table together with a

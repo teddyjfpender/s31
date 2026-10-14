@@ -51,7 +51,9 @@ class FramedBcsV2Tests(unittest.TestCase):
         digest = bytes(32)
         self.assertEqual(len(raw_words(digest, 12, 0)), 8)
         self.assertNotEqual(raw_words(digest, 12, 0), raw_words(digest, 12, 1))
-        self.assertNotEqual(absorb_nonce(digest, 12, 0), pow_trial(digest, 12, 20, 0))
+        self.assertNotEqual(absorb_nonce(digest, 12, 0), pow_trial(digest, 13, 14, 20, 0))
+        with self.assertRaises(ValueError):
+            pow_trial(digest, 13, 13, 20, 0)
         context = tree_context(b"gate-height=17;row-roster=v1")
         self.assertEqual(len(context), 32)
         leaf = merkle_leaf(context, tuple(range(16)))
@@ -73,10 +75,13 @@ class FramedBcsV2Tests(unittest.TestCase):
             absorb_field(bytes(32), 0, (M31_MODULUS, 0, 0, 0))
         with self.assertRaises(ValueError):
             merkle_leaf(bytes(32), (M31_MODULUS,))
+        with self.assertRaises(ValueError):
+            merkle_parent(bytes(32), True, bytes(32), bytes(32))
 
     def test_paired_gate_candidate_has_four_source_roots_and_two_fri_tracks(self) -> None:
         plan = candidate_paired_gate_plan((17, 16, 15))
         names = [step.name for step in plan]
+        event_by_name = {step.name: step.event for step in plan}
         self.assertEqual([step.event for step in plan], list(range(len(plan))))
         self.assertEqual(names[names.index("sampled_values") + 1], "batch_lambda")
         self.assertEqual([name for name in names if name in {
@@ -91,6 +96,17 @@ class FramedBcsV2Tests(unittest.TestCase):
         self.assertEqual(names[-6:], ["original_terminal_coefficients",
                                       "own_quotient_terminal_coefficients",
                                       "fri_pow_prefix", "fri_pow_trial", "fri_nonce", "raw_queries"])
+        digest = bytes(range(32))
+        for barrier in ("interaction", "fri"):
+            prefix_event = event_by_name[f"{barrier}_pow_prefix"]
+            trial_event = event_by_name[f"{barrier}_pow_trial"]
+            self.assertEqual(trial_event, prefix_event + 1)
+            prefix = hash_frame(Role.POW_PREFIX, prefix_event,
+                                digest + (20).to_bytes(4, "little"))
+            expected = hash_frame(Role.POW_TRIAL, trial_event,
+                                  prefix + (7).to_bytes(8, "little"))
+            self.assertEqual(pow_trial(digest, prefix_event, trial_event, 20, 7),
+                             expected)
         with self.assertRaises(ValueError):
             candidate_paired_gate_plan((16, 17))
         with self.assertRaises(ValueError):

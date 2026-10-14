@@ -157,11 +157,14 @@ def raw_words(digest: bytes, event: int, counter: int) -> tuple[int, ...]:
     return tuple(int.from_bytes(block[i:i + 4], "little") for i in range(0, 32, 4))
 
 
-def pow_trial(digest: bytes, event: int, difficulty: int, nonce: int) -> bytes:
-    """Two distinct oracle roles; caller still proves grinding law/budget."""
-    prefix = hash_frame(Role.POW_PREFIX, event,
+def pow_trial(digest: bytes, prefix_event: int, trial_event: int,
+              difficulty: int, nonce: int) -> bytes:
+    """Two scheduled oracle events; caller still proves grinding law/budget."""
+    if prefix_event == trial_event:
+        raise ValueError("PoW prefix and trial must have distinct events")
+    prefix = hash_frame(Role.POW_PREFIX, prefix_event,
                         _bytes(digest, "digest", 32) + _u32(difficulty))
-    return hash_frame(Role.POW_TRIAL, event, prefix + _u64(nonce))
+    return hash_frame(Role.POW_TRIAL, trial_event, prefix + _u64(nonce))
 
 
 def tree_context(descriptor: bytes) -> bytes:
@@ -179,7 +182,7 @@ def merkle_leaf(context: bytes, row: tuple[int, ...]) -> bytes:
 
 
 def merkle_parent(context: bytes, level: int, left: bytes, right: bytes) -> bytes:
-    if not 0 <= level < 1 << 32:
+    if type(level) is not int or not 0 <= level < 1 << 32:
         raise ValueError("invalid Merkle parent level")
     return hash_frame(Role.MERKLE_PARENT, level,
                       _bytes(context, "context", 32) +
