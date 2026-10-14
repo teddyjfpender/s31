@@ -9,7 +9,6 @@ The result does not authenticate private witness cells or prove PCS/FRI.
 from __future__ import annotations
 
 import hashlib
-import json
 from pathlib import Path
 from typing import Any
 
@@ -73,7 +72,12 @@ class _Graph:
 
 
 def check_control_air(package: Path, topology: dict[str, Any] | None = None) -> dict[str, Any]:
-    """Check one source/IR-bound emitted control graph, without a witness."""
+    """Check one source/IR-bound control graph, without a witness.
+
+    Passing ``topology`` is for hostile fixture tests only. Admission uses the
+    package audit CLI, which verifies the package, checks source bytes with
+    Lean, and captures topology from the validated native binary.
+    """
     manifest = _read(package, "manifest.json")
     relation = _read(package, "source.s31.json")
     optimizer = _read(package, OPTIMIZER_ARTIFACT)
@@ -159,11 +163,12 @@ def check_control_air(package: Path, topology: dict[str, Any] | None = None) -> 
             try:
                 difference = graph.one("sub", product, complement)
                 zero_product = graph.one("mul", x, z)
-                graph.anchor(difference)
-                graph.anchor(zero_product)
+                difference_anchor = graph.anchor(difference)
+                zero_anchor = graph.anchor(zero_product)
             except ValueError:
                 continue
-            zero_rows.append((complement, product, inverse_hint, difference, zero_product))
+            zero_rows.append((complement, product, inverse_hint, difference,
+                              zero_product, difference_anchor, zero_anchor))
     _require(len(zero_rows) == 1, "zero-test gadget has no unique owned AIR chain")
 
     # Selection is by the proven scalar z, with full QM31 scalar products.
@@ -179,7 +184,18 @@ def check_control_air(package: Path, topology: dict[str, Any] | None = None) -> 
     _require(len(masks) == 1, "inverse has no unique active-one mask")
     product = graph.one("pointwise_mul", picked, inverse)
     inverse_difference = graph.one("sub", product, masks[0])
-    graph.anchor(inverse_difference)
+    inverse_anchor = graph.anchor(inverse_difference)
+
+    # Count the uniquely produced operation rows actually used by the proof.
+    # The inverse hint is a witness wire, not a matched arithmetic row.
+    zero_complement, zero_product, _, zero_difference, zero_product_of_z, \
+        difference_anchor, zero_anchor = zero_rows[0]
+    matched_outputs = (x, zero_complement, zero_product, zero_difference,
+                       zero_product_of_z, difference_anchor, zero_anchor,
+                       select_complement, left, right, picked,
+                       product, inverse_difference, inverse_anchor)
+    _require(len(set(matched_outputs)) == 14,
+             "control gadget operation rows do not have distinct outputs")
 
     return {
         "schema": SCHEMA,
@@ -188,6 +204,6 @@ def check_control_air(package: Path, topology: dict[str, Any] | None = None) -> 
         "preprocessed_root": key["preprocessed_root"],
         "source_text_sha256": source_digest,
         "control_nodes": [item["name"] for item in nodes],
-        "checked_arithmetic_rows": 13,
+        "checked_arithmetic_rows": len(matched_outputs),
         "active_inverse_lanes": 4,
     }

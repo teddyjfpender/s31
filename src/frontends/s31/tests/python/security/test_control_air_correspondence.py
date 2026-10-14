@@ -21,7 +21,7 @@ TOPOLOGY = json.loads((FIXTURE / "gate-topology.json").read_text())
 class ControlAirCorrespondenceTests(unittest.TestCase):
     def test_native_capture_and_sealed_roster(self) -> None:
         receipt = check_control_air(FIXTURE, TOPOLOGY)
-        self.assertEqual(receipt["checked_arithmetic_rows"], 13)
+        self.assertEqual(receipt["checked_arithmetic_rows"], 14)
         self.assertEqual(receipt["active_inverse_lanes"], 4)
         self.assertEqual(receipt["control_nodes"], ["z", "picked", "result"])
 

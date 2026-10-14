@@ -4,13 +4,14 @@ This is a bounded correspondence slice for a transparent v1 S31 program with
 one public scalar M31 input, two private four-lane M31 inputs, and exactly
 three source nodes: `is_zero`, `select`, and `inv`. It joins four checks:
 
-1. The existing exact-byte Lean checker reparses the S31 source and its
-   normalized relation, preserving partial source semantics.
+1. The existing exact-byte Lean checker independently parses the S31 source
+   and compares its typed derivation and normalized relation. The package
+   verifier also re-runs the production parser against the sealed source.
 2. The native optimizer receipt matches source JSON and canonical IR digests
    and reports no aliases. The accepted shape therefore has six canonical
    nodes in source order.
 3. `control_air_correspondence.py` inspects the installed compiler's real
-   generic Gate roster. It checks 13 owning arithmetic rows, canonical
+   generic Gate roster. It checks 14 distinct owning arithmetic rows, canonical
    constants, the public input's M31 scalar owner, all four active inverse
    lanes, and the key-bound dynamic fixed columns.
 4. `ControlGadgetAir.lean` proves that every assignment satisfying those
@@ -63,15 +64,25 @@ cd ../..
 python3 scripts/compiler/control_air_audit.py /path/to/control-air-package
 ```
 
-The command verifies the package manifest, runs the Lean exact-byte checker,
-and inspects the installed native graph. The seven short hostile controls are
+The command verifies the package manifest and artifact hashes, re-runs the
+production parser, runs the independent Lean exact-byte checker, and captures
+the installed native graph. The six hostile controls are
 in `test_control_air_correspondence.py`; they remove an anchor, change
 selection and inverse wires, remove the scalar input owner, and mutate fixed
 columns or sealed identities.
 
+The Python graph checker alone binds the source digest; it does not parse S31
+text. The audit command supplies the source-to-relation check. Its optional
+injected topology argument exists only for mutation tests and must not be used
+for package admission. The 14-row count comes from the distinct matched row
+outputs: one scalar owner, six zero-test rows, four select rows, and three
+inverse rows. Padding and unrelated Gate rows are outside that count.
+
 This is local compiler-to-AIR correspondence for one no-alias fragment. The
 native inspector supplies graph bytes; the Lean proof assumes the corresponding
-AIR rows are satisfied. Public output pinning, circuit lookup/permutation
+AIR rows are satisfied. The theorem proves soundness and zero-inverse
+rejection for arbitrary satisfying rows; it does not construct a satisfying
+witness for every nonzero selected lane. Public output pinning, circuit lookup/permutation
 closure, committed witness authentication, native verifier refinement, and
 PCS/FRI soundness are separate obligations. The package is not a v0.1
 soundness certificate.
