@@ -14,9 +14,13 @@ zig test -O ReleaseSafe -j2 \
   -Ms31_adapter=formal/s31/tests/lib/p05_multi_root_original_batch.zig \
   --dep stwo_core \
   --dep s31_lifted_capture \
+  --dep s31_p05_roster \
   -Ms31_own_adapter=formal/s31/tests/lib/p05_own_quotient_rows.zig \
   --dep stwo_core \
   --dep s31_own_adapter \
+  --dep s31_p05_roster \
   -Ms31_pair_fold=formal/s31/tests/lib/p05_native_height_pair_fold.zig \
+  --dep stwo_core \
+  -Ms31_p05_roster=formal/s31/tests/lib/p05_claim_roster.zig \
   --dep stwo_core \
   -Ms31_lifted_capture=src/frontends/s31/runtime/pcs_lifted_capture_admission.zig

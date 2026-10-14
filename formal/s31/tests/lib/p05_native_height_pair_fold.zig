@@ -1,10 +1,11 @@
 //! Experimental P05 source-height first fold. The verifier-side input is the
-//! four-root admitted row capture plus an externally supplied exact OOD roster.
+//! four-root admitted row capture plus verifier-owned scheme/AIR/proof inputs.
 //! Only complete authenticated native source pairs are folded. This is not a
 //! multi-domain FRI verifier or an oracle degree test.
 const std = @import("std");
 const core = @import("stwo_core");
 const own = @import("s31_own_adapter");
+const roster = @import("s31_p05_roster");
 
 const M31 = core.fields.m31.M31;
 const QM31 = core.fields.qm31.QM31;
@@ -60,13 +61,39 @@ pub fn reconstruct(
     pcs: PcsConfigV2,
     proof_roots: []const H.Hash,
     capture: *const Capture,
-    expected_claims: []const own.ExpectedClaim,
+    scheme: anytype,
+    handles: []const core.air.components.Component,
+    accepted_values: core.pcs.TreeVec([][]QM31),
+    include_all_preprocessed_columns: bool,
     fold_alpha: QM31,
     pair_beta: QM31,
 ) !NativeHeightFolds {
-    var admitted = try own.reconstruct(allocator, pcs, proof_roots, capture, expected_claims);
+    const claims = try roster.derive(
+        H,
+        allocator,
+        pcs,
+        scheme,
+        handles,
+        accepted_values,
+        capture,
+        include_all_preprocessed_columns,
+    );
+    defer allocator.free(claims);
+    var admitted = try own.reconstruct(allocator, pcs, proof_roots, capture, claims);
     defer admitted.deinit(allocator);
+    return foldAdmittedRowsForControl(allocator, pcs, &admitted, fold_alpha, pair_beta);
+}
 
+/// Low-level algebra control for an already admitted sampled-row witness. The
+/// only verifier-facing entrypoint is `reconstruct`, which derives its claims
+/// from the accepted scheme, AIR masks, and proof values.
+pub fn foldAdmittedRowsForControl(
+    allocator: std.mem.Allocator,
+    pcs: PcsConfigV2,
+    admitted: *const own.OwnQuotientWords,
+    fold_alpha: QM31,
+    pair_beta: QM31,
+) !NativeHeightFolds {
     const out = try allocator.alloc(WordFold, admitted.words.len);
     var initialized: usize = 0;
     errdefer {

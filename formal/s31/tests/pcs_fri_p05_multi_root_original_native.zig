@@ -188,12 +188,10 @@ test "P05 paired native first fold reconstructs four rooted trees at two heights
     // height. The two composition OOD masks and periodicity remain distinct.
     const fold_alpha = QM31.fromU32Unchecked(29, 0, 0, 0);
     const pair_beta = QM31.fromU32Unchecked(31, 0, 0, 0);
-    var native_folds = try paired.reconstruct(
+    var native_folds = try paired.foldAdmittedRowsForControl(
         alloc,
         pcs,
-        &roots,
-        &capture,
-        &expected_claims,
+        &pair_words,
         fold_alpha,
         pair_beta,
     );
@@ -344,12 +342,12 @@ test "P05 paired native first fold reconstructs four rooted trees at two heights
         siblings[tree][7] = siblings[tree][1];
         values[tree * raw.len + 3] = values[tree * raw.len];
     }
-    try std.testing.expectError(error.MissingP05NativePair, paired.reconstruct(
+    var incomplete_words = try own.reconstruct(alloc, pcs, &roots, &capture, &expected_claims);
+    defer incomplete_words.deinit(alloc);
+    try std.testing.expectError(error.MissingP05NativePair, paired.foldAdmittedRowsForControl(
         alloc,
         pcs,
-        &roots,
-        &capture,
-        &expected_claims,
+        &incomplete_words,
         fold_alpha,
         pair_beta,
     ));

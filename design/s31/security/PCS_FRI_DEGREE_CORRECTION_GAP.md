@@ -201,7 +201,10 @@ report marks `raw_gate_epoch_trace_evidenced: false`: it does not promote the
 legacy event trace to the raw profile or claim an adaptive BCS theorem.
 
 The [experimental native-height first fold](../../../formal/s31/tests/lib/p05_native_height_pair_fold.zig)
-consumes that four-root capture and the same externally supplied claim roster.
+consumes that four-root capture. Its public entrypoint now derives the claim
+roster from the verifier's accepted scheme, AIR handles, proof sample values,
+and capture; the earlier external roster remains only in the low-level algebra
+control.
 For each source column and each of its explicit or periodicity samples, it
 deduplicates authenticated projected positions, requires both members of every
 native source pair, recomputes the own quotient at the **source-height**
@@ -246,3 +249,37 @@ still needs authenticated companion openings for ordinary sparse random
 queries, a transcript-bound coefficient schedule, prover commitments to the
 paired multi-domain folds, and the theorem joining original/quotient degree
 tests and native lifted-row agreement. P05 admission remains false.
+
+## Verifier-owned sample custody, still experimental
+
+The [claim-roster derivation](../../../formal/s31/tests/lib/p05_claim_roster.zig)
+replays the pinned `core/verifier.zig:verifyImpl` geometry over the **same
+objects that succeeded in** `verifyBorrowedExWithProofCapture`: the four
+committed scheme trees, AIR component handles, accepted proof's nested OOD
+sample values, and `ProofCapture`. It recomputes the OOD point from the captured
+seed, the AIR masks and native column heights, and the composition split and
+eight-column one-point mask for split one. It checks every tree root and height,
+every column/sample point and claimed value, and the flattened capture order.
+The paired-fold entrypoint no longer accepts a caller-provided `ExpectedClaim`
+roster. Its rows still undergo the independent four-root Merkle and projected
+query check before the claims are used.
+
+The [synthetic verifier-bundle control](../../../formal/s31/tests/pcs_fri_p05_verifier_roster_native.zig)
+uses one fixed, one main, one two-sample interaction, and eight composition
+columns at two native source heights. It reconstructs thirteen original and
+own-quotient fold words. Removing a sample, swapping its OOD point, changing a
+captured claimed value, changing a column height, or changing a root fails
+closed. This test contains no proof bytes and asserts no proof acceptance.
+
+The trust source is the **successful pinned native verifier call**, not the
+roster derivation itself. In production the caller must pass exactly the
+`scheme`, AIR `handles`, `stark.commitment_scheme_proof.sampled_values`, and
+`capture` used at the successful call sites in
+[`native_verifier.zig`](../../../src/frontends/s31/runtime/native_verifier.zig).
+The roster function has no capability token and cannot authenticate
+caller-built objects on its own. It is not yet wired to a versioned production
+PCS path. Neither the accepted OOD claims nor authenticated sampled rows are
+whole-oracle degree evidence. The paired multi-height FRI, independently
+tested original degree bounds, two-point theorem/refinement, and complete
+parameter reduction remain open; the selector stays absent, P05 false, and
+native proven security bits null.
