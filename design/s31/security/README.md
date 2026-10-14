@@ -21,3 +21,6 @@ the boundary between a checked row equation and a whole-oracle degree test.
 The [three-height paper ensemble map](PCS_FRI_SPARSE_GATE_PAPER_ENSEMBLE.md)
 itemizes conditional Protocol 3/4 function widths for the accepted two-point
 claim roster and explains why the selected verifier's batch width remains unknown.
+The [conditional two-Q degree join](PCS_FRI_SPARSE_GATE_TWO_Q_DEGREE_JOIN.md)
+proves the coefficient-level shared-source implication and lists its native
+and probabilistic premises.
