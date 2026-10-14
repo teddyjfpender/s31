@@ -386,6 +386,21 @@ pub const Span = struct {
     blake_g_end: usize,
 };
 
+/// Audit-only counts for the four builder gate arrays. The installed QM31
+/// preprocessor concatenates these arrays by operation before permutation
+/// rows, so an aggregate `Span.qm31_start/end` is not a physical row range.
+pub const GateOpSpan = struct {
+    id: u32,
+    add_start: usize,
+    add_end: usize,
+    sub_start: usize,
+    sub_end: usize,
+    mul_start: usize,
+    mul_end: usize,
+    pointwise_start: usize,
+    pointwise_end: usize,
+};
+
 pub const AssertionSpan = struct {
     index: usize,
     var_start: u32,
@@ -425,6 +440,9 @@ pub const BoundedCallMap = struct {
 };
 pub const Maps = struct {
     nodes: std.ArrayListUnmanaged(Span) = .empty,
+    /// Requested only by the noninstalled compiler-to-physical-row audit.
+    capture_gate_op_spans: bool = false,
+    gate_op_spans: std.ArrayListUnmanaged(GateOpSpan) = .empty,
     /// Requested only by bounded generic Gate topology inspection. Ordinary
     /// cost reports and proving keep their original allocation profile.
     capture_node_wires: bool = false,
@@ -441,6 +459,7 @@ pub const Maps = struct {
 
     pub fn deinit(self: *Maps, allocator: std.mem.Allocator) void {
         self.nodes.deinit(allocator);
+        self.gate_op_spans.deinit(allocator);
         for (self.node_wires.items) |item| allocator.free(item.wires);
         self.node_wires.deinit(allocator);
         self.assertions.deinit(allocator);
@@ -664,6 +683,10 @@ fn compileWithSpansMode(comptime V: type, allocator: std.mem.Allocator, program:
     }
     for (ir.nodes, entries, 0..) |node, *entry, id| {
         const var_start = ctx.circuit.n_vars;
+        const add_start = if (maps != null and maps.?.capture_gate_op_spans) ctx.circuit.add.items.len else 0;
+        const sub_start = if (maps != null and maps.?.capture_gate_op_spans) ctx.circuit.sub.items.len else 0;
+        const mul_start = if (maps != null and maps.?.capture_gate_op_spans) ctx.circuit.mul.items.len else 0;
+        const pointwise_start = if (maps != null and maps.?.capture_gate_op_spans) ctx.circuit.pointwise_mul.items.len else 0;
         const qm31_start = ctx.circuit.nQm31OpsRows();
         const eq_start = ctx.circuit.eq.items.len;
         const xor_start = ctx.circuit.triple_xor.items.len;
@@ -951,6 +974,19 @@ fn compileWithSpansMode(comptime V: type, allocator: std.mem.Allocator, program:
             .blake_g_start = blake_start,
             .blake_g_end = ctx.circuit.blake_g_gate.items.len,
         });
+        if (maps) |out| {
+            if (out.capture_gate_op_spans) try out.gate_op_spans.append(allocator, .{
+                .id = @intCast(id),
+                .add_start = add_start,
+                .add_end = ctx.circuit.add.items.len,
+                .sub_start = sub_start,
+                .sub_end = ctx.circuit.sub.items.len,
+                .mul_start = mul_start,
+                .mul_end = ctx.circuit.mul.items.len,
+                .pointwise_start = pointwise_start,
+                .pointwise_end = ctx.circuit.pointwise_mul.items.len,
+            });
+        }
         if (maps) |out| {
             if (out.capture_node_wires) {
                 const wires = try allocator.alloc(u32, entry.lanes.data.len);

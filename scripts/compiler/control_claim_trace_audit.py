@@ -24,10 +24,13 @@ COUNTS = [329, 0, 5, 0]
 
 def run_native(source: Path, assignment: Path, proof: Path, statement: Path,
                *, root: Path = ROOT,
+               certificate_path: Path | None = None,
                expected_counts: list[int] | None = COUNTS) -> dict[str, object]:
     command = ["zig", "build", "--build-file", "scripts/compiler/control_claim_trace/build.zig",
                "audit", "-Doptimize=ReleaseSafe", "-j4", "--",
                str(source), str(assignment), str(proof), str(statement)]
+    if certificate_path is not None:
+        command.append(str(certificate_path))
     result = subprocess.run(command, cwd=root, capture_output=True, text=True,
                             check=False, timeout=240)
     if result.returncode:
@@ -43,6 +46,8 @@ def run_native(source: Path, assignment: Path, proof: Path, statement: Path,
             receipt.get("source_semantics_match") is not True or
             type(receipt.get("source_nodes_mapped")) is not int or
             receipt["source_nodes_mapped"] != source_nodes or
+            type(receipt.get("source_qm31_rows")) is not int or
+            receipt["source_qm31_rows"] < 0 or
             receipt.get("base_root_match") is not True or
             receipt.get("interaction_root_match") is not True or
             receipt.get("all_component_claims_match") is not True or
