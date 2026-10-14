@@ -63,7 +63,60 @@ now discharges those caps for **any fixed circle shifts**: circle addition
 multiplies the injective `x+i·y` encoding by a nonzero field element, so it
 cannot increase a doubling fiber. It proves a positive survivor count for
 all 4+32+23 shifted-claim slots at once. Matching each slot and its shift to
-the selected native sample construction remains a separate proof obligation.
+the selected native sample construction remains a separate proof obligation;
+the finite accepted-proof differential below checks one concrete instance.
+
+## Accepted sparse Gate OOD map differential
+
+The selected `inspect-p05` path runs the ordinary sealed-key native verifier
+before emitting the accepted capture. In
+[`native_verifier.zig`](../../../src/frontends/s31/runtime/native_verifier.zig),
+the verifier reconstructs the OOD point from the captured seed, asks the
+sealed AIR components for their mask points at maximum mask log 16, and
+compares every captured point and value in root/column/sample order. The
+Cairo component geometry uses instruction offsets in
+[`resident_geometry.zig`](../../../deps/stwo-zig/src/frontends/cairo/witness/resident_geometry.zig)
+and maps offset `o` to `Q + [o]S₁₆`, where
+`S₁₆ = CanonicCoset(16).step()`. The accepted roster has one offset `0`
+for 41 fixed/main/interaction columns and offsets `[-1, 0]` for 12
+interaction columns. The eight composition columns use the verifier's direct
+`Q` branch, equivalent to offset `0`.
+
+For each accepted claim of column height `h`, the modeled prover evaluation
+point is
+
+```text
+P(h, o) = [2^(17-h)](Q + [o]S₁₆)
+h = 17, 11, 5;  o = 0 or -1.
+```
+
+This is the actual point normalization in
+[`sampled_values.zig`](../../../deps/stwo-zig/src/prover/pcs/sampled_values.zig)
+and [`sampled_coefficient_plans.zig`](../../../deps/stwo-zig/src/prover/pcs/sampled_coefficient_plans.zig):
+the coefficient evaluator doubles the captured raw point `17-h` times.
+The [native differential](../../../formal/s31/tests/pcs_fri_p05_projected_map_native.zig)
+checks all 73 captured points against `resident_geometry.pointsFromOffsets`,
+then compares every normalized point against both the prover's
+`repeatedDoubleOnCircleQM31` and an independent `x²-y², 2xy` circle formula.
+It checks 18/32/23 claims at h17/h11/h5, including four shifted claims at
+each height. Wrong seed, mask step, point, height, and sample order are
+rejected by focused controls.
+
+For every two-point column the legacy native quotient sample builder first
+inserts a periodicity sample at `P_base + [2^h]S₁₇`, then the shifted and
+base explicit samples, assigning consecutive random powers. The differential
+checks this exact native order and point arithmetic for all 12 columns. At
+h17 the period shift is identity and duplicates the base sample. At h11/h5
+it is a distinct lifted point but normalizes to the same h-local point as
+the base claim. These 12 periodicity samples are legacy
+quotient contributions, **not** extra explicit OOD claims or independent
+per-claim quotient tracks.
+
+Run `bash formal/s31/tests/run_pcs_fri_p05_projected_map_native.sh`.
+This audit checks one pinned accepted key/proof capture. It does not prove a
+universal Zig-to-Lean refinement, derive the distribution of `Q` from the
+Fiat–Shamir seed, establish the independent-support bound under that law,
+justify the legacy 85-term batch as Protocol 4, or assign security bits.
 
 Run the native control with
 `bash formal/s31/tests/run_pcs_fri_projected_ood_guard_native.sh`.
