@@ -524,6 +524,8 @@ BINDINGS = [
     "src/frontends/s31/python/package/build.py",
     "src/frontends/s31/python/package/correspondence.py",
     "src/frontends/s31/python/package/source_relation_fragment.py",
+    "src/frontends/s31/python/package/pure_field_derivation.py",
+    "src/frontends/s31/tests/python/security/test_pure_field_derivation.py",
     "src/frontends/s31/tests/python/security/test_source_relation_fragment.py",
     "formal/s31/fixtures/correspondence/source_relation_ssa_v1.s31",
     "formal/s31/fixtures/correspondence/source_relation_ssa_v1.relation.json",

@@ -10,6 +10,7 @@ from pathlib import Path
 from package.pure_field_derivation import (ARTIFACT, UnsupportedPureField,
                                            admitted, derive, make_certificate,
                                            verify_artifact)
+from oracle import OracleError, evaluate_relation
 from text_frontend import compile_text
 
 
@@ -70,6 +71,20 @@ class PureFieldDerivationTests(unittest.TestCase):
                     manifest["artifacts"][ARTIFACT] = hashlib.sha256(raw).hexdigest()
                     with self.assertRaisesRegex(ValueError, "differs from exact source"):
                         verify_artifact(package, manifest)
+
+    def test_selector_order_matches_production_value_semantics(self) -> None:
+        relation, _ = derive(SCALAR)
+        self.assertEqual(relation["nodes"][-1],
+                         {"name": "result", "op": "select", "lhs": "a",
+                          "rhs": "b", "selector": "z"})
+        for x, expected in ((0, 29), (7, 11)):
+            assignment = {"public_inputs": {"x": [x], "a": [11], "b": [29]},
+                          "private_inputs": {}, "public_outputs": {"result": [expected]}}
+            self.assertEqual(evaluate_relation(relation, assignment),
+                             {"result": [expected]})
+            assignment["public_outputs"]["result"] = [11 if expected == 29 else 29]
+            with self.assertRaises(OracleError):
+                evaluate_relation(relation, assignment)
 
     def test_arbitrary_straight_line_length_under_resource_bound(self) -> None:
         lets = ["let z = std::field::is_zero(x);", "let picked = select(z, a, b);"]
