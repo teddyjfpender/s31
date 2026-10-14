@@ -1,9 +1,1764 @@
 {
   "accepted_capture": {
+    "claims": [
+      {
+        "column_index": 0,
+        "extended_log_size": 5,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 0,
+        "sample_index": 0,
+        "value_limbs": [
+          1344429412,
+          713428790,
+          439989792,
+          939318900
+        ]
+      },
+      {
+        "column_index": 1,
+        "extended_log_size": 5,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 0,
+        "sample_index": 0,
+        "value_limbs": [
+          2049972290,
+          146251501,
+          1456247507,
+          1958832807
+        ]
+      },
+      {
+        "column_index": 2,
+        "extended_log_size": 5,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 0,
+        "sample_index": 0,
+        "value_limbs": [
+          1478290194,
+          912319380,
+          252875577,
+          1849243959
+        ]
+      },
+      {
+        "column_index": 3,
+        "extended_log_size": 11,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 0,
+        "sample_index": 0,
+        "value_limbs": [
+          374561154,
+          2129546159,
+          2022666122,
+          1868703366
+        ]
+      },
+      {
+        "column_index": 4,
+        "extended_log_size": 11,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 0,
+        "sample_index": 0,
+        "value_limbs": [
+          719963533,
+          1974183614,
+          633623407,
+          1890374538
+        ]
+      },
+      {
+        "column_index": 5,
+        "extended_log_size": 11,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 0,
+        "sample_index": 0,
+        "value_limbs": [
+          1562626162,
+          171264661,
+          310226137,
+          78317000
+        ]
+      },
+      {
+        "column_index": 6,
+        "extended_log_size": 11,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 0,
+        "sample_index": 0,
+        "value_limbs": [
+          1637816446,
+          19972860,
+          1328451628,
+          457572390
+        ]
+      },
+      {
+        "column_index": 7,
+        "extended_log_size": 11,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 0,
+        "sample_index": 0,
+        "value_limbs": [
+          1199621220,
+          1648396918,
+          1695435896,
+          971914063
+        ]
+      },
+      {
+        "column_index": 8,
+        "extended_log_size": 11,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 0,
+        "sample_index": 0,
+        "value_limbs": [
+          1516636475,
+          1853111180,
+          1907453719,
+          1260411938
+        ]
+      },
+      {
+        "column_index": 9,
+        "extended_log_size": 11,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 0,
+        "sample_index": 0,
+        "value_limbs": [
+          1404702851,
+          69276440,
+          1923356124,
+          621654502
+        ]
+      },
+      {
+        "column_index": 10,
+        "extended_log_size": 11,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 0,
+        "sample_index": 0,
+        "value_limbs": [
+          1717274854,
+          750114322,
+          542659189,
+          1675917110
+        ]
+      },
+      {
+        "column_index": 11,
+        "extended_log_size": 17,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 0,
+        "sample_index": 0,
+        "value_limbs": [
+          47391055,
+          648495756,
+          147313841,
+          1277167382
+        ]
+      },
+      {
+        "column_index": 0,
+        "extended_log_size": 11,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 1,
+        "sample_index": 0,
+        "value_limbs": [
+          266520815,
+          866540833,
+          360606967,
+          342421143
+        ]
+      },
+      {
+        "column_index": 1,
+        "extended_log_size": 11,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 1,
+        "sample_index": 0,
+        "value_limbs": [
+          761331169,
+          2061181971,
+          824689439,
+          788496347
+        ]
+      },
+      {
+        "column_index": 2,
+        "extended_log_size": 11,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 1,
+        "sample_index": 0,
+        "value_limbs": [
+          1712790691,
+          401312983,
+          1244310482,
+          1588779871
+        ]
+      },
+      {
+        "column_index": 3,
+        "extended_log_size": 11,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 1,
+        "sample_index": 0,
+        "value_limbs": [
+          1865725720,
+          1985003436,
+          1283468339,
+          1645339475
+        ]
+      },
+      {
+        "column_index": 4,
+        "extended_log_size": 11,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 1,
+        "sample_index": 0,
+        "value_limbs": [
+          1915227182,
+          1327504183,
+          489360702,
+          1116940299
+        ]
+      },
+      {
+        "column_index": 5,
+        "extended_log_size": 11,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 1,
+        "sample_index": 0,
+        "value_limbs": [
+          672943661,
+          1708198176,
+          581823614,
+          449882093
+        ]
+      },
+      {
+        "column_index": 6,
+        "extended_log_size": 11,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 1,
+        "sample_index": 0,
+        "value_limbs": [
+          1046886948,
+          225241487,
+          1918081508,
+          485700572
+        ]
+      },
+      {
+        "column_index": 7,
+        "extended_log_size": 11,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 1,
+        "sample_index": 0,
+        "value_limbs": [
+          1415052800,
+          845926453,
+          310362966,
+          2138777145
+        ]
+      },
+      {
+        "column_index": 8,
+        "extended_log_size": 11,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 1,
+        "sample_index": 0,
+        "value_limbs": [
+          530421976,
+          2004773222,
+          1440591222,
+          2042912134
+        ]
+      },
+      {
+        "column_index": 9,
+        "extended_log_size": 11,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 1,
+        "sample_index": 0,
+        "value_limbs": [
+          1993677577,
+          1626325638,
+          2132554857,
+          727072613
+        ]
+      },
+      {
+        "column_index": 10,
+        "extended_log_size": 11,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 1,
+        "sample_index": 0,
+        "value_limbs": [
+          60979719,
+          1290411530,
+          1045407810,
+          373771865
+        ]
+      },
+      {
+        "column_index": 11,
+        "extended_log_size": 11,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 1,
+        "sample_index": 0,
+        "value_limbs": [
+          1703362418,
+          1458930415,
+          303155901,
+          711928210
+        ]
+      },
+      {
+        "column_index": 12,
+        "extended_log_size": 5,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 1,
+        "sample_index": 0,
+        "value_limbs": [
+          1663564151,
+          674073757,
+          1044399704,
+          581263067
+        ]
+      },
+      {
+        "column_index": 13,
+        "extended_log_size": 5,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 1,
+        "sample_index": 0,
+        "value_limbs": [
+          1299681177,
+          1917368333,
+          106373886,
+          1656053729
+        ]
+      },
+      {
+        "column_index": 14,
+        "extended_log_size": 5,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 1,
+        "sample_index": 0,
+        "value_limbs": [
+          888083888,
+          1783084516,
+          296564713,
+          2138882031
+        ]
+      },
+      {
+        "column_index": 15,
+        "extended_log_size": 5,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 1,
+        "sample_index": 0,
+        "value_limbs": [
+          727086593,
+          1022275141,
+          2058621019,
+          2046512699
+        ]
+      },
+      {
+        "column_index": 16,
+        "extended_log_size": 17,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 1,
+        "sample_index": 0,
+        "value_limbs": [
+          913934127,
+          353499200,
+          1604343045,
+          236153458
+        ]
+      },
+      {
+        "column_index": 0,
+        "extended_log_size": 11,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 2,
+        "sample_index": 0,
+        "value_limbs": [
+          1692237923,
+          128945054,
+          80556427,
+          344503733
+        ]
+      },
+      {
+        "column_index": 1,
+        "extended_log_size": 11,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 2,
+        "sample_index": 0,
+        "value_limbs": [
+          313238460,
+          78252384,
+          1993673282,
+          600631466
+        ]
+      },
+      {
+        "column_index": 2,
+        "extended_log_size": 11,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 2,
+        "sample_index": 0,
+        "value_limbs": [
+          1150325159,
+          1071248379,
+          1344628364,
+          1576507168
+        ]
+      },
+      {
+        "column_index": 3,
+        "extended_log_size": 11,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 2,
+        "sample_index": 0,
+        "value_limbs": [
+          1384510509,
+          1808659378,
+          1417576995,
+          376407425
+        ]
+      },
+      {
+        "column_index": 4,
+        "extended_log_size": 11,
+        "point_x_limbs": [
+          1720477104,
+          1628715618,
+          1676490995,
+          791680055
+        ],
+        "point_y_limbs": [
+          1517122051,
+          1221150412,
+          186212545,
+          1933488693
+        ],
+        "root_index": 2,
+        "sample_index": 0,
+        "value_limbs": [
+          1555748299,
+          2012307876,
+          1924514986,
+          1005615848
+        ]
+      },
+      {
+        "column_index": 4,
+        "extended_log_size": 11,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 2,
+        "sample_index": 1,
+        "value_limbs": [
+          1332173451,
+          420537212,
+          777599272,
+          117847927
+        ]
+      },
+      {
+        "column_index": 5,
+        "extended_log_size": 11,
+        "point_x_limbs": [
+          1720477104,
+          1628715618,
+          1676490995,
+          791680055
+        ],
+        "point_y_limbs": [
+          1517122051,
+          1221150412,
+          186212545,
+          1933488693
+        ],
+        "root_index": 2,
+        "sample_index": 0,
+        "value_limbs": [
+          439908421,
+          1552986806,
+          953778943,
+          1861728140
+        ]
+      },
+      {
+        "column_index": 5,
+        "extended_log_size": 11,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 2,
+        "sample_index": 1,
+        "value_limbs": [
+          2015886084,
+          1787385016,
+          760513059,
+          1125302156
+        ]
+      },
+      {
+        "column_index": 6,
+        "extended_log_size": 11,
+        "point_x_limbs": [
+          1720477104,
+          1628715618,
+          1676490995,
+          791680055
+        ],
+        "point_y_limbs": [
+          1517122051,
+          1221150412,
+          186212545,
+          1933488693
+        ],
+        "root_index": 2,
+        "sample_index": 0,
+        "value_limbs": [
+          933342039,
+          1685954386,
+          2144933138,
+          1041407836
+        ]
+      },
+      {
+        "column_index": 6,
+        "extended_log_size": 11,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 2,
+        "sample_index": 1,
+        "value_limbs": [
+          1553204756,
+          1756436525,
+          366276494,
+          394566049
+        ]
+      },
+      {
+        "column_index": 7,
+        "extended_log_size": 11,
+        "point_x_limbs": [
+          1720477104,
+          1628715618,
+          1676490995,
+          791680055
+        ],
+        "point_y_limbs": [
+          1517122051,
+          1221150412,
+          186212545,
+          1933488693
+        ],
+        "root_index": 2,
+        "sample_index": 0,
+        "value_limbs": [
+          97667359,
+          1678819652,
+          1789944071,
+          860978705
+        ]
+      },
+      {
+        "column_index": 7,
+        "extended_log_size": 11,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 2,
+        "sample_index": 1,
+        "value_limbs": [
+          833930273,
+          764087085,
+          103022565,
+          773593720
+        ]
+      },
+      {
+        "column_index": 8,
+        "extended_log_size": 5,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 2,
+        "sample_index": 0,
+        "value_limbs": [
+          101385118,
+          6066963,
+          140789528,
+          339275263
+        ]
+      },
+      {
+        "column_index": 9,
+        "extended_log_size": 5,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 2,
+        "sample_index": 0,
+        "value_limbs": [
+          1624314762,
+          1975112387,
+          1675799392,
+          464045459
+        ]
+      },
+      {
+        "column_index": 10,
+        "extended_log_size": 5,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 2,
+        "sample_index": 0,
+        "value_limbs": [
+          1935198748,
+          1974233424,
+          1670377100,
+          46655129
+        ]
+      },
+      {
+        "column_index": 11,
+        "extended_log_size": 5,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 2,
+        "sample_index": 0,
+        "value_limbs": [
+          814727240,
+          649322249,
+          1095322381,
+          1076408460
+        ]
+      },
+      {
+        "column_index": 12,
+        "extended_log_size": 5,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 2,
+        "sample_index": 0,
+        "value_limbs": [
+          1900698937,
+          601533026,
+          1093991294,
+          853453161
+        ]
+      },
+      {
+        "column_index": 13,
+        "extended_log_size": 5,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 2,
+        "sample_index": 0,
+        "value_limbs": [
+          708630861,
+          1471142293,
+          87107270,
+          1562341565
+        ]
+      },
+      {
+        "column_index": 14,
+        "extended_log_size": 5,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 2,
+        "sample_index": 0,
+        "value_limbs": [
+          548659375,
+          1425636840,
+          97182866,
+          2066587043
+        ]
+      },
+      {
+        "column_index": 15,
+        "extended_log_size": 5,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 2,
+        "sample_index": 0,
+        "value_limbs": [
+          1494385808,
+          529481213,
+          816201914,
+          830036118
+        ]
+      },
+      {
+        "column_index": 16,
+        "extended_log_size": 5,
+        "point_x_limbs": [
+          1720477104,
+          1628715618,
+          1676490995,
+          791680055
+        ],
+        "point_y_limbs": [
+          1517122051,
+          1221150412,
+          186212545,
+          1933488693
+        ],
+        "root_index": 2,
+        "sample_index": 0,
+        "value_limbs": [
+          181312799,
+          1720780750,
+          64529829,
+          1518076122
+        ]
+      },
+      {
+        "column_index": 16,
+        "extended_log_size": 5,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 2,
+        "sample_index": 1,
+        "value_limbs": [
+          915272949,
+          210046670,
+          317117519,
+          927781442
+        ]
+      },
+      {
+        "column_index": 17,
+        "extended_log_size": 5,
+        "point_x_limbs": [
+          1720477104,
+          1628715618,
+          1676490995,
+          791680055
+        ],
+        "point_y_limbs": [
+          1517122051,
+          1221150412,
+          186212545,
+          1933488693
+        ],
+        "root_index": 2,
+        "sample_index": 0,
+        "value_limbs": [
+          1593763521,
+          708096267,
+          351667699,
+          1123407310
+        ]
+      },
+      {
+        "column_index": 17,
+        "extended_log_size": 5,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 2,
+        "sample_index": 1,
+        "value_limbs": [
+          1130949551,
+          698972448,
+          2060998971,
+          264481378
+        ]
+      },
+      {
+        "column_index": 18,
+        "extended_log_size": 5,
+        "point_x_limbs": [
+          1720477104,
+          1628715618,
+          1676490995,
+          791680055
+        ],
+        "point_y_limbs": [
+          1517122051,
+          1221150412,
+          186212545,
+          1933488693
+        ],
+        "root_index": 2,
+        "sample_index": 0,
+        "value_limbs": [
+          1913257979,
+          1125665800,
+          896281021,
+          960338495
+        ]
+      },
+      {
+        "column_index": 18,
+        "extended_log_size": 5,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 2,
+        "sample_index": 1,
+        "value_limbs": [
+          767820401,
+          102422517,
+          929737288,
+          331755901
+        ]
+      },
+      {
+        "column_index": 19,
+        "extended_log_size": 5,
+        "point_x_limbs": [
+          1720477104,
+          1628715618,
+          1676490995,
+          791680055
+        ],
+        "point_y_limbs": [
+          1517122051,
+          1221150412,
+          186212545,
+          1933488693
+        ],
+        "root_index": 2,
+        "sample_index": 0,
+        "value_limbs": [
+          374011791,
+          1397262770,
+          734502348,
+          1155749681
+        ]
+      },
+      {
+        "column_index": 19,
+        "extended_log_size": 5,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 2,
+        "sample_index": 1,
+        "value_limbs": [
+          1445427048,
+          143252526,
+          535218009,
+          618921665
+        ]
+      },
+      {
+        "column_index": 20,
+        "extended_log_size": 17,
+        "point_x_limbs": [
+          1720477104,
+          1628715618,
+          1676490995,
+          791680055
+        ],
+        "point_y_limbs": [
+          1517122051,
+          1221150412,
+          186212545,
+          1933488693
+        ],
+        "root_index": 2,
+        "sample_index": 0,
+        "value_limbs": [
+          634728825,
+          1899555768,
+          332269956,
+          401485162
+        ]
+      },
+      {
+        "column_index": 20,
+        "extended_log_size": 17,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 2,
+        "sample_index": 1,
+        "value_limbs": [
+          861003889,
+          720206652,
+          1097072835,
+          1344070642
+        ]
+      },
+      {
+        "column_index": 21,
+        "extended_log_size": 17,
+        "point_x_limbs": [
+          1720477104,
+          1628715618,
+          1676490995,
+          791680055
+        ],
+        "point_y_limbs": [
+          1517122051,
+          1221150412,
+          186212545,
+          1933488693
+        ],
+        "root_index": 2,
+        "sample_index": 0,
+        "value_limbs": [
+          1309686115,
+          2033912263,
+          852058310,
+          1794038089
+        ]
+      },
+      {
+        "column_index": 21,
+        "extended_log_size": 17,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 2,
+        "sample_index": 1,
+        "value_limbs": [
+          1726718117,
+          160038030,
+          89372582,
+          1684624793
+        ]
+      },
+      {
+        "column_index": 22,
+        "extended_log_size": 17,
+        "point_x_limbs": [
+          1720477104,
+          1628715618,
+          1676490995,
+          791680055
+        ],
+        "point_y_limbs": [
+          1517122051,
+          1221150412,
+          186212545,
+          1933488693
+        ],
+        "root_index": 2,
+        "sample_index": 0,
+        "value_limbs": [
+          384328004,
+          317812754,
+          1198945362,
+          1241628681
+        ]
+      },
+      {
+        "column_index": 22,
+        "extended_log_size": 17,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 2,
+        "sample_index": 1,
+        "value_limbs": [
+          1107174586,
+          326701331,
+          431221858,
+          1734778679
+        ]
+      },
+      {
+        "column_index": 23,
+        "extended_log_size": 17,
+        "point_x_limbs": [
+          1720477104,
+          1628715618,
+          1676490995,
+          791680055
+        ],
+        "point_y_limbs": [
+          1517122051,
+          1221150412,
+          186212545,
+          1933488693
+        ],
+        "root_index": 2,
+        "sample_index": 0,
+        "value_limbs": [
+          1832908974,
+          2093277871,
+          1457546504,
+          105851613
+        ]
+      },
+      {
+        "column_index": 23,
+        "extended_log_size": 17,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 2,
+        "sample_index": 1,
+        "value_limbs": [
+          451730202,
+          1852044468,
+          531484014,
+          255459102
+        ]
+      },
+      {
+        "column_index": 0,
+        "extended_log_size": 17,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 3,
+        "sample_index": 0,
+        "value_limbs": [
+          1167315363,
+          1339210724,
+          505908588,
+          115707705
+        ]
+      },
+      {
+        "column_index": 1,
+        "extended_log_size": 17,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 3,
+        "sample_index": 0,
+        "value_limbs": [
+          1962861622,
+          1386092563,
+          1205011376,
+          1365768014
+        ]
+      },
+      {
+        "column_index": 2,
+        "extended_log_size": 17,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 3,
+        "sample_index": 0,
+        "value_limbs": [
+          415034350,
+          306671134,
+          456237828,
+          246696850
+        ]
+      },
+      {
+        "column_index": 3,
+        "extended_log_size": 17,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 3,
+        "sample_index": 0,
+        "value_limbs": [
+          2055337729,
+          553712076,
+          260081085,
+          1068463672
+        ]
+      },
+      {
+        "column_index": 4,
+        "extended_log_size": 17,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 3,
+        "sample_index": 0,
+        "value_limbs": [
+          204770142,
+          790386531,
+          1504716979,
+          547072268
+        ]
+      },
+      {
+        "column_index": 5,
+        "extended_log_size": 17,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 3,
+        "sample_index": 0,
+        "value_limbs": [
+          1347990567,
+          1236054971,
+          578066111,
+          2033189442
+        ]
+      },
+      {
+        "column_index": 6,
+        "extended_log_size": 17,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 3,
+        "sample_index": 0,
+        "value_limbs": [
+          1548496433,
+          345039964,
+          1206447271,
+          1282554620
+        ]
+      },
+      {
+        "column_index": 7,
+        "extended_log_size": 17,
+        "point_x_limbs": [
+          2083843127,
+          1653782313,
+          1513710029,
+          743042316
+        ],
+        "point_y_limbs": [
+          944408642,
+          962976616,
+          1604300235,
+          1050785851
+        ],
+        "root_index": 3,
+        "sample_index": 0,
+        "value_limbs": [
+          1045784529,
+          1757383277,
+          1637251906,
+          1144589080
+        ]
+      }
+    ],
     "columns": [
       {
         "column_index": 0,
         "extended_log_size": 5,
+        "first_claim_index": 0,
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 0,
         "proposed_original_slot_at_height": 0,
@@ -12,6 +1767,7 @@
       {
         "column_index": 1,
         "extended_log_size": 5,
+        "first_claim_index": 1,
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 1,
         "proposed_original_slot_at_height": 1,
@@ -20,6 +1776,7 @@
       {
         "column_index": 2,
         "extended_log_size": 5,
+        "first_claim_index": 2,
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 2,
         "proposed_original_slot_at_height": 2,
@@ -28,6 +1785,7 @@
       {
         "column_index": 3,
         "extended_log_size": 11,
+        "first_claim_index": 3,
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 0,
         "proposed_original_slot_at_height": 0,
@@ -36,6 +1794,7 @@
       {
         "column_index": 4,
         "extended_log_size": 11,
+        "first_claim_index": 4,
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 1,
         "proposed_original_slot_at_height": 1,
@@ -44,6 +1803,7 @@
       {
         "column_index": 5,
         "extended_log_size": 11,
+        "first_claim_index": 5,
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 2,
         "proposed_original_slot_at_height": 2,
@@ -52,6 +1812,7 @@
       {
         "column_index": 6,
         "extended_log_size": 11,
+        "first_claim_index": 6,
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 3,
         "proposed_original_slot_at_height": 3,
@@ -60,6 +1821,7 @@
       {
         "column_index": 7,
         "extended_log_size": 11,
+        "first_claim_index": 7,
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 4,
         "proposed_original_slot_at_height": 4,
@@ -68,6 +1830,7 @@
       {
         "column_index": 8,
         "extended_log_size": 11,
+        "first_claim_index": 8,
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 5,
         "proposed_original_slot_at_height": 5,
@@ -76,6 +1839,7 @@
       {
         "column_index": 9,
         "extended_log_size": 11,
+        "first_claim_index": 9,
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 6,
         "proposed_original_slot_at_height": 6,
@@ -84,6 +1848,7 @@
       {
         "column_index": 10,
         "extended_log_size": 11,
+        "first_claim_index": 10,
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 7,
         "proposed_original_slot_at_height": 7,
@@ -92,6 +1857,7 @@
       {
         "column_index": 11,
         "extended_log_size": 17,
+        "first_claim_index": 11,
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 0,
         "proposed_original_slot_at_height": 0,
@@ -100,6 +1866,7 @@
       {
         "column_index": 0,
         "extended_log_size": 11,
+        "first_claim_index": 12,
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 8,
         "proposed_original_slot_at_height": 8,
@@ -108,6 +1875,7 @@
       {
         "column_index": 1,
         "extended_log_size": 11,
+        "first_claim_index": 13,
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 9,
         "proposed_original_slot_at_height": 9,
@@ -116,6 +1884,7 @@
       {
         "column_index": 2,
         "extended_log_size": 11,
+        "first_claim_index": 14,
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 10,
         "proposed_original_slot_at_height": 10,
@@ -124,6 +1893,7 @@
       {
         "column_index": 3,
         "extended_log_size": 11,
+        "first_claim_index": 15,
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 11,
         "proposed_original_slot_at_height": 11,
@@ -132,6 +1902,7 @@
       {
         "column_index": 4,
         "extended_log_size": 11,
+        "first_claim_index": 16,
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 12,
         "proposed_original_slot_at_height": 12,
@@ -140,6 +1911,7 @@
       {
         "column_index": 5,
         "extended_log_size": 11,
+        "first_claim_index": 17,
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 13,
         "proposed_original_slot_at_height": 13,
@@ -148,6 +1920,7 @@
       {
         "column_index": 6,
         "extended_log_size": 11,
+        "first_claim_index": 18,
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 14,
         "proposed_original_slot_at_height": 14,
@@ -156,6 +1929,7 @@
       {
         "column_index": 7,
         "extended_log_size": 11,
+        "first_claim_index": 19,
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 15,
         "proposed_original_slot_at_height": 15,
@@ -164,6 +1938,7 @@
       {
         "column_index": 8,
         "extended_log_size": 11,
+        "first_claim_index": 20,
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 16,
         "proposed_original_slot_at_height": 16,
@@ -172,6 +1947,7 @@
       {
         "column_index": 9,
         "extended_log_size": 11,
+        "first_claim_index": 21,
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 17,
         "proposed_original_slot_at_height": 17,
@@ -180,6 +1956,7 @@
       {
         "column_index": 10,
         "extended_log_size": 11,
+        "first_claim_index": 22,
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 18,
         "proposed_original_slot_at_height": 18,
@@ -188,6 +1965,7 @@
       {
         "column_index": 11,
         "extended_log_size": 11,
+        "first_claim_index": 23,
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 19,
         "proposed_original_slot_at_height": 19,
@@ -196,6 +1974,7 @@
       {
         "column_index": 12,
         "extended_log_size": 5,
+        "first_claim_index": 24,
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 3,
         "proposed_original_slot_at_height": 3,
@@ -204,6 +1983,7 @@
       {
         "column_index": 13,
         "extended_log_size": 5,
+        "first_claim_index": 25,
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 4,
         "proposed_original_slot_at_height": 4,
@@ -212,6 +1992,7 @@
       {
         "column_index": 14,
         "extended_log_size": 5,
+        "first_claim_index": 26,
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 5,
         "proposed_original_slot_at_height": 5,
@@ -220,6 +2001,7 @@
       {
         "column_index": 15,
         "extended_log_size": 5,
+        "first_claim_index": 27,
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 6,
         "proposed_original_slot_at_height": 6,
@@ -228,6 +2010,7 @@
       {
         "column_index": 16,
         "extended_log_size": 17,
+        "first_claim_index": 28,
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 1,
         "proposed_original_slot_at_height": 1,
@@ -236,6 +2019,7 @@
       {
         "column_index": 0,
         "extended_log_size": 11,
+        "first_claim_index": 29,
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 20,
         "proposed_original_slot_at_height": 20,
@@ -244,6 +2028,7 @@
       {
         "column_index": 1,
         "extended_log_size": 11,
+        "first_claim_index": 30,
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 21,
         "proposed_original_slot_at_height": 21,
@@ -252,6 +2037,7 @@
       {
         "column_index": 2,
         "extended_log_size": 11,
+        "first_claim_index": 31,
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 22,
         "proposed_original_slot_at_height": 22,
@@ -260,6 +2046,7 @@
       {
         "column_index": 3,
         "extended_log_size": 11,
+        "first_claim_index": 32,
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 23,
         "proposed_original_slot_at_height": 23,
@@ -268,6 +2055,7 @@
       {
         "column_index": 4,
         "extended_log_size": 11,
+        "first_claim_index": 33,
         "ood_claims": 2,
         "proposed_first_own_quotient_slot_at_height": 24,
         "proposed_original_slot_at_height": 24,
@@ -276,6 +2064,7 @@
       {
         "column_index": 5,
         "extended_log_size": 11,
+        "first_claim_index": 35,
         "ood_claims": 2,
         "proposed_first_own_quotient_slot_at_height": 26,
         "proposed_original_slot_at_height": 25,
@@ -284,6 +2073,7 @@
       {
         "column_index": 6,
         "extended_log_size": 11,
+        "first_claim_index": 37,
         "ood_claims": 2,
         "proposed_first_own_quotient_slot_at_height": 28,
         "proposed_original_slot_at_height": 26,
@@ -292,6 +2082,7 @@
       {
         "column_index": 7,
         "extended_log_size": 11,
+        "first_claim_index": 39,
         "ood_claims": 2,
         "proposed_first_own_quotient_slot_at_height": 30,
         "proposed_original_slot_at_height": 27,
@@ -300,6 +2091,7 @@
       {
         "column_index": 8,
         "extended_log_size": 5,
+        "first_claim_index": 41,
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 7,
         "proposed_original_slot_at_height": 7,
@@ -308,6 +2100,7 @@
       {
         "column_index": 9,
         "extended_log_size": 5,
+        "first_claim_index": 42,
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 8,
         "proposed_original_slot_at_height": 8,
@@ -316,6 +2109,7 @@
       {
         "column_index": 10,
         "extended_log_size": 5,
+        "first_claim_index": 43,
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 9,
         "proposed_original_slot_at_height": 9,
@@ -324,6 +2118,7 @@
       {
         "column_index": 11,
         "extended_log_size": 5,
+        "first_claim_index": 44,
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 10,
         "proposed_original_slot_at_height": 10,
@@ -332,6 +2127,7 @@
       {
         "column_index": 12,
         "extended_log_size": 5,
+        "first_claim_index": 45,
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 11,
         "proposed_original_slot_at_height": 11,
@@ -340,6 +2136,7 @@
       {
         "column_index": 13,
         "extended_log_size": 5,
+        "first_claim_index": 46,
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 12,
         "proposed_original_slot_at_height": 12,
@@ -348,6 +2145,7 @@
       {
         "column_index": 14,
         "extended_log_size": 5,
+        "first_claim_index": 47,
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 13,
         "proposed_original_slot_at_height": 13,
@@ -356,6 +2154,7 @@
       {
         "column_index": 15,
         "extended_log_size": 5,
+        "first_claim_index": 48,
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 14,
         "proposed_original_slot_at_height": 14,
@@ -364,6 +2163,7 @@
       {
         "column_index": 16,
         "extended_log_size": 5,
+        "first_claim_index": 49,
         "ood_claims": 2,
         "proposed_first_own_quotient_slot_at_height": 15,
         "proposed_original_slot_at_height": 15,
@@ -372,6 +2172,7 @@
       {
         "column_index": 17,
         "extended_log_size": 5,
+        "first_claim_index": 51,
         "ood_claims": 2,
         "proposed_first_own_quotient_slot_at_height": 17,
         "proposed_original_slot_at_height": 16,
@@ -380,6 +2181,7 @@
       {
         "column_index": 18,
         "extended_log_size": 5,
+        "first_claim_index": 53,
         "ood_claims": 2,
         "proposed_first_own_quotient_slot_at_height": 19,
         "proposed_original_slot_at_height": 17,
@@ -388,6 +2190,7 @@
       {
         "column_index": 19,
         "extended_log_size": 5,
+        "first_claim_index": 55,
         "ood_claims": 2,
         "proposed_first_own_quotient_slot_at_height": 21,
         "proposed_original_slot_at_height": 18,
@@ -396,6 +2199,7 @@
       {
         "column_index": 20,
         "extended_log_size": 17,
+        "first_claim_index": 57,
         "ood_claims": 2,
         "proposed_first_own_quotient_slot_at_height": 2,
         "proposed_original_slot_at_height": 2,
@@ -404,6 +2208,7 @@
       {
         "column_index": 21,
         "extended_log_size": 17,
+        "first_claim_index": 59,
         "ood_claims": 2,
         "proposed_first_own_quotient_slot_at_height": 4,
         "proposed_original_slot_at_height": 3,
@@ -412,6 +2217,7 @@
       {
         "column_index": 22,
         "extended_log_size": 17,
+        "first_claim_index": 61,
         "ood_claims": 2,
         "proposed_first_own_quotient_slot_at_height": 6,
         "proposed_original_slot_at_height": 4,
@@ -420,6 +2226,7 @@
       {
         "column_index": 23,
         "extended_log_size": 17,
+        "first_claim_index": 63,
         "ood_claims": 2,
         "proposed_first_own_quotient_slot_at_height": 8,
         "proposed_original_slot_at_height": 5,
@@ -428,6 +2235,7 @@
       {
         "column_index": 0,
         "extended_log_size": 17,
+        "first_claim_index": 65,
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 10,
         "proposed_original_slot_at_height": 6,
@@ -436,6 +2244,7 @@
       {
         "column_index": 1,
         "extended_log_size": 17,
+        "first_claim_index": 66,
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 11,
         "proposed_original_slot_at_height": 7,
@@ -444,6 +2253,7 @@
       {
         "column_index": 2,
         "extended_log_size": 17,
+        "first_claim_index": 67,
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 12,
         "proposed_original_slot_at_height": 8,
@@ -452,6 +2262,7 @@
       {
         "column_index": 3,
         "extended_log_size": 17,
+        "first_claim_index": 68,
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 13,
         "proposed_original_slot_at_height": 9,
@@ -460,6 +2271,7 @@
       {
         "column_index": 4,
         "extended_log_size": 17,
+        "first_claim_index": 69,
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 14,
         "proposed_original_slot_at_height": 10,
@@ -468,6 +2280,7 @@
       {
         "column_index": 5,
         "extended_log_size": 17,
+        "first_claim_index": 70,
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 15,
         "proposed_original_slot_at_height": 11,
@@ -476,6 +2289,7 @@
       {
         "column_index": 6,
         "extended_log_size": 17,
+        "first_claim_index": 71,
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 16,
         "proposed_original_slot_at_height": 12,
@@ -484,6 +2298,7 @@
       {
         "column_index": 7,
         "extended_log_size": 17,
+        "first_claim_index": 72,
         "ood_claims": 1,
         "proposed_first_own_quotient_slot_at_height": 17,
         "proposed_original_slot_at_height": 13,
@@ -559,6 +2374,24 @@
     ],
     "native_security_bits": null,
     "native_to_paper_batch_width_M": null,
+    "oods_point_x_limbs": [
+      2083843127,
+      1653782313,
+      1513710029,
+      743042316
+    ],
+    "oods_point_y_limbs": [
+      944408642,
+      962976616,
+      1604300235,
+      1050785851
+    ],
+    "oods_seed_limbs": [
+      966081432,
+      879490284,
+      613849455,
+      1552859214
+    ],
     "root_columns": [
       12,
       17,
@@ -574,11 +2407,13 @@
     "schema": "s31-sparse-p05-accepted-capture-shape-v1",
     "status": "accepted_native_proof_experimental_geometry_only"
   },
+  "accepted_ood_claim_map_sha256": "d0dfd3b36e3abc181e90ee0456ca2760602636fc5c2c378572d84b99e26ed5f5",
   "candidate_paper_parameters": {
     "B_from_sealed_fri_blowup": 2,
     "D0_conditionally_N_times_B_squared": 262144,
     "N_from_sealed_max_trace_log": 65536,
     "T_hash_queries": 18446744073709551616,
+    "certified_batch_grinding_credit": 0,
     "epsilon_over_T_target_bits": 96,
     "largest_integer_M_passing_isolated_batch_factor": 1024,
     "minimum_BCS_rounds_R": 1
@@ -594,7 +2429,7 @@
   "package_checks": {
     "key_sha256": "7d4cdaab4e446aaa2c357e28f077e469412f45a17c660e8d4434cca216dccfc7",
     "manifest_artifacts": "verified",
-    "manifest_sha256": "5634ee858dc2e64b1dd8d6bc281f18fa16bf34ac22eb56ec98bd451d45f3042c",
+    "manifest_sha256": "7ab56a8e92fe6fd7a52f95871c835e5bdcc86efbb5fcde27a7e29c474e481263",
     "native_check_key": "accepted",
     "native_proof": "accepted_before_geometry_inspection",
     "proof_sha256": "04eaca23d8a6c7fc977b24a3d925aaabcbb727fa4fa30f30c81864e24a158e39",

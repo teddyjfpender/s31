@@ -31,7 +31,7 @@ SOURCE_SHA256 = {
     "deps/stwo-zig/src/core/verifier.zig": "85e70cea004f82060d94363b3552e0f2d9cd4203cee69fff0fb47b5345056381",
     # Sparse-only post-admission P05 geometry inspection was reviewed; the
     # traced direct Gate event region and legacy degree test are unchanged.
-    "src/frontends/s31/runtime/native_verifier.zig": "cc245859102337461af85313e14ac3269b297f4cc912e8f78e1057ff2557aabb",
+    "src/frontends/s31/runtime/native_verifier.zig": "017355b2481dd62f06c1668773172a414e38d98bfcc6ece1ac78970c7abc5146",
 }
 
 PROVER = "deps/stwo-zig/src/prover/pcs/scheme.zig"

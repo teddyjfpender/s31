@@ -60,10 +60,20 @@ describe a deterministic candidate for a paired original-plus-own-quotient
 ensemble; the current verifier does **not** commit or independently degree-test
 those 134 tracks. The four source roots occur at different challenge epochs,
 so their columns cannot be silently flattened under one pre-OOD root.
-The report records each column's ordered OOD sample count, but does not
-serialize the QM31 point coordinates. The existing `p05_claim_roster.derive`
-recomputes the verifier-owned points from accepted AIR objects; joining it to
-this sparse capture is still required for a full paired OOD wire.
+The inspector also reconstructs each predicted OOD mask point from the
+accepted AIR handles and verifier-owned OOD seed. Before reporting, it checks
+each predicted point against the point captured by native verification and
+checks each proof sampled value against the capture's flat accepted value
+list. The report serializes the **captured** canonical QM31 coordinates and
+values in root, column, sample order, with a first-claim index per column.
+The 73 accepted claims use exactly two points: the base OOD point occurs
+14/28/19 times at extended heights 17/11/5, respectively, and one common
+shifted point occurs four times at each height. The second point belongs to
+interaction root columns 20–23 at height 17, 4–7 at height 11, and 16–19 at
+height 5. In each two-sample column the shifted point is sample 0 and the
+base point is sample 1. Fixed and composition columns use the base point. This is the
+exact observed schedule for this accepted key/proof; the paired proof wire
+and independent whole-oracle tests still have to consume it.
 
 ## Paper feasibility boundary
 
@@ -73,8 +83,10 @@ the isolated necessary S-two batching factor
 
 `((T+1)/T) * (M-1) * (N*B^2) / |QM31|`
 
-allows integer `M <= 1024` under the *conditional* substitution `D0=N*B^2`
-and minimum BCS round count `R=1`. Here the published common batch width is
+allows integer `M <= 1024` under the *conditional* substitution `D0=N*B^2`,
+minimum BCS round count `R=1`, and **zero certified batch grinding credit**.
+The candidate uses FRI PoW, but no theorem currently assigns its grinding
+credit to this batch term. Here the published common batch width is
 `M=max_i M_i` after per-domain zero padding. Native source columns and the
 candidate widths `32/60/42` are **not** a proved mapping to those `M_i`; a
 multi-height embedding, weighted batch definition, additional claims, or

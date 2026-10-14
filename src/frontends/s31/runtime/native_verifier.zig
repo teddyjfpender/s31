@@ -350,8 +350,18 @@ pub const SparseP05Shape = struct {
         column_index: usize,
         extended_log_size: u32,
         ood_claims: usize,
+        first_claim_index: usize,
         proposed_original_slot_at_height: usize,
         proposed_first_own_quotient_slot_at_height: usize,
+    };
+    pub const Claim = struct {
+        root_index: usize,
+        column_index: usize,
+        sample_index: usize,
+        extended_log_size: u32,
+        point_x_limbs: [4]u32,
+        point_y_limbs: [4]u32,
+        value_limbs: [4]u32,
     };
 
     root_columns: [4]usize = .{ 0, 0, 0, 0 },
@@ -362,7 +372,17 @@ pub const SparseP05Shape = struct {
     heights: [32]Height = undefined,
     column_count: usize = 0,
     columns: [128]Column = undefined,
+    claim_count: usize = 0,
+    claims: [256]Claim = undefined,
+    oods_seed_limbs: [4]u32 = undefined,
+    oods_point_x_limbs: [4]u32 = undefined,
+    oods_point_y_limbs: [4]u32 = undefined,
 };
+
+fn p05Limbs(value: QM31) [4]u32 {
+    const words = value.toM31Array();
+    return .{ words[0].v, words[1].v, words[2].v, words[3].v };
+}
 
 pub fn serializeSparse(allocator: std.mem.Allocator, proof: *const cpu.Internal.CircuitProof, has_chip: bool) ![]u8 {
     if ((proof.chip_claimed_sum != null) != has_chip) return error.WrongProofProfile;
@@ -558,18 +578,67 @@ pub fn verifySparse(
             .components = handles[0..component_count],
             .n_preprocessed_columns = pp_logs.len,
         };
+        const split = try components.compositionLogSplit();
+        const composition_log = components.compositionLogDegreeBound();
+        const component_mask_log = core.verifier_types.compositionMaskLogSize(
+            composition_log,
+            split,
+        ) orelse return error.InvalidP05SparseShape;
+        const lifted_mask_log = std.math.sub(u32, pcs.trace_lifting_log_size,
+            pcs.fri_config.log_blowup_factor) catch return error.InvalidP05SparseShape;
+        const oods_point = core.circle.secureFieldPointFromRandomSeedChecked(
+            capture.oods_seed,
+        ) catch return error.InvalidP05SparseShape;
+        var expected_masks = try components.maskPoints(
+            allocator,
+            oods_point,
+            @max(component_mask_log, lifted_mask_log),
+            true,
+        );
+        defer expected_masks.deinitDeep(allocator);
+        if (expected_masks.items.len != 3) return error.InvalidP05SparseShape;
         out.* = .{
-            .composition_log_degree_bound = components.compositionLogDegreeBound(),
-            .composition_log_split = try components.compositionLogSplit(),
+            .composition_log_degree_bound = composition_log,
+            .composition_log_split = split,
+            .oods_seed_limbs = p05Limbs(capture.oods_seed),
+            .oods_point_x_limbs = p05Limbs(oods_point.x),
+            .oods_point_y_limbs = p05Limbs(oods_point.y),
         };
-        if (capture.column_log_sizes.len != 4 or capture.sampled_points.len != 4)
+        const accepted_values = stark.commitment_scheme_proof.sampled_values.items;
+        if (capture.column_log_sizes.len != 4 or capture.sampled_points.len != 4 or
+            accepted_values.len != 4)
             return error.InvalidP05SparseShape;
-        for (capture.column_log_sizes, capture.sampled_points, 0..) |logs_by_tree, points_by_tree, tree| {
-            if (logs_by_tree.len != points_by_tree.len) return error.InvalidP05SparseShape;
+        for (capture.column_log_sizes, capture.sampled_points, accepted_values, 0..) |logs_by_tree, points_by_tree, values_by_tree, tree| {
+            if (logs_by_tree.len != points_by_tree.len or
+                logs_by_tree.len != values_by_tree.len or
+                (tree < 3 and expected_masks.items[tree].len != logs_by_tree.len))
+                return error.InvalidP05SparseShape;
             out.root_columns[tree] = logs_by_tree.len;
-            for (logs_by_tree, points_by_tree, 0..) |log_size, points, column| {
-                if (log_size >= out.heights.len or points.len == 0)
+            for (logs_by_tree, points_by_tree, values_by_tree, 0..) |log_size, points, values, column| {
+                if (log_size >= out.heights.len or points.len == 0 or
+                    points.len != values.len)
                     return error.InvalidP05SparseShape;
+                const want: []const core.circle.CirclePointQM31 = if (tree < 3)
+                    expected_masks.items[tree][column]
+                else
+                    &[_]core.circle.CirclePointQM31{oods_point};
+                if (want.len != points.len) return error.InvalidP05SparseShape;
+                for (points, values, want, 0..) |point, value, expected, sample| {
+                    if (!point.eql(expected) or out.claim_count == out.claims.len or
+                        out.claim_count >= capture.sampled_values.len or
+                        !value.eql(capture.sampled_values[out.claim_count]))
+                        return error.InvalidP05SparseShape;
+                    out.claims[out.claim_count] = .{
+                        .root_index = tree,
+                        .column_index = column,
+                        .sample_index = sample,
+                        .extended_log_size = log_size,
+                        .point_x_limbs = p05Limbs(point.x),
+                        .point_y_limbs = p05Limbs(point.y),
+                        .value_limbs = p05Limbs(value),
+                    };
+                    out.claim_count += 1;
+                }
                 const input_log = std.math.sub(u32, log_size, pcs.fri_config.log_blowup_factor) catch
                     return error.InvalidP05SparseShape;
                 var at: usize = 0;
@@ -596,6 +665,7 @@ pub fn verifySparse(
                     .column_index = column,
                     .extended_log_size = log_size,
                     .ood_claims = points.len,
+                    .first_claim_index = out.claim_count - points.len,
                     .proposed_original_slot_at_height = height.required_original_tracks_if_paired,
                     .proposed_first_own_quotient_slot_at_height = height.required_own_quotient_tracks_if_paired,
                 };
@@ -610,6 +680,8 @@ pub fn verifySparse(
                 out.root_ood_claims[tree] += points.len;
             }
         }
+        if (out.claim_count != capture.sampled_values.len)
+            return error.InvalidP05SparseShape;
         std.sort.heap(SparseP05Shape.Height, out.heights[0..out.height_count], {}, struct {
             fn less(_: void, a: SparseP05Shape.Height, b: SparseP05Shape.Height) bool {
                 return a.extended_log_size > b.extended_log_size;

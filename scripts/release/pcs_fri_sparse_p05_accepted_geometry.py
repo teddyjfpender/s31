@@ -19,6 +19,24 @@ def digest(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def ordered_claim_slices(shape: dict[str, object]):
+    claims = shape["claims"]
+    expected_offset = 0
+    for column in shape["columns"]:
+        first = column["first_claim_index"]
+        count = column["ood_claims"]
+        if (type(first) is not int or type(count) is not int or
+                first != expected_offset or count < 0):
+            raise ValueError("column claim slices are not contiguous")
+        owned = claims[first:first + count]
+        if len(owned) != count:
+            raise ValueError("column claim slice out of bounds")
+        yield column, owned
+        expected_offset += count
+    if expected_offset != len(claims):
+        raise ValueError("column claim slices do not cover all accepted claims")
+
+
 def report(package: Path, proof: Path, statement: Path) -> dict[str, object]:
     manifest_path = package / "manifest.json"
     key_path = package / "verification-key.json"
@@ -50,6 +68,34 @@ def report(package: Path, proof: Path, statement: Path) -> dict[str, object]:
                 h["ood_claims"] != h["required_own_quotient_tracks_if_paired"]
                 for h in shape["heights"])):
         raise ValueError("inconsistent accepted-capture counts")
+    claims = shape["claims"]
+    if sum(shape["root_ood_claims"]) != len(claims):
+        raise ValueError("missing accepted OOD coordinates")
+    prime = (1 << 31) - 1
+    base_point = (shape["oods_point_x_limbs"], shape["oods_point_y_limbs"])
+    for field in (*base_point, shape["oods_seed_limbs"]):
+        if len(field) != 4 or any(type(word) is not int or not 0 <= word < prime
+                                  for word in field):
+            raise ValueError("noncanonical OOD seed or base point")
+    for column, owned in ordered_claim_slices(shape):
+        for sample, claim in enumerate(owned):
+            if (claim["root_index"] != column["root_index"] or
+                    claim["column_index"] != column["column_index"] or
+                    claim["sample_index"] != sample or
+                    claim["extended_log_size"] != column["extended_log_size"]):
+                raise ValueError("claim order differs from source column roster")
+            for field in (claim["point_x_limbs"], claim["point_y_limbs"],
+                          claim["value_limbs"]):
+                if len(field) != 4 or any(type(word) is not int or
+                                          not 0 <= word < prime for word in field):
+                    raise ValueError("noncanonical captured OOD coordinate/value")
+            if column["root_index"] in (0, 3) and (
+                    claim["point_x_limbs"], claim["point_y_limbs"]) != base_point:
+                raise ValueError("fixed/composition point differs from base OOD point")
+        if len(owned) == 2 and (
+                owned[0]["point_x_limbs"], owned[0]["point_y_limbs"]) == (
+                owned[1]["point_x_limbs"], owned[1]["point_y_limbs"]):
+            raise ValueError("two OOD masks collapsed to the same point")
     if (sum(h["composition_columns"] for h in shape["heights"]) != 8 or
             shape["composition_log_split"] != 1):
         raise ValueError("expected eight split-one composition columns")
@@ -60,8 +106,9 @@ def report(package: Path, proof: Path, statement: Path) -> dict[str, object]:
     n = 1 << key["trace_log_size"]
     blowup = 1 << key["fri"]["log_blowup_factor"]
     candidate_d0 = n * blowup**2
-    # Isolated necessary batching factor with minimum BCS R=1. This is not
-    # the full published expression; D0=N*B² and mapping to M are premises.
+    # Isolated ungrinded batching factor with minimum BCS R=1 and zero
+    # certified batch-grinding credit. This is not the full published bound;
+    # D0=N*B² and the native-to-paper mapping of M remain premises.
     max_excess = (q**4 * t) // (candidate_d0 * target_denominator * (t + 1))
     return {
         "schema": "s31-p05-sparse-gate-accepted-geometry-v1",
@@ -85,9 +132,13 @@ def report(package: Path, proof: Path, statement: Path) -> dict[str, object]:
             "T_hash_queries": t,
             "epsilon_over_T_target_bits": 96,
             "minimum_BCS_rounds_R": 1,
+            "certified_batch_grinding_credit": 0,
             "largest_integer_M_passing_isolated_batch_factor": max_excess + 1,
         },
         "accepted_capture": shape,
+        "accepted_ood_claim_map_sha256": hashlib.sha256(
+            json.dumps(claims, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest(),
         "native_to_paper_batch_width_M": None,
         "native_proven_security_bits": None,
         "proven_release_admissible": False,
