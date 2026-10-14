@@ -707,6 +707,15 @@ facts, not a native ROM reduction or an accepted-proof attack. The
 [raw Gate review](../../../../../design/s31/security/PCS_FRI_RAW_GATE_BCS_AUDIT.md)
 spells out the remaining obligation.
 
+[`FramedBcsV2Encoding.lean`](FramedBcsV2Encoding.lean) models a proposed
+versioned BCS frame with seven fixed domain bytes, a role byte, little-endian
+payload length and event number. It proves role separation for arbitrary
+payloads, payload recovery at a fixed event, and injectivity of bounded u64
+event encodings. The
+[versioned repair design](../../../../../design/s31/security/PCS_FRI_FRAMED_BCS_V2_DESIGN.md)
+is still a proposal; no native code, BLAKE2s security or full BCS theorem is
+derived from this Lean file.
+
 ## One lifted Merkle opening by hand
 
 Suppose a two-level tree authenticates an opened row `R` at leaf index `1`.
