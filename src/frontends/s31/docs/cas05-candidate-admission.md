@@ -79,3 +79,10 @@ PCS/FRI profile. The [P05 migration map](../../../../design/s31/security/PCS_FRI
 and [blocker matrix](../../../../design/s31/security/pcs-fri-v01-blockers.json)
 track those obligations. The candidate admission gate discharges none of
 them.
+
+The focused hostile-format test runs with:
+
+~~~sh
+zig build --build-file src/frontends/s31/build.zig \
+  test-cas05-candidate-admission -j2 -Doptimize=ReleaseSafe
+~~~
