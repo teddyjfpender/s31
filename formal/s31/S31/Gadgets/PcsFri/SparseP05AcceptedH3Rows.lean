@@ -19,6 +19,15 @@ namespace S31.PcsFri.SparseP05AcceptedH3Rows
 open S31.Gadgets.PcsFri.NativeCircleQuotientRows
 open S31.PcsFri.SparseP05AcceptedH3Roster
 
+/-- The accepted claim map contains 73 QM31 points. Every captured point has
+a nonzero imaginary CM31 y-coordinate, the concrete guard needed by native
+`complexConjugateLineCoeffs`. The values are generated from accepted proof
+limbs and checked here as finite arithmetic, not assumed. -/
+theorem accepted_claim_y_imaginary_guard :
+    SparseP05AcceptedH3Data.claimYImag.length = 73 ∧
+    ∀ pair ∈ SparseP05AcceptedH3Data.claimYImag, pair ≠ (0, 0) := by
+  decide
+
 variable {F : Type*} [Field F]
 
 /-- The exact determinant used by native `denominatorInversesInto`: the

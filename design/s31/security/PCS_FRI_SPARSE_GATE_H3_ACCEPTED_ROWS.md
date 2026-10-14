@@ -18,9 +18,13 @@ is reproduced byte-for-byte by the honest proof fixture; a wrong key emits no
 report. Its accepted key and proof SHA-256 values are respectively
 `7d4cdaab4e446aaa2c357e28f077e469412f45a17c660e8d4434cca216dccfc7`
 and `04eaca23d8a6c7fc977b24a3d925aaabcbb727fa4fa30f30c81864e24a158e39`.
+The native fixture separately pins SHA-256
+`cb93d734058ac7f0cca69838e265e4447d9a5f26b67aa28d012c1426ddb9f5d7`
+over the lifting log, first raw query, and all 61 ordered source values.
 
 The first raw lifted query is `90,528` in the log-17 domain. Its native
-bit-reversed circle-domain index is `2,829`. For interaction root 2, column
+bit-reversed circle-domain index is `2,829`, giving the native circle point
+`(X,Y)=(422,774,917, 1,575,360,667)`. For interaction root 2, column
 20, the authenticated source value at that query is `449,376,028`. That
 column has two different accepted OOD samples, global claim indices 57 and
 58:

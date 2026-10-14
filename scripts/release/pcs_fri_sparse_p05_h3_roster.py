@@ -175,6 +175,10 @@ def lean_data(evidence: dict[str, object]) -> str:
         f"{c['first_claim_index']}, {c['ood_claims']}⟩"
         for c in shape["columns"]
     ]
+    y_imag = [
+        f"  ({claim['point_y_limbs'][2]}, {claim['point_y_limbs'][3]})"
+        for claim in shape["claims"]
+    ]
     return "\n".join([
         "import Mathlib.Data.List.Basic",
         "",
@@ -196,6 +200,11 @@ def lean_data(evidence: dict[str, object]) -> str:
         "",
         "def columns : List Column := [",
         ",\n".join(rows),
+        "]",
+        "",
+        "/-- The two M31 limbs of each accepted point's CM31 imaginary y part. -/",
+        "def claimYImag : List (Nat × Nat) := [",
+        ",\n".join(y_imag),
         "]",
         "",
         "end S31.PcsFri.SparseP05AcceptedH3Data",

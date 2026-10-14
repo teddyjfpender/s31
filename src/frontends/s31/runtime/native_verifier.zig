@@ -284,10 +284,7 @@ fn verifyProfile(
         &capture,
     );
     defer capture.deinit(allocator);
-    try deep_capture_admission.validate(allocator, pcs.trace_lifting_log_size,
-        capture.queries.raw, capture.column_log_sizes, capture.sampled_points,
-        capture.sampled_values, capture.queried_values, capture.deep_answers,
-        capture.deep_randomness);
+    try deep_capture_admission.validate(allocator, pcs.trace_lifting_log_size, capture.queries.raw, capture.column_log_sizes, capture.sampled_points, capture.sampled_values, capture.queried_values, capture.deep_answers, capture.deep_randomness);
     try fri_capture_admission.validate(
         H,
         allocator,
@@ -563,10 +560,7 @@ pub fn verifySparse(
         &capture,
     );
     defer capture.deinit(allocator);
-    try deep_capture_admission.validate(allocator, pcs.trace_lifting_log_size,
-        capture.queries.raw, capture.column_log_sizes, capture.sampled_points,
-        capture.sampled_values, capture.queried_values, capture.deep_answers,
-        capture.deep_randomness);
+    try deep_capture_admission.validate(allocator, pcs.trace_lifting_log_size, capture.queries.raw, capture.column_log_sizes, capture.sampled_points, capture.sampled_values, capture.queried_values, capture.deep_answers, capture.deep_randomness);
     try fri_capture_admission.validate(
         H,
         allocator,
@@ -590,8 +584,7 @@ pub fn verifySparse(
             composition_log,
             split,
         ) orelse return error.InvalidP05SparseShape;
-        const lifted_mask_log = std.math.sub(u32, pcs.trace_lifting_log_size,
-            pcs.fri_config.log_blowup_factor) catch return error.InvalidP05SparseShape;
+        const lifted_mask_log = std.math.sub(u32, pcs.trace_lifting_log_size, pcs.fri_config.log_blowup_factor) catch return error.InvalidP05SparseShape;
         const oods_point = core.circle.secureFieldPointFromRandomSeedChecked(
             capture.oods_seed,
         ) catch return error.InvalidP05SparseShape;
@@ -844,10 +837,7 @@ fn verifySparseWideInternal(
     var capture: core.verifier.ProofCapture(H) = undefined;
     try core.verifier.verifyBorrowedExWithProofCapture(H, MC, allocator, &handles, &channel, &scheme, &stark, true, &capture);
     defer capture.deinit(allocator);
-    try deep_capture_admission.validate(allocator, pcs.trace_lifting_log_size,
-        capture.queries.raw, capture.column_log_sizes, capture.sampled_points,
-        capture.sampled_values, capture.queried_values, capture.deep_answers,
-        capture.deep_randomness);
+    try deep_capture_admission.validate(allocator, pcs.trace_lifting_log_size, capture.queries.raw, capture.column_log_sizes, capture.sampled_points, capture.sampled_values, capture.queried_values, capture.deep_answers, capture.deep_randomness);
     try fri_capture_admission.validate(
         H,
         allocator,
@@ -1135,10 +1125,7 @@ fn verifyDirectProfile(
         &capture,
     );
     defer capture.deinit(allocator);
-    try deep_capture_admission.validate(allocator, pcs.trace_lifting_log_size,
-        capture.queries.raw, capture.column_log_sizes, capture.sampled_points,
-        capture.sampled_values, capture.queried_values, capture.deep_answers,
-        capture.deep_randomness);
+    try deep_capture_admission.validate(allocator, pcs.trace_lifting_log_size, capture.queries.raw, capture.column_log_sizes, capture.sampled_points, capture.sampled_values, capture.queried_values, capture.deep_answers, capture.deep_randomness);
     try fri_capture_admission.validate(
         H,
         allocator,
