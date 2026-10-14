@@ -2413,6 +2413,7 @@
     "D0_conditionally_N_times_B_squared": 262144,
     "N_from_sealed_max_trace_log": 65536,
     "T_hash_queries": 18446744073709551616,
+    "certified_batch_grinding_credit": 0,
     "epsilon_over_T_target_bits": 96,
     "largest_integer_M_passing_isolated_batch_factor": 1024,
     "minimum_BCS_rounds_R": 1
@@ -2428,7 +2429,7 @@
   "package_checks": {
     "key_sha256": "7d4cdaab4e446aaa2c357e28f077e469412f45a17c660e8d4434cca216dccfc7",
     "manifest_artifacts": "verified",
-    "manifest_sha256": "a89fdeaefa91a0112518a97f2a834d6f19474cf977f434fd837ce9a602ca352a",
+    "manifest_sha256": "7ab56a8e92fe6fd7a52f95871c835e5bdcc86efbb5fcde27a7e29c474e481263",
     "native_check_key": "accepted",
     "native_proof": "accepted_before_geometry_inspection",
     "proof_sha256": "04eaca23d8a6c7fc977b24a3d925aaabcbb727fa4fa30f30c81864e24a158e39",

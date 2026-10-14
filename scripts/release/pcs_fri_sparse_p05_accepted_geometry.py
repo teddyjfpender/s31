@@ -106,8 +106,9 @@ def report(package: Path, proof: Path, statement: Path) -> dict[str, object]:
     n = 1 << key["trace_log_size"]
     blowup = 1 << key["fri"]["log_blowup_factor"]
     candidate_d0 = n * blowup**2
-    # Isolated necessary batching factor with minimum BCS R=1. This is not
-    # the full published expression; D0=N*B² and mapping to M are premises.
+    # Isolated ungrinded batching factor with minimum BCS R=1 and zero
+    # certified batch-grinding credit. This is not the full published bound;
+    # D0=N*B² and the native-to-paper mapping of M remain premises.
     max_excess = (q**4 * t) // (candidate_d0 * target_denominator * (t + 1))
     return {
         "schema": "s31-p05-sparse-gate-accepted-geometry-v1",
@@ -131,6 +132,7 @@ def report(package: Path, proof: Path, statement: Path) -> dict[str, object]:
             "T_hash_queries": t,
             "epsilon_over_T_target_bits": 96,
             "minimum_BCS_rounds_R": 1,
+            "certified_batch_grinding_credit": 0,
             "largest_integer_M_passing_isolated_batch_factor": max_excess + 1,
         },
         "accepted_capture": shape,

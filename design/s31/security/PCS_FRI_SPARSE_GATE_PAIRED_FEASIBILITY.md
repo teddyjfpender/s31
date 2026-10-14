@@ -83,8 +83,10 @@ the isolated necessary S-two batching factor
 
 `((T+1)/T) * (M-1) * (N*B^2) / |QM31|`
 
-allows integer `M <= 1024` under the *conditional* substitution `D0=N*B^2`
-and minimum BCS round count `R=1`. Here the published common batch width is
+allows integer `M <= 1024` under the *conditional* substitution `D0=N*B^2`,
+minimum BCS round count `R=1`, and **zero certified batch grinding credit**.
+The candidate uses FRI PoW, but no theorem currently assigns its grinding
+credit to this batch term. Here the published common batch width is
 `M=max_i M_i` after per-domain zero padding. Native source columns and the
 candidate widths `32/60/42` are **not** a proved mapping to those `M_i`; a
 multi-height embedding, weighted batch definition, additional claims, or

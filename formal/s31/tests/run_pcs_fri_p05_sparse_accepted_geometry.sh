@@ -42,6 +42,7 @@ for height, base_count in [(17, 14), (11, 28), (5, 19)]:
     shifted.update(set(points) - {base})
 assert len(shifted) == 1
 assert result["candidate_paper_parameters"]["largest_integer_M_passing_isolated_batch_factor"] == 1024
+assert result["candidate_paper_parameters"]["certified_batch_grinding_credit"] == 0
 assert result["native_to_paper_batch_width_M"] is None
 assert result["native_proven_security_bits"] is None
 assert result["proven_release_admissible"] is False
