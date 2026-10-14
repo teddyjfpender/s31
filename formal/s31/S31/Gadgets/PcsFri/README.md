@@ -312,6 +312,38 @@ CAS05 verifier. A formal
 Zig-to-Lean semantic relation for the audit and concrete BLAKE2s assumptions
 remain prerequisites for replacing the explicit native opening premises.
 
+[`PairedBatchXdm04Framing.lean`](PairedBatchXdm04Framing.lean) specializes that
+certificate to the exact XDM03 node preimages used by XDM04. A leaf hashes
+`"S31XDL03" || u16le(column_count) || u32le(each canonical M31)`. An upper
+node hashes `"S31XDU03" || left_digest || right_digest`. An inserted source
+node hashes `"S31XDI03" || upper_digest(left,right) || encoded_row`: the
+inner upper digest is part of the preimage. For a two-column row `[1,256]`,
+the leaf preimage in hex is
+`53333158444c3033 0200 01000000 00010000` (spaces mark fields only).
+The Lean digest is abstract and constrained to 32 output bytes; the theorem
+turns a successful framed certificate check into the mixed-opening predicate
+and native-index replay equation. It does not claim a formal BLAKE2s or Zig
+implementation equivalence.
+
+The independent [Python framing audit](../../../../../scripts/release/pcs_fri_xdm04_framing.py)
+uses `hashlib.blake2s`, its own preimage builders, and its own transposed
+parent/sibling/children formulas. It rehashes every node from native-generated
+source columns, parses the XDM04 wire, reconstructs the compressed witness,
+and compares every opening field emitted by the native Zig audit. At level
+`4`/native index `2`, it checks binary position `1`: native bit 1 selects the
+right child even though native bit 0 is zero. The fixture also compares
+parent, sibling, ordered children, and converted binary path position for all
+62 non-root nodes of its depth-five transposed tree. The checked-in
+[native fixture](../../../tests/fixtures/xdm04-native-framing.json) contains
+the accepted wire and 18 captured openings for duplicate and overlapping
+queries. Run
+`formal/s31/tests/run_pcs_fri_xdm04_framing_draft.sh <path-to-exact-draft-checkout>`
+to regenerate that fixture at the pinned experimental commit and run the
+[hostile controls](../../../../../scripts/tests/test_pcs_fri_xdm04_framing.py).
+This differential audit covers the concrete fixture and its mutations; it
+does not turn runtime agreement into a verified Zig semantics theorem, provide
+collision resistance, or enable CAS05 in the production verifier.
+
 [`TwoPointDegreeCorrection.lean`](TwoPointDegreeCorrection.lean) proves the
 ordinary-polynomial degree step under exact reconstruction. For distinct
 points `a,b`, values `vₐ,vᵦ` determine an affine line `L`. If polynomial `f`
