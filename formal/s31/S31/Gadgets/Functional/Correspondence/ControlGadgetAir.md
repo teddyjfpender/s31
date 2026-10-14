@@ -80,7 +80,9 @@ inverse rows. Padding and unrelated Gate rows are outside that count.
 
 The [public pin continuation](ControlGadgetPublicPins.md) follows the packed
 inverse result through extraction, M31-to-u32 conversion, and four ordered
-public output pins under an explicit conversion-component premise.
+public output pins. [The conversion AIR proof](ControlGadgetConversionAir.md)
+derives the local conversion law from the installed arithmetic residuals and
+explicit authenticated range and Gate lookup closure premises.
 
 This is local compiler-to-AIR correspondence for one no-alias fragment. The
 native inspector supplies graph bytes; the Lean proof assumes the corresponding

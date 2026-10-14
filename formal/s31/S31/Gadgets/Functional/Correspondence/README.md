@@ -7,7 +7,9 @@ source-byte check, soundness for every satisfying assignment, and local
 witness completeness exactly when all selected inverse lanes are nonzero.
 [The public pin continuation](ControlGadgetPublicPins.md) follows that result
 through four packed-lane extractions, M31-to-u32 conversions, and the four
-ordered public word pins under an explicit conversion-component premise.
+ordered public word pins. [The conversion AIR proof](ControlGadgetConversionAir.md)
+derives the local conversion law from the two installed residuals and exact
+range and Gate lookup closure premises, including the M31 wraparound case.
 
 [The pure source-byte bridge](GeneralLinearSSASourceBytes.md) gives a
 handwritten `.s31` example, its positional SSA IDs, active packed-row

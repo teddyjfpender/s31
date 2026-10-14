@@ -25,6 +25,7 @@ from scripts.s31_formal_lib.checks import (
     FormalError, check_audit, check_coverage, check_kernel_log, check_schedule_report,
     inventory, render_coverage,
 )
+from scripts.s31_formal_lib.control_conversion_air import check as check_control_conversion_air
 from scripts.s31_formal_lib.protocol_order import check_protocol_order
 from scripts.s31_formal_lib.pcs_fri_order import check_pcs_fri_order
 from scripts.s31_formal_lib.pcs_fri_challenge_custody import check_pcs_fri_challenge_custody
@@ -377,6 +378,8 @@ BINDINGS = [
     "deps/stwo-zig/src/prover/pcs/tree_builders.zig",
     "deps/stwo-zig/src/backends/cpu_scalar/mod.zig",
     "deps/stwo-zig/src/frontends/circuit/witness/trace.zig",
+    "scripts/s31_formal_lib/control_conversion_air.py",
+    "scripts/tests/test_control_conversion_air.py",
     "deps/stwo-zig/src/prover/pcs/scheme_views.zig",
     "deps/stwo-zig/src/prover/fri.zig",
     "scripts/s31_formal_lib/pcs_fri_order.py",
@@ -852,6 +855,7 @@ def generated() -> dict[Path, str]:
     render_ordered_subtraction_native = runpy.run_path(str(ORDERED_SUBTRACTION_NATIVE_TOOL))["render"]
     check_native_qm31_relation_schedule()
     check_native_eq_relation_schedule()
+    check_control_conversion_air(ROOT)
     check_record_erasure()
     source = (ROOT / RELATION).read_text()
     ops = [op.strip() for op in re.search(
