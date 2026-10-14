@@ -316,6 +316,7 @@ import S31.Gadgets.PcsFri.MultiproofCommittedColumns
 import S31.Gadgets.PcsFri.MultiproofCompactTiles
 import S31.Gadgets.PcsFri.FoldAlgebra
 import S31.Gadgets.PcsFri.PairedProtocolRecurrence
+import S31.Gadgets.PcsFri.Cas07SparseP05Join
 import S31.Gadgets.PcsFri.PairedBatchSourceBinding
 import S31.Gadgets.PcsFri.PairedSparseBatchAgreement
 import S31.Gadgets.PcsFri.PairedBatchNativeRefinement

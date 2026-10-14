@@ -1006,6 +1006,21 @@ premise remains open.
 
 ## CAS07 one-height candidate
 
+[`Cas07SparseP05Join.lean`](Cas07SparseP05Join.lean) covers two further
+conditional joins for the sparse candidate. An empty source-column roster
+has an exactly zero original/own-quotient batch; an interior empty height
+still consumes its challenge and folds the previous line. The normalized
+fold retains the exact `2^(height+1)` scale. At a nonempty height, if one
+common set of more than `2n` distinct Fourier rows agrees with both a
+radius-`n` original and radius-`n-1` own-quotient polynomial, the checked
+two-point quotient equation extends to a polynomial identity and forces the
+interpolated OOD value. A finite-set lemma gives a sufficient overlap bound
+when separate original and quotient agreement sets are already supplied.
+The [worked sparse example and P05 boundary](../../../../../design/s31/security/PCS_FRI_CAS07_P05_JOIN.md)
+spell out the raw-query projection and all remaining native-to-paper joins.
+These results do not extract a common agreement set from FRI acceptance,
+prove its probability, or assign native security bits.
+
 [`Cas07H1Terminal.lean`](Cas07H1Terminal.lean) models the experimental
 CAS07 route with one source height. Its first circle-to-line fold uses a
 different inverse `y` coordinate at each row, and its result is checked
