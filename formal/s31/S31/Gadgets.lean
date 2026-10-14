@@ -333,6 +333,7 @@ import S31.Gadgets.PcsFri.CircleLaurentUniqueness
 import S31.Gadgets.PcsFri.NativeCircleQuotientRows
 import S31.Gadgets.PcsFri.ConcreteCircleMinpoly
 import S31.Gadgets.PcsFri.CanonicalCircleLaurentRows
+import S31.Gadgets.PcsFri.Gate16FourierRows
 import S31.Gadgets.PcsFri.FriCascadeNormalization
 import S31.Gadgets.PcsFri.GroupedFoldSchedule
 import S31.Gadgets.PcsFri.LayerAcceptance
