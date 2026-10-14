@@ -39,6 +39,7 @@ from scripts.s31_formal_lib.pcs_fri_merkle_admission import check_pcs_fri_merkle
 from scripts.s31_formal_lib.pcs_fri_lifted_capture import check_pcs_fri_lifted_capture
 from scripts.s31_formal_lib.pcs_fri_fold import check_pcs_fri_fold
 from scripts.s31_formal_lib.pcs_fri_leaf_encoding import check_pcs_fri_leaf_encoding
+from scripts.s31_formal_lib.pcs_fri_merkle_byte_preimage import check as check_pcs_fri_merkle_byte_preimage
 from scripts.s31_formal_lib.pcs_fri_layer import check_pcs_fri_layer
 from scripts.s31_formal_lib.pcs_fri_raw_refinement import check_pcs_fri_raw_refinement
 from scripts.s31_formal_lib.pcs_fri_operational_admission import check_pcs_fri_operational_admission
@@ -393,6 +394,7 @@ BINDINGS = [
     "scripts/s31_formal_lib/pcs_fri_lifted_capture.py",
     "scripts/s31_formal_lib/pcs_fri_fold.py",
     "scripts/s31_formal_lib/pcs_fri_leaf_encoding.py",
+    "scripts/s31_formal_lib/pcs_fri_merkle_byte_preimage.py",
     "scripts/s31_formal_lib/pcs_fri_layer.py",
     "scripts/s31_formal_lib/pcs_fri_raw_refinement.py",
     "scripts/s31_formal_lib/pcs_fri_operational_admission.py",
@@ -410,6 +412,7 @@ BINDINGS = [
     "scripts/tests/test_pcs_fri_lifted_capture.py",
     "scripts/tests/test_pcs_fri_fold.py",
     "scripts/tests/test_pcs_fri_leaf_encoding.py",
+    "scripts/tests/test_pcs_fri_merkle_byte_preimage.py",
     "scripts/tests/test_pcs_fri_layer.py",
     "scripts/tests/test_pcs_fri_raw_refinement.py",
     "scripts/tests/test_pcs_fri_operational_admission.py",
@@ -423,6 +426,8 @@ BINDINGS = [
     "formal/s31/tests/run_pcs_fri_layer_native.sh",
     "formal/s31/tests/pcs_fri_merkle_binding_native.zig",
     "formal/s31/tests/run_pcs_fri_merkle_binding_native.sh",
+    "formal/s31/tests/pcs_fri_merkle_byte_preimage_native.zig",
+    "formal/s31/tests/run_pcs_fri_merkle_byte_preimage_native.sh",
     "formal/s31/tests/pcs_fri_prover_column_origin_native.zig",
     "formal/s31/tests/run_pcs_fri_prover_column_origin_native.sh",
     "formal/s31/tests/pcs_fri_compact_column_origin_native.zig",
@@ -919,6 +924,7 @@ def main() -> None:
     check_pcs_fri_lifted_capture(ROOT)
     check_pcs_fri_fold(ROOT)
     check_pcs_fri_leaf_encoding(ROOT)
+    check_pcs_fri_merkle_byte_preimage(ROOT)
     check_pcs_fri_layer(ROOT)
     check_pcs_fri_raw_refinement(ROOT)
     check_pcs_fri_operational_admission(ROOT)
@@ -939,6 +945,7 @@ def main() -> None:
     print("S31 post-verification FRI Merkle admission: packed rows and paths bound")
     print("S31 FRI fold: native butterfly, coordinates, challenges and verifier calls bound")
     print("S31 lifted Merkle leaves: sorted M31 little-endian rows and Rust-oracle roots bound")
+    print("S31 plain Merkle byte preimages: canonical leaf and ordered parent hashes bound")
     print("S31 FRI layers: reconstruction, authenticated transitions and terminal checks bound")
     print("S31 FRI raw slots: capture projection and differential audit stages bound")
     print("S31 FRI capture admission: raw transitions and terminal check bound")

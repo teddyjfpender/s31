@@ -308,6 +308,7 @@ import S31.Gadgets.PcsFri.NativeQueryBatch
 import S31.Gadgets.PcsFri.PowM31Predicate
 import S31.Gadgets.PcsFri.NativeM31Arithmetic
 import S31.Gadgets.PcsFri.MerkleOpening
+import S31.Gadgets.PcsFri.MerkleBytePreimage
 import S31.Gadgets.PcsFri.MultiproofCapture
 import S31.Gadgets.PcsFri.MultiproofDecoder
 import S31.Gadgets.PcsFri.MultiproofAllHeights
