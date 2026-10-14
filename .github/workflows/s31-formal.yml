@@ -9,6 +9,8 @@ on:
       - 'scripts/s31_formal*'
       - 'scripts/s31_formal_lib/**'
       - 'scripts/tests/test_s31_formal.py'
+      - 'scripts/tests/test_pure_field_lean_bytes.py'
+      - 'scripts/formal/check_pure_field_lean_bytes.py'
       - '.github/workflows/s31-formal.yml'
   push:
     branches: [main]
@@ -110,7 +112,9 @@ jobs:
           lake exe cache get Mathlib.Data.ZMod.Basic Mathlib.Tactic Mathlib.NumberTheory.LucasLehmer
       - name: Build every proof source and executable semantics
         working-directory: formal/s31
-        run: lake build S31 S31.Evidence.AxiomAudit s31-check s31-alias-relation-check s31-source-function-check s31-general-linear-certificate-check s31-general-linear-effects-certificate-check s31-general-linear-source-check s31-general-linear-effects-source-check s31-general-linear-public-abi-check s31-general-linear-byte-run-check s31-general-linear-effects-byte-run-check s31-general-linear-effects-package-check s31-general-linear-structural-check
+        run: lake build S31 S31.Evidence.AxiomAudit s31-check s31-alias-relation-check s31-source-function-check s31-general-linear-certificate-check s31-general-linear-effects-certificate-check s31-general-linear-source-check s31-general-linear-effects-source-check s31-general-linear-public-abi-check s31-general-linear-byte-run-check s31-general-linear-effects-byte-run-check s31-general-linear-effects-package-check s31-general-linear-structural-check s31-pure-field-derivation-bytes-check
+      - name: Lean pure-field exact-byte derivation controls
+        run: python3 scripts/formal/check_pure_field_lean_bytes.py
       - name: Lean linear SSA certificate byte controls
         working-directory: formal/s31
         run: python3 tests/audit/general_linear_ssa_certificate.py
