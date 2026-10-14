@@ -24,3 +24,6 @@ claim roster and explains why the selected verifier's batch width remains unknow
 The [conditional two-Q degree join](PCS_FRI_SPARSE_GATE_TWO_Q_DEGREE_JOIN.md)
 proves the coefficient-level shared-source implication and lists its native
 and probabilistic premises.
+The [recursive circle-basis proof](PCS_FRI_CIRCLE_RECURSIVE_BASIS_DEGREE.md)
+derives the Laurent radius for every coefficient slot in the native-shaped
+half-split evaluator.
