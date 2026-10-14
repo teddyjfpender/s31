@@ -5,42 +5,42 @@
     "native_gate_epoch_trace": [
       {
         "event": "legacy_wire",
-        "line": 831,
+        "line": 858,
         "source": "src/frontends/s31/runtime/native_verifier.zig"
       },
       {
         "event": "fixed_root",
-        "line": 886,
+        "line": 913,
         "source": "src/frontends/s31/runtime/native_verifier.zig"
       },
       {
         "event": "public_statement",
-        "line": 888,
+        "line": 915,
         "source": "src/frontends/s31/runtime/native_verifier.zig"
       },
       {
         "event": "main_root",
-        "line": 889,
+        "line": 916,
         "source": "src/frontends/s31/runtime/native_verifier.zig"
       },
       {
         "event": "lookup_challenge",
-        "line": 893,
+        "line": 920,
         "source": "src/frontends/s31/runtime/native_verifier.zig"
       },
       {
         "event": "interaction_claim",
-        "line": 905,
+        "line": 932,
         "source": "src/frontends/s31/runtime/native_verifier.zig"
       },
       {
         "event": "interaction_root",
-        "line": 906,
+        "line": 933,
         "source": "src/frontends/s31/runtime/native_verifier.zig"
       },
       {
         "event": "stark_verification",
-        "line": 909,
+        "line": 936,
         "source": "src/frontends/s31/runtime/native_verifier.zig"
       },
       {
@@ -109,6 +109,7 @@
         "source": "deps/stwo-zig/src/core/pcs/verifier.zig"
       }
     ],
+    "native_gate_epoch_trace_scope": "legacy_direct_profile_only",
     "native_nonquotient_degree_test_identified": false,
     "native_proven_security_bits": null,
     "p05_discharged": false,
@@ -136,6 +137,7 @@
       "selector_installed": false
     },
     "published_degree_corrected_nonquotient_premise_met": false,
+    "raw_gate_epoch_trace_evidenced": false,
     "reason": "The reviewed prover commits one lazy quotient provider to FRI; the reviewed verifier supplies one accumulated friAnswers quotient word to its one FRI verifier. Merkle authentication of original query rows is not a low-degree test of their polynomials.",
     "remaining_discharge": [
       "introduce a versioned PCS selector whose prover and verifier pair each authenticated original with its own two-point OOD quotient at native source height, including composition columns, while preserving four existing root epochs; or prove a sound alternative theorem for this quotient-only protocol",
@@ -153,7 +155,7 @@
       "deps/stwo-zig/src/prover/pcs/quotient_ops.zig": "f4684c25d35e15fc57a6d6283df241402004253c6719a1237f3f8e01ebba2115",
       "deps/stwo-zig/src/prover/pcs/quotients/lazy_provider.zig": "7d8c02ad443bba0941f10a8d22ecb1ef81e77b9837c3e1f561445fe31d0e728e",
       "deps/stwo-zig/src/prover/pcs/scheme.zig": "88ab21970d32dda383a191ce5f12c329ce127f2829712a99068dd369d147e93f",
-      "src/frontends/s31/runtime/native_verifier.zig": "42c33c4823679ac9ea5ffd2d4968a3344457d67783188153a02fcbac115b4ffc"
+      "src/frontends/s31/runtime/native_verifier.zig": "26e4d22c8f26ed01e880772fef9508284dce94070d7b523c47b68939e0d5c178"
     },
     "status": "published_degree_corrected_theorem_not_applicable"
   },
@@ -174,7 +176,7 @@
     "design/s31/security/PCS_FRI_CAS05_P05_DISCHARGE_CHECKLIST.md": "401d13dcd5134de30eebf00dab7cd451473491781c1e58a8a14eabe669900dc0",
     "design/s31/security/PCS_FRI_CAS05_PRODUCTION_MIGRATION.md": "aa685f4bd86bd273b4c61be8ce86fef3b1aeb61131589c4f0a08f3e8a548dded",
     "design/s31/security/PCS_FRI_COMMITTED_COLUMN_ORIGIN.md": "f1a917e35716b0eef6644ff6a5d3c86ba137d6468f6d430adeeadccdcfd25941",
-    "design/s31/security/PCS_FRI_DEGREE_CORRECTION_GAP.md": "012806231fce87db7fa096a5813ed42255b7d2219e77fbd4e537dcaeb19cff29",
+    "design/s31/security/PCS_FRI_DEGREE_CORRECTION_GAP.md": "b0e2eb92d30fa7984bb793fd2636d3f8e43dd1a5b047efdd58f547d31bcccfee",
     "design/s31/security/PCS_FRI_GATE16_FOURIER_ROWS.md": "e8eaa5392fa4f060eb88bca79eccaeaa5c1f31a091e457d0e4f2deb727fb9691",
     "design/s31/security/PCS_FRI_GATE_BINARY_REBUILD.md": "0d15a78316a6e24cc3f89ebc2a93e1286ea16f9587b89c429e0e5578610e40f0",
     "design/s31/security/PCS_FRI_GATE_ERROR_LEDGER.md": "af201b0e7330bf7263748b3d84aa389ab652b33035c31f24b8a1520243cd0068",
@@ -230,7 +232,7 @@
     "formal/s31/S31/Gadgets/PcsFri/QueryAndTranscript.lean": "e82190409053019d327e738a450c2a1b8676beecc92770f4a3e7563ad445cfa8",
     "formal/s31/S31/Gadgets/PcsFri/StwoUDRFeasibility.lean": "0887145e13d6391a8c807cc99ed658305b238cc61017ff714ebc8c8f3f2f5eec",
     "formal/s31/S31/Gadgets/PcsFri/TerminalBasisRefinement.lean": "77d304450e19f7c8d6b61dfd846cc3935e9cb38c01cd4cbf9beb6a8fc5b24057",
-    "formal/s31/proof-inventory.json": "f4a1646c6bdd124efb1d4d5d4847183253720dc856f31d9f40bebd419abd3db9",
+    "formal/s31/proof-inventory.json": "ff07e6c0d5fc424785f269f52998bd7abe95638f4a182ca1ca7ff0bd2c770de0",
     "formal/s31/tests/audit/private_main_lde_openings.py": "875be81a5aa9ec79ef0aab4146e18f60deb01f65bfdf0bf9d85dba76f428dfd9",
     "formal/s31/tests/lib/pcs_merkle_collision_reduction.zig": "5c55608feb286cdd26737c698f0249fa7adc5888fe2719666735580675e70d84",
     "formal/s31/tests/lib/pcs_xdm04_mixed_certificate.zig": "be8ebf65be1ee2a50abb99662c4e696a1a2dce6e6ef5115597f5d4121f3a91eb",
@@ -265,11 +267,11 @@
     "formal/s31/tests/run_pcs_fri_prover_column_origin_native.sh": "123a742bdec7ad14069c0f2326e1fe24283623b383bf41bbc6c00176f2ec3403",
     "formal/s31/tests/run_pcs_fri_quotient_degree_gap_native.sh": "6aa40522e63c53ac13165a0fa0d86eb1492aaa8906aa748bf82138724ed90bc5",
     "scripts/release/pcs_fri_cas05_source_profile.py": "6662b2ddd285b7a3fe137e79faeba53d4799a0b97233772aef2c6030f9f2f316",
-    "scripts/release/pcs_fri_degree_correction.py": "6fb383bd7c10eb5e8372617d5408c4fa8f0d7cbce33a9381c63c5b2fce5bbba9",
+    "scripts/release/pcs_fri_degree_correction.py": "01e553a145431da5f604cbdf736480d2281f6c67fad4ff99e55079491b9464b4",
     "scripts/release/pcs_fri_gate_binary_rebuild.py": "c37d7fde1d76348f224b54af32a729addcd4e540aaa403c79776ca71cfbe45ca",
     "scripts/release/pcs_fri_gate_error_ledger.py": "6878d696ab9b9cabcb69b779634e56c544303e8a85c9afa28c914f5eef7daab0",
     "scripts/release/pcs_fri_gate_final_domain.py": "34f61b433849e50fb31a732ba7d21d7f8a588beb3601e3a5e042dc1678184f0d",
-    "scripts/release/pcs_fri_gate_interaction.py": "d35456ea6494fa42ef73669013c4077a08428a7c4b3f4e08226f8c095ccf4f2a",
+    "scripts/release/pcs_fri_gate_interaction.py": "69dc0a68d80f38c4ee7f03a8bb4ddce57d7eb5e6d341fd778f18c30afde0167e",
     "scripts/release/pcs_fri_lookup_challenge_bias.py": "a768c483418596f6e78a416e95d793da2b53c795593a521805fe8d3180fbd158",
     "scripts/release/pcs_fri_ood_seed_geometry.py": "ca27bf6535ebb2723ba929743f96db04ff925930939b8fb8318a775728783257",
     "scripts/release/pcs_fri_package_geometry.py": "437f8fcf32f0fdd563f7c37650f569a0c4901e389d7b4335683a4f0ace8cb214",
@@ -295,9 +297,9 @@
     "scripts/tests/test_pcs_fri_m31_query.py": "4e4675d50525f54476c8f766f02f4be0aa6d6ad83916fe6b73c75e2ae1bb4da1",
     "scripts/tests/test_pcs_fri_ood_seed_geometry.py": "5098d2cca30ba45f37c34be04ca84d40b80427a3f4b231f576cad460bbe61ec4",
     "scripts/tests/test_pcs_fri_pow_m31_predicate.py": "e2dda93d28e38ea8b3fbbfb94c180531658e4d31befc73452b07f791eeef402e",
-    "src/frontends/s31/python/package/gate_component_roster.py": "5561e25cd3dbc9349b29f1f2e2b29b80eb67485f858ccc72981e46a82e98e0fd",
+    "src/frontends/s31/python/package/gate_component_roster.py": "c1aaf8db81d5fedb814083e2b60a74683f10f841762ab72d4493e4f9e7782352",
     "src/frontends/s31/runtime/fri_merkle_admission.zig": "843b0cfc69007aff852a58cdbf9ef9a106e4dd1ea414e6b8ca085ba4d679198d",
-    "src/frontends/s31/runtime/mvp_runtime.zig": "f8d76f102f160aaf0d8dc3600014e68e8cf1d86b582d8cad1df1cd5099a434c9",
+    "src/frontends/s31/runtime/mvp_runtime.zig": "ff4e90d16efa56b9444da0e44c40b725011866d9d86cd69f87c06be1cbe0bb23",
     "src/frontends/s31/runtime/pcs_lifted_capture_admission.zig": "e6f787e5dbcc6fdb92f529e24ea892bf3da82d60db5665a26e828a71768bb3b3",
     "src/frontends/s31/sha/package/sha_fused_package_runtime.zig": "eac17fd037560a25488d32501252a3bad9cc18b162fda6c041cbe688d8404776",
     "src/frontends/s31/sha/package/sha_package_runtime.zig": "b83d39902d41f13d5d8fb5882a054f216e22a49426a99844f32110f575ba8f8d",
@@ -787,7 +789,7 @@
       "deps/stwo-zig/src/core/pcs/verifier.zig": "e119335172e17db5fd1345f476c7f6ad7fdf67e394a5b18d5c2085e892ffe3d5",
       "deps/stwo-zig/src/core/protocol_revision.zig": "4ea494db74b6d6bcac28fe782468378c7d9beedccd4dd1813444dc55093124c5",
       "deps/stwo-zig/src/core/queries.zig": "68e13fbb48c0cd684b94198c5452e003984237a2fe2000dd332ac57234328bce",
-      "src/frontends/s31/runtime/mvp_runtime.zig": "f8d76f102f160aaf0d8dc3600014e68e8cf1d86b582d8cad1df1cd5099a434c9",
+      "src/frontends/s31/runtime/mvp_runtime.zig": "ff4e90d16efa56b9444da0e44c40b725011866d9d86cd69f87c06be1cbe0bb23",
       "src/frontends/s31/sha/package/sha_fused_package_runtime.zig": "eac17fd037560a25488d32501252a3bad9cc18b162fda6c041cbe688d8404776",
       "src/frontends/s31/sha/package/sha_package_runtime.zig": "b83d39902d41f13d5d8fb5882a054f216e22a49426a99844f32110f575ba8f8d",
       "src/frontends/s31/sha/package/sha_shift_package_runtime.zig": "0b1f83a47cc6c8712f03d110a8d987a4dc525dfd9a787bf69e27ced653435ab2"
