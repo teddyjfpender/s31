@@ -123,6 +123,7 @@ fn checkCanonicalSpans(
             return fail(label, "canonical node span malformed");
         const rows = span.qm31_end - span.qm31_start;
         switch (node.tag) {
+            .input => {},
             .constant => if (rows != 0) return fail(label, "constant node emitted unexpected arithmetic gate"),
             .add, .sub, .mul, .add_const, .mul_const => {
                 const zero_left = node.tag == .add and isZeroConstant(nodes, node.lhs.?);
@@ -187,8 +188,16 @@ fn checkGate(
             (is_mul and expected.constant.? == 1))) return;
     if (is_add and !constant_mode and canonical_nodes[canonical_id].tag == .add) {
         const canonical = canonical_nodes[canonical_id];
-        if ((isZeroConstant(canonical_nodes, canonical.lhs.?) and output == rhs.?) or
-            (isZeroConstant(canonical_nodes, canonical.rhs.?) and output == lhs)) return;
+        if (isZeroConstant(canonical_nodes, canonical.lhs.?) or
+            isZeroConstant(canonical_nodes, canonical.rhs.?))
+        {
+            const other_id = if (isZeroConstant(canonical_nodes, canonical.lhs.?))
+                canonical.rhs.?
+            else
+                canonical.lhs.?;
+            if (other_id < maps.len and maps[other_id].wires.len == 1 and
+                output == maps[other_id].wires[0]) return;
+        }
     }
     if (constant_mode and is_mul and expected.constant.? == 0 and
         ctx.values()[output].isZero()) return;
