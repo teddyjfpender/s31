@@ -106,7 +106,7 @@ def check_examples() -> None:
         for x in library_assignment["public_inputs"]["x"]
     ]
     worked_poly, _ = compile_text(
-        text_block_containing(DOCS / "worked-functional-polynomial.md",
+        text_block_containing(DOCS / "examples/worked-functional-polynomial.md",
                               "circuit functional_poly4"),
         "worked-functional-polynomial.md",
     )
@@ -156,7 +156,7 @@ def check_examples() -> None:
             raise AssertionError(f"worked checked multiplication accepted {a} * {b}")
 
     static_sum, static_map = compile_text(
-        text_block_containing(DOCS / "worked-static-sum.md", "circuit p("),
+        text_block_containing(DOCS / "examples/worked-static-sum.md", "circuit p("),
         "worked-static-sum.md",
     )
     assert static_sum["nodes"] == [{
@@ -806,12 +806,12 @@ def check_recursive_examples() -> None:
 
 
 def check_links() -> None:
-    for chapter in DOCS.glob("*.md"):
+    for chapter in DOCS.rglob("*.md"):
         for target in re.findall(r"\]\(([^)]+)\)", chapter.read_text()):
             if target.startswith(("http:", "https:", "#")):
                 continue
             path = (chapter.parent / target.split("#", 1)[0]).resolve()
-            assert path.exists(), f"{chapter.name}: broken link {target}"
+            assert path.exists(), f"{chapter.relative_to(DOCS)}: broken link {target}"
 
     for figure in (DOCS / "figures").glob("*.svg"):
         root = ElementTree.parse(figure).getroot()

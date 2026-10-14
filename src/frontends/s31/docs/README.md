@@ -10,6 +10,13 @@ build emits a program-specific prover, a native STARK verifier, a verification
 key, a public ABI, and a cost report. Values supplied when proving cannot
 change the program's types, graph, loop counts, or proof profile.
 
+For a fast edit loop, run
+`python3 src/frontends/s31/python/s31.py check-source path/to/program.s31`.
+It parses, checks, specializes, and lowers the text without invoking Zig;
+`--json` gives one structured result for tools.
+A successful source check is followed by `build` to validate the selected
+native proof profile.
+
 ```text
 text .s31 ──parse/typecheck/specialize──▶ normalized relation JSON
                                           │
@@ -36,7 +43,7 @@ text .s31 ──parse/typecheck/specialize──▶ normalized relation JSON
 - [Two proofs worked by hand](worked-proofs.md): a private cross-lane sum
     and dot product from source through gate equations and public binding,
     followed by a 16-round recurrence with actual transition rows.
-- [One functional polynomial worked by hand](worked-functional-polynomial.md):
+- [One functional polynomial worked by hand](examples/worked-functional-polynomial.md):
     a typed closure, `poly_eval`, four named lanes, exact retained relation
     nodes, and the AIR equations that bind the public result.
 - [One program's Lean proof ladder](formal/README.md): the real functional
@@ -96,7 +103,7 @@ text .s31 ──parse/typecheck/specialize──▶ normalized relation JSON
 - [Static functional core](functional-language.md): typed lambdas,
    higher-order calls, lexical capture, and the exact zero-gate staging
    boundary, with a four-lane proof example.
-- [A static choice with an erased payload](worked-static-sum.md): an
+- [A static choice with an erased payload](examples/worked-static-sum.md): an
    `enum` known at compile time, a total calculation removed after eager
    evaluation, the retained recurrence chip, and its proof claim.
 - [Dead-code pruning certificate](reference/PRUNING_CERTIFICATE.md): a

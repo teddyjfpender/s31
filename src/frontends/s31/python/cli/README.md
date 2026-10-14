@@ -26,3 +26,24 @@ independently trusted package or installed verifier.
 It keeps the CLI error boundary and re-exports the package and runtime APIs.
 The parser and dispatcher are included in the compiler fingerprint and the
 formal source-binding inventory.
+
+## Fast source check
+
+Run `check-source` during editing or before a native build:
+
+```sh
+python3 src/frontends/s31/python/s31.py check-source \
+  src/frontends/s31/examples/arithmetic/arith4_m31.s31
+python3 src/frontends/s31/python/s31.py check-source \
+  src/frontends/s31/examples/arithmetic/arith4_m31.s31 --json
+```
+
+It runs the same parser, static type and totality checks, specialization,
+certified pruning, and normalized-relation construction used by `build`.
+The JSON result has schema `s31-source-check-v1`, status `valid` or `invalid`,
+and a nonzero exit status for invalid source. Valid results include the
+canonical relation SHA-256 and node count. Invalid results carry a message
+and nullable line/column; source errors are printed with a short code frame
+in human mode. This step does not invoke Zig or establish that any native
+lowering profile accepts the relation. Use `build` and native acceptance for
+that.

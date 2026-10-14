@@ -7,7 +7,7 @@ constructor's payload. A later, conservative dead-code pass removes an
 unused payload calculation only when it is total and cannot fail.
 
 The following is the source used by the
-[native acceptance gate](../tests/acceptance/functional/static_sum_dce.py),
+[native acceptance gate](../../tests/acceptance/functional/static_sum_dce.py),
 with the same computation and declarations laid out for reading:
 
 ```s31
@@ -67,7 +67,7 @@ AIR. In one measured native run, both sources had the same canonical
 relation and full reported AIR geometry: 292 raw QM31 circuit rows, 512
 padded QM31 rows, and 4,096 preprocessed cells. The counts include the
 circuit boundary, not just the single relation node. See the
-[acceptance script](../tests/acceptance/functional/static_sum_dce.py) for a
+[acceptance script](../../tests/acceptance/functional/static_sum_dce.py) for a
 fresh measurement on the current checkout.
 
 For the first recurrence row, the chip checks, independently for each array
@@ -78,7 +78,7 @@ $$\operatorname{out}_j-\operatorname{in}_j^2-7=0.$$
 For position 2 (zero-indexed), that is $11-2^2-7=0$. Other chip constraints
 and the authenticated endpoint lookup connect the 16 rows into one path
 from public $x$ to public `result`; otherwise a prover could assemble
-unrelated valid square-plus-seven rows. [AIR and polynomials](air.md) works
+unrelated valid square-plus-seven rows. [AIR and polynomials](../air.md) works
 through those exact chip equations and their quotient-polynomial check.
 
 ## Why the pass is conservative
@@ -92,7 +92,7 @@ value is unused. The current erasable set is only `constant`, `add`, `sub`, `mul
 `add_const`, and `mul_const` in sources that declare an enum. The compiler
 typechecks/effect-checks before the pass, retains every non-allowlisted
 node, keeps all ancestors of live outputs and assertions, and revalidates
-the public ABI after pruning. The [DCE design note](../../../../design/s31/language/STATIC_SUM_DCE.md)
+the public ABI after pruning. The [DCE design note](../../../../../design/s31/language/STATIC_SUM_DCE.md)
 specifies the graph roots and fail-closed schema behavior.
 
 The tag remains static by construction. A witness-dependent `if` does not
@@ -107,4 +107,4 @@ verifier, rejects a changed public result, and compares complete reported
 AIR geometry with the direct source. These tests establish behavior for
 this example. A full compiler correspondence theorem and the native
 PCS/FRI soundness argument remain separate obligations in the
-[correspondence ledger](../../../../design/s31/language/COMPILER_CORRESPONDENCE.md).
+[correspondence ledger](../../../../../design/s31/language/COMPILER_CORRESPONDENCE.md).
