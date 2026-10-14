@@ -26,7 +26,13 @@ class GateErrorLedgerTests(unittest.TestCase):
                          ["ideal_m31_masked_max_positive_set_bias"], "1/2147483648")
         self.assertIsNone(report["theorem_parameter_mapping"]["circle_N_degree_parameter"])
         self.assertIsNone(report["theorem_parameter_mapping"]["circle_D_standard_position_coset"])
-        self.assertIsNone(report["noninteractive_rom_bcs"]["T_adversary_hash_query_budget"])
+        self.assertEqual(report["selected_target"], {
+            "metric": "paper_work_factor_epsilon_over_T",
+            "bits": 96,
+            "T_adversary_blake2s_query_budget": 1 << 64,
+            "status": "chosen release target, not a proven bound",
+        })
+        self.assertEqual(report["noninteractive_rom_bcs"]["T_adversary_hash_query_budget"], 1 << 64)
         self.assertIsNone(report["noninteractive_rom_bcs"]["R_transformation_round_count"])
         self.assertIsNone(report["noninteractive_rom_bcs"]["lambda_theorem_oracle_output_bits"])
         self.assertIsNone(report["noninteractive_rom_bcs"]["native_merkle_binding_failure_bound"])

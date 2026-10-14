@@ -23,6 +23,8 @@ from scripts.release.pcs_fri_proven_preflight import masked_m31_max_set_bias
 CIRCLE = "https://eprint.iacr.org/2024/278.pdf"
 STWO = "https://eprint.iacr.org/2026/532.pdf"
 STWO_MAP = "https://github.com/starkware-libs/stwo/blob/dev/.agents/papers/llm/Stwo_Whitepaper.llm.md"
+SELECTED_HASH_QUERY_BUDGET = 1 << 64
+SELECTED_WORK_FACTOR_BITS = 96
 
 
 def ratio(value: Fraction) -> str:
@@ -72,6 +74,12 @@ def ledger_from_gate(report: dict) -> dict:
         "status": "blocked",
         "native_proven_security_bits": None,
         "proven_release_admissible": False,
+        "selected_target": {
+            "metric": "paper_work_factor_epsilon_over_T",
+            "bits": SELECTED_WORK_FACTOR_BITS,
+            "T_adversary_blake2s_query_budget": SELECTED_HASH_QUERY_BUDGET,
+            "status": "chosen release target, not a proven bound",
+        },
         "published_anchors": {
             "circle_theorems_6_7": CIRCLE + "#appendix-B",
             "stwo_flat_air_multi_fri_nirop": STWO,
@@ -138,7 +146,8 @@ def ledger_from_gate(report: dict) -> dict:
         },
         "noninteractive_rom_bcs": {
             "theorem_expression": "(T+R)*max_i(epsilon_i) + 3*(T^2+1)/2^lambda",
-            "T_adversary_hash_query_budget": None,
+            "T_adversary_hash_query_budget": SELECTED_HASH_QUERY_BUDGET,
+            "T_scope": "selected total BLAKE2s-query budget; native-to-ROM accounting remains unproved",
             "R_transformation_round_count": None,
             "lambda_theorem_oracle_output_bits": None,
             "hash_collision_binding_term": "3*(T^2+1)/2^lambda, only under the theorem's exact BCS/ROM model",
@@ -148,7 +157,7 @@ def ledger_from_gate(report: dict) -> dict:
             "native_pow_grinding_reduction": None,
             "bound_value": None,
             "missing": [
-                "state a finite adversary budget T and the theorem's round count R for this exact transcript",
+                "derive the theorem's round count R for this exact transcript and account for all native BLAKE2s queries within selected T",
                 "prove the selected native BLAKE2s channel, Merkle encoding and nonce/grinding schedule instantiate the BCS/ROM model",
                 "identify lambda from that reduction; a 32-byte digest or 26 PoW bits alone is insufficient",
                 "account for native Merkle binding/collision events without silently assuming they are covered by the BCS term",

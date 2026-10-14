@@ -74,8 +74,11 @@ epsilon_NIROP(T) <= (T+R) max_i epsilon_i + 3(T^2+1)/2^lambda.
 
 `T` is an explicit *adversary hash-query budget*, `R` the theorem's actual
 transformation round count, and `lambda` its random-oracle output parameter.
-All three are null in the ledger. No finite adversary budget is fixed by the
-sealed package. The second term is the theorem's random-oracle collision and
+The selected release target fixes `T = 2^64` BLAKE2s queries and requires the
+paper's work-factor expression `epsilon(T)/T <= 2^-96`. The package itself
+does not fix or enforce that adversary budget; accounting for the native hash
+calls in the theorem's query model remains open. `R` and `lambda` remain null
+in the ledger. The second term is the theorem's random-oracle collision and
 binding contribution, conditional on its exact BCS model. Separately, the
 native Merkle binding failure bound is null until the concrete plain
 BLAKE2s-256 leaf/node encoding and decoder are reduced to that model; the
