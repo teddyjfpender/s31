@@ -203,7 +203,7 @@
     "design/s31/security/PCS_FRI_POW_M31_PREDICATE.md": "e16a4fe8345b82afaaa486863db5528df5abadc916c4c6e0bd2fcc6b18303c1b",
     "design/s31/security/PCS_FRI_PUBLISHED_BOUND_AUDIT.md": "361ad4957d9bdff886ee53a7babd1bd4e7a4940653213df9086e8e3c10354cae",
     "design/s31/security/PCS_FRI_RAW_GATE_BCS_AUDIT.md": "0a3666b3f220a9b7b30bb9d7bac46b6484a01268814b42629459bd3fcf3701b4",
-    "design/s31/security/PCS_FRI_SPARSE_GATE_PAIRED_FEASIBILITY.md": "b3f051bd3a15a7f4fbdc0b4c478b270e02f044cc423c26259fabd3c52eda414f",
+    "design/s31/security/PCS_FRI_SPARSE_GATE_PAIRED_FEASIBILITY.md": "9d4d3e6906e85a527f4e192d14502ff3cfe0f88ff40a99225e7305c9ff99d2cd",
     "design/s31/security/PCS_FRI_STWO_UDR_FEASIBILITY.md": "7c7939732abebd052a5712afc24f3d8fd2ed9e1d9a94ba63dfb7b16749870074",
     "design/s31/security/evidence/gate-native-fridomain-accepted-proof-2026-10-14.json": "4db7f96366696702b751d667263c52dd31a0af0288996e27cb5662d1aac580fa",
     "design/s31/security/evidence/gate-small-program-paper-batch-boundary-2026-10-14.json": "96f51e69872ba76f9a097646c105079bef341d6778a6c68146ddd54f3fda880e",
