@@ -1,5 +1,10 @@
 # Bounded source to raw Gate AIR
 
+[The scalar control gadget AIR bridge](ControlGadgetAir.md) checks one
+source-bound `is_zero` → `select` → `inv` program against its emitted generic
+Gate rows. It includes a handwritten row derivation, an independent Lean
+source-byte check, and a local AIR theorem for every satisfying assignment.
+
 [The pure source-byte bridge](GeneralLinearSSASourceBytes.md) gives a
 handwritten `.s31` example, its positional SSA IDs, active packed-row
 equations, and a theorem binding supplied source bytes to modeled AIR

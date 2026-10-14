@@ -1156,7 +1156,7 @@ fn inspectGateTopology(allocator: std.mem.Allocator, source: relation.Program) !
     if (source.version != 1 or source.proof_mode != .transparent or
         source.inputs.len > 4 or source.nodes.len > 16 or source.assertions.len > 16)
         return error.UnsupportedGateTopologyInspection;
-    for (source.inputs) |input| if (input.kind != .m31 or input.length != 4)
+    for (source.inputs) |input| if (input.kind != .m31 or input.length == 0 or input.length > 4)
         return error.UnsupportedGateTopologyInspection;
     var ir = try s31.canonical.build(allocator, source);
     defer ir.deinit();

@@ -1,0 +1,37 @@
+{
+  "artifacts": {
+    "bin/s31-control_air-native-verifier": "172903580b26b687f20120a0e721a960ad4a5af4c8d825efc1960bdc5e03bc0c",
+    "bin/s31-control_air-prover": "2b60503b3717c7cbd484cebdcbaa832c3f1a9c4107456504f51b410ed6a2b438",
+    "cost-report.json": "58636af5458d23779bb3b1c44a5201f66c56c0e63d4a1ee51eeab0410a3122b6",
+    "fixed-fold-verification-key.json": "afa2cd4aee6cc7bd155da9836999f007f3f91f454e39498085d105c5ef7f57a7",
+    "gate-component-roster.json": "9d072874d8ada83d7d30e22c873e6be89ea5bf520f0e929694a6742007865fef",
+    "optimizer-correspondence.json": "abd3fe3e18a61b089c737b365af63b4283cd69750ce45663c54509ae08565965",
+    "public-abi.json": "378a3ea98e536ec35be996d488e468bba467f08d2b83bab7c8786edcac2480cc",
+    "pure-field-derivation.json": "ad0be79404b3683b4e0155d6c8d7f0aae7042c673c86e138e86e0b3fdfc6edc6",
+    "recursive-verification-key-level2.json": "b440e8871b3dbe6fc3f84390c6e4c7135b223b9f43d769d1864437dd58330d34",
+    "recursive-verification-key.json": "1727174f2fce15ef54e5ed40591d99306d2615c2341a7b5ef22a4887187f1818",
+    "source-map.json": "187394aa5512947c194d701f7b238720bae0683468d851d7dc4f92221c0b51f0",
+    "source.s31": "7321b180f8a91451c4bd863a79e4504cc401c0d5b7758fbc082d953d6dc176ee",
+    "source.s31.json": "39a73182151ffeba35d930590b3b8360ba3fcb45e9e7f5435a94f064d03a1cf8",
+    "stdlib-lock.json": "071792bc882f7a538fccd133707275c7143761e44d78c5bd8c4e59e0a2905651",
+    "typed-interface.json": "1d4ed430044d520ee8fc60d0e18f954764f5269e6c8423bc60dfaca0a6b4e964",
+    "verification-key.json": "453ebb73bd60753e5112a47e7843db19aaca8d9bae394bdde4d52b891cec08bd"
+  },
+  "canonical_ir_sha256": "8042f899f4c98ec0068a7000d5b2b44fa90ee9ab359275419d7bb14a1571604a",
+  "capabilities": [
+    "s31-fixed-fold-batch-v1"
+  ],
+  "compiler_sha256": "07d466354380241859a52a13f93eb365c0b246d1c648eb88c98ac1c274bd4b68",
+  "fri_fold_step": 1,
+  "lowering": "gate",
+  "name": "control_air",
+  "optimize": "ReleaseFast",
+  "optimizer_correspondence_schema": "s31-optimizer-correspondence-pure-field-v2",
+  "program_sha256": "39a73182151ffeba35d930590b3b8360ba3fcb45e9e7f5435a94f064d03a1cf8",
+  "recursive_fri_fold_step": 1,
+  "schema": "s31-package-v1",
+  "source_text_sha256": "7321b180f8a91451c4bd863a79e4504cc401c0d5b7758fbc082d953d6dc176ee",
+  "stdlib_lock_sha256": "071792bc882f7a538fccd133707275c7143761e44d78c5bd8c4e59e0a2905651",
+  "text_frontend_version": 1,
+  "zig_version": "0.15.2"
+}
