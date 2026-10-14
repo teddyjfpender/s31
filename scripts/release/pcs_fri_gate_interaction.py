@@ -31,7 +31,9 @@ NATIVE_SOURCES = {
     "deps/stwo-zig/src/frontends/circuit/stark_verifier/verify.zig":
         "53d0b3c5e0d902a579cf1305d70ca34914666cac48ba1598f3c256e686d8ecc0",
     "src/frontends/s31/runtime/native_verifier.zig":
-        "12708c582913ed5f91cc6239c3ac28d7a21313e5a2a739f3494a66964e2ec74b",
+        "42c33c4823679ac9ea5ffd2d4968a3344457d67783188153a02fcbac115b4ffc",
+    "src/frontends/s31/runtime/pcs_mode_binding.zig":
+        "db61e2e740ee890a92460db1a5545b7f14d1353c15fcd944a4a760867255e0b4",
 }
 
 

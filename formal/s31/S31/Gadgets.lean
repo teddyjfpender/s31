@@ -13,6 +13,7 @@ import S31.Gadgets.Air.NativeGateRawSoundness
 import S31.Gadgets.Air.NativeEqRawSoundness
 import S31.Gadgets.Air.NativeLogUpBatchesProof
 import S31.Gadgets.Air.CompositionFold
+import S31.Gadgets.Air.NativeGateFinalizerBridge
 import S31.Gadgets.Functional.TextSquare4Proof
 import S31.Gadgets.Functional.TextSquare4Air
 import S31.Gadgets.Functional.TextSquare4Statement

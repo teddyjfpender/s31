@@ -399,6 +399,8 @@
     "scripts/tests/test_pcs_fri_native_m31_arithmetic.py": "da815ba9654737e0bbb6ef3399767cb451c7ad44ea3dfc8d27e97a19656b7d29",
     "scripts/tests/test_pcs_fri_degree_correction.py": "7dfbb00b608256bd2bf3064b17305247b8c6cce88ead5eb1fed9a94244e68aac",
     "formal/s31/tests/pcs_fri_fold_native.zig": "74440da5053e471e0f4c1be9ce4b105180fc68c611a52eb684189e66b5e9bc51",
+    "formal/s31/tests/native_gate_finalizer_refinement.zig": "19d6f7a92cb0ef00544957c9dda3ba0cc65e396dd9da4ef30f3894814f775243",
+    "formal/s31/tests/run_native_gate_finalizer_refinement.sh": "44fce248d93972a3df644711412f7aa44c77947692b93dbcc62c01448958310d",
     "formal/s31/tests/pcs_fri_layer_native.zig": "2880fce322261211e6f1902dd5f3159bcaf9ec43bf525380964237e44c1ecb40",
     "formal/s31/tests/run_pcs_fri_layer_native.sh": "646d1b96665e920f241fdc2b4458ce95e160a9f163fcc8575bad5b6b0bfb4dc8",
     "formal/s31/tests/pcs_fri_merkle_binding_native.zig": "99dc5ed7c8ddb59779f58fb8c5fcf0458ed16c36b0f9b1bf3f790d4d3f0abcd6",
