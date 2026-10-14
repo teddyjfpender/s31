@@ -17,9 +17,15 @@ const pcs_mode_binding = @import("pcs_mode_binding.zig");
 const QM31 = core.fields.qm31.QM31;
 const H = core.vcs_lifted.blake2_merkle.Blake2sPlainMerkleHasher;
 const MC = cpu.prove.profiles.Blake2sM31MerkleChannel;
+const RawMC = cpu.prove.profiles.Blake2sMerkleChannel;
+comptime {
+    if (H != MC.MerkleHasher or H != RawMC.MerkleHasher)
+        @compileError("gate channel profiles must share the committed fixed-root hasher");
+}
 const PerComponent = circuit.common.component_list.PerComponent;
 const N_COMPONENTS = circuit.common.component_list.N_COMPONENTS;
 const MAGIC = "S31NAT1\x00";
+const RAW_GATE_MAGIC = "S31NAT8R";
 const HEADER_LEN = MAGIC.len + 8 + N_COMPONENTS * 16;
 const HYBRID_MAGIC = "S31NAT2\x00";
 const HYBRID_HEADER_LEN = HYBRID_MAGIC.len + 8 + (N_COMPONENTS + 1) * 16;
@@ -34,18 +40,23 @@ pub const HybridSpec = struct {
 
 pub fn serialize(allocator: std.mem.Allocator, proof: *const cpu.Internal.CircuitProof) ![]u8 {
     if (proof.chip_claimed_sum != null) return error.WrongProofProfile;
-    return serializeProfile(allocator, proof, false);
+    return serializeProfile(allocator, proof, false, false);
+}
+
+pub fn serializeRawGate(allocator: std.mem.Allocator, proof: *const cpu.Root.CircuitProof) ![]u8 {
+    if (proof.chip_claimed_sum != null or proof.bridge_claimed_sum != null) return error.WrongProofProfile;
+    return serializeProfile(allocator, proof, false, true);
 }
 
 pub fn serializeHybrid(allocator: std.mem.Allocator, proof: *const cpu.Internal.CircuitProof) ![]u8 {
     if (proof.chip_claimed_sum == null) return error.WrongProofProfile;
-    return serializeProfile(allocator, proof, true);
+    return serializeProfile(allocator, proof, true, false);
 }
 
-fn serializeProfile(allocator: std.mem.Allocator, proof: *const cpu.Internal.CircuitProof, hybrid: bool) ![]u8 {
+fn serializeProfile(allocator: std.mem.Allocator, proof: anytype, hybrid: bool, raw_gate: bool) ![]u8 {
     var bytes: std.ArrayList(u8) = .empty;
     errdefer bytes.deinit(allocator);
-    try bytes.appendSlice(allocator, if (hybrid) HYBRID_MAGIC else MAGIC);
+    try bytes.appendSlice(allocator, if (hybrid) HYBRID_MAGIC else if (raw_gate) RAW_GATE_MAGIC else MAGIC);
     var nonce: [8]u8 = undefined;
     std.mem.writeInt(u64, &nonce, proof.interaction_pow_nonce, .little);
     try bytes.appendSlice(allocator, &nonce);
@@ -77,7 +88,20 @@ pub fn verify(
     public_words: [8]u32,
     raw: []const u8,
 ) !void {
-    return verifyProfile(allocator, layout, template, pcs, preprocessed_root, circuit_hash, public_words, raw, null, null);
+    return verifyProfile(MC, allocator, layout, template, pcs, preprocessed_root, circuit_hash, public_words, raw, null, null);
+}
+
+pub fn verifyRawGate(
+    allocator: std.mem.Allocator,
+    layout: *const circuit.common.preprocessed.ColumnLayout,
+    template: *const cpu.air.Bundle,
+    pcs: core.pcs.config_v2.PcsConfigV2,
+    preprocessed_root: H.Hash,
+    circuit_hash: H.Hash,
+    public_words: [8]u32,
+    raw: []const u8,
+) !void {
+    return verifyProfile(RawMC, allocator, layout, template, pcs, preprocessed_root, circuit_hash, public_words, raw, null, null);
 }
 
 /// Authenticate a full gate-profile proof and retain the verifier's expanded
@@ -94,7 +118,7 @@ pub fn verifyAndCapture(
     raw: []const u8,
 ) !cpu.verifier_proof.VerifierProof {
     var converted: cpu.verifier_proof.VerifierProof = undefined;
-    try verifyProfile(allocator, layout, template, pcs, preprocessed_root, circuit_hash, public_words, raw, null, &converted);
+    try verifyProfile(MC, allocator, layout, template, pcs, preprocessed_root, circuit_hash, public_words, raw, null, &converted);
     return converted;
 }
 
@@ -109,10 +133,11 @@ pub fn verifyHybrid(
     raw: []const u8,
     spec: HybridSpec,
 ) !void {
-    return verifyProfile(allocator, layout, template, pcs, preprocessed_root, circuit_hash, public_words, raw, spec, null);
+    return verifyProfile(MC, allocator, layout, template, pcs, preprocessed_root, circuit_hash, public_words, raw, spec, null);
 }
 
 fn verifyProfile(
+    comptime Profile: type,
     allocator: std.mem.Allocator,
     layout: *const circuit.common.preprocessed.ColumnLayout,
     template: *const cpu.air.Bundle,
@@ -124,8 +149,10 @@ fn verifyProfile(
     spec: ?HybridSpec,
     converted_out: ?*cpu.verifier_proof.VerifierProof,
 ) !void {
+    if (Profile == RawMC and (spec != null or converted_out != null))
+        return error.UnsupportedRecursiveProfile;
     const hybrid = spec != null;
-    const magic = if (hybrid) HYBRID_MAGIC else MAGIC;
+    const magic = if (hybrid) HYBRID_MAGIC else if (Profile == RawMC) RAW_GATE_MAGIC else MAGIC;
     const header_len = if (hybrid) HYBRID_HEADER_LEN else HEADER_LEN;
     if (raw.len < header_len or raw.len > (16 << 20) or !std.mem.eql(u8, raw[0..magic.len], magic))
         return error.InvalidNativeProof;
@@ -171,16 +198,16 @@ fn verifyProfile(
     for (public_words, &outputs) |word, *output|
         output.* = QM31.fromU32Unchecked(word & 0xffff, word >> 16, 0, 0);
 
-    var channel = MC.Channel{};
+    var channel = Profile.Channel{};
     if (spec) |item| chip.mixProfile(&channel, item.source_digest, item.rounds, item.constant);
     core.channel.lookup_transcript.mixChannelSalt(&channel, 0);
     pcs.fri_config.mixInto(&channel);
-    var scheme = try core.pcs.verifier.CommitmentSchemeVerifier(H, MC).init(allocator, pcs);
+    var scheme = try core.pcs.verifier.CommitmentSchemeVerifier(H, Profile).init(allocator, pcs);
     defer scheme.deinit(allocator);
     var pp_logs: [circuit.common.preprocessed.N_PREPROCESSED_COLUMNS]u32 = undefined;
     for (layout.entries, &pp_logs) |entry, *log| log.* = entry.log_size;
     try scheme.commit(allocator, roots[0], &pp_logs, &channel);
-    MC.mixRoot(&channel, circuit_hash);
+    Profile.mixRoot(&channel, circuit_hash);
     channel.mixFelts(&outputs);
 
     const component_logs = try circuit.common.component_list.circuitComponentLogSizes(layout);
@@ -247,7 +274,7 @@ fn verifyProfile(
     var capture: core.verifier.ProofCapture(H) = undefined;
     try core.verifier.verifyBorrowedExWithProofCapture(
         H,
-        MC,
+        Profile,
         allocator,
         handles[0..component_count],
         &channel,

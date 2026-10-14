@@ -130,7 +130,7 @@ def dispatch(args: argparse.Namespace) -> None:
         return
     if args.command == "build":
         print(build(args.source, args.out, args.lowering, args.fri_fold_step,
-                    args.correspondence))
+                    args.correspondence, args.channel_profile))
         return
     if args.command == "trial":
         print(json.dumps(trial(args.source_or_package, args.assignment, args.out,
@@ -188,6 +188,11 @@ def dispatch(args: argparse.Namespace) -> None:
         return
 
     package = args.package.resolve()
+    if (args.command in {"wrap", "wrap-next", "verify-recursive", "verify-recursive-next"} or
+            args.command.startswith(("fold-", "state-fold-", "verify-fold", "verify-state-fold",
+                                     "audit-recursive", "audit-fold", "audit-state-fold"))):
+        if verify_package(package).get("channel_profile") == "raw-blake2s-rejection-v1":
+            raise ValueError("raw BLAKE2s Gate packages do not support recursion or folding")
     if args.command in {"verify-effects-lean", "verify-effects-gate-lean"}:
         print(verify_effectful_proof(
             package, args.proof, args.assignment, args.statement,

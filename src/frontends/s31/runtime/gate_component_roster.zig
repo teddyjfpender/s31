@@ -58,6 +58,7 @@ fn hex(allocator: std.mem.Allocator, bytes: [32]u8) ![]const u8 {
 pub fn generate(
     backing: std.mem.Allocator,
     pp: *const preprocessed.PreprocessedCircuit,
+    profile: []const u8,
     program_digest: [32]u8,
     ir_digest: [32]u8,
     root: [32]u8,
@@ -109,7 +110,7 @@ pub fn generate(
     }
     return .{ .arena = arena, .value = .{
         .schema = "s31-component-roster-gate-v1",
-        .profile = "circuit-v1",
+        .profile = profile,
         .program_sha256 = try hex(allocator, program_digest),
         .canonical_ir_sha256 = try hex(allocator, ir_digest),
         .air_bundle_sha256 = air_bundle_sha256,

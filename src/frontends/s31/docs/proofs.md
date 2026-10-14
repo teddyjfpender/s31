@@ -44,6 +44,14 @@ It reads no private assignment. It is a **native STARK verifier** that calls
 the core Stwo verifier on the program's circuit/AIR components; it does not
 execute an in-circuit recursive verifier on the host.
 
+For an ordinary transparent `gate` program, `build --channel-profile
+raw-blake2s-rejection-v1` selects a separate native proof transcript with
+uniform M31 draws under an ideal raw-hash premise. It creates a distinct key
+and proof format and no recursive or fold keys. The default remains `legacy`.
+The [channel design and security boundary](../../../../design/s31/security/PCS_FRI_RAW_GATE_CHANNEL_PROFILE.md)
+explains its rejection sampler and the remaining adaptive-transcript proof
+obligation.
+
 For a fixed-key recursive proof, the
 [claim inspector](../tools/inspect/inspect_recursive_claim.py) invokes that package's
 native top verifier and prints the leaf words, intermediate public digests,

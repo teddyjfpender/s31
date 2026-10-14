@@ -25,6 +25,8 @@ def make_parser() -> argparse.ArgumentParser:
     sub.add_argument("source", type=Path)
     sub.add_argument("--out", type=Path, required=True)
     sub.add_argument("--lowering", choices=("gate", "chip", "sparse-gate", "sparse-chip", "sparse-wide-gate", "direct-gate", "direct-chip", "sha-joint", "sha-shift", "sha-fused"), default="gate")
+    sub.add_argument("--channel-profile", choices=("legacy", "raw-blake2s-rejection-v1"), default="legacy",
+                     help="opt into raw BLAKE2s rejection sampling for ordinary nonrecursive gate proofs")
     sub.add_argument("--fri-fold-step", type=int, choices=(1, 4), default=1,
                      help="FRI folds per commitment for gate or sparse-wide-gate proofs; 4 can shrink recursive verifier circuits")
     sub.add_argument("--correspondence", choices=("conservative", "optimized"),

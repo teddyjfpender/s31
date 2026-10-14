@@ -18,7 +18,10 @@ from package.context import (
 from package.verify import verify_package
 
 
-def _key_schema(source: dict, lowering: str, privacy: dict | None) -> str:
+def _key_schema(source: dict, lowering: str, privacy: dict | None,
+                channel_profile: str = "legacy") -> str:
+    if channel_profile == "raw-blake2s-rejection-v1":
+        return "s31-verification-key-gate-raw-v1"
     if lowering == "direct-gate" and source["version"] == 1:
         return "s31-verification-key-direct-manifest-v2"
     if source["version"] == 2:
@@ -48,13 +51,21 @@ def _check_cached_key_schema(output: Path, requested: str) -> None:
 
 
 def build_json(source_path: Path, output: Path, lowering: str = "gate",
-               library_lock: dict | None = None, fri_fold_step: int = 1) -> Path:
+               library_lock: dict | None = None, fri_fold_step: int = 1,
+               channel_profile: str = "legacy") -> Path:
     if lowering not in {"gate", "chip", "sparse-gate", "sparse-chip", "sparse-wide-gate", "direct-gate", "direct-chip", "sha-joint", "sha-shift", "sha-fused"}:
         raise ValueError("invalid S31 lowering")
     if type(fri_fold_step) is not int or fri_fold_step not in (1, 4) or (fri_fold_step == 4 and lowering not in {"gate", "sparse-wide-gate"}):
         raise ValueError("FRI fold step 4 requires gate or sparse-wide-gate lowering; supported steps are 1 and 4")
     source_path = source_path.resolve()
     source, data = load_source(source_path)
+    if channel_profile not in {"legacy", "raw-blake2s-rejection-v1"}:
+        raise ValueError("unknown S31 channel profile")
+    raw_gate = channel_profile == "raw-blake2s-rejection-v1"
+    if raw_gate and (lowering != "gate" or source["version"] != 1 or source.get("proof_mode", "transparent") != "transparent"):
+        raise ValueError("raw BLAKE2s channel requires transparent version 1 ordinary gate lowering")
+    if raw_gate and fri_fold_step != 1:
+        raise ValueError("raw BLAKE2s Gate channel v1 supports FRI fold step 1 only")
     # The v2 build selector currently exists only for direct-gate records.
     # Direct-chip v2 records still use the v1 build route and validate their
     # embedded v2 descriptor in the native compiler and verifier.
@@ -66,7 +77,7 @@ def build_json(source_path: Path, output: Path, lowering: str = "gate",
         # The native compiler and verifier independently repeat this check.
         abi(source, lowering)
     privacy = proof_privacy.policy_for(source, lowering, fri_fold_step)
-    requested_key_schema = _key_schema(source, lowering, privacy)
+    requested_key_schema = _key_schema(source, lowering, privacy, channel_profile)
     lock_bytes = ((json.dumps(library_lock, indent=2, sort_keys=True) + "\n").encode()
                   if library_lock is not None else None)
     lock_digest = sha256(lock_bytes) if lock_bytes is not None else None
@@ -81,6 +92,8 @@ def build_json(source_path: Path, output: Path, lowering: str = "gate",
             raise FileExistsError(f"package was built with different compiler inputs: {output}")
         if manifest.get("lowering", "gate") != lowering:
             raise FileExistsError(f"package was built with different lowering: {output}")
+        if manifest.get("channel_profile", "legacy") != channel_profile:
+            raise FileExistsError(f"package was built with a different channel profile: {output}")
         if manifest.get("fri_fold_step", 1) != fri_fold_step:
             raise FileExistsError(f"package was built with a different FRI fold step: {output}")
         if manifest.get("stdlib_lock_sha256") != lock_digest:
@@ -94,8 +107,10 @@ def build_json(source_path: Path, output: Path, lowering: str = "gate",
         name = source["name"]
         invoke(
             "zig", "build", "--build-file", str(BUILD_FILE), "install",
+            "-j4",
             "-Doptimize=ReleaseFast", f"-Ds31-version={build_source_version}",
             *gate_manifest_option,
+            f"-Ds31-channel-profile={channel_profile}",
             f"-Ds31-lowering={lowering}", f"-Ds31-fri-fold-step={fri_fold_step}",
             f"-Ds31-source={source_path}", f"-Ds31-name={name}",
             *lock_option,
@@ -122,6 +137,10 @@ def build_json(source_path: Path, output: Path, lowering: str = "gate",
             "air_bundle_sha256": AIR_BUNDLE_SHA256,
             "fri": inspection["fri"],
         }
+        if raw_gate:
+            if inspection["profile"] != "circuit-raw-v1":
+                raise RuntimeError("raw gate compiler reported a different profile")
+            key["channel_profile"] = channel_profile
         key.update(key_fields_for_lowering(lowering))
         if source["version"] == 2:
             expected_abi = abi(source, lowering)["boundary_sha256"]
@@ -180,7 +199,7 @@ def build_json(source_path: Path, output: Path, lowering: str = "gate",
         recursive_next_option: tuple[str, ...] = ()
         fold_option: tuple[str, ...] = ()
         state_fold_option: tuple[str, ...] = ()
-        if privacy is None and lowering in {"gate", "sparse-wide-gate"}:
+        if privacy is None and lowering in {"gate", "sparse-wide-gate"} and not raw_gate:
             recursive_key = staging / "recursive-verification-key.json"
             invoke(str(prover), "recurse-keygen", str(staging / "verification-key.json"),
                    str(recursive_key))
@@ -194,7 +213,7 @@ def build_json(source_path: Path, output: Path, lowering: str = "gate",
                 invoke(str(prover), "wide-fold-keygen", str(staging / "verification-key.json"),
                        str(recursive_key), str(recursive_next_key), str(fold_key))
                 fold_option = (f"-Ds31-fold-key={fold_key}",)
-        if privacy is None and lowering == "gate":
+        if privacy is None and lowering == "gate" and not raw_gate:
             fold_key = staging / "fixed-fold-verification-key.json"
             invoke(str(prover), "fold-keygen", str(staging / "verification-key.json"),
                    str(recursive_key), str(fold_key))
@@ -206,8 +225,10 @@ def build_json(source_path: Path, output: Path, lowering: str = "gate",
                 state_fold_option = (f"-Ds31-state-fold-key={state_fold_key}",)
         invoke(
             "zig", "build", "--build-file", str(BUILD_FILE), "install",
+            "-j4",
             "-Doptimize=ReleaseFast", f"-Ds31-version={build_source_version}",
             *gate_manifest_option,
+            f"-Ds31-channel-profile={channel_profile}",
             f"-Ds31-lowering={lowering}", f"-Ds31-fri-fold-step={fri_fold_step}",
             f"-Ds31-source={source_path}", f"-Ds31-name={name}",
             f"-Ds31-key={staging / 'verification-key.json'}",
@@ -218,6 +239,8 @@ def build_json(source_path: Path, output: Path, lowering: str = "gate",
             *lock_option,
             "--prefix", str(staging),
         )
+        if raw_gate:
+            invoke(str(verifier), "check-key", str(staging / "verification-key.json"))
         write_json(staging / "public-abi.json", abi(source, lowering))
         write_json(staging / "cost-report.json", inspection)
         artifacts = [
@@ -252,6 +275,8 @@ def build_json(source_path: Path, output: Path, lowering: str = "gate",
             "optimize": "ReleaseFast",
             "artifacts": {item: file_hash(staging / item) for item in artifacts},
         }
+        if raw_gate:
+            manifest["channel_profile"] = channel_profile
         if recursive_option:
             manifest["recursive_fri_fold_step"] = 4 if lowering == "sparse-wide-gate" else fri_fold_step
         if privacy is not None:
@@ -274,7 +299,7 @@ def build_json(source_path: Path, output: Path, lowering: str = "gate",
 
 
 def build_text(source_path: Path, output: Path, lowering: str = "gate", fri_fold_step: int = 1,
-               correspondence: str = "conservative") -> Path:
+               correspondence: str = "conservative", channel_profile: str = "legacy") -> Path:
     from text_frontend import Parser
     from package.correspondence import OPTIMIZED_SCHEMA, parse_source_optimized
 
@@ -300,12 +325,14 @@ def build_text(source_path: Path, output: Path, lowering: str = "gate", fri_fold
             raise FileExistsError(f"package already exists for a different source: {output}")
         if manifest["compiler_sha256"] != compiler_fingerprint() or manifest["lowering"] != lowering:
             raise FileExistsError(f"package was built with different compiler inputs or lowering: {output}")
+        if manifest.get("channel_profile", "legacy") != channel_profile:
+            raise FileExistsError(f"package was built with a different channel profile: {output}")
         if manifest.get("fri_fold_step", 1) != fri_fold_step:
             raise FileExistsError(f"package was built with a different FRI fold step: {output}")
         if (manifest.get("correspondence_schema") == OPTIMIZED_SCHEMA) != (correspondence == "optimized"):
             raise FileExistsError(f"package was built with a different correspondence mode: {output}")
         requested_key_schema = _key_schema(
-            relation, lowering, proof_privacy.policy_for(relation, lowering, fri_fold_step))
+            relation, lowering, proof_privacy.policy_for(relation, lowering, fri_fold_step), channel_profile)
         _check_cached_key_schema(output, requested_key_schema)
         return output
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -313,7 +340,7 @@ def build_text(source_path: Path, output: Path, lowering: str = "gate", fri_fold
         staging_root = Path(directory)
         normalized_path = staging_root / "normalized.s31.json"
         normalized_path.write_bytes(normalized)
-        package = build_json(normalized_path, staging_root / "package", lowering, library_lock, fri_fold_step)
+        package = build_json(normalized_path, staging_root / "package", lowering, library_lock, fri_fold_step, channel_profile)
         (package / "source.s31").write_bytes(text_data)
         write_json(package / "source-map.json", {
             "schema": "s31-text-source-map-v1", "source_sha256": sha256(text_data),
@@ -403,7 +430,7 @@ def build_text(source_path: Path, output: Path, lowering: str = "gate", fri_fold
         # key, component manifest, fixed root, and AIR binding. Never publish a
         # certificate whose final package or native verifier cannot admit it.
         verify_package(package)
-        if lowering == "direct-gate":
+        if lowering == "direct-gate" or channel_profile == "raw-blake2s-rejection-v1":
             invoke(str(package / "bin" / f"s31-{manifest['name']}-native-verifier"),
                    "check-key", str(package / "verification-key.json"))
         os.rename(package, output)
@@ -411,12 +438,13 @@ def build_text(source_path: Path, output: Path, lowering: str = "gate", fri_fold
 
 
 def build(source_path: Path, output: Path, lowering: str = "gate", fri_fold_step: int = 1,
-          correspondence: str = "conservative") -> Path:
+          correspondence: str = "conservative", channel_profile: str = "legacy") -> Path:
     if source_path.suffix == ".s31":
-        return build_text(source_path, output, lowering, fri_fold_step, correspondence)
+        return build_text(source_path, output, lowering, fri_fold_step, correspondence, channel_profile)
     if correspondence != "conservative":
         raise ValueError("optimized correspondence requires a .s31 text source")
-    return build_json(source_path, output, lowering, fri_fold_step=fri_fold_step)
+    return build_json(source_path, output, lowering, fri_fold_step=fri_fold_step,
+                      channel_profile=channel_profile)
 
 
 def package_for(source_or_package: Path) -> Path:
