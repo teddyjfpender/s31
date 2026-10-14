@@ -49,6 +49,21 @@ illustration only. The [release blocker matrix](pcs-fri-v01-blockers.json)
 records the metric and leaves `T` null; it remains closed until the actual
 verifier has a complete theorem-instantiated bound for a stated `T`.
 
+There is already a **T-independent necessary failure** for the current
+single-fold native tuple under this *ungrinded published expression*.
+At `B=2`, unique decoding requires `θ<1/4`, so the paper's query base
+`α=1−θ` is strictly greater than `3/4`. With 70 raw draws,
+`α^70>(3/4)^70>2⁻⁹⁶`. The BCS work-factor expression contains
+`((T+R)/T)α^70≥α^70` for every positive `T`, even before other positive
+terms. At least 232 draws are necessary at the excluded `α=3/4` boundary;
+strict θ and the other errors can require more. The
+[matrix](pcs-fri-v01-blockers.json) calculates this exact rational floor,
+and [Lean](../../../formal/s31/S31/Gadgets/PcsFri/StwoUDRFeasibility.lean)
+proves the boundary and all-positive-`T` inequality. This shows that the
+quoted no-grinding formula cannot certify the current 70-query tuple at
+96 bits. It does **not** lower-bound the actual native attack probability,
+rule out a different theorem, or assign any unproved PoW credit.
+
 The OOD denominator is explicit: since `q≡3 (mod 4)` and `q⁴≡1 (mod 4)`,
 the affine circles have `|C(𝔽_q)|=q+1` and `|C(F)|=q⁴−1`, hence
 `|C(F) \ C(𝔽_q)|=q⁴−q−2`. The formulas are quoted **upper bounds**. A

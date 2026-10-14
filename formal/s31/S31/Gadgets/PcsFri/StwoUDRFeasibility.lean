@@ -37,4 +37,34 @@ theorem paper_ood_denominator_below_qm31 :
     ((q : ℚ) ^ 4 - q - 2) < (q : ℚ) ^ 4 := by
   norm_num [q]
 
+/-! For B=2, the unique-decoding interval forces alpha=1-theta>3/4.
+The native one-fold profiles draw 70 raw queries. This is a limitation of
+the published *ungrinded expression*, not a lower bound on true error. -/
+
+theorem seventy_queries_boundary_exceeds_96 :
+    (1 : ℚ) / 2 ^ 96 < ((3 : ℚ) / 4) ^ 70 := by
+  norm_num
+
+theorem seventy_queries_udr_expression_exceeds_96
+    {alpha : ℚ} (halpha : (3 : ℚ) / 4 < alpha) :
+    (1 : ℚ) / 2 ^ 96 < alpha ^ 70 := by
+  have hpow : ((3 : ℚ) / 4) ^ 70 < alpha ^ 70 := by
+    gcongr
+  exact lt_trans seventy_queries_boundary_exceeds_96 hpow
+
+theorem seventy_queries_bcs_work_factor_exceeds_96
+    {alpha : ℚ} {T R : ℕ} (halpha : (3 : ℚ) / 4 < alpha)
+    (hT : 0 < T) :
+    (1 : ℚ) / 2 ^ 96 < ((T : ℚ) + R) / T * alpha ^ 70 := by
+  have hquery := seventy_queries_udr_expression_exceeds_96 halpha
+  have hTq : (0 : ℚ) < T := by exact_mod_cast hT
+  have hfactor : (1 : ℚ) ≤ ((T : ℚ) + R) / T := by
+    apply (le_div_iff₀ hTq).2
+    nlinarith
+  have hpositive : (0 : ℚ) ≤ alpha ^ 70 := by
+    positivity
+  have hmul : alpha ^ 70 ≤ ((T : ℚ) + R) / T * alpha ^ 70 := by
+    nlinarith
+  exact lt_of_lt_of_le hquery hmul
+
 end S31.PcsFri.StwoUDRFeasibility

@@ -14,6 +14,7 @@ import hashlib
 import json
 import subprocess
 import sys
+from fractions import Fraction
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -140,6 +141,30 @@ def gitlink(root: Path) -> str:
     ).strip()
 
 
+def ungrinded_udr_query_necessity(blowup_log: int, raw_queries: int,
+                                  target_bits: int) -> dict[str, object]:
+    """Paper UDR query-expression floor, never an actual-error lower bound."""
+    if not 1 <= blowup_log <= 30 or not 1 <= raw_queries <= 100000 or not 1 <= target_bits <= 256:
+        raise ValueError("invalid UDR query-necessity parameters")
+    blowup = 1 << blowup_log
+    # theta < (1-rho)/2 implies alpha=1-theta > (1+rho)/2.
+    excluded_alpha = Fraction(blowup + 1, 2 * blowup)
+    target = Fraction(1, 1 << target_bits)
+    boundary_term = excluded_alpha ** raw_queries
+    needed = 1
+    while excluded_alpha ** needed > target:
+        needed += 1
+    return {
+        "scope": "hypothetical single-fold S-two unique-decoding theorem; zero proved grinding credit",
+        "excluded_alpha_boundary": f"{excluded_alpha.numerator}/{excluded_alpha.denominator}",
+        "raw_queries": raw_queries,
+        "query_expression_at_excluded_boundary": f"{boundary_term.numerator}/{boundary_term.denominator}",
+        "necessary_raw_queries_at_boundary_for_target": needed,
+        "published_ungrinded_work_factor_expression_cannot_certify_target_for_any_T": boundary_term > target,
+        "interpretation": "necessary arithmetic for the quoted paper expression, not a bound on native attack success",
+    }
+
+
 def matrix(root: Path = ROOT) -> dict[str, object]:
     observed = {case.id: case.fri_fold_step for case in CASES}
     if observed != EXPECTED_PROFILE_STEPS or set(observed) != AUDIT_CASES:
@@ -183,6 +208,8 @@ def matrix(root: Path = ROOT) -> dict[str, object]:
             "adversary_hash_query_budget_T": None,
             "status": "target_metric_selected; deployment_T_and_native_bound_open",
             "paper_arithmetic": "scripts/release/pcs_fri_stwo_udr.py",
+            "single_fold_ungrinded_query_necessity": ungrinded_udr_query_necessity(
+                NOMINAL_FRI["log_blowup_factor"], NOMINAL_FRI["raw_queries"], 96),
         },
         "engine_gitlink_commit": current_engine,
         "source_visible_nominal_fri": {
