@@ -72,7 +72,7 @@ def main() -> None:
         paths[2].write_text(json.dumps(graph, separators=(",", ":")))
         lean_check(VALUE, paths, True)
         reason = lean_check(OWNER, paths, False)
-        if "lacks a direct native owner or exact identity alias" not in reason:
+        if "lacks a native gate, exact identity alias, or AIR zero anchor" not in reason:
             raise AssertionError(f"missing-owner mutation failed elsewhere: {reason}")
         print("Zig CSE graph accepted; missing owner passes value check and fails AIR ownership")
 
@@ -108,7 +108,7 @@ def main() -> None:
         paths[2].write_text(json.dumps(sub_graph, separators=(",", ":")))
         lean_check(VALUE, paths, True)
         reason = lean_check(OWNER, paths, False)
-        if "lacks a direct native owner or exact identity alias" not in reason:
+        if "lacks a native gate, exact identity alias, or AIR zero anchor" not in reason:
             raise AssertionError(f"reversed Sub failed elsewhere: {reason}")
         print("Zig Sub graph accepted; reversed zero-input gate fails ordered ownership")
 
@@ -143,20 +143,68 @@ def main() -> None:
         paths[2].write_text(json.dumps(identity_graph, separators=(",", ":")))
         lean_check(VALUE, paths, True)
         reason = lean_check(OWNER, paths, False)
-        if "lacks a direct native owner or exact identity alias" not in reason:
+        if "lacks a native gate, exact identity alias, or AIR zero anchor" not in reason:
             raise AssertionError(f"forged add-zero alias failed elsewhere: {reason}")
         source_map[2]["id"] = source_map[0]["id"]
         source_map[3]["id"] = source_map[1]["id"]
         paths[2].write_text(json.dumps(identity_graph, separators=(",", ":")))
         lean_check(VALUE, paths, True)
         reason = lean_check(OWNER, paths, False)
-        if "lacks a direct native owner or exact identity alias" not in reason:
+        if "lacks a native gate, exact identity alias, or AIR zero anchor" not in reason:
             raise AssertionError(f"forged multiply-one alias failed elsewhere: {reason}")
         print("Zig identities accepted; both same-value wrong-wire aliases fail exact ownership")
 
-        # A multiply-by-zero fold does not satisfy the identity rule. It
-        # needs fixed-constant cell provenance before this checker can admit
-        # it, even though the older concrete-value checker accepts the trace.
+        # A multiply-by-zero fold has no source multiplication gate. Zig maps
+        # its result to reserved physical wire 0 and finalization supplies
+        # Add(0,0,0), whose AIR row forces that cell to zero. A different
+        # physical wire containing zero only for this assignment is not an
+        # owner of the fold.
+        zero_source = (b"circuit zero(public x: [m31; 2], private y: [m31; 2]) "
+                       b"-> public [m31; 2] { let z = x .* splat<2>(0_m31); "
+                       b"assert_eq(z,y); z }")
+        zero_assignment = {
+            "public_inputs": {"x": [P - 1, 3]},
+            "private_inputs": {"y": [0, 0]},
+            "public_outputs": {"z": [0, 0]},
+        }
+        zero_raw = case_bytes(zero_source, zero_assignment)
+        zero_inputs, zero_nodes = checked_words(zero_raw)
+        zero_graph, zero_bytes = native_check(
+            zero_raw, zero_inputs, zero_nodes, work, export_graph=True)
+        check_graph(zero_graph, zero_raw, zero_inputs, zero_nodes)
+        for path, content in zip(paths, (zero_source, zero_raw["certificate"],
+                                         zero_bytes,
+                                         json.dumps({"inputs": [[P - 1, 3], [0, 0]],
+                                                     "claimed": [0, 0]}).encode()), strict=True):
+            path.write_bytes(content)
+        lean_check(VALUE, paths, True)
+        lean_check(OWNER, paths, True)
+        zero_map = zero_graph["source_map"]
+        zero_addr = zero_graph["node_wires"][zero_map[2]["id"]]["wires"][0]
+        y_addr = zero_graph["node_wires"][zero_map[1]["id"]]["wires"][0]
+        if zero_addr != 0 or y_addr == 0:
+            raise AssertionError("expected Zig zero fold on reserved wire 0")
+        zero_map[2]["id"] = zero_map[1]["id"]
+        paths[2].write_text(json.dumps(zero_graph, separators=(",", ":")))
+        lean_check(VALUE, paths, True)
+        reason = lean_check(OWNER, paths, False)
+        if "lacks a native gate, exact identity alias, or AIR zero anchor" not in reason:
+            raise AssertionError(f"wrong-origin zero fold failed elsewhere: {reason}")
+        zero_map[2]["id"] = json.loads(zero_bytes)["source_map"][2]["id"]
+        anchors = [gate for gate in zero_graph["add"] if gate ==
+                   {"in0": 0, "in1": 0, "out": 0}]
+        if len(anchors) != 1:
+            raise AssertionError(f"expected one Zig self-add zero anchor, found {anchors}")
+        zero_graph["add"].remove(anchors[0])
+        paths[2].write_text(json.dumps(zero_graph, separators=(",", ":")))
+        lean_check(VALUE, paths, True)
+        reason = lean_check(OWNER, paths, False)
+        if "lacks a native gate, exact identity alias, or AIR zero anchor" not in reason:
+            raise AssertionError(f"missing AIR zero anchor failed elsewhere: {reason}")
+        print("Zig x*0 accepted; wrong-origin cell and removed AIR anchor both rejected")
+
+        # A nonzero folded literal still needs separately proven constant
+        # derivation from the anchor; the older value checker accepts it.
         _, folded_source, folded_assignment = next(
             c for c in CASES if c[0] == "folded_constants")
         folded_raw = case_bytes(folded_source, folded_assignment)
@@ -171,7 +219,7 @@ def main() -> None:
             path.write_bytes(content)
         lean_check(VALUE, paths, True)
         reason = lean_check(OWNER, paths, False)
-        if "lacks a direct native owner or exact identity alias" not in reason:
+        if "lacks a native gate, exact identity alias, or AIR zero anchor" not in reason:
             raise AssertionError(f"nonidentity fold failed elsewhere: {reason}")
         print("Zig nonidentity fold remains rejected pending fixed-cell ownership")
 
