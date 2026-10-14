@@ -1,4 +1,4 @@
-# Native ownership for direct gates and zero-cost identities
+# Native ownership for direct gates and zero-cost constants
 
 [StructuralNativeGateOwnership.lean](StructuralNativeGateOwnership.lean) checks
 that every admitted **binary** source step names an actual native
@@ -6,9 +6,10 @@ add/sub/pointwise-mul gate with the source operands' wire addresses and the
 step's output address. Add and pointwise multiplication may exchange operand
 order; subtraction may not. Several source steps may reuse one gate after CSE.
 It also admits `x + 0` and `x .* 1` after the compiler erases them, **only**
-when the source result and `x` have the same physical wire address. Other
-constant steps and erasures are rejected until they have separate ownership
-rules. The equality of two sampled values is insufficient for an erasure.
+when the source result and `x` have the same physical wire address. A folded
+`x .* 0` is admitted only when its result is reserved native wire 0 and the
+native `Add(0,0,0)` gate belongs to the AIR roster. Other constant steps and
+erasures are rejected. Equality of sampled values cannot replace ownership.
 
 ## Hand example
 
@@ -81,6 +82,32 @@ both mutants because the stored values are equal. This checker rejects
 both because `wx ≠ wy`; choosing different input values would expose the
 incorrect source computation.
 
+## Hand example: a folded zero
+
+```s31
+circuit zero(public x: [m31; 2], private y: [m31; 2])
+    -> public [m31; 2] {
+    let z = x .* splat<2>(0_m31);
+    assert_eq(z, y);
+    z
+}
+```
+
+The compiler erases the source multiplication and maps `z` to native wire
+`0`. Finalization emits `Add(0,0,0)`. For each active lane its AIR polynomial
+requires `w₀ + w₀ − w₀ = 0`; equivalently `w₀ + w₀ = w₀`. Since the M31
+value is canonical, the only solution is `w₀ = 0`. Thus the source equation
+`x * 0 = z` holds for any value of `x`, and the public output can reuse wire
+`0` without adding a source multiplication row. `zero_anchor_air_sound`
+derives this from `NativeAirRows`; the checker does not inspect `z`'s
+sampled value as its proof of zero.
+
+The Zig fixture uses `x = [p−1, 3]` and an independent input `y = [0, 0]`.
+Redirecting `z` to `y`'s distinct wire leaves every sampled value equal to
+zero. The old value-only checker accepts, while this checker rejects the
+wrong physical origin. Removing `Add(0,0,0)` similarly leaves the sampled
+values unchanged but removes the AIR zero anchor, so this checker rejects.
+
 ## Boundary
 
 The theorem's `NativeAirRows` premise says that the nine residuals vanish for
@@ -88,9 +115,11 @@ the **supplied** graph's gate roster. The runtime control checks concrete gate
 equations but does not authenticate that graph, its source-map or its gate
 cells to an accepted proof. Installed Zig export provenance, exact source-node
 span ownership, public word packing, committed AIR cell authentication, and
-PCS/FRI soundness remain separate. The theorem does not cover source constant
-steps other than exact add-zero/multiply-one aliases, or constant folds such
-as `x * 0` and `7 + 0`. It does not prove that a supplied graph was produced
+PCS/FRI soundness remain separate. The theorem covers only exact add-zero/
+multiply-one aliases and multiply-zero folds at the AIR-owned zero wire.
+Nonzero constant folds such as `x + 7` still need a proof that their native
+cells arise from the builder's fixed-constant chain and its public `u`
+anchor. It does not prove that a supplied graph was produced
 by the installed Zig compiler or that its alias addresses are the cells
 committed by a verifier. An AIR row is unnecessary for an exact identity
 alias, but this relies on authenticating the alias map to the proof before
