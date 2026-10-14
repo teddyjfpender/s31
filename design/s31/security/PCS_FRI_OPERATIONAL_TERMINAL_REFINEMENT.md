@@ -49,6 +49,25 @@ subset, and terminal coefficient after verifier acceptance. Source controls
 reject bypasses of terminal evaluation, wrong factor order, wrong doubling,
 and missing odd coefficients.
 
+An additional native `FriVerifier.commit` regression constructs a three-root,
+two-coefficient proof shape directly, with first fold width two and inner
+fold widths two and one. It independently replays the actual M31-channel
+transcript: absorb first root, draw its QM31 challenge, absorb each inner root
+and draw its challenge, then absorb the bounded terminal coefficients. The
+test checks each stored challenge, the circle/line domain sizes, each stored
+fold width, the terminal coefficient copy, and the final 32-byte digest.
+Changing a root or a terminal coefficient changes that digest. A source guard
+also pins the native final-query path: the query index is bit-reversed in the
+last line domain, `LinePoly.evalAtPoint` evaluates the terminal polynomial at
+that point, and a mismatch returns `LastLayerEvaluationsInvalid`. Mutation
+tests reject removal of the coordinate, evaluator, or equality check.
+
+This is a finite executable refinement of the root/challenge/terminal order
+and final-query check for the pinned implementation. It does not prove the
+Zig loop semantics for every input, challenge independence in the random
+oracle model, or that accepted Merkle paths define one fixed oracle. Those
+remain required for the published circle-FRI protocol and P04 discharge.
+
 Run the focused checks from the S31 root:
 
 ```sh

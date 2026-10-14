@@ -14,6 +14,90 @@ const Hasher = Profile.MerkleHasher;
 const Channel = Profile.Channel;
 const Verifier = core.fri.FriVerifier(Hasher, Profile);
 
+fn emptyLayer(allocator: std.mem.Allocator, marker: u8) !core.fri.FriLayerProof(Hasher) {
+    const witness = try allocator.alloc(QM31, 0);
+    errdefer allocator.free(witness);
+    const hashes = try allocator.alloc(Hasher.Hash, 0);
+    return .{
+        .fri_witness = witness,
+        .decommitment = .{ .hash_witness = hashes },
+        .commitment = [_]u8{marker} ** 32,
+    };
+}
+
+// The proof shape is deliberately constructed independently of the prover:
+// three distinct roots and two terminal coefficients make the transcript
+// sequence observable. This only tests the pinned native commit path, not
+// Fiat–Shamir independence or acceptance of an arbitrary Merkle opening.
+test "FRI raw-slot refinement: native round roots, alphas and terminal have one transcript order" {
+    const allocator = std.testing.allocator;
+    var config = try core.fri.FriConfig.init(1, 1, 2);
+    config.fold_step = 2;
+    const inner = try allocator.alloc(core.fri.FriLayerProof(Hasher), 2);
+    inner[0] = try emptyLayer(allocator, 2);
+    inner[1] = try emptyLayer(allocator, 3);
+    var proof = core.fri.FriProof(Hasher){
+        .first_layer = try emptyLayer(allocator, 1),
+        .inner_layers = inner,
+        .last_layer_poly = core.poly.line.LinePoly.initOwned(try allocator.dupe(QM31, &.{
+            QM31.fromU32Unchecked(11, 0, 0, 0),
+            QM31.fromU32Unchecked(13, 0, 0, 0),
+        })),
+    };
+    defer proof.deinit(allocator);
+
+    var native_channel = Channel{};
+    var verifier = try Verifier.commit(
+        allocator, &native_channel, config, proof,
+        core.fri.CirclePolyDegreeBound.init(6),
+    );
+    defer verifier.deinit(allocator);
+
+    // A separate transcript replay gives an exact, byte-level order oracle.
+    var expected_channel = Channel{};
+    Profile.mixRoot(&expected_channel, proof.first_layer.commitment);
+    const first_alpha = expected_channel.drawSecureFelt();
+    try std.testing.expect(verifier.first_layer.folding_alpha.eql(first_alpha));
+    try std.testing.expectEqual(@as(u32, 7), verifier.first_layer.column_commitment_domain.logSize());
+
+    const expected_steps = [_]u32{ 2, 1 };
+    const expected_logs = [_]u32{ 5, 3 };
+    for (proof.inner_layers, verifier.inner_layers, 0..) |source, layer, i| {
+        Profile.mixRoot(&expected_channel, source.commitment);
+        const alpha = expected_channel.drawSecureFelt();
+        try std.testing.expect(layer.folding_alpha.eql(alpha));
+        try std.testing.expectEqual(expected_steps[i], layer.fold_step);
+        try std.testing.expectEqual(expected_logs[i], layer.domain.logSize());
+        try std.testing.expectEqualDeep(source.commitment, layer.proof.commitment);
+    }
+    try std.testing.expectEqual(@as(u32, 2), verifier.last_layer_domain.logSize());
+    try std.testing.expectEqual(@as(usize, 2), verifier.last_layer_poly.len());
+    for (proof.last_layer_poly.coefficients(), verifier.last_layer_poly.coefficients()) |source, copied| {
+        try std.testing.expect(source.eql(copied));
+    }
+    const before_terminal_channel = expected_channel;
+    expected_channel.mixFelts(proof.last_layer_poly.coefficients());
+    try std.testing.expectEqualDeep(expected_channel.digestBytes(), native_channel.digestBytes());
+    try std.testing.expectEqual(expected_channel.n_draws, native_channel.n_draws);
+
+    // Both a root and a terminal-coefficient change must alter the transcript.
+    var changed_root_channel = Channel{};
+    Profile.mixRoot(&changed_root_channel, [_]u8{4} ** 32);
+    _ = changed_root_channel.drawSecureFelt();
+    for (proof.inner_layers) |source| {
+        Profile.mixRoot(&changed_root_channel, source.commitment);
+        _ = changed_root_channel.drawSecureFelt();
+    }
+    changed_root_channel.mixFelts(proof.last_layer_poly.coefficients());
+    try std.testing.expect(!std.mem.eql(u8, &changed_root_channel.digestBytes(), &native_channel.digestBytes()));
+    var changed_terminal_channel = before_terminal_channel;
+    changed_terminal_channel.mixFelts(&.{
+        QM31.fromU32Unchecked(11, 0, 0, 0),
+        QM31.fromU32Unchecked(14, 0, 0, 0),
+    });
+    try std.testing.expect(!std.mem.eql(u8, &changed_terminal_channel.digestBytes(), &native_channel.digestBytes()));
+}
+
 comptime {
     if (Channel != core.channel.blake2s.Blake2sM31Channel)
         @compileError("FRI audit must use the S31 M31 transcript channel");
