@@ -39,6 +39,9 @@ sum and checks the optimized Zig path against an independent field reference.
 The [general source-height basis slice](PCS_FRI_GENERAL_BASIS_REFINEMENT.md)
 proves the arbitrary power-of-two prefix and block recurrence and checks the
 native height-11 and height-17 kernels at their accepted coefficient sizes.
+The [accepted sparse OOD factor-vector slice](PCS_FRI_SPARSE_OOD_FACTOR_VECTOR.md)
+follows every key-owned raw claim point through source-height projection into
+the ordinary native sampled-coefficient plan's factor vector.
 The [multiproof byte-collision join](PCS_FRI_MULTIPROOF_BYTE_COLLISION_REDUCTION.md)
 shows that a wrong row accepted by the modeled full decoder against a
 constructed column tree gives two distinct messages with the same plain hash.
