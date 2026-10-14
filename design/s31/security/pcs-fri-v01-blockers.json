@@ -108,7 +108,7 @@
     "scripts/s31_formal_lib/pcs_fri_quotient_algebra.py": "5d34e08755a7172da91c9ecb2aeacb01d9d21437ada619c9e63cbeab6b43dec1",
     "scripts/s31_formal_lib/sha_release_capture.py": "3a0a70b7085c40b0ff1b4a7cf84353e686e372e7722d68dffba5b940e1b86a6a",
     "src/frontends/s31/python/package/gate_component_roster.py": "5561e25cd3dbc9349b29f1f2e2b29b80eb67485f858ccc72981e46a82e98e0fd",
-    "src/frontends/s31/runtime/mvp_runtime.zig": "41a18dfa289cb44d6d1758588e01ecd30e58009d779209a1166f19f244a875db",
+    "src/frontends/s31/runtime/mvp_runtime.zig": "8e0a5888af9ceecc82f5f047a6dfe262cfc352f1e00a8bc21ad87c7a6d61d276",
     "src/frontends/s31/runtime/pcs_lifted_capture_admission.zig": "e6f787e5dbcc6fdb92f529e24ea892bf3da82d60db5665a26e828a71768bb3b3",
     "src/frontends/s31/sha/package/sha_fused_package_runtime.zig": "eac17fd037560a25488d32501252a3bad9cc18b162fda6c041cbe688d8404776",
     "src/frontends/s31/sha/package/sha_package_runtime.zig": "b83d39902d41f13d5d8fb5882a054f216e22a49426a99844f32110f575ba8f8d",
@@ -540,7 +540,7 @@
       "deps/stwo-zig/src/core/pcs/verifier.zig": "e119335172e17db5fd1345f476c7f6ad7fdf67e394a5b18d5c2085e892ffe3d5",
       "deps/stwo-zig/src/core/protocol_revision.zig": "4ea494db74b6d6bcac28fe782468378c7d9beedccd4dd1813444dc55093124c5",
       "deps/stwo-zig/src/core/queries.zig": "68e13fbb48c0cd684b94198c5452e003984237a2fe2000dd332ac57234328bce",
-      "src/frontends/s31/runtime/mvp_runtime.zig": "41a18dfa289cb44d6d1758588e01ecd30e58009d779209a1166f19f244a875db",
+      "src/frontends/s31/runtime/mvp_runtime.zig": "8e0a5888af9ceecc82f5f047a6dfe262cfc352f1e00a8bc21ad87c7a6d61d276",
       "src/frontends/s31/sha/package/sha_fused_package_runtime.zig": "eac17fd037560a25488d32501252a3bad9cc18b162fda6c041cbe688d8404776",
       "src/frontends/s31/sha/package/sha_package_runtime.zig": "b83d39902d41f13d5d8fb5882a054f216e22a49426a99844f32110f575ba8f8d",
       "src/frontends/s31/sha/package/sha_shift_package_runtime.zig": "0b1f83a47cc6c8712f03d110a8d987a4dc525dfd9a787bf69e27ced653435ab2"
