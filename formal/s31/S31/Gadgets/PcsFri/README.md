@@ -13,6 +13,13 @@ one-attempt favorable counts are 4,097 at the Gate interaction's 20 bits and
 explains the two native barriers and what remains before this becomes a BCS
 security bound.
 
+[`GateFourSlotNativeMap.lean`](GateFourSlotNativeMap.lean) gives an all-input
+coefficient map for the four Gate source slots under the guarded two-point
+circle sample. It proves the exact claimed limbs, a nonzero interpolation
+norm, a radius-one own quotient with zero degree edge, and reconstruction at
+every base circle row. The map is algebraic: authentication of the compiled
+source columns and a complete FRI reduction remain separate obligations.
+
 [`NativeQueryBatch.lean`](NativeQueryBatch.lean) models the selected M31
 channel's eight-word output batches. For any number of requested raw queries
 and any array of 32-bit batch words, query slot `j` takes block `j / 8`, lane
