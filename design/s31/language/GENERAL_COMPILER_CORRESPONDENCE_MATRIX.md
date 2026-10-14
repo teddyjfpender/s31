@@ -49,7 +49,11 @@ any length of its local field rules preserves partial evaluation, including
 inverse-zero failure and Boolean selection. The new Lean byte bridge lexes
 exact source bytes, reconstructs the typed derivation, independently replays
 certificate rules, and compares canonical relation JSON. It does not compute
-the SHA-256 digest values or connect those nodes to native Gate rows.
+the SHA-256 digest values or connect those nodes to native Gate rows. This
+profile requires an `inv`, `is_zero`, or `select` rule; the current native
+optimizer correspondence receipt excludes those operations. Their admitted
+program sets are disjoint, so these two certificates do not yet form one
+source-to-optimized-IR chain.
 
 The separate `typed-structural-derivation.json` artifact now records a typed
 source tree and checks one generic construct/project erasure rule across

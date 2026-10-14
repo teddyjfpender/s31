@@ -94,6 +94,13 @@ Lean checks digest spelling but does not compute the digests. The ordinary
 package verifier currently runs its Python derivation checker, while the Lean
 CLI is a separate auditable gate.
 
+The currently opt-in native optimizer correspondence receipt has **no
+single-program overlap** with this derivation profile: this profile requires
+an `inv`, `is_zero`, or `select` control, while the optimizer receipt's v1
+operation roster excludes all three. Both checks are scoped to their own
+admitted programs and do not yet compose into one source-to-optimized-IR
+proof for a controlled field program.
+
 This theorem composes semantic rules and independently admitted bytes. It does
 not prove the production optimizer preserves
 the normalized relation, that native AIR rows implement every node, or that

@@ -17,6 +17,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src/frontends/s31/python"))
 
 from package.pure_field_derivation import make_certificate  # noqa: E402
+from package.optimizer_receipt import eligible as optimizer_receipt_eligible  # noqa: E402
 from text_frontend import compile_text  # noqa: E402
 
 
@@ -145,6 +146,11 @@ class PureFieldLeanBytesTests(unittest.TestCase):
         # bytes. The package verifier, not this Lean CLI, owns SHA-256 custody.
         result = self.checked(source, canonical(changed), relation)
         self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_current_optimizer_receipt_has_no_overlap(self) -> None:
+        for source in (SCALAR, MIXED, EIGHT, PARENTHESIZED):
+            relation, _ = compile_text(source.decode())
+            self.assertFalse(optimizer_receipt_eligible(relation))
 
 
 if __name__ == "__main__":
