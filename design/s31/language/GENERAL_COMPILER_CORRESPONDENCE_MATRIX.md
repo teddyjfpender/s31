@@ -250,6 +250,16 @@ existing Lean effects checker; a changed source literal fails. This is a
 bounded honest-trace join and a zero-cost source-alias check, not a general
 constant optimization or arbitrary-proof theorem. See
 [`constant_native_rows.py`](../../../src/frontends/s31/tests/acceptance/compiler_correspondence/constant_native_rows.py).
+The scalar `is_zero` case has a separate exact-byte source admission and
+complete 512-row native fixed schedule, including both nonoptional
+zero-assertion self-loops and the public indicator copy. The Lean theorem
+names the concrete Gate wire addresses and proves the bound public indicator
+for every address-consistent witness satisfying these rows, including zero
+input. Two native
+honest-proof executions test the zero and nonzero branches and compare all
+6,144 source-derived main cells. This does not admit `inv` or `select` in the
+native source-bound control fragment. See
+[`SCALAR_ZERO_TEST_CORRESPONDENCE.md`](SCALAR_ZERO_TEST_CORRESPONDENCE.md).
 Two public inputs fit within the eight-word ABI only at these lengths:
 `2N` input words plus `N` result words must be at most eight. Returning an
 input directly, private inputs, trivial constant operands (`0` or `1`),
@@ -278,7 +288,7 @@ models only `add`, `sub`, and `mul`; it has no assertion semantics.
 
 | Operation family | Production operation names | Remaining correspondence work |
 | --- | --- | --- |
-| Field and control | `constant`, `cast_m31`, `add`, `sub`, `mul`, `add_const`, `mul_const`, `repeat`, `select`, `sum_lanes`, `inv`, `is_zero` | Complete source, normalized-node, witness, AIR, and native-verifier links for each form |
+| Field and control | `constant`, `cast_m31`, `add`, `sub`, `mul`, `add_const`, `mul_const`, `repeat`, `select`, `sum_lanes`, `inv`, `is_zero` | Extend the bounded scalar `is_zero` row theorem and fixed schedule to general graph composition; complete source, normalized-node, witness, AIR, and native-verifier links for the remaining forms |
 | Boolean and arrays | `array_get`, `array_concat`, `array_slice`, `bool_not`, `bool_and`, `bool_or`, `bool_xor`, `bool_select` | Shape/index proof, Boolean constraints, padding and output selection |
 | Hashes | `hash_blake2s`, `hash_blake2s_leaf`, `hash_blake2s_pair`, `hash_poseidon2_leaf`, `hash_poseidon2_pair`, `hash_sha256d_header` | Byte/word semantics, exact chip or circuit schedules, authenticated cross-component boundary |
 | Bitcoin and wide integers | `u256_add`, `u256_le`, `u256_add_checked`, `u256_sub`, `u256_sub_checked`, `bitcoin_target_mainnet`, `bitcoin_prev_hash`, `bitcoin_header_bits`, `bitcoin_genesis_hash_mainnet`, `bitcoin_header_time`, `bitcoin_block_work`, `u32_lt` | Limb range and carry constraints, endian layout, statements across chips |

@@ -385,6 +385,22 @@ python3 src/frontends/s31/tests/acceptance/compiler_correspondence/constant_nati
 
 ## Public main commitment from serialized rows
 
+`zero_test_native_rows.py` is the first field-control slice in this directory.
+An independent exact-source parser admits one public scalar M31 input and
+one `std::field::is_zero` result. It checks the complete 512-row native Gate
+schedule, including the two self-loop zero assertions and public indicator
+copy. Its source-derived main reconstruction compares all 6,144 cells for
+zero and nonzero inputs; both native proofs are accepted. Lean
+`S31.Gadgets.Air.ZeroRows` proves the local equations for arbitrary witnesses,
+including indicator Booleanity and both directions of the zero predicate.
+The package artifact's capability is fixed-row-only, and `inv`/`select`
+remain outside this source-bound control admission. See
+[`SCALAR_ZERO_TEST_CORRESPONDENCE.md`](../../../../../../design/s31/language/SCALAR_ZERO_TEST_CORRESPONDENCE.md).
+
+```sh
+python3 src/frontends/s31/tests/acceptance/compiler_correspondence/zero_test_native_rows.py
+```
+
 The `inspect-physical-root ASSIGNMENT.json` command is limited by the same
 public-only source and assignment guard. It takes the 12×512 `writeBase` main
 columns, installs the source's preprocessed tree as commitment tree 0, then

@@ -232,7 +232,7 @@
     "formal/s31/S31/Gadgets/PcsFri/QueryAndTranscript.lean": "e82190409053019d327e738a450c2a1b8676beecc92770f4a3e7563ad445cfa8",
     "formal/s31/S31/Gadgets/PcsFri/StwoUDRFeasibility.lean": "0887145e13d6391a8c807cc99ed658305b238cc61017ff714ebc8c8f3f2f5eec",
     "formal/s31/S31/Gadgets/PcsFri/TerminalBasisRefinement.lean": "77d304450e19f7c8d6b61dfd846cc3935e9cb38c01cd4cbf9beb6a8fc5b24057",
-    "formal/s31/proof-inventory.json": "ff07e6c0d5fc424785f269f52998bd7abe95638f4a182ca1ca7ff0bd2c770de0",
+    "formal/s31/proof-inventory.json": "84800f28484dde7afc96d4a39cc79eb67110f05d5baac373c52b8fc4fcaf60eb",
     "formal/s31/tests/audit/private_main_lde_openings.py": "875be81a5aa9ec79ef0aab4146e18f60deb01f65bfdf0bf9d85dba76f428dfd9",
     "formal/s31/tests/lib/pcs_merkle_collision_reduction.zig": "5c55608feb286cdd26737c698f0249fa7adc5888fe2719666735580675e70d84",
     "formal/s31/tests/lib/pcs_xdm04_mixed_certificate.zig": "be8ebf65be1ee2a50abb99662c4e696a1a2dce6e6ef5115597f5d4121f3a91eb",

@@ -528,6 +528,8 @@ BINDINGS = [
     "src/frontends/s31/tests/python/test_optimized_functional_correspondence.py",
     "src/frontends/s31/tests/acceptance/compiler_correspondence/functional_optimized_release.py",
     "src/frontends/s31/python/package/direct_gate_schedule.py",
+    "src/frontends/s31/python/package/zero_test_native_rows.py",
+    "src/frontends/s31/tests/acceptance/compiler_correspondence/zero_test_native_rows.py",
     "src/frontends/s31/python/package/manifest_digest.py",
     "src/frontends/s31/python/package/bounded_manifest_v4.py",
     "src/frontends/s31/tests/acceptance/acceptance_many_source_pinned.py",

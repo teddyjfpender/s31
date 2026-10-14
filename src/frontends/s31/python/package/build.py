@@ -424,6 +424,24 @@ def build_text(source_path: Path, output: Path, lowering: str = "gate", fri_fold
                 write_json(native_certificate_path, make_pure_native(package))
                 manifest["artifacts"][native_certificate_path.name] = file_hash(native_certificate_path)
                 write_json(manifest_path, manifest)
+            from package.zero_test_native_rows import (
+                ARTIFACT as ZERO_ARTIFACT,
+                admitted_source_package as admitted_zero_test,
+                make_certificate as make_zero_test,
+            )
+            if admitted_zero_test(package):
+                topology_path = package / "gate-topology.json"
+                if not topology_path.exists():
+                    topology = json.loads(invoke(
+                        str(package / "bin" / f"s31-{manifest['name']}-prover"),
+                        "inspect-topology"))
+                    write_json(topology_path, topology)
+                    manifest["artifacts"][topology_path.name] = file_hash(topology_path)
+                    write_json(manifest_path, manifest)
+                certificate_path = package / ZERO_ARTIFACT
+                write_json(certificate_path, make_zero_test(package))
+                manifest["artifacts"][ZERO_ARTIFACT] = file_hash(certificate_path)
+                write_json(manifest_path, manifest)
         # The JSON build is only an intermediate artifact at this point. Check
         # the complete text package and, for the direct-gate profile, ask the
         # installed verifier to independently reconstruct its embedded source,
