@@ -111,6 +111,23 @@ tree contexts. Its fixed preprocessed root and verification key must be
 recomputed if that tree's hash profile changes. Do not reuse a legacy root
 under the new selector.
 
+## Query distribution arithmetic
+
+The proposed framed channel must expose the **raw** 32-bit BLAKE2s words
+before any M31 reduction. A FRI domain of size `2^k` uses
+`word & (2^k−1)`; every position has exactly `2^(32−k)` raw-word preimages,
+and no rejection is needed. The existing Lean
+`RawMaskedQuery.preimages_exact` proves this count. For a non-power-of-two
+domain of size `n`, reject words at or above `⌊2^32/n⌋·n` and use `word % n`;
+`UniformRawQuery.accepted_preimages_exact` proves every accepted position has
+exactly `⌊2^32/n⌋` preimages. `UniformRawQuery.power_two_no_rejection` shows
+the power-of-two threshold is all `2^32`.
+
+These are finite counting lemmas under ideal uniform raw words. The new native
+sampler still needs a checked byte-level link to the selected framed channel,
+a schedule-derived query event, a bounded rejection failure term where
+applicable, and the full Fiat–Shamir/PCS reduction.
+
 ## Cost and implementation path
 
 The framing is designed to keep nonce grinding cheap. A PoW trial is
