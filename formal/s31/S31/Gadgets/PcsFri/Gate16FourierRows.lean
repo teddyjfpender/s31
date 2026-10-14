@@ -1,6 +1,7 @@
 import S31.Gadgets.PcsFri.CanonicalCircleLaurentRows
 import S31.Gadgets.PcsFri.NativeTowerFormulas
 import S31.Gadgets.PcsFri.CM31FieldInstance
+import S31.Gadgets.PcsFri.CircleLaurentUniqueness
 import Mathlib.Tactic
 
 /-!
@@ -12,6 +13,9 @@ by `bitReverseIndex(row, 4)`; it does not assume generator-order correctness.
 namespace S31.Gadgets.PcsFri.Gate16FourierRows
 
 open S31.Gadgets.PcsFri.CanonicalCircleLaurentRows
+open S31.Gadgets.PcsFri.CircleLaurentDegree
+open S31.Gadgets.PcsFri.CircleLaurentUniqueness
+open LaurentPolynomial
 
 def rowIndex (row : Fin 16) : CircleIndex :=
   canonicalStorageIndex 4 row.val
@@ -230,5 +234,35 @@ theorem expected_four_row_block_injective
   · simpa [fourBlockAtExpectedRow, expectedPoint, hneg] using h₁
   · simpa [fourBlockAtExpectedRow, expectedPoint] using h₃
   · simpa [fourBlockAtExpectedRow, expectedPoint, hneg] using h₂
+
+/-- If two radius-two circle words agree on the other fifteen native Gate
+rows, they also agree at the remaining row. This proves the algebraic reason
+why a one-row edit cannot pass a four-slot degree check. It assumes the two
+candidate words are already degree-bounded; sparse verifier acceptance is a
+separate question. -/
+theorem one_row_edit_not_in_radius_two
+    (f g : CirclePoly (NativeTowerFormulas.CM M31))
+    (hf : InCircleBand 2 f) (hg : InCircleBand 2 g)
+    (target : Fin 16)
+    (hothers : ∀ row : Fin 16, row ≠ target →
+      eval₂ (RingHom.id _) (expectedFourierUnit row) f =
+        eval₂ (RingHom.id _) (expectedFourierUnit row) g) :
+    eval₂ (RingHom.id _) (expectedFourierUnit target) f =
+      eval₂ (RingHom.id _) (expectedFourierUnit target) g := by
+  classical
+  let rows : Finset (Fin 16) := Finset.univ.erase target
+  let samples := rows.image expectedFourierUnit
+  have hcard : samples.card = 15 := by
+    rw [Finset.card_image_iff.mpr (fun _ _ _ _ hab =>
+      expectedFourierUnit_injective hab)]
+    simp [rows]
+  have hmany : 2 * 2 < samples.card := by omega
+  have hfg : f = g := by
+    apply band_eq_of_agreement f g 2 hf hg samples hmany
+    intro t ht
+    obtain ⟨row, hr, rfl⟩ := Finset.mem_image.mp ht
+    have hn : row ≠ target := by simpa [rows] using hr
+    exact hothers row hn
+  rw [hfg]
 
 end S31.Gadgets.PcsFri.Gate16FourierRows

@@ -54,6 +54,13 @@ interpolation exposes a nonzero high slot:
 bash formal/s31/tests/run_pcs_fri_gate16_four_slot_fft_native.sh
 ```
 
+The separate `one_row_edit_not_in_radius_two` theorem strengthens the
+single-row observation: if two radius-two circle words agree on the other
+15 distinct Fourier rows, they must agree at the edited row too. This follows
+from the already-proved five-row uniqueness threshold and the concrete
+injective row coordinates. It is an all-input statement about bounded
+polynomials, not about an accepted sparse commitment.
+
 The Lean theorem is an all-input inverse statement for this finite four-slot
 model. The native test checks selected inputs and the actual FFT path; it is
 not a formal operational proof of Stwo's FFT or a theorem about arbitrary
