@@ -55,7 +55,33 @@ from the key and checked proof geometry, never supplied by the prover.
 | `merkle_leaf` | 7 | tree context `[32]` and canonical M31 row bytes |
 | `merkle_parent` | 8 | tree context `[32]`, ordered left `[32]`, right `[32]`; event is the tree level |
 | `tree_context` | 9 | canonical tree descriptor, including key digest, tree kind/track, height and column-roster digest |
-| `statement` | 10 | canonical program/key/profile/FriConfig statement frame |
+| `statement` | 10 | the 264-byte versioned statement binding below |
+
+The native channel prototype starts at event 0 with a **required** statement
+hash. Its candidate payload is `ASCII("S31NAT9F")[8] || key_digest[32] ||
+circuit_digest[32] || fri_config_digest[32] ||
+source_tree_descriptor_digests[4][32] || line_profile_digest[32]`, with the
+four source descriptors in fixed/main/interaction/composition order. The
+eight 32-byte digests must be derived from a sealed verification key and
+checked geometry, not read from unvalidated proof bytes. The Python
+`StatementBinding.encode()` and `initial_digest()` functions pin these bytes;
+the Zig candidate constructor hashes the same frame and starts its event
+cursor at 1. Their fixed schemas and source derivations remain an obligation
+for a selected verifier. A root at event 0 would omit the first-challenge
+binding and is outside the candidate schedule.
+
+Nonterminal QM31 challenge draws use role 4 raw blocks with the same
+`digest || checked_counter` payload as terminal queries. They reject a *whole*
+eight-word block if any raw `u32 >= 2p`, then reduce every accepted word by
+zero or one subtraction of `p=2^31-1`. Each canonical M31 residue has two
+accepted preimages. A draw stage attempts at most eight blocks and fails
+closed on exhaustion or counter wrap; the counter advances on rejected blocks.
+Under independent ideal raw words, the rejection chance per block is at most
+`2^-28`, so the eight-block cap has a conditional `2^-224` exhaustion bound
+per challenge block. The full adaptive transcript must account for all such
+failures, and neither this arithmetic nor its tests establish a native ROM
+reduction. Terminal FRI query indices remain P08's direct power-of-two mask
+over raw words, with no M31 reduction.
 
 The [Python byte model](../../../scripts/release/pcs_fri_framed_bcs_v2.py)
 implements these frames, strict parsing and representative hash operations.

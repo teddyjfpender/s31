@@ -13,6 +13,7 @@ import hashlib
 import json
 from dataclasses import dataclass
 from enum import IntEnum
+from typing import Callable
 
 DOMAIN = b"S31BCS2"
 PROOF_MAGIC = b"S31NAT9F"
@@ -38,6 +39,34 @@ class EventStep:
     name: str
     role: Role
     event: int
+
+
+@dataclass(frozen=True)
+class StatementBinding:
+    """Candidate fixed 264-byte statement; all digests are verifier-derived.
+
+    The eventual selector must derive these from a sealed key and checked
+    geometry, never from unvalidated proof-controlled bytes.
+    """
+
+    key_digest: bytes
+    circuit_digest: bytes
+    fri_config_digest: bytes
+    source_tree_descriptors: tuple[bytes, bytes, bytes, bytes]
+    line_profile_digest: bytes
+
+    def encode(self) -> bytes:
+        if type(self.source_tree_descriptors) is not tuple or len(self.source_tree_descriptors) != 4:
+            raise ValueError("statement needs four source-tree descriptors")
+        parts = (self.key_digest, self.circuit_digest, self.fri_config_digest,
+                 *self.source_tree_descriptors, self.line_profile_digest)
+        return PROOF_MAGIC + b"".join(_bytes(part, "statement digest", 32) for part in parts)
+
+
+def initial_digest(statement: StatementBinding) -> bytes:
+    if type(statement) is not StatementBinding:
+        raise ValueError("expected a statement binding")
+    return hash_frame(Role.STATEMENT, 0, statement.encode())
 
 
 def candidate_paired_gate_plan(fold_heights: tuple[int, ...]) -> tuple[EventStep, ...]:
@@ -157,6 +186,41 @@ def raw_words(digest: bytes, event: int, counter: int) -> tuple[int, ...]:
     return tuple(int.from_bytes(block[i:i + 4], "little") for i in range(0, 32, 4))
 
 
+CHALLENGE_BLOCK_CAP = 8
+
+
+def canonical_m31_block(words: tuple[int, ...]) -> tuple[int, ...] | None:
+    """Reject the entire block when a word is outside the two-preimage range."""
+    if type(words) is not tuple or len(words) != 8 or any(
+            type(x) is not int or not 0 <= x < 1 << 32 for x in words):
+        raise ValueError("expected eight raw u32 words")
+    if any(x >= 2 * M31_MODULUS for x in words):
+        return None
+    return tuple(x - M31_MODULUS if x >= M31_MODULUS else x for x in words)
+
+
+def draw_challenge_m31_limbs(
+    digest: bytes, event: int, first_counter: int = 0,
+    oracle: Callable[[bytes, int, int], tuple[int, ...]] = raw_words,
+) -> tuple[tuple[int, ...], int]:
+    """Two QM31s as eight limbs, plus next checked block counter.
+
+    The optional oracle is for deterministic rejection tests only. Native
+    execution always uses the framed BLAKE2s raw-word oracle.
+    """
+    _bytes(digest, "digest", 32)
+    _u64(event)
+    _u32(first_counter)
+    for attempt in range(CHALLENGE_BLOCK_CAP):
+        counter = first_counter + attempt
+        if counter >= 1 << 32:
+            raise ValueError("challenge block counter exhausted")
+        canonical = canonical_m31_block(oracle(digest, event, counter))
+        if canonical is not None:
+            return canonical, counter + 1
+    raise ValueError("challenge block cap exhausted")
+
+
 def pow_trial(digest: bytes, prefix_event: int, trial_event: int,
               difficulty: int, nonce: int) -> bytes:
     """Two scheduled oracle events; caller still proves grinding law/budget."""
@@ -205,7 +269,9 @@ def report() -> dict:
         "proven_release_admissible": False,
         "requirements_before_selection": [
             "versioned Zig prover/verifier and package/key dispatch with old magic unchanged",
+            "sealed-key derivation and checked geometry for all eight statement digests",
             "source-bound parity for every root, field, nonce, query, PoW, leaf and parent call",
+            "exact nonterminal M31 rejection, eight-block cap and adaptive exhaustion accounting",
             "tree descriptor binding, canonical row encoding and Merkle path refinement",
             "adaptive ROM/BCS reduction including two grinding barriers and T hash work",
             "matching degree-corrected PCS/FRI theorem and complete P09 round ledger",
