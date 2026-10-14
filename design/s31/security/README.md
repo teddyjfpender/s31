@@ -30,6 +30,9 @@ half-split evaluator.
 The [circle FFT-space proof](PCS_FRI_CIRCLE_FFT_POLYNOMIAL_SPACE.md) additionally
 derives the paper's strict `P(x)+yQ(x)` component-degree bounds for that
 recursive model and matches its evaluations to the Laurent word.
+The [sparse FFT provenance differential](PCS_FRI_SPARSE_FFT_PROVENANCE_DIFFERENTIAL.md)
+checks native interpolation and independent basis sums at all three accepted
+source heights, while leaving universal source-to-array refinement open.
 The [height-five native basis slice](PCS_FRI_H5_NATIVE_BASIS_REFINEMENT.md)
 unrolls the 16-cell subset-product kernel, proves its mathematical four-group
 sum and checks the optimized Zig path against an independent field reference.
