@@ -4,6 +4,7 @@
 const std = @import("std");
 const core = @import("stwo_core");
 const lifted = @import("s31_lifted_capture");
+const roster = @import("s31_p05_roster");
 
 const M31 = core.fields.m31.M31;
 const CM31 = core.fields.cm31.CM31;
@@ -17,14 +18,7 @@ const PcsConfigV2 = core.pcs.config_v2.PcsConfigV2;
 /// Caller-supplied ordered OOD claim. Here it is an external test oracle,
 /// checked against capture but not authenticated by this adapter. A future v2
 /// verifier must derive it from its accepted AIR/OOD relation and public key.
-pub const ExpectedClaim = struct {
-    tree_index: usize,
-    column_index: usize,
-    sample_index: usize,
-    source_log_size: u32,
-    point: CirclePointQM31,
-    value: QM31,
-};
+pub const ExpectedClaim = roster.Claim;
 
 pub const SampleKind = enum { explicit, periodic };
 
