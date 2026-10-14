@@ -14,6 +14,10 @@ range and Gate lookup closure premises, including the M31 wraparound case.
 eight-word ABI through the native verifier's transcript and Gate output
 lookups, and states precisely the lookup-to-cell premise needed to connect
 those words to the locally proved result pins.
+[The conditional global Gate join](ControlGadgetGlobalGateJoin.md) derives
+those event-to-wire equalities and matched Gate AIR rows from a good rational
+lookup closure, exact event balance, and unique positive producer ownership.
+Authentication of those global premises remains open.
 
 [The pure source-byte bridge](GeneralLinearSSASourceBytes.md) gives a
 handwritten `.s31` example, its positional SSA IDs, active packed-row

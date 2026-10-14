@@ -357,6 +357,8 @@
     "scripts/tests/test_control_conversion_air.py": "200fedecdd93da9a81262245e16fd7053f53f74b2ba0ea54c120cf93d8b951dc",
     "scripts/compiler/control_public_statement_audit.py": "1727fc525c5fc00cc3a27f03616c9908adbb9b7097093b6374bd3ec4a63a5bd2",
     "scripts/tests/test_control_public_statement_audit.py": "d65c66193409d30c66ab1ab795429bb70b4a6ce1a0ff7c0ae8ec912be891dc40",
+    "scripts/compiler/control_gate_pin_roster_audit.py": "e3604c95c051d3f7e2fa32c6efd970881ab6ccd65afd2803039accf16d4dc8a0",
+    "scripts/tests/test_control_gate_pin_roster_audit.py": "5361db465052eb5722064b888d359a1dbd5ef412e232a9c020591ba7ad1f55b0",
     "deps/stwo-zig/src/prover/pcs/scheme_views.zig": "30abc4e9d516cbb4f4b1a34cc0d9238ec43b3e184c5be7a16f6b325f2a3794bf",
     "deps/stwo-zig/src/prover/fri.zig": "22acc5c7af16cc06fa646e5eedfe9a9a5bee95a273b53dbac83a599576f3e609",
     "scripts/s31_formal_lib/pcs_fri_order.py": "2e0168a0d1d21b5c58854823f9d92a9740b6a5c775e427d35d90f5f3d43cf4be",
