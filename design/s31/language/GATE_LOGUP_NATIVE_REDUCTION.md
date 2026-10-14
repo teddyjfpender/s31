@@ -99,22 +99,25 @@ visible during review.
 
 ## Challenge distribution and final statement
 
-`lookup_transcript.drawLookupElements` draws `z` then `alpha`. The Blake2s
-M31 channel accepts an eight-word hash draw only when all words are below
-`2p`, then reduces each word modulo `p`. In the ideal random-oracle model,
-each accepted draw gives eight independent uniform M31 limbs: exactly two
-accepted words represent each limb. The two QM31 challenges are therefore
-uniform and independent **for one fixed transcript prefix**. This is a model
-assumption about Blake2s, not a Lean theorem about the concrete hash.
+`lookup_transcript.drawLookupElements` draws `z` then `alpha`. The selected
+Blake2s M31 hasher reduces each raw hash word modulo `p` before the channel's
+later `>=2p` check, which cannot reject. Even if raw words are independent
+uniform values for one fixed transcript prefix, residues `0` and `1` have
+three preimages and others have two; both QM31 challenges are biased. The
+[source-bound OOD sampler diagnostic](../security/PCS_FRI_OOD_SEED_GEOMETRY.md)
+gives exact ideal-word counts. Their joint native Fiat–Shamir distribution
+and adaptive BCS reduction remain open.
 
 The prover can choose the main commitment and an accepted PoW nonce before
 the challenge, and can try multiple transcript prefixes. Let `Q` bound the
 number of distinct challenge-bearing prefixes it can query or submit,
 including grinding opportunities. For fixed committed rows at each prefix,
-an ideal random-oracle union bound gives lookup failure at most
+**under an additional uniform-challenge assumption**, a union bound gives
+lookup failure at most
 `min(1, Q·(5s_max² + 2s_max + 3R_max)/p^4)`, where `s_max` and `R_max`
 bound every admitted prefix. Add `epsilon_AIR_PCS_FRI` and any separate
-binding/Fiat–Shamir reduction errors; do not silently count the 20-bit PoW
+binding/Fiat–Shamir reduction errors and any sampler-bias correction; do not
+silently count the 20-bit PoW
 as reducing `Q` or strengthening the lookup bound. A proof with a malformed
 or noncanonical address/count is outside this theorem and must be rejected by
 the key/profile admission checks.

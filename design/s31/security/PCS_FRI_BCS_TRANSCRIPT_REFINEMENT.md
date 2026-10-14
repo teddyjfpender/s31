@@ -15,10 +15,12 @@ mix hashes `digest || four little-endian M31 limbs per QM31 value`. A `u64`
 mix hashes `digest || little-endian u64`.
 
 One draw hashes `digest || little-endian u32(counter) || 0x00`, then returns
-eight reduced 32-bit words. A secure field draw rejects the *whole* block if
-any word is at least `2p`, reduces the accepted words modulo `p`, and takes
-the first four. A lookup-element pair takes both four-word halves of one
-accepted block. The checked native increment aborts before u32 wrap.
+eight words already reduced modulo `p`. A secure field draw checks whether
+any word is at least `2p`, but that check is unreachable for this selected
+hasher; it takes the first four reduced words. A lookup-element pair takes
+both four-word halves of one block. Under ideal independent raw digest words,
+residues `0` and `1` each have three preimages and others have two, so a QM31
+draw is biased. The checked native increment aborts before u32 wrap.
 
 For the direct Gate, the relevant event order is:
 
@@ -121,9 +123,12 @@ python3 -B -m scripts.s31_formal_lib.pcs_fri_bcs_transcript
    output/collision parameter `lambda`, and the real effect of both grinding
    stages. Do not add 20 and 26 PoW bits to a soundness estimate by fiat.
    Each channel digest has at most `p^8 < 2^248` states after reduction,
-   so `lambda = 256` cannot be inherited from raw BLAKE2s. Native root and
-   field absorption lack operation tags; for example, a 32-byte root and two
-   QM31 values of the same bytes form an identical next-hash input at the
+   so `lambda = 256` cannot be inherited from raw BLAKE2s. This cardinality
+   bound is not a proof that `lambda = 248` applies either: the native
+   collision/BCS reduction and its effective parameter remain unknown.
+   Native root and field absorption lack operation tags; for example, a
+   32-byte root and two QM31 values of the same bytes form an identical
+   next-hash input at the
    same digest. The fixed call schedule may still suffice, but the reduction
    must state and justify the required cross-role framing assumption.
 3. Quantitative Merkle binding and BLAKE2s/ROM assumptions, including

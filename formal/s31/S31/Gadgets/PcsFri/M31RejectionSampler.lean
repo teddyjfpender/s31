@@ -1,11 +1,12 @@
 import Mathlib.Tactic
 
 /-!
-The arithmetic part of the pinned Blake2s-M31 rejection sampler. It accepts
-32-bit words below `2p`, where `p = 2^31 - 1`, and reduces them modulo `p`.
-Every M31 residue has exactly two accepted word preimages. The theorem does
-not model BLAKE2s, independence of hash blocks, transcript adaptivity, or
-the Zig implementation's operational semantics.
+Arithmetic for an abstract reject-before-reduce sampler: accept 32-bit words
+below `2p`, where `p = 2^31 - 1`, then reduce modulo `p`. Every M31 residue
+has exactly two accepted word preimages. The selected native
+`Blake2sM31Channel` instead reduces each hash output word before its later
+filter, so this theorem does not describe its sampling distribution. It also
+does not model BLAKE2s, independence, adaptivity, or Zig operational semantics.
 -/
 
 namespace S31.Gadgets.PcsFri.M31RejectionSampler

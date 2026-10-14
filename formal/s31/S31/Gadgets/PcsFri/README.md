@@ -177,13 +177,13 @@ coefficients on 16384 points and satisfies the published terminal shape.
 The published theorem still needs a proof that CAS05's authenticated values,
 challenge timing, and fold operations implement its Protocol 3 relation.
 
-[`M31RejectionSampler.lean`](M31RejectionSampler.lean) proves the exact
-two-preimage arithmetic of the pinned BLAKE2s channel's 32-bit word filter:
-for each `r < p`, the accepted words reducing to `r` are exactly `r` and
-`r+p`, and these words are distinct. The
+[`M31RejectionSampler.lean`](M31RejectionSampler.lean) proves exact
+two-preimage arithmetic for an **abstract reject-before-reduce** sampler:
+for each `r < p`, accepted words reducing to `r` are `r` and `r+p`.
+The selected channel instead reduces its raw hash output before the later
+filter, which always passes. The
 [source-bound sampler audit](../../../../../design/s31/security/PCS_FRI_OOD_SEED_GEOMETRY.md)
-pins the channel implementation and explains why independent uniform hash
-blocks would give a uniform QM31 seed on successful draw. This Lean file
+gives its biased ideal-word distribution. This Lean file
 does not prove that ideal-random-oracle premise, the Zig refinement, or the
 adaptive BCS reduction.
 
