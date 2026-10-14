@@ -409,6 +409,7 @@ import S31.Gadgets.PcsFri.CircleBasisDot
 import S31.Gadgets.PcsFri.CircleBasisM31Embedding
 import S31.Gadgets.PcsFri.CircleH5BasisCells
 import S31.Gadgets.PcsFri.CircleBasisPrefixRecurrence
+import S31.Gadgets.PcsFri.CircleProjectedFactorVector
 
 /-! Local constraint relations, with arbitrary-witness soundness and honest
 witness completeness. All range and representation premises are explicit. -/
