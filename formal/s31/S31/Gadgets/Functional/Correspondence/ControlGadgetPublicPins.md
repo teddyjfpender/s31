@@ -53,10 +53,12 @@ earlier zero-test, selection, and inverse theorem, so each decoded public
 word is the inverse of its selected nonzero lane. Lean also proves the encoded
 u16 limbs are canonical and decode to the original M31 representative.
 
-The conversion component law is an **explicit premise**: this slice does not
-derive it from native `m_31_to_u_32` AIR residuals and the range-check and
-Gate lookup/permutation closure. It also does not prove that an accepted
-cryptographic proof authenticates the modeled pin cells or binds the proof's
+The [conversion AIR continuation](ControlGadgetConversionAir.md) now derives
+the component law from the installed `m_31_to_u_32` arithmetic residuals and
+explicit `RangeCheck_16` and Gate tuple closure facts. It handles the
+wraparound alias at `low=65535, high=32767` explicitly. It does not prove
+that an accepted cryptographic proof authenticates the modeled pin cells or
+binds the proof's
 public statement to them. Those boundaries, PCS/FRI soundness, and complete
 native physical-trace construction remain open. The separate local control
 gadget completeness theorem handles the selected-lane existence condition.
