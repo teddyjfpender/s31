@@ -58,6 +58,23 @@ package, not to every possible gate package. The same official bundle reports
 57 native constraints across those 11 components. That count is a concrete
 AIR-program inventory, not a theorem `k_t` substitution.
 
+The published Protocol 4 starts its **full degree-corrected ensemble** at
+`D₀=N B²`. If the gate key's maximum trace rows instantiate the paper's `N`,
+then this example has candidate `D₀=2²²`, while its native quotient-only FRI
+starts at `D=2²¹`. The diagnostic reports both sizes and their inequality;
+it rejects a key whose candidate `N B²` exceeds the paper's `2³⁰` circle
+domain cap, even when native `N B` fits. This is a necessary parameter check
+under the candidate `N` identification. It neither identifies the native
+quotient-only oracle with the paper ensemble nor establishes that all paper
+domain and degree premises hold.
+
+For the paper's unique-decoding interval `0<θ<(1−1/B)/2`, every candidate
+table satisfies its small-table OOD inequality if its row count `N_t` obeys
+`(B−1)N_t≥4`. The report checks this using the smallest gate component;
+the reviewed Gate has `B=2` and every component has at least 16 rows, so
+the numeric implication holds for every θ in that interval. Identifying
+each native component with a paper table is still an open premise.
+
 ## Preconditions and limits
 
 The source-to-domain argument requires: (1) the key, roster and official AIR
@@ -71,8 +88,8 @@ There is no inference from `check-key` acceptance to proof acceptance.
 
 The derived `D` and split bound are a narrow P01 input. The diagnostic does
 not identify the published theorem's `C`, `d`, `L`, `m`, rate or list bound;
-does not discharge finite-domain or small-table assumptions; and does not
-prove constraint degree adequacy, authenticated-oracle equality, IOP
+does not discharge the remaining finite-domain or small-table assumptions;
+and does not prove constraint degree adequacy, authenticated-oracle equality, IOP
 proximity soundness, or Fiat–Shamir reduction for the native verifier.
 `status=incomplete` and `proven_release_admissible=false` remain mandatory.
 Other lowerings are rejected by this diagnostic and retain their prior P01

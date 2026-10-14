@@ -248,10 +248,22 @@ def derive_gate(report: dict, offsets: list[tuple[str, int]]) -> dict:
     lifting_log = report["configured_trace_lifting_log_size"]
     if lifting_log > 30 or trace_log < report["fri"]["fold_step"]:
         raise ValueError("gate FRI domain exceeds circle or fold geometry")
+    # Protocol 4 starts with the composition quotient on D0 = N*B^2.
+    # This cap applies even though the quotient-only native FRI uses N*B.
+    paper_full_ensemble_log = trace_log + 2 * blowup_log
+    if paper_full_ensemble_log > 30:
+        raise ValueError("candidate paper N*B^2 exceeds the circle domain cap")
     if committed_composition_log + blowup_log > lifting_log:
         raise ValueError("composition column cannot fit the configured lifted tree")
     if lifting_log != trace_log + blowup_log:
         raise ValueError("configured lifting formula changed")
+    blowup = 1 << blowup_log
+    smallest_component_rows = 1 << min(row["trace_log_size"] for row in components)
+    # For 0 < theta < (1-1/B)/2, alpha=1-theta is strictly greater
+    # than (1+1/B)/2. The paper's small-table condition
+    # alpha > (1/B)*(1+2/N_t) follows for every such theta when
+    # (B-1)*N_t >= 4. Component/table identification remains unproved.
+    uniform_small_table_condition = (blowup - 1) * smallest_component_rows >= 4
     report["gate_final_domain"] = {
         "status": "conditional_source_bound_geometry",
         "template_evaluation_offsets": dict(offsets),
@@ -264,6 +276,11 @@ def derive_gate(report: dict, offsets: list[tuple[str, int]]) -> dict:
         "fri_input_degree_bound_log": lifting_log - blowup_log,
         "fri_input_domain_log": lifting_log,
         "fri_input_domain_rows": 1 << lifting_log,
+        "candidate_paper_protocol4_D0_if_N_is_trace_rows": 1 << paper_full_ensemble_log,
+        "candidate_paper_domain_cap_rows": 1 << 30,
+        "native_fri_domain_equals_candidate_paper_protocol4_D0": lifting_log == paper_full_ensemble_log,
+        "candidate_smallest_component_rows": smallest_component_rows,
+        "conditional_small_table_ood_for_every_udr_theta_if_components_are_tables": uniform_small_table_condition,
         "formula": "D = 2^(key.trace_log_size + key.fri.log_blowup_factor), conditional on successful pinned gate verification",
     }
     # A derived FRI domain is one theorem input, not the P01 theorem.
