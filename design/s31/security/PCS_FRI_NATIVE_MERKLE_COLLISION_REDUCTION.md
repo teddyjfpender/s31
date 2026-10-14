@@ -27,6 +27,14 @@ preimages and requires them to differ. The reduction is constructive and
 works for any representable depth below the machine word width; it does not
 enumerate a fixed eight-leaf tree.
 
+The [byte-preimage bridge](PCS_FRI_MERKLE_BYTE_PREIMAGE.md) proves in Lean that
+the canonical row and fixed-width parent encodings preserve distinct inputs.
+It composes this fact with the symbolic same-root collision theorem to obtain
+distinct messages to the abstract plain 32-byte hash function. A native
+differential against standard BLAKE2s and hostile source mutations cover the
+selected byte layout. The quantitative BLAKE2s and Zig-semantics premises
+remain open.
+
 For a hand example, let an intentionally weak toy hash return each M31 word
 modulo 256 at a leaf and XOR its two child bytes at a parent. At leaf index 0
 and height 1, rows `[1]` and `[2]` with sibling bytes `5` and `6` both reach
