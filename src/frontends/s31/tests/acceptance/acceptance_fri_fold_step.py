@@ -75,6 +75,13 @@ def main() -> None:
         run(str(four / "bin/s31-affine_square4-native-verifier"), str(proofs[4]),
             f"{proofs[4]}.statement.json", str(forged_key_path), accept=False)
 
+        forged_queries = copy.deepcopy(key_four)
+        forged_queries["fri"]["queries"] = 69
+        forged_queries_path = work / "forged-query-count-key.json"
+        s31.write_json(forged_queries_path, forged_queries)
+        run(str(four / "bin/s31-affine_square4-native-verifier"), str(proofs[4]),
+            f"{proofs[4]}.statement.json", str(forged_queries_path), accept=False)
+
         copied = work / "tampered-manifest"
         shutil.copytree(four, copied, copy_function=os.link)
         manifest_path = copied / "manifest.json"
@@ -97,6 +104,7 @@ def main() -> None:
             "same_pow_blowup_queries": True,
             "cross_schedule_leaf_proofs_rejected": True,
             "forged_fri_key_rejected": True,
+            "forged_query_count_key_rejected": True,
             "manifest_schedule_tamper_rejected": True,
             "fold_four_padded_blake_rows_halved": True,
         }, indent=2, sort_keys=True))
