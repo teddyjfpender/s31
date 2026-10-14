@@ -9,7 +9,7 @@ import tempfile
 from pathlib import Path
 
 import proof_privacy
-from package.pcs_mode import LEGACY as LEGACY_PCS_MODE
+from package.pcs_mode import key_fields_for_lowering
 from package.context import (
     AIR_BUNDLE_SHA256, BUILD_FILE, PROJECTION_SHA256, ROOT, abi,
     compiler_fingerprint, file_hash, invoke, load_source, lower_text, sha256,
@@ -122,10 +122,7 @@ def build_json(source_path: Path, output: Path, lowering: str = "gate",
             "air_bundle_sha256": AIR_BUNDLE_SHA256,
             "fri": inspection["fri"],
         }
-        # SHA packages have separate strict native key parsers. This slice
-        # binds the generic MVP verifier only; keep SHA key bytes unchanged.
-        if lowering not in {"sha-joint", "sha-shift", "sha-fused"}:
-            key["pcs_mode"] = LEGACY_PCS_MODE
+        key.update(key_fields_for_lowering(lowering))
         if source["version"] == 2:
             expected_abi = abi(source, lowering)["boundary_sha256"]
             if inspection.get("public_abi_sha256") != expected_abi:
