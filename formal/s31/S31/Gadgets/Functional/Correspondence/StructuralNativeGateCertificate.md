@@ -106,6 +106,21 @@ per-operation gate prefixes, and every inactive coordinate. A coherent
 padded rows shifted consistently, now fails the input replay. The compiler,
 SIMD packer, wrapper, context, and reserved-output source bytes are pinned.
 
+The source-node replay starts at the exact address where input packing ends.
+For each accepted source node, it independently applies canonical ordering,
+constant folding, zero-add erasure, and common-subexpression aliasing, then
+checks the exported canonical node and its variable span. A new packed M31
+node must own its exact `Add`, `Sub`, or pointwise `Mul` gate at the next fresh
+address; an alias or erased node owns no new gate or variable. For example,
+with packed inputs at `16`, `17`, and `18`, the source expression
+`(a + b) .* c` emits `Add(16, 17, 19)` followed by
+`PointwiseMul(19, 18, 20)`. In the hostile control, an unused packed
+broadcast of `42` is interned at `19`, both source gates and every later
+address shift by one, and finalization builds a valid producer for the new
+constant. Every gate equation and padded row still checks. The older audit,
+with only source-node replay disabled, accepts that graph; exact replay
+rejects its extra source allocation.
+
 The public binding replay now enumerates each `outputWord` conversion and all
 eight `setOutputs` copies. Each binding exports its variable allocation span.
 For a public input, `outputWord` uses its original scalar guess address and
@@ -127,11 +142,13 @@ evidence for **one supplied assignment**. The artifact is an executable
 certificate. [`StructuralNativeTraceDecoder.lean`](StructuralNativeTraceDecoder.md)
 parses its direct-Gate projection and constructs `NativeTrace` from supplied
 concrete values and an accepted SSA certificate. The first assertion variable
-address is compiler-exported: this replay proves the gate roster within each
-assertion span and its continuity into public binding, while complete
-source-node allocation ownership remains open. A proof that the projection
-and checked gate roster are the installed compiler's actual bytes and
-authenticated AIR witness remains a separate obligation.
+address is now independently derived from input and source-node allocation.
+For this admitted fragment and supplied assignment, the independent replays
+enumerate the unpadded input, source-node, assertion, public binding, reserved
+output-copy, and constant-finalization phases. They remain source-pinned
+executable checks. A proof that the projection and checked gate roster are the
+installed compiler's actual bytes and authenticated AIR witness remains a
+separate obligation.
 
 ## From native gates to preprocessed AIR rows
 
@@ -156,10 +173,10 @@ gates pad to 512 QM31 rows and one equality pads to 16 Eq rows.
 
 This closes the exported gate-to-preprocessed **QM31/Eq cell projection**
 for one bounded assignment. It does not yet show that the package commits to
-these exact preprocessed columns, that the native verifier authenticates the
-corresponding value/lookup rows, or that the artifact decodes to a Lean
-`NativeTrace` proof term. The independent finalization-roster replay above
-checks the unpadded graph before this padded-row projection.
+these exact preprocessed columns or that the native verifier authenticates the
+corresponding value/lookup rows. The separate Lean decoder constructs a
+`NativeTrace` from the supplied graph projection and concrete values. The
+independent unpadded phase replays above precede this padded-row projection.
 
 The theorem and artifact do **not** authenticate committed AIR rows or a
 private witness inside a proof. The next join binds the checked QM31/Eq

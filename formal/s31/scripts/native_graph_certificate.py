@@ -13,6 +13,7 @@ from scripts.native_assertion_certificate import check_assertions
 from scripts.native_binding_certificate import check_bindings
 from scripts.native_finalization_certificate import check_finalization
 from scripts.native_input_certificate import check_input_packing
+from scripts.native_source_node_certificate import check_source_nodes
 
 P = 2**31 - 1
 SCHEMA = "s31-structural-m31-exact-native-graph-v2"
@@ -222,6 +223,7 @@ def check_graph(graph: dict, raw: dict[str, bytes], inputs: list[dict],
                         "constant node emitted unexpected gate")
 
     check_input_packing(graph, raw, inputs)
+    check_source_nodes(graph, raw, inputs, nodes)
 
     # Public ports are fixed by the native output roster and compiler binding
     # spans, not by a caller-provided address list. Each reserved output wire
