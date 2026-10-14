@@ -86,6 +86,11 @@ authentication remains explicit.
 `add_const` broadcast through its source-derived native finalization gates;
 it covers shared subexpressions and radix decomposition while retaining
 explicit AIR, Gate lookup, and proof-cell authentication premises.
+[The constant Gate lookup join](GateConstantLookupJoin.md) constructs the
+coherent wire map from exact Gate event balance and a unique positive producer
+roster. It derives finalization AIR and the source add row's constant read from
+owned physical rows, then proves every active lane's source arithmetic. Exact
+balance, physical row authentication, and source port binding remain explicit.
 
 `SimdChunks.partial_row_iff` covers the short final chunk of an array. For
 any `n ≤ 4`, arbitrary M31 values may fill the unused input lanes. An accepted
