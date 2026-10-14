@@ -78,6 +78,11 @@ functions, independent field values, wrong-claim rejection, effect rejection
 for a partial mapped body inside a dynamic conditional, and type/shape
 rejection before relation emission.
 
+`test_static_fold_effects.py` checks that named, captured and higher-order
+fold steps preserve partial-operation effects inside a witness-dependent
+conditional. It also checks that a partial static-array term remains eager
+and that a total fold has the exact relation of its explicit step call.
+
 Run through the repository's Python discovery command:
 
 ```sh

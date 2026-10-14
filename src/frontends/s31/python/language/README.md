@@ -40,6 +40,14 @@ The type pass requires one common input type and a first-order result, while
 the effect pass checks the mapped body before an inactive dynamic branch can
 hide a partial operation. See the
 [native example](../../examples/functional/static_map/README.md).
+`std::array::fold(step, initial, [values...])` likewise applies a binary
+named function or closure left to right at specialization time. The function,
+initial value and every array term are evaluated eagerly. Its effect check
+invokes the step body abstractly, including through a higher-order helper,
+before admitting the fold inside a witness-dependent `if`: a division or
+checked arithmetic operation in the step could otherwise fail on an inactive
+branch. The fold contributes only the relation nodes its explicit step calls
+would have emitted.
 Circuit inputs and outputs reject tuple types; helper functions may accept or
 return them. The [worked product](../../docs/functional-language.md#static-tuples-two-results-from-one-helper)
 shows the resulting arithmetic equations and exact direct-form relation.
