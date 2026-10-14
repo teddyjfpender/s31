@@ -3,8 +3,8 @@
     {
       "all_fixed_columns_sha256": "2cd5f1f13a18d4fc353d81800722d0645a696853bfa84f22a84ccd5504c7f1f3",
       "canonical_ir_sha256": "8624e3ccadc9dfc520e40e9ebc07a4c9cd8df2796ddf8847f6db4c573e2a1f86",
-      "compiler_sha256": "8c2c84f5ec93c44a127dab78394a0d36d8fe73737f6c8a608f9ac62d02759487",
-      "exporter_binary_sha256": "ddbdf368d59dfce4df3ecb685701c8d3b9f9f57f507f1b47bec61b09ce0fbdd1",
+      "compiler_sha256": "eec74c84f87d95d1f41c545e99aa0587dc80119e345e20b32309a72187383720",
+      "exporter_binary_sha256": "bc140a689eb9779e33fd1cc3022e01940cd545e81cb50e5b450e7e810e4402cc",
       "label": "00:direct",
       "lean_prefix": "case00",
       "native_source_rows": [
@@ -43,8 +43,8 @@
     {
       "all_fixed_columns_sha256": "0789309140783ee672a829b442c5782489c729804851a94e0b267f73dad74b52",
       "canonical_ir_sha256": "2e1d98e9e0fdca905ec874f729b6f22a1d505b0faa574e5bf791ea4ddce88355",
-      "compiler_sha256": "8c2c84f5ec93c44a127dab78394a0d36d8fe73737f6c8a608f9ac62d02759487",
-      "exporter_binary_sha256": "93ef025622fe326e830f507b91735d6f947e2a37e063f894d857a8fb7b9f6593",
+      "compiler_sha256": "eec74c84f87d95d1f41c545e99aa0587dc80119e345e20b32309a72187383720",
+      "exporter_binary_sha256": "878cfa205627b44285994e098f0d358014408c8ab0f005f206067b7912dafd6b",
       "label": "07:aliases",
       "lean_prefix": "case07",
       "native_source_rows": [
@@ -237,8 +237,8 @@
     {
       "all_fixed_columns_sha256": "3661ba5dc0977313ba155f9ec56e0958cddf148a7470b03badc3ea4bb45472d6",
       "canonical_ir_sha256": "e9176b20f0d6f799426110c6ccf762a5c818d346355f28aafc983d5d7470e473",
-      "compiler_sha256": "8c2c84f5ec93c44a127dab78394a0d36d8fe73737f6c8a608f9ac62d02759487",
-      "exporter_binary_sha256": "7562055627f198d05ba8efd8f941920d419a021abe86632bdb26b20ffccf8303",
+      "compiler_sha256": "eec74c84f87d95d1f41c545e99aa0587dc80119e345e20b32309a72187383720",
+      "exporter_binary_sha256": "ad468f3fa0a3f0b5d0820c10fc549cfeca156727246f8fecbdfb9caa1a042f47",
       "label": "14:direct",
       "lean_prefix": "case14",
       "native_source_rows": [
@@ -585,8 +585,8 @@
     {
       "all_fixed_columns_sha256": "551da763f7b741f730bfeec37ac09bc8b077394c1594e7a98ac2b2b81c3e4bc6",
       "canonical_ir_sha256": "12521b5767ee7894a99e5ce9f95c993ff20e73fb91582c4308d9aa2a9aa81ee4",
-      "compiler_sha256": "8c2c84f5ec93c44a127dab78394a0d36d8fe73737f6c8a608f9ac62d02759487",
-      "exporter_binary_sha256": "4eb5a930f7fe856e1d3bd5582418837e0058a6a5d5ee247f6cccfddd2447bdea",
+      "compiler_sha256": "eec74c84f87d95d1f41c545e99aa0587dc80119e345e20b32309a72187383720",
+      "exporter_binary_sha256": "4853f6d5bf6975dd1ec26eb732ac4400178504074c3b7c20541b716643245211",
       "label": "15:comments",
       "lean_prefix": "case16",
       "native_source_rows": [

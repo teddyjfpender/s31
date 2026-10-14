@@ -13,14 +13,14 @@ from pathlib import Path
 from typing import Any
 
 from package.effects_gate_ownership import (
-    _check_columns, _check_constant_derivations, _load_topology,
+    BASIS, BASIS_INV, _check_columns, _check_constant_derivations, _load_topology,
 )
 from package.gate_component_roster import digest as roster_digest
 from package.optimizer_receipt import ARTIFACT as OPTIMIZER_ARTIFACT
 from package.optimizer_receipt import SCHEMA as OPTIMIZER_SCHEMA
 from package.correspondence import parse_canonical_json
 
-SCHEMA = "s31-control-gadget-air-correspondence-v1"
+SCHEMA = "s31-control-gadget-air-correspondence-v2"
 M31 = 2**31 - 1
 KINDS = ("add", "sub", "mul", "pointwise_mul")
 
@@ -34,6 +34,13 @@ def _read(package: Path, name: str) -> dict[str, Any]:
     value = parse_canonical_json((package / name).read_bytes(), name)
     _require(type(value) is dict, f"{name} is not an object")
     return value
+
+
+def _constant(topology: dict[str, Any], limbs: tuple[int, ...]) -> int:
+    matches = [item["wire"] for item in topology["constants"]
+               if item["limbs"] == list(limbs)]
+    _require(len(matches) == 1, f"missing or ambiguous canonical constant {limbs}")
+    return matches[0]
 
 
 class _Graph:
@@ -197,6 +204,47 @@ def check_control_air(package: Path, topology: dict[str, Any] | None = None) -> 
     _require(len(set(matched_outputs)) == 14,
              "control gadget operation rows do not have distinct outputs")
 
+    # The generic Gate ABI reserves wire 2, then eight public word slots.
+    # Here the first word is x, the next four are the result, and the final
+    # three are zero padding. Every live M31 word is converted to two u16 limbs.
+    _require(topology.get("output") == list(range(2, 11)) and
+             _constant(topology, (0, 0, 0, 0)) == 0 and
+             key.get("padded", {}).get("m31_to_u32") ==
+             len(topology.get("m31_to_u32", [])) == 16,
+             "generic Gate public output ABI or conversion size differs")
+    conversions = topology["m31_to_u32"]
+    _require(all(type(row) is dict and set(row) == {"input", "out"} and
+                 all(type(address) is int and 0 <= address < topology["n_vars"]
+                     for address in row.values()) for row in conversions) and
+             len({row["out"] for row in conversions}) == len(conversions),
+             "conversion rows have invalid or duplicate addresses")
+    output_scalars = []
+    extraction_outputs = []
+    for lane in range(4):
+        basis = _constant(topology, BASIS[lane])
+        masked = graph.one("pointwise_mul", inverse, basis)
+        extraction_outputs.append(masked)
+        if lane == 0:
+            scalar = masked
+        else:
+            inverse_basis = _constant(topology, BASIS_INV[lane - 1])
+            scalar = graph.one("mul", masked, inverse_basis)
+            extraction_outputs.append(scalar)
+        output_scalars.append(scalar)
+    public_scalars = [x, *output_scalars]
+    for position, scalar in enumerate(public_scalars):
+        conversion = conversions[position]
+        _require(conversion["input"] == scalar and
+                 not graph.by_output.get(conversion["out"]),
+                 f"public word {position} has the wrong unique conversion")
+        graph.output(topology["output"][position + 1], "add", conversion["out"], 0)
+    for position in range(6, 9):
+        graph.output(topology["output"][position], "add", 0, 0)
+    public_gate_outputs = (*extraction_outputs, *topology["output"][1:])
+    _require(len(set(public_gate_outputs)) == 15 and
+             not set(public_gate_outputs).intersection(matched_outputs),
+             "public extraction and pin Gate rows are not distinct from control rows")
+
     return {
         "schema": SCHEMA,
         "program_sha256": digest,
@@ -205,5 +253,8 @@ def check_control_air(package: Path, topology: dict[str, Any] | None = None) -> 
         "source_text_sha256": source_digest,
         "control_nodes": [item["name"] for item in nodes],
         "checked_arithmetic_rows": len(matched_outputs),
+        "checked_public_binding_gate_rows": len(public_gate_outputs),
+        "checked_conversion_rows": len(public_scalars),
+        "public_output_pin_addresses": topology["output"][2:6],
         "active_inverse_lanes": 4,
     }

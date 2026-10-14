@@ -1,15 +1,13 @@
 # Bounded source to raw Gate AIR
 
-[The scalar control-gadget AIR audit](ControlGadgetAir.md) covers one
-`is_zero → select → inv` program against 14 emitted Gate rows. Its companion
-Lean completeness theorem proves that the local equations have a witness
-exactly when every selected inverse lane is nonzero. Public output and
-committed-row custody remain separate edges.
-
 [The scalar control gadget AIR bridge](ControlGadgetAir.md) checks one
-source-bound `is_zero` → `select` → `inv` program against its emitted generic
-Gate rows. It includes a handwritten row derivation, an independent Lean
-source-byte check, and a local AIR theorem for every satisfying assignment.
+source-bound `is_zero` → `select` → `inv` program against 14 emitted generic
+Gate rows. It includes a handwritten derivation, an independent Lean
+source-byte check, soundness for every satisfying assignment, and local
+witness completeness exactly when all selected inverse lanes are nonzero.
+[The public pin continuation](ControlGadgetPublicPins.md) follows that result
+through four packed-lane extractions, M31-to-u32 conversions, and the four
+ordered public word pins under an explicit conversion-component premise.
 
 [The pure source-byte bridge](GeneralLinearSSASourceBytes.md) gives a
 handwritten `.s31` example, its positional SSA IDs, active packed-row

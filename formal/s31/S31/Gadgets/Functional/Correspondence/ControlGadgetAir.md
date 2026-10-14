@@ -66,10 +66,10 @@ python3 scripts/compiler/control_air_audit.py /path/to/control-air-package
 
 The command verifies the package manifest and artifact hashes, re-runs the
 production parser, runs the independent Lean exact-byte checker, and captures
-the installed native graph. The six hostile controls are
+the installed native graph. The twelve hostile controls are
 in `test_control_air_correspondence.py`; they remove an anchor, change
 selection and inverse wires, remove the scalar input owner, and mutate fixed
-columns or sealed identities.
+columns, sealed identities, extraction, conversion, and public pins.
 
 The Python graph checker alone binds the source digest; it does not parse S31
 text. The audit command supplies the source-to-relation check. Its optional
@@ -78,6 +78,10 @@ for package admission. The 14-row count comes from the distinct matched row
 outputs: one scalar owner, six zero-test rows, four select rows, and three
 inverse rows. Padding and unrelated Gate rows are outside that count.
 
+The [public pin continuation](ControlGadgetPublicPins.md) follows the packed
+inverse result through extraction, M31-to-u32 conversion, and four ordered
+public output pins under an explicit conversion-component premise.
+
 This is local compiler-to-AIR correspondence for one no-alias fragment. The
 native inspector supplies graph bytes; the Lean proof assumes the corresponding
 AIR rows are satisfied. The theorem proves soundness and zero-inverse
@@ -85,9 +89,8 @@ rejection for arbitrary satisfying rows. `ControlGadgetCompleteness.lean`
 proves that the local zero-test, selection and inverse equations have some
 witness exactly when every selected lane is nonzero. Its forward direction
 quantifies over all possible hints; its reverse direction constructs concrete
-hints. It does not construct a full
-physical trace or prove native witness-builder behavior. Public output pinning,
-circuit lookup/permutation
+hints. It does not construct a full physical trace or prove native
+witness-builder behavior. Circuit lookup/permutation
 closure, committed witness authentication, native verifier refinement, and
 PCS/FRI soundness are separate obligations. The package is not a v0.1
 soundness certificate.
