@@ -229,8 +229,14 @@ Zig, prove authenticated source openings, fix OOD claims before `λ`, bound
 the global derived oracle degree, or provide native security bits.
 
 [`PairedBatchSourceCustody.lean`](PairedBatchSourceCustody.lean) joins the next
-local boundary. It models one XDM04 opening at either a tagged height-zero
-leaf or a tagged inserted source node, followed by its upper Merkle path.
+local boundary. It models a tagged height-zero leaf or inserted source node
+followed only by upper Merkle parents. In the actual multi-height XDM04 tree,
+this path shape directly describes the **bottom inserted source height**.
+Rows at earlier heights pass through more tagged inserted source nodes before
+reaching the upper-only part of the tree; their native-success-to-model join
+is still missing. The model's binary path position must also be converted
+from XDM04's transposed native index: above level one, the native sibling
+toggles bit 1 rather than bit 0.
 For two different rows accepted at the same source root, level, and position,
 it constructs a collision in those exact node or upper-path hash inputs.
 Given the native and committed openings and absence of such a collision,
@@ -245,7 +251,8 @@ pins XDM04's row-fill, duplicate, leaf/inserted/upper hash, root-check and
 publication order, plus statement matching, claim absorption before the
 batch draw, and the `opened.at` handoff. Hostile source mutations are tested.
 The Lean theorem still takes native-success-to-modeled-opening and
-prover-tree construction as premises; it does not prove compiled Zig
+prover-tree construction as premises, including the missing mixed inserted
+paths for all earlier source heights; it does not prove compiled Zig
 semantics, hash collision resistance, global oracle degree, or adaptive
 Fiat–Shamir sampling.
 
