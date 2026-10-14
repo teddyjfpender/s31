@@ -389,6 +389,8 @@ BINDINGS = [
     "scripts/compiler/gate_claim_trace_audit.py",
     "scripts/compiler/gate_claim_trace_controls.py",
     "scripts/compiler/gate_source_physical_certificate.py",
+    "scripts/compiler/fixtures/physical_add_const.s31.json",
+    "scripts/compiler/fixtures/physical_add_const.valid.json",
     "scripts/compiler/fixtures/physical_alias_arithmetic.s31.json",
     "scripts/compiler/fixtures/physical_alias_arithmetic.valid.json",
     "scripts/compiler/control_claim_trace/main.zig",

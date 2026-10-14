@@ -266,7 +266,7 @@
     "formal/s31/S31/Gadgets/PcsFri/SparseP05TwoQDegree.lean": "6a638d7281a3c681cb43852cdad2ee27150146708dc7d4d339e00cac2516d694",
     "formal/s31/S31/Gadgets/PcsFri/StwoUDRFeasibility.lean": "0887145e13d6391a8c807cc99ed658305b238cc61017ff714ebc8c8f3f2f5eec",
     "formal/s31/S31/Gadgets/PcsFri/TerminalBasisRefinement.lean": "77d304450e19f7c8d6b61dfd846cc3935e9cb38c01cd4cbf9beb6a8fc5b24057",
-    "formal/s31/proof-inventory.json": "012d0a93f355efbd3ddd53a307096593918f1c9889c4ad27ba576a5918063d20",
+    "formal/s31/proof-inventory.json": "c2a7f9d9d56480af618f8e89548f5293d51bb5ff36f491edc2c25df837d90cb7",
     "formal/s31/tests/audit/private_main_lde_openings.py": "875be81a5aa9ec79ef0aab4146e18f60deb01f65bfdf0bf9d85dba76f428dfd9",
     "formal/s31/tests/lib/p05_claim_roster.zig": "d22d9d5a15ee27ac2cddb82cd49d70f2172e75045284da861c6405cf90260a4d",
     "formal/s31/tests/lib/p05_gate_multi_epoch_plan.zig": "dd0f61c217678aa010758ac8a38cabc37abc4de7ba6896beac899eca900c3ed2",

@@ -75,6 +75,10 @@ per-node, per-operation spans against the installed QM31 fixed selector and
 address columns. Its generic Lean theorem derives each certified row's
 operation from the exact native nine-residual AIR tree. It handles canonical
 aliases and keeps proof-cell authentication explicit.
+[The `add_const` composition](GateAddConstComposition.md) extends that row
+certificate to one nonprimitive source operation, including a five-lane
+worked example and a theorem for any active lane count. Its constant-value
+and trace-cell authentication assumptions remain explicit.
 
 `SimdChunks.partial_row_iff` covers the short final chunk of an array. For
 any `n ≤ 4`, arbitrary M31 values may fill the unused input lanes. An accepted

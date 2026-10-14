@@ -120,8 +120,18 @@ const SourcePhysical = struct {
     mul: Range,
     pointwise_mul: Range,
 };
+const AddConstComposition = struct {
+    canonical_id: u32,
+    lhs_canonical_id: u32,
+    constant: u32,
+    constant_address: u32,
+    physical_in1: u32,
+    lhs_packed_outputs: []const u32,
+    output_packed_outputs: []const u32,
+    add: Range,
+};
 const PhysicalCertificate = struct {
-    schema: []const u8 = "s31-gate-source-physical-v1",
+    schema: []const u8 = "s31-gate-source-physical-v2",
     program_sha256: []const u8,
     canonical_ir_sha256: []const u8,
     preprocessed_root: []const u8,
@@ -130,8 +140,52 @@ const PhysicalCertificate = struct {
     qm31_binary_rows: usize,
     source_qm31_rows: usize,
     primitive_nodes_checked: usize,
+    add_const_compositions: []const AddConstComposition,
     source_map: []const SourcePhysical,
 };
+const PhysicalCertificateResult = struct { source_rows: usize, digest: [32]u8 };
+
+fn checkedAddConstCompositions(allocator: std.mem.Allocator, ir: *const canonical.IR,
+    maps: *const s31.relation_compiler.Maps, ctx: *const circuit.builder.Context(circuit.builder.NoValue)) ![]AddConstComposition {
+    var count: usize = 0;
+    for (ir.nodes) |node| if (node.tag == .add_const) { count += 1; };
+    const checked = try allocator.alloc(AddConstComposition, count);
+    errdefer allocator.free(checked);
+    var next: usize = 0;
+    for (ir.nodes, 0..) |node, id| {
+        if (node.tag != .add_const) continue;
+        const lhs_id = node.lhs orelse return fail("add_const canonical lhs missing");
+        const constant = node.constant orelse return fail("add_const canonical constant missing");
+        if (constant == 0) return fail("zero add_const should have canonicalized to an alias");
+        const value = M31.fromCanonical(constant);
+        const broadcast = QM31.fromM31(value, value, value, value);
+        const constant_var = ctx.constants.get(circuit.builder.context.constantKey(broadcast)) orelse
+            return fail("add_const broadcast constant is not interned");
+        const lhs = maps.node_wires.items[lhs_id].wires;
+        const output = maps.node_wires.items[id].wires;
+        const span = maps.gate_op_spans.items[id];
+        if (lhs.len != output.len or output.len == 0 or span.add_end < span.add_start or
+            span.add_end > ctx.circuit.add.items.len or
+            span.add_end - span.add_start != output.len or
+            span.sub_end != span.sub_start or span.mul_end != span.mul_start or
+            span.pointwise_end != span.pointwise_start)
+            return fail("add_const node does not have one add row per packed word");
+        for (lhs, output, 0..) |left, out, index| {
+            const gate = ctx.circuit.add.items[span.add_start + index];
+            if (gate.in0 != left or gate.in1 != constant_var.idx or gate.out != out)
+                return fail("add_const physical row differs from canonical port or constant");
+        }
+        checked[next] = .{
+            .canonical_id = @intCast(id), .lhs_canonical_id = @intCast(lhs_id),
+            .constant = constant, .constant_address = constant_var.idx,
+            .physical_in1 = ctx.circuit.add.items[span.add_start].in1,
+            .lhs_packed_outputs = lhs, .output_packed_outputs = output,
+            .add = .{ .start = span.add_start, .end = span.add_end },
+        };
+        next += 1;
+    }
+    return checked;
+}
 
 fn checkedPrimitiveNodes(ir: *const canonical.IR, maps: *const s31.relation_compiler.Maps,
     circuit_data: *const circuit.builder.Circuit) !usize {
@@ -173,7 +227,8 @@ fn checkedPrimitiveNodes(ir: *const canonical.IR, maps: *const s31.relation_comp
 
 fn checkedPhysicalRows(allocator: std.mem.Allocator, source: []const u8, ir: *const canonical.IR,
     maps: *const s31.relation_compiler.Maps, circuit_data: *const circuit.builder.Circuit,
-    pp: *const PP, certificate_path: ?[]const u8) !usize {
+    ctx: *const circuit.builder.Context(circuit.builder.NoValue),
+    pp: *const PP, certificate_path: ?[]const u8) !PhysicalCertificateResult {
     if (maps.gate_op_spans.items.len != ir.nodes.len) return fail("canonical QM31 per-op spans missing");
     const ids = circuit.common.preprocessed.QM31_OPS_COLUMN_IDS;
     var fixed: [ids.len][]const M31 = undefined;
@@ -188,6 +243,8 @@ fn checkedPhysicalRows(allocator: std.mem.Allocator, source: []const u8, ir: *co
     const binary_rows = offsets[3] + circuit_data.pointwise_mul.items.len;
     if (binary_rows != pp.first_permutation_row) return fail("QM31 physical binary prefix changed");
     const primitive_nodes = try checkedPrimitiveNodes(ir, maps, circuit_data);
+    const add_const_compositions = try checkedAddConstCompositions(allocator, ir, maps, ctx);
+    defer allocator.free(add_const_compositions);
     var source_rows: usize = 0;
     for (maps.gate_op_spans.items, 0..) |span, id| {
         if (span.id != id) return fail("canonical QM31 per-op span id changed");
@@ -209,6 +266,7 @@ fn checkedPhysicalRows(allocator: std.mem.Allocator, source: []const u8, ir: *co
             }
         }
     }
+    var certificate_digest: [32]u8 = .{0} ** 32;
     if (certificate_path) |path| {
         const mapped = try allocator.alloc(SourcePhysical, ir.source_map.len);
         defer allocator.free(mapped);
@@ -239,13 +297,15 @@ fn checkedPhysicalRows(allocator: std.mem.Allocator, source: []const u8, ir: *co
             .qm31_binary_rows = binary_rows,
             .source_qm31_rows = source_rows,
             .primitive_nodes_checked = primitive_nodes,
+            .add_const_compositions = add_const_compositions,
             .source_map = mapped,
         };
         const encoded = try std.json.Stringify.valueAlloc(allocator, cert, .{});
         defer allocator.free(encoded);
+        std.crypto.hash.sha2.Sha256.hash(encoded, &certificate_digest, .{});
         try std.fs.cwd().writeFile(.{ .sub_path = path, .data = encoded });
     }
-    return source_rows;
+    return .{ .source_rows = source_rows, .digest = certificate_digest };
 }
 
 fn gateYield(lookup: component.Lookup, address: M31, multiplicity: M31, expected: []const M31) bool {
@@ -448,7 +508,8 @@ pub fn main() !void {
     try Engine.flushPendingCommit(&scheme, allocator, &channel);
     if (!std.meta.eql(scheme.trees.items[2].commitment.root(), roots[2]))
         return fail("reconstructed interaction cells differ from committed interaction root");
-    const source_rows = try checkedPhysicalRows(allocator, source_bytes, &ir,
-        &topology_maps, &topology_ctx.circuit, &pp, if (args.len == 6) args[5] else null);
-    std.debug.print("{{\"schema\":\"s31-control-claim-trace-v1\",\"source_semantics_match\":true,\"source_nodes_mapped\":{d},\"source_qm31_rows\":{d},\"base_root_match\":true,\"interaction_root_match\":true,\"all_component_claims_match\":true,\"producer_counts\":[{d},{d},{d},{d}]}}\n", .{ ir.source_map.len, source_rows, counts[0], counts[1], counts[2], counts[3] });
+    const source_result = try checkedPhysicalRows(allocator, source_bytes, &ir,
+        &topology_maps, &topology_ctx.circuit, &topology_ctx, &pp, if (args.len == 6) args[5] else null);
+    const digest_hex = std.fmt.bytesToHex(source_result.digest, .lower);
+    std.debug.print("{{\"schema\":\"s31-control-claim-trace-v1\",\"source_semantics_match\":true,\"source_nodes_mapped\":{d},\"source_qm31_rows\":{d},\"physical_certificate_sha256\":\"{s}\",\"base_root_match\":true,\"interaction_root_match\":true,\"all_component_claims_match\":true,\"producer_counts\":[{d},{d},{d},{d}]}}\n", .{ ir.source_map.len, source_result.source_rows, &digest_hex, counts[0], counts[1], counts[2], counts[3] });
 }
