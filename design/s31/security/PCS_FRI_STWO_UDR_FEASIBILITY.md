@@ -45,7 +45,8 @@ paper calculation is a native security certificate.
 For v0.1, the selected target is **96 bits in the paper's work-factor
 measure**, `ε(T)/T ≤ 2⁻⁹⁶`, at an adversary BLAKE2s query budget
 `T=2⁶⁴`. This is a selected target, not a derived native bound. The
-`T=2³²` example below remains an illustration. The
+`T=2³²` example below remains an illustration; both theorem-arithmetic
+checkers now default to the selected `T=2⁶⁴`. The
 [release blocker matrix](pcs-fri-v01-blockers.json) records the metric and
 `T=2⁶⁴`; it remains closed until the actual verifier has a complete
 theorem-instantiated bound at that budget.

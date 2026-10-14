@@ -24,6 +24,7 @@ MAP = "https://github.com/starkware-libs/stwo/blob/dev/.agents/papers/llm/Stwo_W
 Q = 2**31 - 1
 F_ORDER = Q**4
 DOMAIN_CAP = 2**30
+DEFAULT_ADVERSARY_HASH_QUERIES = 1 << 64
 
 
 def ratio(value: Fraction) -> str:
@@ -117,7 +118,7 @@ def minimum_udr_queries(blowup: int, target_bits: int) -> int:
 
 
 def multidomain_from_gate(report: dict, target_bits: int = 96,
-                          adversary_hash_queries: int = 1 << 32) -> dict:
+                          adversary_hash_queries: int = DEFAULT_ADVERSARY_HASH_QUERIES) -> dict:
     """Project theorem arithmetic onto the reviewed Gate geometry, conditionally."""
     if type(target_bits) is not int or not 1 <= target_bits <= 256:
         raise ValueError("target_bits must be an integer in 1..256")
@@ -227,7 +228,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("package", type=Path, help="locally trusted sealed Gate package")
     parser.add_argument("--target-bits", type=int, default=96)
-    parser.add_argument("--adversary-hash-queries", type=int, default=1 << 32)
+    parser.add_argument("--adversary-hash-queries", type=int,
+                        default=DEFAULT_ADVERSARY_HASH_QUERIES)
     parser.add_argument("--require-proven", action="store_true")
     args = parser.parse_args(argv)
     try:
