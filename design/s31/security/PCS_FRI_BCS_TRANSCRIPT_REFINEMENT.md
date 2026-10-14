@@ -90,7 +90,16 @@ proves, for an uninterpreted hash, that the nine post-nonce draw *inputs* are
 distinct and their counters cannot overflow a u32. The nine concrete
 little-endian counter encodings are checked without a global injectivity
 assumption. It also states that a successful modeled query epoch requires a
-valid nonce. It says nothing about distinct hash outputs.
+valid nonce. A query draw hashes 37 bytes: the 32-byte digest, four-byte
+counter and one zero byte. Channel absorptions hash a 32-byte digest followed
+by complete u32 words, so their input lengths are divisible by four; the two
+PoW hash calls take 52 and 40 bytes. The Lean length proof therefore rules
+out a query-input collision with those operation classes for **any** byte
+contents. The native replay now independently rebuilds and hashes all nine
+37-byte preimages, including the partial last block. The source audit pins
+the 37-byte native buffer, digest/counter copies, and four-byte field limbs.
+It says nothing about distinct hash outputs or whether a query input equals
+an earlier challenge draw input after a digest collision.
 
 Run the focused evidence from the S31 root:
 
@@ -106,7 +115,9 @@ python3 -B -m scripts.s31_formal_lib.pcs_fri_bcs_transcript
    integer representations and the actual package/profile dispatch.
 2. A specified BCS/Fiat–Shamir theorem that matches this M31-reduced
    BLAKE2s channel, plain Merkle encoding, nonce schedule, and query law.
-   Specify and bound the adversary's total hash work `T`, rounds `R`,
+   The selected release target uses the paper's work-factor measure
+   `ε(T)/T ≤ 2^-96` at `T=2^64` BLAKE2s queries; the native bound is still
+   absent. Specify and bound the adversary's total hash work `T`, rounds `R`,
    output/collision parameter `lambda`, and the real effect of both grinding
    stages. Do not add 20 and 26 PoW bits to a soundness estimate by fiat.
    Each channel digest has at most `p^8 < 2^248` states after reduction,
