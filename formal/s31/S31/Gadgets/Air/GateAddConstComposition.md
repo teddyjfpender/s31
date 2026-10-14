@@ -10,7 +10,8 @@ add gate for each packed word. The first gate processes lanes 0–3. The second
 processes lane 4; its other three lanes are padding and do not become source
 results. The v2 physical certificate names the canonical node, its source
 operand node, the source constant, the interned constant wire address, both
-lists of packed input/output addresses, and the exact physical add interval.
+lists of packed input/output addresses, the first physical gate's `in1`
+address, and the exact physical add interval.
 In the accepted fixture, the constant address is **13** and the two rows are:
 
 | AIR row | Input address | Constant address | Output address | Active lanes |
@@ -48,10 +49,17 @@ reconstructs one accepted proof from a supplied witness; it does not prove
 that every accepted proof has those same cells. This is one source operation,
 not general compiler correspondence.
 
-The controls change the certificate's constant, constant address, input
-address, and row count; all four are rejected. They also change the source
-constant while keeping the proof and statement fixed; native reconstruction
-rejects that combination.
+The controls change the certificate's constant, constant address (including
+an in-range 13→12 edit), input address, and row count; all are rejected.
+Python checks that the reported physical `in1` equals the interned constant
+address, so the single-field 13→12 edit fails structurally. A joint edit of
+both addresses fails the native receipt's SHA-256 binding to the exact emitted
+certificate bytes. The native diagnostic is the authority for these physical
+values: it compares every gate's `in1` with the interned constant and the
+installed fixed input column. Python does not independently reconstruct the
+physical Gate trace or prove its semantics. The controls also change the
+source constant while keeping the proof and statement fixed; native
+reconstruction rejects that combination.
 
 ```sh
 python3 src/frontends/s31/python/s31.py build \

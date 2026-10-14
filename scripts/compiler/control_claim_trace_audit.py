@@ -48,6 +48,12 @@ def run_native(source: Path, assignment: Path, proof: Path, statement: Path,
             receipt["source_nodes_mapped"] != source_nodes or
             type(receipt.get("source_qm31_rows")) is not int or
             receipt["source_qm31_rows"] < 0 or
+            type(receipt.get("physical_certificate_sha256")) is not str or
+            len(receipt["physical_certificate_sha256"]) != 64 or
+            any(letter not in "0123456789abcdef"
+                for letter in receipt["physical_certificate_sha256"]) or
+            (certificate_path is not None and
+             receipt["physical_certificate_sha256"] == "0" * 64) or
             receipt.get("base_root_match") is not True or
             receipt.get("interaction_root_match") is not True or
             receipt.get("all_component_claims_match") is not True or

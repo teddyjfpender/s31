@@ -8,6 +8,8 @@ the packaged source map. It does not authenticate arbitrary PCS openings.
 
 from __future__ import annotations
 
+import hashlib
+import json
 from typing import Any
 
 CLASSES = ("add", "sub", "mul", "pointwise_mul")
@@ -18,7 +20,7 @@ def _integer(value: Any) -> bool:
 
 
 def validate(certificate: Any, source: dict, manifest: dict, key: dict,
-             report: dict, receipt: dict) -> None:
+             report: dict, receipt: dict, *, certificate_bytes: bytes) -> None:
     if (type(certificate) is not dict or set(certificate) != {
             "schema", "program_sha256", "canonical_ir_sha256",
             "preprocessed_root", "n_vars", "canonical_node_count", "qm31_binary_rows",
@@ -97,6 +99,7 @@ def validate(certificate: Any, source: dict, manifest: dict, key: dict,
     for composition in compositions:
         if type(composition) is not dict or set(composition) != {
                 "canonical_id", "lhs_canonical_id", "constant", "constant_address",
+                "physical_in1",
                 "lhs_packed_outputs", "output_packed_outputs", "add"}:
             raise ValueError("Gate physical certificate: malformed add_const composition")
         owner = composition["canonical_id"]
@@ -107,6 +110,8 @@ def validate(certificate: Any, source: dict, manifest: dict, key: dict,
                 not _integer(constant) or constant == 0 or constant >= 2147483647 or
                 not _integer(composition["constant_address"]) or
                 composition["constant_address"] >= n_vars or
+                not _integer(composition["physical_in1"]) or
+                composition["physical_in1"] != composition["constant_address"] or
                 by_id[owner]["canonical_tag"] != "add_const" or
                 composition["lhs_packed_outputs"] != by_id[lhs]["packed_outputs"] or
                 composition["output_packed_outputs"] != by_id[owner]["packed_outputs"] or
@@ -136,3 +141,12 @@ def validate(certificate: Any, source: dict, manifest: dict, key: dict,
             total += previous_class_end - class_spans[0]["start"]
     if total != certificate["source_qm31_rows"]:
         raise ValueError("Gate physical certificate: total source row count differs")
+    # The native diagnostic checks add_const's interned constant address
+    # against the actual builder gate and installed fixed cell. The receipt
+    # binds these exact emitted bytes to that check; a second in-range address
+    # substituted into the JSON has no independently valid physical meaning.
+    if (type(certificate_bytes) is not bytes or
+            json.loads(certificate_bytes) != certificate or
+            receipt.get("physical_certificate_sha256") !=
+            hashlib.sha256(certificate_bytes).hexdigest()):
+        raise ValueError("Gate physical certificate: bytes differ from native checked receipt")

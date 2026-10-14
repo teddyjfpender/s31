@@ -72,10 +72,11 @@ def audit(package: Path, proof: Path, statement: Path, assignment: Path,
         native = run_native(package / "source.s31.json", assignment, proof,
                             statement, root=root, certificate_path=physical_path,
                             expected_counts=None)
-        physical = json.loads(physical_path.read_text())
-        validate_physical_certificate(physical, source, manifest, key, report, native)
-        certificate_digest = _digest(physical_path)
         checked_certificate = physical_path.read_bytes()
+        physical = json.loads(checked_certificate)
+        validate_physical_certificate(physical, source, manifest, key, report,
+                                      native, certificate_bytes=checked_certificate)
+        certificate_digest = hashlib.sha256(checked_certificate).hexdigest()
     verify_package(package)
     if tuple(_digest(path) for path in sealed_paths) != sealed_digests:
         raise ValueError("Gate claim trace audit: package or inputs changed during audit")
