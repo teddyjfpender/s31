@@ -30,6 +30,7 @@ from scripts.s31_formal_lib.pcs_fri_order import check_pcs_fri_order
 from scripts.s31_formal_lib.pcs_fri_challenge_custody import check_pcs_fri_challenge_custody
 from scripts.s31_formal_lib.pcs_fri_bcs_transcript import audit as audit_pcs_fri_bcs_transcript
 from scripts.s31_formal_lib.pcs_fri_m31_query import check_pcs_fri_m31_query
+from scripts.s31_formal_lib.pcs_fri_pow_m31_predicate import check_pcs_fri_pow_m31_predicate
 from scripts.s31_formal_lib.pcs_fri_projection import check_pcs_fri_projection
 from scripts.s31_formal_lib.pcs_fri_prover_origin import check_pcs_fri_prover_origin
 from scripts.s31_formal_lib.pcs_fri_capture import check_pcs_fri_capture
@@ -381,6 +382,8 @@ BINDINGS = [
     "scripts/tests/test_pcs_fri_challenge_custody.py",
     "scripts/s31_formal_lib/pcs_fri_m31_query.py",
     "scripts/tests/test_pcs_fri_m31_query.py",
+    "scripts/s31_formal_lib/pcs_fri_pow_m31_predicate.py",
+    "scripts/tests/test_pcs_fri_pow_m31_predicate.py",
     "scripts/s31_formal_lib/pcs_fri_projection.py",
     "scripts/s31_formal_lib/pcs_fri_prover_origin.py",
     "scripts/release/pcs_fri_gate_lifted_projection.py",
@@ -907,6 +910,7 @@ def main() -> None:
     check_pcs_fri_challenge_custody(ROOT)
     audit_pcs_fri_bcs_transcript(ROOT)
     check_pcs_fri_m31_query(ROOT)
+    check_pcs_fri_pow_m31_predicate(ROOT)
     check_pcs_fri_projection(ROOT)
     check_pcs_fri_prover_origin(ROOT)
     check_pcs_fri_capture(ROOT)
