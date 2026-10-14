@@ -216,11 +216,13 @@ does not add its algebraic term to a measured AIR/PCS/FRI/Fiat–Shamir budget.
 3. The same tuple is used on both sides of each intended join; unrelated
    events are structurally tagged before compression. Repeated Gate addresses
    keep every occurrence and its signed multiplicity.
-4. The field sampler rejects 32-bit words at least `2p` before reduction;
-   under ideal uniform hash output this gives uniform M31 limbs and hence
-   uniform QM31 challenges. The transcript's grind step and any correlation
-   from adaptive prover queries still belong in the final Fiat–Shamir
-   argument. This worksheet assumes ideal independent draws.
+4. The selected field sampler reduces raw BLAKE2s words modulo `p` before
+   its later `>=2p` check, so the latter never rejects. Even under ideal
+   independent raw words, M31 residues `0` and `1` have three preimages and
+   others have two; the resulting QM31 challenges are biased. This worksheet's
+   uniform-challenge bounds are conditional algebraic results, not native
+   Fiat–Shamir bounds. A final argument must handle that bias, the grind step,
+   and adaptive prover queries.
 5. The final error budget adds the committed-AIR/PCS/FRI and hash assumptions
    separately. It must not report this algebraic term as total proof security.
 

@@ -68,19 +68,24 @@ path does not have that early guard. `y.c1=0` alone does **not** imply the
 row quotient denominator is zero at every row, so this larger count is not
 a failure count for the pinned production path.
 
-The pinned BLAKE2s channel draws eight 32-bit words per block, rejects the
-whole block if **any** word is at least `2q`, and reduces the accepted words
-modulo `q`. Each residue has exactly two accepted representatives, `r` and
-`r+q`. Consequently, **if** each fresh hash block is an independent uniform
-256-bit string, the first four words of a successful block are exactly uniform
-over `QM31`. One block succeeds with exact probability
-`(2q/2³²)^8 = (1−2^-31)^8`. Independent retries preserve that conditional
-uniformity; a finite draw counter can still exhaust. The diagnostic pins the
-channel and M31 reduction sources and checks the counting argument in a small
-exhaustive analogue. This is a fixed-transcript ideal-random-oracle statement.
-It does not prove concrete BLAKE2s is a random oracle, or supply the adaptive
-Fiat–Shamir/BCS reduction needed when a prover can choose commitments and
-try many transcript states.
+The selected `Blake2sM31Channel` reduces every raw BLAKE2s 32-bit output word
+modulo `q` in `Blake2sHasherGeneric(true).finalize`, **before** `drawU32s`
+returns eight words to `drawBaseFelts`. The latter checks for words `>= 2q`,
+but all returned words are already below `q`, so its whole-block rejection is
+unreachable on this route. Under independent uniform raw digest words,
+`2³² = 2q+2`: residues `0` and `1` each have three raw preimages, and every
+other residue has two. The first four coordinates therefore have a biased
+product distribution, with point probability `3^k 2^(4-k)/2^128` when exactly
+`k` coordinates are `0` or `1`. Its maximum is `81/2^128`; one coordinate's
+total variation distance from uniform M31 is `(q−2)/(q(q+1))`.
+
+These exact counts assume independent uniform raw words at a fixed transcript
+input. They do not prove concrete BLAKE2s is a random oracle or supply the
+adaptive Fiat–Shamir/BCS reduction for prover-selected commitments and
+transcript states. The [diagnostic](../../../scripts/release/pcs_fri_ood_seed_geometry.py)
+pins both channel and hasher sources and checks a small exhaustive analogue.
+Uniform-field fractions above remain hypothetical seed-set fractions, not
+native failure probabilities.
 
 The [source-bound diagnostic](../../../scripts/release/pcs_fri_ood_seed_geometry.py)
 pins the native gitlink and eight exact file hashes, checks the reviewed

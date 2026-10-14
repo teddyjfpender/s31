@@ -381,7 +381,7 @@
     "formal/s31/S31/Gadgets/PcsFri/GuardedCircleImage.lean": "6b55fa4203454ceaf3ea5765e15d19ba286cb4f49bdb1a0b017eebd0f14cb692",
     "formal/s31/S31/Gadgets/PcsFri/LayerAcceptance.lean": "dd4232047a06bccdb1d780998ab789b253a481e3ddeffc5b216b1a189c243b3c",
     "formal/s31/S31/Gadgets/PcsFri/M31MaskedQuery.lean": "2d2d7e74d0fe319d891dce4b4f6680184bba13d4d8578e93c3d0cdbdbaa19c5e",
-    "formal/s31/S31/Gadgets/PcsFri/M31RejectionSampler.lean": "dfbc9c0e0a64b46c6165f76b3d9d10c0984688712fccb66382693a212124b02e",
+    "formal/s31/S31/Gadgets/PcsFri/M31RejectionSampler.lean": "340bc716eebe10fd354efa1edf0ab95df122096c76913104d89c36115216ba7d",
     "formal/s31/S31/Gadgets/PcsFri/M31WordReduction.lean": "014571cf368ec470ae426dc6141bca1c418eb8a627caddd546af1673b9a7f8fb",
     "formal/s31/S31/Gadgets/PcsFri/MaskedLayerBound.lean": "bdee997c2a374366c261638c3878f3a8df897d2593433d16b0638ffdf27647f1",
     "formal/s31/S31/Gadgets/PcsFri/MerkleBytePreimage.lean": "f01016b90f7af60ed9d3d0870b2f4a0377db9b3f7bc3f6ad72753204fa10b630",

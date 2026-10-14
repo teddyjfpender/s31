@@ -35,6 +35,8 @@ SOURCE_SHA256 = {
         "a5d47cc1a8c57a858b943c25e63eb1561b9f994fdff36ea38517bc166ea66d73",
     "deps/stwo-zig/src/core/channel/blake2s.zig":
         "fe0598dd15f70cc84b7098684b6a6f2e0ec319c4f7b5390c3ccd5f781ca32fc1",
+    "deps/stwo-zig/src/core/vcs/blake2_hash.zig":
+        "5600b1d1af9730403bb759b0dd4d7463efa5772cc2d95c567bd26c9d5315b1f0",
 }
 
 
@@ -61,6 +63,7 @@ def classify(sources: dict[str, bytes], gitlink: str) -> dict[str, object]:
     qm31 = sources["deps/stwo-zig/src/core/fields/qm31.zig"].decode()
     m31 = sources["deps/stwo-zig/src/core/fields/m31.zig"].decode()
     channel = sources["deps/stwo-zig/src/core/channel/blake2s.zig"].decode()
+    blake2_hash = sources["deps/stwo-zig/src/core/vcs/blake2_hash.zig"].decode()
     required = (
         (circle, "pub fn secureFieldPointFromRandomSeedChecked(t: QM31)"),
         (circle, "const one_plus_t_square_inv = try t_square.add(QM31.one()).inv();"),
@@ -80,12 +83,21 @@ def classify(sources: dict[str, bytes], gitlink: str) -> dict[str, object]:
         (m31, "pub inline fn fromU64(x: u64) M31"),
         (m31, "return .{ .v = reduce64(x) };"),
         (channel, "pub fn drawSecureFelt(self: *Self) QM31"),
+        (channel, "pub const Blake2sM31Channel = Blake2sChannelGeneric(true);"),
+        (channel, "const Hasher = blake2_hash.Blake2sHasherGeneric(is_m31_output);"),
+        (channel, "const hash = hashBytes(hash_input[0..]);"),
+        (channel, "const words = self.drawU32s();"),
+        (channel, "return hasher.finalize();"),
         (channel, "const felts = self.drawBaseFelts();"),
         (channel, "return QM31.fromM31Array(.{ felts[0], felts[1], felts[2], felts[3] });"),
         (channel, "self.n_draws = nextDrawCounter(self.n_draws)"),
         (channel, "const two_p = 2 * m31.Modulus;"),
         (channel, "if (x >= two_p)"),
         (channel, "felts[i] = M31.fromU64(x);"),
+        (blake2_hash, "pub fn Blake2sHasherGeneric(comptime is_m31_output: bool) type"),
+        (blake2_hash, "var out = self.ctx.finalize();"),
+        (blake2_hash, "if (is_m31_output) out = reduceToM31(out);"),
+        (blake2_hash, "pub fn reduceToM31(value: Blake2sHash) Blake2sHash"),
     )
     for source, marker in required:
         if marker not in source:
@@ -100,21 +112,20 @@ def classify(sources: dict[str, bytes], gitlink: str) -> dict[str, object]:
     # count, not a native rejection or security probability.
     if Q % 4 != 3 or Q % 5 != 2 or pow(5, (Q - 1) // 2, Q) != Q - 1:
         raise ValueError("reviewed QM31 quadratic-tower assumptions changed")
-    # Under an ideal random oracle, each fresh 32-byte block is uniform.
-    # Accepting all eight u32 words below 2q leaves exactly two representatives
-    # per M31 residue in each word: r and r+q. Thus the first four accepted
-    # residues form an exactly uniform QM31 seed. This conditional statement
-    # says nothing about the security of concrete BLAKE2s or adaptive BCS.
+    # The selected M31 hasher reduces each raw 32-bit word before drawU32s
+    # exposes it to drawBaseFelts. Hence the later x >= 2q filter accepts every
+    # block. Under ideal independent uniform raw digest words, residues 0 and 1
+    # have three preimages; all other residues have two. This is a fixed-input
+    # ideal-word calculation, not a native BCS/random-oracle security proof.
     if 2 * Q != 2**32 - 2:
         raise ValueError("reviewed M31 channel acceptance geometry changed")
-    accepted_word_fraction = Fraction(2 * Q, 2**32)
     # The rational parametrization has two exceptional roots of t²+1 in
     # CM31 and none in M31 (q ≡ 3 mod 4). For every other CM31 seed both
     # output coordinates have zero c1, so the reviewed denominator is zero
     # at every M31 domain row. These counts assume an ideal uniform QM31
     # seed; the native channel's distribution is not proved here.
     return {
-        "schema": "s31-pcs-fri-ood-seed-geometry-v3",
+        "schema": "s31-pcs-fri-ood-seed-geometry-v4",
         "status": "reviewed_source_and_conditional_field_count_only",
         "engine_gitlink_commit": gitlink,
         "source_sha256": observed,
@@ -127,17 +138,20 @@ def classify(sources: dict[str, bytes], gitlink: str) -> dict[str, object]:
         "quadratic_subfield_nonexceptional_fraction_if_uniform": ratio(Q**2 - 2, Q**4),
         "y_c1_zero_regular_seed_count": 2 * Q**2 - 3,
         "y_c1_zero_regular_fraction_if_uniform": ratio(2 * Q**2 - 3, Q**4),
-        "rom_u32_preimages_per_m31_residue": 2,
-        "rom_eight_word_block_acceptance_fraction": ratio(
-            accepted_word_fraction.numerator**8, accepted_word_fraction.denominator**8),
-        "rom_uniform_qm31_seed_conditional_on_success": True,
+        "ideal_raw_u32_preimages_for_residues_zero_one": 3,
+        "ideal_raw_u32_preimages_for_other_residues": 2,
+        "ideal_raw_m31_coordinate_tv_from_uniform": ratio(Q - 2, Q * (Q + 1)),
+        "ideal_independent_raw_words_qm31_max_point_mass": ratio(3**4, 2**128),
+        "ideal_independent_raw_words_qm31_max_density_ratio_to_uniform": ratio(3**4 * Q**4, 2**128),
+        "selected_post_reduction_eight_word_block_acceptance_fraction": "1/1",
+        "rom_uniform_qm31_seed_conditional_on_success": False,
         "native_blake2s_rom_and_adaptive_bcs_reduction_proven": False,
         "reviewed_point_wrapper_explicitly_excludes_quadratic_subfield": False,
         "reviewed_row_quotient_denominator_zero_for_quadratic_subfield_point": True,
         "published_ood_distribution_instantiated": False,
         "native_proven_security_bits": None,
         "remaining_discharge": [
-            "prove the native Fiat–Shamir seed distribution and exact point image",
+            "bound the biased native Fiat–Shamir seed distribution and exact point image",
             "model exceptional, subfield, and other y.c1-zero seeds in the complete prover/verifier schedule",
             "establish the paper's OOD sampling premise or prove a bound for the actual accepted-seed distribution",
             "connect every native quotient denominator to that sampled point and its committed oracle",
