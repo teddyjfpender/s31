@@ -60,6 +60,10 @@ describe a deterministic candidate for a paired original-plus-own-quotient
 ensemble; the current verifier does **not** commit or independently degree-test
 those 134 tracks. The four source roots occur at different challenge epochs,
 so their columns cannot be silently flattened under one pre-OOD root.
+The report records each column's ordered OOD sample count, but does not
+serialize the QM31 point coordinates. The existing `p05_claim_roster.derive`
+recomputes the verifier-owned points from accepted AIR objects; joining it to
+this sparse capture is still required for a full paired OOD wire.
 
 ## Paper feasibility boundary
 
