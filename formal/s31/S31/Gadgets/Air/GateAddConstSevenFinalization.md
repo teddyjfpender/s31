@@ -28,8 +28,10 @@ belong to this fixture; another program may assign different numbers.
 | `Mul(7,ones)` | 488 | 39, 292 | **13** | `(7,7,7,7)` |
 
 The `u` wire has address 2 and public value `(0,0,1,0)`. Native multiplication
-`u × one = u` forces the one wire to `(1,0,0,0)`; the 15 row equations then
-force the last word to `(7,7,7,7)`. These are QM31 arithmetic rows. The source
+`u × one = u` forces the one wire to `(1,0,0,0)`; the 13 value-chain equations
+then force the last word to `(7,7,7,7)`. The native audit additionally checks
+the zero and one anchoring rows, for 15 rows total. These are QM31 arithmetic
+rows. The source
 `add_const` rows use that final word as their right input, so each active M31
 lane receives seven. For the five-lane fixture, packed row 0 covers lanes
 0–3, while packed row 1 contributes only lane 4. Lean proves the result for

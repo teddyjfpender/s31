@@ -42,8 +42,9 @@ trace-cell mapping, and the broadcast constant trace value. It concludes
 `output[j] = input[j] + c` in S31 M31 arithmetic for every active `j`.
 
 For literal `7`, [the finalization join](GateAddConstSevenFinalization.md)
-derives the broadcast cell's **value** from 15 native finalization rows and
-the public `u` anchor. Its Lean theorem replaces this module's constant-value
+derives the broadcast cell's **value** from 13 native finalization rows and
+the public `u` anchor; the native audit records two additional zero/one rows.
+Its Lean theorem replaces this module's constant-value
 assumption with the finalization AIR premises. The row operand/output cells,
 Gate lookup join, and PCS/FRI proof-cell authentication still have explicit
 premises. The audit reconstructs one accepted proof from a supplied witness;
