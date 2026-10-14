@@ -56,6 +56,24 @@ class PcsFriCaptureTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "selected Gate"):
             check_selected_gate_trace_source(changed)
 
+    def test_selected_gate_lifting_height_formula_changed(self) -> None:
+        name = "deps/stwo-zig/src/core/pcs/config_v2.zig"
+        changed = dict(GATE_SOURCES)
+        changed[name] = changed[name].replace(
+            "trace_log_size + config.log_blowup_factor",
+            "trace_log_size + config.log_blowup_factor + 1", 1)
+        with self.assertRaisesRegex(ValueError, "selected Gate"):
+            check_selected_gate_trace_source(changed)
+
+    def test_selected_gate_digest_width_changed(self) -> None:
+        name = "deps/stwo-zig/src/core/crypto/blake2s_backend.zig"
+        changed = dict(GATE_SOURCES)
+        changed[name] = changed[name].replace(
+            "pub const Blake2sHash = [32]u8;",
+            "pub const Blake2sHash = [64]u8;", 1)
+        with self.assertRaisesRegex(ValueError, "selected Gate"):
+            check_selected_gate_trace_source(changed)
+
     def test_out_of_domain_alias_guard_removed(self) -> None:
         with self.assertRaisesRegex(ValueError, "lifted Merkle"):
             check_capture_source(change_once(
