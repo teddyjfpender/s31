@@ -219,7 +219,7 @@ These checks construct an honest witness. They do not imply that an arbitrary
 prover's committed rows equal this witness. The island and address-ledger
 checks are supplied premises, and their feeder addresses are not yet proved
 equal to the native public component's events for every program. The
-[independent review](../../../../../design/s31/security/INDEPENDENT_REVIEW_FULL_GATE_COMPOSITION_2026-10-12.md)
+[independent review](../../../../../design/s31/security/reviews/compiler/INDEPENDENT_REVIEW_FULL_GATE_COMPOSITION_2026-10-12.md)
 lists the remaining native commitment, lookup, and PCS/FRI joins.
 
 For the checked-in square4 source, a [pinned corollary](../../../../../formal/s31/S31/Gadgets/Functional/Correspondence/PinnedSquare4CompleteModeledTrace.md)

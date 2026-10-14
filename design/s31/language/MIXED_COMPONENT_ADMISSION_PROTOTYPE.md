@@ -125,8 +125,8 @@ The fixed-profile implementation follows this narrow sequence:
    tree commitment; derive quotient/PCS composition and claimed-sum order
    solely from this schedule.
 4. Run honest and mutation tests in Debug and ReleaseFast, preserve existing
-   V4 proof bytes, and obtain [independent admission review](../security/INDEPENDENT_REVIEW_MIXED_N3_2026-10-11.md)
-   and [lookup/boundary review](../security/INDEPENDENT_REVIEW_MIXED_N3_LOOKUP_2026-10-11.md).
+   V4 proof bytes, and obtain [independent admission review](../security/reviews/mixed/INDEPENDENT_REVIEW_MIXED_N3_2026-10-11.md)
+   and [lookup/boundary review](../security/reviews/mixed/INDEPENDENT_REVIEW_MIXED_N3_LOOKUP_2026-10-11.md).
    The fixed N=3 profile pins the complete proof-byte SHA-256 in Debug and
    ReleaseFast tests. A formal reduction from accepted proof bytes to
    authenticated all-row equations remains open.

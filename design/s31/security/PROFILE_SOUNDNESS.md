@@ -4,7 +4,7 @@ This is an implementation review note for `sparse-v3`, `direct-m31-v4`, and the 
 
 The older `direct-m31-v4` profile in this note is distinct from the later
 bounded 1–8-call **V4 plan and experimental native scheduler**. The latter's
-current release obligations are in the [V4 soundness checkpoint](INDEPENDENT_SOUNDNESS_REVIEW_2026-10-10.md#v4-bounded-call-native-scheduler-review-c109a17-engine-20e25894).
+current release obligations are in the [V4 soundness checkpoint](reviews/release/INDEPENDENT_SOUNDNESS_REVIEW_2026-10-10.md#v4-bounded-call-native-scheduler-review-c109a17-engine-20e25894).
 
 ## Component dependency closure
 

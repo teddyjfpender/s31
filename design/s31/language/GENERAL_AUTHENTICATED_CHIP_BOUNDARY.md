@@ -11,14 +11,14 @@ source-pinned verifier, and native proof tests for every count from 1 through 8
 source-derived calls. The 2–8 matrix checks each claimed-sum position;
 selected/legacy proof-byte equality is checked at counts 1 and 8. The 8-call
 envelope is 173,058 bytes.
-An [independent review](../security/INDEPENDENT_REVIEW_GUARDED_V4_AND_EVALUATOR_2026-10-11.md)
+An [independent review](../security/reviews/mixed/INDEPENDENT_REVIEW_GUARDED_V4_AND_EVALUATOR_2026-10-11.md)
 found no new false-proof admission through the sealed V4 verifier. The later
 [`direct-mixed-general` profile](../../../src/frontends/s31/runtime/mixed_boundary/README.md)
 admits one through eight source-derived calls using pair AIRs for the first
 two calls and many AIRs thereafter. It rebuilds a typed registry manifest
 from embedded source and live handles, binds its digest into a distinct native
 transcript, and checks the exact eight-word public statement. An
-[independent provenance review](../security/REVIEW_GENERAL_BOUNDARY_PROVENANCE_2026-10-11.md)
+[independent provenance review](../security/reviews/compiler/REVIEW_GENERAL_BOUNDARY_PROVENANCE_2026-10-11.md)
 found no concrete statement or source substitution path in that experimental
 profile. The [live geometry audit](../security/GENERAL_MANIFEST_GEOMETRY_AUDIT_2026-10-12.md)
 records PCS tree heights and the selected mask and local AIR dependency
@@ -55,7 +55,7 @@ The endpoints may be omitted from the public statement. The current bridge
 repeats each endpoint in a constant trace column, and an accepted proof opens
 that column at every PCS query. A proof holder can therefore read the exact
 private endpoint words from its serialized proof; the
-[N=3 proof-byte regression and review](../security/REVIEW_MIXED_PRIVATE_ENDPOINT_DISCLOSURE_2026-10-12.md)
+[N=3 proof-byte regression and review](../security/reviews/mixed/REVIEW_MIXED_PRIVATE_ENDPOINT_DISCLOSURE_2026-10-12.md)
 demonstrate this for both pair and many bridge roles. A confidential API
 requires a new masked proof profile and a privacy argument covering all
 witness-bearing traces and claimed sums.

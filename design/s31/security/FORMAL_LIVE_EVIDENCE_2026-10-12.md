@@ -27,5 +27,5 @@ review evaluated the case07 checker to `true` with 512 derived rows. This
 evidence checks the modeled semantics and reviewed source bindings.
 It does not prove the installed Zig compiler correct, authenticate arbitrary
 native PCS openings, establish FRI/transcript soundness, or prove zero
-knowledge. The [direct-free alias review](INDEPENDENT_REVIEW_ALIAS_FULL_MODELED_DIRECT_FREE_2026-10-12.md)
+knowledge. The [direct-free alias review](reviews/compiler/INDEPENDENT_REVIEW_ALIAS_FULL_MODELED_DIRECT_FREE_2026-10-12.md)
 identifies where a modeled trace still depends on external native evidence.

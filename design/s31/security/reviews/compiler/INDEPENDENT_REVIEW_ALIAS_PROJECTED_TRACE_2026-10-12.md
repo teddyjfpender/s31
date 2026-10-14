@@ -1,0 +1,21 @@
+# Independent review: alias projected trace (2026-10-12)
+
+**Revision:** `42d341a`. **Result:** no P1/P2 flaw found in the stated local arithmetic existence theorem. It is a modeled satisfiability result, not a compiler-to-verifier soundness theorem.
+
+## What the theorem actually establishes
+
+[`checkAliasCanonical`](../../../../../formal/s31/S31/Gadgets/Functional/Correspondence/AliasCanonicalIrBytes.lean) parses source bytes and compares both the exact normalized relation bytes and exact compact canonical IR bytes before returning the same certificate. Thus the premise in [`checked_alias_projected_trace_exists`](../../../../../formal/s31/S31/Gadgets/Functional/Correspondence/AcceptedAliasPublicPhysicalTrace.lean) is substantive; it does not assume the desired output or an arbitrary certificate. The checked parser's `Parsed.checked` field links its source term to `executeNormalized`. The refactored `executed_public_boundary_exists` takes that normalized execution equation and constructs the wire from the **entire** eager final SSA value list. Reading `final[certificate.output]` correctly permits an earlier selected result while later producers remain in the list. The output masks read the selected result, not the final instruction's result.
+
+The proof shows every modeled source, input, and output `ColumnCell` accepts the *same* wire assignment. `SyntheticSourceTraceCompletion.arithmetic_complete` then constructs a 512-row trace with zero installed local arithmetic roots. This trace uses `findRow` for the projected cells and zero-add rows elsewhere. The theorem's conclusion does not assert exact Gate balance, public lookup pins, native fixed-column equality, or verifier acceptance. I found no `sorry`, `admit`, `axiom`, `unsafe`, `opaque`, or `trustMe` in the changed Lean modules and their immediate local bridge modules.
+
+## Boundary to preserve
+
+The 512-row existence statement alone does **not** assert that every projected cell appears at its declared physical row: `findRow` chooses one cell per row, and an out-of-range cell would not appear in `Fin 512`. [`canonical_alias_projected_rows_distinct`](../../../../../formal/s31/S31/Gadgets/Functional/Correspondence/SourceDeterminedDirectRows.lean) separately proves no duplicate projected positions for admitted aliases, but the new theorem does not compose that fact with a `< 512` bound and `fixedMatches` for every projected cell. This is an open formal join before describing the result as exact projected trace placement. It does not invalidate the stated local root-zero or shared-wire claims.
+
+The trace's nonprojected rows are synthetic. Neither the theorem nor the Python fixture establishes equality to the complete native constant and padding roster, an exact Gate multiset balance, source/package binding to committed columns, LogUp soundness, PCS/FRI soundness, or that Python/Zig implement Lean's source parser and byte encoders for every admitted program. The exact three-file check is a Lean model of those bytes, not a proof that the release verifier consumes them.
+
+## Differential controls checked
+
+The early-return fixture compares the independent Python source parser, production `compile_text`, and direct spelling for one three-producer DAG. It checks unchanged normalized and canonical IR bytes, 512-row schedule, the unused trailing output address, and a retargeted output. The executable three-file checker test rejects a canonical IR with that retargeted output. Existing alias checker tests additionally reject a changed normalized opcode and malformed forward alias. These are useful differential examples, not exhaustive parser equivalence or a native proof for the early-return case. A next adversarial control should mutate a projected row's physical index or fixed selector in a resealed package and require package admission to reject it; a full native early-return proof should separately verify the selected public output while the trailing arithmetic result has zero Gate uses.
+
+**Checks run:** `python3 -m unittest src.frontends.s31.tests.python.generated.test_alias_early_return_projected` (2 passed); source search for admitted/unsafe Lean constructs (none); `git diff --check 42d341a^..42d341a` (clean). The parent integration run is performing the Lean kernel replay.
