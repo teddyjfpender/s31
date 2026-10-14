@@ -260,6 +260,7 @@ import S31.Gadgets.Functional.Correspondence.ControlGadgetAir
 import S31.Gadgets.Functional.Correspondence.ControlGadgetCompleteness
 import S31.Gadgets.Functional.Correspondence.ControlGadgetPublicPins
 import S31.Gadgets.Functional.Correspondence.ControlGadgetConversionAir
+import S31.Gadgets.Functional.Correspondence.ControlGadgetStatementPins
 import S31.Gadgets.Functional.Correspondence.ZeroPhysicalTraceWitness
 import S31.Gadgets.Functional.Correspondence.AliasProjectedExportBridge
 import S31.Gadgets.Functional.Correspondence.PinnedFullOutputRoster
