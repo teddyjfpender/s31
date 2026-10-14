@@ -422,6 +422,8 @@ BINDINGS = [
     "scripts/tests/test_pcs_fri_native_m31_arithmetic.py",
     "scripts/tests/test_pcs_fri_degree_correction.py",
     "formal/s31/tests/pcs_fri_fold_native.zig",
+    "formal/s31/tests/native_gate_finalizer_refinement.zig",
+    "formal/s31/tests/run_native_gate_finalizer_refinement.sh",
     "formal/s31/tests/pcs_fri_layer_native.zig",
     "formal/s31/tests/run_pcs_fri_layer_native.sh",
     "formal/s31/tests/pcs_fri_merkle_binding_native.zig",

@@ -67,6 +67,8 @@ jobs:
           bash formal/s31/tests/run_pcs_fri_layer_native.sh
       - name: Gate canonical 16-row Fourier certificate
         run: bash formal/s31/tests/run_pcs_fri_gate16_fourier_rows_native.sh
+      - name: Native Gate LogUp finalizer differential
+        run: bash formal/s31/tests/run_native_gate_finalizer_refinement.sh
       - name: Native M31 raw query batch bridge
         run: |
           python3 -B -m unittest scripts.tests.test_pcs_fri_m31_query -q

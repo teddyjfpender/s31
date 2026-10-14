@@ -51,8 +51,8 @@ OBLIGATIONS = (
         "gap_kind": "unproven_native_refinement",
         "published_requirement": "Circle STARKs Theorem 7 and Stwo flat-AIR IOPP: committed columns, constraints, logUp multiplicities and composition must realize the theorem relation",
         "published_anchor": STWO,
-        "partial_evidence": ["formal/s31/proof-inventory.json", "formal/s31/S31/Gadgets/Air/GatePublicInteraction.lean", "scripts/release/pcs_fri_gate_interaction.py", "src/frontends/s31/python/package/gate_component_roster.py", "design/s31/security/PCS_FRI_GATE_INTERACTION.md", "design/s31/security/MIXED_N1_N8_CONDITIONAL_ERROR_LEDGER_2026-10-12.md"],
-        "missing_discharge": "the gate profile now has source-pinned relation-use caps and an eleven-claim/public-output closure model, but still needs accepted-proof binary provenance, complete source/compiler-to-native AIR correspondence, committed-column origin and program-wide lookup/interaction soundness",
+        "partial_evidence": ["formal/s31/proof-inventory.json", "formal/s31/S31/Gadgets/Air/GatePublicInteraction.lean", "formal/s31/S31/Gadgets/Air/NativeGateFinalizerBridge.lean", "formal/s31/tests/native_gate_finalizer_refinement.zig", "formal/s31/tests/run_native_gate_finalizer_refinement.sh", "scripts/release/pcs_fri_gate_interaction.py", "src/frontends/s31/python/package/gate_component_roster.py", "design/s31/security/PCS_FRI_GATE_INTERACTION.md", "design/s31/security/MIXED_N1_N8_CONDITIONAL_ERROR_LEDGER_2026-10-12.md"],
+        "missing_discharge": "the Gate profile has source-pinned relation-use caps, eleven-claim/public-output closure, and a fixed-sample finalizer-to-eleven-residual refinement with at most ten cancellation coefficients per bad row. Accepted-proof binary provenance, complete source/compiler-to-native AIR correspondence, committed-column and OODS sample origin, composition randomness, and program-wide lookup/interaction soundness remain open",
     },
     {
         "id": "P03_LIFTED_MULTI_DOMAIN_PCS_REFINEMENT",

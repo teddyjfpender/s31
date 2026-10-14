@@ -48,8 +48,11 @@ proves the public event count for exactly eight output words. The existing
 `TaggedPairSourceCorrespondence` model supplies the exact output addresses,
 `u` tuple, and Horner compression; this P02 theorem reuses that model for the
 legacy gate verifier's eleven-claim path. Source hashes pin the native host
-verifier, witness lookup sum, component facts and in-circuit verifier version
-reviewed here. A changed source needs a renewed review.
+verifier, its legacy proof-mode guard, witness lookup sum, component facts and
+in-circuit verifier version reviewed here. The proof-mode guard added in
+`#204` rejects a CAS05 proof marker before legacy postcard decode; the Gate
+lookup sum and claim loop are unchanged. A changed source needs a renewed
+review.
 
 ## Lookup-use arithmetic
 
@@ -82,6 +85,32 @@ every component's base and interaction rows, that all denominator poles are
 handled, or that the eleven claimed sums equal the row sums of the compiled
 AIR. They do not cover all S31 lowerings or give a security-bit estimate.
 P02 and the v0.1 proven release gate stay open.
+
+## Source-extracted Gate finalizer refinement
+
+[`NativeGateFinalizerBridge.lean`](../../../formal/s31/S31/Gadgets/Air/NativeGateFinalizerBridge.lean)
+now connects the exact Zig-exported `finalizeLogupInPairs` expression for a
+`qm31_ops` row to its ordered list of nine arithmetic and two Gate LogUp
+residuals. For fixed row and interaction samples, if any residual is nonzero,
+at most ten QM31 composition coefficients can make the native eleven-term
+Horner fold zero. Outside those explicit roots, a zero native fold forces
+each arithmetic and lookup residual to zero. Applying this row by row and
+the already-reviewed raw Gate argument puts an invalid fixed Gate multiset
+in the explicit lookup-challenge exceptional set, provided the external
+claim closes.
+
+The [numeric native differential](../../../formal/s31/tests/native_gate_finalizer_refinement.zig)
+executes the production Zig finalizer over QM31 and compares it to separately
+computed pair, singleton, and arithmetic-prefix terms. It exercises changed
+public claims, previous-row and current-column values, and malformed
+interaction samples. Run it with
+`bash formal/s31/tests/run_native_gate_finalizer_refinement.sh`.
+
+This bridge fixes the *algebra after samples are fixed*. It does not prove
+that an accepted proof's OODS samples came from its committed columns, that
+the verifier's one coefficient behaves like an independent uniform QM31
+draw, or that all ten other components satisfy the same complete relation.
+The per-row ten-root count is not a whole-prover error bound.
 
 Focused checks:
 
