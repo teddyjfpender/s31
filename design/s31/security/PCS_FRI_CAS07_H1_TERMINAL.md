@@ -7,11 +7,14 @@ one-source-height (`H = 1`) local relation formalized in
 
 ## A query by hand
 
-Take an initial circle domain with `k = 2` (four positions) and blowup
-`beta = 1`. The verifier folds one circle pair, so the terminal line domain
-has `2^(k-1) = 2` positions and the permitted terminal coefficient array has
+Take an initial circle domain with `k = 3` (eight positions) and blowup
+`beta = 2`. This is the smallest `k` admitted by XDM05 for `H = 1`. The
+verifier folds one circle pair, so the terminal line domain has
+`2^(k-1) = 4` positions and the permitted terminal coefficient array has
 `2^(k-1-beta) = 1` word. Let the challenge be `alpha = 7`. At line row zero,
-take circle `y = 3` and opened source values `(10, -2)`. The inverse
+use illustrative field value `y = 3` and opened source values `(10, -2)`.
+These small `y` values show the algebra; the canonical native coset supplies
+its own fixed coordinates. The inverse
 butterfly computes
 
 ```text
@@ -21,7 +24,9 @@ fold = sum + alpha * (difference / y) = 8 + 7*4 = 36
 ```
 
 At line row one, `y = 5` and pair `(14, -6)` give the same result:
-`8 + 7*(20/5) = 36`. Thus terminal coefficients `[36]` pass at both rows;
+`8 + 7*(20/5) = 36`. Rows two and three can use `(18, -10)` at `y = 7`
+and `(26, -18)` at `y = 11`, respectively, with the same fold. Thus terminal
+coefficients `[36]` pass at all four rows for these pairs;
 `[37]` fails. Over M31, negative small values mean their canonical residues
 modulo `2^31 - 1`. The Lean example uses rationals for readable arithmetic;
 the general theorem works over any field, including QM31.

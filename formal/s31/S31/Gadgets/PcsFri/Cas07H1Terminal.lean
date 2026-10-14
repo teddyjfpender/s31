@@ -66,6 +66,10 @@ structure Profile where
   beta : Nat
   positiveBlowup : 0 < beta
   fits : 1 + beta ≤ k
+  /-- XDM05 rejects `k < H + 2`; here `H = 1`. -/
+  minimumCircleLog : 3 ≤ k
+  /-- XDM05's largest admitted circle log size. -/
+  maximumCircleLog : k ≤ 22
 
 def terminalCoeffLog (profile : Profile) : Nat :=
   profile.k - 1 - profile.beta
@@ -82,6 +86,14 @@ theorem paperR_zero (profile : Profile) :
     ShortTerminalGeometry.paperR
       ⟨profile.k, profile.beta, 1, profile.positiveBlowup, by omega, profile.fits⟩ = 0 := by
   rfl
+
+/-- Smallest native-admissible H=1 shape with a one-word terminal. -/
+def handProfile : Profile := ⟨3, 2, by omega, by omega, by omega, by omega⟩
+
+theorem handProfile_terminal_shape :
+    2 ^ terminalCoeffLog handProfile = 1 ∧
+    2 ^ terminalDomainLog handProfile = 4 := by
+  norm_num [terminalCoeffLog, terminalDomainLog, handProfile]
 
 /-- One raw query is a position in the original circle domain; the terminal
 line position is its right shift by one. -/
