@@ -45,11 +45,24 @@ def controls(package: Path, proof: Path, statement: Path, assignment: Path) -> d
         report = json.loads((package / "cost-report.json").read_text())
         receipt = {"source_nodes_mapped": accepted["source_nodes_mapped"],
                    "source_qm31_rows": accepted["source_qm31_rows"]}
-        for label, change in (
+        certificate_mutations = [
                 ("wrong_fixed_root", lambda c: c.__setitem__("preprocessed_root", "0" * 64)),
                 ("missing_source", lambda c: c["source_map"].pop()),
                 ("wrong_row_interval", lambda c: c["source_map"][-1]["add"].__setitem__(
-                    "end", c["source_map"][-1]["add"]["end"] + 1))):
+                    "end", c["source_map"][-1]["add"]["end"] + 1)),
+        ]
+        if certificate["add_const_compositions"]:
+            certificate_mutations.extend((
+                ("wrong_add_const_value", lambda c: c["add_const_compositions"][0].__setitem__(
+                    "constant", c["add_const_compositions"][0]["constant"] + 1)),
+                ("wrong_add_const_address", lambda c: c["add_const_compositions"][0].__setitem__(
+                    "constant_address", c["n_vars"])),
+                ("wrong_add_const_input", lambda c: c["add_const_compositions"][0][
+                    "lhs_packed_outputs"].__setitem__(0, c["n_vars"])),
+                ("wrong_add_const_row_count", lambda c: c["add_const_compositions"][0][
+                    "add"].__setitem__("end", c["add_const_compositions"][0]["add"]["end"] + 1)),
+            ))
+        for label, change in certificate_mutations:
             altered = copy.deepcopy(certificate)
             change(altered)
             try:
@@ -73,11 +86,29 @@ def controls(package: Path, proof: Path, statement: Path, assignment: Path) -> d
                     raise AssertionError(f"{label} rejected for unexpected reason: {exc}") from exc
                 continue
             raise AssertionError(f"unchanged proof accepted {label}")
+        add_const_source_rejected = False
+        if certificate["add_const_compositions"]:
+            owner = certificate["add_const_compositions"][0]["canonical_id"]
+            aliases = {entry["name"] for entry in certificate["source_map"]
+                       if entry["canonical_id"] == owner}
+            changed = copy.deepcopy(source)
+            target = next(node for node in changed["nodes"]
+                          if node["name"] in aliases and node["op"] == "add_const")
+            target["constant"] += 1
+            source_path.write_text(json.dumps(changed))
+            try:
+                run_native(source_path, assignment, proof, statement,
+                           expected_counts=None)
+            except ValueError:
+                add_const_source_rejected = True
+            else:
+                raise AssertionError("unchanged proof accepted changed add_const source")
     return {"schema": "s31-gate-claim-trace-controls-v1",
             "accepted_program_sha256": accepted["program_sha256"],
             "accepted_source_nodes_mapped": accepted["source_nodes_mapped"],
             "accepted_source_qm31_rows": accepted["source_qm31_rows"],
-            "physical_certificate_mutants_rejected": 3,
+            "physical_certificate_mutants_rejected": len(certificate_mutations),
+            "changed_add_const_source_rejected": add_const_source_rejected,
             "unknown_operand_rejected": True,
             "valid_unused_node_rejected": True}
 

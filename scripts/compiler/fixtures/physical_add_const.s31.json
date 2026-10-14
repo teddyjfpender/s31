@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "name": "physical_add_const",
+  "inputs": [
+    {"name": "a", "kind": "m31", "length": 5, "visibility": "private"}
+  ],
+  "nodes": [
+    {"name": "shifted", "op": "add_const", "lhs": "a", "constant": 7},
+    {"name": "same_shifted", "op": "add_const", "lhs": "a", "constant": 7}
+  ],
+  "assertions": [],
+  "public_outputs": ["shifted"]
+}

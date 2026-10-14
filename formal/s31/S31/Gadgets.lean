@@ -106,6 +106,7 @@ import S31.Gadgets.Air.GateTraceValues
 import S31.Gadgets.Air.GateProducerRoster
 import S31.Gadgets.Air.GateClaimTraceJoin
 import S31.Gadgets.Air.GateSourcePhysicalRows
+import S31.Gadgets.Air.GateAddConstComposition
 import S31.Gadgets.Air.GateChallenge
 import S31.Gadgets.Air.LogUpNumerator
 import S31.Gadgets.Air.LogUpCount

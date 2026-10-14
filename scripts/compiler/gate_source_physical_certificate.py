@@ -22,8 +22,9 @@ def validate(certificate: Any, source: dict, manifest: dict, key: dict,
     if (type(certificate) is not dict or set(certificate) != {
             "schema", "program_sha256", "canonical_ir_sha256",
             "preprocessed_root", "n_vars", "canonical_node_count", "qm31_binary_rows",
-            "source_qm31_rows", "primitive_nodes_checked", "source_map"} or
-            certificate["schema"] != "s31-gate-source-physical-v1" or
+            "source_qm31_rows", "primitive_nodes_checked", "add_const_compositions",
+            "source_map"} or
+            certificate["schema"] != "s31-gate-source-physical-v2" or
             certificate["program_sha256"] != manifest["program_sha256"] or
             certificate["canonical_ir_sha256"] != key["canonical_ir_sha256"] or
             certificate["preprocessed_root"] != key["preprocessed_root"]):
@@ -88,6 +89,39 @@ def validate(certificate: Any, source: dict, manifest: dict, key: dict,
             by_id[index]["canonical_tag"] in {"add", "sub", "mul"}
             for index in range(count)):
         raise ValueError("Gate physical certificate: primitive node count differs")
+    compositions = certificate["add_const_compositions"]
+    if type(compositions) is not list:
+        raise ValueError("Gate physical certificate: add_const composition list missing")
+    source_ids = {node["name"]: node["canonical_id"] for node in nodes}
+    composed: set[int] = set()
+    for composition in compositions:
+        if type(composition) is not dict or set(composition) != {
+                "canonical_id", "lhs_canonical_id", "constant", "constant_address",
+                "lhs_packed_outputs", "output_packed_outputs", "add"}:
+            raise ValueError("Gate physical certificate: malformed add_const composition")
+        owner = composition["canonical_id"]
+        lhs = composition["lhs_canonical_id"]
+        constant = composition["constant"]
+        if (not _integer(owner) or owner >= count or owner in composed or
+                not _integer(lhs) or lhs >= owner or
+                not _integer(constant) or constant == 0 or constant >= 2147483647 or
+                not _integer(composition["constant_address"]) or
+                composition["constant_address"] >= n_vars or
+                by_id[owner]["canonical_tag"] != "add_const" or
+                composition["lhs_packed_outputs"] != by_id[lhs]["packed_outputs"] or
+                composition["output_packed_outputs"] != by_id[owner]["packed_outputs"] or
+                composition["add"] != by_id[owner]["add"] or
+                composition["add"]["end"] - composition["add"]["start"] !=
+                len(composition["output_packed_outputs"])):
+            raise ValueError("Gate physical certificate: add_const physical ports differ")
+        if not any(source_ids[raw["name"]] == owner and raw["op"] == "add_const" and
+                   raw["constant"] == constant and source_ids[raw["lhs"]] == lhs
+                   for raw in source["nodes"]):
+            raise ValueError("Gate physical certificate: add_const differs from source")
+        composed.add(owner)
+    if composed != {index for index in range(count)
+                    if by_id[index]["canonical_tag"] == "add_const"}:
+        raise ValueError("Gate physical certificate: add_const canonical node omitted")
     total = 0
     previous_class_end = 0
     for kind in CLASSES:
