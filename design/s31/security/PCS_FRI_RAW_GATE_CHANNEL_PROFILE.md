@@ -53,6 +53,25 @@ The current source-bound P02 Gate interaction diagnostic admits the legacy
 profile only; its source pin is refreshed, but it is not a raw-profile
 soundness certificate.
 
+### Raw FRI query indices
+
+The [Lean sampler lemma](../../../formal/s31/S31/Gadgets/PcsFri/RawMaskedQuery.lean)
+models the actual low-bit operation after the raw channel's `drawU32s`:
+
+```text
+index = word & (2^k − 1) = word mod 2^k,     0 ≤ k < 32 in the native path.
+```
+
+For any fixed index, exactly `2^(32−k)` of the `2^32` possible raw words map
+to it. The arithmetic lemma also covers `k=32`; native `u32` shifting must
+use `k<32`. It counts all `s`-draw vectors with replacement, so duplicate
+queries cause no exception. The [source guard](../../../scripts/s31_formal_lib/pcs_fri_raw_query.py)
+pins raw prover/verifier selection, the unreduced word path, masking, and
+retention of raw query slots before Merkle-opening deduplication. This is an
+exact finite statement **conditional on independent uniform raw words**.
+Adaptive commitment and PoW choices, correlation across transcript epochs,
+and accepted-oracle agreement still require the BCS/ROM and IOP reduction.
+
 ## Build and migration
 
 ```sh
