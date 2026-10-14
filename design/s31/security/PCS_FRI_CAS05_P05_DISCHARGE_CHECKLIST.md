@@ -56,6 +56,21 @@ source word, and that more than `2n` distinct Fourier evaluations determine
 an `L_n` polynomial. This supplies the coefficient model's exact uniqueness
 step, but CAS05 authenticates sparse samples and still needs the correlated
 agreement and query reduction.
+The [roster-level conditional bridge](../../../formal/s31/S31/Gadgets/PcsFri/PairedRosterDegreeCorrection.lean)
+applies this uniqueness step to every occupied height and column. It requires
+an authenticated whole source oracle, separate bounded original and own-quotient
+candidate polynomials, row sets whose intersection has more than `2n` distinct
+Fourier coordinates, the native two-point line's OOD root, and an explicit
+match between the public claim and interpolant at the OOD coordinate. Under
+those premises each bounded original equals its claimed interpolation plus
+the native line times its own quotient, so its OOD value equals the claim.
+These premises are **not** consequences of the experimental verifier's
+sampled acceptance. In particular, one batched FRI proximity claim does not
+provide separate original and quotient agreement sets. The theorem's
+`howned` is ownership of the entire modeled source domain; sampled XDM04
+openings do not establish it. Its 16-row example checks the threshold by
+hand: original rows `0..11` and quotient rows `3..15` share nine rows,
+exceeding the radius-two threshold of four.
 
 **Discharge test:** prove the exact native circle-basis filtration, two-point
 claim interpolation and row quotient identity, approximate joint agreement
