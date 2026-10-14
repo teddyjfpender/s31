@@ -131,7 +131,7 @@ const AddConstComposition = struct {
     add: Range,
 };
 const PhysicalCertificate = struct {
-    schema: []const u8 = "s31-gate-source-physical-v3",
+    schema: []const u8 = "s31-gate-source-physical-v4",
     program_sha256: []const u8,
     canonical_ir_sha256: []const u8,
     preprocessed_root: []const u8,
@@ -142,6 +142,7 @@ const PhysicalCertificate = struct {
     primitive_nodes_checked: usize,
     add_const_compositions: []const AddConstComposition,
     seven_finalizations: []const SevenFinalization,
+    constant_finalizations: []const ConstantFinalization,
     source_map: []const SourcePhysical,
 };
 const FinalizationGate = struct {
@@ -155,6 +156,13 @@ const SevenFinalization = struct {
     canonical_id: u32,
     constant_address: u32,
     gates: [15]FinalizationGate,
+};
+const ConstantFinalization = struct {
+    canonical_id: u32,
+    constant: u32,
+    constant_address: u32,
+    anchors: [3]FinalizationGate,
+    steps: []const FinalizationGate,
 };
 const PhysicalCertificateResult = struct { source_rows: usize, digest: [32]u8 };
 
@@ -171,30 +179,30 @@ fn finalizationGate(circuit_data: *const circuit.builder.Circuit, pp: *const PP,
         if (index < source_ends[flag] or gate.in0 != in0 or gate.in1 != in1 or
             (expected_out != null and gate.out != expected_out.?)) continue;
         const row = offset + index;
+        const mult = pp.columnValues(circuit.common.preprocessed.QM31_OPS_COLUMN_IDS[7]) orelse
+            return fail("finalization multiplicity missing");
+        if (row >= mult.len or mult[row].toU32() == 0) continue;
         const ids = circuit.common.preprocessed.QM31_OPS_COLUMN_IDS;
         inline for (0..4) |column| {
-            const fixed = pp.columnValues(ids[column]) orelse return fail("seven finalization selector missing");
+            const fixed = pp.columnValues(ids[column]) orelse return fail("finalization selector missing");
             if (row >= fixed.len or fixed[row].toU32() != @intFromBool(column == flag))
-                return fail("seven finalization selector differs from installed row");
+                return fail("finalization selector differs from installed row");
         }
         inline for (0..3) |column| {
-            const fixed = pp.columnValues(ids[4 + column]) orelse return fail("seven finalization address missing");
+            const fixed = pp.columnValues(ids[4 + column]) orelse return fail("finalization address missing");
             const address = if (column == 0) gate.in0 else if (column == 1) gate.in1 else gate.out;
             if (row >= fixed.len or fixed[row].toU32() != address)
-                return fail("seven finalization address differs from installed row");
+                return fail("finalization address differs from installed row");
         }
-        const mult = pp.columnValues(ids[7]) orelse return fail("seven finalization multiplicity missing");
-        if (row >= mult.len or mult[row].toU32() == 0)
-            return fail("seven finalization output lacks active Gate producer");
         const first = trace.traceWidths()[0];
         if (gate.in0 >= values.len or gate.in1 >= values.len or gate.out >= values.len)
-            return fail("seven finalization address exceeds value table");
+            return fail("finalization address exceeds value table");
         const expected = .{ values[gate.in0].toM31Array(), values[gate.in1].toM31Array(), values[gate.out].toM31Array() };
         inline for (0..3) |part| inline for (0..4) |coord| {
             const column = first + part * 4 + coord;
             if (column >= base.columns.len or row >= base.columns[column].values.len or
                 !base.columns[column].values[row].eql(expected[part][coord]))
-                return fail("seven finalization row differs from reconstructed committed base cells");
+                return fail("finalization row differs from reconstructed committed base cells");
         };
         var words: [component.qm31_ops.n_columns]M31 = undefined;
         for (&words, base.columns[first..][0..component.qm31_ops.n_columns]) |*word, column|
@@ -207,11 +215,11 @@ fn finalizationGate(circuit_data: *const circuit.builder.Circuit, pp: *const PP,
         });
         if (!gateYield(lookups[2], (pp.columnValues(ids[6]) orelse unreachable)[row],
             mult[row], words[8..12]))
-            return fail("seven finalization Gate producer lookup differs from row cells");
+            return fail("finalization Gate producer lookup differs from row cells");
         found = .{ .kind = kind, .row = row, .in0 = gate.in0, .in1 = gate.in1, .out = gate.out };
         break;
     }
-    return found orelse fail("seven finalization gate missing");
+    return found orelse fail("finalization gate missing");
 }
 
 fn checkedSevenFinalizations(allocator: std.mem.Allocator, compositions: []const AddConstComposition,
@@ -248,6 +256,128 @@ fn checkedSevenFinalizations(allocator: std.mem.Allocator, compositions: []const
         paths[next] = .{ .canonical_id = entry.canonical_id,
             .constant_address = entry.constant_address, .gates = gates };
         next += 1;
+    }
+    return paths;
+}
+
+fn finalizationProducer(circuit_data: *const circuit.builder.Circuit, pp: *const PP,
+    base: *const trace.BaseTrace, values: []const QM31,
+    source_ends: [3]usize, address: u32) !FinalizationGate {
+    const ids = circuit.common.preprocessed.QM31_OPS_COLUMN_IDS;
+    const multiplicities = pp.columnValues(ids[7]) orelse
+        return fail("constant DAG output multiplicity column missing");
+    var found: ?FinalizationGate = null;
+    inline for (.{ "add", "sub", "mul" }, 0..) |kind, class| {
+        const gates = @field(circuit_data.*, kind).items;
+        const offset = if (class == 0) 0 else if (class == 1)
+            circuit_data.add.items.len else circuit_data.add.items.len + circuit_data.sub.items.len;
+        for (gates[source_ends[class]..], source_ends[class]..) |gate, index| {
+            const row = offset + index;
+            if (gate.out != address or row >= multiplicities.len or
+                multiplicities[row].toU32() == 0) continue;
+            if (found != null) return fail("constant DAG has two active finalization producers");
+            found = try finalizationGate(circuit_data, pp, base, values,
+                source_ends, kind, gate.in0, gate.in1, address);
+        }
+    }
+    return found orelse fail("constant DAG target lacks active finalization producer");
+}
+
+const ConstantPathBuilder = struct {
+    allocator: std.mem.Allocator,
+    circuit_data: *const circuit.builder.Circuit,
+    pp: *const PP,
+    base: *const trace.BaseTrace,
+    values: []const QM31,
+    source_ends: [3]usize,
+    known: std.AutoHashMap(u32, QM31),
+    visiting: std.AutoHashMap(u32, void),
+    steps: std.ArrayListUnmanaged(FinalizationGate) = .empty,
+
+    fn init(allocator: std.mem.Allocator, circuit_data: *const circuit.builder.Circuit,
+        pp: *const PP, base: *const trace.BaseTrace, values: []const QM31,
+        source_ends: [3]usize) !ConstantPathBuilder {
+        var result: ConstantPathBuilder = .{
+            .allocator = allocator, .circuit_data = circuit_data, .pp = pp,
+            .base = base, .values = values, .source_ends = source_ends,
+            .known = std.AutoHashMap(u32, QM31).init(allocator),
+            .visiting = std.AutoHashMap(u32, void).init(allocator),
+        };
+        errdefer result.deinit();
+        try result.known.put(0, QM31.zero());
+        try result.known.put(1, QM31.fromU32Unchecked(1, 0, 0, 0));
+        try result.known.put(2, QM31.fromU32Unchecked(0, 0, 1, 0));
+        return result;
+    }
+
+    fn deinit(self: *ConstantPathBuilder) void {
+        self.known.deinit();
+        self.visiting.deinit();
+        self.steps.deinit(self.allocator);
+    }
+
+    fn derive(self: *ConstantPathBuilder, address: u32, depth: usize) !QM31 {
+        if (self.known.get(address)) |value| return value;
+        if (depth > self.values.len or address >= self.values.len)
+            return fail("constant DAG depth or address exceeds circuit bound");
+        const visiting = try self.visiting.getOrPut(address);
+        if (visiting.found_existing) return fail("constant DAG has a cycle");
+        defer _ = self.visiting.remove(address);
+        const gate = try finalizationProducer(self.circuit_data, self.pp, self.base,
+            self.values, self.source_ends, address);
+        const left = try self.derive(gate.in0, depth + 1);
+        const right = try self.derive(gate.in1, depth + 1);
+        const expected = if (std.mem.eql(u8, gate.kind, "add")) left.add(right) else
+            if (std.mem.eql(u8, gate.kind, "sub")) left.sub(right) else left.mul(right);
+        if (!self.values[address].eql(expected))
+            return fail("constant DAG AIR-derived value differs from reconstructed base cell");
+        try self.steps.append(self.allocator, gate);
+        try self.known.put(address, expected);
+        return expected;
+    }
+};
+
+fn checkedConstantFinalizations(allocator: std.mem.Allocator,
+    compositions: []const AddConstComposition,
+    circuit_data: *const circuit.builder.Circuit, pp: *const PP,
+    base: *const trace.BaseTrace, values: []const QM31,
+    source_ends: [3]usize) ![]ConstantFinalization {
+    const paths = try allocator.alloc(ConstantFinalization, compositions.len);
+    var made: usize = 0;
+    errdefer {
+        for (paths[0..made]) |path| allocator.free(path.steps);
+        allocator.free(paths);
+    }
+    if (compositions.len == 0) return paths;
+    if (circuit_data.output.items.len == 0 or circuit_data.output.items[0] != 2 or
+        values.len <= 2 or !values[0].eql(QM31.zero()) or
+        !values[1].eql(QM31.fromU32Unchecked(1, 0, 0, 0)) or
+        !values[2].eql(QM31.fromU32Unchecked(0, 0, 1, 0)))
+        return fail("constant DAG public roots differ from native anchor values");
+    const anchors: [3]FinalizationGate = .{
+        try finalizationProducer(circuit_data, pp, base, values, source_ends, 0),
+        try finalizationProducer(circuit_data, pp, base, values, source_ends, 1),
+        try finalizationProducer(circuit_data, pp, base, values, source_ends, 2),
+    };
+    if (!std.mem.eql(u8, anchors[0].kind, "add") or anchors[0].in0 != 0 or
+        anchors[0].in1 != 0 or !std.mem.eql(u8, anchors[1].kind, "add") or
+        anchors[1].in0 != 1 or anchors[1].in1 != 0 or
+        !std.mem.eql(u8, anchors[2].kind, "mul") or
+        anchors[2].in0 != 2 or anchors[2].in1 != 1)
+        return fail("constant DAG zero, one, or public u anchor differs");
+    for (compositions) |entry| {
+        var builder = try ConstantPathBuilder.init(allocator, circuit_data, pp, base,
+            values, source_ends);
+        defer builder.deinit();
+        const forced = try builder.derive(entry.constant_address, 0);
+        const scalar = M31.fromCanonical(entry.constant);
+        const expected = QM31.fromM31(scalar, scalar, scalar, scalar);
+        if (!forced.eql(expected))
+            return fail("constant DAG result differs from canonical add_const literal");
+        paths[made] = .{ .canonical_id = entry.canonical_id,
+            .constant = entry.constant, .constant_address = entry.constant_address,
+            .anchors = anchors, .steps = try builder.steps.toOwnedSlice(allocator) };
+        made += 1;
     }
     return paths;
 }
@@ -360,6 +490,12 @@ fn checkedPhysicalRows(allocator: std.mem.Allocator, source: []const u8, ir: *co
     const seven_finalizations = try checkedSevenFinalizations(allocator, add_const_compositions,
         circuit_data, pp, base, values, source_ends);
     defer allocator.free(seven_finalizations);
+    const constant_finalizations = try checkedConstantFinalizations(allocator,
+        add_const_compositions, circuit_data, pp, base, values, source_ends);
+    defer {
+        for (constant_finalizations) |path| allocator.free(path.steps);
+        allocator.free(constant_finalizations);
+    }
     var source_rows: usize = 0;
     for (maps.gate_op_spans.items, 0..) |span, id| {
         if (span.id != id) return fail("canonical QM31 per-op span id changed");
@@ -414,6 +550,7 @@ fn checkedPhysicalRows(allocator: std.mem.Allocator, source: []const u8, ir: *co
             .primitive_nodes_checked = primitive_nodes,
             .add_const_compositions = add_const_compositions,
             .seven_finalizations = seven_finalizations,
+            .constant_finalizations = constant_finalizations,
             .source_map = mapped,
         };
         const encoded = try std.json.Stringify.valueAlloc(allocator, cert, .{});

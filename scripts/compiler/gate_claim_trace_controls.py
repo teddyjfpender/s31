@@ -86,6 +86,17 @@ def controls(package: Path, proof: Path, statement: Path, assignment: Path) -> d
                 ("seven_missing_producer", lambda c: c["seven_finalizations"][0][
                     "gates"].pop()),
             ))
+        if certificate["constant_finalizations"]:
+            certificate_mutations.extend((
+                ("dag_wrong_literal", lambda c: c["constant_finalizations"][0].__setitem__(
+                    "constant", c["constant_finalizations"][0]["constant"] + 1)),
+                ("dag_missing_last_edge", lambda c: c["constant_finalizations"][0][
+                    "steps"].pop()),
+                ("dag_wrong_last_input", lambda c: c["constant_finalizations"][0][
+                    "steps"][-1].__setitem__("in0", 0)),
+                ("dag_wrong_anchor", lambda c: c["constant_finalizations"][0][
+                    "anchors"][2].__setitem__("in1", 0)),
+            ))
         for label, change in certificate_mutations:
             altered = copy.deepcopy(certificate)
             change(altered)
@@ -143,6 +154,7 @@ def controls(package: Path, proof: Path, statement: Path, assignment: Path) -> d
             "joint_in_range_address_edit_rejected": bool(certificate["add_const_compositions"]),
             "changed_add_const_source_rejected": add_const_source_rejected,
             "seven_finalization_mutants_rejected": bool(certificate["seven_finalizations"]),
+            "constant_dag_mutants_rejected": bool(certificate["constant_finalizations"]),
             "unknown_operand_rejected": True,
             "valid_unused_node_rejected": True}
 
