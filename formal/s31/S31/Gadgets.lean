@@ -404,6 +404,7 @@ import S31.Gadgets.PcsFri.SparseP05AcceptedH3Rows
 import S31.Gadgets.PcsFri.SparseP05PaperEnsemble
 import S31.Gadgets.PcsFri.SparseP05TwoQDegree
 import S31.Gadgets.PcsFri.CircleRecursiveBasisDegree
+import S31.Gadgets.PcsFri.CircleFftPolynomialSpace
 import S31.Gadgets.PcsFri.CircleBasisDot
 import S31.Gadgets.PcsFri.CircleBasisM31Embedding
 import S31.Gadgets.PcsFri.CircleH5BasisCells
