@@ -32,6 +32,33 @@ and `y`, `(2*x*y).c1 = 0`. The circle doubling formula has `2*x*y` as its
 new `y` coordinate. Lean also checks `(q²+1) mod 4 = 2`; this arithmetic does
 not substitute for a formal classification of the full circle group.
 
+## Conservative support count
+
+Write `Q=q²`. The modeled QM31 circle has `Q²−1` points. Its raw successful
+set has `(Q−1)²` points, so the conjugate-fixed-`y` target set has exactly
+`2(Q−1)` points. This last equality is [proved from the set complement in
+Lean](../../../formal/s31/S31/Gadgets/PcsFri/ProjectedOodTargetCount.lean).
+
+The [circle power encoding](../../../formal/s31/S31/Gadgets/PcsFri/CirclePowerEncoding.lean)
+maps a point `(x,y)` injectively to `x+i·y`, where `i²=−1` in QM31. Doubling
+becomes squaring, and `k` doublings become powering by `2^k`. A degree-`2^k`
+power equation has at most `2^k` solutions. Lean therefore bounds the
+unshifted h11 bad preimage by `2⁶·2(Q−1)` and the unshifted h5 bad preimage
+by `2¹²·2(Q−1)`. Their union leaves at least
+
+```text
+(Q−1)² − (2⁶ + 2¹²)·2(Q−1)
+```
+
+raw-admissible points; Lean proves this quantity is positive. The broader
+[union-bound interface](../../../formal/s31/S31/Gadgets/PcsFri/ProjectedOodSupportBound.lean)
+handles four shifted h17 claims, 32 h11 claims, and 23 h5 claims if each
+shifted projection is shown to have its stated fiber cap. Under those
+premises, the extra conditioning multiplier after the raw guard for an
+ideal uniform circle draw is below `1+2⁻⁴⁰`. The actual shifted
+point map, selected native evaluator, and Fiat–Shamir seed law still need
+their own refinement and probability argument.
+
 Run the native control with
 `bash formal/s31/tests/run_pcs_fri_projected_ood_guard_native.sh`.
 
