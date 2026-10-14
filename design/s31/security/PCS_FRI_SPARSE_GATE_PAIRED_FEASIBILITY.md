@@ -34,7 +34,7 @@ The release script verifies all package artifact digests, calls native
 the *same* sealed-key, public statement, native STARK, Merkle, FRI, and capture
 admission checks as ordinary verification. It reads the capture only after
 those checks succeed. An invalid key fails before geometry is emitted. Run
-`formal/s31/tests/run_pcs_fri_p05_sparse_accepted_geometry.sh` for the honest
+`bash formal/s31/tests/run_pcs_fri_p05_sparse_accepted_geometry.sh` for the honest
 proof and wrong-key control. It uses a temporary package and proof.
 
 ## Source-bound roster and OOD schedule
