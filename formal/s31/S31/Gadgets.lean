@@ -400,6 +400,8 @@ import S31.Gadgets.PcsFri.SparseP05AcceptedH3Rows
 import S31.Gadgets.PcsFri.SparseP05PaperEnsemble
 import S31.Gadgets.PcsFri.SparseP05TwoQDegree
 import S31.Gadgets.PcsFri.CircleRecursiveBasisDegree
+import S31.Gadgets.PcsFri.CircleBasisDot
+import S31.Gadgets.PcsFri.CircleBasisM31Embedding
 
 /-! Local constraint relations, with arbitrary-witness soundness and honest
 witness completeness. All range and representation premises are explicit. -/

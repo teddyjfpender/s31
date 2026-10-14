@@ -8,6 +8,13 @@ proves the degree bound for **every coefficient slot** in a source-transcribed
 recursive circle evaluator. This is an algebraic bridge. It does not certify
 that an accepted native column or the iterative evaluator realizes the model.
 
+The generic Laurent construction assumes an `i` with `i² = −1`. M31 itself
+has no such element. The concrete mathematical instantiation therefore uses
+CM31 coefficients with each native M31 coefficient embedded as `(a,0)`;
+the [M31 embedding proof](PCS_FRI_CIRCLE_BASIS_DOT.md) makes this cast and
+its QM31 base-value image explicit. It still does not prove Zig's M31 array
+conversion or sampled-value implementation.
+
 ## The native factor order
 
 [`fillEvalFactors`](../../../deps/stwo-zig/src/prover/poly/circle/point_evaluation.zig)
