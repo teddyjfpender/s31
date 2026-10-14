@@ -32,6 +32,11 @@ def one_table_scenario(t: int = 1 << 32, queries: int = 232) -> dict:
 
 
 class StwoUDRTests(unittest.TestCase):
+    def test_default_budget_matches_selected_v01_target(self) -> None:
+        result = gate_udr_ledger(reviewed_shape())
+        self.assertEqual(result["hypothetical_T"], 1 << 64)
+        self.assertIsNone(result["native_proven_security_bits"])
+
     def test_full_composition_domain_and_both_published_formulas(self) -> None:
         result = scenario_arithmetic(one_table_scenario(), 64)
         errors = result["published_round_error_bounds"]

@@ -107,9 +107,9 @@ round error by `T+R`. For `B=2` and `T=2^32`, the quoted unique-decoding
 first-fold term alone contributes more than `2^-71` after this multiplier,
 even with only `R=1` and every other round/collision term omitted. Thus the
 quoted theorem with QM31 and this height cannot certify 96 bits for that
-explicit hash-query budget. The default `T=2^32` in the checker is a
-**hypothetical analysis budget**, not a property of the native prover or an
-established threat model. The `T` limits in the table ignore the other
+explicit hash-query budget. The checker now defaults to the v0.1 selected
+`T=2^64`; the `T=2^32` numbers above are explicitly hypothetical examples,
+not a native security claim. The `T` limits in the table ignore the other
 positive terms and are only necessary ceilings.
 
 ## Missing before any native claim

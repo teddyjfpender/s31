@@ -26,6 +26,7 @@ class StwoMultidomainTests(unittest.TestCase):
 
     def test_first_fold_johnson_envelope_and_udr_options(self) -> None:
         result = multidomain_from_gate(reviewed_shape())
+        self.assertEqual(result["hypothetical_adversary_hash_queries_T"], 1 << 64)
         self.assertFalse(result["proven_release_admissible"])
         self.assertIsNone(result["native_proven_security_bits"])
         self.assertTrue(result["theorem4_general_johnson_floor_exceeds_96_bit_target"])

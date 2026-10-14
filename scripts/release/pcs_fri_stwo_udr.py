@@ -26,6 +26,7 @@ F = Q**4
 # q+1 and q^4-1 affine points. Protocol 1 samples outside C(F_q).
 PAPER_OOD_POINTS = (F - 1) - (Q + 1)
 DOMAIN_CAP = 2**30
+DEFAULT_ADVERSARY_HASH_QUERIES = 1 << 64
 
 
 def exact(value: Fraction) -> str:
@@ -314,7 +315,8 @@ def necessary_tradeoffs(n: int, target_bits: int, t: int,
     return out
 
 
-def gate_udr_ledger(report: dict, target_bits: int = 96, t: int = 1 << 32,
+def gate_udr_ledger(report: dict, target_bits: int = 96,
+                    t: int = DEFAULT_ADVERSARY_HASH_QUERIES,
                     scenario: dict | None = None) -> dict:
     source = ledger_from_gate(report)
     observed = source["source_bound_observations"]
@@ -365,7 +367,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("package", type=Path, help="locally trusted sealed Gate package")
     parser.add_argument("--target-bits", type=int, default=96)
-    parser.add_argument("--adversary-hash-queries", type=int, default=1 << 32)
+    parser.add_argument("--adversary-hash-queries", type=int,
+                        default=DEFAULT_ADVERSARY_HASH_QUERIES)
     parser.add_argument("--hypothetical-scenario", type=Path)
     parser.add_argument("--require-proven", action="store_true")
     args = parser.parse_args(argv)
