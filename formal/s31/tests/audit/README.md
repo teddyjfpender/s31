@@ -62,8 +62,9 @@ and witness-free compilation. Each canonical packed arithmetic node must own
 exactly one gate in its compiler span, except literal-zero addition, which
 must alias the other operand and emit no gate. Rejection controls inject a
 redundant satisfying gate and alter a gate operand.
-Independent source-pinned replays enumerate the input packing, public
-`outputWord` conversions, eight reserved output copies, and constant
+Independent source-pinned replays enumerate the input packing, each
+assertion's masked Eq, public `outputWord` conversions, eight reserved output
+copies, and constant
 finalization. The binding replay checks the first-use inverse-unit constants
 and exact fresh addresses for lanes one through three. A coherent extra
 conversion gate and a satisfying wrong output copy are rejected even when all
@@ -77,7 +78,14 @@ python3 scripts/general_structural_native_witness.py \
   source-relation-certificate.json relation.json public-abi.json \
   assignment.json public-statement.json
 python3 tests/audit/general_structural_native_witness.py
+python3 tests/audit/native_assertion_focus.py
 ```
+
+The assertion focus command runs the Zig graph export and independent replay
+over twelve honest source cases, then checks that a satisfying `Eq(0, 0)`
+substitution drops the nontrivial `assert_eq(out, private_z)` condition yet is
+accepted with only the assertion replay disabled and rejected with it enabled.
+It does not replace the Lean byte gate in the general audit.
 
 The admitted subset is the existing Lean structural **effects** profile with
 one to four M31 lanes and at most eight public words. Its indexed SSA admits
@@ -92,11 +100,10 @@ correspondence,
 or prove PCS/FRI soundness. The Lean `checked_statement_sound` theorem covers
 source/evaluator semantics conditional on the Lean gate; the native address
 and value checks are executable evidence at the remaining compiler seam. The
-two compiler modes could still share a source-independent error in assertion
-lowering or another source-pinned replay. In particular, the audit does not
-yet independently bind each source assertion to its exact native masked
-equality gate operands. This remains short of a universal native compiler
-correctness theorem.
+two compiler modes could still share a source-independent error in source-node
+allocation or another source-pinned replay. The first assertion variable
+address is still compiler-exported. This remains short of a universal native
+compiler correctness theorem.
 
 `general_linear_ssa_effects_certificate.py` runs the strict Lean effects
 certificate gate on the production affine/assertion fixture and rejects

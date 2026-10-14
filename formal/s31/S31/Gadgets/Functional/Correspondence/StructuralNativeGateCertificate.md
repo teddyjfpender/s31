@@ -37,11 +37,19 @@ acceptance. This removes a separate arithmetic assumption at the local
 polynomial-to-gate layer. The selector/address cells and witness values must
 still be authenticated to the actual committed trace and proof.
 
-For a short-lane equality assertion, Zig may lower `assert_eq(a, b)` as
+For a short-lane equality assertion, Zig lowers `assert_eq(a, b)` as
 `diff = a - b`, `masked = diff .* (1, 1, 0, 0)`, and `masked = 0`.
 `masked_assertion_sound` proves from those three equations that both active
 lanes of `a` equal `b`. `checkAssertions` checks the resulting equality for
 every assertion, including an assertion on a node unused by the output.
+The exported assertion replay independently checks these exact operands,
+fresh variable addresses, first-use mask constant, and Eq row. In the
+three-input two-lane example, `z` is wire `21`: the assertion allocates
+`Sub(21, 21, 22)`, mask `(1, 1, 0, 0)` at `23`,
+`PointwiseMul(22, 23, 24)`, then `Eq(24, 0)`. For four lanes, it checks the
+direct `Eq(lhs, rhs)` and requires zero new arithmetic gates or variables.
+An always-true `Eq(0, 0)` can satisfy all arithmetic and old span checks
+while failing to enforce the source assertion; exact replay rejects it.
 
 ## Inspect the exact native graph
 
@@ -114,17 +122,16 @@ phase cursors, and padded rows shifted, is rejected; so is a satisfying but
 incorrect zero-padding copy source. The graph's private value table still
 must be handled as sensitive data.
 
-These concrete checks provide address/value, gate, and port evidence for
-**one supplied assignment**, plus equality of each asserted source value.
-The artifact is an executable certificate, not a Lean proof term.
-[`StructuralNativeTraceDecoder.lean`](StructuralNativeTraceDecoder.md) now
+These concrete checks provide address/value, gate, port, and assertion-gate
+evidence for **one supplied assignment**. The artifact is an executable
+certificate. [`StructuralNativeTraceDecoder.lean`](StructuralNativeTraceDecoder.md)
 parses its direct-Gate projection and constructs `NativeTrace` from supplied
-concrete values and an accepted SSA certificate. A proof that the projection
-and the checked input/binding conversion replay are the installed compiler's
-actual bytes and authenticated AIR witness is still needed. The checker does not yet
-independently replay the precise native gate operands and masking sequence for
-each source assertion; matching source values and an Eq row count alone do not
-establish that the proof enforces the assertion on its intended wires.
+concrete values and an accepted SSA certificate. The first assertion variable
+address is compiler-exported: this replay proves the gate roster within each
+assertion span and its continuity into public binding, while complete
+source-node allocation ownership remains open. A proof that the projection
+and checked gate roster are the installed compiler's actual bytes and
+authenticated AIR witness remains a separate obligation.
 
 ## From native gates to preprocessed AIR rows
 

@@ -43,6 +43,11 @@ CASES = (
      b"let u = t .* c; let z = u - b; assert_eq(z,z); z }",
      {"public_inputs": {"a": [P - 1, 7]}, "private_inputs": {"b": [2, 3], "c": [4, 5]},
       "public_outputs": {"z": [2, 47]}}),
+    ("two_assertions", b"circuit twice(public x: [m31; 2], private y: [m31; 2]) "
+     b"-> public [m31; 2] { let z = x + y; assert_eq(z,z); "
+     b"assert_eq(x,x); z }",
+     {"public_inputs": {"x": [2, 3]}, "private_inputs": {"y": [4, 5]},
+      "public_outputs": {"z": [6, 8]}}),
     ("four_lanes_constants", b"circuit consts(public x: [m31; 4], "
      b"private y: [m31; 4]) -> public [m31; 4] { "
      b"let t = x + splat<4>(7_m31); let z = t .* splat<4>(3_m31); "
@@ -374,6 +379,27 @@ def main() -> None:
                     raise AssertionError(f"wrong {label} rejection: {exc}") from exc
             else:
                 raise AssertionError(f"coherent {label} mutation was accepted")
+        _, assertion_source, assertion_assignment = next(
+            case for case in CASES if case[0] == "two_public")
+        assertion_raw = case_bytes(assertion_source, assertion_assignment)
+        assertion_inputs, assertion_nodes = checked_words(assertion_raw)
+        assertion_exported = native_check(
+            assertion_raw, assertion_inputs, assertion_nodes, work, export_graph=True)
+        changed = copy.deepcopy(assertion_exported)
+        changed["eq"][0] = {"in0": 0, "in1": 0}
+        rebuild_padded(changed)
+        # An always-true Eq preserves the old audit's phase, value, producer,
+        # and padded-row checks while dropping the nontrivial assertion that
+        # the computed public result equals the private z input.
+        with patch("scripts.native_graph_certificate.check_assertions", lambda *_: None):
+            check_graph(changed, assertion_raw, assertion_inputs, assertion_nodes)
+        try:
+            check_graph(changed, assertion_raw, assertion_inputs, assertion_nodes)
+        except ValueError as exc:
+            if "native assertion:" not in str(exc):
+                raise AssertionError(f"wrong assertion Eq rejection: {exc}") from exc
+        else:
+            raise AssertionError("always-true assertion Eq was accepted")
         # Keep the graph equation and its finalization span coherent while
         # adding a satisfiable gate. Equation-only and phase checks accept
         # this shape; exact constant/guess enumeration must reject it.
