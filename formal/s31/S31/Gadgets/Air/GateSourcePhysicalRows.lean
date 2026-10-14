@@ -29,8 +29,11 @@ structure SourceNode where
 native certificate's checked CSE aliases, without assuming unique names. -/
 structure Certificate where
   sourceNodes : List SourceNode
+  canonicalCount : Nat
   canonicalRows : Nat → List Nat
   physical : Nat → PhysicalRow
+  coversCanonical : ∀ id < canonicalCount,
+    ∃ node ∈ sourceNodes, node.canonicalId = id
   sourceMap : ∀ node ∈ sourceNodes,
     node.physicalRows = canonicalRows node.canonicalId
   fixedSelector : ∀ node ∈ sourceNodes, ∀ row ∈ node.physicalRows,
@@ -62,6 +65,24 @@ theorem every_source_row_sound (cert : Certificate)
   exact physical_row_sound (cert.physical index)
     (cert.fixedSelector node hnode index hindex)
     (hair node hnode index hindex)
+
+/-- If the certificate covers every canonical ID, the local semantics holds
+for every row of every canonical node, even when several source names alias
+that node. The native checker separately validates this coverage. -/
+theorem every_canonical_row_sound (cert : Certificate)
+    (hair : ∀ node ∈ cert.sourceNodes, ∀ index ∈ node.physicalRows,
+      ∀ r ∈ S31.Gadgets.Air.NativeQm31Air.residuals
+        (cert.physical index).flags (cert.physical index).lhs
+        (cert.physical index).rhs (cert.physical index).output, r = 0)
+    (id : Nat) (hid : id < cert.canonicalCount)
+    (index : Nat) (hindex : index ∈ cert.canonicalRows id) :
+    (cert.physical index).output = evaluate (cert.physical index).op
+      (cert.physical index).lhs (cert.physical index).rhs := by
+  obtain ⟨node, hnode, hname⟩ := cert.coversCanonical id hid
+  have hrow : index ∈ node.physicalRows := by
+    rw [cert.sourceMap node hnode, hname]
+    exact hindex
+  exact every_source_row_sound cert hair node hnode index hrow
 
 /-- Two names that resolve to the same canonical node cannot silently claim
 different physical row lists. -/

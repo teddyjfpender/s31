@@ -55,8 +55,12 @@ def validate(certificate: Any, source: dict, manifest: dict, key: dict,
                 type(node["packed_outputs"]) is not list or
                 not all(_integer(address) and address < n_vars
                         for address in node["packed_outputs"]) or
+                type(span) is not dict or
                 span.get("name") != name or
-                span.get("canonical_id") != node["canonical_id"]):
+                span.get("canonical_id") != node["canonical_id"] or
+                not _integer(span.get("qm31_start")) or
+                not _integer(span.get("qm31_end")) or
+                span["qm31_start"] > span["qm31_end"]):
             raise ValueError(f"Gate physical certificate: source map differs at {index}")
         owner = node["canonical_id"]
         if owner in by_id:
