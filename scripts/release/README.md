@@ -144,6 +144,14 @@ and selected `T=2^64`, the quoted paper batching term crosses the 96-bit
 work-factor target at `M=65`. The actual native proof has no identified paper
 ensemble width `M`; `--require-paper-mapping` fails closed.
 
+The [raw Gate BCS transcript audit](pcs_fri_raw_gate_bcs.py) source-pins its
+distinct proof-byte selector, verifier challenge/commitment epochs, PoW
+barriers, whole-block rejection and nine raw query hash blocks. Its
+[security review](../../design/s31/security/PCS_FRI_RAW_GATE_BCS_AUDIT.md)
+separates exact fixed-prefix counts and hypothetical 256-bit paper collision
+arithmetic from the still-open native adaptive BCS and P09 bound.
+`--require-adaptive-bcs` fails closed.
+
 ## Formal receipt
 
 Run the Lean source-binding check, full build, and kernel replay on a clean

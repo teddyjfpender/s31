@@ -49,6 +49,11 @@ transcripts. An attacker can select commitments and valid PoW continuations,
 and the number of tests and hash queries must be charged in a full theorem.
 The native PCS/FRI P07 and P09 blockers stay open; no native proven security
 bits follow from this profile alone.
+The [raw Gate transcript audit](PCS_FRI_RAW_GATE_BCS_AUDIT.md) now pins the
+proof-byte entrypoint, four commitment epochs, two PoW barriers, whole-block
+field rejection, and the nine raw hash blocks used by 70 FRI queries. It also
+calculates the paper-only `lambda=256` collision term at selected `T=2^64`;
+it does not instantiate that term for the native adaptive protocol.
 The current source-bound P02 Gate interaction diagnostic admits the legacy
 profile only; its source pin is refreshed, but it is not a raw-profile
 soundness certificate.
