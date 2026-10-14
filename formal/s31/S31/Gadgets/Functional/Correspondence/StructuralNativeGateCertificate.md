@@ -146,9 +146,15 @@ address is now independently derived from input and source-node allocation.
 For this admitted fragment and supplied assignment, the independent replays
 enumerate the unpadded input, source-node, assertion, public binding, reserved
 output-copy, and constant-finalization phases. They remain source-pinned
-executable checks. A proof that the projection and checked gate roster are the
-installed compiler's actual bytes and authenticated AIR witness remains a
-separate obligation.
+executable checks. The caller now pins five direct entry files: export source,
+build declarations, module import table, and relation parser; checks the exact
+child corpus file bytes before and after running Zig; and retains one graph byte
+buffer for both the audit and any saved artifact. This removes the earlier
+second-read gap where a file replacement after parsing could change the saved
+artifact. The child-input check assumes no concurrent temporary replacement
+and restoration by a same-user writer. The five pins do not cover transitive
+Zig imports. These source and local-process checks do not attest the installed
+binary, formally derive Zig execution, or authenticate committed AIR rows.
 
 ## From native gates to preprocessed AIR rows
 

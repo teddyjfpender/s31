@@ -88,7 +88,7 @@ def main() -> None:
         for label, source, assignment in CASES:
             raw = case_bytes(source, assignment)
             inputs, nodes = checked_words(raw)
-            graph = native_check(raw, inputs, nodes, work, export_graph=True)
+            graph, _ = native_check(raw, inputs, nodes, work, export_graph=True)
             check_graph(graph, raw, inputs, nodes)
             if label == "three_inputs":
                 selected = raw, inputs, nodes, graph

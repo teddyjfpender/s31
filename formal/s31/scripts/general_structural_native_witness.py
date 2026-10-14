@@ -21,6 +21,9 @@ import tempfile
 from pathlib import Path
 
 from scripts.native_graph_certificate import check_graph
+from scripts.native_export_custody import (
+    check_corpus_bytes, check_corpus_file, check_export_entry_sources,
+)
 
 FORMAL = Path(__file__).resolve().parents[1]
 ROOT = FORMAL.parents[1]
@@ -157,7 +160,8 @@ def checked_words(raw: dict[str, bytes]) -> tuple[list[dict], list[dict]]:
 def native_check(raw: dict[str, bytes], inputs: list[dict], nodes: list[dict],
                  work: Path, *, tamper_extra_gate_for_test: bool = False,
                  tamper_changed_gate_for_test: bool = False,
-                 export_graph: bool = False) -> dict | None:
+                 export_graph: bool = False) -> tuple[dict, bytes] | None:
+    check_export_entry_sources()
     corpus = {"schema": "s31-structural-m31-native-witness-corpus-v1",
               "cases": [{"label": "source-derived-generic", "relation": raw["relation"].decode(),
                          "assignment": raw["assignment"].decode(),
@@ -170,19 +174,26 @@ def native_check(raw: dict[str, bytes], inputs: list[dict], nodes: list[dict],
     if export_graph:
         corpus["export_graph_path"] = str(work / "native-graph.json")
     path = work / "native-corpus.json"
-    path.write_text(json.dumps(corpus, sort_keys=True, separators=(",", ":")) + "\n")
+    planned_bytes = (json.dumps(corpus, sort_keys=True, separators=(",", ":")) + "\n").encode()
+    check_corpus_bytes(planned_bytes, raw)
+    path.write_bytes(planned_bytes)
+    check_corpus_file(path, planned_bytes)
     result = subprocess.run([
         "zig", "build", "--build-file", str(S31 / "build.zig"),
         "structural-native-witness-corpus", "-j1", "--", str(path),
     ], cwd=ROOT, capture_output=True, text=True, check=False, timeout=240)
-    if result.returncode or json.loads(result.stdout) != {"checked": 1}:
+    if result.returncode:
         raise ValueError("native source-node/witness check rejected: " +
                          result.stderr.strip()[-2000:])
+    check_corpus_file(path, planned_bytes)
+    if json.loads(result.stdout) != {"checked": 1}:
+        raise ValueError("native export custody: Zig corpus result differs")
     if export_graph:
         path = work / "native-graph.json"
         if path.stat().st_size > 8 << 20:
             raise ValueError("native graph artifact exceeds bounded byte limit")
-        return json.loads(path.read_bytes())
+        graph_bytes = path.read_bytes()
+        return json.loads(graph_bytes), graph_bytes
     return None
 
 
@@ -198,9 +209,8 @@ def check(paths: list[Path], graph_out: Path | None = None) -> dict[str, int | s
             captured[name] = path
         lean_check(captured)
         inputs, nodes = checked_words(raw)
-        graph = native_check(raw, inputs, nodes, work, export_graph=True)
+        graph, graph_bytes = native_check(raw, inputs, nodes, work, export_graph=True)
         summary = check_graph(graph, raw, inputs, nodes)
-        graph_bytes = (work / "native-graph.json").read_bytes()
         if graph_out is not None:
             # The graph contains every private witness value. Never replace an
             # existing path or follow its final symlink; create it mode 0600.
