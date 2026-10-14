@@ -59,7 +59,7 @@ OBLIGATIONS = (
         "gap_kind": "unproven_native_refinement",
         "published_requirement": "Stwo multi-domain circle FRI and batch evaluation: all native lifted roots and cross-domain openings realize one cross-domain oracle relation",
         "published_anchor": STWO,
-        "partial_evidence": ["scripts/s31_formal_lib/pcs_fri_projection.py", "formal/s31/S31/Gadgets/PcsFri/MerkleOpening.lean", "formal/s31/S31/Gadgets/PcsFri/LayerAcceptance.lean", "src/frontends/s31/runtime/pcs_lifted_capture_admission.zig", "formal/s31/tests/pcs_fri_lifted_capture_native.zig", "design/s31/security/PCS_FRI_GATE_LIFTED_PROJECTION.md"],
+        "partial_evidence": ["scripts/s31_formal_lib/pcs_fri_projection.py", "formal/s31/S31/Gadgets/PcsFri/CanonicalCircleFoldIndex.lean", "formal/s31/S31/Gadgets/PcsFri/MerkleOpening.lean", "formal/s31/S31/Gadgets/PcsFri/LayerAcceptance.lean", "src/frontends/s31/runtime/pcs_lifted_capture_admission.zig", "formal/s31/tests/pcs_fri_lifted_capture_native.zig", "design/s31/security/PCS_FRI_GATE_LIFTED_PROJECTION.md"],
         "missing_discharge": "the accepted-capture gate replays four roots and sampled lifted-column consistency, but a semantic Zig-to-model extraction, complete committed-oracle ownership, all cross-domain quotient openings, collision reduction and proximity theorem remain open",
     },
     {

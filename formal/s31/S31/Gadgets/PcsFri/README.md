@@ -36,9 +36,15 @@ index geometry for two canonical one-bit FRI folds. Adjacent bit-reversed
 circle rows are opposite-sign members of one half-coset pair, so the first
 circle-to-line fold uses one line row without doubling its group index. The
 next adjacent line rows double to the same index in the next canonical line
-domain. These are group-index identities over the modeled circle; the native
-point arithmetic, row openings, challenge order and full FRI theorem remain
-separate obligations.
+domain. Its general sparse-projection theorem also shows that projecting a
+raw row from log size `k` to `k-i` yields the source circle index multiplied
+by `2^i`, for every `i<k≤30`. This is the group-index form of the lifted
+Merkle row formula. These are group-index identities over the modeled circle;
+the native point arithmetic, row openings, challenge order and full FRI
+theorem remain separate obligations.
+For example, a raw adjacent pair `90528/90529` at log size 17 projects to
+`1414/1415` at log size 11 and `22/23` at log size 5. The two rows remain
+adjacent, and the group indices are multiplied by `2^6` and `2^12`.
 
 [`NativeQueryBatch.lean`](NativeQueryBatch.lean) models the selected M31
 channel's eight-word output batches. For any number of requested raw queries
