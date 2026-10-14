@@ -96,6 +96,11 @@ function allocates distinct event ordinals for a strictly descending fold
 height roster and both line tracks. Its two-height report is illustrative;
 the production roster and wire must be frozen together before implementing
 native dispatch.
+The currently accepted native path draws DEEP randomness after sampled-value
+absorption. This *new versioned* paired candidate draws one common batch
+`lambda` at that same relative point, replacing the legacy DEEP draw. Its
+algebra, FRI relation and round-error ledger require a new proof; old proof
+bytes and challenge values cannot be reused.
 
 There is a current hash-profile mismatch to resolve deliberately: production
 Gate source roots use `Blake2sPlainMerkleHasher`, while the CAS09 experimental

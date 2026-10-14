@@ -78,6 +78,7 @@ class FramedBcsV2Tests(unittest.TestCase):
         plan = candidate_paired_gate_plan((17, 16, 15))
         names = [step.name for step in plan]
         self.assertEqual([step.event for step in plan], list(range(len(plan))))
+        self.assertEqual(names[names.index("sampled_values") + 1], "batch_lambda")
         self.assertEqual([name for name in names if name in {
             "fixed_root", "main_root", "interaction_root", "composition_root"}],
             ["fixed_root", "main_root", "interaction_root", "composition_root"])
