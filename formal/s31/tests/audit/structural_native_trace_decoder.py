@@ -73,6 +73,28 @@ def main() -> None:
                 raise AssertionError(f"{label}: wrong rejection boundary: {reason}")
             print(f"{label}: Zig graph accepted; name permutation rejected")
 
+            if label == "erased_identities":
+                # The second source input participates only in assert_eq(y,y).
+                # With an all-zero native y port, the old runtime value loader's
+                # missing-row fallback supplied the same zeros and accepted.
+                zero_assignment = {
+                    "public_inputs": {"x": [2, 3]},
+                    "private_inputs": {"y": [0, 0]},
+                    "public_outputs": {"z": [2, 3]},
+                }
+                zero_raw = case_bytes(source, zero_assignment)
+                zero_inputs, zero_nodes = checked_words(zero_raw)
+                zero_graph, zero_bytes = native_check(
+                    zero_raw, zero_inputs, zero_nodes, work, export_graph=True)
+                check_graph(zero_graph, zero_raw, zero_inputs, zero_nodes)
+                lean_check(work, source, zero_raw["certificate"], zero_bytes,
+                           [[2, 3], [0, 0]], [2, 3], True)
+                reason = lean_check(work, source, zero_raw["certificate"], zero_bytes,
+                                    [[2, 3]], [2, 3], False)
+                if "concrete input row count differs" not in reason:
+                    raise AssertionError(f"zero-input omission: wrong rejection: {reason}")
+                print("erased_identities: omitted zero input row rejected")
+
 
 if __name__ == "__main__":
     main()

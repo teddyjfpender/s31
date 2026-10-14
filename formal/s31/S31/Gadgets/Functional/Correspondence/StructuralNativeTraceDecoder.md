@@ -54,6 +54,9 @@ accepts actual Zig-exported graphs for a commutative common subexpression and
 two erased identity steps. In both cases, exchanging the same-length source-map
 names of the two inputs while preserving IDs, addresses, gates, and values is
 rejected specifically by the new source-map name check.
+The standalone runtime control also checks that its concrete input-row roster
+has exactly the parsed SSA input count. Omitting an all-zero private input row
+is rejected even though a missing row would otherwise evaluate to zero.
 
 ## What the checker reads
 

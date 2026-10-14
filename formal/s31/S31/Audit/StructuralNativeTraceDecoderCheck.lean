@@ -35,6 +35,9 @@ private def checkN (n : Nat) (hn : n ≤ 4) (sourceBytes : List Nat)
       IO.eprintln s!"rejected: {message}"
       return 1
   | .ok checked =>
+      if rows.length != checked.ssa.inputs.length then
+        IO.eprintln "rejected: concrete input row count differs from parsed source SSA"
+        return 1
       IO.println s!"accepted: {checked.ssa.inputs.length} inputs, {checked.ssa.nodes.length} source nodes, {n} lanes"
       return 0
 
