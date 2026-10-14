@@ -331,7 +331,9 @@ pub fn main() !void {
         return error.UnsupportedRawChannelCommand;
     if (parsed.value.proof_mode == .blinded and
         !std.mem.eql(u8, command, "check") and !std.mem.eql(u8, command, "run") and
-        !std.mem.eql(u8, command, "inspect") and !std.mem.eql(u8, command, "prove"))
+        !std.mem.eql(u8, command, "inspect") and
+        !std.mem.eql(u8, command, "inspect-optimizer") and
+        !std.mem.eql(u8, command, "prove"))
         return error.UnsupportedBlindingCommand;
     if (chip_mode and sourceChipSpec(parsed.value) == null)
         return error.UnsupportedChipRelation;
@@ -348,6 +350,21 @@ pub fn main() !void {
         printWords(words);
     } else if (std.mem.eql(u8, command, "inspect") and args.len == 2) {
         try inspect(allocator, parsed.value);
+    } else if (std.mem.eql(u8, command, "inspect-optimizer") and args.len == 2) {
+        var ir = try s31.canonical.build(allocator, parsed.value);
+        defer ir.deinit();
+        const receipt = (try s31.optimizer_correspondence.check(allocator, embedded_source, &ir)) orelse
+            return error.UnsupportedOptimizerCorrespondenceFragment;
+        const encoded = try std.json.Stringify.valueAlloc(allocator, .{
+            .schema = receipt.schema,
+            .program_sha256 = &receipt.program_sha256,
+            .canonical_ir_sha256 = &receipt.canonical_ir_sha256,
+            .source_nodes = receipt.source_nodes,
+            .canonical_nodes = receipt.canonical_nodes,
+            .aliases = receipt.aliases,
+        }, .{});
+        defer allocator.free(encoded);
+        std.debug.print("{s}\n", .{encoded});
     } else if (std.mem.eql(u8, command, "inspect-topology") and args.len == 2 and direct_mode and !chip_mode) {
         try inspectDirectTopology(allocator, parsed.value);
     } else if (std.mem.eql(u8, command, "inspect-gate-topology") and args.len == 2 and !direct_mode and !chip_mode and !sparse_mode and !wide_mode) {
@@ -518,7 +535,7 @@ fn parseInspectStep(args: []const []const u8, base_len: usize) !u32 {
 }
 
 fn usage() error{InvalidArguments} {
-    std.debug.print("usage: s31-program check | inspect | inspect-topology (bounded direct-gate only) | inspect-gate-topology (bounded generic Gate only) | inspect-physical-rows ASSIGNMENT.json | inspect-physical-root ASSIGNMENT.json | inspect-main-root-from-columns MAIN.json (public bounded direct-gate only) | run ASSIGNMENT.json | prove ASSIGNMENT.json PROOF\n", .{});
+    std.debug.print("usage: s31-program check | inspect | inspect-optimizer (pure field audit) | inspect-topology (bounded direct-gate only) | inspect-gate-topology (bounded generic Gate only) | inspect-physical-rows ASSIGNMENT.json | inspect-physical-root ASSIGNMENT.json | inspect-main-root-from-columns MAIN.json (public bounded direct-gate only) | run ASSIGNMENT.json | prove ASSIGNMENT.json PROOF\n", .{});
     std.debug.print("       inspect-fixed-root-from-columns FIXED.json (direct-gate diagnostic, explicit 8x512 canonical M31 columns)\n", .{});
     std.debug.print("       prove-for-external-verification ASSIGNMENT.json PROOF (record direct-gate v2 only; output is UNVERIFIED until separate native verifier accepts)\n", .{});
     std.debug.print("       recurse-check ASSIGNMENT.json CHILD-PROOF CHILD-KEY.json | recurse-prove ASSIGNMENT.json CHILD-PROOF OUTER-PROOF CHILD-KEY.json [--low-memory]\n", .{});

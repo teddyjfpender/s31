@@ -16,6 +16,10 @@ from package.context import (
     standard_library_lock, text_interface, write_json,
 )
 from package.verify import verify_package
+from package.optimizer_receipt import (
+    ARTIFACT as OPTIMIZER_ARTIFACT, SCHEMA as OPTIMIZER_SCHEMA,
+    eligible as optimizer_eligible, validate as validate_optimizer_receipt,
+)
 
 
 def _key_schema(source: dict, lowering: str, privacy: dict | None,
@@ -59,6 +63,7 @@ def build_json(source_path: Path, output: Path, lowering: str = "gate",
         raise ValueError("FRI fold step 4 requires gate or sparse-wide-gate lowering; supported steps are 1 and 4")
     source_path = source_path.resolve()
     source, data = load_source(source_path)
+    optimizer_enabled = optimizer_eligible(source) and lowering not in {"sha-joint", "sha-shift", "sha-fused"}
     if channel_profile not in {"legacy", "raw-blake2s-rejection-v1"}:
         raise ValueError("unknown S31 channel profile")
     raw_gate = channel_profile == "raw-blake2s-rejection-v1"
@@ -241,12 +246,19 @@ def build_json(source_path: Path, output: Path, lowering: str = "gate",
         )
         if raw_gate:
             invoke(str(verifier), "check-key", str(staging / "verification-key.json"))
+        if optimizer_enabled:
+            receipt = json.loads(invoke(str(prover), "inspect-optimizer"))
+            validate_optimizer_receipt(receipt, source, sha256(data),
+                                       inspection["canonical_ir_sha256"])
+            write_json(staging / OPTIMIZER_ARTIFACT, receipt)
         write_json(staging / "public-abi.json", abi(source, lowering))
         write_json(staging / "cost-report.json", inspection)
         artifacts = [
             "source.s31.json", "verification-key.json", "public-abi.json",
             "cost-report.json", f"bin/{prover.name}", f"bin/{verifier.name}",
         ]
+        if optimizer_enabled:
+            artifacts.append(OPTIMIZER_ARTIFACT)
         if lowering in {"direct-gate", "direct-chip"}:
             artifacts.append("component-manifest.json")
         if lowering == "gate" and privacy is None:
@@ -275,6 +287,8 @@ def build_json(source_path: Path, output: Path, lowering: str = "gate",
             "optimize": "ReleaseFast",
             "artifacts": {item: file_hash(staging / item) for item in artifacts},
         }
+        if optimizer_enabled:
+            manifest["optimizer_correspondence_schema"] = OPTIMIZER_SCHEMA
         if raw_gate:
             manifest["channel_profile"] = channel_profile
         if recursive_option:
