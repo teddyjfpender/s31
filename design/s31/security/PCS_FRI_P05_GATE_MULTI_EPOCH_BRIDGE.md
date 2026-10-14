@@ -16,9 +16,13 @@ For each source height, the plan reserves one **original degree-test track**
 per committed column and one **own-quotient degree-test track** per OOD claim.
 The latter multiplicity matters: a column with two mask samples needs two
 quotients but only one original. Every column, including all eight composition
-columns, receives an explicit tree/column identity, source height, degree
-bound, claim interval, and track slots. Source heights sort descending for the
-future multi-domain insertion schedule; the order within one height remains
+columns, receives an explicit tree/column identity, FRI-extended source
+height, pre-blowup commit input log, claim interval, and track slots. The
+input log is recovered because pinned `CommitmentSchemeVerifier.commit` adds
+FRI blowup before storing column logs, and `verifyValuesImpl` copies those
+stored logs into `ProofCapture`. This metadata is not an independently
+verified degree bound. Source heights sort descending for the future
+multi-domain insertion schedule; the order within one height remains
 fixed, main, interaction, composition.
 
 ## Why the four roots cannot be flattened

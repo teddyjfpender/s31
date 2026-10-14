@@ -25,8 +25,10 @@ pub const SourceColumn = struct {
     tree_index: usize,
     column_index: usize,
     source_log_size: u32,
-    /// A separate original and own-quotient track must cover this source.
-    degree_test_log_size: u32,
+    /// Log size supplied to native PCS commit before FRI blowup. A future
+    /// protocol must independently test the original and own quotient at the
+    /// appropriate degree; this metadata does not perform that test.
+    committed_input_log_size: u32,
     /// Independent original track within this source-height batch.
     original_slot: usize,
     /// One own-quotient track for each verifier-owned OOD claim. The source
@@ -114,7 +116,11 @@ pub fn derive(
             .column_count = logs.len,
         };
         for (logs, 0..) |log, index| {
-            const degree_log = std.math.sub(u32, log, pcs.fri_config.log_blowup_factor) catch
+            // `CommitmentSchemeVerifier.commit` adds FRI blowup before storing
+            // `tree.column_log_sizes`; `columnLogSizes` copies those stored
+            // logs and `verifyValuesImpl` copies them into ProofCapture.
+            // This subtraction recovers the input log, not a tested degree.
+            const input_log = std.math.sub(u32, log, pcs.fri_config.log_blowup_factor) catch
                 return error.InvalidP05GatePlan;
             if (log > pcs.trace_lifting_log_size)
                 return error.InvalidP05GatePlan;
@@ -148,7 +154,7 @@ pub fn derive(
                 .tree_index = tree_index,
                 .column_index = index,
                 .source_log_size = log,
-                .degree_test_log_size = degree_log,
+                .committed_input_log_size = input_log,
                 .original_slot = buckets[bucket_at].original_tracks,
                 .first_own_quotient_slot = buckets[bucket_at].own_quotient_tracks,
                 .first_claim = first_claim,
