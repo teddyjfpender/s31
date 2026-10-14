@@ -165,6 +165,55 @@ def build_command(snapshot: Path, manifest: dict, output: Path, jobs: int) -> li
     return result
 
 
+def accepted_gate_geometry(geometry: dict, proof_control: dict,
+                           rebuilt_verifier_sha256: str) -> dict:
+    """Join one successful rebuilt-verifier run to its conditional P01 domain.
+
+    This is a proof-acceptance witness for the *native* FRI geometry, not an
+    identification of the paper's original-plus-quotient oracle domain.
+    """
+    gate = geometry.get("gate_final_domain", {})
+    checks = geometry.get("package_checks", {})
+    log_size = gate.get("fri_input_domain_log")
+    required_gate = ("fri_input_degree_bound_log",
+                     "candidate_paper_protocol4_D0_if_N_is_trace_rows",
+                     "native_fri_domain_equals_candidate_paper_protocol4_D0")
+    digests = (proof_control.get("proof_sha256"), proof_control.get("statement_sha256")) \
+        if isinstance(proof_control, dict) else ()
+    if (gate.get("status") != "conditional_source_bound_geometry" or
+            checks.get("native_check_key") != "accepted" or
+            geometry.get("status") != "incomplete" or
+            geometry.get("proven_release_admissible") is not False or
+            any(not isinstance(value, str) or not re.fullmatch("[0-9a-f]{64}", value)
+                for value in (*digests, rebuilt_verifier_sha256)) or
+            len(digests) != 2 or
+            any(key not in gate for key in required_gate) or
+            any(key not in checks for key in ("verification_key_sha256", "package_manifest_sha256")) or
+            "engine_gitlink" not in geometry.get("source_binding", {}) or
+            type(log_size) is not int or not 0 <= log_size <= 30 or
+            type(gate.get("fri_input_domain_rows")) is not int or
+            gate["fri_input_domain_rows"] != 1 << log_size or
+            gate["fri_input_domain_rows"] != geometry.get("theorem_inputs", {}).get("D_final_fri_domain")):
+        raise ValueError("accepted Gate proof and conditional native geometry do not join")
+    return {
+        "status": "accepted_native_proof_with_conditional_source_geometry",
+        "native_fri_input_domain_rows": gate["fri_input_domain_rows"],
+        "native_fri_input_degree_bound_log": gate["fri_input_degree_bound_log"],
+        "candidate_paper_protocol4_D0_if_N_is_trace_rows":
+            gate["candidate_paper_protocol4_D0_if_N_is_trace_rows"],
+        "native_fri_domain_equals_candidate_paper_protocol4_D0":
+            gate["native_fri_domain_equals_candidate_paper_protocol4_D0"],
+        "proof_sha256": proof_control["proof_sha256"],
+        "statement_sha256": proof_control["statement_sha256"],
+        "rebuilt_verifier_sha256": rebuilt_verifier_sha256,
+        "verification_key_sha256": checks["verification_key_sha256"],
+        "package_manifest_sha256": checks["package_manifest_sha256"],
+        "engine_gitlink": geometry["source_binding"]["engine_gitlink"],
+        "native_proven_security_bits": None,
+        "proven_release_admissible": False,
+    }
+
+
 def rebuild_verifier(package: Path, jobs: int = 8,
                      proof: Path | None = None,
                      statement: Path | None = None) -> dict:
@@ -201,6 +250,7 @@ def rebuild_verifier(package: Path, jobs: int = 8,
                     raise ValueError(f"rebuilt verifier rejected supplied proof: {result.stderr[-600:]}")
                 accepted = {"proof_sha256": digest(proof),
                             "statement_sha256": digest(statement)}
+            verifier_sha256 = digest(independent)
             return {
                 "schema": "s31-gate-verifier-rebuild-v1",
                 "status": "conditional_binary_reproducibility_observed",
@@ -208,12 +258,15 @@ def rebuild_verifier(package: Path, jobs: int = 8,
                 "compiler_sha256": compiler,
                 "zig_version": zig_version,
                 "rebuild_jobs": jobs,
-                "verifier_sha256": digest(independent),
+                "verifier_sha256": verifier_sha256,
                 "package_verifier_byte_identical": digest(installed) == digest(independent),
                 "package_verifier_execution_image_identical": True,
                 "package_verifier_sha256": digest(installed),
                 "native_check_key": geometry["package_checks"]["native_check_key"],
                 "supplied_proof": accepted,
+                "accepted_proof_gate_geometry": (
+                    accepted_gate_geometry(geometry, accepted, verifier_sha256)
+                    if accepted is not None else None),
                 "native_proven_security_bits": None,
                 "proven_release_admissible": False,
                 "remaining_premises": [

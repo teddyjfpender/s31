@@ -85,6 +85,10 @@ calls execute as the guarded source indicates; and (4) verification reaches
 success. The diagnostic checks data consistency and source syntax, but it does
 not machine-prove Zig control-flow semantics or compiled-binary provenance.
 There is no inference from `check-key` acceptance to proof acceptance.
+The [verifier rebuild diagnostic](PCS_FRI_GATE_BINARY_REBUILD.md) can now join
+this exact conditional native domain to a particular proof that the rebuilt
+verifier accepts. It reports the paper's larger candidate `NB²` domain
+separately and still does not identify the published oracle relation.
 
 The derived `D` and split bound are a narrow P01 input. The diagnostic does
 not identify the published theorem's `C`, `d`, `L`, `m`, rate or list bound;
