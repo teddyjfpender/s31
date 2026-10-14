@@ -241,6 +241,11 @@ def make_certificate(package: Path) -> dict[str, Any]:
         raise ValueError("short-lane native source spans differ from checked SSA")
     source_end = packed_rows + len(ssa["nodes"])
     binding_start = source_end + 2 * lanes - 1
+    # The direct builder starts with eleven fixed/public addresses. Each
+    # input reserves three addresses per lane (the second input reuses the
+    # first input's two basis addresses), then each source node reserves one.
+    # Output unpacking allocates 3N-2 further addresses for N scalar words.
+    source_var_end = 11 + 3 * lanes + (input_count - 1) * (3 * lanes - 2) + len(ssa["nodes"])
     expected_bindings = []
     for index, name in enumerate((*(item["name"] for item in inputs),
                                   relation["public_outputs"][0])):
@@ -251,6 +256,9 @@ def make_certificate(package: Path) -> dict[str, Any]:
             "name": name, "word_start": start, "word_count": lanes,
             "conversion_qm31_start": conversion_start,
             "conversion_qm31_end": conversion_end,
+            "conversion_var_start": source_var_end,
+            "conversion_var_end": (source_var_end if index < input_count else
+                                   source_var_end + 3 * lanes - 2),
             "conversion_m31_to_u32_start": 0, "conversion_m31_to_u32_end": 0,
             "binding_qm31_start": binding_start + start,
             "binding_qm31_end": binding_start + start + lanes,

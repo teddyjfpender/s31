@@ -324,8 +324,10 @@ entire fresh export byte-for-byte. `--native --write` binds its fresh rows befor
 refreshing fixtures and preserves the deliberate refresh workflow. The result
 reports both proof roots and the main-row digest per case.
 
-The physical-row command is limited to transparent, public-only four-lane M31
-programs with 1–16 add/multiply source nodes and no assertions. It exports
+The physical-row command admits transparent, public-only one-input M31 programs
+with one to four lanes, or two-input programs with one or two lanes, when both
+inputs and the result have the same shape. It requires 1–16 add/sub/multiply
+nodes and no assertions. It exports
 uncommitted fixed and main evaluations from `writeBase`. Even if a native
 proof verifies, this export does not authenticate PCS openings, prove LogUp
 soundness, or establish a verifier-to-trace correspondence theorem. The proof
@@ -337,6 +339,21 @@ prove collision resistance, or supply a general verifier-to-trace theorem.
 The Zig guard tests require rejection of a private input, a nonempty private
 assignment, wrong input and output shape, assertions, constant/repeat nodes,
 and a 17-node source.
+
+`pure_native_short_lanes.py` builds three admitted public programs: one lane,
+three lanes with ordered subtraction, and two two-lane inputs. The independent
+source certificate and complete fixed-column replay must pass before the
+diagnostic is read. `package.short_lane_main_correspondence` then evaluates
+the checked SSA for a chosen assignment, solves all 512 Gate addresses from
+public inputs and fixed constants, and compares every one of the 6,144 native
+main cells, eight public words, and the serialized main-column digest. For
+each package, changing a fixed cell, main cell, public word, or digest fails.
+The comparison is an honest-trace diagnostic and does not establish
+arbitrary-proof row authentication or PCS/FRI soundness.
+
+```sh
+python3 src/frontends/s31/tests/acceptance/compiler_correspondence/pure_native_short_lanes.py
+```
 
 ## Public main commitment from serialized rows
 

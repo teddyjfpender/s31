@@ -223,6 +223,13 @@ proof's fixed commitment. It also checks that changing that commitment makes
 the verifier reject. This is a checked honest proof and tamper control, not an
 independent cryptographic proof-opening theorem or authentication of arbitrary
 native traces.
+The public-only short-lane diagnostic now independently reconstructs the
+complete 12×512 uncommitted main trace from the source-certified indexed SSA,
+fixed Gate schedule, and one canonical public assignment. Fresh native exports
+for one input of one or three lanes and two inputs of two lanes are compared
+cell by cell, including all public and unused ABI words. This strengthens the
+honest trace correspondence check; it does not derive those main cells from
+an arbitrary accepted proof or authenticate PCS openings.
 Two public inputs fit within the eight-word ABI only at these lengths:
 `2N` input words plus `N` result words must be at most eight. Returning an
 input directly, private inputs, constants, assertions,

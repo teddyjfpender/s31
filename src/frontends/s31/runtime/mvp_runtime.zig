@@ -1258,8 +1258,11 @@ fn inspectBoundedPhysicalRows(allocator: std.mem.Allocator, source: relation.Pro
     const early_return = std.mem.eql(u8, &source_hex, "93bd19fc72c1e4526ad8bfe788f506bfea4c1787114df6e119dd95760efd888f");
     const square4 = std.mem.eql(u8, &source_hex, "b7d744dd89f487742f2b72cf71fa76c6c37c2f5b01b74b58befa24e8c749979c");
     if ((!early_return and !square4 and !(try public_physical_guard.eligible(allocator, source))) or
-        source.inputs.len != 1 or source.inputs[0].visibility != .public)
+        source.inputs.len == 0)
         return error.UnsupportedPhysicalRowInspection;
+    for (source.inputs) |input| {
+        if (input.visibility != .public) return error.UnsupportedPhysicalRowInspection;
+    }
 
     var assignment = try readAssignment(allocator, assignment_path);
     defer assignment.deinit();
