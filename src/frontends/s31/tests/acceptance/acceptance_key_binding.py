@@ -37,6 +37,16 @@ def main() -> None:
         s31.write_json(variant, source_b)
         package_a = s31.build(SOURCE, work / "source-a", "gate")
         package_b = s31.build(variant, work / "source-b", "gate")
+        installed_key = json.loads((package_a / "verification-key.json").read_text())
+        if installed_key.get("pcs_mode") != "legacy_postcard":
+            raise AssertionError("new S31 packages must pin the production PCS mode")
+        relabeled_key = {**installed_key, "pcs_mode": "cas05_sparse_v6"}
+        relabeled_path = work / "relabeled-verification-key.json"
+        s31.write_json(relabeled_path, relabeled_key)
+        rejection = run(str(package_a / "bin/s31-affine4_v1-native-verifier"),
+                        "check-key", str(relabeled_path), accepted=False)
+        if "InvalidVerificationKey" not in rejection:
+            raise AssertionError(f"proof-selected key relabeling failed for the wrong reason:\n{rejection}")
 
         assignment_b = copy.deepcopy(json.loads(ASSIGNMENT.read_text()))
         assignment_b["public_outputs"]["y"] = [20, 29, 38, 589826]
@@ -53,6 +63,17 @@ def main() -> None:
         run(str(package_b / "bin/s31-affine4_v1-native-verifier"),
             str(proof), str(statement_path),
             str(package_b / "verification-key.json"), accepted=True)
+        proof_bytes = proof.read_bytes()
+        postcard_offset = len(b"S31NAT1\0") + 8 + 11 * 16
+        if not proof_bytes.startswith(b"S31NAT1\0") or len(proof_bytes) <= postcard_offset + 8:
+            raise AssertionError("gate proof has an unexpected native envelope")
+        candidate = work / "cas05-inside-legacy.proof"
+        candidate.write_bytes(proof_bytes[:postcard_offset] + b"S31CAS05" + proof_bytes[postcard_offset + 8:])
+        rejection = run(str(package_b / "bin/s31-affine4_v1-native-verifier"),
+                        str(candidate), str(statement_path),
+                        str(package_b / "verification-key.json"), accepted=False)
+        if "WrongProofFormat" not in rejection:
+            raise AssertionError(f"inner CAS05 marker reached the postcard decoder:\n{rejection}")
 
         # Keep source A's name, source digest, and canonical IR digest, but
         # substitute source B's committed circuit and geometry. The old

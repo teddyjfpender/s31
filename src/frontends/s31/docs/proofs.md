@@ -57,7 +57,7 @@ native verifier still decides proof acceptance.
 | --- | --- |
 | `bin/s31-NAME-prover` | Program-specific witness construction and proving. |
 | `bin/s31-NAME-native-verifier` | Program-specific native proof checker. |
-| `verification-key.json` | Profile, program/canonical-IR hashes, circuit hash, preprocessed root, padded geometry, pinned AIR asset hashes, FRI parameters, optional chip parameters and blinding policy. |
+| `verification-key.json` | Profile and PCS mode, program/canonical-IR hashes, circuit hash, preprocessed root, padded geometry, pinned AIR asset hashes, FRI parameters, optional chip parameters and blinding policy. |
 | `recursive-verification-key.json` | For `gate` and `sparse-wide-gate` packages: sealed outer verifier layout, root, hash, child-key digest and pinned AIR asset hashes. Sparse-wide key v3 also binds outer FRI fold step 4; its leaf defaults to step 1 and can be built with step 4. The native verifier embeds this key. |
 | `recursive-verification-key-level2.json` | Sealed second wrapper layout and child-key digest for both recursive profiles. |
 | `fixed-fold-verification-key.json` | Sealed repeatable fold AIR and root. Gate v3 and sparse-wide v4 use the constrained `u32` counter; the wide key binds the second wrapper key and fourfold FRI schedule. The [worked fold](recursion-wide-fold.md) explains its claim and limits. |
@@ -69,6 +69,20 @@ native verifier still decides proof acceptance.
 | `manifest.json` | SHA-256 of every artifact above plus source/compiler identity, Zig version, and any sealed batch-proving capabilities. |
 
 The text parser's qualified library calls disappear into normalized nodes.
+New generic MVP packages write `"pcs_mode": "legacy_postcard"` in the sealed
+key. Earlier keys omit the field and retain the same legacy interpretation.
+The generic generated verifier compares the supplied key byte for byte with
+its embedded copy, checks that key against the embedded relation and AIR,
+reconstructs the eight public words from the independently supplied
+statement, then admits the proof under the key-selected mode. An injected
+CAS05 field in a key or a CAS05 proof cannot switch the legacy verifier;
+`cas05_sparse_v6` remains unavailable in production. The separate SHA package
+verifiers keep their existing strict key schema and implicit legacy path.
+Each generic native proof decoder also rejects the reserved CAS05 marker at
+its inner postcard boundary before allocating its bounded decode buffer.
+This S31 binary proof format is separate from the Native CPU JSON
+proof-exchange artifact.
+
 The package manifest hashes the original text and standard-library lock;
 the generated verifier checks the lock digest embedded in its key. The native verifier's
 program identity binds the normalized relation and selected proof profile.

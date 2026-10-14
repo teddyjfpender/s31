@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 import proof_privacy
+from package.pcs_mode import require_production as require_production_pcs_mode
 from package.manifest_digest import direct_chip_v2_digest, direct_gate_v2_digest
 from package.gate_component_roster import validate as validate_gate_component_roster
 from package.sparse_component_roster import validate as validate_sparse_component_roster
@@ -146,6 +147,7 @@ def verify_package(package: Path) -> dict:
     if json.loads((package / "public-abi.json").read_text()) != abi(source, manifest["lowering"]):
         raise ValueError("S31 public ABI does not match the sealed relation")
     key = json.loads((package / "verification-key.json").read_text())
+    require_production_pcs_mode(key)
     fri_config = key.get("fri")
     if (not isinstance(fri_config, dict) or
             key.get("name") != manifest["name"] or
