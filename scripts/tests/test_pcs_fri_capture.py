@@ -4,11 +4,17 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 
-from scripts.s31_formal_lib.pcs_fri_capture import check_capture_source
+from scripts.s31_formal_lib.pcs_fri_capture import (
+    GATE_TRACE_FILES,
+    check_capture_source,
+    check_selected_gate_trace_source,
+)
 
 
 SOURCE = (Path(__file__).resolve().parents[2] /
           "deps/stwo-zig/src/core/vcs_lifted/verifier.zig").read_text()
+ROOT = Path(__file__).resolve().parents[2]
+GATE_SOURCES = {name: (ROOT / name).read_text() for name in GATE_TRACE_FILES}
 
 
 def change_once(before: str, after: str) -> str:
@@ -21,11 +27,88 @@ class PcsFriCaptureTest(unittest.TestCase):
     def test_pinned_source(self) -> None:
         check_capture_source(SOURCE)
 
+    def test_selected_gate_trace_source(self) -> None:
+        check_selected_gate_trace_source(GATE_SOURCES)
+
+    def test_selected_gate_query_budget_changed(self) -> None:
+        name = "src/frontends/s31/runtime/mvp_runtime.zig"
+        changed = dict(GATE_SOURCES)
+        changed[name] = changed[name].replace(
+            "FriConfigV2.init(26, 0, 1, 70, fri_fold_step), trace_log_size)",
+            "FriConfigV2.init(26, 0, 1, 71, fri_fold_step), trace_log_size)", 1)
+        with self.assertRaisesRegex(ValueError, "selected Gate"):
+            check_selected_gate_trace_source(changed)
+
+    def test_selected_gate_tree_projection_loses_raw_draws(self) -> None:
+        name = "deps/stwo-zig/src/core/pcs/verifier.zig"
+        changed = dict(GATE_SOURCES)
+        changed[name] = changed[name].replace(
+            "const raw_tree_positions = try pcs_utils.prepareTreeQueryPositions(\n                        allocator,\n                        query_capture.raw,",
+            "const raw_tree_positions = try pcs_utils.prepareTreeQueryPositions(\n                        allocator,\n                        query_capture.unique,", 1)
+        with self.assertRaisesRegex(ValueError, "selected Gate"):
+            check_selected_gate_trace_source(changed)
+
+    def test_selected_gate_capture_count_guard_removed(self) -> None:
+        name = "src/frontends/s31/runtime/pcs_lifted_capture_admission.zig"
+        changed = dict(GATE_SOURCES)
+        changed[name] = changed[name].replace(
+            "raw.len != pcs.fri_config.n_queries or", "false or", 1)
+        with self.assertRaisesRegex(ValueError, "selected Gate"):
+            check_selected_gate_trace_source(changed)
+
+    def test_selected_gate_lifting_height_formula_changed(self) -> None:
+        name = "deps/stwo-zig/src/core/pcs/config_v2.zig"
+        changed = dict(GATE_SOURCES)
+        changed[name] = changed[name].replace(
+            "trace_log_size + config.log_blowup_factor",
+            "trace_log_size + config.log_blowup_factor + 1", 1)
+        with self.assertRaisesRegex(ValueError, "selected Gate"):
+            check_selected_gate_trace_source(changed)
+
+    def test_selected_gate_digest_width_changed(self) -> None:
+        name = "deps/stwo-zig/src/core/crypto/blake2s_backend.zig"
+        changed = dict(GATE_SOURCES)
+        changed[name] = changed[name].replace(
+            "pub const Blake2sHash = [32]u8;",
+            "pub const Blake2sHash = [64]u8;", 1)
+        with self.assertRaisesRegex(ValueError, "selected Gate"):
+            check_selected_gate_trace_source(changed)
+
     def test_out_of_domain_alias_guard_removed(self) -> None:
         with self.assertRaisesRegex(ValueError, "lifted Merkle"):
             check_capture_source(change_once(
                 "if (position >= domain_size) return MerkleVerificationError.InvalidQueryShape;",
                 "if (false) return MerkleVerificationError.InvalidQueryShape;"))
+
+    def test_domain_shift_uses_declared_height(self) -> None:
+        with self.assertRaisesRegex(ValueError, "lifted Merkle"):
+            check_capture_source(change_once(
+                "const domain_size: usize = @as(usize, 1) << @intCast(self.height);",
+                "const domain_size: usize = @as(usize, 1) << @intCast(self.height - 1);"))
+
+    def test_column_shape_guard_removed(self) -> None:
+        with self.assertRaisesRegex(ValueError, "lifted Merkle"):
+            check_capture_source(change_once(
+                "if (column.len != query_positions.len) return MerkleVerificationError.InvalidQueryShape;",
+                "if (false) return MerkleVerificationError.InvalidQueryShape;"))
+
+    def test_unique_position_append_skipped(self) -> None:
+        with self.assertRaisesRegex(ValueError, "lifted Merkle"):
+            check_capture_source(change_once(
+                "try unique_positions.append(allocator, position);",
+                "// unique position lost"))
+
+    def test_unique_path_allocation_uses_wrong_count(self) -> None:
+        with self.assertRaisesRegex(ValueError, "lifted Merkle"):
+            check_capture_source(change_once(
+                "try allocator.alloc(H.Hash, unique_positions.items.len * path_depth)",
+                "try allocator.alloc(H.Hash, query_positions.len * path_depth)"))
+
+    def test_caller_capture_allocation_uses_wrong_count(self) -> None:
+        with self.assertRaisesRegex(ValueError, "lifted Merkle"):
+            check_capture_source(change_once(
+                "query_positions.len * path_depth,",
+                "unique_positions.items.len * path_depth,"))
 
     def test_sibling_pair_condition_changed(self) -> None:
         with self.assertRaisesRegex(ValueError, "lifted Merkle"):

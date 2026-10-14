@@ -803,6 +803,13 @@ now checks sorting, deduplication, chunk advancement, witness cursor, and
 ancestor matching in addition to the existing root and publication checks.
 Mutation tests require each changed stage to be rejected. These checks pin
 source structure; they are not a semantics or refinement proof for Zig.
+The [native capture index theorem](../../../../../design/s31/security/PCS_FRI_NATIVE_CAPTURE_INDEX_BOUNDS.md)
+additionally proves the finite-word range guard, right-shift interpretation,
+deduplication cursor bounds, and selected 70-query/21-height trace path
+allocation bounds for all input lists. Its source guard follows the raw Gate
+query count into the trace Merkle capture. The 21-height premise is checked
+for the reviewed Gate key by the separate geometry audit; other keys need
+their own bound. General Zig-to-Lean decoder semantics remain open.
 The [focused native regression](../../tests/pcs_fri_decoder_native.zig) runs
 against the pinned `stwo_core` module. It authenticates an unsorted input
 with a duplicate through the paired and witnessed branches, checks the
