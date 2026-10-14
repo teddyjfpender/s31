@@ -128,6 +128,14 @@ not change the production blocker matrix. See the
 for proof-format, dispatch, pinning, testing, and theorem steps. The draft
 source is separate from S31's pinned engine; `--require-proven` remains closed.
 
+The [CAS07 Gate roster audit](pcs_fri_cas07_gate_roster.py) checks one sealed
+Gate package against the exact experimental sparse-height draft and derives
+its proposed ordered source slots. Its [worked analysis](../../design/s31/security/PCS_FRI_CAS07_GATE_ROSTER_AUDIT.md)
+shows the 311-column candidate roster, the eight omitted composition
+columns, and why the existing four commitment epochs cannot be collapsed
+into one XDM05 root by metadata alone. It rejects a changed draft source or
+unreviewed Gate geometry; `--require-production-equivalent` remains closed.
+
 ## Formal receipt
 
 Run the Lean source-binding check, full build, and kernel replay on a clean
