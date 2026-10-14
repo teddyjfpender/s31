@@ -55,7 +55,8 @@ fn sameTopology(a: *const circuit.builder.Circuit, b: *const circuit.builder.Cir
 }
 
 fn checkedSourceSpans(program: s31.relation.Program, ir: *const canonical.IR, maps: *const s31.relation_compiler.Maps, circuit_data: *const circuit.builder.Circuit) !void {
-    if (ir.source_map.len != program.inputs.len + program.nodes.len or maps.nodes.items.len != ir.nodes.len)
+    if (ir.source_map.len != program.inputs.len + program.nodes.len or
+        maps.nodes.items.len != ir.nodes.len or maps.node_wires.items.len != ir.nodes.len)
         return fail("source-to-canonical node roster changed");
     for (ir.source_map, 0..) |source, index| {
         const name = if (index < program.inputs.len) program.inputs[index].name else program.nodes[index - program.inputs.len].name;
@@ -65,6 +66,10 @@ fn checkedSourceSpans(program: s31.relation.Program, ir: *const canonical.IR, ma
             return fail("source node points to a different physical span");
     }
     for (maps.nodes.items, 0..) |span, index| {
+        const outputs = maps.node_wires.items[index];
+        if (outputs.id != index) return fail("canonical node output wire id changed");
+        for (outputs.wires) |address| if (address >= circuit_data.n_vars)
+            return fail("canonical node output wire outside emitted circuit");
         if (span.id != index or span.var_start > span.var_end or span.var_end > circuit_data.n_vars or
             span.qm31_start > span.qm31_end or span.qm31_end > circuit_data.nQm31OpsRows() or
             span.eq_start > span.eq_end or span.eq_end > circuit_data.eq.items.len or
@@ -84,8 +89,14 @@ fn checkedSourceSpans(program: s31.relation.Program, ir: *const canonical.IR, ma
 
 fn sameSourceSpans(a: *const s31.relation_compiler.Maps, b: *const s31.relation_compiler.Maps) bool {
     if (a.nodes.items.len != b.nodes.items.len or a.assertions.items.len != b.assertions.items.len or
-        a.bindings.items.len != b.bindings.items.len) return false;
+        a.bindings.items.len != b.bindings.items.len or
+        a.gate_op_spans.items.len != b.gate_op_spans.items.len or
+        a.node_wires.items.len != b.node_wires.items.len) return false;
     for (a.nodes.items, b.nodes.items) |x, y| if (!std.meta.eql(x, y)) return false;
+    for (a.gate_op_spans.items, b.gate_op_spans.items) |x, y| if (!std.meta.eql(x, y)) return false;
+    for (a.node_wires.items, b.node_wires.items) |x, y| {
+        if (x.id != y.id or !std.mem.eql(u32, x.wires, y.wires)) return false;
+    }
     for (a.assertions.items, b.assertions.items) |x, y| if (!std.meta.eql(x, y)) return false;
     for (a.bindings.items, b.bindings.items) |x, y| {
         if (!std.mem.eql(u8, x.name, y.name) or x.word_start != y.word_start or x.word_count != y.word_count or
@@ -96,6 +107,145 @@ fn sameSourceSpans(a: *const s31.relation_compiler.Maps, b: *const s31.relation_
             x.binding_qm31_start != y.binding_qm31_start or x.binding_qm31_end != y.binding_qm31_end) return false;
     }
     return true;
+}
+
+const Range = struct { start: usize, end: usize };
+const SourcePhysical = struct {
+    name: []const u8,
+    canonical_id: u32,
+    canonical_tag: []const u8,
+    packed_outputs: []const u32,
+    add: Range,
+    sub: Range,
+    mul: Range,
+    pointwise_mul: Range,
+};
+const PhysicalCertificate = struct {
+    schema: []const u8 = "s31-gate-source-physical-v1",
+    program_sha256: []const u8,
+    canonical_ir_sha256: []const u8,
+    preprocessed_root: []const u8,
+    n_vars: u32,
+    canonical_node_count: usize,
+    qm31_binary_rows: usize,
+    source_qm31_rows: usize,
+    primitive_nodes_checked: usize,
+    source_map: []const SourcePhysical,
+};
+
+fn checkedPrimitiveNodes(ir: *const canonical.IR, maps: *const s31.relation_compiler.Maps,
+    circuit_data: *const circuit.builder.Circuit) !usize {
+    var checked: usize = 0;
+    for (ir.nodes, 0..) |node, id| {
+        const kind: usize = switch (node.tag) {
+            .add => 0,
+            .sub => 1,
+            .mul => 3,
+            else => continue,
+        };
+        const lhs = maps.node_wires.items[node.lhs.?].wires;
+        const rhs = maps.node_wires.items[node.rhs.?].wires;
+        const outputs = maps.node_wires.items[id].wires;
+        if (outputs.len != lhs.len or outputs.len != rhs.len)
+            return fail("primitive canonical node has mismatched packed port count");
+        const span = maps.gate_op_spans.items[id];
+        const gates = switch (kind) {
+            0 => circuit_data.add.items,
+            1 => circuit_data.sub.items,
+            else => circuit_data.pointwise_mul.items,
+        };
+        const start = if (kind == 0) span.add_start else if (kind == 1) span.sub_start else span.pointwise_start;
+        const end = if (kind == 0) span.add_end else if (kind == 1) span.sub_end else span.pointwise_end;
+        for (outputs, lhs, rhs) |out, left, right| {
+            var found = false;
+            for (gates[start..end]) |gate| {
+                if (gate.out == out and gate.in0 == left and gate.in1 == right) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) return fail("primitive canonical node lacks matching physical operation gate");
+        }
+        checked += 1;
+    }
+    return checked;
+}
+
+fn checkedPhysicalRows(allocator: std.mem.Allocator, source: []const u8, ir: *const canonical.IR,
+    maps: *const s31.relation_compiler.Maps, circuit_data: *const circuit.builder.Circuit,
+    pp: *const PP, certificate_path: ?[]const u8) !usize {
+    if (maps.gate_op_spans.items.len != ir.nodes.len) return fail("canonical QM31 per-op spans missing");
+    const ids = circuit.common.preprocessed.QM31_OPS_COLUMN_IDS;
+    var fixed: [ids.len][]const M31 = undefined;
+    for (ids, &fixed) |id, *column| column.* = pp.columnValues(id) orelse return fail("QM31 fixed column missing");
+    const offsets = [4]usize{ 0, circuit_data.add.items.len,
+        circuit_data.add.items.len + circuit_data.sub.items.len,
+        circuit_data.add.items.len + circuit_data.sub.items.len + circuit_data.mul.items.len };
+    const groups = .{ circuit_data.add.items, circuit_data.sub.items,
+        circuit_data.mul.items, circuit_data.pointwise_mul.items };
+    const start_names = .{ "add_start", "sub_start", "mul_start", "pointwise_start" };
+    const end_names = .{ "add_end", "sub_end", "mul_end", "pointwise_end" };
+    const binary_rows = offsets[3] + circuit_data.pointwise_mul.items.len;
+    if (binary_rows != pp.first_permutation_row) return fail("QM31 physical binary prefix changed");
+    const primitive_nodes = try checkedPrimitiveNodes(ir, maps, circuit_data);
+    var source_rows: usize = 0;
+    for (maps.gate_op_spans.items, 0..) |span, id| {
+        if (span.id != id) return fail("canonical QM31 per-op span id changed");
+        inline for (groups, 0..) |gates, kind| {
+            const start = @field(span, start_names[kind]);
+            const end = @field(span, end_names[kind]);
+            if (start > end or end > gates.len) return fail("canonical QM31 span outside physical component");
+            if (id > 0 and @field(maps.gate_op_spans.items[id - 1], end_names[kind]) != start)
+                return fail("canonical QM31 per-op spans leave a source row gap");
+            for (start..end) |gate_index| {
+                const row = offsets[kind] + gate_index;
+                const gate = gates[gate_index];
+                if (row >= fixed[0].len or fixed[4][row].toU32() != gate.in0 or
+                    fixed[5][row].toU32() != gate.in1 or fixed[6][row].toU32() != gate.out)
+                    return fail("source gate differs from physical fixed addresses");
+                inline for (0..4) |flag| if (fixed[flag][row].toU32() != @intFromBool(kind == flag))
+                    return fail("source gate differs from physical AIR selector");
+                source_rows += 1;
+            }
+        }
+    }
+    if (certificate_path) |path| {
+        const mapped = try allocator.alloc(SourcePhysical, ir.source_map.len);
+        defer allocator.free(mapped);
+        for (ir.source_map, mapped) |source_node, *item| {
+            const span = maps.gate_op_spans.items[source_node.id];
+            item.* = .{
+                .name = source_node.name, .canonical_id = source_node.id,
+                .canonical_tag = @tagName(ir.nodes[source_node.id].tag),
+                .packed_outputs = maps.node_wires.items[source_node.id].wires,
+                .add = .{ .start = span.add_start, .end = span.add_end },
+                .sub = .{ .start = offsets[1] + span.sub_start, .end = offsets[1] + span.sub_end },
+                .mul = .{ .start = offsets[2] + span.mul_start, .end = offsets[2] + span.mul_end },
+                .pointwise_mul = .{ .start = offsets[3] + span.pointwise_start,
+                    .end = offsets[3] + span.pointwise_end },
+            };
+        }
+        var source_digest: [32]u8 = undefined;
+        std.crypto.hash.sha2.Sha256.hash(source, &source_digest, .{});
+        const source_hex = std.fmt.bytesToHex(source_digest, .lower);
+        const ir_hex = std.fmt.bytesToHex(ir.sha256, .lower);
+        const root_hex = std.fmt.bytesToHex(try pp.preprocessedRoot(allocator, 1), .lower);
+        const cert: PhysicalCertificate = .{
+            .program_sha256 = &source_hex,
+            .canonical_ir_sha256 = &ir_hex,
+            .preprocessed_root = &root_hex,
+            .n_vars = circuit_data.n_vars,
+            .canonical_node_count = ir.nodes.len,
+            .qm31_binary_rows = binary_rows,
+            .source_qm31_rows = source_rows,
+            .primitive_nodes_checked = primitive_nodes,
+            .source_map = mapped,
+        };
+        const encoded = try std.json.Stringify.valueAlloc(allocator, cert, .{});
+        defer allocator.free(encoded);
+        try std.fs.cwd().writeFile(.{ .sub_path = path, .data = encoded });
+    }
+    return source_rows;
 }
 
 fn gateYield(lookup: component.Lookup, address: M31, multiplicity: M31, expected: []const M31) bool {
@@ -191,7 +341,7 @@ pub fn main() !void {
     const allocator = std.heap.page_allocator;
     const args = try std.process.argsAlloc(allocator);
     defer std.process.argsFree(allocator, args);
-    if (args.len != 5) return fail("usage: native-control-claim-trace source.s31.json assignment.json proof statement.json");
+    if (args.len != 5 and args.len != 6) return fail("usage: native-control-claim-trace source.s31.json assignment.json proof statement.json [certificate.json]");
     const source_bytes = try std.fs.cwd().readFileAlloc(allocator, args[1], 1 << 20);
     defer allocator.free(source_bytes);
     const assignment_bytes = try std.fs.cwd().readFileAlloc(allocator, args[2], 1 << 20);
@@ -214,9 +364,9 @@ pub fn main() !void {
     if (!std.meta.eql(words, evaluated_words)) return fail("source evaluator and public statement differ");
     var ir = try canonical.build(allocator, program.value);
     defer ir.deinit();
-    var value_maps: s31.relation_compiler.Maps = .{};
+    var value_maps: s31.relation_compiler.Maps = .{ .capture_gate_op_spans = true, .capture_node_wires = true };
     defer value_maps.deinit(allocator);
-    var topology_maps: s31.relation_compiler.Maps = .{};
+    var topology_maps: s31.relation_compiler.Maps = .{ .capture_gate_op_spans = true, .capture_node_wires = true };
     defer topology_maps.deinit(allocator);
     var value_ctx = try s31.relation_compiler.compileWithSpans(QM31, allocator, program.value, assignment.value, &value_maps);
     defer value_ctx.deinit();
@@ -298,5 +448,7 @@ pub fn main() !void {
     try Engine.flushPendingCommit(&scheme, allocator, &channel);
     if (!std.meta.eql(scheme.trees.items[2].commitment.root(), roots[2]))
         return fail("reconstructed interaction cells differ from committed interaction root");
-    std.debug.print("{{\"schema\":\"s31-control-claim-trace-v1\",\"source_semantics_match\":true,\"source_nodes_mapped\":{d},\"base_root_match\":true,\"interaction_root_match\":true,\"all_component_claims_match\":true,\"producer_counts\":[{d},{d},{d},{d}]}}\n", .{ ir.source_map.len, counts[0], counts[1], counts[2], counts[3] });
+    const source_rows = try checkedPhysicalRows(allocator, source_bytes, &ir,
+        &topology_maps, &topology_ctx.circuit, &pp, if (args.len == 6) args[5] else null);
+    std.debug.print("{{\"schema\":\"s31-control-claim-trace-v1\",\"source_semantics_match\":true,\"source_nodes_mapped\":{d},\"source_qm31_rows\":{d},\"base_root_match\":true,\"interaction_root_match\":true,\"all_component_claims_match\":true,\"producer_counts\":[{d},{d},{d},{d}]}}\n", .{ ir.source_map.len, source_rows, counts[0], counts[1], counts[2], counts[3] });
 }

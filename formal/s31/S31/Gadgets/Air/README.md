@@ -70,6 +70,11 @@ balance and public event-to-wire values from arbitrary finite event lists,
 cell-derived claims, and good challenges. Its finite native audit checks
 three distinct v1 programs, including a hash circuit with all four active
 Gate producer classes. Arbitrary-proof claim authentication remains a premise.
+[The source-to-physical-row certificate](GateSourcePhysicalRows.md) checks
+per-node, per-operation spans against the installed QM31 fixed selector and
+address columns. Its generic Lean theorem derives each certified row's
+operation from the exact native nine-residual AIR tree. It handles canonical
+aliases and keeps proof-cell authentication explicit.
 
 `SimdChunks.partial_row_iff` covers the short final chunk of an array. For
 any `n ≤ 4`, arbitrary M31 values may fill the unused input lanes. An accepted

@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "name": "physical_alias_arithmetic",
+  "inputs": [
+    {"name": "a", "kind": "m31", "length": 4, "visibility": "public"},
+    {"name": "b", "kind": "m31", "length": 4, "visibility": "private"}
+  ],
+  "nodes": [
+    {"name": "sum", "op": "add", "lhs": "a", "rhs": "b"},
+    {"name": "same_sum", "op": "add", "lhs": "b", "rhs": "a"},
+    {"name": "difference", "op": "sub", "lhs": "sum", "rhs": "b"},
+    {"name": "product", "op": "mul", "lhs": "difference", "rhs": "b"}
+  ],
+  "assertions": [],
+  "public_outputs": ["product"]
+}

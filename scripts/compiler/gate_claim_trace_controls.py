@@ -10,16 +10,17 @@ the node contributes to a public output.
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import tempfile
 from pathlib import Path
 
 from gate_claim_trace_audit import audit
 from control_claim_trace_audit import run_native
+from gate_source_physical_certificate import validate as validate_physical_certificate
 
 
 def controls(package: Path, proof: Path, statement: Path, assignment: Path) -> dict:
-    accepted = audit(package, proof, statement, assignment)
     source = json.loads((package / "source.s31.json").read_text())
     if not source["nodes"]:
         raise ValueError("unused-node controls need at least one source node")
@@ -35,6 +36,29 @@ def controls(package: Path, proof: Path, statement: Path, assignment: Path) -> d
                               "lhs": operand, "constant": 1},
     }
     with tempfile.TemporaryDirectory(prefix="s31-gate-claim-controls-") as temporary:
+        certificate_path = Path(temporary) / "certificate.json"
+        accepted = audit(package, proof, statement, assignment,
+                         certificate=certificate_path)
+        certificate = json.loads(certificate_path.read_text())
+        manifest = json.loads((package / "manifest.json").read_text())
+        key = json.loads((package / "verification-key.json").read_text())
+        report = json.loads((package / "cost-report.json").read_text())
+        receipt = {"source_nodes_mapped": accepted["source_nodes_mapped"],
+                   "source_qm31_rows": accepted["source_qm31_rows"]}
+        for label, change in (
+                ("wrong_fixed_root", lambda c: c.__setitem__("preprocessed_root", "0" * 64)),
+                ("missing_source", lambda c: c["source_map"].pop()),
+                ("wrong_row_interval", lambda c: c["source_map"][-1]["add"].__setitem__(
+                    "end", c["source_map"][-1]["add"]["end"] + 1))):
+            altered = copy.deepcopy(certificate)
+            change(altered)
+            try:
+                validate_physical_certificate(altered, source, manifest, key,
+                                              report, receipt)
+            except (ValueError, KeyError, TypeError):
+                pass
+            else:
+                raise AssertionError(f"physical certificate accepted {label}")
         source_path = Path(temporary) / "source.s31.json"
         for label, node in mutations.items():
             modified = {**source, "nodes": [*source["nodes"], node]}
@@ -52,6 +76,8 @@ def controls(package: Path, proof: Path, statement: Path, assignment: Path) -> d
     return {"schema": "s31-gate-claim-trace-controls-v1",
             "accepted_program_sha256": accepted["program_sha256"],
             "accepted_source_nodes_mapped": accepted["source_nodes_mapped"],
+            "accepted_source_qm31_rows": accepted["source_qm31_rows"],
+            "physical_certificate_mutants_rejected": 3,
             "unknown_operand_rejected": True,
             "valid_unused_node_rejected": True}
 

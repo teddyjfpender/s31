@@ -13,6 +13,7 @@ import hashlib
 import json
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -21,6 +22,7 @@ sys.path.insert(0, str(ROOT / "src/frontends/s31/python"))
 
 from package.verify import verify_package  # noqa: E402
 from scripts.compiler.control_claim_trace_audit import run_native  # noqa: E402
+from scripts.compiler.gate_source_physical_certificate import validate as validate_physical_certificate  # noqa: E402
 
 
 def _digest(path: Path) -> str:
@@ -28,13 +30,14 @@ def _digest(path: Path) -> str:
 
 
 def audit(package: Path, proof: Path, statement: Path, assignment: Path,
-          *, root: Path = ROOT) -> dict[str, object]:
+          *, root: Path = ROOT, certificate: Path | None = None) -> dict[str, object]:
     package, proof, statement, assignment = (path.resolve() for path in
                                              (package, proof, statement, assignment))
     verify_package(package)
     manifest = json.loads((package / "manifest.json").read_text())
     source = json.loads((package / "source.s31.json").read_text())
     key = json.loads((package / "verification-key.json").read_text())
+    report = json.loads((package / "cost-report.json").read_text())
     if (manifest.get("lowering") != "gate" or source.get("version") != 1 or
             source.get("proof_mode", "transparent") != "transparent" or
             manifest.get("channel_profile", "legacy") != "legacy" or
@@ -64,11 +67,20 @@ def audit(package: Path, proof: Path, statement: Path, assignment: Path,
     if (accepted.returncode != 0 or "native verification accepted" not in
             accepted.stdout + accepted.stderr):
         raise ValueError("Gate claim trace audit: packaged native verifier rejected proof")
-    native = run_native(package / "source.s31.json", assignment, proof, statement,
-                        root=root, expected_counts=None)
+    with tempfile.TemporaryDirectory(prefix="s31-gate-physical-") as directory:
+        physical_path = Path(directory) / "certificate.json"
+        native = run_native(package / "source.s31.json", assignment, proof,
+                            statement, root=root, certificate_path=physical_path,
+                            expected_counts=None)
+        physical = json.loads(physical_path.read_text())
+        validate_physical_certificate(physical, source, manifest, key, report, native)
+        certificate_digest = _digest(physical_path)
+        checked_certificate = physical_path.read_bytes()
     verify_package(package)
     if tuple(_digest(path) for path in sealed_paths) != sealed_digests:
         raise ValueError("Gate claim trace audit: package or inputs changed during audit")
+    if certificate is not None:
+        certificate.write_bytes(checked_certificate)
     return {
         "schema": "s31-gate-claim-trace-audit-v1",
         "program_sha256": manifest["program_sha256"],
@@ -77,7 +89,10 @@ def audit(package: Path, proof: Path, statement: Path, assignment: Path,
         "engine_gitlink": revision,
         "producer_counts": native["producer_counts"],
         "source_nodes_mapped": native["source_nodes_mapped"],
+        "source_qm31_rows": native["source_qm31_rows"],
+        "primitive_nodes_checked": physical["primitive_nodes_checked"],
         "source_semantics_match": True,
+        "physical_certificate_sha256": certificate_digest,
         "base_root_match": True,
         "interaction_root_match": True,
         "all_component_claims_match": True,
@@ -93,8 +108,11 @@ def main() -> int:
     parser.add_argument("proof", type=Path)
     parser.add_argument("statement", type=Path)
     parser.add_argument("assignment", type=Path)
+    parser.add_argument("--certificate", type=Path,
+                        help="write the checked public source-to-physical-row certificate")
     args = parser.parse_args()
-    print(json.dumps(audit(args.package, args.proof, args.statement, args.assignment),
+    print(json.dumps(audit(args.package, args.proof, args.statement,
+                           args.assignment, certificate=args.certificate),
                      indent=2, sort_keys=True))
     return 0
 
