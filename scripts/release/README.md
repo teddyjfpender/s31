@@ -155,6 +155,14 @@ the exact paper-only 162-bit collision-term threshold at `T=2^64`. Neither
 assigns a native collision width or establishes the adaptive reduction.
 `--require-adaptive-bcs` fails closed.
 
+The proposed [framed BCS v2 byte model](pcs_fri_framed_bcs_v2.py) reserves a
+new proof selector and separates root, field, nonce, draw and Merkle hash-input
+roles with a canonical length/event frame. Its
+[engineering brief](../../design/s31/security/PCS_FRI_FRAMED_BCS_V2_DESIGN.md)
+aligns the two FRI degree tracks with the four Gate source roots and costs the
+extra Merkle hashing. The model has no native selector or soundness theorem;
+`--require-native-soundness` fails closed.
+
 ## Formal receipt
 
 Run the Lean source-binding check, full build, and kernel replay on a clean
