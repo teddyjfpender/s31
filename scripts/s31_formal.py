@@ -445,6 +445,8 @@ BINDINGS = [
     "formal/s31/tests/lib/pcs_xdm04_mixed_certificate.zig",
     "formal/s31/tests/run_pcs_fri_xdm04_certificate_draft.sh",
     "scripts/release/pcs_fri_cas05_source_profile.py",
+    "scripts/release/pcs_fri_gate_batch_partition.py",
+    "scripts/tests/test_pcs_fri_gate_batch_partition.py",
     "scripts/release/pcs_fri_xdm04_audit_loop.py",
     "scripts/tests/test_pcs_fri_xdm04_audit_loop.py",
     "src/frontends/s31/runtime/fri_merkle_admission.zig",
