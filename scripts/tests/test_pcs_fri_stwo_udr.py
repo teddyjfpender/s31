@@ -72,6 +72,34 @@ class StwoUDRTests(unittest.TestCase):
         self.assertFalse(scenario_arithmetic(one_table_scenario(queries=231), 96)[
             "conditional_paper_work_factor_meets_target"])
 
+        masked = paper_convention["conditional_ideal_m31_masked_query_adaptation"]
+        alpha = Fraction(49153, 65536)
+        self.assertEqual(Fraction(masked["max_positive_set_bias"]), Fraction(2, 1 << 32))
+        self.assertEqual(Fraction(masked["one_draw_good_set_mass_upper"]),
+                         alpha + Fraction(2, 1 << 32))
+        self.assertEqual(Fraction(masked["query_round_bound"]),
+                         (alpha + Fraction(2, 1 << 32)) ** 232)
+        self.assertGreater(Fraction(masked["query_round_bound"]),
+                           Fraction(errors["fri_query"]))
+        self.assertTrue(masked["work_factor_meets_target_if_other_rounds_apply"])
+        self.assertEqual(masked["minimum_queries_for_work_factor_if_other_rounds_fit"], 232)
+        self.assertFalse(scenario_arithmetic(one_table_scenario(queries=231), 96)[
+            "conditional_ideal_m31_masked_query_adaptation"][
+                "work_factor_meets_target_if_other_rounds_apply"])
+        self.assertFalse(scenario_arithmetic(one_table_scenario(queries=70), 96)[
+            "conditional_ideal_m31_masked_query_adaptation"][
+                "work_factor_meets_target_if_other_rounds_apply"])
+        self.assertTrue(scenario_arithmetic(one_table_scenario(t=1 << 64), 96)[
+            "conditional_ideal_m31_masked_query_adaptation"][
+                "work_factor_meets_target_if_other_rounds_apply"])
+        near_one = one_table_scenario()
+        near_one["theta_numerator"] = 1
+        near_one["theta_denominator"] = 1 << 32
+        clamped = scenario_arithmetic(near_one, 96)[
+            "conditional_ideal_m31_masked_query_adaptation"]
+        self.assertEqual(clamped["one_draw_good_set_mass_upper"], "1/1")
+        self.assertIsNone(clamped["minimum_queries_for_work_factor_if_other_rounds_fit"])
+
         two_tables = one_table_scenario()
         two_tables["tables"].append({"rows": n // 2, "air_constraints": 1,
                                      "uses": 1, "yields": 1, "max_use_multiplicity": 1})

@@ -194,6 +194,20 @@ def scenario_arithmetic(scenario: dict, target_bits: int = 96) -> dict:
                         if collision < target else None)
     work_queries = (minimum_query_draws(alpha, t + rounds, collision, t * target)
                     if collision < t * target else None)
+    # A uniform u32 word reduced modulo M31 and masked to a power-of-two
+    # position has positive total-variation bias at most 2/2^32, including
+    # every native query domain size. The independent fixed-good-set model
+    # is an additional hypothesis, not a substitution into the paper theorem.
+    masked_bias = Fraction(2, 1 << 32)
+    masked_alpha = min(Fraction(1), alpha + masked_bias)
+    masked_query = masked_alpha**s
+    masked_errors = dict(errors)
+    masked_errors["fri_query"] = masked_query
+    masked_bcs = (t + rounds) * max(masked_errors.values()) + collision
+    masked_work_queries = (
+        minimum_query_draws(masked_alpha, t + rounds, collision, t * target)
+        if masked_alpha < 1 and collision < t * target else None
+    )
     absolute_nonquery_fits = (t + rounds) * nonquery_max + collision <= target
     work_nonquery_fits = (t + rounds) * nonquery_max + collision <= t * target
     return {
@@ -235,6 +249,16 @@ def scenario_arithmetic(scenario: dict, target_bits: int = 96) -> dict:
         "paper_work_factor_query_budget_after_BCS": exact(work_query_budget),
         "minimum_queries_for_absolute_target_if_other_rounds_fit": absolute_queries,
         "minimum_queries_for_paper_work_factor_target_if_other_rounds_fit": work_queries,
+        "conditional_ideal_m31_masked_query_adaptation": {
+            "scope": "fixed good set, independent uniform raw u32 words, all native power-of-two query domains; no Fiat-Shamir or native correspondence claim",
+            "max_positive_set_bias": exact(masked_bias),
+            "one_draw_good_set_mass_upper": exact(masked_alpha),
+            "query_round_bound": exact(masked_query),
+            "BCS_total_formula_with_adjusted_query": exact(masked_bcs),
+            "BCS_total_over_T_with_adjusted_query": exact(masked_bcs / t),
+            "work_factor_meets_target_if_other_rounds_apply": masked_bcs / t <= target,
+            "minimum_queries_for_work_factor_if_other_rounds_fit": masked_work_queries,
+        },
         "other_rounds_fit_absolute_target": absolute_nonquery_fits,
         "other_rounds_fit_paper_work_factor_target": work_nonquery_fits,
         "native_mapping_and_cryptographic_unknowns": [
