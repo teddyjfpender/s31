@@ -81,8 +81,8 @@ rejection before relation emission.
 `test_static_fold.py` checks exact relation equality with explicit step calls
 for a captured Horner closure and named steps of lengths 1–8. It checks
 different accumulator/element shapes, independent field values, false claims,
-bounds, argument types and static
-array shape before relation emission. The separate native acceptance compares
+bounds, argument types and static array shape before relation emission. The
+separate native acceptance compares
 the same fold with handwritten first-order arithmetic.
 
 `test_static_fold_effects.py` checks that named, captured and higher-order

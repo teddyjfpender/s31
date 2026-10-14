@@ -47,15 +47,9 @@ before step calls; each step result becomes the next accumulator. The fold
 and closure emit no relation node. The [Horner example](../../examples/functional/static_fold/README.md)
 shows its exact arithmetic residuals and a native cost comparison with
 handwritten first-order source. The effect pass checks both partial array
-terms and transitive step effects in witness-dependent branches.
-`std::array::fold(step, initial, [values...])` likewise applies a binary
-named function or closure left to right at specialization time. The function,
-initial value and every array term are evaluated eagerly. Its effect check
-invokes the step body abstractly, including through a higher-order helper,
-before admitting the fold inside a witness-dependent `if`: a division or
-checked arithmetic operation in the step could otherwise fail on an inactive
-branch. The fold contributes only the relation nodes its explicit step calls
-would have emitted.
+terms and transitive step effects, including through higher-order helpers,
+before admitting a witness-dependent branch. A division or checked operation
+in the step could otherwise fail on an inactive branch.
 Circuit inputs and outputs reject tuple types; helper functions may accept or
 return them. The [worked product](../../docs/functional-language.md#static-tuples-two-results-from-one-helper)
 shows the resulting arithmetic equations and exact direct-form relation.
