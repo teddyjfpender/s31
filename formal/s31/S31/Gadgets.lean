@@ -380,6 +380,7 @@ import S31.Gadgets.PcsFri.MaskedLayerBound
 import S31.Gadgets.PcsFri.ConservativeEnvelope
 import S31.Gadgets.PcsFri.StwoMultidomainEnvelope
 import S31.Gadgets.PcsFri.StwoUDRFeasibility
+import S31.Gadgets.PcsFri.SparseP05ConditionalBatchCap
 
 /-! Local constraint relations, with arbitrary-witness soundness and honest
 witness completeness. All range and representation premises are explicit. -/

@@ -80,6 +80,11 @@ candidate widths `32/60/42` are **not** a proved mapping to those `M_i`; a
 multi-height embedding, weighted batch definition, additional claims, or
 protocol transformation may change them. The full theorem has further
 positive terms. `M`, proven security bits, and release admission remain null.
+[`SparseP05ConditionalBatchCap.lean`](../../../formal/s31/S31/Gadgets/PcsFri/SparseP05ConditionalBatchCap.lean)
+kernel-checks the exact cleared-denominator inequality: for integer `M>=1`,
+the isolated term fits the target exactly when `M<=1024`. It also checks that
+`M=1024` fits and `M=1025` fails. This is arithmetic about the candidate
+parameters, not a native-to-paper protocol refinement.
 
 The production sparse Gate accepted proof was 226,475 bytes. One local
 ReleaseFast run reported 0.036049 s proving and 0.048885 s through local
