@@ -233,8 +233,7 @@ local boundary. It models a tagged height-zero leaf or inserted source node
 followed only by upper Merkle parents. In the actual multi-height XDM04 tree,
 this path shape directly describes the **bottom inserted source height**.
 Rows at earlier heights pass through more tagged inserted source nodes before
-reaching the upper-only part of the tree; their native-success-to-model join
-is still missing. The model's binary path position must also be converted
+reaching the upper-only part of the tree. The model's binary path position must also be converted
 from XDM04's transposed native index: above level one, the native sibling
 toggles bit 1 rather than bit 0.
 For two different rows accepted at the same source root, level, and position,
@@ -255,6 +254,36 @@ prover-tree construction as premises, including the missing mixed inserted
 paths for all earlier source heights; it does not prove compiled Zig
 semantics, hash collision resistance, global oracle degree, or adaptive
 Fiat–Shamir sampling.
+
+[`PairedBatchXdm04Topology.lean`](PairedBatchXdm04Topology.lean) models those
+mixed paths. Each step carries a sibling digest and either an inserted row or
+`none` for an upper parent. It proves, for every finite depth, that replay
+using XDM04's transposed parent/side schedule equals replay using the binary
+path position. Two conflicting accepted rows at the same root and position
+therefore yield either a collision in their tagged starting nodes or in one
+of the tagged inserted/upper parent inputs. Under absence of such a local
+collision, the original row equals the committed row and the public-claim
+paired-batch theorem applies at any modeled source height. Native verifier
+success and committed prover-tree construction remain explicit premises;
+these theorems do not establish the Zig-to-Lean correspondence or BLAKE2s
+collision resistance.
+
+For example, with largest log size `k=5`, three source heights, and raw query
+`5`, XDM04 opens these native nodes (the `j=0` member of each pair):
+
+| Source height | Native level/index | Binary path position | Parents above it |
+|---|---:|---:|---|
+| `0`, tagged leaf | `5 / 4` | `2` | inserted height 1, inserted height 2, then upper |
+| `1`, tagged inserted | `4 / 2` | `1` | inserted height 2, then upper |
+| `2`, tagged inserted | `3 / 0` | `0` | upper only |
+
+At native level 4/index 2, the first sibling is selected by bit 1, so this
+node is the right child. Reading bit 0 would put it on the left and produce a
+different root. The focused [draft native test](../../../tests/pcs_fri_xdm04_topology_draft.zig)
+replays all three heights against the actual committed tree and accepted
+XDM04 wire, checks that wrong orientation, and corrupts a compressed witness.
+The [source audit](../../../../../scripts/release/pcs_fri_cas05_source_profile.py)
+now pins the native topology file as well as the verifier and prover files.
 
 [`TwoPointDegreeCorrection.lean`](TwoPointDegreeCorrection.lean) proves the
 ordinary-polynomial degree step under exact reconstruction. For distinct

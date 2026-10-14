@@ -31,6 +31,7 @@ SOURCE_SHA256 = {
     "src/core/pcs/paired_sparse_cascade_experimental.zig": "6b0dba9fb57cdc4690d51326b338760c488c33519354d9ef758a751a201b5487",
     "src/core/pcs/paired_sparse_cascade_wire.zig": "22fecbb35c2a075a7f26786b0b44cfc3523c109ec31d3928a442cfc6c16b8542",
     "src/core/pcs/transposed_merkle_sparse.zig": "6fbb6bd496a9d2916cdaa141c0c44f05fc26ed45ba74e27fedb017b20ee661a9",
+    "src/core/pcs/transposed_merkle.zig": "5424b43ed4088dc5583437182984a741348bdf6dd58b6906f94130a062651063",
     "src/core/pcs/transposed_merkle_cascade.zig": "7bc0793234e902ae37080e2c8b90d4df87120fd3a87c441d669c928fcb85bb92",
     "src/core/pcs/transposed_paired_sparse.zig": "56bd8cf46b8897044b4dc9f70d4dd22c8bd10d01b584165daa21625f4e3dffca",
     "src/core/pcs/paired_sparse_relation_experimental.zig": "86911ee4d2f7fd78ee1e23a2116fb9acfa49466b4e52aa7130225c3de3acf75c",
@@ -82,6 +83,9 @@ def check_fixed_source_custody(decoded: dict[str, str]) -> None:
     """
     cascade = decoded["src/core/pcs/paired_sparse_cascade_experimental.zig"]
     xdm = decoded["src/core/pcs/transposed_merkle_sparse.zig"]
+    topology = decoded["src/core/pcs/transposed_merkle.zig"]
+    tree = decoded["src/core/pcs/transposed_merkle_cascade.zig"]
+    prover_tree = decoded["src/prover/pcs/transposed_cascade_experimental.zig"]
     paired = decoded["src/core/pcs/transposed_paired_sparse.zig"]
     relation = decoded["src/core/pcs/paired_sparse_relation_experimental.zig"]
     _ordered(_function(cascade, "fn matches("), "public statement match",
@@ -118,6 +122,30 @@ def check_fixed_source_custody(decoded: dict[str, str]) -> None:
              "if (used != count) return error.WitnessTooLong;",
              "if (!std.mem.eql(u8, &root, &expected_root)) return error.RootMismatch;",
              "return .{ .allocator = allocator, .profile = expected, .values = values };")
+    _ordered(_function(topology, "pub fn children("), "XDM04 transposed children",
+             "if (level == 0) return .{ 0, 1 };",
+             "const first = (index & 1) | ((index >> 1) << 2);",
+             "return .{ first, first | 2 };")
+    _ordered(_function(topology, "pub fn parent("), "XDM04 transposed parent",
+             "if (level == 1) return 0;",
+             "return (index & 1) | ((index >> 2) << 1);")
+    _ordered(_function(topology, "pub fn sibling("), "XDM04 transposed sibling",
+             "return index ^ (if (level == 1) @as(usize, 1) else @as(usize, 2));")
+    _ordered(_function(tree, "pub fn hashLeaf("), "XDM04 leaf tag",
+             'h.update("S31XDL03");', "hashValues(&h, values);", "return h.finalize();")
+    _ordered(_function(tree, "pub fn hashUpper("), "XDM04 upper tag",
+             'h.update("S31XDU03");', "h.update(&left);", "h.update(&right);",
+             "return h.finalize();")
+    _ordered(_function(tree, "pub fn hashInserted("), "XDM04 inserted tag",
+             "const pair = hashUpper(left, right);", 'h.update("S31XDI03");',
+             "h.update(&pair);", "hashValues(&h, values);", "return h.finalize();")
+    _ordered(_function(prover_tree, "fn commitImpl("), "XDM04 committed tree",
+             "for (layers[k], 0..) |*leaf, row|",
+             "leaf.* = xdm.hashLeaf(values[0..source_columns[0].len]);",
+             "const pair = topology.children(level, row);",
+             "if (height < source_columns.len) {",
+             "node.* = xdm.hashInserted(left, right, values[0..source_columns[height].len]);",
+             "node.* = xdm.hashUpper(left, right);")
     _ordered(_function(paired, "pub fn fromVerifiedOpenings("),
              "XDM04 opening to own quotient",
              "if (raw_queries.len != profile.query_count or claims.len != profile.height_count)",
