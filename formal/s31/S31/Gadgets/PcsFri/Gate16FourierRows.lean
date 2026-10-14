@@ -209,7 +209,7 @@ def fourBlockAtExpectedRow (c₀ c₁ c₂ c₃ : M31) (row : Fin 16) : M31 :=
   nativeFourBlock c₀ c₁ c₂ c₃
     (expectedPoint row).1 (expectedPoint row).2
 
-/-- Four authenticated canonical rows determine the entire first circle
+/-- Four canonical row values determine the entire first circle
 coefficient block. This is the exact Gate log-4 finite-table inverse boundary;
 the native FFT still needs its own operational refinement. -/
 theorem expected_four_row_block_injective

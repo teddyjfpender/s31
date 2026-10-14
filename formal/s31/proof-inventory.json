@@ -371,7 +371,7 @@
     "formal/s31/S31/Gadgets/PcsFri/FriCascadeNormalization.lean": "471cc8404019881e3869a64b14c2c14eaaf106b6f58e4684d4d0849fa7b20b9e",
     "formal/s31/S31/Gadgets/PcsFri/FriLeafEncoding.lean": "06fe1e04ebf2c3ffa1958614daf16376aa55642a0ae4218ea18f95cf0ac0302e",
     "formal/s31/S31/Gadgets/PcsFri/FriMerkleBinding.lean": "c48e87d5f7ae5f43511e48901228318c1adc975dab5509541132b28bc567cff4",
-    "formal/s31/S31/Gadgets/PcsFri/Gate16FourierRows.lean": "a66752efefb2386b52abe7b7131f2459e53bc1964ec3970bac18082983077905",
+    "formal/s31/S31/Gadgets/PcsFri/Gate16FourierRows.lean": "1fa26f34ec1fff150284ddef602787ba56774904e10fb2f4f7005df9b9bb8c2e",
     "formal/s31/S31/Gadgets/PcsFri/GateFourBlockOwnQuotient.lean": "6f006d183aa6d384d792cf545e3d559b113e9ffced991cd95a02ed20afda6abb",
     "formal/s31/S31/Gadgets/PcsFri/GateFourSlotNativeMap.lean": "b92b12a1300efe7ab7b09ec865fd755213900c6a9ce90f675ccb180c57fa5204",
     "formal/s31/S31/Gadgets/PcsFri/GateQuotientOnlyGap.lean": "51fb50a7140f59ef35e2dd4be188b35ea4345ebe927bdff7807e418b2e916966",
