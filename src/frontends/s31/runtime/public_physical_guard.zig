@@ -5,12 +5,17 @@ const relation = @import("stwo_s31_prototype").relation;
 
 pub fn eligible(allocator: std.mem.Allocator, source: relation.Program) !bool {
     if (source.version != 1 or source.proof_mode != .transparent or
-        source.inputs.len != 1 or source.nodes.len == 0 or source.nodes.len > 16 or
+        source.inputs.len == 0 or source.inputs.len > 2 or
+        source.nodes.len == 0 or source.nodes.len > 16 or
         source.assertions.len != 0 or source.public_outputs.len != 1)
         return false;
-    const input = source.inputs[0];
-    if (input.visibility != .public or input.kind != .m31 or input.length != 4)
+    const lanes = source.inputs[0].length;
+    if (lanes == 0 or lanes > 4 or (source.inputs.len == 2 and lanes > 2))
         return false;
+    for (source.inputs) |input| {
+        if (input.visibility != .public or input.kind != .m31 or input.length != lanes)
+            return false;
+    }
     var selected_is_node = false;
     for (source.nodes) |node| {
         if (node.op != .add and node.op != .sub and node.op != .mul) return false;
@@ -18,7 +23,7 @@ pub fn eligible(allocator: std.mem.Allocator, source: relation.Program) !bool {
     }
     if (!selected_is_node) return false;
     const result = (try source.shapeOf(allocator, source.public_outputs[0])) orelse return false;
-    return result.kind == .m31 and result.length == 4;
+    return result.kind == .m31 and result.length == lanes;
 }
 
 pub fn checkAssignment(assignment: relation.Assignment) !void {
@@ -66,6 +71,11 @@ test "public physical export guard rejects wrong source profiles" {
     var two_inputs = [_]relation.Input{ input[0], input[0] };
     program.inputs = &two_inputs;
     try std.testing.expect(!try eligible(allocator, program));
+    two_inputs[0].length = 2;
+    two_inputs[1].length = 2;
+    try std.testing.expect(try eligible(allocator, program));
+    two_inputs[1].length = 1;
+    try std.testing.expect(!try eligible(allocator, program));
     program.inputs = &input;
     var two_outputs = [_][]const u8{ "p1", "p1" };
     program.public_outputs = &two_outputs;
@@ -79,7 +89,9 @@ test "public physical export guard rejects wrong source profiles" {
     try std.testing.expect(!try eligible(allocator, program));
     input[0].kind = .m31;
     input[0].length = 2;
-    try std.testing.expect(!try eligible(allocator, program));
+    try std.testing.expect(try eligible(allocator, program));
+    input[0].length = 1;
+    try std.testing.expect(try eligible(allocator, program));
     input[0].length = 4;
 
     outputs[0] = "x";
