@@ -88,7 +88,7 @@ Uniform-field fractions above remain hypothetical seed-set fractions, not
 native failure probabilities.
 
 The [source-bound diagnostic](../../../scripts/release/pcs_fri_ood_seed_geometry.py)
-pins the native gitlink and eight exact file hashes, checks the reviewed
+pins the native gitlink and nine exact file hashes, checks the reviewed
 sampling and denominator code, and reports these fractions as exact rational
 numbers:
 

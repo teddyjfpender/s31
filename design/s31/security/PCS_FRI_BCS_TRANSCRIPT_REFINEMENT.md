@@ -125,9 +125,10 @@ python3 -B -m scripts.s31_formal_lib.pcs_fri_bcs_transcript
    Each channel digest has at most `p^8 < 2^248` states after reduction,
    so `lambda = 256` cannot be inherited from raw BLAKE2s. This cardinality
    bound is not a proof that `lambda = 248` applies either: the native
-   collision/BCS reduction and its effective parameter remain unknown. Native root and
-   field absorption lack operation tags; for example, a 32-byte root and two
-   QM31 values of the same bytes form an identical next-hash input at the
+   collision/BCS reduction and its effective parameter remain unknown.
+   Native root and field absorption lack operation tags; for example, a
+   32-byte root and two QM31 values of the same bytes form an identical
+   next-hash input at the
    same digest. The fixed call schedule may still suffice, but the reduction
    must state and justify the required cross-role framing assumption.
 3. Quantitative Merkle binding and BLAKE2s/ROM assumptions, including
