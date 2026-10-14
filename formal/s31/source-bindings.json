@@ -432,7 +432,7 @@
     "scripts/release/pcs_fri_sparse_p05_accepted_geometry.py": "75eecf86fbd8667da42f6b5289b12fbfbe1384301ae52db8e4b34e7bfcca09f7",
     "scripts/release/pcs_fri_sparse_p05_h3_roster.py": "d899b13126cb63d582de834823c9f3bb51acae197dd419ccad38203f219bd9c0",
     "scripts/tests/test_pcs_fri_sparse_p05_h3_roster.py": "f3da7557fe4b00b8229ce79b7aefe09e9dade4bf32e907ba77e21fa2f57635c0",
-    "formal/s31/tests/run_pcs_fri_p05_sparse_accepted_geometry.sh": "54cfd21169b273f2d4dd6aae9888fb91d8cbb5d70da8840b09075f0633305a30",
+    "formal/s31/tests/run_pcs_fri_p05_sparse_accepted_geometry.sh": "19a80ef2f243e2ebbd4486b4218e6d6fb746ddc1c07bbf3c1b4d65e54adfa115",
     "formal/s31/tests/pcs_fri_p05_sparse_h3_accepted_rows_native.zig": "f3a00c1af6033974d7bdfcc8690ed73d8deef34b3d599792bd8d3b817ae7e077",
     "formal/s31/tests/run_pcs_fri_p05_sparse_h3_accepted_rows_native.sh": "d365b4bfc4d2dc15d9f112f75de7044053aa56e5ee234f04b99d885798aeb657",
     "scripts/release/pcs_fri_xdm04_audit_loop.py": "a2cfe20a689aafda18004b34f3536a6171ecf993c7af6527c4f5af841359d322",

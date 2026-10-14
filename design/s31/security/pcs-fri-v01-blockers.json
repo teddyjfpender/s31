@@ -288,7 +288,7 @@
     "formal/s31/tests/run_pcs_fri_merkle_byte_preimage_native.sh": "6d3a312953dede0f50a14110a891872b5810205828382e5773f9d26b93a3d34f",
     "formal/s31/tests/run_pcs_fri_native_collision_reduction.sh": "4ff755d5db2bf401b528453cc78fcbc7a6a4c6c50f567815aaba81041e16f0ed",
     "formal/s31/tests/run_pcs_fri_native_query_batch.sh": "07bf41495a8fb2e49a1b056f4e3e51b38c5d4f825d6fbe5bca944116860ddd78",
-    "formal/s31/tests/run_pcs_fri_p05_sparse_accepted_geometry.sh": "54cfd21169b273f2d4dd6aae9888fb91d8cbb5d70da8840b09075f0633305a30",
+    "formal/s31/tests/run_pcs_fri_p05_sparse_accepted_geometry.sh": "19a80ef2f243e2ebbd4486b4218e6d6fb746ddc1c07bbf3c1b4d65e54adfa115",
     "formal/s31/tests/run_pcs_fri_p05_sparse_h3_accepted_rows_native.sh": "d365b4bfc4d2dc15d9f112f75de7044053aa56e5ee234f04b99d885798aeb657",
     "formal/s31/tests/run_pcs_fri_p05_verifier_roster_native.sh": "c75e5e8fb72a87998816abad3bcd335ed714aa0929742ebfe903b926e02c5c99",
     "formal/s31/tests/run_pcs_fri_pow_m31_predicate_native.sh": "2151bbdb6171eb8394632592ccad3d2dbf2ac755c0ee27cca15f6a55ae4f21fb",
