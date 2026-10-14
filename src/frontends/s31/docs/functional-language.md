@@ -12,6 +12,14 @@ call site and emits only the underlying relation operations.
 The [record guide](records.md) shows named fields with the same static-product
 erasure and a separate nominal type check.
 
+`std::array::map(f, [a, b])` applies a named function or captured closure to
+each source-only array element in order. The [worked static map](../examples/functional/static_map/README.md)
+compares its normalized relation and complete native AIR geometry with two
+explicit calls. The map emits no witness column or map gate. Its function
+body retains all partial effects, so a witness-dependent `if` cannot hide an
+inactive checked inverse inside the map. Runtime arrays still need explicit
+views; this is bounded static specialization, with at most 64 elements.
+
 The [strict release example](../examples/functional/release_square4/README.md)
 shows three composed pure functions admitted by the independent v2 direct-gate
 certificate. Its handwritten form has the same two relation nodes and native

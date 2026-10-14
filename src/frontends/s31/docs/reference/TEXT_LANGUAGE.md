@@ -202,6 +202,7 @@ zero-row view for byte and integer operations.
 | `std::bitcoin::header_time(header)` | `bitcoin_header_time` | `Bytes80` to `[u16; 2]`; fixed view of little-endian timestamp bytes 68–71. |
 | `std::math::lt_u32(a,b)` | `u32_lt` | Strict unsigned comparison of two little-endian `[u16; 2]` values; Boolean M31 result. |
 | `std::array::get<K>(array)` | Static reference selection, or `array_get` for a runtime array | Literal `K` lies inside the array; runtime element type is m31 or u16. |
+| `std::array::map(function, static_array)` | Source-only specialization of one unary call per element; no map relation node | 1–64 equally typed first-order values; the function returns a first-order value. Partial effects remain eager and visible to conditional checking. |
 | `std::array::concat(a,b)` | Static reference concatenation, or `array_concat` for runtime arrays | Both arguments are static groups or both are arrays with the same m31/u16 element type; runtime result length at most 4096. |
 | `std::array::take<K>(array)` | Static reference prefix, or runtime `array_slice` with offset 0 and length `K` | Leaves 1..N elements; a full runtime prefix aliases the input. |
 | `std::array::drop<K>(array)` | Static reference suffix, or runtime `array_slice` with offset `K` and length `N-K` | Leaves 1..N elements; dropping zero aliases the input. |
@@ -349,7 +350,7 @@ of a changed public output and a non-Boolean private direction. The Zig suite
 independently validates and compiles the emitted relation.
 
 This initial text language has no user-defined modules or imports, macros, arbitrary recursion,
-witness-dependent control flow beyond the implemented computed zero selector, general `map`/`fold`,
+witness-dependent control flow beyond the implemented computed zero selector, runtime-array `map` or general `fold`,
 or private circuit-to-chip boundary. It reports source positions for emitted
 nodes and gate spans, but it does not yet render every symbolic AIR polynomial
 as source text. Expanding those features belongs after the backend has a

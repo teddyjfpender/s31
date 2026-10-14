@@ -73,6 +73,11 @@ arithmetic. The tests also cover independent field results, forged public
 outputs, nominal mismatches, duplicate names and partial effects in omitted
 fields of an inactive conditional branch.
 
+`test_static_map.py` checks exact relation equality for named and captured
+functions, independent field values, wrong-claim rejection, effect rejection
+for a partial mapped body inside a dynamic conditional, and type/shape
+rejection before relation emission.
+
 Run through the repository's Python discovery command:
 
 ```sh

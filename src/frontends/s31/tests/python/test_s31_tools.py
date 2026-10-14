@@ -46,7 +46,7 @@ class ProverLogTests(unittest.TestCase):
                          "source_relation_fragment.py", "record_source_fragment.py",
                          "record_value_fragment.py", "lean_effects_admission.py",
                          "structural_derivation.py", "pure_native_rows.py",
-                         "effects_gate_ownership.py"})
+                         "effects_gate_ownership.py", "pcs_mode.py"})
         self.assertTrue(package_files.issubset(s31.TEXT_FRONTEND_SOURCES))
         runtime_files = set((S31_SOURCE_ROOT / "python/runtime").glob("*.py"))
         self.assertEqual({path.name for path in runtime_files},

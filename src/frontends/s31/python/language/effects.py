@@ -35,7 +35,7 @@ TOTAL_BUILTINS = frozenset({
     "genesis_block_hash_mainnet", "genesis_hash_mainnet", "hash_bytes", "header_bits", "header_time",
     "is_zero", "iterate", "lt_u32", "m31_from_u16", "merkle_path_blake2s",
     "merkle_path_poseidon2", "parent_hash", "poseidon2_leaf", "poseidon2_pair", "prev_hash",
-    "select", "sha256d_header", "splat", "std::array::concat", "std::array::drop",
+    "select", "sha256d_header", "splat", "std::array::concat", "std::array::drop", "std::array::map",
     "std::array::flatten", "std::array::get", "std::array::reshape", "std::array::take", "std::bytes::from_u256_le",
     "std::bytes::limbs_m31", "std::bytes::to_u256_le", "std::int::add_wrapping", "std::int::eq", "std::int::ge",
     "std::int::gt", "std::int::le", "std::int::limbs", "std::int::lt", "std::int::mul_wrapping", "std::int::ne",
@@ -351,6 +351,16 @@ class TotalityChecker:
             result = self.invoke_function(expr.value, values, expr)
             return Effect(result.value, failure | result.failure)
         name = STANDARD_ALIASES.get(expr.value, expr.value)
+        if name == "std::array::map":
+            function = values[0]
+            if isinstance(function, NamedFunctionRef):
+                effect = self.invoke_function(function.name, (FIRST_ORDER,), expr)
+                failure |= effect.failure
+            elif isinstance(function, Closure):
+                effect = self.invoke_closure(function, (FIRST_ORDER,), expr)
+                failure |= effect.failure
+            else:
+                failure |= {"opaque:static-map"}
         if name == "iterate":
             # The step body is evaluated in every round. Resolve its effect
             # now, including when a higher-order helper passes the function.

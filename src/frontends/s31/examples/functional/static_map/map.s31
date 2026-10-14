@@ -1,0 +1,9 @@
+use std@1;
+
+fn square(v: [m31; 4]) -> [m31; 4] { v .* v }
+
+circuit static_map_square(private x: [m31; 4], private y: [m31; 4])
+    -> public [m31; 8] {
+    let out = std::array::flatten(std::array::map(square, [x, y]));
+    out
+}

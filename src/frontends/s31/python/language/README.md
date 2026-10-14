@@ -32,6 +32,14 @@ identical or reversed realized wire pairs share one relation constraint. The com
 bounds total assertion expansion, including duplicates, before emission.
 Function-valued leaves cannot be selected or asserted, and partial operations
 in either branch remain visible to the effect pass.
+`std::array::map(function, [values...])` specializes a unary named function
+or closure once per source-only array element. Its result is another static
+array of first-order circuit values. It emits the same calls and primitive
+relation nodes as writing them explicitly; the map has no runtime node.
+The type pass requires one common input type and a first-order result, while
+the effect pass checks the mapped body before an inactive dynamic branch can
+hide a partial operation. See the
+[native example](../../examples/functional/static_map/README.md).
 Circuit inputs and outputs reject tuple types; helper functions may accept or
 return them. The [worked product](../../docs/functional-language.md#static-tuples-two-results-from-one-helper)
 shows the resulting arithmetic equations and exact direct-form relation.
