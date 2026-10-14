@@ -109,9 +109,13 @@ def main() -> None:
         work = Path(temp)
         for label, source_bytes, assignment in CASES:
             raw = case_bytes(source_bytes, assignment)
-            result = check(write_case(work, raw))
+            saved_graph = work / "verified-native-graph.json" if label == "three_inputs" else None
+            result = check(write_case(work, raw), saved_graph)
             if result["status"] != "accepted":
                 raise AssertionError(f"{label}: honest source rejected")
+            if saved_graph is not None:
+                if hashlib.sha256(saved_graph.read_bytes()).hexdigest() != result["graph_sha256"]:
+                    raise AssertionError("exported graph digest differs from verified bytes")
 
         raw = case_bytes(CASES[0][1], CASES[0][2])
         changed_source = {**raw, "source": raw["source"].replace(b"t .* c", b"t + c")}

@@ -235,11 +235,20 @@ def check_graph(graph: dict, raw: dict[str, bytes], inputs: list[dict],
     require(type(bindings) is list and len(bindings) == len(expected_ports),
             "public binding roster differs")
     offset = 0
+    conversion_cursor = None
     for binding, (name, words) in zip(bindings, expected_ports, strict=True):
         require(binding["name"] == name and binding["word_start"] == offset and
                 binding["word_count"] == len(words) and
                 binding["binding_qm31_end"] - binding["binding_qm31_start"] == len(words),
                 "public binding span differs")
+        if conversion_cursor is None:
+            conversion_cursor = binding["conversion_qm31_start"]
+        require(binding["conversion_qm31_start"] == conversion_cursor and
+                conversion_cursor <= binding["conversion_qm31_end"] <= gate_total and
+                binding["conversion_m31_to_u32_start"] == 0 and
+                binding["conversion_m31_to_u32_end"] == 0,
+                "public conversion spans are not contiguous")
+        conversion_cursor = binding["conversion_qm31_end"]
         for word in words:
             offset += 1
             require(values[output[offset]] == [word, 0, 0, 0],
@@ -262,10 +271,14 @@ def check_graph(graph: dict, raw: dict[str, bytes], inputs: list[dict],
         for limb in range(len(source[left]["words"])):
             require(source[left]["words"][limb] == source[right]["words"][limb],
                     "source assertion differs")
-    require(previous_eq == len(graph["eq"]) and
+    require(bindings[0]["conversion_qm31_start"] == previous_arithmetic and
+            conversion_cursor == bindings[0]["binding_qm31_start"] and
+            all(binding["binding_qm31_start"] == conversion_cursor + binding["word_start"]
+                for binding in bindings) and
+            previous_eq == len(graph["eq"]) and
             graph["finalization"] is not None and
-            previous_arithmetic <= graph["finalization"]["qm31_start"] and
+            graph["finalization"]["qm31_start"] == conversion_cursor + 8 and
             graph["finalization"]["qm31_end"] == gate_total,
-            "finalization span does not reach complete graph")
+            "node/assertion/public/finalization phases are not contiguous")
     return {"variables": n, "arithmetic_gates": gate_total,
             "equality_gates": len(graph["eq"])}
