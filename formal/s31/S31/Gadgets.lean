@@ -308,6 +308,7 @@ import S31.Gadgets.PcsFri.SparseCascadeQueries
 import S31.Gadgets.PcsFri.M31MaskedQuery
 import S31.Gadgets.PcsFri.NativeQueryBatch
 import S31.Gadgets.PcsFri.PowM31Predicate
+import S31.Gadgets.PcsFri.BiasedLookupPair
 import S31.Gadgets.PcsFri.NativeM31Arithmetic
 import S31.Gadgets.PcsFri.MerkleOpening
 import S31.Gadgets.PcsFri.MerkleBytePreimage

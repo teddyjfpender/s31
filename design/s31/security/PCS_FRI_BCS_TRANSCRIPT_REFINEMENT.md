@@ -21,6 +21,11 @@ hasher; it takes the first four reduced words. A lookup-element pair takes
 both four-word halves of one block. Under ideal independent raw digest words,
 residues `0` and `1` each have three preimages and others have two, so a QM31
 draw is biased. The checked native increment aborts before u32 wrap.
+The [P07 finite-count proof](PCS_FRI_LOOKUP_PAIR_BIAS.md) makes that bias
+quantitative for one fixed-prefix ideal raw block: an arbitrary event in the
+two-QM31 lookup pair has probability at most
+`(3(2³¹−1)/2³²)⁸ ≈ 25.6289061545` times its uniform-pair probability.
+It supplies no independence or fresh-draw claim after adaptive nonce choice.
 
 For the direct Gate, the relevant event order is:
 
