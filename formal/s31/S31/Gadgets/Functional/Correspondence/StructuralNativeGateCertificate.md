@@ -63,6 +63,10 @@ node/assertion spans, and named public bindings. It is written only after the
 Lean byte gate, Zig topology/witness parity audit, and independent bounded
 Python replay all accept. The CLI reports its SHA-256 digest.
 
+**Keep this artifact local:** its value table includes private witness and
+private input values. The CLI creates a new file with mode `0600` and refuses
+to overwrite an existing path. Do not publish or attach it to a PR.
+
 The independent replay checks every exported arithmetic gate equation,
 including full QM31 extension multiplication used by input packing; all
 equality gates; canonical M31 values; each source expression's concrete gate

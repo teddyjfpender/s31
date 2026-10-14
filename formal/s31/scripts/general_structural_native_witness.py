@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -201,7 +202,11 @@ def check(paths: list[Path], graph_out: Path | None = None) -> dict[str, int | s
         summary = check_graph(graph, raw, inputs, nodes)
         graph_bytes = (work / "native-graph.json").read_bytes()
         if graph_out is not None:
-            graph_out.write_bytes(graph_bytes)
+            # The graph contains every private witness value. Never replace an
+            # existing path or follow its final symlink; create it mode 0600.
+            fd = os.open(graph_out, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            with os.fdopen(fd, "wb") as out:
+                out.write(graph_bytes)
     return {"status": "accepted", "inputs": len(inputs), "nodes": len(nodes),
             "source_sha256": hashlib.sha256(raw["source"]).hexdigest(),
             "graph_sha256": hashlib.sha256(graph_bytes).hexdigest(), **summary}
@@ -212,7 +217,7 @@ def main() -> None:
     for name in MAXIMUM:
         parser.add_argument(name, type=Path)
     parser.add_argument("--graph-out", type=Path,
-                        help="write the verified exact native graph JSON")
+                        help="write sensitive private-witness graph JSON to a new mode-0600 file")
     args = parser.parse_args()
     try:
         print(json.dumps(check([getattr(args, name) for name in MAXIMUM], args.graph_out),

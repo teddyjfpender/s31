@@ -6,6 +6,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import stat
 import sys
 import tempfile
 from pathlib import Path
@@ -116,6 +117,8 @@ def main() -> None:
             if saved_graph is not None:
                 if hashlib.sha256(saved_graph.read_bytes()).hexdigest() != result["graph_sha256"]:
                     raise AssertionError("exported graph digest differs from verified bytes")
+                if stat.S_IMODE(saved_graph.stat().st_mode) != 0o600:
+                    raise AssertionError("private graph artifact is not mode 0600")
 
         raw = case_bytes(CASES[0][1], CASES[0][2])
         changed_source = {**raw, "source": raw["source"].replace(b"t .* c", b"t + c")}
