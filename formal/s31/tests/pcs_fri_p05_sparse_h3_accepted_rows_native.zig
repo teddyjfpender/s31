@@ -159,6 +159,9 @@ test "P05 accepted sparse H3 two-point own quotient rows match native PCS" {
         try std.testing.expectEqual(@as(usize, 1), projected.len);
         const source_row = core.poly.circle.canonic.CanonicCoset.new(column.extended_log_size)
             .circleDomain().at(core.utils.bitReverseIndex(projected[0], column.extended_log_size));
+        // One accepted lifted query projects to this exact source-domain row.
+        // This finite check is not a universal native projection refinement.
+        try std.testing.expect(row.repeatedDouble(shape.trace_lifting_log_size - column.extended_log_size).eql(source_row));
         var column_points: [2]Point = undefined;
         var column_values: [2]QM31 = undefined;
         var direct: [2]QM31 = undefined;
