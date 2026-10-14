@@ -19,6 +19,24 @@ def digest(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def ordered_claim_slices(shape: dict[str, object]):
+    claims = shape["claims"]
+    expected_offset = 0
+    for column in shape["columns"]:
+        first = column["first_claim_index"]
+        count = column["ood_claims"]
+        if (type(first) is not int or type(count) is not int or
+                first != expected_offset or count < 0):
+            raise ValueError("column claim slices are not contiguous")
+        owned = claims[first:first + count]
+        if len(owned) != count:
+            raise ValueError("column claim slice out of bounds")
+        yield column, owned
+        expected_offset += count
+    if expected_offset != len(claims):
+        raise ValueError("column claim slices do not cover all accepted claims")
+
+
 def report(package: Path, proof: Path, statement: Path) -> dict[str, object]:
     manifest_path = package / "manifest.json"
     key_path = package / "verification-key.json"
@@ -59,11 +77,7 @@ def report(package: Path, proof: Path, statement: Path) -> dict[str, object]:
         if len(field) != 4 or any(type(word) is not int or not 0 <= word < prime
                                   for word in field):
             raise ValueError("noncanonical OOD seed or base point")
-    for column in shape["columns"]:
-        first = column["first_claim_index"]
-        owned = claims[first:first + column["ood_claims"]]
-        if len(owned) != column["ood_claims"]:
-            raise ValueError("column claim slice out of bounds")
+    for column, owned in ordered_claim_slices(shape):
         for sample, claim in enumerate(owned):
             if (claim["root_index"] != column["root_index"] or
                     claim["column_index"] != column["column_index"] or

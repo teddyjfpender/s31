@@ -21,6 +21,8 @@ python3 -B scripts/release/pcs_fri_sparse_p05_accepted_geometry.py \
 python3 - "$temp_dir/geometry.json" <<'PY'
 import json
 import sys
+from copy import deepcopy
+from scripts.release.pcs_fri_sparse_p05_accepted_geometry import ordered_claim_slices
 
 result = json.load(open(sys.argv[1], encoding="utf-8"))
 shape = result["accepted_capture"]
@@ -43,6 +45,29 @@ assert result["candidate_paper_parameters"]["largest_integer_M_passing_isolated_
 assert result["native_to_paper_batch_width_M"] is None
 assert result["native_proven_security_bits"] is None
 assert result["proven_release_admissible"] is False
+assert len(list(ordered_claim_slices(shape))) == len(shape["columns"])
+for field, value, column_index in [
+    ("first_claim_index", -1, 0),
+    ("first_claim_index", 0, 1),
+    ("first_claim_index", True, 0),
+    ("ood_claims", -1, 0),
+]:
+    malformed = deepcopy(shape)
+    malformed["columns"][column_index][field] = value
+    try:
+        list(ordered_claim_slices(malformed))
+    except ValueError:
+        pass
+    else:
+        raise AssertionError(f"accepted malformed claim slice: {field}={value}")
+malformed = deepcopy(shape)
+malformed["claims"].append(malformed["claims"][-1])
+try:
+    list(ordered_claim_slices(malformed))
+except ValueError:
+    pass
+else:
+    raise AssertionError("accepted an unowned trailing claim")
 PY
 
 # A wrong key must fail before any geometry JSON is emitted. This control
