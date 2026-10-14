@@ -43,6 +43,20 @@ def derive(evidence: dict[str, object]) -> dict[str, object]:
             checks["proof_sha256"] != PROOF_SHA256 or
             checks["native_proof"] != "accepted_before_geometry_inspection"):
         raise ValueError("accepted key/proof identity changed")
+    parameters = evidence["candidate_paper_parameters"]
+    expected_parameters = {
+        "N_from_sealed_max_trace_log": 1 << 16,
+        "B_from_sealed_fri_blowup": 2,
+        "D0_conditionally_N_times_B_squared": 1 << 18,
+        "T_hash_queries": 1 << 64,
+        "epsilon_over_T_target_bits": 96,
+        "minimum_BCS_rounds_R": 1,
+        "certified_batch_grinding_credit": 0,
+        "largest_integer_M_passing_isolated_batch_factor": 1024,
+    }
+    if any(type(parameters.get(name)) is not int or parameters[name] != value
+           for name, value in expected_parameters.items()):
+        raise ValueError("accepted key's conditional paper parameters changed")
     shape = evidence["accepted_capture"]
     claims = shape["claims"]
     claim_digest = hashlib.sha256(json.dumps(
@@ -96,6 +110,7 @@ def derive(evidence: dict[str, object]) -> dict[str, object]:
         quotients = len(bucket["own_quotient_claim_refs"])
         periodic = len(bucket["legacy_periodicity_source_refs"])
         if (accepted["extended_log_size"] != bucket["extended_log_size"] or
+                accepted["committed_input_log_size"] != bucket["committed_input_log_size"] or
                 accepted["source_columns"] != originals or
                 accepted["ood_claims"] != quotients or
                 accepted["required_original_tracks_if_paired"] != originals or

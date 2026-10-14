@@ -40,6 +40,8 @@ class SparseH3RosterTests(unittest.TestCase):
             lambda d: d["accepted_capture"]["columns"][1].__setitem__("first_claim_index", 0),
             lambda d: d["accepted_capture"]["columns"][1].__setitem__("root_index", 2),
             lambda d: d["accepted_capture"]["claims"][0]["value_limbs"].__setitem__(0, 1),
+            lambda d: d["accepted_capture"]["heights"][0].__setitem__("committed_input_log_size", 15),
+            lambda d: d["candidate_paper_parameters"].__setitem__("B_from_sealed_fri_blowup", 4),
             lambda d: d.__setitem__("native_proven_security_bits", 96),
         ):
             with self.subTest(mutate=mutate):
