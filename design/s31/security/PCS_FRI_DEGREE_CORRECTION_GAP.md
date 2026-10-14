@@ -156,3 +156,36 @@ This establishes local **sampled original-row
 reconstruction only**. The own quotients, a paired multi-domain FRI, whole
 oracle degree bounds, and the theorem reduction remain absent; the v2 selector
 and P05 admission stay false.
+
+The [own-quotient row adapter](../../../formal/s31/tests/lib/p05_own_quotient_rows.zig)
+adds the next local relation. It first rechecks all four source roots and raw
+query projections. It then requires an independently supplied, ordered claim
+roster with the exact tree, column, sample index, source height, OOD point,
+and claimed value. For each explicit mask sample it derives the conjugate
+two-point line and computes, at each authenticated lifted PCS row,
+
+```text
+own_q(row) = (c · original(row) − a · row.y − b)
+             / ((P.x₀ − row.x) · P.y₁ − (P.y₀ − row.y) · P.x₁)
+```
+
+Here `a,b,c` are native `complexConjugateLineCoeffs(P, claim, 1)`, and the
+subscripts are the CM31 components of the QM31 OOD point. A zero divisor or
+non-circle OOD point is rejected. When a column has two explicit mask samples,
+the adapter emits the native periodicity sample **before** both explicit
+samples, preserving separate quotients and their owner identities. The
+[four-root control](../../../formal/s31/tests/pcs_fri_p05_multi_root_original_native.zig)
+checks exact agreement against native `friAnswers` for one sample and for the
+three-term composition periodicity sequence. It rejects swapped claims,
+changed paths, projected positions, rows, roots, and a zero divisor.
+
+The expected-claim roster is **supplied externally by the test caller**. The
+adapter compares its point and value, as well as tree, column, sample index,
+and source height, against the verifier capture for every explicit sample.
+It does not reconstruct that roster from an installed key or independently
+authenticate the OOD claims. A real v2 verifier must derive the roster from
+its accepted AIR/OOD relation and bind it to the public statement. This adapter
+uses the pinned verifier's **lifted** row point and labels the source height;
+the theorem still needs a proof that the native-height paired codewords and
+lifted rows have the required relation. It has no whole-oracle degree test,
+multi-domain FRI, or admission selector.

@@ -447,6 +447,7 @@ BINDINGS = [
     "src/frontends/s31/runtime/fri_merkle_admission.zig",
     "src/frontends/s31/runtime/pcs_lifted_capture_admission.zig",
     "formal/s31/tests/lib/p05_multi_root_original_batch.zig",
+    "formal/s31/tests/lib/p05_own_quotient_rows.zig",
     "formal/s31/tests/pcs_fri_raw_refinement_native.zig",
     "formal/s31/tests/run_pcs_fri_raw_refinement_native.sh",
     "formal/s31/tests/pcs_fri_deep_custody_native.zig",
