@@ -348,6 +348,24 @@ class Compiler:
                 if not isinstance(value, (Value, StaticGroup)):
                     raise TypeErrorS31("std::array::get requires an array")
                 return self.builder.array_get(value, expr.generic, wanted=wanted, span=self.span(expr))
+            if name == "std::array::map":
+                if expr.generic is not None or len(expr.args) != 2:
+                    raise TypeErrorS31("std::array::map(function, static_array) expected")
+                function = self.eval_expr(expr.args[0], env)
+                source = self.eval_expr(expr.args[1], env)
+                if not isinstance(function, (StaticClosure, StaticNamedFunction)) or not isinstance(source, StaticGroup) or not 1 <= len(source.elements) <= 64:
+                    raise TypeErrorS31("std::array::map requires a unary function and 1..64 static array terms")
+                result = []
+                for item in source.elements:
+                    if not isinstance(item, Value):
+                        raise TypeErrorS31("std::array::map requires first-order circuit values")
+                    mapped = (self.call_function(function.name, (item,), None, expr)
+                              if isinstance(function, StaticNamedFunction) else
+                              self.call_closure(function, (item,), None, expr))
+                    if not isinstance(mapped, Value):
+                        raise TypeErrorS31("std::array::map function must return a circuit value")
+                    result.append(mapped)
+                return StaticGroup(tuple(result))
             if name == "std::array::concat":
                 if expr.generic is not None or len(expr.args) != 2:
                     raise TypeErrorS31("std::array::concat(a,b) expected")

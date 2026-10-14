@@ -159,6 +159,14 @@ selected graph size; both native proofs pass the release
 feature gate. This evidence does not establish general compiler-to-AIR
 correspondence.
 
+The [static map fixture](../../../src/frontends/s31/examples/functional/static_map/README.md)
+adds a bounded higher-order array combinator. Its named-function source and
+two explicit calls have identical normalized relations and complete
+`direct-gate` AIR cost fields: 321 raw and 512 padded QM31 rows, 4,096
+preprocessed cells. The native proof accepts the honest eight-word result
+and rejects a changed claim. This is finite zero-overhead evidence for static
+map, not a general source-to-AIR theorem or a runtime-array map.
+
 | Requirement | Evidence required | Current state |
 | --- | --- | --- |
 | Grammar and diagnostics | Versioned grammar, location-precise errors, malformed and fuzzed input corpus, bounded parse and specialization resources | The v1 grammar documents exact source forms, including postfix application of returned closures, parenthesized lambdas, named `fn` references as static values, and returned or local static recurrence steps. The parser bounds token count, numeric token length, recursive expression/type descent and final AST depth with located errors; static call and effect analysis have separate limits. Pinned generated corpora check 96 scalar, 64 four-lane array, nine packed-lane, 29 math/hash, 40 tuple and 160 higher-order function-route programs against independent values and exact first-order IR; malformed mutations have located diagnostics. The higher-order corpus also checks that partial effects survive ten function-value routes into inactive conditional arms. Record ABI leaves are capped before expansion; repeated immutable effect shapes share memory; assertion expansion is bounded and duplicate equalities are erased. Native validation caps aggregate input words, total relation items, JSON source bytes and early shape work; both compiler routes check actual unpadded gate and variable counts during lowering. Generic repeat expansion has its own aggregate lane-step budget. Wider grammar fuzzing remains. |

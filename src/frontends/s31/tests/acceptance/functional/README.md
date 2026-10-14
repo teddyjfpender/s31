@@ -64,6 +64,15 @@ field-value check, and rejects a changed public claim:
 python3 src/frontends/s31/tests/acceptance/functional/pattern_parameters.py
 ```
 
+`static_map.py` checks a named higher-order map against two explicit calls.
+It requires the exact normalized relation and complete `direct-gate` cost
+tuple, independently computes all eight M31 output words, accepts a native
+proof, and rejects a changed public statement:
+
+```sh
+python3 src/frontends/s31/tests/acceptance/functional/static_map.py
+```
+
 `static_sum_dce.py` compares a static enum with an ignored, total arithmetic
 payload against a handwritten recurrence under `direct-chip`. It requires
 identical one-node relations and complete native AIR geometry, then proves the

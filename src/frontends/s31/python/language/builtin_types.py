@@ -10,7 +10,7 @@ from __future__ import annotations
 from s31_stdlib import INT_TYPES, P, SELECTABLE_KINDS, Type, TypeErrorS31
 from language.builtins import INT_BINARY_CALLS, INT_CAST_CALLS, INT_COMPARE_CALLS, INT_STATIC_SHIFT_CALLS
 from language.types import FieldLiteral, SourceType, StaticArray
-from language.syntax import TupleType
+from language.syntax import FunctionType, TupleType
 
 
 BIT = Type("bit", 1)
@@ -128,6 +128,17 @@ def infer_builtin(name: str, generic: int | None, args: tuple[SourceType, ...],
                     "integer reinterpret requires equal-width integer types")
         return target
 
+    if name == "std::array::map":
+        static_parameter(name, generic)
+        arity(name, args, 2)
+        function, array = args
+        terms = group(array, name)
+        require(isinstance(function, FunctionType) and len(function.params) == 1 and
+                isinstance(function.result, Type),
+                "std::array::map requires a unary function returning a circuit value")
+        require(all(isinstance(term, Type) and term == function.params[0] for term in terms),
+                "std::array::map requires equally typed circuit values matching its function")
+        return StaticArray(tuple(function.result for _ in terms))
     if name in {"std::array::get", "std::array::take", "std::array::drop", "std::array::reshape"}:
         count = static_parameter(name, generic, required=True)
         arity(name, args, 1)

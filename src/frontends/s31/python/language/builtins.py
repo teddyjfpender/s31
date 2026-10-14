@@ -49,7 +49,7 @@ MAX_EXPRESSION_DEPTH = 128
 MAX_TYPE_DEPTH = 32
 BUILTINS = {
     "splat", "iterate", "m31_from_u16", "select", "poseidon2_leaf",
-    "std::array::get", "std::array::concat", "std::array::take",
+    "std::array::get", "std::array::map", "std::array::concat", "std::array::take",
     "std::array::drop", "std::array::reshape", "std::array::flatten",
     "poseidon2_pair", "blake2s_leaf", "blake2s_pair",
     "merkle_path_poseidon2", "merkle_path_blake2s",
