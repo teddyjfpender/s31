@@ -1,4 +1,5 @@
 import S31.Gadgets.Functional.Correspondence.GeneralLinearSSAEffects
+import S31.Gadgets.Air.NativeQm31AirProof
 
 /-!
 A reusable semantic bridge for a *supplied* native direct-Gate graph. It is
@@ -79,6 +80,78 @@ theorem checked_gates_satisfied (wire : Nat → Quad) (gates : List Gate)
   intro gate hmember
   exact checked_gate_satisfied wire gate
     (List.all_eq_true.mp hcheck gate hmember)
+
+/-- The direct-Gate AIR selector corresponding to each structural M31 gate.
+Source multiplication is packed pointwise multiplication, not QM31 extension
+multiplication. -/
+def GateOp.airOp : GateOp → S31.Gadgets.Air.Qm31Ops.Op
+  | .add => .add
+  | .sub => .sub
+  | .pointwiseMul => .pointwiseMul
+
+private theorem air_eval_coord (op : GateOp) (a b : Quad) (i : Fin 4) :
+    S31.Gadgets.Packed.coord
+      (S31.Gadgets.Air.Qm31Ops.evaluate op.airOp
+        (S31.Gadgets.Air.Qm31Ops.packM31 a)
+        (S31.Gadgets.Air.Qm31Ops.packM31 b)) i =
+      S31.Field.toZMod (op.eval (a i) (b i)) := by
+  cases op with
+  | add =>
+      simpa [GateOp.airOp, GateOp.eval, S31.Gadgets.Air.Qm31Ops.s31Op]
+        using S31.Gadgets.Air.Qm31Ops.s31Op_coord false a b i
+  | sub =>
+      simpa [GateOp.airOp, GateOp.eval, S31.Gadgets.Air.Qm31Ops.evaluate]
+        using S31.Gadgets.Air.Qm31Ops.sub_coord a b i
+  | pointwiseMul =>
+      simpa [GateOp.airOp, GateOp.eval, S31.Gadgets.Air.Qm31Ops.s31Op]
+        using S31.Gadgets.Air.Qm31Ops.s31Op_coord true a b i
+
+/-- A source-extracted nine-residual native AIR row implies the direct-Gate
+semantic equation at every one of its four physical M31 coordinates. This
+local algebra bridge still requires the preprocessed selector/address cells
+and committed trace values to be authenticated against the actual proof. -/
+theorem native_air_row_satisfied (wire : Nat → Quad) (gate : Gate)
+    (hair : ∀ r ∈ S31.Gadgets.Air.NativeQm31Air.residuals
+      (S31.Gadgets.Air.Qm31Ops.encode gate.op.airOp)
+      (S31.Gadgets.Air.Qm31Ops.packM31 (wire gate.in0))
+      (S31.Gadgets.Air.Qm31Ops.packM31 (wire gate.in1))
+      (S31.Gadgets.Air.Qm31Ops.packM31 (wire gate.out)), r = 0) :
+    gate.satisfied wire := by
+  have hmodel : S31.Gadgets.Air.Qm31Ops.accepts
+      (S31.Gadgets.Air.Qm31Ops.encode gate.op.airOp)
+      (S31.Gadgets.Air.Qm31Ops.packM31 (wire gate.in0))
+      (S31.Gadgets.Air.Qm31Ops.packM31 (wire gate.in1))
+      (S31.Gadgets.Air.Qm31Ops.packM31 (wire gate.out)) := by
+    simpa [S31.Gadgets.Air.Qm31Ops.accepts,
+      S31.Gadgets.Air.NativeQm31AirProof.native_residuals_eq] using hair
+  have hpacked := (S31.Gadgets.Air.Qm31Ops.accepts_encoded gate.op.airOp _ _ _).mp hmodel
+  intro coordinate
+  apply S31.Field.toZMod_injective
+  have hcoord := congrArg (fun q => S31.Gadgets.Packed.coord q coordinate) hpacked
+  simpa only [S31.Gadgets.Air.Qm31Ops.coord_packM31,
+    air_eval_coord] using hcoord
+
+/-- The native nine-residual relation for every gate in a supplied roster.
+The quantification is over the entire roster, including unused gates. -/
+def NativeAirRows (wire : Nat → Quad) (gates : List Gate) : Prop :=
+  ∀ gate ∈ gates, ∀ r ∈ S31.Gadgets.Air.NativeQm31Air.residuals
+    (S31.Gadgets.Air.Qm31Ops.encode gate.op.airOp)
+    (S31.Gadgets.Air.Qm31Ops.packM31 (wire gate.in0))
+    (S31.Gadgets.Air.Qm31Ops.packM31 (wire gate.in1))
+    (S31.Gadgets.Air.Qm31Ops.packM31 (wire gate.out)), r = 0
+
+/-- Local source-extracted AIR acceptance discharges the finite gate-value
+check used by the generic structural certificate. The missing global premise
+is authentication of these rows as the actual committed direct-Gate AIR. -/
+theorem native_air_rows_check (wire : Nat → Quad) (gates : List Gate)
+    (hair : NativeAirRows wire gates) : checkGates wire gates = true := by
+  unfold checkGates
+  apply List.all_eq_true.mpr
+  intro gate hmember
+  unfold Gate.check
+  apply List.all_eq_true.mpr
+  intro coordinate _
+  exact decide_eq_true (native_air_row_satisfied wire gate (hair gate hmember) coordinate)
 
 theorem gate_active_sound {n : Nat} (hn : n ≤ 4) (wire : Nat → Quad)
     (gate : Gate) (hgate : gate.satisfied wire) :

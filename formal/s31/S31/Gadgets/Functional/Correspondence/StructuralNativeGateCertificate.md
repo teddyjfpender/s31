@@ -28,6 +28,15 @@ checks that the source input values match the packed wires, and
 match wire 22. The native trace theorem transports these checks through every
 SSA step to the source expression.
 
+`native_air_row_satisfied` proves the same four-coordinate equation from the
+actual nine `qm31_ops` polynomial residuals extracted from the native AIR.
+It fixes the selector to the source operation, including ordered subtraction
+and pointwise M31 multiplication. `native_air_rows_check` applies this to an
+arbitrary supplied gate roster and discharges `checkGates` from local AIR
+acceptance. This removes a separate arithmetic assumption at the local
+polynomial-to-gate layer. The selector/address cells and witness values must
+still be authenticated to the actual committed trace and proof.
+
 For a short-lane equality assertion, Zig may lower `assert_eq(a, b)` as
 `diff = a - b`, `masked = diff .* (1, 1, 0, 0)`, and `masked = 0`.
 `masked_assertion_sound` proves from those three equations that both active
