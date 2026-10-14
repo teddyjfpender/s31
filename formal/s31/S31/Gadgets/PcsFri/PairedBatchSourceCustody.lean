@@ -5,8 +5,12 @@ import Mathlib.Tactic
 /-!
 Conditional fixed-source ownership for one experimental CAS05/XDM04 row.
 The native verifier returns an original row only after XDM04 reconstructs
-the source root. In this model an opening starts at either a tagged leaf
-or a tagged inserted source node, then follows the upper-tree path.
+the source root. This theorem models a tagged leaf or inserted source node
+followed only by upper-tree parents. In the CAS05 multi-height commitment,
+that is directly the path above the **bottom inserted source height**. A row
+at any earlier height passes through further `hashInserted` nodes on its way
+to the root and does not satisfy this model's upper-only path premise merely
+because native `verifyAndCollect` succeeded.
 Two different rows accepted at the same root and position produce a
 collision in one of the compared node or upper-path hash inputs.
 
@@ -34,9 +38,10 @@ abbrev NodeInput (H : Type*) := Option (H × H) × List Base
 
 def nodeRow (input : NodeInput H) : List Base := input.2
 
-/-- Full opening of one XDM04 row at the source tree level containing it.
-`depth` counts the remaining upper-tree edges, so the native node index is
-bounded by `2^depth`. -/
+/-- Conditional upper-only opening of one source row. For the CAS05 tree this
+directly represents the bottom inserted source height; earlier heights need
+mixed inserted/upper ancestors. `position` is an ordinary binary path index,
+not XDM04's transposed native node index. -/
 def acceptedNodeOpening (nodeHash : NodeInput H → H)
     (upperHash : H × H → H) (root : H) (depth position : Nat)
     (input : NodeInput H) (siblings : List H) : Prop :=
@@ -141,11 +146,13 @@ def statementMatches {n : Nat} (proofHeader statement : SourceStatement H n) : P
   proofHeader.sourceRoot = statement.sourceRoot ∧
     proofHeader.claims = statement.claims
 
-/-- Accepted XDM04 node openings and public-statement claim matching provide
+/-- Modeled upper-only node openings and public-statement claim matching provide
 the fixed original row and fixed recipe roster used by the prior paired-batch
 theorem. The two openings must have the same root, level and position; absent
 a concrete node/upper hash collision, the batch consumes the committed row.
-No global polynomial degree or adaptive-challenge claim follows. -/
+For the experimental multi-height tree, this applies directly only when no
+inserted source node lies above the opened row. No global polynomial degree
+or adaptive-challenge claim follows. -/
 theorem authenticated_public_row_batch {n : Nat}
     (nodeHash : NodeInput H → H) (upperHash : H × H → H)
     (depth position : Nat)
