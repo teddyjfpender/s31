@@ -66,10 +66,10 @@ python3 scripts/compiler/control_air_audit.py /path/to/control-air-package
 
 The command verifies the package manifest and artifact hashes, re-runs the
 production parser, runs the independent Lean exact-byte checker, and captures
-the installed native graph. The six hostile controls are
+the installed native graph. The twelve hostile controls are
 in `test_control_air_correspondence.py`; they remove an anchor, change
 selection and inverse wires, remove the scalar input owner, and mutate fixed
-columns or sealed identities.
+columns, sealed identities, extraction, conversion, and public pins.
 
 The Python graph checker alone binds the source digest; it does not parse S31
 text. The audit command supplies the source-to-relation check. Its optional

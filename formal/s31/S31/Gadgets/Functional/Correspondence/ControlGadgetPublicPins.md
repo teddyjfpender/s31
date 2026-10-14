@@ -57,5 +57,7 @@ The conversion component law is an **explicit premise**: this slice does not
 derive it from native `m_31_to_u_32` AIR residuals and the range-check and
 Gate lookup/permutation closure. It also does not prove that an accepted
 cryptographic proof authenticates the modeled pin cells or binds the proof's
-public statement to them. Those boundaries, PCS/FRI soundness, and witness
-completeness remain open. The v0.1 release blocker remains closed.
+public statement to them. Those boundaries, PCS/FRI soundness, and complete
+native physical-trace construction remain open. The separate local control
+gadget completeness theorem handles the selected-lane existence condition.
+The v0.1 release blocker remains closed.

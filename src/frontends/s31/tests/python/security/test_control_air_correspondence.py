@@ -90,6 +90,20 @@ class ControlAirCorrespondenceTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "wrong unique conversion"):
                 check_control_air(FIXTURE, changed)
 
+    def test_duplicate_conversion_output_is_rejected(self) -> None:
+        changed = copy.deepcopy(TOPOLOGY)
+        changed["m31_to_u32"][4]["out"] = changed["m31_to_u32"][3]["out"]
+        with patch("package.control_air_correspondence._check_columns"):
+            with self.assertRaisesRegex(ValueError, "duplicate addresses"):
+                check_control_air(FIXTURE, changed)
+
+    def test_inverse_basis_restore_rewire_is_rejected(self) -> None:
+        changed = copy.deepcopy(TOPOLOGY)
+        next(gate for gate in changed["mul"] if gate["out"] == 42)["in1"] = 37
+        with patch("package.control_air_correspondence._check_columns"):
+            with self.assertRaisesRegex(ValueError, "uniquely owned mul"):
+                check_control_air(FIXTURE, changed)
+
     def test_public_pin_producer_rewire_is_rejected(self) -> None:
         changed = copy.deepcopy(TOPOLOGY)
         next(gate for gate in changed["add"] if gate["out"] == 6)["in0"] = 39
