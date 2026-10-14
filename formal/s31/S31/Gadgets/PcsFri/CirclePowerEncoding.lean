@@ -56,6 +56,48 @@ theorem encode_injective (i : K) (hi : i ^ 2 = -1) :
   apply Subtype.ext
   exact Prod.ext hx hy
 
+omit [NeZero (2 : K)] in
+theorem encode_ne_zero (i : K) (hi : i ^ 2 = -1)
+    (p : Circle K) : encode i p ≠ 0 := by
+  intro hzero
+  have hprod := encode_mul_opposite i hi p
+  rw [hzero, zero_mul] at hprod
+  exact zero_ne_one hprod
+
+/-- Circle translation uses the same coordinate formula as native point
+addition. Its nonzero encoded multiplier makes it injective. -/
+def translate (s p : Circle K) : Circle K := by
+  refine ⟨(s.1.1 * p.1.1 - s.1.2 * p.1.2,
+      s.1.1 * p.1.2 + s.1.2 * p.1.1), ?_⟩
+  calc
+    (s.1.1 * p.1.1 - s.1.2 * p.1.2) ^ 2 +
+        (s.1.1 * p.1.2 + s.1.2 * p.1.1) ^ 2 =
+        (s.1.1 ^ 2 + s.1.2 ^ 2) *
+          (p.1.1 ^ 2 + p.1.2 ^ 2) := by ring
+    _ = 1 := by rw [s.2, p.2]; ring
+
+omit [NeZero (2 : K)] in
+theorem encode_translate (i : K) (hi : i ^ 2 = -1)
+    (s p : Circle K) :
+    encode i (translate s p) = encode i s * encode i p := by
+  unfold encode translate
+  dsimp
+  calc
+    s.1.1 * p.1.1 - s.1.2 * p.1.2 +
+        i * (s.1.1 * p.1.2 + s.1.2 * p.1.1) =
+        s.1.1 * p.1.1 + i ^ 2 * (s.1.2 * p.1.2) +
+          i * (s.1.1 * p.1.2 + s.1.2 * p.1.1) := by rw [hi]; ring
+    _ = (s.1.1 + i * s.1.2) *
+          (p.1.1 + i * p.1.2) := by ring
+
+theorem translate_injective (i : K) (hi : i ^ 2 = -1)
+    (s : Circle K) : Function.Injective (translate s) := by
+  intro p q hpq
+  have henc := congrArg (encode i) hpq
+  rw [encode_translate i hi s p, encode_translate i hi s q] at henc
+  apply encode_injective i hi
+  exact mul_left_cancel₀ (encode_ne_zero i hi s) henc
+
 def double (p : Circle K) : Circle K := by
   refine ⟨(p.1.1 ^ 2 - p.1.2 ^ 2,
       2 * p.1.1 * p.1.2), ?_⟩
@@ -100,6 +142,10 @@ theorem qm31_imaginary_square : qm31Imaginary ^ 2 = -1 :=
 theorem qm31_encode_injective :
     Function.Injective (encode qm31Imaginary : Circle QM31 → QM31) :=
   encode_injective qm31Imaginary qm31_imaginary_square
+
+theorem qm31_translate_injective (s : Circle QM31) :
+    Function.Injective (translate s) :=
+  translate_injective qm31Imaginary qm31_imaginary_square s
 
 theorem qm31_encode_iterated_double (p : Circle QM31) (k : ℕ) :
     encode qm31Imaginary (((double (K := QM31))^[k]) p) =

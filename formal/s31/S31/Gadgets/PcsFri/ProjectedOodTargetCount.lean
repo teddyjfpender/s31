@@ -75,6 +75,18 @@ theorem projected_h5_base_bad_le :
     (qm31BadPreimage 12 badTarget).card ≤
       2 ^ 12 * zeroUpperYTargets := projected_base_bad_le 12
 
+/-- The modeled cap holds for any fixed circle translation after doubling.
+This quantifies over the periodicity shifts; native claim-to-shift mapping
+and sampler correspondence remain separate obligations. -/
+theorem projected_shifted_bad_le (k : ℕ) (shift : Circle QM31) :
+    (qm31ShiftedBadPreimage k shift badTarget).card ≤
+      2 ^ k * zeroUpperYTargets := by
+  calc
+    (qm31ShiftedBadPreimage k shift badTarget).card ≤
+        2 ^ k * badTarget.card :=
+      qm31_shifted_doubling_bad_le k shift badTarget
+    _ = 2 ^ k * zeroUpperYTargets := by rw [bad_target_card]
+
 noncomputable def rawGood : Finset (Circle QM31) := by
   classical
   exact goodSet.toFinite.toFinset
@@ -82,6 +94,47 @@ noncomputable def rawGood : Finset (Circle QM31) := by
 theorem raw_good_card : rawGood.card = rawSupport := by
   rw [← good_set_card]
   exact (Set.ncard_eq_toFinset_card goodSet).symm
+
+noncomputable def allShiftedSurvivors
+    (shifts17 : Fin 4 → Circle QM31)
+    (shifts11 : Fin 32 → Circle QM31)
+    (shifts5 : Fin 23 → Circle QM31) : Finset (Circle QM31) := by
+  classical
+  exact rawGood \ (
+    ((Finset.univ : Finset (Fin 4)).biUnion
+      (fun i => qm31ShiftedBadPreimage 0 (shifts17 i) badTarget)) ∪
+    ((Finset.univ : Finset (Fin 32)).biUnion
+      (fun i => qm31ShiftedBadPreimage 6 (shifts11 i) badTarget)) ∪
+    ((Finset.univ : Finset (Fin 23)).biUnion
+      (fun i => qm31ShiftedBadPreimage 12 (shifts5 i) badTarget)))
+
+theorem all_shifted_survivors_lower_bound
+    (shifts17 : Fin 4 → Circle QM31)
+    (shifts11 : Fin 32 → Circle QM31)
+    (shifts5 : Fin 23 → Circle QM31) :
+    rawSupport - projectedExclusionBudget ≤
+      (allShiftedSurvivors shifts17 shifts11 shifts5).card := by
+  classical
+  unfold allShiftedSurvivors
+  exact survivors_lower_bound rawGood
+    (fun i => qm31ShiftedBadPreimage 0 (shifts17 i) badTarget)
+    (fun i => qm31ShiftedBadPreimage 6 (shifts11 i) badTarget)
+    (fun i => qm31ShiftedBadPreimage 12 (shifts5 i) badTarget)
+    raw_good_card
+    (fun i => by simpa using projected_shifted_bad_le 0 (shifts17 i))
+    (fun i => projected_shifted_bad_le 6 (shifts11 i))
+    (fun i => projected_shifted_bad_le 12 (shifts5 i))
+
+theorem all_shifted_survivors_positive
+    (shifts17 : Fin 4 → Circle QM31)
+    (shifts11 : Fin 32 → Circle QM31)
+    (shifts5 : Fin 23 → Circle QM31) :
+    0 < (allShiftedSurvivors shifts17 shifts11 shifts5).card := by
+  have h := all_shifted_survivors_lower_bound
+    shifts17 shifts11 shifts5
+  have hpositive : 0 < rawSupport - projectedExclusionBudget := by
+    exact Nat.sub_pos_of_lt exclusion_budget_lt_raw_support
+  omega
 
 noncomputable def baseSurvivors : Finset (Circle QM31) := by
   classical
