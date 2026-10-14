@@ -79,7 +79,13 @@ const Case = struct {
     tamper_extra_gate_for_test: bool = false,
     tamper_changed_gate_for_test: bool = false,
 };
-const Corpus = struct { schema: []const u8, cases: []Case };
+const Corpus = struct {
+    schema: []const u8,
+    cases: []Case,
+    /// Optional exact, compiler-owned graph snapshot for an independent audit.
+    /// A single case avoids ambiguous output ownership.
+    export_graph_path: ?[]const u8 = null,
+};
 
 fn fail(label: []const u8, reason: []const u8) error{CorpusMismatch} {
     std.debug.print("structural witness {s}: {s}\n", .{ label, reason });
@@ -222,7 +228,50 @@ fn checkGate(
     if (!found) return fail(label, "native gate operation or operands differ from source");
 }
 
-fn checkCase(allocator: std.mem.Allocator, item: Case) !void {
+fn exportGraph(
+    allocator: std.mem.Allocator,
+    path: []const u8,
+    witness: *const circuit.builder.Context(QM31),
+    maps: *const s31.relation_compiler.Maps,
+    ir: *const s31.canonical.IR,
+) !void {
+    const values = try allocator.alloc([4]u32, witness.values().len);
+    defer allocator.free(values);
+    for (witness.values(), values) |value, *out| out.* = laneWords(value);
+    const graph = witness.circuit;
+    const artifact = .{
+        .schema = "s31-structural-m31-exact-native-graph-v1",
+        .n_vars = graph.n_vars,
+        .values = values,
+        .add = graph.add.items,
+        .sub = graph.sub.items,
+        .mul = graph.mul.items,
+        .pointwise_mul = graph.pointwise_mul.items,
+        .eq = graph.eq.items,
+        .triple_xor = graph.triple_xor.items,
+        .m31_to_u32 = graph.m31_to_u32.items,
+        .blake_g_gate = graph.blake_g_gate.items,
+        .permutation_ends = graph.permutation.ends.items,
+        .permutation_inputs = graph.permutation.inputs.items,
+        .permutation_outputs = graph.permutation.outputs.items,
+        .output = graph.output.items,
+        .constant_keys = witness.constants.keys(),
+        .constant_vars = witness.constantVars(),
+        .source_map = ir.source_map,
+        .canonical_nodes = ir.nodes,
+        .node_wires = maps.node_wires.items,
+        .node_spans = maps.nodes.items,
+        .assertion_spans = maps.assertions.items,
+        .bindings = maps.bindings.items,
+        .finalization = maps.finalization,
+    };
+    const bytes = try std.json.Stringify.valueAlloc(allocator, artifact, .{});
+    defer allocator.free(bytes);
+    if (bytes.len > 8 << 20) return error.GraphArtifactTooLarge;
+    try std.fs.cwd().writeFile(.{ .sub_path = path, .data = bytes });
+}
+
+fn checkCase(allocator: std.mem.Allocator, item: Case, export_path: ?[]const u8) !void {
     var program = try s31.relation.parseProgram(allocator, item.relation);
     defer program.deinit();
     var ir = try s31.canonical.build(allocator, program.value);
@@ -314,6 +363,12 @@ fn checkCase(allocator: std.mem.Allocator, item: Case) !void {
     if (matches != item.expected_public_match or
         item.expected_valid != (item.expected_circuit_valid and item.expected_public_match))
         return fail(item.label, "compiled public words are not bound to claimed words");
+    if (export_path) |path| {
+        if (!item.expected_valid or !item.expected_circuit_valid or !item.expected_public_match or
+            item.tamper_extra_gate_for_test or item.tamper_changed_gate_for_test)
+            return fail(item.label, "graph export requires an honest accepted case");
+        try exportGraph(allocator, path, &witness, &maps, &ir);
+    }
 }
 
 pub fn main() !void {
@@ -331,7 +386,9 @@ pub fn main() !void {
     if (!std.mem.eql(u8, parsed.value.schema, "s31-structural-m31-native-witness-corpus-v1") or
         parsed.value.cases.len == 0 or parsed.value.cases.len > 32)
         return error.InvalidCorpus;
-    for (parsed.value.cases) |item| try checkCase(allocator, item);
+    if (parsed.value.export_graph_path != null and parsed.value.cases.len != 1)
+        return error.InvalidCorpus;
+    for (parsed.value.cases) |item| try checkCase(allocator, item, parsed.value.export_graph_path);
     var buffer: [128]u8 = undefined;
     var stdout = std.fs.File.stdout().writer(&buffer);
     try stdout.interface.print("{{\"checked\":{d}}}\n", .{parsed.value.cases.len});

@@ -35,7 +35,10 @@ adds a reusable Lean checker for supplied four-coordinate add, subtraction,
 and pointwise multiplication gates, packed input ports, selected output ports,
 and equality assertions. Its theorem transports any certified native trace
 through the effectful SSA soundness proof for arbitrary admitted step counts.
-The native exporter and committed AIR binding remain explicit premises.
+An exact Zig graph export and independent bounded replay now check those
+premises for one accepted assignment, with folds and erasures explicit.
+Decoding that executable artifact into a Lean `NativeTrace` and binding it to
+committed AIR rows remain open.
 
 [The public ABI byte gate](GeneralLinearSSAPublicABI.md) derives the ordered
 M31 input/output layout from either checked certificate profile, checks exact

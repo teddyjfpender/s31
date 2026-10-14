@@ -43,10 +43,48 @@ For a short-lane equality assertion, Zig may lower `assert_eq(a, b)` as
 lanes of `a` equal `b`. `checkAssertions` checks the resulting equality for
 every assertion, including an assertion on a node unused by the output.
 
-The theorem does **not** establish that Zig emitted the addresses, gate lists,
-or mask path given to it. The executable audit in
-`formal/s31/scripts/general_structural_native_witness.py` compares the actual
-Zig witness and witness-free graphs for one supplied program/assignment, but
-does not authenticate committed AIR rows or the private witness in a proof.
-The next correspondence step is to bind this generic certificate to those
-native graph bytes and then to the committed direct-Gate AIR rows.
+## Inspect the exact native graph
+
+Run the bounded audit on the seven compiler artifacts and an assignment:
+
+```sh
+python3 -B formal/s31/scripts/general_structural_native_witness.py \
+  source.s31 typed-tree.json certificate.json relation.json \
+  public-abi.json assignment.json statement.json \
+  --graph-out native-graph.json
+```
+
+The runner accepts arbitrary sources admitted by the structural M31 byte
+gate; the seven paths are snapshots of the same bytes that gate reads. The
+`--graph-out` file contains the actual Zig compiler's complete arithmetic and
+equality gate arrays, all four M31 coordinates of every variable, interned
+constant addresses, source-to-canonical IDs, canonical-to-wire addresses,
+node/assertion spans, and named public bindings. It is written only after the
+Lean byte gate, Zig topology/witness parity audit, and independent bounded
+Python replay all accept. The CLI reports its SHA-256 digest.
+
+**Keep this artifact local:** its value table includes private witness and
+private input values. The CLI creates a new file with mode `0600` and refuses
+to overwrite an existing path. Do not publish or attach it to a PR.
+
+The independent replay checks every exported arithmetic gate equation,
+including full QM31 extension multiplication used by input packing; all
+equality gates; canonical M31 values; each source expression's concrete gate
+or a justified fold, identity erasure, or CSE alias; assertion spans; and the
+ordered public output words. It rejects a witness-only extra gate through
+the witness-free graph comparison and an unaccounted extra gate in the exported
+artifact through the recorded span end. A gate added coherently to both
+compiler modes and to the finalization span remains possible: independent
+enumeration of the native constant-derivation/finalization roster is open.
+These concrete checks
+correspond to the address/value, gate, port, and assertion premises of
+`checked_native_trace_sound` for **one supplied assignment**. The artifact is
+an executable certificate, not a Lean proof term: a machine-checked decoder
+from its JSON into `NativeTrace` is still needed to instantiate the theorem
+inside Lean.
+
+The theorem and artifact do **not** authenticate committed AIR rows or a
+private witness inside a proof. The next join is the proof that the exported
+gate roster produces the exact preprocessed QM31 operation, equality, and
+lookup columns used by the prover, followed by binding those columns and
+committed witness openings to the native verifier.
