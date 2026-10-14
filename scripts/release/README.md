@@ -136,6 +136,14 @@ columns, and why the existing four commitment epochs cannot be collapsed
 into one XDM05 root by metadata alone. It rejects a changed draft source or
 unreviewed Gate geometry; `--require-production-equivalent` remains closed.
 
+The [Gate paper-batch boundary](pcs_fri_gate_paper_batch_boundary.py) inventories
+all four production roots and their source heights from a sealed legacy Gate
+key. Its [review](../../design/s31/security/PCS_FRI_GATE_PAPER_BATCH_BOUNDARY.md)
+derives a conditional exact-arithmetic cap: at hypothetical `N=2^20, B=2`
+and selected `T=2^64`, the quoted paper batching term crosses the 96-bit
+work-factor target at `M=65`. The actual native proof has no identified paper
+ensemble width `M`; `--require-paper-mapping` fails closed.
+
 ## Formal receipt
 
 Run the Lean source-binding check, full build, and kernel replay on a clean
