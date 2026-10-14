@@ -1,0 +1,171 @@
+{
+  "binding": {
+    "air_bundle_sha256": "7b8022b09d84db371cc433aa0fcf132f7687f2720e05e4dc9a7650c575dc02c2",
+    "engine_gitlink": "59e1f115250b8af01712b9bf3d71616e53094964",
+    "engine_source_sha256": {
+      "deps/stwo-zig/src/core/fri.zig": "5f84501d1ffbaf5d33d6f7063bea7e6fd88a4cb65140ff360b75cb11f812121f",
+      "deps/stwo-zig/src/core/pcs/quotients.zig": "f7fa34f327650f6c20ddac73fe7dba2477ecc22e0c2ea2359aaa9021eff97aa6",
+      "deps/stwo-zig/src/core/pcs/quotients/fri_answers.zig": "5280b74c1762860fad733066a40d96dada813908532e3b8854e0a3f02f182181",
+      "deps/stwo-zig/src/core/pcs/quotients/row_evaluation.zig": "30e9e8768b083ca3d218b9d4903d7e3805b4219971e7d92847303d9de5778442",
+      "deps/stwo-zig/src/core/pcs/quotients/samples.zig": "18848c2e180236b0d6807a4d2863f127a8830366ac1df038f5042359e9401e2e",
+      "deps/stwo-zig/src/core/pcs/verifier.zig": "e119335172e17db5fd1345f476c7f6ad7fdf67e394a5b18d5c2085e892ffe3d5",
+      "deps/stwo-zig/src/core/verifier.zig": "85e70cea004f82060d94363b3552e0f2d9cd4203cee69fff0fb47b5345056381",
+      "deps/stwo-zig/src/prover/fri.zig": "22acc5c7af16cc06fa646e5eedfe9a9a5bee95a273b53dbac83a599576f3e609",
+      "deps/stwo-zig/src/prover/pcs/quotients/lazy_provider.zig": "7d8c02ad443bba0941f10a8d22ecb1ef81e77b9837c3e1f561445fe31d0e728e",
+      "deps/stwo-zig/src/prover/pcs/scheme.zig": "88ab21970d32dda383a191ce5f12c329ce127f2829712a99068dd369d147e93f"
+    },
+    "gate_source_sha256": {
+      "deps/stwo-zig/src/core/air/components.zig": "eb8b2103a3146b998a193a31b061aaf7d3dac47ba934c9b4c53278401326dc26",
+      "deps/stwo-zig/src/core/circle.zig": "71176ae60dc3bb2b799d0463c50b27f65ed908fd05e4405cdcda44f2e3aac5cf",
+      "deps/stwo-zig/src/core/fields/qm31.zig": "a60c2a5a6f10bf91b1bfab41a526e41b589d0d1d83275e0516cf68b7228be931",
+      "deps/stwo-zig/src/core/fri.zig": "5f84501d1ffbaf5d33d6f7063bea7e6fd88a4cb65140ff360b75cb11f812121f",
+      "deps/stwo-zig/src/core/fri/config.zig": "69508e1f697dbf3adbe6748383aed86d937cc09d0a633cde0f9d5e6281e3149c",
+      "deps/stwo-zig/src/core/pcs/config_v2.zig": "b58f464074d5c8ca5e002764e529afc9f3e1fe81f12320a180fc1f850ef05178",
+      "deps/stwo-zig/src/core/pcs/verifier.zig": "e119335172e17db5fd1345f476c7f6ad7fdf67e394a5b18d5c2085e892ffe3d5",
+      "deps/stwo-zig/src/core/poly/circle/canonic.zig": "291ba8b2cc71a62098ca3b8306679e36b1d0e5756972d3f8306ac69831dd251c",
+      "deps/stwo-zig/src/core/poly/circle/domain.zig": "b48ee2a5f493bb35761bbd3bb1b09cc0b041f84fb46e248f56f19029618a6e9e",
+      "deps/stwo-zig/src/core/verifier.zig": "85e70cea004f82060d94363b3552e0f2d9cd4203cee69fff0fb47b5345056381",
+      "deps/stwo-zig/src/core/verifier_types.zig": "6b62306c13422eaf41a7a856646a3faee98f3b28d0d01e9edf544b9107458371",
+      "deps/stwo-zig/src/frontends/cairo/witness/composition_bundle.zig": "a0e290cd09f06a724490fe5d5bc4cf84bbb0b45f080f265d3f66f62d2c2d5e76",
+      "deps/stwo-zig/src/frontends/cairo/witness/resident_verifier.zig": "43d7524cc99b8084620c9983d6a9f0241fb0d5eced32c63753866d49e5e5c988",
+      "deps/stwo-zig/src/integrations/circuit_cpu/air.zig": "2ca5f0eba13f2a5da473b88b9215fa032e207d80edc7cccb5d474056305e8985",
+      "deps/stwo-zig/src/integrations/circuit_cpu/prove.zig": "82f42f718bbca929c37e15521540c5ea3435f45d2a5749450ea8a5c6a9ba5ea4",
+      "src/frontends/s31/build.zig": "7d54c6899be5e4a6046e25dfe978071c9bec9639b3505a186f184c74671b1212",
+      "src/frontends/s31/runtime/mvp_runtime.zig": "ac6f925a529b60b4c59739ce3109e249f25b01d0dd7c686aa72e81ab7fea1c59",
+      "src/frontends/s31/runtime/native_verifier.zig": "26e4d22c8f26ed01e880772fef9508284dce94070d7b523c47b68939e0d5c178"
+    },
+    "native_roster_by_log": [
+      {
+        "source_log_size": 20,
+        "total": 59,
+        "tree_columns": [
+          3,
+          16,
+          32,
+          8
+        ]
+      },
+      {
+        "source_log_size": 18,
+        "total": 8,
+        "tree_columns": [
+          3,
+          1,
+          4,
+          0
+        ]
+      },
+      {
+        "source_log_size": 16,
+        "total": 15,
+        "tree_columns": [
+          4,
+          3,
+          8,
+          0
+        ]
+      },
+      {
+        "source_log_size": 14,
+        "total": 8,
+        "tree_columns": [
+          3,
+          1,
+          4,
+          0
+        ]
+      },
+      {
+        "source_log_size": 10,
+        "total": 28,
+        "tree_columns": [
+          8,
+          12,
+          8,
+          0
+        ]
+      },
+      {
+        "source_log_size": 8,
+        "total": 8,
+        "tree_columns": [
+          3,
+          1,
+          4,
+          0
+        ]
+      },
+      {
+        "source_log_size": 4,
+        "total": 193,
+        "tree_columns": [
+          21,
+          80,
+          92,
+          0
+        ]
+      }
+    ],
+    "package_manifest_sha256": "af11cea26ea74ea6b9e6ca1c525d451557f3520800537700728be6b3f900626a",
+    "verification_key_sha256": "a9eae613102674983a1e281544348354c33ab8f1d81f1990412380405fb30bbe"
+  },
+  "binding_sha256": "c41f94221cf0223541a659a2b2bc4f0d584ecce8084e17659a7abdab6041cd6c",
+  "conditional_paper_geometry_if_N_is_max_gate_trace_and_B_is_native_blowup": {
+    "B": 2,
+    "D0_NB_squared": 4194304,
+    "N": 1048576,
+    "batching_term": "(M-1)*N*B^2/field_size",
+    "counterfactual_M_values": {
+      "all_native_source_columns": {
+        "assumed_M": 319,
+        "paper_batch_term_exact": "1333788672/21267647892944572736998860269687930881",
+        "single_term_BCS_work_factor_with_R_at_least_1_exceeds_target": true
+      },
+      "largest_single_native_height": {
+        "assumed_M": 193,
+        "paper_batch_term_exact": "805306368/21267647892944572736998860269687930881",
+        "single_term_BCS_work_factor_with_R_at_least_1_exceeds_target": true
+      },
+      "next_integer_over_cap": {
+        "assumed_M": 65,
+        "paper_batch_term_exact": "268435456/21267647892944572736998860269687930881",
+        "single_term_BCS_work_factor_with_R_at_least_1_exceeds_target": true
+      },
+      "one_original_plus_one_quotient_per_largest_height": {
+        "assumed_M": 386,
+        "paper_batch_term_exact": "1614807040/21267647892944572736998860269687930881",
+        "single_term_BCS_work_factor_with_R_at_least_1_exceeds_target": true
+      }
+    },
+    "field_size": 21267647892944572736998860269687930881,
+    "largest_M_whose_batching_term_with_R_at_least_1_fits_target": 64,
+    "next_M_exceeds_target": 65
+  },
+  "native_commitment_widths": [
+    45,
+    114,
+    152,
+    8
+  ],
+  "native_first_fri_domain_size": 2097152,
+  "native_proven_security_bits": null,
+  "native_source_columns_total": 319,
+  "paper_protocol_refinement_proved": false,
+  "published_N_B_for_actual_proof": null,
+  "published_batch_width_M_for_actual_proof": null,
+  "release_gate_admissible": false,
+  "schema": "s31-gate-paper-batch-boundary-v1",
+  "selected_target": {
+    "T_hash_queries": 18446744073709551616,
+    "bits": 96,
+    "metric": "paper_work_factor_epsilon_over_T"
+  },
+  "status": "native_roster_observed_paper_ensemble_unmapped",
+  "unmapped_reasons": [
+    "native FRI receives one accumulated quotient oracle, not the paper's original-plus-own-quotient ensemble",
+    "native four roots have distinct challenge-dependent commitment epochs",
+    "native first FRI domain has size N*B, while the paper degree-corrected ensemble starts at N*B^2",
+    "tree width and source-height occupancy alone do not define the theorem's ensemble width M",
+    "two-point native quotient and native query/BCS laws lack an implementation-matched theorem"
+  ]
+}

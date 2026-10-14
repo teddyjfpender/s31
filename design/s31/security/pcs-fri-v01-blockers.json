@@ -187,6 +187,7 @@
     "design/s31/security/PCS_FRI_GATE_INTERACTION.md": "551a8af2e2a78c840da850ba2e6ec4fe75206e6b63dc16098466a2b2876147f9",
     "design/s31/security/PCS_FRI_GATE_LIFTED_PROJECTION.md": "2b008d6caacd2c8243dc4885eb2bd8ea510f4a318c1f5dc7d21f3e4045624223",
     "design/s31/security/PCS_FRI_GATE_QUOTIENT_ONLY_GAP.md": "d4ebb5d5eb20abc6cb0efae1f7e19afe4f54f4bdfcedd7bef8b67a0724b5f5f5",
+    "design/s31/security/PCS_FRI_GATE_SMALL_KEY_FLOOR.md": "118ad2536782432592b238dc168bdd0de167909a7e45201b396a7b4eec27c9a2",
     "design/s31/security/PCS_FRI_GROUPED_FOLD_OBSTRUCTION_2026-10-13.md": "6d5279868c236ebda5c1275c931ed22c654f5f293f6c8bce31b4c98a85900c2e",
     "design/s31/security/PCS_FRI_LOOKUP_PAIR_BIAS.md": "c0c9837d416fea331f2ce0e58141daf15774bce693eae50f5d2f03e656d3e132",
     "design/s31/security/PCS_FRI_M31_MASKED_QUERY_DISTRIBUTION.md": "852960908e559bf4324a577a267df1bdf1d43a31de186d986fea4a283473ec9b",
@@ -204,6 +205,7 @@
     "design/s31/security/PCS_FRI_RAW_GATE_BCS_AUDIT.md": "0a3666b3f220a9b7b30bb9d7bac46b6484a01268814b42629459bd3fcf3701b4",
     "design/s31/security/PCS_FRI_STWO_UDR_FEASIBILITY.md": "7c7939732abebd052a5712afc24f3d8fd2ed9e1d9a94ba63dfb7b16749870074",
     "design/s31/security/evidence/gate-native-fridomain-accepted-proof-2026-10-14.json": "4db7f96366696702b751d667263c52dd31a0af0288996e27cb5662d1aac580fa",
+    "design/s31/security/evidence/gate-small-program-paper-batch-boundary-2026-10-14.json": "96f51e69872ba76f9a097646c105079bef341d6778a6c68146ddd54f3fda880e",
     "formal/s31/S31/Gadgets/Air/GatePublicInteraction.lean": "c4be2f2e83f1e6302177d936c502c82f5f710f69f38e5b222298d26e90693224",
     "formal/s31/S31/Gadgets/Air/NativeGateFinalizerBridge.lean": "bf98f2097447a4463aa2411a4b825ecec7993d8b6695a0c968c0e167f1caf8d0",
     "formal/s31/S31/Gadgets/Functional/Correspondence/PrivateMainLdeOpenings.md": "2e3f2f2c89ec061dacd9cb1fdff0a366b903d1599989d214e13160409c1c6ee8",
@@ -399,7 +401,7 @@
     {
       "gap_kind": "unproven_native_refinement",
       "id": "P05_OODS_DEEP_DEGREE_CORRECTION",
-      "missing_discharge": "production still checks only one accumulated DEEP quotient with FRI, so the published degree-corrected theorem's original-word degree-test premise is absent. Experimental CAS05 pairs original and own-quotient words; the four-epoch Gate source plan enumerates all verifier-owned OOD claims and proposed independent tracks, but its control is synthetic and it does not implement the multi-epoch whole-oracle degree test. A conditional exact Gate batch-width floor shows the source-log-4 193-column bucket cannot fit the selected target as one uncompressed QM31 batch, while a sound and affordable partition composition remains unproved. Production dispatch and the exact two-point circle-basis, derived-oracle, query, OOD and BCS theorem join remain absent. Implement and refine the full production ensemble or prove an alternative quotient-only theorem with exact parameters; also prove Zig row-quotient semantics, committed sampled/opened value ownership and OODS checks",
+      "missing_discharge": "production still checks only one accumulated DEEP quotient with FRI, so the published degree-corrected theorem's original-word degree-test premise is absent. Experimental CAS05 pairs original and own-quotient words; the four-epoch Gate source plan enumerates all verifier-owned OOD claims and proposed independent tracks, but its control is synthetic and it does not implement the multi-epoch whole-oracle degree test. A conditional exact Gate batch-width floor shows the source-log-4 193-column bucket cannot fit the selected target as one uncompressed QM31 batch, while a sound and affordable partition composition remains unproved. An accepted small-program ordinary Gate key still has N=2^20 because VerifyBitwiseXor_12 is fixed at log 20; lowering N requires a new authenticated AIR/key profile and roster. Production dispatch and the exact two-point circle-basis, derived-oracle, query, OOD and BCS theorem join remain absent. Implement and refine the full production ensemble or prove an alternative quotient-only theorem with exact parameters; also prove Zig row-quotient semantics, committed sampled/opened value ownership and OODS checks",
       "partial_evidence": [
         "scripts/s31_formal_lib/pcs_fri_order.py",
         "scripts/s31_formal_lib/pcs_fri_quotient_algebra.py",
@@ -437,6 +439,8 @@
         "scripts/release/pcs_fri_gate_batch_partition.py",
         "scripts/tests/test_pcs_fri_gate_batch_partition.py",
         "design/s31/security/PCS_FRI_GATE_BATCH_PARTITION_PLAN.md",
+        "design/s31/security/PCS_FRI_GATE_SMALL_KEY_FLOOR.md",
+        "design/s31/security/evidence/gate-small-program-paper-batch-boundary-2026-10-14.json",
         "deps/stwo-zig/src/prover/pcs/scheme.zig",
         "deps/stwo-zig/src/core/pcs/verifier.zig",
         "deps/stwo-zig/src/core/pcs/quotients/row_evaluation.zig",
