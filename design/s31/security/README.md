@@ -27,6 +27,9 @@ and probabilistic premises.
 The [recursive circle-basis proof](PCS_FRI_CIRCLE_RECURSIVE_BASIS_DEGREE.md)
 derives the Laurent radius for every coefficient slot in the native-shaped
 half-split evaluator.
+The [height-five native basis slice](PCS_FRI_H5_NATIVE_BASIS_REFINEMENT.md)
+unrolls the 16-cell subset-product kernel, proves its mathematical four-group
+sum and checks the optimized Zig path against an independent field reference.
 The [multiproof byte-collision join](PCS_FRI_MULTIPROOF_BYTE_COLLISION_REDUCTION.md)
 shows that a wrong row accepted by the modeled full decoder against a
 constructed column tree gives two distinct messages with the same plain hash.
