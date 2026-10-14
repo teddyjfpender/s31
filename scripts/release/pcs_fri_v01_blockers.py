@@ -192,7 +192,9 @@ def matrix(root: Path = ROOT) -> dict[str, object]:
         raise ValueError("v0.1 query epoch source or engine binding changed")
     if (degree_correction["engine_gitlink_commit"] != current_engine or
             degree_correction["p05_discharged"] is not False or
-            degree_correction["published_degree_corrected_nonquotient_premise_met"] is not False):
+            degree_correction["published_degree_corrected_nonquotient_premise_met"] is not False or
+            degree_correction["proposed_degree_corrected_profile"]["selector_installed"] is not False or
+            degree_correction["proposed_degree_corrected_profile"]["proof_admissible"] is not False):
         raise ValueError("v0.1 native degree-correction theorem status changed; review blocker matrix")
     old_cost = json.loads((root / "design/s31/measurements/language/whole-prover-cost-v8r1.json").read_text())
     cost_engine = old_cost["engine_gitlink_commit"]
