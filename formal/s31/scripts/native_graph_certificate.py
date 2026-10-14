@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from scripts.native_air_projection import check_padded_rows
 from scripts.native_finalization_certificate import check_finalization
+from scripts.native_input_certificate import check_input_packing
 
 P = 2**31 - 1
 SCHEMA = "s31-structural-m31-exact-native-graph-v2"
@@ -217,6 +218,8 @@ def check_graph(graph: dict, raw: dict[str, bytes], inputs: list[dict],
                 require(span["qm31_start"] == span["qm31_end"] and
                         span["eq_start"] == span["eq_end"],
                         "constant node emitted unexpected gate")
+
+    check_input_packing(graph, raw, inputs)
 
     # Public ports are fixed by the native output roster and compiler binding
     # spans, not by a caller-provided address list. Each reserved output wire

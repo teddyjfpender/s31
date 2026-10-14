@@ -10,6 +10,7 @@ import stat
 import sys
 import tempfile
 from pathlib import Path
+from unittest.mock import patch
 
 FORMAL = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(FORMAL / "tests/audit"))
@@ -19,14 +20,24 @@ from scripts.general_structural_native_witness import (  # noqa: E402
     MAXIMUM, check, checked_words, native_check,
 )
 from scripts.native_graph_certificate import check_graph  # noqa: E402
+from scripts.native_air_projection import padded_size  # noqa: E402
 
 P = 2**31 - 1
 
 CASES = (
+    ("private_only", b"circuit just(private x: [m31; 2]) -> public [m31; 2] { "
+     b"let y = x + x; assert_eq(y,y); y }",
+     {"public_inputs": {}, "private_inputs": {"x": [7, 9]},
+      "public_outputs": {"y": [14, 18]}}),
     ("one_lane_private_first", b"circuit one(private x: [m31; 1], public y: [m31; 1]) "
      b"-> public [m31; 1] { let z = y - x; assert_eq(z,z); z }",
      {"public_inputs": {"y": [12]}, "private_inputs": {"x": [5]},
       "public_outputs": {"z": [7]}}),
+    ("two_public", b"circuit two(public x: [m31; 1], public y: [m31; 1], "
+     b"private z: [m31; 1]) -> public [m31; 1] { let out = x + y; "
+     b"assert_eq(out,z); out }",
+     {"public_inputs": {"x": [7], "y": [9]},
+      "private_inputs": {"z": [16]}, "public_outputs": {"out": [16]}}),
     ("three_inputs", b"circuit mixed(public a: [m31; 2], private b: [m31; 2], "
      b"private c: [m31; 2]) -> public [m31; 2] { let t = a + b; "
      b"let u = t .* c; let z = u - b; assert_eq(z,z); z }",
@@ -115,6 +126,105 @@ def reseal(raw: dict[str, bytes]) -> dict[str, bytes]:
     return result
 
 
+def coherent_extra_input_gate(exported: dict) -> dict:
+    """Insert a real fresh 0+0 gate before the first source input.
+
+    Shift all subsequently allocated addresses, phase cursors, and padded AIR
+    rows. This was accepted before independent input-span replay: uniqueness of
+    producers and honest finalization alone do not exclude the extra gate.
+    """
+    graph = copy.deepcopy(exported)
+    first_input = 11  # zero, one, u, and eight reserved public outputs
+
+    def shift(address: int) -> int:
+        return address + 1 if address >= first_input else address
+
+    for name in ("add", "sub", "mul", "pointwise_mul"):
+        for gate in graph[name]:
+            for field in ("in0", "in1", "out"):
+                gate[field] = shift(gate[field])
+    for gate in graph["eq"]:
+        for field in ("in0", "in1"):
+            gate[field] = shift(gate[field])
+    for var in graph["constant_vars"]:
+        var["idx"] = shift(var["idx"])
+    for node in graph["node_wires"]:
+        node["wires"] = [shift(at) for at in node["wires"]]
+    graph["output"] = [shift(at) for at in graph["output"]]
+    graph["values"].insert(first_input, [0] * 4)
+    graph["n_vars"] += 1
+    graph["add"].insert(0, {"in0": 0, "in1": 0, "out": first_input})
+    for span in graph["node_spans"]:
+        if span["id"] != 0:
+            span["qm31_start"] += 1
+        span["qm31_end"] += 1
+    for span in graph["assertion_spans"]:
+        span["qm31_start"] += 1
+        span["qm31_end"] += 1
+    for binding in graph["bindings"]:
+        for field in ("conversion_qm31_start", "conversion_qm31_end",
+                      "binding_qm31_start", "binding_qm31_end"):
+            binding[field] += 1
+    graph["finalization"]["qm31_start"] += 1
+    graph["finalization"]["qm31_end"] += 1
+
+    padded = {name: copy.deepcopy(graph[name]) for name in
+              ("add", "sub", "mul", "pointwise_mul", "eq", "triple_xor",
+               "m31_to_u32", "blake_g_gate", "permutation_ends",
+               "permutation_inputs", "permutation_outputs", "output")}
+    padded["values"] = copy.deepcopy(graph["values"])
+    next_var = graph["n_vars"]
+    raw_q = sum(len(graph[name]) for name in
+                ("add", "sub", "mul", "pointwise_mul"))
+    for _ in range(padded_size(raw_q) - raw_q):
+        padded["add"].append({"in0": 1, "in1": 1, "out": next_var})
+        padded["values"].append([2, 0, 0, 0])
+        next_var += 1
+    for _ in range(padded_size(len(graph["eq"])) - len(graph["eq"])):
+        padded["eq"].append({"in0": 0, "in1": 0})
+    for _ in range(padded_size(0)):
+        padded["triple_xor"].append({"input_a": 0, "input_b": 0,
+                                     "input_c": 0, "out": next_var})
+        padded["values"].append([0] * 4)
+        next_var += 1
+    for _ in range(padded_size(0)):
+        padded["m31_to_u32"].append({"input": 0, "out": next_var})
+        padded["values"].append([0] * 4)
+        next_var += 1
+    for _ in range(padded_size(0)):
+        padded["blake_g_gate"].append({
+            "input_a": 0, "input_b": 0, "input_c": 0, "input_d": 0,
+            "input_f0": 0, "input_f1": 0, "out_base": next_var,
+        })
+        padded["values"].extend([[0] * 4 for _ in range(4)])
+        next_var += 4
+    padded["n_vars"] = next_var
+    uses = [0] * next_var
+    for name in ("add", "sub", "mul", "pointwise_mul", "eq"):
+        for gate in padded[name]:
+            uses[gate["in0"]] += 1
+            uses[gate["in1"]] += 1
+    for gate in padded["triple_xor"]:
+        for field in ("input_a", "input_b", "input_c"):
+            uses[gate[field]] += 1
+    for gate in padded["m31_to_u32"]:
+        uses[gate["input"]] += 1
+    for gate in padded["blake_g_gate"]:
+        for field in ("input_a", "input_b", "input_c", "input_d", "input_f0", "input_f1"):
+            uses[gate[field]] += 1
+    for at in padded["output"]:
+        uses[at] += 1
+    padded["qm31_rows"] = [
+        [*(int(opcode == index) for index in range(4)),
+         gate["in0"], gate["in1"], gate["out"], uses[gate["out"]]]
+        for opcode, name in enumerate(("add", "sub", "mul", "pointwise_mul"))
+        for gate in padded[name]
+    ]
+    padded["eq_rows"] = [[gate["in0"], gate["in1"]] for gate in padded["eq"]]
+    graph["padded"] = padded
+    return graph
+
+
 def main() -> None:
     with tempfile.TemporaryDirectory(prefix="s31-general-structural-native-audit-") as temp:
         work = Path(temp)
@@ -175,6 +285,41 @@ def main() -> None:
                 pass
             else:
                 raise AssertionError(f"independent graph checker accepted {label}")
+        changed = coherent_extra_input_gate(exported)
+        # All previous checks, including exact finalization and padded rows,
+        # still accept this fully coherent extra input-phase arithmetic gate.
+        with patch("scripts.native_graph_certificate.check_input_packing", lambda *_: None):
+            check_graph(changed, raw, inputs, nodes)
+        try:
+            check_graph(changed, raw, inputs, nodes)
+        except ValueError as exc:
+            if "native input packing:" not in str(exc):
+                raise AssertionError(f"wrong extra-input-gate rejection: {exc}") from exc
+        else:
+            raise AssertionError("coherent extra input gate was accepted")
+        changed = copy.deepcopy(exported)
+        changed["eq"].insert(0, {"in0": 0, "in1": 0})
+        for span in changed["node_spans"]:
+            if span["id"] != 0:
+                span["eq_start"] += 1
+            span["eq_end"] += 1
+        for span in changed["assertion_spans"]:
+            span["eq_start"] += 1
+            span["eq_end"] += 1
+        changed["padded"]["eq"].insert(0, {"in0": 0, "in1": 0})
+        changed["padded"]["eq"].pop()
+        changed["padded"]["eq_rows"] = [
+            [gate["in0"], gate["in1"]] for gate in changed["padded"]["eq"]
+        ]
+        with patch("scripts.native_graph_certificate.check_input_packing", lambda *_: None):
+            check_graph(changed, raw, inputs, nodes)
+        try:
+            check_graph(changed, raw, inputs, nodes)
+        except ValueError as exc:
+            if "native input packing:" not in str(exc):
+                raise AssertionError(f"wrong extra-input-equality rejection: {exc}") from exc
+        else:
+            raise AssertionError("coherent extra input equality was accepted")
         # Keep the graph equation and its finalization span coherent while
         # adding a satisfiable gate. Equation-only and phase checks accept
         # this shape; exact constant/guess enumeration must reject it.
@@ -226,8 +371,8 @@ def main() -> None:
                     raise AssertionError(f"wrong gate graph rejection: {exc}") from exc
             else:
                 raise AssertionError(f"native {field} accepted")
-    print("generic structural/native audit: nine source families accepted; "
-          "four Lean, five native, and fifteen exported-graph/AIR mutations rejected")
+    print("generic structural/native audit: eleven source families accepted; "
+          "four Lean, five native, and seventeen exported-graph/AIR mutations rejected")
 
 
 if __name__ == "__main__":
