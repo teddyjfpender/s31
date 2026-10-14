@@ -191,7 +191,11 @@ def dispatch(args: argparse.Namespace) -> None:
     if (args.command in {"wrap", "wrap-next", "verify-recursive", "verify-recursive-next"} or
             args.command.startswith(("fold-", "state-fold-", "verify-fold", "verify-state-fold",
                                      "audit-recursive", "audit-fold", "audit-state-fold"))):
-        if verify_package(package).get("channel_profile") == "raw-blake2s-rejection-v1":
+        # Snapshot/audit commands may reject a bad statement before opening
+        # an incomplete package. Only inspect a package profile once its
+        # manifest exists; the downstream command still validates admission.
+        if ((package / "manifest.json").is_file() and
+                verify_package(package).get("channel_profile") == "raw-blake2s-rejection-v1"):
             raise ValueError("raw BLAKE2s Gate packages do not support recursion or folding")
     if args.command in {"verify-effects-lean", "verify-effects-gate-lean"}:
         print(verify_effectful_proof(
