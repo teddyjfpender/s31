@@ -19,6 +19,10 @@ class PcsFriV01BlockersTests(unittest.TestCase):
         self.assertEqual(report["status"], "blocked")
         self.assertFalse(report["proven_release_admissible"])
         self.assertIsNone(report["native_proven_security_bits"])
+        self.assertEqual(report["security_target"]["metric"],
+                         "paper_work_factor_epsilon_over_T")
+        self.assertEqual(report["security_target"]["target_bits"], 96)
+        self.assertIsNone(report["security_target"]["adversary_hash_query_budget_T"])
         self.assertEqual(set(report["profiles"]), set(gate.EXPECTED_PROFILE_STEPS))
         self.assertEqual(len(report["profiles"]), 12)
         obligations = {row["id"] for row in report["obligations"]}

@@ -177,6 +177,13 @@ def matrix(root: Path = ROOT) -> dict[str, object]:
         "status": "blocked",
         "native_proven_security_bits": None,
         "proven_release_admissible": False,
+        "security_target": {
+            "metric": "paper_work_factor_epsilon_over_T",
+            "target_bits": 96,
+            "adversary_hash_query_budget_T": None,
+            "status": "target_metric_selected; deployment_T_and_native_bound_open",
+            "paper_arithmetic": "scripts/release/pcs_fri_stwo_udr.py",
+        },
         "engine_gitlink_commit": current_engine,
         "source_visible_nominal_fri": {
             **NOMINAL_FRI,
