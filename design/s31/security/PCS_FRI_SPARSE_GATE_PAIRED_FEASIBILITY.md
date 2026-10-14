@@ -74,6 +74,10 @@ height 5. In each two-sample column the shifted point is sample 0 and the
 base point is sample 1. Fixed and composition columns use the base point. This is the
 exact observed schedule for this accepted key/proof; the paired proof wire
 and independent whole-oracle tests still have to consume it.
+The [H3 candidate roster](PCS_FRI_SPARSE_GATE_H3_CANDIDATE_ROSTER.md)
+assigns one proposed original slot per source column and one proposed own
+quotient slot per explicit accepted OOD claim, while tracking the additional
+legacy periodicity relation words separately.
 
 ## Paper feasibility boundary
 
