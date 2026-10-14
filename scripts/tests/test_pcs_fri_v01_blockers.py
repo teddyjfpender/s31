@@ -23,6 +23,12 @@ class PcsFriV01BlockersTests(unittest.TestCase):
                          "paper_work_factor_epsilon_over_T")
         self.assertEqual(report["security_target"]["target_bits"], 96)
         self.assertIsNone(report["security_target"]["adversary_hash_query_budget_T"])
+        necessary = report["security_target"]["single_fold_ungrinded_query_necessity"]
+        self.assertEqual(necessary["excluded_alpha_boundary"], "3/4")
+        self.assertEqual(necessary["necessary_raw_queries_at_boundary_for_target"], 232)
+        self.assertEqual(necessary["raw_queries"], 70)
+        self.assertTrue(necessary[
+            "published_ungrinded_work_factor_expression_cannot_certify_target_for_any_T"])
         self.assertEqual(set(report["profiles"]), set(gate.EXPECTED_PROFILE_STEPS))
         self.assertEqual(len(report["profiles"]), 12)
         obligations = {row["id"] for row in report["obligations"]}
@@ -69,6 +75,14 @@ class PcsFriV01BlockersTests(unittest.TestCase):
         with patch.object(gate, "FRI_CONFIG_SOURCES", ("scripts/release/README.md",)):
             with self.assertRaisesRegex(ValueError, "FRI tuple changed"):
                 gate.matrix()
+
+    def test_udr_query_floor_is_only_a_necessary_expression_check(self) -> None:
+        floor = gate.ungrinded_udr_query_necessity(1, 232, 96)
+        self.assertFalse(floor[
+            "published_ungrinded_work_factor_expression_cannot_certify_target_for_any_T"])
+        self.assertEqual(floor["necessary_raw_queries_at_boundary_for_target"], 232)
+        with self.assertRaisesRegex(ValueError, "invalid UDR"):
+            gate.ungrinded_udr_query_necessity(0, 70, 96)
 
 
 if __name__ == "__main__":
